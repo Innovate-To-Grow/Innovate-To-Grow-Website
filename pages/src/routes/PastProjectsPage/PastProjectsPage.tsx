@@ -27,8 +27,11 @@ export const PastProjectsPage = () => {
   );
 
   const handleCreateShare = async (shareRows: typeof rows, name: string, note: string) => {
-    const created = await createPastProjectShare(shareRows, name, note);
-    return new URL(`/past-projects/${created.id}`, window.location.origin).toString();
+    return createPastProjectShare(shareRows, name, note);
+  };
+
+  const handleUpdateCreatedShare = async (shareId: string, shareRows: ProjectGridRow[], name: string, note: string) => {
+    await updatePastProjectShare(shareId, {rows: shareRows, note, name});
   };
 
   const handleUpdateShare = async (shareRows: ProjectGridRow[], note: string, name: string) => {
@@ -95,6 +98,7 @@ export const PastProjectsPage = () => {
           loading={loading}
           error={error}
           onCreateShare={handleCreateShare}
+          onUpdateCreatedShare={handleUpdateCreatedShare}
         />
       )}
     </div>

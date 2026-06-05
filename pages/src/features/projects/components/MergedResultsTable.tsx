@@ -12,6 +12,7 @@ import {
 import {useProjectGridTable} from './useProjectGridTable';
 import {
   PAST_PROJECT_GRID_COLUMNS,
+  createProjectGridFingerprint,
   stripProjectGridItem,
   type ProjectGridItem,
   type ProjectGridRow,
@@ -23,10 +24,48 @@ interface MergedResultsTableProps {
   title?: string;
   note?: string;
   editable?: boolean;
-  onCreateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<string>;
+  onCreateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<PastProjectShareCreationResult>;
+  onUpdateCreatedShare?: (shareId: string, rows: ProjectGridRow[], name: string, note: string) => Promise<void>;
   onUpdateShare?: (rows: ProjectGridRow[], note: string, name: string) => Promise<void>;
   onDeleteRow?: (row: ProjectGridItem) => void;
 }
+
+export type PastProjectShareCreationResult =
+  | string
+  | {
+      id: string;
+      share_url?: string;
+    };
+
+interface CreatedPastProjectShare {
+  id: string;
+  url: string;
+}
+
+const toCreatedPastProjectShare = (result: PastProjectShareCreationResult): CreatedPastProjectShare | null => {
+  if (typeof result === 'string') {
+    return null;
+  }
+
+  return {
+    id: result.id,
+    url: new URL(`/past-projects/${result.id}`, window.location.origin).toString(),
+  };
+};
+
+const removeProjectGridRow = (sourceRows: ProjectGridRow[], row: ProjectGridRow) => {
+  const rowFingerprint = createProjectGridFingerprint(row);
+  let hasRemovedRow = false;
+
+  return sourceRows.filter((sourceRow) => {
+    if (!hasRemovedRow && createProjectGridFingerprint(sourceRow) === rowFingerprint) {
+      hasRemovedRow = true;
+      return false;
+    }
+
+    return true;
+  });
+};
 
 function SharedEditIcon() {
   return (
@@ -63,6 +102,7 @@ export const MergedResultsTable = ({
   note,
   editable = false,
   onCreateShare,
+  onUpdateCreatedShare,
   onUpdateShare,
   onDeleteRow,
 }: MergedResultsTableProps) => {
@@ -75,6 +115,8 @@ export const MergedResultsTable = ({
     expandAllByDefault: sharedMode,
   });
   const [shareUrl, setShareUrl] = useState('');
+  const [createdShare, setCreatedShare] = useState<CreatedPastProjectShare | null>(null);
+  const [createdShareRows, setCreatedShareRows] = useState<ProjectGridRow[] | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [isSharing, setIsSharing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -137,8 +179,11 @@ export const MergedResultsTable = ({
     setIsSharing(true);
     setStatusMessage('');
     try {
-      const nextShareUrl = await onCreateShare(visibleRows, trimmedName, noteDraft.trim());
-      setShareUrl(nextShareUrl);
+      const nextShare = await onCreateShare(visibleRows, trimmedName, noteDraft.trim());
+      const created = toCreatedPastProjectShare(nextShare);
+      setCreatedShare(created);
+      setCreatedShareRows(created ? visibleRows : null);
+      setShareUrl(created?.url ?? String(nextShare));
       setStatusMessage('Shareable URL is ready below.');
     } catch {
       setStatusMessage('Unable to create a shareable URL. Please try again.');
@@ -253,6 +298,47 @@ export const MergedResultsTable = ({
       return;
     }
     await handleUpdateSharedPage(nextRows, note ?? '', title, 'Project removed.');
+  };
+
+  const handleDeleteMergedRow = async (row: ProjectGridItem) => {
+    if (!onDeleteRow) {
+      return;
+    }
+
+    const rowIndex = rows.findIndex((candidate) => candidate.__key === row.__key);
+    if (rowIndex < 0) {
+      return;
+    }
+
+    if (createdShare && onUpdateCreatedShare) {
+      const nextShareRows = removeProjectGridRow(createdShareRows ?? currentRows, stripProjectGridItem(row));
+      if (nextShareRows.length === (createdShareRows ?? currentRows).length) {
+        onDeleteRow(row);
+        setStatusMessage('Project removed.');
+        return;
+      }
+
+      if (!nextShareRows.length) {
+        setStatusMessage('A shareable link needs at least one project.');
+        return;
+      }
+
+      setIsSavingShareEdit(true);
+      setStatusMessage('');
+      try {
+        await onUpdateCreatedShare(createdShare.id, nextShareRows, nameDraft.trim(), noteDraft.trim());
+        setCreatedShareRows(nextShareRows);
+        onDeleteRow(row);
+        setStatusMessage('Project removed from the shareable link.');
+      } catch {
+        setStatusMessage('Unable to update the shareable link. Please try again.');
+      } finally {
+        setIsSavingShareEdit(false);
+      }
+      return;
+    }
+
+    onDeleteRow(row);
   };
 
   const shareResultPanel = shareUrl ? (
@@ -437,7 +523,7 @@ export const MergedResultsTable = ({
         onPageSizeChange={table.setPageSize}
         emptyMessage="No merged results saved yet."
         countLabel="results"
-        onDeleteRow={sharedMode ? (canEditShared ? handleDeleteSharedRow : undefined) : onDeleteRow}
+        onDeleteRow={sharedMode ? (canEditShared ? handleDeleteSharedRow : undefined) : handleDeleteMergedRow}
         toolbarPlacement="bottom"
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
