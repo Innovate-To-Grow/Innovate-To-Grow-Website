@@ -13,6 +13,7 @@ import typer
 from .. import runtime
 from ..errors import CliError
 from .pagination import paginate
+from .query_params import list_query_params
 from .skeleton import build_skeleton
 
 records_app = typer.Typer(help="Generic CRUD over /admin-api/ records.", no_args_is_help=True)
@@ -69,13 +70,7 @@ def records_list(
     as_json: bool = typer.Option(False, "--json", help="Emit JSON."),
 ) -> None:
     """List records with optional filters, ordering, field selection, and paging."""
-    params = []
-    for item in filter_ or []:
-        params.append(("filter", item))
-    for item in order or []:
-        params.append(("order", item))
-    for item in field or []:
-        params.append(("field", item))
+    params = list_query_params(filter_, order, field)
     if limit is not None:
         params.append(("limit", str(limit)))
     if offset is not None:

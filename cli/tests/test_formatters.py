@@ -32,6 +32,21 @@ def test_table_formatter_prints_and_returns_none(capsys):
     assert "x" in capsys.readouterr().out
 
 
+def test_table_formatter_columns_first_seen_order(capsys):
+    # Columns must follow first-seen key order (stable across processes), not the
+    # nondeterministic ordering of a set comprehension. The union spans rows: the
+    # first row seeds alpha/beta/gamma, the second introduces delta.
+    formatters.get_formatter("table")(
+        [
+            {"alpha": 1, "beta": 2, "gamma": 3},
+            {"alpha": 4, "delta": 5},
+        ]
+    )
+    out = capsys.readouterr().out
+    positions = [out.index(name) for name in ("alpha", "beta", "gamma", "delta")]
+    assert positions == sorted(positions)
+
+
 def test_table_formatter_empty_list(capsys):
     formatters.get_formatter("table")([])
     assert "no results" in capsys.readouterr().out

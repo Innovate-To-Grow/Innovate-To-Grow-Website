@@ -92,13 +92,29 @@ def _write_secret_json(path: Path, data) -> None:
     os.chmod(path, 0o600)
 
 
-def _read_json(path: Path):
+# Sentinel returned by _read_json_raw when a file exists but cannot be parsed,
+# so callers can tell "missing" (None) apart from "present but corrupt".
+_CORRUPT = object()
+
+
+def _read_json_raw(path: Path):
+    """Parse JSON at ``path``.
+
+    Returns ``None`` if the file is absent, the ``_CORRUPT`` sentinel if it
+    exists but cannot be read/parsed, and the decoded value otherwise.
+    """
     if not path.exists():
         return None
     try:
         return json.loads(path.read_text())
     except (json.JSONDecodeError, OSError):
-        return None
+        return _CORRUPT
+
+
+def _read_json(path: Path):
+    """Tolerant JSON read: ``None`` for both a missing and a corrupt file."""
+    data = _read_json_raw(path)
+    return None if data is _CORRUPT else data
 
 
 # --- profile resolution ----------------------------------------------------
@@ -107,21 +123,54 @@ def _config_path() -> Path:
 
 
 def _load_config() -> dict:
-    """Return the parsed ``config.json`` (profiles + default), or ``{}`` if absent/corrupt."""
-    return _read_json(_config_path()) or {}
+    """Return the parsed ``config.json`` (profiles + default), or ``{}`` if absent/corrupt.
+
+    Tolerant by design for read paths: a corrupt file degrades to ``{}`` rather
+    than raising, so reads (``current_base_url`` etc.) never crash. Write paths
+    that must not clobber other profiles use :func:`_load_config_strict`.
+    """
+    data = _read_json(_config_path())
+    return data if isinstance(data, dict) else {}
+
+
+def _load_config_strict() -> dict:
+    """Like :func:`_load_config`, but refuse to proceed on a corrupt file.
+
+    A missing config is fine (returns ``{}`` so a fresh one can be created), but
+    a config.json that exists yet cannot be parsed raises ``CliError`` — callers
+    that rewrite the file (``set_base_url``) must abort rather than rebuild from
+    an empty dict and silently drop every other profile.
+    """
+    path = _config_path()
+    data = _read_json_raw(path)
+    if data is None:
+        return {}
+    if data is _CORRUPT:
+        raise CliError(
+            f"config.json is corrupt; refusing to overwrite it and lose other profiles. "
+            f"Fix or remove {path}."
+        )
+    return data if isinstance(data, dict) else {}
 
 
 def _save_config(cfg: dict) -> None:
     _write_secret_json(_config_path(), cfg)
 
 
-def resolve_profile(profile: str | None = None) -> str:
+def resolve_profile(profile: str | None = None, cfg: dict | None = None) -> str:
     """Return the profile to operate on: the explicit arg, else config.json's default, else 'default'.
 
     The ``--profile`` flag / ``I2G_ADMIN_PROFILE`` env var are surfaced by the CLI
     callback and passed in explicitly; this only supplies the fallback chain.
+
+    Pass an already-loaded ``cfg`` to avoid re-reading config.json when the caller
+    has it in hand (only consulted when ``profile`` is not given).
     """
-    name = profile or _load_config().get("default_profile") or DEFAULT_PROFILE
+    if profile:
+        name = profile
+    else:
+        cfg = cfg if cfg is not None else _load_config()
+        name = cfg.get("default_profile") or DEFAULT_PROFILE
     if not _PROFILE_NAME_RE.match(name):
         raise CliError(f"Invalid profile name {name!r}. Use only letters, digits, '.', '_' or '-'.")
     return name
@@ -195,8 +244,9 @@ def default_base_url() -> str:
 
 def current_base_url(profile: str | None = None) -> str:
     """The base URL for a profile: config.json override, then legacy creds, then the env default."""
-    name = resolve_profile(profile)
-    stored = _profile_entry(name).get("base_url")
+    cfg = _load_config()
+    name = resolve_profile(profile, cfg=cfg)
+    stored = _profile_entry(name, cfg).get("base_url")
     if stored:
         return stored
     creds = load_credentials(name) or {}
@@ -212,8 +262,10 @@ def configured_base_url(profile: str | None = None) -> str | None:
 
 def set_base_url(url: str, profile: str | None = None) -> None:
     validate_base_url(url)
-    name = resolve_profile(profile)
-    cfg = _load_config()
+    # Strict: if config.json exists but is corrupt, abort instead of rebuilding
+    # from {} and silently dropping every other profile.
+    cfg = _load_config_strict()
+    name = resolve_profile(profile, cfg=cfg)
     profiles = cfg.get("profiles")
     if not isinstance(profiles, dict):
         profiles = cfg["profiles"] = {}

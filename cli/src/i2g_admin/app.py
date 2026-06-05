@@ -1,18 +1,15 @@
 import typer
 
 from . import __version__, auth, config  # noqa: F401  (re-exported for back-compat + tests)
-from .client import ApiClient  # noqa: F401  (re-exported for back-compat)
 from .commands import register
-from .context import Context, build_client  # noqa: F401  (re-exported for back-compat)
+from .context import Context
 
 # Re-export the runtime glue so callers/tests can patch i2g_admin.app._client etc.
 # The real definitions live in the leaf `runtime` module to avoid an app<->commands cycle.
 from .runtime import (  # noqa: F401
     _client,
-    _current_context,
     _execute,
     _load_data,
-    current_profile,
 )
 
 app = typer.Typer(help="Remote record management for the Innovate-To-Grow backend.", no_args_is_help=True)
@@ -44,6 +41,13 @@ def main(
     ),
 ) -> None:
     """Populate the shared :class:`Context` from the global options."""
+    # Validate --max-items here, at the boundary, so it is rejected uniformly on
+    # every path. `records list --limit/--offset N` honors an explicit page with a
+    # single request and never reaches paginate()'s own guard, so a per-path check
+    # there would silently accept a negative value on the explicit-page route.
+    if max_items is not None and max_items < 0:
+        typer.secho("--max-items must be >= 0.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
     ctx.obj = Context(
         profile=profile,
         output=output,

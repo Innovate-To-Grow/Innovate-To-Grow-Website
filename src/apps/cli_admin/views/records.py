@@ -107,7 +107,13 @@ class RecordCollectionView(AdminAPIView):
             if orderings:
                 qs = qs.order_by(*orderings)
             rows = [json_safe(row) for row in qs.values(*selected_fields)[offset : offset + limit]]
-            count = qs.count()
+            if offset == 0 and len(rows) < limit:
+                # First page returned fewer rows than the limit -> the queryset is
+                # exhausted, so the total is exactly what we fetched. Skip the
+                # redundant second SELECT COUNT(*) (the common single-page case).
+                count = len(rows)
+            else:
+                count = qs.count()
         except (ValueError, TypeError, DjangoValidationError, DataError) as exc:
             # Field/lookup KEYS are validated above; a bad filter/order VALUE
             # (e.g. year__gt=abc) only fails at query execution — map it to 400.
