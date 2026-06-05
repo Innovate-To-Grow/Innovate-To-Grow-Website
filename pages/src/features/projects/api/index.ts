@@ -1,4 +1,5 @@
 import { api } from '@/lib/api-client';
+import {getAccessToken} from '@/features/auth';
 import {formatSemesterLabel} from '@/lib/semester';
 import type { PaginatedResponse } from '@/types/api';
 import type { ScheduleProjectRow } from '@/features/events/api';
@@ -77,6 +78,7 @@ export interface SemesterWithFullProjects {
 export interface PastProjectShare {
   id: string;
   rows: ProjectGridRow[];
+  note: string;
   share_url: string;
   created_at: string;
 }
@@ -137,8 +139,18 @@ export const fetchProjectDetail = async (id: string): Promise<ProjectDetail> => 
   return response.data;
 };
 
-export const createPastProjectShare = async (rows: ProjectGridRow[]): Promise<PastProjectShare> => {
-  const response = await api.post<PastProjectShare>('/projects/past-shares/', {rows});
+export const createPastProjectShare = async (
+  rows: ProjectGridRow[],
+  note: string,
+): Promise<PastProjectShare> => {
+  // Creating a share is login-only; attach the JWT explicitly (the shared api client
+  // does not, matching the events feature's authHeaders() pattern).
+  const token = getAccessToken();
+  const response = await api.post<PastProjectShare>(
+    '/projects/past-shares/',
+    {rows, note},
+    token ? {headers: {Authorization: `Bearer ${token}`}} : {},
+  );
   return response.data;
 };
 

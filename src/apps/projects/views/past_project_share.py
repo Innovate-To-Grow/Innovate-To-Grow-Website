@@ -1,5 +1,5 @@
 from rest_framework.generics import CreateAPIView, RetrieveAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from ..models import PastProjectShare
 from ..serializers import PastProjectShareSerializer
@@ -7,7 +7,7 @@ from ..throttles import PastProjectShareRateThrottle
 
 
 class PastProjectShareCreateAPIView(CreateAPIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = PastProjectShareSerializer
     throttle_classes = [PastProjectShareRateThrottle]
 
