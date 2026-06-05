@@ -22,7 +22,9 @@ def register(app: typer.Typer) -> None:
     records_app.command("delete")(records_delete)
     # --- wave-2 record subcommands (one line each, on their own line) ---
     # U8:  from . import records_wait; records_wait.register(records_app)
-    # U11: from . import records_count; records_count.register(records_app)
+    from . import records_count
+
+    records_count.register(records_app)
 
 
 def records_list(
