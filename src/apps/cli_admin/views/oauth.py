@@ -4,6 +4,7 @@ from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import redirect
 from django.utils.crypto import constant_time_compare
 from django.utils.decorators import method_decorator
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -31,7 +32,14 @@ class OAuthAuthorizeView(View):
     def get(self, request):
         user = request.user
         if not (user.is_authenticated and user.is_active and user.is_staff):
-            login_url = f"{ADMIN_LOGIN_PATH}?{urlencode({'next': request.get_full_path()})}"
+            # Only carry a same-host, relative ``next`` back to the admin login.
+            # url_has_allowed_host_and_scheme rejects any value bearing a scheme or
+            # host (e.g. "//evil.com", "https://evil.com"), leaving only same-site
+            # paths; anything else falls back to the bare authorize path.
+            next_path = request.get_full_path()
+            if not url_has_allowed_host_and_scheme(next_path, allowed_hosts=None):
+                next_path = request.path
+            login_url = f"{ADMIN_LOGIN_PATH}?{urlencode({'next': next_path})}"
             return redirect(login_url)
 
         params = request.GET
@@ -44,11 +52,14 @@ class OAuthAuthorizeView(View):
         challenge = params.get("code_challenge") or ""
         if not 43 <= len(challenge) <= 128:
             return HttpResponseBadRequest("code_challenge has an invalid length.")
-        redirect_uri = params.get("redirect_uri") or ""
         try:
-            validate_loopback_redirect_uri(redirect_uri)
+            # Returns a URL rebuilt from a vetted loopback host allowlist + fixed
+            # scheme/path, so the redirect target is not the raw user-supplied string.
+            redirect_uri = validate_loopback_redirect_uri(params.get("redirect_uri") or "")
         except RedirectUriError as exc:
-            return HttpResponseBadRequest(str(exc))
+            # public_message is a fixed developer-facing string (no user input or
+            # traceback text), safe to return without exposing exception internals.
+            return HttpResponseBadRequest(exc.public_message)
 
         state = params.get("state") or ""
         raw_code = CliAuthorizationCode.generate_raw_code()

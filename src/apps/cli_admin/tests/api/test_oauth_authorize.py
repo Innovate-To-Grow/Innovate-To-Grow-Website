@@ -1,3 +1,4 @@
+from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
 from django.test import TestCase
@@ -41,6 +42,19 @@ class OAuthAuthorizeTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response["Location"].startswith("/admin/login/?next="))
 
+    def test_unsafe_next_falls_back_to_authorize_path(self):
+        # If get_full_path() ever yields a scheme/host-bearing value, the login
+        # redirect must drop it and fall back to the bare authorize path so an
+        # attacker can't smuggle an off-site ?next= target through this endpoint.
+        with mock.patch(
+            "django.http.request.HttpRequest.get_full_path",
+            return_value="https://evil.example.com/phish",
+        ):
+            response = self.client.get(AUTHORIZE, self._params())
+        self.assertEqual(response.status_code, 302)
+        qs = parse_qs(urlparse(response["Location"]).query)
+        self.assertEqual(qs["next"][0], AUTHORIZE)
+
     def test_valid_request_issues_hashed_code(self):
         response = self._get_as_staff()
         self.assertEqual(response.status_code, 302)
@@ -70,3 +84,10 @@ class OAuthAuthorizeTests(TestCase):
 
     def test_bad_redirect_uri_is_400(self):
         self.assertEqual(self._get_as_staff(redirect_uri="https://evil.example.com/callback").status_code, 400)
+
+    def test_bad_redirect_uri_returns_public_message(self):
+        # The 400 body is the validator's fixed public_message, not str(exc) or a
+        # traceback — a helpful developer-facing hint with no exposed internals.
+        response = self._get_as_staff(redirect_uri="https://127.0.0.1:54321/callback")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"http scheme", response.content)
