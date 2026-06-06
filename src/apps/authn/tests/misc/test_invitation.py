@@ -46,7 +46,7 @@ class AcceptInvitationViewTests(TestCase):
         response = self.client.get(f"/authn/invite/{invitation.token}/")
         self.assertEqual(response.status_code, 400)
 
-    def test_get_existing_verified_member_upgrades_and_shows_registered(self):
+    def test_get_existing_verified_member_renders_form_without_upgrading(self):
         invitation = self._create_invitation(email="existing@example.com")
         member = Member.objects.create_user(
             password="StrongPass123!", first_name="Ex", last_name="Member", is_staff=False, is_active=True
@@ -54,13 +54,34 @@ class AcceptInvitationViewTests(TestCase):
         ContactEmail.objects.create(
             member=member, email_address="existing@example.com", email_type="primary", verified=True
         )
+
         response = self.client.get(f"/authn/invite/{invitation.token}/")
+
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "existing@example.com")
         member.refresh_from_db()
-        self.assertTrue(member.is_staff)
+        self.assertFalse(member.is_staff)
         invitation.refresh_from_db()
-        self.assertEqual(invitation.status, AdminInvitation.Status.ACCEPTED)
+        self.assertEqual(invitation.status, AdminInvitation.Status.PENDING)
+
+    def test_get_existing_inactive_verified_member_does_not_reactivate(self):
+        invitation = self._create_invitation(email="existing@example.com")
+        member = Member.objects.create_user(
+            password="StrongPass123!", first_name="Ex", last_name="Member", is_staff=False, is_active=False
+        )
+        ContactEmail.objects.create(
+            member=member, email_address="existing@example.com", email_type="primary", verified=True
+        )
+
+        response = self.client.get(f"/authn/invite/{invitation.token}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "existing@example.com")
+        member.refresh_from_db()
+        self.assertFalse(member.is_staff)
+        self.assertFalse(member.is_active)
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, AdminInvitation.Status.PENDING)
 
     def test_post_invalid_token_returns_error(self):
         response = self.client.post(
@@ -111,19 +132,19 @@ class AcceptInvitationViewTests(TestCase):
             f"/authn/invite/{invitation.token}/",
             {
                 "email": "invite@example.com",
-                "first_name": "Ignored",
-                "last_name": "Ignored",
-                "password1": "StrongPass123!",
-                "password2": "StrongPass123!",
+                "first_name": "Restored",
+                "last_name": "Member",
+                "password1": "NewStrongPass123!",
+                "password2": "NewStrongPass123!",
             },
         )
         self.assertEqual(response.status_code, 200)
         existing.refresh_from_db()
         self.assertTrue(existing.is_staff)
 
-    def test_post_existing_inactive_verified_member_upgrades_and_activates(self):
+    def test_post_existing_inactive_verified_member_requires_new_password_to_activate(self):
         existing = Member.objects.create_user(
-            password="StrongPass123!",
+            password="OldCompromisedPass123!",
             is_active=False,
             is_staff=False,
         )
@@ -136,10 +157,10 @@ class AcceptInvitationViewTests(TestCase):
             f"/authn/invite/{invitation.token}/",
             {
                 "email": "invite@example.com",
-                "first_name": "Ignored",
-                "last_name": "Ignored",
-                "password1": "StrongPass123!",
-                "password2": "StrongPass123!",
+                "first_name": "Restored",
+                "last_name": "Member",
+                "password1": "NewStrongPass123!",
+                "password2": "NewStrongPass123!",
             },
         )
 
@@ -147,6 +168,10 @@ class AcceptInvitationViewTests(TestCase):
         existing.refresh_from_db()
         self.assertTrue(existing.is_staff)
         self.assertTrue(existing.is_active)
+        self.assertEqual(existing.first_name, "Restored")
+        self.assertEqual(existing.last_name, "Member")
+        self.assertTrue(existing.check_password("NewStrongPass123!"))
+        self.assertFalse(existing.check_password("OldCompromisedPass123!"))
 
     def test_post_claims_existing_unclaimed_contact_email(self):
         ContactEmail.objects.create(

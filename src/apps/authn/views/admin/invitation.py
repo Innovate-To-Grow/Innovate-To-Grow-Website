@@ -44,15 +44,6 @@ class AcceptInvitationView(View):
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
-        existing = self._get_verified_member(invitation)
-        if existing:
-            self._upgrade_member(existing, invitation)
-            return render(
-                request,
-                "authn/invitation/already_registered.html",
-                {"email": invitation.email, **_get_unfold_context(request)},
-            )
-
         form = AcceptInvitationForm(initial={"email": invitation.email})
         return render(
             request,
@@ -72,20 +63,23 @@ class AcceptInvitationView(View):
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
         existing = self._get_verified_member(invitation)
-        if existing:
-            self._upgrade_member(existing, invitation)
-            return render(
-                request,
-                "authn/invitation/already_registered.html",
-                {"email": invitation.email, **_get_unfold_context(request)},
-            )
-
         form = AcceptInvitationForm(request.POST, initial={"email": invitation.email})
         if not form.is_valid():
             return render(
                 request,
                 "authn/invitation/accept.html",
                 {"form": form, "invitation": invitation, **_get_unfold_context(request)},
+            )
+
+        if existing:
+            if existing.is_active:
+                self._upgrade_member(existing, invitation)
+            else:
+                self._activate_existing_member(existing, invitation, form.cleaned_data)
+            return render(
+                request,
+                "authn/invitation/already_registered.html",
+                {"email": invitation.email, **_get_unfold_context(request)},
             )
 
         with transaction.atomic():
@@ -159,9 +153,35 @@ class AcceptInvitationView(View):
     def _upgrade_member(self, member, invitation):
         # Upgrade the member and mark the invitation accepted atomically so a
         # failure between the two writes can't leave a staff-upgraded member with
-        # a still-PENDING invitation.
+        # a still-PENDING invitation. Existing inactive members are handled by
+        # _activate_existing_member after the invitee explicitly submits a new
+        # password; this path must not reactivate disabled accounts.
         with transaction.atomic():
             member.is_staff = True
+            member.save(update_fields=["is_staff", "updated_at"])
+            invitation.mark_accepted(member)
+
+    # noinspection PyMethodMayBeStatic
+    def _activate_existing_member(self, member, invitation, cleaned_data):
+        # Reactivating a disabled existing account requires an explicit form
+        # submission with a freshly validated password instead of a GET/link
+        # prefetch side effect or a silent reuse of the old password.
+        with transaction.atomic():
+            member.first_name = cleaned_data["first_name"]
+            member.last_name = cleaned_data["last_name"]
+            member.organization = cleaned_data.get("organization", "")
+            member.is_staff = True
             member.is_active = True
-            member.save(update_fields=["is_staff", "is_active", "updated_at"])
+            member.set_password(cleaned_data["password1"])
+            member.save(
+                update_fields=[
+                    "first_name",
+                    "last_name",
+                    "organization",
+                    "is_staff",
+                    "is_active",
+                    "password",
+                    "updated_at",
+                ]
+            )
             invitation.mark_accepted(member)
