@@ -1,18 +1,29 @@
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from .constants import LOOPBACK_REDIRECT_HOSTS, LOOPBACK_REDIRECT_PATH
 
 
 class RedirectUriError(ValueError):
-    """Raised when an OAuth redirect_uri is not an allowed loopback URI."""
+    """Raised when an OAuth redirect_uri is not an allowed loopback URI.
+
+    ``public_message`` holds a fixed, developer-facing string that is safe to
+    surface in an HTTP response (no user input, no exception/traceback text).
+    """
+
+    def __init__(self, public_message: str):
+        super().__init__(public_message)
+        self.public_message = public_message
 
 
 def validate_loopback_redirect_uri(uri: str) -> str:
     """Enforce an RFC 8252 loopback redirect: http://<loopback-ip>:<port>/callback.
 
     Rejects https, non-loopback hosts, embedded credentials, query strings,
-    fragments, and unexpected paths. Returns the URI unchanged when valid;
-    raises RedirectUriError otherwise. There is no default fallback.
+    fragments, and unexpected paths. Returns a URL rebuilt from the validated
+    components (byte-identical to a valid input) so callers redirect to a value
+    assembled from a vetted host allowlist and fixed scheme/path rather than the
+    raw user-supplied string. Raises RedirectUriError otherwise; there is no
+    default fallback.
     """
     parts = urlsplit(uri or "")
     if parts.scheme != "http":
@@ -31,4 +42,10 @@ def validate_loopback_redirect_uri(uri: str) -> str:
         raise RedirectUriError("redirect_uri has an invalid port.") from exc
     if port is None:
         raise RedirectUriError("redirect_uri must specify a loopback port.")
-    return uri
+    # Rebuild from validated parts: the host comes from the loopback allowlist, the
+    # scheme/path are constants, and only the vetted port is carried over. IPv6 hosts
+    # must be re-bracketed for the netloc. This yields a value byte-identical to a
+    # valid input while severing the taint from the raw user string.
+    host = parts.hostname
+    netloc = f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
+    return urlunsplit(("http", netloc, LOOPBACK_REDIRECT_PATH, "", ""))
