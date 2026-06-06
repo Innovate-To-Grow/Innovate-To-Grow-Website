@@ -7,9 +7,25 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
-from apps.core.admin.base import ReadOnlyModelAdmin
+from apps.authn.models import Member
+from apps.core.admin.base import BaseModelAdmin, ReadOnlyModelAdmin
 from apps.core.admin.log_entry import LogEntryAdmin
 from apps.event.tests.helpers import make_superuser
+
+
+class BaseModelAdminPermissionTest(TestCase):
+    def setUp(self):
+        self.admin = BaseModelAdmin(LogEntry, AdminSite())
+        self.user = Member.objects.create_user(password="testpass123", is_staff=True, is_superuser=False)
+        self.request = MagicMock()
+        self.request.user = self.user
+
+    def test_staff_without_model_permissions_is_not_granted_admin_access(self):
+        self.assertFalse(self.admin.has_module_permission(self.request))
+        self.assertFalse(self.admin.has_view_permission(self.request))
+        self.assertFalse(self.admin.has_add_permission(self.request))
+        self.assertFalse(self.admin.has_change_permission(self.request))
+        self.assertFalse(self.admin.has_delete_permission(self.request))
 
 
 class ReadOnlyModelAdminTest(TestCase):
