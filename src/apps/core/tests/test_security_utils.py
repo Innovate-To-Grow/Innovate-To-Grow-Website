@@ -1,5 +1,7 @@
 """Tests for apps.core.utils.security URL validation helpers."""
 
+from urllib.parse import urlparse
+
 from django.test import SimpleTestCase
 
 from apps.core.utils.security import (
@@ -54,7 +56,9 @@ class ValidateAwsSnsHttpsUrlTest(SimpleTestCase):
     def test_accepts_valid_https_sns_url(self):
         url = "https://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription"
         result = validate_aws_sns_https_url(url)
-        self.assertTrue(result.startswith("https://sns.us-west-2.amazonaws.com"))
+        parsed = urlparse(result)
+        self.assertEqual(parsed.scheme, "https")
+        self.assertEqual(parsed.hostname, "sns.us-west-2.amazonaws.com")
 
     def test_strips_fragment(self):
         url = "https://sns.us-west-2.amazonaws.com/path#frag"
@@ -78,7 +82,9 @@ class ValidateAwsSnsHttpsUrlTest(SimpleTestCase):
 
     def test_accepts_explicit_default_port(self):
         result = validate_aws_sns_https_url("https://sns.us-west-2.amazonaws.com:443/x")
-        self.assertIn("sns.us-west-2.amazonaws.com", result)
+        parsed = urlparse(result)
+        self.assertEqual(parsed.scheme, "https")
+        self.assertEqual(parsed.hostname, "sns.us-west-2.amazonaws.com")
 
     def test_rejects_disallowed_host(self):
         with self.assertRaises(SecurityValidationError) as cm:
