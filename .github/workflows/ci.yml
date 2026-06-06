@@ -78,13 +78,6 @@ jobs:
             src/requirements.txt
             .pre-commit-config.yaml
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
       - name: Install preflight tools
         run: |
           set -euo pipefail
@@ -109,10 +102,6 @@ jobs:
 
       - name: Validate tool version pins
         run: python scripts/ci/validate_tool_versions.py
-
-      - name: Validate npm lockfile consistency
-        working-directory: pages
-        run: npm ci --ignore-scripts
 
       - name: Validate Dependabot labels
         env:
@@ -189,6 +178,9 @@ jobs:
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
     uses: ./.github/workflows/lint.yml
+    with:
+      run-python: ${{ needs.changes.outputs.backend == 'true' }}
+      run-frontend: ${{ needs.changes.outputs.frontend == 'true' }}
 
   secrets-scan:
     name: Secrets Scan
@@ -390,9 +382,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt "coverage[toml]==7.6.10"
 
-      - name: Run migrations
-        run: python manage.py migrate --noinput
-
       - name: Run Django tests with per-app coverage
         run: |
           coverage run \
@@ -460,9 +449,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt "coverage[toml]==7.6.10"
-
-      - name: Run migrations
-        run: python manage.py migrate --noinput
 
       - name: Enforce coverage for cli_admin and safe_orm
         run: |
@@ -639,7 +625,20 @@ jobs:
 
       - name: Run Semgrep
         id: semgrep
-        run: semgrep scan --config p/default --config p/python --config p/javascript --metrics=off --sarif --output semgrep.sarif src pages || true
+        env:
+          RUN_BACKEND: ${{ needs.changes.outputs.backend }}
+          RUN_FRONTEND: ${{ needs.changes.outputs.frontend }}
+        run: |
+          set -euo pipefail
+          targets=()
+          if [ "$RUN_BACKEND" = "true" ]; then
+            targets+=(src)
+          fi
+          if [ "$RUN_FRONTEND" = "true" ]; then
+            targets+=(pages)
+          fi
+          semgrep scan --config p/default --config p/python --config p/javascript \
+            --metrics=off --sarif --output semgrep.sarif "${targets[@]}" || true
 
       - name: Upload Semgrep SARIF artifact
         if: ${{ always() }}
@@ -654,9 +653,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs:
-      - django-build
-      - python-security-audit
-      - semgrep-sast
+      - lint
       - changes
     if: ${{ needs.changes.outputs.backend == 'true' }}
     permissions:
@@ -760,20 +757,26 @@ jobs:
           cache-dependency-path: src/requirements.txt
 
       - name: Set up Node.js
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: pages/package-lock.json
 
-      - name: Install SBOM and license tools
+      - name: Install Python SBOM tools
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
           python -m pip install --upgrade pip
           pip install "pip-audit[cyclonedx]==2.7.3"
-          cd pages
-          npm ci
+
+      - name: Install frontend dependencies for SBOM
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
+        working-directory: pages
+        run: npm ci
 
       - name: Generate Python SBOM
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         run: |
           pip-audit \
             --requirement src/requirements.txt \
@@ -784,10 +787,12 @@ jobs:
           test -s python-sbom.cdx.json
 
       - name: Generate npm SBOM
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         working-directory: pages
         run: npm sbom --sbom-format cyclonedx --json > ../npm-sbom.cdx.json
 
       - name: Check npm licenses
+        if: ${{ needs.changes.outputs.frontend == 'true' }}
         run: python scripts/ci/check_npm_licenses.py --package-lock pages/package-lock.json --output npm-license-report.json
 
       - name: Upload supply chain artifacts
@@ -801,6 +806,27 @@ jobs:
             npm-license-report.json
           if-no-files-found: warn
 
+  e2e-plan:
+    name: Plan E2E Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    outputs:
+      projects: ${{ steps.projects.outputs.projects }}
+    steps:
+      - name: Select browser/device coverage
+        id: projects
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo 'projects=["chromium"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'projects=["chromium","firefox","webkit","pixel7","iphone14","iphone-se","ipad"]' >> "$GITHUB_OUTPUT"
+          fi
+
   e2e:
     name: E2E (${{ matrix.project }})
     runs-on: ubuntu-latest
@@ -810,11 +836,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [chromium, firefox, webkit, pixel7, iphone14, iphone-se, ipad]
+        project: ${{ fromJson(needs.e2e-plan.outputs.projects) }}
     needs:
       # backend-docker-build intentionally omitted: e2e runs the app via
       # `manage.py runserver`, never the built image, so depending on it only
       # serialized e2e behind the slowest job without adding coverage.
+      - e2e-plan
       - frontend-build
       - frontend-test
       - frontend-security-audit
@@ -1105,8 +1132,6 @@ jobs:
       - backend-docker-build
       - supply-chain-reports
       - archive-tests
-      - e2e
-      - e2e-report
     if: ${{ always() }}
     steps:
       - name: Summarize required jobs
@@ -1119,15 +1144,13 @@ jobs:
           import sys
 
           needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          # E2E is informational while tests stabilize (flip to blocking once green)
-          non_blocking = {"e2e", "e2e-report"}
           # Path-filtered jobs that don't apply to this change report "skipped";
           # that is a pass, not a failure. Only real failures/cancellations block.
           ok = {"success", "skipped"}
           failed = {
               name: data["result"]
               for name, data in needs.items()
-              if data["result"] not in ok and name not in non_blocking
+              if data["result"] not in ok
           }
           if failed:
               for name, result in failed.items():

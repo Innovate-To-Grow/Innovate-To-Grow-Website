@@ -2,6 +2,15 @@ name: Code Style Check
 
 on:
   workflow_call:
+    inputs:
+      run-python:
+        description: Run backend Python linting.
+        required: true
+        type: boolean
+      run-frontend:
+        description: Run frontend TypeScript linting and type checks.
+        required: true
+        type: boolean
 
 permissions:
   contents: read
@@ -11,6 +20,7 @@ jobs:
   python-lint:
     name: Python Linting
     runs-on: ubuntu-latest
+    if: ${{ inputs.run-python }}
     timeout-minutes: 10
     defaults:
       run:
@@ -47,6 +57,7 @@ jobs:
   frontend-lint:
     name: Frontend Linting
     runs-on: ubuntu-latest
+    if: ${{ inputs.run-frontend }}
     timeout-minutes: 10
     defaults:
       run:
