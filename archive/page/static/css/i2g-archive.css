@@ -1,0 +1,35 @@
+/* Shared archive-page overrides, loaded by templates/base.html after the
+   Drupal CSS aggregates and before each page's own inline styles. This was
+   previously an identical inline <style> block repeated in every page. */
+
+/* Match the main I2G site's page background (#f9f9f9). Overrides the
+   archived Drupal bundle's `body { background-color: #ffffff }`. */
+body {
+    background-color: #f9f9f9;
+}
+
+/* Center the entire Bootstrap page grid while preserving each child
+   element's own text and table alignment. */
+body.i2g-center #main > .container {
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* Disable the sticky/pinned table header on scroll. Cancels the inline
+   `th { position: sticky }`, the DataTables FixedHeader floating clone,
+   and Drupal's tableheader.js sticky-header clone — on all pages. */
+th,
+thead,
+thead th {
+    position: static !important;
+    top: auto !important;
+}
+table.fixedHeader-floating,
+table.fixedHeader-locked,
+.fixedHeader-floating,
+.dtfh-floatingparent,
+div.dtfh-floatingparenthead,
+div.dtfh-floatingparentfoot,
+table.sticky-header {
+    display: none !important;
+}

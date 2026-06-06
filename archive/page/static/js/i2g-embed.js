@@ -88,7 +88,8 @@
 
   // Real navigation links should pop out of the frame. Use event delegation so
   // it keeps working for rows DataTables re-renders, and skip in-page controls
-  // (anchors with no destination, hash-only, or javascript: handlers).
+  // (anchors with no destination, hash-only, or any non-http(s) scheme such as
+  // javascript:/data:/mailto:).
   function openLinksInNewTab() {
     document.addEventListener(
       'click',
@@ -102,7 +103,12 @@
         if (!href) return;
         var lowered = href.trim().toLowerCase();
         if (lowered === '' || lowered.charAt(0) === '#') return;
-        if (lowered.indexOf('javascript:') === 0) return;
+        // Only retarget real web navigation. Match any leading URL scheme and
+        // bail on anything that is not http/https (javascript:, data:, vbscript:,
+        // mailto:, tel:, …). Relative, hash-only, and empty links have no scheme
+        // and fall through to be retargeted, preserving the previous behavior.
+        var m = lowered.match(/^[a-z][a-z0-9+.-]*:/);
+        if (m && m[0] !== 'http:' && m[0] !== 'https:') return;
         node.setAttribute('target', '_blank');
         node.setAttribute('rel', 'noopener noreferrer');
       },
