@@ -914,3 +914,44 @@ th {
         right: 2px;
         border-top-right-radius: 2px;
     }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* th/td rules anchored with table.table to win over Bootstrap (theme-open-framework)
+   and the page's own bare `th` sticky rule. */
+table.table th.th-head {
+    background-color: #efefef;
+    color: #002856;
+}
+
+table.table td.td-cse {
+    color: #FFBF3C;
+}
+
+.center-navy {
+    text-align: center;
+    color: #002856;
+}
+
+.table-full {
+    width: 100%;
+}
+
+.center-only {
+    text-align: center;
+}
+
+.event-p {
+    color: rgb(0, 40, 86);
+    font-weight: bolder;
+    text-align: center;
+}
+
+table.table th.th-rowhead-white {
+    background-color: #fff;
+    color: #002856;
+}
+
+table.table td.td-event {
+    color: #002856;
+    background-color: rgb(247, 247, 247);
+}
