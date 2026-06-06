@@ -12,7 +12,7 @@ from django.core.cache import cache
 from apps.event.services.ticket_assets import build_frontend_absolute_url
 
 _UNSUBSCRIBE_LOGIN_SALT = "email-unsubscribe-login"
-_UNSUBSCRIBE_LOGIN_MAX_AGE = 60 * 60 * 24 * 90  # 90 days
+_UNSUBSCRIBE_LOGIN_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
 
 
 class UnsubscribeLoginTokenError(ValueError):

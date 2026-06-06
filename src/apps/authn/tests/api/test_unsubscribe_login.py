@@ -1,5 +1,8 @@
 """Tests for UnsubscribeAutoLoginView endpoint."""
 
+from time import time
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
@@ -79,6 +82,20 @@ class UnsubscribeAutoLoginViewTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_token_older_than_seven_days_returns_400(self):
+        issued_at = time() - (8 * 24 * 60 * 60)
+        with patch("django.core.signing.time.time", return_value=issued_at):
+            token = build_unsubscribe_login_token(self.member)
+
+        response = self.client.post(
+            "/authn/unsubscribe-login/",
+            {"token": token},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "Invalid or expired login link.")
 
     def test_token_can_only_be_used_once(self):
         token = build_unsubscribe_login_token(self.member)
