@@ -1,10 +1,10 @@
 # Minimal server: static page serving + server-side Google Sheets proxy
 # (the API key stays in .env on the server; the browser never sees it).
-Flask==3.1.0
+Flask==3.1.3
 Flask-Caching==2.3.0
-python-dotenv==1.1.1
-requests==2.32.3
+python-dotenv==1.2.2
+requests==2.33.0
 waitress==3.0.2
 
 # Tests
-pytest==8.4.1
+pytest==9.0.3
