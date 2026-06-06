@@ -3,6 +3,8 @@
 from unittest.mock import MagicMock, patch
 
 from django.contrib.admin.sites import AdminSite
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory, TestCase
 
@@ -14,7 +16,7 @@ from apps.core.models import (
     GmailAccessAccount,
     GoogleCredentialConfig,
 )
-from apps.event.tests.helpers import make_superuser
+from apps.event.tests.helpers import make_member, make_superuser
 from apps.system_intelligence.models import SystemIntelligenceConfig
 
 VALID_GOOGLE_JSON = {
@@ -253,6 +255,34 @@ class GmailAdminTest(TestCase):
         inactive = GmailAccessAccount.objects.create(name="B", gmail_username="b@x.com")
         self.assertFalse(self.admin.has_delete_permission(_request(self.user), active))
         self.assertTrue(self.admin.has_delete_permission(_request(self.user), inactive))
+
+    def test_staff_without_model_permissions_cannot_access_credentials(self):
+        staff_user = make_member(email="limited-staff@example.com", is_staff=True)
+        request = _request(staff_user)
+
+        self.assertFalse(self.admin.has_module_permission(request))
+        self.assertFalse(self.admin.has_view_permission(request))
+        self.assertFalse(self.admin.has_add_permission(request))
+        self.assertFalse(self.admin.has_change_permission(request))
+        self.assertFalse(self.admin.has_delete_permission(request, GmailAccessAccount(is_active=False)))
+
+    def test_staff_with_model_permissions_can_access_credentials(self):
+        staff_user = make_member(email="gmail-admin@example.com", is_staff=True)
+        content_type = ContentType.objects.get_for_model(GmailAccessAccount)
+        staff_user.user_permissions.add(
+            Permission.objects.get(content_type=content_type, codename="view_gmailaccessaccount"),
+            Permission.objects.get(content_type=content_type, codename="add_gmailaccessaccount"),
+            Permission.objects.get(content_type=content_type, codename="change_gmailaccessaccount"),
+            Permission.objects.get(content_type=content_type, codename="delete_gmailaccessaccount"),
+        )
+        request = _request(staff_user)
+
+        self.assertTrue(self.admin.has_module_permission(request))
+        self.assertTrue(self.admin.has_view_permission(request))
+        self.assertTrue(self.admin.has_add_permission(request))
+        self.assertTrue(self.admin.has_change_permission(request))
+        self.assertTrue(self.admin.has_delete_permission(request, GmailAccessAccount(is_active=False)))
+        self.assertFalse(self.admin.has_delete_permission(request, GmailAccessAccount(is_active=True)))
 
     def test_get_actions_removes_delete_selected(self):
         self.assertNotIn("delete_selected", self.admin.get_actions(_request(self.user)))

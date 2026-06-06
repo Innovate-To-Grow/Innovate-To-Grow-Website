@@ -61,11 +61,22 @@ class GmailAccessAccountAdmin(BaseModelAdmin):
         messages.success(request, f'"{obj.name}" is now the active Gmail access account.')
         return HttpResponseRedirect(reverse("admin:core_gmailaccessaccount_change", args=[object_id]))
 
-    # noinspection PyUnusedLocal,PyMethodMayBeStatic
+    def has_module_permission(self, request):
+        return super(BaseModelAdmin, self).has_module_permission(request)
+
+    def has_view_permission(self, request, obj=None):
+        return super(BaseModelAdmin, self).has_view_permission(request, obj)
+
+    def has_add_permission(self, request):
+        return super(BaseModelAdmin, self).has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return super(BaseModelAdmin, self).has_change_permission(request, obj)
+
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:
             return False
-        return super().has_delete_permission(request, obj)
+        return super(BaseModelAdmin, self).has_delete_permission(request, obj)
 
     def get_actions(self, request):
         actions = super().get_actions(request)
