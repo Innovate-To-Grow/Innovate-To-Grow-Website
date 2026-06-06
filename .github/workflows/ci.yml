@@ -54,6 +54,7 @@ env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
   DJANGO_SETTINGS_MODULE: config.settings.test
+  BACKEND_COVERAGE_FAIL_UNDER: "40"
 
 jobs:
   preflight:
@@ -468,14 +469,37 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt "coverage[toml]==7.6.10"
 
-      - name: Run Django tests with per-app coverage
+      - name: Run Django tests and enforce per-app coverage
         run: |
           coverage run \
             --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test "apps.${{ matrix.app }}"
-          coverage report --fail-under=40
           coverage xml -o "coverage-${{ matrix.app }}.xml"
+          coverage json --pretty-print -o "coverage-${{ matrix.app }}.json"
+          python - <<'PY'
+          import json
+          import os
+
+          app = os.environ["APP_UNDER_TEST"]
+          summary_path = f"coverage-{app}.json"
+          with open(summary_path, encoding="utf-8") as fh:
+              totals = json.load(fh)["totals"]
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as fh:
+                  fh.write(f"## Django coverage: {app}\n\n")
+                  fh.write("| Metric | Covered | Total | Percent |\n")
+                  fh.write("|---|---:|---:|---:|\n")
+                  fh.write(
+                      f"| Lines | {totals['covered_lines']} | {totals['num_statements']} | "
+                      f"{totals['percent_covered_display']}% |\n"
+                  )
+          PY
+          coverage report -m --fail-under="${BACKEND_COVERAGE_FAIL_UNDER}"
+        env:
+          APP_UNDER_TEST: ${{ matrix.app }}
 
       - name: Check Django configuration
         run: python manage.py check
@@ -485,7 +509,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: backend-coverage-${{ matrix.app }}
-          path: src/coverage-${{ matrix.app }}.xml
+          path: |
+            src/coverage-${{ matrix.app }}.xml
+            src/coverage-${{ matrix.app }}.json
           if-no-files-found: warn
 
   cli-admin-coverage:
@@ -543,7 +569,37 @@ jobs:
             --source="apps.cli_admin,apps.core.services.db_tools.safe_orm" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test apps.cli_admin apps.core.tests.services.test_safe_orm
+          coverage xml -o coverage-cli-admin-safe-orm.xml
+          coverage json --pretty-print -o coverage-cli-admin-safe-orm.json
+          python - <<'PY'
+          import json
+          import os
+
+          with open("coverage-cli-admin-safe-orm.json", encoding="utf-8") as fh:
+              totals = json.load(fh)["totals"]
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as fh:
+                  fh.write("## CLI admin coverage\n\n")
+                  fh.write("| Metric | Covered | Total | Percent |\n")
+                  fh.write("|---|---:|---:|---:|\n")
+                  fh.write(
+                      f"| Lines | {totals['covered_lines']} | {totals['num_statements']} | "
+                      f"{totals['percent_covered_display']}% |\n"
+                  )
+          PY
           coverage report -m --fail-under=100
+
+      - name: Upload CLI admin coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-admin-safe-orm-coverage
+          path: |
+            src/coverage-cli-admin-safe-orm.xml
+            src/coverage-cli-admin-safe-orm.json
+          if-no-files-found: warn
 
   frontend-test:
     name: Frontend Tests
@@ -572,6 +628,40 @@ jobs:
         run: npm run test:coverage
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Summarize frontend coverage
+        if: ${{ always() }}
+        run: |
+          if [ ! -f coverage/coverage-summary.json ]; then
+            echo "::warning::Frontend coverage summary was not generated."
+            exit 0
+          fi
+          node - <<'NODE'
+          const fs = require('node:fs');
+
+          const summary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8')).total;
+          const rows = [
+            ['Statements', summary.statements],
+            ['Branches', summary.branches],
+            ['Functions', summary.functions],
+            ['Lines', summary.lines],
+          ];
+
+          const target = process.env.GITHUB_STEP_SUMMARY;
+          if (target) {
+            const body = [
+              '## Frontend coverage',
+              '',
+              '| Metric | Covered | Total | Percent |',
+              '|---|---:|---:|---:|',
+              ...rows.map(([name, metric]) => `| ${name} | ${metric.covered} | ${metric.total} | ${metric.pct}% |`),
+              '',
+              'Vitest enforces the thresholds defined in `pages/vitest.config.ts`.',
+              '',
+            ].join('\n');
+            fs.appendFileSync(target, body);
+          }
+          NODE
 
       - name: Upload frontend coverage
         if: ${{ always() }}
