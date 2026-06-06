@@ -1,0 +1,21 @@
+name: I2G CodeQL config
+
+# Vendored, minified Drupal-7-era bundles shipped with the archived event
+# site (archive.i2g.ucmerced.edu). Third-party EOL code we do not maintain;
+# alerts inside them are not actionable. First-party archive JS
+# (i2g-embed.js, event-date.js, static/js/events/) stays in scope.
+#
+# Both the post-refactor friendly names and the current hashed names are
+# listed so the exclusion holds whichever of this PR / the archive refactor
+# (PR #204) lands first. The hashed entries can be pruned once #204 merges.
+paths-ignore:
+  # Post-refactor friendly names (refactor/archive-page-templates, PR #204)
+  - archive/page/static/js/drupal-core.js
+  - archive/page/static/js/jquery-ui.js
+  - archive/page/static/js/colorbox.js
+  - archive/page/static/js/theme-open-framework.js
+  # Current hashed names on main (prune after PR #204 merges)
+  - archive/page/static/js/js-js_XexEZhbTmj1BHeajKr2rPfyR8Y68f4rm0Nv3Vj5_dSI.js
+  - archive/page/static/js/js-js_jcCq6mIiUQO8UVHPQGodwBB20SVk57zQ9OUDx6L6OC0.js
+  - archive/page/static/js/js-js_jWvMRvZ8oKDPkw7PO6dSKi88lBTsNPnOLr3hiyfvSnE.js
+  - archive/page/static/js/js-js_Btvj6RNWy6mW_Y-FXH9a4UVDI19MXIlXYDvxbme4QeE.js
