@@ -32,6 +32,14 @@ updates:
         versions: [">=0.92"]
       - dependency-name: "django-redis"
         versions: [">=6.0"]
+      # google-adk pins opentelemetry-api<=1.41.1; the otel trio must stay <1.42
+      # until google-adk lifts that pin (see src/requirements/base.txt comments).
+      - dependency-name: "opentelemetry-api"
+        versions: [">=1.42"]
+      - dependency-name: "opentelemetry-sdk"
+        versions: [">=1.42"]
+      - dependency-name: "opentelemetry-exporter-otlp-proto-http"
+        versions: [">=1.42"]
 
   # React/Vite frontend
   - package-ecosystem: npm
