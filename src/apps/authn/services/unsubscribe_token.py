@@ -54,7 +54,7 @@ def get_member_from_unsubscribe_token(token: str):
         raise UnsubscribeLoginTokenInvalid("Account not found.") from exc
 
     if not _consume_one_time_token(token):
-        raise UnsubscribeLoginTokenAlreadyUsed("This login link has already been used.")
+        raise UnsubscribeLoginTokenAlreadyUsed("This unsubscribe link has already been used.")
 
     return member
 

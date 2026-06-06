@@ -16,7 +16,6 @@ from apps.authn.services.unsubscribe_token import (
     get_member_from_unsubscribe_token,
 )
 from apps.authn.throttles import LoginRateThrottle
-from apps.authn.views.helpers import build_auth_success_payload
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ def _send_unsubscribe_confirmation(member):
 
 
 class UnsubscribeAutoLoginView(APIView):
-    """Exchange a signed unsubscribe-email token for JWT credentials."""
+    """Consume an unsubscribe-email token without granting an auth session."""
 
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
@@ -70,6 +69,7 @@ class UnsubscribeAutoLoginView(APIView):
             primary.save(update_fields=["subscribe"])
             _send_unsubscribe_confirmation(member)
 
-        payload = build_auth_success_payload(member, "You have been unsubscribed.")
-        payload["unsubscribed"] = True
-        return Response(payload, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "You have been unsubscribed.", "unsubscribed": True},
+            status=status.HTTP_200_OK,
+        )

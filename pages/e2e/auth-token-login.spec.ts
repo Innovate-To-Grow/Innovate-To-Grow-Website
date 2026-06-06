@@ -1,6 +1,6 @@
-// The five token auto-login entry points. Each POSTs a token, persists the
-// session, dispatches the cross-root event, and navigates. We assert the menu
-// flip (success) and the error/guard text + "Go to Login" link (failure).
+// Token login entry points POST a token, persist sessions where appropriate,
+// and render success/error states. Unsubscribe tokens intentionally do not sign
+// the member in.
 import {test, expect} from './fixtures';
 import {expectSignedInAs, loginResponse, mockAccountDashboard} from './helpers';
 
@@ -8,6 +8,8 @@ const SUCCESS = loginResponse({user: {email: 'token-login@example.com', member_u
 
 const INVALID_LOGIN = 'This login link is invalid or has expired. Please log in manually.';
 const NO_TOKEN = 'No login token provided.';
+const INVALID_UNSUBSCRIBE = 'This unsubscribe link is invalid or has expired. Please update your email preferences manually.';
+const NO_UNSUBSCRIBE_TOKEN = 'No unsubscribe token provided.';
 
 interface TokenCase {
   name: string;
@@ -20,7 +22,6 @@ interface TokenCase {
 const cases: TokenCase[] = [
   {name: 'magic', path: '/magic-login', endpoint: '**/mail/magic-login/', invalidText: INVALID_LOGIN, noTokenText: NO_TOKEN},
   {name: 'ticket', path: '/ticket-login', endpoint: '**/event/ticket-login/', invalidText: INVALID_LOGIN, noTokenText: NO_TOKEN},
-  {name: 'unsubscribe', path: '/unsubscribe-login', endpoint: '**/authn/unsubscribe-login/', invalidText: INVALID_LOGIN, noTokenText: NO_TOKEN},
   {
     name: 'impersonate',
     path: '/impersonate-login',
@@ -54,6 +55,34 @@ for (const c of cases) {
     await expect(page.getByText(c.noTokenText)).toBeVisible();
   });
 }
+
+test('unsubscribe link unsubscribes without signing the member in', async ({page}) => {
+  await page.route('**/authn/unsubscribe-login/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({message: 'You have been unsubscribed.', unsubscribed: true}),
+    }),
+  );
+  await page.goto('/unsubscribe-login?token=ok', {waitUntil: 'domcontentloaded'});
+  await expect(page.getByText('You have been unsubscribed from updates and announcements.')).toBeVisible();
+  await expect(page.getByRole('link', {name: 'Manage email preferences'})).toBeVisible();
+  await expect(page.getByText('token-login@example.com')).toHaveCount(0);
+});
+
+test('unsubscribe link invalid token shows preference-management fallback', async ({page}) => {
+  await page.route('**/authn/unsubscribe-login/', (route) =>
+    route.fulfill({status: 400, contentType: 'application/json', body: JSON.stringify({detail: 'bad token'})}),
+  );
+  await page.goto('/unsubscribe-login?token=bad', {waitUntil: 'domcontentloaded'});
+  await expect(page.getByText(INVALID_UNSUBSCRIBE)).toBeVisible();
+  await expect(page.getByRole('link', {name: 'Manage email preferences'})).toBeVisible();
+});
+
+test('unsubscribe link with no token shows the guard message', async ({page}) => {
+  await page.goto('/unsubscribe-login', {waitUntil: 'domcontentloaded'});
+  await expect(page.getByText(NO_UNSUBSCRIBE_TOKEN)).toBeVisible();
+});
 
 test('email-auth-link verifies the code and signs the member in', {tag: '@core'}, async ({page}) => {
   const email = 'link-auth@example.com';
