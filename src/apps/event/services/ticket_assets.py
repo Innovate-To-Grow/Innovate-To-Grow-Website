@@ -95,7 +95,7 @@ def get_member_from_login_token(token: str):
             ):
                 raise TicketLoginTokenError("Invalid or expired login link.")
 
-            registration.ticket_login_token_hash = ""
+            registration.ticket_login_token_hash = ""  # nosec B105 — clears the consumed token hash, not a password
             registration.ticket_login_token_used_at = timezone.now()
             registration.save(update_fields=["ticket_login_token_hash", "ticket_login_token_used_at", "updated_at"])
             return registration.member
