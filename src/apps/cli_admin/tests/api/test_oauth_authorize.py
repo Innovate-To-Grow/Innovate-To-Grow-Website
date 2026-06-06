@@ -35,6 +35,10 @@ class OAuthAuthorizeTests(TestCase):
         response = self.client.get(AUTHORIZE, self._params())
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response["Location"].startswith("/admin/login/?next="))
+        qs = parse_qs(urlparse(response["Location"]).query)
+        next_url = urlparse(qs["next"][0])
+        self.assertEqual(next_url.path, AUTHORIZE)
+        self.assertEqual(parse_qs(next_url.query)["client_id"][0], "i2g-admin-cli")
 
     def test_non_staff_redirects_to_admin_login(self):
         self.client.force_login(make_member(email="plain@example.com", is_staff=False))
@@ -69,6 +73,14 @@ class OAuthAuthorizeTests(TestCase):
         self.assertFalse(row.is_used)
         # The raw code is never stored verbatim.
         self.assertFalse(CliAuthorizationCode.objects.filter(code_hash=raw_code).exists())
+
+    def test_valid_ipv6_loopback_redirect_issues_code(self):
+        response = self._get_as_staff(redirect_uri="http://[::1]:54321/callback")
+        self.assertEqual(response.status_code, 302)
+        location = response["Location"]
+        self.assertTrue(location.startswith("http://[::1]:54321/callback?"))
+        qs = parse_qs(urlparse(location).query)
+        self.assertEqual(qs["state"][0], "client-state")
 
     def test_bad_response_type_is_400(self):
         self.assertEqual(self._get_as_staff(response_type="token").status_code, 400)
