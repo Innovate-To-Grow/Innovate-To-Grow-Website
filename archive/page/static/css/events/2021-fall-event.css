@@ -1336,3 +1336,40 @@ th {
     overflow: unset;
     z-index: 100;
 }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* Table cells (th/td) are anchored on `table.table` so the hoisted class wins
+   over the bare `th`/`td` and `.table thead tr` rules that the inline styles
+   previously overrode. p/div selectors stay bare. Values are byte-for-byte
+   copies of the original inline declarations, so rendering is unchanged. */
+table.table th.track-th {
+    background-color: #efefef;
+    color: #002856;
+}
+
+table.table th.track-th-c {
+    background-color: #efefef;
+    color: #002856;
+    text-align: center;
+}
+
+table.table th.row-th {
+    background-color: #fff;
+    color: #002856;
+}
+
+div.section-head {
+    text-align: center;
+    color: #002856;
+}
+
+p.winner-name {
+    color: #002856;
+    font-weight: bolder;
+}
+
+p.slot-head {
+    color: rgb(0, 40, 86);
+    font-weight: bolder;
+    text-align: center;
+}
