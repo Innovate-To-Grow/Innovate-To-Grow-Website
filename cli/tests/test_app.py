@@ -341,7 +341,7 @@ def test_configure_set_and_get_base_url():
     assert set_result.exit_code == 0
     get_result = runner.invoke(app, ["configure", "get", "base_url"])
     assert get_result.exit_code == 0
-    assert "https://set.example.com" in get_result.output
+    assert get_result.output.strip() == "https://set.example.com"
 
 
 def test_configure_set_unknown_key_errors():
