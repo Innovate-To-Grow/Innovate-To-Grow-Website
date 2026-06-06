@@ -29,7 +29,7 @@ COPY requirements/ requirements/
 # pip itself is pinned (DL3013). Resolved site-packages are staged under
 # /install so the production stage can copy them without dragging the
 # compiler toolchain.
-RUN pip install "pip==26.0.1" \
+RUN pip install "pip==26.1" \
  && pip install --prefix=/install -r requirements.txt
 
 
@@ -56,7 +56,7 @@ COPY --from=builder /install /usr/local
 # Refresh packaging tools in the runtime image as well. The base image ships
 # older pip/setuptools/wheel under /usr/local, and Trivy scans those packages
 # even though application dependencies are copied from the builder.
-RUN pip install "pip==26.0.1" "setuptools==82.0.1" "wheel==0.46.3"
+RUN pip install "pip==26.1" "setuptools==82.0.1" "wheel==0.46.3"
 
 # Copy the application source.
 COPY --chown=app:app . .
