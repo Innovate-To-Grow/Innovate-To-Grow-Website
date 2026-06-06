@@ -104,7 +104,9 @@ def assets_upload_response(request):
             errors = exc.message_dict
             msgs = [m for field_errors in errors.values() for m in field_errors]
         else:
-            msgs = getattr(exc, "messages", None) or [str(exc)]
+            # Django's ValidationError always exposes structured `.messages`; never fall
+            # back to str(exc), which can leak raw exception/stack details to the client.
+            msgs = exc.messages
             errors = msgs
         detail = msgs[0] if msgs else "Validation error."
         editor_api.logger.info("Asset upload failed validation: %s", detail)
