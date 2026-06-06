@@ -918,3 +918,41 @@ button {
         right: 2px;
         border-top-right-radius: 2px;
     }
+
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* th/td rules anchored on `table.table` so they outrank generic table-cell rules; p/div use bare classes. */
+
+table.table th.track-th {
+    background-color: #efefef;
+    color: #002856;
+}
+
+table.table th.row-th {
+    background-color: #fff;
+    color: #002856;
+}
+
+table.table td.cse-cell {
+    color: #FFBF3C;
+}
+
+table.table td.sched-cell {
+    color: #002856;
+    background-color: rgb(247, 247, 247);
+}
+
+table.table.table-full {
+    width: 100%;
+}
+
+.section-heading {
+    text-align: center;
+    color: #002856;
+}
+
+.sched-text {
+    color: rgb(0, 40, 86);
+    font-weight: bolder;
+    text-align: center;
+}
