@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 GMAIL_LIST_CACHE_TTL = 300
 GMAIL_MSG_CACHE_TTL = 1800
 LOGIN_LINK_PLACEHOLDER = "{{ login_link }}"
-MAGIC_LOGIN_URL_RE = re.compile(r"(?P<url>(?:https?://[^\s\"'<>]+|/[^\s\"'<>]*)/magic-login/?\?[^\s\"'<>]+)")
+MAGIC_LOGIN_URL_RE = re.compile(r"(?P<url>[^\s\"'<>]*/magic-login/?\?[^\s\"'<>]+)")
 
 
 def list_recent_sent_messages(

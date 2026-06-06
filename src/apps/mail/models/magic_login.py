@@ -53,8 +53,8 @@ class MagicLoginToken(models.Model):
         level so only one unexpired request wins.
         """
         now = timezone.now()
-        updated = type(self).objects.filter(pk=self.pk, is_used=False, expires_at__gt=now).update(
-            is_used=True, used_at=now
+        updated = (
+            type(self).objects.filter(pk=self.pk, is_used=False, expires_at__gt=now).update(is_used=True, used_at=now)
         )
         if updated:
             self.is_used = True

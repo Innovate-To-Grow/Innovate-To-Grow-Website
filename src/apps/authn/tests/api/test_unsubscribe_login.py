@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 
+from apps.authn.constants import UNSUBSCRIBE_LOGIN_INVALID
 from apps.authn.models import ContactEmail
 from apps.authn.services.unsubscribe_token import build_unsubscribe_login_token
 
@@ -80,7 +81,7 @@ class UnsubscribeAutoLoginViewTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], "Invalid or expired login link.")
+        self.assertEqual(response.data["detail"], UNSUBSCRIBE_LOGIN_INVALID)
 
     def test_token_can_only_be_used_once(self):
         token = build_unsubscribe_login_token(self.member)
