@@ -330,6 +330,91 @@ jobs:
       - name: Dry-run collectstatic with CI settings
         run: python manage.py collectstatic --dry-run --noinput --settings=config.settings.test
 
+  django-test-plan:
+    name: Plan Django Test Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [changes]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    outputs:
+      apps: ${{ steps.plan.outputs.apps }}
+      cli_admin_coverage: ${{ steps.plan.outputs.cli_admin_coverage }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Select changed Django apps
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          all_apps='["authn","core","common","system_intelligence","cms","event","projects","mail","cli_admin"]'
+
+          run_all() {
+            echo "apps=${all_apps}" >> "$GITHUB_OUTPUT"
+            echo "cli_admin_coverage=true" >> "$GITHUB_OUTPUT"
+          }
+
+          # Main/master pushes keep the full validation suite because these
+          # commits can trigger production deploy workflows.
+          if [ "${EVENT_NAME}" != "pull_request" ]; then
+            run_all
+            exit 0
+          fi
+
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
+            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            run_all
+            exit 0
+          fi
+
+          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
+          echo "Changed backend files considered for Django tests:"
+          echo "$files"
+
+          match() { echo "$files" | grep -qE "$1"; }
+
+          # Shared backend, CI, dependency, and deploy-infra changes can affect
+          # any app or the workflow itself, so keep the matrix conservative.
+          if match '^(\.github/|aws/|scripts/|pyproject\.toml|\.pre-commit-config\.yaml|\.bandit-baseline\.json|src/(config/|requirements(\.txt|/)|Dockerfile|entrypoint\.sh|manage\.py|apps/(core|common)/))'; then
+            run_all
+            exit 0
+          fi
+
+          apps="$(
+            echo "$files" \
+              | sed -nE 's#^src/apps/(authn|system_intelligence|cms|event|projects|mail|cli_admin)/.*#\1#p' \
+              | sort -u
+          )"
+
+          if [ -z "$apps" ]; then
+            run_all
+            exit 0
+          fi
+
+          json="$(
+            APPS="$apps" python - <<'PY'
+          import json
+          import os
+
+          apps = [line for line in os.environ["APPS"].splitlines() if line]
+          print(json.dumps(apps, separators=(",", ":")))
+          PY
+          )"
+
+          echo "apps=${json}" >> "$GITHUB_OUTPUT"
+          if echo "$apps" | grep -qx "cli_admin"; then
+            echo "cli_admin_coverage=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cli_admin_coverage=false" >> "$GITHUB_OUTPUT"
+          fi
+
   django-build:
     name: Django Test (${{ matrix.app }})
     runs-on: ubuntu-latest
@@ -337,12 +422,13 @@ jobs:
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
+      - django-test-plan
       - changes
     if: ${{ needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        app: [authn, core, common, system_intelligence, cms, event, projects, mail, cli_admin]
+        app: ${{ fromJson(needs.django-test-plan.outputs.apps) }}
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
@@ -409,8 +495,9 @@ jobs:
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
+      - django-test-plan
       - changes
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ needs.changes.outputs.backend == 'true' && needs.django-test-plan.outputs.cli_admin_coverage == 'true' }}
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
