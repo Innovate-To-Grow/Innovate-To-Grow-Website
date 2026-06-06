@@ -1,10 +1,12 @@
 import base64
+import hashlib
 from datetime import datetime
 from io import BytesIO
 from urllib.parse import urljoin
 
 from django.conf import settings
 from django.core import signing
+from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from pdf417gen import encode, render_image
@@ -19,6 +21,21 @@ _TICKET_LOGIN_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 
 class TicketLoginTokenError(ValueError):
     """Base error for invalid ticket login tokens."""
+
+
+class TicketLoginTokenAlreadyUsed(TicketLoginTokenError):
+    """Raised when a ticket login token has already been consumed."""
+
+
+def _ticket_login_used_cache_key(token: str) -> str:
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return f"ticket-login-used:{digest}"
+
+
+def _consume_ticket_login_token(token: str) -> None:
+    """Atomically mark a signed ticket login token as used."""
+    if not cache.add(_ticket_login_used_cache_key(token), True, timeout=_TICKET_LOGIN_MAX_AGE):
+        raise TicketLoginTokenAlreadyUsed("This login link has already been used.")
 
 
 def build_ticket_access_token(registration: EventRegistration) -> str:
@@ -44,12 +61,7 @@ def build_ticket_login_token(member) -> str:
 
 
 def get_member_from_login_token(token: str):
-    """Validate a ticket login token and return the associated Member.
-
-    The token is reusable for its full lifetime (30 days) so that users can
-    click the email link repeatedly without being locked out. Security relies
-    on the signed, time-limited token itself rather than one-time consumption.
-    """
+    """Validate and consume a ticket login token, then return the associated Member."""
     from apps.authn.models import Member
 
     try:
@@ -63,6 +75,7 @@ def get_member_from_login_token(token: str):
     except Member.DoesNotExist as exc:
         raise TicketLoginTokenError("Account not found.") from exc
 
+    _consume_ticket_login_token(token)
     return member
 
 

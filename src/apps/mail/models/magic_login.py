@@ -1,4 +1,4 @@
-"""Reusable magic login token for campaign email recipients."""
+"""One-time magic login token for campaign email recipients."""
 
 import secrets
 
@@ -40,14 +40,6 @@ class MagicLoginToken(models.Model):
     def mark_used(self):
         self.is_used = True
         self.used_at = timezone.now()
-        self.save(update_fields=["is_used", "used_at"])
-
-    def record_use(self):
-        """Record that this token was used. Can be called multiple times;
-        tracks the latest usage for auditing without blocking reuse."""
-        now = timezone.now()
-        self.is_used = True
-        self.used_at = now
         self.save(update_fields=["is_used", "used_at"])
 
     def try_mark_used(self):

@@ -1,6 +1,7 @@
 import datetime
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from apps.event.models import Ticket
@@ -79,6 +80,7 @@ class GetRegistrationFromAccessTokenTest(TestCase):
 
 class BuildTicketLoginTokenTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.member = make_member()
 
     def test_returns_non_empty_string(self):
@@ -94,6 +96,7 @@ class BuildTicketLoginTokenTest(TestCase):
 
 class GetMemberFromLoginTokenTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.member = make_member()
 
     def test_valid_token_returns_member(self):
@@ -118,12 +121,13 @@ class GetMemberFromLoginTokenTest(TestCase):
         with self.assertRaises(ValueError):
             get_member_from_login_token(token)
 
-    def test_token_is_reusable(self):
+    def test_token_cannot_be_reused(self):
         token = build_ticket_login_token(self.member)
         first = get_member_from_login_token(token)
-        second = get_member_from_login_token(token)
         self.assertEqual(first.pk, self.member.pk)
-        self.assertEqual(second.pk, self.member.pk)
+
+        with self.assertRaises(ValueError):
+            get_member_from_login_token(token)
 
 
 # ---------- URL Builders ----------

@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -7,6 +8,7 @@ from apps.event.tests.helpers import make_member
 
 class TicketAutoLoginViewTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.member = make_member()
 
@@ -45,15 +47,15 @@ class TicketAutoLoginViewTest(TestCase):
         self.assertEqual(response.data["next_step"], "complete_profile")
         self.assertTrue(response.data["requires_profile_completion"])
 
-    def test_token_can_be_reused(self):
+    def test_token_cannot_be_reused(self):
         token = build_ticket_login_token(self.member)
 
         first_response = self.client.post("/event/ticket-login/", {"token": token}, format="json")
         self.assertEqual(first_response.status_code, 200)
 
         second_response = self.client.post("/event/ticket-login/", {"token": token}, format="json")
-        self.assertEqual(second_response.status_code, 200)
-        self.assertIn("access", second_response.data)
+        self.assertEqual(second_response.status_code, 400)
+        self.assertEqual(second_response.data["detail"], "Invalid or expired ticket login link.")
 
     def test_inactive_member_returns_400(self):
         token = build_ticket_login_token(self.member)
