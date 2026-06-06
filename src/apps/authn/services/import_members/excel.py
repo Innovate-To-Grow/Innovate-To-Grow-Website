@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
@@ -21,7 +23,12 @@ from .types import ImportResult
 BATCH_SIZE = 500
 
 
-def import_members_from_excel(file, default_password: str | None = None, update_existing: bool = False) -> ImportResult:
+def import_members_from_excel(
+    file,
+    default_password: str | None = None,
+    update_existing: bool = False,
+    update_member_allowed: Callable[[Member], bool] | None = None,
+) -> ImportResult:
     """Import members from an Excel file using bulk inserts when possible."""
     if load_workbook is None:
         return ImportResult(success=False, errors=["openpyxl library not installed. Please run: pip install openpyxl"])
@@ -132,7 +139,7 @@ def import_members_from_excel(file, default_password: str | None = None, update_
         # Rebuild claimed sets from actual DB state after successful create
         claimed_contact_emails = {e.lower() for e in ContactEmail.objects.values_list("email_address", flat=True)}
         claimed_phones = set(ContactPhone.objects.values_list("phone_number", flat=True))
-        bulk_update_members(rows_to_update, result, claimed_contact_emails, claimed_phones)
+        bulk_update_members(rows_to_update, result, claimed_contact_emails, claimed_phones, update_member_allowed)
 
     return result
 
