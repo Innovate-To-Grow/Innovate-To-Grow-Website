@@ -103,8 +103,8 @@ class AdminLoginViewTest(TestCase):
         self.assertContains(resp, "Last signed in")
         self.assertContains(resp, "Ada Lovelace")
         self.assertContains(resp, "Analytical Engines")
-        self.assertContains(resp, 'name="password"')
-        self.assertContains(resp, "Send verification code instead")
+        self.assertContains(resp, "Send verification code")
+        self.assertNotContains(resp, 'name="password"')
         self.assertNotContains(resp, "admin@example.com")
         self.assertNotContains(resp, 'name="email"')
 

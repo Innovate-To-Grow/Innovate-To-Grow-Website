@@ -725,10 +725,10 @@ class UnsubscribeConfirmationTests(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# views/admin/login/password.py:36 and views/admin/login/email_code.py:112-113
+# views/admin/login/view.py password-mode fallback and email_code.py:112-113
 # ---------------------------------------------------------------------------
 @override_settings(ROOT_URLCONF="config.urls")
-class AdminPasswordFormInvalidTests(TestCase):
+class AdminPasswordModeDisabledTests(TestCase):
     def setUp(self):
         from django.core.cache import cache
 
@@ -739,16 +739,14 @@ class AdminPasswordFormInvalidTests(TestCase):
 
         cache.clear()
 
-    def test_password_step_invalid_form_rerenders(self):
-        """password.py:36 — invalid AdminPasswordForm (no password) re-renders password step."""
-        # mode=password routes to _handle_password_step; missing password -> form invalid.
+    def test_password_mode_post_uses_email_step_instead(self):
+        """Password-only admin posts are treated as email-code login attempts."""
         response = self.client.post(
             "/admin/login/",
             {"mode": "password", "email": "someone@example.com"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["step"], "password")
-        # Field-level required error is shown; user is not authenticated.
+        self.assertEqual(response.context["step"], "email")
         self.assertFalse(response.wsgi_request.user.is_authenticated)
 
 

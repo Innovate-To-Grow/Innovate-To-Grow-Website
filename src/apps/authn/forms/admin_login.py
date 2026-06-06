@@ -51,25 +51,3 @@ class AdminCodeForm(forms.Form):
             }
         ),
     )
-
-
-class AdminPasswordForm(forms.Form):
-    """Password-based admin login: email + password."""
-
-    email = forms.EmailField(
-        label=_("Email"),
-        widget=forms.EmailInput(attrs={"placeholder": _("Email"), "autofocus": True, "autocomplete": "email"}),
-    )
-    password = forms.CharField(
-        label=_("Password"),
-        widget=forms.PasswordInput(attrs={"placeholder": _("Password"), "autocomplete": "current-password"}),
-    )
-
-
-class AdminRememberedPasswordForm(forms.Form):
-    """Password-based admin login for the signed last-admin cookie."""
-
-    password = forms.CharField(
-        label=_("Password"),
-        widget=forms.PasswordInput(attrs={"placeholder": _("Password"), "autocomplete": "current-password"}),
-    )

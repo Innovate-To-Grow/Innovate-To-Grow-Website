@@ -3,8 +3,6 @@ from django.contrib.auth import get_user_model
 from apps.authn.forms.admin_login import (
     AdminCodeForm,
     AdminEmailForm,
-    AdminPasswordForm,
-    AdminRememberedPasswordForm,
 )
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email_challenges import (
@@ -25,8 +23,6 @@ __all__ = [
     "AdminCodeForm",
     "AdminEmailForm",
     "AdminLoginView",
-    "AdminPasswordForm",
-    "AdminRememberedPasswordForm",
     "AuthChallengeDeliveryError",
     "AuthChallengeInvalid",
     "AuthChallengeThrottled",

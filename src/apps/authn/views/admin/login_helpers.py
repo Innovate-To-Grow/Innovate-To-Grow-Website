@@ -5,7 +5,6 @@ import uuid
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
 from django.shortcuts import render
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -13,9 +12,6 @@ _SESSION_STEP = "admin_login_step"
 _SESSION_EMAIL = "admin_login_email"
 _SESSION_MEMBER_ID = "admin_login_member_id"
 _SESSION_HIDE_EMAIL = "admin_login_hide_email"
-_RATE_LIMIT_PREFIX = "admin_pwd_login:"
-_MAX_PASSWORD_ATTEMPTS = 10
-_RATE_LIMIT_WINDOW = 120
 LAST_ADMIN_LOGIN_COOKIE_NAME = "i2g_last_admin_member"
 LAST_ADMIN_LOGIN_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 _LAST_ADMIN_LOGIN_COOKIE_PATH = "/admin/"
@@ -67,22 +63,6 @@ def safe_admin_next(request):
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
         return next_url
     return "/admin/"
-
-
-def is_password_throttled(request):
-    return cache.get(_password_rate_key(request), 0) >= _MAX_PASSWORD_ATTEMPTS
-
-
-def record_password_failure(request):
-    key = _password_rate_key(request)
-    try:
-        cache.incr(key)
-    except ValueError:
-        cache.set(key, 1, _RATE_LIMIT_WINDOW)
-
-
-def clear_password_rate_limit(request):
-    cache.delete(_password_rate_key(request))
 
 
 def get_last_admin_login_member(request):
@@ -155,7 +135,6 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
             "site_title": admin.site.site_title,
             "site_header": admin.site.site_header,
             "title": "Log in",
-            "password_mode_url": f"?mode=password{next_qs}",
             "email_code_mode_url": f"?step=email{next_qs}",
             "different_email_url": f"?step=email&different=1{next_qs}",
             "step": step,
@@ -170,7 +149,3 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
     )
     context.update(extra)
     return render(request, "admin/login.html", context)
-
-
-def _password_rate_key(request):
-    return f"{_RATE_LIMIT_PREFIX}{request.META.get('REMOTE_ADDR', 'unknown')}"

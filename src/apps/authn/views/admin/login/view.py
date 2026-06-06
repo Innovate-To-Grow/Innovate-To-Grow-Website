@@ -11,12 +11,11 @@ from apps.authn.views.admin.login_helpers import (
 )
 
 from .email_code import EmailCodeLoginMixin
-from .password import PasswordLoginMixin
 
 
 @method_decorator(never_cache, name="dispatch")
-class AdminLoginView(PasswordLoginMixin, EmailCodeLoginMixin, View):
-    """Admin login: email code flow OR password flow."""
+class AdminLoginView(EmailCodeLoginMixin, View):
+    """Admin login using the email verification code flow."""
 
     # noinspection PyMethodMayBeStatic
     def get(self, request):
@@ -24,14 +23,6 @@ class AdminLoginView(PasswordLoginMixin, EmailCodeLoginMixin, View):
 
         if request.user.is_authenticated and request.user.is_staff:
             return redirect(safe_admin_next(request))
-
-        if request.GET.get("mode") == "password":
-            clear_admin_login_session(request)
-            return render_admin_login(
-                request,
-                step="password",
-                form=login_api.AdminPasswordForm(),
-            )
 
         if request.GET.get("step") == "email":
             clear_admin_login_session(request)
@@ -56,9 +47,6 @@ class AdminLoginView(PasswordLoginMixin, EmailCodeLoginMixin, View):
 
         if request.POST.get("action") == "remembered_code":
             return self._handle_remembered_code_step(request)
-        if request.POST.get("mode") == "password":
-            return self._handle_password_step(request)
-
         step, _, _ = get_admin_login_state(request)
         if step == "code":
             return self._handle_code_step(request)

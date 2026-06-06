@@ -63,68 +63,6 @@ class AdminLoginHelpersTest(TestCase):
 
 
 @override_settings(ROOT_URLCONF="config.urls")
-class AdminRememberedPasswordTest(TestCase):
-    def setUp(self):
-        cache.clear()
-        self.staff = Member.objects.create_user(
-            password="testpass123", first_name="Staff", last_name="Admin", is_staff=True, is_active=True
-        )
-        ContactEmail.objects.create(
-            member=self.staff, email_address="admin@example.com", email_type="primary", verified=True
-        )
-
-    def tearDown(self):
-        cache.clear()
-
-    def _set_remembered_cookie(self):
-        self.client.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME] = _signed_cookie_value(str(self.staff.pk))
-
-    def test_remembered_password_success(self):
-        self._set_remembered_cookie()
-        resp = self.client.post(
-            LOGIN_URL,
-            {"mode": "password", "remembered_admin": "1", "password": "testpass123"},
-        )
-        self.assertEqual(resp.status_code, 302)
-
-    def test_remembered_password_wrong_password(self):
-        self._set_remembered_cookie()
-        resp = self.client.post(
-            LOGIN_URL,
-            {"mode": "password", "remembered_admin": "1", "password": "wrongpass"},
-        )
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Invalid password.")
-
-    def test_remembered_password_invalid_form(self):
-        self._set_remembered_cookie()
-        resp = self.client.post(
-            LOGIN_URL,
-            {"mode": "password", "remembered_admin": "1"},  # missing password
-        )
-        self.assertEqual(resp.status_code, 200)
-
-    def test_remembered_password_no_member_falls_back_to_email(self):
-        # No remembered cookie -> get_last_admin_login_member returns None
-        resp = self.client.post(
-            LOGIN_URL,
-            {"mode": "password", "remembered_admin": "1", "password": "testpass123"},
-        )
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Please enter your email to continue.")
-
-    def test_remembered_password_throttled(self):
-        self._set_remembered_cookie()
-        with patch("apps.authn.views.admin.login.password.is_password_throttled", return_value=True):
-            resp = self.client.post(
-                LOGIN_URL,
-                {"mode": "password", "remembered_admin": "1", "password": "testpass123"},
-            )
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Too many login attempts")
-
-
-@override_settings(ROOT_URLCONF="config.urls")
 class AdminRememberedCodeTest(TestCase):
     def setUp(self):
         cache.clear()
