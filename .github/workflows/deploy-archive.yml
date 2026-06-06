@@ -10,9 +10,6 @@ on:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
-  # Manual trigger: deploy the current ref on demand (e.g. to re-ship without
-  # waiting for a CI run). Matches deploy-frontend.yml.
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -32,16 +29,16 @@ env:
 jobs:
   deploy:
     name: Build & Deploy Archive
-    # Deploy on every successful CI run on main, or on a manual dispatch —
-    # matching deploy-backend.yml / deploy-frontend.yml (no path gate). A
+    # Deploy on every successful CI run on main (no path gate). A
     # path-diff gate was unreliable: when archive changes land on a different
     # commit than the one CI runs on (e.g. an archive merge followed by a
     # CI-only merge), the merge-commit diff misses archive/ and the deploy is
     # skipped. The build is fast and the deploy is idempotent, so always
     # deploying is simpler and never misses a change.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -51,6 +48,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          # Deploy exactly the commit that completed CI successfully on main.
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
