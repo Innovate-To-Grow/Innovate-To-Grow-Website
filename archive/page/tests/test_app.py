@@ -75,11 +75,39 @@ def test_base_template_is_not_served(client):
 
 
 def test_serve_page_rejects_traversal(client):
-    # %5c -> "\" and dot segments hit the explicit guards in serve_page.
+    # %5c -> "\" and dot segments are rejected by the _PAGE_RE slug whitelist.
     assert client.get("/..%5capp.html").status_code == 404
     assert client.get("/..html").status_code == 404  # page == "."
     assert client.get("/...html").status_code == 404  # page == ".."
     assert client.get("/events%2f2025-fall-event.html").status_code == 404
+
+
+def test_serve_page_rejects_non_slug_names(client):
+    # Anything outside [a-z0-9-] is rejected before a path is ever constructed,
+    # so request input can't reach the filesystem. None of these are real pages.
+    assert client.get("/Base.html").status_code == 404  # uppercase
+    assert client.get("/app_config.html").status_code == 404  # underscore
+    assert client.get("/.env.html").status_code == 404  # leading dot
+    assert client.get("/%2e%2e%2fbase.html").status_code == 404  # encoded "../"
+    assert client.get("/page%00.html").status_code == 404  # NUL byte
+
+
+def test_serve_page_does_not_resolve_outside_events_dir(monkeypatch):
+    # Defense-in-depth: even if the slug regex were widened, a value that
+    # resolves outside EVENTS_DIR must still 404. Werkzeug's <page> converter
+    # rejects encoded separators at the routing layer, so the containment check
+    # is unreachable over HTTP — call the view directly (with _PAGE_RE widened)
+    # to exercise it. "../base" resolves into templates/, the parent of events/.
+    import re as _re
+
+    from werkzeug.exceptions import NotFound
+
+    monkeypatch.setattr(app_module, "_PAGE_RE", _re.compile(r"^.+$"))
+    with app.test_request_context():
+        with pytest.raises(NotFound):
+            app_module.serve_page("../base")
+        # A real page still renders once past the containment check.
+        assert app_module.serve_page("2025-fall-event")
 
 
 def test_footer_loads_a_single_jquery(client):
@@ -127,6 +155,49 @@ def test_proxy_passes_through_values(client, monkeypatch):
     resp = client.get(f"/api/sheets/{A_SHEET}/values/I2G-Tracks")
     assert resp.status_code == 200
     assert resp.get_json() == {"range": "I2G-Tracks", "values": [["x"]]}
+
+
+def test_proxy_uses_canonical_allowlist_sheet_id(client, monkeypatch):
+    # SSRF break: the value handed to _fetch_values is the allowlist's own
+    # member object, not the (tainted) request string. They are equal for an
+    # allowed id, so the proxy still works and the upstream id is trusted.
+    seen = {}
+
+    def capture(sheet_id, cell_range):
+        seen["sheet_id"] = sheet_id
+        return ({"ok": True}, 200)
+
+    monkeypatch.setattr(app_module, "_fetch_values", capture)
+    resp = client.get(f"/api/sheets/{A_SHEET}/values/I2G-Tracks")
+    assert resp.status_code == 200
+    assert seen["sheet_id"] in ALLOWED_SPREADSHEETS
+    assert seen["sheet_id"] == A_SHEET
+
+
+def test_proxy_passes_through_range_with_colon_and_bang(client, monkeypatch):
+    # A range with ":" and "!" (allowed by _RANGE_RE) must still reach the
+    # upstream fetch — _fetch_values URL-quotes it before calling Google.
+    monkeypatch.setattr(app_module, "_fetch_values", lambda s, r: ({"range": r}, 200))
+    resp = client.get(f"/api/sheets/{A_SHEET}/values/Sheet1!A1:B2")
+    assert resp.status_code == 200
+    assert resp.get_json() == {"range": "Sheet1!A1:B2"}
+
+
+def test_fetch_values_url_quotes_the_range(monkeypatch):
+    # The range must be percent-encoded in the upstream URL so it can never
+    # steer the request (partial-SSRF break). ":" -> %3A, "!" -> %21.
+    monkeypatch.setenv("SHEETS_API_KEY", "test-key")
+    captured = {}
+
+    def fake_get(url, *a, **k):
+        captured["url"] = url
+        return _FakeResponse(200, {"values": []})
+
+    monkeypatch.setattr(app_module.requests, "get", fake_get)
+    app_module._fetch_values(A_SHEET, "Sheet1!A1:B2")
+    assert captured["url"].endswith("/values/Sheet1%21A1%3AB2")
+    assert ":" not in captured["url"].rsplit("/values/", 1)[1]
+    assert "!" not in captured["url"].rsplit("/values/", 1)[1]
 
 
 def test_proxy_maps_upstream_failure_to_502(client, monkeypatch):
