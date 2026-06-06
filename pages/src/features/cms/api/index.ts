@@ -60,14 +60,18 @@ export async function fetchCMSPage(
 export async function fetchCMSPreview(
   token: string,
 ): Promise<CMSPageResponse> {
-  const response = await api.get<CMSPageResponse>(`/cms/preview/${token}/`);
+  const response = await api.get<CMSPageResponse>(
+    `/cms/preview/${encodeURIComponent(token)}/`,
+  );
   return response.data;
 }
 
 export async function fetchCMSLivePreview(
   pageId: string,
 ): Promise<CMSPageResponse> {
-  const response = await api.get<CMSPageResponse>(`/cms/live-preview/${pageId}/`);
+  const response = await api.get<CMSPageResponse>(
+    `/cms/live-preview/${encodeURIComponent(pageId)}/`,
+  );
   return response.data;
 }
 
