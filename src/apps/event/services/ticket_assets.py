@@ -1,4 +1,5 @@
 import base64
+import secrets
 from datetime import datetime
 from io import BytesIO
 from urllib.parse import urljoin
@@ -6,7 +7,8 @@ from urllib.parse import urljoin
 from django.conf import settings
 from django.core import signing
 from django.core.exceptions import ObjectDoesNotExist
-from django.utils import timezone
+from django.db import transaction
+from django.utils import crypto, timezone
 from pdf417gen import encode, render_image
 
 from apps.event.models import EventRegistration
@@ -14,7 +16,7 @@ from apps.event.models import EventRegistration
 _TICKET_TOKEN_SALT = "event-ticket-access"
 _TICKET_LOGIN_SALT = "event-ticket-login"
 _TICKET_ACCESS_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
-_TICKET_LOGIN_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
+_TICKET_LOGIN_MAX_AGE = 60 * 60 * 24  # 24 hours
 
 
 class TicketLoginTokenError(ValueError):
@@ -38,32 +40,67 @@ def get_registration_from_access_token(token: str) -> EventRegistration:
         raise ValueError("Ticket not found.") from exc
 
 
-def build_ticket_login_token(member) -> str:
-    """Create a signed token that allows one-click login from a ticket email."""
-    return signing.dumps({"member_id": str(member.pk)}, salt=_TICKET_LOGIN_SALT, compress=True)
+def _hash_ticket_login_nonce(nonce: str) -> str:
+    return crypto.salted_hmac(_TICKET_LOGIN_SALT, nonce).hexdigest()
+
+
+def build_ticket_login_token(registration: EventRegistration) -> str:
+    """Create a one-time signed login token for a ticket email."""
+    nonce = secrets.token_urlsafe(32)
+    registration.ticket_login_token_hash = _hash_ticket_login_nonce(nonce)
+    registration.ticket_login_token_sent_at = timezone.now()
+    registration.ticket_login_token_used_at = None
+    registration.save(
+        update_fields=[
+            "ticket_login_token_hash",
+            "ticket_login_token_sent_at",
+            "ticket_login_token_used_at",
+            "updated_at",
+        ]
+    )
+    return signing.dumps(
+        {
+            "registration_id": str(registration.pk),
+            "member_id": str(registration.member_id),
+            "nonce": nonce,
+        },
+        salt=_TICKET_LOGIN_SALT,
+        compress=True,
+    )
 
 
 def get_member_from_login_token(token: str):
-    """Validate a ticket login token and return the associated Member.
-
-    The token is reusable for its full lifetime (30 days) so that users can
-    click the email link repeatedly without being locked out. Security relies
-    on the signed, time-limited token itself rather than one-time consumption.
-    """
-    from apps.authn.models import Member
-
+    """Validate and consume a one-time ticket login token."""
     try:
         payload = signing.loads(token, salt=_TICKET_LOGIN_SALT, max_age=_TICKET_LOGIN_MAX_AGE)
+        registration_id = payload["registration_id"]
         member_id = payload["member_id"]
-    except signing.BadSignature as exc:
+        nonce = payload["nonce"]
+    except (KeyError, signing.BadSignature) as exc:
         raise TicketLoginTokenError("Invalid or expired login link.") from exc
 
     try:
-        member = Member.objects.get(pk=member_id, is_active=True)
-    except Member.DoesNotExist as exc:
-        raise TicketLoginTokenError("Account not found.") from exc
+        with transaction.atomic():
+            registration = (
+                EventRegistration.objects.select_for_update()
+                .select_related("member")
+                .get(pk=registration_id, member_id=member_id)
+            )
+            expected_hash = _hash_ticket_login_nonce(nonce)
+            if (
+                not registration.member.is_active
+                or not registration.ticket_login_token_hash
+                or registration.ticket_login_token_used_at is not None
+                or not crypto.constant_time_compare(registration.ticket_login_token_hash, expected_hash)
+            ):
+                raise TicketLoginTokenError("Invalid or expired login link.")
 
-    return member
+            registration.ticket_login_token_hash = ""
+            registration.ticket_login_token_used_at = timezone.now()
+            registration.save(update_fields=["ticket_login_token_hash", "ticket_login_token_used_at", "updated_at"])
+            return registration.member
+    except ObjectDoesNotExist as exc:
+        raise TicketLoginTokenError("Invalid or expired login link.") from exc
 
 
 def build_backend_absolute_url(path: str, request=None) -> str:
