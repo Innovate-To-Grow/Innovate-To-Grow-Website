@@ -1005,3 +1005,30 @@ th {
     overflow: unset;
     z-index: 100;
 }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* CAP track-name cells: <p style="color:#002856; font-weight: bolder;"> */
+.ck-cap-track {
+    color: #002856;
+    font-weight: bolder;
+}
+
+/* CSE/EngSL gold track-name cells: <p style="color: #FFBF3C;"> */
+.ck-gold-text {
+    color: #FFBF3C;
+}
+
+/* Table header cells: <th style="background-color: #efefef; color: #002856;">
+   Anchored at table.table th to win over drupal-core Bootstrap 2 th rules. */
+table.table th.ck-th-blue {
+    background-color: #efefef;
+    color: #002856;
+}
+
+/* Centered table header cells:
+   <th style="background-color: #efefef; color: #002856; text-align: center;"> */
+table.table th.ck-th-blue-c {
+    background-color: #efefef;
+    color: #002856;
+    text-align: center;
+}

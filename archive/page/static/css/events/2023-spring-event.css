@@ -952,3 +952,45 @@ button {
         right: 2px;
         border-top-right-radius: 2px;
     }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* Header cells: track/column headers and time row-headers (was background-color: #efefef; color: #002856) */
+table.table th.track-th {
+    background-color: #efefef;
+    color: #002856;
+}
+
+/* Winner-table row-header cells (was background-color: #fff; color: #002856) */
+table.table th.rowhead-th {
+    background-color: #fff;
+    color: #002856;
+}
+
+/* CSE winner/track data cells (was color: #FFBF3C) */
+table.table td.cse-track-td {
+    color: #FFBF3C;
+}
+
+/* EXPO + Awards schedule data cells (was color: #002856; background-color: rgb(247, 247, 247)) */
+table.table td.expo-cell-td {
+    color: #002856;
+    background-color: rgb(247, 247, 247);
+}
+
+/* Full-width schedule/winner tables (was width: 100%) */
+table.table.tbl-full {
+    width: 100%;
+}
+
+/* Centered navy section captions (was text-align: center; color: #002856) */
+.section-head {
+    text-align: center;
+    color: #002856;
+}
+
+/* Bold centered event-band paragraphs (was color: rgb(0, 40, 86); font-weight: bolder; text-align: center) */
+.event-band-p {
+    color: rgb(0, 40, 86);
+    font-weight: bolder;
+    text-align: center;
+}

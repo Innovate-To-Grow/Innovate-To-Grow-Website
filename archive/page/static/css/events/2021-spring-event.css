@@ -553,3 +553,51 @@ th { /* this is to make the top headers of the table sticky */
     overflow: unset;
     z-index: 100;
 }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* Header cells: anchored as table.table th.<cls> so they win over the
+   bare `th { background-color: white }` sticky rule and `.table th`. */
+table.table th.hdrCell {
+    background-color: #efefef;
+    color: #002856;
+}
+
+/* Track schedule buttons (color was inline; overrides bare `button{color}`). */
+.slotBtnNavy {
+    color: #002856;
+}
+
+.slotBtnGold {
+    color: #FFBF3C;
+}
+
+/* Track-row data cells: anchored as table.table td.<cls> to match prior
+   inline specificity over `.table td`. */
+table.table td.trackCellNavy {
+    color: #002856;
+}
+
+table.table td.trackCellGold {
+    color: #FFBF3C;
+}
+
+/* Track-name paragraphs inside the schedule tables. */
+.trackNameNavy {
+    color: #002856;
+    font-weight: bolder;
+}
+
+.trackNameGold {
+    color: #FFBF3C;
+}
+
+/* Section heading divs above each schedule table. */
+.sectionTitleNavy {
+    text-align: center;
+    color: #002856;
+}
+
+/* Schedule tables that were inline width: 100%. */
+.schedTable {
+    width: 100%;
+}

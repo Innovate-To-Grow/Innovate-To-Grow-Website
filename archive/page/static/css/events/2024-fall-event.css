@@ -914,3 +914,42 @@ button {
         right: 2px;
         border-top-right-radius: 2px;
     }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+table.table th.track-th {
+    background-color: #efefef;
+    color: #002856;
+}
+
+table.table th.rowhead-th {
+    background-color: #fff;
+    color: #002856;
+}
+
+table.table td.winner-track-cell {
+    color: #FFBF3C;
+}
+
+table.table td.schedule-cell {
+    color: #002856;
+    background-color: rgb(247, 247, 247);
+}
+
+table.table.table-full {
+    width: 100%;
+}
+
+.section-title {
+    text-align: center;
+    color: #002856;
+}
+
+.schedule-text {
+    color: rgb(0, 40, 86);
+    font-weight: bolder;
+    text-align: center;
+}
+
+.ck-center-block {
+    text-align: center;
+}

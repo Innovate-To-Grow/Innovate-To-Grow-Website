@@ -961,3 +961,42 @@ MOUSE OVER -> ALT TEXT -> REPEAT CAP#, AND ALL OTHER INFO
     right: 2px;
     border-top-right-radius: 2px;
 }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* th/td rules are anchored on table.table to beat Bootstrap's `.table th`/`.table td`. */
+
+/* was: style="background-color: #efefef; color: #002856;" (10x, <th>) */
+table.table th.headCellGray {
+    background-color: #efefef;
+    color: #002856;
+}
+
+/* was: style="background-color: #fff; color: #002856;" (3x, <th>) */
+table.table th.headCellWhite {
+    background-color: #fff;
+    color: #002856;
+}
+
+/* was: style="color: #002856; background-color: rgb(247, 247, 247);" (3x, <td>) */
+table.table td.scheduleCell {
+    color: #002856;
+    background-color: rgb(247, 247, 247);
+}
+
+/* was: style="width: 100%;" (4x, <table class="table">) */
+table.table.tableFull {
+    width: 100%;
+}
+
+/* was: style="text-align: center; color: #002856;" (6x, <div>) */
+.eventDivTitle {
+    text-align: center;
+    color: #002856;
+}
+
+/* was: style="color: rgb(0, 40, 86); font-weight: bolder; text-align: center;" (5x, <p>) */
+.eventPara {
+    color: rgb(0, 40, 86);
+    font-weight: bolder;
+    text-align: center;
+}

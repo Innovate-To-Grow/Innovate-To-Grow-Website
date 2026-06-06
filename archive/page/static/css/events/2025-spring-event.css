@@ -914,3 +914,45 @@ th {
         right: 2px;
         border-top-right-radius: 2px;
     }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* Table cell rules are anchored on table.table th/td to win over drupal-core.css
+   th rules and the in-file sticky `th { background-color: white }` rule, matching
+   the original inline-style specificity without !important. */
+.table-full {
+    width: 100%;
+}
+
+.section-title {
+    text-align: center;
+    color: #002856;
+}
+
+.center-block {
+    text-align: center;
+}
+
+.schedule-event {
+    color: rgb(0, 40, 86);
+    font-weight: bolder;
+    text-align: center;
+}
+
+table.table th.hdr-cell {
+    background-color: #efefef;
+    color: #002856;
+}
+
+table.table th.row-hdr-cell {
+    background-color: #fff;
+    color: #002856;
+}
+
+table.table td.cse-cell {
+    color: #FFBF3C;
+}
+
+table.table td.schedule-time-cell {
+    color: #002856;
+    background-color: rgb(247, 247, 247);
+}

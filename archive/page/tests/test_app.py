@@ -2,9 +2,10 @@
 
 import app as app_module
 import pytest
-from app import ALLOWED_SPREADSHEETS, app
+from app import ALLOWED_SHEET_RANGES, ALLOWED_SPREADSHEETS, TRUSTED_SHEET_URLS, app
 
-A_SHEET = sorted(ALLOWED_SPREADSHEETS)[0]
+A_SHEET, A_RANGE = sorted(ALLOWED_SHEET_RANGES)[0]
+A_URL = TRUSTED_SHEET_URLS[(A_SHEET, A_RANGE)]
 
 
 @pytest.fixture()
@@ -75,7 +76,7 @@ def test_base_template_is_not_served(client):
 
 
 def test_serve_page_rejects_traversal(client):
-    # %5c -> "\" and dot segments are rejected by the _PAGE_RE slug whitelist.
+    # Event pages are served only through the fixed EVENT_TEMPLATES allowlist.
     assert client.get("/..%5capp.html").status_code == 404
     assert client.get("/..html").status_code == 404  # page == "."
     assert client.get("/...html").status_code == 404  # page == ".."
@@ -83,8 +84,8 @@ def test_serve_page_rejects_traversal(client):
 
 
 def test_serve_page_rejects_non_slug_names(client):
-    # Anything outside [a-z0-9-] is rejected before a path is ever constructed,
-    # so request input can't reach the filesystem. None of these are real pages.
+    # Anything outside the event template allowlist is rejected, so request input
+    # can't reach a filesystem path or template name sink.
     assert client.get("/Base.html").status_code == 404  # uppercase
     assert client.get("/app_config.html").status_code == 404  # underscore
     assert client.get("/.env.html").status_code == 404  # leading dot
@@ -92,22 +93,16 @@ def test_serve_page_rejects_non_slug_names(client):
     assert client.get("/page%00.html").status_code == 404  # NUL byte
 
 
-def test_serve_page_does_not_resolve_outside_events_dir(monkeypatch):
-    # Defense-in-depth: even if the slug regex were widened, a value that
-    # resolves outside EVENTS_DIR must still 404. Werkzeug's <page> converter
-    # rejects encoded separators at the routing layer, so the containment check
-    # is unreachable over HTTP — call the view directly (with _PAGE_RE widened)
-    # to exercise it. "../base" resolves into templates/, the parent of events/.
-    import re as _re
-
+def test_serve_page_uses_fixed_template_allowlist(monkeypatch):
     from werkzeug.exceptions import NotFound
 
-    monkeypatch.setattr(app_module, "_PAGE_RE", _re.compile(r"^.+$"))
+    rendered = {}
+    monkeypatch.setattr(app_module, "render_template", lambda template: rendered.setdefault("template", template))
     with app.test_request_context():
         with pytest.raises(NotFound):
             app_module.serve_page("../base")
-        # A real page still renders once past the containment check.
-        assert app_module.serve_page("2025-fall-event")
+        assert app_module.serve_page("2025-fall-event") == "events/2025-fall-event.html"
+    assert rendered["template"] == "events/2025-fall-event.html"
 
 
 def test_footer_loads_a_single_jquery(client):
@@ -139,7 +134,7 @@ def test_proxy_rejects_unknown_spreadsheet(client, monkeypatch):
         raise AssertionError("upstream must not be called")
 
     monkeypatch.setattr(app_module, "_fetch_values", boom)
-    assert client.get("/api/sheets/not-a-real-sheet-id/values/A1:B2").status_code == 404
+    assert client.get(f"/api/sheets/not-a-real-sheet-id/values/{A_RANGE}").status_code == 404
 
 
 def test_proxy_rejects_bad_range(client, monkeypatch):
@@ -150,42 +145,51 @@ def test_proxy_rejects_bad_range(client, monkeypatch):
     assert client.get(f"/api/sheets/{A_SHEET}/values/A1:B2;DROP").status_code == 404
 
 
+def test_proxy_rejects_unlisted_valid_range(client, monkeypatch):
+    def boom(*a, **k):
+        raise AssertionError("upstream must not be called")
+
+    monkeypatch.setattr(app_module, "_fetch_values", boom)
+    assert client.get(f"/api/sheets/{A_SHEET}/values/Sheet1!A1:B2").status_code == 404
+
+
 def test_proxy_passes_through_values(client, monkeypatch):
-    monkeypatch.setattr(app_module, "_fetch_values", lambda s, r: ({"range": r, "values": [["x"]]}, 200))
-    resp = client.get(f"/api/sheets/{A_SHEET}/values/I2G-Tracks")
+    monkeypatch.setattr(app_module, "_fetch_values", lambda url: ({"url": url, "values": [["x"]]}, 200))
+    resp = client.get(f"/api/sheets/{A_SHEET}/values/{A_RANGE}")
     assert resp.status_code == 200
-    assert resp.get_json() == {"range": "I2G-Tracks", "values": [["x"]]}
+    assert resp.get_json() == {"url": A_URL, "values": [["x"]]}
 
 
 def test_proxy_uses_canonical_allowlist_sheet_id(client, monkeypatch):
-    # SSRF break: the value handed to _fetch_values is the allowlist's own
-    # member object, not the (tainted) request string. They are equal for an
-    # allowed id, so the proxy still works and the upstream id is trusted.
+    # SSRF break: the value handed to _fetch_values is a trusted URL from the
+    # server-side allowlist, never a request-composed URL.
     seen = {}
 
-    def capture(sheet_id, cell_range):
-        seen["sheet_id"] = sheet_id
+    def capture(upstream_url):
+        seen["upstream_url"] = upstream_url
         return ({"ok": True}, 200)
 
     monkeypatch.setattr(app_module, "_fetch_values", capture)
-    resp = client.get(f"/api/sheets/{A_SHEET}/values/I2G-Tracks")
+    resp = client.get(f"/api/sheets/{A_SHEET}/values/{A_RANGE}")
     assert resp.status_code == 200
-    assert seen["sheet_id"] in ALLOWED_SPREADSHEETS
-    assert seen["sheet_id"] == A_SHEET
+    assert A_SHEET in ALLOWED_SPREADSHEETS
+    assert seen["upstream_url"] == A_URL
 
 
-def test_proxy_passes_through_range_with_colon_and_bang(client, monkeypatch):
-    # A range with ":" and "!" (allowed by _RANGE_RE) must still reach the
-    # upstream fetch — _fetch_values URL-quotes it before calling Google.
-    monkeypatch.setattr(app_module, "_fetch_values", lambda s, r: ({"range": r}, 200))
-    resp = client.get(f"/api/sheets/{A_SHEET}/values/Sheet1!A1:B2")
+def test_proxy_passes_through_allowed_range_with_colon(client, monkeypatch):
+    sheet_id, cell_range = next(pair for pair in ALLOWED_SHEET_RANGES if ":" in pair[1])
+    trusted_url = TRUSTED_SHEET_URLS[(sheet_id, cell_range)]
+    monkeypatch.setattr(app_module, "_fetch_values", lambda url: ({"url": url}, 200))
+    resp = client.get(f"/api/sheets/{sheet_id}/values/{cell_range}")
     assert resp.status_code == 200
-    assert resp.get_json() == {"range": "Sheet1!A1:B2"}
+    assert resp.get_json() == {"url": trusted_url}
 
 
-def test_fetch_values_url_quotes_the_range(monkeypatch):
-    # The range must be percent-encoded in the upstream URL so it can never
-    # steer the request (partial-SSRF break). ":" -> %3A, "!" -> %21.
+def test_trusted_sheet_urls_quote_ranges():
+    assert TRUSTED_SHEET_URLS[("1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4", "A1:Y76")].endswith("/values/A1%3AY76")
+
+
+def test_fetch_values_uses_trusted_url(monkeypatch):
     monkeypatch.setenv("SHEETS_API_KEY", "test-key")
     captured = {}
 
@@ -194,19 +198,17 @@ def test_fetch_values_url_quotes_the_range(monkeypatch):
         return _FakeResponse(200, {"values": []})
 
     monkeypatch.setattr(app_module.requests, "get", fake_get)
-    app_module._fetch_values(A_SHEET, "Sheet1!A1:B2")
-    assert captured["url"].endswith("/values/Sheet1%21A1%3AB2")
-    assert ":" not in captured["url"].rsplit("/values/", 1)[1]
-    assert "!" not in captured["url"].rsplit("/values/", 1)[1]
+    app_module._fetch_values(A_URL)
+    assert captured["url"] == A_URL
 
 
 def test_proxy_maps_upstream_failure_to_502(client, monkeypatch):
     monkeypatch.setattr(
         app_module,
         "_fetch_values",
-        lambda s, r: ({"error": "upstream request failed", "status": 403}, 502),
+        lambda url: ({"error": "upstream request failed", "status": 403}, 502),
     )
-    resp = client.get(f"/api/sheets/{A_SHEET}/values/I2G-Tracks")
+    resp = client.get(f"/api/sheets/{A_SHEET}/values/{A_RANGE}")
     assert resp.status_code == 502
     # Sanitized error only — never the upstream URL (which would carry the key).
     assert b"AIzaSy" not in resp.data
@@ -215,7 +217,7 @@ def test_proxy_maps_upstream_failure_to_502(client, monkeypatch):
 def test_missing_key_is_a_server_error(client, monkeypatch):
     monkeypatch.delenv("SHEETS_API_KEY", raising=False)
     monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: pytest.fail("no upstream call"))
-    resp = client.get(f"/api/sheets/{A_SHEET}/values/I2G-Tracks")
+    resp = client.get(f"/api/sheets/{A_SHEET}/values/{A_RANGE}")
     assert resp.status_code == 500
 
 
@@ -234,7 +236,7 @@ class _FakeResponse:
 def test_fetch_values_passes_through_upstream_data(monkeypatch):
     monkeypatch.setenv("SHEETS_API_KEY", "test-key")
     monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: _FakeResponse(200, {"values": [["x"]]}))
-    body, status = app_module._fetch_values(A_SHEET, "A1:B2")
+    body, status = app_module._fetch_values(A_URL)
     assert status == 200
     assert body == {"values": [["x"]]}
 
@@ -244,7 +246,7 @@ def test_fetch_values_sanitizes_upstream_error(monkeypatch):
     # sanitized message may pass through.
     monkeypatch.setenv("SHEETS_API_KEY", "test-key")
     monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: _FakeResponse(403, {"error": "test-key leaked"}))
-    body, status = app_module._fetch_values(A_SHEET, "A1:B2")
+    body, status = app_module._fetch_values(A_URL)
     assert status == 502
     assert "test-key" not in str(body)
 
@@ -252,6 +254,6 @@ def test_fetch_values_sanitizes_upstream_error(monkeypatch):
 def test_fetch_values_handles_non_json_upstream(monkeypatch):
     monkeypatch.setenv("SHEETS_API_KEY", "test-key")
     monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: _FakeResponse(200, raises=True))
-    body, status = app_module._fetch_values(A_SHEET, "A1:B2")
+    body, status = app_module._fetch_values(A_URL)
     assert status == 502
     assert body == {"error": "upstream returned non-JSON"}

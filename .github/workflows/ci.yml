@@ -991,7 +991,7 @@ jobs:
         # download must not turn the run red. The merge step below tolerates a
         # missing/empty directory.
         continue-on-error: true
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: pages/all-blob-reports
           pattern: blob-*
@@ -1041,7 +1041,7 @@ jobs:
 
       - name: Annotate test results on the PR
         if: ${{ always() }}
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: pages/results.xml
           detailed_summary: true
