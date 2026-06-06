@@ -47,18 +47,18 @@ jobs:
 
       - name: Validate required deployment configuration
         env:
-          DJANGO_SECRET_KEY: ${{ vars.DJANGO_SECRET_KEY || secrets.DJANGO_SECRET_KEY }}
+          DJANGO_SECRET_KEY_SECRET_ARN: ${{ vars.DJANGO_SECRET_KEY_SECRET_ARN || secrets.DJANGO_SECRET_KEY_SECRET_ARN }}
           DB_HOST: ${{ vars.DB_HOST }}
           DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD: ${{ vars.DB_PASSWORD || secrets.DB_PASSWORD }}
+          DB_USER_SECRET_ARN: ${{ vars.DB_USER_SECRET_ARN || secrets.DB_USER_SECRET_ARN }}
+          DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
           AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
           BACKEND_URL: ${{ vars.BACKEND_URL || vars.VITE_API_BASE_URL }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
         run: |
           missing=()
-          for name in DJANGO_SECRET_KEY DB_HOST DB_NAME DB_USER DB_PASSWORD AWS_STORAGE_BUCKET_NAME BACKEND_URL ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
+          for name in DJANGO_SECRET_KEY_SECRET_ARN DB_HOST DB_NAME DB_USER_SECRET_ARN DB_PASSWORD_SECRET_ARN AWS_STORAGE_BUCKET_NAME BACKEND_URL ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
             if [ -z "${!name}" ]; then
               missing+=("$name")
             fi
@@ -81,16 +81,10 @@ jobs:
           docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" src/
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
-      # SECURITY: DJANGO_SECRET_KEY, DB_PASSWORD, and REDIS_URL MUST be stored
-      # in GitHub Secrets (not vars.*). Values from vars.* are NOT masked in
-      # workflow logs and will be exposed if printed. The vars.X || secrets.X
-      # fallback below is a migration convenience — remove vars.* references
-      # once secrets are confirmed configured.
-      - name: Mask sensitive env values
-        run: |
-          echo "::add-mask::${{ vars.DJANGO_SECRET_KEY }}"
-          echo "::add-mask::${{ vars.DB_PASSWORD }}"
-          echo "::add-mask::${{ vars.REDIS_URL }}"
+      # SECURITY: Sensitive runtime values are injected by ECS from Secrets
+      # Manager or SSM Parameter Store via the task definition `secrets` block.
+      # Keep only secret ARNs/names in GitHub Actions configuration; do not load
+      # live secret values into this workflow.
 
       - name: Upload Django static assets to S3
         env:
@@ -125,21 +119,21 @@ jobs:
         id: task-def
         env:
           IMAGE_URI: ${{ steps.build-image.outputs.image }}
-          DJANGO_SECRET_KEY: ${{ vars.DJANGO_SECRET_KEY || secrets.DJANGO_SECRET_KEY }}
+          DJANGO_SECRET_KEY_SECRET_ARN: ${{ vars.DJANGO_SECRET_KEY_SECRET_ARN || secrets.DJANGO_SECRET_KEY_SECRET_ARN }}
           DB_ENGINE: ${{ vars.DB_ENGINE }}
           DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD: ${{ vars.DB_PASSWORD || secrets.DB_PASSWORD }}
+          DB_USER_SECRET_ARN: ${{ vars.DB_USER_SECRET_ARN || secrets.DB_USER_SECRET_ARN }}
+          DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
           DB_HOST: ${{ vars.DB_HOST }}
           DB_PORT: ${{ vars.DB_PORT }}
           DB_CONN_MAX_AGE: ${{ vars.DB_CONN_MAX_AGE || '0' }}
           DB_CONN_HEALTH_CHECKS: ${{ vars.DB_CONN_HEALTH_CHECKS || 'true' }}
-          REDIS_URL: ${{ vars.REDIS_URL || secrets.REDIS_URL }}
+          REDIS_URL_SECRET_ARN: ${{ vars.REDIS_URL_SECRET_ARN || secrets.REDIS_URL_SECRET_ARN }}
           WEB_CONCURRENCY: ${{ vars.WEB_CONCURRENCY || '2' }}
           UVICORN_LIMIT_CONCURRENCY: ${{ vars.UVICORN_LIMIT_CONCURRENCY || '20' }}
           DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
           DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
-          DJANGO_SUPERUSER_PASSWORD: ${{ vars.DJANGO_SUPERUSER_PASSWORD || secrets.DJANGO_SUPERUSER_PASSWORD }}
+          DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ vars.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN || secrets.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
           FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
           BACKEND_URL: ${{ vars.BACKEND_URL || vars.VITE_API_BASE_URL }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
@@ -190,16 +184,12 @@ jobs:
           allowed_hosts = ",".join(dict.fromkeys([h for h in hosts if h]))
 
           mapping = {
-              "__DJANGO_SECRET_KEY__": env_value("DJANGO_SECRET_KEY"),
               "__DJANGO_ALLOWED_HOSTS__": allowed_hosts,
               "__DB_NAME__": env_value("DB_NAME"),
-              "__DB_USER__": env_value("DB_USER"),
-              "__DB_PASSWORD__": env_value("DB_PASSWORD"),
               "__DB_HOST__": env_value("DB_HOST"),
               "__DB_PORT__": env_value("DB_PORT", "5432"),
               "__DB_CONN_MAX_AGE__": env_value("DB_CONN_MAX_AGE", "0"),
               "__DB_CONN_HEALTH_CHECKS__": env_value("DB_CONN_HEALTH_CHECKS", "true"),
-              "__REDIS_URL__": env_value("REDIS_URL"),
               "__WEB_CONCURRENCY__": env_value("WEB_CONCURRENCY", "2"),
               "__UVICORN_LIMIT_CONCURRENCY__": env_value("UVICORN_LIMIT_CONCURRENCY", "20"),
               "__CSRF_TRUSTED_ORIGINS__": csrf_origins,
@@ -210,7 +200,20 @@ jobs:
               "__AWS_S3_REGION_NAME__": env_value("AWS_S3_REGION_NAME", "us-west-2"),
               "__DJANGO_SUPERUSER_USERNAME__": env_value("DJANGO_SUPERUSER_USERNAME"),
               "__DJANGO_SUPERUSER_EMAIL__": env_value("DJANGO_SUPERUSER_EMAIL"),
-              "__DJANGO_SUPERUSER_PASSWORD__": env_value("DJANGO_SUPERUSER_PASSWORD"),
+          }
+
+          secret_mapping = {
+              "__DJANGO_SECRET_KEY_SECRET_ARN__": (
+                  env_value("DJANGO_SECRET_KEY_SECRET_ARN"),
+                  True,
+              ),
+              "__DB_USER_SECRET_ARN__": (env_value("DB_USER_SECRET_ARN"), True),
+              "__DB_PASSWORD_SECRET_ARN__": (env_value("DB_PASSWORD_SECRET_ARN"), True),
+              "__REDIS_URL_SECRET_ARN__": (env_value("REDIS_URL_SECRET_ARN"), False),
+              "__DJANGO_SUPERUSER_PASSWORD_SECRET_ARN__": (
+                  env_value("DJANGO_SUPERUSER_PASSWORD_SECRET_ARN"),
+                  False,
+              ),
           }
 
           # Substitute IAM role ARNs so the account ID is not baked into the
@@ -231,6 +234,25 @@ jobs:
               value = item.get("value", "")
               if value in mapping:
                   item["value"] = mapping[value]
+
+          missing_secret_refs = []
+          rendered_secrets = []
+          for item in container.get("secrets", []):
+              value_from = item.get("valueFrom", "")
+              if value_from in secret_mapping:
+                  secret_ref, required = secret_mapping[value_from]
+                  secret_ref = secret_ref.strip()
+                  if not secret_ref:
+                      if required:
+                          missing_secret_refs.append(item.get("name", value_from))
+                      continue
+                  item["valueFrom"] = secret_ref
+              rendered_secrets.append(item)
+          if missing_secret_refs:
+              raise SystemExit(
+                  "Missing ECS secret reference config: " + ", ".join(missing_secret_refs)
+              )
+          container["secrets"] = rendered_secrets
 
           # Optional DB_ENGINE override; prod defaults to PostgreSQL if unset.
           db_engine = env_value("DB_ENGINE").strip()
