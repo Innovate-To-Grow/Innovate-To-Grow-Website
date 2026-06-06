@@ -1,4 +1,5 @@
 {% extends "admin/change_list.html" %}
+{% load static %}
 
 {% block content %}
     <div class="mb-6">
@@ -11,8 +12,7 @@
             <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-teal-600" style="font-size:28px">speed</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Avg Daily</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ avg_daily_views|default:"0" }}</p></div></div></div>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
+        <script src="{% static 'cms/js/pageview_charts.js' %}"></script>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">

@@ -6,6 +6,7 @@ instead of only being caught by a report-uri violation in production.
 """
 
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 from django.test import Client, RequestFactory, TestCase
@@ -63,12 +64,26 @@ class CSPHeaderTests(TestCase):
         _, header = self._header()
         self.assertIn("report-uri /csp-report/", header)
 
-    def test_script_src_allows_admin_material_web_dependencies(self):
+    def test_script_src_allows_only_required_admin_script_hosts(self):
         _, header = self._header()
         self.assertIn("script-src 'self'", header)
         self.assertIn("https://esm.run", header)
         self.assertIn("https://cdnjs.cloudflare.com", header)
-        self.assertIn("https://cdn.jsdelivr.net", header)
+        self.assertNotIn("https://cdn.jsdelivr.net", header)
+
+    def test_pageview_admin_uses_local_chart_asset(self):
+        template = (
+            Path(__file__).resolve().parents[3]
+            / "cms"
+            / "templates"
+            / "admin"
+            / "cms"
+            / "pageview"
+            / "change_list.html"
+        ).read_text()
+        self.assertIn("{% static 'cms/js/pageview_charts.js' %}", template)
+        self.assertNotIn("cdn.jsdelivr.net", template)
+        self.assertNotIn("chart.js@", template)
 
     def test_does_not_overwrite_existing_enforcing_header(self):
         def _view_with_enforcing(_request):
