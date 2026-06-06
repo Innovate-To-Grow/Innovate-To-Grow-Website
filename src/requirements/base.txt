@@ -20,7 +20,7 @@ pdf417gen>=0.7.0
 openpyxl>=3.1.5
 
 # Google APIs
-google-api-python-client>=2.195.0
+google-api-python-client>=2.197.0
 google-auth>=2.53.0
 # Floor raised to 2.2.0: every google-adk 1.x and the 2.0/2.1 releases pin
 # starlette<1, which is incompatible with the starlette>=1.0.1 floor below
