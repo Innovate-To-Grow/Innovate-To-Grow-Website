@@ -102,9 +102,23 @@
     return node;
   };
 
+  app.safeHref = function (href) {
+    // Strip ASCII whitespace and C0 control chars (tab/newline/CR included) before
+    // testing the scheme: browsers ignore those when parsing href, so "java\tscript:"
+    // would otherwise slip past the scheme check and still execute.
+    const value = String(href || "").replace(/[\x00-\x20]+/g, "");
+    // Allow only relative URLs and explicit http(s) schemes. Any other scheme
+    // (javascript:, data:, vbscript:, ...) is rejected to prevent XSS via href.
+    const schemeMatch = /^[a-z][a-z0-9+.-]*:/i.exec(value);
+    if (schemeMatch && !/^https?:$/i.test(schemeMatch[0])) {
+      return "about:blank";
+    }
+    return value;
+  };
+
   app.link = function (href, text) {
     const node = document.createElement("a");
-    node.href = href;
+    node.href = app.safeHref(href);
     node.textContent = text;
     node.target = "_blank";
     node.rel = "noopener";
