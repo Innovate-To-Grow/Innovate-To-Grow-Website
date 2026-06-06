@@ -914,3 +914,46 @@ button {
         right: 2px;
         border-top-right-radius: 2px;
     }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* Table cell selectors are anchored as table.table th/td.<cls> so the hoisted
+   declarations win over Bootstrap's table.table th rules, matching the original
+   inline specificity without using !important. */
+table.table th.th-head-cell {
+    background-color: #efefef;
+    color: #002856;
+}
+
+table.table th.th-row-cell {
+    background-color: #fff;
+    color: #002856;
+}
+
+table.table.width-full {
+    width: 100%;
+}
+
+table.table td.winner-cse-cell {
+    color: #FFBF3C;
+}
+
+table.table td.sched-cell {
+    color: #002856;
+    background-color: rgb(247, 247, 247);
+}
+
+.center-blue {
+    text-align: center;
+    color: #002856;
+}
+
+.sched-event {
+    color: rgb(0, 40, 86);
+    font-weight: bolder;
+    text-align: center;
+}
+
+/* ck- prefix: bare .text-center already exists in theme-open-framework.css */
+.ck-text-center {
+    text-align: center;
+}
