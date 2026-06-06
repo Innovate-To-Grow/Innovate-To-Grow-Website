@@ -304,3 +304,12 @@ button {
         width: 100%;
     }
 }
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+.ck-text-red {
+    color: #e74c3c;
+}
+
+.ck-heading-center {
+    text-align: center;
+}
