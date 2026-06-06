@@ -31,7 +31,9 @@ class MagicLoginView(APIView):
         if magic.is_expired:
             return Response({"detail": "This login link has expired."}, status=status.HTTP_400_BAD_REQUEST)
 
-        magic.record_use()
+        if not magic.try_mark_used():
+            return Response({"detail": "This login link has already been used."}, status=status.HTTP_400_BAD_REQUEST)
+
         payload = build_auth_success_payload(magic.member, "Login successful.")
         payload["redirect_to"] = get_magic_login_redirect_path(magic.campaign)
         return Response(payload, status=status.HTTP_200_OK)

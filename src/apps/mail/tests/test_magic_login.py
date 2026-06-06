@@ -53,7 +53,7 @@ class MagicLoginViewTests(APITestCase):
         self.assertEqual(response.data["next_step"], "complete_profile")
         self.assertTrue(response.data["requires_profile_completion"])
 
-    def test_token_can_be_reused(self):
+    def test_token_cannot_be_reused(self):
         token = MagicLoginToken.generate_token()
         MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
 
@@ -61,8 +61,8 @@ class MagicLoginViewTests(APITestCase):
         self.assertEqual(first_response.status_code, 200)
 
         second_response = self.client.post("/mail/magic-login/", {"token": token}, format="json")
-        self.assertEqual(second_response.status_code, 200)
-        self.assertIn("access", second_response.data)
+        self.assertEqual(second_response.status_code, 400)
+        self.assertEqual(second_response.data["detail"], "This login link has already been used.")
 
     def test_used_token_records_used_at(self):
         token = MagicLoginToken.generate_token()
@@ -74,18 +74,6 @@ class MagicLoginViewTests(APITestCase):
         magic.refresh_from_db()
         self.assertTrue(magic.is_used)
         self.assertIsNotNone(magic.used_at)
-
-    def test_reuse_updates_used_at(self):
-        token = MagicLoginToken.generate_token()
-        magic = MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
-
-        self.client.post("/mail/magic-login/", {"token": token}, format="json")
-        magic.refresh_from_db()
-        first_used_at = magic.used_at
-
-        self.client.post("/mail/magic-login/", {"token": token}, format="json")
-        magic.refresh_from_db()
-        self.assertGreaterEqual(magic.used_at, first_used_at)
 
     def test_expired_token_still_returns_existing_error(self):
         token = MagicLoginToken.generate_token()
@@ -102,36 +90,13 @@ class MagicLoginViewTests(APITestCase):
         self.assertEqual(response.data["detail"], "This login link has expired.")
 
 
-class MagicLoginTokenRecordUseTests(APITestCase):
-    """The ``record_use`` method should update ``is_used`` and ``used_at``
-    on every call, allowing the same token to be used multiple times."""
-
+class MagicLoginTokenConsumptionTests(APITestCase):
     def setUp(self):
         self.member = make_member(email="race@example.com")
         self.campaign = EmailCampaign.objects.create(subject="s", body="b")
 
-    def test_record_use_sets_is_used_and_used_at(self):
-        token = MagicLoginToken.generate_token()
-        magic = MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
-
-        self.assertFalse(magic.is_used)
-        magic.record_use()
-        magic.refresh_from_db()
-        self.assertTrue(magic.is_used)
-        self.assertIsNotNone(magic.used_at)
-
-    def test_record_use_updates_used_at_on_repeated_calls(self):
-        token = MagicLoginToken.generate_token()
-        magic = MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
-
-        magic.record_use()
-        first_used_at = magic.used_at
-
-        magic.record_use()
-        self.assertGreaterEqual(magic.used_at, first_used_at)
-
     @patch("apps.mail.views.MagicLoginView.throttle_classes", [])
-    def test_multiple_login_requests_all_succeed(self):
+    def test_multiple_login_requests_only_first_succeeds(self):
         token = MagicLoginToken.generate_token()
         MagicLoginToken.objects.create(token=token, member=self.member, campaign=self.campaign)
 
@@ -139,7 +104,8 @@ class MagicLoginTokenRecordUseTests(APITestCase):
         second = self.client.post("/mail/magic-login/", {"token": token}, format="json")
 
         self.assertEqual(first.status_code, 200)
-        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(second.data["detail"], "This login link has already been used.")
 
 
 class MagicLoginViewErrorTests(APITestCase):
@@ -175,6 +141,14 @@ class MagicLoginTokenModelTests(APITestCase):
     def test_is_valid_true_for_fresh_token(self):
         token = MagicLoginToken.objects.create(token="fresh", member=self.member)
         self.assertTrue(token.is_valid)
+
+    def test_default_expiry_is_seven_days(self):
+        before = timezone.now() + timedelta(days=7)
+        token = MagicLoginToken.objects.create(token="default-expiry", member=self.member)
+        after = timezone.now() + timedelta(days=7)
+
+        self.assertGreaterEqual(token.expires_at, before)
+        self.assertLessEqual(token.expires_at, after)
 
     def test_is_valid_false_when_used(self):
         token = MagicLoginToken.objects.create(token="used", member=self.member)
