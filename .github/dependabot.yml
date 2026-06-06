@@ -25,6 +25,21 @@ updates:
           - "Django"
           - "djangorestframework*"
           - "django-*"
+    ignore:
+      # Python 3.12-only from these versions on; the project targets 3.11.
+      # Keep in sync with the comments in src/requirements/{base,production}.txt.
+      - dependency-name: "django-unfold"
+        versions: [">=0.92"]
+      - dependency-name: "django-redis"
+        versions: [">=6.0"]
+      # google-adk pins opentelemetry-api<=1.41.1; the otel trio must stay <1.42
+      # until google-adk lifts that pin (see src/requirements/base.txt comments).
+      - dependency-name: "opentelemetry-api"
+        versions: [">=1.42"]
+      - dependency-name: "opentelemetry-sdk"
+        versions: [">=1.42"]
+      - dependency-name: "opentelemetry-exporter-otlp-proto-http"
+        versions: [">=1.42"]
 
   # React/Vite frontend
   - package-ecosystem: npm
@@ -58,6 +73,11 @@ updates:
           - "eslint"
           - "@eslint/*"
           - "typescript-eslint"
+    ignore:
+      # The eslint 10 major must move together with eslint core and
+      # typescript-eslint; bundle that migration manually.
+      - dependency-name: "@eslint/js"
+        versions: [">=10"]
 
   # Archived event-pages Flask app
   - package-ecosystem: pip
