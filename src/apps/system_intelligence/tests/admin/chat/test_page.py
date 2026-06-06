@@ -39,6 +39,9 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertContains(
             response, "/admin/system-intelligence/actions/00000000-0000-0000-0000-000000000000/preview/"
         )
+        self.assertContains(
+            response, "/admin/system-intelligence/exports/00000000-0000-0000-0000-000000000000/download/"
+        )
         self.assertContains(response, "Plan Mode")
         self.assertContains(response, 'data-si-command="retry"')
         self.assertContains(response, 'data-si-command="compact"')
