@@ -3,12 +3,32 @@ Admin forms for authn app.
 """
 
 from django import forms
+from django.apps import apps as django_apps
+from django.contrib import admin
 from django.contrib.auth.forms import SetPasswordMixin
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from unfold.forms import UserChangeForm, UserCreationForm
 
 from ...models import Member
+
+
+def admin_app_choices():
+    """(app_label, verbose_name) choices for every Django app with registered admin models.
+
+    Computed lazily (call at form ``__init__`` time, not import time) so the admin
+    registry is fully populated. This is the menu of apps a member's ``admin_apps``
+    grant can draw from — see apps.core.access.user_can_access_app.
+    """
+    labels = sorted({model._meta.app_label for model in admin.site._registry})
+    choices = []
+    for label in labels:
+        try:
+            verbose = django_apps.get_app_config(label).verbose_name
+        except LookupError:
+            verbose = label
+        choices.append((label, f"{verbose} ({label})"))
+    return choices
 
 
 class Base64ImageWidget(forms.ClearableFileInput):
@@ -115,12 +135,27 @@ class MemberCreationForm(UserCreationForm):
 class MemberChangeForm(UserChangeForm):
     """User change form for the Member model with Unfold-styled password widget."""
 
+    # Per-app admin grant. ``admin_apps`` is a JSONField (list of app labels), so it
+    # cannot use admin ``filter_horizontal``; render it as a checkbox multi-select whose
+    # choices are the project's registered admin apps. Replaces the old per-model
+    # ``user_permissions`` widget.
+    admin_apps = forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_("Admin apps"),
+        help_text=_("Apps this member may manage. Superusers (I2G Master) ignore this list."),
+    )
+
     class Meta(UserChangeForm.Meta):
         model = Member
         fields = "__all__"
         widgets = {
             "profile_image": Base64ImageWidget(attrs={"accept": "image/png,image/jpeg"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["admin_apps"].choices = admin_app_choices()
 
     def clean_profile_image(self):
         value = self.cleaned_data.get("profile_image")

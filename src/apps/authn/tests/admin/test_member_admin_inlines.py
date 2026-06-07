@@ -17,7 +17,8 @@ Member = get_user_model()
 
 @override_settings(ROOT_URLCONF="config.urls")
 class MemberAdminInlineVisibilityTest(TestCase):
-    """Inline sections must render for every staff user, not just superusers."""
+    """Inline sections must render for any staff member granted the ``authn`` app
+    (not only superusers), and must be hidden from staff without that grant."""
 
     # noinspection PyPep8Naming
     def setUp(self):
@@ -40,6 +41,7 @@ class MemberAdminInlineVisibilityTest(TestCase):
             password="staff123",
             is_staff=True,
             is_active=True,
+            admin_apps=["authn"],
         )
         ContactEmail.objects.create(
             member=self.staff_user,
@@ -80,12 +82,30 @@ class MemberAdminInlineVisibilityTest(TestCase):
         resp = self.client.get(self._change_url())
         self._assert_inlines_visible(resp)
 
-    def test_staff_user_without_explicit_perms_sees_inlines(self):
-        """Before the fix, this test would fail because the staff user
-        lacked authn.view_contactemail / authn.add_contactemail etc."""
+    def test_staff_user_with_authn_access_sees_inlines(self):
+        """A non-superuser staff member granted the ``authn`` app sees the inlines —
+        per-app access, not per-model Django permissions (apps.core.access)."""
         self.client.force_login(self.staff_user)
         resp = self.client.get(self._change_url())
         self._assert_inlines_visible(resp)
+
+    def test_staff_user_without_authn_access_is_forbidden(self):
+        """A staff member without the ``authn`` grant cannot open the Member change page."""
+        other_app_staff = Member.objects.create_user(
+            password="staff123",
+            is_staff=True,
+            is_active=True,
+            admin_apps=["cms"],
+        )
+        ContactEmail.objects.create(
+            member=other_app_staff,
+            email_address="cmsonly@example.com",
+            email_type="primary",
+            verified=True,
+        )
+        self.client.force_login(other_app_staff)
+        resp = self.client.get(self._change_url())
+        self.assertEqual(resp.status_code, 403)
 
 
 @override_settings(ROOT_URLCONF="config.urls", ADMIN_REQUIRE_CONFIRMATION=False)
