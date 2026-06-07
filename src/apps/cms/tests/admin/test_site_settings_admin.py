@@ -7,6 +7,7 @@ from django.test import RequestFactory, TestCase
 
 from apps.cms.admin.layout.site_settings import SiteSettingsAdmin, SiteSettingsForm
 from apps.cms.models import CMSPage, SiteSettings
+from apps.event.tests.helpers import make_admin
 
 
 class SiteSettingsFormTests(TestCase):
@@ -96,8 +97,15 @@ class SiteSettingsAdminSaveTests(TestCase):
 
     def test_has_add_permission_blocked_once_singleton_exists(self):
         request = self.factory.get("/admin/cms/sitesettings/")
+        request.user = make_admin(apps=["cms"], email="cms-settings@example.com")
         self.assertTrue(self.admin.has_add_permission(request))
         SiteSettings.objects.create()
+        self.assertFalse(self.admin.has_add_permission(request))
+
+    def test_has_add_permission_denied_for_non_cms_staff(self):
+        """Even with no singleton yet, a non-cms staff member cannot add SiteSettings."""
+        request = self.factory.get("/admin/cms/sitesettings/")
+        request.user = make_admin(apps=["event"], email="event-settings@example.com")
         self.assertFalse(self.admin.has_add_permission(request))
 
     def test_has_delete_permission_always_false(self):

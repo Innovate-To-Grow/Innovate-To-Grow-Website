@@ -4,8 +4,8 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.authn.models import Member
 from apps.cms.models import CMSBlock, CMSPage
+from apps.event.tests.helpers import make_admin
 
 
 class CMSLivePreviewSyncCacheTest(TestCase):
@@ -15,10 +15,7 @@ class CMSLivePreviewSyncCacheTest(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = Member.objects.create_user(
-            password="testpass123",
-            is_staff=True,
-        )
+        self.staff = make_admin(apps=["cms"], email="cms-cache@example.com")
         self.page = CMSPage.objects.create(
             slug="live-preview-test",
             route="/live-preview-test",
