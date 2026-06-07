@@ -1,8 +1,8 @@
-from django.contrib.auth.models import Permission
 from django.core.exceptions import PermissionDenied
 
 from apps.authn.models import Member
 from apps.cms.models import CMSPage, NewsFeedSource
+from apps.event.tests.helpers import make_admin
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 
@@ -82,19 +82,29 @@ class SystemIntelligenceDBActionTests(SystemIntelligenceActionBase):
         self.assertEqual(source.name, "Changed elsewhere")
 
     def test_permission_denied_on_approve_keeps_action_pending(self):
+        # A staff member granted a different app (no "cms" access) cannot approve
+        # an action that mutates a cms model -- per-app access is required.
         source = NewsFeedSource.objects.create(
             name="UC Merced", source_key="ucm", feed_url="https://example.com/feed.xml", is_active=True
         )
         response = actions.propose_db_update("cms", "NewsFeedSource", str(source.pk), {"name": "Approved"})
-        narrow_user = Member.objects.create_user(password="narrowpass")
-        narrow_user.is_staff = True
-        narrow_user.save(update_fields=["is_staff"])
-        narrow_user.user_permissions.add(
-            Permission.objects.get(codename="view_newsfeedsource", content_type__app_label="cms")
-        )
+        other_app_user = make_admin(apps=["event"], email="event-staff@example.com")
         with self.assertRaises(PermissionDenied):
-            actions.approve_action_request(response["action_request"]["id"], narrow_user)
+            actions.approve_action_request(response["action_request"]["id"], other_app_user)
         action = SystemIntelligenceActionRequest.objects.get(id=response["action_request"]["id"])
         self.assertEqual(action.status, SystemIntelligenceActionRequest.STATUS_PENDING)
         source.refresh_from_db()
         self.assertEqual(source.name, "UC Merced")
+
+    def test_approve_succeeds_for_staff_granted_target_app(self):
+        # A staff member granted the target model's app ("cms") may approve a
+        # cms action even without superuser -- per-app access grants full CRUD.
+        source = NewsFeedSource.objects.create(
+            name="UC Merced", source_key="ucm", feed_url="https://example.com/feed.xml", is_active=True
+        )
+        response = actions.propose_db_update("cms", "NewsFeedSource", str(source.pk), {"name": "Approved"})
+        cms_user = make_admin(apps=["cms"], email="cms-staff@example.com")
+        action = actions.approve_action_request(response["action_request"]["id"], cms_user)
+        self.assertEqual(action.status, SystemIntelligenceActionRequest.STATUS_APPLIED)
+        source.refresh_from_db()
+        self.assertEqual(source.name, "Approved")
