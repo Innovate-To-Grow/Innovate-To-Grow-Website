@@ -42,6 +42,7 @@ def _chat_config():
             "reject": reverse("admin:system_intelligence_action_reject", args=[UUID_PLACEHOLDER]),
             "preview": reverse("admin:system_intelligence_action_preview", args=[UUID_PLACEHOLDER]),
             "fullPreview": reverse("admin:system_intelligence_action_full_preview", args=[UUID_PLACEHOLDER]),
+            "exportDownload": reverse("admin:system_intelligence_export_download", args=[UUID_PLACEHOLDER]),
         },
         "uuidPlaceholder": UUID_PLACEHOLDER,
     }
