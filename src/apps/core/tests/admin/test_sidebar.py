@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.test import SimpleTestCase, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import NoReverseMatch, reverse
 
 from apps.event.tests.helpers import make_superuser
@@ -70,6 +70,22 @@ class AdminSidebarNavigationTest(SimpleTestCase):
             items_by_title["Assistant Settings"]["link"],
             "/admin/system_intelligence/systemintelligenceconfig/",
         )
+
+    def test_system_intelligence_chat_and_usage_sidebar_active_states_do_not_overlap(self):
+        navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
+        system_intelligence_section = next(
+            section for section in navigation if section["title"] == "System Intelligence"
+        )
+        items_by_title = {item["title"]: item for item in system_intelligence_section["items"]}
+        factory = RequestFactory()
+
+        chat_request = factory.get("/admin/system-intelligence/")
+        usage_request = factory.get("/admin/system-intelligence/usage/")
+
+        self.assertTrue(items_by_title["Chat"]["active"](chat_request))
+        self.assertFalse(items_by_title["Usage Dashboard"]["active"](chat_request))
+        self.assertFalse(items_by_title["Chat"]["active"](usage_request))
+        self.assertTrue(items_by_title["Usage Dashboard"]["active"](usage_request))
 
     def test_members_navigation_includes_auth_entries(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]

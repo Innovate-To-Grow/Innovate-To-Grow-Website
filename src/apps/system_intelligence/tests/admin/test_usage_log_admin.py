@@ -98,3 +98,7 @@ class UsageLogAdminTests(TestCase):
     def test_conversation_detail_renders_with_inline(self):
         response = self.client.get(f"/admin/system_intelligence/assistantconversationlog/{self.convo.pk}/change/")
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "si-transcript")
+        self.assertContains(response, self.message.prompt)
+        self.assertContains(response, "A helpful reply.")
+        self.assertContains(response, "Total: 15")

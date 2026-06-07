@@ -203,6 +203,35 @@ textarea:focus {
     border-color: var(--md-sys-color-outline-variant) !important;
 }
 
+.dark #content,
+.dark #content-main,
+.dark #changelist,
+.dark .results,
+.dark table,
+.dark th,
+.dark td,
+.dark .readonly,
+.dark .form-row,
+.dark .fieldBox,
+.dark .paginator {
+    color: var(--md-sys-color-on-surface) !important;
+}
+
+.dark .text-font-default-light,
+.dark .text-font-important-light,
+.dark .text-base-900,
+.dark .text-important {
+    color: var(--md-sys-color-on-surface) !important;
+}
+
+.dark .text-font-subtle-light,
+.dark .text-base-400,
+.dark .text-base-500,
+.dark .help,
+.dark .quiet {
+    color: var(--md-sys-color-on-surface-variant) !important;
+}
+
 /* Unfold renders app-list titles as table captions; use padding for reliable spacing. */
 .module > .bg-base-50.mb-6 > table > caption {
     line-height: 1.4 !important;
@@ -537,4 +566,92 @@ md-switch.i2g-md-toggle__component {
 .i2g-admin-action .material-symbols-outlined,
 .i2g-admin-object-tools .addlink .material-symbols-outlined {
     font-size: 18px !important;
+}
+
+.si-usage-hero,
+.si-usage-metric-card {
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.08);
+}
+
+.dark .si-usage-hero,
+.dark .si-usage-metric-card {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
+}
+
+.si-transcript {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 72rem;
+}
+
+.si-transcript-empty {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.875rem;
+}
+
+.si-transcript-turn {
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--md-sys-shape-corner-large);
+    padding: 1rem;
+}
+
+.dark .si-transcript-turn {
+    background: var(--md-sys-color-surface-container);
+}
+
+.si-transcript-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-bottom: 0.875rem;
+}
+
+.si-transcript-chip {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 24%, transparent);
+    border-radius: 999px;
+    color: var(--md-sys-color-on-surface);
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    padding: 0 0.625rem;
+}
+
+.si-transcript-block {
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    display: grid;
+    gap: 0.5rem;
+    padding-top: 0.875rem;
+}
+
+.si-transcript-block + .si-transcript-block {
+    margin-top: 0.875rem;
+}
+
+.si-transcript-label {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.si-transcript-text,
+.si-transcript-json {
+    color: var(--md-sys-color-on-surface);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.si-transcript-json {
+    background: var(--md-sys-color-surface-container-low);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--md-sys-shape-corner-small);
+    overflow-x: auto;
+    padding: 0.75rem;
+    white-space: pre-wrap;
 }
