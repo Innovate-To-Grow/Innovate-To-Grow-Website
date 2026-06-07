@@ -5,23 +5,16 @@ import {
   getRefreshToken,
   persistAuthSession,
 } from './storage';
-import type { LoginResponse } from './types';
+import type { LoginResponse, UnsubscribeResponse } from './types';
 
-export const ticketAutoLogin = async (token: string): Promise<LoginResponse> => {
-  const response = await authApi.post<LoginResponse>('/event/ticket-login/', { token });
+export const loginLinkAutoLogin = async (token: string): Promise<LoginResponse> => {
+  const response = await authApi.post<LoginResponse>('/mail/login-link/', { token });
   persistAuthSession(response.data);
   return response.data;
 };
 
-export const magicAutoLogin = async (token: string): Promise<LoginResponse> => {
-  const response = await authApi.post<LoginResponse>('/mail/magic-login/', { token });
-  persistAuthSession(response.data);
-  return response.data;
-};
-
-export const unsubscribeAutoLogin = async (token: string): Promise<LoginResponse> => {
-  const response = await authApi.post<LoginResponse>('/authn/unsubscribe-login/', { token });
-  persistAuthSession(response.data);
+export const unsubscribeAutoLogin = async (token: string): Promise<UnsubscribeResponse> => {
+  const response = await authApi.post<UnsubscribeResponse>('/authn/unsubscribe-login/', { token });
   return response.data;
 };
 

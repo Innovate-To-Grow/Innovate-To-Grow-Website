@@ -160,7 +160,7 @@ Reachability is decided by a shared denylist (used by both this CLI and the AI a
 - Django internals: `admin.LogEntry`, `sessions.Session`, `contenttypes`, the stock `auth` app (`Group`/`Permission`).
 - Anything matching a denied name part — `*credential*`, `*config*`, `*permission*`, `*session*`, `*token*`, `logentry`.
 - Service configs and AI/chat models (`core.AWSCredentialConfig`, `system_intelligence.ChatMessage`, …), CMS structure (`cms.CMSPage`, `cms.CMSBlock`).
-- The CLI's own tables (`cli_admin.*`) and other auth-sensitive tables (`mail.MagicLoginToken`, `authn.AdminInvitation`).
+- The CLI's own tables (`cli_admin.*`) and other auth-sensitive tables (`mail.LoginLinkToken`, `authn.AdminInvitation`).
 
 **Fields that are never writable** (even on otherwise-writable models): `password`, `*secret*`, `*token*`, `*api_key*`, `is_staff`, `is_superuser`, `groups`, `permissions`, plus primary keys and non-editable / auto-timestamp fields.
 

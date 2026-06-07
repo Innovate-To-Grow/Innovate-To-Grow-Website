@@ -1,9 +1,9 @@
 """Email campaign model admin."""
 
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from apps.core.admin import BaseModelAdmin
-from apps.mail.models import EmailCampaign
+from apps.mail.models import EmailCampaign, LoginLinkToken
 
 from .display import CampaignDisplayMixin
 from .forms import EmailCampaignForm
@@ -44,12 +44,20 @@ class EmailCampaignAdmin(
     list_filter = ("status", AudienceTypeFilter)
     search_fields = ("subject",)
     ordering = ("-created_at",)
+    actions = ["revoke_login_links_action"]
     actions_detail = [
         "preview_email_action",
         "preview_recipients_action",
         "import_gmail_html_action",
         "send_campaign_action",
     ]
+
+    @admin.action(description="Revoke login links (invalidate emailed sign-in links)")
+    def revoke_login_links_action(self, request, queryset):
+        from apps.mail.services.login_links import revoke_login_links
+
+        revoked = revoke_login_links(LoginLinkToken.objects.filter(campaign__in=queryset))
+        self.message_user(request, f"Revoked {revoked} login link(s).", messages.SUCCESS)
 
     fieldsets = (
         (
@@ -72,7 +80,17 @@ class EmailCampaignAdmin(
         ),
         (
             "Campaign",
-            {"fields": ("subject", "login_redirect_path", "include_unsubscribe_header", "body_format", "body")},
+            {
+                "fields": (
+                    "subject",
+                    "login_redirect_path",
+                    "login_link_validity_days",
+                    "login_link_reusable",
+                    "include_unsubscribe_header",
+                    "body_format",
+                    "body",
+                )
+            },
         ),
     )
     filter_horizontal = ("selected_members", "exclude_members")

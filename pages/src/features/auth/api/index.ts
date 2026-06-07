@@ -4,6 +4,6 @@ export { register, login, requestLoginCode, requestEmailAuthCode, verifyLoginCod
 export { hasRequiredNameFields } from './profileCompletion';
 export { getProfile, updateProfileFields, uploadProfileImage, getAccountEmails } from './profile';
 export { getSafeInternalRedirectPath, buildCompleteProfilePath, getPostAuthPath, getEmailAuthSourcePath } from './redirects';
-export { ticketAutoLogin, magicAutoLogin, unsubscribeAutoLogin, impersonateAutoLogin, logout, isAuthenticated } from './session';
+export { loginLinkAutoLogin, unsubscribeAutoLogin, impersonateAutoLogin, logout, isAuthenticated } from './session';
 export { isProfileCompletionRequired, setProfileCompletionRequired, clearProfileCompletionRequired, getAccessToken, getRefreshToken, getStoredUser, setTokens, persistAuthSession, updateStoredUser, clearTokens } from './storage';
 export type { User, AuthTokens, AuthNextStep, EmailAuthSource, EmailAuthFlow, LoginResponse, EmailAuthRequestResponse, EmailAuthVerifyResponse, RegisterResponse, MessageResponse, VerificationTokenResponse, AccountEmailsResponse, ProfileResponse, ContactEmail, ContactPhone } from './types';

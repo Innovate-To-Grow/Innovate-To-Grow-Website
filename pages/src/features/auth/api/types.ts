@@ -28,6 +28,11 @@ export interface EmailAuthRequestResponse {
   message: string;
 }
 
+export interface UnsubscribeResponse {
+  message: string;
+  unsubscribed: boolean;
+}
+
 export interface EmailAuthVerifyResponse extends LoginResponse {
   next_step: AuthNextStep;
   requires_profile_completion: boolean;

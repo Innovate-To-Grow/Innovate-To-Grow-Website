@@ -11,7 +11,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 | `cms` | CMS pages and blocks, news, analytics, menus, footer, site settings | `CMSPage`, `CMSBlock`, `CMSAsset`, `NewsArticle`, `NewsFeedSource`, `PageView`, `Menu`, `FooterContent`, `SiteSettings` |
 | `event` | Event registration, ticketing, schedule, check-in | `Event`, `EventRegistration`, `Ticket`, `Question`, `CheckIn`, `CheckInRecord`, `CurrentProjectSchedule`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` |
 | `projects` | Past project archives and sharing | `Semester`, `Project`, `PastProjectShare` |
-| `mail` | Email campaigns and delivery | `EmailCampaign`, `RecipientLog`, `MagicLoginToken` |
+| `mail` | Email campaigns and delivery | `EmailCampaign`, `RecipientLog`, `LoginLinkToken` |
 | `sponsors` | Sponsor management | Sponsor models |
 
 ## Base model: ProjectControlModel

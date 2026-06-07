@@ -4,6 +4,7 @@ import {Layout} from '@/features/layout';
 import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';
 import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
+import {LegacyLoginLinkRedirect} from './LegacyLoginLinkRedirect';
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
 
 // Matches the inline spinner in pages/index.html (#root:empty::before) so
@@ -48,10 +49,9 @@ const SchedulePage = React.lazy(() => import('@/routes/SchedulePage').then(m => 
 const AcknowledgementPage = React.lazy(() => import('@/routes/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
 const EventArchivePage = React.lazy(() => import('@/routes/EventArchivePage').then(m => ({default: m.EventArchivePage})));
 const EventRegistrationPage = React.lazy(() => import('@/routes/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
-const TicketLoginPage = React.lazy(() => import('@/routes/TicketLoginPage').then(m => ({default: m.TicketLoginPage})));
 const SubscribePage = React.lazy(() => import('@/routes/SubscribePage').then(m => ({default: m.SubscribePage})));
 const UnsubscribeLoginPage = React.lazy(() => import('@/routes/UnsubscribeLoginPage').then(m => ({default: m.UnsubscribeLoginPage})));
-const MagicLoginPage = React.lazy(() => import('@/routes/MagicLoginPage').then(m => ({default: m.MagicLoginPage})));
+const LoginLinkPage = React.lazy(() => import('@/routes/LoginLinkPage').then(m => ({default: m.LoginLinkPage})));
 const EmailAuthLinkPage = React.lazy(() => import('@/routes/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
 const ImpersonateLoginPage = React.lazy(() => import('@/routes/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
@@ -93,9 +93,12 @@ export const router = createBrowserRouter([
             {path: 'subscribe', element: lazyRoute(<SubscribePage/>)},
 
             // Auto-login from email links
-            {path: 'ticket-login', element: lazyRoute(<TicketLoginPage/>)},
+            {path: 'login-link', element: lazyRoute(<LoginLinkPage/>)},
+            // Legacy aliases: previously-sent emails point at /magic-login (still
+            // valid tokens) and /ticket-login (tokens already invalidated).
+            {path: 'magic-login', element: <LegacyLoginLinkRedirect/>},
+            {path: 'ticket-login', element: <LegacyLoginLinkRedirect/>},
             {path: 'unsubscribe-login', element: lazyRoute(<UnsubscribeLoginPage/>)},
-            {path: 'magic-login', element: lazyRoute(<MagicLoginPage/>)},
             {path: 'email-auth-link', element: lazyRoute(<EmailAuthLinkPage/>)},
             {path: 'impersonate-login', element: lazyRoute(<ImpersonateLoginPage/>)},
 

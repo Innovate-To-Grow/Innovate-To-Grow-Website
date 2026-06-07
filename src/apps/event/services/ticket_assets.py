@@ -12,13 +12,7 @@ from pdf417gen import encode, render_image
 from apps.event.models import EventRegistration
 
 _TICKET_TOKEN_SALT = "event-ticket-access"
-_TICKET_LOGIN_SALT = "event-ticket-login"
 _TICKET_ACCESS_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
-_TICKET_LOGIN_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
-
-
-class TicketLoginTokenError(ValueError):
-    """Base error for invalid ticket login tokens."""
 
 
 def build_ticket_access_token(registration: EventRegistration) -> str:
@@ -36,34 +30,6 @@ def get_registration_from_access_token(token: str) -> EventRegistration:
         return EventRegistration.objects.select_related("event", "ticket", "member").get(pk=registration_id)
     except ObjectDoesNotExist as exc:
         raise ValueError("Ticket not found.") from exc
-
-
-def build_ticket_login_token(member) -> str:
-    """Create a signed token that allows one-click login from a ticket email."""
-    return signing.dumps({"member_id": str(member.pk)}, salt=_TICKET_LOGIN_SALT, compress=True)
-
-
-def get_member_from_login_token(token: str):
-    """Validate a ticket login token and return the associated Member.
-
-    The token is reusable for its full lifetime (30 days) so that users can
-    click the email link repeatedly without being locked out. Security relies
-    on the signed, time-limited token itself rather than one-time consumption.
-    """
-    from apps.authn.models import Member
-
-    try:
-        payload = signing.loads(token, salt=_TICKET_LOGIN_SALT, max_age=_TICKET_LOGIN_MAX_AGE)
-        member_id = payload["member_id"]
-    except signing.BadSignature as exc:
-        raise TicketLoginTokenError("Invalid or expired login link.") from exc
-
-    try:
-        member = Member.objects.get(pk=member_id, is_active=True)
-    except Member.DoesNotExist as exc:
-        raise TicketLoginTokenError("Account not found.") from exc
-
-    return member
 
 
 def build_backend_absolute_url(path: str, request=None) -> str:

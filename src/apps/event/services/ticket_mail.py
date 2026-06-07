@@ -19,8 +19,6 @@ from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_
 from apps.event.models import EventRegistration
 from apps.event.services.calendar import build_google_calendar_url, generate_ics
 from apps.event.services.ticket_assets import (
-    build_frontend_absolute_url,
-    build_ticket_login_token,
     generate_ticket_barcode_png_bytes,
 )
 
@@ -81,6 +79,29 @@ def _send_via_ses(*, config, mime_message) -> bool:
         return False
 
 
+TICKET_LOGIN_REDIRECT_PATH = "/event-registration"
+
+
+def _issue_ticket_login_link(registration: EventRegistration) -> str:
+    """Issue a unified login link for a ticket email, replacing any earlier one.
+
+    Resending a ticket email revokes the previous link so only the most recent
+    email's link works — same semantics as the old per-registration token slot.
+    """
+    from apps.mail.services.login_links import issue_login_link, revoke_login_links
+
+    if not registration.member_id:
+        return ""
+
+    revoke_login_links(registration.login_tokens.all())
+    return issue_login_link(
+        member_id=registration.member_id,
+        registration=registration,
+        redirect_path=TICKET_LOGIN_REDIRECT_PATH,
+        validity_days=registration.event.ticket_login_validity_days,
+    )
+
+
 def send_ticket_email(registration: EventRegistration) -> None:
     """
     Send a ticket confirmation email with an inline barcode.
@@ -90,8 +111,7 @@ def send_ticket_email(registration: EventRegistration) -> None:
     """
     config = _load_config()
 
-    login_token = build_ticket_login_token(registration.member)
-    login_url = build_frontend_absolute_url(f"/ticket-login?token={login_token}")
+    login_url = _issue_ticket_login_link(registration)
 
     event = registration.event
     google_cal_url = build_google_calendar_url(

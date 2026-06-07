@@ -11,6 +11,18 @@ class CheckInEventWideMigrationTest(TransactionTestCase):
     migrate_from = [("event", "0003_add_schedule_sync_log")]
     migrate_to = [("event", "0004_checkin_event_wide_unique")]
 
+    def tearDown(self):
+        # Restore the schema to the latest migration state. The backward
+        # migrate below also unapplies every migration that depends on a
+        # later event migration (e.g. mail.0015's EventRegistration FK), and
+        # migrating forward only to `migrate_to` would leave those unapplied —
+        # poisoning the schema for TransactionTestCases that run after this
+        # one in a single-process full-suite run.
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        super().tearDown()
+
     def test_duplicate_checkin_records_keep_earliest_record(self):
         executor = MigrationExecutor(connection)
         executor.migrate(self.migrate_from)
