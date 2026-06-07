@@ -179,13 +179,12 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   lint:
-    name: Code Style Check
+    name: Python Code Style Check
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
     uses: ./.github/workflows/lint.yml
     with:
       run-python: true
-      run-frontend: false
 
   secrets-scan:
     name: Secrets Scan
@@ -394,8 +393,8 @@ jobs:
             --changed-files changed-files.txt \
             >> "$GITHUB_OUTPUT"
 
-  django-build:
-    name: Django Test (${{ matrix.app }})
+  django-test-coverage:
+    name: Django Test and Coverage (${{ matrix.app }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs:
@@ -593,10 +592,10 @@ jobs:
             src/coverage-cli-admin-safe-orm.json
           if-no-files-found: warn
 
-  frontend-required:
-    name: Frontend Required
+  frontend-lint:
+    name: Frontend ESLint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
@@ -619,10 +618,56 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+  frontend-typecheck:
+    name: Frontend TypeScript Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run TypeScript type check
         run: |
           npx tsc --noEmit --project tsconfig.app.json
           npx tsc --noEmit --project tsconfig.node.json
+
+  frontend-unit-coverage:
+    name: Frontend Unit Test Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run tests with coverage
         run: npm run test:coverage
@@ -673,22 +718,33 @@ jobs:
             pages/coverage/coverage-summary.json
           if-no-files-found: warn
 
+  frontend-build:
+    name: Frontend CI Build Artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build frontend for CI and E2E
         run: npm run build
         env:
           VITE_API_BASE_URL: http://127.0.0.1:8000
-
-      - name: Enforce bundle budgets
-        run: npm run size
-
-      - name: npm audit (moderate and above)
-        run: npm audit --audit-level=moderate
-
-      - name: Generate npm SBOM
-        run: npm sbom --sbom-format cyclonedx --json > ../npm-sbom.cdx.json
-
-      - name: Check npm licenses
-        run: python3 ../scripts/ci/check_npm_licenses.py --package-lock package-lock.json --output ../npm-license-report.json
 
       - name: Upload frontend dist for CI
         if: ${{ always() }}
@@ -697,6 +753,95 @@ jobs:
           name: frontend-dist-ci
           path: pages/dist
           if-no-files-found: warn
+
+  frontend-bundle-size:
+    name: Frontend Bundle Size
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - frontend-build
+      - changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download CI frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist-ci
+          path: pages/dist
+
+      - name: Enforce bundle budgets
+        run: npm run size
+
+  frontend-security-audit:
+    name: Frontend npm Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (moderate and above)
+        run: npm audit --audit-level=moderate
+
+  frontend-supply-chain-report:
+    name: Frontend SBOM and License Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate npm SBOM
+        run: npm sbom --sbom-format cyclonedx --json > ../npm-sbom.cdx.json
+
+      - name: Check npm licenses
+        run: python3 ../scripts/ci/check_npm_licenses.py --package-lock package-lock.json --output ../npm-license-report.json
 
       - name: Upload frontend supply chain artifacts
         if: ${{ always() }}
@@ -707,6 +852,43 @@ jobs:
             npm-sbom.cdx.json
             npm-license-report.json
           if-no-files-found: warn
+
+  frontend-required:
+    name: Frontend Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - frontend-lint
+      - frontend-typecheck
+      - frontend-unit-coverage
+      - frontend-build
+      - frontend-bundle-size
+      - frontend-security-audit
+      - frontend-supply-chain-report
+      - changes
+    if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
+    steps:
+      - name: Summarize frontend required checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] != "success"
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All frontend required checks passed.")
+          PY
 
   frontend-prod-build:
     name: Frontend Production Build Artifact
@@ -941,7 +1123,7 @@ jobs:
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
-      - django-build
+      - django-test-coverage
       - cli-admin-coverage
       - python-security-audit
       - semgrep-sast
@@ -1379,7 +1561,7 @@ jobs:
       - secrets-scan
       - backend-db-migration
       - backend-static-and-prod-check
-      - django-build
+      - django-test-coverage
       - cli-admin-coverage
       - frontend-required
       - frontend-prod-build
