@@ -9,7 +9,6 @@ from .registration import (
     VerifyPhoneCodeView,
 )
 from .schedule import CurrentEventScheduleView
-from .ticket_login import TicketAutoLoginView
 
 __all__ = [
     "CheckInScanView",
@@ -23,5 +22,4 @@ __all__ = [
     "SendPhoneCodeView",
     "VerifyPhoneCodeView",
     "CurrentEventScheduleView",
-    "TicketAutoLoginView",
 ]

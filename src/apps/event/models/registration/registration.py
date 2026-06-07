@@ -50,22 +50,6 @@ class EventRegistration(ProjectControlModel):
         editable=False,
     )
     ticket_email_error = models.TextField(blank=True, default="")
-    ticket_login_token_hash = models.CharField(
-        max_length=64,
-        blank=True,
-        default="",
-        editable=False,
-    )
-    ticket_login_token_sent_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        editable=False,
-    )
-    ticket_login_token_used_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        editable=False,
-    )
 
     class Meta:
         ordering = ["-created_at"]

@@ -4,7 +4,7 @@ Authentication, member management, contact information, and email-related endpoi
 
 ## Overview
 
-The auth system is built on `rest_framework_simplejwt` with custom extensions for email-based verification, RSA password encryption, and multiple auto-login paths. All auth endpoints live under `/authn/` except magic login (`/mail/magic-login/`).
+The auth system is built on `rest_framework_simplejwt` with custom extensions for email-based verification, RSA password encryption, and multiple auto-login paths. All auth endpoints live under `/authn/` except the emailed login link (`/mail/login-link/`, legacy alias `/mail/magic-login/`).
 
 ## Code locations
 
@@ -233,15 +233,15 @@ Authenticated. Requires verification token from email challenge flow. Permanentl
 
 ## Auto-login endpoints
 
-Three token-based login paths for email-originated actions:
+Token-based paths for email-originated actions:
 
 | Endpoint | Token source | Service |
 |----------|-------------|---------|
-| `POST /authn/unsubscribe-login/` | Unsubscribe link in emails | `src/apps/authn/views/auth/` |
-| `POST /event/ticket-login/` | QR code on event ticket | `src/apps/event/views/` |
-| `POST /mail/magic-login/` | Magic link in campaign email | `src/apps/mail/views.py` |
+| `POST /authn/unsubscribe-login/` | Unsubscribe link in emails (no JWT; preference-only) | `src/apps/authn/views/` |
+| `POST /mail/login-link/` | Login link in campaign and ticket emails (`LoginLinkToken`) | `src/apps/mail/views/login_link.py` |
+| `POST /mail/magic-login/` | Legacy alias of `/mail/login-link/` for already-sent emails | `src/apps/mail/views/login_link.py` |
 
-Each validates the token and returns JWT access/refresh tokens.
+`/mail/login-link/` validates the token (validity frozen at send time; one-time by default, reusable per campaign/event opt-in) and returns JWT access/refresh tokens plus `redirect_to`.
 
 ## Admin invitation
 

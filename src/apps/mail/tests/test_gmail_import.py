@@ -152,6 +152,29 @@ class GmailImportServiceTest(TestCase):
         self.assertNotIn("victim-token", fragment)
         self.assertNotIn("/magic-login?token=", fragment)
 
+    def test_fetch_message_html_fragment_replaces_login_link_token_links(self):
+        mailbox = _FakeMailbox(
+            [
+                SimpleNamespace(
+                    uid="1001",
+                    subject="Subject",
+                    date=datetime(2026, 4, 6, 9, 0),
+                    html=(
+                        '<html><body><a href="https://example.test/login-link?token=victim-token">'
+                        "Log in</a> or /login-link?token=victim-token</body></html>"
+                    ),
+                    text="Log in",
+                )
+            ]
+        )
+
+        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+            fragment = fetch_message_html_fragment("1001")
+
+        self.assertIn("{{ login_link }}", fragment)
+        self.assertNotIn("victim-token", fragment)
+        self.assertNotIn("/login-link?token=", fragment)
+
     def test_fetch_message_html_fragment_replaces_cached_magic_login_token_links(self):
         from django.core.cache import cache as dj_cache
 

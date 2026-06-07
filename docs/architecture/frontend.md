@@ -46,7 +46,7 @@ Defined in `pages/src/app/router.tsx`. All page components are lazy-loaded with 
 | `/news`, `/news/:id` | News list and detail | |
 | `/current-projects`, `/past-projects`, `/projects/:id` | Project pages | |
 | `/event-registration`, `/events/:eventSlug`, `/schedule` | Event pages | |
-| `/ticket-login`, `/magic-login`, `/unsubscribe-login` | Auto-login from email links | |
+| `/login-link` (legacy aliases `/magic-login`, `/ticket-login`), `/unsubscribe-login` | Auto-login / unsubscribe from email links | |
 | `/subscribe` | Newsletter subscription | |
 | `*` (catch-all) | `CMSPageComponent` | Loads page content from CMS by route |
 

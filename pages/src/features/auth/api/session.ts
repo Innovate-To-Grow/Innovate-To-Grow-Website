@@ -7,14 +7,8 @@ import {
 } from './storage';
 import type { LoginResponse, UnsubscribeResponse } from './types';
 
-export const ticketAutoLogin = async (token: string): Promise<LoginResponse> => {
-  const response = await authApi.post<LoginResponse>('/event/ticket-login/', { token });
-  persistAuthSession(response.data);
-  return response.data;
-};
-
-export const magicAutoLogin = async (token: string): Promise<LoginResponse> => {
-  const response = await authApi.post<LoginResponse>('/mail/magic-login/', { token });
+export const loginLinkAutoLogin = async (token: string): Promise<LoginResponse> => {
+  const response = await authApi.post<LoginResponse>('/mail/login-link/', { token });
   persistAuthSession(response.data);
   return response.data;
 };

@@ -41,10 +41,9 @@ describe('Router', () => {
     'events/:eventSlug',
     'event-registration',
     'membership/events',
-    'ticket-login',
     'subscribe',
     'unsubscribe-login',
-    'magic-login',
+    'login-link',
     'email-auth-link',
     'impersonate-login',
   ];

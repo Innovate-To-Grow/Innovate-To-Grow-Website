@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from apps.core.models import ProjectControlModel
@@ -54,6 +55,21 @@ class EmailCampaign(ProjectControlModel):
         default="/account",
         verbose_name="Post-login destination",
         help_text="Internal site page where recipients land after one-click login.",
+    )
+    login_link_validity_days = models.PositiveSmallIntegerField(
+        default=7,
+        validators=[MinValueValidator(1), MaxValueValidator(90)],
+        verbose_name="Login link validity (days)",
+        help_text="How long each recipient's {{login_link}} stays valid after this campaign is sent (1-90 days).",
+    )
+    login_link_reusable = models.BooleanField(
+        default=False,
+        verbose_name="Reusable login links",
+        help_text=(
+            "Allow recipients to sign in with their {{login_link}} repeatedly until it expires. "
+            "Off: each link works exactly once. This is checked at login time, so unticking it "
+            "later immediately blocks further reuse of links from this campaign."
+        ),
     )
 
     audience_type = models.CharField(max_length=32, choices=ALL_AUDIENCE_CHOICES, default="subscribers")

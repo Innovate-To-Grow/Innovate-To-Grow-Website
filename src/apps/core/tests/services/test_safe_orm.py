@@ -35,7 +35,7 @@ from apps.core.services.db_tools.safe_orm import (
     validate_write_payload,
 )
 from apps.event.tests.helpers import make_member, make_superuser
-from apps.mail.models import MagicLoginToken
+from apps.mail.models import LoginLinkToken
 from apps.projects.models import Project, Semester
 
 Member = get_user_model()
@@ -63,7 +63,7 @@ class SafetyTests(TestCase):
     def test_is_model_denied_variants(self):
         self.assertTrue(is_model_denied(LogEntry, write=False))  # denied app
         self.assertTrue(is_model_denied(Group, write=False))  # denied label
-        self.assertTrue(is_model_denied(MagicLoginToken, write=False))  # denied name part "token"
+        self.assertTrue(is_model_denied(LoginLinkToken, write=False))  # denied name part "token"
         self.assertFalse(is_model_denied(Semester, write=False))
 
     def test_safe_model_fields_excludes_filefield(self):

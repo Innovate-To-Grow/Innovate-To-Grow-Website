@@ -20,8 +20,10 @@ interface TokenCase {
 }
 
 const cases: TokenCase[] = [
-  {name: 'magic', path: '/magic-login', endpoint: '**/mail/magic-login/', invalidText: INVALID_LOGIN, noTokenText: NO_TOKEN},
-  {name: 'ticket', path: '/ticket-login', endpoint: '**/event/ticket-login/', invalidText: INVALID_LOGIN, noTokenText: NO_TOKEN},
+  {name: 'login-link', path: '/login-link', endpoint: '**/mail/login-link/', invalidText: INVALID_LOGIN, noTokenText: NO_TOKEN},
+  // Legacy aliases from already-sent emails redirect into /login-link.
+  {name: 'magic-alias', path: '/magic-login', endpoint: '**/mail/login-link/', invalidText: INVALID_LOGIN, noTokenText: NO_TOKEN},
+  {name: 'ticket-alias', path: '/ticket-login', endpoint: '**/mail/login-link/', invalidText: INVALID_LOGIN, noTokenText: NO_TOKEN},
   {
     name: 'impersonate',
     path: '/impersonate-login',
@@ -32,7 +34,7 @@ const cases: TokenCase[] = [
 ];
 
 for (const c of cases) {
-  test(`${c.name}-login success flips the menu to the member email`, c.name === 'magic' ? {tag: '@core'} : {}, async ({page}) => {
+  test(`${c.name}-login success flips the menu to the member email`, c.name === 'login-link' ? {tag: '@core'} : {}, async ({page}) => {
     await mockAccountDashboard(page, {email: SUCCESS.user.email});
     await page.route(c.endpoint, (route) =>
       route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(SUCCESS)}),
@@ -55,6 +57,26 @@ for (const c of cases) {
     await expect(page.getByText(c.noTokenText)).toBeVisible();
   });
 }
+
+test('login-link rejection with a stored session continues to /account', async ({page}) => {
+  // First click: token exchange succeeds and persists the session.
+  await mockAccountDashboard(page, {email: SUCCESS.user.email});
+  await page.route('**/mail/login-link/', (route) =>
+    route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(SUCCESS)}),
+  );
+  await page.goto('/login-link?token=once', {waitUntil: 'domcontentloaded'});
+  await expectSignedInAs(page, SUCCESS.user.email);
+
+  // Second click on the (now consumed) one-time link: backend rejects, but the
+  // stored session should route the member to /account instead of an error.
+  await page.unroute('**/mail/login-link/');
+  await page.route('**/mail/login-link/', (route) =>
+    route.fulfill({status: 400, contentType: 'application/json', body: JSON.stringify({detail: 'already used'})}),
+  );
+  await page.goto('/login-link?token=once', {waitUntil: 'domcontentloaded'});
+  await page.waitForURL('**/account**');
+  await expect(page.getByText(INVALID_LOGIN)).toHaveCount(0);
+});
 
 test('unsubscribe link unsubscribes without signing the member in', async ({page}) => {
   await page.route('**/authn/unsubscribe-login/', (route) =>

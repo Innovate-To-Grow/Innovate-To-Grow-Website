@@ -72,7 +72,7 @@ See [CMS & News](cms-and-news.md) for details.
 
 ### Mail (`/mail/`)
 
-- `/mail/magic-login/` — Token-based auto-login from campaign emails
+- `/mail/login-link/` — Token-based auto-login from campaign and ticket emails (legacy alias: `/mail/magic-login/`)
 
 ### Admin API (`/admin-api/`)
 
