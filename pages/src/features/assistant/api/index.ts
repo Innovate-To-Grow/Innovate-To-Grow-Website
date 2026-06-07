@@ -87,13 +87,21 @@ export function isBudgetError(error: unknown): boolean {
  *
  * The function never throws: every transport/HTTP failure is mapped to an
  * `error` (or `budget`) result so the component's render logic stays simple.
+ *
+ * `sessionId` is an opaque per-conversation id sent as `session_id` so the
+ * backend can correlate turns within a single conversation.
  */
 export async function sendAssistantMessage(
   message: string,
   history: AssistantChatMessage[],
+  sessionId: string,
 ): Promise<AssistantChatResult> {
   try {
-    const response = await api.post<AssistantChatBody>('/assistant/chat/', {message, history});
+    const response = await api.post<AssistantChatBody>('/assistant/chat/', {
+      message,
+      history,
+      session_id: sessionId,
+    });
     const body = response.data;
     if (body.available) {
       return {status: 'ok', reply: body.reply, usage: body.usage};

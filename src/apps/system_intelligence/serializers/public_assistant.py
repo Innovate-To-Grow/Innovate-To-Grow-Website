@@ -20,6 +20,10 @@ class PublicAssistantChatSerializer(serializers.Serializer):
     # validation (and report a clear, single error message).
     message = serializers.CharField(allow_blank=True, trim_whitespace=False)
     history = PublicAssistantHistoryItemSerializer(many=True, required=False, default=list)
+    # Client-supplied conversation id for audit grouping. Deliberately NOT
+    # validated as a UUID here: a garbage id must group as a standalone turn,
+    # never reject (400) the chat request.
+    session_id = serializers.CharField(required=False, allow_blank=True, default="")
 
     def __init__(self, *args, max_message_chars: int | None = None, **kwargs):
         super().__init__(*args, **kwargs)

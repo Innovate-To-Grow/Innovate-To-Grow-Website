@@ -10,6 +10,7 @@ the frontend widget can render an unavailable state instead of erroring.
 """
 
 import logging
+import time
 
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -19,7 +20,7 @@ from rest_framework.views import APIView
 
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import normalize_bedrock_model_id
-from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog, SystemIntelligenceConfig
 from apps.system_intelligence.serializers import PublicAssistantChatSerializer
 from apps.system_intelligence.services.public_assistant import (
     answer_public_question,
@@ -28,6 +29,7 @@ from apps.system_intelligence.services.public_assistant import (
     hash_ip,
     record_usage,
 )
+from apps.system_intelligence.services.usage_log import log_assistant_turn
 
 logger = logging.getLogger(__name__)
 
@@ -88,40 +90,86 @@ class PublicAssistantChatView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         message = serializer.validated_data["message"]
+        session_id = serializer.validated_data.get("session_id", "")
         history = serializer.validated_data.get("history", [])
         history_limit = config.public_assistant_max_history_messages
         # history[-0:] is the whole list, so handle a zero limit explicitly.
         history = history[-history_limit:] if history_limit else []
 
+        # ip_hash is computed up front so every terminal branch can audit it.
+        ip_hash = hash_ip(client_ip(request) or "")
+        model_id = normalize_bedrock_model_id(config.public_model_id) or ""
+
         # 3. AWS / model not configured -> graceful unavailable.
         aws_config = AWSCredentialConfig.load()
-        if not aws_config.is_configured or not normalize_bedrock_model_id(config.public_model_id):
+        if not aws_config.is_configured or not model_id:
+            log_assistant_turn(
+                source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
+                session_id=session_id,
+                ip_hash=ip_hash,
+                prompt=message,
+                status=AssistantMessageLog.STATUS_UNAVAILABLE,
+                model_id=model_id,
+                config=config,
+            )
             return _unavailable_response(config)
 
         # 4. Per-IP token budget (checked BEFORE the model call).
-        ip = client_ip(request)
-        ip_hash = hash_ip(ip or "")
         if not check_budget(ip_hash, config.public_assistant_ip_token_limit):
+            log_assistant_turn(
+                source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
+                session_id=session_id,
+                ip_hash=ip_hash,
+                prompt=message,
+                status=AssistantMessageLog.STATUS_BUDGET,
+                model_id=model_id,
+                config=config,
+            )
             return Response(
                 {"detail": _BUDGET_MESSAGE, "code": "budget_exceeded"},
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
         # 5. Invoke the tool-free model.
+        started = time.monotonic()
         try:
             result = answer_public_question(message=message, history=history, config=config)
         except Exception:
             logger.exception("Public assistant invocation failed")
+            log_assistant_turn(
+                source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
+                session_id=session_id,
+                ip_hash=ip_hash,
+                prompt=message,
+                status=AssistantMessageLog.STATUS_ERROR,
+                model_id=model_id,
+                latency_ms=int((time.monotonic() - started) * 1000),
+                config=config,
+            )
             return Response(
                 {"detail": _ERROR_MESSAGE, "code": "assistant_error"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
+        latency_ms = int((time.monotonic() - started) * 1000)
 
         # 6. Record usage and return.
         usage = result.get("usage") or {}
         spent = usage.get("totalTokens") or 0
         record_usage(ip_hash, spent, config.public_assistant_ip_token_window_seconds)
+        reply = result.get("text", "")
+        log_assistant_turn(
+            source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
+            session_id=session_id,
+            ip_hash=ip_hash,
+            prompt=message,
+            reply=reply,
+            status=AssistantMessageLog.STATUS_OK,
+            model_id=model_id,
+            token_usage=usage,
+            latency_ms=latency_ms,
+            config=config,
+        )
         return Response(
-            {"available": True, "reply": result.get("text", ""), "usage": usage},
+            {"available": True, "reply": reply, "usage": usage},
             status=status.HTTP_200_OK,
         )

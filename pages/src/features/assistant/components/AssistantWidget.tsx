@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useReducer, useState} from 'react';
+import {useCallback, useEffect, useReducer, useRef, useState} from 'react';
 
 import {
   DEFAULT_ASSISTANT_CONFIG,
@@ -8,6 +8,7 @@ import {
   type AssistantConfig,
 } from '@/features/assistant/api';
 
+import {clearConversation, getSessionId, loadTranscript, saveTranscript} from '../sessionStore';
 import {MessageInput} from './MessageInput';
 import {MessageList} from './MessageList';
 import type {DisplayMessage} from './types';
@@ -30,9 +31,17 @@ type ChatAction =
   | {type: 'reply'; message: DisplayMessage}
   | {type: 'error'; message: string}
   | {type: 'unavailable'; message: string}
-  | {type: 'retry'};
+  | {type: 'retry'}
+  | {type: 'reset'};
 
 const initialState: ChatState = {messages: [], loading: false, error: null, unavailable: null};
+
+/** Lazy-init reducer state from any transcript persisted in sessionStorage. */
+function initState(): ChatState {
+  const messages = loadTranscript();
+  seedIdCounter(messages);
+  return {...initialState, messages};
+}
 
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
@@ -47,6 +56,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {...state, loading: false, error: null, unavailable: action.message};
     case 'retry':
       return {...state, error: null, loading: true};
+    case 'reset':
+      // Drop the whole conversation back to the empty initial state.
+      return initialState;
     default:
       return state;
   }
@@ -56,6 +68,21 @@ let idCounter = 0;
 function createId(): string {
   idCounter += 1;
   return `m${idCounter}`;
+}
+
+/**
+ * Advance the id counter past any `m<n>` ids in a restored transcript. The
+ * counter is module state that resets on every page load, so without this a
+ * restored transcript (m1, m2, …) would collide with freshly minted ids —
+ * duplicate React keys in the message list.
+ */
+function seedIdCounter(messages: DisplayMessage[]): void {
+  for (const message of messages) {
+    const numeric = Number(message.id.slice(1));
+    if (message.id.startsWith('m') && Number.isInteger(numeric) && numeric > idCounter) {
+      idCounter = numeric;
+    }
+  }
 }
 
 /** Map display messages to the wire format, keeping the last N turns. */
@@ -76,8 +103,19 @@ const ChatIcon = () => (
 export function AssistantWidget() {
   const [open, setOpen] = useState(false);
   const [config, setConfig] = useState<AssistantConfig>(DEFAULT_ASSISTANT_CONFIG);
-  const [state, dispatch] = useReducer(chatReducer, initialState);
+  const [state, dispatch] = useReducer(chatReducer, undefined, initState);
   const [lastAttempt, setLastAttempt] = useState<string | null>(null);
+  // Opaque per-conversation id; minted/restored on mount and rotated on reset.
+  const sessionIdRef = useRef<string>(getSessionId());
+  // Bumped on "New conversation" so a reply from a request that was still in
+  // flight when the user reset never lands in the fresh conversation.
+  const generationRef = useRef(0);
+
+  // Persist the transcript on every change so a page reload restores it. The
+  // empty case is persisted too, so "New conversation" clears across reloads.
+  useEffect(() => {
+    saveTranscript(state.messages);
+  }, [state.messages]);
 
   // Fetch config once; fall back to hardcoded defaults if the request fails.
   useEffect(() => {
@@ -101,7 +139,10 @@ export function AssistantWidget() {
   // transcript BEFORE it. `text` is sent only as `message`, never duplicated
   // into `history`.
   const runChat = useCallback(async (text: string, priorTurns: DisplayMessage[]) => {
-    const result = await sendAssistantMessage(text, toHistory(priorTurns));
+    const generation = generationRef.current;
+    const result = await sendAssistantMessage(text, toHistory(priorTurns), sessionIdRef.current);
+    // The conversation was reset while this request was in flight: drop it.
+    if (generation !== generationRef.current) return;
     switch (result.status) {
       case 'ok':
         dispatch({type: 'reply', message: {id: createId(), role: 'assistant', content: result.reply}});
@@ -136,6 +177,16 @@ export function AssistantWidget() {
     void runChat(lastAttempt, state.messages.slice(0, -1));
   }, [lastAttempt, runChat, state.messages]);
 
+  const handleNewConversation = useCallback(() => {
+    // Drop the stored transcript + rotate to a fresh session id, then reset the
+    // in-memory state and any pending retry.
+    clearConversation();
+    sessionIdRef.current = getSessionId();
+    generationRef.current += 1;
+    dispatch({type: 'reset'});
+    setLastAttempt(null);
+  }, []);
+
   const showStarters = state.messages.length === 0 && config.starter_questions.length > 0;
 
   return (
@@ -144,14 +195,24 @@ export function AssistantWidget() {
         <div className="itg-assistant__panel" role="dialog" aria-label="Chat assistant" aria-modal="false">
           <div className="itg-assistant__header">
             <h2 className="itg-assistant__title">Ask Innovate to Grow</h2>
-            <button
-              type="button"
-              className="itg-assistant__close"
-              aria-label="Close chat assistant"
-              onClick={() => setOpen(false)}
-            >
-              ×
-            </button>
+            <div className="itg-assistant__header-actions">
+              <button
+                type="button"
+                className="itg-assistant__new"
+                aria-label="Start a new conversation"
+                onClick={handleNewConversation}
+              >
+                New
+              </button>
+              <button
+                type="button"
+                className="itg-assistant__close"
+                aria-label="Close chat assistant"
+                onClick={() => setOpen(false)}
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           {disabled ? (

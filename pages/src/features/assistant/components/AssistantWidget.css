@@ -85,6 +85,33 @@
   font-weight: 600;
 }
 
+.itg-assistant__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.itg-assistant__new {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--itg-radius-button, 4px);
+  background: transparent;
+  color: var(--itg-color-white, #fff);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background var(--itg-transition-fast, 0.2s) ease;
+}
+
+.itg-assistant__new:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.itg-assistant__new:focus-visible {
+  outline: 2px solid var(--itg-color-white, #fff);
+  outline-offset: 1px;
+}
+
 .itg-assistant__close {
   display: inline-flex;
   align-items: center;
@@ -126,7 +153,6 @@
   max-width: 85%;
   padding: 0.5rem 0.75rem;
   border-radius: 14px;
-  white-space: pre-wrap;
   word-wrap: break-word;
 }
 
@@ -143,6 +169,90 @@
   background: var(--itg-color-primary, #0f2d52);
   color: var(--itg-color-white, #fff);
   border-bottom-right-radius: 4px;
+  /* User input is plain text; preserve their newlines and spacing. */
+  white-space: pre-wrap;
+}
+
+/* The welcome message is plain config text (never markdown); keep newlines. */
+.itg-assistant__bubble--welcome {
+  white-space: pre-wrap;
+}
+
+/* ---- Markdown body (assistant bubbles only) ---------------------------- */
+/* Plain-text fallback shown while the markdown chunk loads; keep newlines. */
+.itg-assistant__markdown-fallback {
+  white-space: pre-wrap;
+}
+
+.itg-assistant__bubble--assistant > :first-child {
+  margin-top: 0;
+}
+
+.itg-assistant__bubble--assistant > :last-child {
+  margin-bottom: 0;
+}
+
+.itg-assistant__bubble--assistant p {
+  margin: 0.4rem 0;
+}
+
+.itg-assistant__bubble--assistant ul,
+.itg-assistant__bubble--assistant ol {
+  margin: 0.4rem 0;
+  padding-left: 1.25rem;
+}
+
+.itg-assistant__bubble--assistant li {
+  margin: 0.15rem 0;
+}
+
+.itg-assistant__bubble--assistant a {
+  color: var(--itg-color-primary, #0f2d52);
+  text-decoration: underline;
+}
+
+.itg-assistant__bubble--assistant code {
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.06);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}
+
+.itg-assistant__bubble--assistant pre {
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.75rem;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.itg-assistant__bubble--assistant pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.itg-assistant__bubble--assistant blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--itg-color-border, #e0e0e0);
+  color: var(--itg-color-text-secondary, #666);
+}
+
+.itg-assistant__bubble--assistant table {
+  margin: 0.5rem 0;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.itg-assistant__bubble--assistant th,
+.itg-assistant__bubble--assistant td {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--itg-color-border, #e0e0e0);
+  text-align: left;
 }
 
 /* ---- Starter questions ------------------------------------------------- */

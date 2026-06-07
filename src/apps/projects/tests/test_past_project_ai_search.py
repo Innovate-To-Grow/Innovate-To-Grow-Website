@@ -8,7 +8,11 @@ from rest_framework.test import APIClient
 from apps.core.models import AWSCredentialConfig
 from apps.projects.models import Project, Semester
 from apps.projects.services.ai_search import find_ai_search_candidates
-from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.models import (
+    AssistantConversationLog,
+    AssistantMessageLog,
+    SystemIntelligenceConfig,
+)
 from apps.system_intelligence.services.public_assistant import hash_ip, record_usage
 
 Member = get_user_model()
@@ -168,3 +172,74 @@ class PastProjectAISearchAPIViewTests(TestCase):
         self.assertIn("Battery Health Monitor", titles)
         self.assertNotIn("Current Solar Project", titles)
         self.assertNotIn("Unpublished Solar Project", titles)
+
+    def test_success_logs_source_user_and_results(self):
+        self.authenticate()
+        with patch(
+            "apps.projects.views.ai_search.run_past_project_ai_search",
+            return_value={
+                "project_ids": [str(self.past_project_a.id)],
+                "usage": {"inputTokens": 10, "outputTokens": 3, "totalTokens": 13},
+            },
+        ):
+            response = self.client.post("/projects/past-ai-search/", {"query": "solar"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        message = AssistantMessageLog.objects.get()
+        convo = message.conversation
+        self.assertEqual(convo.source, AssistantConversationLog.SOURCE_AI_SEARCH)
+        self.assertEqual(convo.user_id, self.member.id)
+        self.assertIsNone(convo.session_id)
+        self.assertEqual(message.status, AssistantMessageLog.STATUS_OK)
+        self.assertEqual(message.prompt, "solar")
+        self.assertEqual(
+            message.results,
+            [{"id": str(self.past_project_a.id), "project_title": "Solar Sensor Irrigation Network"}],
+        )
+
+    def test_unavailable_logs_unavailable_row(self):
+        self.authenticate()
+        self.config.default_model_id = ""
+        self.config.public_assistant_model_id = ""
+        self.config.save()
+
+        response = self.client.post("/projects/past-ai-search/", {"query": "solar"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["available"])
+        message = AssistantMessageLog.objects.get()
+        self.assertEqual(message.status, AssistantMessageLog.STATUS_UNAVAILABLE)
+        self.assertEqual(message.conversation.user_id, self.member.id)
+
+    def test_error_logs_error_row(self):
+        self.authenticate()
+        with patch(
+            "apps.projects.views.ai_search.run_past_project_ai_search",
+            side_effect=RuntimeError("boom"),
+        ):
+            response = self.client.post("/projects/past-ai-search/", {"query": "solar"}, format="json")
+
+        self.assertEqual(response.status_code, 502)
+        message = AssistantMessageLog.objects.get()
+        self.assertEqual(message.status, AssistantMessageLog.STATUS_ERROR)
+
+    def test_recorder_failure_does_not_break_response(self):
+        self.authenticate()
+        with (
+            patch(
+                "apps.projects.views.ai_search.run_past_project_ai_search",
+                return_value={
+                    "project_ids": [str(self.past_project_a.id)],
+                    "usage": {"inputTokens": 10, "outputTokens": 3, "totalTokens": 13},
+                },
+            ),
+            patch(
+                "apps.system_intelligence.services.usage_log.recorder.AssistantMessageLog.objects.create",
+                side_effect=RuntimeError("audit down"),
+            ),
+        ):
+            response = self.client.post("/projects/past-ai-search/", {"query": "solar"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["available"])
+        self.assertEqual(AssistantMessageLog.objects.count(), 0)
