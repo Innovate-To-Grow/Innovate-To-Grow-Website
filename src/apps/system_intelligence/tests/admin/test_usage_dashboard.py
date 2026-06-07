@@ -49,6 +49,8 @@ class UsageDashboardViewTest(TestCase):
         self.assertContains(response, "Assistant Usage")
         # The banner reason is embedded in the injected JSON.
         self.assertContains(response, "unconfigured")
+        self.assertContains(response, "si-usage-refresh")
+        self.assertNotContains(response, "si-usage-fullscreen")
         fetch.assert_called_once()
 
     def test_page_redirects_anonymous_to_login(self):
@@ -67,6 +69,7 @@ class UsageDashboardViewTest(TestCase):
         self.assertIn("cloudwatch", payload)
         self.assertIn("local", payload)
         self.assertIn("counts", payload["local"])
+        self.assertIn("rolling_24h", payload["local"])
         self.assertFalse(payload["cloudwatch"]["available"])
 
     def test_data_endpoint_force_bypasses_cache(self):

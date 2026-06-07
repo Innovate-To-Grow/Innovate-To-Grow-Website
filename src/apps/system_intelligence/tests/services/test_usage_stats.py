@@ -213,7 +213,10 @@ class ComputeLocalAggregatesTest(TestCase):
             last_activity_at=self.now,
         )
         AssistantMessageLog.objects.create(
-            conversation=self.convo, prompt="What is I2G?", status=AssistantMessageLog.STATUS_OK
+            conversation=self.convo,
+            prompt="What is I2G?",
+            status=AssistantMessageLog.STATUS_OK,
+            token_usage={"inputTokens": 100, "outputTokens": 50, "totalTokens": 150},
         )
         AssistantMessageLog.objects.create(
             conversation=self.convo, prompt="What is I2G?", status=AssistantMessageLog.STATUS_OK
@@ -230,7 +233,13 @@ class ComputeLocalAggregatesTest(TestCase):
 
         admin_user = make_superuser(email="aggadmin@example.com")
         chat = ChatConversation.objects.create(created_by=admin_user)
-        ChatMessage.objects.create(conversation=chat, role="assistant", content="ok", token_usage={"totalTokens": 70})
+        ChatMessage.objects.create(
+            conversation=chat,
+            role="assistant",
+            content="ok",
+            model_id="anthropic.claude",
+            token_usage={"inputTokens": 30, "outputTokens": 40, "totalTokens": 70},
+        )
         ChatMessage.objects.create(conversation=chat, role="assistant", content="ok", token_usage={"totalTokens": None})
         ChatMessage.objects.create(conversation=chat, role="assistant", content="ok", token_usage={})
 
@@ -241,6 +250,14 @@ class ComputeLocalAggregatesTest(TestCase):
         self.assertEqual(counts["conversations_30d"], 2)
         self.assertEqual(counts["messages_30d"], 3)  # 2 + 1 message_count
         self.assertEqual(counts["messages_7d"], 3)
+
+    def test_rolling_24h_uses_local_message_logs_and_admin_chat(self):
+        result = compute_local_aggregates()
+        rolling = result["rolling_24h"]
+        self.assertEqual(rolling["input_tokens"], 130)
+        self.assertEqual(rolling["output_tokens"], 90)
+        # Two public/search AssistantMessageLog rows + one admin assistant model call.
+        self.assertEqual(rolling["invocations"], 3)
 
     def test_tokens_by_source_includes_admin_chat_summed_in_python(self):
         result = compute_local_aggregates()
@@ -286,6 +303,7 @@ class ComputeLocalAggregatesTest(TestCase):
             result = compute_local_aggregates()
         self.assertEqual(result["counts"]["conversations_30d"], 0)
         self.assertEqual(result["counts"]["messages_today"], 0)
+        self.assertEqual(result["rolling_24h"], {"input_tokens": 0, "output_tokens": 0, "invocations": 0})
         self.assertEqual(result["recent"], [])
         self.assertEqual(result["top_prompts"], [])
         self.assertEqual(len(result["tokens_by_source"]), 3)

@@ -10,31 +10,27 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
 {{ cloudwatch|json_script:"si-usage-cloudwatch" }}
 {{ local|json_script:"si-usage-local" }}
-<style>
-  /* TV / big-screen mode: bigger type, hide admin chrome, fill the viewport. */
-  html.si-tv-mode #header,
-  html.si-tv-mode #nav-sidebar,
-  html.si-tv-mode .breadcrumbs,
-  html.si-tv-mode #footer,
-  html.si-tv-mode .colMS > #content-related { display: none !important; }
-  html.si-tv-mode #content { margin: 0 !important; padding: 1.5rem !important; }
-  html.si-tv-mode .si-usage-stat-value { font-size: 3rem !important; }
-  html.si-tv-mode .si-usage-card-title { font-size: 1.1rem !important; }
-  html.si-tv-mode .si-usage-chart { height: 360px !important; }
-</style>
 {% endblock %}
 
 {% block content %}
 <div id="si-usage-root" class="mb-6" data-usage-data-url="{% url 'admin:system_intelligence_usage_data' %}">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-base font-semibold text-font-default-light dark:text-font-default-dark">
-      <span class="material-symbols-outlined align-middle mr-1" style="font-size:20px">insights</span>Assistant Usage
-    </h2>
-    <button type="button" id="si-usage-fullscreen"
-            class="inline-flex items-center gap-1 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 py-1.5 text-sm font-medium text-font-default-light dark:text-font-default-dark">
-      <span class="material-symbols-outlined" style="font-size:18px">fullscreen</span>
-      <span id="si-usage-fullscreen-label">Fullscreen</span>
-    </button>
+  <div class="si-usage-hero rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-5 mb-5">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-300">System Intelligence</p>
+        <h2 class="mt-1 text-xl font-semibold text-font-default-light dark:text-font-default-dark">
+          Assistant Usage Dashboard
+        </h2>
+        <p class="mt-1 text-sm text-font-subtle-light dark:text-font-subtle-dark">
+          Application audit logs for live 24-hour counters, plus Bedrock CloudWatch trends when AWS metrics are available.
+        </p>
+      </div>
+      <button type="button" id="si-usage-refresh"
+              class="inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium text-font-default-light dark:text-font-default-dark hover:text-primary-600 dark:hover:text-primary-300">
+        <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
+        <span>Refresh</span>
+      </button>
+    </div>
   </div>
 
   <div id="si-usage-banner" class="hidden mb-4 rounded-default border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 p-4">
@@ -43,17 +39,17 @@
       <p class="text-sm text-amber-800 dark:text-amber-200">
         AWS metrics unavailable (<span id="si-usage-banner-reason">unknown</span>).
         Grant <code>cloudwatch:GetMetricData</code> + <code>cloudwatch:ListMetrics</code> to the IAM user.
-        Local sections below still render.
+        The local 24-hour cards and conversation sections still render from admin audit logs.
       </p>
     </div>
   </div>
 
-  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary-600" style="font-size:28px">login</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Input Tokens (24h)</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_input">0</p></div></div></div>
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-green-600" style="font-size:28px">logout</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Output Tokens (24h)</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_output">0</p></div></div></div>
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-blue-600" style="font-size:28px">bolt</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Invocations (24h)</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_invocations">0</p></div></div></div>
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-orange-600" style="font-size:28px">forum</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Conversations Today</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="conversations_today">0</p></div></div></div>
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-purple-600" style="font-size:28px">chat</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Messages (7d)</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="messages_7d">0</p></div></div></div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Input Tokens (24h)</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_input">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">From local audit logs</p></div><span class="material-symbols-outlined text-primary-600" style="font-size:28px">login</span></div></div>
+    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Output Tokens (24h)</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_output">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">From local audit logs</p></div><span class="material-symbols-outlined text-green-600" style="font-size:28px">logout</span></div></div>
+    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Invocations (24h)</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_invocations">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">Logged assistant turns</p></div><span class="material-symbols-outlined text-blue-600" style="font-size:28px">bolt</span></div></div>
+    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Conversations Today</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="conversations_today">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">Public and search sessions</p></div><span class="material-symbols-outlined text-orange-600" style="font-size:28px">forum</span></div></div>
+    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Messages (7d)</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="messages_7d">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">Recorded public turns</p></div><span class="material-symbols-outlined text-purple-600" style="font-size:28px">chat</span></div></div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -107,7 +103,6 @@
   const dataUrl = root.getAttribute('data-usage-data-url');
   const convoChangeBase = '/admin/system_intelligence/assistantconversationlog/';
   const charts = {};
-  let refreshTimer = null;
 
   function readJson(id) {
     const el = document.getElementById(id);
@@ -119,6 +114,10 @@
   function textColor() { return isDark() ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'; }
 
   function fmt(n) { return Number(n || 0).toLocaleString(); }
+
+  function preferLocal(localValue, cloudwatchValue) {
+    return localValue === undefined || localValue === null ? cloudwatchValue : localValue;
+  }
 
   function setStat(name, value) {
     const el = root.querySelector('[data-stat="' + name + '"]');
@@ -163,9 +162,10 @@
 
   function renderStatCards(cloudwatch, local) {
     const today = (cloudwatch && cloudwatch.today) || {};
-    setStat('today_input', today.input_tokens);
-    setStat('today_output', today.output_tokens);
-    setStat('today_invocations', today.invocations);
+    const rolling = (local && local.rolling_24h) || {};
+    setStat('today_input', preferLocal(rolling.input_tokens, today.input_tokens));
+    setStat('today_output', preferLocal(rolling.output_tokens, today.output_tokens));
+    setStat('today_invocations', preferLocal(rolling.invocations, today.invocations));
     const counts = (local && local.counts) || {};
     setStat('conversations_today', counts.conversations_today);
     setStat('messages_7d', counts.messages_7d);
@@ -244,7 +244,7 @@
 
   function cell(text, extraClass) {
     const td = document.createElement('td');
-    td.className = 'py-1.5 px-2 ' + (extraClass || '');
+    td.className = 'py-1.5 px-2 text-font-default-light dark:text-font-default-dark ' + (extraClass || '');
     td.textContent = text;
     return td;
   }
@@ -333,34 +333,17 @@
   }
 
   function refresh() {
+    const button = document.getElementById('si-usage-refresh');
+    if (button) button.setAttribute('aria-busy', 'true');
     fetch(dataUrl + '?force=1', { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (data) { renderAll(data); })
-      .catch(function () { /* keep the last good render */ });
+      .catch(function () { /* keep the last good render */ })
+      .finally(function () { if (button) button.removeAttribute('aria-busy'); });
   }
 
-  // ---- TV / fullscreen mode -------------------------------------------------
-  const fsButton = document.getElementById('si-usage-fullscreen');
-  fsButton.addEventListener('click', function () {
-    if (document.fullscreenElement) {
-      if (document.exitFullscreen) document.exitFullscreen();
-    } else if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen();
-    }
-  });
-
-  document.addEventListener('fullscreenchange', function () {
-    const label = document.getElementById('si-usage-fullscreen-label');
-    if (document.fullscreenElement) {
-      document.documentElement.classList.add('si-tv-mode');
-      label.textContent = 'Exit Fullscreen';
-      if (!refreshTimer) refreshTimer = setInterval(refresh, 60000);
-    } else {
-      document.documentElement.classList.remove('si-tv-mode');
-      label.textContent = 'Fullscreen';
-      if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
-    }
-  });
+  const refreshButton = document.getElementById('si-usage-refresh');
+  if (refreshButton) refreshButton.addEventListener('click', refresh);
 
   // Initial render from the server-injected JSON (no fetch needed on load).
   renderAll({ cloudwatch: readJson('si-usage-cloudwatch'), local: readJson('si-usage-local') });
