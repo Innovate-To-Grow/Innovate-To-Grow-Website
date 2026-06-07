@@ -1,5 +1,6 @@
 import {useEffect, useRef} from 'react';
 
+import {MarkdownMessage} from './MarkdownMessage';
 import {StarterQuestions} from './StarterQuestions';
 import type {DisplayMessage} from './types';
 
@@ -37,7 +38,9 @@ export function MessageList({
 
   return (
     <div className="itg-assistant__messages" role="log" aria-live="polite" aria-label="Conversation">
-      <div className="itg-assistant__bubble itg-assistant__bubble--assistant">{welcomeMessage}</div>
+      <div className="itg-assistant__bubble itg-assistant__bubble--assistant itg-assistant__bubble--welcome">
+        {welcomeMessage}
+      </div>
 
       {showStarters && (
         <StarterQuestions questions={starterQuestions} disabled={startersDisabled} onSelect={onStarterSelect} />
@@ -46,9 +49,11 @@ export function MessageList({
       {messages.map((message) => (
         <div
           key={message.id}
+          data-message-id={message.id}
           className={`itg-assistant__bubble itg-assistant__bubble--${message.role}`}
         >
-          {message.content}
+          {/* Assistant replies are Markdown; user input stays inert plain text. */}
+          {message.role === 'assistant' ? <MarkdownMessage content={message.content} /> : message.content}
         </div>
       ))}
 

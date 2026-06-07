@@ -8,7 +8,11 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.core.models import AWSCredentialConfig
-from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.models import (
+    AssistantConversationLog,
+    AssistantMessageLog,
+    SystemIntelligenceConfig,
+)
 from apps.system_intelligence.services.public_assistant import budget
 
 MOCK_RESULT = {
@@ -189,3 +193,93 @@ class ConfigEndpointTests(PublicAssistantChatTestBase):
         response = self.client.get(self.config_url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["starter_questions"], [])
+
+
+SESSION = "44444444-4444-4444-4444-444444444444"
+
+
+class AuditLoggingTests(PublicAssistantChatTestBase):
+    def _post(self, **extra):
+        payload = {"message": "What is I2G?"}
+        payload.update(extra)
+        return self.client.post(self.chat_url, payload, format="json")
+
+    def test_success_logs_ok_row(self):
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT):
+            response = self._post()
+        self.assertEqual(response.status_code, 200)
+        message = AssistantMessageLog.objects.get()
+        self.assertEqual(message.status, AssistantMessageLog.STATUS_OK)
+        self.assertEqual(message.reply, MOCK_RESULT["text"])
+        self.assertEqual(message.token_usage["totalTokens"], 160)
+        self.assertEqual(message.conversation.source, AssistantConversationLog.SOURCE_PUBLIC_CHAT)
+        self.assertEqual(message.conversation.total_tokens, 160)
+
+    def test_unavailable_aws_logs_unavailable_row(self):
+        self.aws.access_key_id = ""
+        self.aws.secret_access_key = ""
+        self.aws.save()
+        with patch(INVOKE_PATH) as mock_invoke:
+            response = self._post()
+        self.assertEqual(response.status_code, 200)
+        mock_invoke.assert_not_called()
+        message = AssistantMessageLog.objects.get()
+        self.assertEqual(message.status, AssistantMessageLog.STATUS_UNAVAILABLE)
+
+    def test_budget_logs_budget_row(self):
+        self.config.public_assistant_ip_token_limit = 100
+        self.config.save()
+        budget.record_usage(budget.hash_ip("127.0.0.1"), 100, 86400)
+        with patch(INVOKE_PATH) as mock_invoke:
+            response = self._post()
+        self.assertEqual(response.status_code, 429)
+        mock_invoke.assert_not_called()
+        message = AssistantMessageLog.objects.get()
+        self.assertEqual(message.status, AssistantMessageLog.STATUS_BUDGET)
+
+    def test_error_logs_error_row(self):
+        with patch(INVOKE_PATH, side_effect=RuntimeError("boom")):
+            response = self._post()
+        self.assertEqual(response.status_code, 502)
+        message = AssistantMessageLog.objects.get()
+        self.assertEqual(message.status, AssistantMessageLog.STATUS_ERROR)
+
+    def test_session_id_groups_turns(self):
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT):
+            self._post(session_id=SESSION)
+            self._post(session_id=SESSION)
+        self.assertEqual(AssistantConversationLog.objects.count(), 1)
+        convo = AssistantConversationLog.objects.get()
+        self.assertEqual(convo.message_count, 2)
+        self.assertEqual(str(convo.session_id), SESSION)
+
+    def test_garbage_session_id_does_not_400(self):
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT):
+            response = self._post(session_id="not-a-uuid")
+        self.assertEqual(response.status_code, 200)
+        convo = AssistantConversationLog.objects.get()
+        self.assertIsNone(convo.session_id)
+
+    def test_disabled_config_branch_is_not_logged(self):
+        # The widget-off branch is intentionally NOT audited (pure noise).
+        self.config.public_assistant_enabled = False
+        self.config.save()
+        with patch(INVOKE_PATH):
+            self._post()
+        self.assertEqual(AssistantMessageLog.objects.count(), 0)
+
+    def test_recorder_failure_does_not_break_response(self):
+        # Force the audit write to blow up deep inside the recorder; the
+        # visitor must still get their answer (the recorder swallows it).
+        with (
+            patch(INVOKE_PATH, return_value=MOCK_RESULT),
+            patch(
+                "apps.system_intelligence.services.usage_log.recorder.AssistantMessageLog.objects.create",
+                side_effect=RuntimeError("audit down"),
+            ),
+        ):
+            response = self._post()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["available"])
+        self.assertEqual(response.data["reply"], MOCK_RESULT["text"])
+        self.assertEqual(AssistantMessageLog.objects.count(), 0)
