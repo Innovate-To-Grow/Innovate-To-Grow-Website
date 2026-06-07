@@ -61,12 +61,12 @@ jobs:
 
       - name: Validate required deployment configuration
         env:
-          SHEETS_API_KEY: ${{ secrets.SHEETS_API_KEY }}
+          SHEETS_API_KEY_SECRET_ARN: ${{ vars.SHEETS_API_KEY_SECRET_ARN || secrets.SHEETS_API_KEY_SECRET_ARN }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
         run: |
           missing=()
-          for name in SHEETS_API_KEY ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
+          for name in SHEETS_API_KEY_SECRET_ARN ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
             if [ -z "${!name}" ]; then
               missing+=("$name")
             fi
@@ -76,8 +76,8 @@ jobs:
             exit 1
           fi
 
-      - name: Mask sensitive values
-        run: echo "::add-mask::${{ secrets.SHEETS_API_KEY }}"
+      # SECURITY: SHEETS_API_KEY is injected by ECS from Secrets Manager or
+      # SSM Parameter Store. Keep only its secret ARN/name in GitHub Actions.
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -98,7 +98,7 @@ jobs:
         id: task-def
         env:
           IMAGE_URI: ${{ steps.build-image.outputs.image }}
-          SHEETS_API_KEY: ${{ secrets.SHEETS_API_KEY }}
+          SHEETS_API_KEY_SECRET_ARN: ${{ vars.SHEETS_API_KEY_SECRET_ARN || secrets.SHEETS_API_KEY_SECRET_ARN }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
         run: |
@@ -119,10 +119,12 @@ jobs:
           container = taskdef["containerDefinitions"][0]
           container["image"] = os.environ["IMAGE_URI"]
 
-          mapping = {"__SHEETS_API_KEY__": os.environ.get("SHEETS_API_KEY", "")}
-          for item in container.get("environment", []):
-              if item.get("value") in mapping:
-                  item["value"] = mapping[item["value"]]
+          sheets_api_key_secret = os.environ.get("SHEETS_API_KEY_SECRET_ARN", "").strip()
+          if not sheets_api_key_secret:
+              raise SystemExit("SHEETS_API_KEY_SECRET_ARN is required.")
+          for item in container.get("secrets", []):
+              if item.get("valueFrom") == "__SHEETS_API_KEY_SECRET_ARN__":
+                  item["valueFrom"] = sheets_api_key_secret
 
           with open("rendered-archive-task-definition.json", "w", encoding="utf-8") as f:
               json.dump(taskdef, f, indent=2)
