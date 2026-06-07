@@ -18,6 +18,7 @@ class WhoAmIView(AdminAPIView):
                 "is_staff": member.is_staff,
                 "is_active": member.is_active,
                 "is_superuser": member.is_superuser,
+                "admin_apps": list(member.admin_apps or []),
                 "token_expires_at": token.expires_at.isoformat(),
             }
         )

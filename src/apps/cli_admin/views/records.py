@@ -75,7 +75,7 @@ class RecordCollectionView(AdminAPIView):
         return super().get_throttles()
 
     def get(self, request, app_label, model_name):
-        model = resolve_cli_model(app_label, model_name, write=False)
+        model = resolve_cli_model(app_label, model_name, write=False, actor=request.user)
         safe_names = {field_output_name(field) for field in safe_model_fields(model, write=False)}
         selected = request.query_params.getlist("field")
         selected_fields = validate_selected_fields(selected, safe_names) if selected else sorted(safe_names)
@@ -151,7 +151,7 @@ class RecordDetailView(AdminAPIView):
         return super().get_throttles()
 
     def get(self, request, app_label, model_name, pk):
-        model = resolve_cli_model(app_label, model_name, write=False)
+        model = resolve_cli_model(app_label, model_name, write=False, actor=request.user)
         obj = cli_get_object(model, pk)
         return Response(serialize_model_instance(obj, write=False))
 

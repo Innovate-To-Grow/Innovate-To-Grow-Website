@@ -5,9 +5,18 @@ from django.core.cache import cache
 from rest_framework.test import APITestCase
 
 from apps.cli_admin.models import CliAccessToken, CliAuthorizationCode
-from apps.event.tests.helpers import make_member, make_superuser  # noqa: F401 (re-exported for tests)
+from apps.event.tests.helpers import (  # noqa: F401 (re-exported for tests)
+    make_admin,
+    make_member,
+    make_superuser,
+)
 
 VALID_REDIRECT_URI = "http://127.0.0.1:54321/callback"
+
+# Apps the generic CLI test staff member can reach. Covers every non-denied app the
+# record/CRUD suites exercise so per-app access enforcement does not break unrelated
+# coverage; per-app behavior is tested explicitly in test_app_access.py.
+DEFAULT_STAFF_APPS = ("projects", "cms", "event", "mail", "core", "system_intelligence")
 
 
 def challenge_for(verifier):
@@ -16,8 +25,11 @@ def challenge_for(verifier):
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
-def make_staff(email="staff@example.com", **kwargs):
-    return make_member(email=email, is_staff=True, **kwargs)
+def make_staff(email="staff@example.com", *, apps=DEFAULT_STAFF_APPS, **kwargs):
+    """An app-scoped staff member for CLI tests. Grants ``apps`` (default: the
+    non-denied apps the record suites use) so per-app access enforcement does not
+    interfere; pass ``apps=[]`` for a staff member with no app grants."""
+    return make_member(email=email, is_staff=True, admin_apps=list(apps), **kwargs)
 
 
 def issue_token(member, **kwargs):
