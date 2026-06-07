@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from django.db import transaction
 from django.db.models.functions import Lower
 
@@ -16,6 +18,7 @@ def bulk_update_members(
     result: ImportResult,
     claimed_contact_emails: set[str],
     claimed_phones: set[str],
+    update_member_allowed: Callable[[object], bool] | None = None,
 ):
     emails = [row["primary_email"] for row in rows]
     contacts = (
@@ -29,6 +32,10 @@ def bulk_update_members(
         member = member_map.get(parsed["primary_email"].lower())
         if not member:
             result.skipped_count += 1
+            continue
+        if update_member_allowed is not None and not update_member_allowed(member):
+            result.skipped_count += 1
+            result.errors.append(f"Row {parsed['row']}: You do not have permission to update this member")
             continue
         try:
             with transaction.atomic():

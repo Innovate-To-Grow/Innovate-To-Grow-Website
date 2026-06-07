@@ -1,3 +1,4 @@
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
@@ -87,10 +88,17 @@ def import_excel_view(admin_obj, request):
     form = MemberImportForm(request.POST, request.FILES)
     context["form"] = form
     if form.is_valid():
+        update_existing = form.cleaned_data.get("update_existing", False)
+        if update_existing and not admin_obj.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to update existing members.")
+
         result = import_members_from_excel(
             file=form.cleaned_data["excel_file"],
             default_password=form.cleaned_data.get("set_password") or None,
-            update_existing=form.cleaned_data.get("update_existing", False),
+            update_existing=update_existing,
+            update_member_allowed=(
+                (lambda member: admin_obj.has_change_permission(request, member)) if update_existing else None
+            ),
         )
         context["result"] = result
         if result.success:
