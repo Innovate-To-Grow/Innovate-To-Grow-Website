@@ -1,6 +1,7 @@
 from django.contrib import admin
 from unfold.decorators import display
 
+from apps.core.access import user_can_access_app
 from apps.core.admin import ReadOnlyModelAdmin
 
 from ..models import RegistrationSheetSyncLog
@@ -15,7 +16,7 @@ class RegistrationSheetSyncLogAdmin(ReadOnlyModelAdmin):
     ordering = ("-created_at",)
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_staff
+        return user_can_access_app(request.user, "event")
 
     @display(description="Type", label=True)
     def sync_type_badge(self, obj):
