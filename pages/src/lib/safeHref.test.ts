@@ -36,6 +36,12 @@ describe('safeHref', () => {
     expect(safeHref('#section')).toBe('#section');
   });
 
+  it('blocks protocol-relative URLs', () => {
+    expect(safeHref('//evil.com')).toBe('#');
+    expect(safeHref('//evil.com/path')).toBe('#');
+    expect(safeHref('/\\evil.com')).toBe('#');
+  });
+
   it('returns # for empty or non-string input', () => {
     expect(safeHref('')).toBe('#');
     expect(safeHref(null)).toBe('#');

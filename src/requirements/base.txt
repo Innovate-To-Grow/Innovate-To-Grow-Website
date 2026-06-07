@@ -23,7 +23,7 @@ openpyxl>=3.1.5
 google-api-python-client>=2.197.0
 google-auth>=2.53.0
 # Floor raised to 2.2.0: every google-adk 1.x and the 2.0/2.1 releases pin
-# starlette<1, which is incompatible with the starlette>=1.0.1 floor below
+# starlette<1, which is incompatible with the starlette>=1.2.1 floor below
 # (CVE-2026-48710). 2.2.0 is the first release whose constraint is
 # starlette<2,>=1.0.1, so it is the minimal version that lets the resolver pick
 # a patched starlette.
@@ -38,7 +38,7 @@ opentelemetry-sdk>=1.41.1,<1.42
 opentelemetry-exporter-otlp-proto-http>=1.36.0,<1.42
 litellm>=1.83.13,<2.0
 fastapi!=0.136.3  # Exclude MAL-2026-4750; do not ignore MAL advisories in pip-audit.
-starlette>=1.0.1  # CVE-2026-48710 (pulled in via fastapi); needs google-adk>=2.2.0
+starlette>=1.2.1  # CVE-2026-48710 (pulled in via fastapi); needs google-adk>=2.2.0
 gspread>=6.2.1
 imap-tools>=1.7.0
 
