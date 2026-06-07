@@ -9,7 +9,7 @@ djangorestframework-simplejwt>=5.5.1
 python-dotenv>=1.2.2
 
 # Admin Theme
-django-unfold>=0.78.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.11
+django-unfold>=0.91.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.11
 
 # Rich Text Editor
 django-ckeditor-5>=0.2.20
