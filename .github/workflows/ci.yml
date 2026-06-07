@@ -1116,18 +1116,50 @@ jobs:
           exit-code: "0"
           ignore-unfixed: true
 
+  backend-required-result:
+    name: Backend Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - lint
+      - backend-db-migration
+      - backend-static-and-prod-check
+      - django-test-plan
+      - django-test-coverage
+      - cli-admin-coverage
+      - backend-docker-build
+      - changes
+    if: ${{ always() && needs.changes.outputs.backend == 'true' }}
+    steps:
+      - name: Summarize backend required checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All backend required checks passed.")
+          PY
+
   backend-image-publish:
     name: Backend Image Publish
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs:
-      - backend-db-migration
-      - backend-static-and-prod-check
-      - django-test-coverage
-      - cli-admin-coverage
-      - python-security-audit
-      - semgrep-sast
-      - backend-docker-build
+      - backend-required-result
       - changes
     if: >-
       github.event_name == 'push' &&
@@ -1164,6 +1196,74 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  security-required-result:
+    name: Security Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - secrets-scan
+      - python-security-audit
+      - frontend-security-audit
+      - semgrep-sast
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize security checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All security checks passed.")
+          PY
+
+  deploy-artifact-result:
+    name: Deploy Artifact Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - backend-image-publish
+      - frontend-prod-build
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize deploy artifact checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("Deploy artifacts passed or were not required for this run.")
+          PY
 
   python-supply-chain-report:
     name: Python Supply Chain Report
@@ -1206,6 +1306,39 @@ jobs:
           name: python-supply-chain-report
           path: python-sbom.cdx.json
           if-no-files-found: warn
+
+  supply-chain-result:
+    name: Supply Chain Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - python-supply-chain-report
+      - frontend-supply-chain-report
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize supply chain checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All supply chain checks passed.")
+          PY
 
   e2e-plan:
     name: Plan E2E Matrix
@@ -1524,6 +1657,31 @@ jobs:
             pages/test-results
           if-no-files-found: warn
 
+  e2e-informational-result:
+    name: E2E Informational Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - e2e-report
+      - changes
+    if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
+    continue-on-error: true
+    steps:
+      - name: Summarize E2E informational checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          for name, data in needs.items():
+              if name != "changes":
+                  print(f"{name}: {data['result']}")
+          print("E2E remains informational and does not block CI Result.")
+          PY
+
   archive-tests:
     name: Archive Static Site Tests
     runs-on: ubuntu-latest
@@ -1550,6 +1708,38 @@ jobs:
       - name: Run the static-site smoke suite
         run: pytest
 
+  archive-required-result:
+    name: Archive Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - archive-tests
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize archive checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("Archive checks passed or were not required for this run.")
+          PY
+
   ci-result:
     name: CI Result
     runs-on: ubuntu-latest
@@ -1557,20 +1747,12 @@ jobs:
     needs:
       - preflight
       - changes
-      - lint
-      - secrets-scan
-      - backend-db-migration
-      - backend-static-and-prod-check
-      - django-test-coverage
-      - cli-admin-coverage
+      - backend-required-result
       - frontend-required
-      - frontend-prod-build
-      - python-security-audit
-      - semgrep-sast
-      - backend-docker-build
-      - backend-image-publish
-      - python-supply-chain-report
-      - archive-tests
+      - security-required-result
+      - supply-chain-result
+      - deploy-artifact-result
+      - archive-required-result
     if: ${{ always() }}
     steps:
       - name: Summarize required jobs
