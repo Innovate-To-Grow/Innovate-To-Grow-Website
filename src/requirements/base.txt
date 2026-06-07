@@ -14,7 +14,7 @@ django-unfold>=0.78.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.1
 # Rich Text Editor
 django-ckeditor-5>=0.2.20
 Pillow>=12.2.0
-pdf417gen>=0.7.0
+pdf417gen>=0.8.1
 
 # Excel Import/Export
 openpyxl>=3.1.5
@@ -34,7 +34,7 @@ google-adk>=2.2.0,<3.0
 # Ceiling: google-adk pins opentelemetry-api<=1.41.1, so keep the otel
 # packages below 1.42 (a bump to >=1.42 is unsatisfiable while google-adk is a dep).
 opentelemetry-api>=1.36.0,<1.42
-opentelemetry-sdk>=1.36.0,<1.42
+opentelemetry-sdk>=1.41.1,<1.42
 opentelemetry-exporter-otlp-proto-http>=1.36.0,<1.42
 litellm>=1.83.13,<2.0
 fastapi!=0.136.3  # Exclude MAL-2026-4750; do not ignore MAL advisories in pip-audit.
