@@ -40,6 +40,9 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+          # Excludes vendored, minified Drupal-7-era bundles under
+          # archive/page/static/js/ from analysis (see config for rationale).
+          config-file: ./.github/codeql/codeql-config.yml
           # security-extended adds a handful of high-signal queries on top of
           # the default set (e.g., regex injection, path traversal) without
           # the noise of security-and-quality.

@@ -66,3 +66,16 @@ class RedirectUriTests(SimpleTestCase):
     def test_missing_port_rejected(self):
         with self.assertRaises(RedirectUriError):
             validate_loopback_redirect_uri("http://127.0.0.1/callback")
+
+    def test_returns_value_rebuilt_from_validated_parts(self):
+        # The returned value is reconstructed from the loopback allowlist + fixed
+        # scheme/path, but remains byte-identical to a valid input.
+        for uri in ("http://127.0.0.1:54321/callback", "http://[::1]:54321/callback"):
+            self.assertEqual(validate_loopback_redirect_uri(uri), uri)
+
+    def test_error_carries_fixed_public_message(self):
+        with self.assertRaises(RedirectUriError) as ctx:
+            validate_loopback_redirect_uri("https://127.0.0.1:54321/callback")
+        # public_message is a fixed developer-facing string safe for HTTP responses.
+        self.assertEqual(ctx.exception.public_message, str(ctx.exception))
+        self.assertIn("http scheme", ctx.exception.public_message)

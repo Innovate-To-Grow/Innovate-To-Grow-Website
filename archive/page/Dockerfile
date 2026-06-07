@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /build
 
 COPY requirements.txt .
-RUN pip install "pip==26.0.1" \
+RUN pip install "pip==26.1" \
  && pip install --prefix=/install -r requirements.txt
 
 

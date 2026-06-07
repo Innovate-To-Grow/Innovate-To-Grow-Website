@@ -1,38 +1,44 @@
 # Django Backend Dependencies — base (shared across all environments)
 
 # Core Framework
-Django>=5.2,<7.0
+Django>=5.2.15,<7.0
 djangorestframework==3.17.1
-djangorestframework-simplejwt>=5.3.0
+djangorestframework-simplejwt>=5.5.1
 
 # Environment Variables
 python-dotenv>=1.2.2
 
 # Admin Theme
-django-unfold>=0.78.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.11
+django-unfold>=0.91.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.11
 
 # Rich Text Editor
-django-ckeditor-5>=0.2.13
+django-ckeditor-5>=0.2.20
 Pillow>=12.2.0
-pdf417gen>=0.7.0
+pdf417gen>=0.8.1
 
 # Excel Import/Export
 openpyxl>=3.1.5
 
 # Google APIs
-google-api-python-client>=2.195.0
+google-api-python-client>=2.197.0
 google-auth>=2.53.0
-google-adk>=1.31.1,<2.0
+# Floor raised to 2.2.0: every google-adk 1.x and the 2.0/2.1 releases pin
+# starlette<1, which is incompatible with the starlette>=1.2.1 floor below
+# (CVE-2026-48710). 2.2.0 is the first release whose constraint is
+# starlette<2,>=1.0.1, so it is the minimal version that lets the resolver pick
+# a patched starlette.
+google-adk>=2.2.0,<3.0
 # google-adk requires opentelemetry but sets no version floor. Pin a floor that
 # includes the gen_ai semantic-convention attributes adk's telemetry imports, so
 # an environment with a stale pre-installed opentelemetry can't break adk import.
-# Ceiling: the latest google-adk pins opentelemetry-api<=1.41.1, so keep the otel
+# Ceiling: google-adk pins opentelemetry-api<=1.41.1, so keep the otel
 # packages below 1.42 (a bump to >=1.42 is unsatisfiable while google-adk is a dep).
 opentelemetry-api>=1.36.0,<1.42
-opentelemetry-sdk>=1.36.0,<1.42
-opentelemetry-exporter-otlp-proto-http>=1.36.0,<1.42
+opentelemetry-sdk>=1.41.1,<1.42
+opentelemetry-exporter-otlp-proto-http>=1.41.1,<1.42
 litellm>=1.83.13,<2.0
 fastapi!=0.136.3  # Exclude MAL-2026-4750; do not ignore MAL advisories in pip-audit.
+starlette>=1.2.1  # CVE-2026-48710 (pulled in via fastapi); needs google-adk>=2.2.0
 gspread>=6.2.1
 imap-tools>=1.7.0
 
@@ -47,4 +53,4 @@ beautifulsoup4>=4.14.3
 bleach>=6.0.0
 
 # CORS (needed in every environment so the API is reachable from the SPA)
-django-cors-headers>=4.4.0
+django-cors-headers>=4.9.0

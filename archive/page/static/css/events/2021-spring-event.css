@@ -1,0 +1,603 @@
+/* ── block 1 (originally before the event-intro grid) — iframe/i2gHome helpers ── */
+.iframe-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    padding-top: 56.25%; /* 16:9 Aspect Ratio */
+}
+
+
+.responsive-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.i2gHome {
+
+}
+
+.i2gHome h3 {
+    color: #0f2d52 !important;
+    margin: 0px 0px 12px 0px;
+
+}
+
+.i2gHome h2 {
+    color: #0f2d52 !important;
+    margin: 0px 0px 40px 0px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ffbf3c;
+}
+
+.i2gHome li a {
+    color: #007E9E;
+    text-decoration: underline;
+}
+
+.i2gHome h4 {
+    margin-top: 0px !important;
+    padding-top: 0px !important;
+}
+
+/* ── block 2 (originally before the schedule/look-up table) — details-control, #schedule, #awards, #projects, #CAP/#CSE/#ESL ── */
+td.details-control {
+    background: url('https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/images/details_open.png') no-repeat center center;
+    cursor: pointer;
+}
+
+tr.shown td.details-control {
+    background: url('https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/images/details_close.png') no-repeat center center;
+}
+
+#schedule table {
+    border: 1px solid black;
+    height: max-content;
+}
+
+#schedule td, #schedule th {
+    border: 2px solid black;
+    width: 10%;
+    height: 10%;
+    text-align: center;
+    min-height: 20px;
+    margin: 0px;
+    border-collapse: collapse;
+    padding: 0px;
+}
+
+#schedule button {
+    background-color: Transparent;
+    background-repeat: no-repeat;
+    border: none;
+    cursor: pointer;
+    overflow: hidden;
+    outline: none;
+}
+
+#awards table {
+    border: 1px solid black;
+    height: max-content;
+}
+
+#projects {
+    margin-top: 3%;
+}
+
+#CAP td, #CSE td, #ESL td {
+    min-width: 40px;
+}
+
+#CAP table, #ESL table {
+    margin-top: 30px;
+    margin-left: auto;
+    margin-right: auto;
+    border-collapse: collapse;
+    padding: 0px;
+}
+
+#CSE table {
+    margin-top: 30px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 30px;
+    border-collapse: collapse;
+    padding: 0px;
+}
+
+/* ── block 3 (originally after the schedule/look-up table) — .tableHeader, .figure, button, span10/span2 widths ── */
+.tableHeader {
+    background: color #e5e5e5;;
+    margin-left: 0 !important;
+    padding-left: 12px !important;
+    /* margin-bottom: 15px !important; */
+}
+
+.figure {
+    border-bottom: 1px solid #e5e5e5;
+    margin: 15px 0px !important;
+    padding-left: 12px !important;
+    /* padding-bottom: 10px !important; */
+
+}
+
+/* .figure .span10 .span2{
+    width: 100%;
+    white-space: wrap !important;
+} */
+.figure .span4 .span3 {
+    white-space: wrap !important;
+    /* margin-bottom: 7px; */
+}
+
+.last-row {
+    border-bottom: none !important
+}
+
+button {
+    white-space: wrap !important;
+    font-size: 15px;
+    background-color: Transparent;
+    background-repeat: no-repeat;
+    border: none;
+    cursor: pointer;
+    overflow: hidden;
+    outline: none;
+    text-align: left;
+    color: #000000;
+    text-decoration: underline;
+}
+
+button:hover {
+    text-decoration: none;
+    color: #002856;
+}
+
+/**** Padding on button ****/
+
+button {
+    padding-left: 0px;
+}
+
+@media (min-width: 1200px) {
+    .row-fluid .span10 {
+        /* width: 84.90598% !important; */
+        width: 85% !important;
+        padding-left: 50px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .row-fluid .span2 {
+        width: 14% !important;
+    }
+}
+
+/* ── block 4 (originally the responsive table block) — responsive .table layout and column coloring ── */
+@media (max-width: 1200px) {
+    [class*="span"], .uneditable-input[class*="span"], .row-fluid .i2gTable [class*="span"] {
+        display: block;
+        width: 100%;
+        margin-left: 0;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+    }
+}
+
+.table__wrapper {
+    width: 100%;
+}
+
+.table__wrapper .table {
+    /* width: 100%; */
+    max-width: 100%;
+}
+
+/* ------- Presentational Formatting --------- */
+
+.center {
+    margin: 0 auto;
+    /*width: 80%;*/
+}
+
+.table {
+    border: 1px solid #f0f0f0;
+    border-collapse: collapse;
+}
+
+.table tr {
+    border-bottom: 1px solid white;
+}
+
+.table thead tr {
+    border-bottom: 2px solid white;
+    background: #d9d9d9;
+}
+
+.table thead tr:nth-child(3) {
+    background: #d9d9d9;
+}
+
+.borderLess {
+    border-bottom: 1px solid white;
+    max-width: 100px;
+}
+
+.table td,
+.table th {
+    padding: .5em;
+    /* min-width: fit-content; */
+}
+
+.table th {
+    text-align: left;
+}
+
+@media screen and (max-width: 991px) {
+    .table {
+        margin: 0 auto;
+        width: 100%;
+        border-spacing: 0;
+        background-color: #f0f0f0;
+    }
+
+    .table thead {
+        position: absolute;
+        clip: rect(1px, 1px, 1px, 1px);
+        padding: 0;
+        border: 0;
+        height: 1px;
+        width: 1px;
+        overflow: hidden;
+    }
+
+    .borderLess {
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .table tbody,
+    .table tr,
+    .table th,
+    .table td {
+        display: block;
+        padding: 0;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .table tr td,
+    .table tr th {
+        padding: 2em 1em;
+        vertical-align: middle;
+        overflow: hidden;
+        position: relative;
+        vertical-align: top;
+        border: 1px solid #5b5b5b;
+        border-top: none;
+        /* width: 100%; */
+        white-space: normal;
+
+        /* min-width: fit-content; */
+    }
+
+    .table th[scope="row"] {
+        /* min-width: fit-content; */
+
+        width: 100%;
+        text-align: center;
+        display: block;
+        background-color: #5b5b5b;
+
+        margin: 0 auto;
+        padding: .5em 0;
+    }
+
+    .table td[data-header]:before {
+        content: attr(data-header);
+        display: block;
+        float: left;
+        color: #000000;
+        width: 30%;
+        font-weight: bold;
+        text-align: left;
+        margin-bottom: 0px;
+    }
+
+    .table td[data-header] > * {
+        display: block;
+        width: 48%;
+        float: right;
+        clear: right;
+        padding-left: 1em;
+        margin-top: 0;
+    }
+
+    .table td[data-header]:after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 50%;
+        border-right: 1px solid #EDF0F1;
+        /* padding-bottom: 200%; */
+        display: block;
+    }
+}
+
+
+/* -------------------------------- */
+/*
+ TRY: JUST TO BACKGROUND -> MARKETING WEBSITE -> CHANGE BACKGROUND
+ CAP# (PROJECT CLIENT)
+ COMPANY
+
+ MOUSE OVER -> ALT TEXT -> REPEAT CAP#, AND ALL OTHER INFO
+*/
+/* -------------------------------- */
+
+
+/* Full Screen */
+@media screen and (min-width: 991px) {
+
+    /* Coloring of the Columns (CAP) */
+    .capTable tr td:nth-child(2) {
+        background: #DAA900;
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    .capTable tr td:nth-child(3) {
+        background: rgba(218, 169, 0, 0.90);
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    .capTable tr td:nth-child(4) {
+        background: rgba(218, 169, 0, 0.80);
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    .capTable tr td:nth-child(5) {
+        background: rgba(218, 169, 0, 0.70);
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    .capTable tr td:nth-child(6) {
+        background: rgba(218, 169, 0, 0.60);
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    .capTable tr td:nth-child(7) {
+        background: rgba(218, 169, 0, 0.50);
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    /* Coloring of the Columns (CSE) */
+    .cseTable tr td:nth-child(2) {
+        background: #002856;
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    .cseTable tr td:nth-child(3) {
+        background: #002856;
+        opacity: 0.95;
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    .cseTable tr td:nth-child(4) {
+        background: #002856;
+        opacity: 0.90;
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    .cseTable tr td:nth-child(5) {
+        background: #002856;
+        opacity: 0.85;
+        min-width: 100px;
+        max-width: 160px;
+    }
+
+    /* Coloring of the Columns (EngSL) */
+    .engslTable tr td:nth-child(2) {
+        background: #0091b3;
+        max-width: 120px;
+    }
+
+    /* Company Names */
+    .companyName {
+        font-size: 10px;
+        color: #002856;
+        /* font-weight: lighter; */
+        padding-bottom: 0px;
+        margin-bottom: 0px;
+        margin-top: 0px;
+        padding-top: 0px;
+
+        min-width: 180px;
+    }
+
+    .companyNameE {
+        font-size: 10px;
+        color: white;
+        /* font-weight: lighter; */
+        padding-bottom: 0px;
+        margin-bottom: 0px;
+        margin-top: 0px;
+        padding-top: 0px;
+
+        min-width: 180px;
+    }
+
+    .companyNameC {
+        font-size: 10px;
+        color: #FFBF3C;
+        /* font-weight: lighter; */
+        padding-bottom: 0px;
+        margin-bottom: 0px;
+        margin-top: 0px;
+        padding-top: 0px;
+
+        min-width: 180px;
+    }
+
+}
+
+@media screen and (max-width: 991px) {
+    /* Coloring of the Columns (CAP) */
+    .capTable tr td:nth-child(2) {
+        background: #DAA900;
+    }
+
+    .capTable tr td:nth-child(3) {
+        background: rgba(218, 169, 0, 0.90);
+    }
+
+    .capTable tr td:nth-child(4) {
+        background: rgba(218, 169, 0, 0.80);
+    }
+
+    .capTable tr td:nth-child(5) {
+        background: rgba(218, 169, 0, 0.70);
+    }
+
+    .capTable tr td:nth-child(6) {
+        background: rgba(218, 169, 0, 0.60);
+    }
+
+    .capTable tr td:nth-child(7) {
+        background: rgba(218, 169, 0, 0.50);
+    }
+
+    /* Coloring of the Columns (CSE) */
+    .cseTable tr td:nth-child(2) {
+        background: #002856;
+    }
+
+    .cseTable tr td:nth-child(3) {
+        background: #002856;
+        opacity: 0.90;
+    }
+
+    .cseTable tr td:nth-child(4) {
+        background: #002856;
+        opacity: 0.80;
+    }
+
+    .cseTable tr td:nth-child(5) {
+        background: #002856;
+        opacity: 0.70;
+    }
+
+    /* Coloring of the Columns (EngSL) */
+    .engslTable tr td:nth-child(2) {
+        background: #0091b3;
+    }
+
+    /* Company Names */
+    .companyName {
+        font-size: 10px;
+        color: #002856;
+        /* font-weight: lighter; */
+        padding-bottom: 0px;
+        margin-bottom: 0px;
+        margin-top: 0px;
+        padding-top: 0px;
+    }
+
+    .companyNameE {
+        font-size: 10px;
+        color: white;
+        /* font-weight: lighter; */
+        padding-bottom: 0px;
+        margin-bottom: 0px;
+        margin-top: 0px;
+        padding-top: 0px;
+    }
+
+    .companyNameC {
+        font-size: 10px;
+        color: #FFBF3C;
+        /* font-weight: lighter; */
+        padding-bottom: 0px;
+        margin-bottom: 0px;
+        margin-top: 0px;
+        padding-top: 0px;
+    }
+
+}
+
+@media screen and (max-width: 600px) {
+    .center {
+        width: 100%;
+    }
+}
+
+/* ── block 5 (originally before the CAP schedule table) — sticky table header ── */
+th { /* this is to make the top headers of the table sticky */
+    position: sticky;
+    top: 45px;
+    background-color: white;
+    overflow: unset;
+    z-index: 100;
+}
+
+/* Hoisted from repeated inline styles (CKEditor cleanup) */
+/* Header cells: anchored as table.table th.<cls> so they win over the
+   bare `th { background-color: white }` sticky rule and `.table th`. */
+table.table th.hdrCell {
+    background-color: #efefef;
+    color: #002856;
+}
+
+/* Track schedule buttons (color was inline; overrides bare `button{color}`). */
+.slotBtnNavy {
+    color: #002856;
+}
+
+.slotBtnGold {
+    color: #FFBF3C;
+}
+
+/* Track-row data cells: anchored as table.table td.<cls> to match prior
+   inline specificity over `.table td`. */
+table.table td.trackCellNavy {
+    color: #002856;
+}
+
+table.table td.trackCellGold {
+    color: #FFBF3C;
+}
+
+/* Track-name paragraphs inside the schedule tables. */
+.trackNameNavy {
+    color: #002856;
+    font-weight: bolder;
+}
+
+.trackNameGold {
+    color: #FFBF3C;
+}
+
+/* Section heading divs above each schedule table. */
+.sectionTitleNavy {
+    text-align: center;
+    color: #002856;
+}
+
+/* Schedule tables that were inline width: 100%. */
+.schedTable {
+    width: 100%;
+}

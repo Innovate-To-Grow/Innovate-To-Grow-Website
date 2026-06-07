@@ -15,7 +15,12 @@ export const safeHref = (url: unknown): string => {
   const trimmed = url.trim();
   if (!trimmed) return '#';
 
-  // Allow fragment- and path-relative URLs without scheme.
+  // Allow fragment- and path-relative URLs without scheme. Reject
+  // protocol-relative URLs (`//evil.com`, and `/\evil.com` — WHATWG URL
+  // parsing treats `\` as `/`), which would navigate to another origin.
+  if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
+    return '#';
+  }
   if (trimmed.startsWith('#') || trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) {
     return trimmed;
   }

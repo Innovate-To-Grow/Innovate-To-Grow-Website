@@ -54,6 +54,8 @@ env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
   DJANGO_SETTINGS_MODULE: config.settings.test
+  BACKEND_COVERAGE_FAIL_UNDER: "40"
+  COVERAGE_VERSION: "7.6.10"
 
 jobs:
   preflight:
@@ -77,13 +79,6 @@ jobs:
           cache-dependency-path: |
             src/requirements.txt
             .pre-commit-config.yaml
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
 
       - name: Install preflight tools
         run: |
@@ -110,9 +105,8 @@ jobs:
       - name: Validate tool version pins
         run: python scripts/ci/validate_tool_versions.py
 
-      - name: Validate npm lockfile consistency
-        working-directory: pages
-        run: npm ci --ignore-scripts
+      - name: Validate CI planner scripts
+        run: python -m unittest discover -s scripts/ci/tests
 
       - name: Validate Dependabot labels
         env:
@@ -185,10 +179,12 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   lint:
-    name: Code Style Check
+    name: Python Code Style Check
     needs: [preflight, changes]
-    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     uses: ./.github/workflows/lint.yml
+    with:
+      run-python: true
 
   secrets-scan:
     name: Secrets Scan
@@ -274,22 +270,29 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v5
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Install dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Check migration files are up to date
-        run: python manage.py makemigrations --check --dry-run
+        run: .venv/bin/python manage.py makemigrations --check --dry-run
 
       - name: Apply migrations on PostgreSQL
-        run: python manage.py migrate --noinput
+        run: .venv/bin/python manage.py migrate --noinput
 
       - name: Ensure no pending migrations remain
-        run: python manage.py migrate --check
+        run: .venv/bin/python manage.py migrate --check
 
   backend-static-and-prod-check:
     name: Backend Static and Production Checks
@@ -321,36 +324,89 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v5
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Install dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Import production settings
-        run: DJANGO_SETTINGS_MODULE=config.settings.production python -c "import django; django.setup()"
+        run: DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c "import django; django.setup()"
 
       - name: Run Django deploy checks
-        run: DJANGO_SETTINGS_MODULE=config.settings.production python manage.py check --deploy
+        run: DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python manage.py check --deploy
 
       - name: Dry-run collectstatic with CI settings
-        run: python manage.py collectstatic --dry-run --noinput --settings=config.settings.test
+        run: .venv/bin/python manage.py collectstatic --dry-run --noinput --settings=config.settings.test
 
-  django-build:
-    name: Django Test (${{ matrix.app }})
+  django-test-plan:
+    name: Plan Django Test Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [changes]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    outputs:
+      apps: ${{ steps.plan.outputs.apps }}
+      cli_admin_coverage: ${{ steps.plan.outputs.cli_admin_coverage }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Capture changed files
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" != "pull_request" ]; then
+            : > changed-files.txt
+            exit 0
+          fi
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
+            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            : > changed-files.txt
+            exit 0
+          fi
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt
+          echo "Changed backend files considered for Django tests:"
+          cat changed-files.txt
+
+      - name: Select changed Django apps
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python scripts/ci/plan_django_tests.py \
+            --event-name "$EVENT_NAME" \
+            --changed-files changed-files.txt \
+            >> "$GITHUB_OUTPUT"
+
+  django-test-coverage:
+    name: Django Test and Coverage (${{ matrix.app }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
+      - django-test-plan
       - changes
     if: ${{ needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        app: [authn, core, common, system_intelligence, cms, event, projects, mail, cli_admin]
+        app: ${{ fromJson(needs.django-test-plan.outputs.apps) }}
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
@@ -382,35 +438,64 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v5
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Install dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt "coverage[toml]==7.6.10"
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
-      - name: Run migrations
-        run: python manage.py migrate --noinput
-
-      - name: Run Django tests with per-app coverage
+      - name: Run Django tests and enforce per-app coverage
         run: |
-          coverage run \
+          .venv/bin/coverage run \
             --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test "apps.${{ matrix.app }}"
-          coverage report --fail-under=40
-          coverage xml -o "coverage-${{ matrix.app }}.xml"
+          .venv/bin/coverage xml -o "coverage-${{ matrix.app }}.xml"
+          .venv/bin/coverage json --pretty-print -o "coverage-${{ matrix.app }}.json"
+          .venv/bin/python - <<'PY'
+          import json
+          import os
+
+          app = os.environ["APP_UNDER_TEST"]
+          summary_path = f"coverage-{app}.json"
+          with open(summary_path, encoding="utf-8") as fh:
+              totals = json.load(fh)["totals"]
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as fh:
+                  fh.write(f"## Django coverage: {app}\n\n")
+                  fh.write("| Metric | Covered | Total | Percent |\n")
+                  fh.write("|---|---:|---:|---:|\n")
+                  fh.write(
+                      f"| Lines | {totals['covered_lines']} | {totals['num_statements']} | "
+                      f"{totals['percent_covered_display']}% |\n"
+                  )
+          PY
+          .venv/bin/coverage report -m --fail-under="${BACKEND_COVERAGE_FAIL_UNDER}"
+        env:
+          APP_UNDER_TEST: ${{ matrix.app }}
 
       - name: Check Django configuration
-        run: python manage.py check
+        run: .venv/bin/python manage.py check
 
       - name: Upload backend coverage XML
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           name: backend-coverage-${{ matrix.app }}
-          path: src/coverage-${{ matrix.app }}.xml
+          path: |
+            src/coverage-${{ matrix.app }}.xml
+            src/coverage-${{ matrix.app }}.json
           if-no-files-found: warn
 
   cli-admin-coverage:
@@ -420,8 +505,9 @@ jobs:
     needs:
       - backend-db-migration
       - backend-static-and-prod-check
+      - django-test-plan
       - changes
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ needs.changes.outputs.backend == 'true' && needs.django-test-plan.outputs.cli_admin_coverage == 'true' }}
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
@@ -453,30 +539,118 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v5
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Install dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt "coverage[toml]==7.6.10"
-
-      - name: Run migrations
-        run: python manage.py migrate --noinput
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Enforce coverage for cli_admin and safe_orm
         run: |
-          coverage run \
+          .venv/bin/coverage run \
             --source="apps.cli_admin,apps.core.services.db_tools.safe_orm" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test apps.cli_admin apps.core.tests.services.test_safe_orm
-          coverage report -m --fail-under=100
+          .venv/bin/coverage xml -o coverage-cli-admin-safe-orm.xml
+          .venv/bin/coverage json --pretty-print -o coverage-cli-admin-safe-orm.json
+          .venv/bin/python - <<'PY'
+          import json
+          import os
 
-  frontend-test:
-    name: Frontend Tests
+          with open("coverage-cli-admin-safe-orm.json", encoding="utf-8") as fh:
+              totals = json.load(fh)["totals"]
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as fh:
+                  fh.write("## CLI admin coverage\n\n")
+                  fh.write("| Metric | Covered | Total | Percent |\n")
+                  fh.write("|---|---:|---:|---:|\n")
+                  fh.write(
+                      f"| Lines | {totals['covered_lines']} | {totals['num_statements']} | "
+                      f"{totals['percent_covered_display']}% |\n"
+                  )
+          PY
+          .venv/bin/coverage report -m --fail-under=100
+
+      - name: Upload CLI admin coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-admin-safe-orm-coverage
+          path: |
+            src/coverage-cli-admin-safe-orm.xml
+            src/coverage-cli-admin-safe-orm.json
+          if-no-files-found: warn
+
+  frontend-lint:
+    name: Frontend ESLint
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [lint, changes]
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  frontend-typecheck:
+    name: Frontend TypeScript Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript type check
+        run: |
+          npx tsc --noEmit --project tsconfig.app.json
+          npx tsc --noEmit --project tsconfig.node.json
+
+  frontend-unit-coverage:
+    name: Frontend Unit Test Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
       run:
@@ -500,6 +674,40 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      - name: Summarize frontend coverage
+        if: ${{ always() }}
+        run: |
+          if [ ! -f coverage/coverage-summary.json ]; then
+            echo "::warning::Frontend coverage summary was not generated."
+            exit 0
+          fi
+          node - <<'NODE'
+          const fs = require('node:fs');
+
+          const summary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8')).total;
+          const rows = [
+            ['Statements', summary.statements],
+            ['Branches', summary.branches],
+            ['Functions', summary.functions],
+            ['Lines', summary.lines],
+          ];
+
+          const target = process.env.GITHUB_STEP_SUMMARY;
+          if (target) {
+            const body = [
+              '## Frontend coverage',
+              '',
+              '| Metric | Covered | Total | Percent |',
+              '|---|---:|---:|---:|',
+              ...rows.map(([name, metric]) => `| ${name} | ${metric.covered} | ${metric.total} | ${metric.pct}% |`),
+              '',
+              'Vitest enforces the thresholds defined in `pages/vitest.config.ts`.',
+              '',
+            ].join('\n');
+            fs.appendFileSync(target, body);
+          }
+          NODE
+
       - name: Upload frontend coverage
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
@@ -511,10 +719,10 @@ jobs:
           if-no-files-found: warn
 
   frontend-build:
-    name: Frontend Build and Size
+    name: Frontend CI Build Artifact
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [lint, changes]
+    needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
       run:
@@ -533,19 +741,203 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build frontend
+      - name: Build frontend for CI and E2E
         run: npm run build
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:8000
+
+      - name: Upload frontend dist for CI
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist-ci
+          path: pages/dist
+          if-no-files-found: warn
+
+  frontend-bundle-size:
+    name: Frontend Bundle Size
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - frontend-build
+      - changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download CI frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist-ci
+          path: pages/dist
 
       - name: Enforce bundle budgets
         run: npm run size
 
-      - name: Upload frontend dist
+  frontend-security-audit:
+    name: Frontend npm Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (moderate and above)
+        run: npm audit --audit-level=moderate
+
+  frontend-supply-chain-report:
+    name: Frontend SBOM and License Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate npm SBOM
+        run: npm sbom --sbom-format cyclonedx --json > ../npm-sbom.cdx.json
+
+      - name: Check npm licenses
+        run: python3 ../scripts/ci/check_npm_licenses.py --package-lock package-lock.json --output ../npm-license-report.json
+
+      - name: Upload frontend supply chain artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
-          name: frontend-dist
-          path: pages/dist
+          name: frontend-supply-chain-reports
+          path: |
+            npm-sbom.cdx.json
+            npm-license-report.json
           if-no-files-found: warn
+
+  frontend-required:
+    name: Frontend Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - frontend-lint
+      - frontend-typecheck
+      - frontend-unit-coverage
+      - frontend-build
+      - frontend-bundle-size
+      - frontend-security-audit
+      - frontend-supply-chain-report
+      - changes
+    if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
+    steps:
+      - name: Summarize frontend required checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] != "success"
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All frontend required checks passed.")
+          PY
+
+  frontend-prod-build:
+    name: Frontend Production Build Artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - frontend-required
+      - changes
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref_name == 'main' || github.ref_name == 'master') &&
+      needs.changes.outputs.frontend == 'true'
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Validate production frontend configuration
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+        run: |
+          if [ -z "$VITE_API_BASE_URL" ]; then
+            echo "::error::VITE_API_BASE_URL is required for the production frontend build."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production frontend
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+
+      - name: Upload production frontend dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist-prod
+          path: pages/dist
+          if-no-files-found: error
 
   python-security-audit:
     name: Python Security Audit
@@ -592,32 +984,6 @@ jobs:
             --ignore-vuln PYSEC-2026-161 \
             | tee "$GITHUB_STEP_SUMMARY"
 
-  frontend-security-audit:
-    name: Frontend Security Audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [preflight, changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    defaults:
-      run:
-        working-directory: pages
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: npm audit (moderate and above)
-        run: npm audit --audit-level=moderate
-
   semgrep-sast:
     name: Semgrep SAST
     runs-on: ubuntu-latest
@@ -639,7 +1005,20 @@ jobs:
 
       - name: Run Semgrep
         id: semgrep
-        run: semgrep scan --config p/default --config p/python --config p/javascript --metrics=off --sarif --output semgrep.sarif src pages || true
+        env:
+          RUN_BACKEND: ${{ needs.changes.outputs.backend }}
+          RUN_FRONTEND: ${{ needs.changes.outputs.frontend }}
+        run: |
+          set -euo pipefail
+          targets=()
+          if [ "$RUN_BACKEND" = "true" ]; then
+            targets+=(src)
+          fi
+          if [ "$RUN_FRONTEND" = "true" ]; then
+            targets+=(pages)
+          fi
+          semgrep scan --config p/default --config p/python --config p/javascript \
+            --metrics=off --sarif --output semgrep.sarif "${targets[@]}" || true
 
       - name: Upload Semgrep SARIF artifact
         if: ${{ always() }}
@@ -654,9 +1033,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs:
-      - django-build
-      - python-security-audit
-      - semgrep-sast
+      - lint
       - changes
     if: ${{ needs.changes.outputs.backend == 'true' }}
     permissions:
@@ -739,15 +1116,163 @@ jobs:
           exit-code: "0"
           ignore-unfixed: true
 
-  supply-chain-reports:
-    name: Supply Chain Reports
+  backend-required-result:
+    name: Backend Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - lint
+      - backend-db-migration
+      - backend-static-and-prod-check
+      - django-test-plan
+      - django-test-coverage
+      - cli-admin-coverage
+      - backend-docker-build
+      - changes
+    if: ${{ always() && needs.changes.outputs.backend == 'true' }}
+    steps:
+      - name: Summarize backend required checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All backend required checks passed.")
+          PY
+
+  backend-image-publish:
+    name: Backend Image Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs:
+      - backend-required-result
+      - changes
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref_name == 'main' || github.ref_name == 'master') &&
+      needs.changes.outputs.backend == 'true'
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
+      ECR_REPOSITORY: itg-backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Build and publish backend image
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: src
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  security-required-result:
+    name: Security Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - secrets-scan
+      - python-security-audit
+      - frontend-security-audit
+      - semgrep-sast
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize security checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All security checks passed.")
+          PY
+
+  deploy-artifact-result:
+    name: Deploy Artifact Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - backend-image-publish
+      - frontend-prod-build
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize deploy artifact checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("Deploy artifacts passed or were not required for this run.")
+          PY
+
+  python-supply-chain-report:
+    name: Python Supply Chain Report
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs:
       - python-security-audit
-      - frontend-security-audit
       - changes
-    if: ${{ always() && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') }}
+    if: ${{ always() && needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -759,19 +1284,10 @@ jobs:
           cache: pip
           cache-dependency-path: src/requirements.txt
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install SBOM and license tools
+      - name: Install Python SBOM tools
         run: |
           python -m pip install --upgrade pip
           pip install "pip-audit[cyclonedx]==2.7.3"
-          cd pages
-          npm ci
 
       - name: Generate Python SBOM
         run: |
@@ -783,23 +1299,92 @@ jobs:
             || true
           test -s python-sbom.cdx.json
 
-      - name: Generate npm SBOM
-        working-directory: pages
-        run: npm sbom --sbom-format cyclonedx --json > ../npm-sbom.cdx.json
-
-      - name: Check npm licenses
-        run: python scripts/ci/check_npm_licenses.py --package-lock pages/package-lock.json --output npm-license-report.json
-
-      - name: Upload supply chain artifacts
+      - name: Upload Python supply chain artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
-          name: supply-chain-reports
-          path: |
-            python-sbom.cdx.json
-            npm-sbom.cdx.json
-            npm-license-report.json
+          name: python-supply-chain-report
+          path: python-sbom.cdx.json
           if-no-files-found: warn
+
+  supply-chain-result:
+    name: Supply Chain Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - python-supply-chain-report
+      - frontend-supply-chain-report
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize supply chain checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All supply chain checks passed.")
+          PY
+
+  e2e-plan:
+    name: Plan E2E Matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    outputs:
+      projects: ${{ steps.plan.outputs.projects }}
+      spec_args: ${{ steps.plan.outputs.spec_args }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Capture changed files
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" != "pull_request" ]; then
+            : > changed-files.txt
+            exit 0
+          fi
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
+            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            : > changed-files.txt
+            exit 0
+          fi
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt
+          echo "Changed frontend files considered for E2E:"
+          cat changed-files.txt
+
+      - name: Select browser/device/spec coverage
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python scripts/ci/plan_e2e_tests.py \
+            --event-name "$EVENT_NAME" \
+            --changed-files changed-files.txt \
+            >> "$GITHUB_OUTPUT"
 
   e2e:
     name: E2E (${{ matrix.project }})
@@ -810,15 +1395,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [chromium, firefox, webkit, pixel7, iphone14, iphone-se, ipad]
+        include: ${{ fromJson(needs.e2e-plan.outputs.matrix) }}
     needs:
       # backend-docker-build intentionally omitted: e2e runs the app via
       # `manage.py runserver`, never the built image, so depending on it only
       # serialized e2e behind the slowest job without adding coverage.
-      - frontend-build
-      - frontend-test
-      - frontend-security-audit
-      - supply-chain-reports
+      - e2e-plan
+      - frontend-required
       - secrets-scan
       - changes
     services:
@@ -853,8 +1436,13 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v5
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -864,14 +1452,22 @@ jobs:
           cache-dependency-path: pages/package-lock.json
 
       - name: Install backend dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         working-directory: src
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Install frontend dependencies
         working-directory: pages
         run: npm ci
+
+      - name: Download CI frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist-ci
+          path: pages/dist
 
       # Key the browser cache on the resolved Playwright version so a version
       # bump invalidates it automatically.
@@ -905,16 +1501,16 @@ jobs:
 
       - name: Prepare backend database
         working-directory: src
-        run: python manage.py migrate --noinput
+        run: .venv/bin/python manage.py migrate --noinput
 
       - name: Seed admin E2E data
         working-directory: src
-        run: python manage.py seed_admin_e2e --yes
+        run: .venv/bin/python manage.py seed_admin_e2e --yes
 
       - name: Start backend
         working-directory: src
         run: |
-          python manage.py runserver 127.0.0.1:8000 > ../backend-e2e.log 2>&1 &
+          .venv/bin/python manage.py runserver 127.0.0.1:8000 > ../backend-e2e.log 2>&1 &
           for _ in {1..60}; do
             if curl --fail --silent http://127.0.0.1:8000/readyz/ >/dev/null; then
               exit 0
@@ -923,10 +1519,6 @@ jobs:
           done
           cat ../backend-e2e.log
           exit 1
-
-      - name: Build frontend for E2E
-        working-directory: pages
-        run: npm run build
 
       - name: Start frontend preview
         working-directory: pages
@@ -943,7 +1535,14 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: pages
-        run: npx playwright test --project=${{ matrix.project }}
+        env:
+          PLAYWRIGHT_SPEC_ARGS: ${{ matrix.spec_args }}
+        run: |
+          args=()
+          if [ -n "$PLAYWRIGHT_SPEC_ARGS" ]; then
+            read -r -a args <<< "$PLAYWRIGHT_SPEC_ARGS"
+          fi
+          npx playwright test "${args[@]}" --project="$PW_PROJECT"
 
       - name: Upload blob report
         if: ${{ always() }}
@@ -991,7 +1590,7 @@ jobs:
         # download must not turn the run red. The merge step below tolerates a
         # missing/empty directory.
         continue-on-error: true
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: pages/all-blob-reports
           pattern: blob-*
@@ -1041,7 +1640,7 @@ jobs:
 
       - name: Annotate test results on the PR
         if: ${{ always() }}
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: pages/results.xml
           detailed_summary: true
@@ -1057,6 +1656,31 @@ jobs:
             pages/playwright-report
             pages/test-results
           if-no-files-found: warn
+
+  e2e-informational-result:
+    name: E2E Informational Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - e2e-report
+      - changes
+    if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
+    continue-on-error: true
+    steps:
+      - name: Summarize E2E informational checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          for name, data in needs.items():
+              if name != "changes":
+                  print(f"{name}: {data['result']}")
+          print("E2E remains informational and does not block CI Result.")
+          PY
 
   archive-tests:
     name: Archive Static Site Tests
@@ -1084,6 +1708,38 @@ jobs:
       - name: Run the static-site smoke suite
         run: pytest
 
+  archive-required-result:
+    name: Archive Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - archive-tests
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize archive checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("Archive checks passed or were not required for this run.")
+          PY
+
   ci-result:
     name: CI Result
     runs-on: ubuntu-latest
@@ -1091,22 +1747,12 @@ jobs:
     needs:
       - preflight
       - changes
-      - lint
-      - secrets-scan
-      - backend-db-migration
-      - backend-static-and-prod-check
-      - django-build
-      - cli-admin-coverage
-      - frontend-test
-      - frontend-build
-      - python-security-audit
-      - frontend-security-audit
-      - semgrep-sast
-      - backend-docker-build
-      - supply-chain-reports
-      - archive-tests
-      - e2e
-      - e2e-report
+      - backend-required-result
+      - frontend-required
+      - security-required-result
+      - supply-chain-result
+      - deploy-artifact-result
+      - archive-required-result
     if: ${{ always() }}
     steps:
       - name: Summarize required jobs
@@ -1119,15 +1765,13 @@ jobs:
           import sys
 
           needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          # E2E is informational while tests stabilize (flip to blocking once green)
-          non_blocking = {"e2e", "e2e-report"}
           # Path-filtered jobs that don't apply to this change report "skipped";
           # that is a pass, not a failure. Only real failures/cancellations block.
           ok = {"success", "skipped"}
           failed = {
               name: data["result"]
               for name, data in needs.items()
-              if data["result"] not in ok and name not in non_blocking
+              if data["result"] not in ok
           }
           if failed:
               for name, result in failed.items():
@@ -1135,3 +1779,25 @@ jobs:
               sys.exit(1)
           print("All required CI jobs passed.")
           PY
+
+  ci-timing-report:
+    name: CI Timing Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [ci-result]
+    if: ${{ always() }}
+    continue-on-error: true
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Fetch current workflow jobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" > workflow-jobs.json
+
+      - name: Write CI timing summary
+        run: python scripts/ci/summarize_workflow_jobs.py < workflow-jobs.json >> "$GITHUB_STEP_SUMMARY"

@@ -1,9 +1,9 @@
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
-from django.shortcuts import redirect
 from django.utils.crypto import constant_time_compare
 from django.utils.decorators import method_decorator
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -23,6 +23,36 @@ from .helpers import client_ip
 ADMIN_LOGIN_PATH = "/admin/login/"
 
 
+def _same_host_allowed_hosts(request):
+    return {request.get_host()}
+
+
+def _safe_authorize_next_path(request):
+    next_path = request.get_full_path()
+    if url_has_allowed_host_and_scheme(next_path, allowed_hosts=_same_host_allowed_hosts(request)):
+        return next_path
+    return request.path
+
+
+def _redirect_to_admin_login(request):
+    login_url = f"{ADMIN_LOGIN_PATH}?{urlencode({'next': _safe_authorize_next_path(request)})}"
+    if not url_has_allowed_host_and_scheme(login_url, allowed_hosts=_same_host_allowed_hosts(request)):
+        login_url = ADMIN_LOGIN_PATH
+    return HttpResponseRedirect(login_url)
+
+
+def _redirect_to_loopback_callback(redirect_uri, *, code, state):
+    callback_url = f"{redirect_uri}?{urlencode({'code': code, 'state': state})}"
+    redirect_parts = urlsplit(redirect_uri)
+    if not url_has_allowed_host_and_scheme(
+        callback_url,
+        allowed_hosts={redirect_parts.netloc},
+        require_https=False,
+    ):
+        return HttpResponseBadRequest("redirect_uri is not allowed.")
+    return HttpResponseRedirect(callback_url)
+
+
 @method_decorator(never_cache, name="dispatch")
 class OAuthAuthorizeView(View):
     """Authorization endpoint. Session-authenticated; bounces non-staff to the admin
@@ -31,8 +61,7 @@ class OAuthAuthorizeView(View):
     def get(self, request):
         user = request.user
         if not (user.is_authenticated and user.is_active and user.is_staff):
-            login_url = f"{ADMIN_LOGIN_PATH}?{urlencode({'next': request.get_full_path()})}"
-            return redirect(login_url)
+            return _redirect_to_admin_login(request)
 
         params = request.GET
         if params.get("response_type") != "code":
@@ -44,11 +73,14 @@ class OAuthAuthorizeView(View):
         challenge = params.get("code_challenge") or ""
         if not 43 <= len(challenge) <= 128:
             return HttpResponseBadRequest("code_challenge has an invalid length.")
-        redirect_uri = params.get("redirect_uri") or ""
         try:
-            validate_loopback_redirect_uri(redirect_uri)
+            # Returns a URL rebuilt from a vetted loopback host allowlist + fixed
+            # scheme/path, so the redirect target is not the raw user-supplied string.
+            redirect_uri = validate_loopback_redirect_uri(params.get("redirect_uri") or "")
         except RedirectUriError as exc:
-            return HttpResponseBadRequest(str(exc))
+            # public_message is a fixed developer-facing string (no user input or
+            # traceback text), safe to return without exposing exception internals.
+            return HttpResponseBadRequest(exc.public_message)
 
         state = params.get("state") or ""
         raw_code = CliAuthorizationCode.generate_raw_code()
@@ -58,8 +90,7 @@ class OAuthAuthorizeView(View):
             code_challenge=challenge,
             redirect_uri=redirect_uri,
         )
-        query = urlencode({"code": raw_code, "state": state})
-        return HttpResponseRedirect(f"{redirect_uri}?{query}")
+        return _redirect_to_loopback_callback(redirect_uri, code=raw_code, state=state)
 
 
 def _invalid_grant():

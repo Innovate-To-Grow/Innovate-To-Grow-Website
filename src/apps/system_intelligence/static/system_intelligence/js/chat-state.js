@@ -102,9 +102,33 @@
     return node;
   };
 
+  app.safeHref = function (href) {
+    const raw = String(href || "").replace(/[\x00-\x20]+/g, "");
+    if (!raw) return "";
+    try {
+      const parsed = new URL(raw, window.location.origin);
+      if (!["http:", "https:"].includes(parsed.protocol)) return "";
+      const isSameOrigin = parsed.origin === window.location.origin;
+      if (isSameOrigin) {
+        if (!parsed.pathname.startsWith("/admin/")) return "";
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      }
+      if (parsed.pathname.startsWith("/admin/")) return "";
+      return parsed.href;
+    } catch {
+      return "";
+    }
+  };
+
   app.link = function (href, text) {
+    const safeHref = app.safeHref(href);
+    if (!safeHref) {
+      const node = document.createElement("span");
+      node.textContent = text;
+      return node;
+    }
     const node = document.createElement("a");
-    node.href = href;
+    node.setAttribute("href", safeHref);
     node.textContent = text;
     node.target = "_blank";
     node.rel = "noopener";
