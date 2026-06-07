@@ -18,7 +18,7 @@ from unittest import mock
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 
 import apps.system_intelligence.admin.adk_web.bridge as bridge_module
-from apps.event.tests.helpers import make_member, make_superuser
+from apps.event.tests.helpers import make_admin, make_member, make_superuser
 from apps.system_intelligence.admin.adk_web import (
     AdminADKWebAuthMiddleware,
     SystemIntelligenceADKRouter,
@@ -121,6 +121,24 @@ class SessionLoadingTests(TestCase):
         member = make_member(email="user@example.com")
         self.assertFalse(member.is_staff)
         headers = self._cookie_headers_for(member)
+
+        result = _load_staff_user_id_from_headers_sync(headers)
+
+        self.assertIsNone(result)
+
+    def test_sync_loader_accepts_system_intelligence_app_staff(self):
+        # Staff granted the system_intelligence app passes the per-app gate.
+        admin = make_admin(apps=["system_intelligence"], email="si-staff@example.com")
+        headers = self._cookie_headers_for(admin)
+
+        result = _load_staff_user_id_from_headers_sync(headers)
+
+        self.assertEqual(result, str(admin.pk))
+
+    def test_sync_loader_rejects_other_app_staff(self):
+        # Staff granted a different app (no system_intelligence) is denied.
+        admin = make_admin(apps=["cms"], email="cms-staff@example.com")
+        headers = self._cookie_headers_for(admin)
 
         result = _load_staff_user_id_from_headers_sync(headers)
 

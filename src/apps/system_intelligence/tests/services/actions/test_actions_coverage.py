@@ -19,6 +19,7 @@ from apps.authn.models import Member
 from apps.cms.models import CMSPage, NewsFeedSource
 from apps.cms.models.content.news.article import NewsArticle
 from apps.cms.models.content.news.sync_log import NewsSyncLog
+from apps.event.tests.helpers import make_admin
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.actions import approval, utils
@@ -508,6 +509,18 @@ class OrmRecordsTests(TestCase):
         with self.assertRaises(PermissionDenied) as cm:
             orm_records.check_model_permission(member, NewsFeedSource, "view")
         self.assertIn("Staff authentication is required", str(cm.exception))
+
+    def test_check_model_permission_allows_staff_granted_target_app(self):
+        # NewsFeedSource lives in the cms app; staff granted "cms" may act on it.
+        admin = make_admin(apps=["cms"], email="cms-orm@example.com")
+        orm_records.check_model_permission(admin, NewsFeedSource, "change")
+
+    def test_check_model_permission_denies_staff_without_target_app(self):
+        # Staff granted a different app is denied for cms models.
+        admin = make_admin(apps=["event"], email="event-orm@example.com")
+        with self.assertRaises(PermissionDenied) as cm:
+            orm_records.check_model_permission(admin, NewsFeedSource, "change")
+        self.assertIn("do not have permission", str(cm.exception))
 
 
 # ---------------------------------------------------------------------------

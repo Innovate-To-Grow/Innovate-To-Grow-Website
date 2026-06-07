@@ -9,6 +9,8 @@ from django.contrib.auth import HASH_SESSION_KEY, SESSION_KEY, get_user_model
 from django.db import close_old_connections
 from django.utils.crypto import constant_time_compare
 
+from apps.core.access import user_can_access_app
+
 
 async def load_staff_user_id_from_headers(headers) -> str | None:
     return await sync_to_async(_load_staff_user_id_from_headers_sync, thread_sensitive=True)(headers)
@@ -33,6 +35,9 @@ def _load_staff_user_id_from_headers_sync(headers) -> str | None:
             return None
 
         if not user.is_active or not user.is_staff:
+            return None
+
+        if not user_can_access_app(user, "system_intelligence"):
             return None
 
         session_hash = session.get(HASH_SESSION_KEY)
