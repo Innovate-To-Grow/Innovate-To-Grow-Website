@@ -64,7 +64,6 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     )
     ordering = ("-date_joined",)
     readonly_fields = ("member_uuid", "date_joined", "last_login")
-    filter_horizontal = ("user_permissions",)
     fieldsets = (
         (_("Member Info"), {"fields": ("member_uuid",)}),
         (None, {"fields": ("password",)}),
@@ -75,7 +74,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         (
             _("Permissions"),
             {
-                "fields": ("is_active", "is_staff", "user_permissions"),
+                "fields": ("is_active", "is_staff", "admin_apps"),
                 "classes": ("collapse",),
             },
         ),

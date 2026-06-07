@@ -1,6 +1,8 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models
 
+from apps.core.access import user_can_access_app
+
 from .exceptions import ActionRequestError
 from .json import json_safe
 from .safety import field_output_name, safe_model_fields
@@ -36,7 +38,7 @@ def clone_model_instance(obj: models.Model) -> models.Model:
 def check_model_permission(user, model: type[models.Model], action: str) -> None:
     if not user or not user.is_authenticated or not user.is_staff:
         raise PermissionDenied("Staff authentication is required.")
-    if not user.has_perm(f"{model._meta.app_label}.{action}_{model._meta.model_name}"):
+    if not user_can_access_app(user, model._meta.app_label):
         raise PermissionDenied(f"You do not have permission to {action} {model._meta.verbose_name}.")
 
 
