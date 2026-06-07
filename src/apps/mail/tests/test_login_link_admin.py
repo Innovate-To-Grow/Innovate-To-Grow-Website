@@ -50,6 +50,10 @@ class LoginLinkTokenAdminTests(TestCase):
         self.link.is_used = True
         self.assertEqual(admin.status_badge(self.link), "used")
 
+        # A used-but-reusable link is still live — it must not read as consumed.
+        self.campaign.login_link_reusable = True
+        self.assertEqual(admin.status_badge(self.link), "reusable")
+
         self.link.expires_at = timezone.now() - timedelta(seconds=1)
         self.assertEqual(admin.status_badge(self.link), "expired")
 

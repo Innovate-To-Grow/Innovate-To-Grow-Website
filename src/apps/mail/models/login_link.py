@@ -100,10 +100,17 @@ class LoginLinkToken(models.Model):
         through :meth:`try_mark_used`. Because this still sets ``is_used``,
         turning the source's reusable flag off later sends the next login
         through ``try_mark_used``, which then rejects the token — a kill switch.
+
+        The UPDATE is conditional on ``expires_at`` so a token revoked or
+        expiring between the caller's expiry check and this write cannot still
+        record a use; returns False in that case (treat as expired).
         """
-        self.is_used = True
-        self.used_at = timezone.now()
-        self.save(update_fields=["is_used", "used_at"])
+        now = timezone.now()
+        updated = type(self).objects.filter(pk=self.pk, expires_at__gt=now).update(is_used=True, used_at=now)
+        if updated:
+            self.is_used = True
+            self.used_at = now
+        return bool(updated)
 
     def try_mark_used(self):
         """Atomically claim this token. Returns True on success, False if another

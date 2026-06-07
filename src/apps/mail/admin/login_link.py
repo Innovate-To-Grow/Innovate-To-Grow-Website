@@ -22,7 +22,9 @@ class LoginLinkTokenAdmin(ReadOnlyModelAdmin):
     )
     list_filter = ("is_used", "campaign")
     search_fields = ("member__contact_emails__email_address",)
-    list_select_related = ("member", "campaign", "registration")
+    # registration__event: status_badge reads is_reusable, which follows
+    # registration.event for ticket-issued tokens.
+    list_select_related = ("member", "campaign", "registration__event")
     ordering = ("-created_at",)
 
     # The raw token is the secret behind the emailed link — never expose it.
@@ -39,10 +41,17 @@ class LoginLinkTokenAdmin(ReadOnlyModelAdmin):
 
     actions = ["revoke_selected_action"]
 
-    @display(description="Status", label={"active": "success", "used": "info", "expired": "danger"})
+    @display(
+        description="Status",
+        label={"active": "success", "reusable": "success", "used": "info", "expired": "danger"},
+    )
     def status_badge(self, obj):
         if obj.is_expired:
             return "expired"
+        # A reusable link stays live after use — don't render it like a
+        # consumed one-time token, or operators may skip revoking it.
+        if obj.is_reusable:
+            return "reusable"
         if obj.is_used:
             return "used"
         return "active"

@@ -111,6 +111,18 @@ class LoginLinkViewTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "This login link has expired.")
 
+    def test_inactive_member_is_rejected_with_generic_error(self):
+        # The old ticket-login flow enforced is_active; the unified endpoint must too.
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active", "updated_at"])
+        token = LoginLinkToken.generate_token()
+        LoginLinkToken.objects.create(token=token, member=self.member, campaign=self.campaign)
+
+        response = self.client.post("/mail/login-link/", {"token": token}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "Invalid login link.")
+
 
 class ReusableLoginLinkTests(APITestCase):
     """Per-campaign reusable links: repeat logins, audit, and the kill switch."""
@@ -166,6 +178,16 @@ class ReusableLoginLinkTests(APITestCase):
         response = self.client.post("/mail/login-link/", {"token": self.token}, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "This login link has expired.")
+
+    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
+    def test_reusable_login_rejected_for_inactive_member(self):
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active", "updated_at"])
+
+        response = self.client.post("/mail/login-link/", {"token": self.token}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "Invalid login link.")
 
     @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_orphaned_token_degrades_to_one_time(self):
@@ -336,14 +358,25 @@ class LoginLinkTokenModelTests(APITestCase):
     def test_record_reusable_use_does_not_consume(self):
         token = LoginLinkToken.objects.create(token="audit", member=self.member)
 
-        token.record_reusable_use()
+        self.assertTrue(token.record_reusable_use())
         token.refresh_from_db()
         self.assertTrue(token.is_used)
         first_used_at = token.used_at
 
-        token.record_reusable_use()
+        self.assertTrue(token.record_reusable_use())
         token.refresh_from_db()
         self.assertGreaterEqual(token.used_at, first_used_at)
+
+    def test_record_reusable_use_fails_once_expired_or_revoked(self):
+        token = LoginLinkToken.objects.create(
+            token="revoked-mid-flight",
+            member=self.member,
+            expires_at=timezone.now() - timedelta(seconds=1),
+        )
+
+        self.assertFalse(token.record_reusable_use())
+        token.refresh_from_db()
+        self.assertFalse(token.is_used)
 
     def test_is_reusable_defaults_false_without_source(self):
         token = LoginLinkToken.objects.create(token="orphan", member=self.member)

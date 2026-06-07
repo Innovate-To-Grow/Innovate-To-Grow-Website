@@ -31,11 +31,17 @@ class LoginLinkView(APIView):
         except LoginLinkToken.DoesNotExist:
             return Response({"detail": "Invalid login link."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Same generic message as an unknown token — don't reveal account state.
+        if not link.member.is_active:
+            return Response({"detail": "Invalid login link."}, status=status.HTTP_400_BAD_REQUEST)
+
         if link.is_expired:
             return Response({"detail": "This login link has expired."}, status=status.HTTP_400_BAD_REQUEST)
 
         if link.is_reusable:
-            link.record_reusable_use()
+            # Conditional on expiry so a concurrent revoke/expiry can't slip through.
+            if not link.record_reusable_use():
+                return Response({"detail": "This login link has expired."}, status=status.HTTP_400_BAD_REQUEST)
         elif not link.try_mark_used():
             return Response({"detail": "This login link has already been used."}, status=status.HTTP_400_BAD_REQUEST)
 

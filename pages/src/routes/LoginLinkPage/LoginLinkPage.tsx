@@ -37,7 +37,10 @@ export function LoginLinkPage() {
         if (cancelled) return;
         // A one-time link fails when clicked again, but the first click usually
         // already signed this browser in — continue to the account page instead
-        // of showing a dead end.
+        // of showing a dead end. Known trade-off: the stored session may belong
+        // to a different member than the link's owner (shared browser); that is
+        // the same outcome as visiting /account directly, and the failed token
+        // reveals nothing about its owner.
         if (hasStoredAccessToken()) {
           navigate('/account', {replace: true});
           return;
