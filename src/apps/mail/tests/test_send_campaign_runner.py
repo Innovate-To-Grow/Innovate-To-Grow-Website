@@ -4,7 +4,7 @@ from django.test import TestCase
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.event.tests.helpers import make_member
-from apps.mail.models import EmailCampaign, MagicLoginToken, RecipientLog
+from apps.mail.models import EmailCampaign, LoginLinkToken, RecipientLog
 from apps.mail.services.send_campaign.runner import SendTiming, send_campaign
 from apps.mail.services.send_campaign.transport import SesSendResult
 
@@ -117,12 +117,32 @@ class SendCampaignMagicLoginTests(TestCase):
 
     @patch("apps.mail.services.send_campaign.runner._send_via_ses")
     @patch("apps.mail.services.send_campaign.runner._get_ses_client")
-    def test_magic_login_token_created_per_member(self, mock_client, mock_send):
+    def test_login_link_token_created_per_member(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
         send_campaign(self.campaign, self.sender)
-        tokens = MagicLoginToken.objects.filter(campaign=self.campaign, member=self.m1)
+        tokens = LoginLinkToken.objects.filter(campaign=self.campaign, member=self.m1)
         self.assertEqual(tokens.count(), 1)
+
+    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
+    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    def test_login_link_validity_frozen_from_campaign(self, mock_client, mock_send):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        mock_client.return_value = MagicMock()
+        mock_send.return_value = SesSendResult(message_id="SES-001")
+        self.campaign.login_link_validity_days = 30
+        self.campaign.save(update_fields=["login_link_validity_days", "updated_at"])
+
+        before = timezone.now() + timedelta(days=30)
+        send_campaign(self.campaign, self.sender)
+        after = timezone.now() + timedelta(days=30)
+
+        token = LoginLinkToken.objects.get(campaign=self.campaign, member=self.m1)
+        self.assertGreaterEqual(token.expires_at, before)
+        self.assertLessEqual(token.expires_at, after)
 
     @patch("apps.mail.services.send_campaign.runner._send_via_ses")
     @patch("apps.mail.services.send_campaign.runner._get_ses_client")
@@ -133,7 +153,7 @@ class SendCampaignMagicLoginTests(TestCase):
         self.campaign.manual_emails = "random@test.com"
         self.campaign.save()
         send_campaign(self.campaign, self.sender)
-        self.assertEqual(MagicLoginToken.objects.filter(campaign=self.campaign).count(), 0)
+        self.assertEqual(LoginLinkToken.objects.filter(campaign=self.campaign).count(), 0)
 
 
 class SendCampaignErrorTests(TestCase):

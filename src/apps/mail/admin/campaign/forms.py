@@ -122,6 +122,9 @@ class EmailCampaignForm(forms.ModelForm):
         for field_name in (
             "subject",
             "login_redirect_path",
+            # `login_link_reusable` is intentionally NOT disabled — it is read at
+            # login time, so unticking it acts as a kill switch for sent links.
+            "login_link_validity_days",
             "include_unsubscribe_header",
             "body_format",
             "body",

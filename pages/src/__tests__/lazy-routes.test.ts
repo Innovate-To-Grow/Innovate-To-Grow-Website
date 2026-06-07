@@ -21,7 +21,7 @@ describe('Lazy route modules resolve', () => {
     ['AcknowledgementPage', () => import('@/routes/AcknowledgementPage')],
     ['EventArchivePage', () => import('@/routes/EventArchivePage')],
     ['EventRegistrationPage', () => import('@/routes/EventRegistrationPage')],
-    ['TicketLoginPage', () => import('@/routes/TicketLoginPage')],
+    ['LoginLinkPage', () => import('@/routes/LoginLinkPage')],
     ['SubscribePage', () => import('@/routes/SubscribePage')],
     ['UnsubscribeLoginPage', () => import('@/routes/UnsubscribeLoginPage')],
   ] as const;

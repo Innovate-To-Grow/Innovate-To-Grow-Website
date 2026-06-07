@@ -119,10 +119,17 @@ UNFOLD = {
             ],
         },
         {
-            "models": ["mail.emailcampaign", "mail.recipientlog", "mail.smscampaign", "mail.smsrecipientlog"],
+            "models": [
+                "mail.emailcampaign",
+                "mail.recipientlog",
+                "mail.loginlinktoken",
+                "mail.smscampaign",
+                "mail.smsrecipientlog",
+            ],
             "items": [
                 {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
                 {"title": "Email Log", "link": "/admin/mail/recipientlog/"},
+                {"title": "Login Links", "link": "/admin/mail/loginlinktoken/"},
                 {"title": "Broadcast SMS", "link": "/admin/mail/smscampaign/"},
                 {"title": "SMS Log", "link": "/admin/mail/smsrecipientlog/"},
             ],

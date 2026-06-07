@@ -1,4 +1,4 @@
-"""Allowed redirect destinations for campaign magic-login links."""
+"""Allowed redirect destinations for emailed login links."""
 
 from apps.cms.app_routes import APP_ROUTES
 from apps.cms.models import CMSPage
@@ -11,7 +11,7 @@ def is_safe_internal_redirect_path(path: str | None) -> bool:
     return bool(value) and value.startswith("/") and not value.startswith("//")
 
 
-def get_magic_login_redirect_path(campaign) -> str:
+def get_login_link_redirect_path(campaign) -> str:
     candidate = getattr(campaign, "login_redirect_path", None) if campaign is not None else None
     return candidate.strip() if is_safe_internal_redirect_path(candidate) else DEFAULT_LOGIN_REDIRECT_PATH
 

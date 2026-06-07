@@ -1,4 +1,8 @@
-"""Magic-link login endpoint for email campaigns."""
+"""Login-link endpoint for emailed one-click login (campaign and ticket emails).
+
+Served at ``/mail/login-link/`` and the legacy alias ``/mail/magic-login/``
+(tokens issued before the rename remain valid).
+"""
 
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -7,12 +11,11 @@ from rest_framework.views import APIView
 
 from apps.authn.throttles import LoginRateThrottle
 from apps.authn.views.helpers import build_auth_success_payload
-from apps.mail.models import MagicLoginToken
-from apps.mail.utils.redirects import get_magic_login_redirect_path
+from apps.mail.models import LoginLinkToken
 
 
-class MagicLoginView(APIView):
-    """Exchange a campaign login token for JWT credentials."""
+class LoginLinkView(APIView):
+    """Exchange an emailed login-link token for JWT credentials."""
 
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
@@ -24,16 +27,18 @@ class MagicLoginView(APIView):
             return Response({"detail": "Token is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            magic = MagicLoginToken.objects.select_related("member", "campaign").get(token=token)
-        except MagicLoginToken.DoesNotExist:
+            link = LoginLinkToken.objects.select_related("member", "campaign", "registration__event").get(token=token)
+        except LoginLinkToken.DoesNotExist:
             return Response({"detail": "Invalid login link."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if magic.is_expired:
+        if link.is_expired:
             return Response({"detail": "This login link has expired."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not magic.try_mark_used():
+        if link.is_reusable:
+            link.record_reusable_use()
+        elif not link.try_mark_used():
             return Response({"detail": "This login link has already been used."}, status=status.HTTP_400_BAD_REQUEST)
 
-        payload = build_auth_success_payload(magic.member, "Login successful.")
-        payload["redirect_to"] = get_magic_login_redirect_path(magic.campaign)
+        payload = build_auth_success_payload(link.member, "Login successful.")
+        payload["redirect_to"] = link.effective_redirect_path
         return Response(payload, status=status.HTTP_200_OK)
