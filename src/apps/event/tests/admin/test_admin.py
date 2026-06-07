@@ -2,15 +2,13 @@ from io import BytesIO
 from unittest.mock import patch
 
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from openpyxl import load_workbook
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.event.admin.registration import EventRegistrationAdmin
-from apps.event.models import CheckIn, CheckInRecord, Event, EventRegistration, Ticket
+from apps.event.models import CheckIn, CheckInRecord, EventRegistration, Ticket
 from apps.event.services import ScheduleSyncStats
 from apps.event.tests.helpers import (
     make_event,
@@ -34,17 +32,18 @@ class EventAdminTest(TestCase):
         response = self.client.get("/admin/event/event/add/")
         self.assertEqual(response.status_code, 200)
 
-    def test_change_page_shows_inlines_for_staff_without_ticket_model_perms(self):
-        """Inlines must not depend on event.add_ticket; match Event admin access instead."""
-        editor = Member.objects.create_user(password="testpass123", is_staff=True, is_superuser=False)
+    def test_change_page_shows_inlines_for_staff_with_event_app_access(self):
+        """Inlines match Event admin access (the ``event`` app grant), not per-model
+        Django permissions — see apps.core.access.user_can_access_app."""
+        editor = Member.objects.create_user(
+            password="testpass123", is_staff=True, is_superuser=False, admin_apps=["event"]
+        )
         ContactEmail.objects.create(
             member=editor,
             email_address="editor@example.com",
             email_type="primary",
             verified=True,
         )
-        ct = ContentType.objects.get_for_model(Event)
-        editor.user_permissions.add(Permission.objects.get(content_type=ct, codename="change_event"))
         event = make_event(name="Inline Perm Test")
         self.client.logout()
         self.client.login(username="editor@example.com", password="testpass123")

@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet, InlineForeignKeyField
 from unfold.admin import TabularInline
 
+from apps.core.access import user_can_access_app
+
 from ...models import ContactEmail, ContactPhone
 
 
@@ -64,19 +66,26 @@ class NoneSafeUUIDInlineFormSet(BaseInlineFormSet):
 
 
 class StaffPermissionInlineMixin:
-    """Grant full inline permissions to any staff user, matching BaseModelAdmin."""
+    """Grant inline permissions per-app, matching BaseModelAdmin.
+
+    These inlines belong to the Member admin, so access is gated on the ``authn`` app
+    grant (see apps.core.access.user_can_access_app) rather than bare ``is_staff``.
+    """
+
+    def _has_app_access(self, request):
+        return user_can_access_app(request.user, self.model._meta.app_label)
 
     def has_view_permission(self, request, obj=None):
-        return request.user.is_staff
+        return self._has_app_access(request)
 
     def has_add_permission(self, request, obj=None):
-        return request.user.is_staff
+        return self._has_app_access(request)
 
     def has_change_permission(self, request, obj=None):
-        return request.user.is_staff
+        return self._has_app_access(request)
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_staff
+        return self._has_app_access(request)
 
 
 class UUIDInlineMixin:

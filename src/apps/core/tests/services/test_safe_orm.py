@@ -34,7 +34,7 @@ from apps.core.services.db_tools.safe_orm import (
     validate_selected_fields,
     validate_write_payload,
 )
-from apps.event.tests.helpers import make_member, make_superuser
+from apps.event.tests.helpers import make_admin, make_member, make_superuser
 from apps.mail.models import MagicLoginToken
 from apps.projects.models import Project, Semester
 
@@ -169,10 +169,15 @@ class RecordsTests(TestCase):
         self.assertFalse(clone._state.adding)
 
     def test_check_model_permission(self):
+        # Non-staff and staff-without-the-app are denied; superuser and staff granted
+        # the model's app ("projects") are allowed. See apps.core.access.user_can_access_app.
         with self.assertRaises(PermissionDenied):
             check_model_permission(make_member(email="np@example.com"), Semester, "change")
         with self.assertRaises(PermissionDenied):
             check_model_permission(make_member(email="staff@example.com", is_staff=True), Semester, "change")
+        with self.assertRaises(PermissionDenied):
+            check_model_permission(make_admin(apps=["cms"], email="cms@example.com"), Semester, "change")
+        check_model_permission(make_admin(apps=["projects"], email="pa@example.com"), Semester, "change")
         check_model_permission(make_superuser(email="su@example.com"), Semester, "change")
 
     def test_assert_snapshot_unchanged(self):
