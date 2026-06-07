@@ -59,6 +59,8 @@ class AcceptInvitationViewTests(TestCase):
         self.assertContains(response, "existing@example.com")
         member.refresh_from_db()
         self.assertTrue(member.is_staff)
+        # Upgrading an existing member to staff must not auto-grant any apps.
+        self.assertEqual(member.admin_apps, [])
         invitation.refresh_from_db()
         self.assertEqual(invitation.status, AdminInvitation.Status.ACCEPTED)
 
@@ -97,6 +99,9 @@ class AcceptInvitationViewTests(TestCase):
         member = ContactEmail.objects.get(email_address="invite@example.com").member
         self.assertTrue(member.is_staff)
         self.assertTrue(member.is_active)
+        # No app grant is handed out at acceptance time; the I2G Master grants
+        # apps later via the Member admin (see apps.core.access).
+        self.assertEqual(member.admin_apps, [])
 
     def test_post_existing_member_upgrades_to_staff(self):
         existing = Member.objects.create_user(
@@ -120,6 +125,7 @@ class AcceptInvitationViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         existing.refresh_from_db()
         self.assertTrue(existing.is_staff)
+        self.assertEqual(existing.admin_apps, [])
 
     def test_post_existing_inactive_verified_member_upgrades_and_activates(self):
         existing = Member.objects.create_user(
