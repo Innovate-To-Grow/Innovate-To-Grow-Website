@@ -214,6 +214,16 @@ jobs:
               "__DB_PASSWORD_SECRET_ARN__",
           }
 
+          def require_secret_ref_arn(name: str, value: str) -> None:
+              # Catch a pasted literal secret / typo'd name at render time:
+              # a bad reference would otherwise register fine and only fail
+              # at task launch, surfacing as a rolled-back deploy.
+              if not value.startswith(("arn:aws:secretsmanager:", "arn:aws:ssm:")):
+                  raise SystemExit(
+                      f"{name} must be a Secrets Manager or SSM Parameter Store ARN "
+                      "(arn:aws:secretsmanager:... or arn:aws:ssm:...)."
+                  )
+
           # Substitute IAM role ARNs so the account ID is not baked into the
           # checked-in task-definition template.
           exec_role = env_value("ECS_EXECUTION_ROLE_ARN").strip()
@@ -246,6 +256,7 @@ jobs:
                       raise SystemExit(f"{value_from.strip('_')} is required to render the ECS task definition.")
                   continue
 
+              require_secret_ref_arn(value_from.strip("_"), secret_arn)
               item["valueFrom"] = secret_arn
               rendered_secrets.append(item)
           container["secrets"] = rendered_secrets

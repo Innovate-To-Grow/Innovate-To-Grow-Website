@@ -2,8 +2,10 @@ name: Deploy Archive to AWS ECS
 
 # Builds the archived event-pages site (archive/page/) and deploys it to its
 # own ECS Fargate service behind the shared prod ALB
-# (host: archive.i2g.ucmerced.edu). The Google Sheets API key stays server-side
-# in the task definition, injected from a GitHub secret.
+# (host: archive.i2g.ucmerced.edu). The Google Sheets API key is injected by
+# ECS at task launch from Secrets Manager / SSM via the task definition's
+# `secrets` block — only its ARN (SHEETS_API_KEY_SECRET_ARN) lives in GitHub
+# Actions configuration and in the registered task definition.
 
 on:
   workflow_run:
@@ -122,6 +124,12 @@ jobs:
           sheets_api_key_secret = os.environ.get("SHEETS_API_KEY_SECRET_ARN", "").strip()
           if not sheets_api_key_secret:
               raise SystemExit("SHEETS_API_KEY_SECRET_ARN is required.")
+          # Catch a pasted literal key / typo'd name at render time instead of
+          # a rolled-back deploy at task launch.
+          if not sheets_api_key_secret.startswith(("arn:aws:secretsmanager:", "arn:aws:ssm:")):
+              raise SystemExit(
+                  "SHEETS_API_KEY_SECRET_ARN must be a Secrets Manager or SSM Parameter Store ARN."
+              )
           for item in container.get("secrets", []):
               if item.get("valueFrom") == "__SHEETS_API_KEY_SECRET_ARN__":
                   item["valueFrom"] = sheets_api_key_secret

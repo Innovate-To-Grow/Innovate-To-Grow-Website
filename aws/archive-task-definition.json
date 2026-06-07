@@ -1,9 +1,7 @@
 {
   "family": "itg-archive",
   "networkMode": "awsvpc",
-  "requiresCompatibilities": [
-    "FARGATE"
-  ],
+  "requiresCompatibilities": ["FARGATE"],
   "cpu": "256",
   "memory": "512",
   "executionRoleArn": "__ECS_EXECUTION_ROLE_ARN__",
@@ -21,10 +19,7 @@
       ],
       "environment": [],
       "healthCheck": {
-        "command": [
-          "CMD-SHELL",
-          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/healthz')\" || exit 1"
-        ],
+        "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/healthz')\" || exit 1"],
         "interval": 30,
         "timeout": 5,
         "retries": 3,
