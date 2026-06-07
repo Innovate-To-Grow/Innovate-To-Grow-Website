@@ -29,7 +29,7 @@ def _check_snapshot(model, before, expected_snapshot):
 
 
 def cli_create(*, actor, request_ip, app_label, model_name, fields):
-    model = resolve_cli_model(app_label, model_name, write=True)
+    model = resolve_cli_model(app_label, model_name, write=True, actor=actor)
     if not isinstance(fields, dict) or not fields:
         raise ActionRequestError("fields must be a non-empty object.")
     clean = validate_write_payload(model, fields)
@@ -53,7 +53,7 @@ def cli_create(*, actor, request_ip, app_label, model_name, fields):
 
 
 def cli_update(*, actor, request_ip, app_label, model_name, pk, changes, expected_snapshot=None):
-    model = resolve_cli_model(app_label, model_name, write=True)
+    model = resolve_cli_model(app_label, model_name, write=True, actor=actor)
     if not isinstance(changes, dict) or not changes:
         raise ActionRequestError("changes must be a non-empty object.")
     with transaction.atomic():
@@ -80,7 +80,7 @@ def cli_update(*, actor, request_ip, app_label, model_name, pk, changes, expecte
 
 
 def cli_delete(*, actor, request_ip, app_label, model_name, pk, confirm_cascade=False, expected_snapshot=None):
-    model = resolve_cli_model(app_label, model_name, write=True)
+    model = resolve_cli_model(app_label, model_name, write=True, actor=actor)
     with transaction.atomic():
         obj = cli_get_object(model, pk)
         before = serialize_model_instance(obj, write=True)
