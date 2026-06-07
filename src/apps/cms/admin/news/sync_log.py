@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from apps.cms.models import NewsSyncLog
+from apps.core.access import user_can_access_app
 from apps.core.admin import ReadOnlyModelAdmin
 
 
@@ -26,7 +27,7 @@ class NewsSyncLogAdmin(ReadOnlyModelAdmin):
     ordering = ("-started_at",)
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_staff
+        return user_can_access_app(request.user, "cms")
 
     def has_errors_display(self, obj):
         return obj.has_errors

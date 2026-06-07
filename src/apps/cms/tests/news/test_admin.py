@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -11,6 +11,7 @@ from apps.authn.models import ContactEmail
 from apps.cms.admin.news.feed_source import NewsFeedSourceAdmin
 from apps.cms.admin.news.sync_log import NewsSyncLogAdmin
 from apps.cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
+from apps.event.tests.helpers import make_admin, make_superuser
 
 Member = get_user_model()
 
@@ -192,6 +193,31 @@ class NewsSyncLogAdminDisplayTests(TestCase):
     def test_has_errors_display_false(self):
         log = NewsSyncLog.objects.create(feed_source=self.source, started_at=timezone.now(), errors_text="")
         self.assertFalse(self.admin.has_errors_display(log))
+
+
+class NewsSyncLogAdminDeletePermissionTests(TestCase):
+    """The read-only sync-log admin re-enables delete only for cms-app members."""
+
+    def setUp(self):
+        self.admin = NewsSyncLogAdmin(NewsSyncLog, AdminSite())
+        self.factory = RequestFactory()
+
+    def _request(self, user):
+        request = self.factory.get("/admin/cms/newssynclog/")
+        request.user = user
+        return request
+
+    def test_delete_allowed_for_cms_staff(self):
+        user = make_admin(apps=["cms"], email="cms-log@example.com")
+        self.assertTrue(self.admin.has_delete_permission(self._request(user)))
+
+    def test_delete_denied_for_other_app_staff(self):
+        user = make_admin(apps=["event"], email="event-log@example.com")
+        self.assertFalse(self.admin.has_delete_permission(self._request(user)))
+
+    def test_delete_allowed_for_superuser(self):
+        user = make_superuser(email="master-log@example.com")
+        self.assertTrue(self.admin.has_delete_permission(self._request(user)))
 
 
 class NewsSyncLogAdminTest(TestCase):

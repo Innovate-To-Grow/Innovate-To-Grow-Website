@@ -4,8 +4,8 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.authn.models import Member
 from apps.cms.models import CMSBlock, CMSPage
+from apps.event.tests.helpers import make_admin, make_member, make_superuser
 
 
 class CMSLivePreviewSyncPostingTest(TestCase):
@@ -15,10 +15,7 @@ class CMSLivePreviewSyncPostingTest(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = Member.objects.create_user(
-            password="testpass123",
-            is_staff=True,
-        )
+        self.staff = make_admin(apps=["cms"], email="cms-posting@example.com")
         self.page = CMSPage.objects.create(
             slug="live-preview-test",
             route="/live-preview-test",
@@ -142,15 +139,13 @@ class CMSLivePreviewSyncPostingTest(TestCase):
             content_type="application/json",
         )
         # DRF returns 401 for unauthenticated requests when DEFAULT_PERMISSION_CLASSES
-        # includes IsAuthenticated; IsAdminUser would return 403 for authenticated non-staff.
+        # includes IsAuthenticated; the cms-app permission returns 403 for authenticated
+        # users without cms access.
         self.assertIn(response.status_code, [401, 403])
 
     def test_post_non_staff_returns_403(self):
         """Authenticated non-staff user POST returns 403."""
-        regular_user = Member.objects.create_user(
-            password="testpass123",
-            is_staff=False,
-        )
+        regular_user = make_member(email="plain-member@example.com")
         self.client.force_login(regular_user)
         response = self.client.post(
             self.live_preview_url,
@@ -158,6 +153,29 @@ class CMSLivePreviewSyncPostingTest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_post_non_cms_staff_returns_403(self):
+        """Staff granted a different app (not cms) is denied the live-preview POST."""
+        other_app_staff = make_admin(apps=["event"], email="event-staff@example.com")
+        self.client.force_login(other_app_staff)
+        response = self.client.post(
+            self.live_preview_url,
+            data=json.dumps({"title": "Other App"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_post_superuser_allowed(self):
+        """Superuser (I2G Master) can POST live-preview data."""
+        superuser = make_superuser(email="master@example.com")
+        self.client.force_login(superuser)
+        response = self.client.post(
+            self.live_preview_url,
+            data=json.dumps({"title": "Master", "blocks": []}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
 
     def test_post_strips_client_supplied_expires_at(self):
         """Client-supplied expires_at is discarded; server computes its own.
