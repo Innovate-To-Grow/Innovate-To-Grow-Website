@@ -1,6 +1,7 @@
 from django.contrib import admin
 from unfold.decorators import display
 
+from apps.core.access import user_can_access_app
 from apps.core.admin import ReadOnlyModelAdmin
 
 from ..models import RecipientLog
@@ -55,7 +56,7 @@ class RecipientLogAdmin(ReadOnlyModelAdmin):
     )
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_staff
+        return user_can_access_app(request.user, "mail")
 
     @display(description="Status", label=True)
     def status_badge(self, obj):

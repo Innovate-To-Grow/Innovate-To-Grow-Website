@@ -14,6 +14,7 @@ from unfold.admin import TabularInline
 from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget
 
+from apps.core.access import user_can_access_app
 from apps.core.admin import BaseModelAdmin, ReadOnlyModelAdmin
 from apps.event.models import Ticket
 from apps.mail.admin.campaign.views.status import _short_error
@@ -549,7 +550,7 @@ class SmsRecipientLogAdmin(ReadOnlyModelAdmin):
     )
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_staff
+        return user_can_access_app(request.user, "mail")
 
     @display(description="Status", label=True)
     def status_badge(self, obj):
