@@ -129,6 +129,43 @@ class GmailImportServiceTest(TestCase):
 
         mock_open.assert_called_once_with(mailbox="shared@ucmerced.edu")
 
+    def test_fetch_message_html_fragment_replaces_magic_login_token_links(self):
+        mailbox = _FakeMailbox(
+            [
+                SimpleNamespace(
+                    uid="1001",
+                    subject="Subject",
+                    date=datetime(2026, 4, 6, 9, 0),
+                    html=(
+                        '<html><body><a href="https://example.test/magic-login?token=victim-token&next=/portal">'
+                        "Log in</a></body></html>"
+                    ),
+                    text="Log in",
+                )
+            ]
+        )
+
+        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+            fragment = fetch_message_html_fragment("1001")
+
+        self.assertIn("{{ login_link }}", fragment)
+        self.assertNotIn("victim-token", fragment)
+        self.assertNotIn("/magic-login?token=", fragment)
+
+    def test_fetch_message_html_fragment_replaces_cached_magic_login_token_links(self):
+        from django.core.cache import cache as dj_cache
+
+        dj_cache.set(
+            "gmail_import:msg:campaigns@ucmerced.edu:msg-1",
+            '<a href="/magic-login?token=cached-victim-token">Log in</a>',
+            1800,
+        )
+
+        fragment = fetch_message_html_fragment("msg-1")
+
+        self.assertIn("{{ login_link }}", fragment)
+        self.assertNotIn("cached-victim-token", fragment)
+
     def test_import_message_into_campaign_saves_html_marker(self):
         campaign = EmailCampaign.objects.create(
             subject="Campaign",
@@ -141,6 +178,23 @@ class GmailImportServiceTest(TestCase):
 
         campaign.refresh_from_db()
         self.assertEqual(campaign.body, HTML_MARKER + "<p>Imported</p>")
+
+    def test_import_message_into_campaign_scrubs_magic_login_token_links(self):
+        campaign = EmailCampaign.objects.create(
+            subject="Campaign",
+            body="Before import",
+            login_redirect_path="/account",
+        )
+
+        with patch(
+            "apps.mail.services.gmail_import.fetch_message_html_fragment",
+            return_value='<a href="/magic-login?token=victim-token">Log in</a>',
+        ):
+            import_message_into_campaign(campaign, "msg-1")
+
+        campaign.refresh_from_db()
+        self.assertIn("{{ login_link }}", campaign.body)
+        self.assertNotIn("victim-token", campaign.body)
 
     def test_open_mailbox_raises_when_gmail_import_config_missing(self):
         with patch(

@@ -1,15 +1,14 @@
-import {useEffect, useState, useMemo} from 'react';
-import {useSearchParams, useNavigate} from 'react-router-dom';
+import {useEffect, useMemo, useState} from 'react';
+import {useSearchParams} from 'react-router-dom';
 import {unsubscribeAutoLogin} from '@/features/auth';
-import {getPostAuthPath} from '@/features/auth/api/redirects';
 
 export function UnsubscribeLoginPage() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const token = useMemo(() => searchParams.get('token'), [searchParams]);
   const [error, setError] = useState<string | null>(
-    token ? null : 'No login token provided.',
+    token ? null : 'No unsubscribe token provided.',
   );
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -17,35 +16,43 @@ export function UnsubscribeLoginPage() {
     let cancelled = false;
 
     unsubscribeAutoLogin(token)
-      .then((response) => {
+      .then(() => {
         if (!cancelled) {
-          window.dispatchEvent(new Event('i2g-auth-state-change'));
-          navigate(getPostAuthPath(response), {replace: true});
+          setSuccess(true);
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setError('This login link is invalid or has expired. Please log in manually.');
+          setError('This unsubscribe link is invalid or has expired. Please update your email preferences manually.');
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [token, navigate]);
+  }, [token]);
 
   if (error) {
     return (
       <div className="unsubscribe-login-page">
         <p className="unsubscribe-login-error">{error}</p>
-        <a href="/login" className="unsubscribe-login-link">Go to Login</a>
+        <a href="/account" className="unsubscribe-login-link">Manage email preferences</a>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="unsubscribe-login-page">
+        <p>You have been unsubscribed from updates and announcements.</p>
+        <a href="/account" className="unsubscribe-login-link">Manage email preferences</a>
       </div>
     );
   }
 
   return (
     <div className="unsubscribe-login-page">
-      <p>Signing you in...</p>
+      <p>Unsubscribing you...</p>
     </div>
   );
 }

@@ -90,7 +90,7 @@ def send_ticket_email(registration: EventRegistration) -> None:
     """
     config = _load_config()
 
-    login_token = build_ticket_login_token(registration.member)
+    login_token = build_ticket_login_token(registration)
     login_url = build_frontend_absolute_url(f"/ticket-login?token={login_token}")
 
     event = registration.event
