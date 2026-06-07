@@ -9,7 +9,7 @@ djangorestframework-simplejwt>=5.5.1
 python-dotenv>=1.2.2
 
 # Admin Theme
-django-unfold>=0.78.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.11
+django-unfold>=0.91.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.11
 
 # Rich Text Editor
 django-ckeditor-5>=0.2.20
@@ -35,7 +35,7 @@ google-adk>=2.2.0,<3.0
 # packages below 1.42 (a bump to >=1.42 is unsatisfiable while google-adk is a dep).
 opentelemetry-api>=1.36.0,<1.42
 opentelemetry-sdk>=1.41.1,<1.42
-opentelemetry-exporter-otlp-proto-http>=1.36.0,<1.42
+opentelemetry-exporter-otlp-proto-http>=1.41.1,<1.42
 litellm>=1.83.13,<2.0
 fastapi!=0.136.3  # Exclude MAL-2026-4750; do not ignore MAL advisories in pip-audit.
 starlette>=1.2.1  # CVE-2026-48710 (pulled in via fastapi); needs google-adk>=2.2.0
