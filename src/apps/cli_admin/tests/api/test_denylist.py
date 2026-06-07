@@ -32,7 +32,7 @@ class DenylistTests(CliApiTestCase):
             ("cli_admin", "cliauditlog"),
             ("authn", "impersonationtoken"),
             ("authn", "admininvitation"),
-            ("mail", "magiclogintoken"),
+            ("mail", "loginlinktoken"),
         ]
         for app_label, model_name in denied:
             with self.subTest(model=f"{app_label}.{model_name}"):

@@ -78,13 +78,7 @@ Returns the authenticated user's event registrations with ticket details.
 
 **Permission:** Authenticated
 
-#### `POST /event/ticket-login/`
-
-Auto-login using a ticket token (from QR code scan).
-
-**Request:** `{ "token": "<ticket_token>" }`
-
-**Response:** JWT access/refresh tokens
+Ticket confirmation emails no longer use a dedicated `/event/ticket-login/` endpoint. They embed a unified login link (`/login-link?token=...`, validated by `POST /mail/login-link/`) whose validity and reuse policy come from the event (`ticket_login_validity_days`, `ticket_login_reusable`) and which redirects to `/event-registration` after login. See [auth-and-mail.md](auth-and-mail.md).
 
 ### Schedule
 

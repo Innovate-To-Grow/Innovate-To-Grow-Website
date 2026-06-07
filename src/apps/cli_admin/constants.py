@@ -14,7 +14,7 @@ ACCESS_TOKEN_TTL = timedelta(hours=8)
 
 # Belt-and-suspenders denylist on top of the shared safe-ORM denylist. The CLI's
 # own tables plus other auth-sensitive tables are never reachable via /admin-api/.
-# (cliaccesstoken / impersonationtoken / magiclogintoken already match the shared
+# (cliaccesstoken / impersonationtoken / loginlinktoken already match the shared
 # "token" name-part rule, but they are listed here explicitly for clarity.)
 CLI_EXTRA_DENIED_MODEL_LABELS = frozenset(
     {
@@ -23,7 +23,7 @@ CLI_EXTRA_DENIED_MODEL_LABELS = frozenset(
         "cli_admin.cliauditlog",
         "authn.impersonationtoken",
         "authn.admininvitation",
-        "mail.magiclogintoken",
+        "mail.loginlinktoken",
     }
 )
 
