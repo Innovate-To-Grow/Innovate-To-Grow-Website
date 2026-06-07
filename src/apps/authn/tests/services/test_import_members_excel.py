@@ -215,6 +215,27 @@ class ImportMembersExcelTests(TestCase):
         self.assertTrue(ContactEmail.objects.filter(member=member, email_type="secondary").exists())
         self.assertTrue(ContactPhone.objects.filter(member=member, phone_number="2095559999").exists())
 
+    def test_update_existing_member_permission_callback_denies_update(self):
+        member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")
+        ContactEmail.objects.create(
+            member=member, email_address="denied@example.com", email_type="primary", verified=True
+        )
+        workbook = self._build_full_workbook(
+            [
+                ["denied@example.com", "New", "Name", "attacker@example.net", "+12095559999", "NewOrg"],
+            ]
+        )
+
+        result = import_members_from_excel(workbook, update_existing=True, update_member_allowed=lambda member: False)
+
+        member.refresh_from_db()
+        self.assertTrue(result.success)
+        self.assertEqual(result.updated_count, 0)
+        self.assertEqual(result.skipped_count, 1)
+        self.assertEqual(member.first_name, "Old")
+        self.assertFalse(ContactEmail.objects.filter(member=member, email_address="attacker@example.net").exists())
+        self.assertTrue(any("permission" in error for error in result.errors))
+
     def test_update_existing_replaces_phone_and_clears_secondary(self):
         member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")
         ContactEmail.objects.create(

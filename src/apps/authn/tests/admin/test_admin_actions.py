@@ -10,6 +10,7 @@ from unittest.mock import patch
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
+from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase, override_settings
 
 from apps.authn.admin.member_sheet_sync import (
@@ -191,6 +192,34 @@ class MemberAdminActionTests(_AdminTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(ContactEmail.objects.filter(email_address="imported@example.com").exists())
         self.assertTrue(any("Import complete" in str(m) for m in request._messages))
+
+    def test_import_excel_view_update_existing_requires_change_permission(self):
+        from io import BytesIO
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from openpyxl import Workbook
+
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.append(["Primary Email", "First Name", "Last Name", "Organization"])
+        worksheet.append(["imported@example.com", "Imp", "Orted", "Acme"])
+        payload = BytesIO()
+        workbook.save(payload)
+        payload.seek(0)
+
+        upload = SimpleUploadedFile(
+            "members.xlsx",
+            payload.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        request = self.rf.post("/admin/authn/member/import-excel/", {"excel_file": upload, "update_existing": "on"})
+        request.user = self.admin_user
+        request.session = {}
+        request._messages = FallbackStorage(request)
+
+        with patch.object(self.model_admin, "has_change_permission", return_value=False):
+            with self.assertRaises(PermissionDenied):
+                self.model_admin.import_excel_view(request)
 
 
 class ContactEmailAdminTests(_AdminTestBase):
