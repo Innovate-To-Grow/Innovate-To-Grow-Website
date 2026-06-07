@@ -113,6 +113,8 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
                     "public_assistant_max_history_messages",
                     "public_assistant_ip_token_limit",
                     "public_assistant_ip_token_window_seconds",
+                    "public_assistant_log_enabled",
+                    "public_assistant_log_retention_days",
                 ),
             },
         ),

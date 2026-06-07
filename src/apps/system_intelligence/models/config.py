@@ -153,6 +153,16 @@ class SystemIntelligenceConfig(ProjectControlModel):
         verbose_name="Public Welcome Message",
         help_text="Greeting shown when the public chatbot opens.",
     )
+    public_assistant_log_enabled = models.BooleanField(
+        default=True,
+        verbose_name="Public Assistant Audit Logging",
+        help_text="Persist public chat and AI-search turns for admin audit. Failures never affect the visitor.",
+    )
+    public_assistant_log_retention_days = models.PositiveIntegerField(
+        default=90,
+        verbose_name="Public Assistant Log Retention (days)",
+        help_text="Days to keep audited conversations before the cleanup command deletes them. 0 keeps forever.",
+    )
 
     class Meta:
         verbose_name = "System Intelligence Config"

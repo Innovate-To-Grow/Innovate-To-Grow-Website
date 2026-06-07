@@ -33,3 +33,19 @@ def get_management_client(aws_config=None):
         aws_access_key_id=aws_config.access_key_id,
         aws_secret_access_key=aws_config.secret_access_key,
     )
+
+
+def get_cloudwatch_client(aws_config=None):
+    """Build a CloudWatch client for reading free Bedrock usage metrics.
+
+    Used solely for ``ListMetrics`` and ``GetMetricData`` (both free reads).
+    Cost Explorer (``ce``) is intentionally never used -- those calls are
+    billed per request.
+    """
+    aws_config = get_aws_config(aws_config)
+    return boto3.client(
+        "cloudwatch",
+        region_name=aws_config.region,
+        aws_access_key_id=aws_config.access_key_id,
+        aws_secret_access_key=aws_config.secret_access_key,
+    )

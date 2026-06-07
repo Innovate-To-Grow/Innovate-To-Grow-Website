@@ -103,12 +103,13 @@
 
   app.renderRichText = function (container, text) {
     container.replaceChildren();
-    const pattern = /\[([^\]]+)\]\((\/admin\/system-intelligence\/exports\/[^)]+\/download\/)\)/g;
+    const pattern =
+      /\[([^\]]+)\]\(\/admin\/system-intelligence\/exports\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/download\/\)/gi;
     let index = 0;
     let match = pattern.exec(text);
     while (match) {
       container.append(document.createTextNode(text.slice(index, match.index)));
-      container.append(app.link(match[2], match[1]));
+      container.append(app.link(app.urlFor("exportDownload", match[2]), match[1]));
       index = pattern.lastIndex;
       match = pattern.exec(text);
     }

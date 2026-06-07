@@ -52,40 +52,41 @@ describe('assistant api', () => {
   });
 
   describe('sendAssistantMessage', () => {
-    it('posts message + history and returns an ok result on success', async () => {
+    it('posts message + history + session_id and returns an ok result on success', async () => {
       mocks.post.mockResolvedValue({
         data: {available: true, reply: 'pong', usage: {inputTokens: 1, outputTokens: 2, totalTokens: 3}},
       });
 
-      const result = await sendAssistantMessage('ping', [{role: 'user', content: 'earlier'}]);
+      const result = await sendAssistantMessage('ping', [{role: 'user', content: 'earlier'}], 'sess-1');
       expect(mocks.post).toHaveBeenCalledWith('/assistant/chat/', {
         message: 'ping',
         history: [{role: 'user', content: 'earlier'}],
+        session_id: 'sess-1',
       });
       expect(result).toEqual({status: 'ok', reply: 'pong', usage: {inputTokens: 1, outputTokens: 2, totalTokens: 3}});
     });
 
     it('returns an unavailable result when available is false', async () => {
       mocks.post.mockResolvedValue({data: {available: false, message: 'off'}});
-      const result = await sendAssistantMessage('ping', []);
+      const result = await sendAssistantMessage('ping', [], 'sess-1');
       expect(result).toEqual({status: 'unavailable', message: 'off'});
     });
 
     it('returns a budget result on HTTP 429', async () => {
       mocks.post.mockRejectedValue(axiosErrorWithStatus(429));
-      const result = await sendAssistantMessage('ping', []);
+      const result = await sendAssistantMessage('ping', [], 'sess-1');
       expect(result.status).toBe('budget');
     });
 
     it('returns a generic error result on other failures', async () => {
       mocks.post.mockRejectedValue(axiosErrorWithStatus(502));
-      const result = await sendAssistantMessage('ping', []);
+      const result = await sendAssistantMessage('ping', [], 'sess-1');
       expect(result.status).toBe('error');
     });
 
     it('returns a generic error result on a non-axios failure', async () => {
       mocks.post.mockRejectedValue(new Error('boom'));
-      const result = await sendAssistantMessage('ping', []);
+      const result = await sendAssistantMessage('ping', [], 'sess-1');
       expect(result.status).toBe('error');
     });
   });

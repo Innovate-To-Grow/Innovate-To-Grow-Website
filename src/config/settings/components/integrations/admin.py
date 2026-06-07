@@ -188,6 +188,11 @@ UNFOLD = {
                         "title": "Assistant Settings",
                         "link": "/admin/system_intelligence/systemintelligenceconfig/",
                     },
+                    {"title": "Usage Dashboard", "link": "/admin/system-intelligence/usage/"},
+                    {
+                        "title": "Conversation Logs",
+                        "link": "/admin/system_intelligence/assistantconversationlog/",
+                    },
                 ],
             },
             {

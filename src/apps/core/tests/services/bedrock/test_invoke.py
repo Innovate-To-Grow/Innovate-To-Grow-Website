@@ -142,6 +142,24 @@ class ClientsTest(TestCase):
             aws_secret_access_key="sek",
         )
 
+    def test_get_cloudwatch_client_builds_cloudwatch_client(self):
+        from apps.core.services.bedrock.clients import get_cloudwatch_client
+
+        cfg = MagicMock()
+        cfg.is_configured = True
+        cfg.region = "us-west-2"
+        cfg.access_key_id = "AKIA"
+        cfg.secret_access_key = "sek"
+        with patch("apps.core.services.bedrock.clients.boto3.client", return_value="CW") as boto:
+            self.assertEqual(get_cloudwatch_client(cfg), "CW")
+        # Never Cost Explorer ("ce") -- CloudWatch reads only.
+        boto.assert_called_once_with(
+            "cloudwatch",
+            region_name="us-west-2",
+            aws_access_key_id="AKIA",
+            aws_secret_access_key="sek",
+        )
+
 
 # ---------- converse (non-streaming) ----------
 

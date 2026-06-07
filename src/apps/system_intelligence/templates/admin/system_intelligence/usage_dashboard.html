@@ -1,0 +1,369 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}{{ page_title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
+{{ cloudwatch|json_script:"si-usage-cloudwatch" }}
+{{ local|json_script:"si-usage-local" }}
+<style>
+  /* TV / big-screen mode: bigger type, hide admin chrome, fill the viewport. */
+  html.si-tv-mode #header,
+  html.si-tv-mode #nav-sidebar,
+  html.si-tv-mode .breadcrumbs,
+  html.si-tv-mode #footer,
+  html.si-tv-mode .colMS > #content-related { display: none !important; }
+  html.si-tv-mode #content { margin: 0 !important; padding: 1.5rem !important; }
+  html.si-tv-mode .si-usage-stat-value { font-size: 3rem !important; }
+  html.si-tv-mode .si-usage-card-title { font-size: 1.1rem !important; }
+  html.si-tv-mode .si-usage-chart { height: 360px !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="si-usage-root" class="mb-6" data-usage-data-url="{% url 'admin:system_intelligence_usage_data' %}">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-base font-semibold text-font-default-light dark:text-font-default-dark">
+      <span class="material-symbols-outlined align-middle mr-1" style="font-size:20px">insights</span>Assistant Usage
+    </h2>
+    <button type="button" id="si-usage-fullscreen"
+            class="inline-flex items-center gap-1 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 py-1.5 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+      <span class="material-symbols-outlined" style="font-size:18px">fullscreen</span>
+      <span id="si-usage-fullscreen-label">Fullscreen</span>
+    </button>
+  </div>
+
+  <div id="si-usage-banner" class="hidden mb-4 rounded-default border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 p-4">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined text-amber-600 dark:text-amber-400" style="font-size:24px">warning</span>
+      <p class="text-sm text-amber-800 dark:text-amber-200">
+        AWS metrics unavailable (<span id="si-usage-banner-reason">unknown</span>).
+        Grant <code>cloudwatch:GetMetricData</code> + <code>cloudwatch:ListMetrics</code> to the IAM user.
+        Local sections below still render.
+      </p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary-600" style="font-size:28px">login</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Input Tokens (24h)</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_input">0</p></div></div></div>
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-green-600" style="font-size:28px">logout</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Output Tokens (24h)</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_output">0</p></div></div></div>
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-blue-600" style="font-size:28px">bolt</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Invocations (24h)</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_invocations">0</p></div></div></div>
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-orange-600" style="font-size:28px">forum</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Conversations Today</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="conversations_today">0</p></div></div></div>
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-purple-600" style="font-size:28px">chat</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Messages (7d)</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="messages_7d">0</p></div></div></div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">bar_chart</span>Tokens (last 30 days)</h3>
+      <div class="si-usage-chart" style="position:relative; height:240px;"><canvas id="si-usage-tokens-chart"></canvas></div>
+    </div>
+
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">bolt</span>Invocations (last 30 days)</h3>
+      <div class="si-usage-chart" style="position:relative; height:240px;"><canvas id="si-usage-invocations-chart"></canvas></div>
+    </div>
+
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">donut_small</span>Tokens by Source (30d)</h3>
+      <div class="si-usage-chart" style="position:relative; height:240px;"><canvas id="si-usage-source-chart"></canvas></div>
+    </div>
+
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">smart_toy</span>By Model (30d)</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-font-subtle-light dark:text-font-subtle-dark border-b border-base-100 dark:border-base-800"><th class="py-1.5 pr-2">Model</th><th class="py-1.5 px-2 text-right">Input</th><th class="py-1.5 px-2 text-right">Output</th><th class="py-1.5 pl-2 text-right">Invocations</th></tr></thead>
+          <tbody id="si-usage-by-model"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">history</span>Recent Conversations</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-font-subtle-light dark:text-font-subtle-dark border-b border-base-100 dark:border-base-800"><th class="py-1.5 pr-2">Source</th><th class="py-1.5 px-2">Session</th><th class="py-1.5 px-2 text-right">Msgs</th><th class="py-1.5 px-2 text-right">Tokens</th><th class="py-1.5 pl-2">Last Activity</th></tr></thead>
+          <tbody id="si-usage-recent"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">trending_up</span>Top Prompts (30d)</h3>
+      <div class="space-y-1" id="si-usage-top-prompts"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  Chart.register(ChartDataLabels);
+
+  const root = document.getElementById('si-usage-root');
+  const dataUrl = root.getAttribute('data-usage-data-url');
+  const convoChangeBase = '/admin/system_intelligence/assistantconversationlog/';
+  const charts = {};
+  let refreshTimer = null;
+
+  function readJson(id) {
+    const el = document.getElementById(id);
+    try { return JSON.parse(el.textContent); } catch (e) { return null; }
+  }
+
+  function isDark() { return document.documentElement.classList.contains('dark'); }
+  function gridColor() { return isDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'; }
+  function textColor() { return isDark() ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'; }
+
+  function fmt(n) { return Number(n || 0).toLocaleString(); }
+
+  function setStat(name, value) {
+    const el = root.querySelector('[data-stat="' + name + '"]');
+    if (el) el.textContent = fmt(value);
+  }
+
+  function shortDate(iso) {
+    // ISO date "2026-06-07" -> "Jun 07" without pulling in a date lib.
+    const parts = String(iso).split('-');
+    if (parts.length !== 3) return iso;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const m = months[parseInt(parts[1], 10) - 1] || parts[1];
+    return m + ' ' + parts[2];
+  }
+
+  function baseScales() {
+    return {
+      x: { grid: { display: false }, ticks: { color: textColor(), font: { size: 9 }, maxRotation: 0, callback: function (val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; } }, border: { display: false } },
+      y: { beginAtZero: true, grid: { color: gridColor() }, ticks: { color: textColor(), font: { size: 11 }, precision: 0, maxTicksLimit: 6 }, border: { display: false } }
+    };
+  }
+
+  function tooltipStyle() {
+    return {
+      backgroundColor: isDark() ? '#1e1e2e' : '#fff',
+      titleColor: isDark() ? '#e2e8f0' : '#1e293b',
+      bodyColor: isDark() ? '#cbd5e1' : '#475569',
+      borderColor: isDark() ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+      borderWidth: 1, padding: 10, cornerRadius: 6
+    };
+  }
+
+  function renderBanner(cloudwatch) {
+    const banner = document.getElementById('si-usage-banner');
+    if (cloudwatch && cloudwatch.available) {
+      banner.classList.add('hidden');
+      return;
+    }
+    document.getElementById('si-usage-banner-reason').textContent = (cloudwatch && cloudwatch.reason) || 'unknown';
+    banner.classList.remove('hidden');
+  }
+
+  function renderStatCards(cloudwatch, local) {
+    const today = (cloudwatch && cloudwatch.today) || {};
+    setStat('today_input', today.input_tokens);
+    setStat('today_output', today.output_tokens);
+    setStat('today_invocations', today.invocations);
+    const counts = (local && local.counts) || {};
+    setStat('conversations_today', counts.conversations_today);
+    setStat('messages_7d', counts.messages_7d);
+  }
+
+  function destroyChart(key) {
+    if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+  }
+
+  function renderTokensChart(cloudwatch) {
+    destroyChart('tokens');
+    const daily = (cloudwatch && cloudwatch.daily) || [];
+    const labels = daily.map(function (d) { return shortDate(d.date); });
+    charts.tokens = new Chart(document.getElementById('si-usage-tokens-chart'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Input', data: daily.map(function (d) { return d.input_tokens; }), backgroundColor: isDark() ? 'rgba(99,102,241,0.7)' : 'rgba(79,70,229,0.75)', stack: 'tokens', borderRadius: 3 },
+          { label: 'Output', data: daily.map(function (d) { return d.output_tokens; }), backgroundColor: isDark() ? 'rgba(45,212,191,0.7)' : 'rgba(20,184,166,0.75)', stack: 'tokens', borderRadius: 3 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, labels: { color: textColor(), boxWidth: 12, font: { size: 11 } } },
+          datalabels: { display: false },
+          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + fmt(ctx.parsed.y); } } })
+        },
+        scales: { x: Object.assign(baseScales().x, { stacked: true }), y: Object.assign(baseScales().y, { stacked: true }) }
+      }
+    });
+  }
+
+  function renderInvocationsChart(cloudwatch) {
+    destroyChart('invocations');
+    const daily = (cloudwatch && cloudwatch.daily) || [];
+    const labels = daily.map(function (d) { return shortDate(d.date); });
+    charts.invocations = new Chart(document.getElementById('si-usage-invocations-chart'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Invocations', data: daily.map(function (d) { return d.invocations; }), backgroundColor: isDark() ? 'rgba(251,146,60,0.7)' : 'rgba(234,88,12,0.75)', borderRadius: 3 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {
+          legend: { display: false },
+          datalabels: { anchor: 'end', align: 'top', color: textColor(), font: { size: 9 }, display: function (ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; } },
+          tooltip: Object.assign(tooltipStyle(), { displayColors: false, callbacks: { label: function (ctx) { return fmt(ctx.parsed.y) + ' invocations'; } } })
+        },
+        scales: baseScales()
+      }
+    });
+  }
+
+  function renderSourceChart(local) {
+    destroyChart('source');
+    const rows = (local && local.tokens_by_source) || [];
+    charts.source = new Chart(document.getElementById('si-usage-source-chart'), {
+      type: 'doughnut',
+      data: {
+        labels: rows.map(function (r) { return r.label; }),
+        datasets: [{ data: rows.map(function (r) { return r.total_tokens; }), backgroundColor: ['rgba(79,70,229,0.8)', 'rgba(20,184,166,0.8)', 'rgba(234,88,12,0.8)'], borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false, cutout: '60%',
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { color: textColor(), boxWidth: 12, font: { size: 11 } } },
+          datalabels: { color: '#fff', font: { size: 11, weight: 'bold' }, formatter: function (v) { return v > 0 ? fmt(v) : ''; } },
+          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (ctx) { return ctx.label + ': ' + fmt(ctx.parsed); } } })
+        }
+      }
+    });
+  }
+
+  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+  function cell(text, extraClass) {
+    const td = document.createElement('td');
+    td.className = 'py-1.5 px-2 ' + (extraClass || '');
+    td.textContent = text;
+    return td;
+  }
+
+  function renderByModel(cloudwatch) {
+    const tbody = document.getElementById('si-usage-by-model');
+    clear(tbody);
+    const rows = (cloudwatch && cloudwatch.by_model) || [];
+    if (!rows.length) {
+      const tr = document.createElement('tr');
+      const td = cell('No model metrics available.', 'text-font-subtle-light dark:text-font-subtle-dark');
+      td.colSpan = 4; tr.appendChild(td); tbody.appendChild(tr);
+      return;
+    }
+    rows.forEach(function (r) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-base-100 dark:border-base-800';
+      tr.appendChild(cell(r.model_id, 'pr-2 truncate text-font-default-light dark:text-font-default-dark'));
+      tr.appendChild(cell(fmt(r.input_tokens), 'text-right'));
+      tr.appendChild(cell(fmt(r.output_tokens), 'text-right'));
+      tr.appendChild(cell(fmt(r.invocations), 'pl-2 text-right'));
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderRecent(local) {
+    const tbody = document.getElementById('si-usage-recent');
+    clear(tbody);
+    const rows = (local && local.recent) || [];
+    if (!rows.length) {
+      const tr = document.createElement('tr');
+      const td = cell('No conversations recorded yet.', 'text-font-subtle-light dark:text-font-subtle-dark');
+      td.colSpan = 5; tr.appendChild(td); tbody.appendChild(tr);
+      return;
+    }
+    rows.forEach(function (r) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-base-100 dark:border-base-800 cursor-pointer hover:bg-base-50 dark:hover:bg-base-800';
+      tr.addEventListener('click', function () { window.location.href = convoChangeBase + r.id + '/change/'; });
+      tr.appendChild(cell(r.label, 'pr-2 text-font-default-light dark:text-font-default-dark'));
+      tr.appendChild(cell(r.session, 'font-mono'));
+      tr.appendChild(cell(fmt(r.message_count), 'text-right'));
+      tr.appendChild(cell(fmt(r.total_tokens), 'text-right'));
+      tr.appendChild(cell((r.last_activity || '').replace('T', ' ').slice(0, 16), 'pl-2'));
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderTopPrompts(local) {
+    const wrap = document.getElementById('si-usage-top-prompts');
+    clear(wrap);
+    const rows = (local && local.top_prompts) || [];
+    if (!rows.length) {
+      const p = document.createElement('p');
+      p.className = 'text-sm text-font-subtle-light dark:text-font-subtle-dark';
+      p.textContent = 'No prompts recorded yet.';
+      wrap.appendChild(p);
+      return;
+    }
+    rows.forEach(function (r, i) {
+      const div = document.createElement('div');
+      div.className = 'flex items-center justify-between py-1.5' + (i < rows.length - 1 ? ' border-b border-base-100 dark:border-base-800' : '');
+      const label = document.createElement('span');
+      label.className = 'text-sm text-font-default-light dark:text-font-default-dark truncate mr-2';
+      label.title = r.prompt;
+      label.textContent = r.prompt;
+      const count = document.createElement('span');
+      count.className = 'text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark shrink-0';
+      count.textContent = fmt(r.count);
+      div.append(label, count);
+      wrap.appendChild(div);
+    });
+  }
+
+  function renderAll(data) {
+    const cloudwatch = data.cloudwatch || {};
+    const local = data.local || {};
+    renderBanner(cloudwatch);
+    renderStatCards(cloudwatch, local);
+    renderTokensChart(cloudwatch);
+    renderInvocationsChart(cloudwatch);
+    renderSourceChart(local);
+    renderByModel(cloudwatch);
+    renderRecent(local);
+    renderTopPrompts(local);
+  }
+
+  function refresh() {
+    fetch(dataUrl + '?force=1', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { renderAll(data); })
+      .catch(function () { /* keep the last good render */ });
+  }
+
+  // ---- TV / fullscreen mode -------------------------------------------------
+  const fsButton = document.getElementById('si-usage-fullscreen');
+  fsButton.addEventListener('click', function () {
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+    } else if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    }
+  });
+
+  document.addEventListener('fullscreenchange', function () {
+    const label = document.getElementById('si-usage-fullscreen-label');
+    if (document.fullscreenElement) {
+      document.documentElement.classList.add('si-tv-mode');
+      label.textContent = 'Exit Fullscreen';
+      if (!refreshTimer) refreshTimer = setInterval(refresh, 60000);
+    } else {
+      document.documentElement.classList.remove('si-tv-mode');
+      label.textContent = 'Fullscreen';
+      if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+    }
+  });
+
+  // Initial render from the server-injected JSON (no fetch needed on load).
+  renderAll({ cloudwatch: readJson('si-usage-cloudwatch'), local: readJson('si-usage-local') });
+})();
+</script>
+{% endblock %}

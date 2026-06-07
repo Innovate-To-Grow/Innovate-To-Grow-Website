@@ -6,6 +6,7 @@ from .adk_web.bridge import adk_http_view
 from .commands import chat_command_view
 from .context import chat_list_view, debug_view
 from .conversations import chat_delete_view, chat_rename_view, chat_view, conversations_fragment, new_conversation_view
+from .dashboard import usage_dashboard_data_view, usage_dashboard_view
 from .exports import export_download_view
 from .stream import chat_send_view
 
@@ -27,6 +28,19 @@ def get_system_intelligence_urls():
             "system-intelligence/new/",
             admin.site.admin_view(new_conversation_view),
             name="system_intelligence_new",
+        ),
+        # Registered before the "<uuid:conversation_id>/" catch-all below: "usage"
+        # is not a UUID so it could never match that converter, but keep static
+        # segments ahead of the dynamic one for clear, predictable ordering.
+        path(
+            "system-intelligence/usage/",
+            admin.site.admin_view(usage_dashboard_view),
+            name="system_intelligence_usage_dashboard",
+        ),
+        path(
+            "system-intelligence/usage/data/",
+            admin.site.admin_view(usage_dashboard_data_view),
+            name="system_intelligence_usage_data",
         ),
         path(
             "system-intelligence/<uuid:conversation_id>/",
