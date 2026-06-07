@@ -17,12 +17,7 @@
           "protocol": "tcp"
         }
       ],
-      "environment": [
-        {
-          "name": "SHEETS_API_KEY",
-          "value": "__SHEETS_API_KEY__"
-        }
-      ],
+      "environment": [],
       "healthCheck": {
         "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/healthz')\" || exit 1"],
         "interval": 30,
@@ -37,7 +32,13 @@
           "awslogs-region": "us-west-2",
           "awslogs-stream-prefix": "ecs"
         }
-      }
+      },
+      "secrets": [
+        {
+          "name": "SHEETS_API_KEY",
+          "valueFrom": "__SHEETS_API_KEY_SECRET_ARN__"
+        }
+      ]
     }
   ]
 }

@@ -82,6 +82,9 @@ class CampaignDisplayMixin:
                     "name",
                     "subject",
                     "login_redirect_path",
+                    # Validity is frozen onto tokens at send time; editing it later would
+                    # be misleading. `login_link_reusable` stays editable as a kill switch.
+                    "login_link_validity_days",
                     "include_unsubscribe_header",
                     "body_readonly",
                     "audience_type",

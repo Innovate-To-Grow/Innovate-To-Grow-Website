@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from apps.system_intelligence.models import (
     AssistantConversationLog,
+    AssistantMessageLog,
     ChatMessage,
 )
 
@@ -53,6 +54,7 @@ def _compute():
 
     return {
         "counts": _counts(today_start, seven_days_ago, thirty_days_ago),
+        "rolling_24h": _rolling_24h(now - timedelta(hours=24)),
         "tokens_by_source": _tokens_by_source(thirty_days_ago),
         "recent": _recent_conversations(),
         "top_prompts": _top_prompts(thirty_days_ago),
@@ -70,6 +72,7 @@ def _empty_aggregates():
             "messages_7d": 0,
             "messages_30d": 0,
         },
+        "rolling_24h": {"input_tokens": 0, "output_tokens": 0, "invocations": 0},
         "tokens_by_source": [
             {"source": source, "label": _SOURCE_LABELS[source], "total_tokens": 0}
             for source in (
@@ -81,6 +84,45 @@ def _empty_aggregates():
         "recent": [],
         "top_prompts": [],
     }
+
+
+def _token_int(usage, key):
+    if not isinstance(usage, dict):
+        return 0
+    try:
+        return int(usage.get(key) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _has_recorded_usage(usage):
+    return any(_token_int(usage, key) > 0 for key in ("inputTokens", "outputTokens", "totalTokens"))
+
+
+def _rolling_24h(cutoff):
+    """Application-recorded model usage over the trailing 24 hours.
+
+    CloudWatch can be unavailable or lag behind the app, so the top-line cards
+    use these local audit rows as the authoritative dashboard fallback.
+    """
+    totals = {"input_tokens": 0, "output_tokens": 0, "invocations": 0}
+
+    message_usages = AssistantMessageLog.objects.filter(created_at__gte=cutoff).values_list("token_usage", flat=True)
+    for usage in message_usages:
+        totals["input_tokens"] += _token_int(usage, "inputTokens")
+        totals["output_tokens"] += _token_int(usage, "outputTokens")
+        totals["invocations"] += 1
+
+    admin_messages = ChatMessage.objects.filter(created_at__gte=cutoff, role="assistant").values_list(
+        "model_id", "token_usage"
+    )
+    for model_id, usage in admin_messages:
+        totals["input_tokens"] += _token_int(usage, "inputTokens")
+        totals["output_tokens"] += _token_int(usage, "outputTokens")
+        if model_id or _has_recorded_usage(usage):
+            totals["invocations"] += 1
+
+    return totals
 
 
 def _counts(today_start, seven_days_ago, thirty_days_ago):

@@ -41,6 +41,7 @@ class EmailCampaignFormTests(TestCase):
             "login_redirect_path": "/account",
             "audience_type": "subscribers",
             "member_email_scope": "primary",
+            "login_link_validity_days": "7",
             "manual_emails": "",
             "exclude_audience_type": "",
             "exclude_member_email_scope": "primary",
@@ -233,6 +234,27 @@ class EmailCampaignFormTests(TestCase):
         self.assertTrue(form.fields["subject"].disabled)
         self.assertTrue(form.fields["body"].disabled)
         self.assertTrue(form.fields["audience_type"].disabled)
+        # Validity is frozen onto tokens at send time, so it locks after send...
+        self.assertTrue(form.fields["login_link_validity_days"].disabled)
+        # ...but the reusable flag stays editable: it is read at login time and
+        # unticking it is the kill switch for already-sent links.
+        self.assertFalse(form.fields["login_link_reusable"].disabled)
+
+    def test_login_link_validity_bounds(self):
+        from django.core.exceptions import ValidationError
+
+        for value, valid in ((0, False), (1, True), (90, True), (91, False)):
+            campaign = EmailCampaign(
+                subject="Bounds",
+                body="Hi",
+                login_redirect_path="/account",
+                login_link_validity_days=value,
+            )
+            if valid:
+                campaign.full_clean()
+            else:
+                with self.assertRaises(ValidationError):
+                    campaign.full_clean()
 
     def test_init_splits_html_marker_into_format_and_body(self):
         campaign = EmailCampaign.objects.create(

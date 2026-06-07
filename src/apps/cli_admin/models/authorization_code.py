@@ -18,7 +18,7 @@ class CliAuthorizationCode(ProjectControlModel):
     """Short-lived, single-use OAuth authorization code for the i2g-admin CLI.
 
     Only the SHA-256 hash of the raw code is stored. The atomic single-use claim
-    (``try_mark_used``) mirrors ``MagicLoginToken`` so a replayed code cannot mint
+    (``try_mark_used``) mirrors ``LoginLinkToken`` so a replayed code cannot mint
     a token even under concurrent exchange attempts.
     """
 

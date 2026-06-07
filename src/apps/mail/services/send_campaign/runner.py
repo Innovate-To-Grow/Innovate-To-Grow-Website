@@ -1,11 +1,11 @@
 import logging
 import time
 
-from django.conf import settings
 from django.utils import timezone
 
 from apps.core.models import EmailServiceConfig
-from apps.mail.models import MagicLoginToken, RecipientLog
+from apps.mail.models import RecipientLog
+from apps.mail.services.login_links import issue_login_link
 
 from ..audience import get_recipients
 from ..personalize import personalize
@@ -160,10 +160,11 @@ def _recipient_context(recipient, campaign):
 def _build_login_link(member_id, campaign):
     if not member_id:
         return ""
-    token = MagicLoginToken.generate_token()
-    MagicLoginToken.objects.create(token=token, member_id=member_id, campaign=campaign)
-    frontend_url = getattr(settings, "FRONTEND_URL", "").rstrip("/")
-    return f"{frontend_url}/magic-login?token={token}"
+    return issue_login_link(
+        member_id=member_id,
+        campaign=campaign,
+        validity_days=campaign.login_link_validity_days,
+    )
 
 
 def _unsubscribe_url_for(campaign, recipient):

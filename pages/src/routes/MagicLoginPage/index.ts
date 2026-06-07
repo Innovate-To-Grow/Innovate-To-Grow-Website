@@ -1,1 +1,0 @@
-export {MagicLoginPage} from './MagicLoginPage';

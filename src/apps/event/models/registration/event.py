@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.utils.text import slugify
 
@@ -23,6 +24,21 @@ class Event(ProjectControlModel):
     verify_phone = models.BooleanField(
         default=False,
         help_text="Require phone number verification via SMS code. Only applies when phone collection is enabled.",
+    )
+    ticket_login_validity_days = models.PositiveSmallIntegerField(
+        default=30,
+        validators=[MinValueValidator(1), MaxValueValidator(90)],
+        verbose_name="Ticket login link validity (days)",
+        help_text="How long the login link in each ticket confirmation email stays valid (1-90 days).",
+    )
+    ticket_login_reusable = models.BooleanField(
+        default=True,
+        verbose_name="Reusable ticket login links",
+        help_text=(
+            "Allow attendees to sign in with their ticket email link repeatedly until it expires. "
+            "Off: each link works exactly once. Checked at login time, so unticking it later "
+            "immediately blocks further reuse of links already used for this event."
+        ),
     )
 
     # Google Sheets sync (registration data — separate from the schedule sheet on CurrentProjectSchedule)

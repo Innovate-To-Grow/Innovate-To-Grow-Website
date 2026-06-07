@@ -109,15 +109,15 @@ The backend's `HealthCheckMiddleware` intercepts `/livez/`, `/readyz/`, and `/he
 
 ## Auto-login flows
 
-Three email-originated login paths bypass the normal login form:
+Email-originated login paths bypass the normal login form:
 
 | Path | Trigger | Backend endpoint |
 |------|---------|-----------------|
-| `/ticket-login?token=X` | QR code on event ticket | `POST /event/ticket-login/` |
-| `/magic-login?token=X` | Magic link in campaign email | `POST /mail/magic-login/` |
-| `/unsubscribe-login?token=X` | Unsubscribe link in email | `POST /authn/unsubscribe-login/` |
+| `/login-link?token=X` | Login link in campaign or ticket email | `POST /mail/login-link/` |
+| `/magic-login?token=X`, `/ticket-login?token=X` | Legacy aliases — redirect to `/login-link` | — |
+| `/unsubscribe-login?token=X` | Unsubscribe link in email (no login; preference-only) | `POST /authn/unsubscribe-login/` |
 
-Each validates the token, returns JWT access/refresh tokens, and the frontend stores them and navigates to the appropriate page.
+`/login-link` validates the token, returns JWT access/refresh tokens plus `redirect_to`, and the frontend stores them and navigates there.
 
 ## Related pages
 

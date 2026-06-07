@@ -60,7 +60,17 @@ class EventRegistrationAdmin(
     )
     autocomplete_fields = ["member"]
     ordering = ("-created_at",)
-    actions = ["resend_ticket_email"]
+    actions = ["resend_ticket_email", "revoke_login_links_action"]
+
+    @admin.action(description="Revoke login links (invalidate ticket email sign-in links)")
+    def revoke_login_links_action(self, request, queryset):
+        from django.contrib import messages
+
+        from apps.mail.models import LoginLinkToken
+        from apps.mail.services.login_links import revoke_login_links
+
+        revoked = revoke_login_links(LoginLinkToken.objects.filter(registration__in=queryset))
+        self.message_user(request, f"Revoked {revoked} login link(s).", messages.SUCCESS)
 
     def get_urls(self):
         custom = [

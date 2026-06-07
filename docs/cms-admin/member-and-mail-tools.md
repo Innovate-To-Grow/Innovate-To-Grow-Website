@@ -97,9 +97,17 @@ Audience resolution is handled by `src/apps/mail/services/audience.py`.
 4. Logs each send attempt in `RecipientLog`
 5. Updates campaign `sent_count` and `status`
 
-### Magic login tokens
+### Login link tokens
 
-`MagicLoginToken` (`src/apps/mail/models/magic_login.py`) enables one-click login from campaign emails. When a personalized email includes a magic link, clicking it authenticates the user via `POST /mail/magic-login/`.
+`LoginLinkToken` (`src/apps/mail/models/login_link.py`) is the single mechanism behind emailed one-click login links — both campaign `{{login_link}}` links and the login button in event ticket confirmation emails. Clicking a link authenticates the user via `POST /mail/login-link/` (legacy alias: `/mail/magic-login/`) and redirects to the configured destination (campaign `login_redirect_path`, or the per-token path — `/event-registration` for ticket links).
+
+Policy is configured at the issuing source and enforced per token:
+
+- **Validity** — `EmailCampaign.login_link_validity_days` (default 7) / `Event.ticket_login_validity_days` (default 30), 1–90 days, frozen onto each token at send time.
+- **Reuse** — `EmailCampaign.login_link_reusable` (default off) / `Event.ticket_login_reusable` (default on). Read live at login time, so unticking the flag immediately blocks further reuse of already-used links — a kill switch.
+- **Revocation** — admin actions on Broadcast Email (campaign), Event Registrations, and the read-only **Login Links** changelist (`/admin/mail/loginlinktoken/`) expire tokens immediately. The raw token value is never displayed in admin.
+
+Resending a ticket email revokes the registration's previous link before issuing a new one.
 
 ### Gmail import
 

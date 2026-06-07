@@ -22,10 +22,6 @@
           "value": "config.settings.production"
         },
         {
-          "name": "DJANGO_SECRET_KEY",
-          "value": "__DJANGO_SECRET_KEY__"
-        },
-        {
           "name": "DJANGO_ALLOWED_HOSTS",
           "value": "__DJANGO_ALLOWED_HOSTS__"
         },
@@ -36,10 +32,6 @@
         {
           "name": "DB_USER",
           "value": "__DB_USER__"
-        },
-        {
-          "name": "DB_PASSWORD",
-          "value": "__DB_PASSWORD__"
         },
         {
           "name": "DB_HOST",
@@ -56,10 +48,6 @@
         {
           "name": "DB_CONN_HEALTH_CHECKS",
           "value": "__DB_CONN_HEALTH_CHECKS__"
-        },
-        {
-          "name": "REDIS_URL",
-          "value": "__REDIS_URL__"
         },
         {
           "name": "WEB_CONCURRENCY",
@@ -100,10 +88,6 @@
         {
           "name": "DJANGO_SUPERUSER_EMAIL",
           "value": "__DJANGO_SUPERUSER_EMAIL__"
-        },
-        {
-          "name": "DJANGO_SUPERUSER_PASSWORD",
-          "value": "__DJANGO_SUPERUSER_PASSWORD__"
         }
       ],
       "logConfiguration": {
@@ -121,7 +105,25 @@
         "retries": 3,
         "startPeriod": 60
       },
-      "essential": true
+      "essential": true,
+      "secrets": [
+        {
+          "name": "DJANGO_SECRET_KEY",
+          "valueFrom": "__DJANGO_SECRET_KEY_SECRET_ARN__"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "__DB_PASSWORD_SECRET_ARN__"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "__REDIS_URL_SECRET_ARN__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_PASSWORD",
+          "valueFrom": "__DJANGO_SUPERUSER_PASSWORD_SECRET_ARN__"
+        }
+      ]
     }
   ]
 }

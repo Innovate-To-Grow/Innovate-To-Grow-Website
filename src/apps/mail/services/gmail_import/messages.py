@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 from bs4 import BeautifulSoup
 from django.core.cache import cache
@@ -14,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 GMAIL_LIST_CACHE_TTL = 300
 GMAIL_MSG_CACHE_TTL = 1800
+LOGIN_LINK_PLACEHOLDER = "{{ login_link }}"
+# Matches both the current /login-link path and the legacy /magic-login alias.
+LOGIN_LINK_URL_RE = re.compile(r"(?P<url>[^\s\"'<>]*/(?:login-link|magic-login)/?\?[^\s\"'<>]+)")
 
 
 def list_recent_sent_messages(
@@ -56,7 +61,7 @@ def fetch_message_html_fragment(
     if use_cache:
         cached = cache.get(cache_key)
         if cached is not None:
-            return cached
+            return redact_login_link_urls(cached)
 
     try:
         import apps.mail.services.gmail_import as gmail_api
@@ -113,8 +118,46 @@ def normalize_html_fragment(html: str) -> str:
     if soup.body is not None:
         body_html = "".join(str(child) for child in soup.body.contents).strip()
         if body_html:
-            return body_html
-    return normalized
+            return redact_login_link_urls(body_html)
+    return redact_login_link_urls(normalized)
+
+
+def redact_login_link_urls(html: str) -> str:
+    """Replace imported, token-bearing login-link URLs with the safe placeholder."""
+    normalized = str(html or "")
+    if not normalized:
+        return ""
+
+    soup = BeautifulSoup(normalized, "html.parser")
+    for tag in soup.find_all(True):
+        for attr_name, attr_value in list(tag.attrs.items()):
+            if isinstance(attr_value, str):
+                tag[attr_name] = _replace_login_link_urls(attr_value)
+            elif isinstance(attr_value, list):
+                tag[attr_name] = [
+                    _replace_login_link_urls(value) if isinstance(value, str) else value for value in attr_value
+                ]
+
+    for text_node in soup.find_all(string=True):
+        scrubbed = _replace_login_link_urls(str(text_node))
+        if scrubbed != text_node:
+            text_node.replace_with(scrubbed)
+
+    return str(soup).strip()
+
+
+def _replace_login_link_urls(value: str) -> str:
+    def replacement(match):
+        url = match.group("url")
+        return LOGIN_LINK_PLACEHOLDER if _is_token_bearing_login_link_url(url) else url
+
+    return LOGIN_LINK_URL_RE.sub(replacement, value)
+
+
+def _is_token_bearing_login_link_url(url: str) -> bool:
+    parsed = urlsplit(url)
+    path = parsed.path.rstrip("/")
+    return (path.endswith("/login-link") or path.endswith("/magic-login")) and bool(parse_qs(parsed.query).get("token"))
 
 
 def find_message_by_uid(mailbox, message_id: str):

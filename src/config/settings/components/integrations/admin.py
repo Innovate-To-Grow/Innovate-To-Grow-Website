@@ -21,6 +21,15 @@ def _can_any(*app_labels):
     return lambda request: any(user_can_access_app(request.user, label) for label in app_labels)
 
 
+def _is_system_intelligence_chat(request):
+    path = request.path
+    return path.startswith("/admin/system-intelligence/") and not path.startswith("/admin/system-intelligence/usage/")
+
+
+def _is_system_intelligence_usage(request):
+    return request.path.startswith("/admin/system-intelligence/usage/")
+
+
 UNFOLD = {
     "SITE_TITLE": "I2G Admin",
     "SITE_HEADER": "Innovate To Grow",
@@ -132,10 +141,17 @@ UNFOLD = {
             ],
         },
         {
-            "models": ["mail.emailcampaign", "mail.recipientlog", "mail.smscampaign", "mail.smsrecipientlog"],
+            "models": [
+                "mail.emailcampaign",
+                "mail.recipientlog",
+                "mail.loginlinktoken",
+                "mail.smscampaign",
+                "mail.smsrecipientlog",
+            ],
             "items": [
                 {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
                 {"title": "Email Log", "link": "/admin/mail/recipientlog/"},
+                {"title": "Login Links", "link": "/admin/mail/loginlinktoken/"},
                 {"title": "Broadcast SMS", "link": "/admin/mail/smscampaign/"},
                 {"title": "SMS Log", "link": "/admin/mail/smsrecipientlog/"},
             ],
@@ -222,7 +238,12 @@ UNFOLD = {
                 "title": "System Intelligence",
                 "permission": _can("system_intelligence"),
                 "items": [
-                    {"title": "Chat", "link": "/admin/system-intelligence/", "permission": _can("system_intelligence")},
+                    {
+                        "title": "Chat",
+                        "link": "/admin/system-intelligence/",
+                        "permission": _can("system_intelligence"),
+                        "active": _is_system_intelligence_chat,
+                    },
                     {
                         "title": "Assistant Settings",
                         "link": "/admin/system_intelligence/systemintelligenceconfig/",
@@ -232,6 +253,7 @@ UNFOLD = {
                         "title": "Usage Dashboard",
                         "link": "/admin/system-intelligence/usage/",
                         "permission": _can("system_intelligence"),
+                        "active": _is_system_intelligence_usage,
                     },
                     {
                         "title": "Conversation Logs",

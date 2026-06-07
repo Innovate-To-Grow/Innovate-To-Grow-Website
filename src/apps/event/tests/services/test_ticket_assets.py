@@ -8,11 +8,9 @@ from apps.event.services.ticket_assets import (
     build_backend_absolute_url,
     build_frontend_absolute_url,
     build_ticket_access_token,
-    build_ticket_login_token,
     generate_ticket_barcode_data_url,
     generate_ticket_barcode_png_bytes,
     get_event_datetime,
-    get_member_from_login_token,
     get_registration_from_access_token,
 )
 from apps.event.tests.helpers import make_event, make_member, make_registration
@@ -72,58 +70,6 @@ class GetRegistrationFromAccessTokenTest(TestCase):
         with patch("django.core.signing.time.time", return_value=1_000_000 + (60 * 60 * 24 * 30) + 1):
             with self.assertRaises(ValueError):
                 get_registration_from_access_token(token)
-
-
-# ---------- Ticket Login Token ----------
-
-
-class BuildTicketLoginTokenTest(TestCase):
-    def setUp(self):
-        self.member = make_member()
-
-    def test_returns_non_empty_string(self):
-        token = build_ticket_login_token(self.member)
-        self.assertIsInstance(token, str)
-        self.assertTrue(len(token) > 0)
-
-    def test_roundtrip_with_get_member(self):
-        token = build_ticket_login_token(self.member)
-        result = get_member_from_login_token(token)
-        self.assertEqual(result.pk, self.member.pk)
-
-
-class GetMemberFromLoginTokenTest(TestCase):
-    def setUp(self):
-        self.member = make_member()
-
-    def test_valid_token_returns_member(self):
-        token = build_ticket_login_token(self.member)
-        result = get_member_from_login_token(token)
-        self.assertEqual(result.pk, self.member.pk)
-
-    def test_invalid_token_raises_value_error(self):
-        with self.assertRaises(ValueError):
-            get_member_from_login_token("invalid-garbage-token")
-
-    def test_inactive_member_raises_value_error(self):
-        token = build_ticket_login_token(self.member)
-        self.member.is_active = False
-        self.member.save()
-        with self.assertRaises(ValueError):
-            get_member_from_login_token(token)
-
-    def test_nonexistent_member_raises_value_error(self):
-        token = build_ticket_login_token(self.member)
-        self.member.delete()
-        with self.assertRaises(ValueError):
-            get_member_from_login_token(token)
-
-    def test_token_is_reusable(self):
-        token = build_ticket_login_token(self.member)
-        first = get_member_from_login_token(token)
-        second = get_member_from_login_token(token)
-        self.assertEqual(first.pk, self.member.pk)
-        self.assertEqual(second.pk, self.member.pk)
 
 
 # ---------- URL Builders ----------

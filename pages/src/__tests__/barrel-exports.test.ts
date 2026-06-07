@@ -72,6 +72,7 @@ describe('Page barrel exports', () => {
     ['AcknowledgementPage', 'AcknowledgementPage'],
     ['EventArchivePage', 'EventArchivePage'],
     ['EventRegistrationPage', 'EventRegistrationPage'],
+    ['LoginLinkPage', 'LoginLinkPage'],
     ['NewsDetailPage', 'NewsDetailPage'],
     ['NewsPage', 'NewsPage'],
     ['NotFoundPage', 'NotFoundPage'],
@@ -81,7 +82,6 @@ describe('Page barrel exports', () => {
     ['ProjectsPage', 'ProjectsPage'],
     ['SchedulePage', 'SchedulePage'],
     ['SubscribePage', 'SubscribePage'],
-    ['TicketLoginPage', 'TicketLoginPage'],
     ['UnsubscribeLoginPage', 'UnsubscribeLoginPage'],
   ] as const;
 
