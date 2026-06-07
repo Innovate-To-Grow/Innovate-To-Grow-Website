@@ -14,7 +14,7 @@ django-unfold>=0.78.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.1
 # Rich Text Editor
 django-ckeditor-5>=0.2.20
 Pillow>=12.2.0
-pdf417gen>=0.7.0
+pdf417gen>=0.8.1
 
 # Excel Import/Export
 openpyxl>=3.1.5
