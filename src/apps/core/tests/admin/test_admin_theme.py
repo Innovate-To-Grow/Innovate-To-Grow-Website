@@ -80,3 +80,12 @@ class AdminThemeRenderingTests(TestCase):
             style_path = style_factory(None).removeprefix("/static/")
             with self.subTest(style_path=style_path):
                 self.assertIsNotNone(finders.find(style_path))
+
+    def test_google_material_admin_css_covers_dark_custom_dashboards(self):
+        path = finders.find("admin/css/google-material-admin.css")
+        self.assertIsNotNone(path)
+        source = Path(path).read_text()
+
+        self.assertIn(".dark .text-font-default-light", source)
+        self.assertIn(".dark #changelist", source)
+        self.assertIn(".si-transcript", source)
