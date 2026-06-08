@@ -39,7 +39,7 @@ PERMISSION_ERROR_CODES = {
 }
 
 
-def get_delivery_dashboard_data(*, days: int = DEFAULT_WINDOW_DAYS, problem_limit: int = 50) -> dict:
+def get_delivery_dashboard_data(*, days: int = DEFAULT_WINDOW_DAYS, problem_limit: int | None = None) -> dict:
     """Return AWS-backed SES dashboard metrics.
 
     Delivery counts come from CloudWatch ``AWS/SES`` metrics. Recipient-level
@@ -103,7 +103,7 @@ def fetch_ses_cloudwatch_metrics(*, days: int = DEFAULT_WINDOW_DAYS, now=None) -
     )
 
 
-def fetch_suppressed_destinations(*, days: int = DEFAULT_WINDOW_DAYS, limit: int = 50, now=None):
+def fetch_suppressed_destinations(*, days: int = DEFAULT_WINDOW_DAYS, limit: int | None = None, now=None):
     """Return AWS SES account-level suppressed recipients.
 
     The SES suppression list is the only AWS API here that exposes recipient
@@ -162,12 +162,30 @@ def fetch_suppressed_destinations(*, days: int = DEFAULT_WINDOW_DAYS, limit: int
         )
 
     rows.sort(key=lambda row: row["_last_seen_sort"], reverse=True)
-    rows = rows[:limit]
-    for row in rows:
+    total_count = len(rows)
+    reason_counts = _recipient_reason_counts(rows)
+    latest_seen = _display_dt(rows[0]["_last_seen_sort"]) if rows else "-"
+    limited_rows = rows
+    if limit is not None:
+        limited_rows = rows[: max(limit, 0)]
+
+    for row in limited_rows:
         row.pop("_last_seen_sort", None)
+
     meta = _recipient_details_meta(True, "")
-    meta["count"] = len(rows)
-    return rows, meta
+    meta.update(
+        {
+            "count": len(limited_rows),
+            "returned_count": len(limited_rows),
+            "total_count": total_count,
+            "truncated": len(limited_rows) < total_count,
+            "limit": limit,
+            "reason_counts": reason_counts,
+            "latest_seen": latest_seen,
+            "window_days": days,
+        }
+    )
+    return limited_rows, meta
 
 
 def _cloudwatch_client():
@@ -388,6 +406,15 @@ def _suppressed_destination_row(item: dict) -> dict:
     }
 
 
+def _recipient_reason_counts(rows: list[dict]) -> dict:
+    counts = dict.fromkeys(SUPPRESSION_REASONS, 0)
+    for row in rows:
+        reason = row.get("reason")
+        if reason:
+            counts[reason] = counts.get(reason, 0) + 1
+    return counts
+
+
 def _recipient_details_meta(
     available: bool,
     reason: str,
@@ -404,6 +431,13 @@ def _recipient_details_meta(
         "error_code": error_code,
         "error_message": error_message[:320],
         "required_actions": list(required_actions),
+        "returned_count": 0,
+        "total_count": 0,
+        "truncated": False,
+        "limit": None,
+        "reason_counts": {},
+        "latest_seen": "-",
+        "window_days": DEFAULT_WINDOW_DAYS,
     }
 
 

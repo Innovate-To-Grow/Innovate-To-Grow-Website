@@ -249,6 +249,13 @@ class MailDeliveryDashboardAdminTest(TestCase):
                 "error_code": "",
                 "error_message": "",
                 "required_actions": [],
+                "returned_count": 2,
+                "total_count": 2,
+                "truncated": False,
+                "limit": None,
+                "reason_counts": {"BOUNCE": 1, "COMPLAINT": 1},
+                "latest_seen": "Jun 08, 12:00",
+                "window_days": 183,
             },
             "daily": [{"date": "2026-06-08", "attempts": 120, "problems": 4}],
             "status_breakdown": [
@@ -293,9 +300,11 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
         self.assertContains(response, "AWS SES Delivery Dashboard")
         self.assertContains(
-            response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-aws-recipient-diagnostics"
+            response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-complete-recipients"
         )
         self.assertContains(response, "Problem Recipients")
+        self.assertContains(response, "mail-delivery-recipient-search")
+        self.assertContains(response, "mail-delivery-export-recipients")
         self.assertContains(response, "Six-month AWS CloudWatch SES metrics")
         self.assertContains(response, "SES Attempts (6mo)")
         self.assertContains(response, "SES Errors (6mo)")
@@ -322,6 +331,8 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertTrue(payload["metrics"]["available"])
         self.assertEqual(payload["metrics"]["namespace"], "AWS/SES")
         self.assertTrue(payload["recipient_details"]["available"])
+        self.assertFalse(payload["recipient_details"]["truncated"])
+        self.assertEqual(payload["recipient_details"]["total_count"], 2)
         self.assertTrue(payload["aws"]["configured"])
         self.assertEqual(payload["aws"]["region"], "us-west-2")
         problem_emails = {row["email"] for row in payload["problem_recipients"]}
@@ -415,6 +426,11 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
 
         self.assertTrue(meta["available"])
         self.assertEqual(meta["source"], "AWS SES account suppression list")
+        self.assertEqual(meta["count"], 3)
+        self.assertEqual(meta["returned_count"], 3)
+        self.assertEqual(meta["total_count"], 3)
+        self.assertFalse(meta["truncated"])
+        self.assertEqual(meta["reason_counts"], {"BOUNCE": 2, "COMPLAINT": 1})
         self.assertEqual(
             [row["email"] for row in rows], ["bounce@example.com", "complaint@example.com", "older-bounce@example.com"]
         )
@@ -427,6 +443,34 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
         self.assertEqual(first_call_kwargs["StartDate"], datetime(2025, 12, 7, 12, 0, tzinfo=UTC))
         self.assertEqual(first_call_kwargs["EndDate"], now)
         self.assertEqual(second_call_kwargs["NextToken"], "page-2")
+
+    def test_fetch_suppressed_destinations_can_report_truncated_rows(self):
+        client = MagicMock()
+        now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
+        client.list_suppressed_destinations.return_value = {
+            "SuppressedDestinationSummaries": [
+                {
+                    "EmailAddress": "bounce@example.com",
+                    "Reason": "BOUNCE",
+                    "LastUpdateTime": datetime(2026, 6, 8, 10, 0, tzinfo=UTC),
+                },
+                {
+                    "EmailAddress": "complaint@example.com",
+                    "Reason": "COMPLAINT",
+                    "LastUpdateTime": datetime(2026, 6, 7, 10, 0, tzinfo=UTC),
+                },
+            ]
+        }
+
+        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+            rows, meta = fetch_suppressed_destinations(days=183, limit=1, now=now)
+
+        self.assertEqual([row["email"] for row in rows], ["bounce@example.com"])
+        self.assertEqual(meta["count"], 1)
+        self.assertEqual(meta["returned_count"], 1)
+        self.assertEqual(meta["total_count"], 2)
+        self.assertTrue(meta["truncated"])
+        self.assertEqual(meta["limit"], 1)
 
     def test_fetch_suppressed_destinations_returns_permission_diagnostics(self):
         client = MagicMock()
