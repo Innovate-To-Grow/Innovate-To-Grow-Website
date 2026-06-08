@@ -50,6 +50,7 @@ class AdminThemeRenderingTests(TestCase):
         self.assertContains(response, "light_mode")
         self.assertContains(response, "dark_mode")
         self.assertContains(response, "computer")
+        self.assertContains(response, 'data-admin-theme-choice="dark"')
 
     def test_login_page_exposes_unfold_theme_options(self):
         self.client.logout()
@@ -103,6 +104,7 @@ class AdminThemeRenderingTests(TestCase):
         self.assertIn("window.adminTheme", source)
         self.assertIn("window.switchTheme", source)
         self.assertIn("window.themeBindings", source)
+        self.assertIn("data-admin-theme-choice", source)
         self.assertIn("openTheme", source)
         self.assertIn("prefers-color-scheme: dark", source)
 
