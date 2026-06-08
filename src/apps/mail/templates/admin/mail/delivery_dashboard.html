@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-search-surface">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-all-groups">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -147,14 +147,14 @@
       </div>
     </div>
 
-    <div class="i2g-delivery-panel xl:col-span-3 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+    <div class="i2g-delivery-panel i2g-delivery-groups xl:col-span-3 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
       <div class="i2g-delivery-panel-header">
         <div>
           <h3 class="i2g-delivery-heading text-sm font-semibold"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">hub</span>Problem Groups</h3>
-          <span class="i2g-delivery-muted text-xs">AWS SES suppression-list recipients grouped by recipient domain</span>
+          <span id="mail-delivery-group-summary" class="i2g-delivery-muted text-xs">AWS SES suppression-list recipients grouped by recipient domain</span>
         </div>
       </div>
-      <div id="mail-delivery-campaign-errors" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+      <div id="mail-delivery-campaign-errors" class="i2g-delivery-groups-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"></div>
     </div>
   </div>
 </div>
@@ -670,9 +670,15 @@
 
   function renderCampaignErrors(rows) {
     const host = document.getElementById('mail-delivery-campaign-errors');
+    const summary = document.getElementById('mail-delivery-group-summary');
     if (!rows.length) {
+      if (summary) summary.textContent = 'No AWS SES suppression-list domain groups are available for this window';
       host.innerHTML = '<div class="i2g-delivery-empty i2g-delivery-empty--compact">No AWS suppression-list groups are available for this window.</div>';
       return;
+    }
+    if (summary) {
+      const recipientTotal = (lastData.recipient_details && lastData.recipient_details.total_count) || 0;
+      summary.textContent = 'Showing all ' + fmt(rows.length) + ' recipient-domain groups from ' + fmt(recipientTotal || rows.length) + ' AWS SES suppression-list recipients';
     }
     host.innerHTML = rows.map(function (row) {
       return '<div class="i2g-delivery-campaign-card rounded-default border border-base-200 dark:border-base-700 p-3">' +

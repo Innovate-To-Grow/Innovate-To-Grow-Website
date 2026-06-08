@@ -417,7 +417,7 @@ def _recipient_reason_counts(rows: list[dict]) -> dict:
     return counts
 
 
-def _recipient_problem_groups(rows: list[dict], *, limit: int = 12) -> list[dict]:
+def _recipient_problem_groups(rows: list[dict]) -> list[dict]:
     groups: dict[str, dict] = {}
     for row in rows:
         email = row.get("email", "")
@@ -447,7 +447,7 @@ def _recipient_problem_groups(rows: list[dict], *, limit: int = 12) -> list[dict
 
     return sorted(
         groups.values(), key=lambda group: (group["problems"], group["bounces"], group["complaints"]), reverse=True
-    )[:limit]
+    )
 
 
 def _recipient_details_meta(

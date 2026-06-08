@@ -549,6 +549,22 @@
     overflow: hidden;
 }
 
+.i2g-delivery-groups {
+    display: flex;
+    flex-direction: column;
+    max-height: min(46rem, calc(100vh - 7rem));
+    min-height: 24rem;
+    overflow: hidden;
+}
+
+.i2g-delivery-groups-grid {
+    align-content: start;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 0.15rem;
+}
+
 .i2g-delivery-recipient-summary {
     display: grid;
     gap: 0.75rem;

@@ -330,7 +330,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
         self.assertContains(response, "AWS SES Delivery Dashboard")
-        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-search-surface")
+        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-all-groups")
         self.assertContains(response, "mail-delivery-window-days")
         self.assertContains(response, "data-delivery-select-control")
         self.assertContains(response, "initializeDeliverySelects")
@@ -500,6 +500,62 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
         self.assertEqual(payload["problem_groups"][0]["bounces"], 1)
         self.assertEqual(payload["problem_groups"][0]["complaints"], 1)
         self.assertEqual(payload["problem_groups"][1]["name"], "other.com")
+        self.assertEqual(payload["campaign_errors"], payload["problem_groups"])
+
+    @patch("apps.mail.services.delivery_dashboard.fetch_suppressed_destinations")
+    @patch("apps.mail.services.delivery_dashboard.fetch_ses_cloudwatch_metrics")
+    def test_delivery_dashboard_returns_all_aws_problem_groups(self, mock_metrics, mock_recipients):
+        mock_metrics.return_value = {
+            "summary": {
+                "attempts": 20,
+                "success": 5,
+                "problems": 15,
+                "failure_rate": 75,
+                "bounces": 15,
+                "complaints": 0,
+            },
+            "daily": [],
+            "status_breakdown": [],
+            "metrics": {
+                "available": True,
+                "reason": "",
+                "source": "CloudWatch account SES metrics",
+                "namespace": "AWS/SES",
+                "dimension_count": 1,
+            },
+        }
+        rows = [
+            {
+                "email": f"user{i}@domain{i}.example",
+                "source": "AWS SES Suppression List",
+                "context": "Account-level suppression",
+                "status": "bounced",
+                "label": "Bounced",
+                "reason": "BOUNCE",
+                "last_seen": "Jun 08, 12:00",
+                "count": 1,
+            }
+            for i in range(15)
+        ]
+        mock_recipients.return_value = (
+            rows,
+            {
+                "available": True,
+                "reason": "",
+                "source": "AWS SES account suppression list",
+                "count": 15,
+                "total_count": 15,
+                "error_code": "",
+                "error_message": "",
+                "required_actions": [],
+            },
+        )
+
+        payload = get_delivery_dashboard_data(days=183)
+
+        group_names = {group["name"] for group in payload["problem_groups"]}
+        self.assertEqual(len(payload["problem_groups"]), 15)
+        self.assertIn("domain14.example", group_names)
         self.assertEqual(payload["campaign_errors"], payload["problem_groups"])
 
     def test_fetch_ses_cloudwatch_metrics_uses_aws_metric_data(self):
