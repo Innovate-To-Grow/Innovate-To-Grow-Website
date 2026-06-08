@@ -19,6 +19,11 @@ interface SharedProjectExportContext {
   title: string;
 }
 
+interface ProjectRowsExportContext {
+  detailsText?: string;
+  title?: string;
+}
+
 interface ExportLogoAsset {
   base64: string;
   bytes: Uint8Array;
@@ -71,8 +76,13 @@ const normalizeSharedExportContext = ({detailsText, note, title}: SharedProjectE
   title: title.trim() || 'Shared Past Project Results',
 });
 
-const getSharedProjectDetailsText = (rows: ProjectGridRow[], detailsText: string) =>
+const getProjectDetailsText = (rows: ProjectGridRow[], detailsText: string) =>
   detailsText || createPastProjectsDetailText(rows).trim();
+
+const normalizeProjectRowsExportContext = (rows: ProjectGridRow[], context: ProjectRowsExportContext = {}) => ({
+  detailsText: getProjectDetailsText(rows, pastProjectsDetailHtmlToPlainText(context.detailsText ?? '').trim()),
+  title: context.title?.trim() || 'Past Projects',
+});
 
 const splitProjectDetailBlocks = (text: string) => text.split(DETAIL_SEPARATOR_PATTERN).map((block) => block.trim()).filter(Boolean);
 
@@ -257,29 +267,58 @@ const escapeCsvCell = (value: string | number) => {
   return str;
 };
 
-export const exportProjectRowsCsv = async (rows: ProjectGridRow[], fileBaseName: string) => {
-  const lines = [EXPORT_COLUMNS.map(escapeCsvCell).join(',')];
+export const createProjectRowsCsvText = (rows: ProjectGridRow[], context: ProjectRowsExportContext = {}) => {
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  const lines: string[] = [];
+
+  lines.push(escapeCsvCell('Innovate to Grow Past Projects'));
+  lines.push([escapeCsvCell('I2G Logo'), escapeCsvCell(I2G_LOGO_URL)].join(','));
+  lines.push([escapeCsvCell('Title'), escapeCsvCell(exportContext.title)].join(','));
+  lines.push('');
+
+  if (exportContext.detailsText) {
+    lines.push(escapeCsvCell('Past Projects Detail'));
+
+    for (const detailBlock of splitProjectDetailBlocks(exportContext.detailsText)) {
+      for (const detailLine of detailBlock.split(/\r\n|\r|\n/)) {
+        lines.push(escapeCsvCell(detailLine));
+      }
+      lines.push('');
+    }
+
+    lines.push('');
+  }
+
+  lines.push(escapeCsvCell('Projects'));
+  lines.push(EXPORT_COLUMNS.map(escapeCsvCell).join(','));
+
   for (const row of toExportRows(rows)) {
     lines.push(row.map(escapeCsvCell).join(','));
   }
+
+  return lines.join('\r\n');
+};
+
+export const exportProjectRowsCsv = async (
+  rows: ProjectGridRow[],
+  fileBaseName: string,
+  context: ProjectRowsExportContext = {},
+) => {
   // Prepend UTF-8 BOM so Excel opens the file with correct encoding.
-  const blob = new Blob(['\uFEFF', lines.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const blob = new Blob(['\uFEFF', createProjectRowsCsvText(rows, context)], {type: 'text/csv;charset=utf-8'});
   triggerDownload(blob, `${fileBaseName}.csv`);
 };
 
-export const exportProjectRowsExcel = async (rows: ProjectGridRow[], fileBaseName: string) => {
-  const ExcelJS = (await import('exceljs')).default;
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Projects');
-  worksheet.addRow(EXPORT_COLUMNS as unknown as string[]);
-  for (const row of toExportRows(rows)) {
-    worksheet.addRow(row);
-  }
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+export const exportProjectRowsExcel = async (
+  rows: ProjectGridRow[],
+  fileBaseName: string,
+  context: ProjectRowsExportContext = {},
+) => {
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  await exportSharedProjectRowsExcel(rows, fileBaseName, {
+    detailsText: exportContext.detailsText,
+    title: exportContext.title,
   });
-  triggerDownload(blob, `${fileBaseName}.xlsx`);
 };
 
 export const exportSharedProjectRowsExcel = async (
@@ -291,7 +330,7 @@ export const exportSharedProjectRowsExcel = async (
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Projects');
   const sharedContext = normalizeSharedExportContext(context);
-  const projectDetailsText = getSharedProjectDetailsText(rows, sharedContext.detailsText);
+  const projectDetailsText = getProjectDetailsText(rows, sharedContext.detailsText);
 
   worksheet.columns = [
     {width: 16},
@@ -428,38 +467,20 @@ export const exportSharedProjectRowsExcel = async (
   triggerDownload(blob, `${fileBaseName}.xlsx`);
 };
 
-export const exportProjectRowsPdf = async (rows: ProjectGridRow[], fileBaseName: string, title: string) => {
-  const {jsPDF} = await import('jspdf');
-  const autoTable = (await import('jspdf-autotable')).default;
-
-  const document = new jsPDF({orientation: 'landscape'});
-
-  document.setFontSize(16);
-  document.text(title, 14, 16);
-
-  autoTable(document, {
-    head: [PROJECT_GRID_COLUMNS.map((column) => column.label)],
-    body: rows.map((row) => [
-      row.semester_label,
-      row.class_code,
-      row.team_number,
-      row.team_name,
-      row.project_title,
-      row.organization,
-      row.industry,
-    ]),
-    startY: 24,
-    styles: {
-      fontSize: 8,
-      cellPadding: 2,
-      overflow: 'linebreak',
-    },
-    headStyles: {
-      fillColor: [15, 45, 82],
-    },
+export const exportProjectRowsPdf = async (
+  rows: ProjectGridRow[],
+  fileBaseName: string,
+  title: string,
+  context: ProjectRowsExportContext = {},
+) => {
+  const exportContext = normalizeProjectRowsExportContext(rows, {
+    ...context,
+    title,
   });
-
-  document.save(`${fileBaseName}.pdf`);
+  await exportSharedProjectRowsPdf(rows, fileBaseName, {
+    detailsText: exportContext.detailsText,
+    title: exportContext.title,
+  });
 };
 
 export const exportSharedProjectRowsPdf = async (
@@ -473,7 +494,7 @@ export const exportSharedProjectRowsPdf = async (
     loadI2gLogoAsset(),
   ]);
   const sharedContext = normalizeSharedExportContext(context);
-  const projectDetailsText = getSharedProjectDetailsText(rows, sharedContext.detailsText);
+  const projectDetailsText = getProjectDetailsText(rows, sharedContext.detailsText);
   const pdf = new jsPDF({orientation: 'landscape'});
   const margin = 14;
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -693,7 +714,7 @@ export const createSharedProjectRowsWordBlob = (
   logo: ExportLogoAsset | null = null,
 ) => {
   const sharedContext = normalizeSharedExportContext(context);
-  const projectDetailsText = getSharedProjectDetailsText(rows, sharedContext.detailsText);
+  const projectDetailsText = getProjectDetailsText(rows, sharedContext.detailsText);
   const projectDetailBlocks = splitProjectDetailBlocks(projectDetailsText);
   const columnWidth = Math.floor(5000 / EXPORT_COLUMNS.length);
   const tableRows = [

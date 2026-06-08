@@ -1036,7 +1036,12 @@ export const MergedResultsTable = ({
                   <button
                     type="button"
                     className="itg-btn itg-btn-outline"
-                    onClick={() => void exportProjectRowsCsv(visibleRows, 'past-projects')}
+                    onClick={() =>
+                      void exportProjectRowsCsv(visibleRows, 'past-projects', {
+                        detailsText: detailsDraft,
+                        title,
+                      })
+                    }
                     disabled={!visibleRows.length}
                   >
                     CSV
@@ -1044,7 +1049,12 @@ export const MergedResultsTable = ({
                   <button
                     type="button"
                     className="itg-btn itg-btn-outline"
-                    onClick={() => void exportProjectRowsExcel(visibleRows, 'past-projects')}
+                    onClick={() =>
+                      void exportProjectRowsExcel(visibleRows, 'past-projects', {
+                        detailsText: detailsDraft,
+                        title,
+                      })
+                    }
                     disabled={!visibleRows.length}
                   >
                     Excel
@@ -1052,7 +1062,7 @@ export const MergedResultsTable = ({
                   <button
                     type="button"
                     className="itg-btn itg-btn-outline"
-                    onClick={() => void exportProjectRowsPdf(visibleRows, 'past-projects', title)}
+                    onClick={() => void exportProjectRowsPdf(visibleRows, 'past-projects', title, {detailsText: detailsDraft})}
                     disabled={!visibleRows.length}
                   >
                     PDF

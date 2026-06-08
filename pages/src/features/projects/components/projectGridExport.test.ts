@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {createSharedProjectRowsWordBlob} from './projectGridExport';
+import {createProjectRowsCsvText, createSharedProjectRowsWordBlob} from './projectGridExport';
 import type {ProjectGridRow} from './projectGrid';
 
 const row: ProjectGridRow = {
@@ -24,6 +24,28 @@ const logo = {
 };
 
 describe('projectGridExport', () => {
+  it('includes edited project detail text before CSV project rows', () => {
+    const csv = createProjectRowsCsvText([row], {
+      detailsText: '<strong>Edited Past Projects Detail</strong><br><mark>Highlighted project detail & owner edits</mark>',
+      title: 'Saved Merged Results',
+    });
+
+    expect(csv).toContain('Innovate to Grow Past Projects\r\nI2G Logo,/assets/images/i2glogo.png');
+    expect(csv).toContain('Title,Saved Merged Results');
+    expect(csv).toContain('Past Projects Detail\r\nEdited Past Projects Detail\r\nHighlighted project detail & owner edits');
+    expect(csv).toContain('\r\nProjects\r\nYear-Semester,Class,Team#,Team Name,Project Title');
+    expect(csv).toContain('A detailed abstract with <special> characters & project context.');
+  });
+
+  it('falls back to generated detail text for CSV exports when no edited detail text is provided', () => {
+    const csv = createProjectRowsCsvText([row]);
+
+    expect(csv).toContain('Past Projects Detail');
+    expect(csv).toContain('Project 1');
+    expect(csv).toContain('Students: Alice Calderon, Bob Lee');
+    expect(csv).toContain('Abstract: A detailed abstract with <special> characters & project context.');
+  });
+
   it('creates a real docx package for shared Word exports', async () => {
     const blob = createSharedProjectRowsWordBlob(
       [row],
