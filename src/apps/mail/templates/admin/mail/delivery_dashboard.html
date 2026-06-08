@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-select-controls">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-loading-state">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -38,6 +38,7 @@
       </div>
     </div>
   </div>
+  <div id="mail-delivery-loading" class="i2g-delivery-loading-strip" aria-hidden="true"><span></span></div>
 
   <div id="mail-delivery-banner" class="i2g-delivery-banner hidden mb-4 rounded-default border p-4">
     <div class="flex items-start gap-3">
@@ -515,8 +516,7 @@
     const windowSelect = document.getElementById('mail-delivery-window-days');
     const days = selectedWindowDays();
     const requestId = ++refreshSequence;
-    if (button) button.setAttribute('aria-busy', 'true');
-    if (windowSelect) windowSelect.setAttribute('aria-busy', 'true');
+    setLoading(true);
     fetch(dashboardDataUrl(days), { credentials: 'same-origin' })
       .then(function (response) { return response.json(); })
       .then(function (data) {
@@ -527,9 +527,14 @@
       .catch(function () { if (requestId === refreshSequence && lastData) renderAll(lastData); })
       .finally(function () {
         if (requestId !== refreshSequence) return;
-        if (button) button.removeAttribute('aria-busy');
-        if (windowSelect) windowSelect.removeAttribute('aria-busy');
+        setLoading(false);
       });
+
+    function setLoading(isLoading) {
+      root.classList.toggle('i2g-delivery-dashboard--loading', isLoading);
+      if (button) button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+      if (windowSelect) windowSelect.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    }
   }
 
   const refreshButton = document.getElementById('mail-delivery-refresh');
