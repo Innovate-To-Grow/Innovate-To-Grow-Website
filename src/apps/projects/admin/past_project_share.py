@@ -15,14 +15,15 @@ class PastProjectShareAdmin(BaseModelAdmin):
     search_fields = (
         "name",
         "note",
+        "details_text",
         "created_by__first_name",
         "created_by__last_name",
         "created_by__contact_emails__email_address",
     )
-    readonly_fields = ("id", "name", "note", "created_by", "rows_preview", "created_at", "updated_at")
+    readonly_fields = ("id", "name", "note", "details_text", "created_by", "rows_preview", "created_at", "updated_at")
 
     fieldsets = (
-        ("Share", {"fields": ("id", "name", "note", "created_by")}),
+        ("Share", {"fields": ("id", "name", "note", "details_text", "created_by")}),
         ("Rows", {"fields": ("rows_preview",)}),
         ("System", {"classes": ("collapse",), "fields": ("created_at", "updated_at")}),
     )

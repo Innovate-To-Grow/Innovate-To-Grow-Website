@@ -13,6 +13,7 @@ export const PastProjectsAISearchForm = ({
 }: PastProjectsAISearchFormProps) => {
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim();
+  const formClassName = `project-grid-search-field past-projects-ai-search${loading ? ' is-loading' : ''}`;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -23,25 +24,36 @@ export const PastProjectsAISearchForm = ({
   };
 
   return (
-    <form className="project-grid-search-field past-projects-ai-search" onSubmit={(event) => void handleSubmit(event)}>
+    <form
+      className={formClassName}
+      aria-busy={loading}
+      onSubmit={(event) => void handleSubmit(event)}
+    >
       <label className="past-projects-ai-search-field">
         <span className="project-grid-field-label">AI Search</span>
-        <input
-          type="search"
-          className="project-grid-search-input past-projects-ai-search-input"
-          value={query}
-          placeholder="Ask AI to find relevant past projects..."
-          disabled={!isAuthenticated || loading}
-          onChange={(event) => setQuery(event.target.value)}
-        />
+        <span className="past-projects-ai-search-input-frame">
+          <input
+            type="search"
+            className="project-grid-search-input past-projects-ai-search-input"
+            value={query}
+            placeholder="Ask AI to find relevant past projects..."
+            disabled={!isAuthenticated || loading}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </span>
       </label>
       <button
         type="submit"
         className="itg-btn itg-btn-primary"
         disabled={!isAuthenticated || loading || !trimmedQuery}
       >
-        {loading ? 'Searching...' : 'Search'}
+        Search
       </button>
+      {loading ? (
+        <span className="sr-only" role="status" aria-live="polite">
+          Searching past projects with AI...
+        </span>
+      ) : null}
     </form>
   );
 };
