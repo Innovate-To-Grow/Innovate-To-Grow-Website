@@ -31,6 +31,11 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     industry = serializers.CharField(max_length=100, allow_blank=True)
     abstract = serializers.CharField(allow_blank=True)
     student_names = serializers.CharField(allow_blank=True)
+    # Round-trip the frontend's presenting flag ('Yes'/'No'/'') so stored rows match freshly
+    # searched rows — the client dedup fingerprint includes is_presenting, and dropping it here
+    # made an owner's "add rows" re-add a project already in the share. Optional + default so
+    # pre-existing shares (saved without the field) keep validating and serialize as "".
+    is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
 
 
 class PastProjectShareSerializer(serializers.ModelSerializer):

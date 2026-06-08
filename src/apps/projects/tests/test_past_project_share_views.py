@@ -157,6 +157,28 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(response.data["details_text"], "Project 1\nAbstract: A project abstract.")
         self.assertFalse(response.data["can_edit"])
 
+    def test_create_round_trips_is_presenting(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(rows=[sample_row(is_presenting="Yes")]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["rows"][0]["is_presenting"], "Yes")
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.rows[0]["is_presenting"], "Yes")
+
+    def test_rows_saved_without_is_presenting_serialize_as_blank(self):
+        # Pre-existing shares were stored before is_presenting existed; GET must still return
+        # "" for them rather than erroring on the missing key.
+        share = PastProjectShare.objects.create(rows=[sample_row()])
+
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["rows"][0]["is_presenting"], "")
+
     def test_get_share_marks_owner_can_edit(self):
         share = PastProjectShare.objects.create(rows=[sample_row()], created_by=self.member)
 

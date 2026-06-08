@@ -15,6 +15,18 @@ vi.mock('@/features/auth', async (importOriginal) => {
   };
 });
 
+// The export functions are heavy (dynamic imports of exceljs/jspdf + downloads) and are
+// covered directly in projectGridExport.test.ts; here we stub them so we can assert the
+// component's wiring and error handling without triggering real downloads.
+const exportMocks = vi.hoisted(() => ({
+  exportProjectRowsCsv: vi.fn(),
+  exportProjectRowsExcel: vi.fn(),
+  exportProjectRowsPdf: vi.fn(),
+  exportProjectRowsWord: vi.fn(),
+}));
+
+vi.mock('./projectGridExport', () => exportMocks);
+
 const baseRow: ProjectGridRow = {
   semester_label: '2025-1 Spring',
   class_code: 'ENGR 120',
@@ -34,6 +46,14 @@ const addedRow: ProjectGridRow = {
   team_name: 'Team Beta',
   project_title: 'Irrigation Sensor',
   organization: 'Blue Diamond',
+};
+
+const thirdRow: ProjectGridRow = {
+  ...baseRow,
+  team_number: 'T03',
+  team_name: 'Team Gamma',
+  project_title: 'Solar Tracker',
+  organization: 'Sun Co',
 };
 
 const makeItems = (rows: ProjectGridRow[] = [baseRow]) => createProjectGridItems(rows, 'test');
@@ -66,6 +86,10 @@ describe('MergedResultsTable', () => {
     originalClipboardItem = window.ClipboardItem;
     mockUseAuth.mockReset();
     mockUseAuth.mockReturnValue({isAuthenticated: true});
+    exportMocks.exportProjectRowsCsv.mockReset().mockResolvedValue(undefined);
+    exportMocks.exportProjectRowsExcel.mockReset().mockResolvedValue(undefined);
+    exportMocks.exportProjectRowsPdf.mockReset().mockResolvedValue(undefined);
+    exportMocks.exportProjectRowsWord.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -225,6 +249,28 @@ describe('MergedResultsTable', () => {
     expect(detailsArg.match(/------------------------------/g)).toHaveLength(24);
   });
 
+  it('keeps generated builder detail in sync with rows until the user edits it', () => {
+    const onCreateShare = vi.fn();
+    const {rerender} = render(<MergedResultsTable rows={makeItems([baseRow])} onCreateShare={onCreateShare} />);
+
+    const details = screen.getByRole('textbox', {name: 'Past Projects Detail'});
+    expect(details).toHaveTextContent('Project 1');
+    expect(details).not.toHaveTextContent('Project 2');
+
+    // Rows change with no manual edit -> the generated detail regenerates to include the new project.
+    rerender(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={onCreateShare} />);
+    expect(details).toHaveTextContent('Project 2');
+
+    // The user makes a real edit -> the draft is now protected from regeneration.
+    setRichEditorHtml(details, 'Custom owner detail');
+    expect(details).toHaveTextContent('Custom owner detail');
+
+    // Further row changes must NOT clobber the manual edit.
+    rerender(<MergedResultsTable rows={makeItems([baseRow, addedRow, thirdRow])} onCreateShare={onCreateShare} />);
+    expect(details).toHaveTextContent('Custom owner detail');
+    expect(details).not.toHaveTextContent('Project 3');
+  });
+
   it('copies the share URL when the URL field is clicked', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
@@ -253,6 +299,44 @@ describe('MergedResultsTable', () => {
 
     fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Named'}});
     expect(button).toBeEnabled();
+  });
+
+  it('passes the visible rows and export context to the chosen exporter', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector(
+      '.project-grid-toolbar-cluster[aria-label="Export"]',
+    ) as HTMLElement;
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'CSV'}));
+
+    expect(exportMocks.exportProjectRowsCsv).toHaveBeenCalledTimes(1);
+    const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsCsv.mock.calls[0];
+    expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
+    expect(fileBaseName).toBe('past-projects');
+    expect(context).toMatchObject({title: 'Saved Merged Results'});
+  });
+
+  it('surfaces an error message when an export fails', async () => {
+    exportMocks.exportProjectRowsExcel.mockRejectedValueOnce(new Error('chunk load failed'));
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector(
+      '.project-grid-toolbar-cluster[aria-label="Export"]',
+    ) as HTMLElement;
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
+
+    expect(await screen.findByText('Unable to export Excel. Please try again.')).toBeInTheDocument();
+  });
+
+  it('disables every export button when there are no rows to export', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems([])} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector(
+      '.project-grid-toolbar-cluster[aria-label="Export"]',
+    ) as HTMLElement;
+
+    within(exportCluster)
+      .getAllByRole('button')
+      .forEach((exportButton) => expect(exportButton).toBeDisabled());
   });
 
   it('hides the share controls and shows a login hint for anonymous users', () => {
@@ -426,6 +510,36 @@ describe('MergedResultsTable', () => {
       );
     });
     expect(await screen.findByText('Past projects detail updated.')).toBeInTheDocument();
+  });
+
+  it('does not persist unsaved detail edits when saving the note instead', async () => {
+    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Original Name"
+        note="Original note"
+        detailsText="Saved details"
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    // Start editing the detail and type something, but DO NOT save it.
+    fireEvent.click(screen.getByRole('button', {name: /edit past projects detail/i}));
+    setRichEditorHtml(screen.getByRole('textbox', {name: 'Past Projects Detail'}), 'Unsaved detail edit');
+
+    // Switch to editing the note and save it.
+    fireEvent.click(screen.getByRole('button', {name: /edit note/i}));
+    fireEvent.change(screen.getByLabelText('Note'), {target: {value: 'Updated note'}});
+    fireEvent.click(screen.getByRole('button', {name: /save note/i}));
+
+    await waitFor(() => {
+      // The saved details (prop), not the unsaved draft, are sent.
+      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Updated note', 'Original Name', 'Saved details');
+    });
   });
 
   it('expands all detail rows by default in shared mode', () => {

@@ -286,8 +286,16 @@ const triggerDownload = (blob: Blob, fileName: string) => {
   URL.revokeObjectURL(url);
 };
 
+// Leading =,+,-,@ (and tab/CR) make a spreadsheet treat a cell as a formula on open
+// (CSV/formula injection). The share Title/Note/Detail are user-controllable, so neutralize
+// any such cell by prefixing a single quote before applying the normal CSV quoting.
+const CSV_FORMULA_LEADING = /^[=+\-@\t\r]/;
+
 const escapeCsvCell = (value: string | number) => {
-  const str = String(value ?? '');
+  let str = String(value ?? '');
+  if (CSV_FORMULA_LEADING.test(str)) {
+    str = `'${str}`;
+  }
   if (/[",\r\n]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }

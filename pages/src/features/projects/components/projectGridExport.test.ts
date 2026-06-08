@@ -51,6 +51,37 @@ describe('projectGridExport', () => {
     expect(csv).toContain('A detailed abstract with <special> characters & project context.');
   });
 
+  it('neutralizes leading formula characters in CSV cells to prevent CSV injection', () => {
+    const csv = createProjectRowsCsvText(
+      [
+        {
+          ...row,
+          project_title: '=HYPERLINK("http://evil","click")',
+          organization: '+1-800-EVIL',
+          student_names: '@SUM(A1:A9)',
+          team_name: '-2+3',
+        },
+      ],
+      {
+        title: '=cmd|\'/c calc\'!A1',
+        detailsText: '=1+1 danger',
+      },
+    );
+
+    // Title and detail lines starting with = are prefixed with a quote, then CSV-quoted
+    // because they also contain a comma / quote where applicable.
+    expect(csv).toContain("'=cmd");
+    expect(csv).toContain("'=1+1 danger");
+    // Project columns are neutralized too (quoted because they contain commas/quotes).
+    expect(csv).toContain('"\'=HYPERLINK(""http://evil"",""click"")"');
+    expect(csv).toContain("'+1-800-EVIL");
+    expect(csv).toContain("'@SUM(A1:A9)");
+    expect(csv).toContain("'-2+3");
+    // No raw formula cell survives at the start of a field.
+    expect(csv).not.toMatch(/(^|,)=HYPERLINK/m);
+    expect(csv).not.toMatch(/(^|,)@SUM/m);
+  });
+
   it('falls back to generated detail text for CSV exports when no edited detail text is provided', () => {
     const csv = createProjectRowsCsvText([row]);
 

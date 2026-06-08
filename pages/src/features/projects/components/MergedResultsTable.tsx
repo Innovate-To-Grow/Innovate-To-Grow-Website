@@ -436,6 +436,12 @@ function RichTextDetailEditor({
   );
 }
 
+type ProjectRowsExporter = (
+  rows: ProjectGridRow[],
+  fileBaseName: string,
+  context: {detailsText?: string; note?: string; title?: string},
+) => Promise<void>;
+
 const getExportFileBaseName = (title: string) => {
   const slug = title
     .trim()
@@ -557,13 +563,26 @@ export const MergedResultsTable = ({
     note: exportNote,
     title: exportTitle,
   };
+
+  const handleExport = async (exporter: ProjectRowsExporter, label: string) => {
+    try {
+      await exporter(visibleRows, exportFileBaseName, exportContext);
+    } catch {
+      // Dynamic-import (code-split chunk) or serialization failures otherwise reject silently.
+      setStatusMessage(`Unable to export ${label}. Please try again.`);
+    }
+  };
   const hasTitleChanges = editTitleDraft.trim() !== title.trim();
   const hasNoteChanges = editNoteDraft.trim() !== (note ?? '').trim();
   const hasDetailsChanges = detailsDraft !== normalizePastProjectsDetailHtml(detailsText);
 
   const handleDetailsDraftChange = (nextValue: string) => {
     setDetailsDraft(nextValue);
-    setIsDetailsTextDirty(true);
+    // Only treat the draft as "dirty" once it actually diverges from what we'd generate from
+    // the current rows. This keeps a no-op focus/blur (emitChange fires on blur) from freezing
+    // the builder editor, so the generated detail keeps tracking row/search changes until the
+    // user makes a real edit — and resumes tracking if they revert back to the generated text.
+    setIsDetailsTextDirty(nextValue.trim() !== generatedDetailsHtml.trim());
   };
 
   const handleCopyDetails = async () => {
@@ -582,6 +601,13 @@ export const MergedResultsTable = ({
   const handleCreateShare = async () => {
     const trimmedName = nameDraft.trim();
     if (!onCreateShare || !visibleRows.length || !trimmedName) {
+      return;
+    }
+
+    // Mirror the backend cap (serializer rejects >1000 rows) with a specific message instead
+    // of letting the request fail with the generic error below.
+    if (visibleRows.length > 1000) {
+      setStatusMessage('A shared page can include at most 1000 projects. Remove some rows and try again.');
       return;
     }
 
@@ -674,7 +700,9 @@ export const MergedResultsTable = ({
       return;
     }
 
-    const saved = await handleUpdateSharedPage(currentRows, note ?? '', trimmedTitle, detailsDraft, 'Name updated.');
+    // Send the last-saved details (the prop), not the live draft, so saving the name never
+    // silently persists unsaved edits made in the (now-closed) detail editor.
+    const saved = await handleUpdateSharedPage(currentRows, note ?? '', trimmedTitle, detailsText, 'Name updated.');
     if (saved) {
       setIsEditingSharedTitle(false);
     }
@@ -693,7 +721,9 @@ export const MergedResultsTable = ({
       return;
     }
 
-    const saved = await handleUpdateSharedPage(currentRows, editNoteDraft.trim(), title, detailsDraft, 'Note updated.');
+    // Send the last-saved details (the prop), not the live draft, so saving the note never
+    // silently persists unsaved edits made in the (now-closed) detail editor.
+    const saved = await handleUpdateSharedPage(currentRows, editNoteDraft.trim(), title, detailsText, 'Note updated.');
     if (saved) {
       setIsEditingSharedNote(false);
     }
@@ -735,7 +765,7 @@ export const MergedResultsTable = ({
       setStatusMessage('A shared page needs at least one project.');
       return;
     }
-    await handleUpdateSharedPage(nextRows, note ?? '', title, detailsDraft, 'Project removed.');
+    await handleUpdateSharedPage(nextRows, note ?? '', title, detailsText, 'Project removed.');
   };
 
   const handleDeleteMergedRow = async (row: ProjectGridItem) => {
@@ -996,7 +1026,7 @@ export const MergedResultsTable = ({
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void exportProjectRowsCsv(visibleRows, exportFileBaseName, exportContext)}
+                onClick={() => void handleExport(exportProjectRowsCsv, 'CSV')}
                 disabled={!visibleRows.length}
               >
                 CSV
@@ -1004,7 +1034,7 @@ export const MergedResultsTable = ({
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void exportProjectRowsExcel(visibleRows, exportFileBaseName, exportContext)}
+                onClick={() => void handleExport(exportProjectRowsExcel, 'Excel')}
                 disabled={!visibleRows.length}
               >
                 Excel
@@ -1012,7 +1042,7 @@ export const MergedResultsTable = ({
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void exportProjectRowsPdf(visibleRows, exportFileBaseName, exportContext)}
+                onClick={() => void handleExport(exportProjectRowsPdf, 'PDF')}
                 disabled={!visibleRows.length}
               >
                 PDF
@@ -1020,7 +1050,7 @@ export const MergedResultsTable = ({
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void exportProjectRowsWord(visibleRows, exportFileBaseName, exportContext)}
+                onClick={() => void handleExport(exportProjectRowsWord, 'Microsoft Word')}
                 disabled={!visibleRows.length}
               >
                 Microsoft Word
