@@ -279,6 +279,75 @@
     font-size: 12px;
 }
 
+.dark .cms-asset-picker-trigger,
+.dark .cms-asset-file-button {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 16%, var(--md-sys-color-surface-container));
+    border-color: color-mix(in srgb, var(--md-sys-color-primary) 44%, var(--md-sys-color-outline-variant));
+    color: var(--md-sys-color-primary);
+}
+
+.dark .cms-asset-picker-trigger:hover,
+.dark .cms-asset-file-button:hover,
+.dark .cms-asset-file-input:focus-visible + .cms-asset-file-button {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 24%, var(--md-sys-color-surface-container));
+}
+
+.dark .cms-asset-modal-panel {
+    background: var(--md-sys-color-surface-container);
+    border-color: var(--md-sys-color-outline-variant);
+    box-shadow: var(--md-sys-elevation-2);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-asset-modal-header,
+.dark .cms-asset-upload,
+.dark .cms-asset-search-row,
+.dark .cms-asset-row {
+    border-color: var(--md-sys-color-outline-variant);
+}
+
+.dark .cms-asset-modal-header h3,
+.dark .cms-asset-file-name.has-file,
+.dark .cms-asset-info strong {
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-asset-modal-close,
+.dark .cms-asset-file-name,
+.dark .cms-asset-upload-hint,
+.dark .cms-asset-empty,
+.dark .cms-asset-info span,
+.dark .cms-asset-info a,
+.dark .cms-asset-file-icon {
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+.dark .cms-asset-upload-fields input[type="text"],
+.dark .cms-asset-search-row input {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-asset-upload-fields button,
+.dark .cms-asset-search-row button,
+.dark .cms-asset-row button {
+    background: var(--md-sys-color-primary);
+    border-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+}
+
+.dark .cms-asset-row button:disabled {
+    background: var(--md-sys-color-surface-container-highest);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+.dark .cms-asset-thumb {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--md-sys-color-outline-variant);
+}
+
 @media (max-width: 680px) {
     .cms-asset-field-control,
     .cms-asset-upload-fields,

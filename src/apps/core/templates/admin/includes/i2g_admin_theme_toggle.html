@@ -9,12 +9,12 @@
             x-bind:aria-expanded="openTheme.toString()">
         <span class="material-symbols-outlined i2g-admin-theme-toggle__icon"
               aria-hidden="true"
-              x-text="adminTheme == 'dark' && 'dark_mode' || adminTheme == 'light' && 'light_mode' || 'computer'"></span>
+              x-text="adminTheme == 'dark' && 'dark_mode' || adminTheme == 'light' && 'light_mode' || 'computer'">computer</span>
         <span class="i2g-admin-theme-toggle__text"
               data-light-label="{% translate 'Light' %}"
               data-dark-label="{% translate 'Dark' %}"
               data-system-label="{% translate 'System' %}"
-              x-text="adminTheme == 'dark' ? $el.dataset.darkLabel : adminTheme == 'light' ? $el.dataset.lightLabel : $el.dataset.systemLabel"></span>
+              x-text="adminTheme == 'dark' ? $el.dataset.darkLabel : adminTheme == 'light' ? $el.dataset.lightLabel : $el.dataset.systemLabel">{% translate "System" %}</span>
     </button>
 
     <nav class="i2g-admin-theme-toggle__menu"
@@ -26,7 +26,7 @@
          x-on:keydown.escape.window="openTheme = false">
         <button type="button"
                 class="i2g-admin-theme-toggle__option"
-                x-on:click="adminTheme = 'light'; openTheme = false"
+                x-on:click="switchTheme('light'); openTheme = false"
                 x-bind:class="adminTheme == 'light' && 'is-active'">
             <span class="material-symbols-outlined" aria-hidden="true">light_mode</span>
             <span>{% translate "Light" %}</span>
@@ -34,7 +34,7 @@
 
         <button type="button"
                 class="i2g-admin-theme-toggle__option"
-                x-on:click="adminTheme = 'dark'; openTheme = false"
+                x-on:click="switchTheme('dark'); openTheme = false"
                 x-bind:class="adminTheme == 'dark' && 'is-active'">
             <span class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
             <span>{% translate "Dark" %}</span>
@@ -42,7 +42,7 @@
 
         <button type="button"
                 class="i2g-admin-theme-toggle__option"
-                x-on:click="adminTheme = 'auto'; openTheme = false"
+                x-on:click="switchTheme('auto'); openTheme = false"
                 x-bind:class="adminTheme == 'auto' && 'is-active'">
             <span class="material-symbols-outlined" aria-hidden="true">computer</span>
             <span>{% translate "System" %}</span>

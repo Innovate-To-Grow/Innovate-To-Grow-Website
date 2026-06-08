@@ -1,4 +1,5 @@
-from unittest.mock import patch
+from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 
 from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, TestCase
@@ -10,6 +11,7 @@ from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.models import EmailCampaign
 from apps.mail.services import GMAIL_FOLDER_DISPLAY
+from apps.mail.services.delivery_dashboard import fetch_ses_cloudwatch_metrics, fetch_suppressed_destinations
 from apps.mail.services.preview import HTML_MARKER
 
 
@@ -173,6 +175,237 @@ class MailSettingsAdminTest(TestCase):
         )
 
         self.assertContains(response, "Failed to send test SMS: SNS boom")
+
+
+class MailDeliveryDashboardAdminTest(TestCase):
+    def setUp(self):
+        self.admin_user = make_superuser()
+        self.client.login(username="admin@example.com", password="testpass123")
+        self.email_config = EmailServiceConfig.objects.create(
+            name="Production Mail",
+            is_active=True,
+            ses_from_email="admin@example.com",
+            ses_from_name="I2G Admin",
+            ses_max_send_rate=12,
+        )
+        self.aws_config = AWSCredentialConfig.objects.create(
+            name="Primary AWS",
+            is_active=True,
+            access_key_id="AKIATEST1234",
+            secret_access_key="secret",
+            default_region="us-west-2",
+        )
+
+    def _aws_dashboard_payload(self):
+        return {
+            "window_days": 183,
+            "generated_at": "2026-06-08T12:00:00+00:00",
+            "summary": {
+                "attempts": 120,
+                "success": 116,
+                "problems": 4,
+                "failure_rate": 3.3,
+                "campaign_attempts": 0,
+                "campaign_errors": 0,
+                "ticket_sent": 0,
+                "ticket_errors": 0,
+                "pending": 0,
+                "bounces": 3,
+                "complaints": 1,
+                "rejected": 0,
+                "failed": 0,
+                "delayed": 0,
+            },
+            "aws": {
+                "configured": True,
+                "email_config": "Production Mail",
+                "aws_config": "Primary AWS",
+                "region": "us-west-2",
+                "source_address": "I2G Admin <admin@example.com>",
+                "send_rate": 12,
+                "iam_key": "...1234",
+                "metrics_available": True,
+                "metrics_reason": "",
+                "metrics_source": "CloudWatch account SES metrics",
+                "recipient_details_available": True,
+                "recipient_details_reason": "",
+            },
+            "metrics": {
+                "available": True,
+                "reason": "",
+                "source": "CloudWatch account SES metrics",
+                "namespace": "AWS/SES",
+                "dimension_count": 1,
+            },
+            "recipient_details": {
+                "available": True,
+                "reason": "",
+                "source": "AWS SES account suppression list",
+                "count": 2,
+            },
+            "daily": [{"date": "2026-06-08", "attempts": 120, "problems": 4}],
+            "status_breakdown": [
+                {"status": "bounced", "label": "Bounced", "count": 3},
+                {"status": "complained", "label": "Complained", "count": 1},
+                {"status": "delivered", "label": "Delivered", "count": 116},
+            ],
+            "problem_recipients": [
+                {
+                    "email": "bounce@example.com",
+                    "name": "",
+                    "source": "AWS SES Suppression List",
+                    "context": "Account-level suppression",
+                    "status": "bounced",
+                    "label": "Bounced",
+                    "reason": "BOUNCE",
+                    "last_seen": "Jun 08, 12:00",
+                    "count": 1,
+                },
+                {
+                    "email": "complaint@example.com",
+                    "name": "",
+                    "source": "AWS SES Suppression List",
+                    "context": "Account-level suppression",
+                    "status": "complained",
+                    "label": "Complained",
+                    "reason": "COMPLAINT",
+                    "last_seen": "Jun 07, 12:00",
+                    "count": 1,
+                },
+            ],
+            "campaign_errors": [],
+        }
+
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    def test_delivery_dashboard_renders_aws_metrics_and_problem_recipients(self, mock_dashboard_data):
+        mock_dashboard_data.return_value = self._aws_dashboard_payload()
+
+        response = self.client.get(reverse("admin:mail_delivery_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
+        self.assertContains(response, "AWS SES Delivery Dashboard")
+        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-aws")
+        self.assertContains(response, "Problem Recipients")
+        self.assertContains(response, "Six-month AWS CloudWatch SES metrics")
+        self.assertContains(response, "SES Attempts (6mo)")
+        self.assertContains(response, "SES Errors (6mo)")
+        self.assertContains(response, "Daily Delivery Errors (6mo)")
+        self.assertContains(response, "AWS SES account suppression list")
+        self.assertContains(response, "bounce@example.com")
+        self.assertContains(response, "complaint@example.com")
+        self.assertContains(response, "/admin/mail/delivery-dashboard/data/")
+
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    def test_delivery_dashboard_data_returns_aws_payload(self, mock_dashboard_data):
+        mock_dashboard_data.return_value = self._aws_dashboard_payload()
+
+        response = self.client.get(reverse("admin:mail_delivery_dashboard_data"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["window_days"], 183)
+        self.assertEqual(payload["summary"]["attempts"], 120)
+        self.assertEqual(payload["summary"]["success"], 116)
+        self.assertEqual(payload["summary"]["problems"], 4)
+        self.assertEqual(payload["summary"]["bounces"], 3)
+        self.assertEqual(payload["summary"]["complaints"], 1)
+        self.assertTrue(payload["metrics"]["available"])
+        self.assertEqual(payload["metrics"]["namespace"], "AWS/SES")
+        self.assertTrue(payload["recipient_details"]["available"])
+        self.assertTrue(payload["aws"]["configured"])
+        self.assertEqual(payload["aws"]["region"], "us-west-2")
+        problem_emails = {row["email"] for row in payload["problem_recipients"]}
+        self.assertIn("bounce@example.com", problem_emails)
+        self.assertIn("complaint@example.com", problem_emails)
+        status_labels = {row["label"] for row in payload["status_breakdown"]}
+        self.assertIn("Bounced", status_labels)
+        self.assertIn("Complained", status_labels)
+
+    def test_delivery_dashboard_requires_mail_admin_access(self):
+        other_admin = make_admin(apps=["cms"], email="cmsadmin@example.com")
+        self.client.force_login(other_admin)
+
+        response = self.client.get(reverse("admin:mail_delivery_dashboard"))
+
+        self.assertEqual(response.status_code, 403)
+
+
+class MailDeliveryDashboardAwsServiceTest(TestCase):
+    def test_fetch_ses_cloudwatch_metrics_uses_aws_metric_data(self):
+        client = MagicMock()
+        now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
+        client.get_metric_data.return_value = {
+            "MetricDataResults": [
+                {
+                    "Id": "d0_attempts",
+                    "Timestamps": [datetime(2026, 6, 7, 12, 0, tzinfo=UTC), now],
+                    "Values": [20.0, 100.0],
+                },
+                {
+                    "Id": "d0_success",
+                    "Timestamps": [datetime(2026, 6, 7, 12, 0, tzinfo=UTC), now],
+                    "Values": [19.0, 96.0],
+                },
+                {"Id": "d0_bounces", "Timestamps": [now], "Values": [3.0]},
+                {"Id": "d0_complaints", "Timestamps": [now], "Values": [1.0]},
+            ]
+        }
+
+        with patch("apps.mail.services.delivery_dashboard._cloudwatch_client", return_value=client):
+            payload = fetch_ses_cloudwatch_metrics(days=183, now=now)
+
+        self.assertTrue(payload["metrics"]["available"])
+        self.assertEqual(payload["metrics"]["namespace"], "AWS/SES")
+        self.assertEqual(payload["summary"]["attempts"], 120)
+        self.assertEqual(payload["summary"]["success"], 115)
+        self.assertEqual(payload["summary"]["problems"], 4)
+        self.assertEqual(payload["summary"]["bounces"], 3)
+        self.assertEqual(payload["summary"]["complaints"], 1)
+        self.assertEqual(len(payload["daily"]), 183)
+        today = payload["daily"][-1]
+        self.assertEqual(today["date"], "2026-06-08")
+        self.assertEqual(today["attempts"], 100)
+        self.assertEqual(today["problems"], 4)
+        sent_query = client.get_metric_data.call_args.kwargs["MetricDataQueries"][0]
+        self.assertEqual(sent_query["MetricStat"]["Metric"]["Namespace"], "AWS/SES")
+        self.assertEqual(sent_query["MetricStat"]["Metric"]["MetricName"], "Send")
+
+    def test_fetch_suppressed_destinations_reads_aws_sesv2(self):
+        client = MagicMock()
+        now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "SuppressedDestinationSummaries": [
+                    {
+                        "EmailAddress": "bounce@example.com",
+                        "Reason": "BOUNCE",
+                        "LastUpdateTime": datetime(2026, 6, 8, 10, 0, tzinfo=UTC),
+                    },
+                    {
+                        "EmailAddress": "complaint@example.com",
+                        "Reason": "COMPLAINT",
+                        "LastUpdateTime": datetime(2026, 6, 7, 10, 0, tzinfo=UTC),
+                    },
+                ]
+            }
+        ]
+        client.get_paginator.return_value = paginator
+
+        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+            rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
+
+        self.assertTrue(meta["available"])
+        self.assertEqual(meta["source"], "AWS SES account suppression list")
+        self.assertEqual([row["email"] for row in rows], ["bounce@example.com", "complaint@example.com"])
+        self.assertEqual(rows[0]["source"], "AWS SES Suppression List")
+        self.assertEqual(rows[0]["label"], "Bounced")
+        self.assertEqual(rows[1]["label"], "Complained")
+        paginate_kwargs = paginator.paginate.call_args.kwargs
+        self.assertEqual(paginate_kwargs["Reasons"], ["BOUNCE", "COMPLAINT"])
+        self.assertEqual(paginate_kwargs["StartDate"], datetime(2025, 12, 7, 12, 0, tzinfo=UTC))
+        self.assertEqual(paginate_kwargs["EndDate"], now)
 
 
 class EmailCampaignAdminImportTest(TestCase):

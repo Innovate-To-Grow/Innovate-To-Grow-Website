@@ -12,6 +12,20 @@ from apps.system_intelligence.services.adk.errors import (
 logger = logging.getLogger(__name__)
 
 _AWS_REGION_RE = re.compile(r"^[a-z]{2,4}-[a-z]+-\d+$")
+_USAGE_KEYS = (
+    "inputTokens",
+    "outputTokens",
+    "totalTokens",
+    "cacheReadInputTokens",
+    "cacheWriteInputTokens",
+)
+
+
+def _usage_int(value):
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _sse(event, data):
@@ -50,9 +64,10 @@ def _handle_stream_event(event, aws_config, full_text, tool_calls, action_ids, a
         action_requests.append(event)
         return _result(full_text, _sse("action_request", event))
     if etype == "usage":
-        total_usage["inputTokens"] += event.get("inputTokens", 0)
-        total_usage["outputTokens"] += event.get("outputTokens", 0)
-        total_usage["totalTokens"] += event.get("totalTokens", 0)
+        for key in _USAGE_KEYS:
+            value = _usage_int(event.get(key))
+            if value or key in total_usage:
+                total_usage[key] = total_usage.get(key, 0) + value
         return _result(full_text, _sse("usage", total_usage))
     if etype == "error":
         error = format_system_intelligence_error(event["error"], aws_config=aws_config)

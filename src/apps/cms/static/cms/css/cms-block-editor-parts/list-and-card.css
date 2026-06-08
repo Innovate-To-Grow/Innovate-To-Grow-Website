@@ -160,6 +160,25 @@
     color: #01579b;
 }
 
+.dark .cms-block-type-badge,
+.dark .cms-block-type-badge.type-hero,
+.dark .cms-block-type-badge.type-rich_text,
+.dark .cms-block-type-badge.type-faq_list,
+.dark .cms-block-type-badge.type-link_list,
+.dark .cms-block-type-badge.type-cta_group,
+.dark .cms-block-type-badge.type-image_text,
+.dark .cms-block-type-badge.type-notice,
+.dark .cms-block-type-badge.type-contact_info,
+.dark .cms-block-type-badge.type-section_group,
+.dark .cms-block-type-badge.type-table,
+.dark .cms-block-type-badge.type-numbered_list,
+.dark .cms-block-type-badge.type-proposal_cards,
+.dark .cms-block-type-badge.type-navigation_grid {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 18%, var(--md-sys-color-surface-container));
+    border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 34%, var(--md-sys-color-outline-variant));
+    color: var(--md-sys-color-primary);
+}
+
 .cms-block-label-text {
     overflow: hidden;
     text-overflow: ellipsis;

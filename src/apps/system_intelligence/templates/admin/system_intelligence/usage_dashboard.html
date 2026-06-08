@@ -1,127 +1,165 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{{ title }}{% endblock %}
 {% block content_title %}{{ page_title }}{% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
+<link rel="stylesheet" href="{% static 'system_intelligence/css/usage-dashboard.css' %}?v=20260608-model-wide">
 {{ cloudwatch|json_script:"si-usage-cloudwatch" }}
-{{ local|json_script:"si-usage-local" }}
 {% endblock %}
 
 {% block content %}
 <div id="si-usage-root" class="mb-6" data-usage-data-url="{% url 'admin:system_intelligence_usage_data' %}">
   <div class="si-usage-hero rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-5 mb-5">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-wide text-primary-600 dark:text-primary-300">System Intelligence</p>
-        <h2 class="mt-1 text-xl font-semibold text-font-default-light dark:text-font-default-dark">
+    <div class="si-usage-hero-row flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="si-usage-hero-copy">
+        <p class="si-usage-eyebrow text-xs font-semibold uppercase tracking-wide">System Intelligence</p>
+        <h2 class="si-usage-title mt-1 text-xl font-semibold">
           Assistant Usage Dashboard
         </h2>
-        <p class="mt-1 text-sm text-font-subtle-light dark:text-font-subtle-dark">
-          Application audit logs for live 24-hour counters, plus Bedrock CloudWatch trends when AWS metrics are available.
+        <p class="si-usage-muted mt-1 text-sm">
+          CloudWatch Bedrock metrics for 30-day token, invocation, and model-level usage.
         </p>
       </div>
       <button type="button" id="si-usage-refresh"
-              class="inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium text-font-default-light dark:text-font-default-dark hover:text-primary-600 dark:hover:text-primary-300">
+              class="si-usage-refresh inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium">
         <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
         <span>Refresh</span>
       </button>
     </div>
   </div>
 
-  <div id="si-usage-banner" class="hidden mb-4 rounded-default border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 p-4">
+  <div id="si-usage-banner" class="si-usage-banner hidden mb-4 rounded-default border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 p-4">
     <div class="flex items-start gap-3">
       <span class="material-symbols-outlined text-amber-600 dark:text-amber-400" style="font-size:24px">warning</span>
-      <p class="text-sm text-amber-800 dark:text-amber-200">
+      <p class="text-sm">
         AWS metrics unavailable (<span id="si-usage-banner-reason">unknown</span>).
         Grant <code>cloudwatch:GetMetricData</code> + <code>cloudwatch:ListMetrics</code> to the IAM user.
-        The local 24-hour cards and conversation sections still render from admin audit logs.
+        The dashboard will stay empty until AWS publishes Bedrock CloudWatch metrics.
       </p>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Input Tokens (24h)</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_input">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">From local audit logs</p></div><span class="material-symbols-outlined text-primary-600" style="font-size:28px">login</span></div></div>
-    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Output Tokens (24h)</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_output">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">From local audit logs</p></div><span class="material-symbols-outlined text-green-600" style="font-size:28px">logout</span></div></div>
-    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Invocations (24h)</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="today_invocations">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">Logged assistant turns</p></div><span class="material-symbols-outlined text-blue-600" style="font-size:28px">bolt</span></div></div>
-    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Conversations Today</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="conversations_today">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">Public and search sessions</p></div><span class="material-symbols-outlined text-orange-600" style="font-size:28px">forum</span></div></div>
-    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide si-usage-card-title">Messages (7d)</p><p class="mt-2 text-2xl font-bold text-font-default-light dark:text-font-default-dark si-usage-stat-value" data-stat="messages_7d">0</p><p class="mt-1 text-xs text-font-subtle-light dark:text-font-subtle-dark">Recorded public turns</p></div><span class="material-symbols-outlined text-purple-600" style="font-size:28px">chat</span></div></div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs uppercase tracking-wide si-usage-card-title" data-stat-label="today_input">Input Tokens (30d)</p><p class="si-usage-value mt-2 text-2xl font-bold si-usage-stat-value" data-stat="today_input">0</p><p class="si-usage-muted mt-1 text-xs" data-stat-detail="today_input">CloudWatch Bedrock total</p></div><span class="si-usage-metric-icon material-symbols-outlined text-primary-600" style="font-size:28px">login</span></div></div>
+    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs uppercase tracking-wide si-usage-card-title" data-stat-label="today_output">Output Tokens (30d)</p><p class="si-usage-value mt-2 text-2xl font-bold si-usage-stat-value" data-stat="today_output">0</p><p class="si-usage-muted mt-1 text-xs" data-stat-detail="today_output">CloudWatch Bedrock total</p></div><span class="si-usage-metric-icon si-usage-metric-icon--success material-symbols-outlined text-green-600" style="font-size:28px">logout</span></div></div>
+    <div class="si-usage-metric-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-start justify-between gap-3"><div><p class="text-xs uppercase tracking-wide si-usage-card-title" data-stat-label="today_invocations">Invocations (30d)</p><p class="si-usage-value mt-2 text-2xl font-bold si-usage-stat-value" data-stat="today_invocations">0</p><p class="si-usage-muted mt-1 text-xs" data-stat-detail="today_invocations">CloudWatch Bedrock total</p></div><span class="si-usage-metric-icon si-usage-metric-icon--info material-symbols-outlined text-blue-600" style="font-size:28px">bolt</span></div></div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">bar_chart</span>Tokens (last 30 days)</h3>
+    <div class="si-usage-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="si-usage-heading text-sm font-semibold mb-3"><span class="si-usage-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">bar_chart</span>Tokens (last 30 days)</h3>
       <div class="si-usage-chart" style="position:relative; height:240px;"><canvas id="si-usage-tokens-chart"></canvas></div>
     </div>
 
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">bolt</span>Invocations (last 30 days)</h3>
+    <div class="si-usage-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="si-usage-heading text-sm font-semibold mb-3"><span class="si-usage-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">bolt</span>Invocations (last 30 days)</h3>
       <div class="si-usage-chart" style="position:relative; height:240px;"><canvas id="si-usage-invocations-chart"></canvas></div>
     </div>
 
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">donut_small</span>Tokens by Source (30d)</h3>
-      <div class="si-usage-chart" style="position:relative; height:240px;"><canvas id="si-usage-source-chart"></canvas></div>
-    </div>
-
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">smart_toy</span>By Model (30d)</h3>
-      <div class="overflow-x-auto">
+    <div class="si-usage-panel si-usage-scroll-panel lg:col-span-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="si-usage-heading text-sm font-semibold mb-3"><span class="si-usage-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">smart_toy</span>By Model (30d)</h3>
+      <div class="si-usage-scroll-body overflow-x-auto">
         <table class="w-full text-sm">
-          <thead><tr class="text-left text-font-subtle-light dark:text-font-subtle-dark border-b border-base-100 dark:border-base-800"><th class="py-1.5 pr-2">Model</th><th class="py-1.5 px-2 text-right">Input</th><th class="py-1.5 px-2 text-right">Output</th><th class="py-1.5 pl-2 text-right">Invocations</th></tr></thead>
+          <thead><tr class="si-usage-table-head text-left border-b border-base-100 dark:border-base-800"><th class="py-1.5 pr-2">Model</th><th class="py-1.5 px-2 text-right">Input</th><th class="py-1.5 px-2 text-right">Output</th><th class="py-1.5 pl-2 text-right">Invocations</th></tr></thead>
           <tbody id="si-usage-by-model"></tbody>
         </table>
       </div>
-    </div>
-
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">history</span>Recent Conversations</h3>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead><tr class="text-left text-font-subtle-light dark:text-font-subtle-dark border-b border-base-100 dark:border-base-800"><th class="py-1.5 pr-2">Source</th><th class="py-1.5 px-2">Session</th><th class="py-1.5 px-2 text-right">Msgs</th><th class="py-1.5 px-2 text-right">Tokens</th><th class="py-1.5 pl-2">Last Activity</th></tr></thead>
-          <tbody id="si-usage-recent"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3 si-usage-card-title"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">trending_up</span>Top Prompts (30d)</h3>
-      <div class="space-y-1" id="si-usage-top-prompts"></div>
     </div>
   </div>
 </div>
 
 <script>
 (function () {
-  Chart.register(ChartDataLabels);
+  if (window.Chart && window.ChartDataLabels) {
+    Chart.register(ChartDataLabels);
+  }
 
   const root = document.getElementById('si-usage-root');
   const dataUrl = root.getAttribute('data-usage-data-url');
-  const convoChangeBase = '/admin/system_intelligence/assistantconversationlog/';
   const charts = {};
+  const preferSvgCharts = true;
+  let lastRenderData = null;
 
   function readJson(id) {
     const el = document.getElementById(id);
     try { return JSON.parse(el.textContent); } catch (e) { return null; }
   }
 
-  function isDark() { return document.documentElement.classList.contains('dark'); }
-  function gridColor() { return isDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'; }
-  function textColor() { return isDark() ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'; }
+  function cssVar(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function toRgb(color) {
+    const normalized = String(color || '').trim();
+    const hex = normalized.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hex) {
+      let value = hex[1];
+      if (value.length === 3) value = value.split('').map(function (part) { return part + part; }).join('');
+      return { r: parseInt(value.slice(0, 2), 16), g: parseInt(value.slice(2, 4), 16), b: parseInt(value.slice(4, 6), 16) };
+    }
+    const rgb = normalized.match(/rgba?\(([^)]+)\)/i);
+    if (rgb) {
+      const parts = rgb[1].split(',').map(function (part) { return Number(part.trim()); });
+      return { r: parts[0], g: parts[1], b: parts[2] };
+    }
+    return null;
+  }
+
+  function withAlpha(color, alpha) {
+    const rgb = toRgb(color);
+    if (!rgb) return color;
+    return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
+  }
+
+  function palette() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const onSurface = cssVar('--md-sys-color-on-surface', isDark ? '#e8eaed' : '#202124');
+    const onSurfaceVariant = cssVar('--md-sys-color-on-surface-variant', isDark ? '#c4c7c5' : '#5f6368');
+    const outlineVariant = cssVar('--md-sys-color-outline-variant', isDark ? '#444746' : '#c4c7ca');
+    const surfaceContainer = cssVar('--md-sys-color-surface-container', isDark ? '#202124' : '#f6f3f3');
+    const primary = cssVar('--md-sys-color-primary', isDark ? '#a8c7fa' : '#305f9d');
+    const success = cssVar('--md-sys-color-success', isDark ? '#4ade80' : '#15803d');
+    const warning = cssVar('--md-sys-color-warning', isDark ? '#fbbf24' : '#c2410c');
+
+    return {
+      textColor: onSurfaceVariant,
+      titleColor: onSurface,
+      gridColor: withAlpha(outlineVariant, isDark ? 0.72 : 0.5),
+      tooltipBg: surfaceContainer,
+      tooltipBorder: withAlpha(outlineVariant, isDark ? 0.8 : 0.6),
+      inputBar: withAlpha(primary, isDark ? 0.72 : 0.78),
+      outputBar: withAlpha(success, isDark ? 0.66 : 0.76),
+      invocationBar: withAlpha(warning, isDark ? 0.7 : 0.78),
+    };
+  }
+
+  function gridColor() { return palette().gridColor; }
+  function textColor() { return palette().textColor; }
 
   function fmt(n) { return Number(n || 0).toLocaleString(); }
-
-  function preferLocal(localValue, cloudwatchValue) {
-    return localValue === undefined || localValue === null ? cloudwatchValue : localValue;
-  }
 
   function setStat(name, value) {
     const el = root.querySelector('[data-stat="' + name + '"]');
     if (el) el.textContent = fmt(value);
+  }
+
+  function setStatText(name, value) {
+    const el = root.querySelector('[data-stat="' + name + '"]');
+    if (el) el.textContent = value;
+  }
+
+  function setStatLabel(name, value) {
+    const el = root.querySelector('[data-stat-label="' + name + '"]');
+    if (el) el.textContent = value;
+  }
+
+  function setStatDetail(name, value) {
+    const el = root.querySelector('[data-stat-detail="' + name + '"]');
+    if (el) el.textContent = value;
   }
 
   function shortDate(iso) {
@@ -141,13 +179,111 @@
   }
 
   function tooltipStyle() {
+    const colors = palette();
     return {
-      backgroundColor: isDark() ? '#1e1e2e' : '#fff',
-      titleColor: isDark() ? '#e2e8f0' : '#1e293b',
-      bodyColor: isDark() ? '#cbd5e1' : '#475569',
-      borderColor: isDark() ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+      backgroundColor: colors.tooltipBg,
+      titleColor: colors.titleColor,
+      bodyColor: colors.textColor,
+      borderColor: colors.tooltipBorder,
       borderWidth: 1, padding: 10, cornerRadius: 6
     };
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function (char) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
+    });
+  }
+
+  function fallbackHost(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const host = canvas ? canvas.parentElement : null;
+    if (host) {
+      Array.from(host.querySelectorAll('.si-usage-fallback-chart')).forEach(function (el) { el.remove(); });
+    }
+    return { canvas: canvas, host: host };
+  }
+
+  function showCanvas(canvasId) {
+    const chart = fallbackHost(canvasId);
+    if (chart.canvas) chart.canvas.style.display = '';
+    return chart.canvas;
+  }
+
+  function fallbackFrame(canvasId) {
+    const chart = fallbackHost(canvasId);
+    if (!chart.canvas || !chart.host) return null;
+    chart.canvas.style.display = 'none';
+    const wrap = document.createElement('div');
+    wrap.className = 'si-usage-fallback-chart';
+    chart.host.appendChild(wrap);
+    return wrap;
+  }
+
+  function fallbackEmpty(canvasId, message) {
+    const wrap = fallbackFrame(canvasId);
+    if (!wrap) return;
+    wrap.innerHTML = '<div class="si-usage-fallback-empty">' + escapeHtml(message) + '</div>';
+  }
+
+  function renderFallbackBars(canvasId, rows, datasets, options) {
+    rows = rows || [];
+    options = options || {};
+    const activeRows = rows.filter(function (row) {
+      return datasets.some(function (dataset) { return Number(row[dataset.key] || 0) > 0; });
+    });
+    if (!activeRows.length) {
+      fallbackEmpty(canvasId, options.emptyMessage || 'No chart data available yet.');
+      return;
+    }
+
+    const colors = palette();
+    const width = 640;
+    const height = 240;
+    const margin = { top: 26, right: 18, bottom: 42, left: 58 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+    const maxValue = Math.max.apply(null, activeRows.map(function (row) {
+      if (options.stacked) {
+        return datasets.reduce(function (sum, dataset) { return sum + Number(row[dataset.key] || 0); }, 0);
+      }
+      return Math.max.apply(null, datasets.map(function (dataset) { return Number(row[dataset.key] || 0); }));
+    }));
+    const safeMax = maxValue || 1;
+    const band = plotWidth / activeRows.length;
+    const barWidth = Math.max(4, Math.min(26, band * 0.55));
+    const labelEvery = Math.max(1, Math.ceil(activeRows.length / 7));
+    let svg = '<svg class="si-usage-fallback-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeHtml(options.label || 'Usage chart') + '">';
+    [0, 0.5, 1].forEach(function (part) {
+      const y = margin.top + plotHeight - part * plotHeight;
+      const value = safeMax * part;
+      svg += '<line class="si-usage-fallback-grid" x1="' + margin.left + '" x2="' + (width - margin.right) + '" y1="' + y + '" y2="' + y + '"></line>';
+      svg += '<text class="si-usage-fallback-axis" x="' + (margin.left - 10) + '" y="' + (y + 4) + '" text-anchor="end">' + escapeHtml(value ? fmt(Math.round(value)) : '0') + '</text>';
+    });
+    datasets.forEach(function (dataset, i) {
+      const legendX = margin.left + i * 112;
+      svg += '<rect x="' + legendX + '" y="8" width="10" height="10" rx="2" fill="' + dataset.color + '"></rect>';
+      svg += '<text class="si-usage-fallback-legend" x="' + (legendX + 16) + '" y="17">' + escapeHtml(dataset.label) + '</text>';
+    });
+    activeRows.forEach(function (row, index) {
+      const x = margin.left + index * band + (band - barWidth) / 2;
+      let yStack = margin.top + plotHeight;
+      datasets.forEach(function (dataset) {
+        const value = Number(row[dataset.key] || 0);
+        const barHeight = (value / safeMax) * plotHeight;
+        const y = yStack - barHeight;
+        if (value > 0) {
+          svg += '<rect class="si-usage-fallback-bar" x="' + x + '" y="' + y + '" width="' + barWidth + '" height="' + Math.max(1, barHeight) + '" rx="3" fill="' + dataset.color + '"></rect>';
+        }
+        if (options.stacked) yStack = y;
+      });
+      if (index % labelEvery === 0 || index === activeRows.length - 1) {
+        svg += '<text class="si-usage-fallback-axis" x="' + (x + barWidth / 2) + '" y="' + (height - 16) + '" text-anchor="middle">' + escapeHtml(row.label) + '</text>';
+      }
+    });
+    svg += '</svg>';
+    const wrap = fallbackFrame(canvasId);
+    if (wrap) wrap.innerHTML = svg;
   }
 
   function renderBanner(cloudwatch) {
@@ -160,15 +296,17 @@
     banner.classList.remove('hidden');
   }
 
-  function renderStatCards(cloudwatch, local) {
-    const today = (cloudwatch && cloudwatch.today) || {};
-    const rolling = (local && local.rolling_24h) || {};
-    setStat('today_input', preferLocal(rolling.input_tokens, today.input_tokens));
-    setStat('today_output', preferLocal(rolling.output_tokens, today.output_tokens));
-    setStat('today_invocations', preferLocal(rolling.invocations, today.invocations));
-    const counts = (local && local.counts) || {};
-    setStat('conversations_today', counts.conversations_today);
-    setStat('messages_7d', counts.messages_7d);
+  function renderStatCards(cloudwatch) {
+    const totals = (cloudwatch && cloudwatch.totals) || {};
+    setStatLabel('today_input', 'Input Tokens (30d)');
+    setStatLabel('today_output', 'Output Tokens (30d)');
+    setStatLabel('today_invocations', 'Invocations (30d)');
+    setStat('today_input', totals.input_tokens);
+    setStat('today_output', totals.output_tokens);
+    setStat('today_invocations', totals.invocations);
+    setStatDetail('today_input', 'CloudWatch Bedrock total');
+    setStatDetail('today_output', 'CloudWatch Bedrock total');
+    setStatDetail('today_invocations', 'CloudWatch Bedrock total');
   }
 
   function destroyChart(key) {
@@ -179,13 +317,26 @@
     destroyChart('tokens');
     const daily = (cloudwatch && cloudwatch.daily) || [];
     const labels = daily.map(function (d) { return shortDate(d.date); });
-    charts.tokens = new Chart(document.getElementById('si-usage-tokens-chart'), {
+    const colors = palette();
+    if (preferSvgCharts || !window.Chart) {
+      renderFallbackBars(
+        'si-usage-tokens-chart',
+        daily.map(function (d) { return Object.assign({ label: shortDate(d.date) }, d); }),
+        [
+          { key: 'input_tokens', label: 'Input', color: colors.inputBar },
+          { key: 'output_tokens', label: 'Output', color: colors.outputBar }
+        ],
+        { stacked: true, label: 'Tokens over the last 30 days', emptyMessage: 'No token metrics recorded yet.' }
+      );
+      return;
+    }
+    charts.tokens = new Chart(showCanvas('si-usage-tokens-chart'), {
       type: 'bar',
       data: {
         labels: labels,
         datasets: [
-          { label: 'Input', data: daily.map(function (d) { return d.input_tokens; }), backgroundColor: isDark() ? 'rgba(99,102,241,0.7)' : 'rgba(79,70,229,0.75)', stack: 'tokens', borderRadius: 3 },
-          { label: 'Output', data: daily.map(function (d) { return d.output_tokens; }), backgroundColor: isDark() ? 'rgba(45,212,191,0.7)' : 'rgba(20,184,166,0.75)', stack: 'tokens', borderRadius: 3 }
+          { label: 'Input', data: daily.map(function (d) { return d.input_tokens; }), backgroundColor: colors.inputBar, stack: 'tokens', borderRadius: 3 },
+          { label: 'Output', data: daily.map(function (d) { return d.output_tokens; }), backgroundColor: colors.outputBar, stack: 'tokens', borderRadius: 3 }
         ]
       },
       options: {
@@ -205,9 +356,19 @@
     destroyChart('invocations');
     const daily = (cloudwatch && cloudwatch.daily) || [];
     const labels = daily.map(function (d) { return shortDate(d.date); });
-    charts.invocations = new Chart(document.getElementById('si-usage-invocations-chart'), {
+    const colors = palette();
+    if (preferSvgCharts || !window.Chart) {
+      renderFallbackBars(
+        'si-usage-invocations-chart',
+        daily.map(function (d) { return Object.assign({ label: shortDate(d.date) }, d); }),
+        [{ key: 'invocations', label: 'Invocations', color: colors.invocationBar }],
+        { label: 'Invocations over the last 30 days', emptyMessage: 'No invocation metrics recorded yet.' }
+      );
+      return;
+    }
+    charts.invocations = new Chart(showCanvas('si-usage-invocations-chart'), {
       type: 'bar',
-      data: { labels: labels, datasets: [{ label: 'Invocations', data: daily.map(function (d) { return d.invocations; }), backgroundColor: isDark() ? 'rgba(251,146,60,0.7)' : 'rgba(234,88,12,0.75)', borderRadius: 3 }] },
+      data: { labels: labels, datasets: [{ label: 'Invocations', data: daily.map(function (d) { return d.invocations; }), backgroundColor: colors.invocationBar, borderRadius: 3 }] },
       options: {
         responsive: true, maintainAspectRatio: false, animation: false,
         plugins: {
@@ -220,31 +381,11 @@
     });
   }
 
-  function renderSourceChart(local) {
-    destroyChart('source');
-    const rows = (local && local.tokens_by_source) || [];
-    charts.source = new Chart(document.getElementById('si-usage-source-chart'), {
-      type: 'doughnut',
-      data: {
-        labels: rows.map(function (r) { return r.label; }),
-        datasets: [{ data: rows.map(function (r) { return r.total_tokens; }), backgroundColor: ['rgba(79,70,229,0.8)', 'rgba(20,184,166,0.8)', 'rgba(234,88,12,0.8)'], borderWidth: 0 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: false, cutout: '60%',
-        plugins: {
-          legend: { display: true, position: 'bottom', labels: { color: textColor(), boxWidth: 12, font: { size: 11 } } },
-          datalabels: { color: '#fff', font: { size: 11, weight: 'bold' }, formatter: function (v) { return v > 0 ? fmt(v) : ''; } },
-          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (ctx) { return ctx.label + ': ' + fmt(ctx.parsed); } } })
-        }
-      }
-    });
-  }
-
   function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
 
   function cell(text, extraClass) {
     const td = document.createElement('td');
-    td.className = 'py-1.5 px-2 text-font-default-light dark:text-font-default-dark ' + (extraClass || '');
+    td.className = 'si-usage-table-cell py-1.5 px-2 ' + (extraClass || '');
     td.textContent = text;
     return td;
   }
@@ -255,14 +396,14 @@
     const rows = (cloudwatch && cloudwatch.by_model) || [];
     if (!rows.length) {
       const tr = document.createElement('tr');
-      const td = cell('No model metrics available.', 'text-font-subtle-light dark:text-font-subtle-dark');
+      const td = cell('No model metrics available.', 'si-usage-muted');
       td.colSpan = 4; tr.appendChild(td); tbody.appendChild(tr);
       return;
     }
     rows.forEach(function (r) {
       const tr = document.createElement('tr');
-      tr.className = 'border-b border-base-100 dark:border-base-800';
-      tr.appendChild(cell(r.model_id, 'pr-2 truncate text-font-default-light dark:text-font-default-dark'));
+      tr.className = 'si-usage-row border-b border-base-100 dark:border-base-800';
+      tr.appendChild(cell(r.model_id, 'pr-2 truncate'));
       tr.appendChild(cell(fmt(r.input_tokens), 'text-right'));
       tr.appendChild(cell(fmt(r.output_tokens), 'text-right'));
       tr.appendChild(cell(fmt(r.invocations), 'pl-2 text-right'));
@@ -270,66 +411,14 @@
     });
   }
 
-  function renderRecent(local) {
-    const tbody = document.getElementById('si-usage-recent');
-    clear(tbody);
-    const rows = (local && local.recent) || [];
-    if (!rows.length) {
-      const tr = document.createElement('tr');
-      const td = cell('No conversations recorded yet.', 'text-font-subtle-light dark:text-font-subtle-dark');
-      td.colSpan = 5; tr.appendChild(td); tbody.appendChild(tr);
-      return;
-    }
-    rows.forEach(function (r) {
-      const tr = document.createElement('tr');
-      tr.className = 'border-b border-base-100 dark:border-base-800 cursor-pointer hover:bg-base-50 dark:hover:bg-base-800';
-      tr.addEventListener('click', function () { window.location.href = convoChangeBase + r.id + '/change/'; });
-      tr.appendChild(cell(r.label, 'pr-2 text-font-default-light dark:text-font-default-dark'));
-      tr.appendChild(cell(r.session, 'font-mono'));
-      tr.appendChild(cell(fmt(r.message_count), 'text-right'));
-      tr.appendChild(cell(fmt(r.total_tokens), 'text-right'));
-      tr.appendChild(cell((r.last_activity || '').replace('T', ' ').slice(0, 16), 'pl-2'));
-      tbody.appendChild(tr);
-    });
-  }
-
-  function renderTopPrompts(local) {
-    const wrap = document.getElementById('si-usage-top-prompts');
-    clear(wrap);
-    const rows = (local && local.top_prompts) || [];
-    if (!rows.length) {
-      const p = document.createElement('p');
-      p.className = 'text-sm text-font-subtle-light dark:text-font-subtle-dark';
-      p.textContent = 'No prompts recorded yet.';
-      wrap.appendChild(p);
-      return;
-    }
-    rows.forEach(function (r, i) {
-      const div = document.createElement('div');
-      div.className = 'flex items-center justify-between py-1.5' + (i < rows.length - 1 ? ' border-b border-base-100 dark:border-base-800' : '');
-      const label = document.createElement('span');
-      label.className = 'text-sm text-font-default-light dark:text-font-default-dark truncate mr-2';
-      label.title = r.prompt;
-      label.textContent = r.prompt;
-      const count = document.createElement('span');
-      count.className = 'text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark shrink-0';
-      count.textContent = fmt(r.count);
-      div.append(label, count);
-      wrap.appendChild(div);
-    });
-  }
-
   function renderAll(data) {
+    lastRenderData = data;
     const cloudwatch = data.cloudwatch || {};
-    const local = data.local || {};
     renderBanner(cloudwatch);
-    renderStatCards(cloudwatch, local);
+    renderStatCards(cloudwatch);
     renderTokensChart(cloudwatch);
     renderInvocationsChart(cloudwatch);
-    renderSourceChart(local);
     renderByModel(cloudwatch);
-    renderRecent(local);
-    renderTopPrompts(local);
   }
 
   function refresh() {
@@ -345,8 +434,12 @@
   const refreshButton = document.getElementById('si-usage-refresh');
   if (refreshButton) refreshButton.addEventListener('click', refresh);
 
+  new MutationObserver(function () {
+    if (lastRenderData) renderAll(lastRenderData);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
   // Initial render from the server-injected JSON (no fetch needed on load).
-  renderAll({ cloudwatch: readJson('si-usage-cloudwatch'), local: readJson('si-usage-local') });
+  renderAll({ cloudwatch: readJson('si-usage-cloudwatch') });
 })();
 </script>
 {% endblock %}

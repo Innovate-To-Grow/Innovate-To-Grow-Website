@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
+from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 
 from apps.core.admin.service_credentials.aws import AWSCredentialConfigAdmin, AWSCredentialConfigForm
@@ -68,12 +69,24 @@ class AWSAdminDisplayTest(TestCase):
             name="Other", is_active=True, access_key_id="A", secret_access_key="S"
         )
         target = AWSCredentialConfig.objects.create(name="Target", access_key_id="B", secret_access_key="S")
+        cache.set("assistant:usage:cloudwatch", {"available": False})
+        cache.set("assistant:usage:local", {"counts": {}})
         response = self.admin.activate_this_config(_request(self.user), str(target.pk))
         self.assertEqual(response.status_code, 302)
         target.refresh_from_db()
         other.refresh_from_db()
         self.assertTrue(target.is_active)
         self.assertFalse(other.is_active)
+        self.assertIsNone(cache.get("assistant:usage:cloudwatch"))
+        self.assertIsNone(cache.get("assistant:usage:local"))
+
+    def test_save_model_clears_usage_dashboard_cache(self):
+        obj = AWSCredentialConfig(name="Cfg", is_active=True, access_key_id="K", secret_access_key="S")
+        cache.set("assistant:usage:cloudwatch", {"available": False})
+        cache.set("assistant:usage:local", {"counts": {}})
+        self.admin.save_model(_request(self.user), obj, form=None, change=False)
+        self.assertIsNone(cache.get("assistant:usage:cloudwatch"))
+        self.assertIsNone(cache.get("assistant:usage:local"))
 
     def test_has_delete_permission_blocked_for_active(self):
         active = AWSCredentialConfig.objects.create(name="A", is_active=True, access_key_id="K", secret_access_key="S")

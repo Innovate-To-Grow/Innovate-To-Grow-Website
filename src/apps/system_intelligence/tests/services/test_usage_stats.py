@@ -216,7 +216,13 @@ class ComputeLocalAggregatesTest(TestCase):
             conversation=self.convo,
             prompt="What is I2G?",
             status=AssistantMessageLog.STATUS_OK,
-            token_usage={"inputTokens": 100, "outputTokens": 50, "totalTokens": 150},
+            token_usage={
+                "inputTokens": 100,
+                "outputTokens": 50,
+                "totalTokens": 150,
+                "cacheReadInputTokens": 60,
+                "cacheWriteInputTokens": 20,
+            },
         )
         AssistantMessageLog.objects.create(
             conversation=self.convo, prompt="What is I2G?", status=AssistantMessageLog.STATUS_OK
@@ -238,7 +244,13 @@ class ComputeLocalAggregatesTest(TestCase):
             role="assistant",
             content="ok",
             model_id="anthropic.claude",
-            token_usage={"inputTokens": 30, "outputTokens": 40, "totalTokens": 70},
+            token_usage={
+                "inputTokens": 30,
+                "outputTokens": 40,
+                "totalTokens": 70,
+                "cache_read_input_tokens": 10,
+                "cache_creation_input_tokens": 5,
+            },
         )
         ChatMessage.objects.create(conversation=chat, role="assistant", content="ok", token_usage={"totalTokens": None})
         ChatMessage.objects.create(conversation=chat, role="assistant", content="ok", token_usage={})
@@ -258,6 +270,10 @@ class ComputeLocalAggregatesTest(TestCase):
         self.assertEqual(rolling["output_tokens"], 90)
         # Two public/search AssistantMessageLog rows + one admin assistant model call.
         self.assertEqual(rolling["invocations"], 3)
+        self.assertEqual(rolling["cache_read_tokens"], 70)
+        self.assertEqual(rolling["cache_write_tokens"], 25)
+        self.assertEqual(rolling["cache_total_tokens"], 95)
+        self.assertEqual(rolling["cache_hit_rate"], 73.7)
 
     def test_tokens_by_source_includes_admin_chat_summed_in_python(self):
         result = compute_local_aggregates()
@@ -303,7 +319,18 @@ class ComputeLocalAggregatesTest(TestCase):
             result = compute_local_aggregates()
         self.assertEqual(result["counts"]["conversations_30d"], 0)
         self.assertEqual(result["counts"]["messages_today"], 0)
-        self.assertEqual(result["rolling_24h"], {"input_tokens": 0, "output_tokens": 0, "invocations": 0})
+        self.assertEqual(
+            result["rolling_24h"],
+            {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "invocations": 0,
+                "cache_read_tokens": 0,
+                "cache_write_tokens": 0,
+                "cache_total_tokens": 0,
+                "cache_hit_rate": 0,
+            },
+        )
         self.assertEqual(result["recent"], [])
         self.assertEqual(result["top_prompts"], [])
         self.assertEqual(len(result["tokens_by_source"]), 3)
@@ -322,26 +349,24 @@ class GetDashboardContextCacheTest(TestCase):
     def test_second_call_hits_cache(self):
         cw = {"available": True, "marker": "first"}
         with patch.object(dashboard_module, "fetch_bedrock_metrics", return_value=cw) as fetch:
-            with patch.object(dashboard_module, "compute_local_aggregates", return_value={"x": 1}) as local:
-                first = get_dashboard_context()
-                second = get_dashboard_context()
+            first = get_dashboard_context()
+            second = get_dashboard_context()
         self.assertEqual(first["cloudwatch"], cw)
         self.assertEqual(second["cloudwatch"], cw)
-        # Each underlying computation ran exactly once -- the second call was cached.
+        self.assertNotIn("local", first)
+        self.assertNotIn("local", second)
+        # The underlying CloudWatch computation ran exactly once -- the second call was cached.
         fetch.assert_called_once()
-        local.assert_called_once()
 
     def test_force_bypasses_cache_read_but_writes(self):
         with patch.object(dashboard_module, "fetch_bedrock_metrics", return_value={"v": 1}):
-            with patch.object(dashboard_module, "compute_local_aggregates", return_value={"v": 1}):
-                get_dashboard_context()  # warm the cache
+            get_dashboard_context()  # warm the cache
 
         with patch.object(dashboard_module, "fetch_bedrock_metrics", return_value={"v": 2}) as fetch:
-            with patch.object(dashboard_module, "compute_local_aggregates", return_value={"v": 2}) as local:
-                forced = get_dashboard_context(force=True)
+            forced = get_dashboard_context(force=True)
         # force=True recomputes even though the cache was warm.
         fetch.assert_called_once()
-        local.assert_called_once()
         self.assertEqual(forced["cloudwatch"], {"v": 2})
+        self.assertNotIn("local", forced)
         # And the fresh value is written back for the next non-forced read.
         self.assertEqual(cache.get(dashboard_module.CLOUDWATCH_CACHE_KEY), {"v": 2})

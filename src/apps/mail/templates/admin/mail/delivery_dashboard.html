@@ -1,0 +1,260 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}{{ page_title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-aws">
+{{ dashboard|json_script:"mail-delivery-dashboard-data" }}
+{% endblock %}
+
+{% block content %}
+<div id="mail-delivery-dashboard-root" class="i2g-delivery-dashboard mb-6" data-dashboard-url="{% url 'admin:mail_delivery_dashboard_data' %}">
+  <div class="i2g-delivery-hero rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-5 mb-5">
+    <div class="i2g-delivery-hero-row flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="i2g-delivery-hero-copy">
+        <p class="i2g-delivery-eyebrow text-xs font-semibold uppercase tracking-wide">Broadcast Delivery</p>
+        <h2 class="i2g-delivery-title mt-1 text-xl font-semibold">AWS SES Delivery Dashboard</h2>
+        <p class="i2g-delivery-muted mt-1 text-sm">
+          Six-month AWS CloudWatch SES metrics, with failed recipient addresses from the AWS SES suppression list.
+        </p>
+      </div>
+      <button type="button" id="mail-delivery-refresh"
+              class="i2g-delivery-refresh inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium">
+        <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="mail-delivery-banner" class="i2g-delivery-banner hidden mb-4 rounded-default border p-4">
+    <div class="flex items-start gap-3">
+      <span class="material-symbols-outlined" style="font-size:24px">warning</span>
+      <p class="text-sm">
+        AWS SES delivery is not fully configured. Check Notification Delivery and AWS IAM credentials before sending.
+      </p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <div class="i2g-delivery-metric rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">SES Attempts (6mo)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="attempts">0</p><p class="i2g-delivery-muted mt-1 text-xs" data-delivery-detail="attempts">CloudWatch Send metric</p></div>
+        <span class="i2g-delivery-icon material-symbols-outlined" style="font-size:28px">outgoing_mail</span>
+      </div>
+    </div>
+    <div class="i2g-delivery-metric rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">Successful Delivery (6mo)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="success">0</p><p class="i2g-delivery-muted mt-1 text-xs">CloudWatch Delivery metric</p></div>
+        <span class="i2g-delivery-icon i2g-delivery-icon--success material-symbols-outlined" style="font-size:28px">mark_email_read</span>
+      </div>
+    </div>
+    <div class="i2g-delivery-metric i2g-delivery-metric--danger rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">SES Errors (6mo)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="problems">0</p><p class="i2g-delivery-muted mt-1 text-xs"><span data-delivery-stat-text="failure_rate">0%</span> failure rate</p></div>
+        <span class="i2g-delivery-icon i2g-delivery-icon--danger material-symbols-outlined" style="font-size:28px">report</span>
+      </div>
+    </div>
+    <div class="i2g-delivery-metric rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">Bounce / Complaint</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="bounce_complaint">0</p><p class="i2g-delivery-muted mt-1 text-xs">CloudWatch Bounce + Complaint</p></div>
+        <span class="i2g-delivery-icon i2g-delivery-icon--warning material-symbols-outlined" style="font-size:28px">unsubscribe</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <div class="i2g-delivery-panel xl:col-span-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="i2g-delivery-heading text-sm font-semibold mb-3"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">stacked_bar_chart</span>Daily Delivery Errors (6mo)</h3>
+      <div id="mail-delivery-daily-chart" class="i2g-delivery-chart" aria-label="Daily delivery errors"></div>
+    </div>
+
+    <div class="i2g-delivery-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="i2g-delivery-heading text-sm font-semibold mb-3"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">query_stats</span>Delivery Mix</h3>
+      <div id="mail-delivery-status" class="i2g-delivery-status-list"></div>
+    </div>
+
+    <div class="i2g-delivery-panel i2g-delivery-problems xl:col-span-3 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <div class="i2g-delivery-panel-header">
+        <h3 class="i2g-delivery-heading text-sm font-semibold"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">alternate_email</span>Problem Recipients</h3>
+        <span class="i2g-delivery-muted text-xs">Last 6 months from AWS SES account suppression list</span>
+      </div>
+      <div class="i2g-delivery-table-scroll">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="i2g-delivery-table-head text-left border-b border-base-100 dark:border-base-800">
+              <th class="py-2 pr-3">Email</th>
+              <th class="py-2 px-3">Source</th>
+              <th class="py-2 px-3">Status</th>
+              <th class="py-2 px-3">Last Seen</th>
+              <th class="py-2 pl-3">Reason</th>
+            </tr>
+          </thead>
+          <tbody id="mail-delivery-problem-recipients"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="i2g-delivery-panel xl:col-span-3 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+      <h3 class="i2g-delivery-heading text-sm font-semibold mb-3"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">campaign</span>Campaigns With Send Errors</h3>
+      <div id="mail-delivery-campaign-errors" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const root = document.getElementById('mail-delivery-dashboard-root');
+  const dataUrl = root.getAttribute('data-dashboard-url');
+  let lastData = null;
+
+  function readJson(id) {
+    const el = document.getElementById(id);
+    try { return JSON.parse(el.textContent); } catch (e) { return null; }
+  }
+
+  function fmt(value) { return Number(value || 0).toLocaleString(); }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function (char) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
+    });
+  }
+
+  function setStat(name, value) {
+    const el = root.querySelector('[data-delivery-stat="' + name + '"]');
+    if (el) el.textContent = fmt(value);
+  }
+
+  function setStatText(name, value) {
+    const el = root.querySelector('[data-delivery-stat-text="' + name + '"]');
+    if (el) el.textContent = value;
+  }
+
+  function renderAll(data) {
+    lastData = data || {};
+    const summary = lastData.summary || {};
+    setStat('attempts', summary.attempts);
+    setStat('success', summary.success);
+    setStat('problems', summary.problems);
+    setStat('bounce_complaint', Number(summary.bounces || 0) + Number(summary.complaints || 0));
+    setStatText('failure_rate', (summary.failure_rate || 0) + '%');
+    renderBanner(lastData.aws || {});
+    renderDaily(lastData.daily || []);
+    renderStatus(lastData.status_breakdown || []);
+    renderProblemRecipients(lastData.problem_recipients || []);
+    renderCampaignErrors(lastData.campaign_errors || []);
+  }
+
+  function renderBanner(aws) {
+    const banner = document.getElementById('mail-delivery-banner');
+    const text = banner ? banner.querySelector('p') : null;
+    if (!banner || !text) return;
+    if (!aws.configured) {
+      text.textContent = 'AWS SES is not fully configured. Check Notification Delivery and AWS IAM credentials before sending.';
+      banner.classList.remove('hidden');
+      return;
+    }
+    if (!aws.metrics_available) {
+      text.textContent = 'AWS CloudWatch SES metrics are unavailable. Grant cloudwatch:ListMetrics and cloudwatch:GetMetricData to the active IAM user.';
+      banner.classList.remove('hidden');
+      return;
+    }
+    if (!aws.recipient_details_available) {
+      text.textContent = 'AWS SES aggregate metrics loaded. Recipient-level emails need ses:ListSuppressedDestinations access and account-level suppression data.';
+      banner.classList.remove('hidden');
+      return;
+    }
+    if (aws.configured) {
+      banner.classList.add('hidden');
+      return;
+    }
+  }
+
+  function renderDaily(rows) {
+    const host = document.getElementById('mail-delivery-daily-chart');
+    const active = rows.filter(function (row) { return Number(row.attempts || 0) || Number(row.problems || 0); });
+    if (!active.length) {
+      host.innerHTML = '<div class="i2g-delivery-empty">No SES delivery activity recorded in this window.</div>';
+      return;
+    }
+    const max = Math.max.apply(null, active.map(function (row) { return Math.max(Number(row.attempts || 0), Number(row.problems || 0)); })) || 1;
+    const labelEvery = Math.max(1, Math.ceil(active.length / 12));
+    host.innerHTML = active.map(function (row, index) {
+      const attemptsHeight = Math.max(2, Math.round((Number(row.attempts || 0) / max) * 100));
+      const problemHeight = Math.max(Number(row.problems || 0) ? 2 : 0, Math.round((Number(row.problems || 0) / max) * 100));
+      const label = index % labelEvery === 0 || index === active.length - 1 ? row.date.slice(5) : '';
+      return '<div class="i2g-delivery-day" title="' + escapeHtml(row.date + ': ' + fmt(row.problems) + ' problems / ' + fmt(row.attempts) + ' attempts') + '">' +
+        '<div class="i2g-delivery-bars"><span class="i2g-delivery-bar i2g-delivery-bar--attempts" style="height:' + attemptsHeight + '%"></span><span class="i2g-delivery-bar i2g-delivery-bar--problems" style="height:' + problemHeight + '%"></span></div>' +
+        '<span class="i2g-delivery-day-label">' + escapeHtml(label) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderStatus(rows) {
+    const host = document.getElementById('mail-delivery-status');
+    if (!rows.length) {
+      host.innerHTML = '<div class="i2g-delivery-empty i2g-delivery-empty--compact">No delivery statuses yet.</div>';
+      return;
+    }
+    host.innerHTML = rows.map(function (row) {
+      return '<div class="i2g-delivery-status-row"><span>' + escapeHtml(row.label) + '</span><strong>' + fmt(row.count) + '</strong></div>';
+    }).join('');
+  }
+
+  function renderProblemRecipients(rows) {
+    const tbody = document.getElementById('mail-delivery-problem-recipients');
+    if (!rows.length) {
+      const details = lastData.recipient_details || {};
+      let copy = 'No suppressed recipient addresses found in AWS SES for the last 6 months.';
+      if (!details.available && details.reason === 'permission') {
+        copy = 'Recipient-level AWS data is unavailable. Grant ses:ListSuppressedDestinations to read bounced and complained addresses from AWS SES.';
+      } else if (!details.available) {
+        copy = 'Recipient-level AWS data is unavailable from SES suppression list right now.';
+      }
+      tbody.innerHTML = '<tr><td class="i2g-delivery-table-cell i2g-delivery-muted py-3" colspan="5">' + escapeHtml(copy) + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function (row) {
+      return '<tr class="i2g-delivery-table-row border-b border-base-100 dark:border-base-800">' +
+        '<td class="i2g-delivery-table-cell py-2 pr-3"><div class="i2g-delivery-email">' + escapeHtml(row.email) + '</div><div class="i2g-delivery-muted text-xs">' + escapeHtml(row.name || '-') + (row.count > 1 ? ' - ' + row.count + ' events' : '') + '</div></td>' +
+        '<td class="i2g-delivery-table-cell py-2 px-3"><div>' + escapeHtml(row.source) + '</div><div class="i2g-delivery-muted text-xs">' + escapeHtml(row.context || '-') + '</div></td>' +
+        '<td class="i2g-delivery-table-cell py-2 px-3"><span class="i2g-delivery-status-pill i2g-delivery-status-pill--' + escapeHtml(row.status) + '">' + escapeHtml(row.label) + '</span></td>' +
+        '<td class="i2g-delivery-table-cell py-2 px-3 whitespace-nowrap">' + escapeHtml(row.last_seen) + '</td>' +
+        '<td class="i2g-delivery-table-cell py-2 pl-3">' + escapeHtml(row.reason) + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderCampaignErrors(rows) {
+    const host = document.getElementById('mail-delivery-campaign-errors');
+    if (!rows.length) {
+      host.innerHTML = '<div class="i2g-delivery-empty i2g-delivery-empty--compact">Campaign-level send errors are not available from AWS CloudWatch SES aggregate metrics.</div>';
+      return;
+    }
+    host.innerHTML = rows.map(function (row) {
+      return '<div class="i2g-delivery-campaign-card rounded-default border border-base-200 dark:border-base-700 p-3">' +
+        '<div class="i2g-delivery-campaign-title">' + escapeHtml(row.campaign) + '</div>' +
+        '<div class="i2g-delivery-campaign-stats"><span>' + fmt(row.problems) + ' problems</span><span>' + fmt(row.bounces) + ' bounces</span><span>' + fmt(row.complaints) + ' complaints</span><span>' + fmt(row.rejected) + ' rejected</span></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function refresh() {
+    const button = document.getElementById('mail-delivery-refresh');
+    if (button) button.setAttribute('aria-busy', 'true');
+    fetch(dataUrl, { credentials: 'same-origin' })
+      .then(function (response) { return response.json(); })
+      .then(renderAll)
+      .catch(function () { if (lastData) renderAll(lastData); })
+      .finally(function () { if (button) button.removeAttribute('aria-busy'); });
+  }
+
+  const refreshButton = document.getElementById('mail-delivery-refresh');
+  if (refreshButton) refreshButton.addEventListener('click', refresh);
+  renderAll(readJson('mail-delivery-dashboard-data'));
+})();
+</script>
+{% endblock %}

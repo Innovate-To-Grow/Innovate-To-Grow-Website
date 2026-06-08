@@ -20,6 +20,19 @@
     padding: 18px;
 }
 
+.dark .i2g-checkin-console {
+    --checkin-blue: var(--md-sys-color-primary);
+    --checkin-blue-strong: color-mix(in srgb, var(--md-sys-color-primary) 82%, var(--md-sys-color-on-surface));
+    --checkin-border: var(--md-sys-color-outline-variant);
+    --checkin-muted: var(--md-sys-color-on-surface-variant);
+    --checkin-bg: var(--md-sys-color-surface);
+    --checkin-panel: var(--md-sys-color-surface-container);
+    --checkin-success-bg: color-mix(in srgb, var(--md-sys-color-success, #4ade80) 18%, var(--md-sys-color-surface-container));
+    --checkin-warning-bg: color-mix(in srgb, var(--md-sys-color-warning, #fbbf24) 18%, var(--md-sys-color-surface-container));
+    --checkin-error-bg: color-mix(in srgb, var(--md-sys-color-error) 18%, var(--md-sys-color-surface-container));
+    color: var(--md-sys-color-on-surface);
+}
+
 .i2g-checkin-header {
     align-items: center;
     background: transparent;
@@ -189,7 +202,7 @@
     background: var(--checkin-blue);
     border: 0;
     border-radius: 8px;
-    color: #ffffff;
+    color: var(--md-sys-color-on-primary, #ffffff);
     cursor: pointer;
     display: inline-flex;
     font-size: 16px;
@@ -287,7 +300,7 @@
     background: var(--checkin-blue);
     border: 0;
     border-radius: 8px;
-    color: #ffffff;
+    color: var(--md-sys-color-on-primary, #ffffff);
     cursor: pointer;
     display: inline-flex;
     flex-shrink: 0;
@@ -502,6 +515,58 @@
 .i2g-checkin-camera-actions button[data-camera-stop] {
     background: #f2f4f7;
     color: #344054;
+}
+
+.dark .i2g-checkin-stats div,
+.dark .i2g-checkin-primary,
+.dark .i2g-checkin-panel {
+    box-shadow: none;
+}
+
+.dark .i2g-checkin-sync,
+.dark .i2g-checkin-input-row input,
+.dark .i2g-checkin-search,
+.dark .i2g-checkin-icon-button,
+.dark .i2g-checkin-row button {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--checkin-border);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .i2g-checkin-scan-form label,
+.dark .i2g-checkin-preview-info span,
+.dark .i2g-checkin-result span,
+.dark .i2g-checkin-row code {
+    color: var(--checkin-muted);
+}
+
+.dark .i2g-checkin-input-row input:focus,
+.dark .i2g-checkin-search:focus {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--checkin-blue) 24%, transparent);
+}
+
+.dark .i2g-checkin-result.is-success {
+    border-color: color-mix(in srgb, var(--checkin-success) 48%, transparent);
+}
+
+.dark .i2g-checkin-result.is-duplicate {
+    border-color: color-mix(in srgb, var(--checkin-warning) 48%, transparent);
+}
+
+.dark .i2g-checkin-result.is-error {
+    border-color: color-mix(in srgb, var(--checkin-error) 48%, transparent);
+}
+
+.dark .i2g-checkin-result.is-preview,
+.dark .i2g-checkin-row button:hover,
+.dark .i2g-checkin-camera-actions button[data-camera-stop] {
+    background: color-mix(in srgb, var(--checkin-blue) 16%, var(--md-sys-color-surface-container));
+    border-color: color-mix(in srgb, var(--checkin-blue) 44%, var(--checkin-border));
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .i2g-checkin-row {
+    border-bottom-color: var(--checkin-border);
 }
 
 @media (max-width: 980px) {

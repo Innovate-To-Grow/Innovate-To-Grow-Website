@@ -98,9 +98,35 @@ def usage_event(usage_metadata: Any) -> dict[str, Any] | None:
     total_tokens = (
         metadata_int(data, usage_metadata, "total_token_count", "totalTokenCount") or input_tokens + output_tokens
     )
-    if not any((input_tokens, output_tokens, total_tokens)):
+    cache_read_tokens = metadata_int(
+        data,
+        usage_metadata,
+        "cache_read_input_tokens",
+        "cacheReadInputTokens",
+        "cached_content_token_count",
+        "cachedContentTokenCount",
+    )
+    cache_write_tokens = metadata_int(
+        data,
+        usage_metadata,
+        "cache_write_input_tokens",
+        "cacheWriteInputTokens",
+        "cache_creation_input_tokens",
+        "cacheCreationInputTokens",
+    )
+    if not any((input_tokens, output_tokens, total_tokens, cache_read_tokens, cache_write_tokens)):
         return None
-    return {"type": "usage", "inputTokens": input_tokens, "outputTokens": output_tokens, "totalTokens": total_tokens}
+    event = {
+        "type": "usage",
+        "inputTokens": input_tokens,
+        "outputTokens": output_tokens,
+        "totalTokens": total_tokens,
+    }
+    if cache_read_tokens:
+        event["cacheReadInputTokens"] = cache_read_tokens
+    if cache_write_tokens:
+        event["cacheWriteInputTokens"] = cache_write_tokens
+    return event
 
 
 def metadata_int(data: dict[str, Any], obj: Any, *keys: str) -> int:
