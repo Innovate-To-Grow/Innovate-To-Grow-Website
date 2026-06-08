@@ -15,14 +15,9 @@ const EXPORT_COLUMNS = [
   'Student Names',
 ] as const;
 
-interface SharedProjectExportContext {
-  detailsText?: string;
-  note?: string;
-  title: string;
-}
-
 interface ProjectRowsExportContext {
   detailsText?: string;
+  note?: string;
   title?: string;
 }
 
@@ -72,17 +67,12 @@ const escapeXml = (value: string | number | null | undefined) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-const normalizeSharedExportContext = ({detailsText, note, title}: SharedProjectExportContext) => ({
-  detailsText: pastProjectsDetailHtmlToPlainText(detailsText ?? '').trim(),
-  note: (note ?? '').trim(),
-  title: title.trim() || 'Shared Past Project Results',
-});
-
 const getProjectDetailsText = (rows: ProjectGridRow[], detailsText: string) =>
   detailsText || createPastProjectsDetailText(rows).trim();
 
 const normalizeProjectRowsExportContext = (rows: ProjectGridRow[], context: ProjectRowsExportContext = {}) => ({
   detailsText: getProjectDetailsText(rows, pastProjectsDetailHtmlToPlainText(context.detailsText ?? '').trim()),
+  note: (context.note ?? '').trim(),
   title: context.title?.trim() || 'Past Projects',
 });
 
@@ -311,6 +301,9 @@ export const createProjectRowsCsvText = (rows: ProjectGridRow[], context: Projec
   lines.push(escapeCsvCell('Innovate to Grow Past Projects'));
   lines.push([escapeCsvCell('I2G Logo'), escapeCsvCell(I2G_LOGO_URL)].join(','));
   lines.push([escapeCsvCell('Title'), escapeCsvCell(exportContext.title)].join(','));
+  if (exportContext.note) {
+    lines.push([escapeCsvCell('Note'), escapeCsvCell(exportContext.note)].join(','));
+  }
   lines.push('');
 
   if (exportContext.detailsText) {
@@ -351,23 +344,11 @@ export const exportProjectRowsExcel = async (
   fileBaseName: string,
   context: ProjectRowsExportContext = {},
 ) => {
-  const exportContext = normalizeProjectRowsExportContext(rows, context);
-  await exportSharedProjectRowsExcel(rows, fileBaseName, {
-    detailsText: exportContext.detailsText,
-    title: exportContext.title,
-  });
-};
-
-export const exportSharedProjectRowsExcel = async (
-  rows: ProjectGridRow[],
-  fileBaseName: string,
-  context: SharedProjectExportContext,
-) => {
   const [ExcelJS, logo] = await Promise.all([import('exceljs').then((module) => module.default), loadI2gLogoAsset()]);
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Projects');
-  const sharedContext = normalizeSharedExportContext(context);
-  const projectDetailsText = getProjectDetailsText(rows, sharedContext.detailsText);
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  const projectDetailsText = exportContext.detailsText;
 
   worksheet.columns = [
     {width: 16},
@@ -407,7 +388,7 @@ export const exportSharedProjectRowsExcel = async (
   worksheet.mergeCells(2, 2, 2, EXPORT_COLUMNS.length);
   worksheet.mergeCells(3, 2, 3, EXPORT_COLUMNS.length);
 
-  worksheet.getCell(1, 2).value = sharedContext.title;
+  worksheet.getCell(1, 2).value = exportContext.title;
   worksheet.getCell(1, 2).font = {bold: true, color: {argb: BRAND_BLUE}, size: 18};
   worksheet.getCell(1, 2).alignment = {vertical: 'bottom'};
 
@@ -450,9 +431,9 @@ export const exportSharedProjectRowsExcel = async (
     });
   };
 
-  if (sharedContext.note) {
+  if (exportContext.note) {
     addSectionRow('Note');
-    addMergedTextRow(sharedContext.note);
+    addMergedTextRow(exportContext.note);
     worksheet.addRow([]);
   }
 
@@ -507,31 +488,15 @@ export const exportSharedProjectRowsExcel = async (
 export const exportProjectRowsPdf = async (
   rows: ProjectGridRow[],
   fileBaseName: string,
-  title: string,
   context: ProjectRowsExportContext = {},
-) => {
-  const exportContext = normalizeProjectRowsExportContext(rows, {
-    ...context,
-    title,
-  });
-  await exportSharedProjectRowsPdf(rows, fileBaseName, {
-    detailsText: exportContext.detailsText,
-    title: exportContext.title,
-  });
-};
-
-export const exportSharedProjectRowsPdf = async (
-  rows: ProjectGridRow[],
-  fileBaseName: string,
-  context: SharedProjectExportContext,
 ) => {
   const [{jsPDF}, autoTable, logo] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable').then((module) => module.default),
     loadI2gLogoAsset(),
   ]);
-  const sharedContext = normalizeSharedExportContext(context);
-  const projectDetailsText = getProjectDetailsText(rows, sharedContext.detailsText);
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  const projectDetailsText = exportContext.detailsText;
   const pdf = new jsPDF({orientation: 'landscape'});
   const margin = 14;
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -555,7 +520,7 @@ export const exportSharedProjectRowsPdf = async (
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14);
     setBrandTextColor();
-    const titleLines = (pdf.splitTextToSize(sharedContext.title, titleWidth) as string[]).slice(0, 2);
+    const titleLines = (pdf.splitTextToSize(exportContext.title, titleWidth) as string[]).slice(0, 2);
     pdf.text(titleLines, titleX, 14);
 
     pdf.setFont('helvetica', 'normal');
@@ -610,9 +575,9 @@ export const exportSharedProjectRowsPdf = async (
 
   drawPageHeader();
 
-  if (sharedContext.note) {
+  if (exportContext.note) {
     addSectionHeading('Note');
-    addWrappedText(sharedContext.note, 9, 4.7);
+    addWrappedText(exportContext.note, 9, 4.7);
     cursorY += 5;
   }
 
@@ -649,13 +614,13 @@ export const exportSharedProjectRowsPdf = async (
   pdf.save(`${fileBaseName}.pdf`);
 };
 
-export const exportSharedProjectRowsWord = async (
+export const exportProjectRowsWord = async (
   rows: ProjectGridRow[],
   fileBaseName: string,
-  context: SharedProjectExportContext,
+  context: ProjectRowsExportContext = {},
 ) => {
   const logo = await loadI2gLogoAsset();
-  const blob = createSharedProjectRowsWordBlob(rows, context, logo);
+  const blob = createProjectRowsWordBlob(rows, context, logo);
   triggerDownload(blob, `${fileBaseName}.docx`);
 };
 
@@ -737,13 +702,13 @@ const wordTableCell = (text: string, options: {header?: boolean; width?: number}
     size: options.header ? 18 : 17,
   })}</w:p></w:tc>`;
 
-export const createSharedProjectRowsWordBlob = (
+export const createProjectRowsWordBlob = (
   rows: ProjectGridRow[],
-  context: SharedProjectExportContext,
+  context: ProjectRowsExportContext = {},
   logo: ExportLogoAsset | null = null,
 ) => {
-  const sharedContext = normalizeSharedExportContext(context);
-  const projectDetailsText = getProjectDetailsText(rows, sharedContext.detailsText);
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  const projectDetailsText = exportContext.detailsText;
   const projectDetailBlocks = splitProjectDetailBlocks(projectDetailsText);
   const columnWidth = Math.floor(5000 / EXPORT_COLUMNS.length);
   const tableRows = [
@@ -758,7 +723,7 @@ export const createSharedProjectRowsWordBlob = (
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
   <w:body>
     ${logo ? wordLogoParagraph('rIdLogo') : ''}
-    ${wordParagraph(sharedContext.title, {alignment: 'center', bold: true, color: BRAND_BLUE, size: 32, spacingAfter: 80})}
+    ${wordParagraph(exportContext.title, {alignment: 'center', bold: true, color: BRAND_BLUE, size: 32, spacingAfter: 80})}
     ${wordParagraph('Innovate to Grow Past Projects', {
       alignment: 'center',
       bold: true,
@@ -766,7 +731,7 @@ export const createSharedProjectRowsWordBlob = (
       size: 20,
       spacingAfter: 220,
     })}
-    ${sharedContext.note ? `${wordSectionHeading('Note')}${wordParagraph(sharedContext.note, {size: 20, spacingAfter: 180})}` : ''}
+    ${exportContext.note ? `${wordSectionHeading('Note')}${wordParagraph(exportContext.note, {size: 20, spacingAfter: 180})}` : ''}
     ${wordSectionHeading('Past Projects Detail')}
     ${projectDetailBlocks
       .map((block) => wordParagraph(block, {shading: TABLE_ALT_FILL, size: 18, spacingAfter: 140}))
@@ -826,7 +791,7 @@ export const createSharedProjectRowsWordBlob = (
       name: 'docProps/core.xml',
       content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>${escapeXml(sharedContext.title)}</dc:title>
+  <dc:title>${escapeXml(exportContext.title)}</dc:title>
   <dc:creator>Innovate to Grow Website</dc:creator>
 </cp:coreProperties>`,
     },

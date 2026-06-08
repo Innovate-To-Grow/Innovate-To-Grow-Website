@@ -5,9 +5,7 @@ import {
   exportProjectRowsCsv,
   exportProjectRowsExcel,
   exportProjectRowsPdf,
-  exportSharedProjectRowsExcel,
-  exportSharedProjectRowsPdf,
-  exportSharedProjectRowsWord,
+  exportProjectRowsWord,
 } from './projectGridExport';
 import {useProjectGridTable} from './useProjectGridTable';
 import {
@@ -550,6 +548,15 @@ export const MergedResultsTable = ({
   const sharedExportTitle = (canEditShared ? editTitleDraft : title).trim() || title;
   const sharedExportNote = canEditShared ? editNoteDraft.trim() : sharedNote;
   const sharedExportFileBaseName = getExportFileBaseName(sharedExportTitle);
+  const exportTitle = sharedMode ? sharedExportTitle : title;
+  const exportDetailsText = sharedMode ? sharedDetails : detailsDraft;
+  const exportNote = sharedMode ? sharedExportNote : '';
+  const exportFileBaseName = sharedMode ? sharedExportFileBaseName : 'past-projects';
+  const exportContext = {
+    detailsText: exportDetailsText,
+    note: exportNote,
+    title: exportTitle,
+  };
   const hasTitleChanges = editTitleDraft.trim() !== title.trim();
   const hasNoteChanges = editNoteDraft.trim() !== (note ?? '').trim();
   const hasDetailsChanges = detailsDraft !== normalizePastProjectsDetailHtml(detailsText);
@@ -986,89 +993,38 @@ export const MergedResultsTable = ({
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
             <div className="project-grid-toolbar-cluster" aria-label="Export">
-              {sharedMode ? (
-                <>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() =>
-                      void exportSharedProjectRowsPdf(visibleRows, sharedExportFileBaseName, {
-                        detailsText: sharedDetails,
-                        note: sharedExportNote,
-                        title: sharedExportTitle,
-                      })
-                    }
-                    disabled={!visibleRows.length}
-                  >
-                    PDF
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() =>
-                      void exportSharedProjectRowsWord(visibleRows, sharedExportFileBaseName, {
-                        detailsText: sharedDetails,
-                        note: sharedExportNote,
-                        title: sharedExportTitle,
-                      })
-                    }
-                    disabled={!visibleRows.length}
-                  >
-                    Microsoft Word
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() =>
-                      void exportSharedProjectRowsExcel(visibleRows, sharedExportFileBaseName, {
-                        detailsText: sharedDetails,
-                        note: sharedExportNote,
-                        title: sharedExportTitle,
-                      })
-                    }
-                    disabled={!visibleRows.length}
-                  >
-                    Excel
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() =>
-                      void exportProjectRowsCsv(visibleRows, 'past-projects', {
-                        detailsText: detailsDraft,
-                        title,
-                      })
-                    }
-                    disabled={!visibleRows.length}
-                  >
-                    CSV
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() =>
-                      void exportProjectRowsExcel(visibleRows, 'past-projects', {
-                        detailsText: detailsDraft,
-                        title,
-                      })
-                    }
-                    disabled={!visibleRows.length}
-                  >
-                    Excel
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() => void exportProjectRowsPdf(visibleRows, 'past-projects', title, {detailsText: detailsDraft})}
-                    disabled={!visibleRows.length}
-                  >
-                    PDF
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsCsv(visibleRows, exportFileBaseName, exportContext)}
+                disabled={!visibleRows.length}
+              >
+                CSV
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsExcel(visibleRows, exportFileBaseName, exportContext)}
+                disabled={!visibleRows.length}
+              >
+                Excel
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsPdf(visibleRows, exportFileBaseName, exportContext)}
+                disabled={!visibleRows.length}
+              >
+                PDF
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsWord(visibleRows, exportFileBaseName, exportContext)}
+                disabled={!visibleRows.length}
+              >
+                Microsoft Word
+              </button>
             </div>
             {canShare ? (
               <div className="project-grid-toolbar-cluster" aria-label="Share link">

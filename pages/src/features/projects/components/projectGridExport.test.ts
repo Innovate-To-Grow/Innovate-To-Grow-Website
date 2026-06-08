@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {createPdfProjectTableBody, createProjectRowsCsvText, createSharedProjectRowsWordBlob} from './projectGridExport';
+import {createPdfProjectTableBody, createProjectRowsCsvText, createProjectRowsWordBlob} from './projectGridExport';
 import type {ProjectGridRow} from './projectGrid';
 
 const row: ProjectGridRow = {
@@ -60,8 +60,8 @@ describe('projectGridExport', () => {
     expect(csv).toContain('Abstract: A detailed abstract with <special> characters & project context.');
   });
 
-  it('creates a real docx package for shared Word exports', async () => {
-    const blob = createSharedProjectRowsWordBlob(
+  it('creates a real docx package for Word exports', async () => {
+    const blob = createProjectRowsWordBlob(
       [row],
       {
         title: 'Shared Results',
@@ -91,7 +91,7 @@ describe('projectGridExport', () => {
   });
 
   it('falls back to generated detail text when a shared export has no saved detail text', async () => {
-    const blob = createSharedProjectRowsWordBlob([row], {
+    const blob = createProjectRowsWordBlob([row], {
       title: 'Shared Results',
       note: '',
     });

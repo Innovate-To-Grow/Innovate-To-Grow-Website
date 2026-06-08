@@ -51,6 +51,12 @@ const selectNodeContents = (node: Node) => {
   selection?.addRange(range);
 };
 
+const getExportButtonLabels = (container: HTMLElement) => {
+  const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]');
+  expect(exportCluster).not.toBeNull();
+  return within(exportCluster as HTMLElement).getAllByRole('button').map((button) => button.textContent);
+};
+
 describe('MergedResultsTable', () => {
   let originalClipboard: Clipboard | undefined;
   let originalClipboardItem: typeof ClipboardItem | undefined;
@@ -239,10 +245,11 @@ describe('MergedResultsTable', () => {
 
   it('keeps the share button disabled until a name is entered', () => {
     const onCreateShare = vi.fn();
-    render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
     const button = screen.getByRole('button', {name: /get shareable url/i});
     expect(button).toBeDisabled();
+    expect(getExportButtonLabels(container)).toEqual(['CSV', 'Excel', 'PDF', 'Microsoft Word']);
 
     fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Named'}});
     expect(button).toBeEnabled();
@@ -297,14 +304,7 @@ describe('MergedResultsTable', () => {
     expect(screen.queryByLabelText('Add Project')).toBeNull();
     expect(screen.queryByRole('button', {name: /save note/i})).toBeNull();
     expect(screen.queryAllByRole('button', {name: /remove/i})).toHaveLength(0);
-    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]');
-    expect(exportCluster).not.toBeNull();
-    expect(within(exportCluster as HTMLElement).getAllByRole('button').map((button) => button.textContent)).toEqual([
-      'PDF',
-      'Microsoft Word',
-      'Excel',
-    ]);
-    expect(screen.queryByRole('button', {name: 'CSV'})).toBeNull();
+    expect(getExportButtonLabels(container)).toEqual(['CSV', 'Excel', 'PDF', 'Microsoft Word']);
 
     const tableShell = container.querySelector('.project-grid-table-shell');
     const toolbar = container.querySelector('.project-grid-toolbar');
