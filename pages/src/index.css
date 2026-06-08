@@ -925,6 +925,39 @@ body .project-grid-shared-detail-text {
   line-height: var(--itg-line-height-meta);
 }
 
+/* Per-project curation note sits above the read-only Abstract / Student Names in the expanded
+   row detail; the divider separates the editable note from the read-only project fields. */
+body .project-grid-row-curation {
+  margin-bottom: 0.5rem;
+}
+
+body .project-grid-row-detail-divider {
+  margin: 0.5rem 0 0.75rem;
+  border: 0;
+  border-top: 1px solid var(--itg-color-border, #d7dde7);
+}
+
+/* Clear-but-natural separator between one project and the next. A project block is a main row
+   plus an optional expanded detail row, so the divider lives on whichever is last: the detail row
+   when expanded, otherwise the main row. */
+body .project-grid-table tbody .project-grid-row > td {
+  border-bottom: 1px solid var(--itg-color-border, #d7dde7);
+}
+
+body .project-grid-table tbody .project-grid-row.is-expanded > td {
+  border-bottom: 0;
+}
+
+body .project-grid-table tbody .project-grid-detail-row > td {
+  border-bottom: 1px solid var(--itg-color-border, #d7dde7);
+  box-shadow: inset 0 -1px 0 var(--itg-color-border, #d7dde7);
+}
+
+/* Mobile: each card is its own project block, so give the gap a subtle divider too. */
+body .project-grid-mobile-card {
+  border-bottom: 1px solid var(--itg-color-border, #d7dde7);
+}
+
 body .shared-past-project-merge-search {
   display: grid;
   gap: 1.5rem;

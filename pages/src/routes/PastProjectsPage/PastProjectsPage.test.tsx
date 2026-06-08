@@ -54,12 +54,9 @@ vi.mock('@/features/projects', () => ({
   PastProjectsBuilder: ({
     onCreateShare,
   }: {
-    onCreateShare: (rows: typeof sampleRow[], name: string, note: string, detailsText: string) => Promise<unknown>;
+    onCreateShare: (rows: typeof sampleRow[], name: string, note: string) => Promise<unknown>;
   }) => (
-    <button
-      type="button"
-      onClick={() => void onCreateShare([sampleRow], 'Spring finalists', 'Review note', '<strong>Details</strong>')}
-    >
+    <button type="button" onClick={() => void onCreateShare([sampleRow], 'Spring finalists', 'Review note')}>
       Create mocked share
     </button>
   ),
@@ -96,12 +93,7 @@ describe('PastProjectsPage', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Create mocked share'}));
 
     await waitFor(() => {
-      expect(createPastProjectShare).toHaveBeenCalledWith(
-        [sampleRow],
-        'Spring finalists',
-        'Review note',
-        '<strong>Details</strong>',
-      );
+      expect(createPastProjectShare).toHaveBeenCalledWith([sampleRow], 'Spring finalists', 'Review note');
       expect(mockNavigate).toHaveBeenCalledWith('/past-projects/share-abc');
     });
   });

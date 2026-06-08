@@ -38,7 +38,6 @@ interface PastProjectsBuilderProps {
     rows: ProjectGridRow[],
     name: string,
     note: string,
-    detailsText: string,
   ) => Promise<PastProjectShareCreationResult>;
 }
 
