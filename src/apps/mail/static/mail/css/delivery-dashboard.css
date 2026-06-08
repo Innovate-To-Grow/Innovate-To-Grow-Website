@@ -7,11 +7,17 @@
     --i2g-delivery-danger: var(--md-sys-color-error, #dc2626);
     --i2g-delivery-warning: var(--md-sys-color-warning, #d97706);
     --i2g-delivery-success: var(--md-sys-color-success, #16a34a);
+    --i2g-delivery-select-bg: color-mix(in srgb, var(--md-sys-color-surface-container-high, #fff) 92%, var(--i2g-delivery-primary) 8%);
+    --i2g-delivery-select-hover-bg: color-mix(in srgb, var(--md-sys-color-surface-container-high, #fff) 84%, var(--i2g-delivery-primary) 16%);
+    --i2g-delivery-select-option-bg: var(--md-sys-color-surface-container-high, #fff);
     color: var(--i2g-delivery-text);
 }
 
 .dark #mail-delivery-dashboard-root {
     --i2g-delivery-surface: var(--md-sys-color-surface-container);
+    --i2g-delivery-select-bg: color-mix(in srgb, var(--md-sys-color-surface-container-high, #111827) 86%, var(--i2g-delivery-primary) 14%);
+    --i2g-delivery-select-hover-bg: color-mix(in srgb, var(--md-sys-color-surface-container-high, #111827) 76%, var(--i2g-delivery-primary) 24%);
+    --i2g-delivery-select-option-bg: var(--md-sys-color-surface-container-high, #111827);
 }
 
 .i2g-delivery-hero,
@@ -148,6 +154,71 @@
     }
 }
 
+.i2g-delivery-window-select,
+.i2g-delivery-export-format,
+.i2g-delivery-recipient-filter {
+    background: var(--i2g-delivery-select-bg);
+    border: 1px solid color-mix(in srgb, var(--i2g-delivery-border) 82%, var(--i2g-delivery-primary) 18%);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent),
+        0 1px 2px color-mix(in srgb, #000 14%, transparent);
+    position: relative;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        box-shadow 150ms ease,
+        color 150ms ease;
+}
+
+.i2g-delivery-window-select::after,
+.i2g-delivery-export-format::after,
+.i2g-delivery-recipient-filter::after {
+    border-bottom: 2px solid currentcolor;
+    border-right: 2px solid currentcolor;
+    color: var(--i2g-delivery-muted);
+    content: "";
+    height: 0.46rem;
+    pointer-events: none;
+    position: absolute;
+    right: 0.82rem;
+    top: 50%;
+    transform: translateY(-62%) rotate(45deg);
+    width: 0.46rem;
+}
+
+.i2g-delivery-window-select:hover,
+.i2g-delivery-export-format:hover,
+.i2g-delivery-recipient-filter:hover {
+    background: var(--i2g-delivery-select-hover-bg);
+    border-color: color-mix(in srgb, var(--i2g-delivery-primary) 46%, var(--i2g-delivery-border));
+}
+
+.i2g-delivery-window-select:focus-within,
+.i2g-delivery-export-format:focus-within,
+.i2g-delivery-recipient-filter:focus-within {
+    border-color: var(--i2g-delivery-primary);
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--i2g-delivery-primary) 22%, transparent),
+        0 1px 2px color-mix(in srgb, #000 16%, transparent);
+}
+
+.i2g-delivery-window-select select,
+.i2g-delivery-export-format select,
+.i2g-delivery-recipient-filter select {
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    min-height: 1.45rem;
+    padding-right: 2rem !important;
+}
+
+.i2g-delivery-window-select select option,
+.i2g-delivery-export-format select option,
+.i2g-delivery-recipient-filter select option {
+    background: var(--i2g-delivery-select-option-bg);
+    color: var(--i2g-delivery-text);
+}
+
 .i2g-delivery-export-group {
     align-items: stretch;
     display: flex;
@@ -166,7 +237,6 @@
 
 .i2g-delivery-export-format {
     align-items: center;
-    border: 1px solid color-mix(in srgb, var(--i2g-delivery-border) 85%, transparent);
     border-radius: 999px;
     display: inline-flex;
     gap: 0.5rem;
@@ -341,8 +411,7 @@
     }
 }
 
-.i2g-delivery-recipient-search,
-.i2g-delivery-recipient-filter {
+.i2g-delivery-recipient-search {
     align-items: center;
     border: 1px solid color-mix(in srgb, var(--i2g-delivery-border) 85%, transparent);
     border-radius: 999px;
@@ -358,7 +427,12 @@
 }
 
 .i2g-delivery-recipient-filter {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
     flex: 0 0 auto;
+    gap: 0.5rem;
+    min-width: 0;
     padding: 0.35rem 0.45rem 0.35rem 0.75rem;
 }
 
