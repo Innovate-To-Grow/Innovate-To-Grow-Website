@@ -107,7 +107,9 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await expect(themeToggle.locator('.i2g-admin-theme-toggle__text')).toContainText(/Light|Dark|System/);
 
     await themeToggle.getByRole('button', {name: /switch admin theme/i}).click();
-    await page.getByRole('button', {name: /^Dark$/}).click();
+    const darkThemeChoice = themeToggle.locator('[data-admin-theme-choice="dark"]');
+    await expect(darkThemeChoice).toBeVisible();
+    await darkThemeChoice.click();
     await expect(page.locator('html')).toHaveClass(/(?:^|\s)dark(?:\s|$)/);
 
     await page.reload({waitUntil: 'domcontentloaded'});
