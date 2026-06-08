@@ -21,10 +21,10 @@ FULL_PROJECTS = [
     "iphone14",
     "iphone-se",
     "ipad",
-    # Android tablet + landscape variants — keep in sync with pages/playwright.config.ts.
-    "galaxy-tab-s4",
-    "pixel7-landscape",
-    "iphone14-landscape",
+    # Current flagships + newest Android tablet — keep in sync with pages/playwright.config.ts.
+    "iphone-17-pro-max",
+    "galaxy-s26-ultra",
+    "galaxy-tab-s9",
 ]
 PR_DEFAULT_PROJECTS = ["chromium"]
 

@@ -12,10 +12,10 @@ class PlanE2ETests(unittest.TestCase):
         self.assertEqual(plan.specs, [])
         self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
 
-    def test_full_matrix_includes_android_tablet_and_landscape_devices(self):
+    def test_full_matrix_includes_current_flagship_devices(self):
         plan = plan_e2e_tests("push", ["pages/src/features/auth/components/Login.tsx"])
 
-        for device in ("galaxy-tab-s4", "pixel7-landscape", "iphone14-landscape"):
+        for device in ("iphone-17-pro-max", "galaxy-s26-ultra", "galaxy-tab-s9"):
             self.assertIn(device, plan.projects)
 
     def test_auth_paths_run_auth_account_subscribe_profile_specs(self):
