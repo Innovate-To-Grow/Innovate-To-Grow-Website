@@ -1,4 +1,4 @@
-import {useId, type ReactNode} from 'react';
+import {useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode} from 'react';
 import {
   type ProjectGridColumn,
   type ProjectGridColumnKey,
@@ -44,6 +44,143 @@ interface ProjectGridTableProps {
   onToggleSelectAll?: () => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
 }
+
+interface PageSizeSelectProps {
+  value: number;
+  options: number[];
+  onChange: (size: number) => void;
+}
+
+const PageSizeSelect = ({value, options, onChange}: PageSizeSelectProps) => {
+  const labelId = useId();
+  const buttonId = useId();
+  const listboxId = useId();
+  const valueId = useId();
+  const [isOpen, setIsOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const selectedIndex = Math.max(0, options.indexOf(value));
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [isOpen]);
+
+  const focusOption = (index: number) => {
+    optionRefs.current[index]?.focus();
+  };
+
+  const openListbox = (focusIndex = selectedIndex) => {
+    setIsOpen(true);
+    window.requestAnimationFrame(() => focusOption(focusIndex));
+  };
+
+  const chooseOption = (option: number) => {
+    onChange(option);
+    setIsOpen(false);
+    window.requestAnimationFrame(() => buttonRef.current?.focus());
+  };
+
+  const handleButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      const nextIndex = Math.min(options.length - 1, Math.max(0, selectedIndex + direction));
+      openListbox(nextIndex);
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (isOpen) {
+        setIsOpen(false);
+      } else {
+        openListbox();
+      }
+    }
+  };
+
+  const handleOptionKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setIsOpen(false);
+      buttonRef.current?.focus();
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      focusOption(Math.min(options.length - 1, Math.max(0, index + direction)));
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      focusOption(0);
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      focusOption(options.length - 1);
+    }
+  };
+
+  return (
+    <div className={`project-grid-page-size${isOpen ? ' is-open' : ''}`} ref={rootRef}>
+      <span id={labelId} className="project-grid-field-label">
+        Per page
+      </span>
+      <div className="project-grid-page-size-select">
+        <button
+          id={buttonId}
+          ref={buttonRef}
+          type="button"
+          className="project-grid-page-size-button"
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-controls={listboxId}
+          aria-labelledby={`${labelId} ${valueId}`}
+          onClick={() => (isOpen ? setIsOpen(false) : openListbox())}
+          onKeyDown={handleButtonKeyDown}
+        >
+          <span id={valueId}>{value}</span>
+          <span className="project-grid-page-size-chevron" aria-hidden="true" />
+        </button>
+        {isOpen ? (
+          <div id={listboxId} className="project-grid-page-size-menu" role="listbox" aria-labelledby={labelId}>
+            {options.map((option, index) => {
+              const isSelected = option === value;
+
+              return (
+                <button
+                  key={option}
+                  ref={(node) => {
+                    optionRefs.current[index] = node;
+                  }}
+                  type="button"
+                  className={`project-grid-page-size-option${isSelected ? ' is-selected' : ''}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => chooseOption(option)}
+                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                >
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+};
 
 export const ProjectGridTable = ({
   columns,
@@ -115,20 +252,7 @@ export const ProjectGridTable = ({
                 </span>{' '}
                 <span className="project-grid-count-label">{countLabel}</span>
               </p>
-              <label className="project-grid-page-size">
-                <span className="project-grid-field-label">Per page</span>
-                <select
-                  value={pageSize}
-                  aria-label="Rows per page"
-                  onChange={(event) => onPageSizeChange(Number(event.target.value))}
-                >
-                  {pageSizeOptions.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <PageSizeSelect value={pageSize} options={pageSizeOptions} onChange={onPageSizeChange} />
               {onToggleAllDetails ? (
                 <button
                   type="button"
