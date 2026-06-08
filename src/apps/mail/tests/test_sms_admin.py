@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.core.models import AWSCredentialConfig
-from apps.event.tests.helpers import make_event, make_member, make_superuser, make_ticket
+from apps.event.tests.helpers import make_admin, make_event, make_member, make_superuser, make_ticket
 from apps.mail.admin.sms_campaign import (
     SmsCampaignAdmin,
     SmsCampaignForm,
@@ -559,18 +559,23 @@ class SmsRecipientLogAdminTests(TestCase):
 
         self.assertEqual(self.admin.error_preview(log), "short")
 
-    def test_delete_permission_requires_staff(self):
-        staff_request = self.factory.get("/")
-        staff_request.user = self.admin_request_user(is_staff=True)
-        nonstaff_request = self.factory.get("/")
-        nonstaff_request.user = self.admin_request_user(is_staff=False)
+    def test_delete_permission_requires_mail_app_access(self):
+        mail_staff = make_admin(apps=["mail"], email="smslog-delete@example.com")
+        other_staff = make_admin(apps=["cms"], email="cmsstaff-smslog@example.com")
+        superuser = make_superuser(email="su-smslog-delete@example.com")
 
-        self.assertTrue(self.admin.has_delete_permission(staff_request))
-        self.assertFalse(self.admin.has_delete_permission(nonstaff_request))
+        # Mail-granted staff and superuser may delete; other-app staff and
+        # bare staff (no admin_apps) may not.
+        self.assertTrue(self.admin.has_delete_permission(self._req(mail_staff)))
+        self.assertTrue(self.admin.has_delete_permission(self._req(superuser)))
+        self.assertFalse(self.admin.has_delete_permission(self._req(other_staff)))
+        self.assertFalse(self.admin.has_delete_permission(self._req(Member(is_staff=True))))
+        self.assertFalse(self.admin.has_delete_permission(self._req(Member(is_staff=False))))
 
-    def admin_request_user(self, *, is_staff):
-        user = Member(is_staff=is_staff)
-        return user
+    def _req(self, user):
+        request = self.factory.get("/")
+        request.user = user
+        return request
 
 
 class SmsRecipientLogInlinePermissionTests(TestCase):

@@ -96,7 +96,7 @@ class SiteSettingsAdmin(BaseModelAdmin):
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):
-        return not SiteSettings.objects.exists()
+        return super().has_add_permission(request) and not SiteSettings.objects.exists()
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):

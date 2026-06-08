@@ -8,6 +8,7 @@ from django.utils.html import format_html
 from django.utils.text import slugify
 from unfold.decorators import display
 
+from apps.core.access import user_can_access_app
 from apps.core.admin import BaseModelAdmin, ReadOnlyModelAdmin
 from apps.event.services.checkin_export import build_checkin_export
 
@@ -138,7 +139,7 @@ class CheckInRecordAdmin(ReadOnlyModelAdmin):
     ordering = ("-created_at",)
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_staff
+        return user_can_access_app(request.user, "event")
 
 
 def _checkin_export_filename(check_in):

@@ -32,7 +32,9 @@ def compute_add_diff(form):
             diff.append(
                 {
                     "field": field_name,
-                    "label": label,
+                    # str() resolves lazy gettext labels — the diff is JSON-serialized
+                    # into the session, and a __proxy__ would raise at session save.
+                    "label": str(label),
                     "new_value": format_field_value(value),
                 }
             )
@@ -67,7 +69,9 @@ def compute_change_diff(model_class, object_id, form):
         diff.append(
             {
                 "field": field_name,
-                "label": label,
+                # str() resolves lazy gettext labels — the diff is JSON-serialized
+                # into the session, and a __proxy__ would raise at session save.
+                "label": str(label),
                 "old_value": format_field_value(old_value),
                 "new_value": format_field_value(new_value),
             }

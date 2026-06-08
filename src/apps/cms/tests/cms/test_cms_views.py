@@ -6,6 +6,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.cms.models import CMSBlock, CMSPage
+from apps.event.tests.helpers import make_admin, make_superuser
 
 User = get_user_model()
 
@@ -116,8 +117,9 @@ class CMSPagePreviewModeTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = User.objects.create_user(password="pass", is_staff=True)
+        self.staff = make_admin(apps=["cms"], email="cms-preview@example.com")
         self.regular = User.objects.create_user(password="pass")
+        self.non_cms_staff = make_admin(apps=["event"], email="event-preview@example.com")
 
     def test_preview_mode_shows_draft_for_staff(self):
         _make_page("draft-preview", "/draft-preview", status="draft")
@@ -143,6 +145,13 @@ class CMSPagePreviewModeTests(TestCase):
         resp = self.client.get("/cms/pages/regular-preview/?preview=true")
         self.assertEqual(resp.status_code, 404)
 
+    def test_preview_mode_ignored_for_non_cms_staff(self):
+        """Staff scoped to a different app cannot see drafts via preview mode."""
+        _make_page("noncms-preview", "/noncms-preview", status="draft")
+        self.client.force_authenticate(self.non_cms_staff)
+        resp = self.client.get("/cms/pages/noncms-preview/?preview=true")
+        self.assertEqual(resp.status_code, 404)
+
     def test_preview_mode_does_not_cache(self):
         _make_page("no-cache-preview", "/no-cache-preview", status="draft")
         self.client.force_authenticate(self.staff)
@@ -161,7 +170,7 @@ class CMSLivePreviewTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = User.objects.create_user(password="pass", is_staff=True)
+        self.staff = make_admin(apps=["cms"], email="cms-live@example.com")
         self.page = _make_page("live", "/live")
 
     def test_post_requires_staff(self):
@@ -169,6 +178,27 @@ class CMSLivePreviewTests(TestCase):
             f"/cms/live-preview/{self.page.pk}/", '{"title":"Test"}', content_type="application/json"
         )
         self.assertIn(resp.status_code, (401, 403))
+
+    def test_post_non_cms_staff_returns_403(self):
+        """Staff scoped to a different app cannot push live-preview data."""
+        other = make_admin(apps=["event"], email="event-live@example.com")
+        self.client.force_authenticate(other)
+        resp = self.client.post(
+            f"/cms/live-preview/{self.page.pk}/",
+            '{"title":"Other"}',
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_post_superuser_stores_data(self):
+        self.client.force_authenticate(make_superuser(email="master-live@example.com"))
+        resp = self.client.post(
+            f"/cms/live-preview/{self.page.pk}/",
+            '{"title":"Master"}',
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["ok"])
 
     def test_post_staff_stores_data(self):
         self.client.force_authenticate(self.staff)

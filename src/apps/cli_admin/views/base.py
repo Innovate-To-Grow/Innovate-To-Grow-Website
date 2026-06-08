@@ -11,6 +11,7 @@ from apps.core.services.db_tools.safe_orm import ActionRequestError
 from ..authentication import CliTokenAuthentication
 from ..permissions import IsActiveStaff
 from ..services.crud import StaleSnapshotError
+from ..services.resolve import CliAppAccessDenied
 
 
 def _error_detail(exc):
@@ -36,6 +37,11 @@ class AdminAPIView(APIView):
             return Response(
                 {"error": "conflict", "detail": "Database integrity error."}, status=status.HTTP_409_CONFLICT
             )
+        if isinstance(exc, CliAppAccessDenied):
+            # Per-app access denial: the model is reachable but not granted to this
+            # actor. 403 (vs. the denylist's 400), checked before the generic branch
+            # below since CliAppAccessDenied subclasses ActionRequestError.
+            return Response({"error": "forbidden", "detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         if isinstance(exc, (ActionRequestError, DjangoValidationError)):
             return Response({"error": "bad_request", "detail": _error_detail(exc)}, status=status.HTTP_400_BAD_REQUEST)
         if isinstance(exc, (Http404, ObjectDoesNotExist)):

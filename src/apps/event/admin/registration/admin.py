@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import path, reverse
 
+from apps.core.access import user_can_access_app
 from apps.core.admin import BaseModelAdmin
 
 from ...models import EventRegistration, Ticket
@@ -137,7 +138,7 @@ class EventRegistrationAdmin(
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_add_permission(self, request):
-        return True
+        return user_can_access_app(request.user, "event")
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_change_permission(self, request, obj=None):
@@ -145,4 +146,4 @@ class EventRegistrationAdmin(
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def has_delete_permission(self, request, obj=None):
-        return True
+        return user_can_access_app(request.user, "event")

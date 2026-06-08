@@ -11,15 +11,15 @@ from apps.cli_admin.services.crud import (
     cli_delete,
     cli_update,
 )
-from apps.cli_admin.services.resolve import cli_get_object, resolve_cli_model
+from apps.cli_admin.services.resolve import CliAppAccessDenied, cli_get_object, resolve_cli_model
 from apps.core.services.db_tools.safe_orm import ActionRequestError, serialize_model_instance
-from apps.event.tests.helpers import make_member
+from apps.event.tests.helpers import make_admin, make_member, make_superuser
 from apps.projects.models import Project, Semester
 
 
 class CrudServiceTests(TestCase):
     def setUp(self):
-        self.actor = make_member(email="crud@example.com", is_staff=True)
+        self.actor = make_admin(apps=["projects"], email="crud@example.com")
 
     # ---- create ---------------------------------------------------------
     def test_create_success_writes_audit(self):
@@ -162,10 +162,73 @@ class CrudServiceTests(TestCase):
                 expected_snapshot={"year": 1900},
             )
 
+    # ---- per-app access -------------------------------------------------
+    def test_create_without_app_access_denied(self):
+        other = make_admin(apps=["cms"], email="nocreate@example.com")
+        with self.assertRaises(CliAppAccessDenied):
+            cli_create(
+                actor=other,
+                request_ip=None,
+                app_label="projects",
+                model_name="semester",
+                fields={"year": 2099, "season": 1},
+            )
+
+    def test_update_without_app_access_denied(self):
+        sem = self._semester()
+        other = make_admin(apps=["cms"], email="noupdate@example.com")
+        with self.assertRaises(CliAppAccessDenied):
+            cli_update(
+                actor=other,
+                request_ip=None,
+                app_label="projects",
+                model_name="semester",
+                pk=str(sem.pk),
+                changes={"is_published": True},
+            )
+
+    def test_delete_without_app_access_denied(self):
+        sem = self._semester()
+        other = make_admin(apps=["cms"], email="nodelete@example.com")
+        with self.assertRaises(CliAppAccessDenied):
+            cli_delete(
+                actor=other,
+                request_ip=None,
+                app_label="projects",
+                model_name="semester",
+                pk=str(sem.pk),
+            )
+
 
 class ResolveServiceTests(TestCase):
     def test_resolve_ok(self):
         self.assertIs(resolve_cli_model("projects", "semester", write=True), Semester)
+
+    def test_resolve_no_actor_skips_app_access_check(self):
+        # actor=None (the default) is the metadata path: only the denylist applies.
+        self.assertIs(resolve_cli_model("projects", "semester", write=False), Semester)
+
+    def test_resolve_granted_actor_ok(self):
+        actor = make_admin(apps=["projects"], email="granted@example.com")
+        self.assertIs(resolve_cli_model("projects", "semester", write=True, actor=actor), Semester)
+
+    def test_resolve_ungranted_actor_raises_app_access_denied(self):
+        actor = make_admin(apps=["cms"], email="ungranted@example.com")
+        with self.assertRaises(CliAppAccessDenied) as ctx:
+            resolve_cli_model("projects", "semester", write=False, actor=actor)
+        self.assertIn("projects", str(ctx.exception))
+
+    def test_resolve_superuser_actor_bypasses_app_access(self):
+        actor = make_superuser(email="super@example.com")
+        self.assertIs(resolve_cli_model("projects", "semester", write=True, actor=actor), Semester)
+
+    def test_resolve_denylist_precedes_app_access_check(self):
+        # A denied model raises the plain ActionRequestError (→400), never the
+        # 403 CliAppAccessDenied, even for an actor lacking the app.
+        actor = make_admin(apps=["cms"], email="denyfirst@example.com")
+        with self.assertRaises(ActionRequestError) as ctx:
+            resolve_cli_model("authn", "member", write=False, actor=actor)
+        self.assertNotIsInstance(ctx.exception, CliAppAccessDenied)
 
     def test_resolve_extra_denied_read(self):
         with self.assertRaises(ActionRequestError):

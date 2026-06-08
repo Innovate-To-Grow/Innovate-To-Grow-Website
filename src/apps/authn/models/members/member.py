@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from apps.core.access import user_can_access_app
 from apps.core.models import ProjectControlModel
 
 from .manager import MemberManager
@@ -13,6 +14,20 @@ class Member(AbstractUser, ProjectControlModel):
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     objects = MemberManager()
+
+    # Per-Django-app admin access. A staff member may manage every model in any app
+    # listed here (e.g. ["cms", "event"]). Superusers (I2G Master) ignore this list.
+    # See apps.core.access.user_can_access_app — the single enforcement predicate.
+    admin_apps = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Django apps this admin may manage (e.g. ["cms", "event"]). Superusers ignore this.',
+        verbose_name="Admin apps",
+    )
+
+    def can_access_app(self, app_label: str) -> bool:
+        """Whether this member may manage records in the Django app ``app_label``."""
+        return user_can_access_app(self, app_label)
 
     def get_username(self):
         """Return UUID as a string so templates and admin can handle it."""

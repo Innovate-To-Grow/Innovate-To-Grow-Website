@@ -242,16 +242,26 @@ class EmailRecipientLogAdminTests(TestCase):
         log = self._log(status="failed", error_message="e" * 200)
         self.assertEqual(self.admin.error_preview(log), "e" * 120 + "...")
 
-    def test_delete_permission_requires_staff(self):
+    def test_delete_permission_requires_mail_app_access(self):
         from apps.authn.models import Member
+        from apps.event.tests.helpers import make_admin, make_superuser
 
-        staff_req = self.factory.get("/")
-        staff_req.user = Member(is_staff=True)
-        nonstaff_req = self.factory.get("/")
-        nonstaff_req.user = Member(is_staff=False)
+        def _req(user):
+            request = self.factory.get("/")
+            request.user = user
+            return request
 
-        self.assertTrue(self.admin.has_delete_permission(staff_req))
-        self.assertFalse(self.admin.has_delete_permission(nonstaff_req))
+        mail_staff = make_admin(apps=["mail"], email="maillog-delete@example.com")
+        other_staff = make_admin(apps=["cms"], email="cmslog-delete@example.com")
+        superuser = make_superuser(email="su-maillog-delete@example.com")
+
+        # Mail-granted staff and superuser may delete; other-app staff and
+        # bare staff (no admin_apps) may not.
+        self.assertTrue(self.admin.has_delete_permission(_req(mail_staff)))
+        self.assertTrue(self.admin.has_delete_permission(_req(superuser)))
+        self.assertFalse(self.admin.has_delete_permission(_req(other_staff)))
+        self.assertFalse(self.admin.has_delete_permission(_req(Member(is_staff=True))))
+        self.assertFalse(self.admin.has_delete_permission(_req(Member(is_staff=False))))
 
 
 class ModelStrAndCleanTests(TestCase):

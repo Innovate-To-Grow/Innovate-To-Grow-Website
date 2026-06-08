@@ -4,16 +4,31 @@ from datetime import timedelta
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.cms.models import CMSPage
 from apps.cms.serializers.cms import CMSPageSerializer
+from apps.core.access import user_can_access_app
 
 logger = logging.getLogger(__name__)
 
 _LIVE_PREVIEW_TTL = 600  # 10 minutes
+
+
+class HasCMSAppAccess(BasePermission):
+    """Allow only members with admin access to the cms app.
+
+    Mirrors the per-app gate used everywhere else (see
+    apps.core.access.user_can_access_app): superusers (I2G Master) and staff whose
+    ``admin_apps`` includes "cms" are granted; everyone else is denied.
+    """
+
+    message = "CMS app access is required."
+
+    def has_permission(self, request, view):
+        return user_can_access_app(request.user, "cms")
 
 
 class CMSPreviewFetchView(APIView):
@@ -32,9 +47,9 @@ class CMSPreviewFetchView(APIView):
 class CMSLivePreviewView(APIView):
     """Store and retrieve live-preview page data keyed by page UUID.
 
-    POST (staff-only): admin JS pushes the current editor state here on every edit.
+    POST (cms-app only): admin JS pushes the current editor state here on every edit.
     GET  (public cache): preview tab polls this endpoint to render the latest state.
-                       Staff users may fall back to the current DB state.
+                       cms-app members may fall back to the current DB state.
     """
 
     # Session auth needed for admin JS; JWT default handles API clients.
@@ -42,7 +57,7 @@ class CMSLivePreviewView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsAdminUser()]
+            return [HasCMSAppAccess()]
         return [AllowAny()]
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
@@ -51,7 +66,7 @@ class CMSLivePreviewView(APIView):
         if cached is not None:
             return Response(cached)
 
-        if not request.user.is_authenticated or not request.user.is_staff:
+        if not user_can_access_app(request.user, "cms"):
             return Response({"detail": "Preview not found or expired."}, status=404)
 
         page = CMSPage.objects.prefetch_related("blocks").filter(pk=page_id).first()
@@ -99,7 +114,7 @@ class CMSPageView(APIView):
                 return Response(cached)
 
         qs = CMSPage.objects.prefetch_related("blocks")
-        if is_preview and request.user.is_authenticated and request.user.is_staff:
+        if is_preview and user_can_access_app(request.user, "cms"):
             qs = qs.filter(route=route).exclude(status="archived")
         else:
             qs = qs.filter(route=route, status="published")
