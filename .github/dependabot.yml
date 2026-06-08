@@ -25,6 +25,14 @@ updates:
           - "Django"
           - "djangorestframework*"
           - "django-*"
+      # Everything else: bundle all minor/patch bumps into one PR.
+      # Majors stay individual so breaking changes get isolated review.
+      all-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     ignore:
       # Python 3.12-only from these versions on; the project targets 3.11.
       # Keep in sync with the comments in src/requirements/{base,production}.txt.
@@ -71,6 +79,14 @@ updates:
           - "eslint"
           - "@eslint/*"
           - "typescript-eslint"
+      # Everything else: bundle all minor/patch bumps into one PR.
+      # Majors stay individual so breaking changes get isolated review.
+      all-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     ignore:
       # The eslint 10 major must move together with eslint core and
       # typescript-eslint; bundle that migration manually.
@@ -81,8 +97,7 @@ updates:
   - package-ecosystem: pip
     directory: /archive/page
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "09:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 5
@@ -93,13 +108,17 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: scope
+    # Archived app: bundle every update into one monthly PR.
+    groups:
+      all:
+        patterns:
+          - "*"
 
   # Backend container base image
   - package-ecosystem: docker
     directory: /src
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "09:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 2
@@ -114,8 +133,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "09:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 5
@@ -125,3 +143,8 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: scope
+    # Action bumps are low-risk; bundle them into one monthly PR.
+    groups:
+      all:
+        patterns:
+          - "*"
