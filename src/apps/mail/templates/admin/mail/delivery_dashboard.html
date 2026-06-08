@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-marquee-loading">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-custom-selects">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -22,14 +22,14 @@
         </p>
       </div>
       <div class="i2g-delivery-hero-actions">
-        <label class="i2g-delivery-window-select">
+        <div class="i2g-delivery-window-select" data-delivery-select-control>
           <span>Range</span>
-          <select id="mail-delivery-window-days">
+          <select id="mail-delivery-window-days" aria-label="Delivery metric range">
             {% for window in dashboard_windows %}
               <option value="{{ window.days }}" {% if window.selected %}selected{% endif %}>{{ window.label }}</option>
             {% endfor %}
           </select>
-        </label>
+        </div>
         <button type="button" id="mail-delivery-refresh"
                 class="i2g-delivery-refresh inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium">
           <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
@@ -94,15 +94,15 @@
           <span class="i2g-delivery-muted text-xs" data-delivery-window-recipients>All failed recipient addresses returned by AWS SES for last 6 months</span>
         </div>
         <div class="i2g-delivery-export-group">
-          <label class="i2g-delivery-export-format">
+          <div class="i2g-delivery-export-format" data-delivery-select-control>
             <span>Format</span>
-            <select id="mail-delivery-export-format">
+            <select id="mail-delivery-export-format" aria-label="Export format">
               <option value="csv">CSV</option>
               <option value="tsv">TSV</option>
               <option value="json">JSON</option>
               <option value="xls">Excel</option>
             </select>
-          </label>
+          </div>
           <button type="button" id="mail-delivery-export-recipients" class="i2g-delivery-refresh i2g-delivery-export inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium">
             <span class="material-symbols-outlined" style="font-size:18px">download</span>
             <span>Export</span>
@@ -121,14 +121,14 @@
           <span class="material-symbols-outlined" style="font-size:18px">search</span>
           <input id="mail-delivery-recipient-search" type="search" placeholder="Search email or domain">
         </label>
-        <label class="i2g-delivery-recipient-filter">
+        <div class="i2g-delivery-recipient-filter" data-delivery-select-control>
           <span>Status</span>
-          <select id="mail-delivery-recipient-status">
+          <select id="mail-delivery-recipient-status" aria-label="Recipient status filter">
             <option value="all">All</option>
             <option value="bounced">Bounced</option>
             <option value="complained">Complained</option>
           </select>
-        </label>
+        </div>
       </div>
       <div class="i2g-delivery-table-scroll">
         <table class="i2g-delivery-recipient-table w-full text-sm">
@@ -194,10 +194,183 @@
     return windowMeta((lastData || {}).window_days || selectedWindowDays());
   }
 
+  const enhancedDeliverySelects = new Map();
+  let deliverySelectEventsBound = false;
+
+  function selectedOption(select) {
+    return select && select.options.length ? select.options[select.selectedIndex] : null;
+  }
+
+  function syncDeliverySelect(select) {
+    const config = enhancedDeliverySelects.get(select);
+    if (!config) return;
+    const option = selectedOption(select);
+    config.value.textContent = option ? option.textContent : '';
+    config.options.forEach(function (button) {
+      const isSelected = button.getAttribute('data-value') === select.value;
+      button.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+      button.classList.toggle('i2g-delivery-select-option--selected', isSelected);
+    });
+  }
+
+  function positionDeliverySelectMenu(config) {
+    const rect = config.control.getBoundingClientRect();
+    const minWidth = Math.max(128, Math.ceil(rect.width));
+    const left = Math.max(8, Math.min(Math.ceil(rect.left), window.innerWidth - minWidth - 8));
+    config.menu.style.left = left + 'px';
+    config.menu.style.minWidth = minWidth + 'px';
+    config.menu.style.top = Math.ceil(rect.bottom + 6) + 'px';
+  }
+
+  function closeDeliverySelect(config, focusTrigger) {
+    config.control.classList.remove('i2g-delivery-select-control--open');
+    config.menu.hidden = true;
+    config.menu.classList.remove('i2g-delivery-select-menu--open');
+    config.trigger.setAttribute('aria-expanded', 'false');
+    if (focusTrigger) config.trigger.focus();
+  }
+
+  function closeOpenDeliverySelects(except) {
+    enhancedDeliverySelects.forEach(function (config) {
+      if (config !== except) closeDeliverySelect(config, false);
+    });
+  }
+
+  function openDeliverySelect(config, focusSelected) {
+    closeOpenDeliverySelects(config);
+    syncDeliverySelect(config.select);
+    config.menu.hidden = false;
+    config.menu.classList.add('i2g-delivery-select-menu--open');
+    config.control.classList.add('i2g-delivery-select-control--open');
+    config.trigger.setAttribute('aria-expanded', 'true');
+    positionDeliverySelectMenu(config);
+    if (focusSelected) {
+      const selected = config.options.find(function (button) { return button.getAttribute('aria-selected') === 'true'; });
+      (selected || config.options[0] || config.trigger).focus();
+    }
+  }
+
+  function chooseDeliverySelectOption(config, value) {
+    const previousValue = config.select.value;
+    config.select.value = value;
+    syncDeliverySelect(config.select);
+    closeDeliverySelect(config, true);
+    if (previousValue !== value) {
+      config.select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
+  function focusAdjacentSelectOption(config, direction) {
+    const activeIndex = config.options.indexOf(document.activeElement);
+    const currentIndex = activeIndex >= 0 ? activeIndex : config.options.findIndex(function (button) {
+      return button.getAttribute('aria-selected') === 'true';
+    });
+    const nextIndex = Math.max(0, Math.min(config.options.length - 1, currentIndex + direction));
+    if (config.options[nextIndex]) config.options[nextIndex].focus();
+  }
+
+  function enhanceDeliverySelect(select) {
+    if (!select || enhancedDeliverySelects.has(select)) return;
+    const control = select.closest('[data-delivery-select-control]');
+    if (!control) return;
+    const label = control.querySelector('span') ? control.querySelector('span').textContent.trim() : select.getAttribute('aria-label') || 'Select';
+    const trigger = document.createElement('button');
+    const value = document.createElement('span');
+    const icon = document.createElement('span');
+    const menu = document.createElement('div');
+    const options = Array.from(select.options).map(function (option) {
+      const button = document.createElement('button');
+      const text = document.createElement('span');
+      const check = document.createElement('span');
+      button.type = 'button';
+      button.className = 'i2g-delivery-select-option';
+      button.setAttribute('role', 'option');
+      button.setAttribute('data-value', option.value);
+      text.textContent = option.textContent;
+      check.className = 'i2g-delivery-select-option-check material-symbols-outlined';
+      check.setAttribute('aria-hidden', 'true');
+      check.textContent = 'check';
+      button.append(text, check);
+      button.addEventListener('click', function () { chooseDeliverySelectOption(enhancedDeliverySelects.get(select), option.value); });
+      button.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowDown') { event.preventDefault(); focusAdjacentSelectOption(enhancedDeliverySelects.get(select), 1); }
+        if (event.key === 'ArrowUp') { event.preventDefault(); focusAdjacentSelectOption(enhancedDeliverySelects.get(select), -1); }
+        if (event.key === 'Home') { event.preventDefault(); options[0].focus(); }
+        if (event.key === 'End') { event.preventDefault(); options[options.length - 1].focus(); }
+        if (event.key === 'Escape') { event.preventDefault(); closeDeliverySelect(enhancedDeliverySelects.get(select), true); }
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          chooseDeliverySelectOption(enhancedDeliverySelects.get(select), option.value);
+        }
+      });
+      return button;
+    });
+    trigger.type = 'button';
+    trigger.className = 'i2g-delivery-select-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-label', label);
+    value.className = 'i2g-delivery-select-trigger-value';
+    icon.className = 'i2g-delivery-select-trigger-icon material-symbols-outlined';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = 'expand_more';
+    trigger.append(value, icon);
+    menu.id = select.id + '-custom-menu';
+    menu.className = 'i2g-delivery-select-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.setAttribute('aria-label', label);
+    menu.hidden = true;
+    options.forEach(function (button) { menu.appendChild(button); });
+    root.appendChild(menu);
+    control.appendChild(trigger);
+    const config = { control: control, menu: menu, options: options, select: select, trigger: trigger, value: value };
+    enhancedDeliverySelects.set(select, config);
+    control.classList.add('i2g-delivery-select-control--enhanced');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    trigger.addEventListener('click', function () {
+      if (menu.hidden) openDeliverySelect(config, false);
+      else closeDeliverySelect(config, false);
+    });
+    trigger.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openDeliverySelect(config, true);
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDeliverySelect(config, false);
+      }
+    });
+    select.addEventListener('change', function () { syncDeliverySelect(select); });
+    syncDeliverySelect(select);
+  }
+
+  function initializeDeliverySelects() {
+    root.querySelectorAll('[data-delivery-select-control] select').forEach(enhanceDeliverySelect);
+    if (deliverySelectEventsBound) return;
+    deliverySelectEventsBound = true;
+    document.addEventListener('click', function (event) {
+      const clickedInside = Array.from(enhancedDeliverySelects.values()).some(function (config) {
+        return config.control.contains(event.target) || config.menu.contains(event.target);
+      });
+      if (!clickedInside) closeOpenDeliverySelects(null);
+    });
+    window.addEventListener('resize', function () {
+      enhancedDeliverySelects.forEach(function (config) {
+        if (!config.menu.hidden) positionDeliverySelectMenu(config);
+      });
+    });
+    window.addEventListener('scroll', function () { closeOpenDeliverySelects(null); }, true);
+  }
+
   function updateWindowLabels(days) {
     const meta = windowMeta(days);
     const select = document.getElementById('mail-delivery-window-days');
-    if (select && windowDefinitions[Number(days)]) select.value = String(days);
+    if (select && windowDefinitions[Number(days)]) {
+      select.value = String(days);
+      syncDeliverySelect(select);
+    }
     root.querySelectorAll('[data-delivery-window-short]').forEach(function (el) {
       el.textContent = meta.shortLabel;
     });
@@ -544,6 +717,7 @@
   const recipientSearch = document.getElementById('mail-delivery-recipient-search');
   const recipientStatus = document.getElementById('mail-delivery-recipient-status');
   const recipientExport = document.getElementById('mail-delivery-export-recipients');
+  initializeDeliverySelects();
   if (recipientSearch) recipientSearch.addEventListener('input', function () { renderProblemRecipients((lastData || {}).problem_recipients || []); });
   if (recipientStatus) recipientStatus.addEventListener('change', function () { renderProblemRecipients((lastData || {}).problem_recipients || []); });
   if (recipientExport) recipientExport.addEventListener('click', exportProblemRecipients);
