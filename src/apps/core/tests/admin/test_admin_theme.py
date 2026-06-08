@@ -21,7 +21,7 @@ class AdminThemeRenderingTests(TestCase):
         self.assertIn('x-data="theme(', html)
         self.assertIn("admin/js/i2g-admin-theme-runtime.js", html)
         self.assertIn("adminTheme", html)
-        self.assertIn("switchTheme('auto')", html)
+        self.assertIn('data-admin-theme-choice="auto"', html)
 
     def setUp(self):
         self.admin_user = make_superuser()
@@ -50,6 +50,7 @@ class AdminThemeRenderingTests(TestCase):
         self.assertContains(response, "light_mode")
         self.assertContains(response, "dark_mode")
         self.assertContains(response, "computer")
+        self.assertContains(response, 'data-admin-theme-choice="dark"')
 
     def test_login_page_exposes_unfold_theme_options(self):
         self.client.logout()
@@ -100,9 +101,12 @@ class AdminThemeRenderingTests(TestCase):
         source = Path(path).read_text()
 
         self.assertIn("window.theme", source)
-        self.assertIn("adminTheme", source)
-        self.assertIn("switchTheme", source)
-        self.assertIn("themeBindings", source)
+        self.assertIn("window.adminTheme", source)
+        self.assertIn("window.switchTheme", source)
+        self.assertIn("window.themeBindings", source)
+        self.assertIn("data-admin-theme-choice", source)
+        self.assertIn('document.addEventListener("pointerdown"', source)
+        self.assertIn("openTheme", source)
         self.assertIn("prefers-color-scheme: dark", source)
 
     def test_configured_unfold_styles_are_resolvable_static_assets(self):

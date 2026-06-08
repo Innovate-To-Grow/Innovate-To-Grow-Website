@@ -1510,7 +1510,11 @@ jobs:
       - name: Start backend
         working-directory: src
         run: |
-          .venv/bin/python manage.py runserver 127.0.0.1:8000 > ../backend-e2e.log 2>&1 &
+          # --insecure forces django.contrib.staticfiles to serve admin/Unfold
+          # assets (Alpine, the theme runtime, CSS) via finders even though the
+          # CI test settings run with DEBUG=False. Without it every /static/
+          # request 404s, so admin JS never executes and the theme E2E fails.
+          .venv/bin/python manage.py runserver --insecure 127.0.0.1:8000 > ../backend-e2e.log 2>&1 &
           for _ in {1..60}; do
             if curl --fail --silent http://127.0.0.1:8000/readyz/ >/dev/null; then
               exit 0
