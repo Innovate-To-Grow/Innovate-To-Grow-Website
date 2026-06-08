@@ -330,7 +330,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
         self.assertContains(response, "AWS SES Delivery Dashboard")
-        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-group-table")
+        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-email-ranking")
         self.assertContains(response, "mail-delivery-window-days")
         self.assertContains(response, "data-delivery-select-control")
         self.assertContains(response, "initializeDeliverySelects")
@@ -349,9 +349,9 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertContains(response, '<option value="xls">Excel</option>', html=True)
         self.assertContains(response, "Last 6 months AWS CloudWatch SES metrics")
         self.assertContains(response, "data-delivery-window-short")
-        self.assertContains(response, "Problem Groups")
+        self.assertContains(response, "Problem Emails")
         self.assertContains(response, "i2g-delivery-group-table")
-        self.assertContains(response, "Sample Recipient")
+        self.assertContains(response, "Failures")
         self.assertContains(response, "AWS SES account suppression list")
         self.assertContains(response, "bounce@example.com")
         self.assertContains(response, "complaint@example.com")
@@ -464,7 +464,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
                     "count": 1,
                 },
                 {
-                    "email": "two@example.com",
+                    "email": "one@example.com",
                     "source": "AWS SES Suppression List",
                     "context": "Account-level suppression",
                     "status": "complained",
@@ -474,7 +474,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
                     "count": 1,
                 },
                 {
-                    "email": "three@other.com",
+                    "email": "two@example.com",
                     "source": "AWS SES Suppression List",
                     "context": "Account-level suppression",
                     "status": "bounced",
@@ -497,11 +497,12 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
 
         payload = get_delivery_dashboard_data(days=183)
 
-        self.assertEqual(payload["problem_groups"][0]["name"], "example.com")
+        self.assertEqual(payload["problem_groups"][0]["name"], "one@example.com")
+        self.assertEqual(payload["problem_groups"][0]["domain"], "example.com")
         self.assertEqual(payload["problem_groups"][0]["problems"], 2)
         self.assertEqual(payload["problem_groups"][0]["bounces"], 1)
         self.assertEqual(payload["problem_groups"][0]["complaints"], 1)
-        self.assertEqual(payload["problem_groups"][1]["name"], "other.com")
+        self.assertEqual(payload["problem_groups"][1]["name"], "two@example.com")
         self.assertEqual(payload["campaign_errors"], payload["problem_groups"])
 
     @patch("apps.mail.services.delivery_dashboard.fetch_suppressed_destinations")
@@ -557,7 +558,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
 
         group_names = {group["name"] for group in payload["problem_groups"]}
         self.assertEqual(len(payload["problem_groups"]), 15)
-        self.assertIn("domain14.example", group_names)
+        self.assertIn("user14@domain14.example", group_names)
         self.assertEqual(payload["campaign_errors"], payload["problem_groups"])
 
     def test_fetch_ses_cloudwatch_metrics_uses_aws_metric_data(self):

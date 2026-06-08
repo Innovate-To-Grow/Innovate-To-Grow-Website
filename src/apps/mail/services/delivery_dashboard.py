@@ -422,11 +422,18 @@ def _recipient_problem_groups(rows: list[dict]) -> list[dict]:
     for row in rows:
         email = row.get("email", "")
         domain = email.rsplit("@", 1)[-1].lower() if "@" in email else "Unknown"
+        try:
+            row_count = int(row.get("count") or 1)
+        except (TypeError, ValueError):
+            row_count = 1
+        row_count = max(row_count, 1)
         group = groups.setdefault(
-            domain,
+            email.lower() or "unknown",
             {
-                "name": domain,
-                "type": "Recipient domain",
+                "name": email or "Unknown",
+                "email": email,
+                "domain": domain,
+                "type": "Recipient email",
                 "source": "AWS SES Suppression List",
                 "problems": 0,
                 "bounces": 0,
@@ -437,13 +444,13 @@ def _recipient_problem_groups(rows: list[dict]) -> list[dict]:
                 "sample_email": email,
             },
         )
-        group["problems"] += 1
+        group["problems"] += row_count
         if row.get("reason") == "BOUNCE":
-            group["bounces"] += 1
+            group["bounces"] += row_count
         elif row.get("reason") == "COMPLAINT":
-            group["complaints"] += 1
+            group["complaints"] += row_count
         else:
-            group["failed"] += 1
+            group["failed"] += row_count
 
     return sorted(
         groups.values(), key=lambda group: (group["problems"], group["bounces"], group["complaints"]), reverse=True

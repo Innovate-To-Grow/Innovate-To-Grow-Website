@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-group-table">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-email-ranking">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -150,21 +150,21 @@
     <div class="i2g-delivery-panel i2g-delivery-groups xl:col-span-3 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
       <div class="i2g-delivery-panel-header">
         <div>
-          <h3 class="i2g-delivery-heading text-sm font-semibold"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">hub</span>Problem Groups</h3>
-          <span id="mail-delivery-group-summary" class="i2g-delivery-muted text-xs">AWS SES suppression-list recipients grouped by recipient domain</span>
+          <h3 class="i2g-delivery-heading text-sm font-semibold"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">alternate_email</span>Problem Emails</h3>
+          <span id="mail-delivery-group-summary" class="i2g-delivery-muted text-xs">AWS SES suppression-list recipients ranked by failed email address</span>
         </div>
       </div>
       <div class="i2g-delivery-group-table-scroll">
         <table class="i2g-delivery-group-table w-full text-sm">
           <thead>
             <tr class="i2g-delivery-table-head text-left border-b border-base-100 dark:border-base-800">
-              <th class="py-2 pr-3">Domain</th>
-              <th class="py-2 px-3 text-right">Problems</th>
+              <th class="py-2 pr-3">Email</th>
+              <th class="py-2 px-3 text-right">Failures</th>
               <th class="py-2 px-3 text-right">Bounces</th>
               <th class="py-2 px-3 text-right">Complaints</th>
               <th class="py-2 px-3 text-right">Other</th>
               <th class="py-2 px-3">Latest</th>
-              <th class="py-2 pl-3">Sample Recipient</th>
+              <th class="py-2 pl-3">Domain</th>
             </tr>
           </thead>
           <tbody id="mail-delivery-campaign-errors"></tbody>
@@ -687,24 +687,25 @@
     const host = document.getElementById('mail-delivery-campaign-errors');
     const summary = document.getElementById('mail-delivery-group-summary');
     if (!rows.length) {
-      if (summary) summary.textContent = 'No AWS SES suppression-list domain groups are available for this window';
-      host.innerHTML = '<tr><td colspan="7" class="i2g-delivery-table-cell py-4 pr-3">No AWS suppression-list groups are available for this window.</td></tr>';
+      if (summary) summary.textContent = 'No AWS SES suppression-list email rankings are available for this window';
+      host.innerHTML = '<tr><td colspan="7" class="i2g-delivery-table-cell py-4 pr-3">No AWS suppression-list email rankings are available for this window.</td></tr>';
       return;
     }
     if (summary) {
       const recipientTotal = (lastData.recipient_details && lastData.recipient_details.total_count) || 0;
-      summary.textContent = 'Showing all ' + fmt(rows.length) + ' recipient-domain groups from ' + fmt(recipientTotal || rows.length) + ' AWS SES suppression-list recipients';
+      summary.textContent = 'Showing ' + fmt(rows.length) + ' failed email addresses ranked by failure count from ' + fmt(recipientTotal || rows.length) + ' AWS SES suppression-list recipients';
     }
     host.innerHTML = rows.map(function (row) {
-      const domain = row.name || row.campaign || 'Unknown';
+      const email = row.email || row.name || row.campaign || 'Unknown';
+      const domain = row.domain || domainFromEmail(email);
       return '<tr class="i2g-delivery-table-row border-b border-base-100 dark:border-base-800">' +
-        '<td class="i2g-delivery-table-cell py-2 pr-3"><div class="i2g-delivery-group-domain">' + escapeHtml(domain) + '</div><div class="i2g-delivery-muted text-xs">' + escapeHtml(row.type || row.source || 'AWS SES group') + '</div></td>' +
+        '<td class="i2g-delivery-table-cell py-2 pr-3"><div class="i2g-delivery-group-domain">' + escapeHtml(email) + '</div><div class="i2g-delivery-muted text-xs">' + escapeHtml(row.type || row.source || 'AWS SES recipient') + '</div></td>' +
         '<td class="i2g-delivery-table-cell i2g-delivery-group-number py-2 px-3">' + fmt(row.problems) + '</td>' +
         '<td class="i2g-delivery-table-cell i2g-delivery-group-number py-2 px-3">' + fmt(row.bounces) + '</td>' +
         '<td class="i2g-delivery-table-cell i2g-delivery-group-number py-2 px-3">' + fmt(row.complaints) + '</td>' +
         '<td class="i2g-delivery-table-cell i2g-delivery-group-number py-2 px-3">' + fmt(row.failed || 0) + '</td>' +
         '<td class="i2g-delivery-table-cell py-2 px-3">' + escapeHtml(row.latest_seen || '-') + '</td>' +
-        '<td class="i2g-delivery-table-cell py-2 pl-3"><span class="i2g-delivery-group-sample">' + escapeHtml(row.sample_email || '-') + '</span></td>' +
+        '<td class="i2g-delivery-table-cell py-2 pl-3"><span class="i2g-delivery-group-sample">' + escapeHtml(domain || '-') + '</span></td>' +
       '</tr>';
     }).join('');
   }
