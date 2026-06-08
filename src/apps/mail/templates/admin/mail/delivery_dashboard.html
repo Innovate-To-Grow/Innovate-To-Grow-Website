@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-all-groups">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-group-table">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -154,7 +154,22 @@
           <span id="mail-delivery-group-summary" class="i2g-delivery-muted text-xs">AWS SES suppression-list recipients grouped by recipient domain</span>
         </div>
       </div>
-      <div id="mail-delivery-campaign-errors" class="i2g-delivery-groups-grid grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+      <div class="i2g-delivery-group-table-scroll">
+        <table class="i2g-delivery-group-table w-full text-sm">
+          <thead>
+            <tr class="i2g-delivery-table-head text-left border-b border-base-100 dark:border-base-800">
+              <th class="py-2 pr-3">Domain</th>
+              <th class="py-2 px-3 text-right">Problems</th>
+              <th class="py-2 px-3 text-right">Bounces</th>
+              <th class="py-2 px-3 text-right">Complaints</th>
+              <th class="py-2 px-3 text-right">Other</th>
+              <th class="py-2 px-3">Latest</th>
+              <th class="py-2 pl-3">Sample Recipient</th>
+            </tr>
+          </thead>
+          <tbody id="mail-delivery-campaign-errors"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -673,7 +688,7 @@
     const summary = document.getElementById('mail-delivery-group-summary');
     if (!rows.length) {
       if (summary) summary.textContent = 'No AWS SES suppression-list domain groups are available for this window';
-      host.innerHTML = '<div class="i2g-delivery-empty i2g-delivery-empty--compact">No AWS suppression-list groups are available for this window.</div>';
+      host.innerHTML = '<tr><td colspan="7" class="i2g-delivery-table-cell py-4 pr-3">No AWS suppression-list groups are available for this window.</td></tr>';
       return;
     }
     if (summary) {
@@ -681,12 +696,16 @@
       summary.textContent = 'Showing all ' + fmt(rows.length) + ' recipient-domain groups from ' + fmt(recipientTotal || rows.length) + ' AWS SES suppression-list recipients';
     }
     host.innerHTML = rows.map(function (row) {
-      return '<div class="i2g-delivery-campaign-card rounded-default border border-base-200 dark:border-base-700 p-3">' +
-        '<div class="i2g-delivery-campaign-title">' + escapeHtml(row.name || row.campaign) + '</div>' +
-        '<div class="i2g-delivery-muted text-xs mb-2">' + escapeHtml(row.type || row.source || 'AWS SES group') + (row.latest_seen ? ' - latest ' + escapeHtml(row.latest_seen) : '') + '</div>' +
-        '<div class="i2g-delivery-campaign-stats"><span>' + fmt(row.problems) + ' problems</span><span>' + fmt(row.bounces) + ' bounces</span><span>' + fmt(row.complaints) + ' complaints</span><span>' + fmt(row.failed || 0) + ' other</span></div>' +
-        (row.sample_email ? '<div class="i2g-delivery-muted text-xs mt-2">' + escapeHtml(row.sample_email) + '</div>' : '') +
-      '</div>';
+      const domain = row.name || row.campaign || 'Unknown';
+      return '<tr class="i2g-delivery-table-row border-b border-base-100 dark:border-base-800">' +
+        '<td class="i2g-delivery-table-cell py-2 pr-3"><div class="i2g-delivery-group-domain">' + escapeHtml(domain) + '</div><div class="i2g-delivery-muted text-xs">' + escapeHtml(row.type || row.source || 'AWS SES group') + '</div></td>' +
+        '<td class="i2g-delivery-table-cell i2g-delivery-group-number py-2 px-3">' + fmt(row.problems) + '</td>' +
+        '<td class="i2g-delivery-table-cell i2g-delivery-group-number py-2 px-3">' + fmt(row.bounces) + '</td>' +
+        '<td class="i2g-delivery-table-cell i2g-delivery-group-number py-2 px-3">' + fmt(row.complaints) + '</td>' +
+        '<td class="i2g-delivery-table-cell i2g-delivery-group-number py-2 px-3">' + fmt(row.failed || 0) + '</td>' +
+        '<td class="i2g-delivery-table-cell py-2 px-3">' + escapeHtml(row.latest_seen || '-') + '</td>' +
+        '<td class="i2g-delivery-table-cell py-2 pl-3"><span class="i2g-delivery-group-sample">' + escapeHtml(row.sample_email || '-') + '</span></td>' +
+      '</tr>';
     }).join('');
   }
 

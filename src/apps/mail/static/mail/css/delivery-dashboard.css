@@ -557,12 +557,43 @@
     overflow: hidden;
 }
 
-.i2g-delivery-groups-grid {
-    align-content: start;
+.i2g-delivery-group-table-scroll {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
     padding-right: 0.15rem;
+}
+
+.i2g-delivery-group-table {
+    min-width: 64rem;
+}
+
+.i2g-delivery-group-table-scroll thead {
+    background: var(--i2g-delivery-surface);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.i2g-delivery-group-domain {
+    color: var(--i2g-delivery-text);
+    font-weight: 700;
+}
+
+.i2g-delivery-group-number {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.i2g-delivery-group-sample {
+    display: inline-block;
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
 }
 
 .i2g-delivery-recipient-summary {
