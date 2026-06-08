@@ -104,6 +104,81 @@ function ClearFormattingIcon() {
   );
 }
 
+const RICH_DETAIL_FORMATTING_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'mark', 'span', 'font']);
+
+const appendPlainFormattingNode = (target: DocumentFragment, node: Node) => {
+  if (node.nodeType === Node.TEXT_NODE) {
+    target.appendChild(document.createTextNode(node.textContent ?? ''));
+    return;
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return;
+  }
+
+  const element = node as HTMLElement;
+  const tagName = element.tagName.toLowerCase();
+
+  if (tagName === 'br') {
+    target.appendChild(document.createElement('br'));
+    return;
+  }
+
+  Array.from(element.childNodes).forEach((child) => appendPlainFormattingNode(target, child));
+
+  if (tagName === 'div' || tagName === 'p') {
+    target.appendChild(document.createElement('br'));
+  }
+};
+
+const createPlainFormattingFragment = (source: DocumentFragment) => {
+  const plainFragment = document.createDocumentFragment();
+  Array.from(source.childNodes).forEach((node) => appendPlainFormattingNode(plainFragment, node));
+  return plainFragment;
+};
+
+const unwrapElement = (element: Element) => {
+  const parent = element.parentNode;
+  if (!parent) {
+    return;
+  }
+
+  while (element.firstChild) {
+    parent.insertBefore(element.firstChild, element);
+  }
+  parent.removeChild(element);
+};
+
+const clearInsertedFormattingAncestors = (node: Node, editor: HTMLElement) => {
+  let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
+
+  while (current && current !== editor) {
+    const parent = current.parentNode;
+    if (current.nodeType === Node.ELEMENT_NODE) {
+      const element = current as Element;
+      if (RICH_DETAIL_FORMATTING_TAGS.has(element.tagName.toLowerCase())) {
+        unwrapElement(element);
+      }
+    }
+    current = parent;
+  }
+};
+
+const getEditorSelectionRange = (editor: HTMLElement) => {
+  const selection = window.getSelection();
+  if (!selection || !selection.rangeCount || !selection.anchorNode || !selection.focusNode) {
+    return null;
+  }
+
+  const ownsNode = (node: Node) => node === editor || editor.contains(node);
+  if (!ownsNode(selection.anchorNode) || !ownsNode(selection.focusNode)) {
+    return null;
+  }
+
+  const range = selection.getRangeAt(0);
+  return range.collapsed ? null : range;
+};
+
 interface RichTextDetailEditorProps {
   id: string;
   label: string;
@@ -163,6 +238,36 @@ function RichTextDetailEditor({
     if (typeof document.execCommand === 'function') {
       document.execCommand(command, false, commandValue);
     }
+    emitChange();
+  };
+
+  const clearFormatting = () => {
+    if (readOnly || !editorRef.current) {
+      return;
+    }
+
+    const editor = editorRef.current;
+    const range = getEditorSelectionRange(editor);
+    if (!range) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    const plainFragment = createPlainFormattingFragment(range.extractContents());
+    const insertedNodes = Array.from(plainFragment.childNodes);
+    const lastInsertedNode = insertedNodes.at(-1) ?? null;
+    range.insertNode(plainFragment);
+    insertedNodes.forEach((node) => clearInsertedFormattingAncestors(node, editor));
+
+    if (lastInsertedNode && selection) {
+      const nextRange = document.createRange();
+      nextRange.setStartAfter(lastInsertedNode);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+    }
+
+    editor.focus();
     emitChange();
   };
 
@@ -230,7 +335,7 @@ function RichTextDetailEditor({
                   aria-label="Clear formatting"
                   title="Clear formatting"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyCommand('removeFormat')}
+                  onClick={clearFormatting}
                 >
                   <ClearFormattingIcon />
                 </button>

@@ -43,6 +43,14 @@ const setRichEditorHtml = (editor: HTMLElement, html: string) => {
   fireEvent.input(editor);
 };
 
+const selectNodeContents = (node: Node) => {
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+};
+
 describe('MergedResultsTable', () => {
   let originalClipboard: Clipboard | undefined;
   let originalClipboardItem: typeof ClipboardItem | undefined;
@@ -144,6 +152,23 @@ describe('MergedResultsTable', () => {
     );
     await expect(item.items['text/plain'].text()).resolves.toBe('Copied highlight\nPlain');
     expect(await screen.findByText('Past Projects Detail copied.')).toBeInTheDocument();
+  });
+
+  it('clears selected rich formatting from the project detail editor', () => {
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+
+    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
+    setRichEditorHtml(detailsField, '<strong>Bold</strong> <mark>Highlighted</mark> <em>Italic</em>');
+
+    const highlightedText = detailsField.querySelector('mark');
+    expect(highlightedText).not.toBeNull();
+    selectNodeContents(highlightedText as Node);
+    fireEvent.click(screen.getByRole('button', {name: 'Clear formatting'}));
+
+    expect(detailsField).toHaveTextContent('Bold Highlighted Italic');
+    expect(detailsField.querySelector('mark')).toBeNull();
+    expect(detailsField.querySelector('strong')?.textContent).toBe('Bold');
+    expect(detailsField.querySelector('em')?.textContent).toBe('Italic');
   });
 
   it('bounds large all-project detail sets without truncating the submitted detail text', async () => {
