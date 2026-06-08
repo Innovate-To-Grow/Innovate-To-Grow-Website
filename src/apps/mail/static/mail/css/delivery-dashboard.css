@@ -449,7 +449,7 @@
 }
 
 .i2g-delivery-chart {
-    align-items: end;
+    align-items: stretch;
     border: 1px solid color-mix(in srgb, var(--i2g-delivery-border) 75%, transparent);
     border-radius: 0.5rem;
     display: flex;
@@ -457,16 +457,15 @@
     height: 17rem;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 1rem 0.75rem 0.75rem;
+    padding: 1rem 0.75rem 0.85rem;
     scrollbar-color: color-mix(in srgb, var(--i2g-delivery-muted) 46%, transparent) transparent;
 }
 
 .i2g-delivery-day {
-    align-items: center;
-    display: flex;
+    display: grid;
     flex: 0 0 0.95rem;
-    flex-direction: column;
     gap: 0.4rem;
+    grid-template-rows: minmax(0, 1fr) 1.2rem;
     height: 100%;
     min-width: 0.95rem;
 }
@@ -501,8 +500,13 @@
 }
 
 .i2g-delivery-day-label {
+    align-items: center;
+    display: flex;
     font-size: 0.66rem;
+    justify-content: center;
     line-height: 1;
+    min-height: 1.2rem;
+    overflow: visible;
     white-space: nowrap;
 }
 

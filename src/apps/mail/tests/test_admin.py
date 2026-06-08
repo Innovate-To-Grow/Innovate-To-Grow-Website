@@ -330,7 +330,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
         self.assertContains(response, "AWS SES Delivery Dashboard")
-        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-email-ranking")
+        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-chart-axis")
         self.assertContains(response, "mail-delivery-window-days")
         self.assertContains(response, "data-delivery-select-control")
         self.assertContains(response, "initializeDeliverySelects")

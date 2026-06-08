@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-email-ranking">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-chart-axis">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -539,7 +539,7 @@
       return;
     }
     const max = Math.max.apply(null, active.map(function (row) { return Math.max(Number(row.attempts || 0), Number(row.problems || 0)); })) || 1;
-    const labelEvery = Math.max(1, Math.ceil(active.length / 12));
+    const labelEvery = Math.max(1, Math.ceil(active.length / 8));
     host.innerHTML = active.map(function (row, index) {
       const attemptsHeight = Math.max(2, Math.round((Number(row.attempts || 0) / max) * 100));
       const problemHeight = Math.max(Number(row.problems || 0) ? 2 : 0, Math.round((Number(row.problems || 0) / max) * 100));
