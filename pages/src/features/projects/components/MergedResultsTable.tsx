@@ -606,7 +606,6 @@ export const MergedResultsTable = ({
     try {
       if (window.navigator.clipboard?.writeText) {
         await window.navigator.clipboard.writeText(shareUrl);
-        setStatusMessage('URL copied to clipboard.');
         return;
       }
     } catch {
@@ -615,7 +614,6 @@ export const MergedResultsTable = ({
 
     try {
       if (document.execCommand('copy')) {
-        setStatusMessage('URL copied to clipboard.');
         return;
       }
     } catch {

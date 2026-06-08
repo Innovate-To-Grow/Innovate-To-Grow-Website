@@ -232,7 +232,8 @@ describe('MergedResultsTable', () => {
     fireEvent.click(shareUrlInput);
 
     expect(writeText).toHaveBeenCalledWith(window.location.href);
-    expect(await screen.findByText('URL copied to clipboard.')).toBeInTheDocument();
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('URL copied to clipboard.')).toBeNull();
     expect(screen.queryByRole('button', {name: /copy url/i})).toBeNull();
   });
 
