@@ -1,4 +1,5 @@
 import {PROJECT_GRID_COLUMNS, type ProjectGridRow} from './projectGrid';
+import {createPastProjectsDetailText, pastProjectsDetailHtmlToPlainText} from './pastProjectsDetailText';
 
 const EXPORT_COLUMNS = [
   'Year-Semester',
@@ -13,6 +14,7 @@ const EXPORT_COLUMNS = [
 ] as const;
 
 interface SharedProjectExportContext {
+  detailsText?: string;
   note?: string;
   title: string;
 }
@@ -48,10 +50,38 @@ const escapeXml = (value: string | number | null | undefined) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-const normalizeSharedExportContext = ({note, title}: SharedProjectExportContext) => ({
+const normalizeSharedExportContext = ({detailsText, note, title}: SharedProjectExportContext) => ({
+  detailsText: pastProjectsDetailHtmlToPlainText(detailsText ?? '').trim(),
   note: (note ?? '').trim(),
   title: title.trim() || 'Shared Past Project Results',
 });
+
+const getSharedProjectDetailsText = (rows: ProjectGridRow[], detailsText: string) =>
+  detailsText || createPastProjectsDetailText(rows).trim();
+
+const splitExcelText = (text: string, maxLength = 30000) => {
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > maxLength) {
+    let splitAt = remaining.lastIndexOf('\n\n', maxLength);
+    if (splitAt < maxLength / 2) {
+      splitAt = remaining.lastIndexOf('\n', maxLength);
+    }
+    if (splitAt < 1) {
+      splitAt = maxLength;
+    }
+
+    chunks.push(remaining.slice(0, splitAt).trimEnd());
+    remaining = remaining.slice(splitAt).trimStart();
+  }
+
+  if (remaining) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
+};
 
 const textEncoder = new TextEncoder();
 
@@ -211,17 +241,32 @@ export const exportSharedProjectRowsExcel = async (
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Projects');
   const sharedContext = normalizeSharedExportContext(context);
+  const projectDetailsText = getSharedProjectDetailsText(rows, sharedContext.detailsText);
 
-  worksheet.addRow([sharedContext.title]);
-  worksheet.mergeCells(1, 1, 1, EXPORT_COLUMNS.length);
-  worksheet.getRow(1).font = {bold: true, size: 16};
+  const titleRow = worksheet.addRow([sharedContext.title]);
+  worksheet.mergeCells(titleRow.number, 1, titleRow.number, EXPORT_COLUMNS.length);
+  titleRow.font = {bold: true, size: 16};
 
-  worksheet.addRow(['Notes', sharedContext.note]);
-  worksheet.mergeCells(2, 2, 2, EXPORT_COLUMNS.length);
-  worksheet.getRow(2).font = {size: 11};
-  worksheet.getCell(2, 1).font = {bold: true};
+  const noteRow = worksheet.addRow(['Notes', sharedContext.note]);
+  worksheet.mergeCells(noteRow.number, 2, noteRow.number, EXPORT_COLUMNS.length);
+  noteRow.font = {size: 11};
+  worksheet.getCell(noteRow.number, 1).font = {bold: true};
 
   worksheet.addRow([]);
+  if (projectDetailsText) {
+    const detailHeadingRow = worksheet.addRow(['Past Projects Detail']);
+    worksheet.mergeCells(detailHeadingRow.number, 1, detailHeadingRow.number, EXPORT_COLUMNS.length);
+    detailHeadingRow.font = {bold: true, size: 12};
+
+    for (const detailChunk of splitExcelText(projectDetailsText)) {
+      const detailRow = worksheet.addRow([detailChunk]);
+      worksheet.mergeCells(detailRow.number, 1, detailRow.number, EXPORT_COLUMNS.length);
+      detailRow.font = {size: 11};
+    }
+
+    worksheet.addRow([]);
+  }
+
   const headerRow = worksheet.addRow(EXPORT_COLUMNS as unknown as string[]);
   headerRow.font = {bold: true};
 
@@ -294,6 +339,7 @@ export const exportSharedProjectRowsPdf = async (
   const {jsPDF} = await import('jspdf');
   const autoTable = (await import('jspdf-autotable')).default;
   const sharedContext = normalizeSharedExportContext(context);
+  const projectDetailsText = getSharedProjectDetailsText(rows, sharedContext.detailsText);
   const pdf = new jsPDF({orientation: 'landscape'});
   const margin = 14;
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -312,15 +358,24 @@ export const exportSharedProjectRowsPdf = async (
     pdf.setFontSize(fontSize);
     pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
     const lines = pdf.splitTextToSize(text || ' ', textWidth) as string[];
-    addPageIfNeeded(lines.length * lineHeight);
-    pdf.text(lines, margin, cursorY);
-    cursorY += lines.length * lineHeight;
+    for (const line of lines) {
+      addPageIfNeeded(lineHeight);
+      pdf.text(line || ' ', margin, cursorY);
+      cursorY += lineHeight;
+    }
   };
 
   addWrappedText(sharedContext.title, 16, 7, true);
   cursorY += 2;
   addWrappedText(`Notes: ${sharedContext.note}`, 10, 5);
   cursorY += 4;
+
+  if (projectDetailsText) {
+    addWrappedText('Past Projects Detail', 12, 6, true);
+    cursorY += 1;
+    addWrappedText(projectDetailsText, 9, 4.5);
+    cursorY += 4;
+  }
 
   autoTable(pdf, {
     head: [PROJECT_GRID_COLUMNS.map((column) => column.label)],
@@ -342,33 +397,6 @@ export const exportSharedProjectRowsPdf = async (
     headStyles: {
       fillColor: [15, 45, 82],
     },
-  });
-
-  cursorY = ((pdf as {lastAutoTable?: {finalY?: number}}).lastAutoTable?.finalY ?? cursorY) + 10;
-  addWrappedText('Project Details', 14, 7, true);
-  cursorY += 2;
-
-  rows.forEach((row, index) => {
-    const heading = `${index + 1}. ${toDisplayValue(row.project_title) || 'Untitled Project'}`;
-    const metadata = [
-      row.semester_label,
-      row.class_code,
-      row.team_number,
-      row.team_name,
-      row.organization,
-      row.industry,
-    ]
-      .map(toDisplayValue)
-      .filter(Boolean)
-      .join(' | ');
-
-    addWrappedText(heading, 11, 5.5, true);
-    if (metadata) {
-      addWrappedText(metadata, 9, 4.5);
-    }
-    addWrappedText(`Abstract: ${toDisplayValue(row.abstract)}`, 9, 4.5);
-    addWrappedText(`Student Names: ${toDisplayValue(row.student_names)}`, 9, 4.5);
-    cursorY += 3;
   });
 
   pdf.save(`${fileBaseName}.pdf`);
@@ -413,6 +441,7 @@ export const createSharedProjectRowsWordBlob = (
   context: SharedProjectExportContext,
 ) => {
   const sharedContext = normalizeSharedExportContext(context);
+  const projectDetailsText = getSharedProjectDetailsText(rows, sharedContext.detailsText);
   const columnWidth = Math.floor(5000 / EXPORT_COLUMNS.length);
   const tableRows = [
     `<w:tr>${EXPORT_COLUMNS.map((column) => wordTableCell(column, {header: true, width: columnWidth})).join('')}</w:tr>`,
@@ -422,41 +451,14 @@ export const createSharedProjectRowsWordBlob = (
     ),
   ].join('');
 
-  const details = rows
-    .map((row, index) =>
-      [
-        wordParagraph(`${index + 1}. ${toDisplayValue(row.project_title) || 'Untitled Project'}`, {
-          bold: true,
-          color: '0F2D52',
-          size: 22,
-          spacingAfter: 80,
-        }),
-        wordParagraph(
-          [
-            row.semester_label,
-            row.class_code,
-            row.team_number,
-            row.team_name,
-            row.organization,
-            row.industry,
-          ]
-            .map(toDisplayValue)
-            .filter(Boolean)
-            .join(' | '),
-          {size: 18, spacingAfter: 80},
-        ),
-        wordParagraph(`Abstract: ${toDisplayValue(row.abstract)}`, {size: 18, spacingAfter: 80}),
-        wordParagraph(`Student Names: ${toDisplayValue(row.student_names)}`, {size: 18, spacingAfter: 160}),
-      ].join(''),
-    )
-    .join('');
-
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     ${wordParagraph(sharedContext.title, {bold: true, color: '0F2D52', size: 32, spacingAfter: 160})}
     ${wordParagraph('Notes', {bold: true, color: '0F2D52', size: 20, spacingAfter: 40})}
     ${wordParagraph(sharedContext.note, {size: 20, spacingAfter: 180})}
+    ${wordParagraph('Past Projects Detail', {bold: true, color: '0F2D52', size: 24, spacingAfter: 100})}
+    ${wordParagraph(projectDetailsText, {size: 18, spacingAfter: 180})}
     ${wordParagraph('Projects', {bold: true, color: '0F2D52', size: 24, spacingAfter: 100})}
     <w:tbl>
       <w:tblPr>
@@ -472,8 +474,6 @@ export const createSharedProjectRowsWordBlob = (
       </w:tblPr>
       ${tableRows}
     </w:tbl>
-    ${wordParagraph('Project Details', {bold: true, color: '0F2D52', size: 24, spacingAfter: 100})}
-    ${details}
     <w:sectPr>
       <w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>
       <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/>

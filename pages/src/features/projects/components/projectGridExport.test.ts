@@ -21,6 +21,7 @@ describe('projectGridExport', () => {
     const blob = createSharedProjectRowsWordBlob([row], {
       title: 'Shared Results',
       note: 'Owner note & review instructions',
+      detailsText: '<strong>Edited Past Projects Detail</strong><br><mark>Highlighted project detail & owner edits</mark>',
     });
 
     expect(blob.type).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -33,7 +34,23 @@ describe('projectGridExport', () => {
     expect(packageText).toContain('word/document.xml');
     expect(packageText).toContain('Shared Results');
     expect(packageText).toContain('Owner note &amp; review instructions');
-    expect(packageText).toContain('Project Details');
+    expect(packageText).toContain('Past Projects Detail');
+    expect(packageText).toContain('Edited Past Projects Detail');
+    expect(packageText).toContain('Highlighted project detail &amp; owner edits');
     expect(packageText).toContain('A detailed abstract with &lt;special&gt; characters &amp; project context.');
+  });
+
+  it('falls back to generated detail text when a shared export has no saved detail text', async () => {
+    const blob = createSharedProjectRowsWordBlob([row], {
+      title: 'Shared Results',
+      note: '',
+    });
+
+    const packageText = new TextDecoder().decode(new Uint8Array(await blob.arrayBuffer()));
+
+    expect(packageText).toContain('Past Projects Detail');
+    expect(packageText).toContain('Project 1');
+    expect(packageText).toContain('Students: Alice Calderon, Bob Lee');
+    expect(packageText).toContain('Abstract: A detailed abstract with &lt;special&gt; characters &amp; project context.');
   });
 });

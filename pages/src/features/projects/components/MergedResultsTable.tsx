@@ -993,6 +993,7 @@ export const MergedResultsTable = ({
                     className="itg-btn itg-btn-outline"
                     onClick={() =>
                       void exportSharedProjectRowsPdf(visibleRows, sharedExportFileBaseName, {
+                        detailsText: sharedDetails,
                         note: sharedExportNote,
                         title: sharedExportTitle,
                       })
@@ -1006,6 +1007,7 @@ export const MergedResultsTable = ({
                     className="itg-btn itg-btn-outline"
                     onClick={() =>
                       void exportSharedProjectRowsWord(visibleRows, sharedExportFileBaseName, {
+                        detailsText: sharedDetails,
                         note: sharedExportNote,
                         title: sharedExportTitle,
                       })
@@ -1019,6 +1021,7 @@ export const MergedResultsTable = ({
                     className="itg-btn itg-btn-outline"
                     onClick={() =>
                       void exportSharedProjectRowsExcel(visibleRows, sharedExportFileBaseName, {
+                        detailsText: sharedDetails,
                         note: sharedExportNote,
                         title: sharedExportTitle,
                       })
