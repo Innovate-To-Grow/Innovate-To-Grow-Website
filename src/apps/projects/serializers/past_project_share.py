@@ -1,7 +1,29 @@
+import bleach
 from django.conf import settings
 from rest_framework import serializers
 
 from ..models import PastProjectShare
+
+# Mirror the client's rich-detail allowlist (RICH_DETAIL_ALLOWED_TAGS in
+# pastProjectsDetailText.ts): inline emphasis + line/paragraph structure, no attributes.
+# Defense-in-depth so safety does not rely solely on every client render calling DOMPurify.
+DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark"]
+
+# Generous cap: a generated detail for ~1000 projects with long abstracts is well under this
+# (low hundreds of KB), so it never rejects a legitimate large share, but it stops absurd
+# payloads. note is capped at 2000; details legitimately needs much more room.
+DETAILS_TEXT_MAX_LENGTH = 2_000_000
+
+# Per-project curation note (rows[].curation). Much smaller than the share-level details cap so a
+# 1000-row share can't carry 1000 oversized notes; still ample for a long rich-text note.
+CURATION_MAX_LENGTH = 50_000
+
+
+def sanitize_details_text(value: str) -> str:
+    """Strip any markup outside the rich-detail allowlist from a share's details_text."""
+    if not value:
+        return value
+    return bleach.clean(value, tags=DETAILS_ALLOWED_TAGS, attributes={}, strip=True)
 
 
 def _share_url(obj, request):
@@ -31,13 +53,36 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     industry = serializers.CharField(max_length=100, allow_blank=True)
     abstract = serializers.CharField(allow_blank=True)
     student_names = serializers.CharField(allow_blank=True)
+    # Round-trip the frontend's presenting flag ('Yes'/'No'/'') so stored rows match freshly
+    # searched rows — the client dedup fingerprint includes is_presenting, and dropping it here
+    # made an owner's "add rows" re-add a project already in the share. Optional + default so
+    # pre-existing shares (saved without the field) keep validating and serialize as "".
+    is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
+    # Owner-authored per-project curation note (rich HTML). Persists inside the row JSON — no DB
+    # migration (rows is a JSONField). Optional + default so old shares' rows (no curation key)
+    # keep validating and serialize as "". trim_whitespace=False preserves intentional formatting.
+    curation = serializers.CharField(
+        allow_blank=True,
+        required=False,
+        default="",
+        trim_whitespace=False,
+        max_length=CURATION_MAX_LENGTH,
+    )
+
+    # noinspection PyMethodMayBeStatic
+    def validate_curation(self, value):
+        # Sanitize on write with the same allowlist as details_text so a stored curation note can
+        # never carry script or other disallowed markup, regardless of how a client renders it.
+        return sanitize_details_text(value)
 
 
 class PastProjectShareSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True, allow_blank=False, max_length=200)
     rows = PastProjectShareRowSerializer(many=True)
     note = serializers.CharField(required=False, allow_blank=True, max_length=2000, default="")
-    details_text = serializers.CharField(required=False, allow_blank=True, default="")
+    details_text = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=DETAILS_TEXT_MAX_LENGTH
+    )
     share_url = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
 
@@ -49,6 +94,12 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     # name uses DRF CharField defaults (allow_blank=False + trim_whitespace=True), so
     # empty/whitespace-only names are rejected and the stored value is auto-trimmed —
     # no custom validate_name needed.
+
+    # noinspection PyMethodMayBeStatic
+    def validate_details_text(self, value):
+        # Sanitize on write so stored/served details_text can never carry script or other
+        # disallowed markup, regardless of how a client renders it.
+        return sanitize_details_text(value)
 
     # noinspection PyMethodMayBeStatic
     def validate_rows(self, value):

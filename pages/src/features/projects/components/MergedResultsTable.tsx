@@ -1,40 +1,37 @@
-import {type ClipboardEvent, type ReactNode, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {ProjectGridTable} from './ProjectGridTable';
 import {
-  exportProjectRowsCsv,
   exportProjectRowsExcel,
   exportProjectRowsPdf,
   exportProjectRowsWord,
-} from './projectGridExport';
+  type ProjectRowsExporter,
+} from './export';
 import {useProjectGridTable} from './useProjectGridTable';
 import {
+  hasProjectGridDetails,
   PAST_PROJECT_GRID_COLUMNS,
   stripProjectGridItem,
   type ProjectGridItem,
   type ProjectGridRow,
 } from './projectGrid';
-import {
-  copyPastProjectsDetailToClipboard,
-  createPastProjectsDetailHtml,
-  normalizePastProjectsDetailHtml,
-  sanitizePastProjectsDetailHtml,
-} from './pastProjectsDetailText';
+import {RichTextDetailEditor} from './RichTextDetailEditor';
+import {RichDetailPreview} from './RichDetailPreview';
+import {SharedEditIcon, SharedSaveIcon} from './shareEditorIcons';
+import {getExportFileBaseName, getShareErrorMessage} from './shareHelpers';
 
 interface MergedResultsTableProps {
   rows: ProjectGridItem[];
   sharedMode?: boolean;
   title?: string;
   note?: string;
-  detailsText?: string;
   editable?: boolean;
   onCreateShare?: (
     rows: ProjectGridRow[],
     name: string,
     note: string,
-    detailsText: string,
   ) => Promise<PastProjectShareCreationResult>;
-  onUpdateShare?: (rows: ProjectGridRow[], note: string, name: string, detailsText: string) => Promise<void>;
+  onUpdateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<void>;
   onDeleteRow?: (row: ProjectGridItem) => void;
 }
 
@@ -45,440 +42,56 @@ export type PastProjectShareCreationResult =
       share_url?: string;
     };
 
-interface RichDetailPreviewProps {
-  html: string;
-  className?: string;
-}
-
-function RichDetailPreview({html, className}: RichDetailPreviewProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const sanitizedHtml = useMemo(() => sanitizePastProjectsDetailHtml(html), [html]);
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.innerHTML = sanitizedHtml;
-    }
-  }, [sanitizedHtml]);
-
-  return <div ref={ref} className={className} />;
-}
-
-function SharedEditIcon() {
-  return (
-    <svg className="project-grid-share-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M4.75 19.25h3.4L18.2 9.2a2.4 2.4 0 0 0 0-3.4l-.55-.55a2.4 2.4 0 0 0-3.4 0L4.75 14.75v4.5Z" />
-      <path d="m13.15 6.35 3.5 3.5" />
-    </svg>
-  );
-}
-
-function SharedSaveIcon() {
-  return (
-    <svg className="project-grid-share-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M5 4.75h12.2L19.25 7v12.25H4.75V4.75Z" />
-      <path d="M8 4.75v5h8v-5" />
-      <path d="M8 19.25v-6h8v6" />
-    </svg>
-  );
-}
-
-function HighlighterIcon() {
-  return (
-    <svg className="project-grid-rich-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="m4.75 14.25 8.9-8.9 4.9 4.9-8.9 8.9H4.75v-4.9Z" />
-      <path d="m12.35 6.65 4 4" />
-      <path d="M3.75 20.25h9.5" />
-    </svg>
-  );
-}
-
-function ClearFormattingIcon() {
-  return (
-    <svg className="project-grid-rich-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="m5.25 14.25 8.5-8.5a2.12 2.12 0 0 1 3 0l1.5 1.5a2.12 2.12 0 0 1 0 3l-8.5 8.5H5.25v-4.5Z" />
-      <path d="m12.25 7.75 4.5 4.5" />
-      <path d="M4.75 20.25h14.5" />
-    </svg>
-  );
-}
-
-const RICH_DETAIL_FORMATTING_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'mark', 'span', 'font']);
-const RICH_DETAIL_HIGHLIGHT_TAGS = new Set(['mark']);
-const RICH_DETAIL_HIGHLIGHT_COLOR = '#fff3a3';
-
-const appendPlainFormattingNode = (target: DocumentFragment, node: Node) => {
-  if (node.nodeType === Node.TEXT_NODE) {
-    target.appendChild(document.createTextNode(node.textContent ?? ''));
-    return;
-  }
-
-  if (node.nodeType !== Node.ELEMENT_NODE) {
-    return;
-  }
-
-  const element = node as HTMLElement;
-  const tagName = element.tagName.toLowerCase();
-
-  if (tagName === 'br') {
-    target.appendChild(document.createElement('br'));
-    return;
-  }
-
-  Array.from(element.childNodes).forEach((child) => appendPlainFormattingNode(target, child));
-
-  if (tagName === 'div' || tagName === 'p') {
-    target.appendChild(document.createElement('br'));
-  }
-};
-
-const createPlainFormattingFragment = (source: DocumentFragment) => {
-  const plainFragment = document.createDocumentFragment();
-  Array.from(source.childNodes).forEach((node) => appendPlainFormattingNode(plainFragment, node));
-  return plainFragment;
-};
-
-const unwrapElement = (element: Element) => {
-  const parent = element.parentNode;
-  if (!parent) {
-    return;
-  }
-
-  while (element.firstChild) {
-    parent.insertBefore(element.firstChild, element);
-  }
-  parent.removeChild(element);
-};
-
-const unwrapMatchingElements = (root: ParentNode, tags: Set<string>) => {
-  const selector = Array.from(tags).join(',');
-  root.querySelectorAll(selector).forEach(unwrapElement);
-};
-
-const clearInsertedFormattingAncestors = (
-  node: Node,
-  editor: HTMLElement,
-  formattingTags = RICH_DETAIL_FORMATTING_TAGS,
-) => {
-  let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
-
-  while (current && current !== editor) {
-    const parent = current.parentNode;
-    if (current.nodeType === Node.ELEMENT_NODE) {
-      const element = current as Element;
-      if (formattingTags.has(element.tagName.toLowerCase())) {
-        unwrapElement(element);
-      }
-    }
-    current = parent;
-  }
-};
-
-const nodeHasHighlight = (node: Node, editor: HTMLElement) => {
-  let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
-
-  while (current && current !== editor) {
-    if (current.nodeType === Node.ELEMENT_NODE && (current as Element).tagName.toLowerCase() === 'mark') {
-      return true;
-    }
-    current = current.parentNode;
-  }
-
-  return false;
-};
-
-const rangeContainsHighlight = (range: Range, editor: HTMLElement) => {
-  if (range.cloneContents().querySelector('mark')) {
-    return true;
-  }
-
-  return nodeHasHighlight(range.startContainer, editor) || nodeHasHighlight(range.endContainer, editor);
-};
-
-const getEditorSelectionRange = (editor: HTMLElement) => {
-  const selection = window.getSelection();
-  if (!selection || !selection.rangeCount || !selection.anchorNode || !selection.focusNode) {
-    return null;
-  }
-
-  const ownsNode = (node: Node) => node === editor || editor.contains(node);
-  if (!ownsNode(selection.anchorNode) || !ownsNode(selection.focusNode)) {
-    return null;
-  }
-
-  const range = selection.getRangeAt(0);
-  return range.collapsed ? null : range;
-};
-
-interface RichTextDetailEditorProps {
-  id: string;
-  label: string;
-  value: string;
-  placeholder?: string;
-  readOnly?: boolean;
-  autoFocus?: boolean;
-  isLargeDetailSet?: boolean;
-  projectCount?: number;
-  headerAction?: ReactNode;
-  onCopyAll?: () => void;
-  onChange: (value: string) => void;
-}
-
-function RichTextDetailEditor({
-  id,
-  label,
-  value,
-  placeholder = '',
-  readOnly = false,
-  autoFocus = false,
-  isLargeDetailSet = false,
-  projectCount,
-  headerAction,
-  onCopyAll,
-  onChange,
-}: RichTextDetailEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const labelId = `${id}-label`;
-  const sanitizedValue = useMemo(() => sanitizePastProjectsDetailHtml(value), [value]);
-  const editorClassName = `project-grid-rich-detail-editor${isLargeDetailSet ? ' is-large-detail-set' : ''}`;
-  const inputClassName = `project-grid-rich-detail-input${isLargeDetailSet ? ' is-large-detail-set' : ''}`;
-
-  useEffect(() => {
-    if (!editorRef.current || editorRef.current.innerHTML === sanitizedValue) {
-      return;
-    }
-    editorRef.current.innerHTML = sanitizedValue;
-  }, [sanitizedValue]);
-
-  useEffect(() => {
-    if (autoFocus && !readOnly) {
-      editorRef.current?.focus();
-    }
-  }, [autoFocus, readOnly]);
-
-  const emitChange = () => {
-    onChange(sanitizePastProjectsDetailHtml(editorRef.current?.innerHTML ?? ''));
-  };
-
-  const applyCommand = (command: string, commandValue?: string) => {
-    if (readOnly) {
-      return;
-    }
-
-    editorRef.current?.focus();
-    if (typeof document.execCommand === 'function') {
-      document.execCommand(command, false, commandValue);
-    }
-    emitChange();
-  };
-
-  const clearFormatting = () => {
-    if (readOnly || !editorRef.current) {
-      return;
-    }
-
-    const editor = editorRef.current;
-    const range = getEditorSelectionRange(editor);
-    if (!range) {
-      return;
-    }
-
-    const selection = window.getSelection();
-    const plainFragment = createPlainFormattingFragment(range.extractContents());
-    const insertedNodes = Array.from(plainFragment.childNodes);
-    const lastInsertedNode = insertedNodes.at(-1) ?? null;
-    range.insertNode(plainFragment);
-    insertedNodes.forEach((node) => clearInsertedFormattingAncestors(node, editor));
-
-    if (lastInsertedNode && selection) {
-      const nextRange = document.createRange();
-      nextRange.setStartAfter(lastInsertedNode);
-      nextRange.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(nextRange);
-    }
-
-    editor.focus();
-    emitChange();
-  };
-
-  const removeHighlight = (range: Range, editor: HTMLElement) => {
-    const selection = window.getSelection();
-    const fragment = range.extractContents();
-    unwrapMatchingElements(fragment, RICH_DETAIL_HIGHLIGHT_TAGS);
-    const insertedNodes = Array.from(fragment.childNodes);
-    const lastInsertedNode = insertedNodes.at(-1) ?? null;
-    range.insertNode(fragment);
-    insertedNodes.forEach((node) => clearInsertedFormattingAncestors(node, editor, RICH_DETAIL_HIGHLIGHT_TAGS));
-
-    if (lastInsertedNode && selection) {
-      const nextRange = document.createRange();
-      nextRange.setStartAfter(lastInsertedNode);
-      nextRange.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(nextRange);
-    }
-
-    editor.focus();
-    emitChange();
-  };
-
-  const toggleHighlight = () => {
-    if (readOnly || !editorRef.current) {
-      return;
-    }
-
-    const editor = editorRef.current;
-    const range = getEditorSelectionRange(editor);
-    if (!range) {
-      return;
-    }
-
-    if (rangeContainsHighlight(range, editor)) {
-      removeHighlight(range, editor);
-      return;
-    }
-
-    applyCommand('hiliteColor', RICH_DETAIL_HIGHLIGHT_COLOR);
-  };
-
-  const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
-    if (readOnly) {
-      return;
-    }
-
-    event.preventDefault();
-    const plainText = event.clipboardData.getData('text/plain');
-    if (typeof document.execCommand === 'function') {
-      document.execCommand('insertText', false, plainText);
-    }
-    emitChange();
-  };
-
-  return (
-    <div className={editorClassName} data-project-count={projectCount}>
-      <div className="project-grid-rich-detail-header">
-        <label id={labelId} className="project-grid-share-note-label" htmlFor={id}>
-          {label}
-        </label>
-        {!readOnly || headerAction || onCopyAll ? (
-          <div className="project-grid-rich-detail-controls">
-            {onCopyAll ? (
-              <button type="button" className="project-grid-rich-copy-button" onClick={onCopyAll}>
-                Copy All
-              </button>
-            ) : null}
-            {!readOnly ? (
-              <div className="project-grid-rich-detail-toolbar" aria-label={`${label} formatting`}>
-                <button
-                  type="button"
-                  className="project-grid-rich-editor-button"
-                  aria-label="Bold"
-                  title="Bold"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyCommand('bold')}
-                >
-                  <strong>B</strong>
-                </button>
-                <button
-                  type="button"
-                  className="project-grid-rich-editor-button"
-                  aria-label="Italic"
-                  title="Italic"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyCommand('italic')}
-                >
-                  <em>I</em>
-                </button>
-                <button
-                  type="button"
-                  className="project-grid-rich-editor-button"
-                  aria-label="Highlight"
-                  title="Highlight"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={toggleHighlight}
-                >
-                  <HighlighterIcon />
-                </button>
-                <button
-                  type="button"
-                  className="project-grid-rich-editor-button"
-                  aria-label="Clear formatting"
-                  title="Clear formatting"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={clearFormatting}
-                >
-                  <ClearFormattingIcon />
-                </button>
-              </div>
-            ) : null}
-            {headerAction}
-          </div>
-        ) : null}
-      </div>
-      <div
-        ref={editorRef}
-        id={id}
-        className={inputClassName}
-        role="textbox"
-        aria-labelledby={labelId}
-        aria-multiline="true"
-        aria-readonly={readOnly}
-        contentEditable={!readOnly}
-        data-placeholder={placeholder}
-        spellCheck
-        tabIndex={readOnly ? -1 : 0}
-        onInput={emitChange}
-        onBlur={emitChange}
-        onPaste={handlePaste}
-        suppressContentEditableWarning
-      />
-    </div>
-  );
-}
-
-const getExportFileBaseName = (title: string) => {
-  const slug = title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return slug ? `past-projects-${slug}` : 'past-projects';
-};
-
 export const MergedResultsTable = ({
   rows,
   sharedMode = false,
   title = 'Saved Merged Results',
   note,
-  detailsText = '',
   editable = false,
   onCreateShare,
   onUpdateShare,
   onDeleteRow,
 }: MergedResultsTableProps) => {
   const {isAuthenticated} = useAuth();
+  const canShare = !sharedMode && Boolean(onCreateShare) && isAuthenticated;
+  const canEditShared = sharedMode && editable && Boolean(onUpdateShare);
+  // Owner (builder, or shared-page owner) can author per-project curation notes; a shared-page
+  // visitor only ever sees the saved notes read-only.
+  const canCurate = !sharedMode || canEditShared;
+
+  // Per-row curation edits, keyed by the row's stable __key. Layered over each row's saved
+  // `curation` so typing never mutates the row identity (curation is excluded from the
+  // fingerprint/__key) and a draft survives a later builder merge (this component stays mounted).
+  const [curationByKey, setCurationByKey] = useState<Record<string, string>>({});
+
+  const effectiveCuration = (item: ProjectGridItem) => curationByKey[item.__key] ?? item.curation ?? '';
+  // Stable across renders so it doesn't churn the table hook's expandableKeys memo. Owners can
+  // always open a row to add a note; a read-only visitor can only open rows with something to
+  // show (abstract/students, or a saved note — visitors never have draft overlay entries).
+  const isRowExpandable = useCallback(
+    (row: ProjectGridItem) =>
+      canCurate ? true : hasProjectGridDetails(row) || Boolean((row.curation ?? '').trim()),
+    [canCurate],
+  );
+
   const table = useProjectGridTable({
     rows,
     pageSize: 5,
     defaultSortField: 'semester_label',
     defaultSortDirection: 'desc',
     expandAllByDefault: sharedMode,
+    isRowExpandable,
   });
   const [shareUrl, setShareUrl] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [isSharing, setIsSharing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
-  const [detailsDraft, setDetailsDraft] = useState(() =>
-    sharedMode ? normalizePastProjectsDetailHtml(detailsText) : createPastProjectsDetailHtml(rows.map(stripProjectGridItem)),
-  );
-  const [isDetailsTextDirty, setIsDetailsTextDirty] = useState(false);
   const [editTitleDraft, setEditTitleDraft] = useState(title);
   const [editNoteDraft, setEditNoteDraft] = useState(note ?? '');
   const [isSavingShareEdit, setIsSavingShareEdit] = useState(false);
   const [isEditingSharedTitle, setIsEditingSharedTitle] = useState(false);
   const [isEditingSharedNote, setIsEditingSharedNote] = useState(false);
-  const [isEditingSharedDetails, setIsEditingSharedDetails] = useState(false);
   const editTitleInputRef = useRef<HTMLInputElement>(null);
   const editNoteTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isMountedRef = useRef(true);
@@ -501,18 +114,29 @@ export const MergedResultsTable = ({
   }, [note]);
 
   useEffect(() => {
-    if (!sharedMode) {
-      return;
-    }
-    setDetailsDraft(normalizePastProjectsDetailHtml(detailsText));
-    setIsDetailsTextDirty(false);
-    setIsEditingSharedDetails(false);
-  }, [detailsText, sharedMode]);
-
-  useEffect(() => {
     setEditTitleDraft(title);
     setIsEditingSharedTitle(false);
   }, [title]);
+
+  // Keep the curation overlay in sync with the rows prop. In shared mode a rows change means a
+  // save→refetch (or row add/remove), so reseed from the server and drop drafts. In builder mode
+  // prune only orphaned keys (deleted rows) so edits for surviving rows persist across a merge.
+  useEffect(() => {
+    if (sharedMode) {
+      setCurationByKey({});
+      return;
+    }
+    setCurationByKey((current) => {
+      const liveKeys = new Set(rows.map((row) => row.__key));
+      const next: Record<string, string> = {};
+      for (const key of Object.keys(current)) {
+        if (liveKeys.has(key)) {
+          next[key] = current[key];
+        }
+      }
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
+  }, [rows, sharedMode]);
 
   useEffect(() => {
     if (isEditingSharedTitle) {
@@ -527,74 +151,84 @@ export const MergedResultsTable = ({
     }
   }, [isEditingSharedNote]);
 
+  const withCuration = useCallback(
+    (item: ProjectGridItem): ProjectGridRow => {
+      const row = stripProjectGridItem(item);
+      const override = curationByKey[item.__key];
+      return override === undefined ? row : {...row, curation: override};
+    },
+    [curationByKey],
+  );
+
+  // Server truth (no draft overlay) — used by title/note/delete saves so they never silently
+  // persist unsaved curation edits.
   const currentRows = useMemo(() => rows.map(stripProjectGridItem), [rows]);
+  // With the draft overlay applied — used for curation save, share create, and exports.
+  const curatedRows = useMemo(() => rows.map(withCuration), [rows, withCuration]);
+  const visibleCuratedRows = useMemo(() => table.sortedRows.map(withCuration), [table.sortedRows, withCuration]);
 
-  const visibleRows = useMemo(() => table.sortedRows.map(stripProjectGridItem), [table.sortedRows]);
-  const generatedDetailsHtml = useMemo(() => createPastProjectsDetailHtml(visibleRows), [visibleRows]);
-  const detailProjectCount = sharedMode ? currentRows.length : visibleRows.length;
-  const isLargeDetailSet = detailProjectCount > 12;
+  const isCurationDirty = useMemo(
+    () =>
+      rows.some((item) => {
+        const override = curationByKey[item.__key];
+        return override !== undefined && override !== (item.curation ?? '');
+      }),
+    [rows, curationByKey],
+  );
 
-  useEffect(() => {
-    if (sharedMode || isDetailsTextDirty) {
-      return;
-    }
-    setDetailsDraft(generatedDetailsHtml);
-  }, [generatedDetailsHtml, isDetailsTextDirty, sharedMode]);
-
-  const canShare = !sharedMode && Boolean(onCreateShare) && isAuthenticated;
-  const canEditShared = sharedMode && editable && Boolean(onUpdateShare);
   const sharedNote = sharedMode ? (note ?? '').trim() : '';
-  const sharedDetails = sharedMode ? detailsDraft.trim() : '';
   const sharedExportTitle = (canEditShared ? editTitleDraft : title).trim() || title;
   const sharedExportNote = canEditShared ? editNoteDraft.trim() : sharedNote;
   const sharedExportFileBaseName = getExportFileBaseName(sharedExportTitle);
   const exportTitle = sharedMode ? sharedExportTitle : title;
-  const exportDetailsText = sharedMode ? sharedDetails : detailsDraft;
   const exportNote = sharedMode ? sharedExportNote : '';
   const exportFileBaseName = sharedMode ? sharedExportFileBaseName : 'past-projects';
+  // In shared mode the export represents the whole shared snapshot, so a viewer's transient table
+  // search must not narrow it. In builder mode the visible (filtered) rows ARE the curation.
+  const exportRows = sharedMode ? curatedRows : visibleCuratedRows;
   const exportContext = {
-    detailsText: exportDetailsText,
     note: exportNote,
     title: exportTitle,
   };
+
+  const handleCurationChange = (rowKey: string, nextValue: string) => {
+    setCurationByKey((current) => ({...current, [rowKey]: nextValue}));
+  };
+
+  const handleExport = async (exporter: ProjectRowsExporter, label: string) => {
+    try {
+      await exporter(exportRows, exportFileBaseName, exportContext);
+    } catch {
+      // Dynamic-import (code-split chunk) or serialization failures otherwise reject silently.
+      setStatusMessage(`Unable to export ${label}. Please try again.`);
+    }
+  };
   const hasTitleChanges = editTitleDraft.trim() !== title.trim();
   const hasNoteChanges = editNoteDraft.trim() !== (note ?? '').trim();
-  const hasDetailsChanges = detailsDraft !== normalizePastProjectsDetailHtml(detailsText);
-
-  const handleDetailsDraftChange = (nextValue: string) => {
-    setDetailsDraft(nextValue);
-    setIsDetailsTextDirty(true);
-  };
-
-  const handleCopyDetails = async () => {
-    if (!detailsDraft.trim()) {
-      return;
-    }
-
-    try {
-      await copyPastProjectsDetailToClipboard(detailsDraft);
-      setStatusMessage('Past Projects Detail copied.');
-    } catch {
-      setStatusMessage('Unable to copy Past Projects Detail. Please try again.');
-    }
-  };
 
   const handleCreateShare = async () => {
     const trimmedName = nameDraft.trim();
-    if (!onCreateShare || !visibleRows.length || !trimmedName) {
+    if (!onCreateShare || !visibleCuratedRows.length || !trimmedName) {
+      return;
+    }
+
+    // Mirror the backend cap (serializer rejects >1000 rows) with a specific message instead
+    // of letting the request fail with the generic error below.
+    if (visibleCuratedRows.length > 1000) {
+      setStatusMessage('A shared page can include at most 1000 projects. Remove some rows and try again.');
       return;
     }
 
     setIsSharing(true);
     setStatusMessage('');
     try {
-      await onCreateShare(visibleRows, trimmedName, noteDraft.trim(), detailsDraft);
+      await onCreateShare(visibleCuratedRows, trimmedName, noteDraft.trim());
       if (isMountedRef.current) {
         setStatusMessage('Opening shareable link...');
       }
-    } catch {
+    } catch (error) {
       if (isMountedRef.current) {
-        setStatusMessage('Unable to create a shareable URL. Please try again.');
+        setStatusMessage(getShareErrorMessage(error));
       }
     } finally {
       if (isMountedRef.current) {
@@ -632,9 +266,8 @@ export const MergedResultsTable = ({
 
   const handleUpdateSharedPage = async (
     nextRows: ProjectGridRow[],
-    nextNote: string,
     nextName: string,
-    nextDetailsText: string,
+    nextNote: string,
     successMessage: string,
   ) => {
     if (!onUpdateShare) {
@@ -644,7 +277,7 @@ export const MergedResultsTable = ({
     setIsSavingShareEdit(true);
     setStatusMessage('');
     try {
-      await onUpdateShare(nextRows, nextNote, nextName, nextDetailsText);
+      await onUpdateShare(nextRows, nextName, nextNote);
       setStatusMessage(successMessage);
       return true;
     } catch {
@@ -659,7 +292,6 @@ export const MergedResultsTable = ({
     if (!isEditingSharedTitle) {
       setIsEditingSharedTitle(true);
       setIsEditingSharedNote(false);
-      setIsEditingSharedDetails(false);
       return;
     }
 
@@ -674,7 +306,9 @@ export const MergedResultsTable = ({
       return;
     }
 
-    const saved = await handleUpdateSharedPage(currentRows, note ?? '', trimmedTitle, detailsDraft, 'Name updated.');
+    // Send the server-truth rows (no curation overlay), so saving the name never silently
+    // persists unsaved curation edits made in the row editors.
+    const saved = await handleUpdateSharedPage(currentRows, trimmedTitle, note ?? '', 'Name updated.');
     if (saved) {
       setIsEditingSharedTitle(false);
     }
@@ -684,7 +318,6 @@ export const MergedResultsTable = ({
     if (!isEditingSharedNote) {
       setIsEditingSharedNote(true);
       setIsEditingSharedTitle(false);
-      setIsEditingSharedDetails(false);
       return;
     }
 
@@ -693,36 +326,21 @@ export const MergedResultsTable = ({
       return;
     }
 
-    const saved = await handleUpdateSharedPage(currentRows, editNoteDraft.trim(), title, detailsDraft, 'Note updated.');
+    // Send the server-truth rows (no curation overlay), so saving the note never silently
+    // persists unsaved curation edits made in the row editors.
+    const saved = await handleUpdateSharedPage(currentRows, title, editNoteDraft.trim(), 'Note updated.');
     if (saved) {
       setIsEditingSharedNote(false);
     }
   };
 
-  const handleSharedDetailsAction = async () => {
-    if (!isEditingSharedDetails) {
-      setIsEditingSharedDetails(true);
-      setIsEditingSharedTitle(false);
-      setIsEditingSharedNote(false);
+  const handleSaveCuration = async () => {
+    if (!isCurationDirty) {
       return;
     }
-
-    if (!hasDetailsChanges) {
-      setIsEditingSharedDetails(false);
-      return;
-    }
-
-    const saved = await handleUpdateSharedPage(
-      currentRows,
-      note ?? '',
-      title,
-      detailsDraft,
-      'Past projects detail updated.',
-    );
-    if (saved) {
-      setIsEditingSharedDetails(false);
-      setIsDetailsTextDirty(false);
-    }
+    // Persist every row with its curation overlay applied; the parent refetch reseeds the prop and
+    // the rows-change effect clears the draft overlay.
+    await handleUpdateSharedPage(curatedRows, title, note ?? '', 'Project notes updated.');
   };
 
   const handleDeleteSharedRow = async (row: ProjectGridItem) => {
@@ -735,7 +353,7 @@ export const MergedResultsTable = ({
       setStatusMessage('A shared page needs at least one project.');
       return;
     }
-    await handleUpdateSharedPage(nextRows, note ?? '', title, detailsDraft, 'Project removed.');
+    await handleUpdateSharedPage(nextRows, title, note ?? '', 'Project removed.');
   };
 
   const handleDeleteMergedRow = async (row: ProjectGridItem) => {
@@ -802,36 +420,52 @@ export const MergedResultsTable = ({
     </div>
   ) : null;
 
-  const sharedDetailsEditor = canEditShared ? (
-    <div className={`project-grid-share-editor${isEditingSharedDetails ? ' is-editing' : ''}`}>
-      <RichTextDetailEditor
-        id="past-project-shared-details-editor"
-        label="Past Projects Detail"
-        value={detailsDraft}
-        readOnly={!isEditingSharedDetails}
-        autoFocus={isEditingSharedDetails}
-        headerAction={
-          <button
-            type="button"
-            className={`project-grid-share-editor-icon-button project-grid-share-details-action${
-              isEditingSharedDetails ? ' is-active' : ''
-            }`}
-            aria-label={isEditingSharedDetails ? 'Save Past Projects Detail' : 'Edit Past Projects Detail'}
-            title={isEditingSharedDetails ? 'Save Past Projects Detail' : 'Edit Past Projects Detail'}
-            onClick={() => void handleSharedDetailsAction()}
-            disabled={isSavingShareEdit}
-          >
-            {isEditingSharedDetails ? <SharedSaveIcon /> : <SharedEditIcon />}
-          </button>
-        }
-        placeholder="Selected project details will appear here."
-        isLargeDetailSet={isLargeDetailSet}
-        projectCount={detailProjectCount}
-        onCopyAll={() => void handleCopyDetails()}
-        onChange={handleDetailsDraftChange}
-      />
-    </div>
-  ) : null;
+  // Per-project detail body injected into each row's expandable area: the Project notes first
+  // (editable for owner/builder, read-only preview for a visitor), then a divider, then the
+  // read-only abstract / student names below it.
+  const renderRowDetail = (row: ProjectGridItem, surface: 'desktop' | 'mobile') => {
+    const curation = effectiveCuration(row);
+    // The row __key embeds the fingerprint JSON (quotes/brackets), which is not a valid HTML id.
+    // Derive a stable slug-safe id from the row position + surface (desktop and mobile both render
+    // a copy, so the id must differ between them to stay unique).
+    const rowIndex = rows.findIndex((candidate) => candidate.__key === row.__key);
+    const editorId = `past-project-curation-${surface}-${rowIndex}`;
+    const curationBlock = canCurate ? (
+      <div className="project-grid-row-curation">
+        <RichTextDetailEditor
+          id={editorId}
+          label="Project notes"
+          value={curation}
+          placeholder="Add a note for this project (optional)."
+          onChange={(nextValue) => handleCurationChange(row.__key, nextValue)}
+        />
+      </div>
+    ) : curation.trim() ? (
+      <div className="project-grid-row-curation">
+        <p className="project-grid-shared-note-label">Project notes</p>
+        <RichDetailPreview className="project-grid-shared-detail-text" html={curation} />
+      </div>
+    ) : null;
+
+    const hasReadOnlyFields = Boolean(row.abstract || row.student_names);
+
+    return (
+      <>
+        {curationBlock}
+        {curationBlock && hasReadOnlyFields ? <hr className="project-grid-row-detail-divider" /> : null}
+        {row.abstract ? (
+          <div>
+            <strong>Abstract:</strong> {row.abstract}
+          </div>
+        ) : null}
+        {row.student_names ? (
+          <div>
+            <strong>Student Names:</strong> {row.student_names}
+          </div>
+        ) : null}
+      </>
+    );
+  };
 
   return (
     <section className="project-grid-card">
@@ -895,20 +529,6 @@ export const MergedResultsTable = ({
         </div>
       ) : null}
 
-      {sharedDetailsEditor}
-
-      {!sharedDetailsEditor && sharedDetails ? (
-        <div className="project-grid-shared-detail">
-          <div className="project-grid-shared-detail-header">
-            <p className="project-grid-shared-note-label">Past Projects Detail</p>
-            <button type="button" className="project-grid-rich-copy-button" onClick={() => void handleCopyDetails()}>
-              Copy All
-            </button>
-          </div>
-          <RichDetailPreview className="project-grid-shared-detail-text" html={sharedDetails} />
-        </div>
-      ) : null}
-
       {!sharedMode && onCreateShare ? (
         isAuthenticated ? (
           <>
@@ -948,21 +568,6 @@ export const MergedResultsTable = ({
         )
       ) : null}
 
-      {!sharedMode ? (
-        <div className="project-grid-share-note">
-          <RichTextDetailEditor
-            id="past-project-share-details"
-            label="Past Projects Detail"
-            value={detailsDraft}
-            placeholder="Selected project details will appear here."
-            isLargeDetailSet={isLargeDetailSet}
-            projectCount={detailProjectCount}
-            onCopyAll={() => void handleCopyDetails()}
-            onChange={handleDetailsDraftChange}
-          />
-        </div>
-      ) : null}
-
       {sharedMode ? null : shareResultPanel}
 
       <ProjectGridTable
@@ -980,6 +585,8 @@ export const MergedResultsTable = ({
         onToggleExpanded={table.toggleExpanded}
         onToggleAllDetails={table.toggleAllDetails}
         allDetailsExpanded={table.allDetailsExpanded}
+        renderRowDetail={renderRowDetail}
+        detailExpandable={isRowExpandable}
         page={table.page}
         totalPages={table.totalPages}
         onPageChange={table.setPage}
@@ -992,36 +599,40 @@ export const MergedResultsTable = ({
         toolbarPlacement="bottom"
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
+            {canEditShared && isCurationDirty ? (
+              <div className="project-grid-toolbar-cluster" aria-label="Save notes">
+                <button
+                  type="button"
+                  className="itg-btn itg-btn-primary"
+                  onClick={() => void handleSaveCuration()}
+                  disabled={isSavingShareEdit}
+                >
+                  {isSavingShareEdit ? 'Saving...' : 'Save Project Notes'}
+                </button>
+              </div>
+            ) : null}
             <div className="project-grid-toolbar-cluster" aria-label="Export">
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void exportProjectRowsCsv(visibleRows, exportFileBaseName, exportContext)}
-                disabled={!visibleRows.length}
-              >
-                CSV
-              </button>
-              <button
-                type="button"
-                className="itg-btn itg-btn-outline"
-                onClick={() => void exportProjectRowsExcel(visibleRows, exportFileBaseName, exportContext)}
-                disabled={!visibleRows.length}
-              >
-                Excel
-              </button>
-              <button
-                type="button"
-                className="itg-btn itg-btn-outline"
-                onClick={() => void exportProjectRowsPdf(visibleRows, exportFileBaseName, exportContext)}
-                disabled={!visibleRows.length}
+                onClick={() => void handleExport(exportProjectRowsPdf, 'PDF')}
+                disabled={!exportRows.length}
               >
                 PDF
               </button>
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void exportProjectRowsWord(visibleRows, exportFileBaseName, exportContext)}
-                disabled={!visibleRows.length}
+                onClick={() => void handleExport(exportProjectRowsExcel, 'Excel')}
+                disabled={!exportRows.length}
+              >
+                Excel
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void handleExport(exportProjectRowsWord, 'Microsoft Word')}
+                disabled={!exportRows.length}
               >
                 Microsoft Word
               </button>
@@ -1032,7 +643,7 @@ export const MergedResultsTable = ({
                   type="button"
                   className="itg-btn itg-btn-primary"
                   onClick={() => void handleCreateShare()}
-                  disabled={!visibleRows.length || isSharing || !nameDraft.trim()}
+                  disabled={!visibleCuratedRows.length || isSharing || !nameDraft.trim()}
                 >
                   {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
                 </button>

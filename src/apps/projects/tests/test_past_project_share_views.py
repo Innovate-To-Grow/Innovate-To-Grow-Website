@@ -109,6 +109,66 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(share.note, "")
         self.assertEqual(share.details_text, "")
 
+    def test_details_text_is_sanitized_on_create(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(
+                details_text='<mark>Keep</mark><script>alert(1)</script><b>bold</b><span onclick="x">drop</span>',
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        stored = response.data["details_text"]
+        # Allowlisted markup survives; script/span and event handlers are stripped.
+        self.assertIn("<mark>Keep</mark>", stored)
+        self.assertIn("<b>bold</b>", stored)
+        self.assertNotIn("<script", stored)
+        self.assertNotIn("onclick", stored)
+        self.assertNotIn("<span", stored)
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertNotIn("<script", share.details_text)
+
+    def test_details_text_is_sanitized_on_patch(self):
+        share = PastProjectShare.objects.create(
+            name="Mine", rows=[sample_row()], details_text="<b>old</b>", created_by=self.member
+        )
+
+        response = self.client.patch(
+            f"/projects/past-shares/{share.pk}/",
+            {"details_text": "<mark>new</mark><script>alert(1)</script>"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<mark>new</mark>", response.data["details_text"])
+        self.assertNotIn("<script", response.data["details_text"])
+        share.refresh_from_db()
+        self.assertNotIn("<script", share.details_text)
+
+    def test_details_text_over_cap_is_rejected(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(details_text="x" * 2_000_001),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("details_text", response.data)
+
+    def test_large_generated_details_text_is_accepted(self):
+        # A generated detail for many projects with long abstracts can be hundreds of KB; the
+        # cap must not reject a legitimate large share.
+        big_detail = "Project 1\nAbstract: " + ("lorem ipsum " * 40000)  # ~480 KB, well-formed text
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(details_text=big_detail),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertGreater(len(response.data["details_text"]), 100_000)
+
     def test_note_length_validation(self):
         response = self.client.post(
             "/projects/past-shares/",
@@ -156,6 +216,84 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(response.data["rows"][1]["team_number"], "T02")
         self.assertEqual(response.data["details_text"], "Project 1\nAbstract: A project abstract.")
         self.assertFalse(response.data["can_edit"])
+
+    def test_create_round_trips_is_presenting(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(rows=[sample_row(is_presenting="Yes")]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["rows"][0]["is_presenting"], "Yes")
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.rows[0]["is_presenting"], "Yes")
+
+    def test_rows_saved_without_is_presenting_serialize_as_blank(self):
+        # Pre-existing shares were stored before is_presenting existed; GET must still return
+        # "" for them rather than erroring on the missing key.
+        share = PastProjectShare.objects.create(rows=[sample_row()])
+
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["rows"][0]["is_presenting"], "")
+
+    def test_create_round_trips_per_row_curation(self):
+        # Per-project curation persists inside the row JSON (no DB migration; rows is a JSONField).
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(rows=[sample_row(curation="<strong>Won first place</strong>")]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["rows"][0]["curation"], "<strong>Won first place</strong>")
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.rows[0]["curation"], "<strong>Won first place</strong>")
+
+    def test_rows_saved_without_curation_serialize_as_blank(self):
+        # Old shares were stored before per-row curation existed; GET must still return "" for
+        # them rather than erroring on the missing key.
+        share = PastProjectShare.objects.create(rows=[sample_row()])
+
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["rows"][0]["curation"], "")
+
+    def test_curation_is_sanitized_on_create(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(
+                rows=[
+                    sample_row(
+                        curation='<mark>Keep</mark><script>alert(1)</script><b>bold</b><span onclick="x">drop</span>',
+                    )
+                ]
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        stored = response.data["rows"][0]["curation"]
+        # Allowed tags survive; disallowed tags are stripped (their inner text is kept by bleach).
+        self.assertIn("<mark>Keep</mark>", stored)
+        self.assertIn("<b>bold</b>", stored)
+        self.assertNotIn("<script", stored)
+        self.assertNotIn("onclick", stored)
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertNotIn("<script", share.rows[0]["curation"])
+
+    def test_curation_over_cap_is_rejected(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(rows=[sample_row(curation="x" * 50_001)]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("rows", response.data)
 
     def test_get_share_marks_owner_can_edit(self):
         share = PastProjectShare.objects.create(rows=[sample_row()], created_by=self.member)
@@ -325,6 +463,55 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(share.note, "Updated note")
         self.assertEqual(share.details_text, "Updated project details")
         self.assertEqual(share.rows, next_rows)
+
+    def test_patch_single_field_preserves_others(self):
+        # A true partial PATCH (only one field) must succeed even though name/rows are
+        # required=True — confirms the update() override honors partial=True.
+        share = PastProjectShare.objects.create(
+            name="Keep name",
+            rows=[sample_row()],
+            note="Keep note",
+            details_text="Keep details",
+            created_by=self.member,
+        )
+
+        response = self.client.patch(
+            f"/projects/past-shares/{share.pk}/", {"note": "Only the note changed"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["note"], "Only the note changed")
+        share.refresh_from_db()
+        self.assertEqual(share.name, "Keep name")
+        self.assertEqual(share.details_text, "Keep details")
+        self.assertEqual(len(share.rows), 1)
+
+    def test_put_replaces_the_whole_share(self):
+        share = PastProjectShare.objects.create(
+            name="Old", rows=[sample_row()], note="Old note", created_by=self.member
+        )
+
+        response = self.client.put(
+            f"/projects/past-shares/{share.pk}/",
+            sample_payload(name="Replaced", note="Replaced note", rows=[sample_row(team_number="T42")]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["name"], "Replaced")
+        share.refresh_from_db()
+        self.assertEqual(share.name, "Replaced")
+        self.assertEqual(share.note, "Replaced note")
+        self.assertEqual(share.rows[0]["team_number"], "T42")
+
+    def test_put_requires_all_fields(self):
+        # PUT is a full update: omitting a required field (name) is a 400.
+        share = PastProjectShare.objects.create(name="Old", rows=[sample_row()], created_by=self.member)
+
+        response = self.client.put(f"/projects/past-shares/{share.pk}/", {"rows": [sample_row()]}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
 
     def test_patch_own_share_rejects_empty_rows(self):
         share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
