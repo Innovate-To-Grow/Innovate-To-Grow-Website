@@ -81,8 +81,8 @@
 }
 
 .dark .cms-block-preview-pane-inner {
-    background: #1f2937;
-    border-color: #374151;
+    background: var(--md-sys-color-surface-container, #1f2937);
+    border-color: var(--md-sys-color-outline-variant, #374151);
 }
 
 /* ===== Preview Iframe ===== */
@@ -94,4 +94,9 @@
     max-height: 600px;
     border: none;
     background: #fff;
+}
+
+.dark .cms-bp-iframe {
+    background: var(--md-sys-color-surface-container-lowest, #111827);
+    color-scheme: dark;
 }

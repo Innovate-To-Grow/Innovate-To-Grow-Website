@@ -84,14 +84,19 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_authenticated_create_persists_note_and_created_by(self):
         response = self.client.post(
             "/projects/past-shares/",
-            sample_payload(note="Projects to review with the team."),
+            sample_payload(
+                note="Projects to review with the team.",
+                details_text="Past Projects Detail\nProject Title: Shared Project",
+            ),
             format="json",
         )
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["note"], "Projects to review with the team.")
+        self.assertEqual(response.data["details_text"], "Past Projects Detail\nProject Title: Shared Project")
         share = PastProjectShare.objects.get(pk=response.data["id"])
         self.assertEqual(share.note, "Projects to review with the team.")
+        self.assertEqual(share.details_text, "Past Projects Detail\nProject Title: Shared Project")
         self.assertEqual(share.created_by, self.member)
 
     def test_note_optional_blank(self):
@@ -99,8 +104,10 @@ class PastProjectShareAPIViewTests(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["note"], "")
+        self.assertEqual(response.data["details_text"], "")
         share = PastProjectShare.objects.get(pk=response.data["id"])
         self.assertEqual(share.note, "")
+        self.assertEqual(share.details_text, "")
 
     def test_note_length_validation(self):
         response = self.client.post(
@@ -137,13 +144,17 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertIn("rows", response.data)
 
     def test_get_share_returns_saved_rows(self):
-        share = PastProjectShare.objects.create(rows=[sample_row(), sample_row(team_number="T02")])
+        share = PastProjectShare.objects.create(
+            rows=[sample_row(), sample_row(team_number="T02")],
+            details_text="Project 1\nAbstract: A project abstract.",
+        )
 
         response = self.client.get(f"/projects/past-shares/{share.pk}/")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["rows"]), 2)
         self.assertEqual(response.data["rows"][1]["team_number"], "T02")
+        self.assertEqual(response.data["details_text"], "Project 1\nAbstract: A project abstract.")
         self.assertFalse(response.data["can_edit"])
 
     def test_get_share_marks_owner_can_edit(self):
@@ -211,11 +222,19 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_create_without_request_context_sets_created_by_none(self):
         # The serializer is robust when used without a request (e.g. shell/scripts):
         # created_by stays None and the share still saves.
-        serializer = PastProjectShareSerializer(data={"name": "Scripted", "rows": [sample_row()], "note": "scripted"})
+        serializer = PastProjectShareSerializer(
+            data={
+                "name": "Scripted",
+                "rows": [sample_row()],
+                "note": "scripted",
+                "details_text": "scripted details",
+            }
+        )
         self.assertTrue(serializer.is_valid(), serializer.errors)
         instance = serializer.save()
         self.assertIsNone(instance.created_by)
         self.assertEqual(instance.note, "scripted")
+        self.assertEqual(instance.details_text, "scripted details")
 
     # --- "my shares" list ---
 
@@ -280,13 +299,18 @@ class PastProjectShareAPIViewTests(TestCase):
 
     def test_patch_own_share_updates_note_and_rows(self):
         share = PastProjectShare.objects.create(
-            name="Mine", rows=[sample_row()], note="Old note", created_by=self.member
+            name="Mine", rows=[sample_row()], note="Old note", details_text="Old details", created_by=self.member
         )
         next_rows = [sample_row(team_number="T09", project_title="Added Project")]
 
         response = self.client.patch(
             f"/projects/past-shares/{share.pk}/",
-            {"name": "Updated name", "note": "Updated note", "rows": next_rows},
+            {
+                "name": "Updated name",
+                "note": "Updated note",
+                "details_text": "Updated project details",
+                "rows": next_rows,
+            },
             format="json",
         )
 
@@ -294,10 +318,12 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertTrue(response.data["can_edit"])
         self.assertEqual(response.data["name"], "Updated name")
         self.assertEqual(response.data["note"], "Updated note")
+        self.assertEqual(response.data["details_text"], "Updated project details")
         self.assertEqual(response.data["rows"][0]["project_title"], "Added Project")
         share.refresh_from_db()
         self.assertEqual(share.name, "Updated name")
         self.assertEqual(share.note, "Updated note")
+        self.assertEqual(share.details_text, "Updated project details")
         self.assertEqual(share.rows, next_rows)
 
     def test_patch_own_share_rejects_empty_rows(self):

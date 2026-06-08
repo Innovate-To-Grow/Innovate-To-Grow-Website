@@ -44,6 +44,32 @@
     color: #666;
 }
 
+.dark .column-links {
+    background: var(--md-sys-color-surface-container);
+    border-color: var(--md-sys-color-outline-variant);
+}
+
+.dark .link-item input {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .json-toggle {
+    border-top-color: var(--md-sys-color-outline-variant);
+}
+
+.dark .json-toggle-btn {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .json-toggle-btn:hover {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 16%, var(--md-sys-color-surface-container));
+    color: var(--md-sys-color-primary);
+}
+
 .json-raw-view {
     display: none;
     margin-top: 12px;
@@ -63,6 +89,13 @@
     border-radius: 4px;
     box-sizing: border-box;
     transition: border-color 0.2s ease;
+}
+
+.dark .json-raw-view textarea,
+.dark .cms-json-subeditor textarea {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
 }
 
 .json-error {
@@ -107,6 +140,10 @@
     color: #666;
 }
 
+.dark .json-editor-hint {
+    color: var(--md-sys-color-on-surface-variant);
+}
+
 /* Preview Styles */
 .preview-wrapper {
     border: 1px solid #d1d1d1;
@@ -116,6 +153,11 @@
     border-radius: 4px;
 }
 
+.dark .preview-wrapper {
+    background: var(--md-sys-color-surface-container);
+    border-color: var(--md-sys-color-outline-variant);
+}
+
 .preview-title {
     margin: 0 0 12px;
     font-size: 16px;
@@ -123,11 +165,20 @@
     color: #333;
 }
 
+.dark .preview-title {
+    color: var(--md-sys-color-on-surface);
+}
+
 .preview-iframe {
     width: 100%;
     border: 1px solid #e5e5e5;
     background: #fff;
     border-radius: 4px;
+}
+
+.dark .preview-iframe {
+    border-color: var(--md-sys-color-outline-variant);
+    box-shadow: none;
 }
 
 .preview-error {

@@ -1,4 +1,7 @@
+import type {RowInput} from 'jspdf-autotable';
+
 import {PROJECT_GRID_COLUMNS, type ProjectGridRow} from './projectGrid';
+import {createPastProjectsDetailText, pastProjectsDetailHtmlToPlainText} from './pastProjectsDetailText';
 
 const EXPORT_COLUMNS = [
   'Year-Semester',
@@ -12,10 +15,26 @@ const EXPORT_COLUMNS = [
   'Student Names',
 ] as const;
 
-interface SharedProjectExportContext {
+interface ProjectRowsExportContext {
+  detailsText?: string;
   note?: string;
-  title: string;
+  title?: string;
 }
+
+interface ExportLogoAsset {
+  base64: string;
+  bytes: Uint8Array;
+  dataUrl: string;
+  extension: 'png';
+}
+
+const I2G_LOGO_URL = '/assets/images/i2glogo.png';
+const BRAND_BLUE = '0F2D52';
+const BRAND_BLUE_RGB = [15, 45, 82] as const;
+const BORDER_BLUE = 'BDD3EA';
+const LIGHT_BLUE = 'EAF4FF';
+const TABLE_ALT_FILL = 'F7FAFC';
+const DETAIL_SEPARATOR_PATTERN = /\n\s*-{10,}\s*\n/g;
 
 const toExportRows = (rows: ProjectGridRow[]): (string | number)[][] =>
   rows.map((row) => [
@@ -48,10 +67,108 @@ const escapeXml = (value: string | number | null | undefined) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-const normalizeSharedExportContext = ({note, title}: SharedProjectExportContext) => ({
-  note: (note ?? '').trim(),
-  title: title.trim() || 'Shared Past Project Results',
+const getProjectDetailsText = (rows: ProjectGridRow[], detailsText: string) =>
+  detailsText || createPastProjectsDetailText(rows).trim();
+
+const normalizeProjectRowsExportContext = (rows: ProjectGridRow[], context: ProjectRowsExportContext = {}) => ({
+  detailsText: getProjectDetailsText(rows, pastProjectsDetailHtmlToPlainText(context.detailsText ?? '').trim()),
+  note: (context.note ?? '').trim(),
+  title: context.title?.trim() || 'Past Projects',
 });
+
+const splitProjectDetailBlocks = (text: string) => text.split(DETAIL_SEPARATOR_PATTERN).map((block) => block.trim()).filter(Boolean);
+
+export const createPdfProjectTableBody = (rows: ProjectGridRow[]): RowInput[] =>
+  rows.flatMap((row, index) => {
+    const projectDetail = [
+      `Project Detail`,
+      `Abstract: ${toDisplayValue(row.abstract) || 'N/A'}`,
+      `Student Names: ${toDisplayValue(row.student_names) || 'N/A'}`,
+    ].join('\n');
+
+    return [
+      [
+        row.semester_label,
+        row.class_code,
+        row.team_number,
+        row.team_name,
+        row.project_title,
+        row.organization,
+        row.industry,
+      ],
+      [
+        {
+          colSpan: PROJECT_GRID_COLUMNS.length,
+          content: projectDetail,
+          styles: {
+            cellPadding: 3,
+            fillColor: index % 2 === 0 ? ([247, 250, 252] as [number, number, number]) : ([255, 255, 255] as [number, number, number]),
+            fontSize: 7.8,
+            fontStyle: 'normal',
+            minCellHeight: 12,
+            textColor: [32, 54, 77] as [number, number, number],
+          },
+        },
+      ],
+    ];
+  });
+
+const splitExcelText = (text: string, maxLength = 30000) => {
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > maxLength) {
+    let splitAt = remaining.lastIndexOf('\n\n', maxLength);
+    if (splitAt < maxLength / 2) {
+      splitAt = remaining.lastIndexOf('\n', maxLength);
+    }
+    if (splitAt < 1) {
+      splitAt = maxLength;
+    }
+
+    chunks.push(remaining.slice(0, splitAt).trimEnd());
+    remaining = remaining.slice(splitAt).trimStart();
+  }
+
+  if (remaining) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
+};
+
+const bytesToBase64 = (bytes: Uint8Array) => {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.slice(index, index + chunkSize));
+  }
+  return btoa(binary);
+};
+
+const loadI2gLogoAsset = async (): Promise<ExportLogoAsset | null> => {
+  if (typeof fetch === 'undefined') {
+    return null;
+  }
+
+  try {
+    const response = await fetch(I2G_LOGO_URL);
+    if (!response.ok) {
+      return null;
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const base64 = bytesToBase64(bytes);
+    return {
+      base64,
+      bytes,
+      dataUrl: `data:image/png;base64,${base64}`,
+      extension: 'png',
+    };
+  } catch {
+    return null;
+  }
+};
 
 const textEncoder = new TextEncoder();
 
@@ -94,14 +211,14 @@ const concatBytes = (parts: Uint8Array[]) => {
   return output;
 };
 
-const createStoredZip = (files: Array<{name: string; content: string}>) => {
+const createStoredZip = (files: Array<{name: string; content: string | Uint8Array}>) => {
   const localParts: Uint8Array[] = [];
   const centralParts: Uint8Array[] = [];
   let offset = 0;
 
   files.forEach((file) => {
     const nameBytes = textEncoder.encode(file.name);
-    const contentBytes = textEncoder.encode(file.content);
+    const contentBytes = typeof file.content === 'string' ? textEncoder.encode(file.content) : file.content;
     const crc = getCrc32(contentBytes);
 
     const localHeader = new Uint8Array(30 + nameBytes.length);
@@ -177,57 +294,61 @@ const escapeCsvCell = (value: string | number) => {
   return str;
 };
 
-export const exportProjectRowsCsv = async (rows: ProjectGridRow[], fileBaseName: string) => {
-  const lines = [EXPORT_COLUMNS.map(escapeCsvCell).join(',')];
+export const createProjectRowsCsvText = (rows: ProjectGridRow[], context: ProjectRowsExportContext = {}) => {
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  const lines: string[] = [];
+
+  lines.push(escapeCsvCell('Innovate to Grow Past Projects'));
+  lines.push([escapeCsvCell('I2G Logo'), escapeCsvCell(I2G_LOGO_URL)].join(','));
+  lines.push([escapeCsvCell('Title'), escapeCsvCell(exportContext.title)].join(','));
+  if (exportContext.note) {
+    lines.push([escapeCsvCell('Note'), escapeCsvCell(exportContext.note)].join(','));
+  }
+  lines.push('');
+
+  if (exportContext.detailsText) {
+    lines.push(escapeCsvCell('Past Projects Detail'));
+
+    for (const detailBlock of splitProjectDetailBlocks(exportContext.detailsText)) {
+      for (const detailLine of detailBlock.split(/\r\n|\r|\n/)) {
+        lines.push(escapeCsvCell(detailLine));
+      }
+      lines.push('');
+    }
+
+    lines.push('');
+  }
+
+  lines.push(escapeCsvCell('Projects'));
+  lines.push(EXPORT_COLUMNS.map(escapeCsvCell).join(','));
+
   for (const row of toExportRows(rows)) {
     lines.push(row.map(escapeCsvCell).join(','));
   }
+
+  return lines.join('\r\n');
+};
+
+export const exportProjectRowsCsv = async (
+  rows: ProjectGridRow[],
+  fileBaseName: string,
+  context: ProjectRowsExportContext = {},
+) => {
   // Prepend UTF-8 BOM so Excel opens the file with correct encoding.
-  const blob = new Blob(['\uFEFF', lines.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const blob = new Blob(['\uFEFF', createProjectRowsCsvText(rows, context)], {type: 'text/csv;charset=utf-8'});
   triggerDownload(blob, `${fileBaseName}.csv`);
 };
 
-export const exportProjectRowsExcel = async (rows: ProjectGridRow[], fileBaseName: string) => {
-  const ExcelJS = (await import('exceljs')).default;
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Projects');
-  worksheet.addRow(EXPORT_COLUMNS as unknown as string[]);
-  for (const row of toExportRows(rows)) {
-    worksheet.addRow(row);
-  }
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-  triggerDownload(blob, `${fileBaseName}.xlsx`);
-};
-
-export const exportSharedProjectRowsExcel = async (
+export const exportProjectRowsExcel = async (
   rows: ProjectGridRow[],
   fileBaseName: string,
-  context: SharedProjectExportContext,
+  context: ProjectRowsExportContext = {},
 ) => {
-  const ExcelJS = (await import('exceljs')).default;
+  const [ExcelJS, logo] = await Promise.all([import('exceljs').then((module) => module.default), loadI2gLogoAsset()]);
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Projects');
-  const sharedContext = normalizeSharedExportContext(context);
-
-  worksheet.addRow([sharedContext.title]);
-  worksheet.mergeCells(1, 1, 1, EXPORT_COLUMNS.length);
-  worksheet.getRow(1).font = {bold: true, size: 16};
-
-  worksheet.addRow(['Notes', sharedContext.note]);
-  worksheet.mergeCells(2, 2, 2, EXPORT_COLUMNS.length);
-  worksheet.getRow(2).font = {size: 11};
-  worksheet.getCell(2, 1).font = {bold: true};
-
-  worksheet.addRow([]);
-  const headerRow = worksheet.addRow(EXPORT_COLUMNS as unknown as string[]);
-  headerRow.font = {bold: true};
-
-  for (const row of toExportRows(rows)) {
-    worksheet.addRow(row);
-  }
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  const projectDetailsText = exportContext.detailsText;
 
   worksheet.columns = [
     {width: 16},
@@ -241,9 +362,121 @@ export const exportSharedProjectRowsExcel = async (
     {width: 42},
   ];
 
-  worksheet.eachRow((row) => {
-    row.alignment = {vertical: 'top', wrapText: true};
+  worksheet.addRow([]);
+  worksheet.addRow([]);
+  worksheet.addRow([]);
+  worksheet.getRow(1).height = 28;
+  worksheet.getRow(2).height = 22;
+  worksheet.getRow(3).height = 18;
+
+  for (let rowNumber = 1; rowNumber <= 3; rowNumber += 1) {
+    for (let columnNumber = 1; columnNumber <= EXPORT_COLUMNS.length; columnNumber += 1) {
+      const cell = worksheet.getCell(rowNumber, columnNumber);
+      cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: LIGHT_BLUE}};
+    }
+  }
+
+  if (logo) {
+    const imageId = workbook.addImage({base64: logo.dataUrl, extension: logo.extension});
+    worksheet.addImage(imageId, {
+      ext: {height: 58, width: 58},
+      tl: {col: 0.15, row: 0.1},
+    });
+  }
+
+  worksheet.mergeCells(1, 2, 1, EXPORT_COLUMNS.length);
+  worksheet.mergeCells(2, 2, 2, EXPORT_COLUMNS.length);
+  worksheet.mergeCells(3, 2, 3, EXPORT_COLUMNS.length);
+
+  worksheet.getCell(1, 2).value = exportContext.title;
+  worksheet.getCell(1, 2).font = {bold: true, color: {argb: BRAND_BLUE}, size: 18};
+  worksheet.getCell(1, 2).alignment = {vertical: 'bottom'};
+
+  worksheet.getCell(2, 2).value = 'Innovate to Grow Past Projects';
+  worksheet.getCell(2, 2).font = {bold: true, color: {argb: BRAND_BLUE}, size: 11};
+  worksheet.getCell(2, 2).alignment = {vertical: 'middle'};
+
+  worksheet.getCell(3, 2).value = `${rows.length} project${rows.length === 1 ? '' : 's'} exported`;
+  worksheet.getCell(3, 2).font = {color: {argb: '53657A'}, size: 10};
+  worksheet.getCell(3, 2).alignment = {vertical: 'top'};
+
+  worksheet.addRow([]);
+
+  const addSectionRow = (label: string) => {
+    const row = worksheet.addRow([label]);
+    worksheet.mergeCells(row.number, 1, row.number, EXPORT_COLUMNS.length);
+    row.height = 22;
+    row.eachCell({includeEmpty: true}, (cell) => {
+      cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: BRAND_BLUE}};
+      cell.font = {bold: true, color: {argb: 'FFFFFF'}, size: 11};
+      cell.alignment = {vertical: 'middle'};
+    });
+  };
+
+  const addMergedTextRow = (text: string, fill = 'FFFFFF') => {
+    const row = worksheet.addRow([text]);
+    worksheet.mergeCells(row.number, 1, row.number, EXPORT_COLUMNS.length);
+    const lineCount = text.split(/\r\n|\r|\n/).length;
+    row.height = Math.min(220, Math.max(34, lineCount * 15));
+    row.eachCell({includeEmpty: true}, (cell) => {
+      cell.alignment = {vertical: 'top', wrapText: true};
+      cell.border = {
+        bottom: {style: 'thin', color: {argb: BORDER_BLUE}},
+        left: {style: 'thin', color: {argb: BORDER_BLUE}},
+        right: {style: 'thin', color: {argb: BORDER_BLUE}},
+        top: {style: 'thin', color: {argb: BORDER_BLUE}},
+      };
+      cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: fill}};
+      cell.font = {color: {argb: '20364D'}, size: 11};
+    });
+  };
+
+  if (exportContext.note) {
+    addSectionRow('Note');
+    addMergedTextRow(exportContext.note);
+    worksheet.addRow([]);
+  }
+
+  if (projectDetailsText) {
+    addSectionRow('Past Projects Detail');
+
+    for (const detailBlock of splitProjectDetailBlocks(projectDetailsText).flatMap((block) => splitExcelText(block))) {
+      addMergedTextRow(detailBlock, TABLE_ALT_FILL);
+    }
+
+    worksheet.addRow([]);
+  }
+
+  addSectionRow('Projects');
+  const headerRow = worksheet.addRow(EXPORT_COLUMNS as unknown as string[]);
+  headerRow.font = {bold: true};
+  headerRow.eachCell((cell) => {
+    cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: LIGHT_BLUE}};
+    cell.font = {bold: true, color: {argb: BRAND_BLUE}};
+    cell.alignment = {vertical: 'middle', wrapText: true};
+    cell.border = {
+      bottom: {style: 'thin', color: {argb: BORDER_BLUE}},
+      top: {style: 'thin', color: {argb: BORDER_BLUE}},
+    };
   });
+
+  for (const [index, row] of toExportRows(rows).entries()) {
+    const dataRow = worksheet.addRow(row);
+    dataRow.eachCell({includeEmpty: true}, (cell) => {
+      cell.alignment = {vertical: 'top', wrapText: true};
+      cell.border = {
+        bottom: {style: 'thin', color: {argb: 'D7DDE7'}},
+      };
+      if (index % 2 === 1) {
+        cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: TABLE_ALT_FILL}};
+      }
+    });
+  }
+
+  worksheet.autoFilter = {
+    from: {column: 1, row: headerRow.number},
+    to: {column: EXPORT_COLUMNS.length, row: headerRow.number},
+  };
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -252,134 +485,142 @@ export const exportSharedProjectRowsExcel = async (
   triggerDownload(blob, `${fileBaseName}.xlsx`);
 };
 
-export const exportProjectRowsPdf = async (rows: ProjectGridRow[], fileBaseName: string, title: string) => {
-  const {jsPDF} = await import('jspdf');
-  const autoTable = (await import('jspdf-autotable')).default;
-
-  const document = new jsPDF({orientation: 'landscape'});
-
-  document.setFontSize(16);
-  document.text(title, 14, 16);
-
-  autoTable(document, {
-    head: [PROJECT_GRID_COLUMNS.map((column) => column.label)],
-    body: rows.map((row) => [
-      row.semester_label,
-      row.class_code,
-      row.team_number,
-      row.team_name,
-      row.project_title,
-      row.organization,
-      row.industry,
-    ]),
-    startY: 24,
-    styles: {
-      fontSize: 8,
-      cellPadding: 2,
-      overflow: 'linebreak',
-    },
-    headStyles: {
-      fillColor: [15, 45, 82],
-    },
-  });
-
-  document.save(`${fileBaseName}.pdf`);
-};
-
-export const exportSharedProjectRowsPdf = async (
+export const exportProjectRowsPdf = async (
   rows: ProjectGridRow[],
   fileBaseName: string,
-  context: SharedProjectExportContext,
+  context: ProjectRowsExportContext = {},
 ) => {
-  const {jsPDF} = await import('jspdf');
-  const autoTable = (await import('jspdf-autotable')).default;
-  const sharedContext = normalizeSharedExportContext(context);
+  const [{jsPDF}, autoTable, logo] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable').then((module) => module.default),
+    loadI2gLogoAsset(),
+  ]);
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  const projectDetailsText = exportContext.detailsText;
   const pdf = new jsPDF({orientation: 'landscape'});
   const margin = 14;
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const textWidth = pageWidth - margin * 2;
-  let cursorY = 16;
+  const headerBottomY = 32;
+  let cursorY = headerBottomY + 8;
+
+  const setBrandTextColor = () => pdf.setTextColor(BRAND_BLUE_RGB[0], BRAND_BLUE_RGB[1], BRAND_BLUE_RGB[2]);
+  const setBodyTextColor = () => pdf.setTextColor(32, 54, 77);
+
+  const drawPageHeader = () => {
+    const logoSize = 16;
+    const titleX = logo ? margin + logoSize + 7 : margin;
+    const titleWidth = textWidth - (logo ? logoSize + 7 : 0);
+
+    if (logo) {
+      pdf.addImage(logo.dataUrl, 'PNG', margin, 8, logoSize, logoSize);
+    }
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(14);
+    setBrandTextColor();
+    const titleLines = (pdf.splitTextToSize(exportContext.title, titleWidth) as string[]).slice(0, 2);
+    pdf.text(titleLines, titleX, 14);
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(83, 101, 122);
+    pdf.text('Innovate to Grow Past Projects', titleX, titleLines.length > 1 ? 25 : 21);
+
+    pdf.setDrawColor(189, 211, 234);
+    pdf.line(margin, headerBottomY, pageWidth - margin, headerBottomY);
+    setBodyTextColor();
+  };
 
   const addPageIfNeeded = (heightNeeded: number) => {
     if (cursorY + heightNeeded > pageHeight - margin) {
       pdf.addPage();
-      cursorY = margin;
+      drawPageHeader();
+      cursorY = headerBottomY + 8;
     }
   };
 
   const addWrappedText = (text: string, fontSize: number, lineHeight: number, isBold = false) => {
     pdf.setFontSize(fontSize);
     pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
-    const lines = pdf.splitTextToSize(text || ' ', textWidth) as string[];
-    addPageIfNeeded(lines.length * lineHeight);
-    pdf.text(lines, margin, cursorY);
-    cursorY += lines.length * lineHeight;
+    setBodyTextColor();
+    for (const paragraph of (text || ' ').split(/\r\n|\r|\n/)) {
+      if (!paragraph.trim()) {
+        addPageIfNeeded(lineHeight);
+        cursorY += lineHeight;
+        continue;
+      }
+
+      const lines = pdf.splitTextToSize(paragraph, textWidth) as string[];
+      for (const line of lines) {
+        addPageIfNeeded(lineHeight);
+        pdf.text(line || ' ', margin, cursorY);
+        cursorY += lineHeight;
+      }
+    }
   };
 
-  addWrappedText(sharedContext.title, 16, 7, true);
-  cursorY += 2;
-  addWrappedText(`Notes: ${sharedContext.note}`, 10, 5);
-  cursorY += 4;
+  const addSectionHeading = (label: string) => {
+    addPageIfNeeded(10);
+    pdf.setFillColor(BRAND_BLUE_RGB[0], BRAND_BLUE_RGB[1], BRAND_BLUE_RGB[2]);
+    pdf.rect(margin, cursorY - 2, textWidth, 8, 'F');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(label, margin + 3, cursorY + 3.5);
+    cursorY += 12;
+    setBodyTextColor();
+  };
+
+  drawPageHeader();
+
+  if (exportContext.note) {
+    addSectionHeading('Note');
+    addWrappedText(exportContext.note, 9, 4.7);
+    cursorY += 5;
+  }
+
+  if (projectDetailsText) {
+    addSectionHeading('Past Projects Detail');
+    addWrappedText(projectDetailsText, 9, 4.5);
+    cursorY += 5;
+  }
+
+  addSectionHeading('Projects');
 
   autoTable(pdf, {
     head: [PROJECT_GRID_COLUMNS.map((column) => column.label)],
-    body: rows.map((row) => [
-      row.semester_label,
-      row.class_code,
-      row.team_number,
-      row.team_name,
-      row.project_title,
-      row.organization,
-      row.industry,
-    ]),
+    body: createPdfProjectTableBody(rows),
     startY: cursorY,
+    margin: {left: margin, right: margin, top: headerBottomY + 8},
     styles: {
+      cellPadding: 2.4,
       fontSize: 8,
-      cellPadding: 2,
       overflow: 'linebreak',
+      textColor: [32, 54, 77],
+      valign: 'top',
+    },
+    alternateRowStyles: {
+      fillColor: [247, 250, 252],
     },
     headStyles: {
-      fillColor: [15, 45, 82],
+      fillColor: [...BRAND_BLUE_RGB],
+      fontStyle: 'bold',
     },
-  });
-
-  cursorY = ((pdf as {lastAutoTable?: {finalY?: number}}).lastAutoTable?.finalY ?? cursorY) + 10;
-  addWrappedText('Project Details', 14, 7, true);
-  cursorY += 2;
-
-  rows.forEach((row, index) => {
-    const heading = `${index + 1}. ${toDisplayValue(row.project_title) || 'Untitled Project'}`;
-    const metadata = [
-      row.semester_label,
-      row.class_code,
-      row.team_number,
-      row.team_name,
-      row.organization,
-      row.industry,
-    ]
-      .map(toDisplayValue)
-      .filter(Boolean)
-      .join(' | ');
-
-    addWrappedText(heading, 11, 5.5, true);
-    if (metadata) {
-      addWrappedText(metadata, 9, 4.5);
-    }
-    addWrappedText(`Abstract: ${toDisplayValue(row.abstract)}`, 9, 4.5);
-    addWrappedText(`Student Names: ${toDisplayValue(row.student_names)}`, 9, 4.5);
-    cursorY += 3;
+    didDrawPage: drawPageHeader,
   });
 
   pdf.save(`${fileBaseName}.pdf`);
 };
 
-export const exportSharedProjectRowsWord = async (
+export const exportProjectRowsWord = async (
   rows: ProjectGridRow[],
   fileBaseName: string,
-  context: SharedProjectExportContext,
+  context: ProjectRowsExportContext = {},
 ) => {
-  const blob = createSharedProjectRowsWordBlob(rows, context);
+  const logo = await loadI2gLogoAsset();
+  const blob = createProjectRowsWordBlob(rows, context, logo);
   triggerDownload(blob, `${fileBaseName}.docx`);
 };
 
@@ -396,8 +637,61 @@ const wordRun = (text: string, options: {bold?: boolean; color?: string; size?: 
   return `<w:r>${properties ? `<w:rPr>${properties}</w:rPr>` : ''}${textNodes}</w:r>`;
 };
 
-const wordParagraph = (text: string, options: {bold?: boolean; color?: string; size?: number; spacingAfter?: number} = {}) =>
-  `<w:p><w:pPr><w:spacing w:after="${options.spacingAfter ?? 120}"/></w:pPr>${wordRun(text, options)}</w:p>`;
+const wordParagraph = (
+  text: string,
+  options: {
+    alignment?: 'center' | 'left';
+    bold?: boolean;
+    color?: string;
+    shading?: string;
+    size?: number;
+    spacingAfter?: number;
+  } = {},
+) =>
+  `<w:p><w:pPr><w:spacing w:after="${options.spacingAfter ?? 120}"/>${
+    options.alignment ? `<w:jc w:val="${options.alignment}"/>` : ''
+  }${options.shading ? `<w:shd w:fill="${options.shading}"/>` : ''}</w:pPr>${wordRun(text, options)}</w:p>`;
+
+const wordSectionHeading = (text: string) =>
+  wordParagraph(text, {bold: true, color: 'FFFFFF', shading: BRAND_BLUE, size: 22, spacingAfter: 80});
+
+const wordLogoParagraph = (relationshipId: string) => {
+  const size = 685800;
+  return `<w:p>
+    <w:pPr><w:jc w:val="center"/><w:spacing w:after="120"/></w:pPr>
+    <w:r>
+      <w:drawing>
+        <wp:inline distT="0" distB="0" distL="0" distR="0">
+          <wp:extent cx="${size}" cy="${size}"/>
+          <wp:effectExtent l="0" t="0" r="0" b="0"/>
+          <wp:docPr id="1" name="I2G Logo"/>
+          <wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>
+          <a:graphic>
+            <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+              <pic:pic>
+                <pic:nvPicPr>
+                  <pic:cNvPr id="0" name="i2glogo.png"/>
+                  <pic:cNvPicPr/>
+                </pic:nvPicPr>
+                <pic:blipFill>
+                  <a:blip r:embed="${relationshipId}"/>
+                  <a:stretch><a:fillRect/></a:stretch>
+                </pic:blipFill>
+                <pic:spPr>
+                  <a:xfrm>
+                    <a:off x="0" y="0"/>
+                    <a:ext cx="${size}" cy="${size}"/>
+                  </a:xfrm>
+                  <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                </pic:spPr>
+              </pic:pic>
+            </a:graphicData>
+          </a:graphic>
+        </wp:inline>
+      </w:drawing>
+    </w:r>
+  </w:p>`;
+};
 
 const wordTableCell = (text: string, options: {header?: boolean; width?: number} = {}) =>
   `<w:tc><w:tcPr>${options.width ? `<w:tcW w:w="${options.width}" w:type="pct"/>` : ''}${
@@ -408,11 +702,14 @@ const wordTableCell = (text: string, options: {header?: boolean; width?: number}
     size: options.header ? 18 : 17,
   })}</w:p></w:tc>`;
 
-export const createSharedProjectRowsWordBlob = (
+export const createProjectRowsWordBlob = (
   rows: ProjectGridRow[],
-  context: SharedProjectExportContext,
+  context: ProjectRowsExportContext = {},
+  logo: ExportLogoAsset | null = null,
 ) => {
-  const sharedContext = normalizeSharedExportContext(context);
+  const exportContext = normalizeProjectRowsExportContext(rows, context);
+  const projectDetailsText = exportContext.detailsText;
+  const projectDetailBlocks = splitProjectDetailBlocks(projectDetailsText);
   const columnWidth = Math.floor(5000 / EXPORT_COLUMNS.length);
   const tableRows = [
     `<w:tr>${EXPORT_COLUMNS.map((column) => wordTableCell(column, {header: true, width: columnWidth})).join('')}</w:tr>`,
@@ -422,42 +719,24 @@ export const createSharedProjectRowsWordBlob = (
     ),
   ].join('');
 
-  const details = rows
-    .map((row, index) =>
-      [
-        wordParagraph(`${index + 1}. ${toDisplayValue(row.project_title) || 'Untitled Project'}`, {
-          bold: true,
-          color: '0F2D52',
-          size: 22,
-          spacingAfter: 80,
-        }),
-        wordParagraph(
-          [
-            row.semester_label,
-            row.class_code,
-            row.team_number,
-            row.team_name,
-            row.organization,
-            row.industry,
-          ]
-            .map(toDisplayValue)
-            .filter(Boolean)
-            .join(' | '),
-          {size: 18, spacingAfter: 80},
-        ),
-        wordParagraph(`Abstract: ${toDisplayValue(row.abstract)}`, {size: 18, spacingAfter: 80}),
-        wordParagraph(`Student Names: ${toDisplayValue(row.student_names)}`, {size: 18, spacingAfter: 160}),
-      ].join(''),
-    )
-    .join('');
-
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
   <w:body>
-    ${wordParagraph(sharedContext.title, {bold: true, color: '0F2D52', size: 32, spacingAfter: 160})}
-    ${wordParagraph('Notes', {bold: true, color: '0F2D52', size: 20, spacingAfter: 40})}
-    ${wordParagraph(sharedContext.note, {size: 20, spacingAfter: 180})}
-    ${wordParagraph('Projects', {bold: true, color: '0F2D52', size: 24, spacingAfter: 100})}
+    ${logo ? wordLogoParagraph('rIdLogo') : ''}
+    ${wordParagraph(exportContext.title, {alignment: 'center', bold: true, color: BRAND_BLUE, size: 32, spacingAfter: 80})}
+    ${wordParagraph('Innovate to Grow Past Projects', {
+      alignment: 'center',
+      bold: true,
+      color: '53657A',
+      size: 20,
+      spacingAfter: 220,
+    })}
+    ${exportContext.note ? `${wordSectionHeading('Note')}${wordParagraph(exportContext.note, {size: 20, spacingAfter: 180})}` : ''}
+    ${wordSectionHeading('Past Projects Detail')}
+    ${projectDetailBlocks
+      .map((block) => wordParagraph(block, {shading: TABLE_ALT_FILL, size: 18, spacingAfter: 140}))
+      .join('')}
+    ${wordSectionHeading('Projects')}
     <w:tbl>
       <w:tblPr>
         <w:tblW w:w="5000" w:type="pct"/>
@@ -472,8 +751,6 @@ export const createSharedProjectRowsWordBlob = (
       </w:tblPr>
       ${tableRows}
     </w:tbl>
-    ${wordParagraph('Project Details', {bold: true, color: '0F2D52', size: 24, spacingAfter: 100})}
-    ${details}
     <w:sectPr>
       <w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>
       <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/>
@@ -488,6 +765,7 @@ export const createSharedProjectRowsWordBlob = (
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  ${logo ? '<Default Extension="png" ContentType="image/png"/>' : ''}
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
@@ -513,7 +791,7 @@ export const createSharedProjectRowsWordBlob = (
       name: 'docProps/core.xml',
       content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>${escapeXml(sharedContext.title)}</dc:title>
+  <dc:title>${escapeXml(exportContext.title)}</dc:title>
   <dc:creator>Innovate to Grow Website</dc:creator>
 </cp:coreProperties>`,
     },
@@ -521,6 +799,21 @@ export const createSharedProjectRowsWordBlob = (
       name: 'word/document.xml',
       content: documentXml,
     },
+    ...(logo
+      ? [
+          {
+            name: 'word/_rels/document.xml.rels',
+            content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/i2g-logo.png"/>
+</Relationships>`,
+          },
+          {
+            name: 'word/media/i2g-logo.png',
+            content: logo.bytes,
+          },
+        ]
+      : []),
   ]);
 
   return new Blob([packageBytes], {

@@ -1,4 +1,4 @@
-@import "./visual-editor-parts/base.css";
-@import "./visual-editor-parts/sections.css";
-@import "./visual-editor-parts/preview.css";
-@import "./visual-editor-parts/variants.css";
+@import "./visual-editor-parts/base.css?v=2";
+@import "./visual-editor-parts/sections.css?v=2";
+@import "./visual-editor-parts/preview.css?v=2";
+@import "./visual-editor-parts/variants.css?v=2";

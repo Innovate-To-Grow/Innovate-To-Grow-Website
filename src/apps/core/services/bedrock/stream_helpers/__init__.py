@@ -5,6 +5,20 @@ from apps.core.services.db_tools import execute_tool
 
 logger = logging.getLogger(__name__)
 
+_USAGE_KEYS = ("inputTokens", "outputTokens", "totalTokens")
+_OPTIONAL_USAGE_KEYS = ("cacheReadInputTokens", "cacheWriteInputTokens")
+
+
+def _usage_from_metadata(data):
+    if not isinstance(data, dict):
+        data = {}
+    usage = {key: data.get(key, 0) for key in _USAGE_KEYS}
+    for key in _OPTIONAL_USAGE_KEYS:
+        value = data.get(key)
+        if value:
+            usage[key] = value
+    return usage
+
 
 def process_stream_response(response):
     content_blocks = []
@@ -30,12 +44,7 @@ def process_stream_response(response):
         elif "messageStop" in event:
             stop_reason = event["messageStop"].get("stopReason", "end_turn")
         elif "metadata" in event:
-            data = event["metadata"].get("usage", {})
-            usage = {
-                "inputTokens": data.get("inputTokens", 0),
-                "outputTokens": data.get("outputTokens", 0),
-                "totalTokens": data.get("totalTokens", 0),
-            }
+            usage = _usage_from_metadata(event["metadata"].get("usage", {}))
     return {"content_blocks": content_blocks, "stop_reason": stop_reason, "usage": usage}
 
 

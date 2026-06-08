@@ -18,8 +18,10 @@ class AdminThemeRenderingTests(TestCase):
         if re.search(persisted_state, html):
             return
 
+        self.assertIn('x-data="theme(', html)
+        self.assertIn("admin/js/i2g-admin-theme-runtime.js", html)
         self.assertIn("adminTheme", html)
-        self.assertIn("adminTheme = 'auto'", html)
+        self.assertIn('data-admin-theme-choice="auto"', html)
 
     def setUp(self):
         self.admin_user = make_superuser()
@@ -48,6 +50,7 @@ class AdminThemeRenderingTests(TestCase):
         self.assertContains(response, "light_mode")
         self.assertContains(response, "dark_mode")
         self.assertContains(response, "computer")
+        self.assertContains(response, 'data-admin-theme-choice="dark"')
 
     def test_login_page_exposes_unfold_theme_options(self):
         self.client.logout()
@@ -74,6 +77,37 @@ class AdminThemeRenderingTests(TestCase):
         source = Path(path).read_text()
         self.assertIn(".i2g-admin-theme-toggle__button", source)
         self.assertIn(".i2g-admin-theme-toggle__option.is-active", source)
+
+    def test_admin_theme_runtime_loaded_before_unfold_app(self):
+        authenticated_response = self.client.get(reverse("admin:index"))
+        self.client.logout()
+        login_response = self.client.get("/admin/login/?mode=password")
+
+        for response in (authenticated_response, login_response):
+            with self.subTest(path=response.wsgi_request.path):
+                html = response.content.decode()
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("/static/admin/js/i2g-admin-theme-runtime.js", html)
+                self.assertIn("/static/unfold/js/app.js", html)
+                self.assertLess(
+                    html.index("/static/admin/js/i2g-admin-theme-runtime.js"),
+                    html.index("/static/unfold/js/app.js"),
+                )
+
+    def test_admin_theme_runtime_static_asset_defines_contract(self):
+        path = finders.find("admin/js/i2g-admin-theme-runtime.js")
+        self.assertIsNotNone(path)
+        source = Path(path).read_text()
+
+        self.assertIn("window.theme", source)
+        self.assertIn("window.adminTheme", source)
+        self.assertIn("window.switchTheme", source)
+        self.assertIn("window.themeBindings", source)
+        self.assertIn("data-admin-theme-choice", source)
+        self.assertIn('document.addEventListener("pointerdown"', source)
+        self.assertIn("openTheme", source)
+        self.assertIn("prefers-color-scheme: dark", source)
 
     def test_configured_unfold_styles_are_resolvable_static_assets(self):
         for style_factory in settings.UNFOLD["STYLES"]:

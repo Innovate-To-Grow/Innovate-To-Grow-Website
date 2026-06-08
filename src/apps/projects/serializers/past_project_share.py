@@ -37,12 +37,13 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True, allow_blank=False, max_length=200)
     rows = PastProjectShareRowSerializer(many=True)
     note = serializers.CharField(required=False, allow_blank=True, max_length=2000, default="")
+    details_text = serializers.CharField(required=False, allow_blank=True, default="")
     share_url = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
 
     class Meta:
         model = PastProjectShare
-        fields = ["id", "name", "rows", "note", "share_url", "can_edit", "created_at"]
+        fields = ["id", "name", "rows", "note", "details_text", "share_url", "can_edit", "created_at"]
         read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
     # name uses DRF CharField defaults (allow_blank=False + trim_whitespace=True), so
@@ -73,6 +74,7 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
             name=validated_data["name"],
             rows=validated_data["rows"],
             note=validated_data.get("note", ""),
+            details_text=validated_data.get("details_text", ""),
             created_by=created_by,
         )
 

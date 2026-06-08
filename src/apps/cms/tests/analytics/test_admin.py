@@ -141,6 +141,17 @@ class PageViewAdminChangelistTests(TestCase):
 
         self.assertEqual(response.context["total_views"], 999)
 
+    def test_changelist_dashboard_uses_theme_aware_assets(self):
+        response = self.client.get(reverse("admin:cms_pageview_changelist"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "cms/css/pageview-dashboard.css?v=20260608-theme")
+        self.assertContains(response, "cms-pageview-dashboard")
+        self.assertContains(response, "window.i2gPageViewTheme")
+        self.assertContains(response, "theme.register(chart, applyTheme)")
+        self.assertNotContains(response, "rgba(255,255,255,0.6)")
+        self.assertNotContains(response, "rgba(0,0,0,0.5)")
+
 
 class ComputeDashboardStatsTests(TestCase):
     def setUp(self):

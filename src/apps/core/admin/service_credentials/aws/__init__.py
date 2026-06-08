@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import admin, messages
+from django.core.cache import cache
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -19,6 +20,11 @@ class AWSCredentialConfigForm(forms.ModelForm):
         widgets = {
             "secret_access_key": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
         }
+
+
+def _clear_usage_dashboard_cache():
+    cache.delete("assistant:usage:cloudwatch")
+    cache.delete("assistant:usage:local")
 
 
 @admin.register(AWSCredentialConfig)
@@ -84,8 +90,13 @@ class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
         obj = AWSCredentialConfig.objects.get(pk=object_id)
         obj.is_active = True
         obj.save()
+        _clear_usage_dashboard_cache()
         messages.success(request, f'"{obj.name}" is now the active AWS credential config.')
         return HttpResponseRedirect(reverse("admin:core_awscredentialconfig_change", args=[object_id]))
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        _clear_usage_dashboard_cache()
 
     @action(description="Test Bedrock API", url_path="test-bedrock", icon="science")
     def test_bedrock_api(self, request, object_id):

@@ -1,40 +1,131 @@
 {% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'cms/css/pageview-dashboard.css' %}?v=20260608-theme">
+{% endblock %}
 
 {% block content %}
-    <div class="mb-6">
+    <div class="cms-pageview-dashboard mb-6">
         <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary-600" style="font-size:28px">visibility</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Total Views</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ total_views|default:"0" }}</p></div></div></div>
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-green-600" style="font-size:28px">today</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Today</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ today_views|default:"0" }}</p></div></div></div>
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-blue-600" style="font-size:28px">description</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Unique Pages</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ unique_paths|default:"0" }}</p></div></div></div>
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-orange-600" style="font-size:28px">group</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Unique Visitors</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ unique_visitors|default:"0" }}</p></div></div></div>
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-purple-600" style="font-size:28px">date_range</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">This Week</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ week_views|default:"0" }}</p></div></div></div>
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-teal-600" style="font-size:28px">speed</span><div><p class="text-xs text-font-subtle-light dark:text-font-subtle-dark uppercase tracking-wide">Avg Daily</p><p class="text-2xl font-bold text-font-default-light dark:text-font-default-dark">{{ avg_daily_views|default:"0" }}</p></div></div></div>
+            <div class="cms-pageview-stat-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="cms-pageview-stat-icon material-symbols-outlined text-primary-600" style="font-size:28px">visibility</span><div><p class="cms-pageview-muted text-xs uppercase tracking-wide">Total Views</p><p class="cms-pageview-value text-2xl font-bold">{{ total_views|default:"0" }}</p></div></div></div>
+            <div class="cms-pageview-stat-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="cms-pageview-stat-icon cms-pageview-stat-icon--success material-symbols-outlined text-green-600" style="font-size:28px">today</span><div><p class="cms-pageview-muted text-xs uppercase tracking-wide">Today</p><p class="cms-pageview-value text-2xl font-bold">{{ today_views|default:"0" }}</p></div></div></div>
+            <div class="cms-pageview-stat-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="cms-pageview-stat-icon cms-pageview-stat-icon--info material-symbols-outlined text-blue-600" style="font-size:28px">description</span><div><p class="cms-pageview-muted text-xs uppercase tracking-wide">Unique Pages</p><p class="cms-pageview-value text-2xl font-bold">{{ unique_paths|default:"0" }}</p></div></div></div>
+            <div class="cms-pageview-stat-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="cms-pageview-stat-icon cms-pageview-stat-icon--warning material-symbols-outlined text-orange-600" style="font-size:28px">group</span><div><p class="cms-pageview-muted text-xs uppercase tracking-wide">Unique Visitors</p><p class="cms-pageview-value text-2xl font-bold">{{ unique_visitors|default:"0" }}</p></div></div></div>
+            <div class="cms-pageview-stat-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="cms-pageview-stat-icon cms-pageview-stat-icon--accent material-symbols-outlined text-purple-600" style="font-size:28px">date_range</span><div><p class="cms-pageview-muted text-xs uppercase tracking-wide">This Week</p><p class="cms-pageview-value text-2xl font-bold">{{ week_views|default:"0" }}</p></div></div></div>
+            <div class="cms-pageview-stat-card rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4"><div class="flex items-center gap-3"><span class="cms-pageview-stat-icon cms-pageview-stat-icon--teal material-symbols-outlined text-teal-600" style="font-size:28px">speed</span><div><p class="cms-pageview-muted text-xs uppercase tracking-wide">Avg Daily</p><p class="cms-pageview-value text-2xl font-bold">{{ avg_daily_views|default:"0" }}</p></div></div></div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
+        <script>
+            (function () {
+                if (window.i2gPageViewTheme) return;
+
+                function cssVar(name, fallback) {
+                    var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+                    return value || fallback;
+                }
+
+                function toRgb(color) {
+                    var normalized = String(color || "").trim();
+                    var hex = normalized.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+
+                    if (hex) {
+                        var value = hex[1];
+                        if (value.length === 3) {
+                            value = value.split("").map(function (part) { return part + part; }).join("");
+                        }
+                        return {
+                            r: parseInt(value.slice(0, 2), 16),
+                            g: parseInt(value.slice(2, 4), 16),
+                            b: parseInt(value.slice(4, 6), 16),
+                        };
+                    }
+
+                    var rgb = normalized.match(/rgba?\(([^)]+)\)/i);
+                    if (rgb) {
+                        var parts = rgb[1].split(",").map(function (part) { return Number(part.trim()); });
+                        return { r: parts[0], g: parts[1], b: parts[2] };
+                    }
+
+                    return null;
+                }
+
+                function withAlpha(color, alpha) {
+                    var rgb = toRgb(color);
+                    if (!rgb) return color;
+                    return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + alpha + ")";
+                }
+
+                function palette() {
+                    var isDark = document.documentElement.classList.contains("dark");
+                    var onSurface = cssVar("--md-sys-color-on-surface", isDark ? "#e8eaed" : "#202124");
+                    var onSurfaceVariant = cssVar("--md-sys-color-on-surface-variant", isDark ? "#c4c7c5" : "#5f6368");
+                    var outlineVariant = cssVar("--md-sys-color-outline-variant", isDark ? "#444746" : "#c4c7ca");
+                    var surfaceContainer = cssVar("--md-sys-color-surface-container", isDark ? "#202124" : "#f6f3f3");
+                    var primary = cssVar("--md-sys-color-primary", isDark ? "#a8c7fa" : "#305f9d");
+
+                    return {
+                        isDark: isDark,
+                        textColor: onSurfaceVariant,
+                        titleColor: onSurface,
+                        gridColor: withAlpha(outlineVariant, isDark ? 0.72 : 0.5),
+                        tooltipBg: surfaceContainer,
+                        primaryBar: withAlpha(primary, isDark ? 0.72 : 0.78),
+                        tealBar: withAlpha(isDark ? "#2dd4bf" : "#0f766e", isDark ? 0.66 : 0.76),
+                        orangeLine: withAlpha(isDark ? "#fb923c" : "#c2410c", isDark ? 0.92 : 0.84),
+                    };
+                }
+
+                var subscribers = [];
+
+                function refresh() {
+                    var colors = palette();
+                    subscribers.forEach(function (subscriber) {
+                        subscriber.apply(subscriber.chart, colors);
+                        subscriber.chart.update("none");
+                    });
+                }
+
+                window.i2gPageViewTheme = {
+                    palette: palette,
+                    register: function (chart, apply) {
+                        subscribers.push({ chart: chart, apply: apply });
+                        apply(chart, palette());
+                        chart.update("none");
+                    },
+                };
+
+                new MutationObserver(refresh).observe(document.documentElement, {
+                    attributes: true,
+                    attributeFilter: ["class"],
+                });
+            })();
+        </script>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-                <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">bar_chart</span>Last 7 Days</h3>
+            <div class="cms-pageview-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+                <h3 class="cms-pageview-heading text-sm font-semibold mb-3"><span class="cms-pageview-heading-icon material-symbols-outlined align-middle" style="font-size:18px">bar_chart</span>Last 7 Days</h3>
                 <div style="position:relative; height:240px;"><canvas id="last7DaysChart"></canvas></div>
             </div>
             {% include "admin/cms/pageview/includes/last7_chart_script.html" %}
 
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-                <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">schedule</span>Today's Hourly Views</h3>
+            <div class="cms-pageview-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+                <h3 class="cms-pageview-heading text-sm font-semibold mb-3"><span class="cms-pageview-heading-icon material-symbols-outlined align-middle" style="font-size:18px">schedule</span>Today's Hourly Views</h3>
                 <div style="position:relative; height:240px;"><canvas id="hourlyChart"></canvas></div>
             </div>
             {% include "admin/cms/pageview/includes/hourly_chart_script.html" %}
 
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-                <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">trending_up</span>Top Pages</h3>
-                <div class="space-y-1">{% for page in top_pages %}<div class="flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-100 dark:border-base-800{% endif %}"><span class="text-sm text-font-default-light dark:text-font-default-dark truncate mr-2" title="{{ page.path }}">{{ page.path }}</span><span class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark shrink-0">{{ page.view_count }}</span></div>{% empty %}<p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No page views recorded yet.</p>{% endfor %}</div>
+            <div class="cms-pageview-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+                <h3 class="cms-pageview-heading text-sm font-semibold mb-3"><span class="cms-pageview-heading-icon material-symbols-outlined align-middle" style="font-size:18px">trending_up</span>Top Pages</h3>
+                <div class="space-y-1">{% for page in top_pages %}<div class="cms-pageview-row flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-100 dark:border-base-800{% endif %}"><span class="cms-pageview-text text-sm truncate mr-2" title="{{ page.path }}">{{ page.path }}</span><span class="cms-pageview-muted text-sm font-medium shrink-0">{{ page.view_count }}</span></div>{% empty %}<p class="cms-pageview-muted text-sm">No page views recorded yet.</p>{% endfor %}</div>
             </div>
 
-            <div class="rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-                <h3 class="text-sm font-semibold text-font-default-light dark:text-font-default-dark mb-3"><span class="material-symbols-outlined align-middle mr-1" style="font-size:18px">link</span>Top Referrers</h3>
-                <div class="space-y-1">{% for ref in top_referrers %}<div class="flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-100 dark:border-base-800{% endif %}"><span class="text-sm text-font-default-light dark:text-font-default-dark truncate mr-2" title="{{ ref.referrer }}">{{ ref.referrer }}</span><span class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark shrink-0">{{ ref.ref_count }}</span></div>{% empty %}<p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No referrers recorded yet.</p>{% endfor %}</div>
+            <div class="cms-pageview-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
+                <h3 class="cms-pageview-heading text-sm font-semibold mb-3"><span class="cms-pageview-heading-icon material-symbols-outlined align-middle" style="font-size:18px">link</span>Top Referrers</h3>
+                <div class="space-y-1">{% for ref in top_referrers %}<div class="cms-pageview-row flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-100 dark:border-base-800{% endif %}"><span class="cms-pageview-text text-sm truncate mr-2" title="{{ ref.referrer }}">{{ ref.referrer }}</span><span class="cms-pageview-muted text-sm font-medium shrink-0">{{ ref.ref_count }}</span></div>{% empty %}<p class="cms-pageview-muted text-sm">No referrers recorded yet.</p>{% endfor %}</div>
             </div>
         </div>
     </div>

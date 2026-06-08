@@ -80,6 +80,7 @@ export interface PastProjectShare {
   name: string;
   rows: ProjectGridRow[];
   note: string;
+  details_text: string;
   share_url: string;
   can_edit: boolean;
   created_at: string;
@@ -174,8 +175,14 @@ export const createPastProjectShare = async (
   rows: ProjectGridRow[],
   name: string,
   note: string,
+  detailsText: string,
 ): Promise<PastProjectShare> => {
-  const response = await authApi.post<PastProjectShare>('/projects/past-shares/', {rows, name, note});
+  const response = await authApi.post<PastProjectShare>('/projects/past-shares/', {
+    rows,
+    name,
+    note,
+    details_text: detailsText,
+  });
   return response.data;
 };
 
@@ -198,7 +205,7 @@ export const fetchPastProjectShare = async (id: string): Promise<PastProjectShar
 
 export const updatePastProjectShare = async (
   id: string,
-  payload: Pick<PastProjectShare, 'name' | 'rows' | 'note'>,
+  payload: Pick<PastProjectShare, 'name' | 'rows' | 'note' | 'details_text'>,
 ): Promise<PastProjectShare> => {
   const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
   return response.data;

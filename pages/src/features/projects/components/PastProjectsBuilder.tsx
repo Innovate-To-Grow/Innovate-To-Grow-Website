@@ -34,8 +34,12 @@ interface PastProjectsBuilderProps {
   error: string | null;
   loading: boolean;
   rows: ProjectGridRow[];
-  onCreateShare: (rows: ProjectGridRow[], name: string, note: string) => Promise<PastProjectShareCreationResult>;
-  onUpdateCreatedShare?: (shareId: string, rows: ProjectGridRow[], name: string, note: string) => Promise<void>;
+  onCreateShare: (
+    rows: ProjectGridRow[],
+    name: string,
+    note: string,
+    detailsText: string,
+  ) => Promise<PastProjectShareCreationResult>;
 }
 
 interface SearchTableState {
@@ -54,7 +58,6 @@ export const PastProjectsBuilder = ({
   loading,
   rows,
   onCreateShare,
-  onUpdateCreatedShare,
 }: PastProjectsBuilderProps) => {
   const {isAuthenticated} = useAuth();
   const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
@@ -262,7 +265,6 @@ export const PastProjectsBuilder = ({
         <MergedResultsTable
           rows={mergedRows}
           onCreateShare={onCreateShare}
-          onUpdateCreatedShare={onUpdateCreatedShare}
           onDeleteRow={handleDeleteMergedRow}
         />
       ) : null}
@@ -344,7 +346,7 @@ export const PastProjectsBuilder = ({
                 }
                 initialRows={table.initialRows ?? rows}
                 controlsStatus={
-                  table.message && table.messageTone ? (
+                  table.message && table.messageTone && table.messageTone !== 'loading' ? (
                     <PastProjectsAIStatus message={table.message} tone={table.messageTone} />
                   ) : undefined
                 }
