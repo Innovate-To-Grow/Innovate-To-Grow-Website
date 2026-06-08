@@ -44,5 +44,12 @@ export default defineConfig({
     {name: 'iphone14', use: {...devices['iPhone 14']}, grep: /@core|@mobile-only/},
     {name: 'iphone-se', use: {...devices['iPhone SE']}, grep: /@core|@mobile-only/},
     {name: 'ipad', use: {...devices['iPad (gen 7)']}, grep: /@core|@mobile-only/},
+    // Android tablet (Chromium) — complements the WebKit-only `ipad` so tablet
+    // layout is covered on both engines.
+    {name: 'galaxy-tab-s4', use: {...devices['Galaxy Tab S4']}, grep: /@core|@mobile-only/},
+    // Landscape coverage on both engines; every device above is portrait, so the
+    // header/drawer responsive behavior was never exercised rotated.
+    {name: 'pixel7-landscape', use: {...devices['Pixel 7 landscape']}, grep: /@core|@mobile-only/},
+    {name: 'iphone14-landscape', use: {...devices['iPhone 14 landscape']}, grep: /@core|@mobile-only/},
   ],
 });

@@ -13,7 +13,19 @@ from pathlib import Path
 from typing import Iterable
 
 
-FULL_PROJECTS = ["chromium", "firefox", "webkit", "pixel7", "iphone14", "iphone-se", "ipad"]
+FULL_PROJECTS = [
+    "chromium",
+    "firefox",
+    "webkit",
+    "pixel7",
+    "iphone14",
+    "iphone-se",
+    "ipad",
+    # Android tablet + landscape variants — keep in sync with pages/playwright.config.ts.
+    "galaxy-tab-s4",
+    "pixel7-landscape",
+    "iphone14-landscape",
+]
 PR_DEFAULT_PROJECTS = ["chromium"]
 
 AUTH_SPECS = [
