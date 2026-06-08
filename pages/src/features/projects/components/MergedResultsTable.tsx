@@ -5,9 +5,7 @@ import {
   exportProjectRowsCsv,
   exportProjectRowsExcel,
   exportProjectRowsPdf,
-  exportSharedProjectRowsExcel,
-  exportSharedProjectRowsPdf,
-  exportSharedProjectRowsWord,
+  exportProjectRowsWord,
 } from './projectGridExport';
 import {useProjectGridTable} from './useProjectGridTable';
 import {
@@ -104,6 +102,113 @@ function ClearFormattingIcon() {
   );
 }
 
+const RICH_DETAIL_FORMATTING_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'mark', 'span', 'font']);
+const RICH_DETAIL_HIGHLIGHT_TAGS = new Set(['mark']);
+const RICH_DETAIL_HIGHLIGHT_COLOR = '#fff3a3';
+
+const appendPlainFormattingNode = (target: DocumentFragment, node: Node) => {
+  if (node.nodeType === Node.TEXT_NODE) {
+    target.appendChild(document.createTextNode(node.textContent ?? ''));
+    return;
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return;
+  }
+
+  const element = node as HTMLElement;
+  const tagName = element.tagName.toLowerCase();
+
+  if (tagName === 'br') {
+    target.appendChild(document.createElement('br'));
+    return;
+  }
+
+  Array.from(element.childNodes).forEach((child) => appendPlainFormattingNode(target, child));
+
+  if (tagName === 'div' || tagName === 'p') {
+    target.appendChild(document.createElement('br'));
+  }
+};
+
+const createPlainFormattingFragment = (source: DocumentFragment) => {
+  const plainFragment = document.createDocumentFragment();
+  Array.from(source.childNodes).forEach((node) => appendPlainFormattingNode(plainFragment, node));
+  return plainFragment;
+};
+
+const unwrapElement = (element: Element) => {
+  const parent = element.parentNode;
+  if (!parent) {
+    return;
+  }
+
+  while (element.firstChild) {
+    parent.insertBefore(element.firstChild, element);
+  }
+  parent.removeChild(element);
+};
+
+const unwrapMatchingElements = (root: ParentNode, tags: Set<string>) => {
+  const selector = Array.from(tags).join(',');
+  root.querySelectorAll(selector).forEach(unwrapElement);
+};
+
+const clearInsertedFormattingAncestors = (
+  node: Node,
+  editor: HTMLElement,
+  formattingTags = RICH_DETAIL_FORMATTING_TAGS,
+) => {
+  let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
+
+  while (current && current !== editor) {
+    const parent = current.parentNode;
+    if (current.nodeType === Node.ELEMENT_NODE) {
+      const element = current as Element;
+      if (formattingTags.has(element.tagName.toLowerCase())) {
+        unwrapElement(element);
+      }
+    }
+    current = parent;
+  }
+};
+
+const nodeHasHighlight = (node: Node, editor: HTMLElement) => {
+  let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
+
+  while (current && current !== editor) {
+    if (current.nodeType === Node.ELEMENT_NODE && (current as Element).tagName.toLowerCase() === 'mark') {
+      return true;
+    }
+    current = current.parentNode;
+  }
+
+  return false;
+};
+
+const rangeContainsHighlight = (range: Range, editor: HTMLElement) => {
+  if (range.cloneContents().querySelector('mark')) {
+    return true;
+  }
+
+  return nodeHasHighlight(range.startContainer, editor) || nodeHasHighlight(range.endContainer, editor);
+};
+
+const getEditorSelectionRange = (editor: HTMLElement) => {
+  const selection = window.getSelection();
+  if (!selection || !selection.rangeCount || !selection.anchorNode || !selection.focusNode) {
+    return null;
+  }
+
+  const ownsNode = (node: Node) => node === editor || editor.contains(node);
+  if (!ownsNode(selection.anchorNode) || !ownsNode(selection.focusNode)) {
+    return null;
+  }
+
+  const range = selection.getRangeAt(0);
+  return range.collapsed ? null : range;
+};
+
 interface RichTextDetailEditorProps {
   id: string;
   label: string;
@@ -166,6 +271,76 @@ function RichTextDetailEditor({
     emitChange();
   };
 
+  const clearFormatting = () => {
+    if (readOnly || !editorRef.current) {
+      return;
+    }
+
+    const editor = editorRef.current;
+    const range = getEditorSelectionRange(editor);
+    if (!range) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    const plainFragment = createPlainFormattingFragment(range.extractContents());
+    const insertedNodes = Array.from(plainFragment.childNodes);
+    const lastInsertedNode = insertedNodes.at(-1) ?? null;
+    range.insertNode(plainFragment);
+    insertedNodes.forEach((node) => clearInsertedFormattingAncestors(node, editor));
+
+    if (lastInsertedNode && selection) {
+      const nextRange = document.createRange();
+      nextRange.setStartAfter(lastInsertedNode);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+    }
+
+    editor.focus();
+    emitChange();
+  };
+
+  const removeHighlight = (range: Range, editor: HTMLElement) => {
+    const selection = window.getSelection();
+    const fragment = range.extractContents();
+    unwrapMatchingElements(fragment, RICH_DETAIL_HIGHLIGHT_TAGS);
+    const insertedNodes = Array.from(fragment.childNodes);
+    const lastInsertedNode = insertedNodes.at(-1) ?? null;
+    range.insertNode(fragment);
+    insertedNodes.forEach((node) => clearInsertedFormattingAncestors(node, editor, RICH_DETAIL_HIGHLIGHT_TAGS));
+
+    if (lastInsertedNode && selection) {
+      const nextRange = document.createRange();
+      nextRange.setStartAfter(lastInsertedNode);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+    }
+
+    editor.focus();
+    emitChange();
+  };
+
+  const toggleHighlight = () => {
+    if (readOnly || !editorRef.current) {
+      return;
+    }
+
+    const editor = editorRef.current;
+    const range = getEditorSelectionRange(editor);
+    if (!range) {
+      return;
+    }
+
+    if (rangeContainsHighlight(range, editor)) {
+      removeHighlight(range, editor);
+      return;
+    }
+
+    applyCommand('hiliteColor', RICH_DETAIL_HIGHLIGHT_COLOR);
+  };
+
   const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
     if (readOnly) {
       return;
@@ -220,7 +395,7 @@ function RichTextDetailEditor({
                   aria-label="Highlight"
                   title="Highlight"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyCommand('hiliteColor', '#fff3a3')}
+                  onClick={toggleHighlight}
                 >
                   <HighlighterIcon />
                 </button>
@@ -230,7 +405,7 @@ function RichTextDetailEditor({
                   aria-label="Clear formatting"
                   title="Clear formatting"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyCommand('removeFormat')}
+                  onClick={clearFormatting}
                 >
                   <ClearFormattingIcon />
                 </button>
@@ -373,6 +548,15 @@ export const MergedResultsTable = ({
   const sharedExportTitle = (canEditShared ? editTitleDraft : title).trim() || title;
   const sharedExportNote = canEditShared ? editNoteDraft.trim() : sharedNote;
   const sharedExportFileBaseName = getExportFileBaseName(sharedExportTitle);
+  const exportTitle = sharedMode ? sharedExportTitle : title;
+  const exportDetailsText = sharedMode ? sharedDetails : detailsDraft;
+  const exportNote = sharedMode ? sharedExportNote : '';
+  const exportFileBaseName = sharedMode ? sharedExportFileBaseName : 'past-projects';
+  const exportContext = {
+    detailsText: exportDetailsText,
+    note: exportNote,
+    title: exportTitle,
+  };
   const hasTitleChanges = editTitleDraft.trim() !== title.trim();
   const hasNoteChanges = editNoteDraft.trim() !== (note ?? '').trim();
   const hasDetailsChanges = detailsDraft !== normalizePastProjectsDetailHtml(detailsText);
@@ -429,7 +613,6 @@ export const MergedResultsTable = ({
     try {
       if (window.navigator.clipboard?.writeText) {
         await window.navigator.clipboard.writeText(shareUrl);
-        setStatusMessage('URL copied to clipboard.');
         return;
       }
     } catch {
@@ -438,7 +621,6 @@ export const MergedResultsTable = ({
 
     try {
       if (document.execCommand('copy')) {
-        setStatusMessage('URL copied to clipboard.');
         return;
       }
     } catch {
@@ -811,76 +993,38 @@ export const MergedResultsTable = ({
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
             <div className="project-grid-toolbar-cluster" aria-label="Export">
-              {sharedMode ? (
-                <>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() =>
-                      void exportSharedProjectRowsPdf(visibleRows, sharedExportFileBaseName, {
-                        note: sharedExportNote,
-                        title: sharedExportTitle,
-                      })
-                    }
-                    disabled={!visibleRows.length}
-                  >
-                    PDF
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() =>
-                      void exportSharedProjectRowsWord(visibleRows, sharedExportFileBaseName, {
-                        note: sharedExportNote,
-                        title: sharedExportTitle,
-                      })
-                    }
-                    disabled={!visibleRows.length}
-                  >
-                    Microsoft Word
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() =>
-                      void exportSharedProjectRowsExcel(visibleRows, sharedExportFileBaseName, {
-                        note: sharedExportNote,
-                        title: sharedExportTitle,
-                      })
-                    }
-                    disabled={!visibleRows.length}
-                  >
-                    Excel
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() => void exportProjectRowsCsv(visibleRows, 'past-projects')}
-                    disabled={!visibleRows.length}
-                  >
-                    CSV
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() => void exportProjectRowsExcel(visibleRows, 'past-projects')}
-                    disabled={!visibleRows.length}
-                  >
-                    Excel
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() => void exportProjectRowsPdf(visibleRows, 'past-projects', title)}
-                    disabled={!visibleRows.length}
-                  >
-                    PDF
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsCsv(visibleRows, exportFileBaseName, exportContext)}
+                disabled={!visibleRows.length}
+              >
+                CSV
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsExcel(visibleRows, exportFileBaseName, exportContext)}
+                disabled={!visibleRows.length}
+              >
+                Excel
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsPdf(visibleRows, exportFileBaseName, exportContext)}
+                disabled={!visibleRows.length}
+              >
+                PDF
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={() => void exportProjectRowsWord(visibleRows, exportFileBaseName, exportContext)}
+                disabled={!visibleRows.length}
+              >
+                Microsoft Word
+              </button>
             </div>
             {canShare ? (
               <div className="project-grid-toolbar-cluster" aria-label="Share link">
