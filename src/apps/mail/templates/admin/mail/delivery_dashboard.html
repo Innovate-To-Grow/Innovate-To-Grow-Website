@@ -126,8 +126,13 @@
     </div>
 
     <div class="i2g-delivery-panel xl:col-span-3 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <h3 class="i2g-delivery-heading text-sm font-semibold mb-3"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">campaign</span>Campaigns With Send Errors</h3>
-      <div id="mail-delivery-campaign-errors" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
+      <div class="i2g-delivery-panel-header">
+        <div>
+          <h3 class="i2g-delivery-heading text-sm font-semibold"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">hub</span>Problem Groups</h3>
+          <span class="i2g-delivery-muted text-xs">AWS SES suppression-list recipients grouped by recipient domain</span>
+        </div>
+      </div>
+      <div id="mail-delivery-campaign-errors" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"></div>
     </div>
   </div>
 </div>
@@ -182,7 +187,7 @@
     renderDaily(lastData.daily || []);
     renderStatus(lastData.status_breakdown || []);
     renderProblemRecipients(lastData.problem_recipients || []);
-    renderCampaignErrors(lastData.campaign_errors || []);
+    renderCampaignErrors(lastData.problem_groups || lastData.campaign_errors || []);
   }
 
   function renderBanner(aws) {
@@ -358,13 +363,15 @@
   function renderCampaignErrors(rows) {
     const host = document.getElementById('mail-delivery-campaign-errors');
     if (!rows.length) {
-      host.innerHTML = '<div class="i2g-delivery-empty i2g-delivery-empty--compact">Campaign-level send errors are not available from AWS CloudWatch SES aggregate metrics.</div>';
+      host.innerHTML = '<div class="i2g-delivery-empty i2g-delivery-empty--compact">No AWS suppression-list groups are available for this window.</div>';
       return;
     }
     host.innerHTML = rows.map(function (row) {
       return '<div class="i2g-delivery-campaign-card rounded-default border border-base-200 dark:border-base-700 p-3">' +
-        '<div class="i2g-delivery-campaign-title">' + escapeHtml(row.campaign) + '</div>' +
-        '<div class="i2g-delivery-campaign-stats"><span>' + fmt(row.problems) + ' problems</span><span>' + fmt(row.bounces) + ' bounces</span><span>' + fmt(row.complaints) + ' complaints</span><span>' + fmt(row.rejected) + ' rejected</span></div>' +
+        '<div class="i2g-delivery-campaign-title">' + escapeHtml(row.name || row.campaign) + '</div>' +
+        '<div class="i2g-delivery-muted text-xs mb-2">' + escapeHtml(row.type || row.source || 'AWS SES group') + (row.latest_seen ? ' - latest ' + escapeHtml(row.latest_seen) : '') + '</div>' +
+        '<div class="i2g-delivery-campaign-stats"><span>' + fmt(row.problems) + ' problems</span><span>' + fmt(row.bounces) + ' bounces</span><span>' + fmt(row.complaints) + ' complaints</span><span>' + fmt(row.failed || 0) + ' other</span></div>' +
+        (row.sample_email ? '<div class="i2g-delivery-muted text-xs mt-2">' + escapeHtml(row.sample_email) + '</div>' : '') +
       '</div>';
     }).join('');
   }

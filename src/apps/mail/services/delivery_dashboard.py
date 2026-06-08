@@ -51,6 +51,7 @@ def get_delivery_dashboard_data(*, days: int = DEFAULT_WINDOW_DAYS, problem_limi
     now = timezone.now()
     metric_payload = fetch_ses_cloudwatch_metrics(days=days, now=now)
     problem_rows, recipient_details = fetch_suppressed_destinations(days=days, limit=problem_limit, now=now)
+    problem_groups = _recipient_problem_groups(problem_rows)
 
     return {
         "window_days": days,
@@ -62,7 +63,8 @@ def get_delivery_dashboard_data(*, days: int = DEFAULT_WINDOW_DAYS, problem_limi
         "daily": metric_payload["daily"],
         "status_breakdown": metric_payload["status_breakdown"],
         "problem_recipients": problem_rows,
-        "campaign_errors": [],
+        "problem_groups": problem_groups,
+        "campaign_errors": problem_groups,
     }
 
 
@@ -413,6 +415,39 @@ def _recipient_reason_counts(rows: list[dict]) -> dict:
         if reason:
             counts[reason] = counts.get(reason, 0) + 1
     return counts
+
+
+def _recipient_problem_groups(rows: list[dict], *, limit: int = 12) -> list[dict]:
+    groups: dict[str, dict] = {}
+    for row in rows:
+        email = row.get("email", "")
+        domain = email.rsplit("@", 1)[-1].lower() if "@" in email else "Unknown"
+        group = groups.setdefault(
+            domain,
+            {
+                "name": domain,
+                "type": "Recipient domain",
+                "source": "AWS SES Suppression List",
+                "problems": 0,
+                "bounces": 0,
+                "complaints": 0,
+                "rejected": 0,
+                "failed": 0,
+                "latest_seen": row.get("last_seen", "-"),
+                "sample_email": email,
+            },
+        )
+        group["problems"] += 1
+        if row.get("reason") == "BOUNCE":
+            group["bounces"] += 1
+        elif row.get("reason") == "COMPLAINT":
+            group["complaints"] += 1
+        else:
+            group["failed"] += 1
+
+    return sorted(
+        groups.values(), key=lambda group: (group["problems"], group["bounces"], group["complaints"]), reverse=True
+    )[:limit]
 
 
 def _recipient_details_meta(
