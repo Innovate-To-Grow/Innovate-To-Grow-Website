@@ -111,6 +111,32 @@
         update();
     }
 
+    function installThemeChoiceClickHandler() {
+        if (window.__i2gAdminThemeChoiceHandlerInstalled) {
+            return;
+        }
+
+        window.__i2gAdminThemeChoiceHandlerInstalled = true;
+        var handleThemeChoice = function (event) {
+            var target = event.target;
+
+            if (!target || typeof target.closest !== "function") {
+                return;
+            }
+
+            var choice = target.closest("[data-admin-theme-choice]");
+
+            if (!choice) {
+                return;
+            }
+
+            window.switchTheme(choice.getAttribute("data-admin-theme-choice"));
+        };
+
+        document.addEventListener("pointerdown", handleThemeChoice, true);
+        document.addEventListener("click", handleThemeChoice, true);
+    }
+
     var initialTheme = readStoredTheme("auto");
     var initialSystemDark = prefersDarkColorScheme();
 
@@ -173,10 +199,15 @@
                 this.adminTheme = nextTheme;
                 window.switchTheme(nextTheme);
             },
+            switchAdminTheme: function (themeName) {
+                this.switchTheme(themeName);
+                this.openTheme = false;
+            },
             themeBindings: window.themeBindings,
         };
     };
 
     writeStoredTheme(initialTheme);
     applyThemeClass(initialTheme, initialSystemDark);
+    installThemeChoiceClickHandler();
 })();
