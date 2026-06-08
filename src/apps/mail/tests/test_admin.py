@@ -330,7 +330,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
         self.assertContains(response, "AWS SES Delivery Dashboard")
-        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-loading-state")
+        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-marquee-loading")
         self.assertContains(response, "mail-delivery-window-days")
         self.assertContains(response, "mail-delivery-loading")
         self.assertContains(response, '<option value="7">Last 7 days</option>', html=True)
