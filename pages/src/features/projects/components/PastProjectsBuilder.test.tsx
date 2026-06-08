@@ -206,10 +206,19 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
-    expect(screen.getByText('Searching past projects with AI...').closest('.past-projects-ai-search-message')).toHaveClass(
-      'is-loading',
-    );
-    expect(screen.getByText('Searching...')).toBeDisabled();
+    const aiSearchForm = screen.getByPlaceholderText(/ask ai to find relevant past projects/i).closest('form');
+    const aiSearchInputFrame = screen
+      .getByPlaceholderText(/ask ai to find relevant past projects/i)
+      .closest('.past-projects-ai-search-input-frame');
+    expect(aiSearchForm).toHaveClass('past-projects-ai-search', 'is-loading');
+    expect(aiSearchForm).toHaveAttribute('aria-busy', 'true');
+    expect(aiSearchInputFrame).not.toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent('Searching past projects with AI...');
+    expect(document.querySelector('.past-projects-ai-search-spinner')).toBeNull();
+    expect(document.querySelector('.past-projects-ai-search-progress')).toBeNull();
+    expect(screen.getByText('Searching past projects with AI...').closest('.project-grid-controls-status')).toBeNull();
+    expect(screen.getByRole('button', {name: 'Search'})).toBeDisabled();
+    expect(screen.queryByText('Searching...')).toBeNull();
 
     resolveSearch({
       available: true,

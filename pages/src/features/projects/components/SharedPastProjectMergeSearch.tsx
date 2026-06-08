@@ -332,7 +332,7 @@ export const SharedPastProjectMergeSearch = ({
                 }
                 initialRows={table.initialRows ?? availableRows}
                 controlsStatus={
-                  table.message && table.messageTone ? (
+                  table.message && table.messageTone && table.messageTone !== 'loading' ? (
                     <PastProjectsAIStatus message={table.message} tone={table.messageTone} />
                   ) : undefined
                 }
