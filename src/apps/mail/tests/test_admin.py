@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
+from botocore.exceptions import ClientError
 from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
@@ -229,6 +230,9 @@ class MailDeliveryDashboardAdminTest(TestCase):
                 "metrics_source": "CloudWatch account SES metrics",
                 "recipient_details_available": True,
                 "recipient_details_reason": "",
+                "recipient_details_error_code": "",
+                "recipient_details_error_message": "",
+                "recipient_details_required_actions": [],
             },
             "metrics": {
                 "available": True,
@@ -242,6 +246,9 @@ class MailDeliveryDashboardAdminTest(TestCase):
                 "reason": "",
                 "source": "AWS SES account suppression list",
                 "count": 2,
+                "error_code": "",
+                "error_message": "",
+                "required_actions": [],
             },
             "daily": [{"date": "2026-06-08", "attempts": 120, "problems": 4}],
             "status_breakdown": [
@@ -285,7 +292,9 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
         self.assertContains(response, "AWS SES Delivery Dashboard")
-        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-aws")
+        self.assertContains(
+            response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-aws-recipient-diagnostics"
+        )
         self.assertContains(response, "Problem Recipients")
         self.assertContains(response, "Six-month AWS CloudWatch SES metrics")
         self.assertContains(response, "SES Attempts (6mo)")
@@ -374,8 +383,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
     def test_fetch_suppressed_destinations_reads_aws_sesv2(self):
         client = MagicMock()
         now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
-        paginator = MagicMock()
-        paginator.paginate.return_value = [
+        client.list_suppressed_destinations.side_effect = [
             {
                 "SuppressedDestinationSummaries": [
                     {
@@ -388,24 +396,61 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
                         "Reason": "COMPLAINT",
                         "LastUpdateTime": datetime(2026, 6, 7, 10, 0, tzinfo=UTC),
                     },
-                ]
-            }
+                ],
+                "NextToken": "page-2",
+            },
+            {
+                "SuppressedDestinationSummaries": [
+                    {
+                        "EmailAddress": "older-bounce@example.com",
+                        "Reason": "BOUNCE",
+                        "LastUpdateTime": datetime(2026, 6, 1, 10, 0, tzinfo=UTC),
+                    }
+                ],
+            },
         ]
-        client.get_paginator.return_value = paginator
 
         with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
             rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
 
         self.assertTrue(meta["available"])
         self.assertEqual(meta["source"], "AWS SES account suppression list")
-        self.assertEqual([row["email"] for row in rows], ["bounce@example.com", "complaint@example.com"])
+        self.assertEqual(
+            [row["email"] for row in rows], ["bounce@example.com", "complaint@example.com", "older-bounce@example.com"]
+        )
         self.assertEqual(rows[0]["source"], "AWS SES Suppression List")
         self.assertEqual(rows[0]["label"], "Bounced")
         self.assertEqual(rows[1]["label"], "Complained")
-        paginate_kwargs = paginator.paginate.call_args.kwargs
-        self.assertEqual(paginate_kwargs["Reasons"], ["BOUNCE", "COMPLAINT"])
-        self.assertEqual(paginate_kwargs["StartDate"], datetime(2025, 12, 7, 12, 0, tzinfo=UTC))
-        self.assertEqual(paginate_kwargs["EndDate"], now)
+        first_call_kwargs = client.list_suppressed_destinations.call_args_list[0].kwargs
+        second_call_kwargs = client.list_suppressed_destinations.call_args_list[1].kwargs
+        self.assertEqual(first_call_kwargs["Reasons"], ["BOUNCE", "COMPLAINT"])
+        self.assertEqual(first_call_kwargs["StartDate"], datetime(2025, 12, 7, 12, 0, tzinfo=UTC))
+        self.assertEqual(first_call_kwargs["EndDate"], now)
+        self.assertEqual(second_call_kwargs["NextToken"], "page-2")
+
+    def test_fetch_suppressed_destinations_returns_permission_diagnostics(self):
+        client = MagicMock()
+        now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
+        client.list_suppressed_destinations.side_effect = ClientError(
+            {
+                "Error": {
+                    "Code": "AccessDeniedException",
+                    "Message": "User is not authorized to perform: ses:ListSuppressedDestinations",
+                }
+            },
+            "ListSuppressedDestinations",
+        )
+
+        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+            rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
+
+        self.assertEqual(rows, [])
+        self.assertFalse(meta["available"])
+        self.assertEqual(meta["reason"], "permission")
+        self.assertEqual(meta["error_code"], "AccessDeniedException")
+        self.assertIn("ses:ListSuppressedDestinations", meta["error_message"])
+        self.assertIn("ses:ListSuppressedDestinations", meta["required_actions"])
+        self.assertIn("ses:GetSuppressedDestination", meta["required_actions"])
 
 
 class EmailCampaignAdminImportTest(TestCase):

@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-aws-chart-scroll">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-aws-recipient-diagnostics">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -163,7 +163,7 @@
       return;
     }
     if (!aws.recipient_details_available) {
-      text.textContent = 'AWS SES aggregate metrics loaded. Recipient-level emails need ses:ListSuppressedDestinations access and account-level suppression data.';
+      text.textContent = recipientDetailsBlockedCopy(aws);
       banner.classList.remove('hidden');
       return;
     }
@@ -171,6 +171,17 @@
       banner.classList.add('hidden');
       return;
     }
+  }
+
+  function recipientDetailsBlockedCopy(aws) {
+    const action = (aws.recipient_details_required_actions || ['ses:ListSuppressedDestinations']).join(', ');
+    const key = aws.iam_key || 'the active IAM key';
+    const region = aws.region || 'the configured region';
+    const code = aws.recipient_details_error_code ? ' AWS returned ' + aws.recipient_details_error_code + '.' : '';
+    if (aws.recipient_details_reason === 'permission') {
+      return 'CloudWatch totals are loaded, but exact failed recipient emails are blocked. Grant ' + action + ' to ' + key + ' in ' + region + '.' + code;
+    }
+    return 'CloudWatch totals are loaded, but exact failed recipient emails are unavailable from the AWS SES suppression list right now.' + code;
   }
 
   function renderDaily(rows) {
@@ -208,11 +219,12 @@
     const tbody = document.getElementById('mail-delivery-problem-recipients');
     if (!rows.length) {
       const details = lastData.recipient_details || {};
+      const aws = lastData.aws || {};
       let copy = 'No suppressed recipient addresses found in AWS SES for the last 6 months.';
       if (!details.available && details.reason === 'permission') {
-        copy = 'Recipient-level AWS data is unavailable. Grant ses:ListSuppressedDestinations to read bounced and complained addresses from AWS SES.';
+        copy = recipientDetailsBlockedCopy(aws) + ' CloudWatch only provides aggregate counts, not recipient email addresses.';
       } else if (!details.available) {
-        copy = 'Recipient-level AWS data is unavailable from SES suppression list right now.';
+        copy = recipientDetailsBlockedCopy(aws);
       }
       tbody.innerHTML = '<tr><td class="i2g-delivery-table-cell i2g-delivery-muted py-3" colspan="5">' + escapeHtml(copy) + '</td></tr>';
       return;

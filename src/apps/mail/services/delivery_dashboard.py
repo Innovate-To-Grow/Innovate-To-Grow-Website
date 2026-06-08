@@ -27,6 +27,16 @@ METRICS = (
 )
 ERROR_KEYS = ("bounces", "complaints", "rejected", "failed")
 SUPPRESSION_REASONS = ("BOUNCE", "COMPLAINT")
+RECIPIENT_DETAIL_ACTIONS = ("ses:ListSuppressedDestinations", "ses:GetSuppressedDestination")
+PERMISSION_ERROR_CODES = {
+    "AccessDenied",
+    "AccessDeniedException",
+    "AuthorizationError",
+    "InvalidClientTokenId",
+    "SignatureDoesNotMatch",
+    "UnauthorizedOperation",
+    "UnrecognizedClientException",
+}
 
 
 def get_delivery_dashboard_data(*, days: int = DEFAULT_WINDOW_DAYS, problem_limit: int = 50) -> dict:
@@ -112,19 +122,44 @@ def fetch_suppressed_destinations(*, days: int = DEFAULT_WINDOW_DAYS, limit: int
 
     try:
         rows = []
-        paginator = client.get_paginator("list_suppressed_destinations")
-        for page in paginator.paginate(
-            Reasons=list(SUPPRESSION_REASONS),
-            StartDate=start,
-            EndDate=now,
-            PageSize=100,
-        ):
+        kwargs = {
+            "Reasons": list(SUPPRESSION_REASONS),
+            "StartDate": start,
+            "EndDate": now,
+            "PageSize": 100,
+        }
+        while True:
+            page = client.list_suppressed_destinations(**kwargs)
             for item in page.get("SuppressedDestinationSummaries", []):
                 rows.append(_suppressed_destination_row(item))
-    except (ClientError, BotoCoreError):
-        return [], _recipient_details_meta(False, "permission")
-    except Exception:  # noqa: BLE001
-        return [], _recipient_details_meta(False, "error")
+            next_token = page.get("NextToken")
+            if not next_token:
+                break
+            kwargs["NextToken"] = next_token
+    except ClientError as exc:
+        return [], _recipient_details_meta(
+            False,
+            _client_error_reason(exc),
+            error_code=_client_error_code(exc),
+            error_message=_client_error_message(exc),
+            required_actions=RECIPIENT_DETAIL_ACTIONS,
+        )
+    except BotoCoreError as exc:
+        return [], _recipient_details_meta(
+            False,
+            "aws_error",
+            error_code=exc.__class__.__name__,
+            error_message=str(exc),
+            required_actions=RECIPIENT_DETAIL_ACTIONS,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return [], _recipient_details_meta(
+            False,
+            "error",
+            error_code=exc.__class__.__name__,
+            error_message=str(exc),
+            required_actions=RECIPIENT_DETAIL_ACTIONS,
+        )
 
     rows.sort(key=lambda row: row["_last_seen_sort"], reverse=True)
     rows = rows[:limit]
@@ -353,12 +388,22 @@ def _suppressed_destination_row(item: dict) -> dict:
     }
 
 
-def _recipient_details_meta(available: bool, reason: str) -> dict:
+def _recipient_details_meta(
+    available: bool,
+    reason: str,
+    *,
+    error_code: str = "",
+    error_message: str = "",
+    required_actions: tuple[str, ...] = (),
+) -> dict:
     return {
         "available": available,
         "reason": reason,
         "source": "AWS SES account suppression list",
         "count": 0,
+        "error_code": error_code,
+        "error_message": error_message[:320],
+        "required_actions": list(required_actions),
     }
 
 
@@ -379,6 +424,9 @@ def _aws_meta(metric_payload: dict, recipient_details: dict) -> dict:
         "metrics_source": metric_payload["metrics"]["source"],
         "recipient_details_available": recipient_details["available"],
         "recipient_details_reason": recipient_details["reason"],
+        "recipient_details_error_code": recipient_details.get("error_code", ""),
+        "recipient_details_error_message": recipient_details.get("error_message", ""),
+        "recipient_details_required_actions": recipient_details.get("required_actions", []),
     }
 
 
@@ -390,3 +438,16 @@ def _display_dt(value) -> str:
     if not value:
         return "-"
     return timezone.localtime(value).strftime("%b %d, %H:%M")
+
+
+def _client_error_code(exc: ClientError) -> str:
+    return exc.response.get("Error", {}).get("Code", "")
+
+
+def _client_error_message(exc: ClientError) -> str:
+    return exc.response.get("Error", {}).get("Message", "")
+
+
+def _client_error_reason(exc: ClientError) -> str:
+    code = _client_error_code(exc)
+    return "permission" if code in PERMISSION_ERROR_CODES or "denied" in code.lower() else "aws_error"
