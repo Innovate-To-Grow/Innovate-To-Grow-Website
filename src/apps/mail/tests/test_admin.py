@@ -201,9 +201,9 @@ class MailDeliveryDashboardAdminTest(TestCase):
             default_region="us-west-2",
         )
 
-    def _aws_dashboard_payload(self):
+    def _aws_dashboard_payload(self, *, window_days=183):
         return {
-            "window_days": 183,
+            "window_days": window_days,
             "generated_at": "2026-06-08T12:00:00+00:00",
             "summary": {
                 "attempts": 120,
@@ -259,7 +259,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
                 "limit": None,
                 "reason_counts": {"BOUNCE": 1, "COMPLAINT": 1},
                 "latest_seen": "Jun 08, 12:00",
-                "window_days": 183,
+                "window_days": window_days,
             },
             "daily": [{"date": "2026-06-08", "attempts": 120, "problems": 4}],
             "status_breakdown": [
@@ -330,7 +330,12 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
         self.assertContains(response, "AWS SES Delivery Dashboard")
-        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-export-formats")
+        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-range-control")
+        self.assertContains(response, "mail-delivery-window-days")
+        self.assertContains(response, '<option value="7">Last 7 days</option>', html=True)
+        self.assertContains(response, '<option value="90">Last 3 months</option>', html=True)
+        self.assertContains(response, '<option value="183" selected>Last 6 months</option>', html=True)
+        self.assertContains(response, '<option value="365">Last 12 months</option>', html=True)
         self.assertContains(response, "Problem Recipients")
         self.assertContains(response, "mail-delivery-recipient-search")
         self.assertContains(response, "mail-delivery-export-format")
@@ -339,15 +344,24 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertContains(response, '<option value="tsv">TSV</option>', html=True)
         self.assertContains(response, '<option value="json">JSON</option>', html=True)
         self.assertContains(response, '<option value="xls">Excel</option>', html=True)
-        self.assertContains(response, "Six-month AWS CloudWatch SES metrics")
-        self.assertContains(response, "SES Attempts (6mo)")
-        self.assertContains(response, "SES Errors (6mo)")
-        self.assertContains(response, "Daily Delivery Errors (6mo)")
+        self.assertContains(response, "Last 6 months AWS CloudWatch SES metrics")
+        self.assertContains(response, "data-delivery-window-short")
         self.assertContains(response, "Problem Groups")
         self.assertContains(response, "AWS SES account suppression list")
         self.assertContains(response, "bounce@example.com")
         self.assertContains(response, "complaint@example.com")
         self.assertContains(response, "/admin/mail/delivery-dashboard/data/")
+        mock_dashboard_data.assert_called_once_with(days=183)
+
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    def test_delivery_dashboard_renders_selected_window(self, mock_dashboard_data):
+        mock_dashboard_data.return_value = self._aws_dashboard_payload(window_days=365)
+
+        response = self.client.get(reverse("admin:mail_delivery_dashboard"), {"days": "365"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<option value="365" selected>Last 12 months</option>', html=True)
+        mock_dashboard_data.assert_called_once_with(days=365)
 
     @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
     def test_delivery_dashboard_data_returns_aws_payload(self, mock_dashboard_data):
@@ -378,6 +392,27 @@ class MailDeliveryDashboardAdminTest(TestCase):
         status_labels = {row["label"] for row in payload["status_breakdown"]}
         self.assertIn("Bounced", status_labels)
         self.assertIn("Complained", status_labels)
+        mock_dashboard_data.assert_called_once_with(days=183)
+
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    def test_delivery_dashboard_data_accepts_allowed_window(self, mock_dashboard_data):
+        mock_dashboard_data.side_effect = lambda *, days=183: self._aws_dashboard_payload(window_days=days)
+
+        response = self.client.get(reverse("admin:mail_delivery_dashboard_data"), {"days": "90"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["window_days"], 90)
+        mock_dashboard_data.assert_called_once_with(days=90)
+
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    def test_delivery_dashboard_data_rejects_unlisted_window(self, mock_dashboard_data):
+        mock_dashboard_data.side_effect = lambda *, days=183: self._aws_dashboard_payload(window_days=days)
+
+        response = self.client.get(reverse("admin:mail_delivery_dashboard_data"), {"days": "999"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["window_days"], 183)
+        mock_dashboard_data.assert_called_once_with(days=183)
 
     def test_delivery_dashboard_requires_mail_admin_access(self):
         other_admin = make_admin(apps=["cms"], email="cmsadmin@example.com")

@@ -38,6 +38,7 @@
 .i2g-delivery-day-label,
 .i2g-delivery-campaign-stats,
 .i2g-delivery-export-format span,
+.i2g-delivery-window-select span,
 .i2g-delivery-recipient-stat span,
 .i2g-delivery-recipient-filter span,
 .i2g-delivery-recipient-search {
@@ -98,6 +99,53 @@
 
 .i2g-delivery-refresh:hover {
     color: var(--i2g-delivery-primary) !important;
+}
+
+.i2g-delivery-hero-actions {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.i2g-delivery-window-select {
+    align-items: center;
+    background: var(--i2g-delivery-surface);
+    border: 1px solid color-mix(in srgb, var(--i2g-delivery-border) 85%, transparent);
+    border-radius: 999px;
+    color: var(--i2g-delivery-text);
+    display: inline-flex;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.45rem 0.5rem 0.45rem 0.8rem;
+}
+
+.i2g-delivery-window-select select {
+    background: transparent;
+    border: 0;
+    color: var(--i2g-delivery-text);
+    font: inherit;
+    font-weight: 600;
+    outline: 0;
+    padding-right: 0.5rem;
+}
+
+.i2g-delivery-hero-actions .i2g-delivery-refresh {
+    align-self: stretch;
+}
+
+@media (min-width: 640px) {
+    .i2g-delivery-hero-actions {
+        align-items: center;
+        flex-direction: row;
+        justify-content: flex-end;
+        width: auto;
+    }
+
+    .i2g-delivery-hero-actions .i2g-delivery-refresh {
+        align-self: center;
+    }
 }
 
 .i2g-delivery-export-group {

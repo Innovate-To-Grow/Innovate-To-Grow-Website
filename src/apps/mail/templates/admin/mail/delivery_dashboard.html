@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-export-formats">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-range-control">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -17,15 +17,25 @@
       <div class="i2g-delivery-hero-copy">
         <p class="i2g-delivery-eyebrow text-xs font-semibold uppercase tracking-wide">Broadcast Delivery</p>
         <h2 class="i2g-delivery-title mt-1 text-xl font-semibold">AWS SES Delivery Dashboard</h2>
-        <p class="i2g-delivery-muted mt-1 text-sm">
-          Six-month AWS CloudWatch SES metrics, with failed recipient addresses from the AWS SES suppression list.
+        <p class="i2g-delivery-muted mt-1 text-sm" data-delivery-window-copy>
+          Last 6 months AWS CloudWatch SES metrics, with failed recipient addresses from the AWS SES suppression list.
         </p>
       </div>
-      <button type="button" id="mail-delivery-refresh"
-              class="i2g-delivery-refresh inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium">
-        <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
-        <span>Refresh</span>
-      </button>
+      <div class="i2g-delivery-hero-actions">
+        <label class="i2g-delivery-window-select">
+          <span>Range</span>
+          <select id="mail-delivery-window-days">
+            {% for window in dashboard_windows %}
+              <option value="{{ window.days }}" {% if window.selected %}selected{% endif %}>{{ window.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="button" id="mail-delivery-refresh"
+                class="i2g-delivery-refresh inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium">
+          <span class="material-symbols-outlined" style="font-size:18px">refresh</span>
+          <span>Refresh</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -41,19 +51,19 @@
   <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
     <div class="i2g-delivery-metric rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
       <div class="flex items-start justify-between gap-3">
-        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">SES Attempts (6mo)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="attempts">0</p><p class="i2g-delivery-muted mt-1 text-xs" data-delivery-detail="attempts">CloudWatch Send metric</p></div>
+        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">SES Attempts (<span data-delivery-window-short>6mo</span>)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="attempts">0</p><p class="i2g-delivery-muted mt-1 text-xs" data-delivery-detail="attempts">CloudWatch Send metric</p></div>
         <span class="i2g-delivery-icon material-symbols-outlined" style="font-size:28px">outgoing_mail</span>
       </div>
     </div>
     <div class="i2g-delivery-metric rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
       <div class="flex items-start justify-between gap-3">
-        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">Successful Delivery (6mo)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="success">0</p><p class="i2g-delivery-muted mt-1 text-xs">CloudWatch Delivery metric</p></div>
+        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">Successful Delivery (<span data-delivery-window-short>6mo</span>)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="success">0</p><p class="i2g-delivery-muted mt-1 text-xs">CloudWatch Delivery metric</p></div>
         <span class="i2g-delivery-icon i2g-delivery-icon--success material-symbols-outlined" style="font-size:28px">mark_email_read</span>
       </div>
     </div>
     <div class="i2g-delivery-metric i2g-delivery-metric--danger rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
       <div class="flex items-start justify-between gap-3">
-        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">SES Errors (6mo)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="problems">0</p><p class="i2g-delivery-muted mt-1 text-xs"><span data-delivery-stat-text="failure_rate">0%</span> failure rate</p></div>
+        <div><p class="i2g-delivery-card-title text-xs uppercase tracking-wide">SES Errors (<span data-delivery-window-short>6mo</span>)</p><p class="i2g-delivery-value mt-2 text-2xl font-bold" data-delivery-stat="problems">0</p><p class="i2g-delivery-muted mt-1 text-xs"><span data-delivery-stat-text="failure_rate">0%</span> failure rate</p></div>
         <span class="i2g-delivery-icon i2g-delivery-icon--danger material-symbols-outlined" style="font-size:28px">report</span>
       </div>
     </div>
@@ -67,7 +77,7 @@
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
     <div class="i2g-delivery-panel xl:col-span-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
-      <h3 class="i2g-delivery-heading text-sm font-semibold mb-3"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">stacked_bar_chart</span>Daily Delivery Errors (6mo)</h3>
+      <h3 class="i2g-delivery-heading text-sm font-semibold mb-3"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">stacked_bar_chart</span>Daily Delivery Errors (<span data-delivery-window-short>6mo</span>)</h3>
       <div id="mail-delivery-daily-chart" class="i2g-delivery-chart" aria-label="Daily delivery errors"></div>
     </div>
 
@@ -80,7 +90,7 @@
       <div class="i2g-delivery-panel-header">
         <div>
           <h3 class="i2g-delivery-heading text-sm font-semibold"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">alternate_email</span>Problem Recipients</h3>
-          <span class="i2g-delivery-muted text-xs">All failed recipient addresses returned by AWS SES for the 6-month window</span>
+          <span class="i2g-delivery-muted text-xs" data-delivery-window-recipients>All failed recipient addresses returned by AWS SES for last 6 months</span>
         </div>
         <div class="i2g-delivery-export-group">
           <label class="i2g-delivery-export-format">
@@ -153,6 +163,14 @@
   const root = document.getElementById('mail-delivery-dashboard-root');
   const dataUrl = root.getAttribute('data-dashboard-url');
   let lastData = null;
+  let refreshSequence = 0;
+  const defaultWindowDays = 183;
+  const windowDefinitions = {
+    7: { label: 'Last 7 days', lowerLabel: 'last 7 days', shortLabel: '7d' },
+    90: { label: 'Last 3 months', lowerLabel: 'last 3 months', shortLabel: '3mo' },
+    183: { label: 'Last 6 months', lowerLabel: 'last 6 months', shortLabel: '6mo' },
+    365: { label: 'Last 12 months', lowerLabel: 'last 12 months', shortLabel: '12mo' },
+  };
 
   function readJson(id) {
     const el = document.getElementById(id);
@@ -160,6 +178,54 @@
   }
 
   function fmt(value) { return Number(value || 0).toLocaleString(); }
+
+  function windowMeta(days) {
+    return windowDefinitions[Number(days)] || windowDefinitions[defaultWindowDays];
+  }
+
+  function selectedWindowDays() {
+    const select = document.getElementById('mail-delivery-window-days');
+    const days = select ? Number(select.value) : defaultWindowDays;
+    return windowDefinitions[days] ? days : defaultWindowDays;
+  }
+
+  function currentWindowMeta() {
+    return windowMeta((lastData || {}).window_days || selectedWindowDays());
+  }
+
+  function updateWindowLabels(days) {
+    const meta = windowMeta(days);
+    const select = document.getElementById('mail-delivery-window-days');
+    if (select && windowDefinitions[Number(days)]) select.value = String(days);
+    root.querySelectorAll('[data-delivery-window-short]').forEach(function (el) {
+      el.textContent = meta.shortLabel;
+    });
+    const copy = root.querySelector('[data-delivery-window-copy]');
+    if (copy) {
+      copy.textContent = meta.label + ' AWS CloudWatch SES metrics, with failed recipient addresses from the AWS SES suppression list.';
+    }
+    const recipientCopy = root.querySelector('[data-delivery-window-recipients]');
+    if (recipientCopy) {
+      recipientCopy.textContent = 'All failed recipient addresses returned by AWS SES for ' + meta.lowerLabel;
+    }
+  }
+
+  function dashboardDataUrl(days) {
+    const url = new URL(dataUrl, window.location.href);
+    url.searchParams.set('days', String(days));
+    return url.toString();
+  }
+
+  function updatePageUrl(days) {
+    if (!window.history || !window.history.replaceState) return;
+    const url = new URL(window.location.href);
+    if (Number(days) === defaultWindowDays) {
+      url.searchParams.delete('days');
+    } else {
+      url.searchParams.set('days', String(days));
+    }
+    window.history.replaceState(null, '', url.toString());
+  }
 
   function escapeHtml(value) {
     return String(value || '').replace(/[&<>"']/g, function (char) {
@@ -188,6 +254,7 @@
 
   function renderAll(data) {
     lastData = data || {};
+    updateWindowLabels(lastData.window_days || selectedWindowDays());
     const summary = lastData.summary || {};
     setStat('attempts', summary.attempts);
     setStat('success', summary.success);
@@ -313,7 +380,7 @@
     if (!rows.length) {
       const details = lastData.recipient_details || {};
       const aws = lastData.aws || {};
-      let copy = 'No suppressed recipient addresses found in AWS SES for the last 6 months.';
+      let copy = 'No suppressed recipient addresses found in AWS SES for ' + currentWindowMeta().lowerLabel + '.';
       if (!details.available && details.reason === 'permission') {
         copy = recipientDetailsBlockedCopy(aws) + ' CloudWatch only provides aggregate counts, not recipient email addresses.';
       } else if (!details.available) {
@@ -378,6 +445,7 @@
     return JSON.stringify({
       generated_at: new Date().toISOString(),
       window_days: (lastData || {}).window_days || null,
+      window_label: currentWindowMeta().label,
       filters: recipientFilterState(),
       count: records.length,
       records: records,
@@ -410,7 +478,7 @@
     if (!rows.length) return;
     const format = document.getElementById('mail-delivery-export-format')?.value || 'csv';
     const records = exportRecords(rows);
-    const stem = 'ses-problem-recipients-' + new Date().toISOString().slice(0, 10);
+    const stem = 'ses-problem-recipients-' + currentWindowMeta().shortLabel + '-' + new Date().toISOString().slice(0, 10);
     if (format === 'json') {
       downloadText(stem + '.json', 'application/json;charset=utf-8', jsonExport(records));
       return;
@@ -444,16 +512,30 @@
 
   function refresh() {
     const button = document.getElementById('mail-delivery-refresh');
+    const windowSelect = document.getElementById('mail-delivery-window-days');
+    const days = selectedWindowDays();
+    const requestId = ++refreshSequence;
     if (button) button.setAttribute('aria-busy', 'true');
-    fetch(dataUrl, { credentials: 'same-origin' })
+    if (windowSelect) windowSelect.setAttribute('aria-busy', 'true');
+    fetch(dashboardDataUrl(days), { credentials: 'same-origin' })
       .then(function (response) { return response.json(); })
-      .then(renderAll)
-      .catch(function () { if (lastData) renderAll(lastData); })
-      .finally(function () { if (button) button.removeAttribute('aria-busy'); });
+      .then(function (data) {
+        if (requestId !== refreshSequence) return;
+        renderAll(data);
+        updatePageUrl(data.window_days || days);
+      })
+      .catch(function () { if (requestId === refreshSequence && lastData) renderAll(lastData); })
+      .finally(function () {
+        if (requestId !== refreshSequence) return;
+        if (button) button.removeAttribute('aria-busy');
+        if (windowSelect) windowSelect.removeAttribute('aria-busy');
+      });
   }
 
   const refreshButton = document.getElementById('mail-delivery-refresh');
+  const windowSelect = document.getElementById('mail-delivery-window-days');
   if (refreshButton) refreshButton.addEventListener('click', refresh);
+  if (windowSelect) windowSelect.addEventListener('change', refresh);
   const recipientSearch = document.getElementById('mail-delivery-recipient-search');
   const recipientStatus = document.getElementById('mail-delivery-recipient-status');
   const recipientExport = document.getElementById('mail-delivery-export-recipients');
