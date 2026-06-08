@@ -117,7 +117,7 @@
         }
 
         window.__i2gAdminThemeChoiceHandlerInstalled = true;
-        document.addEventListener("click", function (event) {
+        var handleThemeChoice = function (event) {
             var target = event.target;
 
             if (!target || typeof target.closest !== "function") {
@@ -131,7 +131,10 @@
             }
 
             window.switchTheme(choice.getAttribute("data-admin-theme-choice"));
-        });
+        };
+
+        document.addEventListener("pointerdown", handleThemeChoice, true);
+        document.addEventListener("click", handleThemeChoice, true);
     }
 
     var initialTheme = readStoredTheme("auto");

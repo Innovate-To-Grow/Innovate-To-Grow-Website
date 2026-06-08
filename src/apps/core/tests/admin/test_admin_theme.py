@@ -21,7 +21,7 @@ class AdminThemeRenderingTests(TestCase):
         self.assertIn('x-data="theme(', html)
         self.assertIn("admin/js/i2g-admin-theme-runtime.js", html)
         self.assertIn("adminTheme", html)
-        self.assertIn("switchTheme('auto')", html)
+        self.assertIn('data-admin-theme-choice="auto"', html)
 
     def setUp(self):
         self.admin_user = make_superuser()
@@ -105,6 +105,7 @@ class AdminThemeRenderingTests(TestCase):
         self.assertIn("window.switchTheme", source)
         self.assertIn("window.themeBindings", source)
         self.assertIn("data-admin-theme-choice", source)
+        self.assertIn('document.addEventListener("pointerdown"', source)
         self.assertIn("openTheme", source)
         self.assertIn("prefers-color-scheme: dark", source)
 
