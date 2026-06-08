@@ -146,7 +146,7 @@
     padding: 0.625rem 1.25rem;
     border-radius: 8px;
     background: var(--checkin-summary-primary-strong);
-    color: #ffffff;
+    color: var(--md-sys-color-on-primary, #ffffff);
     font-size: 0.9rem;
     font-weight: 700;
     line-height: 1.2;
@@ -160,7 +160,7 @@
 
 .i2g-checkin-summary__console-link:hover {
     background: var(--checkin-summary-primary);
-    color: #ffffff;
+    color: var(--md-sys-color-on-primary, #ffffff);
 }
 
 .i2g-checkin-summary__export-link {
@@ -361,19 +361,40 @@
 }
 
 .dark .i2g-checkin-summary {
-    --checkin-summary-bg: #111827;
-    --checkin-summary-panel: #1f2937;
-    --checkin-summary-border: #374151;
-    --checkin-summary-muted: #cbd5e1;
-    --checkin-summary-primary: #93c5fd;
-    --checkin-summary-primary-strong: #bfdbfe;
-    color: #f8fafc;
+    --checkin-summary-bg: var(--md-sys-color-surface-container-low);
+    --checkin-summary-panel: var(--md-sys-color-surface-container);
+    --checkin-summary-border: var(--md-sys-color-outline-variant);
+    --checkin-summary-muted: var(--md-sys-color-on-surface-variant);
+    --checkin-summary-primary: var(--md-sys-color-primary);
+    --checkin-summary-primary-strong: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-surface);
 }
 
 .dark .i2g-checkin-summary__lookup-search input,
 .dark .i2g-checkin-summary__ticket-filter select {
-    background: #111827;
-    color: #f8fafc;
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--checkin-summary-border);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .i2g-checkin-summary__sync,
+.dark .i2g-checkin-summary__export-link {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--checkin-summary-border);
+    color: var(--md-sys-color-primary);
+}
+
+.dark .i2g-checkin-summary__export-link:hover {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
+    color: var(--md-sys-color-primary);
+}
+
+.dark .i2g-checkin-summary__badge.is-checked {
+    background: color-mix(in srgb, var(--checkin-summary-success) 18%, transparent);
+}
+
+.dark .i2g-checkin-summary__badge.is-missing {
+    background: color-mix(in srgb, var(--checkin-summary-warning) 18%, transparent);
 }
 
 @media (max-width: 900px) {

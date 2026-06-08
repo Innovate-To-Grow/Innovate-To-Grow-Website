@@ -7,6 +7,11 @@
     {% include "admin/includes/itg_login_styles.html" %}
 {% endblock %}
 
+{% block extrahead %}
+    {{ block.super }}
+    <script src="{% static 'admin/js/i2g-admin-theme-runtime.js' %}"></script>
+{% endblock %}
+
 {% block title %}
     {{ title }} | {{ site_title }}
 {% endblock %}

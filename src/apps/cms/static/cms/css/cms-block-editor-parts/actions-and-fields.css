@@ -139,6 +139,59 @@
     border-right: 1px solid #e5e7eb;
 }
 
+.dark .cms-block-field .CodeMirror {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--md-sys-color-outline-variant);
+    box-shadow: none;
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-block-field .CodeMirror-focused {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
+}
+
+.dark .cms-block-field .CodeMirror-scroll,
+.dark .cms-block-field .CodeMirror-sizer,
+.dark .cms-block-field .CodeMirror-lines {
+    background: var(--md-sys-color-surface-container-lowest);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-block-field .CodeMirror-gutters {
+    background: var(--md-sys-color-surface-container);
+    border-right-color: var(--md-sys-color-outline-variant);
+}
+
+.dark .cms-block-field .CodeMirror-linenumber {
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+.dark .cms-block-field .CodeMirror-cursor {
+    border-left-color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-block-field .CodeMirror-selected {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent);
+}
+
+.dark .cms-block-field .cm-s-default .cm-tag,
+.dark .cms-block-field .cm-s-default .cm-bracket {
+    color: #93c5fd;
+}
+
+.dark .cms-block-field .cm-s-default .cm-attribute {
+    color: #f9a8d4;
+}
+
+.dark .cms-block-field .cm-s-default .cm-string {
+    color: #86efac;
+}
+
+.dark .cms-block-field .cm-s-default .cm-comment {
+    color: var(--md-sys-color-on-surface-variant);
+}
+
 .cms-block-field .field-hint {
     font-size: 11px;
     color: #999;

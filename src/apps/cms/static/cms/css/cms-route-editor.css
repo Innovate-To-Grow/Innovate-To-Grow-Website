@@ -101,3 +101,58 @@
 .cms-route-status.is-invalid {
     color: #9a3412;
 }
+
+.dark .cms-route-editor {
+    background: var(--md-sys-color-surface-container);
+    border-color: var(--md-sys-color-outline-variant);
+    box-shadow: none;
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-route-editor-help {
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+.dark .cms-route-preview {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 16%, var(--md-sys-color-surface-container));
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-route-slash {
+    color: var(--md-sys-color-primary);
+}
+
+.dark .cms-route-segment-input {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-route-segment-input:focus {
+    outline-color: color-mix(in srgb, var(--md-sys-color-primary) 72%, transparent);
+}
+
+.dark .cms-route-remove,
+.dark .cms-route-add {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .cms-route-remove:hover,
+.dark .cms-route-add:hover {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 16%, var(--md-sys-color-surface-container));
+    color: var(--md-sys-color-primary);
+}
+
+.dark .cms-route-status.is-valid {
+    color: #6ee7b7;
+}
+
+.dark .cms-route-status.is-conflict {
+    color: var(--md-sys-color-error);
+}
+
+.dark .cms-route-status.is-invalid {
+    color: #fbbf24;
+}

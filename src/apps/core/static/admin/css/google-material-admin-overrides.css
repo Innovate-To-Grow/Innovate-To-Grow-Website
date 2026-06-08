@@ -62,6 +62,16 @@
     background-color: var(--md-sys-color-surface-container) !important;
 }
 
+#changelist.module {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+#changelist > .result-list-wrapper {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
 .i2g-admin-theme-toggle {
     position: relative;
 }
@@ -101,6 +111,8 @@
 .i2g-admin-theme-toggle__option .material-symbols-outlined {
     font-size: 18px !important;
     line-height: 1 !important;
+    min-width: 18px;
+    text-align: center;
 }
 
 .i2g-admin-theme-toggle__text {
@@ -156,4 +168,12 @@
 .dark .i2g-admin-theme-toggle__button,
 .dark .i2g-admin-theme-toggle__menu {
     background-color: var(--md-sys-color-surface-container);
+}
+
+.dark .i2g-admin-theme-toggle__button {
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .i2g-admin-theme-toggle__option:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
 }

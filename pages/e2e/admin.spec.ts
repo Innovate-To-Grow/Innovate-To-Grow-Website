@@ -7,6 +7,8 @@ const nonstaffEmail = process.env.ADMIN_E2E_NONSTAFF_EMAIL ?? 'admin-e2e-nonstaf
 const actionEmail = process.env.ADMIN_E2E_ACTION_EMAIL ?? 'action-e2e@example.com';
 const seededProjectTitle = 'E2E Solar Orchard Dashboard';
 const seededSemesterLabel = '2099-2 Fall';
+const themeRuntimeErrorPattern =
+  /theme is not defined|adminTheme is not defined|themeBindings is not defined|openModal is not defined/i;
 
 async function adminLogin(page: Page, email = adminEmail, password = adminPassword) {
   await page.goto(`${apiBaseUrl}/admin/login/?mode=password`, {waitUntil: 'domcontentloaded'});
@@ -20,6 +22,21 @@ async function adminLogin(page: Page, email = adminEmail, password = adminPasswo
 async function expectLoggedInAdmin(page: Page) {
   await expect(page).toHaveURL(/\/admin\/?(?:\?.*)?$/);
   await expect(page.locator('body')).toContainText(/Welcome to I2G Admin|Innovate To Grow Admin|I2G Admin/i);
+}
+
+function collectThemeRuntimeErrors(page: Page) {
+  const errors: string[] = [];
+
+  page.on('console', (message) => {
+    if (!['error', 'warning'].includes(message.type())) return;
+    if (themeRuntimeErrorPattern.test(message.text())) errors.push(message.text());
+  });
+
+  page.on('pageerror', (error) => {
+    if (themeRuntimeErrorPattern.test(error.message)) errors.push(error.message);
+  });
+
+  return errors;
 }
 
 async function expectAdminDocument(page: Page, path: string) {
@@ -72,6 +89,30 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
   test('logs in through the deterministic password-mode admin login', async ({page}) => {
     await adminLogin(page);
     await expectLoggedInAdmin(page);
+  });
+
+  test('switches and persists the global admin theme without runtime errors', async ({page}) => {
+    const themeRuntimeErrors = collectThemeRuntimeErrors(page);
+
+    await page.goto(`${apiBaseUrl}/admin/login/?mode=password`, {waitUntil: 'domcontentloaded'});
+    await page.evaluate(() => window.localStorage.removeItem('adminTheme'));
+    await page.getByLabel('Email').fill(adminEmail);
+    await page.getByLabel('Password').fill(adminPassword);
+    await page.getByRole('button', {name: /sign in/i}).click();
+    await expectLoggedInAdmin(page);
+
+    const themeToggle = page.getByTestId('i2g-admin-theme-toggle');
+    await expect(themeToggle).toBeVisible();
+    await expect(themeToggle.locator('.i2g-admin-theme-toggle__icon')).not.toHaveText('');
+    await expect(themeToggle.locator('.i2g-admin-theme-toggle__text')).toContainText(/Light|Dark|System/);
+
+    await themeToggle.getByRole('button', {name: /switch admin theme/i}).click();
+    await page.getByRole('button', {name: /^Dark$/}).click();
+    await expect(page.locator('html')).toHaveClass(/(?:^|\s)dark(?:\s|$)/);
+
+    await page.reload({waitUntil: 'domcontentloaded'});
+    await expect(page.locator('html')).toHaveClass(/(?:^|\s)dark(?:\s|$)/);
+    expect(themeRuntimeErrors).toEqual([]);
   });
 
   test('loads the admin index and critical custom changelists', async ({page}) => {

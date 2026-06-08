@@ -30,6 +30,10 @@ def _is_system_intelligence_usage(request):
     return request.path.startswith("/admin/system-intelligence/usage/")
 
 
+def _is_mail_delivery_dashboard(request):
+    return request.path.startswith("/admin/mail/delivery-dashboard/")
+
+
 UNFOLD = {
     "SITE_TITLE": "I2G Admin",
     "SITE_HEADER": "Innovate To Grow",
@@ -228,6 +232,12 @@ UNFOLD = {
                 "title": "Broadcast Delivery",
                 "permission": _can("mail"),
                 "items": [
+                    {
+                        "title": "Delivery Dashboard",
+                        "link": "/admin/mail/delivery-dashboard/",
+                        "permission": _can("mail"),
+                        "active": _is_mail_delivery_dashboard,
+                    },
                     {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/", "permission": _can("mail")},
                     {"title": "Gmail Inbox", "link": "/admin/mail/inbox/", "permission": _can("mail")},
                     {"title": "Scam Detection", "link": "/admin/mail/scamdetectorconfig/", "permission": _can("mail")},

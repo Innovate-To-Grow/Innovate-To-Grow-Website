@@ -17,7 +17,14 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
                 "input": {"name": "Ada"},
                 "result_preview": "Showing 1 of 1 result.",
             },
-            {"type": "usage", "inputTokens": 2, "outputTokens": 3, "totalTokens": 5},
+            {
+                "type": "usage",
+                "inputTokens": 2,
+                "outputTokens": 3,
+                "totalTokens": 5,
+                "cacheReadInputTokens": 4,
+                "cacheWriteInputTokens": 1,
+            },
         ]
         with patch(
             "apps.system_intelligence.admin.invoke_system_intelligence_stream", return_value=iter(stream_events)
@@ -35,7 +42,11 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
         self.assertIn('event: text\ndata: {"chunk": "Hello"}', body)
         self.assertLess(body.index("event: context"), body.index("event: text"))
         self.assertIn('event: tool_call\ndata: {"type": "tool_call"', body)
-        self.assertIn('event: usage\ndata: {"inputTokens": 2, "outputTokens": 3, "totalTokens": 5}', body)
+        self.assertIn(
+            'event: usage\ndata: {"inputTokens": 2, "outputTokens": 3, "totalTokens": 5, '
+            '"cacheReadInputTokens": 4, "cacheWriteInputTokens": 1}',
+            body,
+        )
         self.assertIn('event: done\ndata: {"id":', body)
         self.assertEqual(stream.call_args.args[0], [{"role": "user", "content": "Find Ada"}])
         self.assertEqual(stream.call_args.kwargs["chat_config"], self.chat_config)
@@ -43,7 +54,16 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
         messages = list(ChatMessage.objects.filter(conversation=self.conversation).order_by("created_at"))
         self.assertEqual([message.role for message in messages], ["user", "assistant"])
         self.assertEqual(messages[1].content, "Hello")
-        self.assertEqual(messages[1].token_usage, {"inputTokens": 2, "outputTokens": 3, "totalTokens": 5})
+        self.assertEqual(
+            messages[1].token_usage,
+            {
+                "inputTokens": 2,
+                "outputTokens": 3,
+                "totalTokens": 5,
+                "cacheReadInputTokens": 4,
+                "cacheWriteInputTokens": 1,
+            },
+        )
         self.assertEqual(messages[1].context_usage["preparedMessageCount"], 1)
         detail = self.client.get(reverse("admin:system_intelligence_detail", args=[self.conversation.id]))
         self.assertEqual(detail.json()["messages"][-1]["context_usage"]["preparedMessageCount"], 1)

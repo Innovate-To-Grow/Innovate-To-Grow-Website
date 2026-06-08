@@ -1,6 +1,6 @@
-@import "./cms-block-editor-parts/list-and-card.css";
-@import "./cms-block-editor-parts/actions-and-fields.css";
-@import "./cms-block-editor-parts/repeater.css";
-@import "./cms-block-editor-parts/add-block-and-preview.css";
-@import "./cms-block-editor-parts/block-preview.css";
-@import "./cms-block-editor-parts/assets.css";
+@import "./cms-block-editor-parts/list-and-card.css?v=16";
+@import "./cms-block-editor-parts/actions-and-fields.css?v=16";
+@import "./cms-block-editor-parts/repeater.css?v=16";
+@import "./cms-block-editor-parts/add-block-and-preview.css?v=16";
+@import "./cms-block-editor-parts/block-preview.css?v=16";
+@import "./cms-block-editor-parts/assets.css?v=16";

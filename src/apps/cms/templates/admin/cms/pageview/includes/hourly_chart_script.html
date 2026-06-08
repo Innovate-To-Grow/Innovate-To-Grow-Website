@@ -2,13 +2,24 @@
     (function () {
         const labels = [{% for h in hourly_views %}"{{ h.hour }}:00"{% if not forloop.last %},{% endif %}{% endfor %}];
         const data = [{% for h in hourly_views %}{{ h.count }}{% if not forloop.last %},{% endif %}{% endfor %}];
-        const isDark = document.documentElement.classList.contains('dark');
-        const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-        const textColor = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)';
+        const theme = window.i2gPageViewTheme;
+        const colors = theme.palette();
 
-        new Chart(document.getElementById('hourlyChart'), {
+        function applyTheme(chart, palette) {
+            chart.data.datasets[0].backgroundColor = palette.tealBar;
+            chart.options.plugins.datalabels.color = palette.textColor;
+            chart.options.plugins.tooltip.backgroundColor = palette.tooltipBg;
+            chart.options.plugins.tooltip.titleColor = palette.titleColor;
+            chart.options.plugins.tooltip.bodyColor = palette.textColor;
+            chart.options.plugins.tooltip.borderColor = palette.gridColor;
+            chart.options.scales.x.ticks.color = palette.textColor;
+            chart.options.scales.y.grid.color = palette.gridColor;
+            chart.options.scales.y.ticks.color = palette.textColor;
+        }
+
+        const chart = new Chart(document.getElementById('hourlyChart'), {
             type: 'bar',
-            data: {labels: labels, datasets: [{label: 'Views', data: data, backgroundColor: isDark ? 'rgba(45,212,191,0.6)' : 'rgba(20,184,166,0.7)', borderRadius: 3, borderSkipped: false}]},
+            data: {labels: labels, datasets: [{label: 'Views', data: data, backgroundColor: colors.tealBar, borderRadius: 3, borderSkipped: false}]},
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -16,12 +27,12 @@
                 interaction: {mode: 'index', intersect: false},
                 plugins: {
                     legend: {display: false},
-                    datalabels: {anchor: 'end', align: 'top', color: textColor, font: {size: 9}, display: function (ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }},
+                    datalabels: {anchor: 'end', align: 'top', color: colors.textColor, font: {size: 9}, display: function (ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; }},
                     tooltip: {
-                        backgroundColor: isDark ? '#1e1e2e' : '#fff',
-                        titleColor: isDark ? '#e2e8f0' : '#1e293b',
-                        bodyColor: isDark ? '#cbd5e1' : '#475569',
-                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                        backgroundColor: colors.tooltipBg,
+                        titleColor: colors.titleColor,
+                        bodyColor: colors.textColor,
+                        borderColor: colors.gridColor,
                         borderWidth: 1,
                         padding: 10,
                         cornerRadius: 6,
@@ -30,10 +41,12 @@
                     }
                 },
                 scales: {
-                    x: {grid: {display: false}, ticks: {color: textColor, font: {size: 9}, maxRotation: 0, callback: function (val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; }}, border: {display: false}},
-                    y: {beginAtZero: true, grid: {color: gridColor}, ticks: {color: textColor, font: {size: 11}, precision: 0, maxTicksLimit: 5}, border: {display: false}}
+                    x: {grid: {display: false}, ticks: {color: colors.textColor, font: {size: 9}, maxRotation: 0, callback: function (val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; }}, border: {display: false}},
+                    y: {beginAtZero: true, grid: {color: colors.gridColor}, ticks: {color: colors.textColor, font: {size: 11}, precision: 0, maxTicksLimit: 5}, border: {display: false}}
                 }
             }
         });
+
+        theme.register(chart, applyTheme);
     })();
 </script>

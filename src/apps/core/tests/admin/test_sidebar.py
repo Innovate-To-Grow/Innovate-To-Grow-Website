@@ -102,6 +102,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         mail_section = next(section for section in navigation if section["title"] == "Broadcast Delivery")
         items_by_title = {item["title"]: item for item in mail_section["items"]}
 
+        self.assertEqual(items_by_title["Delivery Dashboard"]["link"], "/admin/mail/delivery-dashboard/")
         self.assertEqual(items_by_title["Notification Delivery"]["link"], "/admin/mail/settings/")
         self.assertEqual(items_by_title["Gmail Inbox"]["link"], "/admin/mail/inbox/")
         self.assertEqual(items_by_title["Broadcast Campaigns"]["link"], "/admin/mail/emailcampaign/")
@@ -124,6 +125,8 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertIn("AWS Credentials", item_titles)
 
     def test_mail_settings_route_is_registered_under_mail_app(self):
+        self.assertEqual(reverse("admin:mail_delivery_dashboard"), "/admin/mail/delivery-dashboard/")
+        self.assertEqual(reverse("admin:mail_delivery_dashboard_data"), "/admin/mail/delivery-dashboard/data/")
         self.assertEqual(reverse("admin:mail_settings"), "/admin/mail/settings/")
         self.assertEqual(reverse("admin:mail_smscampaign_changelist"), "/admin/mail/smscampaign/")
         with self.assertRaises(NoReverseMatch):

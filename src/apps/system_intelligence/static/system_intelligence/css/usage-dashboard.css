@@ -1,0 +1,202 @@
+#si-usage-root {
+    --si-usage-surface: var(--md-sys-color-surface-container-lowest);
+    --si-usage-border: var(--md-sys-color-outline-variant);
+    --si-usage-text: var(--md-sys-color-on-surface);
+    --si-usage-muted: var(--md-sys-color-on-surface-variant);
+    --si-usage-primary: var(--md-sys-color-primary);
+    color: var(--si-usage-text);
+}
+
+.dark #si-usage-root {
+    --si-usage-surface: var(--md-sys-color-surface-container);
+}
+
+.si-usage-surface,
+.si-usage-hero,
+.si-usage-metric-card,
+.si-usage-panel,
+.si-usage-refresh {
+    background: var(--si-usage-surface) !important;
+    border-color: var(--si-usage-border) !important;
+    color: var(--si-usage-text) !important;
+}
+
+.si-usage-title,
+.si-usage-heading,
+.si-usage-value,
+.si-usage-table-cell,
+.si-usage-prompt {
+    color: var(--si-usage-text) !important;
+}
+
+.si-usage-muted,
+.si-usage-table-head,
+.si-usage-card-title {
+    color: var(--si-usage-muted) !important;
+}
+
+.si-usage-eyebrow,
+.si-usage-heading-icon,
+.si-usage-metric-icon {
+    color: var(--si-usage-primary) !important;
+}
+
+.si-usage-hero-row {
+    align-items: flex-start;
+    display: flex !important;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.si-usage-hero-copy {
+    min-width: 0;
+}
+
+.si-usage-refresh {
+    align-self: flex-start;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+    .si-usage-hero-row {
+        align-items: center;
+        flex-direction: row !important;
+        justify-content: space-between;
+    }
+
+    .si-usage-hero-copy {
+        flex: 1 1 auto;
+    }
+
+    .si-usage-refresh {
+        align-self: center;
+        margin-left: auto;
+    }
+}
+
+.si-usage-metric-icon--success {
+    color: var(--md-sys-color-success, #22c55e) !important;
+}
+
+.si-usage-metric-icon--info {
+    color: var(--md-sys-color-primary) !important;
+}
+
+.si-usage-row,
+.si-usage-table-head {
+    border-color: var(--si-usage-border) !important;
+}
+
+.si-usage-row:hover {
+    background: color-mix(in srgb, var(--si-usage-primary) 8%, transparent) !important;
+}
+
+.si-usage-fallback-chart {
+    align-items: stretch;
+    display: flex;
+    height: 100%;
+    min-height: 15rem;
+    width: 100%;
+}
+
+.si-usage-fallback-svg {
+    display: block;
+    height: 100%;
+    overflow: visible;
+    width: 100%;
+}
+
+.si-usage-fallback-grid {
+    stroke: color-mix(in srgb, var(--si-usage-border) 72%, transparent);
+    stroke-width: 1;
+}
+
+.si-usage-fallback-axis,
+.si-usage-fallback-legend,
+.si-usage-fallback-value {
+    fill: var(--si-usage-muted);
+    font-size: 0.72rem;
+}
+
+.si-usage-fallback-value {
+    fill: var(--si-usage-text);
+    font-weight: 600;
+}
+
+.si-usage-fallback-track {
+    fill: color-mix(in srgb, var(--si-usage-muted) 12%, transparent);
+}
+
+.si-usage-fallback-empty {
+    align-items: center;
+    border: 1px dashed color-mix(in srgb, var(--si-usage-border) 80%, transparent);
+    border-radius: 0.5rem;
+    color: var(--si-usage-muted);
+    display: flex;
+    flex: 1 1 auto;
+    font-size: 0.875rem;
+    justify-content: center;
+    min-height: 15rem;
+    text-align: center;
+}
+
+.si-usage-scroll-panel {
+    display: flex;
+    flex-direction: column;
+    height: 24rem;
+    overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+    .si-usage-scroll-panel {
+        height: 26rem;
+    }
+}
+
+.si-usage-scroll-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 0.125rem;
+}
+
+.si-usage-scroll-body table {
+    min-width: 100%;
+}
+
+.si-usage-scroll-body thead {
+    background: var(--si-usage-surface);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.si-usage-scroll-body::-webkit-scrollbar {
+    height: 0.625rem;
+    width: 0.625rem;
+}
+
+.si-usage-scroll-body::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--si-usage-muted) 46%, transparent);
+    border: 2px solid var(--si-usage-surface);
+    border-radius: 999px;
+}
+
+.si-usage-scroll-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.si-usage-refresh:hover {
+    color: var(--si-usage-primary) !important;
+}
+
+.si-usage-banner {
+    background: color-mix(in srgb, var(--md-sys-color-warning, #f59e0b) 14%, var(--si-usage-surface)) !important;
+    border-color: color-mix(in srgb, var(--md-sys-color-warning, #f59e0b) 48%, var(--si-usage-border)) !important;
+    color: var(--si-usage-text) !important;
+}
+
+.si-usage-banner code {
+    color: var(--si-usage-text);
+}

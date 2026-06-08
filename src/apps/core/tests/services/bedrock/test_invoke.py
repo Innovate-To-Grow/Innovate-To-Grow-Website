@@ -259,7 +259,17 @@ class StreamHelpersTest(SimpleTestCase):
                 {"contentBlockDelta": {"delta": {"text": "lo"}}},
                 {"contentBlockStop": {}},
                 {"messageStop": {"stopReason": "end_turn"}},
-                {"metadata": {"usage": {"inputTokens": 3, "outputTokens": 5, "totalTokens": 8}}},
+                {
+                    "metadata": {
+                        "usage": {
+                            "inputTokens": 3,
+                            "outputTokens": 5,
+                            "totalTokens": 8,
+                            "cacheReadInputTokens": 4,
+                            "cacheWriteInputTokens": 2,
+                        }
+                    }
+                },
             ]
         }
         gen = process_stream_response(response)
@@ -269,7 +279,16 @@ class StreamHelpersTest(SimpleTestCase):
         # Re-run to capture the return value
         outcome = self._drain(process_stream_response(response))
         self.assertEqual(outcome["stop_reason"], "end_turn")
-        self.assertEqual(outcome["usage"], {"inputTokens": 3, "outputTokens": 5, "totalTokens": 8})
+        self.assertEqual(
+            outcome["usage"],
+            {
+                "inputTokens": 3,
+                "outputTokens": 5,
+                "totalTokens": 8,
+                "cacheReadInputTokens": 4,
+                "cacheWriteInputTokens": 2,
+            },
+        )
         self.assertEqual(outcome["content_blocks"], [{"text": "Hello"}])
 
     def test_process_stream_response_tool_use(self):

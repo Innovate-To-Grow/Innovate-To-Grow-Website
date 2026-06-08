@@ -543,6 +543,27 @@ class NormalizeAdkEventTests(SimpleTestCase):
         usage = usage_event(Meta())
         self.assertEqual(usage, {"type": "usage", "inputTokens": 5, "outputTokens": 7, "totalTokens": 12})
 
+    def test_usage_event_preserves_cache_token_metadata(self):
+        class Meta:
+            promptTokenCount = 5
+            candidatesTokenCount = 7
+            totalTokenCount = 12
+            cachedContentTokenCount = 4
+            cacheWriteInputTokens = 2
+
+        usage = usage_event(Meta())
+        self.assertEqual(
+            usage,
+            {
+                "type": "usage",
+                "inputTokens": 5,
+                "outputTokens": 7,
+                "totalTokens": 12,
+                "cacheReadInputTokens": 4,
+                "cacheWriteInputTokens": 2,
+            },
+        )
+
 
 # ---------------------------------------------------------------------------
 # litellm.py  (lines 13-16, 36-37, 49-51)
