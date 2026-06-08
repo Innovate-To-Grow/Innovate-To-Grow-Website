@@ -1,7 +1,25 @@
+import bleach
 from django.conf import settings
 from rest_framework import serializers
 
 from ..models import PastProjectShare
+
+# Mirror the client's rich-detail allowlist (RICH_DETAIL_ALLOWED_TAGS in
+# pastProjectsDetailText.ts): inline emphasis + line/paragraph structure, no attributes.
+# Defense-in-depth so safety does not rely solely on every client render calling DOMPurify.
+DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark"]
+
+# Generous cap: a generated detail for ~1000 projects with long abstracts is well under this
+# (low hundreds of KB), so it never rejects a legitimate large share, but it stops absurd
+# payloads. note is capped at 2000; details legitimately needs much more room.
+DETAILS_TEXT_MAX_LENGTH = 2_000_000
+
+
+def sanitize_details_text(value: str) -> str:
+    """Strip any markup outside the rich-detail allowlist from a share's details_text."""
+    if not value:
+        return value
+    return bleach.clean(value, tags=DETAILS_ALLOWED_TAGS, attributes={}, strip=True)
 
 
 def _share_url(obj, request):
@@ -42,7 +60,9 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True, allow_blank=False, max_length=200)
     rows = PastProjectShareRowSerializer(many=True)
     note = serializers.CharField(required=False, allow_blank=True, max_length=2000, default="")
-    details_text = serializers.CharField(required=False, allow_blank=True, default="")
+    details_text = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=DETAILS_TEXT_MAX_LENGTH
+    )
     share_url = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
 
@@ -54,6 +74,12 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     # name uses DRF CharField defaults (allow_blank=False + trim_whitespace=True), so
     # empty/whitespace-only names are rejected and the stored value is auto-trimmed —
     # no custom validate_name needed.
+
+    # noinspection PyMethodMayBeStatic
+    def validate_details_text(self, value):
+        # Sanitize on write so stored/served details_text can never carry script or other
+        # disallowed markup, regardless of how a client renders it.
+        return sanitize_details_text(value)
 
     # noinspection PyMethodMayBeStatic
     def validate_rows(self, value):

@@ -34,7 +34,7 @@ interface MergedResultsTableProps {
     note: string,
     detailsText: string,
   ) => Promise<PastProjectShareCreationResult>;
-  onUpdateShare?: (rows: ProjectGridRow[], note: string, name: string, detailsText: string) => Promise<void>;
+  onUpdateShare?: (rows: ProjectGridRow[], name: string, note: string, detailsText: string) => Promise<void>;
   onDeleteRow?: (row: ProjectGridItem) => void;
 }
 
@@ -104,7 +104,6 @@ function ClearFormattingIcon() {
 
 const RICH_DETAIL_FORMATTING_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'mark', 'span', 'font']);
 const RICH_DETAIL_HIGHLIGHT_TAGS = new Set(['mark']);
-const RICH_DETAIL_HIGHLIGHT_COLOR = '#fff3a3';
 
 const appendPlainFormattingNode = (target: DocumentFragment, node: Node) => {
   if (node.nodeType === Node.TEXT_NODE) {
@@ -237,16 +236,25 @@ function RichTextDetailEditor({
   onChange,
 }: RichTextDetailEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const lastEmittedRef = useRef<string | null>(null);
   const labelId = `${id}-label`;
   const sanitizedValue = useMemo(() => sanitizePastProjectsDetailHtml(value), [value]);
   const editorClassName = `project-grid-rich-detail-editor${isLargeDetailSet ? ' is-large-detail-set' : ''}`;
   const inputClassName = `project-grid-rich-detail-input${isLargeDetailSet ? ' is-large-detail-set' : ''}`;
 
   useEffect(() => {
-    if (!editorRef.current || editorRef.current.innerHTML === sanitizedValue) {
+    const editor = editorRef.current;
+    if (!editor) {
       return;
     }
-    editorRef.current.innerHTML = sanitizedValue;
+    // Skip rewriting innerHTML when this value is just an echo of the user's own edit — the DOM
+    // already holds it, and rewriting would reset the caret/selection mid-edit (the browser's
+    // live markup often differs from DOMPurify's normalized output). Only sync the DOM for
+    // external value changes: autogeneration, a prop/share change, or programmatic seeding.
+    if (sanitizedValue === lastEmittedRef.current || editor.innerHTML === sanitizedValue) {
+      return;
+    }
+    editor.innerHTML = sanitizedValue;
   }, [sanitizedValue]);
 
   useEffect(() => {
@@ -256,7 +264,9 @@ function RichTextDetailEditor({
   }, [autoFocus, readOnly]);
 
   const emitChange = () => {
-    onChange(sanitizePastProjectsDetailHtml(editorRef.current?.innerHTML ?? ''));
+    const nextValue = sanitizePastProjectsDetailHtml(editorRef.current?.innerHTML ?? '');
+    lastEmittedRef.current = nextValue;
+    onChange(nextValue);
   };
 
   const applyCommand = (command: string, commandValue?: string) => {
@@ -322,6 +332,30 @@ function RichTextDetailEditor({
     emitChange();
   };
 
+  const applyHighlight = (range: Range, editor: HTMLElement) => {
+    const selection = window.getSelection();
+    const fragment = range.extractContents();
+    // Strip any nested highlight so toggling never yields <mark><mark>…</mark></mark>.
+    unwrapMatchingElements(fragment, RICH_DETAIL_HIGHLIGHT_TAGS);
+    const mark = document.createElement('mark');
+    mark.appendChild(fragment);
+    range.insertNode(mark);
+
+    // Re-select the highlighted content so an immediate second click toggles it back off
+    // (getEditorSelectionRange returns null for a collapsed selection). Wrapping a real <mark>
+    // ourselves — instead of execCommand('hiliteColor'), which emits a background-color span —
+    // keeps the live DOM, the stored value, and the highlight detection all in agreement.
+    if (selection) {
+      const nextRange = document.createRange();
+      nextRange.selectNodeContents(mark);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+    }
+
+    editor.focus();
+    emitChange();
+  };
+
   const toggleHighlight = () => {
     if (readOnly || !editorRef.current) {
       return;
@@ -338,7 +372,7 @@ function RichTextDetailEditor({
       return;
     }
 
-    applyCommand('hiliteColor', RICH_DETAIL_HIGHLIGHT_COLOR);
+    applyHighlight(range, editor);
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
@@ -441,6 +475,22 @@ type ProjectRowsExporter = (
   fileBaseName: string,
   context: {detailsText?: string; note?: string; title?: string},
 ) => Promise<void>;
+
+// Pull a specific message out of a DRF validation error ({field: ["..."]}) so a failed share
+// surfaces the actual reason (e.g. the row/name limit) instead of a generic retry prompt.
+const getShareErrorMessage = (error: unknown): string => {
+  const data = (error as {response?: {data?: unknown}}).response?.data;
+  if (data && typeof data === 'object') {
+    for (const field of ['rows', 'name', 'note', 'details_text', 'detail'] as const) {
+      const value = (data as Record<string, unknown>)[field];
+      const message = Array.isArray(value) ? value[0] : value;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+  }
+  return 'Unable to create a shareable URL. Please try again.';
+};
 
 const getExportFileBaseName = (title: string) => {
   const slug = title
@@ -558,6 +608,10 @@ export const MergedResultsTable = ({
   const exportDetailsText = sharedMode ? sharedDetails : detailsDraft;
   const exportNote = sharedMode ? sharedExportNote : '';
   const exportFileBaseName = sharedMode ? sharedExportFileBaseName : 'past-projects';
+  // In shared mode the export represents the whole shared snapshot (and its curated detail), so
+  // a viewer's transient table search must not narrow it — that would mismatch the full detail
+  // text. In builder mode the visible (filtered) rows ARE the curation, matching the detail.
+  const exportRows = sharedMode ? currentRows : visibleRows;
   const exportContext = {
     detailsText: exportDetailsText,
     note: exportNote,
@@ -566,7 +620,7 @@ export const MergedResultsTable = ({
 
   const handleExport = async (exporter: ProjectRowsExporter, label: string) => {
     try {
-      await exporter(visibleRows, exportFileBaseName, exportContext);
+      await exporter(exportRows, exportFileBaseName, exportContext);
     } catch {
       // Dynamic-import (code-split chunk) or serialization failures otherwise reject silently.
       setStatusMessage(`Unable to export ${label}. Please try again.`);
@@ -618,9 +672,9 @@ export const MergedResultsTable = ({
       if (isMountedRef.current) {
         setStatusMessage('Opening shareable link...');
       }
-    } catch {
+    } catch (error) {
       if (isMountedRef.current) {
-        setStatusMessage('Unable to create a shareable URL. Please try again.');
+        setStatusMessage(getShareErrorMessage(error));
       }
     } finally {
       if (isMountedRef.current) {
@@ -658,8 +712,8 @@ export const MergedResultsTable = ({
 
   const handleUpdateSharedPage = async (
     nextRows: ProjectGridRow[],
-    nextNote: string,
     nextName: string,
+    nextNote: string,
     nextDetailsText: string,
     successMessage: string,
   ) => {
@@ -670,7 +724,7 @@ export const MergedResultsTable = ({
     setIsSavingShareEdit(true);
     setStatusMessage('');
     try {
-      await onUpdateShare(nextRows, nextNote, nextName, nextDetailsText);
+      await onUpdateShare(nextRows, nextName, nextNote, nextDetailsText);
       setStatusMessage(successMessage);
       return true;
     } catch {
@@ -702,7 +756,7 @@ export const MergedResultsTable = ({
 
     // Send the last-saved details (the prop), not the live draft, so saving the name never
     // silently persists unsaved edits made in the (now-closed) detail editor.
-    const saved = await handleUpdateSharedPage(currentRows, note ?? '', trimmedTitle, detailsText, 'Name updated.');
+    const saved = await handleUpdateSharedPage(currentRows, trimmedTitle, note ?? '', detailsText, 'Name updated.');
     if (saved) {
       setIsEditingSharedTitle(false);
     }
@@ -723,7 +777,7 @@ export const MergedResultsTable = ({
 
     // Send the last-saved details (the prop), not the live draft, so saving the note never
     // silently persists unsaved edits made in the (now-closed) detail editor.
-    const saved = await handleUpdateSharedPage(currentRows, editNoteDraft.trim(), title, detailsText, 'Note updated.');
+    const saved = await handleUpdateSharedPage(currentRows, title, editNoteDraft.trim(), detailsText, 'Note updated.');
     if (saved) {
       setIsEditingSharedNote(false);
     }
@@ -731,6 +785,12 @@ export const MergedResultsTable = ({
 
   const handleSharedDetailsAction = async () => {
     if (!isEditingSharedDetails) {
+      if (!detailsDraft.trim()) {
+        // Old share saved before details_text existed: seed the editor with the generated
+        // detail so the owner can review/save it instead of starting from a blank field.
+        setDetailsDraft(createPastProjectsDetailHtml(currentRows));
+        setIsDetailsTextDirty(true);
+      }
       setIsEditingSharedDetails(true);
       setIsEditingSharedTitle(false);
       setIsEditingSharedNote(false);
@@ -744,8 +804,8 @@ export const MergedResultsTable = ({
 
     const saved = await handleUpdateSharedPage(
       currentRows,
-      note ?? '',
       title,
+      note ?? '',
       detailsDraft,
       'Past projects detail updated.',
     );
@@ -765,7 +825,7 @@ export const MergedResultsTable = ({
       setStatusMessage('A shared page needs at least one project.');
       return;
     }
-    await handleUpdateSharedPage(nextRows, note ?? '', title, detailsText, 'Project removed.');
+    await handleUpdateSharedPage(nextRows, title, note ?? '', detailsText, 'Project removed.');
   };
 
   const handleDeleteMergedRow = async (row: ProjectGridItem) => {
@@ -1027,7 +1087,7 @@ export const MergedResultsTable = ({
                 type="button"
                 className="itg-btn itg-btn-outline"
                 onClick={() => void handleExport(exportProjectRowsCsv, 'CSV')}
-                disabled={!visibleRows.length}
+                disabled={!exportRows.length}
               >
                 CSV
               </button>
@@ -1035,7 +1095,7 @@ export const MergedResultsTable = ({
                 type="button"
                 className="itg-btn itg-btn-outline"
                 onClick={() => void handleExport(exportProjectRowsExcel, 'Excel')}
-                disabled={!visibleRows.length}
+                disabled={!exportRows.length}
               >
                 Excel
               </button>
@@ -1043,7 +1103,7 @@ export const MergedResultsTable = ({
                 type="button"
                 className="itg-btn itg-btn-outline"
                 onClick={() => void handleExport(exportProjectRowsPdf, 'PDF')}
-                disabled={!visibleRows.length}
+                disabled={!exportRows.length}
               >
                 PDF
               </button>
@@ -1051,7 +1111,7 @@ export const MergedResultsTable = ({
                 type="button"
                 className="itg-btn itg-btn-outline"
                 onClick={() => void handleExport(exportProjectRowsWord, 'Microsoft Word')}
-                disabled={!visibleRows.length}
+                disabled={!exportRows.length}
               >
                 Microsoft Word
               </button>

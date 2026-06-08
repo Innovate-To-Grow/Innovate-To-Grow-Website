@@ -9,7 +9,7 @@ import type {
 } from '../../src/features/auth/api/types';
 import type {EventRegistrationOptions, Registration} from '../../src/features/events/api';
 import type {NewsArticle, PaginatedResponse} from '../../src/features/news/api';
-import type {ProjectDetail, ProjectTableRow} from '../../src/features/projects/api';
+import type {PastProjectShare, ProjectDetail, ProjectTableRow} from '../../src/features/projects/api';
 import type {CMSPageResponse} from '../../src/features/cms/api';
 import type {EventSchedulePayload} from '../../src/features/events/api';
 import {loginResponse, newsList, registration as buildRegistration, registrationOptions} from './factories';
@@ -157,6 +157,20 @@ export async function mockSchedule(page: Page, payload: EventSchedulePayload): P
 
 export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Promise<void> {
   await page.route('**/projects/past-all/', (route) => route.fulfill(json(rows)));
+}
+
+export async function mockPastProjectShare(page: Page, share: PastProjectShare): Promise<void> {
+  // Covers GET (view) and PATCH/PUT (owner edit): the update echoes the merged share back.
+  // RegExp (not a glob) so it matches the trailing-slash detail URL `.../past-shares/<id>/`.
+  await page.route(/\/projects\/past-shares\/[^/]+\/?(\?.*)?$/, (route) => {
+    const method = route.request().method();
+    if (method === 'PATCH' || method === 'PUT') {
+      const body = (route.request().postDataJSON() ?? {}) as Partial<PastProjectShare>;
+      route.fulfill(json({...share, ...body}));
+      return;
+    }
+    route.fulfill(json(share));
+  });
 }
 
 export async function mockProjectDetail(

@@ -1,4 +1,5 @@
 import type {RowInput} from 'jspdf-autotable';
+import type {Workbook} from 'exceljs';
 
 import {PROJECT_GRID_COLUMNS, type ProjectGridRow} from './projectGrid';
 import {createPastProjectsDetailText, pastProjectsDetailHtmlToPlainText} from './pastProjectsDetailText';
@@ -67,9 +68,21 @@ const escapeXml = (value: string | number | null | undefined) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+// CSV can't embed an image, so it references the logo by URL. Resolve to an absolute URL so the
+// reference still points at the logo when the CSV is opened off-site (a relative path would not).
+const resolveLogoUrl = () =>
+  typeof window !== 'undefined' && window.location?.origin
+    ? new URL(I2G_LOGO_URL, window.location.origin).href
+    : I2G_LOGO_URL;
+
 const getProjectDetailsText = (rows: ProjectGridRow[], detailsText: string) =>
   detailsText || createPastProjectsDetailText(rows).trim();
 
+// Exports are intentionally plaintext for the detail section: the rich detail's inline emphasis
+// (<mark> highlight, bold/italic) is flattened here via pastProjectsDetailHtmlToPlainText so all
+// four formats stay consistent. Carrying emphasis into the .docx would mean parsing the detail
+// HTML into Word runs (and giving the other formats no equivalent), which is a feature rather
+// than a fix — deferred deliberately.
 const normalizeProjectRowsExportContext = (rows: ProjectGridRow[], context: ProjectRowsExportContext = {}) => ({
   detailsText: getProjectDetailsText(rows, pastProjectsDetailHtmlToPlainText(context.detailsText ?? '').trim()),
   note: (context.note ?? '').trim(),
@@ -113,7 +126,7 @@ export const createPdfProjectTableBody = (rows: ProjectGridRow[]): RowInput[] =>
     ];
   });
 
-const splitExcelText = (text: string, maxLength = 30000) => {
+export const splitExcelText = (text: string, maxLength = 30000) => {
   const chunks: string[] = [];
   let remaining = text;
 
@@ -146,7 +159,7 @@ const bytesToBase64 = (bytes: Uint8Array) => {
   return btoa(binary);
 };
 
-const loadI2gLogoAsset = async (): Promise<ExportLogoAsset | null> => {
+export const loadI2gLogoAsset = async (): Promise<ExportLogoAsset | null> => {
   if (typeof fetch === 'undefined') {
     return null;
   }
@@ -307,7 +320,7 @@ export const createProjectRowsCsvText = (rows: ProjectGridRow[], context: Projec
   const lines: string[] = [];
 
   lines.push(escapeCsvCell('Innovate to Grow Past Projects'));
-  lines.push([escapeCsvCell('I2G Logo'), escapeCsvCell(I2G_LOGO_URL)].join(','));
+  lines.push([escapeCsvCell('I2G Logo'), escapeCsvCell(resolveLogoUrl())].join(','));
   lines.push([escapeCsvCell('Title'), escapeCsvCell(exportContext.title)].join(','));
   if (exportContext.note) {
     lines.push([escapeCsvCell('Note'), escapeCsvCell(exportContext.note)].join(','));
@@ -347,13 +360,12 @@ export const exportProjectRowsCsv = async (
   triggerDownload(blob, `${fileBaseName}.csv`);
 };
 
-export const exportProjectRowsExcel = async (
+export const buildProjectsWorksheet = (
+  workbook: Workbook,
   rows: ProjectGridRow[],
-  fileBaseName: string,
   context: ProjectRowsExportContext = {},
+  logo: ExportLogoAsset | null = null,
 ) => {
-  const [ExcelJS, logo] = await Promise.all([import('exceljs').then((module) => module.default), loadI2gLogoAsset()]);
-  const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Projects');
   const exportContext = normalizeProjectRowsExportContext(rows, context);
   const projectDetailsText = exportContext.detailsText;
@@ -486,6 +498,17 @@ export const exportProjectRowsExcel = async (
     to: {column: EXPORT_COLUMNS.length, row: headerRow.number},
   };
 
+  return worksheet;
+};
+
+export const exportProjectRowsExcel = async (
+  rows: ProjectGridRow[],
+  fileBaseName: string,
+  context: ProjectRowsExportContext = {},
+) => {
+  const [ExcelJS, logo] = await Promise.all([import('exceljs').then((module) => module.default), loadI2gLogoAsset()]);
+  const workbook = new ExcelJS.Workbook();
+  buildProjectsWorksheet(workbook, rows, context, logo);
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

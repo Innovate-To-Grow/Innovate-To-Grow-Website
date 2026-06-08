@@ -34,7 +34,7 @@ export const PastProjectsPage = () => {
     return nextShare;
   };
 
-  const handleUpdateShare = async (shareRows: ProjectGridRow[], note: string, name: string, detailsText: string) => {
+  const handleUpdateShare = async (shareRows: ProjectGridRow[], name: string, note: string, detailsText: string) => {
     if (!activeShare) {
       throw new Error('Shared past projects are not loaded yet.');
     }

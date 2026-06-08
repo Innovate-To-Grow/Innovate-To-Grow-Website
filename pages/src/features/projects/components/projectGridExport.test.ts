@@ -1,7 +1,45 @@
-import {describe, expect, it} from 'vitest';
+import ExcelJS from 'exceljs';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {createPdfProjectTableBody, createProjectRowsCsvText, createProjectRowsWordBlob} from './projectGridExport';
+import {
+  buildProjectsWorksheet,
+  createPdfProjectTableBody,
+  createProjectRowsCsvText,
+  createProjectRowsWordBlob,
+  loadI2gLogoAsset,
+  splitExcelText,
+} from './projectGridExport';
 import type {ProjectGridRow} from './projectGrid';
+
+// jspdf/autotable are heavy and DOM/canvas-bound; mock them so we can assert the document
+// assembly wiring (sections drawn, per-project table body) without rendering a real PDF.
+const pdfTextCalls = vi.hoisted(() => [] as string[]);
+const autoTableMock = vi.hoisted(() => vi.fn());
+
+vi.mock('jspdf', () => {
+  class MockJsPdf {
+    internal = {pageSize: {getWidth: () => 297, getHeight: () => 210}};
+    setTextColor = vi.fn();
+    setFont = vi.fn();
+    setFontSize = vi.fn();
+    setDrawColor = vi.fn();
+    setFillColor = vi.fn();
+    line = vi.fn();
+    rect = vi.fn();
+    addPage = vi.fn();
+    addImage = vi.fn();
+    save = vi.fn();
+    splitTextToSize(text: string) {
+      return [text];
+    }
+    text(value: string | string[]) {
+      pdfTextCalls.push(...(Array.isArray(value) ? value : [value]));
+    }
+  }
+  return {jsPDF: MockJsPdf};
+});
+
+vi.mock('jspdf-autotable', () => ({default: autoTableMock}));
 
 const row: ProjectGridRow = {
   semester_label: '2025 Spring',
@@ -44,7 +82,8 @@ describe('projectGridExport', () => {
       title: 'Saved Merged Results',
     });
 
-    expect(csv).toContain('Innovate to Grow Past Projects\r\nI2G Logo,/assets/images/i2glogo.png');
+    expect(csv).toContain('Innovate to Grow Past Projects\r\nI2G Logo,');
+    expect(csv).toMatch(/I2G Logo,\S*\/assets\/images\/i2glogo\.png/);
     expect(csv).toContain('Title,Saved Merged Results');
     expect(csv).toContain('Past Projects Detail\r\nEdited Past Projects Detail\r\nHighlighted project detail & owner edits');
     expect(csv).toContain('\r\nProjects\r\nYear-Semester,Class,Team#,Team Name,Project Title');
@@ -133,5 +172,133 @@ describe('projectGridExport', () => {
     expect(packageText).toContain('Project 1');
     expect(packageText).toContain('Students: Alice Calderon, Bob Lee');
     expect(packageText).toContain('Abstract: A detailed abstract with &lt;special&gt; characters &amp; project context.');
+  });
+
+  it('omits the logo parts from the Word package when no logo is provided', async () => {
+    const blob = createProjectRowsWordBlob([row], {title: 'No Logo Export'});
+    const packageText = new TextDecoder().decode(new Uint8Array(await blob.arrayBuffer()));
+
+    expect(packageText).not.toContain('rIdLogo');
+    expect(packageText).not.toContain('word/media/i2g-logo.png');
+    expect(packageText).not.toContain('Extension="png"');
+    // The rest of the document still renders.
+    expect(packageText).toContain('No Logo Export');
+    expect(packageText).toContain('Rotary Joint Testing System');
+  });
+});
+
+describe('splitExcelText', () => {
+  it('returns the text unchanged when it is under the limit', () => {
+    expect(splitExcelText('short detail', 100)).toEqual(['short detail']);
+  });
+
+  it('splits at a paragraph break when the text exceeds the limit', () => {
+    const block = `${'a'.repeat(50)}\n\n${'b'.repeat(50)}`;
+    const chunks = splitExcelText(block, 60);
+
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.join('')).toContain('a'.repeat(50));
+    expect(chunks.every((chunk) => chunk.length <= 60)).toBe(true);
+  });
+
+  it('hard-splits text with no break points at the max length', () => {
+    const chunks = splitExcelText('x'.repeat(150), 50);
+
+    expect(chunks).toHaveLength(3);
+    expect(chunks.every((chunk) => chunk.length === 50)).toBe(true);
+  });
+});
+
+describe('loadI2gLogoAsset', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns null when the logo fetch is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: false}));
+    expect(await loadI2gLogoAsset()).toBeNull();
+  });
+
+  it('returns null when the logo fetch throws', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+    expect(await loadI2gLogoAsset()).toBeNull();
+  });
+
+  it('decodes the logo into base64 + bytes on success', async () => {
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ok: true, arrayBuffer: async () => bytes.buffer}),
+    );
+
+    const asset = await loadI2gLogoAsset();
+
+    expect(asset).not.toBeNull();
+    expect(asset?.extension).toBe('png');
+    expect(asset?.bytes).toHaveLength(4);
+    expect(asset?.dataUrl.startsWith('data:image/png;base64,')).toBe(true);
+  });
+});
+
+describe('buildProjectsWorksheet', () => {
+  it('builds a branded worksheet with the detail section, project rows, and embedded logo', () => {
+    const workbook = new ExcelJS.Workbook();
+    buildProjectsWorksheet(
+      workbook,
+      [row],
+      {title: 'Excel Title', note: 'Owner note', detailsText: '<b>Edited</b> detail text'},
+      logo,
+    );
+
+    const worksheet = workbook.getWorksheet('Projects');
+    expect(worksheet).toBeDefined();
+    expect(worksheet?.getCell(1, 2).value).toBe('Excel Title');
+    expect(worksheet?.getCell(2, 2).value).toBe('Innovate to Grow Past Projects');
+    expect(worksheet?.getImages()).toHaveLength(1);
+
+    const cellText: string[] = [];
+    worksheet?.eachRow((sheetRow) => sheetRow.eachCell((cell) => cellText.push(String(cell.value ?? ''))));
+    const joined = cellText.join('|');
+    expect(joined).toContain('Note');
+    expect(joined).toContain('Past Projects Detail');
+    expect(joined).toContain('Edited detail text');
+    expect(joined).toContain('Projects');
+    expect(joined).toContain('Rotary Joint Testing System');
+  });
+
+  it('builds the worksheet without an image when no logo is provided', () => {
+    const workbook = new ExcelJS.Workbook();
+    buildProjectsWorksheet(workbook, [row], {title: 'No Logo'}, null);
+
+    expect(workbook.getWorksheet('Projects')?.getImages()).toHaveLength(0);
+  });
+});
+
+describe('exportProjectRowsPdf', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    autoTableMock.mockClear();
+    pdfTextCalls.length = 0;
+  });
+
+  it('draws the sections and passes the per-project table body to autoTable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: false})); // logo load fails -> null
+    const {exportProjectRowsPdf} = await import('./projectGridExport');
+
+    await exportProjectRowsPdf([row], 'past-projects', {
+      title: 'PDF Title',
+      note: 'Owner note',
+      detailsText: 'Detail line one',
+    });
+
+    expect(autoTableMock).toHaveBeenCalledTimes(1);
+    const config = autoTableMock.mock.calls[0][1] as {head: string[][]; body: unknown[]};
+    expect(config.head[0]).toContain('Year-Semester');
+    expect(config.body).toHaveLength(2); // one main row + one detail row per project
+    const drawnText = pdfTextCalls.join('|');
+    expect(drawnText).toContain('PDF Title');
+    expect(drawnText).toContain('Note');
+    expect(drawnText).toContain('Past Projects Detail');
+    expect(drawnText).toContain('Projects');
   });
 });

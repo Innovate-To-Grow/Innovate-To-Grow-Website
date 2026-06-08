@@ -218,6 +218,22 @@ describe('MergedResultsTable', () => {
     expect(detailsField.querySelector('em')?.textContent).toBe('Italic');
   });
 
+  it('wraps the selected text in a real <mark> when applying a fresh highlight', () => {
+    // applyHighlight wraps the selection in a <mark> we control (not an execCommand
+    // background span), so the live DOM, the stored value, and highlight detection agree. The
+    // no-re-select toggle-off round-trip depends on selection surviving a re-render, which
+    // jsdom does not model — that path is covered by the Playwright e2e.
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+
+    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
+    setRichEditorHtml(detailsField, 'Plain detail text');
+    selectNodeContents(detailsField);
+
+    fireEvent.click(screen.getByRole('button', {name: 'Highlight'}));
+
+    expect(detailsField.querySelector('mark')?.textContent).toBe('Plain detail text');
+  });
+
   it('bounds large all-project detail sets without truncating the submitted detail text', async () => {
     const largeRows = Array.from({length: 25}, (_, index) => ({
       ...baseRow,
@@ -339,6 +355,33 @@ describe('MergedResultsTable', () => {
       .forEach((exportButton) => expect(exportButton).toBeDisabled());
   });
 
+  it('shares only the rows matching the active search filter in builder mode', async () => {
+    const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
+    render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={onCreateShare} />);
+
+    fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Irrigation'}});
+    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Filtered'}});
+    fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
+
+    await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
+    const rowsArg = onCreateShare.mock.calls[0][0];
+    expect(rowsArg).toHaveLength(1);
+    expect(rowsArg[0]).toMatchObject({project_title: 'Irrigation Sensor'});
+  });
+
+  it('exports the full shared snapshot even when the viewer has filtered the table', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} sharedMode />);
+
+    fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Irrigation'}});
+    const exportCluster = container.querySelector(
+      '.project-grid-toolbar-cluster[aria-label="Export"]',
+    ) as HTMLElement;
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'CSV'}));
+
+    expect(exportMocks.exportProjectRowsCsv).toHaveBeenCalledTimes(1);
+    expect(exportMocks.exportProjectRowsCsv.mock.calls[0][0]).toHaveLength(2);
+  });
+
   it('hides the share controls and shows a login hint for anonymous users', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
     const onCreateShare = vi.fn();
@@ -424,7 +467,7 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getByRole('button', {name: /save note/i}));
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Updated note', 'Original Name', 'Original details');
+      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Original Name', 'Updated note', 'Original details');
     });
     expect(await screen.findByText('Note updated.')).toBeInTheDocument();
   });
@@ -451,7 +494,7 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getByRole('button', {name: /save name/i}));
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Owner note', 'Updated Name', 'Owner details');
+      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Updated Name', 'Owner note', 'Owner details');
     });
     expect(await screen.findByText('Name updated.')).toBeInTheDocument();
   });
@@ -474,7 +517,7 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([addedRow], 'Owner note', 'Original Name', 'Owner details');
+      expect(onUpdateShare).toHaveBeenCalledWith([addedRow], 'Original Name', 'Owner note', 'Owner details');
     });
     expect(await screen.findByText('Project removed.')).toBeInTheDocument();
   });
@@ -504,8 +547,8 @@ describe('MergedResultsTable', () => {
     await waitFor(() => {
       expect(onUpdateShare).toHaveBeenCalledWith(
         [baseRow],
-        'Owner note',
         'Original Name',
+        'Owner note',
         '<strong>Updated</strong> project details',
       );
     });
@@ -538,8 +581,29 @@ describe('MergedResultsTable', () => {
 
     await waitFor(() => {
       // The saved details (prop), not the unsaved draft, are sent.
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Updated note', 'Original Name', 'Saved details');
+      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Original Name', 'Updated note', 'Saved details');
     });
+  });
+
+  it('seeds the detail editor with generated detail when an owner edits an old share with no saved detail', () => {
+    render(
+      <MergedResultsTable
+        rows={makeItems([baseRow])}
+        sharedMode
+        editable
+        title="Old Share"
+        detailsText=""
+        onUpdateShare={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
+    expect(detailsField).not.toHaveTextContent('Project 1');
+
+    fireEvent.click(screen.getByRole('button', {name: /edit past projects detail/i}));
+
+    expect(detailsField).toHaveTextContent('Project 1');
+    expect(detailsField).toHaveTextContent('Abstract: A detailed project abstract.');
   });
 
   it('expands all detail rows by default in shared mode', () => {
