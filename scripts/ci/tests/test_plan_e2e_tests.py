@@ -63,6 +63,31 @@ class PlanE2ETests(unittest.TestCase):
         self.assertEqual(plan.specs, [])
         self.assertEqual(plan.matrix[0].spec_args, "")
 
+    def test_e2e_helper_change_adds_webkit_leg_on_pr(self):
+        plan = plan_e2e_tests("pull_request", ["pages/e2e/helpers/auth.ts"])
+
+        self.assertIn("chromium", plan.projects)
+        self.assertIn("webkit", plan.projects)
+        # A harness change is global, so each leg runs the full suite.
+        self.assertEqual(plan.specs, [])
+        self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
+
+    def test_e2e_fixtures_change_adds_webkit_leg_on_pr(self):
+        plan = plan_e2e_tests("pull_request", ["pages/e2e/fixtures.ts"])
+
+        self.assertIn("webkit", plan.projects)
+
+    def test_non_harness_change_does_not_add_webkit_on_pr(self):
+        plan = plan_e2e_tests("pull_request", ["pages/src/features/auth/components/Login.tsx"])
+
+        self.assertNotIn("webkit", plan.projects)
+
+    def test_harness_and_mobile_change_adds_both_webkit_and_pixel7(self):
+        plan = plan_e2e_tests("pull_request", ["pages/e2e/helpers/mobile-menu.ts"])
+
+        self.assertIn("webkit", plan.projects)
+        self.assertIn("pixel7", plan.projects)
+
     def test_github_outputs_include_matrix_json(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/features/projects/api/client.ts"])
         outputs = dict(line.split("=", 1) for line in plan.github_outputs().splitlines())

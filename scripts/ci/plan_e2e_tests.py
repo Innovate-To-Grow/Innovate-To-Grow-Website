@@ -101,6 +101,17 @@ def _is_global_path(path: str) -> bool:
     )
 
 
+def _is_e2e_harness_path(path: str) -> bool:
+    """Shared E2E harness (helpers + the auto-applied fixtures entrypoint).
+
+    A change here can alter how every spec drives the app, and engine-specific
+    regressions — e.g. a webkit-only auth-timing race — never show up on the
+    chromium-only default PR plan. PRs touching it therefore add a webkit leg so
+    those are caught pre-merge instead of only in the post-merge full matrix.
+    """
+    return path.startswith("pages/e2e/helpers/") or path == "pages/e2e/fixtures.ts"
+
+
 def _is_mobile_path(path: str) -> bool:
     lowered = path.lower()
     return (
@@ -201,6 +212,22 @@ def _full_plan(projects: list[str]) -> E2EPlan:
     )
 
 
+def _augment_pr_projects(
+    projects: list[str],
+    *,
+    mobile_related: bool,
+    harness_related: bool,
+) -> list[str]:
+    """Add extra engines to a chromium-default PR plan based on what changed:
+    a mobile-affecting change adds the pixel7 (Chromium mobile) leg; a shared
+    E2E-harness change adds a webkit leg (see _is_e2e_harness_path)."""
+    if mobile_related and "pixel7" not in projects:
+        projects.append("pixel7")
+    if harness_related and "webkit" not in projects:
+        projects.append("webkit")
+    return projects
+
+
 def plan_e2e_tests(event_name: str, changed_files: Iterable[str]) -> E2EPlan:
     files = _normalize_files(changed_files)
 
@@ -211,10 +238,13 @@ def plan_e2e_tests(event_name: str, changed_files: Iterable[str]) -> E2EPlan:
         return _full_plan(PR_DEFAULT_PROJECTS.copy())
 
     mobile_related = any(_is_mobile_path(path) for path in files)
+    harness_related = any(_is_e2e_harness_path(path) for path in files)
     if any(_is_global_path(path) for path in files):
-        projects = PR_DEFAULT_PROJECTS.copy()
-        if mobile_related and "pixel7" not in projects:
-            projects.append("pixel7")
+        projects = _augment_pr_projects(
+            PR_DEFAULT_PROJECTS.copy(),
+            mobile_related=mobile_related,
+            harness_related=harness_related,
+        )
         return _full_plan(projects)
 
     specs: set[str] = set()
@@ -226,9 +256,11 @@ def plan_e2e_tests(event_name: str, changed_files: Iterable[str]) -> E2EPlan:
     if not specs:
         return _full_plan(PR_DEFAULT_PROJECTS.copy())
 
-    projects = PR_DEFAULT_PROJECTS.copy()
-    if mobile_related and "pixel7" not in projects:
-        projects.append("pixel7")
+    projects = _augment_pr_projects(
+        PR_DEFAULT_PROJECTS.copy(),
+        mobile_related=mobile_related,
+        harness_related=harness_related,
+    )
 
     desktop_specs = specs.difference(MOBILE_SPECS)
     if mobile_related and not desktop_specs:
