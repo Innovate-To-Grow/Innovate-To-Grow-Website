@@ -16,13 +16,24 @@ const row: ProjectGridRow = {
   is_presenting: '',
 };
 
+const logo = {
+  base64: 'iVBORw0KGgo=',
+  bytes: Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]),
+  dataUrl: 'data:image/png;base64,iVBORw0KGgo=',
+  extension: 'png' as const,
+};
+
 describe('projectGridExport', () => {
   it('creates a real docx package for shared Word exports', async () => {
-    const blob = createSharedProjectRowsWordBlob([row], {
-      title: 'Shared Results',
-      note: 'Owner note & review instructions',
-      detailsText: '<strong>Edited Past Projects Detail</strong><br><mark>Highlighted project detail & owner edits</mark>',
-    });
+    const blob = createSharedProjectRowsWordBlob(
+      [row],
+      {
+        title: 'Shared Results',
+        note: 'Owner note & review instructions',
+        detailsText: '<strong>Edited Past Projects Detail</strong><br><mark>Highlighted project detail & owner edits</mark>',
+      },
+      logo,
+    );
 
     expect(blob.type).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
 
@@ -32,6 +43,9 @@ describe('projectGridExport', () => {
     const packageText = new TextDecoder().decode(bytes);
     expect(packageText).toContain('[Content_Types].xml');
     expect(packageText).toContain('word/document.xml');
+    expect(packageText).toContain('word/_rels/document.xml.rels');
+    expect(packageText).toContain('word/media/i2g-logo.png');
+    expect(packageText).toContain('rIdLogo');
     expect(packageText).toContain('Shared Results');
     expect(packageText).toContain('Owner note &amp; review instructions');
     expect(packageText).toContain('Past Projects Detail');
