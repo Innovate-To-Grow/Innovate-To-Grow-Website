@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-complete-recipients">
+<link rel="stylesheet" href="{% static 'mail/css/delivery-dashboard.css' %}?v=20260608-delivery-dashboard-export-formats">
 {{ dashboard|json_script:"mail-delivery-dashboard-data" }}
 {% endblock %}
 
@@ -82,10 +82,21 @@
           <h3 class="i2g-delivery-heading text-sm font-semibold"><span class="i2g-delivery-heading-icon material-symbols-outlined align-middle mr-1" style="font-size:18px">alternate_email</span>Problem Recipients</h3>
           <span class="i2g-delivery-muted text-xs">All failed recipient addresses returned by AWS SES for the 6-month window</span>
         </div>
-        <button type="button" id="mail-delivery-export-recipients" class="i2g-delivery-refresh i2g-delivery-export inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium">
-          <span class="material-symbols-outlined" style="font-size:18px">download</span>
-          <span>CSV</span>
-        </button>
+        <div class="i2g-delivery-export-group">
+          <label class="i2g-delivery-export-format">
+            <span>Format</span>
+            <select id="mail-delivery-export-format">
+              <option value="csv">CSV</option>
+              <option value="tsv">TSV</option>
+              <option value="json">JSON</option>
+              <option value="xls">Excel</option>
+            </select>
+          </label>
+          <button type="button" id="mail-delivery-export-recipients" class="i2g-delivery-refresh i2g-delivery-export inline-flex h-9 items-center justify-center gap-2 rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 px-3 text-sm font-medium">
+            <span class="material-symbols-outlined" style="font-size:18px">download</span>
+            <span>Export</span>
+          </button>
+        </div>
       </div>
       <div id="mail-delivery-recipient-summary" class="i2g-delivery-recipient-summary">
         <div class="i2g-delivery-recipient-stat"><span>Total</span><strong data-recipient-summary="total">0</strong></div>
@@ -330,34 +341,89 @@
     }).join('');
   }
 
-  function csvCell(value) {
-    return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
+  function exportRecords(rows) {
+    return rows.map(function (row) {
+      return {
+        Email: row.email || '',
+        Domain: domainFromEmail(row.email),
+        Status: row.label || '',
+        'Last Seen': row.last_seen || '',
+        Reason: row.reason || '',
+        Source: row.source || '',
+        Context: row.context || '',
+      };
+    });
+  }
+
+  function exportHeaders() {
+    return ['Email', 'Domain', 'Status', 'Last Seen', 'Reason', 'Source', 'Context'];
+  }
+
+  function delimitedCell(value, delimiter) {
+    const text = String(value == null ? '' : value);
+    if (text.indexOf('"') !== -1 || text.indexOf('\n') !== -1 || text.indexOf('\r') !== -1 || text.indexOf(delimiter) !== -1) {
+      return '"' + text.replace(/"/g, '""') + '"';
+    }
+    return text;
+  }
+
+  function delimitedExport(records, delimiter) {
+    const headers = exportHeaders();
+    return [headers.map(function (header) { return delimitedCell(header, delimiter); }).join(delimiter)].concat(records.map(function (record) {
+      return headers.map(function (header) { return delimitedCell(record[header], delimiter); }).join(delimiter);
+    })).join('\n') + '\n';
+  }
+
+  function jsonExport(records) {
+    return JSON.stringify({
+      generated_at: new Date().toISOString(),
+      window_days: (lastData || {}).window_days || null,
+      filters: recipientFilterState(),
+      count: records.length,
+      records: records,
+    }, null, 2) + '\n';
+  }
+
+  function excelExport(records) {
+    const headers = exportHeaders();
+    const head = headers.map(function (header) { return '<th>' + escapeHtml(header) + '</th>'; }).join('');
+    const body = records.map(function (record) {
+      return '<tr>' + headers.map(function (header) { return '<td>' + escapeHtml(record[header]) + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    return '<html><head><meta charset="utf-8"></head><body><table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table></body></html>';
+  }
+
+  function downloadText(filename, mimeType, content) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   }
 
   function exportProblemRecipients() {
     const rows = filteredProblemRecipients(lastData && lastData.problem_recipients ? lastData.problem_recipients : []);
     if (!rows.length) return;
-    const headers = ['Email', 'Domain', 'Status', 'Last Seen', 'Reason', 'Source', 'Context'];
-    const csvRows = [headers.map(csvCell).join(',')].concat(rows.map(function (row) {
-      return [
-        row.email,
-        domainFromEmail(row.email),
-        row.label,
-        row.last_seen,
-        row.reason,
-        row.source,
-        row.context,
-      ].map(csvCell).join(',');
-    }));
-    const blob = new Blob([csvRows.join('\n') + '\n'], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'ses-problem-recipients-' + new Date().toISOString().slice(0, 10) + '.csv';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    const format = document.getElementById('mail-delivery-export-format')?.value || 'csv';
+    const records = exportRecords(rows);
+    const stem = 'ses-problem-recipients-' + new Date().toISOString().slice(0, 10);
+    if (format === 'json') {
+      downloadText(stem + '.json', 'application/json;charset=utf-8', jsonExport(records));
+      return;
+    }
+    if (format === 'tsv') {
+      downloadText(stem + '.tsv', 'text/tab-separated-values;charset=utf-8', delimitedExport(records, '\t'));
+      return;
+    }
+    if (format === 'xls') {
+      downloadText(stem + '.xls', 'application/vnd.ms-excel;charset=utf-8', excelExport(records));
+      return;
+    }
+    downloadText(stem + '.csv', 'text/csv;charset=utf-8', delimitedExport(records, ','));
   }
 
   function renderCampaignErrors(rows) {

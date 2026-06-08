@@ -37,6 +37,7 @@
 .i2g-delivery-table-head,
 .i2g-delivery-day-label,
 .i2g-delivery-campaign-stats,
+.i2g-delivery-export-format span,
 .i2g-delivery-recipient-stat span,
 .i2g-delivery-recipient-filter span,
 .i2g-delivery-recipient-search {
@@ -97,6 +98,41 @@
 
 .i2g-delivery-refresh:hover {
     color: var(--i2g-delivery-primary) !important;
+}
+
+.i2g-delivery-export-group {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .i2g-delivery-export-group {
+        align-items: center;
+        flex-direction: row;
+        width: auto;
+    }
+}
+
+.i2g-delivery-export-format {
+    align-items: center;
+    border: 1px solid color-mix(in srgb, var(--i2g-delivery-border) 85%, transparent);
+    border-radius: 999px;
+    display: inline-flex;
+    gap: 0.5rem;
+    min-width: 0;
+    padding: 0.35rem 0.45rem 0.35rem 0.75rem;
+}
+
+.i2g-delivery-export-format select {
+    background: transparent;
+    border: 0;
+    color: var(--i2g-delivery-text);
+    font: inherit;
+    outline: 0;
+    padding-right: 0.5rem;
 }
 
 .i2g-delivery-banner {

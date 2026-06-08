@@ -330,12 +330,15 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "admin/mail/delivery_dashboard.html")
         self.assertContains(response, "AWS SES Delivery Dashboard")
-        self.assertContains(
-            response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-complete-recipients"
-        )
+        self.assertContains(response, "mail/css/delivery-dashboard.css?v=20260608-delivery-dashboard-export-formats")
         self.assertContains(response, "Problem Recipients")
         self.assertContains(response, "mail-delivery-recipient-search")
+        self.assertContains(response, "mail-delivery-export-format")
         self.assertContains(response, "mail-delivery-export-recipients")
+        self.assertContains(response, '<option value="csv">CSV</option>', html=True)
+        self.assertContains(response, '<option value="tsv">TSV</option>', html=True)
+        self.assertContains(response, '<option value="json">JSON</option>', html=True)
+        self.assertContains(response, '<option value="xls">Excel</option>', html=True)
         self.assertContains(response, "Six-month AWS CloudWatch SES metrics")
         self.assertContains(response, "SES Attempts (6mo)")
         self.assertContains(response, "SES Errors (6mo)")
