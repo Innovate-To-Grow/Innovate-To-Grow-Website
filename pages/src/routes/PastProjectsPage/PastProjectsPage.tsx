@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {useParams} from 'react-router-dom';
+import {useNavigate, useParams} from 'react-router-dom';
 import {
   MergedResultsTable,
   PastProjectsBuilder,
@@ -11,6 +11,7 @@ import {createPastProjectShare, updatePastProjectShare, type PastProjectShare, t
 
 export const PastProjectsPage = () => {
   const {shareId} = useParams<{shareId: string}>();
+  const navigate = useNavigate();
   const sharedMode = Boolean(shareId);
   const {share, loading: shareLoading, error: shareError} = usePastProjectShareData(shareId);
   const [editableShare, setEditableShare] = useState<PastProjectShare | null>(null);
@@ -26,19 +27,18 @@ export const PastProjectsPage = () => {
     [activeShare?.rows, shareId],
   );
 
-  const handleCreateShare = async (shareRows: typeof rows, name: string, note: string) => {
-    return createPastProjectShare(shareRows, name, note);
+  const handleCreateShare = async (shareRows: typeof rows, name: string, note: string, detailsText: string) => {
+    const nextShare = await createPastProjectShare(shareRows, name, note, detailsText);
+    setEditableShare(nextShare);
+    navigate(`/past-projects/${nextShare.id}`);
+    return nextShare;
   };
 
-  const handleUpdateCreatedShare = async (shareId: string, shareRows: ProjectGridRow[], name: string, note: string) => {
-    await updatePastProjectShare(shareId, {rows: shareRows, note, name});
-  };
-
-  const handleUpdateShare = async (shareRows: ProjectGridRow[], note: string, name: string) => {
+  const handleUpdateShare = async (shareRows: ProjectGridRow[], note: string, name: string, detailsText: string) => {
     if (!activeShare) {
       throw new Error('Shared past projects are not loaded yet.');
     }
-    const updated = await updatePastProjectShare(activeShare.id, {rows: shareRows, note, name});
+    const updated = await updatePastProjectShare(activeShare.id, {rows: shareRows, note, name, details_text: detailsText});
     setEditableShare(updated);
   };
 
@@ -50,6 +50,7 @@ export const PastProjectsPage = () => {
       rows: [...activeShare.rows, ...rowsToAdd],
       note: activeShare.note ?? '',
       name: activeShare.name,
+      details_text: activeShare.details_text ?? '',
     });
     setEditableShare(updated);
   };
@@ -76,6 +77,7 @@ export const PastProjectsPage = () => {
                 rows={sharedItems}
                 sharedMode
                 note={activeShare?.note}
+                detailsText={activeShare?.details_text}
                 title={activeShare?.name?.trim() || 'Shared Past Project Results'}
                 editable={Boolean(activeShare?.can_edit)}
                 onUpdateShare={activeShare?.can_edit ? handleUpdateShare : undefined}
@@ -98,7 +100,6 @@ export const PastProjectsPage = () => {
           loading={loading}
           error={error}
           onCreateShare={handleCreateShare}
-          onUpdateCreatedShare={handleUpdateCreatedShare}
         />
       )}
     </div>

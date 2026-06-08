@@ -158,6 +158,7 @@ body .past-projects-ai-table-button.is-login-required:hover {
 }
 
 body .past-projects-ai-search {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem;
@@ -167,7 +168,17 @@ body .past-projects-ai-search {
   margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 12px;
   background: transparent;
+}
+
+body .past-projects-ai-search.is-loading {
+  isolation: isolate;
+}
+
+body .past-projects-ai-search.is-loading > * {
+  position: relative;
+  z-index: 1;
 }
 
 body .past-projects-ai-search-field {
@@ -176,13 +187,83 @@ body .past-projects-ai-search-field {
   gap: 0.35rem;
 }
 
+body .past-projects-ai-search-input-frame {
+  position: relative;
+  display: block;
+  min-width: 0;
+  border-radius: 8px;
+}
+
+body .past-projects-ai-search.is-loading .past-projects-ai-search-input-frame::before,
+body .past-projects-ai-search.is-loading .past-projects-ai-search-input-frame::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+body .past-projects-ai-search.is-loading .past-projects-ai-search-input-frame::before {
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 2px;
+  background:
+    conic-gradient(
+      from 0turn,
+      #0a84ff,
+      #64d2ff,
+      #30d158,
+      #ffd60a,
+      #ff9f0a,
+      #ff375f,
+      #bf5af2,
+      #5e5ce6,
+      #0a84ff
+    );
+  animation: ai-search-marquee-border 1.45s linear infinite;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+body .past-projects-ai-search.is-loading .past-projects-ai-search-input-frame::after {
+  inset: -5px;
+  z-index: 0;
+  border-radius: 12px;
+  background:
+    conic-gradient(
+      from 0turn,
+      rgba(10, 132, 255, 0.55),
+      rgba(48, 209, 88, 0.45),
+      rgba(255, 214, 10, 0.5),
+      rgba(255, 55, 95, 0.48),
+      rgba(191, 90, 242, 0.55),
+      rgba(10, 132, 255, 0.55)
+    );
+  filter: blur(9px);
+  opacity: 0.28;
+  animation: ai-search-marquee-border 1.45s linear infinite;
+}
+
 body .past-projects-ai-search-input {
+  position: relative;
+  z-index: 1;
   width: 100%;
   background: #fff;
 }
 
 body .past-projects-ai-search .itg-btn {
   min-height: 2.5rem;
+}
+
+body .past-projects-ai-search.is-loading .past-projects-ai-search-input:disabled {
+  background: #fff;
+  color: var(--itg-color-text-dark);
+  opacity: 1;
 }
 
 body .project-grid-controls-status {
@@ -210,34 +291,6 @@ body .past-projects-ai-search-message-content {
   align-items: center;
   gap: 0.55rem;
   min-width: 0;
-}
-
-body .past-projects-ai-search-spinner {
-  width: 0.95rem;
-  height: 0.95rem;
-  flex: 0 0 auto;
-  border: 2px solid rgba(15, 45, 82, 0.2);
-  border-top-color: var(--itg-color-primary);
-  border-radius: 999px;
-  animation: ai-search-spin 0.85s linear infinite;
-}
-
-body .past-projects-ai-search-progress {
-  position: relative;
-  display: block;
-  height: 0.22rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(15, 45, 82, 0.12);
-}
-
-body .past-projects-ai-search-progress span {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 42%;
-  border-radius: inherit;
-  background: var(--itg-color-primary);
-  animation: ai-search-progress 1.15s ease-in-out infinite;
 }
 
 body .past-projects-ai-search-message.is-loading {
@@ -268,23 +321,9 @@ body .search-table-card.is-ai-search-table.has-ai-results .project-grid-mobile-c
   background: #fff;
 }
 
-@keyframes ai-search-spin {
+@keyframes ai-search-marquee-border {
   to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes ai-search-progress {
-  0% {
-    transform: translateX(-110%);
-  }
-
-  50% {
-    transform: translateX(80%);
-  }
-
-  100% {
-    transform: translateX(240%);
+    transform: rotate(1turn);
   }
 }
 
@@ -301,8 +340,8 @@ body .search-table-card.is-ai-search-table.has-ai-results .project-grid-mobile-c
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body .past-projects-ai-search-spinner,
-  body .past-projects-ai-search-progress span,
+  body .past-projects-ai-search.is-loading .past-projects-ai-search-input-frame::before,
+  body .past-projects-ai-search.is-loading .past-projects-ai-search-input-frame::after,
   body .search-table-results-motion {
     animation: none;
   }
@@ -521,6 +560,170 @@ body .project-grid-share-editor-textarea {
   resize: none;
 }
 
+body .project-grid-share-detail-input {
+  min-height: 12rem;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+body .project-grid-rich-detail-editor {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+body .project-grid-rich-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+body .project-grid-rich-detail-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+}
+
+body .project-grid-rich-copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  border: 1px solid rgba(15, 45, 82, 0.2);
+  border-radius: 6px;
+  padding: 0 0.65rem;
+  background: #fff;
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: var(--itg-font-size-small);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--itg-transition-fast),
+    border-color var(--itg-transition-fast),
+    box-shadow var(--itg-transition-fast);
+}
+
+body .project-grid-rich-copy-button:hover {
+  border-color: rgba(15, 45, 82, 0.3);
+  background: #eef5fd;
+  box-shadow: 0 3px 10px rgba(15, 45, 82, 0.08);
+}
+
+body .project-grid-rich-copy-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+body .project-grid-rich-copy-button:focus-visible {
+  outline: 2px solid rgba(15, 45, 82, 0.18);
+  outline-offset: 2px;
+}
+
+body .project-grid-rich-detail-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border: 1px solid rgba(15, 45, 82, 0.12);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+body .project-grid-rich-editor-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--itg-transition-fast),
+    border-color var(--itg-transition-fast),
+    box-shadow var(--itg-transition-fast);
+}
+
+body .project-grid-rich-editor-button:hover {
+  border-color: rgba(15, 45, 82, 0.2);
+  background: #eef5fd;
+  box-shadow: 0 3px 10px rgba(15, 45, 82, 0.08);
+}
+
+body .project-grid-rich-editor-button:focus-visible {
+  outline: 2px solid rgba(15, 45, 82, 0.18);
+  outline-offset: 2px;
+}
+
+body .project-grid-rich-editor-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body .project-grid-rich-detail-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 10rem;
+  max-height: min(20rem, 45vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  box-sizing: border-box;
+  border: 1px solid rgba(15, 45, 82, 0.1);
+  border-radius: 8px;
+  padding: 0.8rem 0.9rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  font-size: var(--itg-font-size-small);
+  line-height: var(--itg-line-height-meta);
+  color: var(--itg-color-text-dark);
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(15, 45, 82, 0.03);
+}
+
+body .project-grid-rich-detail-input.is-large-detail-set {
+  max-height: min(18rem, 42vh);
+}
+
+body .project-grid-rich-detail-input:focus {
+  outline: 2px solid rgba(15, 45, 82, 0.18);
+  border-color: var(--itg-color-primary);
+}
+
+body .project-grid-rich-detail-input[contenteditable='false'] {
+  cursor: default;
+}
+
+body .project-grid-rich-detail-input:empty::before {
+  content: attr(data-placeholder);
+  color: var(--itg-color-text-muted);
+}
+
+body .project-grid-rich-detail-input mark,
+body .project-grid-shared-detail-text mark {
+  border-radius: 3px;
+  padding: 0 0.12em;
+  background: #fff3a3;
+  color: inherit;
+}
+
 body .project-grid-share-editor-textarea:focus {
   outline: 2px solid rgba(15, 45, 82, 0.18);
   border-color: var(--itg-color-primary);
@@ -537,6 +740,45 @@ body .project-grid-share-editor.is-editing .project-grid-share-editor-textarea {
     0 0 0 3px rgba(15, 45, 82, 0.08),
     inset 0 1px 0 rgba(15, 45, 82, 0.03);
   resize: vertical;
+}
+
+body .project-grid-share-editor.is-editing .project-grid-rich-detail-input {
+  border-color: rgba(15, 45, 82, 0.32);
+  box-shadow:
+    0 0 0 3px rgba(15, 45, 82, 0.08),
+    inset 0 1px 0 rgba(15, 45, 82, 0.03);
+}
+
+body .project-grid-shared-detail {
+  display: grid;
+  gap: 0.45rem;
+  margin: 1rem 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid rgba(15, 45, 82, 0.12);
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+body .project-grid-shared-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+body .project-grid-shared-detail-text {
+  margin: 0;
+  max-height: min(20rem, 45vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--itg-color-text-dark);
+  font: inherit;
+  font-size: var(--itg-font-size-small);
+  line-height: var(--itg-line-height-meta);
 }
 
 body .shared-past-project-merge-search {
@@ -578,6 +820,7 @@ body .shared-past-project-merge-search {
   }
 
   body .project-grid-share-editor,
+  body .project-grid-shared-detail,
   body .project-grid-share-result {
     margin-right: 1rem;
     margin-left: 1rem;
@@ -585,6 +828,22 @@ body .shared-past-project-merge-search {
 
   body .project-grid-share-title-input {
     font-size: var(--itg-font-size-h2-mobile);
+  }
+
+  body .project-grid-rich-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  body .project-grid-rich-detail-controls {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  body .project-grid-shared-detail-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
