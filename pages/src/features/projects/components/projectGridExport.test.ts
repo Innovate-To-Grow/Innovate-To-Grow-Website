@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {createProjectRowsCsvText, createSharedProjectRowsWordBlob} from './projectGridExport';
+import {createPdfProjectTableBody, createProjectRowsCsvText, createSharedProjectRowsWordBlob} from './projectGridExport';
 import type {ProjectGridRow} from './projectGrid';
 
 const row: ProjectGridRow = {
@@ -24,6 +24,20 @@ const logo = {
 };
 
 describe('projectGridExport', () => {
+  it('adds project detail rows to PDF project tables', () => {
+    const body = createPdfProjectTableBody([row]);
+    const detailCell = (body[1] as Array<{colSpan: number; content: string}>)[0];
+
+    expect(body[0]).toContain('Rotary Joint Testing System');
+    expect(detailCell).toMatchObject({
+      colSpan: 7,
+      content: expect.stringContaining('Project Detail\nAbstract: A detailed abstract with <special> characters & project context.'),
+    });
+    expect(detailCell).toMatchObject({
+      content: expect.stringContaining('Student Names: Alice Calderon, Bob Lee'),
+    });
+  });
+
   it('includes edited project detail text before CSV project rows', () => {
     const csv = createProjectRowsCsvText([row], {
       detailsText: '<strong>Edited Past Projects Detail</strong><br><mark>Highlighted project detail & owner edits</mark>',

@@ -1,3 +1,5 @@
+import type {RowInput} from 'jspdf-autotable';
+
 import {PROJECT_GRID_COLUMNS, type ProjectGridRow} from './projectGrid';
 import {createPastProjectsDetailText, pastProjectsDetailHtmlToPlainText} from './pastProjectsDetailText';
 
@@ -85,6 +87,41 @@ const normalizeProjectRowsExportContext = (rows: ProjectGridRow[], context: Proj
 });
 
 const splitProjectDetailBlocks = (text: string) => text.split(DETAIL_SEPARATOR_PATTERN).map((block) => block.trim()).filter(Boolean);
+
+export const createPdfProjectTableBody = (rows: ProjectGridRow[]): RowInput[] =>
+  rows.flatMap((row, index) => {
+    const projectDetail = [
+      `Project Detail`,
+      `Abstract: ${toDisplayValue(row.abstract) || 'N/A'}`,
+      `Student Names: ${toDisplayValue(row.student_names) || 'N/A'}`,
+    ].join('\n');
+
+    return [
+      [
+        row.semester_label,
+        row.class_code,
+        row.team_number,
+        row.team_name,
+        row.project_title,
+        row.organization,
+        row.industry,
+      ],
+      [
+        {
+          colSpan: PROJECT_GRID_COLUMNS.length,
+          content: projectDetail,
+          styles: {
+            cellPadding: 3,
+            fillColor: index % 2 === 0 ? ([247, 250, 252] as [number, number, number]) : ([255, 255, 255] as [number, number, number]),
+            fontSize: 7.8,
+            fontStyle: 'normal',
+            minCellHeight: 12,
+            textColor: [32, 54, 77] as [number, number, number],
+          },
+        },
+      ],
+    ];
+  });
 
 const splitExcelText = (text: string, maxLength = 30000) => {
   const chunks: string[] = [];
@@ -589,15 +626,7 @@ export const exportSharedProjectRowsPdf = async (
 
   autoTable(pdf, {
     head: [PROJECT_GRID_COLUMNS.map((column) => column.label)],
-    body: rows.map((row) => [
-      row.semester_label,
-      row.class_code,
-      row.team_number,
-      row.team_name,
-      row.project_title,
-      row.organization,
-      row.industry,
-    ]),
+    body: createPdfProjectTableBody(rows),
     startY: cursorY,
     margin: {left: margin, right: margin, top: headerBottomY + 8},
     styles: {
