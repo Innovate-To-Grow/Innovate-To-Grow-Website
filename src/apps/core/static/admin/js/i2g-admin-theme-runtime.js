@@ -80,6 +80,17 @@
         document.documentElement.classList.toggle("light", className === "light");
     }
 
+    function dispatchThemeChange(themeName, systemDark) {
+        window.dispatchEvent(
+            new CustomEvent("i2g-admin-theme-change", {
+                detail: {
+                    theme: normalizeTheme(themeName),
+                    systemDark: Boolean(systemDark),
+                },
+            })
+        );
+    }
+
     function watchBodyLocks(component) {
         var update = function () {
             setBodyOverflowLocked(
@@ -100,9 +111,37 @@
         update();
     }
 
+    var initialTheme = readStoredTheme("auto");
+    var initialSystemDark = prefersDarkColorScheme();
+
+    window.adminTheme = initialTheme;
+    window.switchTheme = function switchTheme(themeName) {
+        var nextTheme = normalizeTheme(themeName);
+        var systemDark = prefersDarkColorScheme();
+
+        window.adminTheme = nextTheme;
+        writeStoredTheme(nextTheme);
+        applyThemeClass(nextTheme, systemDark);
+        dispatchThemeChange(nextTheme, systemDark);
+    };
+    window.themeBindings = {
+        "x-bind:class": function () {
+            return resolvedClassName(this.adminTheme || window.adminTheme, this.systemDark);
+        },
+        "x-on:keydown.window": function (event) {
+            if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "e") {
+                return;
+            }
+
+            event.preventDefault();
+            this.switchTheme(this.adminTheme === "light" ? "dark" : "light");
+        },
+    };
+
     window.theme = function theme(defaultTheme) {
         return {
             openModal: false,
+            openTheme: false,
             filterOpen: false,
             openAllApplications: false,
             systemDark: prefersDarkColorScheme(),
@@ -110,6 +149,10 @@
             init: function () {
                 var component = this;
                 watchBodyLocks(component);
+                window.addEventListener("i2g-admin-theme-change", function (event) {
+                    component.adminTheme = normalizeTheme(event.detail && event.detail.theme);
+                    component.systemDark = Boolean(event.detail && event.detail.systemDark);
+                });
 
                 if (!window.matchMedia) return;
 
@@ -128,26 +171,12 @@
             switchTheme: function (themeName) {
                 var nextTheme = normalizeTheme(themeName);
                 this.adminTheme = nextTheme;
-                writeStoredTheme(nextTheme);
-                applyThemeClass(nextTheme, this.systemDark);
+                window.switchTheme(nextTheme);
             },
-            themeBindings: {
-                "x-bind:class": function () {
-                    return resolvedClassName(this.adminTheme, this.systemDark);
-                },
-                "x-on:keydown.window": function (event) {
-                    if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "e") {
-                        return;
-                    }
-
-                    event.preventDefault();
-                    this.switchTheme(this.adminTheme === "light" ? "dark" : "light");
-                },
-            },
+            themeBindings: window.themeBindings,
         };
     };
 
-    var initialTheme = readStoredTheme("auto");
     writeStoredTheme(initialTheme);
-    applyThemeClass(initialTheme, prefersDarkColorScheme());
+    applyThemeClass(initialTheme, initialSystemDark);
 })();
