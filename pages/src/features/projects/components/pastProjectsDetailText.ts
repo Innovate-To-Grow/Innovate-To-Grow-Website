@@ -1,32 +1,7 @@
 import DOMPurify from 'dompurify';
-import type {ProjectGridRow} from './projectGrid';
 
-const detailValue = (value: string) => value.trim() || 'N/A';
-const PROJECT_DETAIL_SEPARATOR = '\n\n------------------------------\n\n';
 const RICH_DETAIL_ALLOWED_TAGS = ['br', 'div', 'p', 'b', 'strong', 'i', 'em', 'u', 'mark'];
 const RICH_DETAIL_ALLOWED_ATTR: string[] = [];
-
-const formatClassTeam = (row: ProjectGridRow) => {
-  const parts = [row.class_code, row.team_number].map((value) => value.trim()).filter(Boolean);
-  return parts.length ? parts.join(' / ') : 'N/A';
-};
-
-export const createPastProjectsDetailText = (rows: ProjectGridRow[]) =>
-  rows
-    .map((row, index) =>
-      [
-        `Project ${index + 1}`,
-        `Year-Semester: ${detailValue(row.semester_label)}`,
-        `Class / Team#: ${formatClassTeam(row)}`,
-        `Team Name: ${detailValue(row.team_name)}`,
-        `Project Title: ${detailValue(row.project_title)}`,
-        `Organization: ${detailValue(row.organization)}`,
-        `Industry: ${detailValue(row.industry)}`,
-        `Students: ${detailValue(row.student_names)}`,
-        `Abstract: ${detailValue(row.abstract)}`,
-      ].join('\n'),
-    )
-    .join(PROJECT_DETAIL_SEPARATOR);
 
 const escapeHtml = (value: string) =>
   value
@@ -73,9 +48,6 @@ export const plainTextToPastProjectsDetailHtml = (value: string) =>
 
 export const normalizePastProjectsDetailHtml = (value: string) =>
   sanitizePastProjectsDetailHtml(hasHtmlMarkup(value) ? value : plainTextToPastProjectsDetailHtml(value));
-
-export const createPastProjectsDetailHtml = (rows: ProjectGridRow[]) =>
-  plainTextToPastProjectsDetailHtml(createPastProjectsDetailText(rows));
 
 export const pastProjectsDetailHtmlToPlainText = (html: string) => {
   const sanitizedHtml = sanitizePastProjectsDetailHtml(html);

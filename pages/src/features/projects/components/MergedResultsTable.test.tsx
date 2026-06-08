@@ -2,7 +2,6 @@ import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-libr
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MergedResultsTable} from './MergedResultsTable';
-import {createPastProjectsDetailText} from './pastProjectsDetailText';
 import {createProjectGridItems, type ProjectGridRow} from './projectGrid';
 
 const mockUseAuth = vi.fn();
@@ -15,17 +14,16 @@ vi.mock('@/features/auth', async (importOriginal) => {
   };
 });
 
-// The export functions are heavy (dynamic imports of exceljs/jspdf + downloads) and are
-// covered directly in projectGridExport.test.ts; here we stub them so we can assert the
-// component's wiring and error handling without triggering real downloads.
+// The export functions are heavy (dynamic imports of exceljs/jspdf + downloads) and are covered
+// directly in the export module tests; here we stub them so we can assert the component's wiring
+// and error handling without triggering real downloads.
 const exportMocks = vi.hoisted(() => ({
-  exportProjectRowsCsv: vi.fn(),
   exportProjectRowsExcel: vi.fn(),
   exportProjectRowsPdf: vi.fn(),
   exportProjectRowsWord: vi.fn(),
 }));
 
-vi.mock('./projectGridExport', () => exportMocks);
+vi.mock('./export', () => exportMocks);
 
 const baseRow: ProjectGridRow = {
   semester_label: '2025-1 Spring',
@@ -48,27 +46,11 @@ const addedRow: ProjectGridRow = {
   organization: 'Blue Diamond',
 };
 
-const thirdRow: ProjectGridRow = {
-  ...baseRow,
-  team_number: 'T03',
-  team_name: 'Team Gamma',
-  project_title: 'Solar Tracker',
-  organization: 'Sun Co',
-};
-
 const makeItems = (rows: ProjectGridRow[] = [baseRow]) => createProjectGridItems(rows, 'test');
 
 const setRichEditorHtml = (editor: HTMLElement, html: string) => {
   editor.innerHTML = html;
   fireEvent.input(editor);
-};
-
-const selectNodeContents = (node: Node) => {
-  const range = document.createRange();
-  range.selectNodeContents(node);
-  const selection = window.getSelection();
-  selection?.removeAllRanges();
-  selection?.addRange(range);
 };
 
 const getExportButtonLabels = (container: HTMLElement) => {
@@ -77,16 +59,22 @@ const getExportButtonLabels = (container: HTMLElement) => {
   return within(exportCluster as HTMLElement).getAllByRole('button').map((button) => button.textContent);
 };
 
-describe('MergedResultsTable', () => {
-  let originalClipboard: Clipboard | undefined;
-  let originalClipboardItem: typeof ClipboardItem | undefined;
+// Desktop and mobile tables both render, so per-row controls/editors appear twice. Scope queries
+// to the desktop table to get a single match.
+const desktopTable = (container: HTMLElement) =>
+  container.querySelector('.project-grid-table-wrap') as HTMLElement;
 
+const openFirstRowDetail = (container: HTMLElement) => {
+  fireEvent.click(within(desktopTable(container)).getAllByRole('button', {name: /^(view|hide)$/i})[0]);
+};
+
+const firstCurationEditor = (container: HTMLElement) =>
+  within(desktopTable(container)).getByRole('textbox', {name: 'Project notes'});
+
+describe('MergedResultsTable', () => {
   beforeEach(() => {
-    originalClipboard = navigator.clipboard;
-    originalClipboardItem = window.ClipboardItem;
     mockUseAuth.mockReset();
     mockUseAuth.mockReturnValue({isAuthenticated: true});
-    exportMocks.exportProjectRowsCsv.mockReset().mockResolvedValue(undefined);
     exportMocks.exportProjectRowsExcel.mockReset().mockResolvedValue(undefined);
     exportMocks.exportProjectRowsPdf.mockReset().mockResolvedValue(undefined);
     exportMocks.exportProjectRowsWord.mockReset().mockResolvedValue(undefined);
@@ -95,241 +83,89 @@ describe('MergedResultsTable', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: originalClipboard,
-    });
-    if (originalClipboardItem) {
-      Object.defineProperty(window, 'ClipboardItem', {
-        configurable: true,
-        value: originalClipboardItem,
-      });
-    } else {
-      Reflect.deleteProperty(window, 'ClipboardItem');
-    }
   });
 
-  it('separates multiple generated project detail blocks with a visible divider', () => {
-    expect(createPastProjectsDetailText([baseRow, addedRow])).toContain(
-      'Abstract: A detailed project abstract.\n\n------------------------------\n\nProject 2',
-    );
+  it('offers only Excel, PDF, and Word exports (no CSV)', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Microsoft Word']);
   });
 
-  it('submits the name, note, and details text when an authenticated user creates a share', async () => {
+  it('shows a per-project curation editor in the expanded row for the builder owner', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+
+    // Rows start collapsed in builder mode; open the row's detail.
+    openFirstRowDetail(container);
+
+    const curationEditor = firstCurationEditor(container);
+    expect(curationEditor).toBeInTheDocument();
+    expect(curationEditor).toHaveTextContent('');
+    // The read-only project fields still render alongside the editor.
+    expect(within(desktopTable(container)).getByText(/A detailed project abstract\./)).toBeInTheDocument();
+  });
+
+  it('submits the name, note, and per-row curation inside the rows when creating a share', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {
-      throw new Error('Past projects should show share links in the page instead of opening a browser popup.');
-    });
 
-    render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
-    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    expect(detailsField).toHaveTextContent(/Abstract: A detailed project abstract\./);
-    expect(detailsField).toHaveTextContent(/Students: Alice, Bob/);
-    expect(screen.getByRole('button', {name: 'Bold'})).toBeInTheDocument();
-    expect(screen.getByRole('button', {name: 'Highlight'})).toBeInTheDocument();
+    openFirstRowDetail(container);
+    setRichEditorHtml(firstCurationEditor(container), '<strong>Won first place</strong>');
 
     fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Spring finalists'}});
     fireEvent.change(screen.getByLabelText(/add a note/i), {target: {value: 'Review these with the team'}});
-    setRichEditorHtml(detailsField, '<strong>Custom</strong> <mark>project</mark> details');
     fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
 
     expect(onCreateShare).toHaveBeenCalledTimes(1);
-    const [rowsArg, nameArg, noteArg, detailsArg] = onCreateShare.mock.calls[0];
+    const [rowsArg, nameArg, noteArg] = onCreateShare.mock.calls[0];
+    expect(onCreateShare.mock.calls[0]).toHaveLength(3); // no detailsText 4th arg
     expect(nameArg).toBe('Spring finalists');
     expect(noteArg).toBe('Review these with the team');
-    expect(detailsArg).toBe('<strong>Custom</strong> <mark>project</mark> details');
-    expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
+    expect(rowsArg[0]).toMatchObject({
+      project_title: 'Shared Project',
+      curation: '<strong>Won first place</strong>',
+    });
     expect(await screen.findByText('Opening shareable link...')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Shareable URL')).toBeNull();
-    expect(screen.queryByRole('link', {name: /open shared page/i})).toBeNull();
-    expect(screen.queryByRole('button', {name: /copy url/i})).toBeNull();
-    expect(openSpy).not.toHaveBeenCalled();
-  });
-
-  it('copies all project detail with rich HTML and plain text clipboard payloads', async () => {
-    const write = vi.fn().mockResolvedValue(undefined);
-    class MockClipboardItem {
-      items: Record<string, Blob>;
-
-      constructor(items: Record<string, Blob>) {
-        this.items = items;
-      }
-    }
-
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {write},
-    });
-    Object.defineProperty(window, 'ClipboardItem', {
-      configurable: true,
-      value: MockClipboardItem,
-    });
-
-    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-
-    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    setRichEditorHtml(detailsField, '<strong>Copied</strong> <mark>highlight</mark><br>Plain');
-    fireEvent.click(screen.getByRole('button', {name: 'Copy All'}));
-
-    await waitFor(() => {
-      expect(write).toHaveBeenCalledTimes(1);
-    });
-    const item = write.mock.calls[0][0][0] as MockClipboardItem;
-    await expect(item.items['text/html'].text()).resolves.toContain('<strong>Copied</strong>');
-    await expect(item.items['text/html'].text()).resolves.toContain(
-      '<mark style="background-color:#fff3a3;color:inherit;">highlight</mark>',
-    );
-    await expect(item.items['text/plain'].text()).resolves.toBe('Copied highlight\nPlain');
-    expect(await screen.findByText('Past Projects Detail copied.')).toBeInTheDocument();
-  });
-
-  it('clears selected rich formatting from the project detail editor', () => {
-    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-
-    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    setRichEditorHtml(detailsField, '<strong>Bold</strong> <mark>Highlighted</mark> <em>Italic</em>');
-
-    const highlightedText = detailsField.querySelector('mark');
-    expect(highlightedText).not.toBeNull();
-    selectNodeContents(highlightedText as Node);
-    fireEvent.click(screen.getByRole('button', {name: 'Clear formatting'}));
-
-    expect(detailsField).toHaveTextContent('Bold Highlighted Italic');
-    expect(detailsField.querySelector('mark')).toBeNull();
-    expect(detailsField.querySelector('strong')?.textContent).toBe('Bold');
-    expect(detailsField.querySelector('em')?.textContent).toBe('Italic');
-  });
-
-  it('toggles selected highlight formatting off from the project detail editor', () => {
-    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-
-    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    setRichEditorHtml(detailsField, '<strong>Bold</strong> <mark>Highlighted</mark> <em>Italic</em>');
-
-    const highlightedText = detailsField.querySelector('mark');
-    expect(highlightedText).not.toBeNull();
-    selectNodeContents(highlightedText as Node);
-    fireEvent.click(screen.getByRole('button', {name: 'Highlight'}));
-
-    expect(detailsField).toHaveTextContent('Bold Highlighted Italic');
-    expect(detailsField.querySelector('mark')).toBeNull();
-    expect(detailsField.querySelector('strong')?.textContent).toBe('Bold');
-    expect(detailsField.querySelector('em')?.textContent).toBe('Italic');
-  });
-
-  it('wraps the selected text in a real <mark> when applying a fresh highlight', () => {
-    // applyHighlight wraps the selection in a <mark> we control (not an execCommand
-    // background span), so the live DOM, the stored value, and highlight detection agree. The
-    // no-re-select toggle-off round-trip depends on selection surviving a re-render, which
-    // jsdom does not model — that path is covered by the Playwright e2e.
-    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-
-    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    setRichEditorHtml(detailsField, 'Plain detail text');
-    selectNodeContents(detailsField);
-
-    fireEvent.click(screen.getByRole('button', {name: 'Highlight'}));
-
-    expect(detailsField.querySelector('mark')?.textContent).toBe('Plain detail text');
-  });
-
-  it('bounds large all-project detail sets without truncating the submitted detail text', async () => {
-    const largeRows = Array.from({length: 25}, (_, index) => ({
-      ...baseRow,
-      team_number: `T${String(index + 1).padStart(2, '0')}`,
-      team_name: `Team ${index + 1}`,
-      project_title: `Project Title ${index + 1}`,
-      abstract: `Abstract ${index + 1}`,
-      student_names: `Student ${index + 1}`,
-    }));
-    const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/large');
-
-    render(<MergedResultsTable rows={makeItems(largeRows)} onCreateShare={onCreateShare} />);
-
-    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    expect(detailsField).toHaveClass('is-large-detail-set');
-    expect(detailsField.closest('.project-grid-rich-detail-editor')).toHaveAttribute('data-project-count', '25');
-    expect(detailsField).toHaveTextContent('Project 25');
-    expect(detailsField).toHaveTextContent('Abstract: Abstract 25');
-
-    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'All selected projects'}});
-    fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
-
-    await waitFor(() => {
-      expect(onCreateShare).toHaveBeenCalledTimes(1);
-    });
-    const detailsArg = onCreateShare.mock.calls[0][3] as string;
-    expect(detailsArg).toContain('Project 25');
-    expect(detailsArg).toContain('Abstract: Abstract 25');
-    expect(detailsArg.match(/------------------------------/g)).toHaveLength(24);
-  });
-
-  it('keeps generated builder detail in sync with rows until the user edits it', () => {
-    const onCreateShare = vi.fn();
-    const {rerender} = render(<MergedResultsTable rows={makeItems([baseRow])} onCreateShare={onCreateShare} />);
-
-    const details = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    expect(details).toHaveTextContent('Project 1');
-    expect(details).not.toHaveTextContent('Project 2');
-
-    // Rows change with no manual edit -> the generated detail regenerates to include the new project.
-    rerender(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={onCreateShare} />);
-    expect(details).toHaveTextContent('Project 2');
-
-    // The user makes a real edit -> the draft is now protected from regeneration.
-    setRichEditorHtml(details, 'Custom owner detail');
-    expect(details).toHaveTextContent('Custom owner detail');
-
-    // Further row changes must NOT clobber the manual edit.
-    rerender(<MergedResultsTable rows={makeItems([baseRow, addedRow, thirdRow])} onCreateShare={onCreateShare} />);
-    expect(details).toHaveTextContent('Custom owner detail');
-    expect(details).not.toHaveTextContent('Project 3');
-  });
-
-  it('copies the share URL when the URL field is clicked', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {writeText},
-    });
-
-    render(<MergedResultsTable rows={makeItems()} sharedMode />);
-
-    const shareUrlInput = await screen.findByLabelText('Shareable URL');
-    fireEvent.click(shareUrlInput);
-
-    expect(writeText).toHaveBeenCalledWith(window.location.href);
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(screen.queryByText('URL copied to clipboard.')).toBeNull();
-    expect(screen.queryByRole('button', {name: /copy url/i})).toBeNull();
   });
 
   it('keeps the share button disabled until a name is entered', () => {
     const onCreateShare = vi.fn();
-    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
     const button = screen.getByRole('button', {name: /get shareable url/i});
     expect(button).toBeDisabled();
-    expect(getExportButtonLabels(container)).toEqual(['CSV', 'Excel', 'PDF', 'Microsoft Word']);
 
     fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Named'}});
     expect(button).toBeEnabled();
   });
 
-  it('passes the visible rows and export context to the chosen exporter', () => {
+  it('passes the curated visible rows and export context to the chosen exporter', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
     const exportCluster = container.querySelector(
       '.project-grid-toolbar-cluster[aria-label="Export"]',
     ) as HTMLElement;
 
-    fireEvent.click(within(exportCluster).getByRole('button', {name: 'CSV'}));
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
 
-    expect(exportMocks.exportProjectRowsCsv).toHaveBeenCalledTimes(1);
-    const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsCsv.mock.calls[0];
+    expect(exportMocks.exportProjectRowsExcel).toHaveBeenCalledTimes(1);
+    const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsExcel.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
     expect(context).toMatchObject({title: 'Saved Merged Results'});
+  });
+
+  it('includes a row curation edit in the exported rows', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+
+    openFirstRowDetail(container);
+    setRichEditorHtml(firstCurationEditor(container), 'Exported note');
+
+    const exportCluster = container.querySelector(
+      '.project-grid-toolbar-cluster[aria-label="Export"]',
+    ) as HTMLElement;
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
+
+    expect(exportMocks.exportProjectRowsPdf).toHaveBeenCalledTimes(1);
+    expect(exportMocks.exportProjectRowsPdf.mock.calls[0][0][0]).toMatchObject({curation: 'Exported note'});
   });
 
   it('surfaces an error message when an export fails', async () => {
@@ -376,67 +212,52 @@ describe('MergedResultsTable', () => {
     const exportCluster = container.querySelector(
       '.project-grid-toolbar-cluster[aria-label="Export"]',
     ) as HTMLElement;
-    fireEvent.click(within(exportCluster).getByRole('button', {name: 'CSV'}));
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
 
-    expect(exportMocks.exportProjectRowsCsv).toHaveBeenCalledTimes(1);
-    expect(exportMocks.exportProjectRowsCsv.mock.calls[0][0]).toHaveLength(2);
+    expect(exportMocks.exportProjectRowsExcel).toHaveBeenCalledTimes(1);
+    expect(exportMocks.exportProjectRowsExcel.mock.calls[0][0]).toHaveLength(2);
   });
 
   it('hides the share controls and shows a login hint for anonymous users', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
-    const onCreateShare = vi.fn();
-
-    render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
     expect(screen.queryByRole('button', {name: /get shareable url/i})).toBeNull();
     expect(screen.queryByLabelText(/name this shared link/i)).toBeNull();
-    expect(screen.queryByLabelText(/add a note/i)).toBeNull();
     expect(screen.getByText(/to create a shareable link/i)).toBeInTheDocument();
   });
 
-  it('renders the share link above the note in shared mode', async () => {
+  it('renders the share link above the note in shared mode and shows read-only notes per project', async () => {
     const {container} = render(
       <MergedResultsTable
-        rows={makeItems()}
+        rows={createProjectGridItems([{...baseRow, curation: '<strong>Saved</strong> note'}], 'shared')}
         sharedMode
         note="Curated highlights"
-        detailsText="<strong>Saved</strong> <mark>project</mark> details"
       />,
     );
 
     const shareBlock = await screen.findByRole('status');
     const noteBlock = container.querySelector('.project-grid-shared-note');
-    const detailsBlock = container.querySelector('.project-grid-shared-detail');
     expect(noteBlock).not.toBeNull();
-    expect(detailsBlock).not.toBeNull();
     expect(screen.getByText('Curated highlights')).toBeInTheDocument();
+
+    // Shared visitor sees the saved curation read-only (no editor toolbar).
     await waitFor(() => {
-      expect(detailsBlock?.querySelector('strong')?.textContent).toBe('Saved');
-      expect(detailsBlock?.querySelector('mark')?.textContent).toBe('project');
+      expect(container.querySelector('.project-grid-row-curation strong')?.textContent).toBe('Saved');
     });
-    expect(within(detailsBlock as HTMLElement).getByRole('button', {name: 'Copy All'})).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', {name: 'Project notes'})).toBeNull();
     expect(screen.getByLabelText('Shareable URL')).toBeInTheDocument();
 
     const headerBlocks = Array.from(
-      container.querySelectorAll('.project-grid-share-result, .project-grid-shared-note, .project-grid-shared-detail'),
+      container.querySelectorAll('.project-grid-share-result, .project-grid-shared-note'),
     );
     expect(headerBlocks[0]).toBe(shareBlock);
     expect(headerBlocks[1]).toBe(noteBlock);
-    expect(headerBlocks[2]).toBe(detailsBlock);
 
-    // No create controls in shared mode.
+    // No create controls and no combined "Past Projects Detail" editor in shared mode.
     expect(screen.queryByRole('button', {name: /get shareable url/i})).toBeNull();
-    expect(screen.queryByRole('button', {name: /copy url/i})).toBeNull();
-    expect(screen.queryByLabelText(/add a note/i)).toBeNull();
-    expect(screen.queryByLabelText('Add Project')).toBeNull();
-    expect(screen.queryByRole('button', {name: /save note/i})).toBeNull();
-    expect(screen.queryAllByRole('button', {name: /remove/i})).toHaveLength(0);
-    expect(getExportButtonLabels(container)).toEqual(['CSV', 'Excel', 'PDF', 'Microsoft Word']);
-
-    const tableShell = container.querySelector('.project-grid-table-shell');
-    const toolbar = container.querySelector('.project-grid-toolbar');
-    expect(toolbar).toHaveClass('project-grid-toolbar--bottom');
-    expect(tableShell?.lastElementChild).toBe(toolbar);
+    expect(screen.queryByRole('textbox', {name: 'Past Projects Detail'})).toBeNull();
+    expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Microsoft Word']);
   });
 
   it('does not render a note block in shared mode when note is empty', () => {
@@ -444,7 +265,7 @@ describe('MergedResultsTable', () => {
     expect(container.querySelector('.project-grid-shared-note')).toBeNull();
   });
 
-  it('lets an editable shared page save note changes', async () => {
+  it('lets an editable shared page save note changes without curation overlay', async () => {
     const onUpdateShare = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -454,21 +275,20 @@ describe('MergedResultsTable', () => {
         editable
         title="Original Name"
         note="Original note"
-        detailsText="Original details"
         onUpdateShare={onUpdateShare}
       />,
     );
 
-    const noteField = screen.getByLabelText('Note');
+    const noteField = screen.getByLabelText('Note') as HTMLTextAreaElement;
     expect(noteField).toHaveAttribute('readonly');
     fireEvent.click(screen.getByRole('button', {name: /edit note/i}));
-    expect(noteField).not.toHaveAttribute('readonly');
     fireEvent.change(noteField, {target: {value: 'Updated note'}});
     fireEvent.click(screen.getByRole('button', {name: /save note/i}));
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Original Name', 'Updated note', 'Original details');
+      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Original Name', 'Updated note');
     });
+    expect(onUpdateShare.mock.calls[0]).toHaveLength(3);
     expect(await screen.findByText('Note updated.')).toBeInTheDocument();
   });
 
@@ -482,19 +302,16 @@ describe('MergedResultsTable', () => {
         editable
         title="Original Name"
         note="Owner note"
-        detailsText="Owner details"
         onUpdateShare={onUpdateShare}
       />,
     );
 
-    expect(screen.getByRole('heading', {name: 'Original Name'})).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
-    const nameField = screen.getByLabelText('Shared page name');
-    fireEvent.change(nameField, {target: {value: 'Updated Name'}});
+    fireEvent.change(screen.getByLabelText('Shared page name'), {target: {value: 'Updated Name'}});
     fireEvent.click(screen.getByRole('button', {name: /save name/i}));
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Updated Name', 'Owner note', 'Owner details');
+      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Updated Name', 'Owner note');
     });
     expect(await screen.findByText('Name updated.')).toBeInTheDocument();
   });
@@ -509,7 +326,6 @@ describe('MergedResultsTable', () => {
         editable
         title="Original Name"
         note="Owner note"
-        detailsText="Owner details"
         onUpdateShare={onUpdateShare}
       />,
     );
@@ -517,109 +333,79 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([addedRow], 'Original Name', 'Owner note', 'Owner details');
+      expect(onUpdateShare).toHaveBeenCalledWith([addedRow], 'Original Name', 'Owner note');
     });
     expect(await screen.findByText('Project removed.')).toBeInTheDocument();
   });
 
-  it('lets an editable shared page save details text changes', async () => {
+  it('saves per-project curation notes for an editable shared page', async () => {
     const onUpdateShare = vi.fn().mockResolvedValue(undefined);
 
-    render(
+    const {container} = render(
       <MergedResultsTable
         rows={makeItems()}
         sharedMode
         editable
         title="Original Name"
         note="Owner note"
-        detailsText="Original project details"
         onUpdateShare={onUpdateShare}
       />,
     );
 
-    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    expect(detailsField).toHaveAttribute('aria-readonly', 'true');
-    fireEvent.click(screen.getByRole('button', {name: /edit past projects detail/i}));
-    expect(detailsField).toHaveAttribute('aria-readonly', 'false');
-    setRichEditorHtml(detailsField, '<strong>Updated</strong> project details');
-    fireEvent.click(screen.getByRole('button', {name: /save past projects detail/i}));
+    // The save button only appears once a note has actually changed.
+    expect(screen.queryByRole('button', {name: /save project notes/i})).toBeNull();
+
+    setRichEditorHtml(firstCurationEditor(container), '<mark>Highlight</mark> this team');
+
+    const saveButton = await screen.findByRole('button', {name: /save project notes/i});
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith(
-        [baseRow],
-        'Original Name',
-        'Owner note',
-        '<strong>Updated</strong> project details',
-      );
+      expect(onUpdateShare).toHaveBeenCalledTimes(1);
     });
-    expect(await screen.findByText('Past projects detail updated.')).toBeInTheDocument();
+    const [rowsArg, nameArg, noteArg] = onUpdateShare.mock.calls[0];
+    expect(nameArg).toBe('Original Name');
+    expect(noteArg).toBe('Owner note');
+    expect(rowsArg[0]).toMatchObject({curation: '<mark>Highlight</mark> this team'});
+    expect(await screen.findByText('Project notes updated.')).toBeInTheDocument();
   });
 
-  it('does not persist unsaved detail edits when saving the note instead', async () => {
+  it('does not persist unsaved curation edits when saving the note instead', async () => {
     const onUpdateShare = vi.fn().mockResolvedValue(undefined);
 
-    render(
+    const {container} = render(
       <MergedResultsTable
         rows={makeItems()}
         sharedMode
         editable
         title="Original Name"
         note="Original note"
-        detailsText="Saved details"
         onUpdateShare={onUpdateShare}
       />,
     );
 
-    // Start editing the detail and type something, but DO NOT save it.
-    fireEvent.click(screen.getByRole('button', {name: /edit past projects detail/i}));
-    setRichEditorHtml(screen.getByRole('textbox', {name: 'Past Projects Detail'}), 'Unsaved detail edit');
-
-    // Switch to editing the note and save it.
+    // Type an unsaved curation edit, then save the NOTE instead.
+    setRichEditorHtml(firstCurationEditor(container), 'Unsaved curation edit');
     fireEvent.click(screen.getByRole('button', {name: /edit note/i}));
     fireEvent.change(screen.getByLabelText('Note'), {target: {value: 'Updated note'}});
     fireEvent.click(screen.getByRole('button', {name: /save note/i}));
 
     await waitFor(() => {
-      // The saved details (prop), not the unsaved draft, are sent.
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Original Name', 'Updated note', 'Saved details');
+      // The server-truth row (no curation) is sent, not the unsaved overlay.
+      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Original Name', 'Updated note');
     });
   });
 
-  it('seeds the detail editor with generated detail when an owner edits an old share with no saved detail', () => {
-    render(
+  it('expands all rows by default in shared mode so saved notes are visible', () => {
+    const {container} = render(
       <MergedResultsTable
-        rows={makeItems([baseRow])}
+        rows={createProjectGridItems([{...baseRow, curation: 'Visible note'}], 'shared')}
         sharedMode
-        editable
-        title="Old Share"
-        detailsText=""
-        onUpdateShare={vi.fn().mockResolvedValue(undefined)}
+        note="See below"
       />,
     );
-
-    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
-    expect(detailsField).not.toHaveTextContent('Project 1');
-
-    fireEvent.click(screen.getByRole('button', {name: /edit past projects detail/i}));
-
-    expect(detailsField).toHaveTextContent('Project 1');
-    expect(detailsField).toHaveTextContent('Abstract: A detailed project abstract.');
-  });
-
-  it('expands all detail rows by default in shared mode', () => {
-    render(<MergedResultsTable rows={makeItems()} sharedMode note="See below" />);
-    // Abstract + student names are only in the DOM when a row is expanded.
     expect(screen.getAllByText(/A detailed project abstract\./).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Alice, Bob/).length).toBeGreaterThan(0);
+    expect(within(desktopTable(container)).getByText(/Visible note/)).toBeInTheDocument();
   });
 
-  it('does not expand detail rows by default in builder mode', () => {
-    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-    // Not shared -> table detail rows start collapsed, even though the generated
-    // Past Projects Detail editor contains the same abstract text.
-    expect(container.querySelector('.project-grid-detail-content')).toBeNull();
-    expect(screen.getByRole('textbox', {name: 'Past Projects Detail'})).toHaveTextContent(
-      /A detailed project abstract\./,
-    );
-  });
 });

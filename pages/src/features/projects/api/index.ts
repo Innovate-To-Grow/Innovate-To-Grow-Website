@@ -42,6 +42,10 @@ export interface ProjectGridRow {
   abstract: string;
   student_names: string;
   is_presenting: string;
+  // Owner-authored per-project curation note (rich HTML). Optional so the source-data converters
+  // and the other ProjectGridTable pages don't need it; read as `row.curation ?? ''`. Persists
+  // inside each share row's JSON (PastProjectShare.rows is a JSONField) — no DB migration.
+  curation?: string;
 }
 
 export interface ProjectDetail {
@@ -175,13 +179,13 @@ export const createPastProjectShare = async (
   rows: ProjectGridRow[],
   name: string,
   note: string,
-  detailsText: string,
 ): Promise<PastProjectShare> => {
+  // Per-project curation rides inside each row (rows[].curation); there is no longer a single
+  // combined details_text field sent from the client.
   const response = await authApi.post<PastProjectShare>('/projects/past-shares/', {
     rows,
     name,
     note,
-    details_text: detailsText,
   });
   return response.data;
 };
@@ -205,7 +209,7 @@ export const fetchPastProjectShare = async (id: string): Promise<PastProjectShar
 
 export const updatePastProjectShare = async (
   id: string,
-  payload: Pick<PastProjectShare, 'name' | 'rows' | 'note' | 'details_text'>,
+  payload: Pick<PastProjectShare, 'name' | 'rows' | 'note'>,
 ): Promise<PastProjectShare> => {
   const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
   return response.data;

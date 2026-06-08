@@ -14,6 +14,10 @@ DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark"]
 # payloads. note is capped at 2000; details legitimately needs much more room.
 DETAILS_TEXT_MAX_LENGTH = 2_000_000
 
+# Per-project curation note (rows[].curation). Much smaller than the share-level details cap so a
+# 1000-row share can't carry 1000 oversized notes; still ample for a long rich-text note.
+CURATION_MAX_LENGTH = 50_000
+
 
 def sanitize_details_text(value: str) -> str:
     """Strip any markup outside the rich-detail allowlist from a share's details_text."""
@@ -54,6 +58,22 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     # made an owner's "add rows" re-add a project already in the share. Optional + default so
     # pre-existing shares (saved without the field) keep validating and serialize as "".
     is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
+    # Owner-authored per-project curation note (rich HTML). Persists inside the row JSON — no DB
+    # migration (rows is a JSONField). Optional + default so old shares' rows (no curation key)
+    # keep validating and serialize as "". trim_whitespace=False preserves intentional formatting.
+    curation = serializers.CharField(
+        allow_blank=True,
+        required=False,
+        default="",
+        trim_whitespace=False,
+        max_length=CURATION_MAX_LENGTH,
+    )
+
+    # noinspection PyMethodMayBeStatic
+    def validate_curation(self, value):
+        # Sanitize on write with the same allowlist as details_text so a stored curation note can
+        # never carry script or other disallowed markup, regardless of how a client renders it.
+        return sanitize_details_text(value)
 
 
 class PastProjectShareSerializer(serializers.ModelSerializer):
