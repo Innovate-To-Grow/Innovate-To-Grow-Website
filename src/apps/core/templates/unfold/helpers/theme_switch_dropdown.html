@@ -1,7 +1,9 @@
 {% load i18n %}
 
 {% if not theme %}
-    <div class="relative" x-data="{ openTheme: false }">
+    <div class="relative"
+         x-data="{ openTheme: false, adminTheme: window.adminTheme || 'auto' }"
+         x-on:i2g-admin-theme-change.window="adminTheme = $event.detail.theme">
         <button type="button"
                 class="block cursor-pointer h-[18px] leading-none border-0 bg-transparent p-0 text-inherit hover:text-base-700 dark:hover:text-base-200"
                 aria-label="{% trans 'Switch admin theme' %}"
@@ -22,7 +24,7 @@
              x-on:keydown.escape.window="openTheme = false">
             <button type="button"
                     class="cursor-pointer flex flex-row mx-1 px-3 py-1.5 rounded-default border-0 bg-transparent text-left hover:bg-base-100 hover:text-base-700 dark:hover:bg-base-700 dark:hover:text-base-200"
-                    x-on:click="switchTheme('light'); openTheme = false"
+                    x-on:click="window.switchTheme('light'); adminTheme = 'light'; openTheme = false"
                     x-bind:class="adminTheme == 'light'  && 'text-primary-600 dark:text-primary-500 dark:hover:text-primary-500! hover:text-primary-600!'">
                 <span class="material-symbols-outlined mr-2">light_mode</span>
                 <span class="leading-none self-center">{% trans "Light" %}</span>
@@ -30,7 +32,7 @@
 
             <button type="button"
                     class="cursor-pointer flex flex-row leading-none mx-1 px-3 py-1.5 rounded-default border-0 bg-transparent text-left hover:bg-base-100 hover:text-base-700 dark:hover:bg-base-700 dark:hover:text-base-200"
-                    x-on:click="switchTheme('dark'); openTheme = false"
+                    x-on:click="window.switchTheme('dark'); adminTheme = 'dark'; openTheme = false"
                     x-bind:class="adminTheme == 'dark' && 'text-primary-600 dark:text-primary-500 dark:hover:text-primary-500! hover:text-primary-600!'">
                 <span class="material-symbols-outlined mr-2">dark_mode</span>
                 <span class="leading-none self-center">{% trans "Dark" %}</span>
@@ -38,7 +40,7 @@
 
             <button type="button"
                     class="cursor-pointer flex flex-row mx-1 px-3 py-1.5 rounded-default border-0 bg-transparent text-left hover:bg-base-100 hover:text-base-700 dark:hover:bg-base-700 dark:hover:text-base-200"
-                    x-on:click="switchTheme('auto'); openTheme = false"
+                    x-on:click="window.switchTheme('auto'); adminTheme = 'auto'; openTheme = false"
                     x-bind:class="adminTheme == 'auto' && 'text-primary-600 dark:text-primary-500 dark:hover:text-primary-500! hover:text-primary-600!'">
                 <span class="material-symbols-outlined mr-2">computer</span>
                 <span class="leading-none self-center">{% trans "System" %}</span>

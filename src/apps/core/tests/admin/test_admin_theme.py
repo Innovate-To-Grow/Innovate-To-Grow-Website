@@ -100,9 +100,10 @@ class AdminThemeRenderingTests(TestCase):
         source = Path(path).read_text()
 
         self.assertIn("window.theme", source)
-        self.assertIn("adminTheme", source)
-        self.assertIn("switchTheme", source)
-        self.assertIn("themeBindings", source)
+        self.assertIn("window.adminTheme", source)
+        self.assertIn("window.switchTheme", source)
+        self.assertIn("window.themeBindings", source)
+        self.assertIn("openTheme", source)
         self.assertIn("prefers-color-scheme: dark", source)
 
     def test_configured_unfold_styles_are_resolvable_static_assets(self):
