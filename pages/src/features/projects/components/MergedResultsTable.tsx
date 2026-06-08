@@ -105,6 +105,8 @@ function ClearFormattingIcon() {
 }
 
 const RICH_DETAIL_FORMATTING_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'mark', 'span', 'font']);
+const RICH_DETAIL_HIGHLIGHT_TAGS = new Set(['mark']);
+const RICH_DETAIL_HIGHLIGHT_COLOR = '#fff3a3';
 
 const appendPlainFormattingNode = (target: DocumentFragment, node: Node) => {
   if (node.nodeType === Node.TEXT_NODE) {
@@ -149,19 +151,49 @@ const unwrapElement = (element: Element) => {
   parent.removeChild(element);
 };
 
-const clearInsertedFormattingAncestors = (node: Node, editor: HTMLElement) => {
+const unwrapMatchingElements = (root: ParentNode, tags: Set<string>) => {
+  const selector = Array.from(tags).join(',');
+  root.querySelectorAll(selector).forEach(unwrapElement);
+};
+
+const clearInsertedFormattingAncestors = (
+  node: Node,
+  editor: HTMLElement,
+  formattingTags = RICH_DETAIL_FORMATTING_TAGS,
+) => {
   let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
 
   while (current && current !== editor) {
     const parent = current.parentNode;
     if (current.nodeType === Node.ELEMENT_NODE) {
       const element = current as Element;
-      if (RICH_DETAIL_FORMATTING_TAGS.has(element.tagName.toLowerCase())) {
+      if (formattingTags.has(element.tagName.toLowerCase())) {
         unwrapElement(element);
       }
     }
     current = parent;
   }
+};
+
+const nodeHasHighlight = (node: Node, editor: HTMLElement) => {
+  let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
+
+  while (current && current !== editor) {
+    if (current.nodeType === Node.ELEMENT_NODE && (current as Element).tagName.toLowerCase() === 'mark') {
+      return true;
+    }
+    current = current.parentNode;
+  }
+
+  return false;
+};
+
+const rangeContainsHighlight = (range: Range, editor: HTMLElement) => {
+  if (range.cloneContents().querySelector('mark')) {
+    return true;
+  }
+
+  return nodeHasHighlight(range.startContainer, editor) || nodeHasHighlight(range.endContainer, editor);
 };
 
 const getEditorSelectionRange = (editor: HTMLElement) => {
@@ -271,6 +303,46 @@ function RichTextDetailEditor({
     emitChange();
   };
 
+  const removeHighlight = (range: Range, editor: HTMLElement) => {
+    const selection = window.getSelection();
+    const fragment = range.extractContents();
+    unwrapMatchingElements(fragment, RICH_DETAIL_HIGHLIGHT_TAGS);
+    const insertedNodes = Array.from(fragment.childNodes);
+    const lastInsertedNode = insertedNodes.at(-1) ?? null;
+    range.insertNode(fragment);
+    insertedNodes.forEach((node) => clearInsertedFormattingAncestors(node, editor, RICH_DETAIL_HIGHLIGHT_TAGS));
+
+    if (lastInsertedNode && selection) {
+      const nextRange = document.createRange();
+      nextRange.setStartAfter(lastInsertedNode);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+    }
+
+    editor.focus();
+    emitChange();
+  };
+
+  const toggleHighlight = () => {
+    if (readOnly || !editorRef.current) {
+      return;
+    }
+
+    const editor = editorRef.current;
+    const range = getEditorSelectionRange(editor);
+    if (!range) {
+      return;
+    }
+
+    if (rangeContainsHighlight(range, editor)) {
+      removeHighlight(range, editor);
+      return;
+    }
+
+    applyCommand('hiliteColor', RICH_DETAIL_HIGHLIGHT_COLOR);
+  };
+
   const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
     if (readOnly) {
       return;
@@ -325,7 +397,7 @@ function RichTextDetailEditor({
                   aria-label="Highlight"
                   title="Highlight"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyCommand('hiliteColor', '#fff3a3')}
+                  onClick={toggleHighlight}
                 >
                   <HighlighterIcon />
                 </button>

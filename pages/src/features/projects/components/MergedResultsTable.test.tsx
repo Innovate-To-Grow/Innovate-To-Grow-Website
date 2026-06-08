@@ -171,6 +171,23 @@ describe('MergedResultsTable', () => {
     expect(detailsField.querySelector('em')?.textContent).toBe('Italic');
   });
 
+  it('toggles selected highlight formatting off from the project detail editor', () => {
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+
+    const detailsField = screen.getByRole('textbox', {name: 'Past Projects Detail'});
+    setRichEditorHtml(detailsField, '<strong>Bold</strong> <mark>Highlighted</mark> <em>Italic</em>');
+
+    const highlightedText = detailsField.querySelector('mark');
+    expect(highlightedText).not.toBeNull();
+    selectNodeContents(highlightedText as Node);
+    fireEvent.click(screen.getByRole('button', {name: 'Highlight'}));
+
+    expect(detailsField).toHaveTextContent('Bold Highlighted Italic');
+    expect(detailsField.querySelector('mark')).toBeNull();
+    expect(detailsField.querySelector('strong')?.textContent).toBe('Bold');
+    expect(detailsField.querySelector('em')?.textContent).toBe('Italic');
+  });
+
   it('bounds large all-project detail sets without truncating the submitted detail text', async () => {
     const largeRows = Array.from({length: 25}, (_, index) => ({
       ...baseRow,
