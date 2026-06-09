@@ -344,4 +344,46 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull());
   });
+
+  it('keeps the persisted draft when share creation fails', async () => {
+    // The whole point of persistence is to not lose the user's merged rows; a failed share
+    // (network error, 4xx/5xx) must leave the draft intact so they can retry.
+    const onCreateShare = vi.fn().mockRejectedValue(new Error('boom'));
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
+
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save\/merge results/i}));
+    fireEvent.click(
+      within(screen.getByRole('dialog', {name: /save selected rows/i})).getByRole('button', {name: /save rows/i}),
+    );
+    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
+
+    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'My picks'}});
+    fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
+
+    await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
+    // Draft retained after the rejection — the clear runs only after a successful await.
+    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it('drops the persisted draft when the user logs out in the same tab', () => {
+    // sessionStorage survives a tab session, so without this a second user signing in on a shared
+    // machine (tab never closed) would inherit the first user's merged selection.
+    mockUseAuth.mockReturnValue({isAuthenticated: true});
+    sessionStorage.setItem(
+      MERGED_ROWS_STORAGE_KEY,
+      JSON.stringify([makeRow({team_number: 'T09', project_title: 'Persisted Project'})]),
+    );
+
+    const {rerender} = render(
+      <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
+    );
+    expect(getMergedSection()).not.toBeNull();
+
+    mockUseAuth.mockReturnValue({isAuthenticated: false});
+    rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(getMergedSection()).toBeNull();
+  });
 });

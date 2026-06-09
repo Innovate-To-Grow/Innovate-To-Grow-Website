@@ -3,7 +3,24 @@ import type { EmailAuthSource, LoginResponse } from './types';
 export const getSafeInternalRedirectPath = (value: string | null | undefined): string | null => {
   const normalized = value?.trim() ?? '';
 
-  if (!normalized || !normalized.startsWith('/') || normalized.startsWith('//')) {
+  // Only accept a single-slash-rooted internal path, rejecting the off-site / protocol-relative
+  // vectors the name promises to block.
+  if (!normalized || !normalized.startsWith('/')) {
+    return null;
+  }
+  // '//evil' and '/\evil' (browsers fold '\' to '/') are protocol-relative; any backslash anywhere
+  // re-opens that vector.
+  if (/^\/[/\\]/.test(normalized) || normalized.includes('\\')) {
+    return null;
+  }
+  // Control / whitespace chars (CR / LF / TAB / NUL, DEL) have no place in a real path and can be
+  // used to smuggle an off-site target past a downstream parser; a legitimate path encodes them.
+  if (Array.from(normalized).some((ch) => ch.charCodeAt(0) <= 0x20 || ch.charCodeAt(0) === 0x7f)) {
+    return null;
+  }
+  // Percent-encoded slash / backslash / control sequences can decode into one of the above once a
+  // sink consumes the value.
+  if (/%(?:2f|5c|09|0a|0d)/i.test(normalized)) {
     return null;
   }
 

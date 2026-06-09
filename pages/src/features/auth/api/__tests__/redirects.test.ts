@@ -1,6 +1,12 @@
 import {describe, expect, it} from 'vitest';
 
-import {buildCompleteProfilePath, buildLoginPath, getEmailAuthSourcePath, getPostAuthPath} from '../redirects';
+import {
+  buildCompleteProfilePath,
+  buildLoginPath,
+  getEmailAuthSourcePath,
+  getPostAuthPath,
+  getSafeInternalRedirectPath,
+} from '../redirects';
 
 describe('auth redirects', () => {
   it('builds a complete-profile URL with a safe returnTo', () => {
@@ -69,6 +75,27 @@ describe('auth redirects', () => {
   it('drops an unsafe returnTo when building the login path', () => {
     expect(buildLoginPath('https://evil.example/phish')).toBe('/login');
     expect(buildLoginPath('//evil.example')).toBe('/login');
+  });
+
+  it('drops backslash and percent-encoded path-traversal returnTo vectors', () => {
+    // Browsers fold '\' to '/', so '/\evil' is protocol-relative; encoded slash/control sequences
+    // can decode into the same off-site target downstream.
+    expect(buildLoginPath('/\\evil.example')).toBe('/login');
+    expect(buildLoginPath('/foo\\bar')).toBe('/login');
+    expect(buildLoginPath('/%2F%2Fevil')).toBe('/login');
+    expect(buildLoginPath('/%5Cevil')).toBe('/login');
+    expect(buildLoginPath('/%09/evil')).toBe('/login');
+  });
+
+  it('getSafeInternalRedirectPath honors its internal-only contract', () => {
+    expect(getSafeInternalRedirectPath('/past-projects')).toBe('/past-projects');
+    expect(getSafeInternalRedirectPath('/past-projects/abc?value=x')).toBe('/past-projects/abc?value=x');
+    expect(getSafeInternalRedirectPath('')).toBeNull();
+    expect(getSafeInternalRedirectPath('relative/path')).toBeNull();
+    expect(getSafeInternalRedirectPath('https://evil.example')).toBeNull();
+    expect(getSafeInternalRedirectPath('//evil.example')).toBeNull();
+    expect(getSafeInternalRedirectPath('/\\evil.example')).toBeNull();
+    expect(getSafeInternalRedirectPath('/%2F%2Fevil')).toBeNull();
   });
 
   it('prefers a page returnTo over the backend redirect_to after login', () => {

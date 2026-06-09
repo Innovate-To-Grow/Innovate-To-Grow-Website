@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.projects.models import PastProjectsSheetConfig
-from apps.projects.services.sheet_sync import SheetSyncError, sync_past_projects
+from apps.projects.services.sheet_sync import SheetSyncError, format_sync_stats, sync_past_projects
 
 
 class Command(BaseCommand):
@@ -28,10 +28,4 @@ class Command(BaseCommand):
             # failure rather than a silent exit 0 with stale data.
             raise CommandError(f"Sync failed: {exc}") from exc
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"  Synced: {stats.projects_created} created, {stats.projects_updated} updated, "
-                f"{stats.projects_deleted} deleted across {stats.semesters_touched} semester(s); "
-                f"{stats.rows_skipped} rows skipped of {stats.rows_read} read."
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(f"  Synced: {format_sync_stats(stats)}"))

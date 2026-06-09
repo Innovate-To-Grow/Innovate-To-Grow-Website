@@ -57,12 +57,22 @@ class PullViewTest(TestCase):
         config = PastProjectsSheetConfig.objects.create(name="Prod", is_active=True)
         with patch(
             _ADMIN_PATH,
-            return_value=PastProjectSyncStats(rows_read=5, projects_created=4, semesters_touched=2, rows_skipped=1),
+            return_value=PastProjectSyncStats(
+                rows_read=5,
+                projects_created=4,
+                projects_updated=2,
+                projects_deleted=1,
+                semesters_touched=2,
+                rows_skipped=1,
+            ),
         ) as mock_sync:
             response = self.client.post(self.url, follow=True)
         mock_sync.assert_called_once_with(config, sync_type="manual")
         messages = [m.message for m in response.context["messages"]]
-        self.assertTrue(any("Synced: 4 projects" in m for m in messages))
+        # After the full-replace -> upsert change the banner must surface updates/deletes, not just
+        # creates (a steady-state re-sync creates 0 but updates many).
+        self.assertTrue(any("Synced: 4 created, 2 updated, 1 deleted" in m for m in messages))
+        self.assertTrue(any("1 rows skipped of 5 read" in m for m in messages))
 
     def test_failure_shows_error(self):
         PastProjectsSheetConfig.objects.create(name="Prod", is_active=True)

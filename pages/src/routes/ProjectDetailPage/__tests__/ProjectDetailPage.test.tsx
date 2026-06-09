@@ -64,4 +64,37 @@ describe('ProjectDetailPage', () => {
     const backLink = screen.getByRole('link', {name: /back to projects/i});
     expect(backLink.getAttribute('href')).toBe('/current-projects');
   });
+
+  it('shows an error message with the Past Projects back link when the fetch fails', async () => {
+    vi.mocked(fetchProjectDetail).mockReset();
+    vi.mocked(fetchProjectDetail).mockRejectedValue(new Error('boom'));
+    render(
+      <MemoryRouter initialEntries={[`/past-projects/project/${projectDetail.id}`]}>
+        <Routes>
+          <Route path="/past-projects/project/:id" element={<ProjectDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Unable to load this project.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', {name: 'Rotary Joint Testing System'})).toBeNull();
+    const backLink = screen.getByRole('link', {name: /back to past projects/i});
+    expect(backLink.getAttribute('href')).toBe('/past-projects');
+  });
+
+  it('shows the current-projects back link on the error branch of the legacy route', async () => {
+    vi.mocked(fetchProjectDetail).mockReset();
+    vi.mocked(fetchProjectDetail).mockRejectedValue(new Error('boom'));
+    render(
+      <MemoryRouter initialEntries={[`/projects/${projectDetail.id}`]}>
+        <Routes>
+          <Route path="/projects/:id" element={<ProjectDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Unable to load this project.')).toBeInTheDocument();
+    const backLink = screen.getByRole('link', {name: /back to projects/i});
+    expect(backLink.getAttribute('href')).toBe('/current-projects');
+  });
 });

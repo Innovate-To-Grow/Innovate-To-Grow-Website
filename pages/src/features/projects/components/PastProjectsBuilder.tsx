@@ -124,6 +124,19 @@ export const PastProjectsBuilder = ({
     writePersistedMergedRows(mergedRows.map(stripProjectGridItem));
   }, [mergedRows]);
 
+  // Drop the persisted draft when the user logs out within the same tab, so a different user who
+  // signs in next on a shared machine does not inherit the previous user's merged selection. The
+  // login round-trip is a full page reload, so this never fires mid-flow — the component remounts
+  // already authenticated and restores from sessionStorage in the state initializer above.
+  const wasAuthenticatedRef = useRef(isAuthenticated);
+  useEffect(() => {
+    if (wasAuthenticatedRef.current && !isAuthenticated) {
+      clearPersistedMergedRows();
+      setMergedRows([]);
+    }
+    wasAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+
   // Wrap the parent's share creator so a *successful* share drops the persisted draft — the share
   // now owns this snapshot, and returning to the builder should start clean. A failed attempt keeps
   // the draft so the user does not lose their merged rows.

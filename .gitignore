@@ -27,6 +27,11 @@ wheels/
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
+# The Python-build-artifact `lib/` rule above also matches the SPA's pages/src/lib
+# directory; re-include it so its source and tests (e.g. pages/src/lib/__tests__/)
+# are tracked and run in CI, not silently ignored.
+!pages/src/lib/
+!pages/src/lib/**
 .installed.cfg
 *.egg
 MANIFEST

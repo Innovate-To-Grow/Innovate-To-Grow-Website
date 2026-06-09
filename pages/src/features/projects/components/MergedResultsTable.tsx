@@ -220,7 +220,10 @@ export const MergedResultsTable = ({
   const hasTitleChanges = editTitleDraft.trim() !== title.trim();
   // Compare both sides through the same client sanitizer so a no-op edit (the editor re-emits
   // normalized markup) is not treated as a change versus the server-stored note.
-  const hasNoteChanges = sanitizePastProjectsDetailHtml(editNoteDraft) !== sanitizePastProjectsDetailHtml(note ?? '');
+  // Compare both sides through prepareNoteForSave — the exact normalization used for the write —
+  // so emptying a note to residual markup ('<br>', '<div></div>') is not mistaken for a change and
+  // does not fire a no-op save with a misleading "Note updated." status.
+  const hasNoteChanges = prepareNoteForSave(editNoteDraft) !== prepareNoteForSave(note ?? '');
 
   const handleCreateShare = async () => {
     const trimmedName = nameDraft.trim();

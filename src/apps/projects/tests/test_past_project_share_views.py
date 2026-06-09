@@ -257,6 +257,33 @@ class PastProjectShareAPIViewTests(TestCase):
         share = PastProjectShare.objects.get(pk=response.data["id"])
         self.assertNotIn("<script", share.note)
 
+    def test_note_strips_dangerous_attributes_from_allowed_tags(self):
+        # The allowlist permits <a href> and <div data-past-project-note-curation>; an event-handler
+        # or style on those *allowed* tags must still be stripped (the existing onclick test only
+        # covers a disallowed <span>, which bleach removes wholesale). This pins the tight per-tag
+        # attribute allowlist so a future widening of DETAILS_ALLOWED_ATTRIBUTES is caught.
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(
+                note=(
+                    '<a href="/past-projects/project/x" onclick="steal()" target="_blank" style="x">link</a>'
+                    '<div data-past-project-note-curation="ok" onmouseover="steal()" style="x">block</div>'
+                ),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        stored = response.data["note"]
+        # The allowed attributes survive...
+        self.assertIn('href="/past-projects/project/x"', stored)
+        self.assertIn('data-past-project-note-curation="ok"', stored)
+        # ...but every event handler / style / unlisted attribute on those allowed tags is gone.
+        self.assertNotIn("onclick", stored)
+        self.assertNotIn("onmouseover", stored)
+        self.assertNotIn("style", stored)
+        self.assertNotIn("target", stored)
+
     def test_note_is_sanitized_on_patch(self):
         share = PastProjectShare.objects.create(
             name="Mine", rows=[sample_row()], note="<b>old</b>", created_by=self.member
