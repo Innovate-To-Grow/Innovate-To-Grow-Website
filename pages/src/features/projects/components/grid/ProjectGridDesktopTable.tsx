@@ -205,8 +205,8 @@ const DesktopRow = ({
           <td colSpan={colSpan}>
             <div className="project-grid-detail-content">
               {individualHref ? (
-                <div className="project-grid-individual-link-row">
-                  <a className="project-grid-individual-link" href={individualHref}>
+                <div className="project-grid-individual-link-row" hidden aria-hidden="true">
+                  <a className="project-grid-individual-link" href={individualHref} tabIndex={-1}>
                     Individual Link
                   </a>
                 </div>

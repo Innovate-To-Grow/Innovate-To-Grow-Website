@@ -222,18 +222,24 @@ describe('MergedResultsTable', () => {
     expect(container.querySelector('.project-grid-shared-note')).toBeNull();
   });
 
-  it('shows the individual link in expanded desktop and mobile details when a row has an id', () => {
+  it('loads the individual link in expanded desktop and mobile details without displaying it', () => {
     const {container} = render(<MergedResultsTable rows={makeItems([rowWithId])} />);
 
     fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'View'}));
 
     const expectedHref = `/past-projects/project/${rowWithId.id}`;
-    const desktopLink = within(desktopTable(container)).getByRole('link', {name: 'Individual Link'});
+    const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
+    expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
+    expect(desktopLink.tabIndex).toBe(-1);
+    expect(desktopLink).not.toBeVisible();
 
     const mobileCards = container.querySelector('.project-grid-mobile-cards') as HTMLElement;
-    const mobileLink = within(mobileCards).getByRole('link', {name: 'Individual Link'});
+    const mobileLink = mobileCards.querySelector('.project-grid-individual-link') as HTMLAnchorElement;
+    expect(mobileLink).not.toBeNull();
     expect(mobileLink.getAttribute('href')).toBe(expectedHref);
+    expect(mobileLink.tabIndex).toBe(-1);
+    expect(mobileLink).not.toBeVisible();
   });
 
   it('does not show an individual link for legacy rows without an id', () => {
@@ -241,7 +247,7 @@ describe('MergedResultsTable', () => {
 
     fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'View'}));
 
-    expect(within(desktopTable(container)).queryByRole('link', {name: 'Individual Link'})).toBeNull();
+    expect(desktopTable(container).querySelector('.project-grid-individual-link')).toBeNull();
   });
 
   it('lets an editable shared page save note changes', async () => {
