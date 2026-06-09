@@ -25,7 +25,7 @@ const galaxyS26Ultra = {
 };
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './src/__tests__/e2e',
   timeout: 60_000,
   expect: {
     timeout: 10_000,
