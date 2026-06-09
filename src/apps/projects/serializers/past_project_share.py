@@ -1,3 +1,5 @@
+import uuid
+
 import bleach
 from django.conf import settings
 from rest_framework import serializers
@@ -11,8 +13,12 @@ DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark"]
 
 # Generous cap: a generated detail for ~1000 projects with long abstracts is well under this
 # (low hundreds of KB), so it never rejects a legitimate large share, but it stops absurd
-# payloads. note is capped at 2000; details legitimately needs much more room.
+# payloads. details legitimately needs much more room than the note.
 DETAILS_TEXT_MAX_LENGTH = 2_000_000
+
+# The share-level note is rich text (HTML). Cap well above plain-text length so emphasis tags
+# don't reject a reasonable note, but far below the details cap.
+NOTE_MAX_LENGTH = 50_000
 
 
 def sanitize_details_text(value: str) -> str:
@@ -40,6 +46,7 @@ def _share_url(obj, request):
 
 
 class PastProjectShareRowSerializer(serializers.Serializer):
+    id = serializers.CharField(max_length=36, required=False)
     semester_label = serializers.CharField(max_length=50, allow_blank=True)
     class_code = serializers.CharField(max_length=20, allow_blank=True)
     team_number = serializers.CharField(max_length=20, allow_blank=True)
@@ -55,11 +62,20 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     # pre-existing shares (saved without the field) keep validating and serialize as "".
     is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
 
+    # noinspection PyMethodMayBeStatic
+    def validate_id(self, value):
+        try:
+            return str(uuid.UUID(value))
+        except (TypeError, ValueError, AttributeError):
+            raise serializers.ValidationError("Enter a valid project UUID.")
+
 
 class PastProjectShareSerializer(serializers.ModelSerializer):
     name = serializers.CharField(required=True, allow_blank=False, max_length=200)
     rows = PastProjectShareRowSerializer(many=True)
-    note = serializers.CharField(required=False, allow_blank=True, max_length=2000, default="")
+    note = serializers.CharField(
+        required=False, allow_blank=True, default="", trim_whitespace=False, max_length=NOTE_MAX_LENGTH
+    )
     details_text = serializers.CharField(
         required=False, allow_blank=True, default="", max_length=DETAILS_TEXT_MAX_LENGTH
     )
@@ -79,6 +95,12 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     def validate_details_text(self, value):
         # Sanitize on write so stored/served details_text can never carry script or other
         # disallowed markup, regardless of how a client renders it.
+        return sanitize_details_text(value)
+
+    # noinspection PyMethodMayBeStatic
+    def validate_note(self, value):
+        # The note is rich text; sanitize on write with the same allowlist as details_text so a
+        # stored note can never carry script or disallowed markup, however a client renders it.
         return sanitize_details_text(value)
 
     # noinspection PyMethodMayBeStatic

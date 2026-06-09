@@ -68,6 +68,7 @@ const MobileCard = ({
   onDeleteRow,
 }: MobileCardProps) => {
   const hasDetails = hasProjectGridDetails(row);
+  const individualHref = row.id ? `/past-projects/project/${encodeURIComponent(row.id)}` : '';
 
   return (
     <div className={`project-grid-mobile-card${isExpanded ? ' is-expanded' : ''}${isSelected ? ' is-selected' : ''}`}>
@@ -102,6 +103,13 @@ const MobileCard = ({
 
       {isExpanded ? (
         <div className="project-grid-mobile-card-details">
+          {individualHref ? (
+            <div className="project-grid-individual-link-row">
+              <a className="project-grid-individual-link" href={individualHref}>
+                Individual Link
+              </a>
+            </div>
+          ) : null}
           {row.abstract ? <div><strong>Abstract:</strong> {row.abstract}</div> : null}
           {row.student_names ? <div><strong>Student Names:</strong> {row.student_names}</div> : null}
         </div>

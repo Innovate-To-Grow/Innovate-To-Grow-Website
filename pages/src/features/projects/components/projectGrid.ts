@@ -27,6 +27,7 @@ export const PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
 export const PAST_PROJECT_GRID_COLUMNS = PROJECT_GRID_COLUMNS;
 
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
+  id: project.id,
   semester_label: project.semester_label,
   class_code: project.class_code,
   team_number: project.team_number,
@@ -39,6 +40,9 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
   is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
 });
 
+// `id` is deliberately excluded from the fingerprint (the row's dedup identity): an AI-search
+// result carries a real id while an already-shared row may not, so including it would break dedup.
+// id still rides on the row (via the spread) for the per-project Individual Link.
 export const createProjectGridFingerprint = (row: ProjectGridRow) =>
   JSON.stringify([
     row.semester_label,

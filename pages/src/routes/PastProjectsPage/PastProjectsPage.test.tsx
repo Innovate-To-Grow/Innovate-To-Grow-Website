@@ -8,6 +8,7 @@ import {createPastProjectShare} from '@/features/projects/api';
 const {mockNavigate, sampleRow} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   sampleRow: {
+    id: '11111111-1111-4111-8111-111111111111',
     semester_label: '2025 Spring',
     class_code: 'CAP',
     team_number: '101',

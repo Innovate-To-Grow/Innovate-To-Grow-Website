@@ -46,6 +46,11 @@ const addedRow: ProjectGridRow = {
   organization: 'Blue Diamond',
 };
 
+const rowWithId: ProjectGridRow = {
+  ...baseRow,
+  id: '11111111-1111-4111-8111-111111111111',
+};
+
 const makeItems = (rows: ProjectGridRow[] = [baseRow]) => createProjectGridItems(rows, 'test');
 
 const getExportButtonLabels = (container: HTMLElement) => {
@@ -58,6 +63,11 @@ const getExportButtonLabels = (container: HTMLElement) => {
 // desktop table to get a single match.
 const desktopTable = (container: HTMLElement) =>
   container.querySelector('.project-grid-table-wrap') as HTMLElement;
+
+const setRichTextEditorHtml = (editor: HTMLElement, html: string) => {
+  editor.innerHTML = html;
+  fireEvent.input(editor);
+};
 
 describe('MergedResultsTable', () => {
   beforeEach(() => {
@@ -84,7 +94,10 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
     fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Spring finalists'}});
-    fireEvent.change(screen.getByLabelText(/add a note/i), {target: {value: 'Review these with the team'}});
+    setRichTextEditorHtml(
+      screen.getByRole('textbox', {name: /add a note/i}),
+      'Review these with the team',
+    );
     fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
 
     expect(onCreateShare).toHaveBeenCalledTimes(1);
@@ -209,6 +222,28 @@ describe('MergedResultsTable', () => {
     expect(container.querySelector('.project-grid-shared-note')).toBeNull();
   });
 
+  it('shows the individual link in expanded desktop and mobile details when a row has an id', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems([rowWithId])} />);
+
+    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'View'}));
+
+    const expectedHref = `/past-projects/project/${rowWithId.id}`;
+    const desktopLink = within(desktopTable(container)).getByRole('link', {name: 'Individual Link'});
+    expect(desktopLink.getAttribute('href')).toBe(expectedHref);
+
+    const mobileCards = container.querySelector('.project-grid-mobile-cards') as HTMLElement;
+    const mobileLink = within(mobileCards).getByRole('link', {name: 'Individual Link'});
+    expect(mobileLink.getAttribute('href')).toBe(expectedHref);
+  });
+
+  it('does not show an individual link for legacy rows without an id', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} />);
+
+    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'View'}));
+
+    expect(within(desktopTable(container)).queryByRole('link', {name: 'Individual Link'})).toBeNull();
+  });
+
   it('lets an editable shared page save note changes', async () => {
     const onUpdateShare = vi.fn().mockResolvedValue(undefined);
 
@@ -223,10 +258,11 @@ describe('MergedResultsTable', () => {
       />,
     );
 
-    const noteField = screen.getByLabelText('Note') as HTMLTextAreaElement;
-    expect(noteField).toHaveAttribute('readonly');
+    const noteField = screen.getByRole('textbox', {name: 'Note'});
+    expect(noteField).toHaveAttribute('aria-readonly', 'true');
     fireEvent.click(screen.getByRole('button', {name: /edit note/i}));
-    fireEvent.change(noteField, {target: {value: 'Updated note'}});
+    expect(noteField).toHaveAttribute('aria-readonly', 'false');
+    setRichTextEditorHtml(noteField, 'Updated note');
     fireEvent.click(screen.getByRole('button', {name: /save note/i}));
 
     await waitFor(() => {

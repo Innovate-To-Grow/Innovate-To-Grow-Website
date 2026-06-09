@@ -4,6 +4,7 @@ import {
   BRAND_BLUE,
   BORDER_BLUE,
   EXPORT_COLUMNS,
+  HIGHLIGHT_TEXT,
   LIGHT_BLUE,
   TABLE_ALT_FILL,
   normalizeProjectRowsExportContext,
@@ -13,10 +14,40 @@ import {
   type ProjectGridRow,
   type ProjectRowsExportContext,
 } from './exportTypes';
+import {parseRichTextRuns, runsToPlainText, type StyledRun} from './exportRichText';
 import {loadI2gLogoAsset} from './logoAsset';
 
 // Per-column widths (last entry = Student Names). Abstract is wide and wraps to multiple lines.
 const COLUMN_WIDTHS = [16, 12, 10, 24, 34, 28, 18, 60, 30];
+
+// ExcelJS rich-text fragment type, kept local so the module has no value-level exceljs dependency.
+interface ExcelRichTextFragment {
+  text: string;
+  font?: {bold?: boolean; italic?: boolean; underline?: boolean; color?: {argb: string}; size?: number};
+}
+
+/**
+ * Convert the share note's styled runs to ExcelJS rich text. Bold/italic/underline map to inline
+ * runs; highlight has no per-run cell fill in a single cell, so it is approximated with an amber
+ * font color (documented trade-off). Returns null for an empty note.
+ */
+const runsToExcelRichText = (runs: StyledRun[]): {richText: ExcelRichTextFragment[]} | null => {
+  if (!runs.length) {
+    return null;
+  }
+  return {
+    richText: runs.map((run) => ({
+      text: run.text,
+      font: {
+        ...(run.bold ? {bold: true} : {}),
+        ...(run.italic ? {italic: true} : {}),
+        ...(run.underline ? {underline: true} : {}),
+        ...(run.highlight ? {color: {argb: HIGHLIGHT_TEXT}} : {}),
+        size: 11,
+      },
+    })),
+  };
+};
 
 const estimateLineCount = (text: string, charsPerLine: number) =>
   text
@@ -101,11 +132,18 @@ export const buildProjectsWorksheet = (
       cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: fill}};
       cell.font = {color: {argb: '20364D'}, size: 11};
     });
+    return row;
   };
 
-  if (exportContext.note) {
+  // The share-level note is rich text; render it into the merged cell preserving emphasis.
+  const noteRuns = parseRichTextRuns(exportContext.note);
+  if (noteRuns.length) {
     addSectionRow('Note');
-    addMergedTextRow(exportContext.note);
+    const noteRow = addMergedTextRow(runsToPlainText(noteRuns));
+    const richNote = runsToExcelRichText(noteRuns);
+    if (richNote) {
+      worksheet.getCell(noteRow.number, 1).value = richNote;
+    }
     worksheet.addRow([]);
   }
 

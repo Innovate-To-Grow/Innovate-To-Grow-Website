@@ -146,6 +146,7 @@ const DesktopRow = ({
   colSpan,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
+  const individualHref = row.id ? `/past-projects/project/${encodeURIComponent(row.id)}` : '';
 
   return (
     <>
@@ -203,6 +204,13 @@ const DesktopRow = ({
         <tr className="project-grid-detail-row">
           <td colSpan={colSpan}>
             <div className="project-grid-detail-content">
+              {individualHref ? (
+                <div className="project-grid-individual-link-row">
+                  <a className="project-grid-individual-link" href={individualHref}>
+                    Individual Link
+                  </a>
+                </div>
+              ) : null}
               {row.abstract ? <div><strong>Abstract:</strong> {row.abstract}</div> : null}
               {row.student_names ? <div><strong>Student Names:</strong> {row.student_names}</div> : null}
             </div>

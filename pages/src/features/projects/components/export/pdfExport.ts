@@ -7,6 +7,8 @@ import {
   type ProjectGridRow,
   type ProjectRowsExportContext,
 } from './exportTypes';
+import {parseRichTextRuns, type StyledRun} from './exportRichText';
+import {drawRunLine, wrapRunsToLines} from './pdfRichText';
 import {loadI2gLogoAsset} from './logoAsset';
 
 const LABEL_RGB: [number, number, number] = [15, 45, 82];
@@ -78,21 +80,12 @@ export const exportProjectRowsPdf = async (
     }
   };
 
-  const addWrappedText = (text: string, fontSize: number, lineHeight: number) => {
-    pdf.setFontSize(fontSize);
-    pdf.setFont('helvetica', 'normal');
-    setBodyTextColor();
-    for (const paragraph of (text || ' ').split(/\r\n|\r|\n/)) {
-      if (!paragraph.trim()) {
-        ensureSpace(lineHeight);
-        cursorY += lineHeight;
-        continue;
-      }
-      for (const line of pdf.splitTextToSize(paragraph, contentWidth) as string[]) {
-        ensureSpace(lineHeight);
-        pdf.text(line || ' ', margin, cursorY);
-        cursorY += lineHeight;
-      }
+  // Draw the share note's styled runs (bold/italic/underline/highlight), wrapped to the page width.
+  const addRichText = (runs: StyledRun[], fontSize: number, lineHeight: number) => {
+    for (const line of wrapRunsToLines(pdf, runs, contentWidth, fontSize)) {
+      ensureSpace(lineHeight);
+      drawRunLine(pdf, line, margin, cursorY, fontSize);
+      cursorY += lineHeight;
     }
   };
 
@@ -172,9 +165,10 @@ export const exportProjectRowsPdf = async (
 
   drawPageHeader();
 
-  if (exportContext.note) {
+  const noteRuns = parseRichTextRuns(exportContext.note);
+  if (noteRuns.length) {
     addSectionHeading('Note');
-    addWrappedText(exportContext.note, 9, 4.7);
+    addRichText(noteRuns, 9, 4.7);
     cursorY += 5;
   }
 

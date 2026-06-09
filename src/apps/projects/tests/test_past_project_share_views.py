@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from apps.projects.models import PastProjectShare
 from apps.projects.serializers.past_project_share import (
+    NOTE_MAX_LENGTH,
     PastProjectShareListSerializer,
     PastProjectShareSerializer,
 )
@@ -172,12 +173,62 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_note_length_validation(self):
         response = self.client.post(
             "/projects/past-shares/",
-            sample_payload(note="x" * 2001),
+            sample_payload(note="x" * (NOTE_MAX_LENGTH + 1)),
             format="json",
         )
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("note", response.data)
+
+    def test_note_round_trips_rich_text(self):
+        # The share-level note is rich text; allowlisted emphasis persists through create + GET.
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(note="<strong>Review</strong> these <mark>finalists</mark>"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["note"], "<strong>Review</strong> these <mark>finalists</mark>")
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.note, "<strong>Review</strong> these <mark>finalists</mark>")
+
+    def test_note_is_sanitized_on_create(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(
+                note='<mark>Keep</mark><script>alert(1)</script><b>bold</b><span onclick="x">drop</span>',
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        stored = response.data["note"]
+        # Allowlisted markup survives; script/span and event handlers are stripped.
+        self.assertIn("<mark>Keep</mark>", stored)
+        self.assertIn("<b>bold</b>", stored)
+        self.assertNotIn("<script", stored)
+        self.assertNotIn("onclick", stored)
+        self.assertNotIn("<span", stored)
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertNotIn("<script", share.note)
+
+    def test_note_is_sanitized_on_patch(self):
+        share = PastProjectShare.objects.create(
+            name="Mine", rows=[sample_row()], note="<b>old</b>", created_by=self.member
+        )
+
+        response = self.client.patch(
+            f"/projects/past-shares/{share.pk}/",
+            {"note": "<strong>new</strong><script>alert(1)</script>"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<strong>new</strong>", response.data["note"])
+        self.assertNotIn("<script", response.data["note"])
+        share.refresh_from_db()
+        self.assertNotIn("<script", share.note)
 
     def test_create_share_requires_rows(self):
         response = self.client.post("/projects/past-shares/", sample_payload(rows=[]), format="json")
@@ -229,6 +280,30 @@ class PastProjectShareAPIViewTests(TestCase):
         share = PastProjectShare.objects.get(pk=response.data["id"])
         self.assertEqual(share.rows[0]["is_presenting"], "Yes")
 
+    def test_create_round_trips_project_id(self):
+        project_id = "11111111-1111-4111-8111-111111111111"
+
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(rows=[sample_row(id=project_id)]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["rows"][0]["id"], project_id)
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.rows[0]["id"], project_id)
+
+    def test_create_rejects_invalid_project_id(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(rows=[sample_row(id="not-a-uuid")]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("rows", response.data)
+
     def test_rows_saved_without_is_presenting_serialize_as_blank(self):
         # Pre-existing shares were stored before is_presenting existed; GET must still return
         # "" for them rather than erroring on the missing key.
@@ -238,6 +313,7 @@ class PastProjectShareAPIViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["rows"][0]["is_presenting"], "")
+        self.assertNotIn("id", response.data["rows"][0])
 
     def test_get_share_marks_owner_can_edit(self):
         share = PastProjectShare.objects.create(rows=[sample_row()], created_by=self.member)

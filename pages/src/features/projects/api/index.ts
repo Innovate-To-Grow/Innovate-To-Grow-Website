@@ -32,6 +32,7 @@ export interface ProjectTableRow {
 }
 
 export interface ProjectGridRow {
+  id?: string;
   semester_label: string;
   class_code: string;
   team_number: string;
@@ -108,6 +109,7 @@ export interface PastProjectAISearchResponse {
 }
 
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
+  id: project.id,
   semester_label: formatSemesterLabel(project.semester_label),
   class_code: project.class_code,
   team_number: project.team_number,

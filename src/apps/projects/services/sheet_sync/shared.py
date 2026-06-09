@@ -9,5 +9,7 @@ class SheetSyncError(Exception):
 class PastProjectSyncStats:
     rows_read: int = 0
     projects_created: int = 0
+    projects_updated: int = 0
+    projects_deleted: int = 0
     semesters_touched: int = 0
     rows_skipped: int = 0

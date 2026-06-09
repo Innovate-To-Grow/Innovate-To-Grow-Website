@@ -112,6 +112,7 @@ describe('SharedPastProjectMergeSearch', () => {
       industry: 'Water',
     });
     const expectedGridRow = makeRow({
+      id: 'project-1',
       semester_label: '2024 Spring',
       class_code: 'CAP',
       team_number: '501',

@@ -30,7 +30,8 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"  Synced: {stats.projects_created} projects across {stats.semesters_touched} "
-                f"semester(s); {stats.rows_skipped} rows skipped of {stats.rows_read} read."
+                f"  Synced: {stats.projects_created} created, {stats.projects_updated} updated, "
+                f"{stats.projects_deleted} deleted across {stats.semesters_touched} semester(s); "
+                f"{stats.rows_skipped} rows skipped of {stats.rows_read} read."
             )
         )

@@ -14,6 +14,9 @@ import {
   type ProjectGridItem,
   type ProjectGridRow,
 } from './projectGrid';
+import {RichTextDetailEditor} from './RichTextDetailEditor';
+import {RichDetailPreview} from './RichDetailPreview';
+import {pastProjectsDetailHtmlToPlainText, sanitizePastProjectsDetailHtml} from './pastProjectsDetailText';
 import {SharedEditIcon, SharedSaveIcon} from './shareEditorIcons';
 import {getExportFileBaseName, getShareErrorMessage} from './shareHelpers';
 
@@ -38,6 +41,11 @@ export type PastProjectShareCreationResult =
       id: string;
       share_url?: string;
     };
+
+// The share-level note is rich text (HTML). Persist the sanitized markup, but collapse an
+// effectively-empty note (whitespace / a stray <br>) back to "" so it does not render an empty box.
+const prepareNoteForSave = (html: string) =>
+  pastProjectsDetailHtmlToPlainText(html).trim() ? sanitizePastProjectsDetailHtml(html) : '';
 
 export const MergedResultsTable = ({
   rows,
@@ -71,7 +79,6 @@ export const MergedResultsTable = ({
   const [isEditingSharedTitle, setIsEditingSharedTitle] = useState(false);
   const [isEditingSharedNote, setIsEditingSharedNote] = useState(false);
   const editTitleInputRef = useRef<HTMLInputElement>(null);
-  const editNoteTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -103,20 +110,15 @@ export const MergedResultsTable = ({
     }
   }, [isEditingSharedTitle]);
 
-  useEffect(() => {
-    if (isEditingSharedNote) {
-      editNoteTextareaRef.current?.focus();
-    }
-  }, [isEditingSharedNote]);
-
   // The full saved snapshot — used by title/note/delete saves and by the shared-mode export.
   const allRows = useMemo(() => rows.map(stripProjectGridItem), [rows]);
   // The visible (filtered/sorted) rows — used for builder share-create and builder export.
   const visibleRows = useMemo(() => table.sortedRows.map(stripProjectGridItem), [table.sortedRows]);
 
-  const sharedNote = sharedMode ? (note ?? '').trim() : '';
+  const sharedNoteHtml = sharedMode ? (note ?? '') : '';
+  const sharedNoteHasContent = pastProjectsDetailHtmlToPlainText(sharedNoteHtml).trim() !== '';
   const sharedExportTitle = (canEditShared ? editTitleDraft : title).trim() || title;
-  const sharedExportNote = canEditShared ? editNoteDraft.trim() : sharedNote;
+  const sharedExportNote = canEditShared ? prepareNoteForSave(editNoteDraft) : sharedNoteHtml;
   const sharedExportFileBaseName = getExportFileBaseName(sharedExportTitle);
   const exportTitle = sharedMode ? sharedExportTitle : title;
   const exportNote = sharedMode ? sharedExportNote : '';
@@ -138,7 +140,9 @@ export const MergedResultsTable = ({
     }
   };
   const hasTitleChanges = editTitleDraft.trim() !== title.trim();
-  const hasNoteChanges = editNoteDraft.trim() !== (note ?? '').trim();
+  // Compare both sides through the same client sanitizer so a no-op edit (the editor re-emits
+  // normalized markup) is not treated as a change versus the server-stored note.
+  const hasNoteChanges = sanitizePastProjectsDetailHtml(editNoteDraft) !== sanitizePastProjectsDetailHtml(note ?? '');
 
   const handleCreateShare = async () => {
     const trimmedName = nameDraft.trim();
@@ -156,7 +160,7 @@ export const MergedResultsTable = ({
     setIsSharing(true);
     setStatusMessage('');
     try {
-      await onCreateShare(visibleRows, trimmedName, noteDraft.trim());
+      await onCreateShare(visibleRows, trimmedName, prepareNoteForSave(noteDraft));
       if (isMountedRef.current) {
         setStatusMessage('Opening shareable link...');
       }
@@ -258,7 +262,7 @@ export const MergedResultsTable = ({
       return;
     }
 
-    const saved = await handleUpdateSharedPage(allRows, title, editNoteDraft.trim(), 'Note updated.');
+    const saved = await handleUpdateSharedPage(allRows, title, prepareNoteForSave(editNoteDraft), 'Note updated.');
     if (saved) {
       setIsEditingSharedNote(false);
     }
@@ -309,34 +313,32 @@ export const MergedResultsTable = ({
     </div>
   ) : null;
 
+  const sharedNoteAction = (
+    <button
+      type="button"
+      className={`project-grid-share-editor-icon-button project-grid-share-note-action${
+        isEditingSharedNote ? ' is-active' : ''
+      }`}
+      aria-label={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
+      title={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
+      onClick={() => void handleSharedNoteAction()}
+      disabled={isSavingShareEdit}
+    >
+      {isEditingSharedNote ? <SharedSaveIcon /> : <SharedEditIcon />}
+    </button>
+  );
+
   const sharedEditor = canEditShared ? (
     <div className={`project-grid-share-editor${isEditingSharedNote ? ' is-editing' : ''}`}>
-      <div className="project-grid-share-editor-header">
-        <label className="project-grid-share-editor-label" htmlFor="past-project-shared-note-editor">
-          Note
-        </label>
-        <button
-          type="button"
-          className={`project-grid-share-editor-icon-button project-grid-share-note-action${
-            isEditingSharedNote ? ' is-active' : ''
-          }`}
-          aria-label={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
-          title={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
-          onClick={() => void handleSharedNoteAction()}
-          disabled={isSavingShareEdit}
-        >
-          {isEditingSharedNote ? <SharedSaveIcon /> : <SharedEditIcon />}
-        </button>
-      </div>
-      <textarea
-        ref={editNoteTextareaRef}
+      <RichTextDetailEditor
         id="past-project-shared-note-editor"
-        className="project-grid-share-editor-textarea"
+        label="Note"
         value={editNoteDraft}
-        maxLength={2000}
-        rows={3}
+        placeholder="Add a note (shown at the top of the shared page)."
         readOnly={!isEditingSharedNote}
-        onChange={(event) => setEditNoteDraft(event.target.value)}
+        autoFocus={isEditingSharedNote}
+        headerAction={sharedNoteAction}
+        onChange={setEditNoteDraft}
       />
     </div>
   ) : null;
@@ -396,10 +398,10 @@ export const MergedResultsTable = ({
 
       {sharedEditor}
 
-      {!sharedEditor && sharedNote ? (
+      {!sharedEditor && sharedNoteHasContent ? (
         <div className="project-grid-shared-note">
           <p className="project-grid-shared-note-label">Note</p>
-          <p className="project-grid-shared-note-text">{sharedNote}</p>
+          <RichDetailPreview className="project-grid-shared-detail-text" html={sharedNoteHtml} />
         </div>
       ) : null}
 
@@ -421,17 +423,12 @@ export const MergedResultsTable = ({
               />
             </div>
             <div className="project-grid-share-note">
-              <label className="project-grid-share-note-label" htmlFor="past-project-share-note">
-                Add a note (shown at the top of the shared page)
-              </label>
-              <textarea
+              <RichTextDetailEditor
                 id="past-project-share-note"
-                className="project-grid-share-note-input"
+                label="Add a note (shown at the top of the shared page)"
                 value={noteDraft}
-                maxLength={2000}
-                rows={3}
                 placeholder="Optional — add context for whoever opens the shared link."
-                onChange={(event) => setNoteDraft(event.target.value)}
+                onChange={setNoteDraft}
               />
             </div>
           </>

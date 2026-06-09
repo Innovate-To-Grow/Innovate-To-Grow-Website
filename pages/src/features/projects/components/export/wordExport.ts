@@ -1,6 +1,7 @@
 import {
   BRAND_BLUE,
   EXPORT_COLUMNS,
+  HIGHLIGHT_FILL,
   normalizeProjectRowsExportContext,
   toDisplayValue,
   triggerDownload,
@@ -8,12 +9,16 @@ import {
   type ProjectGridRow,
   type ProjectRowsExportContext,
 } from './exportTypes';
+import {parseRichTextRuns, type StyledRun} from './exportRichText';
 import {escapeXml, sanitizeXmlText} from './xml';
 import {createStoredZip} from './zip';
 import {loadI2gLogoAsset} from './logoAsset';
 
 interface WordRunOptions {
   bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  highlight?: boolean;
   color?: string;
   size?: number;
 }
@@ -21,6 +26,10 @@ interface WordRunOptions {
 const runProperties = (options: WordRunOptions) =>
   [
     options.bold ? '<w:b/>' : '',
+    options.italic ? '<w:i/>' : '',
+    options.underline ? '<w:u w:val="single"/>' : '',
+    // <w:highlight> only allows named colors, so shade the run with our amber fill instead.
+    options.highlight ? `<w:shd w:val="clear" w:color="auto" w:fill="${HIGHLIGHT_FILL}"/>` : '',
     options.color ? `<w:color w:val="${options.color}"/>` : '',
     options.size ? `<w:sz w:val="${options.size}"/>` : '',
   ].join('');
@@ -51,6 +60,23 @@ const wordParagraph = (
 
 const wordSectionHeading = (text: string) =>
   wordParagraph(text, {bold: true, color: 'FFFFFF', shading: BRAND_BLUE, size: 22, spacingAfter: 80});
+
+/** Render the share note's styled runs as Word runs, preserving bold/italic/underline/highlight. */
+const styledRunsToWord = (runs: StyledRun[], size: number) =>
+  runs
+    .map((run) =>
+      wordRun(run.text, {
+        bold: run.bold,
+        italic: run.italic,
+        underline: run.underline,
+        highlight: run.highlight,
+        size,
+      }),
+    )
+    .join('');
+
+const wordRichParagraph = (runs: StyledRun[], size: number, spacingAfter: number) =>
+  `<w:p><w:pPr><w:spacing w:after="${spacingAfter}"/></w:pPr>${styledRunsToWord(runs, size)}</w:p>`;
 
 const wordLogoParagraph = (relationshipId: string) => {
   const size = 685800;
@@ -124,6 +150,7 @@ export const createProjectRowsWordBlob = (
   const exportContext = normalizeProjectRowsExportContext(context);
   const headerRow = `<w:tr>${EXPORT_COLUMNS.map((label, index) => headerCell(label, COLUMN_PCT[index])).join('')}</w:tr>`;
   const bodyRows = rows.map(projectTableRow).join('');
+  const noteRuns = parseRichTextRuns(exportContext.note);
 
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
@@ -137,7 +164,7 @@ export const createProjectRowsWordBlob = (
       size: 20,
       spacingAfter: 220,
     })}
-    ${exportContext.note ? `${wordSectionHeading('Note')}${wordParagraph(exportContext.note, {size: 20, spacingAfter: 180})}` : ''}
+    ${noteRuns.length ? `${wordSectionHeading('Note')}${wordRichParagraph(noteRuns, 20, 180)}` : ''}
     ${wordSectionHeading('Projects')}
     <w:tbl>
       <w:tblPr>

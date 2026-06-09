@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useLocation, useParams, Link } from 'react-router-dom';
 import { fetchProjectDetail, type ProjectDetail } from '@/features/projects/api';
 import { formatSemesterLabel } from '@/lib/semester';
 
 export const ProjectDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isPastProjectDetail = location.pathname.startsWith('/past-projects/project/');
+  const backHref = isPastProjectDetail ? '/past-projects' : '/current-projects';
+  const backLabel = isPastProjectDetail ? 'Back to Past Projects' : 'Back to Projects';
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -41,7 +45,7 @@ export const ProjectDetailPage = () => {
   if (error || !project) {
     return (
       <div className="project-detail">
-        <Link to="/current-projects" className="project-detail-back">&larr; Back to Projects</Link>
+        <Link to={backHref} className="project-detail-back">&larr; {backLabel}</Link>
         <div className="projects-state projects-error">{error || 'Project not found.'}</div>
       </div>
     );
@@ -49,7 +53,7 @@ export const ProjectDetailPage = () => {
 
   return (
     <div className="project-detail">
-      <Link to="/current-projects" className="project-detail-back">&larr; Back to Projects</Link>
+      <Link to={backHref} className="project-detail-back">&larr; {backLabel}</Link>
 
       <h1 className="project-detail-title">{project.project_title}</h1>
 
