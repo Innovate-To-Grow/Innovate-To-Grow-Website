@@ -48,28 +48,16 @@ const addedRow: ProjectGridRow = {
 
 const makeItems = (rows: ProjectGridRow[] = [baseRow]) => createProjectGridItems(rows, 'test');
 
-const setRichEditorHtml = (editor: HTMLElement, html: string) => {
-  editor.innerHTML = html;
-  fireEvent.input(editor);
-};
-
 const getExportButtonLabels = (container: HTMLElement) => {
   const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]');
   expect(exportCluster).not.toBeNull();
   return within(exportCluster as HTMLElement).getAllByRole('button').map((button) => button.textContent);
 };
 
-// Desktop and mobile tables both render, so per-row controls/editors appear twice. Scope queries
-// to the desktop table to get a single match.
+// Desktop and mobile tables both render, so per-row content appears twice. Scope queries to the
+// desktop table to get a single match.
 const desktopTable = (container: HTMLElement) =>
   container.querySelector('.project-grid-table-wrap') as HTMLElement;
-
-const openFirstRowDetail = (container: HTMLElement) => {
-  fireEvent.click(within(desktopTable(container)).getAllByRole('button', {name: /^(view|hide)$/i})[0]);
-};
-
-const firstCurationEditor = (container: HTMLElement) =>
-  within(desktopTable(container)).getByRole('textbox', {name: 'Project notes'});
 
 describe('MergedResultsTable', () => {
   beforeEach(() => {
@@ -90,26 +78,10 @@ describe('MergedResultsTable', () => {
     expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Microsoft Word']);
   });
 
-  it('shows a per-project curation editor in the expanded row for the builder owner', () => {
-    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-
-    // Rows start collapsed in builder mode; open the row's detail.
-    openFirstRowDetail(container);
-
-    const curationEditor = firstCurationEditor(container);
-    expect(curationEditor).toBeInTheDocument();
-    expect(curationEditor).toHaveTextContent('');
-    // The read-only project fields still render alongside the editor.
-    expect(within(desktopTable(container)).getByText(/A detailed project abstract\./)).toBeInTheDocument();
-  });
-
-  it('submits the name, note, and per-row curation inside the rows when creating a share', async () => {
+  it('submits the name and note inside the rows when creating a share', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
 
-    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
-
-    openFirstRowDetail(container);
-    setRichEditorHtml(firstCurationEditor(container), '<strong>Won first place</strong>');
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
     fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'Spring finalists'}});
     fireEvent.change(screen.getByLabelText(/add a note/i), {target: {value: 'Review these with the team'}});
@@ -120,10 +92,7 @@ describe('MergedResultsTable', () => {
     expect(onCreateShare.mock.calls[0]).toHaveLength(3); // no detailsText 4th arg
     expect(nameArg).toBe('Spring finalists');
     expect(noteArg).toBe('Review these with the team');
-    expect(rowsArg[0]).toMatchObject({
-      project_title: 'Shared Project',
-      curation: '<strong>Won first place</strong>',
-    });
+    expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(await screen.findByText('Opening shareable link...')).toBeInTheDocument();
   });
 
@@ -138,7 +107,7 @@ describe('MergedResultsTable', () => {
     expect(button).toBeEnabled();
   });
 
-  it('passes the curated visible rows and export context to the chosen exporter', () => {
+  it('passes the visible rows and export context to the chosen exporter', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
     const exportCluster = container.querySelector(
       '.project-grid-toolbar-cluster[aria-label="Export"]',
@@ -151,21 +120,6 @@ describe('MergedResultsTable', () => {
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
     expect(context).toMatchObject({title: 'Saved Merged Results'});
-  });
-
-  it('includes a row curation edit in the exported rows', () => {
-    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-
-    openFirstRowDetail(container);
-    setRichEditorHtml(firstCurationEditor(container), 'Exported note');
-
-    const exportCluster = container.querySelector(
-      '.project-grid-toolbar-cluster[aria-label="Export"]',
-    ) as HTMLElement;
-    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
-
-    expect(exportMocks.exportProjectRowsPdf).toHaveBeenCalledTimes(1);
-    expect(exportMocks.exportProjectRowsPdf.mock.calls[0][0][0]).toMatchObject({curation: 'Exported note'});
   });
 
   it('surfaces an error message when an export fails', async () => {
@@ -227,25 +181,15 @@ describe('MergedResultsTable', () => {
     expect(screen.getByText(/to create a shareable link/i)).toBeInTheDocument();
   });
 
-  it('renders the share link above the note in shared mode and shows read-only notes per project', async () => {
+  it('renders the share link above the note in shared mode', async () => {
     const {container} = render(
-      <MergedResultsTable
-        rows={createProjectGridItems([{...baseRow, curation: '<strong>Saved</strong> note'}], 'shared')}
-        sharedMode
-        note="Curated highlights"
-      />,
+      <MergedResultsTable rows={makeItems()} sharedMode note="Curated highlights" />,
     );
 
     const shareBlock = await screen.findByRole('status');
     const noteBlock = container.querySelector('.project-grid-shared-note');
     expect(noteBlock).not.toBeNull();
     expect(screen.getByText('Curated highlights')).toBeInTheDocument();
-
-    // Shared visitor sees the saved curation read-only (no editor toolbar).
-    await waitFor(() => {
-      expect(container.querySelector('.project-grid-row-curation strong')?.textContent).toBe('Saved');
-    });
-    expect(screen.queryByRole('textbox', {name: 'Project notes'})).toBeNull();
     expect(screen.getByLabelText('Shareable URL')).toBeInTheDocument();
 
     const headerBlocks = Array.from(
@@ -265,7 +209,7 @@ describe('MergedResultsTable', () => {
     expect(container.querySelector('.project-grid-shared-note')).toBeNull();
   });
 
-  it('lets an editable shared page save note changes without curation overlay', async () => {
+  it('lets an editable shared page save note changes', async () => {
     const onUpdateShare = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -338,74 +282,8 @@ describe('MergedResultsTable', () => {
     expect(await screen.findByText('Project removed.')).toBeInTheDocument();
   });
 
-  it('saves per-project curation notes for an editable shared page', async () => {
-    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
-
-    const {container} = render(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Original Name"
-        note="Owner note"
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    // The save button only appears once a note has actually changed.
-    expect(screen.queryByRole('button', {name: /save project notes/i})).toBeNull();
-
-    setRichEditorHtml(firstCurationEditor(container), '<mark>Highlight</mark> this team');
-
-    const saveButton = await screen.findByRole('button', {name: /save project notes/i});
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledTimes(1);
-    });
-    const [rowsArg, nameArg, noteArg] = onUpdateShare.mock.calls[0];
-    expect(nameArg).toBe('Original Name');
-    expect(noteArg).toBe('Owner note');
-    expect(rowsArg[0]).toMatchObject({curation: '<mark>Highlight</mark> this team'});
-    expect(await screen.findByText('Project notes updated.')).toBeInTheDocument();
+  it('expands all rows by default in shared mode so project details are visible', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} sharedMode note="See below" />);
+    expect(within(desktopTable(container)).getByText(/A detailed project abstract\./)).toBeInTheDocument();
   });
-
-  it('does not persist unsaved curation edits when saving the note instead', async () => {
-    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
-
-    const {container} = render(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Original Name"
-        note="Original note"
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    // Type an unsaved curation edit, then save the NOTE instead.
-    setRichEditorHtml(firstCurationEditor(container), 'Unsaved curation edit');
-    fireEvent.click(screen.getByRole('button', {name: /edit note/i}));
-    fireEvent.change(screen.getByLabelText('Note'), {target: {value: 'Updated note'}});
-    fireEvent.click(screen.getByRole('button', {name: /save note/i}));
-
-    await waitFor(() => {
-      // The server-truth row (no curation) is sent, not the unsaved overlay.
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Original Name', 'Updated note');
-    });
-  });
-
-  it('expands all rows by default in shared mode so saved notes are visible', () => {
-    const {container} = render(
-      <MergedResultsTable
-        rows={createProjectGridItems([{...baseRow, curation: 'Visible note'}], 'shared')}
-        sharedMode
-        note="See below"
-      />,
-    );
-    expect(screen.getAllByText(/A detailed project abstract\./).length).toBeGreaterThan(0);
-    expect(within(desktopTable(container)).getByText(/Visible note/)).toBeInTheDocument();
-  });
-
 });

@@ -23,13 +23,6 @@ interface UseProjectGridTableOptions {
   initialSearch?: string;
   /** Seed every expandable row open on mount (used by the shared, read-only view). */
   expandAllByDefault?: boolean;
-  /**
-   * Whether a row can be expanded to show its detail area. Defaults to
-   * `hasProjectGridDetails` (abstract/student names present). Past Projects passes a wider
-   * predicate so owner/builder rows are always expandable to add a curation note, even when
-   * the project has no abstract.
-   */
-  isRowExpandable?: (row: ProjectGridItem) => boolean;
 }
 
 export function useProjectGridTable({
@@ -40,7 +33,6 @@ export function useProjectGridTable({
   defaultSortDirection = 'asc',
   initialSearch = '',
   expandAllByDefault = false,
-  isRowExpandable = hasProjectGridDetails,
 }: UseProjectGridTableOptions) {
   const [pageSize, setPageSizeState] = useState(() => Math.max(1, initialPageSize));
   const [search, setSearch] = useState(initialSearch);
@@ -95,8 +87,8 @@ export function useProjectGridTable({
   };
 
   const expandableKeys = useMemo(
-    () => rows.filter((row) => isRowExpandable(row)).map((row) => row.__key),
-    [rows, isRowExpandable],
+    () => rows.filter((row) => hasProjectGridDetails(row)).map((row) => row.__key),
+    [rows],
   );
 
   const allDetailsExpanded =

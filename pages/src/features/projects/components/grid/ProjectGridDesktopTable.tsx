@@ -1,4 +1,3 @@
-import type {ReactNode} from 'react';
 import {
   hasProjectGridDetails,
   type ProjectGridColumn,
@@ -6,24 +5,6 @@ import {
   type ProjectGridItem,
   type ProjectGridSortDirection,
 } from '../projectGrid';
-
-// Default detail body: the read-only abstract + student names. A custom renderRowDetail (e.g.
-// Past Projects' per-row curation editor) replaces this and is responsible for re-rendering
-// whatever read-only fields it still wants to show.
-const defaultRowDetail = (row: ProjectGridItem): ReactNode => (
-  <>
-    {row.abstract ? (
-      <div>
-        <strong>Abstract:</strong> {row.abstract}
-      </div>
-    ) : null}
-    {row.student_names ? (
-      <div>
-        <strong>Student Names:</strong> {row.student_names}
-      </div>
-    ) : null}
-  </>
-);
 
 const COLUMN_WIDTHS: Partial<Record<ProjectGridColumnKey, string>> = {
   semester_label: '9%',
@@ -54,8 +35,6 @@ interface ProjectGridDesktopTableProps {
   onSortChange: (field: ProjectGridColumn['key']) => void;
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
-  renderRowDetail?: (row: ProjectGridItem, surface: 'desktop' | 'mobile') => ReactNode;
-  detailExpandable?: (row: ProjectGridItem) => boolean;
   onDeleteRow?: (row: ProjectGridItem) => void;
 }
 
@@ -65,8 +44,7 @@ const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: bool
 export const ProjectGridDesktopTable = ({
   columns,
   rows, pagedRows, emptyMessage, selectable, selectedKeys, onToggleSelected, onToggleSelectAll,
-  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded,
-  renderRowDetail = defaultRowDetail, detailExpandable = hasProjectGridDetails, onDeleteRow,
+  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow,
 }: ProjectGridDesktopTableProps) => {
   const allSelected = selectable && rows.length > 0 && selectedKeys.size === rows.length;
   const partiallySelected = selectable && selectedKeys.size > 0 && selectedKeys.size < rows.length;
@@ -134,8 +112,6 @@ export const ProjectGridDesktopTable = ({
               onToggleSelected={onToggleSelected}
               isExpanded={expandedKeys.has(row.__key)}
               onToggleExpanded={onToggleExpanded}
-              renderRowDetail={renderRowDetail}
-              detailExpandable={detailExpandable}
               onDeleteRow={onDeleteRow}
               colSpan={colSpan}
             />
@@ -154,8 +130,6 @@ interface DesktopRowProps {
   onToggleSelected?: (rowKey: string) => void;
   isExpanded: boolean;
   onToggleExpanded: (rowKey: string) => void;
-  renderRowDetail: (row: ProjectGridItem, surface: 'desktop' | 'mobile') => ReactNode;
-  detailExpandable: (row: ProjectGridItem) => boolean;
   onDeleteRow?: (row: ProjectGridItem) => void;
   colSpan: number;
 }
@@ -168,12 +142,10 @@ const DesktopRow = ({
   onToggleSelected,
   isExpanded,
   onToggleExpanded,
-  renderRowDetail,
-  detailExpandable,
   onDeleteRow,
   colSpan,
 }: DesktopRowProps) => {
-  const hasDetails = detailExpandable(row);
+  const hasDetails = hasProjectGridDetails(row);
 
   return (
     <>
@@ -230,7 +202,10 @@ const DesktopRow = ({
       {isExpanded ? (
         <tr className="project-grid-detail-row">
           <td colSpan={colSpan}>
-            <div className="project-grid-detail-content">{renderRowDetail(row, 'desktop')}</div>
+            <div className="project-grid-detail-content">
+              {row.abstract ? <div><strong>Abstract:</strong> {row.abstract}</div> : null}
+              {row.student_names ? <div><strong>Student Names:</strong> {row.student_names}</div> : null}
+            </div>
           </td>
         </tr>
       ) : null}

@@ -5,7 +5,6 @@ import {buildProjectsWorksheet} from './excelExport';
 import {exportProjectRowsPdf} from './pdfExport';
 import {createProjectRowsWordBlob} from './wordExport';
 import {loadI2gLogoAsset} from './logoAsset';
-import {parseRichTextRuns, runsToPlainText} from './exportRichText';
 import type {ProjectGridRow} from '../projectGrid';
 
 // jspdf is heavy and DOM/canvas-bound; mock it so we can assert the document assembly wiring
@@ -49,7 +48,6 @@ const row: ProjectGridRow = {
   abstract: 'A detailed abstract with <special> characters & project context.',
   student_names: 'Alice Calderon, Bob Lee',
   is_presenting: '',
-  curation: '<strong>Won first place</strong> with <mark>strong</mark> feedback & support',
 };
 
 const logo = {
@@ -59,35 +57,8 @@ const logo = {
   extension: 'png' as const,
 };
 
-describe('parseRichTextRuns', () => {
-  it('splits a note into styled runs preserving bold / italic / underline / highlight', () => {
-    const runs = parseRichTextRuns('<strong>Bold</strong> plain <mark>mark</mark> <em>it</em> <u>ul</u>');
-    expect(runs.find((part) => part.text === 'Bold')?.bold).toBe(true);
-    expect(runs.find((part) => part.text === 'mark')?.highlight).toBe(true);
-    expect(runs.find((part) => part.text === 'it')?.italic).toBe(true);
-    expect(runs.find((part) => part.text === 'ul')?.underline).toBe(true);
-    expect(runsToPlainText(runs)).toContain('Bold plain mark it ul');
-  });
-
-  it('turns <br> and block boundaries into newlines', () => {
-    const runs = parseRichTextRuns('line one<br>line two<div>line three</div>');
-    expect(runsToPlainText(runs)).toBe('line one\nline two\nline three');
-  });
-
-  it('returns an empty array for blank notes', () => {
-    expect(parseRichTextRuns('')).toEqual([]);
-    expect(parseRichTextRuns('<div></div>')).toEqual([]);
-  });
-
-  it('drops disallowed markup but keeps the inner text', () => {
-    const runs = parseRichTextRuns('<script>alert(1)</script>safe');
-    expect(runsToPlainText(runs)).toContain('safe');
-    expect(runsToPlainText(runs)).not.toContain('<script>');
-  });
-});
-
 describe('createProjectRowsWordBlob', () => {
-  it('creates a real docx package with per-project notes and branding', async () => {
+  it('creates a real docx package with the project columns and branding', async () => {
     const blob = createProjectRowsWordBlob(
       [row],
       {title: 'Shared Results', note: 'Owner note & review instructions'},
@@ -105,13 +76,11 @@ describe('createProjectRowsWordBlob', () => {
     expect(packageText).toContain('word/media/i2g-logo.png');
     expect(packageText).toContain('Shared Results');
     expect(packageText).toContain('Owner note &amp; review instructions');
-    // Per-project columns include the rich note (Notes column header + the note text).
-    expect(packageText).toContain('Notes');
-    expect(packageText).toContain('Won first place');
+    expect(packageText).toContain('Rotary Joint Testing System');
+    expect(packageText).toContain('Student Names');
     expect(packageText).toContain('A detailed abstract with &lt;special&gt; characters &amp; project context.');
-    // Bold + highlight markup is preserved as Word run properties.
-    expect(packageText).toContain('<w:b/>');
-    expect(packageText).toContain('w:fill="FFF3A3"');
+    // The per-project Notes column was removed.
+    expect(packageText).not.toContain('Notes');
   });
 
   it('omits the logo parts from the Word package when no logo is provided', async () => {
@@ -126,7 +95,7 @@ describe('createProjectRowsWordBlob', () => {
 });
 
 describe('buildProjectsWorksheet', () => {
-  it('builds a branded worksheet with the Notes column, project rows, and embedded logo', () => {
+  it('builds a branded worksheet with the project rows and embedded logo', () => {
     const workbook = new ExcelJS.Workbook();
     buildProjectsWorksheet(workbook, [row], {title: 'Excel Title', note: 'Owner note'}, logo);
 
@@ -135,8 +104,8 @@ describe('buildProjectsWorksheet', () => {
     expect(worksheet?.getCell(1, 2).value).toBe('Excel Title');
     expect(worksheet?.getCell(2, 2).value).toBe('Innovate to Grow Past Projects');
     expect(worksheet?.getImages()).toHaveLength(1);
-    // 10 columns including Notes.
-    expect(worksheet?.columns).toHaveLength(10);
+    // 9 columns (the Notes column was removed).
+    expect(worksheet?.columns).toHaveLength(9);
 
     const cellText: string[] = [];
     worksheet?.eachRow((sheetRow) =>
@@ -150,12 +119,11 @@ describe('buildProjectsWorksheet', () => {
       }),
     );
     const joined = cellText.join('|');
-    expect(joined).toContain('Note');
+    expect(joined).toContain('Note'); // the Note section row
     expect(joined).toContain('Projects');
-    expect(joined).toContain('Notes');
+    expect(joined).toContain('Student Names');
     expect(joined).toContain('Rotary Joint Testing System');
-    // The rich note rendered into the Notes cell.
-    expect(joined).toContain('Won first place');
+    expect(joined).not.toContain('Notes');
   });
 
   it('builds the worksheet without an image when no logo is provided', () => {
@@ -199,7 +167,7 @@ describe('exportProjectRowsPdf', () => {
     pdfTextCalls.length = 0;
   });
 
-  it('draws the header, sections, and a per-project block with Notes first', async () => {
+  it('draws the header, sections, and a per-project block with project fields', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: false})); // logo load fails -> null
 
     await exportProjectRowsPdf([row], 'past-projects', {title: 'PDF Title', note: 'Owner note'});
@@ -209,13 +177,11 @@ describe('exportProjectRowsPdf', () => {
     expect(drawnText).toContain('Innovate to Grow Past Projects');
     expect(drawnText).toContain('Note');
     expect(drawnText).toContain('Projects');
-    // Per-project block: title bar + Notes-first field labels.
+    // Per-project block: title bar + field labels.
     expect(drawnText).toContain('Project 1: Rotary Joint Testing System');
-    expect(drawnText).toContain('Notes: ');
+    expect(drawnText).toContain('Year-Semester: ');
     expect(drawnText).toContain('Abstract: ');
-    // Notes label is drawn before the Abstract label (Notes-first ordering).
-    expect(pdfTextCalls.indexOf('Notes: ')).toBeLessThan(pdfTextCalls.indexOf('Abstract: '));
-    // The rich note text is rendered (token by token).
-    expect(drawnText).toContain('Won');
+    // The per-project Notes field was removed.
+    expect(pdfTextCalls).not.toContain('Notes: ');
   });
 });

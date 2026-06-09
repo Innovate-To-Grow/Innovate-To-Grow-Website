@@ -1,8 +1,7 @@
-// Owner editing of per-project curation notes on a shared Past Projects page. The rich note
-// editor relies on real-browser contentEditable + Selection behavior that jsdom cannot reproduce:
-// typing must not reset the caret (FE-1 focus guard), and a highlight must toggle on and back off
-// without re-selecting (real <mark> wrap/re-select + the sync effect not rewriting the user's own
-// edit). These run on the desktop engines only (untagged → no @mobile).
+// Smoke coverage for the shared Past Projects page. The per-project curation editor was removed,
+// so there is no longer any contentEditable behavior to exercise here; these assert that the
+// shared route renders the saved snapshot for a visitor and exposes the owner's edit affordances
+// only when the share is editable. Desktop engines only (untagged → no @mobile).
 import type {PastProjectShare} from '../src/features/projects/api';
 import {mockPastProjects, mockPastProjectShare, pastProjectRows} from './helpers';
 import {expect, test} from './fixtures';
@@ -25,7 +24,6 @@ function shareFixture(overrides: Partial<PastProjectShare> = {}): PastProjectSha
         abstract: 'A dashboard that optimizes irrigation schedules.',
         student_names: 'Ada Lovelace, Alan Turing',
         is_presenting: 'Yes',
-        curation: '',
         ...overrides.rows?.[0],
       },
     ],
@@ -38,56 +36,33 @@ function shareFixture(overrides: Partial<PastProjectShare> = {}): PastProjectSha
   };
 }
 
-// The desktop table and the mobile cards both render a copy of every row, so scope the per-row
-// curation editor to the desktop table to get a single match.
-const desktopCurationEditor = (page: import('@playwright/test').Page) =>
-  page.locator('.project-grid-table-wrap').getByRole('textbox', {name: 'Project notes'});
-
-test.describe('past projects per-project curation editor', () => {
-  test('owner can type a curation note and the text persists in order', async ({page}) => {
+test.describe('past projects shared page', () => {
+  test('renders the saved snapshot with export options for a visitor', async ({page}) => {
     await mockPastProjects(page, pastProjectRows());
-    await mockPastProjectShare(page, shareFixture());
+    await mockPastProjectShare(page, shareFixture({can_edit: false, note: 'Curated highlights'}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
-    const editor = desktopCurationEditor(page);
-    await editor.click();
-    await page.keyboard.type('Hello world');
+    await expect(page.getByText('E2E Shared Results').first()).toBeVisible();
+    await expect(page.getByText('Curated highlights').first()).toBeVisible();
+    await expect(page.getByText('Adaptive Irrigation Dashboard').first()).toBeVisible();
 
-    // A caret that reset to the start on each keystroke would interleave/reverse the text.
-    await expect(editor).toContainText('Hello world');
-  });
-
-  test('owner can toggle a highlight on and back off without re-selecting', async ({page}) => {
-    await mockPastProjects(page, pastProjectRows());
-    await mockPastProjectShare(page, shareFixture());
-    await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
-
-    const editor = desktopCurationEditor(page);
-    await editor.click();
-    await page.keyboard.type('Highlight me');
-    await page.keyboard.press('ControlOrMeta+a');
-
-    const toolbar = page.locator('.project-grid-table-wrap').getByRole('button', {name: 'Highlight'}).first();
-    await toolbar.click();
-    await expect(editor.locator('mark')).toHaveCount(1);
-
-    // The second click must find the still-selected highlight and remove it. This only works
-    // because applyHighlight re-selects the <mark> and the sync effect does not rewrite innerHTML
-    // for the user's own edit (which would have collapsed the selection).
-    await toolbar.click();
-    await expect(editor.locator('mark')).toHaveCount(0);
-  });
-
-  test('a non-owner shared view shows saved notes read-only with no toolbar', async ({page}) => {
-    await mockPastProjectShare(
-      page,
-      shareFixture({can_edit: false, rows: [{curation: 'Read only note text'} as PastProjectShare['rows'][number]]}),
-    );
-    await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
-
-    await expect(page.getByText('Read only note text').first()).toBeVisible();
+    // The surviving exports — PDF / Excel / Word — and no per-project notes editor.
+    for (const label of ['PDF', 'Excel', 'Microsoft Word']) {
+      await expect(page.getByRole('button', {name: label}).first()).toBeVisible();
+    }
     await expect(page.getByRole('textbox', {name: 'Project notes'})).toHaveCount(0);
-    await expect(page.getByRole('button', {name: 'Highlight'})).toHaveCount(0);
-    await expect(page.getByRole('button', {name: 'Bold'})).toHaveCount(0);
+
+    // A non-owner cannot edit the share's note or name.
+    await expect(page.getByRole('button', {name: /edit note/i})).toHaveCount(0);
+    await expect(page.getByRole('button', {name: /edit name/i})).toHaveCount(0);
+  });
+
+  test('shows the note and name edit affordances to an owner', async ({page}) => {
+    await mockPastProjects(page, pastProjectRows());
+    await mockPastProjectShare(page, shareFixture({can_edit: true}));
+    await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
+
+    await expect(page.getByRole('button', {name: /edit note/i}).first()).toBeVisible();
+    await expect(page.getByRole('button', {name: /edit name/i}).first()).toBeVisible();
   });
 });

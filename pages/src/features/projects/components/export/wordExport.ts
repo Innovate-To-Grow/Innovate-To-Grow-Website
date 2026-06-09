@@ -1,7 +1,6 @@
 import {
   BRAND_BLUE,
   EXPORT_COLUMNS,
-  HIGHLIGHT_FILL,
   normalizeProjectRowsExportContext,
   toDisplayValue,
   triggerDownload,
@@ -9,16 +8,12 @@ import {
   type ProjectGridRow,
   type ProjectRowsExportContext,
 } from './exportTypes';
-import {parseRichTextRuns, type StyledRun} from './exportRichText';
 import {escapeXml, sanitizeXmlText} from './xml';
 import {createStoredZip} from './zip';
 import {loadI2gLogoAsset} from './logoAsset';
 
 interface WordRunOptions {
   bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-  highlight?: boolean;
   color?: string;
   size?: number;
 }
@@ -26,10 +21,6 @@ interface WordRunOptions {
 const runProperties = (options: WordRunOptions) =>
   [
     options.bold ? '<w:b/>' : '',
-    options.italic ? '<w:i/>' : '',
-    options.underline ? '<w:u w:val="single"/>' : '',
-    // <w:highlight> only allows named colors, so shade the run with our amber fill instead.
-    options.highlight ? `<w:shd w:val="clear" w:color="auto" w:fill="${HIGHLIGHT_FILL}"/>` : '',
     options.color ? `<w:color w:val="${options.color}"/>` : '',
     options.size ? `<w:sz w:val="${options.size}"/>` : '',
   ].join('');
@@ -42,20 +33,6 @@ const wordRun = (text: string, options: WordRunOptions = {}) => {
     .join('');
   return `<w:r>${properties ? `<w:rPr>${properties}</w:rPr>` : ''}${textNodes}</w:r>`;
 };
-
-/** Render styled note runs as Word runs, preserving bold/italic/underline/highlight + breaks. */
-const styledRunsToWord = (runs: StyledRun[], size: number) =>
-  runs
-    .map((run) =>
-      wordRun(run.text, {
-        bold: run.bold,
-        italic: run.italic,
-        underline: run.underline,
-        highlight: run.highlight,
-        size,
-      }),
-    )
-    .join('');
 
 const wordParagraph = (
   text: string,
@@ -113,8 +90,8 @@ const wordLogoParagraph = (relationshipId: string) => {
   </w:p>`;
 };
 
-// Header cells get more weight on the wide, multi-line Abstract/Notes columns.
-const COLUMN_PCT = [9, 6, 6, 11, 13, 11, 9, 18, 11, 16];
+// Header cells get more weight on the wide, multi-line Abstract column.
+const COLUMN_PCT = [10, 6, 6, 12, 15, 12, 10, 18, 11];
 
 const headerCell = (label: string, widthPct: number) =>
   `<w:tc><w:tcPr><w:tcW w:w="${widthPct * 50}" w:type="pct"/><w:shd w:fill="${BRAND_BLUE}"/></w:tcPr>` +
@@ -123,12 +100,6 @@ const headerCell = (label: string, widthPct: number) =>
 const plainCell = (value: string, widthPct: number) =>
   `<w:tc><w:tcPr><w:tcW w:w="${widthPct * 50}" w:type="pct"/></w:tcPr>` +
   `<w:p>${wordRun(toDisplayValue(value), {size: 16})}</w:p></w:tc>`;
-
-const notesCell = (row: ProjectGridRow, widthPct: number) => {
-  const runs = parseRichTextRuns(row.curation ?? '');
-  const content = runs.length ? styledRunsToWord(runs, 16) : wordRun('', {size: 16});
-  return `<w:tc><w:tcPr><w:tcW w:w="${widthPct * 50}" w:type="pct"/></w:tcPr><w:p>${content}</w:p></w:tc>`;
-};
 
 const projectTableRow = (row: ProjectGridRow) => {
   const cells = [
@@ -141,7 +112,6 @@ const projectTableRow = (row: ProjectGridRow) => {
     plainCell(row.industry, COLUMN_PCT[6]),
     plainCell(row.abstract, COLUMN_PCT[7]),
     plainCell(row.student_names, COLUMN_PCT[8]),
-    notesCell(row, COLUMN_PCT[9]),
   ].join('');
   return `<w:tr>${cells}</w:tr>`;
 };

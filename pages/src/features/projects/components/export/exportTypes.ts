@@ -8,10 +8,6 @@ export const BRAND_BLUE_RGB = [15, 45, 82] as const;
 export const BORDER_BLUE = 'BDD3EA';
 export const LIGHT_BLUE = 'EAF4FF';
 export const TABLE_ALT_FILL = 'F7FAFC';
-/** Closest inline approximation of the editor's <mark> highlight in document text. */
-export const HIGHLIGHT_FILL = 'FFF3A3';
-/** Amber font color used for highlighted runs in Excel, which has no per-run cell highlight. */
-export const HIGHLIGHT_TEXT = '9A6A00';
 
 export const I2G_LOGO_URL = '/assets/images/i2glogo.png';
 
@@ -26,7 +22,6 @@ export const EXPORT_COLUMNS = [
   'Industry',
   'Abstract',
   'Student Names',
-  'Notes',
 ] as const;
 
 export interface ProjectRowsExportContext {

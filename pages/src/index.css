@@ -710,164 +710,6 @@ body .project-grid-share-detail-input {
   white-space: pre-wrap;
 }
 
-body .project-grid-rich-detail-editor {
-  display: grid;
-  gap: 0.55rem;
-  min-width: 0;
-}
-
-body .project-grid-rich-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-body .project-grid-rich-detail-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  flex: 0 0 auto;
-}
-
-body .project-grid-rich-copy-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2rem;
-  border: 1px solid rgba(15, 45, 82, 0.2);
-  border-radius: 6px;
-  padding: 0 0.65rem;
-  background: #fff;
-  color: var(--itg-color-primary);
-  font: inherit;
-  font-size: var(--itg-font-size-small);
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background var(--itg-transition-fast),
-    border-color var(--itg-transition-fast),
-    box-shadow var(--itg-transition-fast);
-}
-
-body .project-grid-rich-copy-button:hover {
-  border-color: rgba(15, 45, 82, 0.3);
-  background: #eef5fd;
-  box-shadow: 0 3px 10px rgba(15, 45, 82, 0.08);
-}
-
-body .project-grid-rich-copy-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-  box-shadow: none;
-}
-
-body .project-grid-rich-copy-button:focus-visible {
-  outline: 2px solid rgba(15, 45, 82, 0.18);
-  outline-offset: 2px;
-}
-
-body .project-grid-rich-detail-toolbar {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem;
-  border: 1px solid rgba(15, 45, 82, 0.12);
-  border-radius: 8px;
-  background: #f8fbff;
-}
-
-body .project-grid-rich-editor-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: #fff;
-  color: var(--itg-color-primary);
-  font: inherit;
-  font-size: 0.86rem;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background var(--itg-transition-fast),
-    border-color var(--itg-transition-fast),
-    box-shadow var(--itg-transition-fast);
-}
-
-body .project-grid-rich-editor-button:hover {
-  border-color: rgba(15, 45, 82, 0.2);
-  background: #eef5fd;
-  box-shadow: 0 3px 10px rgba(15, 45, 82, 0.08);
-}
-
-body .project-grid-rich-editor-button:focus-visible {
-  outline: 2px solid rgba(15, 45, 82, 0.18);
-  outline-offset: 2px;
-}
-
-body .project-grid-rich-editor-icon {
-  width: 1rem;
-  height: 1rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-body .project-grid-rich-detail-input {
-  width: 100%;
-  min-width: 0;
-  min-height: 10rem;
-  max-height: min(20rem, 45vh);
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  box-sizing: border-box;
-  border: 1px solid rgba(15, 45, 82, 0.1);
-  border-radius: 8px;
-  padding: 0.8rem 0.9rem;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font: inherit;
-  font-size: var(--itg-font-size-small);
-  line-height: var(--itg-line-height-meta);
-  color: var(--itg-color-text-dark);
-  background: #fff;
-  box-shadow: inset 0 1px 0 rgba(15, 45, 82, 0.03);
-}
-
-body .project-grid-rich-detail-input.is-large-detail-set {
-  max-height: min(18rem, 42vh);
-}
-
-body .project-grid-rich-detail-input:focus {
-  outline: 2px solid rgba(15, 45, 82, 0.18);
-  border-color: var(--itg-color-primary);
-}
-
-body .project-grid-rich-detail-input[contenteditable='false'] {
-  cursor: default;
-}
-
-body .project-grid-rich-detail-input:empty::before {
-  content: attr(data-placeholder);
-  color: var(--itg-color-text-muted);
-}
-
-body .project-grid-rich-detail-input mark,
-body .project-grid-shared-detail-text mark {
-  border-radius: 3px;
-  padding: 0 0.12em;
-  background: #fff3a3;
-  color: inherit;
-}
-
 body .project-grid-share-editor-textarea:focus {
   outline: 2px solid rgba(15, 45, 82, 0.18);
   border-color: var(--itg-color-primary);
@@ -884,57 +726,6 @@ body .project-grid-share-editor.is-editing .project-grid-share-editor-textarea {
     0 0 0 3px rgba(15, 45, 82, 0.08),
     inset 0 1px 0 rgba(15, 45, 82, 0.03);
   resize: vertical;
-}
-
-body .project-grid-share-editor.is-editing .project-grid-rich-detail-input {
-  border-color: rgba(15, 45, 82, 0.32);
-  box-shadow:
-    0 0 0 3px rgba(15, 45, 82, 0.08),
-    inset 0 1px 0 rgba(15, 45, 82, 0.03);
-}
-
-body .project-grid-shared-detail {
-  display: grid;
-  gap: 0.45rem;
-  margin: 1rem 1.5rem 0;
-  padding: 1rem;
-  border: 1px solid rgba(15, 45, 82, 0.12);
-  border-radius: 10px;
-  background: #fbfdff;
-}
-
-body .project-grid-shared-detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-body .project-grid-shared-detail-text {
-  margin: 0;
-  max-height: min(20rem, 45vh);
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: var(--itg-color-text-dark);
-  font: inherit;
-  font-size: var(--itg-font-size-small);
-  line-height: var(--itg-line-height-meta);
-}
-
-/* Per-project curation note sits above the read-only Abstract / Student Names in the expanded
-   row detail; the divider separates the editable note from the read-only project fields. */
-body .project-grid-row-curation {
-  margin-bottom: 0.5rem;
-}
-
-body .project-grid-row-detail-divider {
-  margin: 0.5rem 0 0.75rem;
-  border: 0;
-  border-top: 1px solid var(--itg-color-border, #d7dde7);
 }
 
 /* Clear-but-natural separator between one project and the next. A project block is a main row
@@ -997,7 +788,6 @@ body .shared-past-project-merge-search {
   }
 
   body .project-grid-share-editor,
-  body .project-grid-shared-detail,
   body .project-grid-share-result {
     margin-right: 1rem;
     margin-left: 1rem;
@@ -1007,21 +797,6 @@ body .shared-past-project-merge-search {
     font-size: var(--itg-font-size-h2-mobile);
   }
 
-  body .project-grid-rich-detail-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  body .project-grid-rich-detail-controls {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
-  body .project-grid-shared-detail-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
 }
 
 /* Block preview iframe: override any backend stylesheet rules that would

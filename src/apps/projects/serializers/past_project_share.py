@@ -4,19 +4,15 @@ from rest_framework import serializers
 
 from ..models import PastProjectShare
 
-# Mirror the client's rich-detail allowlist (RICH_DETAIL_ALLOWED_TAGS in
-# pastProjectsDetailText.ts): inline emphasis + line/paragraph structure, no attributes.
-# Defense-in-depth so safety does not rely solely on every client render calling DOMPurify.
+# Allowlist for the stored details_text HTML: inline emphasis + line/paragraph structure, no
+# attributes. Defense-in-depth so safety does not rely solely on every client render calling
+# DOMPurify.
 DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark"]
 
 # Generous cap: a generated detail for ~1000 projects with long abstracts is well under this
 # (low hundreds of KB), so it never rejects a legitimate large share, but it stops absurd
 # payloads. note is capped at 2000; details legitimately needs much more room.
 DETAILS_TEXT_MAX_LENGTH = 2_000_000
-
-# Per-project curation note (rows[].curation). Much smaller than the share-level details cap so a
-# 1000-row share can't carry 1000 oversized notes; still ample for a long rich-text note.
-CURATION_MAX_LENGTH = 50_000
 
 
 def sanitize_details_text(value: str) -> str:
@@ -58,22 +54,6 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     # made an owner's "add rows" re-add a project already in the share. Optional + default so
     # pre-existing shares (saved without the field) keep validating and serialize as "".
     is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
-    # Owner-authored per-project curation note (rich HTML). Persists inside the row JSON — no DB
-    # migration (rows is a JSONField). Optional + default so old shares' rows (no curation key)
-    # keep validating and serialize as "". trim_whitespace=False preserves intentional formatting.
-    curation = serializers.CharField(
-        allow_blank=True,
-        required=False,
-        default="",
-        trim_whitespace=False,
-        max_length=CURATION_MAX_LENGTH,
-    )
-
-    # noinspection PyMethodMayBeStatic
-    def validate_curation(self, value):
-        # Sanitize on write with the same allowlist as details_text so a stored curation note can
-        # never carry script or other disallowed markup, regardless of how a client renders it.
-        return sanitize_details_text(value)
 
 
 class PastProjectShareSerializer(serializers.ModelSerializer):

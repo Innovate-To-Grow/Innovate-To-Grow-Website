@@ -239,62 +239,6 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["rows"][0]["is_presenting"], "")
 
-    def test_create_round_trips_per_row_curation(self):
-        # Per-project curation persists inside the row JSON (no DB migration; rows is a JSONField).
-        response = self.client.post(
-            "/projects/past-shares/",
-            sample_payload(rows=[sample_row(curation="<strong>Won first place</strong>")]),
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["rows"][0]["curation"], "<strong>Won first place</strong>")
-        share = PastProjectShare.objects.get(pk=response.data["id"])
-        self.assertEqual(share.rows[0]["curation"], "<strong>Won first place</strong>")
-
-    def test_rows_saved_without_curation_serialize_as_blank(self):
-        # Old shares were stored before per-row curation existed; GET must still return "" for
-        # them rather than erroring on the missing key.
-        share = PastProjectShare.objects.create(rows=[sample_row()])
-
-        response = self.client.get(f"/projects/past-shares/{share.pk}/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["rows"][0]["curation"], "")
-
-    def test_curation_is_sanitized_on_create(self):
-        response = self.client.post(
-            "/projects/past-shares/",
-            sample_payload(
-                rows=[
-                    sample_row(
-                        curation='<mark>Keep</mark><script>alert(1)</script><b>bold</b><span onclick="x">drop</span>',
-                    )
-                ]
-            ),
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 201)
-        stored = response.data["rows"][0]["curation"]
-        # Allowed tags survive; disallowed tags are stripped (their inner text is kept by bleach).
-        self.assertIn("<mark>Keep</mark>", stored)
-        self.assertIn("<b>bold</b>", stored)
-        self.assertNotIn("<script", stored)
-        self.assertNotIn("onclick", stored)
-        share = PastProjectShare.objects.get(pk=response.data["id"])
-        self.assertNotIn("<script", share.rows[0]["curation"])
-
-    def test_curation_over_cap_is_rejected(self):
-        response = self.client.post(
-            "/projects/past-shares/",
-            sample_payload(rows=[sample_row(curation="x" * 50_001)]),
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("rows", response.data)
-
     def test_get_share_marks_owner_can_edit(self):
         share = PastProjectShare.objects.create(rows=[sample_row()], created_by=self.member)
 
