@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
+import {buildLoginPath} from '@/features/auth/api/redirects';
 import {ProjectGridTable} from './ProjectGridTable';
 import {
   exportProjectRowsExcel,
@@ -16,8 +17,14 @@ import {
 } from './projectGrid';
 import {RichTextDetailEditor} from './RichTextDetailEditor';
 import {RichDetailPreview} from './RichDetailPreview';
-import {pastProjectsDetailHtmlToPlainText, sanitizePastProjectsDetailHtml} from './pastProjectsDetailText';
-import {SharedEditIcon, SharedSaveIcon} from './shareEditorIcons';
+import {
+  PAST_PROJECT_NOTE_INSERT_FIELDS,
+  appendPastProjectsNoteInsertHtml,
+  pastProjectsDetailHtmlToPlainText,
+  sanitizePastProjectsDetailHtml,
+  type PastProjectNoteInsertField,
+} from './pastProjectsDetailText';
+import {InsertProjectsIcon, InsertProjectsSettingsIcon, SharedEditIcon, SharedSaveIcon} from './shareEditorIcons';
 import {getExportFileBaseName, getShareErrorMessage} from './shareHelpers';
 
 interface MergedResultsTableProps {
@@ -46,6 +53,70 @@ export type PastProjectShareCreationResult =
 // effectively-empty note (whitespace / a stray <br>) back to "" so it does not render an empty box.
 const prepareNoteForSave = (html: string) =>
   pastProjectsDetailHtmlToPlainText(html).trim() ? sanitizePastProjectsDetailHtml(html) : '';
+
+interface ProjectNoteInsertControlProps {
+  rows: ProjectGridRow[];
+  excludedFields: Set<PastProjectNoteInsertField>;
+  onInsert: () => void;
+  onToggleExcludedField: (field: PastProjectNoteInsertField) => void;
+}
+
+const ProjectNoteInsertControl = ({
+  rows,
+  excludedFields,
+  onInsert,
+  onToggleExcludedField,
+}: ProjectNoteInsertControlProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div
+      className={`project-grid-note-insert-control${isOpen ? ' is-open' : ''}`}
+      role="group"
+      aria-label="Note insert tools"
+    >
+      <span className="project-grid-note-insert-label">Curation</span>
+      <div className="project-grid-note-insert-actions">
+        <button
+          type="button"
+          className="project-grid-rich-editor-button project-grid-rich-editor-button--insert-projects"
+          aria-label="Insert projects into note"
+          title="Insert projects into note"
+          onClick={onInsert}
+          disabled={!rows.length}
+        >
+          <InsertProjectsIcon />
+        </button>
+        <button
+          type="button"
+          className="project-grid-rich-editor-button project-grid-rich-editor-button--insert-settings"
+          aria-label="Project insert settings"
+          title="Project insert settings"
+          aria-expanded={isOpen}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <InsertProjectsSettingsIcon />
+        </button>
+      </div>
+      {isOpen ? (
+        <div className="project-grid-note-insert-menu" role="group" aria-label="Exclude inserted fields">
+          <p className="project-grid-note-insert-menu-title">Exclude</p>
+          {PAST_PROJECT_NOTE_INSERT_FIELDS.map((field) => (
+            <label key={field.key} className="project-grid-note-insert-option">
+              <input
+                type="checkbox"
+                checked={excludedFields.has(field.key)}
+                onChange={() => onToggleExcludedField(field.key)}
+              />
+              <span>{field.label}</span>
+            </label>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 export const MergedResultsTable = ({
   rows,
@@ -78,6 +149,9 @@ export const MergedResultsTable = ({
   const [isSavingShareEdit, setIsSavingShareEdit] = useState(false);
   const [isEditingSharedTitle, setIsEditingSharedTitle] = useState(false);
   const [isEditingSharedNote, setIsEditingSharedNote] = useState(false);
+  const [excludedProjectNoteInsertFields, setExcludedProjectNoteInsertFields] = useState<
+    Set<PastProjectNoteInsertField>
+  >(() => new Set());
   const editTitleInputRef = useRef<HTMLInputElement>(null);
   const isMountedRef = useRef(true);
 
@@ -130,6 +204,10 @@ export const MergedResultsTable = ({
     note: exportNote,
     title: exportTitle,
   };
+  const excludedProjectNoteInsertFieldList = useMemo(
+    () => Array.from(excludedProjectNoteInsertFields),
+    [excludedProjectNoteInsertFields],
+  );
 
   const handleExport = async (exporter: ProjectRowsExporter, label: string) => {
     try {
@@ -173,6 +251,30 @@ export const MergedResultsTable = ({
         setIsSharing(false);
       }
     }
+  };
+
+  const handleInsertVisibleProjectsIntoNote = () => {
+    setNoteDraft((current) =>
+      appendPastProjectsNoteInsertHtml(current, visibleRows, {excludedFields: excludedProjectNoteInsertFieldList}),
+    );
+  };
+
+  const handleInsertSharedProjectsIntoNote = () => {
+    setEditNoteDraft((current) =>
+      appendPastProjectsNoteInsertHtml(current, allRows, {excludedFields: excludedProjectNoteInsertFieldList}),
+    );
+  };
+
+  const handleToggleProjectNoteInsertField = (field: PastProjectNoteInsertField) => {
+    setExcludedProjectNoteInsertFields((current) => {
+      const next = new Set(current);
+      if (next.has(field)) {
+        next.delete(field);
+      } else {
+        next.add(field);
+      }
+      return next;
+    });
   };
 
   const handleCopyShareUrl = async (input: HTMLInputElement) => {
@@ -328,6 +430,20 @@ export const MergedResultsTable = ({
     </button>
   );
 
+  const sharedNoteHeaderAction = (
+    <>
+      {isEditingSharedNote ? (
+        <ProjectNoteInsertControl
+          rows={allRows}
+          excludedFields={excludedProjectNoteInsertFields}
+          onInsert={handleInsertSharedProjectsIntoNote}
+          onToggleExcludedField={handleToggleProjectNoteInsertField}
+        />
+      ) : null}
+      {sharedNoteAction}
+    </>
+  );
+
   const sharedEditor = canEditShared ? (
     <div className={`project-grid-share-editor${isEditingSharedNote ? ' is-editing' : ''}`}>
       <RichTextDetailEditor
@@ -337,7 +453,7 @@ export const MergedResultsTable = ({
         placeholder="Add a note (shown at the top of the shared page)."
         readOnly={!isEditingSharedNote}
         autoFocus={isEditingSharedNote}
-        headerAction={sharedNoteAction}
+        headerAction={sharedNoteHeaderAction}
         onChange={setEditNoteDraft}
       />
     </div>
@@ -428,13 +544,22 @@ export const MergedResultsTable = ({
                 label="Add a note (shown at the top of the shared page)"
                 value={noteDraft}
                 placeholder="Optional — add context for whoever opens the shared link."
+                headerAction={
+                  <ProjectNoteInsertControl
+                    rows={visibleRows}
+                    excludedFields={excludedProjectNoteInsertFields}
+                    onInsert={handleInsertVisibleProjectsIntoNote}
+                    onToggleExcludedField={handleToggleProjectNoteInsertField}
+                  />
+                }
                 onChange={setNoteDraft}
               />
             </div>
           </>
         ) : (
           <p className="project-grid-share-login-hint">
-            <a href="/login">Log in</a> to create a shareable link.
+            <a href={buildLoginPath(`${window.location.pathname}${window.location.search}`)}>Log in</a> to create a
+            shareable link.
           </p>
         )
       ) : null}

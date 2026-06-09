@@ -768,6 +768,82 @@ body .project-grid-rich-copy-button:focus-visible {
   outline-offset: 2px;
 }
 
+body .project-grid-note-insert-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  border: 1px solid rgba(15, 45, 82, 0.12);
+  border-radius: 8px;
+  padding: 0.2rem 0.25rem 0.2rem 0.55rem;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(15, 45, 82, 0.03);
+}
+
+body .project-grid-note-insert-control.is-open {
+  z-index: 120;
+}
+
+body .project-grid-note-insert-label {
+  color: rgba(15, 45, 82, 0.68);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+body .project-grid-note-insert-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+body .project-grid-note-insert-menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 1;
+  display: grid;
+  gap: 0.35rem;
+  width: min(15rem, 72vw);
+  max-height: min(18rem, calc(100vh - 9rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(15, 45, 82, 0.16);
+  border-radius: 8px;
+  padding: 0.7rem;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(15, 45, 82, 0.16);
+}
+
+body .project-grid-note-insert-menu-title {
+  margin: 0 0 0.2rem;
+  color: var(--itg-color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+body .project-grid-note-insert-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.75rem;
+  color: var(--itg-color-text-dark);
+  font-size: var(--itg-font-size-small);
+  line-height: 1.2;
+}
+
+body .project-grid-note-insert-option input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--itg-color-primary);
+}
+
 body .project-grid-rich-detail-toolbar {
   display: inline-flex;
   align-items: center;
@@ -866,6 +942,14 @@ body .project-grid-shared-detail-text mark {
   padding: 0 0.12em;
   background: #fff3a3;
   color: inherit;
+}
+
+body .project-grid-rich-detail-input a,
+body .project-grid-shared-detail-text a {
+  color: var(--itg-color-primary);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
 }
 
 body .project-grid-share-editor-textarea:focus {

@@ -1,5 +1,6 @@
 import {useCallback, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
+import {buildLoginPath} from '@/features/auth/api/redirects';
 import {searchPastProjectsWithAI, toProjectGridRow} from '@/features/projects/api';
 import {PastProjectsAIStatus} from './builder/PastProjectsAIStatus';
 import {PastProjectsAISearchForm} from './builder/PastProjectsAISearchForm';
@@ -280,7 +281,7 @@ export const SharedPastProjectMergeSearch = ({
           confirmLabel="Sign In"
           onCancel={() => setIsAISearchLoginDialogOpen(false)}
           onConfirm={() => {
-            window.location.href = '/login';
+            window.location.href = buildLoginPath(`${window.location.pathname}${window.location.search}`);
           }}
         >
           <p>You need to sign in before using AI search.</p>

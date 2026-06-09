@@ -1,15 +1,17 @@
+import re
 import uuid
 
 import bleach
 from django.conf import settings
 from rest_framework import serializers
 
-from ..models import PastProjectShare
+from ..models import PastProjectShare, Project
 
 # Allowlist for the stored details_text HTML: inline emphasis + line/paragraph structure, no
 # attributes. Defense-in-depth so safety does not rely solely on every client render calling
 # DOMPurify.
-DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark"]
+DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark", "a"]
+DETAILS_ALLOWED_ATTRIBUTES = {"a": ["href"], "div": ["data-past-project-note-curation"]}
 
 # Generous cap: a generated detail for ~1000 projects with long abstracts is well under this
 # (low hundreds of KB), so it never rejects a legitimate large share, but it stops absurd
@@ -25,7 +27,90 @@ def sanitize_details_text(value: str) -> str:
     """Strip any markup outside the rich-detail allowlist from a share's details_text."""
     if not value:
         return value
-    return bleach.clean(value, tags=DETAILS_ALLOWED_TAGS, attributes={}, strip=True)
+    return bleach.clean(value, tags=DETAILS_ALLOWED_TAGS, attributes=DETAILS_ALLOWED_ATTRIBUTES, strip=True)
+
+
+def _normalized_text_key(value):
+    return re.sub(r"\s+", " ", str(value or "").strip()).casefold()
+
+
+def _semester_label_key(value):
+    label = (value or "").strip()
+    if not label:
+        return None
+
+    match = re.fullmatch(r"(\d{4})(?:-\d+)?\s+(.+)", label)
+    if not match:
+        return None
+
+    year, season_name = match.groups()
+    normalized_season = _normalized_text_key(season_name)
+    if not normalized_season:
+        return None
+    return year, normalized_season
+
+
+def _share_row_stable_key(row):
+    semester_label = (row.get("semester_label") or "").strip()
+    class_code = (row.get("class_code") or "").strip()
+    team_number = (row.get("team_number") or "").strip()
+    if not semester_label or not class_code or not team_number:
+        return None
+
+    semester_key = _semester_label_key(semester_label)
+    if semester_key is None:
+        return None
+    year, season_name = semester_key
+    return year, season_name, class_code, team_number
+
+
+def _project_stable_key(project):
+    return (
+        str(project.semester.year),
+        _normalized_text_key(project.semester.get_season_display()),
+        project.class_code.strip(),
+        project.team_number.strip(),
+    )
+
+
+def _rows_with_backfilled_project_ids(rows):
+    """Add Project UUIDs to legacy share rows when their stable sheet key still resolves.
+
+    Older saved-share JSON snapshots did not include ``id``. The frontend intentionally omits
+    Individual Links for rows without an id, so enrich API output from the canonical
+    Year-Semester + Class + Team# key when possible without mutating the stored snapshot.
+    """
+    missing_keys = {key for row in rows if not row.get("id") for key in [_share_row_stable_key(row)] if key is not None}
+    if not missing_keys:
+        return rows
+
+    years = {int(key[0]) for key in missing_keys}
+    class_codes = {key[2] for key in missing_keys}
+    team_numbers = {key[3] for key in missing_keys}
+    project_ids_by_key = {}
+    projects = (
+        Project.objects.select_related("semester")
+        .filter(semester__year__in=years, class_code__in=class_codes, team_number__in=team_numbers)
+        .order_by("-source", "pk")
+    )
+    for project in projects:
+        key = _project_stable_key(project)
+        if key in missing_keys and key not in project_ids_by_key:
+            project_ids_by_key[key] = str(project.pk)
+
+    if not project_ids_by_key:
+        return rows
+
+    enriched_rows = []
+    for row in rows:
+        next_row = dict(row)
+        if not next_row.get("id"):
+            key = _share_row_stable_key(next_row)
+            project_id = project_ids_by_key.get(key)
+            if project_id:
+                next_row["id"] = project_id
+        enriched_rows.append(next_row)
+    return enriched_rows
 
 
 def _share_url(obj, request):
@@ -90,6 +175,11 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     # name uses DRF CharField defaults (allow_blank=False + trim_whitespace=True), so
     # empty/whitespace-only names are rejected and the stored value is auto-trimmed —
     # no custom validate_name needed.
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["rows"] = _rows_with_backfilled_project_ids(data["rows"])
+        return data
 
     # noinspection PyMethodMayBeStatic
     def validate_details_text(self, value):

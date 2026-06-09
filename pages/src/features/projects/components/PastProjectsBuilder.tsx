@@ -1,5 +1,6 @@
-import {useCallback, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
+import {buildLoginPath} from '@/features/auth/api/redirects';
 import {searchPastProjectsWithAI, toProjectGridRow} from '@/features/projects/api';
 import {PastProjectsAIStatus} from './builder/PastProjectsAIStatus';
 import {PastProjectsAISearchForm} from './builder/PastProjectsAISearchForm';
@@ -18,6 +19,45 @@ import {
 const INITIAL_SEARCH_TABLE: SearchTableState = {id: 'search-table-1', type: 'standard'};
 
 const AI_SEARCH_LIMIT = 10;
+
+// The merged results live in component state, but creating a share requires signing in, and the
+// login button navigates away with a full-page reload (window.location) — which would wipe an
+// in-progress merge. Persist the merged rows in sessionStorage so they survive the login
+// round-trip (and any reload) within the tab; they are restored on mount and dropped once a share
+// is successfully created. sessionStorage (not localStorage) keeps the draft scoped to the tab
+// session, so it does not leak into a later, unrelated visit.
+const MERGED_ROWS_STORAGE_KEY = 'past-projects:builder:merged-rows';
+
+const readPersistedMergedRows = (): ProjectGridRow[] => {
+  try {
+    const raw = sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as ProjectGridRow[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writePersistedMergedRows = (rows: ProjectGridRow[]) => {
+  try {
+    if (rows.length) {
+      sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, JSON.stringify(rows));
+    } else {
+      sessionStorage.removeItem(MERGED_ROWS_STORAGE_KEY);
+    }
+  } catch {
+    // sessionStorage can throw (private mode / quota / disabled) — degrade to in-memory only.
+  }
+};
+
+const clearPersistedMergedRows = () => {
+  try {
+    sessionStorage.removeItem(MERGED_ROWS_STORAGE_KEY);
+  } catch {
+    // ignore — nothing to clean up if storage is unavailable.
+  }
+};
 
 const createAISearchTableTitle = (query: string) => {
   const normalized = query.trim().replace(/\s+/g, ' ');
@@ -61,7 +101,10 @@ export const PastProjectsBuilder = ({
   const {isAuthenticated} = useAuth();
   const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
   const [selectionState, setSelectionState] = useState<Record<string, boolean>>({});
-  const [mergedRows, setMergedRows] = useState<ProjectGridItem[]>([]);
+  // Seed from any draft persisted before a login reload so the merged results survive the round-trip.
+  const [mergedRows, setMergedRows] = useState<ProjectGridItem[]>(() =>
+    createProjectGridItems(readPersistedMergedRows(), 'restored'),
+  );
   const [deletedFingerprints, setDeletedFingerprints] = useState<Set<string>>(new Set());
   const [builderMessage, setBuilderMessage] = useState('');
   const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
@@ -74,6 +117,24 @@ export const PastProjectsBuilder = ({
   const hasAISearchTable = searchTables.some((table) => table.type === 'ai');
   const standardSearchTableIds = searchTables.filter((table) => table.type === 'standard').map((table) => table.id);
   const standardSearchTableCount = standardSearchTableIds.length;
+
+  // Mirror the merged results into sessionStorage on every change so however the visitor leaves
+  // (the login reload, a manual refresh, SPA navigation), the draft can be restored on return.
+  useEffect(() => {
+    writePersistedMergedRows(mergedRows.map(stripProjectGridItem));
+  }, [mergedRows]);
+
+  // Wrap the parent's share creator so a *successful* share drops the persisted draft — the share
+  // now owns this snapshot, and returning to the builder should start clean. A failed attempt keeps
+  // the draft so the user does not lose their merged rows.
+  const handleCreateShare = useCallback(
+    async (shareRows: ProjectGridRow[], name: string, note: string) => {
+      const result = await onCreateShare(shareRows, name, note);
+      clearPersistedMergedRows();
+      return result;
+    },
+    [onCreateShare],
+  );
 
   const handleSelectionStateChange = useCallback((tableId: string, hasSelection: boolean) => {
     setSelectionState((current) => {
@@ -263,7 +324,7 @@ export const PastProjectsBuilder = ({
       {mergedRows.length > 0 ? (
         <MergedResultsTable
           rows={mergedRows}
-          onCreateShare={onCreateShare}
+          onCreateShare={handleCreateShare}
           onDeleteRow={handleDeleteMergedRow}
         />
       ) : null}
@@ -290,7 +351,7 @@ export const PastProjectsBuilder = ({
           confirmLabel="Sign In"
           onCancel={() => setIsAISearchLoginDialogOpen(false)}
           onConfirm={() => {
-            window.location.href = '/login';
+            window.location.href = buildLoginPath(`${window.location.pathname}${window.location.search}`);
           }}
         >
           <p>You need to sign in before using AI search.</p>

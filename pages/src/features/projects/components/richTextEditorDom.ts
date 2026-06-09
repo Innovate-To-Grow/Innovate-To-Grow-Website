@@ -1,7 +1,7 @@
 // DOM helpers for the contentEditable rich-text note editor: stripping/unwrapping inline
 // formatting, detecting and toggling <mark> highlight, and reading the live selection range.
 
-export const RICH_DETAIL_FORMATTING_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'mark', 'span', 'font']);
+export const RICH_DETAIL_FORMATTING_TAGS = new Set(['b', 'strong', 'i', 'em', 'u', 'mark', 'a', 'span', 'font']);
 export const RICH_DETAIL_HIGHLIGHT_TAGS = new Set(['mark']);
 
 const appendPlainFormattingNode = (target: DocumentFragment, node: Node) => {

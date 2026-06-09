@@ -4,7 +4,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from apps.projects.models import PastProjectShare
+from apps.projects.models import PastProjectShare, Project, Semester
 from apps.projects.serializers.past_project_share import (
     NOTE_MAX_LENGTH,
     PastProjectShareListSerializer,
@@ -114,7 +114,12 @@ class PastProjectShareAPIViewTests(TestCase):
         response = self.client.post(
             "/projects/past-shares/",
             sample_payload(
-                details_text='<mark>Keep</mark><script>alert(1)</script><b>bold</b><span onclick="x">drop</span>',
+                details_text=(
+                    "<mark>Keep</mark><script>alert(1)</script><b>bold</b>"
+                    '<span onclick="x">drop</span>'
+                    '<a href="/past-projects/project/11111111-1111-4111-8111-111111111111">Individual Link</a>'
+                    '<a href="javascript:alert(1)">bad</a>'
+                ),
             ),
             format="json",
         )
@@ -124,11 +129,36 @@ class PastProjectShareAPIViewTests(TestCase):
         # Allowlisted markup survives; script/span and event handlers are stripped.
         self.assertIn("<mark>Keep</mark>", stored)
         self.assertIn("<b>bold</b>", stored)
+        self.assertIn(
+            '<a href="/past-projects/project/11111111-1111-4111-8111-111111111111">Individual Link</a>',
+            stored,
+        )
         self.assertNotIn("<script", stored)
         self.assertNotIn("onclick", stored)
         self.assertNotIn("<span", stored)
+        self.assertNotIn("javascript:", stored)
         share = PastProjectShare.objects.get(pk=response.data["id"])
         self.assertNotIn("<script", share.details_text)
+
+    def test_note_is_sanitized_but_preserves_safe_individual_links(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(
+                note=(
+                    "<strong>Project 1</strong>"
+                    '<a href="/past-projects/project/11111111-1111-4111-8111-111111111111">Individual Link</a>'
+                    '<a href="javascript:alert(1)">bad</a>'
+                ),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertIn(
+            '<a href="/past-projects/project/11111111-1111-4111-8111-111111111111">Individual Link</a>',
+            response.data["note"],
+        )
+        self.assertNotIn("javascript:", response.data["note"])
 
     def test_details_text_is_sanitized_on_patch(self):
         share = PastProjectShare.objects.create(
@@ -192,6 +222,20 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(response.data["note"], "<strong>Review</strong> these <mark>finalists</mark>")
         share = PastProjectShare.objects.get(pk=response.data["id"])
         self.assertEqual(share.note, "<strong>Review</strong> these <mark>finalists</mark>")
+
+    def test_note_preserves_curation_block_marker(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(
+                note='<div data-past-project-note-curation="project-summary"><strong>Project 1</strong></div>'
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertIn('data-past-project-note-curation="project-summary"', response.data["note"])
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertIn('data-past-project-note-curation="project-summary"', share.note)
 
     def test_note_is_sanitized_on_create(self):
         response = self.client.post(
@@ -307,13 +351,31 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_rows_saved_without_is_presenting_serialize_as_blank(self):
         # Pre-existing shares were stored before is_presenting existed; GET must still return
         # "" for them rather than erroring on the missing key.
-        share = PastProjectShare.objects.create(rows=[sample_row()])
+        share = PastProjectShare.objects.create(rows=[sample_row(semester_label="2025 Spring")])
 
         response = self.client.get(f"/projects/past-shares/{share.pk}/")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["rows"][0]["is_presenting"], "")
         self.assertNotIn("id", response.data["rows"][0])
+
+    def test_get_share_backfills_missing_project_id_from_stable_key(self):
+        semester = Semester.objects.create(year=2025, season=Semester.Season.SPRING)
+        project = Project.objects.create(
+            semester=semester,
+            class_code="ENGR 120",
+            team_number="T01",
+            project_title="Current Project",
+            source=Project.Source.SHEET,
+        )
+        share = PastProjectShare.objects.create(rows=[sample_row(semester_label="2025 Spring")])
+
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["rows"][0]["id"], str(project.pk))
+        share.refresh_from_db()
+        self.assertNotIn("id", share.rows[0])
 
     def test_get_share_marks_owner_can_edit(self):
         share = PastProjectShare.objects.create(rows=[sample_row()], created_by=self.member)
