@@ -1,6 +1,6 @@
 // Pull a specific message out of a DRF validation error ({field: ["..."]}) so a failed share
 // surfaces the actual reason (e.g. the row/name limit) instead of a generic retry prompt.
-// Row-level errors (e.g. an over-cap curation note) surface nested under `rows`.
+// Row-level errors (e.g. the row-count limit) surface nested under `rows`.
 export const getShareErrorMessage = (error: unknown): string => {
   const data = (error as {response?: {data?: unknown}}).response?.data;
   if (data && typeof data === 'object') {

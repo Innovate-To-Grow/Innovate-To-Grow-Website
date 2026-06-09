@@ -4,9 +4,9 @@ import {
   BRAND_BLUE,
   BORDER_BLUE,
   EXPORT_COLUMNS,
+  HIGHLIGHT_TEXT,
   LIGHT_BLUE,
   TABLE_ALT_FILL,
-  HIGHLIGHT_TEXT,
   normalizeProjectRowsExportContext,
   toDisplayValue,
   triggerDownload,
@@ -17,8 +17,8 @@ import {
 import {parseRichTextRuns, runsToPlainText, type StyledRun} from './exportRichText';
 import {loadI2gLogoAsset} from './logoAsset';
 
-// Per-column widths (last entry = Notes). Abstract + Notes are wide and wrap to multiple lines.
-const COLUMN_WIDTHS = [16, 12, 10, 24, 34, 28, 18, 60, 30, 52];
+// Per-column widths (last entry = Student Names). Abstract is wide and wraps to multiple lines.
+const COLUMN_WIDTHS = [16, 12, 10, 24, 34, 28, 18, 60, 30];
 
 // ExcelJS rich-text fragment type, kept local so the module has no value-level exceljs dependency.
 interface ExcelRichTextFragment {
@@ -27,9 +27,9 @@ interface ExcelRichTextFragment {
 }
 
 /**
- * Convert styled note runs to ExcelJS rich text. Bold/italic/underline map to inline runs;
- * highlight has no per-run cell fill in a single cell, so it is approximated with an amber font
- * color (documented trade-off). Returns null for an empty note.
+ * Convert the share note's styled runs to ExcelJS rich text. Bold/italic/underline map to inline
+ * runs; highlight has no per-run cell fill in a single cell, so it is approximated with an amber
+ * font color (documented trade-off). Returns null for an empty note.
  */
 const runsToExcelRichText = (runs: StyledRun[]): {richText: ExcelRichTextFragment[]} | null => {
   if (!runs.length) {
@@ -132,11 +132,18 @@ export const buildProjectsWorksheet = (
       cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: fill}};
       cell.font = {color: {argb: '20364D'}, size: 11};
     });
+    return row;
   };
 
-  if (exportContext.note) {
+  // The share-level note is rich text; render it into the merged cell preserving emphasis.
+  const noteRuns = parseRichTextRuns(exportContext.note);
+  if (noteRuns.length) {
     addSectionRow('Note');
-    addMergedTextRow(exportContext.note);
+    const noteRow = addMergedTextRow(runsToPlainText(noteRuns));
+    const richNote = runsToExcelRichText(noteRuns);
+    if (richNote) {
+      worksheet.getCell(noteRow.number, 1).value = richNote;
+    }
     worksheet.addRow([]);
   }
 
@@ -154,7 +161,6 @@ export const buildProjectsWorksheet = (
   });
 
   rows.forEach((row, index) => {
-    const noteRuns = parseRichTextRuns(row.curation ?? '');
     const dataRow = worksheet.addRow([
       toDisplayValue(row.semester_label),
       toDisplayValue(row.class_code),
@@ -165,19 +171,11 @@ export const buildProjectsWorksheet = (
       toDisplayValue(row.industry),
       toDisplayValue(row.abstract),
       toDisplayValue(row.student_names),
-      // Placeholder; the rich-text note value is set on the cell below so emphasis is preserved.
-      '',
     ]);
 
-    const richNote = runsToExcelRichText(noteRuns);
-    if (richNote) {
-      dataRow.getCell(EXPORT_COLUMNS.length).value = richNote;
-    }
-
-    // Size the row to the tallest wrapped cell (Abstract or Notes), both of which wrap.
+    // Size the row to the wrapped Abstract cell.
     const abstractLines = estimateLineCount(toDisplayValue(row.abstract), 58);
-    const noteLines = estimateLineCount(runsToPlainText(noteRuns), 50);
-    dataRow.height = Math.min(320, Math.max(18, Math.max(abstractLines, noteLines) * 13));
+    dataRow.height = Math.min(320, Math.max(18, abstractLines * 13));
 
     dataRow.eachCell({includeEmpty: true}, (cell) => {
       cell.alignment = {vertical: 'top', wrapText: true};

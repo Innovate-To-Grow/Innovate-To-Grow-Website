@@ -21,6 +21,8 @@ class PastProjectSyncLog(ProjectControlModel):
     status = models.CharField(max_length=10, choices=Status.choices)
     rows_read = models.PositiveIntegerField(default=0)
     projects_created = models.PositiveIntegerField(default=0)
+    projects_updated = models.PositiveIntegerField(default=0)
+    projects_deleted = models.PositiveIntegerField(default=0)
     semesters_touched = models.PositiveIntegerField(default=0)
     rows_skipped = models.PositiveIntegerField(default=0)
     error_message = models.TextField(blank=True, default="")

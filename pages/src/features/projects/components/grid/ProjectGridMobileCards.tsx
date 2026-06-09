@@ -1,26 +1,8 @@
-import type {ReactNode} from 'react';
 import {
   hasProjectGridDetails,
   type ProjectGridColumn,
   type ProjectGridItem,
 } from '../projectGrid';
-
-// Default detail body: the read-only abstract + student names. A custom renderRowDetail (e.g.
-// Past Projects' per-row curation editor) replaces this entirely.
-const defaultRowDetail = (row: ProjectGridItem): ReactNode => (
-  <>
-    {row.abstract ? (
-      <div>
-        <strong>Abstract:</strong> {row.abstract}
-      </div>
-    ) : null}
-    {row.student_names ? (
-      <div>
-        <strong>Student Names:</strong> {row.student_names}
-      </div>
-    ) : null}
-  </>
-);
 
 interface ProjectGridMobileCardsProps {
   columns: ProjectGridColumn[];
@@ -28,8 +10,6 @@ interface ProjectGridMobileCardsProps {
   emptyMessage: string;
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
-  renderRowDetail?: (row: ProjectGridItem, surface: 'desktop' | 'mobile') => ReactNode;
-  detailExpandable?: (row: ProjectGridItem) => boolean;
   selectable: boolean;
   selectedKeys: Set<string>;
   onToggleSelected?: (rowKey: string) => void;
@@ -42,8 +22,6 @@ export const ProjectGridMobileCards = ({
   emptyMessage,
   expandedKeys,
   onToggleExpanded,
-  renderRowDetail = defaultRowDetail,
-  detailExpandable = hasProjectGridDetails,
   selectable,
   selectedKeys,
   onToggleSelected,
@@ -59,8 +37,6 @@ export const ProjectGridMobileCards = ({
         columns={columns}
         isExpanded={expandedKeys.has(row.__key)}
         onToggleExpanded={onToggleExpanded}
-        renderRowDetail={renderRowDetail}
-        detailExpandable={detailExpandable}
         selectable={selectable}
         isSelected={selectedKeys.has(row.__key)}
         onToggleSelected={onToggleSelected}
@@ -75,8 +51,6 @@ interface MobileCardProps {
   columns: ProjectGridColumn[];
   isExpanded: boolean;
   onToggleExpanded: (rowKey: string) => void;
-  renderRowDetail: (row: ProjectGridItem, surface: 'desktop' | 'mobile') => ReactNode;
-  detailExpandable: (row: ProjectGridItem) => boolean;
   selectable: boolean;
   isSelected: boolean;
   onToggleSelected?: (rowKey: string) => void;
@@ -88,14 +62,13 @@ const MobileCard = ({
   columns,
   isExpanded,
   onToggleExpanded,
-  renderRowDetail,
-  detailExpandable,
   selectable,
   isSelected,
   onToggleSelected,
   onDeleteRow,
 }: MobileCardProps) => {
-  const hasDetails = detailExpandable(row);
+  const hasDetails = hasProjectGridDetails(row);
+  const individualHref = row.id ? `/past-projects/project/${encodeURIComponent(row.id)}` : '';
 
   return (
     <div className={`project-grid-mobile-card${isExpanded ? ' is-expanded' : ''}${isSelected ? ' is-selected' : ''}`}>
@@ -129,7 +102,17 @@ const MobileCard = ({
       </div>
 
       {isExpanded ? (
-        <div className="project-grid-mobile-card-details">{renderRowDetail(row, 'mobile')}</div>
+        <div className="project-grid-mobile-card-details">
+          {individualHref ? (
+            <div className="project-grid-individual-link-row" hidden aria-hidden="true">
+              <a className="project-grid-individual-link" href={individualHref} tabIndex={-1}>
+                Individual Link
+              </a>
+            </div>
+          ) : null}
+          {row.abstract ? <div><strong>Abstract:</strong> {row.abstract}</div> : null}
+          {row.student_names ? <div><strong>Student Names:</strong> {row.student_names}</div> : null}
+        </div>
       ) : null}
     </div>
   );

@@ -36,3 +36,29 @@ export function ClearFormattingIcon() {
     </svg>
   );
 }
+
+export function InsertProjectsIcon() {
+  return (
+    <svg className="project-grid-rich-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M5 5.25h8.5l3.5 3.5v10H5V5.25Z" />
+      <path d="M13.5 5.25v4h4" />
+      <path d="M8 12.25h6.5" />
+      <path d="M8 15.25h4.5" />
+      <path d="M18.75 13.75v5.5" />
+      <path d="M16 16.5h5.5" />
+    </svg>
+  );
+}
+
+export function InsertProjectsSettingsIcon() {
+  return (
+    <svg className="project-grid-rich-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M5 7.25h14" />
+      <path d="M5 12h14" />
+      <path d="M5 16.75h14" />
+      <path d="M9.25 5.5v3.5" />
+      <path d="M15.75 10.25v3.5" />
+      <path d="M11.75 15v3.5" />
+    </svg>
+  );
+}

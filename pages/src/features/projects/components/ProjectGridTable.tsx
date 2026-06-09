@@ -26,10 +26,6 @@ interface ProjectGridTableProps {
   onToggleExpanded: (rowKey: string) => void;
   onToggleAllDetails?: () => void;
   allDetailsExpanded?: boolean;
-  /** Render the contents of a row's expanded detail area. Defaults to abstract + student names. */
-  renderRowDetail?: (row: ProjectGridItem, surface: 'desktop' | 'mobile') => ReactNode;
-  /** Whether a row's detail can be opened. Defaults to abstract/student-names presence. */
-  detailExpandable?: (row: ProjectGridItem) => boolean;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -204,8 +200,6 @@ export const ProjectGridTable = ({
   onToggleExpanded,
   onToggleAllDetails,
   allDetailsExpanded = false,
-  renderRowDetail,
-  detailExpandable,
   page,
   totalPages,
   onPageChange,
@@ -293,8 +287,6 @@ export const ProjectGridTable = ({
             onSortChange={onSortChange}
             expandedKeys={expandedKeys}
             onToggleExpanded={onToggleExpanded}
-            renderRowDetail={renderRowDetail}
-            detailExpandable={detailExpandable}
             onDeleteRow={onDeleteRow}
           />
 
@@ -304,8 +296,6 @@ export const ProjectGridTable = ({
             emptyMessage={emptyMessage}
             expandedKeys={expandedKeys}
             onToggleExpanded={onToggleExpanded}
-            renderRowDetail={renderRowDetail}
-            detailExpandable={detailExpandable}
             selectable={selectable}
             selectedKeys={selectedKeys}
             onToggleSelected={onToggleSelected}

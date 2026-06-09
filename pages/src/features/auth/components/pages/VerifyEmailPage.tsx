@@ -11,7 +11,12 @@ export const VerifyEmailPage = () => {
 
   const flowParam = searchParams.get('flow');
   const email = searchParams.get('email')?.trim().toLowerCase() ?? '';
-  const returnTo = flowParam === 'register' ? getSafeInternalRedirectPath(searchParams.get('returnTo')) : null;
+  // returnTo is honored for the sign-in flows (auth/login) and registration, so a login
+  // started from a gated page (e.g. Past Projects) lands the user back where they began.
+  const returnTo =
+    flowParam === 'register' || flowParam === 'auth' || flowParam === 'login'
+      ? getSafeInternalRedirectPath(searchParams.get('returnTo'))
+      : null;
 
   if (!isVerifyFlow(flowParam) || !email) {
     return <Navigate to="/login" replace />;
@@ -22,7 +27,7 @@ export const VerifyEmailPage = () => {
   }
 
   if ((flowParam === 'auth' || flowParam === 'login' || flowParam === 'register') && isAuthenticated) {
-    return <Navigate to={flowParam === 'register' && returnTo ? returnTo : requiresProfileCompletion ? '/complete-profile' : '/account'} replace />;
+    return <Navigate to={returnTo ?? (requiresProfileCompletion ? '/complete-profile' : '/account')} replace />;
   }
 
   return <VerifyEmailPageContent key={`${flowParam}:${email}:${returnTo ?? ''}`} flow={flowParam} email={email} returnTo={returnTo} />;
@@ -74,12 +79,12 @@ const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageConten
     try {
       if (flow === 'auth') {
         const response = await verifyEmailAuthCode(email, code);
-        navigate(getPostAuthPath(response), { replace: true });
+        navigate(getPostAuthPath(response, returnTo), { replace: true });
         return;
       }
       if (flow === 'login') {
         const response = await verifyLoginCode(email, code);
-        navigate(getPostAuthPath(response), { replace: true });
+        navigate(getPostAuthPath(response, returnTo), { replace: true });
         return;
       }
       if (flow === 'register') {

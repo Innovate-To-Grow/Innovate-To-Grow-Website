@@ -28,11 +28,19 @@ class SyncPastProjectsCommandTest(TestCase):
         out = StringIO()
         with patch(
             "apps.projects.management.commands.sync_past_projects.sync_past_projects",
-            return_value=PastProjectSyncStats(rows_read=3, projects_created=2, semesters_touched=1, rows_skipped=1),
+            return_value=PastProjectSyncStats(
+                rows_read=5,
+                projects_created=2,
+                projects_updated=1,
+                projects_deleted=1,
+                semesters_touched=1,
+                rows_skipped=1,
+            ),
         ) as mock_sync:
             call_command("sync_past_projects", "--force", stdout=out)
         mock_sync.assert_called_once_with(config, sync_type="auto")
-        self.assertIn("Synced: 2 projects", out.getvalue())
+        self.assertIn("Synced: 2 created, 1 updated, 1 deleted", out.getvalue())
+        self.assertIn("1 rows skipped of 5 read", out.getvalue())
 
     def test_due_syncs_when_auto_enabled(self):
         config = PastProjectsSheetConfig.objects.create(

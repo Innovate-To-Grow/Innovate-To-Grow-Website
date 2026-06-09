@@ -1,5 +1,6 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
+import {buildLoginPath} from '@/features/auth/api/redirects';
 import {ProjectGridTable} from './ProjectGridTable';
 import {
   exportProjectRowsExcel,
@@ -9,7 +10,6 @@ import {
 } from './export';
 import {useProjectGridTable} from './useProjectGridTable';
 import {
-  hasProjectGridDetails,
   PAST_PROJECT_GRID_COLUMNS,
   stripProjectGridItem,
   type ProjectGridItem,
@@ -17,7 +17,14 @@ import {
 } from './projectGrid';
 import {RichTextDetailEditor} from './RichTextDetailEditor';
 import {RichDetailPreview} from './RichDetailPreview';
-import {SharedEditIcon, SharedSaveIcon} from './shareEditorIcons';
+import {
+  PAST_PROJECT_NOTE_INSERT_FIELDS,
+  appendPastProjectsNoteInsertHtml,
+  pastProjectsDetailHtmlToPlainText,
+  sanitizePastProjectsDetailHtml,
+  type PastProjectNoteInsertField,
+} from './pastProjectsDetailText';
+import {InsertProjectsIcon, InsertProjectsSettingsIcon, SharedEditIcon, SharedSaveIcon} from './shareEditorIcons';
 import {getExportFileBaseName, getShareErrorMessage} from './shareHelpers';
 
 interface MergedResultsTableProps {
@@ -42,6 +49,75 @@ export type PastProjectShareCreationResult =
       share_url?: string;
     };
 
+// The share-level note is rich text (HTML). Persist the sanitized markup, but collapse an
+// effectively-empty note (whitespace / a stray <br>) back to "" so it does not render an empty box.
+const prepareNoteForSave = (html: string) =>
+  pastProjectsDetailHtmlToPlainText(html).trim() ? sanitizePastProjectsDetailHtml(html) : '';
+
+interface ProjectNoteInsertControlProps {
+  rows: ProjectGridRow[];
+  excludedFields: Set<PastProjectNoteInsertField>;
+  onInsert: () => void;
+  onToggleExcludedField: (field: PastProjectNoteInsertField) => void;
+}
+
+const ProjectNoteInsertControl = ({
+  rows,
+  excludedFields,
+  onInsert,
+  onToggleExcludedField,
+}: ProjectNoteInsertControlProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div
+      className={`project-grid-note-insert-control${isOpen ? ' is-open' : ''}`}
+      role="group"
+      aria-label="Note insert tools"
+    >
+      <span className="project-grid-note-insert-label">Curation</span>
+      <div className="project-grid-note-insert-actions">
+        <button
+          type="button"
+          className="project-grid-rich-editor-button project-grid-rich-editor-button--insert-projects"
+          aria-label="Insert projects into note"
+          title="Insert projects into note"
+          onClick={onInsert}
+          disabled={!rows.length}
+        >
+          <InsertProjectsIcon />
+        </button>
+        <button
+          type="button"
+          className="project-grid-rich-editor-button project-grid-rich-editor-button--insert-settings"
+          aria-label="Project insert settings"
+          title="Project insert settings"
+          aria-expanded={isOpen}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <InsertProjectsSettingsIcon />
+        </button>
+      </div>
+      {isOpen ? (
+        <div className="project-grid-note-insert-menu" role="group" aria-label="Exclude inserted fields">
+          <p className="project-grid-note-insert-menu-title">Exclude</p>
+          {PAST_PROJECT_NOTE_INSERT_FIELDS.map((field) => (
+            <label key={field.key} className="project-grid-note-insert-option">
+              <input
+                type="checkbox"
+                checked={excludedFields.has(field.key)}
+                onChange={() => onToggleExcludedField(field.key)}
+              />
+              <span>{field.label}</span>
+            </label>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 export const MergedResultsTable = ({
   rows,
   sharedMode = false,
@@ -55,24 +131,6 @@ export const MergedResultsTable = ({
   const {isAuthenticated} = useAuth();
   const canShare = !sharedMode && Boolean(onCreateShare) && isAuthenticated;
   const canEditShared = sharedMode && editable && Boolean(onUpdateShare);
-  // Owner (builder, or shared-page owner) can author per-project curation notes; a shared-page
-  // visitor only ever sees the saved notes read-only.
-  const canCurate = !sharedMode || canEditShared;
-
-  // Per-row curation edits, keyed by the row's stable __key. Layered over each row's saved
-  // `curation` so typing never mutates the row identity (curation is excluded from the
-  // fingerprint/__key) and a draft survives a later builder merge (this component stays mounted).
-  const [curationByKey, setCurationByKey] = useState<Record<string, string>>({});
-
-  const effectiveCuration = (item: ProjectGridItem) => curationByKey[item.__key] ?? item.curation ?? '';
-  // Stable across renders so it doesn't churn the table hook's expandableKeys memo. Owners can
-  // always open a row to add a note; a read-only visitor can only open rows with something to
-  // show (abstract/students, or a saved note — visitors never have draft overlay entries).
-  const isRowExpandable = useCallback(
-    (row: ProjectGridItem) =>
-      canCurate ? true : hasProjectGridDetails(row) || Boolean((row.curation ?? '').trim()),
-    [canCurate],
-  );
 
   const table = useProjectGridTable({
     rows,
@@ -80,7 +138,6 @@ export const MergedResultsTable = ({
     defaultSortField: 'semester_label',
     defaultSortDirection: 'desc',
     expandAllByDefault: sharedMode,
-    isRowExpandable,
   });
   const [shareUrl, setShareUrl] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
@@ -92,8 +149,10 @@ export const MergedResultsTable = ({
   const [isSavingShareEdit, setIsSavingShareEdit] = useState(false);
   const [isEditingSharedTitle, setIsEditingSharedTitle] = useState(false);
   const [isEditingSharedNote, setIsEditingSharedNote] = useState(false);
+  const [excludedProjectNoteInsertFields, setExcludedProjectNoteInsertFields] = useState<
+    Set<PastProjectNoteInsertField>
+  >(() => new Set());
   const editTitleInputRef = useRef<HTMLInputElement>(null);
-  const editNoteTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -118,26 +177,6 @@ export const MergedResultsTable = ({
     setIsEditingSharedTitle(false);
   }, [title]);
 
-  // Keep the curation overlay in sync with the rows prop. In shared mode a rows change means a
-  // save→refetch (or row add/remove), so reseed from the server and drop drafts. In builder mode
-  // prune only orphaned keys (deleted rows) so edits for surviving rows persist across a merge.
-  useEffect(() => {
-    if (sharedMode) {
-      setCurationByKey({});
-      return;
-    }
-    setCurationByKey((current) => {
-      const liveKeys = new Set(rows.map((row) => row.__key));
-      const next: Record<string, string> = {};
-      for (const key of Object.keys(current)) {
-        if (liveKeys.has(key)) {
-          next[key] = current[key];
-        }
-      }
-      return Object.keys(next).length === Object.keys(current).length ? current : next;
-    });
-  }, [rows, sharedMode]);
-
   useEffect(() => {
     if (isEditingSharedTitle) {
       editTitleInputRef.current?.focus();
@@ -145,55 +184,30 @@ export const MergedResultsTable = ({
     }
   }, [isEditingSharedTitle]);
 
-  useEffect(() => {
-    if (isEditingSharedNote) {
-      editNoteTextareaRef.current?.focus();
-    }
-  }, [isEditingSharedNote]);
+  // The full saved snapshot — used by title/note/delete saves and by the shared-mode export.
+  const allRows = useMemo(() => rows.map(stripProjectGridItem), [rows]);
+  // The visible (filtered/sorted) rows — used for builder share-create and builder export.
+  const visibleRows = useMemo(() => table.sortedRows.map(stripProjectGridItem), [table.sortedRows]);
 
-  const withCuration = useCallback(
-    (item: ProjectGridItem): ProjectGridRow => {
-      const row = stripProjectGridItem(item);
-      const override = curationByKey[item.__key];
-      return override === undefined ? row : {...row, curation: override};
-    },
-    [curationByKey],
-  );
-
-  // Server truth (no draft overlay) — used by title/note/delete saves so they never silently
-  // persist unsaved curation edits.
-  const currentRows = useMemo(() => rows.map(stripProjectGridItem), [rows]);
-  // With the draft overlay applied — used for curation save, share create, and exports.
-  const curatedRows = useMemo(() => rows.map(withCuration), [rows, withCuration]);
-  const visibleCuratedRows = useMemo(() => table.sortedRows.map(withCuration), [table.sortedRows, withCuration]);
-
-  const isCurationDirty = useMemo(
-    () =>
-      rows.some((item) => {
-        const override = curationByKey[item.__key];
-        return override !== undefined && override !== (item.curation ?? '');
-      }),
-    [rows, curationByKey],
-  );
-
-  const sharedNote = sharedMode ? (note ?? '').trim() : '';
+  const sharedNoteHtml = sharedMode ? (note ?? '') : '';
+  const sharedNoteHasContent = pastProjectsDetailHtmlToPlainText(sharedNoteHtml).trim() !== '';
   const sharedExportTitle = (canEditShared ? editTitleDraft : title).trim() || title;
-  const sharedExportNote = canEditShared ? editNoteDraft.trim() : sharedNote;
+  const sharedExportNote = canEditShared ? prepareNoteForSave(editNoteDraft) : sharedNoteHtml;
   const sharedExportFileBaseName = getExportFileBaseName(sharedExportTitle);
   const exportTitle = sharedMode ? sharedExportTitle : title;
   const exportNote = sharedMode ? sharedExportNote : '';
   const exportFileBaseName = sharedMode ? sharedExportFileBaseName : 'past-projects';
   // In shared mode the export represents the whole shared snapshot, so a viewer's transient table
-  // search must not narrow it. In builder mode the visible (filtered) rows ARE the curation.
-  const exportRows = sharedMode ? curatedRows : visibleCuratedRows;
+  // search must not narrow it. In builder mode the visible (filtered) rows ARE the selection.
+  const exportRows = sharedMode ? allRows : visibleRows;
   const exportContext = {
     note: exportNote,
     title: exportTitle,
   };
-
-  const handleCurationChange = (rowKey: string, nextValue: string) => {
-    setCurationByKey((current) => ({...current, [rowKey]: nextValue}));
-  };
+  const excludedProjectNoteInsertFieldList = useMemo(
+    () => Array.from(excludedProjectNoteInsertFields),
+    [excludedProjectNoteInsertFields],
+  );
 
   const handleExport = async (exporter: ProjectRowsExporter, label: string) => {
     try {
@@ -204,17 +218,22 @@ export const MergedResultsTable = ({
     }
   };
   const hasTitleChanges = editTitleDraft.trim() !== title.trim();
-  const hasNoteChanges = editNoteDraft.trim() !== (note ?? '').trim();
+  // Compare both sides through the same client sanitizer so a no-op edit (the editor re-emits
+  // normalized markup) is not treated as a change versus the server-stored note.
+  // Compare both sides through prepareNoteForSave — the exact normalization used for the write —
+  // so emptying a note to residual markup ('<br>', '<div></div>') is not mistaken for a change and
+  // does not fire a no-op save with a misleading "Note updated." status.
+  const hasNoteChanges = prepareNoteForSave(editNoteDraft) !== prepareNoteForSave(note ?? '');
 
   const handleCreateShare = async () => {
     const trimmedName = nameDraft.trim();
-    if (!onCreateShare || !visibleCuratedRows.length || !trimmedName) {
+    if (!onCreateShare || !visibleRows.length || !trimmedName) {
       return;
     }
 
     // Mirror the backend cap (serializer rejects >1000 rows) with a specific message instead
     // of letting the request fail with the generic error below.
-    if (visibleCuratedRows.length > 1000) {
+    if (visibleRows.length > 1000) {
       setStatusMessage('A shared page can include at most 1000 projects. Remove some rows and try again.');
       return;
     }
@@ -222,7 +241,7 @@ export const MergedResultsTable = ({
     setIsSharing(true);
     setStatusMessage('');
     try {
-      await onCreateShare(visibleCuratedRows, trimmedName, noteDraft.trim());
+      await onCreateShare(visibleRows, trimmedName, prepareNoteForSave(noteDraft));
       if (isMountedRef.current) {
         setStatusMessage('Opening shareable link...');
       }
@@ -235,6 +254,30 @@ export const MergedResultsTable = ({
         setIsSharing(false);
       }
     }
+  };
+
+  const handleInsertVisibleProjectsIntoNote = () => {
+    setNoteDraft((current) =>
+      appendPastProjectsNoteInsertHtml(current, visibleRows, {excludedFields: excludedProjectNoteInsertFieldList}),
+    );
+  };
+
+  const handleInsertSharedProjectsIntoNote = () => {
+    setEditNoteDraft((current) =>
+      appendPastProjectsNoteInsertHtml(current, allRows, {excludedFields: excludedProjectNoteInsertFieldList}),
+    );
+  };
+
+  const handleToggleProjectNoteInsertField = (field: PastProjectNoteInsertField) => {
+    setExcludedProjectNoteInsertFields((current) => {
+      const next = new Set(current);
+      if (next.has(field)) {
+        next.delete(field);
+      } else {
+        next.add(field);
+      }
+      return next;
+    });
   };
 
   const handleCopyShareUrl = async (input: HTMLInputElement) => {
@@ -306,9 +349,7 @@ export const MergedResultsTable = ({
       return;
     }
 
-    // Send the server-truth rows (no curation overlay), so saving the name never silently
-    // persists unsaved curation edits made in the row editors.
-    const saved = await handleUpdateSharedPage(currentRows, trimmedTitle, note ?? '', 'Name updated.');
+    const saved = await handleUpdateSharedPage(allRows, trimmedTitle, note ?? '', 'Name updated.');
     if (saved) {
       setIsEditingSharedTitle(false);
     }
@@ -326,21 +367,10 @@ export const MergedResultsTable = ({
       return;
     }
 
-    // Send the server-truth rows (no curation overlay), so saving the note never silently
-    // persists unsaved curation edits made in the row editors.
-    const saved = await handleUpdateSharedPage(currentRows, title, editNoteDraft.trim(), 'Note updated.');
+    const saved = await handleUpdateSharedPage(allRows, title, prepareNoteForSave(editNoteDraft), 'Note updated.');
     if (saved) {
       setIsEditingSharedNote(false);
     }
-  };
-
-  const handleSaveCuration = async () => {
-    if (!isCurationDirty) {
-      return;
-    }
-    // Persist every row with its curation overlay applied; the parent refetch reseeds the prop and
-    // the rows-change effect clears the draft overlay.
-    await handleUpdateSharedPage(curatedRows, title, note ?? '', 'Project notes updated.');
   };
 
   const handleDeleteSharedRow = async (row: ProjectGridItem) => {
@@ -348,7 +378,7 @@ export const MergedResultsTable = ({
     if (rowIndex < 0) {
       return;
     }
-    const nextRows = currentRows.filter((_, index) => index !== rowIndex);
+    const nextRows = allRows.filter((_, index) => index !== rowIndex);
     if (!nextRows.length) {
       setStatusMessage('A shared page needs at least one project.');
       return;
@@ -388,84 +418,49 @@ export const MergedResultsTable = ({
     </div>
   ) : null;
 
+  const sharedNoteAction = (
+    <button
+      type="button"
+      className={`project-grid-share-editor-icon-button project-grid-share-note-action${
+        isEditingSharedNote ? ' is-active' : ''
+      }`}
+      aria-label={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
+      title={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
+      onClick={() => void handleSharedNoteAction()}
+      disabled={isSavingShareEdit}
+    >
+      {isEditingSharedNote ? <SharedSaveIcon /> : <SharedEditIcon />}
+    </button>
+  );
+
+  const sharedNoteHeaderAction = (
+    <>
+      {isEditingSharedNote ? (
+        <ProjectNoteInsertControl
+          rows={allRows}
+          excludedFields={excludedProjectNoteInsertFields}
+          onInsert={handleInsertSharedProjectsIntoNote}
+          onToggleExcludedField={handleToggleProjectNoteInsertField}
+        />
+      ) : null}
+      {sharedNoteAction}
+    </>
+  );
+
   const sharedEditor = canEditShared ? (
     <div className={`project-grid-share-editor${isEditingSharedNote ? ' is-editing' : ''}`}>
-      <div className="project-grid-share-editor-header">
-        <label className="project-grid-share-editor-label" htmlFor="past-project-shared-note-editor">
-          Note
-        </label>
-        <button
-          type="button"
-          className={`project-grid-share-editor-icon-button project-grid-share-note-action${
-            isEditingSharedNote ? ' is-active' : ''
-          }`}
-          aria-label={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
-          title={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
-          onClick={() => void handleSharedNoteAction()}
-          disabled={isSavingShareEdit}
-        >
-          {isEditingSharedNote ? <SharedSaveIcon /> : <SharedEditIcon />}
-        </button>
-      </div>
-      <textarea
-        ref={editNoteTextareaRef}
+      <RichTextDetailEditor
         id="past-project-shared-note-editor"
-        className="project-grid-share-editor-textarea"
+        label="Note"
         value={editNoteDraft}
-        maxLength={2000}
-        rows={3}
+        placeholder="Add a note (shown at the top of the shared page)."
         readOnly={!isEditingSharedNote}
-        onChange={(event) => setEditNoteDraft(event.target.value)}
+        autoFocus={isEditingSharedNote}
+        headerAction={sharedNoteHeaderAction}
+        onChange={setEditNoteDraft}
       />
     </div>
   ) : null;
-
-  // Per-project detail body injected into each row's expandable area: the Project notes first
-  // (editable for owner/builder, read-only preview for a visitor), then a divider, then the
-  // read-only abstract / student names below it.
-  const renderRowDetail = (row: ProjectGridItem, surface: 'desktop' | 'mobile') => {
-    const curation = effectiveCuration(row);
-    // The row __key embeds the fingerprint JSON (quotes/brackets), which is not a valid HTML id.
-    // Derive a stable slug-safe id from the row position + surface (desktop and mobile both render
-    // a copy, so the id must differ between them to stay unique).
-    const rowIndex = rows.findIndex((candidate) => candidate.__key === row.__key);
-    const editorId = `past-project-curation-${surface}-${rowIndex}`;
-    const curationBlock = canCurate ? (
-      <div className="project-grid-row-curation">
-        <RichTextDetailEditor
-          id={editorId}
-          label="Project notes"
-          value={curation}
-          placeholder="Add a note for this project (optional)."
-          onChange={(nextValue) => handleCurationChange(row.__key, nextValue)}
-        />
-      </div>
-    ) : curation.trim() ? (
-      <div className="project-grid-row-curation">
-        <p className="project-grid-shared-note-label">Project notes</p>
-        <RichDetailPreview className="project-grid-shared-detail-text" html={curation} />
-      </div>
-    ) : null;
-
-    const hasReadOnlyFields = Boolean(row.abstract || row.student_names);
-
-    return (
-      <>
-        {curationBlock}
-        {curationBlock && hasReadOnlyFields ? <hr className="project-grid-row-detail-divider" /> : null}
-        {row.abstract ? (
-          <div>
-            <strong>Abstract:</strong> {row.abstract}
-          </div>
-        ) : null}
-        {row.student_names ? (
-          <div>
-            <strong>Student Names:</strong> {row.student_names}
-          </div>
-        ) : null}
-      </>
-    );
-  };
 
   return (
     <section className="project-grid-card">
@@ -522,10 +517,10 @@ export const MergedResultsTable = ({
 
       {sharedEditor}
 
-      {!sharedEditor && sharedNote ? (
+      {!sharedEditor && sharedNoteHasContent ? (
         <div className="project-grid-shared-note">
           <p className="project-grid-shared-note-label">Note</p>
-          <p className="project-grid-shared-note-text">{sharedNote}</p>
+          <RichDetailPreview className="project-grid-shared-detail-text" html={sharedNoteHtml} />
         </div>
       ) : null}
 
@@ -547,23 +542,27 @@ export const MergedResultsTable = ({
               />
             </div>
             <div className="project-grid-share-note">
-              <label className="project-grid-share-note-label" htmlFor="past-project-share-note">
-                Add a note (shown at the top of the shared page)
-              </label>
-              <textarea
+              <RichTextDetailEditor
                 id="past-project-share-note"
-                className="project-grid-share-note-input"
+                label="Add a note (shown at the top of the shared page)"
                 value={noteDraft}
-                maxLength={2000}
-                rows={3}
                 placeholder="Optional — add context for whoever opens the shared link."
-                onChange={(event) => setNoteDraft(event.target.value)}
+                headerAction={
+                  <ProjectNoteInsertControl
+                    rows={visibleRows}
+                    excludedFields={excludedProjectNoteInsertFields}
+                    onInsert={handleInsertVisibleProjectsIntoNote}
+                    onToggleExcludedField={handleToggleProjectNoteInsertField}
+                  />
+                }
+                onChange={setNoteDraft}
               />
             </div>
           </>
         ) : (
           <p className="project-grid-share-login-hint">
-            <a href="/login">Log in</a> to create a shareable link.
+            <a href={buildLoginPath(`${window.location.pathname}${window.location.search}`)}>Log in</a> to create a
+            shareable link.
           </p>
         )
       ) : null}
@@ -585,8 +584,6 @@ export const MergedResultsTable = ({
         onToggleExpanded={table.toggleExpanded}
         onToggleAllDetails={table.toggleAllDetails}
         allDetailsExpanded={table.allDetailsExpanded}
-        renderRowDetail={renderRowDetail}
-        detailExpandable={isRowExpandable}
         page={table.page}
         totalPages={table.totalPages}
         onPageChange={table.setPage}
@@ -599,18 +596,6 @@ export const MergedResultsTable = ({
         toolbarPlacement="bottom"
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
-            {canEditShared && isCurationDirty ? (
-              <div className="project-grid-toolbar-cluster" aria-label="Save notes">
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-primary"
-                  onClick={() => void handleSaveCuration()}
-                  disabled={isSavingShareEdit}
-                >
-                  {isSavingShareEdit ? 'Saving...' : 'Save Project Notes'}
-                </button>
-              </div>
-            ) : null}
             <div className="project-grid-toolbar-cluster" aria-label="Export">
               <button
                 type="button"
@@ -643,7 +628,7 @@ export const MergedResultsTable = ({
                   type="button"
                   className="itg-btn itg-btn-primary"
                   onClick={() => void handleCreateShare()}
-                  disabled={!visibleCuratedRows.length || isSharing || !nameDraft.trim()}
+                  disabled={!visibleRows.length || isSharing || !nameDraft.trim()}
                 >
                   {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
                 </button>

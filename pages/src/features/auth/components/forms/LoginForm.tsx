@@ -5,7 +5,12 @@ import { getPostAuthPath } from '@/features/auth/api/redirects';
 import { LoginEmailMode } from './LoginEmailMode';
 import { LoginPasswordMode } from './LoginPasswordMode';
 
-export const LoginForm = () => {
+interface LoginFormProps {
+  /** Safe internal path to return to after a successful sign-in. */
+  returnTo?: string | null;
+}
+
+export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
   const {
     login,
     requestEmailAuthCode,
@@ -53,7 +58,10 @@ export const LoginForm = () => {
     try {
       const response = await requestEmailAuthCode(email, 'login');
       setInfoMessage(response.message);
-      navigate(`/verify-email?flow=auth&email=${encodeURIComponent(email.trim().toLowerCase())}`);
+      // Carry returnTo across the email-code step so verification lands the user back
+      // on the page that sent them to log in.
+      const returnToParam = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : '';
+      navigate(`/verify-email?flow=auth&email=${encodeURIComponent(email.trim().toLowerCase())}${returnToParam}`);
     } catch {
       // Error handled by context
     }
@@ -66,7 +74,7 @@ export const LoginForm = () => {
     if (!validateForm(true)) return;
     try {
       const response = await login(email, password);
-      navigate(getPostAuthPath(response), { replace: true });
+      navigate(getPostAuthPath(response, returnTo), { replace: true });
     } catch {
       // Error handled by context
     }

@@ -6,7 +6,7 @@ from apps.core.admin import BaseModelAdmin
 from apps.core.models import GoogleCredentialConfig
 
 from ..models import PastProjectsSheetConfig
-from ..services.sheet_sync import SheetSyncError, sync_past_projects
+from ..services.sheet_sync import SheetSyncError, format_sync_stats, sync_past_projects
 
 
 @admin.register(PastProjectsSheetConfig)
@@ -90,13 +90,7 @@ class PastProjectsSheetConfigAdmin(BaseModelAdmin):
             return redirect(changelist_url)
         try:
             stats = sync_past_projects(config, sync_type="manual")
-            messages.success(
-                request,
-                (
-                    f"Synced: {stats.projects_created} projects across {stats.semesters_touched} "
-                    f"semester(s); {stats.rows_skipped} skipped of {stats.rows_read} read."
-                ),
-            )
+            messages.success(request, f"Synced: {format_sync_stats(stats)}")
         except SheetSyncError as exc:
             messages.error(request, f"Sync failed: {exc}")
         return redirect(changelist_url)

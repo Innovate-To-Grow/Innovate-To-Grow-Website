@@ -79,6 +79,7 @@ export const router = createBrowserRouter([
             {path: 'current-projects', element: lazyRoute(<ProjectsPage/>)},
             {path: 'presenting-teams', element: lazyRoute(<PresentingTeamsPage/>)},
             {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>)},
+            {path: 'past-projects/project/:id', element: lazyRoute(<ProjectDetailPage/>)},
             {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>)},
             {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
 

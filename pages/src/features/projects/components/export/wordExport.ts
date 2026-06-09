@@ -43,20 +43,6 @@ const wordRun = (text: string, options: WordRunOptions = {}) => {
   return `<w:r>${properties ? `<w:rPr>${properties}</w:rPr>` : ''}${textNodes}</w:r>`;
 };
 
-/** Render styled note runs as Word runs, preserving bold/italic/underline/highlight + breaks. */
-const styledRunsToWord = (runs: StyledRun[], size: number) =>
-  runs
-    .map((run) =>
-      wordRun(run.text, {
-        bold: run.bold,
-        italic: run.italic,
-        underline: run.underline,
-        highlight: run.highlight,
-        size,
-      }),
-    )
-    .join('');
-
 const wordParagraph = (
   text: string,
   options: {
@@ -74,6 +60,23 @@ const wordParagraph = (
 
 const wordSectionHeading = (text: string) =>
   wordParagraph(text, {bold: true, color: 'FFFFFF', shading: BRAND_BLUE, size: 22, spacingAfter: 80});
+
+/** Render the share note's styled runs as Word runs, preserving bold/italic/underline/highlight. */
+const styledRunsToWord = (runs: StyledRun[], size: number) =>
+  runs
+    .map((run) =>
+      wordRun(run.text, {
+        bold: run.bold,
+        italic: run.italic,
+        underline: run.underline,
+        highlight: run.highlight,
+        size,
+      }),
+    )
+    .join('');
+
+const wordRichParagraph = (runs: StyledRun[], size: number, spacingAfter: number) =>
+  `<w:p><w:pPr><w:spacing w:after="${spacingAfter}"/></w:pPr>${styledRunsToWord(runs, size)}</w:p>`;
 
 const wordLogoParagraph = (relationshipId: string) => {
   const size = 685800;
@@ -113,8 +116,8 @@ const wordLogoParagraph = (relationshipId: string) => {
   </w:p>`;
 };
 
-// Header cells get more weight on the wide, multi-line Abstract/Notes columns.
-const COLUMN_PCT = [9, 6, 6, 11, 13, 11, 9, 18, 11, 16];
+// Header cells get more weight on the wide, multi-line Abstract column.
+const COLUMN_PCT = [10, 6, 6, 12, 15, 12, 10, 18, 11];
 
 const headerCell = (label: string, widthPct: number) =>
   `<w:tc><w:tcPr><w:tcW w:w="${widthPct * 50}" w:type="pct"/><w:shd w:fill="${BRAND_BLUE}"/></w:tcPr>` +
@@ -123,12 +126,6 @@ const headerCell = (label: string, widthPct: number) =>
 const plainCell = (value: string, widthPct: number) =>
   `<w:tc><w:tcPr><w:tcW w:w="${widthPct * 50}" w:type="pct"/></w:tcPr>` +
   `<w:p>${wordRun(toDisplayValue(value), {size: 16})}</w:p></w:tc>`;
-
-const notesCell = (row: ProjectGridRow, widthPct: number) => {
-  const runs = parseRichTextRuns(row.curation ?? '');
-  const content = runs.length ? styledRunsToWord(runs, 16) : wordRun('', {size: 16});
-  return `<w:tc><w:tcPr><w:tcW w:w="${widthPct * 50}" w:type="pct"/></w:tcPr><w:p>${content}</w:p></w:tc>`;
-};
 
 const projectTableRow = (row: ProjectGridRow) => {
   const cells = [
@@ -141,7 +138,6 @@ const projectTableRow = (row: ProjectGridRow) => {
     plainCell(row.industry, COLUMN_PCT[6]),
     plainCell(row.abstract, COLUMN_PCT[7]),
     plainCell(row.student_names, COLUMN_PCT[8]),
-    notesCell(row, COLUMN_PCT[9]),
   ].join('');
   return `<w:tr>${cells}</w:tr>`;
 };
@@ -154,6 +150,7 @@ export const createProjectRowsWordBlob = (
   const exportContext = normalizeProjectRowsExportContext(context);
   const headerRow = `<w:tr>${EXPORT_COLUMNS.map((label, index) => headerCell(label, COLUMN_PCT[index])).join('')}</w:tr>`;
   const bodyRows = rows.map(projectTableRow).join('');
+  const noteRuns = parseRichTextRuns(exportContext.note);
 
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
@@ -167,7 +164,7 @@ export const createProjectRowsWordBlob = (
       size: 20,
       spacingAfter: 220,
     })}
-    ${exportContext.note ? `${wordSectionHeading('Note')}${wordParagraph(exportContext.note, {size: 20, spacingAfter: 180})}` : ''}
+    ${noteRuns.length ? `${wordSectionHeading('Note')}${wordRichParagraph(noteRuns, 20, 180)}` : ''}
     ${wordSectionHeading('Projects')}
     <w:tbl>
       <w:tblPr>

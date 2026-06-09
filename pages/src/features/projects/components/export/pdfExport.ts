@@ -15,27 +15,19 @@ const LABEL_RGB: [number, number, number] = [15, 45, 82];
 const ALT_FILL_RGB: [number, number, number] = [247, 250, 252];
 const CARD_BORDER_RGB: [number, number, number] = [189, 211, 234];
 
-const plainRuns = (text: string): StyledRun[] => (text ? [{text}] : []);
-
-// Fields shown per project, Notes first (matching the on-screen order), then the standard fields.
-const detailFieldsFor = (row: ProjectGridRow): Array<{label: string; runs: StyledRun[]}> => {
-  const noteRuns = parseRichTextRuns(row.curation ?? '');
-  return [
-    {label: 'Notes', runs: noteRuns.length ? noteRuns : plainRuns('N/A')},
-    {label: 'Year-Semester', runs: plainRuns(toDisplayValue(row.semester_label) || 'N/A')},
-    {
-      label: 'Class / Team#',
-      runs: plainRuns(
-        [toDisplayValue(row.class_code), toDisplayValue(row.team_number)].filter(Boolean).join(' / ') || 'N/A',
-      ),
-    },
-    {label: 'Team Name', runs: plainRuns(toDisplayValue(row.team_name) || 'N/A')},
-    {label: 'Organization', runs: plainRuns(toDisplayValue(row.organization) || 'N/A')},
-    {label: 'Industry', runs: plainRuns(toDisplayValue(row.industry) || 'N/A')},
-    {label: 'Student Names', runs: plainRuns(toDisplayValue(row.student_names) || 'N/A')},
-    {label: 'Abstract', runs: plainRuns(toDisplayValue(row.abstract) || 'N/A')},
-  ];
-};
+// Fields shown per project, in the same order as the on-screen expanded row detail.
+const detailFieldsFor = (row: ProjectGridRow): Array<{label: string; value: string}> => [
+  {label: 'Year-Semester', value: toDisplayValue(row.semester_label) || 'N/A'},
+  {
+    label: 'Class / Team#',
+    value: [toDisplayValue(row.class_code), toDisplayValue(row.team_number)].filter(Boolean).join(' / ') || 'N/A',
+  },
+  {label: 'Team Name', value: toDisplayValue(row.team_name) || 'N/A'},
+  {label: 'Organization', value: toDisplayValue(row.organization) || 'N/A'},
+  {label: 'Industry', value: toDisplayValue(row.industry) || 'N/A'},
+  {label: 'Student Names', value: toDisplayValue(row.student_names) || 'N/A'},
+  {label: 'Abstract', value: toDisplayValue(row.abstract) || 'N/A'},
+];
 
 export const exportProjectRowsPdf = async (
   rows: ProjectGridRow[],
@@ -88,21 +80,12 @@ export const exportProjectRowsPdf = async (
     }
   };
 
-  const addWrappedText = (text: string, fontSize: number, lineHeight: number) => {
-    pdf.setFontSize(fontSize);
-    pdf.setFont('helvetica', 'normal');
-    setBodyTextColor();
-    for (const paragraph of (text || ' ').split(/\r\n|\r|\n/)) {
-      if (!paragraph.trim()) {
-        ensureSpace(lineHeight);
-        cursorY += lineHeight;
-        continue;
-      }
-      for (const line of pdf.splitTextToSize(paragraph, contentWidth) as string[]) {
-        ensureSpace(lineHeight);
-        pdf.text(line || ' ', margin, cursorY);
-        cursorY += lineHeight;
-      }
+  // Draw the share note's styled runs (bold/italic/underline/highlight), wrapped to the page width.
+  const addRichText = (runs: StyledRun[], fontSize: number, lineHeight: number) => {
+    for (const line of wrapRunsToLines(pdf, runs, contentWidth, fontSize)) {
+      ensureSpace(lineHeight);
+      drawRunLine(pdf, line, margin, cursorY, fontSize);
+      cursorY += lineHeight;
     }
   };
 
@@ -148,7 +131,10 @@ export const exportProjectRowsPdf = async (
       pdf.setFontSize(FIELD_FONT);
       const labelText = `${field.label}: `;
       const labelWidth = pdf.getTextWidth(labelText);
-      const lines = wrapRunsToLines(pdf, field.runs, valueWidth - labelWidth, FIELD_FONT);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(FIELD_FONT);
+      const wrapped = pdf.splitTextToSize(field.value, valueWidth - labelWidth) as string[];
+      const lines = wrapped.length ? wrapped : [''];
 
       lines.forEach((line, lineIndex) => {
         ensureSpace(FIELD_LINE + LABEL_GAP);
@@ -165,7 +151,10 @@ export const exportProjectRowsPdf = async (
           pdf.text(labelText, valueIndent, baselineY);
         }
         // Value (and its wrapped continuation lines) align just past the bold label.
-        drawRunLine(pdf, line, valueIndent + labelWidth, baselineY, FIELD_FONT);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(FIELD_FONT);
+        setBodyTextColor();
+        pdf.text(line || ' ', valueIndent + labelWidth, baselineY);
         cursorY += FIELD_LINE + LABEL_GAP;
       });
     }
@@ -176,9 +165,10 @@ export const exportProjectRowsPdf = async (
 
   drawPageHeader();
 
-  if (exportContext.note) {
+  const noteRuns = parseRichTextRuns(exportContext.note);
+  if (noteRuns.length) {
     addSectionHeading('Note');
-    addWrappedText(exportContext.note, 9, 4.7);
+    addRichText(noteRuns, 9, 4.7);
     cursorY += 5;
   }
 
