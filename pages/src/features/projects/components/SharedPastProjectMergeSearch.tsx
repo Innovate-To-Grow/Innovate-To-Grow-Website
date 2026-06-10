@@ -1,4 +1,4 @@
-import {useCallback, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {buildLoginPath} from '@/features/auth/api/redirects';
 import {searchPastProjectsWithAI, toProjectGridRow} from '@/features/projects/api';
@@ -32,6 +32,7 @@ interface SharedPastProjectMergeSearchProps {
   loading: boolean;
   rows: ProjectGridRow[];
   onAddRows: (rows: ProjectGridRow[]) => Promise<void>;
+  onRefreshRows?: () => void;
 }
 
 interface SearchTableState {
@@ -51,6 +52,7 @@ export const SharedPastProjectMergeSearch = ({
   loading,
   rows,
   onAddRows,
+  onRefreshRows,
 }: SharedPastProjectMergeSearchProps) => {
   const {isAuthenticated} = useAuth();
   const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
@@ -61,6 +63,8 @@ export const SharedPastProjectMergeSearch = ({
   const [isSaving, setIsSaving] = useState(false);
   const tableSequence = useRef(1);
   const tableRefs = useRef<Record<string, SearchTableHandle | null>>({});
+  const pendingRefreshTableId = useRef<string | null>(null);
+  const lastSeenRows = useRef(rows);
 
   const currentFingerprints = useMemo(
     () => new Set(currentRows.map((row) => createProjectGridFingerprint(row))),
@@ -187,6 +191,36 @@ export const SharedPastProjectMergeSearch = ({
     delete tableRefs.current[tableId];
   };
 
+  // Refresh is per-table: the refetch keeps serving stale rows (so the stack stays mounted and
+  // every other table keeps its local curation), and once the fresh archive lands as a new `rows`
+  // array, only the table that asked is remounted — via its key — with the new data.
+  useEffect(() => {
+    if (rows === lastSeenRows.current) {
+      return;
+    }
+    lastSeenRows.current = rows;
+    const tableId = pendingRefreshTableId.current;
+    if (!tableId) {
+      return;
+    }
+    pendingRefreshTableId.current = null;
+    setSearchTables((current) =>
+      current.map((table) =>
+        table.id === tableId ? {...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1} : table,
+      ),
+    );
+    setBuilderMessage('Search table refreshed from the latest past-project archive.');
+  }, [rows]);
+
+  const handleRefreshSearchTable = useCallback(
+    (tableId: string) => {
+      pendingRefreshTableId.current = tableId;
+      onRefreshRows?.();
+      setBuilderMessage('Refreshing this full-archive search table from the latest past-project data...');
+    },
+    [onRefreshRows],
+  );
+
   const applyToSearchTables = (action: (table: SearchTableHandle) => void) => {
     searchTables.forEach(({id}) => {
       const table = tableRefs.current[id];
@@ -264,7 +298,7 @@ export const SharedPastProjectMergeSearch = ({
         loading={loading || isSaving}
         mergeButtonLabel="Add Selected Projects"
         searchTableCount={searchTables.length}
-        title="Add Projects"
+        title="Add Projects from Full Archive"
         aiSearchDisabled={hasAISearchTable}
         aiSearchLoginRequired={!isAuthenticated}
         onAddAISearchTable={handleAddAISearchTable}
@@ -324,7 +358,7 @@ export const SharedPastProjectMergeSearch = ({
                 description={
                   isAISearchTable
                     ? 'Use AI to load matching past projects into this table, then select rows to add.'
-                    : undefined
+                    : 'Search the full past-project archive for additional projects to add to this shared result.'
                 }
                 emptyMessage={
                   isAISearchTable
@@ -355,6 +389,7 @@ export const SharedPastProjectMergeSearch = ({
                 }
                 resultsMotionKey={isAISearchTable ? table.rowsResetKey : undefined}
                 onRemove={handleRemoveSearchTable}
+                onRefresh={isAISearchTable || !onRefreshRows ? undefined : handleRefreshSearchTable}
                 onSelectionStateChange={handleSelectionStateChange}
               />
             );

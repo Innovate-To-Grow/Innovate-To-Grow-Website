@@ -134,7 +134,8 @@ export const PastProjectsActionBar = ({
           <span>
             Use the search field, click column headers to sort, and change <strong>Per page</strong> if you want more
             rows at once. Open <strong>View</strong> on a row to read abstracts and student names when available. Use
-            the table toolbar for “Select all entries”, “Deselect”, and “Show / Hide all details” for that table only.
+            the table toolbar for “Refresh Search Table”, “Undo Row Change”, “Select all entries”, “Deselect”, and
+            “Show / Hide all details” for that table only.
           </span>
         </div>
       </div>

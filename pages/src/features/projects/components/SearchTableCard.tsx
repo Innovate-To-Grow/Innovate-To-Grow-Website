@@ -1,4 +1,4 @@
-import {forwardRef, useEffect, useImperativeHandle, useState, type ReactNode} from 'react';
+import {forwardRef, useCallback, useEffect, useImperativeHandle, useState, type ReactNode} from 'react';
 import {ProjectGridTable} from './ProjectGridTable';
 import {useProjectGridTable} from './useProjectGridTable';
 import {
@@ -29,6 +29,7 @@ interface SearchTableCardProps {
   tableId: string;
   title: string;
   onRemove: (tableId: string) => void;
+  onRefresh?: (tableId: string) => void;
   onSelectionStateChange: (tableId: string, hasSelection: boolean) => void;
 }
 
@@ -57,17 +58,61 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
     tableId,
     title,
     onRemove,
+    onRefresh,
     onSelectionStateChange,
   },
   ref,
 ) {
   const [rows, setRows] = useState<ProjectGridItem[]>(() => createProjectGridItems(initialRows, tableId));
+  const [undoRows, setUndoRows] = useState<ProjectGridItem[] | null>(null);
   const table = useProjectGridTable({
     rows,
     pageSize: 5,
     defaultSortField: 'semester_label',
     defaultSortDirection: 'desc',
   });
+
+  const handleDeleteSelectedRows = useCallback(() => {
+    if (!table.hasSelection) {
+      return;
+    }
+
+    const nextRows = table.removeSelectedRows(rows);
+    if (nextRows.length === rows.length) {
+      table.clearSelection();
+      return;
+    }
+
+    setUndoRows(rows);
+    setRows(nextRows);
+    table.clearSelection();
+  }, [rows, table]);
+
+  const handleKeepSelectedRows = useCallback(() => {
+    if (!table.hasSelection) {
+      return;
+    }
+
+    const nextRows = table.keepSelectedRows(rows);
+    if (nextRows.length === rows.length) {
+      table.clearSelection();
+      return;
+    }
+
+    setUndoRows(rows);
+    setRows(nextRows);
+    table.clearSelection();
+  }, [rows, table]);
+
+  const handleUndoLastRowAction = useCallback(() => {
+    if (!undoRows) {
+      return;
+    }
+
+    setRows(undoRows);
+    setUndoRows(null);
+    table.clearSelection();
+  }, [table, undoRows]);
 
   useEffect(() => {
     onSelectionStateChange(tableId, table.hasSelection);
@@ -77,18 +122,12 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
     ref,
     () => ({
       clearSelection: table.clearSelection,
-      deleteSelectedRows: () => {
-        setRows((current) => table.removeSelectedRows(current));
-        table.clearSelection();
-      },
+      deleteSelectedRows: handleDeleteSelectedRows,
       getSelectedRows: () => table.selectedRows.map(stripProjectGridItem),
       hasSelection: () => table.hasSelection,
-      keepSelectedRows: () => {
-        setRows((current) => table.keepSelectedRows(current));
-        table.clearSelection();
-      },
+      keepSelectedRows: handleKeepSelectedRows,
     }),
-    [table],
+    [handleDeleteSelectedRows, handleKeepSelectedRows, table],
   );
 
   return (
@@ -152,6 +191,19 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
           }}
           toolbar={
             <div className="project-grid-inline-actions">
+              {onRefresh ? (
+                <button type="button" className="itg-btn itg-btn-outline" onClick={() => onRefresh(tableId)}>
+                  Refresh Search Table
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={handleUndoLastRowAction}
+                disabled={!undoRows}
+              >
+                Undo Row Change
+              </button>
               <button type="button" className="itg-btn itg-btn-outline" onClick={table.selectAllRows}>
                 Select All Entries
               </button>

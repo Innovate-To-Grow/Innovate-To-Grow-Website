@@ -1026,13 +1026,23 @@ body .project-grid-table tbody .project-grid-detail-row > td {
 }
 
 body .project-grid-individual-link-row {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
   margin-bottom: 0.65rem;
+}
+
+body .project-grid-individual-link-label {
+  color: var(--itg-color-muted, #5d6b7c);
+  font-size: var(--itg-font-size-small);
+  font-weight: 700;
 }
 
 body .project-grid-individual-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  max-width: 100%;
   min-height: 2rem;
   border: 1px solid rgba(15, 45, 82, 0.22);
   border-radius: 6px;
@@ -1040,12 +1050,13 @@ body .project-grid-individual-link {
   color: var(--itg-color-primary);
   font-size: var(--itg-font-size-small);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.25;
   text-decoration: none;
   transition:
     background var(--itg-transition-fast),
     border-color var(--itg-transition-fast),
     box-shadow var(--itg-transition-fast);
+  overflow-wrap: anywhere;
 }
 
 body .project-grid-individual-link:hover,

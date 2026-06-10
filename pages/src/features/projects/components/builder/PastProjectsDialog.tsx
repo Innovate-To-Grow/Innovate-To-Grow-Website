@@ -4,6 +4,8 @@ interface PastProjectsDialogProps {
   cancelLabel?: string;
   children: ReactNode;
   confirmLabel: string;
+  /** Hide the cancel button for purely informational dialogs where confirm just closes. */
+  showCancel?: boolean;
   title: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -13,6 +15,7 @@ export const PastProjectsDialog = ({
   cancelLabel = 'Cancel',
   children,
   confirmLabel,
+  showCancel = true,
   title,
   onCancel,
   onConfirm,
@@ -60,9 +63,11 @@ export const PastProjectsDialog = ({
           {children}
         </div>
         <div className="past-projects-dialog-actions">
-          <button type="button" className="itg-btn itg-btn-outline" onClick={onCancel}>
-            {cancelLabel}
-          </button>
+          {showCancel ? (
+            <button type="button" className="itg-btn itg-btn-outline" onClick={onCancel}>
+              {cancelLabel}
+            </button>
+          ) : null}
           <button ref={confirmButtonRef} type="button" className="itg-btn itg-btn-primary" onClick={onConfirm}>
             {confirmLabel}
           </button>

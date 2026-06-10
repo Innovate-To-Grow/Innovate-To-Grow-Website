@@ -150,10 +150,7 @@ const DesktopRow = ({
 
   return (
     <>
-      <tr
-        className={`project-grid-row${isSelected ? ' is-selected' : ''}${isExpanded ? ' is-expanded' : ''}`}
-        onClick={selectable && onToggleSelected ? () => onToggleSelected(row.__key) : undefined}
-      >
+      <tr className={`project-grid-row${isSelected ? ' is-selected' : ''}${isExpanded ? ' is-expanded' : ''}`}>
         {selectable ? (
           <td className="project-grid-select-col">
             <input
@@ -161,7 +158,6 @@ const DesktopRow = ({
               aria-label={`Select ${row.project_title}`}
               checked={isSelected}
               onChange={() => onToggleSelected?.(row.__key)}
-              onClick={(event) => event.stopPropagation()}
             />
           </td>
         ) : null}
@@ -175,8 +171,7 @@ const DesktopRow = ({
             type="button"
             className="project-grid-detail-button"
             disabled={!hasDetails}
-            onClick={(event) => {
-              event.stopPropagation();
+            onClick={() => {
               if (hasDetails) onToggleExpanded(row.__key);
             }}
           >
@@ -189,10 +184,7 @@ const DesktopRow = ({
             <button
               type="button"
               className="project-grid-delete-button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDeleteRow(row);
-              }}
+              onClick={() => onDeleteRow(row)}
             >
               Remove
             </button>
@@ -205,9 +197,10 @@ const DesktopRow = ({
           <td colSpan={colSpan}>
             <div className="project-grid-detail-content">
               {individualHref ? (
-                <div className="project-grid-individual-link-row" hidden aria-hidden="true">
-                  <a className="project-grid-individual-link" href={individualHref} tabIndex={-1}>
-                    Individual Link
+                <div className="project-grid-individual-link-row">
+                  <span className="project-grid-individual-link-label">Individual Project URL</span>
+                  <a className="project-grid-individual-link" href={individualHref}>
+                    {individualHref}
                   </a>
                 </div>
               ) : null}

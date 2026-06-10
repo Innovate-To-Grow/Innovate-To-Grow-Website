@@ -16,7 +16,7 @@ export const PastProjectsPage = () => {
   const {share, loading: shareLoading, error: shareError} = usePastProjectShareData(shareId);
   const [editableShare, setEditableShare] = useState<PastProjectShare | null>(null);
   const activeShare = editableShare?.id === shareId ? editableShare : share;
-  const {rows, loading, error} = usePastProjectGridData(!sharedMode || Boolean(activeShare?.can_edit));
+  const {rows, loading, error, refetch} = usePastProjectGridData(!sharedMode || Boolean(activeShare?.can_edit));
 
   useEffect(() => {
     setEditableShare(share);
@@ -60,8 +60,8 @@ export const PastProjectsPage = () => {
         <h1 className="past-projects-title">Past Projects</h1>
         {!sharedMode ? (
           <p className="past-projects-lead">
-            Search across past Innovate to Grow projects, keep only the rows you want, and merge the results into a
-            shareable archive.
+            Search across past Innovate to Grow projects, keep only the items you want, merge the selected results into
+            a shareable archive, and curate the results.
           </p>
         ) : null}
       </header>
@@ -87,6 +87,7 @@ export const PastProjectsPage = () => {
                   loading={loading}
                   rows={rows}
                   onAddRows={handleAddShareRows}
+                  onRefreshRows={refetch}
                 />
               ) : null}
             </>
@@ -97,6 +98,7 @@ export const PastProjectsPage = () => {
           rows={rows}
           loading={loading}
           error={error}
+          onRefreshRows={refetch}
           onCreateShare={handleCreateShare}
         />
       )}
