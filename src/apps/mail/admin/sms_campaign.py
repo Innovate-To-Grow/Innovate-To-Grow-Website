@@ -6,6 +6,7 @@ import threading
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -289,6 +290,11 @@ class SmsCampaignAdmin(BaseModelAdmin):
         return HttpResponseRedirect(reverse("admin:mail_smscampaign_send_preview", args=[object_id]))
 
     def preview_recipients_view(self, request, object_id):
+        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+        # per-app access itself — Django never runs the per-app model permissions
+        # for a standalone admin view.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view SMS campaign recipients.")
         obj = SmsCampaign.objects.get(pk=object_id)
         recipients = get_sms_recipients(obj)
         context = {
@@ -301,6 +307,8 @@ class SmsCampaignAdmin(BaseModelAdmin):
         return TemplateResponse(request, "admin/mail/smscampaign/preview_recipients.html", context)
 
     def send_sms_preview_view(self, request, object_id):
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to preview this SMS campaign.")
         obj = SmsCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_smscampaign_change", args=[object_id])
         recipients = get_sms_recipients(obj)
@@ -326,6 +334,9 @@ class SmsCampaignAdmin(BaseModelAdmin):
         return TemplateResponse(request, "admin/mail/smscampaign/send_preview.html", context)
 
     def send_sms_confirm_view(self, request, object_id):
+        # State-changing flow (triggers the background SMS send) — require change access.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to send this SMS campaign.")
         obj = SmsCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_smscampaign_change", args=[object_id])
         if obj.status != "draft":
@@ -366,6 +377,8 @@ class SmsCampaignAdmin(BaseModelAdmin):
         return TemplateResponse(request, "admin/mail/smscampaign/confirm_send.html", context)
 
     def send_sms_status_view(self, request, object_id):
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view this SMS campaign's status.")
         obj = SmsCampaign.objects.get(pk=object_id)
         context = {
             **self.admin_site.each_context(request),
@@ -377,6 +390,8 @@ class SmsCampaignAdmin(BaseModelAdmin):
         return TemplateResponse(request, "admin/mail/smscampaign/send_status.html", context)
 
     def send_sms_status_json(self, request, object_id):
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view this SMS campaign's status.")
         obj = SmsCampaign.objects.get(pk=object_id)
         recent_logs = [
             {

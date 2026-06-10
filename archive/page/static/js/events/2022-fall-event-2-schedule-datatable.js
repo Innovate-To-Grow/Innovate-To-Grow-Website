@@ -142,7 +142,7 @@ function passvalue(slot) {
         final += teamNum[i];
     }
 
-    window.document.location = window.location.pathname + '?value=' + final + '#projects';
+    window.document.location = window.location.pathname + '?value=' + encodeURIComponent(final) + '#projects';
 }
 
 // the layout of the table is as follows:

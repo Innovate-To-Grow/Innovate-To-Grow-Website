@@ -6,6 +6,7 @@ from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from apps.core.services.sheets_safety import safe_sheet_value
 from apps.event.models import CheckIn, CheckInRecord, EventRegistration
 
 HEADERS = (
@@ -75,20 +76,22 @@ def _records_by_registration(check_in: CheckIn) -> dict:
 
 def _registration_row(check_in: CheckIn, registration: EventRegistration, record: CheckInRecord | None):
     member = registration.member
+    # Attendee-supplied text (name/email/organization) is neutralized so a
+    # formula payload is not written as a live cell formula in the export.
     return [
-        check_in.event.name,
-        check_in.name,
-        registration.ticket.name if registration.ticket_id else "",
-        registration.ticket_code,
-        registration.attendee_name,
-        registration.attendee_email,
-        registration.attendee_organization or "",
-        member.title or "",
-        member.organization or "",
+        safe_sheet_value(check_in.event.name),
+        safe_sheet_value(check_in.name),
+        safe_sheet_value(registration.ticket.name) if registration.ticket_id else "",
+        safe_sheet_value(registration.ticket_code),
+        safe_sheet_value(registration.attendee_name),
+        safe_sheet_value(registration.attendee_email),
+        safe_sheet_value(registration.attendee_organization or ""),
+        safe_sheet_value(member.title or ""),
+        safe_sheet_value(member.organization or ""),
         "Yes" if record else "No",
-        record.check_in.name if record else "",
+        safe_sheet_value(record.check_in.name) if record else "",
         _format_timestamp(record.created_at) if record else "",
-        _scanned_by(record) if record else "",
+        safe_sheet_value(_scanned_by(record)) if record else "",
     ]
 
 

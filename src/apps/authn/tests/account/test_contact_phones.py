@@ -211,6 +211,21 @@ class ContactPhoneTests(APITestCase):
         self.assertEqual(response.data["message"], "Verification code sent via SMS.")
 
     @patch("apps.authn.views.account.contact_phones.request_phone_verification")
+    def test_request_verification_is_rate_limited_per_user(self, mock_request):
+        # An authenticated caller cannot pump unlimited SMS (real SNS spend): the
+        # per-user throttle (5/minute) fires regardless of destination rotation.
+        from django.core.cache import cache
+
+        cache.clear()
+        self.addCleanup(cache.clear)
+        mock_request.return_value = {"message": "sent"}
+        phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
+        statuses = [
+            self.client.post(f"/authn/contact-phones/{phone.pk}/request-verification/").status_code for _ in range(6)
+        ]
+        self.assertEqual(statuses[-1], 429)
+
+    @patch("apps.authn.views.account.contact_phones.request_phone_verification")
     def test_request_verification_not_found_returns_400(self, mock_request):
         mock_request.side_effect = AuthChallengeInvalid("nope")
         phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")

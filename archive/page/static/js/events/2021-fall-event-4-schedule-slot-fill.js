@@ -4,20 +4,20 @@ $(document).ready(function () {
             if (data.values[i][3] == "CAP") {
                 let track = data.values[i][0];
                 let order = data.values[i][1];
-                $(".capr" + order + "t" + track).prepend(data.values[i][4]);
-                $(".caporgr" + order + "t" + track).prepend(data.values[i][7]);
+                prependSheetText(".capr" + order + "t" + track, data.values[i][4]);
+                prependSheetText(".caporgr" + order + "t" + track, data.values[i][7]);
                 document.getElementById("hover" + order + "" + track).title = data.values[i][11];
             } else if (data.values[i][3] == "CSE") {
                 let track = data.values[i][0];
                 let order = data.values[i][1];
-                $(".cser" + order + "t" + track).prepend(data.values[i][4]);
-                $(".cseorgr" + order + "t" + track).prepend(data.values[i][7]);
+                prependSheetText(".cser" + order + "t" + track, data.values[i][4]);
+                prependSheetText(".cseorgr" + order + "t" + track, data.values[i][7]);
                 document.getElementById("hover" + order + "" + track).title = data.values[i][11];
             } else if (data.values[i][3] == "CEE") {
                 let track = data.values[i][0];
                 let order = data.values[i][1];
-                $(".ceer" + order + "t" + track).prepend(data.values[i][4]);
-                $(".ceeorgr" + order + "t" + track).prepend(data.values[i][7]);
+                prependSheetText(".ceer" + order + "t" + track, data.values[i][4]);
+                prependSheetText(".ceeorgr" + order + "t" + track, data.values[i][7]);
                 document.getElementById("hover" + order + "" + track).title = data.values[i][11];
             } else {
                 console.log("Error 01 occured");

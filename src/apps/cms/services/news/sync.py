@@ -9,6 +9,7 @@ from apps.cms.models import NewsArticle
 
 from .feed_parser import extract_image_url, extract_summary, fetch_feed, parse_feed_items, parse_pub_date
 from .scraper import scrape_article
+from .url_guard import has_allowed_scheme
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +63,16 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
             except (TypeError, ValueError):
                 logger.debug("Failed to serialize raw XML for %s", item.get("guid", "unknown"))
 
+            # The link is attacker-influenced (it comes straight from the remote
+            # feed). Only persist/scrape http(s) URLs so a file:// or javascript:
+            # link can never be stored as a rendered href or fetched by the
+            # scraper. The fetch itself is additionally IP/redirect-guarded.
+            raw_link = item["link"]
+            safe_link = raw_link[:1000] if has_allowed_scheme(raw_link) else ""
+
             defaults = {
                 "title": item["title"][:500],
-                "source_url": item["link"][:1000],
+                "source_url": safe_link,
                 "summary": extract_summary(item["description"]),
                 "image_url": extract_image_url(item["description"])[:1000],
                 "content": item["description"],
@@ -78,7 +86,8 @@ def sync_news(feed_url: str | None = None, source_key: str = "ucmerced") -> dict
                 source_guid=guid,
                 defaults=defaults,
             )
-            articles_to_scrape.append((article.pk, article.source_url))
+            if article.source_url:
+                articles_to_scrape.append((article.pk, article.source_url))
 
             if was_created:
                 created += 1

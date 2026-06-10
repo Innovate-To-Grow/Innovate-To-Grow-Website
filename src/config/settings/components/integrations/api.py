@@ -22,6 +22,15 @@ REST_FRAMEWORK = {
         "login": "10/minute",
         "email_code_request": "30/minute",
         "email_code_verify": "60/minute",
+        # Per-authenticated-user cap on SMS verification sends. Each send spends
+        # real AWS SNS money to an attacker-supplied destination, and the
+        # service-level cap is keyed per destination number (bypassable by
+        # rotating numbers), so this per-actor limit bounds toll-fraud / pumping.
+        "phone_code_request": "5/minute",
+        # Per-authenticated-user cap on email verification-code sends (the shared
+        # email_code_request throttle is anon-only and a no-op once authenticated,
+        # so it cannot stop bombing an attacker-supplied address).
+        "email_code_user_request": "5/minute",
         "past_project_share": "10/minute",
         "past_project_ai_search": "10/minute",
         "contact_email_create": "5/hour",

@@ -19,7 +19,7 @@ from apps.authn.serializers import (
     DeleteAccountCodeVerifySerializer,
 )
 from apps.authn.services import AuthChallengeInvalid
-from apps.authn.throttles import EmailCodeRequestThrottle, EmailCodeVerifyThrottle
+from apps.authn.throttles import EmailCodeUserRequestThrottle, EmailCodeVerifyThrottle
 
 from ..helpers import challenge_error_response
 
@@ -35,7 +35,7 @@ class AccountEmailsView(APIView):
 
 class ChangePasswordCodeRequestView(APIView):
     permission_classes = [IsAuthenticated]
-    throttle_classes = [EmailCodeRequestThrottle]
+    throttle_classes = [EmailCodeUserRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -82,7 +82,7 @@ class ChangePasswordCodeConfirmView(APIView):
 
 class DeleteAccountCodeRequestView(APIView):
     permission_classes = [IsAuthenticated]
-    throttle_classes = [EmailCodeRequestThrottle]
+    throttle_classes = [EmailCodeUserRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

@@ -15,6 +15,7 @@ class CMSPreviewAPITest(TestCase):
         self.staff = Member.objects.create_user(
             password="testpass123",
             is_staff=True,
+            admin_apps=["cms"],
         )
 
     def test_preview_store_requires_staff(self):

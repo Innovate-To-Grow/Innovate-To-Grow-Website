@@ -3,7 +3,10 @@
 import ipaddress
 
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
+
+from apps.core.access import user_can_access_app
 
 IP_GEO_CACHE_PREFIX = "ip_geo:"
 IP_GEO_CACHE_TTL = 86400
@@ -12,6 +15,12 @@ IP_GEO_CACHE_TTL = 86400
 def ip_geo_lookup_view(request):
     """Look up geolocation for an IP address, cached for 24 hours."""
     import requests as http_requests
+
+    # ``admin_view`` only enforces is_staff, and this is a module-level function
+    # (no ModelAdmin ``self``), so re-check per-app access directly: page-view IPs
+    # are visitor PII and the lookup hits an external geolocation service.
+    if not user_can_access_app(request.user, "cms"):
+        raise PermissionDenied("You do not have permission to access page-view analytics.")
 
     ip = request.GET.get("ip", "").strip()
     if not ip:

@@ -1,5 +1,6 @@
 from urllib.parse import urlencode, urlsplit
 
+from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from django.utils.crypto import constant_time_compare
 from django.utils.decorators import method_decorator
@@ -35,10 +36,12 @@ def _safe_authorize_next_path(request):
 
 
 def _redirect_to_admin_login(request):
-    login_url = f"{ADMIN_LOGIN_PATH}?{urlencode({'next': _safe_authorize_next_path(request)})}"
-    if not url_has_allowed_host_and_scheme(login_url, allowed_hosts=_same_host_allowed_hosts(request)):
-        login_url = ADMIN_LOGIN_PATH
-    return HttpResponseRedirect(login_url)
+    next_path = _safe_authorize_next_path(request)
+    if not url_has_allowed_host_and_scheme(next_path, allowed_hosts=_same_host_allowed_hosts(request)):
+        # Unreachable through a normal request (next_path is already vetted);
+        # drop the ?next= entirely rather than redirect to an unvetted target.
+        return HttpResponseRedirect(ADMIN_LOGIN_PATH)
+    return redirect_to_login(next_path, login_url=ADMIN_LOGIN_PATH)
 
 
 def _redirect_to_loopback_callback(redirect_uri, *, code, state):

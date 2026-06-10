@@ -1,9 +1,8 @@
-FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+# Re-exported from the shared util so existing imports of these names keep
+# working while the neutralization logic lives in one place.
+from apps.core.services.sheets_safety import FORMULA_TRIGGERS, safe_sheet_value
 
-
-def safe_sheet_value(value) -> str:
-    text = str(value or "")
-    return f"'{text}" if text.startswith(FORMULA_TRIGGERS) else text
+__all__ = ["FORMULA_TRIGGERS", "safe_sheet_value", "build_header", "build_row"]
 
 
 def build_header() -> list[str]:

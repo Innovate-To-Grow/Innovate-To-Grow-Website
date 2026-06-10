@@ -28,7 +28,7 @@ from apps.authn.services import (
     resend_contact_email_verification,
     verify_contact_email_code,
 )
-from apps.authn.throttles import ContactEmailCreateThrottle, EmailCodeRequestThrottle, EmailCodeVerifyThrottle
+from apps.authn.throttles import ContactEmailCreateThrottle, EmailCodeUserRequestThrottle, EmailCodeVerifyThrottle
 
 from ..helpers import challenge_error_response
 
@@ -115,7 +115,10 @@ class ContactEmailDetailView(APIView):
 
 class ContactEmailRequestVerificationView(APIView):
     permission_classes = [IsAuthenticated]
-    throttle_classes = [EmailCodeRequestThrottle]
+    # Per-user cap: the anon EmailCodeRequestThrottle never fires for an
+    # authenticated caller, leaving SES sends to an attacker-supplied address
+    # unbounded.
+    throttle_classes = [EmailCodeUserRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):

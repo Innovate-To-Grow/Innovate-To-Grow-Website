@@ -75,18 +75,18 @@ class FeedParserTest(TestCase):
         # All paragraphs are <= 20 chars, so no summary qualifies.
         self.assertEqual(extract_summary("<p>tiny</p><p>also short</p>"), "")
 
-    @patch("apps.cms.services.news.feed_parser.urlopen")
-    def test_fetch_feed_reads_response_bytes(self, mock_urlopen):
+    @patch("apps.cms.services.news.feed_parser.safe_urlopen")
+    def test_fetch_feed_reads_response_bytes(self, mock_open):
         mock_resp = MagicMock()
         mock_resp.read.return_value = b"<rss></rss>"
-        mock_urlopen.return_value.__enter__.return_value = mock_resp
+        mock_open.return_value.__enter__.return_value = mock_resp
 
         result = fetch_feed("https://example.com/feed")
 
         self.assertEqual(result, b"<rss></rss>")
-        # Custom user-agent header is sent with the request.
-        request_arg = mock_urlopen.call_args[0][0]
-        self.assertEqual(request_arg.full_url, "https://example.com/feed")
+        # The fetch is routed through the SSRF guard with the custom user-agent.
+        self.assertEqual(mock_open.call_args[0][0], "https://example.com/feed")
+        self.assertEqual(mock_open.call_args[1]["headers"]["User-Agent"], "ITG-NewsSync/1.0")
 
 
 SAMPLE_PAGE_HTML = """
@@ -109,9 +109,9 @@ SAMPLE_PAGE_HTML = """
 
 
 class ScraperTest(TestCase):
-    @patch("apps.cms.services.news.scraper.urllib.request.urlopen")
-    def test_scrape_article_extracts_fields(self, mock_urlopen):
-        mock_resp = mock_urlopen.return_value.__enter__.return_value
+    @patch("apps.cms.services.news.scraper.safe_urlopen")
+    def test_scrape_article_extracts_fields(self, mock_open):
+        mock_resp = mock_open.return_value.__enter__.return_value
         mock_resp.read.return_value = SAMPLE_PAGE_HTML.encode("utf-8")
 
         result = scrape_article("https://news.ucmerced.edu/news/test")
@@ -119,9 +119,9 @@ class ScraperTest(TestCase):
         self.assertEqual(result["hero_caption"], "Photo by Jane Doe")
         self.assertIn("Full scraped body content", result["body_html"])
 
-    @patch("apps.cms.services.news.scraper.urllib.request.urlopen")
-    def test_scrape_article_handles_missing_elements(self, mock_urlopen):
-        mock_resp = mock_urlopen.return_value.__enter__.return_value
+    @patch("apps.cms.services.news.scraper.safe_urlopen")
+    def test_scrape_article_handles_missing_elements(self, mock_open):
+        mock_resp = mock_open.return_value.__enter__.return_value
         mock_resp.read.return_value = b"<html><body><p>Minimal page</p></body></html>"
 
         result = scrape_article("https://news.ucmerced.edu/news/test")
@@ -129,10 +129,10 @@ class ScraperTest(TestCase):
         self.assertEqual(result["hero_caption"], "")
         self.assertEqual(result["body_html"], "")
 
-    @patch("apps.cms.services.news.scraper.urllib.request.urlopen")
-    def test_scrape_article_relative_image_url(self, mock_urlopen):
+    @patch("apps.cms.services.news.scraper.safe_urlopen")
+    def test_scrape_article_relative_image_url(self, mock_open):
         page = '<html><body><article class="node-news"><div class="field-name-field-news-hero-image"><img src="/sites/img.jpg" /></div></article></body></html>'
-        mock_resp = mock_urlopen.return_value.__enter__.return_value
+        mock_resp = mock_open.return_value.__enter__.return_value
         mock_resp.read.return_value = page.encode("utf-8")
 
         result = scrape_article("https://news.ucmerced.edu/news/test")
@@ -255,6 +255,20 @@ RSS_ONE = b"""<?xml version="1.0" encoding="utf-8"?>
   </channel>
 </rss>"""
 
+RSS_FILE_SCHEME_LINK = b"""<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <item>
+      <title>Malicious Link Article</title>
+      <link>file:///etc/passwd</link>
+      <description>&lt;p&gt;A reasonably long body paragraph for the summary text.&lt;/p&gt;</description>
+      <pubDate>Mon, 03 Mar 2025 12:00:00 +0000</pubDate>
+      <dc:creator>Author</dc:creator>
+      <guid isPermaLink="false">guid-evil-link</guid>
+    </item>
+  </channel>
+</rss>"""
+
 
 class SyncNewsBranchTest(TestCase):
     @patch("apps.cms.services.news.sync.scrape_article", side_effect=Exception("scrape error"))
@@ -308,6 +322,18 @@ class SyncNewsBranchTest(TestCase):
         # Article was still created in phase 1.
         self.assertEqual(result["created"], 1)
         self.assertEqual(NewsArticle.objects.count(), 1)
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_sync_drops_non_http_link_and_never_scrapes_it(self, mock_fetch, mock_scrape):
+        # SSRF defense-in-depth: a file:// link from the remote feed must not be
+        # stored as source_url and must not be handed to the scraper.
+        mock_fetch.return_value = RSS_FILE_SCHEME_LINK
+        result = sync_news()
+        self.assertEqual(result["created"], 1)
+        article = NewsArticle.objects.get(source_guid="guid-evil-link")
+        self.assertEqual(article.source_url, "")
+        mock_scrape.assert_not_called()
 
     @patch("apps.cms.services.news.sync.scrape_article")
     @patch("apps.cms.services.news.sync.fetch_feed")

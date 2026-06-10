@@ -3,11 +3,11 @@ function format(d) {
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
         '<tr>' +
         '<td><b>Abstract:</b></td>' +
-        '<td>' + d.Abstract + '</td>' +
+        '<td>' + escapeSheetText(d.Abstract) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td><b>Student Names:</b></td>' +
-        '<td>' + d["Student Names"] + '</td>' +
+        '<td>' + escapeSheetText(d["Student Names"]) + '</td>' +
         '</tr>' +
         '</table>';
 }
@@ -46,6 +46,7 @@ $(document).ready(function () {
 function fnLoadDataTableInstance() {
     // #example refers to the html table, 'id="example"'
     console.log("second");
+    var sheetTextRenderer = $.fn.dataTable.render.text();
     var table = $('#example').DataTable({
         dom: 'Bfrtip',
         pageLength: 10,
@@ -54,14 +55,14 @@ function fnLoadDataTableInstance() {
         },
         data: datas,
         columns: [
-            {"data": "Track"},
-            {"data": "Year-Semester"},
-            {"data": "Class"},
-            {"data": "Team#"},
-            {"data": "Team Name"},
-            {"data": "Project Title"},
-            {"data": "Organization"},
-            {"data": "Industry"},
+            {"data": "Track", "render": sheetTextRenderer},
+            {"data": "Year-Semester", "render": sheetTextRenderer},
+            {"data": "Class", "render": sheetTextRenderer},
+            {"data": "Team#", "render": sheetTextRenderer},
+            {"data": "Team Name", "render": sheetTextRenderer},
+            {"data": "Project Title", "render": sheetTextRenderer},
+            {"data": "Organization", "render": sheetTextRenderer},
+            {"data": "Industry", "render": sheetTextRenderer},
             {
                 "className": 'details-control',
                 "orderable": false,
@@ -70,10 +71,12 @@ function fnLoadDataTableInstance() {
             },
             {
                 "data": "Abstract",
+                "render": sheetTextRenderer,
                 "bVisible": false
             },
             {
                 "data": "Student Names",
+                "render": sheetTextRenderer,
                 "bVisible": false
             }
         ],

@@ -1,8 +1,10 @@
 import json
 
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.utils import timezone
 
+from apps.core.access import user_can_access_app
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import (
     ChatConversation,
@@ -22,6 +24,9 @@ TITLE_MAX_LENGTH = 200
 
 def chat_command_view(request, conversation_id):
     """Dispatch a slash-command POSTed from the chat input."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     try:

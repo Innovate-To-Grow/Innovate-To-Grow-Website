@@ -61,11 +61,26 @@ describe('sessionStore', () => {
       expect(store.getSessionId()).toBe(id);
     });
 
-    it('mints a fallback id when crypto.randomUUID is unavailable', () => {
-      // Drop the Web Crypto UUID API to exercise the non-crypto fallback.
+    it('falls back to crypto.getRandomValues when randomUUID is unavailable', () => {
+      // randomUUID is missing on insecure (plain-HTTP) contexts; the id must
+      // still come from a cryptographically secure source.
+      const getRandomValues = vi.fn((bytes: Uint8Array) => {
+        bytes.fill(0xab);
+        return bytes;
+      });
+      vi.stubGlobal('crypto', {getRandomValues});
+      const id = store.getSessionId();
+      expect(getRandomValues).toHaveBeenCalledTimes(1);
+      expect(id).toBe(`s-${'ab'.repeat(16)}`);
+    });
+
+    it('mints unique last-resort ids when Web Crypto is entirely absent', () => {
+      // Only synthetic test environments lack crypto altogether.
       vi.stubGlobal('crypto', {});
       const id = store.getSessionId();
-      expect(id).toMatch(/^s-\d+-/);
+      expect(id).toMatch(/^s-[0-9a-z]+-[0-9a-z]+$/);
+      sessionStorage.clear();
+      expect(store.getSessionId()).not.toBe(id);
     });
   });
 

@@ -1,7 +1,8 @@
 import logging
-import urllib.request
 
 from bs4 import BeautifulSoup
+
+from .url_guard import safe_urlopen
 
 logger = logging.getLogger(__name__)
 
@@ -9,9 +10,12 @@ _TIMEOUT = 15
 
 
 def scrape_article(url: str) -> dict:
-    """Fetch a UC Merced news page and extract hero image, caption, and body HTML."""
-    req = urllib.request.Request(url, headers={"User-Agent": "ITG-News-Scraper/1.0"})
-    with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # noqa: S310
+    """Fetch a UC Merced news page and extract hero image, caption, and body HTML.
+
+    ``url`` originates from a remote feed's ``<link>`` element, so it is fetched
+    through ``safe_urlopen`` (SSRF guard) rather than ``urlopen`` directly.
+    """
+    with safe_urlopen(url, timeout=_TIMEOUT, headers={"User-Agent": "ITG-News-Scraper/1.0"}) as resp:
         html = resp.read().decode("utf-8", errors="replace")
 
     soup = BeautifulSoup(html, "html.parser")

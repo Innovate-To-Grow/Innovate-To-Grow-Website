@@ -1,13 +1,18 @@
 import json
 
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 
+from apps.core.access import user_can_access_app
 from apps.system_intelligence.models import ChatConversation
 from apps.system_intelligence.services import actions as system_intelligence_actions
 
 
 def conversations_fragment(request):
     """Return JSON list of conversations for the current user."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     convos = ChatConversation.objects.filter(created_by=request.user).values("id", "title", "updated_at", "mode")
     return JsonResponse(
         {
@@ -26,6 +31,9 @@ def conversations_fragment(request):
 
 def new_conversation_view(request):
     """Create a new conversation and return its ID."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     convo = ChatConversation.objects.create(created_by=request.user)
@@ -34,6 +42,9 @@ def new_conversation_view(request):
 
 def chat_view(request, conversation_id):
     """Return JSON messages for a conversation."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     try:
         convo = ChatConversation.objects.get(id=conversation_id, created_by=request.user)
     except ChatConversation.DoesNotExist:
@@ -62,6 +73,9 @@ def chat_view(request, conversation_id):
 
 def chat_delete_view(request, conversation_id):
     """Delete a conversation."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     deleted, _ = ChatConversation.objects.filter(id=conversation_id, created_by=request.user).delete()
@@ -72,6 +86,9 @@ def chat_delete_view(request, conversation_id):
 
 def chat_rename_view(request, conversation_id):
     """Rename a conversation."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     try:

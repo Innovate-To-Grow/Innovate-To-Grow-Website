@@ -3,6 +3,7 @@ import uuid
 from django.contrib import messages
 from django.contrib.admin import helpers
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponseBase, HttpResponseRedirect
 from django.template.response import TemplateResponse
@@ -164,6 +165,12 @@ class ConfirmOnSaveMixin:
         return HttpResponseRedirect(confirm_url)
 
     def _confirm_change_view(self, request):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without this model's app cannot reach the change/delete
+        # confirmation (and its data diff). Execution is additionally gated by
+        # the underlying ``changeform_view``/``delete_view`` permission checks.
+        if not self.has_view_permission(request):
+            raise PermissionDenied
         session_key = self._session_key()
         pending = request.session.get(session_key)
         if not pending:
@@ -371,6 +378,10 @@ class ConfirmOnSaveMixin:
         return self.opts.verbose_name
 
     def _confirm_action_view(self, request):
+        # See _confirm_change_view: gate the bulk-action confirmation on per-app
+        # access (execution re-checks via response_action / the action itself).
+        if not self.has_view_permission(request):
+            raise PermissionDenied
         session_key = self._session_action_key()
         pending = request.session.get(session_key)
         if not pending:

@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
@@ -81,6 +82,10 @@ class ContactPhoneAdmin(BaseModelAdmin):
         return custom + super().get_urls()
 
     def _normalize_preview_view(self, request):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the authn app cannot preview member phone PII.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to normalize phone numbers.")
         phone_changes, registration_changes = compute_phone_changes()
         changed_phones = [change for change in phone_changes if change["changed"] or change["is_duplicate"]]
         context = {
@@ -98,6 +103,10 @@ class ContactPhoneAdmin(BaseModelAdmin):
         return render(request, "admin/authn/contactphone/normalize_preview.html", context)
 
     def _normalize_apply_view(self, request):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the authn app cannot mutate member phone records.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to normalize phone numbers.")
         if request.method != "POST":
             return redirect(reverse("admin:authn_contactphone_normalize_preview"))
 

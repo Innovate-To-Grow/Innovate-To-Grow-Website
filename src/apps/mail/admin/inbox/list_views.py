@@ -1,12 +1,14 @@
 """Inbox list admin views."""
 
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
 import apps.mail.admin.inbox as inbox_api
+from apps.core.access import user_can_access_app
 from apps.core.models import GmailAccessAccount
 
 from .helpers import parse_folder, parse_limit
@@ -14,6 +16,10 @@ from .helpers import parse_folder, parse_limit
 
 def inbox_list_view(request):
     """Render the inbox shell instantly; JS fetches content asynchronously."""
+    # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+    # per-app access itself.
+    if not user_can_access_app(request.user, "mail"):
+        raise PermissionDenied("You do not have permission to access the mail inbox.")
     context = {
         **admin.site.each_context(request),
         "title": "Gmail Inbox",
@@ -24,6 +30,8 @@ def inbox_list_view(request):
 
 def inbox_fragment_view(request):
     """Return HTML partial for inbox list and config stats."""
+    if not user_can_access_app(request.user, "mail"):
+        raise PermissionDenied("You do not have permission to access the mail inbox.")
     gmail_config = GmailAccessAccount.load()
     error_message = ""
     inbox_messages = []

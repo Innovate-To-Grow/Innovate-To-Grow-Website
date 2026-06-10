@@ -3,11 +3,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.event.throttles import PhoneCodeRequestThrottle
+
 
 class SendPhoneCodeView(APIView):
     """Send a verification SMS to a phone number (pre-registration, inline)."""
 
     permission_classes = [IsAuthenticated]
+    # Each send spends AWS SNS budget on a caller-supplied destination; bound
+    # per-actor abuse (the service cap is per-number and rotation bypasses it).
+    throttle_classes = [PhoneCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 
 from apps.cms.admin.layout.import_export import export_stylesheets_response, render_stylesheet_import
 from apps.core.admin import BaseModelAdmin
@@ -64,10 +65,18 @@ class StyleSheetAdmin(BaseModelAdmin):
         return super().changelist_view(request, {**(extra_context or {}), "show_import_buttons": True})
 
     def export_all_view(self, request):
+        # ``admin_view`` only enforces is_staff, so re-check per-app access before
+        # reading/exporting every style sheet.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to export style sheets.")
         queryset = self.get_queryset(request)
         return export_stylesheets_response(queryset)
 
     def import_view(self, request):
+        # Importing style sheets creates/updates records; require per-app change
+        # access because ``admin_view`` only enforces is_staff.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to import style sheets.")
         return render_stylesheet_import(
             self,
             request,

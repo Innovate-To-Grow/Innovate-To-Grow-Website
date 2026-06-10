@@ -107,7 +107,7 @@
     if (!raw) return "";
     try {
       const parsed = new URL(raw, window.location.origin);
-      if (!["http:", "https:"].includes(parsed.protocol)) return "";
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
       const isSameOrigin = parsed.origin === window.location.origin;
       if (isSameOrigin) {
         if (!parsed.pathname.startsWith("/admin/")) return "";
@@ -122,7 +122,11 @@
 
   app.link = function (href, text) {
     const safeHref = app.safeHref(href);
-    if (!safeHref) {
+    // safeHref only ever returns these shapes; re-checking at the sink keeps a
+    // javascript:/data: URL out of the anchor even if safeHref regresses.
+    const allowedShape =
+      safeHref.startsWith("/admin/") || safeHref.startsWith("https://") || safeHref.startsWith("http://");
+    if (!safeHref || !allowedShape) {
       const node = document.createElement("span");
       node.textContent = text;
       return node;

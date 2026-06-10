@@ -4,6 +4,7 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -24,6 +25,11 @@ class CampaignSendMixin:
 
     def send_campaign_confirm_view(self, request, object_id):
         """Final confirmation before sending."""
+        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+        # per-app access itself. State-changing flow (kicks off the background
+        # send) — require change access.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to send this campaign.")
         obj = EmailCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_emailcampaign_change", args=[object_id])
 

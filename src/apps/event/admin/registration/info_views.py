@@ -1,3 +1,4 @@
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 from django.http import JsonResponse
 
@@ -9,6 +10,10 @@ class RegistrationInfoViewsMixin:
     def _member_info_view(self, request, pk):
         from apps.authn.models import Member
 
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the event app cannot read member PII.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view this information.")
         try:
             member = Member.objects.get(pk=pk)
         except Member.DoesNotExist:
@@ -33,6 +38,10 @@ class RegistrationInfoViewsMixin:
 
     # noinspection PyMethodMayBeStatic
     def _event_info_view(self, request, pk):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the event app cannot read event details.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view this information.")
         try:
             event = Event.objects.prefetch_related("tickets", "questions").get(pk=pk)
         except Event.DoesNotExist:

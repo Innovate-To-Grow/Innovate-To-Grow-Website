@@ -1,6 +1,7 @@
 """Campaign send status views."""
 
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -11,6 +12,10 @@ from apps.mail.models import EmailCampaign, RecipientLog
 class CampaignStatusMixin:
     def send_campaign_status_view(self, request, object_id):
         """Live send progress page."""
+        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+        # per-app access itself.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view this campaign's status.")
         obj = EmailCampaign.objects.get(pk=object_id)
         context = {
             **self.admin_site.each_context(request),
@@ -23,6 +28,8 @@ class CampaignStatusMixin:
 
     def send_campaign_status_json(self, request, object_id):
         """JSON endpoint for polling send progress."""
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view this campaign's status.")
         status_cache_key = f"mail:campaign_status:{object_id}"
         cached = cache.get(status_cache_key)
         if cached is not None:

@@ -19,6 +19,7 @@ from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
+from apps.core.services.sheets_safety import safe_sheet_value
 from apps.system_intelligence.models import SystemIntelligenceExport
 from apps.system_intelligence.services.actions.context import current_conversation, current_user_id
 from apps.system_intelligence.services.actions.exceptions import ActionRequestError
@@ -147,8 +148,10 @@ def _render_cell(value: Any) -> Any:
         return value
     safe = json_safe(value)
     if isinstance(safe, str):
-        return safe[:MAX_CELL_CHARS]
-    return str(safe)[:MAX_CELL_CHARS]
+        # Neutralize formula/CSV injection: a leading =,+,-,@ string would be
+        # written as a live formula by openpyxl.
+        return safe_sheet_value(safe[:MAX_CELL_CHARS])
+    return safe_sheet_value(str(safe)[:MAX_CELL_CHARS])
 
 
 def _autosize_columns(sheet, headers, rows, selected):

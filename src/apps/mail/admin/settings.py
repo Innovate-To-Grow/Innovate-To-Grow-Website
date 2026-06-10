@@ -2,11 +2,13 @@
 
 from django import forms
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
+from apps.core.access import user_can_access_app
 from apps.core.admin.service_credentials.helpers import _normalize_phone_number, _send_test_email, _send_test_sms
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 
@@ -75,7 +77,16 @@ def get_mail_settings_urls():
     ]
 
 
+def _require_mail_access(request):
+    # ``admin_view`` only enforces is_staff, so these custom URLs must re-check
+    # per-app access themselves — Django never runs the per-app model permissions
+    # for a standalone admin view.
+    if not user_can_access_app(request.user, "mail"):
+        raise PermissionDenied("You do not have permission to access mail settings.")
+
+
 def mail_settings_view(request):
+    _require_mail_access(request)
     email_config = EmailServiceConfig.load()
     aws_config = AWSCredentialConfig.load()
     context = _notification_delivery_context(request, email_config, aws_config)
@@ -84,6 +95,7 @@ def mail_settings_view(request):
 
 
 def mail_settings_edit_view(request):
+    _require_mail_access(request)
     email_config = EmailServiceConfig.load()
     aws_config = AWSCredentialConfig.load()
     if request.method == "POST":
@@ -145,6 +157,7 @@ def _mask_key(value):
 
 
 def mail_settings_test_email_view(request):
+    _require_mail_access(request)
     config = EmailServiceConfig.load()
     settings_url = reverse("admin:mail_settings")
 
@@ -174,6 +187,7 @@ def mail_settings_test_email_view(request):
 
 
 def mail_settings_test_sms_view(request):
+    _require_mail_access(request)
     config = AWSCredentialConfig.load()
     settings_url = reverse("admin:mail_settings")
 
