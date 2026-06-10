@@ -2,6 +2,7 @@ import type {FormEvent} from 'react';
 import {PHONE_REGION_CHOICES} from '@/lib/phoneRegions';
 import {StatusAlert} from '../shared/StatusAlert';
 import {getDialCode} from './internal/helpers';
+import {PhoneConsentFields} from './PhoneConsentFields';
 import {
   canSubmitNationalPhone,
   formatNationalInputDisplay,
@@ -13,11 +14,13 @@ interface PhoneAddFormProps {
   addRegion: string;
   addPhoneNumber: string;
   addSubscribe: boolean;
+  addTermsAccepted: boolean;
   addLoading: boolean;
   addError: string | null;
   onRegionChange: (value: string) => void;
   onPhoneNumberChange: (value: string) => void;
   onSubscribeChange: (checked: boolean) => void;
+  onTermsAcceptedChange: (checked: boolean) => void;
   onSubmit: (event: FormEvent) => void;
   onCancel: () => void;
 }
@@ -26,17 +29,22 @@ export const PhoneAddForm = ({
   addRegion,
   addPhoneNumber,
   addSubscribe,
+  addTermsAccepted,
   addLoading,
   addError,
   onRegionChange,
   onPhoneNumberChange,
   onSubscribeChange,
+  onTermsAcceptedChange,
   onSubmit,
   onCancel,
 }: PhoneAddFormProps) => {
   const phoneDisplay = formatNationalInputDisplay(addRegion, addPhoneNumber);
   const phonePlaceholder =
     addRegion === '1-US' || addRegion === '1-CA' ? '(555) 123-4567' : 'Enter number without country code';
+  const hasPhoneNumber = addPhoneNumber.length > 0;
+  const canSubmitPhone = !hasPhoneNumber || canSubmitNationalPhone(addPhoneNumber, addRegion);
+  const canSubmitForm = addTermsAccepted && canSubmitPhone;
 
   return (
     <div className="email-center-add-form">
@@ -76,21 +84,31 @@ export const PhoneAddForm = ({
             aria-invalid={!canSubmitNationalPhone(addPhoneNumber, addRegion) && addPhoneNumber.length > 0}
             disabled={addLoading}
           />
+          <p className="auth-help-text phone-add-optional-help">The phone number field is optional.</p>
         </div>
-        <div className="auth-form-group" style={{justifyContent: 'center'}}>
-          <label className="email-center-toggle" style={{marginTop: '0.25rem'}} aria-label="Allow SMS Message">
-            <input type="checkbox" checked={addSubscribe} onChange={(event) => onSubscribeChange(event.target.checked)} disabled={addLoading} />
-            <span className="email-center-toggle-slider" />
-            <span className="email-center-toggle-label">Allow SMS Message</span>
-          </label>
-        </div>
+        <PhoneConsentFields
+          idPrefix="add-phone"
+          smsConsent={addSubscribe}
+          termsAccepted={addTermsAccepted}
+          disabled={addLoading}
+          onSmsConsentChange={onSubscribeChange}
+          onTermsAcceptedChange={onTermsAcceptedChange}
+        />
         <div className="account-action-row">
           <button
             type="submit"
             className="auth-form-submit account-action-primary"
-            disabled={addLoading || !canSubmitNationalPhone(addPhoneNumber, addRegion)}
+            disabled={addLoading || !canSubmitForm}
           >
-            {addLoading ? <><span className="auth-spinner" /> Adding...</> : 'Add Phone'}
+            {addLoading ? (
+              <>
+                <span className="auth-spinner" /> Adding...
+              </>
+            ) : hasPhoneNumber ? (
+              'Add Phone'
+            ) : (
+              'Save Preferences'
+            )}
           </button>
           <button type="button" className="auth-form-submit account-action-secondary" onClick={onCancel}>
             Cancel

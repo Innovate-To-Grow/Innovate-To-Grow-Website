@@ -47,11 +47,15 @@ export const PhoneCenter = () => {
                 <PhonePendingVerifyPanel
                     phone={pc.pendingNewPhone}
                     verifyCode={pc.verifyCode}
+                    smsConsent={pc.addSubscribe}
+                    termsAccepted={pc.addTermsAccepted}
                     verifyLoading={pc.verifyLoading}
                     verifyError={pc.verifyError}
                     resendLoading={pc.resendLoading}
                     abandonLoading={pc.abandonPendingLoading}
                     onVerifyCodeChange={pc.setVerifyCode}
+                    onSmsConsentChange={pc.setAddSubscribe}
+                    onTermsAcceptedChange={pc.setAddTermsAccepted}
                     onVerifySubmit={pc.handleVerifySubmit}
                     onResend={pc.handleResendPendingPhone}
                     onAbandon={() => void pc.handleAbandonPendingPhone()}
@@ -61,11 +65,13 @@ export const PhoneCenter = () => {
                     addRegion={pc.addRegion}
                     addPhoneNumber={pc.addPhoneNumber}
                     addSubscribe={pc.addSubscribe}
+                    addTermsAccepted={pc.addTermsAccepted}
                     addLoading={pc.addLoading}
                     addError={pc.addError}
                     onRegionChange={pc.handleAddRegionChange}
                     onPhoneNumberChange={pc.setAddPhoneNumber}
                     onSubscribeChange={pc.setAddSubscribe}
+                    onTermsAcceptedChange={pc.setAddTermsAccepted}
                     onSubmit={pc.handleAddSubmit}
                     onCancel={() => {
                         pc.setShowAddForm(false);

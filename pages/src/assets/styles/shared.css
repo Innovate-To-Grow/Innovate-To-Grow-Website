@@ -11,3 +11,36 @@
   text-decoration: underline;
   text-underline-offset: 0.125rem;
 }
+
+.phone-add-optional-help {
+  margin: 0;
+}
+
+.phone-add-consent-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.phone-add-consent-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  color: var(--account-text-secondary, #6b7280);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.phone-add-consent-option input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0.1rem 0 0;
+  accent-color: var(--account-primary, #003366);
+}
+
+.phone-add-consent-link {
+  color: var(--account-primary, #003366);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.125rem;
+}
