@@ -3,15 +3,20 @@ import type {ContactPhone} from '@/features/auth/api';
 import {CodeInput} from '../forms/CodeInput';
 import {StatusAlert} from '../shared/StatusAlert';
 import {formatPhoneDisplay} from './internal/helpers';
+import {PhoneConsentFields} from './PhoneConsentFields';
 
 interface PhonePendingVerifyPanelProps {
   phone: ContactPhone;
   verifyCode: string;
+  smsConsent: boolean;
+  termsAccepted: boolean;
   verifyLoading: boolean;
   verifyError: string | null;
   resendLoading: boolean;
   abandonLoading: boolean;
   onVerifyCodeChange: (value: string) => void;
+  onSmsConsentChange: (checked: boolean) => void;
+  onTermsAcceptedChange: (checked: boolean) => void;
   onVerifySubmit: (event: FormEvent) => void;
   onResend: () => void;
   onAbandon: () => void;
@@ -20,11 +25,15 @@ interface PhonePendingVerifyPanelProps {
 export const PhonePendingVerifyPanel = ({
   phone,
   verifyCode,
+  smsConsent,
+  termsAccepted,
   verifyLoading,
   verifyError,
   resendLoading,
   abandonLoading,
   onVerifyCodeChange,
+  onSmsConsentChange,
+  onTermsAcceptedChange,
   onVerifySubmit,
   onResend,
   onAbandon,
@@ -39,11 +48,19 @@ export const PhonePendingVerifyPanel = ({
       <div className="email-center-pending-verify-code">
         <CodeInput value={verifyCode} onChange={onVerifyCodeChange} disabled={verifyLoading} />
       </div>
+      <PhoneConsentFields
+        idPrefix="verify-phone"
+        smsConsent={smsConsent}
+        termsAccepted={termsAccepted}
+        disabled={verifyLoading || abandonLoading}
+        onSmsConsentChange={onSmsConsentChange}
+        onTermsAcceptedChange={onTermsAcceptedChange}
+      />
       <div className="email-center-pending-verify-actions">
         <button
           type="submit"
           className="auth-form-submit account-action-primary email-center-pending-verify-submit"
-          disabled={verifyLoading || verifyCode.length !== 6}
+          disabled={verifyLoading || verifyCode.length !== 6 || !termsAccepted}
         >
           {verifyLoading ? <><span className="auth-spinner" /> Submitting...</> : 'Submit code'}
         </button>

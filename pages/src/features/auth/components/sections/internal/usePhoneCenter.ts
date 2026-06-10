@@ -21,7 +21,8 @@ export const usePhoneCenter = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [addPhoneNumber, setAddPhoneNumber] = useState('');
     const [addRegion, setAddRegion] = useState('1-US');
-    const [addSubscribe, setAddSubscribe] = useState(true);
+    const [addSubscribe, setAddSubscribe] = useState(false);
+    const [addTermsAccepted, setAddTermsAccepted] = useState(false);
     const [addLoading, setAddLoading] = useState(false);
     const [addError, setAddError] = useState<string | null>(null);
     /** Created on server but not yet shown in the list until SMS verification succeeds. */
@@ -63,7 +64,8 @@ export const usePhoneCenter = () => {
         setVerifyError(null);
         setAddPhoneNumber('');
         setAddRegion('1-US');
-        setAddSubscribe(true);
+        setAddSubscribe(false);
+        setAddTermsAccepted(false);
         setAddError(null);
     };
 
@@ -84,6 +86,17 @@ export const usePhoneCenter = () => {
 
     const handleAddSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        if (!addTermsAccepted) {
+            setAddError('Please accept Terms of Service & Privacy Policy to continue.');
+            return;
+        }
+        if (!addPhoneNumber) {
+            setShowAddForm(false);
+            setAddSubscribe(false);
+            setAddTermsAccepted(false);
+            setAddError(null);
+            return;
+        }
         if (!canSubmitNationalPhone(addPhoneNumber, addRegion)) return;
         setAddLoading(true);
         setAddError(null);
@@ -96,7 +109,6 @@ export const usePhoneCenter = () => {
             });
             setAddPhoneNumber('');
             setAddRegion('1-US');
-            setAddSubscribe(true);
             setPendingNewPhone(created);
             setVerifyingId(created.id);
             setVerifyCode('');
@@ -133,12 +145,19 @@ export const usePhoneCenter = () => {
     const handleVerifySubmit = async (event: FormEvent) => {
         event.preventDefault();
         if (!verifyingId || verifyCode.length !== 6) return;
+        if (!addTermsAccepted) {
+            setVerifyError('Please accept Terms of Service & Privacy Policy to continue.');
+            return;
+        }
         const targetId = verifyingId;
         const wasPendingAdd = pendingNewPhone?.id === targetId;
         setVerifyLoading(true);
         setVerifyError(null);
         clearMessages();
         try {
+            if (wasPendingAdd && pendingNewPhone.subscribe !== addSubscribe) {
+                await updateContactPhone(targetId, {subscribe: addSubscribe});
+            }
             const updated = await verifyContactPhoneCode(targetId, verifyCode);
             setPhones((prev) => (wasPendingAdd ? [updated, ...prev] : prev.map((p) => (p.id === targetId ? updated : p))));
             setVerifyingId(null);
@@ -146,6 +165,8 @@ export const usePhoneCenter = () => {
             if (wasPendingAdd) {
                 setPendingNewPhone(null);
                 setShowAddForm(false);
+                setAddSubscribe(false);
+                setAddTermsAccepted(false);
             }
             setSuccessMessage('Phone number verified successfully.');
         } catch {
@@ -191,6 +212,8 @@ export const usePhoneCenter = () => {
             setVerifyingId(null);
             setVerifyCode('');
             setVerifyError(null);
+            setAddSubscribe(false);
+            setAddTermsAccepted(false);
         } catch {
             setError(USER_FACING_GENERIC_ERROR);
         } finally {
@@ -229,6 +252,8 @@ export const usePhoneCenter = () => {
         handleAddRegionChange,
         addSubscribe,
         setAddSubscribe,
+        addTermsAccepted,
+        setAddTermsAccepted,
         addLoading,
         addError,
         setAddError,

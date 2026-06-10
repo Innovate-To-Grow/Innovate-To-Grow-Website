@@ -100,3 +100,15 @@ class AWSCredentialConfigAdminTests(TestCase):
         self.assertNotContains(aws_response, "Default AI Model")
         self.assertEqual(system_response.status_code, 200)
         self.assertContains(system_response, "Default AI Model")
+
+    def test_change_view_only_renders_aws_credential_fields(self):
+        response = self.client.get(reverse("admin:core_awscredentialconfig_change", args=[self.config.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Access Key ID")
+        self.assertContains(response, "AWS Region")
+        self.assertNotContains(response, "SNS SMS")
+        self.assertNotContains(response, 'name="sms_from_number"')
+        self.assertNotContains(response, 'name="sms_message_template"')
+        self.assertNotContains(response, "SMS Origination Number")
+        self.assertNotContains(response, "SMS OTP Message Template")
