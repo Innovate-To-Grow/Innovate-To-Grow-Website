@@ -35,6 +35,7 @@ describe('MySharedLinksSection', () => {
     mockListMyShares.mockResolvedValue([share()]);
     render(<MySharedLinksSection />);
 
+    expect(await screen.findByRole('heading', {level: 2, name: 'Past Project Curation Shared Links'})).toBeInTheDocument();
     expect(await screen.findByText('Spring finalists')).toBeInTheDocument();
     const openLink = screen.getByRole('link', {name: /open/i});
     expect(openLink).toHaveAttribute('href', '/past-projects/share-1');

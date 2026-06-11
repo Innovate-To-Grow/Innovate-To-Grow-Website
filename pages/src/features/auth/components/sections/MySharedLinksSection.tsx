@@ -11,7 +11,7 @@ export const MySharedLinksSection = () => {
 
   return (
     <div className="account-section">
-      <h2 className="account-section-title">My Shared Links</h2>
+      <h2 className="account-section-title">Past Project Curation Shared Links</h2>
 
       {successMessage ? <StatusAlert tone="success" message={successMessage} style={{marginBottom: '1rem'}} /> : null}
       {error ? <StatusAlert tone="error" message={error} style={{marginBottom: '1rem'}} /> : null}
