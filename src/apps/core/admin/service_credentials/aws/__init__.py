@@ -16,7 +16,13 @@ from ..test_send_mixin import TestSendViewsMixin
 class AWSCredentialConfigForm(forms.ModelForm):
     class Meta:
         model = AWSCredentialConfig
-        fields = "__all__"
+        fields = (
+            "name",
+            "is_active",
+            "access_key_id",
+            "secret_access_key",
+            "default_region",
+        )
         widgets = {
             "secret_access_key": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
         }
@@ -53,14 +59,7 @@ class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
             _("AWS Credentials"),
             {
                 "fields": ("access_key_id", "secret_access_key", "default_region"),
-                "description": "Shared IAM access key and AWS region used by SES email, SNS SMS, and Bedrock.",
-            },
-        ),
-        (
-            _("SNS SMS"),
-            {
-                "fields": ("sms_from_number", "sms_message_template"),
-                "description": "SNS origination number and OTP template used for phone verification.",
+                "description": "Shared IAM access key and AWS region used by AWS-backed services.",
             },
         ),
         (_("Info"), {"fields": ("updated_at",)}),

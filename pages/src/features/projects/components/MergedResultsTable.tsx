@@ -75,7 +75,6 @@ const ProjectNoteInsertControl = ({
       role="group"
       aria-label="Note insert tools"
     >
-      <span className="project-grid-note-insert-label">Curation</span>
       <div className="project-grid-note-insert-actions">
         <button
           type="button"

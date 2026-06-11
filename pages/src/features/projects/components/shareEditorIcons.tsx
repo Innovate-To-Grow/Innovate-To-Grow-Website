@@ -37,6 +37,36 @@ export function ClearFormattingIcon() {
   );
 }
 
+export function ExpandEditorIcon() {
+  return (
+    <svg className="project-grid-rich-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M8.75 4.75h-4v4" />
+      <path d="m4.75 4.75 5.5 5.5" />
+      <path d="M15.25 4.75h4v4" />
+      <path d="m19.25 4.75-5.5 5.5" />
+      <path d="M8.75 19.25h-4v-4" />
+      <path d="m4.75 19.25 5.5-5.5" />
+      <path d="M15.25 19.25h4v-4" />
+      <path d="m19.25 19.25-5.5-5.5" />
+    </svg>
+  );
+}
+
+export function CollapseEditorIcon() {
+  return (
+    <svg className="project-grid-rich-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M10.25 4.75v5.5h-5.5" />
+      <path d="m4.75 10.25 5.5-5.5" />
+      <path d="M13.75 4.75v5.5h5.5" />
+      <path d="m19.25 10.25-5.5-5.5" />
+      <path d="M10.25 19.25v-5.5h-5.5" />
+      <path d="m4.75 13.75 5.5 5.5" />
+      <path d="M13.75 19.25v-5.5h5.5" />
+      <path d="m19.25 13.75-5.5 5.5" />
+    </svg>
+  );
+}
+
 export function InsertProjectsIcon() {
   return (
     <svg className="project-grid-rich-editor-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
