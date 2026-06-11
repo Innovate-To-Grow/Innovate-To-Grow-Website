@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
@@ -577,6 +577,26 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
         self.assertEqual(meta["reason"], "aws_error")
         # Codes outside the allowlist collapse to a generic identifier.
         self.assertEqual(meta["error_code"], "AwsError")
+        self.assertEqual(meta["error_message"], PUBLIC_ERROR_MESSAGES["aws_error"])
+
+    def test_fetch_suppressed_destinations_masks_botocore_error_text(self):
+        # A transport-level BotoCoreError (e.g. endpoint connection failure) must
+        # also collapse to the fixed public message — its text can embed the
+        # internal endpoint URL, which must never reach the JSON payload.
+        client = MagicMock()
+        now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
+        client.list_suppressed_destinations.side_effect = EndpointConnectionError(
+            endpoint_url="https://secret-internal-host.vpc.local"
+        )
+
+        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+            rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
+
+        self.assertEqual(rows, [])
+        self.assertFalse(meta["available"])
+        self.assertEqual(meta["reason"], "aws_error")
+        self.assertEqual(meta["error_code"], "AwsError")
+        self.assertNotIn("secret-internal-host", meta["error_message"])
         self.assertEqual(meta["error_message"], PUBLIC_ERROR_MESSAGES["aws_error"])
 
 

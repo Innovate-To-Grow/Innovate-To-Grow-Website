@@ -7,7 +7,8 @@ malicious remote feed) reach internal services or read local files.
 
 import ipaddress
 import socket
-from unittest.mock import patch
+import urllib.request
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
@@ -15,6 +16,7 @@ from apps.cms.services.news import url_guard
 from apps.cms.services.news.url_guard import (
     UnsafeUrlError,
     _guarded_create_connection,
+    _resolve_ips,
     has_allowed_scheme,
     safe_urlopen,
     validate_public_http_url,
@@ -175,3 +177,128 @@ class GuardedCreateConnectionTest(TestCase):
         with patch("apps.cms.services.news.url_guard.socket.getaddrinfo", return_value=_addrinfo("127.0.0.1", port=80)):
             with self.assertRaises(UnsafeUrlError):
                 _guarded_create_connection("rebind.evil", 80, 10, None)
+
+
+class ResolveIpsTest(TestCase):
+    def test_maps_getaddrinfo_results_to_ip_addresses(self):
+        with patch(
+            "apps.cms.services.news.url_guard.socket.getaddrinfo",
+            return_value=_addrinfo("93.184.216.34", "203.0.113.5"),
+        ) as mock_gai:
+            ips = _resolve_ips("example.com", 443)
+        self.assertEqual(ips, _ips("93.184.216.34", "203.0.113.5"))
+        mock_gai.assert_called_once_with("example.com", 443, type=socket.SOCK_STREAM)
+
+
+class ValidateEdgeCaseTest(TestCase):
+    def test_rejects_url_without_host(self):
+        with self.assertRaises(UnsafeUrlError):
+            validate_public_http_url("http:///just/a/path")
+
+    def test_rejects_invalid_port(self):
+        # Out-of-range port: SplitResult.port raises ValueError on access.
+        with self.assertRaises(UnsafeUrlError):
+            validate_public_http_url("http://example.com:99999/")
+
+    def test_rejects_host_with_no_dns_records(self):
+        with patch("apps.cms.services.news.url_guard._resolve_ips", return_value=[]):
+            with self.assertRaises(UnsafeUrlError):
+                validate_public_http_url("http://no-records.example/")
+
+
+class GuardedCreateConnectionErrorTest(TestCase):
+    def test_reraises_last_os_error_when_every_address_refuses(self):
+        # All validated addresses are public but each connect() fails; the last
+        # OSError propagates rather than being swallowed.
+        with patch(
+            "apps.cms.services.news.url_guard.socket.getaddrinfo",
+            return_value=_addrinfo("8.8.8.8", "1.1.1.1", port=80),
+        ):
+            with patch(
+                "apps.cms.services.news.url_guard.socket.create_connection",
+                side_effect=OSError("connection refused"),
+            ) as mock_conn:
+                with self.assertRaises(OSError):
+                    _guarded_create_connection("example.com", 80, 10, None)
+        self.assertEqual(mock_conn.call_count, 2)
+
+    def test_raises_unsafe_when_resolution_is_empty(self):
+        with patch("apps.cms.services.news.url_guard.socket.getaddrinfo", return_value=[]):
+            with patch("apps.cms.services.news.url_guard.socket.create_connection") as mock_conn:
+                with self.assertRaises(UnsafeUrlError):
+                    _guarded_create_connection("example.com", 80, 10, None)
+        mock_conn.assert_not_called()
+
+
+class GuardedHTTPConnectionTest(TestCase):
+    def test_connect_pins_socket_without_tunnel(self):
+        conn = url_guard._GuardedHTTPConnection("example.com", 80)
+        sentinel = object()
+        with patch.object(url_guard, "_guarded_create_connection", return_value=sentinel) as gc:
+            conn.connect()
+        self.assertIs(conn.sock, sentinel)
+        gc.assert_called_once_with(conn.host, conn.port, conn.timeout, conn.source_address)
+
+    def test_connect_runs_tunnel_when_configured(self):
+        conn = url_guard._GuardedHTTPConnection("example.com", 80)
+        conn.set_tunnel("proxy.internal", 8080)
+        with patch.object(url_guard, "_guarded_create_connection", return_value=object()):
+            with patch.object(conn, "_tunnel") as tunnel:
+                conn.connect()
+        tunnel.assert_called_once()
+
+
+class GuardedHTTPSConnectionTest(TestCase):
+    def test_connect_wraps_socket_with_host_sni_without_tunnel(self):
+        conn = url_guard._GuardedHTTPSConnection("example.com", 443)
+        raw_sock, wrapped = object(), object()
+        conn._context = MagicMock()
+        conn._context.wrap_socket.return_value = wrapped
+        with patch.object(url_guard, "_guarded_create_connection", return_value=raw_sock):
+            conn.connect()
+        self.assertIs(conn.sock, wrapped)
+        conn._context.wrap_socket.assert_called_once_with(raw_sock, server_hostname="example.com")
+
+    def test_connect_uses_tunnel_host_for_sni_when_tunneling(self):
+        conn = url_guard._GuardedHTTPSConnection("example.com", 443)
+        conn.set_tunnel("proxy.internal", 8080)
+        raw_sock, wrapped = object(), object()
+        conn._context = MagicMock()
+        conn._context.wrap_socket.return_value = wrapped
+        with patch.object(url_guard, "_guarded_create_connection", return_value=raw_sock):
+            with patch.object(conn, "_tunnel") as tunnel:
+                conn.connect()
+        tunnel.assert_called_once()
+        conn._context.wrap_socket.assert_called_once_with(raw_sock, server_hostname="proxy.internal")
+        self.assertIs(conn.sock, wrapped)
+
+
+class GuardedHandlerTest(TestCase):
+    def test_http_handler_opens_with_pinned_connection_class(self):
+        handler = url_guard._GuardedHTTPHandler()
+        req = object()
+        with patch.object(handler, "do_open", return_value="resp") as do_open:
+            self.assertEqual(handler.http_open(req), "resp")
+        do_open.assert_called_once_with(url_guard._GuardedHTTPConnection, req)
+
+    def test_https_handler_opens_with_pinned_connection_class(self):
+        handler = url_guard._GuardedHTTPSHandler()
+        req = object()
+        with patch.object(handler, "do_open", return_value="resp") as do_open:
+            self.assertEqual(handler.https_open(req), "resp")
+        do_open.assert_called_once_with(url_guard._GuardedHTTPSConnection, req, context=handler._context)
+
+    def test_redirect_handler_delegates_after_validating_allowed_target(self):
+        handler = url_guard._ValidatingRedirectHandler()
+        with patch(
+            "apps.cms.services.news.url_guard.validate_public_http_url", return_value="http://ok.example/"
+        ) as validate:
+            with patch.object(
+                urllib.request.HTTPRedirectHandler, "redirect_request", return_value="REDIRECT"
+            ) as parent:
+                result = handler.redirect_request(
+                    req="r", fp="f", code=302, msg="Found", headers={}, newurl="http://ok.example/"
+                )
+        self.assertEqual(result, "REDIRECT")
+        validate.assert_called_once_with("http://ok.example/")
+        parent.assert_called_once()
