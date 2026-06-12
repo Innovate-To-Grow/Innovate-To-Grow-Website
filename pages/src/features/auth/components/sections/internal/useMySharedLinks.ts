@@ -2,14 +2,20 @@ import {useEffect, useState} from 'react';
 import {deleteShare, listMyShares, type PastProjectShareSummary} from '@/features/projects/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
 
-export const useMySharedLinks = () => {
+export const useMySharedLinks = (enabled = true, surfaceLoadError = false) => {
   const [shares, setShares] = useState<PastProjectShareSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     let active = true;
+    setLoading(true);
+    setError(null);
     (async () => {
       try {
         const data = await listMyShares();
@@ -18,6 +24,7 @@ export const useMySharedLinks = () => {
         // A failed load just leaves the section hidden; surfacing an error on an
         // account page the user may never have used would be noise.
         console.error('[MySharedLinks] failed to load shares', err);
+        if (active && surfaceLoadError) setError(getAuthApiErrorMessage(err));
       } finally {
         if (active) setLoading(false);
       }
@@ -25,7 +32,7 @@ export const useMySharedLinks = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [enabled, surfaceLoadError]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this shared link? Anyone with the URL will lose access.')) {

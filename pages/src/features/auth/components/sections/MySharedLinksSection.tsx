@@ -1,5 +1,10 @@
 import {StatusAlert} from '../shared/StatusAlert';
 import {useMySharedLinks} from './internal/useMySharedLinks';
+import {
+  PAST_PROJECT_CURATION_SHARED_LINKS_PATH,
+  PAST_PROJECT_CURATION_SHARED_LINKS_TITLE,
+} from './internal/sharedLinkUtils';
+import {SharedLinksList} from './internal/SharedLinksList';
 
 export const MySharedLinksSection = () => {
   const {shares, loading, error, successMessage, handleDelete} = useMySharedLinks();
@@ -11,7 +16,12 @@ export const MySharedLinksSection = () => {
 
   return (
     <div className="account-section">
-      <h2 className="account-section-title">Past Project Curation Shared Links</h2>
+      <div className="account-shares-header">
+        <h2 className="account-section-title">{PAST_PROJECT_CURATION_SHARED_LINKS_TITLE}</h2>
+        <a className="account-outline-btn account-shares-page-link" href={PAST_PROJECT_CURATION_SHARED_LINKS_PATH}>
+          View Full Page
+        </a>
+      </div>
 
       {successMessage ? <StatusAlert tone="success" message={successMessage} style={{marginBottom: '1rem'}} /> : null}
       {error ? <StatusAlert tone="error" message={error} style={{marginBottom: '1rem'}} /> : null}
@@ -19,36 +29,7 @@ export const MySharedLinksSection = () => {
       {loading ? (
         <p className="account-status-text">Loading your shared links...</p>
       ) : (
-        <ul className="account-shares-list">
-          {shares.map((share) => (
-            <li key={share.id} className="account-shares-item">
-              <div className="account-shares-meta">
-                <span className="account-shares-name">{share.name}</span>
-                <span className="account-shares-sub">
-                  {share.row_count} {share.row_count === 1 ? 'result' : 'results'} ·{' '}
-                  {new Date(share.created_at).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="account-shares-actions">
-                <a
-                  className="account-outline-btn"
-                  href={`/past-projects/${share.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open
-                </a>
-                <button
-                  type="button"
-                  className="account-shares-delete"
-                  onClick={() => void handleDelete(share.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <SharedLinksList shares={shares} onDelete={handleDelete} />
       )}
     </div>
   );

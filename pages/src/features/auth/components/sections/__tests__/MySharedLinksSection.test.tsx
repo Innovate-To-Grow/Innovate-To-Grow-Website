@@ -40,6 +40,10 @@ describe('MySharedLinksSection', () => {
     const openLink = screen.getByRole('link', {name: /open/i});
     expect(openLink).toHaveAttribute('href', '/past-projects/share-1');
     expect(openLink).toHaveClass('account-outline-btn');
+    expect(screen.getByRole('link', {name: /view full page/i})).toHaveAttribute(
+      'href',
+      '/account/past-project-curation-shared-links',
+    );
     expect(screen.queryByRole('button', {name: /copy link/i})).toBeNull();
     expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
   });
