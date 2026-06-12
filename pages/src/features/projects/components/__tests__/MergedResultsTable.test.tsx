@@ -346,7 +346,7 @@ describe('MergedResultsTable', () => {
 
     fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'View'}));
 
-    const expectedHref = `/past-projects/project/${rowWithId.id}`;
+    const expectedHref = new URL(`/past-projects/project/${rowWithId.id}`, window.location.origin).href;
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);

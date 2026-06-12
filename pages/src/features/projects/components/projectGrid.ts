@@ -101,6 +101,22 @@ export const stripProjectGridItem = (row: ProjectGridItem): ProjectGridRow => {
   return gridRow;
 };
 
+export const getPastProjectDetailPath = (projectId: string) =>
+  `/past-projects/project/${encodeURIComponent(projectId)}`;
+
+const currentFrontendOrigin = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  return window.location.origin;
+};
+
+export const getPastProjectDetailUrl = (projectId: string) => {
+  const path = getPastProjectDetailPath(projectId);
+  const origin = currentFrontendOrigin();
+  return origin ? new URL(path, origin).href : path;
+};
+
 export const hasProjectGridDetails = (row: ProjectGridRow) => Boolean(row.abstract || row.student_names);
 
 export const getProjectGridSearchValue = (row: ProjectGridRow) =>

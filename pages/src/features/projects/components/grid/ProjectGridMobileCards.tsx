@@ -1,4 +1,5 @@
 import {
+  getPastProjectDetailUrl,
   hasProjectGridDetails,
   type ProjectGridColumn,
   type ProjectGridItem,
@@ -68,7 +69,7 @@ const MobileCard = ({
   onDeleteRow,
 }: MobileCardProps) => {
   const hasDetails = hasProjectGridDetails(row);
-  const individualHref = row.id ? `/past-projects/project/${encodeURIComponent(row.id)}` : '';
+  const individualHref = row.id ? getPastProjectDetailUrl(row.id) : '';
 
   return (
     <div className={`project-grid-mobile-card${isExpanded ? ' is-expanded' : ''}${isSelected ? ' is-selected' : ''}`}>

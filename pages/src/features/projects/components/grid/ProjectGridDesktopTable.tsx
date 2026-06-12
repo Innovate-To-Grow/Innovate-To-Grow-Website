@@ -1,4 +1,5 @@
 import {
+  getPastProjectDetailUrl,
   hasProjectGridDetails,
   type ProjectGridColumn,
   type ProjectGridColumnKey,
@@ -146,7 +147,7 @@ const DesktopRow = ({
   colSpan,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
-  const individualHref = row.id ? `/past-projects/project/${encodeURIComponent(row.id)}` : '';
+  const individualHref = row.id ? getPastProjectDetailUrl(row.id) : '';
 
   return (
     <>

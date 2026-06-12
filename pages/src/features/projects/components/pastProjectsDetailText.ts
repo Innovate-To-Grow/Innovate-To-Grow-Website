@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import type {ProjectGridRow} from './projectGrid';
+import {getPastProjectDetailUrl, type ProjectGridRow} from './projectGrid';
 
 const RICH_DETAIL_ALLOWED_TAGS = ['br', 'div', 'p', 'b', 'strong', 'i', 'em', 'u', 'mark', 'a'];
 const RICH_DETAIL_ALLOWED_ATTR = ['href', 'data-past-project-note-curation'];
@@ -75,20 +75,11 @@ export const normalizePastProjectsDetailHtml = (value: string) =>
 const fieldLine = (label: string, value: string) =>
   value.trim() ? `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value.trim())}</div>` : '';
 
-const currentFrontendOrigin = () => {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-  return window.location.origin;
-};
-
 const individualProjectHref = (row: ProjectGridRow) => {
   if (!row.id) {
     return '';
   }
-  const path = `/past-projects/project/${encodeURIComponent(row.id)}`;
-  const origin = currentFrontendOrigin();
-  return origin ? new URL(path, origin).href : path;
+  return getPastProjectDetailUrl(row.id);
 };
 
 const projectInsertHtml = (row: ProjectGridRow, index: number, excludedFields: Set<PastProjectNoteInsertField>) => {
