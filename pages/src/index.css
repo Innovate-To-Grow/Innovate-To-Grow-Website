@@ -963,6 +963,17 @@ body .project-grid-rich-editor-button::after {
     opacity 0.12s ease;
 }
 
+body .project-grid-rich-editor-button--insert-projects {
+  max-width: 14rem;
+  padding: 0 0.6rem;
+}
+
+body .project-grid-rich-editor-button--insert-projects::after {
+  max-width: 12rem;
+  margin-left: 0.45rem;
+  opacity: 1;
+}
+
 body .project-grid-rich-editor-button:hover,
 body .project-grid-rich-editor-button:focus-visible,
 body .project-grid-rich-editor-button[aria-expanded='true'] {
