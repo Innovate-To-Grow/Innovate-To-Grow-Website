@@ -71,8 +71,8 @@ export const AccountPage = () => {
                 <div className="account-column account-column--secondary">
                     {account.profile ? <EmailCenter profile={account.profile} onProfileUpdate={account.setProfile}/> : null}
                     {account.profile ? <PhoneCenter/> : null}
-                    <DetailsSection displayEmail={account.displayEmail} dateJoined={account.profile?.date_joined}/>
                     <MySharedLinksSection/>
+                    <DetailsSection displayEmail={account.displayEmail} dateJoined={account.profile?.date_joined}/>
                     <PasswordSection
                         passwordCodeRequested={account.passwordCodeRequested}
                         passwordCode={account.passwordCode}

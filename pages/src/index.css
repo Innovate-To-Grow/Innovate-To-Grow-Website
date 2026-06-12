@@ -537,6 +537,37 @@ body .project-grid-share-result-input:focus {
   border-color: var(--itg-color-primary);
 }
 
+body .project-grid-shared-note {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 1.5rem 0;
+  padding: 1rem 1.1rem 1.15rem;
+  border: 1px solid rgba(15, 45, 82, 0.12);
+  border-radius: 10px;
+  background: #fff;
+}
+
+body .project-grid-shared-note-label {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+body .project-grid-shared-note .project-grid-shared-detail-text {
+  min-height: 7.5rem;
+  max-height: min(28rem, 56vh);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+}
+
 body .account-shares-actions .account-outline-btn {
   display: inline-flex;
   align-items: center;
@@ -1237,6 +1268,7 @@ body .shared-past-project-merge-search {
 
   body .project-grid-share-editor,
   body .project-grid-shared-detail,
+  body .project-grid-shared-note,
   body .project-grid-share-result {
     margin-right: 1rem;
     margin-left: 1rem;
