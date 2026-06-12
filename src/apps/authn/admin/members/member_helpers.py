@@ -81,6 +81,13 @@ def export_members_vcard_response(queryset):
 def import_excel_view(admin_obj, request):
     from ...services.import_members import import_members_from_excel
 
+    # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+    # per-app access itself — otherwise a staff member without the authn app
+    # could create members here. Updating existing members is additionally
+    # gated below.
+    if not admin_obj.has_view_permission(request):
+        raise PermissionDenied("You do not have permission to import members.")
+
     context = build_import_context(admin_obj, request, MemberImportForm(), result=None)
     if request.method != "POST":
         return render(request, "admin/authn/member/import_excel.html", context)
@@ -117,6 +124,9 @@ def import_excel_view(admin_obj, request):
 def download_template_view(admin_obj, request):
     from ...services.import_members import generate_template_excel
 
+    if not admin_obj.has_view_permission(request):
+        raise PermissionDenied("You do not have permission to access member tooling.")
+
     try:
         content = generate_template_excel()
         return build_excel_response(content, "member_import_template.xlsx")
@@ -126,6 +136,10 @@ def download_template_view(admin_obj, request):
 
 
 def export_excel_view(admin_obj, request):
+    # Member records are PII; ``admin_view`` only checks is_staff, so re-check
+    # per-app access before exporting the whole member list.
+    if not admin_obj.has_view_permission(request):
+        raise PermissionDenied("You do not have permission to export members.")
     return export_members_response(admin_obj.get_queryset(request))
 
 

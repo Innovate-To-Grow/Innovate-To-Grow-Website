@@ -1,4 +1,5 @@
 import type {ProjectGridRow, ProjectTableRow} from '@/features/projects/api';
+import {formatSemesterLabel} from '@/lib/semester';
 
 export type {ProjectGridRow} from '@/features/projects/api';
 
@@ -26,9 +27,33 @@ export const PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
 
 export const PAST_PROJECT_GRID_COLUMNS = PROJECT_GRID_COLUMNS;
 
+const SEMESTER_SEASON_RANKS: Record<string, number> = {
+  spring: 1,
+  fall: 2,
+};
+
+const semesterSortKey = (value: string) => {
+  const normalized = value.trim();
+  const match = normalized.match(/^(\d{4})(?:-(\d+))?\s+(.+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const explicitSeasonRank = match[2] ? Number(match[2]) : undefined;
+  const seasonName = match[3].trim().toLowerCase();
+  const seasonRank = explicitSeasonRank ?? SEMESTER_SEASON_RANKS[seasonName];
+
+  if (!Number.isFinite(year) || !Number.isFinite(seasonRank)) {
+    return null;
+  }
+
+  return {year, seasonRank};
+};
+
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
   id: project.id,
-  semester_label: project.semester_label,
+  semester_label: formatSemesterLabel(project.semester_label),
   class_code: project.class_code,
   team_number: project.team_number,
   team_name: project.team_name,
@@ -45,7 +70,7 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
 // id still rides on the row (via the spread) for the per-project Individual Link.
 export const createProjectGridFingerprint = (row: ProjectGridRow) =>
   JSON.stringify([
-    row.semester_label,
+    formatSemesterLabel(row.semester_label),
     row.class_code,
     row.team_number,
     row.team_name,
@@ -58,10 +83,17 @@ export const createProjectGridFingerprint = (row: ProjectGridRow) =>
   ]);
 
 export const createProjectGridItems = (rows: ProjectGridRow[], namespace: string): ProjectGridItem[] =>
-  rows.map((row, index) => ({
-    ...row,
-    __key: `${namespace}-${index}-${createProjectGridFingerprint(row)}`,
-  }));
+  rows.map((row, index) => {
+    const gridRow = {
+      ...row,
+      semester_label: formatSemesterLabel(row.semester_label),
+    };
+
+    return {
+      ...gridRow,
+      __key: `${namespace}-${index}-${createProjectGridFingerprint(gridRow)}`,
+    };
+  });
 
 export const stripProjectGridItem = (row: ProjectGridItem): ProjectGridRow => {
   const {__key, ...gridRow} = row;
@@ -96,7 +128,23 @@ export const sortProjectGridItems = (
   sorted.sort((left, right) => {
     const leftValue = left[sortField] || '';
     const rightValue = right[sortField] || '';
-    const comparison = leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'});
+    let comparison: number;
+
+    if (sortField === 'semester_label') {
+      const leftSemester = semesterSortKey(leftValue);
+      const rightSemester = semesterSortKey(rightValue);
+      if (leftSemester && rightSemester) {
+        comparison =
+          leftSemester.year - rightSemester.year ||
+          leftSemester.seasonRank - rightSemester.seasonRank ||
+          leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'});
+      } else {
+        comparison = leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'});
+      }
+    } else {
+      comparison = leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'});
+    }
+
     return sortDirection === 'asc' ? comparison : -comparison;
   });
   return sorted;

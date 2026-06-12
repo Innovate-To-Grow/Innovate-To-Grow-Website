@@ -545,6 +545,73 @@ body .account-shares-actions .account-outline-btn {
   text-decoration: none;
 }
 
+body .account-shares-header,
+body .account-shared-links-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+body .account-shares-header {
+  margin-bottom: 1.25rem;
+}
+
+body .account-shares-header .account-section-title,
+body .account-shared-links-page-header .account-page-title {
+  margin-bottom: 0;
+}
+
+body .account-shares-page-link,
+body .account-shared-links-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+body .account-shared-links-page {
+  max-width: 880px;
+}
+
+body .account-shared-links-page-header {
+  margin-bottom: 1.5rem;
+}
+
+body .account-shared-links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+body .account-shared-links-toolbar {
+  display: grid;
+  gap: 0.45rem;
+}
+
+body .account-shared-links-search {
+  max-width: 42rem;
+}
+
+body .account-shared-links-count {
+  margin-top: 0.1rem;
+}
+
+@media (max-width: 600px) {
+  body .account-shares-header,
+  body .account-shared-links-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  body .account-shares-page-link,
+  body .account-shared-links-back {
+    width: 100%;
+  }
+}
+
 body .project-grid-toolbar--bottom {
   margin-top: 1rem;
   margin-bottom: 0;
@@ -896,6 +963,17 @@ body .project-grid-rich-editor-button::after {
     opacity 0.12s ease;
 }
 
+body .project-grid-rich-editor-button--insert-projects {
+  max-width: 14rem;
+  padding: 0 0.6rem;
+}
+
+body .project-grid-rich-editor-button--insert-projects::after {
+  max-width: 12rem;
+  margin-left: 0.45rem;
+  opacity: 1;
+}
+
 body .project-grid-rich-editor-button:hover,
 body .project-grid-rich-editor-button:focus-visible,
 body .project-grid-rich-editor-button[aria-expanded='true'] {
@@ -1073,13 +1151,23 @@ body .project-grid-table tbody .project-grid-detail-row > td {
 }
 
 body .project-grid-individual-link-row {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
   margin-bottom: 0.65rem;
+}
+
+body .project-grid-individual-link-label {
+  color: var(--itg-color-muted, #5d6b7c);
+  font-size: var(--itg-font-size-small);
+  font-weight: 700;
 }
 
 body .project-grid-individual-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  max-width: 100%;
   min-height: 2rem;
   border: 1px solid rgba(15, 45, 82, 0.22);
   border-radius: 6px;
@@ -1087,12 +1175,13 @@ body .project-grid-individual-link {
   color: var(--itg-color-primary);
   font-size: var(--itg-font-size-small);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.25;
   text-decoration: none;
   transition:
     background var(--itg-transition-fast),
     border-color var(--itg-transition-fast),
     box-shadow var(--itg-transition-fast);
+  overflow-wrap: anywhere;
 }
 
 body .project-grid-individual-link:hover,

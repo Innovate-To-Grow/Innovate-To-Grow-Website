@@ -1,4 +1,4 @@
-import {sanitizePastProjectsDetailHtml} from '../pastProjectsDetailText';
+import {sanitizePastProjectsDetailHtml, stripPastProjectsDetailMarkup} from '../pastProjectsDetailText';
 
 /** A run of text carrying the inline emphasis the rich editor supports. */
 export interface StyledRun {
@@ -121,10 +121,7 @@ export const parseRichTextRuns = (html: string): StyledRun[] => {
   }
 
   if (typeof document === 'undefined') {
-    const plain = sanitized
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(div|p)>/gi, '\n')
-      .replace(/<[^>]*>/g, '')
+    const plain = stripPastProjectsDetailMarkup(sanitized)
       .replace(/\u00a0/g, ' ')
       .replace(/\n{3,}/g, '\n\n')
       .trimEnd();

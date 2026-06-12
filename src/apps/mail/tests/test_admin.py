@@ -13,6 +13,7 @@ from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.models import EmailCampaign
 from apps.mail.services import GMAIL_FOLDER_DISPLAY
 from apps.mail.services.delivery_dashboard import (
+    PUBLIC_ERROR_MESSAGES,
     fetch_ses_cloudwatch_metrics,
     fetch_suppressed_destinations,
 )
@@ -539,9 +540,44 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
         self.assertFalse(meta["available"])
         self.assertEqual(meta["reason"], "permission")
         self.assertEqual(meta["error_code"], "AccessDeniedException")
-        self.assertIn("ses:ListSuppressedDestinations", meta["error_message"])
+        # The raw AWS exception text (ARNs, account ids, …) must never reach the
+        # JSON payload — only the fixed public message does.
+        self.assertNotIn("User is not authorized", meta["error_message"])
+        self.assertEqual(meta["error_message"], PUBLIC_ERROR_MESSAGES["permission"])
         self.assertIn("ses:ListSuppressedDestinations", meta["required_actions"])
         self.assertIn("ses:GetSuppressedDestination", meta["required_actions"])
+
+    def test_fetch_suppressed_destinations_hides_unexpected_exception_text(self):
+        client = MagicMock()
+        now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
+        client.list_suppressed_destinations.side_effect = RuntimeError("secret-internal-path /srv/app/creds")
+
+        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+            rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
+
+        self.assertEqual(rows, [])
+        self.assertFalse(meta["available"])
+        self.assertEqual(meta["reason"], "error")
+        self.assertEqual(meta["error_code"], "InternalError")
+        self.assertNotIn("secret-internal-path", meta["error_message"])
+        self.assertEqual(meta["error_message"], PUBLIC_ERROR_MESSAGES["error"])
+
+    def test_fetch_suppressed_destinations_masks_unlisted_client_error_codes(self):
+        client = MagicMock()
+        now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
+        client.list_suppressed_destinations.side_effect = ClientError(
+            {"Error": {"Code": "WeirdNewCode", "Message": "internal detail"}},
+            "ListSuppressedDestinations",
+        )
+
+        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+            rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
+
+        self.assertEqual(rows, [])
+        self.assertEqual(meta["reason"], "aws_error")
+        # Codes outside the allowlist collapse to a generic identifier.
+        self.assertEqual(meta["error_code"], "AwsError")
+        self.assertEqual(meta["error_message"], PUBLIC_ERROR_MESSAGES["aws_error"])
 
 
 class EmailCampaignAdminImportTest(TestCase):

@@ -26,6 +26,7 @@ describe('Router', () => {
     'login',
     'register',
     'account',
+    'account/past-project-curation-shared-links',
     'complete-profile',
     'forgot-password',
     'verify-email',

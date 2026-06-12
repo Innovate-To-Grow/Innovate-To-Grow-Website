@@ -4,11 +4,11 @@ function format(d) {
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
         '<tr>' +
         '<td>Abstract:</td>' +
-        '<td>' + d.Abstract + '</td>' +
+        '<td>' + escapeSheetText(d.Abstract) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td>Student Names:</td>' +
-        '<td>' + d["Student Names"] + '</td>' +
+        '<td>' + escapeSheetText(d["Student Names"]) + '</td>' +
         '</tr>' +
         '</table>';
 }
@@ -50,6 +50,7 @@ $(document).ready(function () {
 function fnLoadDataTableInstance() {
     // #example refers to the html table, 'id="example"'
     console.log("second");
+    var sheetTextRenderer = $.fn.dataTable.render.text();
     var table = $('#example').DataTable({
         // dom: 'Bfrltip',
         pageLength: 10,
@@ -58,14 +59,14 @@ function fnLoadDataTableInstance() {
         },
         data: datas,
         columns: [
-            {"data": "Track"},
-            {"data": "Year-Semester"},
-            {"data": "Class"},
-            {"data": "Team#"},
-            {"data": "TeamName"},
-            {"data": "Project Title"},
-            {"data": "Organization"},
-            {"data": "Industry"},
+            {"data": "Track", "render": sheetTextRenderer},
+            {"data": "Year-Semester", "render": sheetTextRenderer},
+            {"data": "Class", "render": sheetTextRenderer},
+            {"data": "Team#", "render": sheetTextRenderer},
+            {"data": "TeamName", "render": sheetTextRenderer},
+            {"data": "Project Title", "render": sheetTextRenderer},
+            {"data": "Organization", "render": sheetTextRenderer},
+            {"data": "Industry", "render": sheetTextRenderer},
             {
                 "className": 'details-control',
                 "orderable": false,
@@ -74,10 +75,12 @@ function fnLoadDataTableInstance() {
             },
             {
                 "data": "Abstract",
+                "render": sheetTextRenderer,
                 "bVisible": false
             },
             {
                 "data": "Student Names",
+                "render": sheetTextRenderer,
                 "bVisible": false
             }
         ],
@@ -117,7 +120,7 @@ function passvalue(slot) {
         final += teamNum[i];
     }
 
-    window.document.location = window.location.pathname + '?value=' + final + '#projects';
+    window.document.location = window.location.pathname + '?value=' + encodeURIComponent(final) + '#projects';
 }
 
 // the layout of the table is as follows:
@@ -401,7 +404,7 @@ $(document).ready(function () {
     $.getJSON("/api/sheets/1NYKJkIAlAqMQyXLZroqEfm4T5jnafj7ksTl66j-H_Kg/values/I2G-Tracks", function (data) {
         // Pull the class column from "2023-01-Spring-I2G-MASTER" spreadsheet.
         for (let i = 1; i <= totalRooms; i++) {
-            $(".roomt" + i).prepend(data.values[i + 1][1]);
+            prependSheetText(".roomt" + i, data.values[i + 1][1]);
         }
         // Pulls the zoom column from "2023-01-Spring-I2G-MASTER" spreadsheet.
         // It will add href to make zoom button active if there is a link present in zoom spreadsheet column
@@ -423,32 +426,32 @@ $(document).ready(function () {
                 let track = data.values[i][0];
                 let order = data.values[i][1];
                 if (track != "" && order != "") {
-                    $(".capr" + order + "t" + track).prepend(data.values[i][4]);
-                    $(".caporgr" + order + "t" + track).prepend(data.values[i][7]);
+                    prependSheetText(".capr" + order + "t" + track, data.values[i][4]);
+                    prependSheetText(".caporgr" + order + "t" + track, data.values[i][7]);
                     document.getElementById("hover" + order + "" + track).title = data.values[i][11];
                 }
             } else if (data.values[i][3] == "CSE") { // Set to CSE to handle all data that is CSE under Class Column in the spreadsheet
                 let track = data.values[i][0];
                 let order = data.values[i][1];
                 if (track != "" && order != "") {
-                    $(".cser" + order + "t" + track).prepend(data.values[i][4]);
-                    $(".cseorgr" + order + "t" + track).prepend(data.values[i][7]);
+                    prependSheetText(".cser" + order + "t" + track, data.values[i][4]);
+                    prependSheetText(".cseorgr" + order + "t" + track, data.values[i][7]);
                     document.getElementById("hover" + order + "" + track).title = data.values[i][11];
                 }
             } else if (data.values[i][3] == "CEE") { // Set to CEE to handle all data that is CEE under Class Column in the spreadsheet
                 let track = data.values[i][0];
                 let order = data.values[i][1];
                 if (track != "" && order != "") {
-                    $(".ceer" + order + "t" + track).prepend(data.values[i][4]);
-                    $(".ceeorgr" + order + "t" + track).prepend(data.values[i][7]);
+                    prependSheetText(".ceer" + order + "t" + track, data.values[i][4]);
+                    prependSheetText(".ceeorgr" + order + "t" + track, data.values[i][7]);
                     document.getElementById("hover" + order + "" + track).title = data.values[i][11];
                 }
             } else if (data.values[i][3] == "EngSL") { // Set to EngSL to handle all data that is EngSL under Class Column in the spreadsheet
                 let track = data.values[i][0];
                 let order = data.values[i][1];
                 if (track != "" && order != "") {
-                    $(".engslr" + order + "t" + track).prepend(data.values[i][4]);
-                    $(".engslorgr" + order + "t" + track).prepend(data.values[i][7]);
+                    prependSheetText(".engslr" + order + "t" + track, data.values[i][4]);
+                    prependSheetText(".engslorgr" + order + "t" + track, data.values[i][7]);
                     document.getElementById("hover" + order + "" + track).title = data.values[i][11];
                 }
             }

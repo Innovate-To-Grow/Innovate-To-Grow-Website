@@ -104,9 +104,10 @@ const MobileCard = ({
       {isExpanded ? (
         <div className="project-grid-mobile-card-details">
           {individualHref ? (
-            <div className="project-grid-individual-link-row" hidden aria-hidden="true">
-              <a className="project-grid-individual-link" href={individualHref} tabIndex={-1}>
-                Individual Link
+            <div className="project-grid-individual-link-row">
+              <span className="project-grid-individual-link-label">Individual Project URL</span>
+              <a className="project-grid-individual-link" href={individualHref}>
+                {individualHref}
               </a>
             </div>
           ) : null}

@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -44,6 +45,35 @@ class SendPhoneCodeViewTest(TestCase):
         self.assertEqual(response.data["detail"], "Verification code sent.")
         self.assertEqual(response.data["phone"], "+15551234567")
         mock_start.assert_called_once_with("+15551234567")
+
+
+class SendPhoneCodeThrottleTest(TestCase):
+    """Per-actor rate limit bounds SMS toll-fraud: an authenticated caller cannot
+    pump unlimited sends by rotating the destination number."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.member = make_member()
+        self.client.force_authenticate(self.member)
+
+    def tearDown(self):
+        cache.clear()
+
+    @patch("apps.authn.services.sms.start_phone_verification", return_value=None)
+    def test_sends_are_throttled_per_user(self, _mock_start):
+        # The rate is 5/minute; rotate the destination number each call so the
+        # service-level per-number cap can't be what blocks us.
+        last_status = None
+        for i in range(6):
+            response = self.client.post(
+                "/event/send-phone-code/",
+                {"phone": f"55512340{i:02d}", "region": "1-US"},
+                format="json",
+            )
+            last_status = response.status_code
+        # The 6th send in the window is rejected by the per-user throttle.
+        self.assertEqual(last_status, 429)
 
 
 class VerifyPhoneCodeViewTest(TestCase):

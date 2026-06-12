@@ -8,6 +8,7 @@ import uuid
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
@@ -148,16 +149,49 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         return custom_urls + super().get_urls()
 
     def impersonate_view(self, request, object_id):
+        # ``admin_site.admin_view`` only enforces is_staff, so this custom URL must
+        # re-check authorization itself (Django never runs the per-app model
+        # permissions for a standalone admin view). Require authn-app access, and
+        # never let a non-superuser account be impersonated into a privileged one:
+        # impersonation is an end-user support tool, and minting a token for a
+        # staff/superuser account would be a privilege-escalation vector.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to impersonate members.")
         member = get_object_or_404(Member, pk=object_id)
+        if member.is_staff or member.is_superuser:
+            raise PermissionDenied("Staff and superuser accounts cannot be impersonated.")
         token = ImpersonationToken.generate_token()
         ImpersonationToken.objects.create(token=token, member=member, created_by=request.user)
         logger.info("Admin %s created impersonation token for member %s", request.user.id, member.id)
         frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
         return redirect(f"{frontend_url}/impersonate-login?token={token}")
 
+    # Granting admin-app access or staff status is an I2G Master (superuser)
+    # responsibility. A non-superuser admin must not be able to widen their own
+    # (or anyone's) privileges by editing these fields, so they are read-only for
+    # non-superusers — Django drops any submitted value for read-only fields, so
+    # this is enforced server-side, not just hidden in the rendered form.
+    superuser_only_fields = ("is_staff", "admin_apps")
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if not request.user.is_superuser:
+            for field in self.superuser_only_fields:
+                if field not in readonly:
+                    readonly.append(field)
+        return readonly
+
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}
-        extra_context["show_impersonate"] = True
+        # Only surface the impersonate button when the request may actually use it
+        # (authn-app access) and the target is a non-privileged account — mirrors
+        # the authorization enforced in ``impersonate_view``.
+        target = self.get_object(request, object_id)
+        extra_context["show_impersonate"] = bool(
+            self.has_change_permission(request, target)
+            and target is not None
+            and not (target.is_staff or target.is_superuser)
+        )
         return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):

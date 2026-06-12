@@ -1,5 +1,6 @@
 """Campaign preview views."""
 
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -22,6 +23,10 @@ class CampaignPreviewMixin:
         return HttpResponseRedirect(reverse("admin:mail_emailcampaign_preview_recipients", args=[object_id]))
 
     def preview_recipients_view(self, request, object_id):
+        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+        # per-app access itself.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view this campaign's recipients.")
         obj = EmailCampaign.objects.get(pk=object_id)
         recipients = campaign_api.get_recipients(obj)
         context = {
@@ -35,6 +40,8 @@ class CampaignPreviewMixin:
 
     def send_campaign_preview_view(self, request, object_id):
         """Show email preview and step 1 of send flow for drafts."""
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to preview this campaign.")
         obj = EmailCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_emailcampaign_change", args=[object_id])
 
@@ -55,6 +62,8 @@ class CampaignPreviewMixin:
 
     def inline_preview_view(self, request):
         """Render email preview from POST data."""
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to preview campaign content.")
         if request.method != "POST":
             return HttpResponseRedirect(reverse("admin:mail_emailcampaign_changelist"))
 

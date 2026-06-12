@@ -2,6 +2,7 @@ import logging
 
 from django import forms
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 
 from apps.cms.admin.cms.page_admin.editor import (
@@ -130,15 +131,25 @@ class CMSPageAdmin(BaseModelAdmin):
         save_blocks_from_json(request, form.instance, messages)
 
     def preview_store_view(self, request):
+        # ``admin_view`` only enforces is_staff, so re-check per-app access here:
+        # storing a preview mutates server-side state, so require change access.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to preview CMS pages.")
         return preview_store_response(request)
 
     def route_conflict_view(self, request):
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to access CMS pages.")
         return route_conflict_response(request)
 
     def assets_list_view(self, request):
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to access CMS assets.")
         return assets_list_response(request)
 
     def assets_upload_view(self, request):
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to upload CMS assets.")
         return assets_upload_response(request)
 
     @admin.action(description="Export selected pages as JSON")
@@ -146,6 +157,10 @@ class CMSPageAdmin(BaseModelAdmin):
         return export_pages_response(queryset)
 
     def export_all_view(self, request):
+        # CMS page content export; ``admin_view`` only checks is_staff, so re-check
+        # per-app access before reading/exporting every page.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to export CMS pages.")
         queryset = CMSPage.objects.prefetch_related("blocks").all()
         status_filter = request.GET.get("status")
         if status_filter in ("draft", "published", "archived"):
@@ -153,6 +168,10 @@ class CMSPageAdmin(BaseModelAdmin):
         return export_pages_response(queryset)
 
     def import_view(self, request):
+        # Importing pages creates/updates records; require per-app change access
+        # because ``admin_view`` only enforces is_staff.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to import CMS pages.")
         return render_json_import(
             self,
             request,

@@ -33,6 +33,34 @@ def _confirm_change_data(client, confirmation_word, *, token=None):
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+class ConfirmViewPerAppAccessTest(TestCase):
+    """The confirm-change/confirm-action custom admin URLs are wrapped only in
+    admin_view (is_staff); they must re-check per-app access so a staff member
+    without the model's app cannot reach the confirmation diff."""
+
+    def setUp(self):
+        self.outsider = _make_staff(email="outsider@example.com")
+        self.outsider.admin_apps = ["event"]  # NOT cms
+        self.outsider.save(update_fields=["admin_apps"])
+        self.client.login(username="outsider@example.com", password="testpass123")
+
+    def test_non_app_staff_gets_403_on_confirm_change(self):
+        url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_non_app_staff_gets_403_on_confirm_action(self):
+        url = reverse("admin:cms_cmsembedallowedhost_confirm_action")
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_app_staff_is_not_forbidden(self):
+        self.outsider.admin_apps = ["cms"]
+        self.outsider.save(update_fields=["admin_apps"])
+        url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
+        # No pending change in session -> redirects to changelist, not a 403.
+        self.assertNotEqual(self.client.get(url).status_code, 403)
+
+
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
 class ConfirmOnSaveAddTest(TestCase):
     """Test confirmation flow for adding objects via admin."""
 

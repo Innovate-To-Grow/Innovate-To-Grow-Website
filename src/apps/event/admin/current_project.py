@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.urls import path, reverse
 
@@ -104,6 +105,10 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         return custom_urls + super().get_urls()
 
     def pull_view(self, request):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the event app cannot trigger a schedule sync.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to sync the schedule.")
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")
         config = CurrentProjectSchedule.load()
         if not config:
@@ -125,6 +130,10 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         return redirect(changelist_url)
 
     def save_sync_settings_view(self, request):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the event app cannot change auto-sync settings.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to change sync settings.")
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")
         if request.method != "POST":
             return redirect(changelist_url)

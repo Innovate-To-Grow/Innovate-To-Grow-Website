@@ -1,12 +1,14 @@
 """Inbox detail admin views."""
 
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
 import apps.mail.admin.inbox as inbox_api
+from apps.core.access import user_can_access_app
 from apps.core.utils.json_helpers import safe_json
 
 from .helpers import message_body_html, parse_folder
@@ -14,6 +16,10 @@ from .helpers import message_body_html, parse_folder
 
 def inbox_detail_view(request, uid):
     """Display a single inbox message."""
+    # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+    # per-app access itself.
+    if not user_can_access_app(request.user, "mail"):
+        raise PermissionDenied("You do not have permission to access the mail inbox.")
     list_url = reverse("admin:mail_inbox_list")
     folder = parse_folder(request)
 
@@ -46,6 +52,8 @@ def inbox_detail_view(request, uid):
 
 def inbox_detail_fragment_view(request, uid):
     """Return HTML partial for the message preview pane."""
+    if not user_can_access_app(request.user, "mail"):
+        raise PermissionDenied("You do not have permission to access the mail inbox.")
     folder = parse_folder(request)
     try:
         msg = inbox_api.fetch_inbox_message(uid, folder=folder)

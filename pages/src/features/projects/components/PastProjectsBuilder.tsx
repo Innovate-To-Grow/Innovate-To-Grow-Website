@@ -74,6 +74,7 @@ interface PastProjectsBuilderProps {
   error: string | null;
   loading: boolean;
   rows: ProjectGridRow[];
+  onRefreshRows?: () => void;
   onCreateShare: (
     rows: ProjectGridRow[],
     name: string,
@@ -96,6 +97,7 @@ export const PastProjectsBuilder = ({
   error,
   loading,
   rows,
+  onRefreshRows,
   onCreateShare,
 }: PastProjectsBuilderProps) => {
   const {isAuthenticated} = useAuth();
@@ -105,13 +107,15 @@ export const PastProjectsBuilder = ({
   const [mergedRows, setMergedRows] = useState<ProjectGridItem[]>(() =>
     createProjectGridItems(readPersistedMergedRows(), 'restored'),
   );
-  const [deletedFingerprints, setDeletedFingerprints] = useState<Set<string>>(new Set());
+  const [mergedRowsUndo, setMergedRowsUndo] = useState<ProjectGridItem[] | null>(null);
   const [builderMessage, setBuilderMessage] = useState('');
   const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const tableSequence = useRef(1);
   const mergeSequence = useRef(0);
   const tableRefs = useRef<Record<string, SearchTableHandle | null>>({});
+  const pendingRefreshTableId = useRef<string | null>(null);
+  const lastSeenRows = useRef(rows);
 
   const hasAnySelection = Object.values(selectionState).some(Boolean);
   const hasAISearchTable = searchTables.some((table) => table.type === 'ai');
@@ -133,6 +137,7 @@ export const PastProjectsBuilder = ({
     if (wasAuthenticatedRef.current && !isAuthenticated) {
       clearPersistedMergedRows();
       setMergedRows([]);
+      setMergedRowsUndo(null);
     }
     wasAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated]);
@@ -256,6 +261,36 @@ export const PastProjectsBuilder = ({
     delete tableRefs.current[tableId];
   };
 
+  // Refresh is per-table: the refetch keeps serving stale rows (so the stack stays mounted and
+  // every other table keeps its local curation), and once the fresh archive lands as a new `rows`
+  // array, only the table that asked is remounted — via its key — with the new data.
+  useEffect(() => {
+    if (rows === lastSeenRows.current) {
+      return;
+    }
+    lastSeenRows.current = rows;
+    const tableId = pendingRefreshTableId.current;
+    if (!tableId) {
+      return;
+    }
+    pendingRefreshTableId.current = null;
+    setSearchTables((current) =>
+      current.map((table) =>
+        table.id === tableId ? {...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1} : table,
+      ),
+    );
+    setBuilderMessage('Search table refreshed from the latest past-project archive.');
+  }, [rows]);
+
+  const handleRefreshSearchTable = useCallback(
+    (tableId: string) => {
+      pendingRefreshTableId.current = tableId;
+      onRefreshRows?.();
+      setBuilderMessage('Refreshing this search table from the latest past-project archive...');
+    },
+    [onRefreshRows],
+  );
+
   const applyToSearchTables = (action: (table: SearchTableHandle) => void) => {
     searchTables.forEach(({id}) => {
       const table = tableRefs.current[id];
@@ -302,7 +337,7 @@ export const PastProjectsBuilder = ({
       }
       table.getSelectedRows().forEach((row) => {
         const fingerprint = createProjectGridFingerprint(row);
-        if (seenFingerprints.has(fingerprint) || deletedFingerprints.has(fingerprint)) {
+        if (seenFingerprints.has(fingerprint)) {
           return;
         }
         seenFingerprints.add(fingerprint);
@@ -313,6 +348,7 @@ export const PastProjectsBuilder = ({
     if (rowsToAppend.length) {
       mergeSequence.current += 1;
       nextMergedRows.push(...createProjectGridItems(rowsToAppend, `merged-${mergeSequence.current}`));
+      setMergedRowsUndo(null);
       setMergedRows(nextMergedRows);
       setBuilderMessage(`${rowsToAppend.length} row${rowsToAppend.length === 1 ? '' : 's'} saved into merged results.`);
     } else {
@@ -327,18 +363,41 @@ export const PastProjectsBuilder = ({
   };
 
   const handleDeleteMergedRow = (row: ProjectGridItem) => {
-    const fingerprint = createProjectGridFingerprint(stripProjectGridItem(row));
+    setMergedRowsUndo(mergedRows);
     setMergedRows((current) => current.filter((item) => item.__key !== row.__key));
-    setDeletedFingerprints((current) => new Set([...current, fingerprint]));
+    setBuilderMessage('Project removed from merged results.');
+  };
+
+  const handleUndoMergedRows = () => {
+    if (!mergedRowsUndo) {
+      return;
+    }
+
+    setMergedRows(mergedRowsUndo);
+    setMergedRowsUndo(null);
+    setBuilderMessage('Merged results restored.');
+  };
+
+  const handleResetMergedRows = () => {
+    if (!mergedRows.length) {
+      return;
+    }
+
+    setMergedRowsUndo(mergedRows);
+    setMergedRows([]);
+    setBuilderMessage('Merged results reset. Undo Merged Change can restore them until you leave this page.');
   };
 
   return (
     <div className="past-projects-builder">
-      {mergedRows.length > 0 ? (
+      {mergedRows.length > 0 || mergedRowsUndo ? (
         <MergedResultsTable
           rows={mergedRows}
           onCreateShare={handleCreateShare}
           onDeleteRow={handleDeleteMergedRow}
+          canUndoRows={Boolean(mergedRowsUndo)}
+          onUndoRows={handleUndoMergedRows}
+          onResetRows={handleResetMergedRows}
         />
       ) : null}
 
@@ -441,6 +500,7 @@ export const PastProjectsBuilder = ({
                 }
                 resultsMotionKey={isAISearchTable ? table.rowsResetKey : undefined}
                 onRemove={handleRemoveSearchTable}
+                onRefresh={isAISearchTable || !onRefreshRows ? undefined : handleRefreshSearchTable}
                 onSelectionStateChange={handleSelectionStateChange}
               />
             );

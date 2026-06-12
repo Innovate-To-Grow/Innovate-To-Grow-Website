@@ -17,6 +17,7 @@ import {
 } from './projectGrid';
 import {RichTextDetailEditor} from './RichTextDetailEditor';
 import {RichDetailPreview} from './RichDetailPreview';
+import {PastProjectsDialog} from './builder/PastProjectsDialog';
 import {
   PAST_PROJECT_NOTE_INSERT_FIELDS,
   appendPastProjectsNoteInsertHtml,
@@ -40,6 +41,9 @@ interface MergedResultsTableProps {
   ) => Promise<PastProjectShareCreationResult>;
   onUpdateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<void>;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  canUndoRows?: boolean;
+  onUndoRows?: () => void;
+  onResetRows?: () => void;
 }
 
 export type PastProjectShareCreationResult =
@@ -126,6 +130,9 @@ export const MergedResultsTable = ({
   onCreateShare,
   onUpdateShare,
   onDeleteRow,
+  canUndoRows = false,
+  onUndoRows,
+  onResetRows,
 }: MergedResultsTableProps) => {
   const {isAuthenticated} = useAuth();
   const canShare = !sharedMode && Boolean(onCreateShare) && isAuthenticated;
@@ -146,6 +153,8 @@ export const MergedResultsTable = ({
   const [editTitleDraft, setEditTitleDraft] = useState(title);
   const [editNoteDraft, setEditNoteDraft] = useState(note ?? '');
   const [isSavingShareEdit, setIsSavingShareEdit] = useState(false);
+  const [sharedRowsUndo, setSharedRowsUndo] = useState<ProjectGridRow[] | null>(null);
+  const [pendingBulkAction, setPendingBulkAction] = useState<'reset-builder' | 'remove-all-shared' | null>(null);
   const [isEditingSharedTitle, setIsEditingSharedTitle] = useState(false);
   const [isEditingSharedNote, setIsEditingSharedNote] = useState(false);
   const [excludedProjectNoteInsertFields, setExcludedProjectNoteInsertFields] = useState<
@@ -289,6 +298,7 @@ export const MergedResultsTable = ({
     try {
       if (window.navigator.clipboard?.writeText) {
         await window.navigator.clipboard.writeText(shareUrl);
+        setStatusMessage('Shareable URL copied.');
         return;
       }
     } catch {
@@ -297,6 +307,7 @@ export const MergedResultsTable = ({
 
     try {
       if (document.execCommand('copy')) {
+        setStatusMessage('Shareable URL copied.');
         return;
       }
     } catch {
@@ -382,7 +393,10 @@ export const MergedResultsTable = ({
       setStatusMessage('A shared page needs at least one project.');
       return;
     }
-    await handleUpdateSharedPage(nextRows, title, note ?? '', 'Project removed.');
+    const saved = await handleUpdateSharedPage(nextRows, title, note ?? '', 'Project removed.');
+    if (saved) {
+      setSharedRowsUndo(allRows);
+    }
   };
 
   const handleDeleteMergedRow = async (row: ProjectGridItem) => {
@@ -391,6 +405,31 @@ export const MergedResultsTable = ({
     }
 
     onDeleteRow(row);
+  };
+
+  const handleUndoSharedRows = async () => {
+    if (!sharedRowsUndo) {
+      return;
+    }
+
+    const saved = await handleUpdateSharedPage(sharedRowsUndo, title, note ?? '', 'Change undone.');
+    if (saved) {
+      setSharedRowsUndo(null);
+    }
+  };
+
+  const handleConfirmBulkAction = () => {
+    if (pendingBulkAction === 'reset-builder') {
+      onResetRows?.();
+    }
+
+    if (pendingBulkAction === 'remove-all-shared') {
+      setStatusMessage(
+        'A shared page needs at least one project. Remove rows individually, or delete the shared page if it is no longer needed.',
+      );
+    }
+
+    setPendingBulkAction(null);
   };
 
   const shareResultPanel = shareUrl ? (
@@ -575,6 +614,7 @@ export const MergedResultsTable = ({
         filteredCount={table.filteredRows.length}
         totalCount={rows.length}
         search={table.search}
+        searchPlaceholder={sharedMode ? 'Search saved results...' : 'Search merged results...'}
         sortField={table.sortField}
         sortDirection={table.sortDirection}
         onSearchChange={table.setSearch}
@@ -621,6 +661,50 @@ export const MergedResultsTable = ({
                 Microsoft Word
               </button>
             </div>
+            {onUndoRows || onResetRows || canEditShared ? (
+              <div className="project-grid-toolbar-cluster" aria-label="Recovery">
+                {onUndoRows ? (
+                  <button
+                    type="button"
+                    className="itg-btn itg-btn-outline"
+                    onClick={onUndoRows}
+                    disabled={!canUndoRows}
+                  >
+                    Undo Merged Change
+                  </button>
+                ) : null}
+                {!sharedMode && onResetRows ? (
+                  <button
+                    type="button"
+                    className="itg-btn itg-btn-outline"
+                    onClick={() => setPendingBulkAction('reset-builder')}
+                    disabled={!rows.length}
+                  >
+                    Reset Merged Results
+                  </button>
+                ) : null}
+                {canEditShared ? (
+                  <>
+                    <button
+                      type="button"
+                      className="itg-btn itg-btn-outline"
+                      onClick={() => void handleUndoSharedRows()}
+                      disabled={!sharedRowsUndo || isSavingShareEdit}
+                    >
+                      Undo Shared Change
+                    </button>
+                    <button
+                      type="button"
+                      className="itg-btn itg-btn-outline"
+                      onClick={() => setPendingBulkAction('remove-all-shared')}
+                      disabled={isSavingShareEdit}
+                    >
+                      Remove All
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
             {canShare ? (
               <div className="project-grid-toolbar-cluster" aria-label="Share link">
                 <button
@@ -636,6 +720,25 @@ export const MergedResultsTable = ({
           </div>
         }
       />
+
+      {pendingBulkAction ? (
+        <PastProjectsDialog
+          title={pendingBulkAction === 'reset-builder' ? 'Reset merged results?' : 'Remove all projects?'}
+          confirmLabel={pendingBulkAction === 'reset-builder' ? 'Reset Merged Results' : 'Close'}
+          showCancel={pendingBulkAction === 'reset-builder'}
+          onCancel={() => setPendingBulkAction(null)}
+          onConfirm={handleConfirmBulkAction}
+        >
+          {pendingBulkAction === 'reset-builder' ? (
+            <p>Clear every project from the saved merged results? You can undo this immediately afterward.</p>
+          ) : (
+            <p>
+              This shared page cannot be saved with zero projects because the API requires at least one row. Remove
+              rows individually, or delete the shared page if it is no longer needed.
+            </p>
+          )}
+        </PastProjectsDialog>
+      ) : null}
 
       {statusMessage ? <p className="project-grid-status">{statusMessage}</p> : null}
     </section>

@@ -46,6 +46,9 @@ const addedRow: ProjectGridRow = {
   organization: 'Blue Diamond',
 };
 
+const normalizedBaseRow: ProjectGridRow = {...baseRow, semester_label: '2025 Spring'};
+const normalizedAddedRow: ProjectGridRow = {...addedRow, semester_label: '2025 Spring'};
+
 const rowWithId: ProjectGridRow = {
   ...baseRow,
   id: '11111111-1111-4111-8111-111111111111',
@@ -262,6 +265,18 @@ describe('MergedResultsTable', () => {
     expect(exportMocks.exportProjectRowsExcel.mock.calls[0][0]).toHaveLength(2);
   });
 
+  it('searches only the saved rows in a shared merged-results table', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} sharedMode />);
+
+    const search = screen.getByRole('searchbox');
+    expect(search).toHaveAttribute('placeholder', 'Search saved results...');
+    fireEvent.change(search, {target: {value: 'Blue Diamond'}});
+
+    expect(within(desktopTable(container)).getByText('Irrigation Sensor')).toBeInTheDocument();
+    expect(within(desktopTable(container)).queryByText('Shared Project')).toBeNull();
+    expect(screen.queryByText('Cascade Cooler Pouch Outfeed')).toBeNull();
+  });
+
   it('hides the share controls and shows a login hint for anonymous users', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
     render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
@@ -302,7 +317,31 @@ describe('MergedResultsTable', () => {
     expect(container.querySelector('.project-grid-shared-note')).toBeNull();
   });
 
-  it('loads the individual link in expanded desktop and mobile details without displaying it', () => {
+  it('confirms when the shareable URL is copied to the clipboard', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
+    try {
+      render(<MergedResultsTable rows={makeItems()} sharedMode />);
+
+      fireEvent.click(screen.getByLabelText('Shareable URL'));
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
+      expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
+    }
+  });
+
+  it('asks for a manual copy when no clipboard mechanism is available', async () => {
+    // jsdom has neither navigator.clipboard nor document.execCommand — both paths fall through.
+    render(<MergedResultsTable rows={makeItems()} sharedMode />);
+
+    fireEvent.click(screen.getByLabelText('Shareable URL'));
+
+    expect(await screen.findByText('Unable to copy URL. Select the link and copy it manually.')).toBeInTheDocument();
+  });
+
+  it('shows the individual project URL in expanded desktop and mobile details', () => {
     const {container} = render(<MergedResultsTable rows={makeItems([rowWithId])} />);
 
     fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'View'}));
@@ -311,15 +350,17 @@ describe('MergedResultsTable', () => {
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
-    expect(desktopLink.tabIndex).toBe(-1);
-    expect(desktopLink).not.toBeVisible();
+    expect(desktopLink).toHaveTextContent(expectedHref);
+    expect(desktopLink).toBeVisible();
+    expect(within(desktopTable(container)).getByText('Individual Project URL')).toBeVisible();
 
     const mobileCards = container.querySelector('.project-grid-mobile-cards') as HTMLElement;
     const mobileLink = mobileCards.querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(mobileLink).not.toBeNull();
     expect(mobileLink.getAttribute('href')).toBe(expectedHref);
-    expect(mobileLink.tabIndex).toBe(-1);
-    expect(mobileLink).not.toBeVisible();
+    expect(mobileLink).toHaveTextContent(expectedHref);
+    expect(mobileLink).toBeVisible();
+    expect(within(mobileCards).getByText('Individual Project URL')).toBeVisible();
   });
 
   it('does not show an individual link for legacy rows without an id', () => {
@@ -352,7 +393,7 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getByRole('button', {name: /save note/i}));
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Original Name', 'Updated note');
+      expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Original Name', 'Updated note');
     });
     expect(onUpdateShare.mock.calls[0]).toHaveLength(3);
     expect(await screen.findByText('Note updated.')).toBeInTheDocument();
@@ -377,7 +418,7 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getByRole('button', {name: /save name/i}));
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([baseRow], 'Updated Name', 'Owner note');
+      expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Updated Name', 'Owner note');
     });
     expect(await screen.findByText('Name updated.')).toBeInTheDocument();
   });
@@ -399,9 +440,69 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
 
     await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([addedRow], 'Original Name', 'Owner note');
+      expect(onUpdateShare).toHaveBeenCalledWith([normalizedAddedRow], 'Original Name', 'Owner note');
     });
     expect(await screen.findByText('Project removed.')).toBeInTheDocument();
+  });
+
+  it('lets an editable shared page undo the latest project removal', async () => {
+    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <MergedResultsTable
+        rows={makeItems([baseRow, addedRow])}
+        sharedMode
+        editable
+        title="Original Name"
+        note="Owner note"
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    const undoButton = screen.getByRole('button', {name: /undo shared change/i});
+    expect(undoButton).toBeDisabled();
+
+    fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
+
+    await waitFor(() => {
+      expect(onUpdateShare).toHaveBeenCalledWith([normalizedAddedRow], 'Original Name', 'Owner note');
+    });
+    expect(undoButton).toBeEnabled();
+
+    fireEvent.click(undoButton);
+
+    await waitFor(() => {
+      expect(onUpdateShare).toHaveBeenLastCalledWith(
+        [normalizedBaseRow, normalizedAddedRow],
+        'Original Name',
+        'Owner note',
+      );
+    });
+    expect(await screen.findByText('Change undone.')).toBeInTheDocument();
+  });
+
+  it('keeps Remove All guarded for editable shared pages while the API requires one row', async () => {
+    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <MergedResultsTable
+        rows={makeItems([baseRow, addedRow])}
+        sharedMode
+        editable
+        title="Original Name"
+        note="Owner note"
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /remove all/i}));
+    const dialog = screen.getByRole('dialog', {name: /remove all projects/i});
+    // Informational dialog: a single Close action, no confusing cancel alternative.
+    expect(within(dialog).queryByRole('button', {name: /keep projects/i})).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', {name: /close/i}));
+
+    expect(onUpdateShare).not.toHaveBeenCalled();
+    expect(await screen.findByText(/A shared page needs at least one project/i)).toBeInTheDocument();
   });
 
   it('expands all rows by default in shared mode so project details are visible', () => {

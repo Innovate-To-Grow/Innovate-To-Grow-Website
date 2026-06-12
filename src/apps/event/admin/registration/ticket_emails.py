@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -63,6 +64,11 @@ class TicketEmailAdminMixin:
         return sent
 
     def send_all_ticket_emails_view(self, request):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the event app cannot send ticket emails to every
+        # registrant (a privileged, side-effecting action).
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to send ticket emails.")
         changelist_url = reverse("admin:event_eventregistration_changelist")
         queryset = EventRegistration.objects.select_related("event", "ticket", "member").order_by("created_at")
         registration_count = queryset.count()

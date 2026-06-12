@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib import admin
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -132,9 +132,14 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def app_routes_view(self, request):
+        # ``admin_view`` only enforces is_staff, so re-check per-app access here.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to access embed widgets.")
         return JsonResponse({"routes": list(EMBEDDABLE_APP_ROUTES)})
 
     def page_blocks_view(self, request):
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to access embed widgets.")
         page_id = request.GET.get("page_id") or ""
         if not page_id:
             return JsonResponse({"blocks": []})
@@ -146,6 +151,8 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
         return JsonResponse({"blocks": list(blocks)})
 
     def page_info_view(self, request):
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to access embed widgets.")
         page_id = request.GET.get("page_id") or ""
         if not page_id:
             return JsonResponse({"title": "", "route": ""})

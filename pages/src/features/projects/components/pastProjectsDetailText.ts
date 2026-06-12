@@ -172,16 +172,26 @@ export const appendPastProjectsNoteInsertHtml = (
   return sanitizePastProjectsDetailHtml(`${sanitizedCurrent}<br><br>${insertHtml}`);
 };
 
+/**
+ * Regex-only markup-to-text conversion for environments without a DOM (where
+ * DOMPurify cannot sanitize). Tag removal repeats until a fixed point so split
+ * fragments (e.g. `<<div>br>`) cannot re-form a tag after a single pass.
+ */
+export const stripPastProjectsDetailMarkup = (html: string) => {
+  let text = html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(div|p)>/gi, '\n');
+  let previous: string;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]*>/g, '');
+  } while (text !== previous);
+  return text;
+};
+
 export const pastProjectsDetailHtmlToPlainText = (html: string) => {
   const sanitizedHtml = sanitizePastProjectsDetailHtml(html);
 
   if (typeof document === 'undefined') {
-    return sanitizedHtml
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(div|p)>/gi, '\n')
-      .replace(/<[^>]*>/g, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .trimEnd();
+    return stripPastProjectsDetailMarkup(sanitizedHtml).replace(/\n{3,}/g, '\n\n').trimEnd();
   }
 
   const template = document.createElement('template');

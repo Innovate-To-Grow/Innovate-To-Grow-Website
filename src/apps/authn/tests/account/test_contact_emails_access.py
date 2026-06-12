@@ -68,6 +68,22 @@ class ContactEmailAccessTests(APITestCase):
         self.assertEqual(resend_resp.status_code, 202)
         mock_send.assert_called_once()
 
+    def test_request_verification_is_rate_limited_per_user(self, _mock_code, _mock_send):
+        # The shared email_code_request throttle is anon-only (a no-op once
+        # authenticated); the per-user throttle (5/minute) must bound resends so a
+        # logged-in caller cannot bomb an attacker-supplied address with codes.
+        from django.core.cache import cache
+
+        cache.clear()
+        self.addCleanup(cache.clear)
+        contact = ContactEmail.objects.create(
+            member=self.member, email_address="bombing-target@example.com", email_type="other"
+        )
+        statuses = [
+            self.client.post(f"/authn/contact-emails/{contact.pk}/request-verification/").status_code for _ in range(6)
+        ]
+        self.assertEqual(statuses[-1], 429)
+
     def test_resend_rejects_already_verified(self, _mock_code, _mock_send):
         contact = ContactEmail.objects.create(
             member=self.member,

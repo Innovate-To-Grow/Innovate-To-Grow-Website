@@ -83,7 +83,7 @@ describe('SharedPastProjectMergeSearch', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', {level: 2, name: 'Add Projects'})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {level: 2, name: 'Add Projects from Full Archive'})).toBeInTheDocument();
     expect(screen.getByText('More help: buttons, merge & tables')).toBeInTheDocument();
     expect(screen.getAllByText('Add Selected Projects').length).toBeGreaterThan(1);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
@@ -97,9 +97,53 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(within(dialog).getByRole('button', {name: /add projects/i}));
 
     await waitFor(() => {
-      expect(onAddRows).toHaveBeenCalledWith([bravoRow]);
+      expect(onAddRows).toHaveBeenCalledWith([
+        expect.objectContaining({
+          project_title: 'Bravo Project',
+          semester_label: '2025 Spring',
+        }),
+      ]);
     });
     expect(await screen.findByText('1 project added.')).toBeInTheDocument();
+  });
+
+  it('can refresh a full-archive standard search table without deleting it', () => {
+    const onRefreshRows = vi.fn();
+    const onAddRows = vi.fn();
+
+    const {rerender} = render(
+      <SharedPastProjectMergeSearch
+        currentRows={[alphaRow]}
+        error={null}
+        loading={false}
+        rows={[alphaRow, bravoRow, charlieRow]}
+        onAddRows={onAddRows}
+        onRefreshRows={onRefreshRows}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /refresh search table/i}));
+
+    expect(onRefreshRows).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
+    expect(screen.getByText(/Refreshing this full-archive search table/i)).toBeInTheDocument();
+
+    // The refetch resolves with a new archive snapshot; the table picks up the new project.
+    const deltaRow = makeRow({team_number: 'T04', team_name: 'Team Delta', project_title: 'Delta Project'});
+    rerender(
+      <SharedPastProjectMergeSearch
+        currentRows={[alphaRow]}
+        error={null}
+        loading={false}
+        rows={[alphaRow, bravoRow, charlieRow, deltaRow]}
+        onAddRows={onAddRows}
+        onRefreshRows={onRefreshRows}
+      />,
+    );
+
+    expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
+    expect(screen.getAllByText('Delta Project').length).toBeGreaterThan(0);
+    expect(screen.getByText('Search table refreshed from the latest past-project archive.')).toBeInTheDocument();
   });
 
   it('adds AI results as a selectable AI Search Table and submits checked rows', async () => {

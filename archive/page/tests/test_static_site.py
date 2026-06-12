@@ -138,3 +138,61 @@ def test_2022_fall_sheet_cells_are_text_and_urls_are_validated():
     assert ".prepend(data.values" not in js
     assert "<td>' + d.Abstract + '</td>" not in js
     assert "<td>' + d[\"Student Names\"] + '</td>" not in js
+
+
+def test_base_template_loads_shared_sheet_safe_helpers():
+    # The escaping helpers must be available to every page before any event
+    # script runs, so they live in base.html's <head>.
+    base = BASE_TEMPLATE.read_text()
+    assert "/static/js/sheet-safe.js" in base
+    shared = (ROOT / "static" / "js" / "sheet-safe.js").read_text()
+    for fn in ("function escapeSheetText", "function prependSheetText", "function safeSheetUrl"):
+        assert fn in shared, f"sheet-safe.js missing {fn}"
+
+
+def _active_code_lines(js_text):
+    """Yield JS lines that are not whole-line // comments (the only comment
+    style the event scripts use around the sink call sites)."""
+    for line in js_text.splitlines():
+        if line.lstrip().startswith("//"):
+            continue
+        yield line
+
+
+# Regression guard for the confirmed stored/DOM-XSS finding: Google-Sheets cells
+# (fetched via /api/sheets/) must never be injected as raw HTML or used as an
+# unchecked link target. Every event page's JS must route them through the
+# shared escaping helpers. Mirrors the hardening already proven on 2022-fall.
+@pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
+def test_event_scripts_have_no_raw_sheet_sinks(page):
+    for source in _page_sources(page):
+        for line in _active_code_lines(source):
+            # (A) sheet row cell concatenated into HTML without escaping.
+            if ("escapeSheetText" not in line) and re.search(r"\+\s*d(?:\.[A-Za-z_]|\[)", line):
+                if "</td>" in line or "<td>" in line or "<" in line:
+                    raise AssertionError(f"{page.name}: unescaped sheet cell in HTML: {line.strip()}")
+            # (B) jQuery .prepend() of sheet data parses it as HTML.
+            assert ".prepend(data.values" not in line, f"{page.name}: raw .prepend of sheet data: {line.strip()}"
+            # (C) sheet value assigned to a link href without scheme validation.
+            assert not re.search(r"\.href\s*=\s*(?:data\.values|d\[|d\.)", line), (
+                f"{page.name}: unvalidated sheet URL assigned to href: {line.strip()}"
+            )
+
+
+# DataTables does not auto-escape cell content; a column bound to a sheet field
+# (`"data": "Field"`) must opt into the text renderer. Columns that show no sheet
+# data use `"data": null`. This catches the control-column gap that the line-based
+# sink scan above cannot see (the binding spans multiple lines).
+@pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
+def test_datatables_columns_escape_sheet_fields(page):
+    for source in _page_sources(page):
+        if ".DataTable(" not in source:
+            continue
+        # Column objects are flat (no nested braces), so a non-greedy {...} match
+        # isolates each one.
+        for column in re.findall(r"\{[^{}]*\}", source):
+            if re.search(r'"data"\s*:\s*"', column) and '"render"' not in column:
+                raise AssertionError(
+                    f"{page.name}: DataTables column binds a sheet field without a text renderer: "
+                    f"{' '.join(column.split())}"
+                )

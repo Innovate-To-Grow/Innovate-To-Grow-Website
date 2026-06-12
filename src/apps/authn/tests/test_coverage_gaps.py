@@ -290,6 +290,11 @@ class ImportResultMessageTests(TestCase):
         captured = {}
 
         class FakeAdmin:
+            def has_view_permission(self, request, obj=None):
+                # The view now re-checks per-app access before doing anything;
+                # this stub grants it so the message-path assertion is reached.
+                return True
+
             def message_user(self, request, message, level=None):
                 captured["message"] = message
                 captured["level"] = level

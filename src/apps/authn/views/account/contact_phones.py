@@ -31,7 +31,7 @@ from apps.authn.services import (
     verify_phone_code,
 )
 from apps.authn.services.email_challenges import AuthChallengeInvalid
-from apps.authn.throttles import EmailCodeRequestThrottle, EmailCodeVerifyThrottle
+from apps.authn.throttles import EmailCodeVerifyThrottle, PhoneCodeRequestThrottle
 
 
 class ContactPhoneListCreateView(APIView):
@@ -94,7 +94,9 @@ class ContactPhoneRequestVerificationView(APIView):
     """Request an SMS verification code for a contact phone."""
 
     permission_classes = [IsAuthenticated]
-    throttle_classes = [EmailCodeRequestThrottle]
+    # Per-user cap on real SNS spend (the anon EmailCodeRequestThrottle was a
+    # no-op for authenticated callers).
+    throttle_classes = [PhoneCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):

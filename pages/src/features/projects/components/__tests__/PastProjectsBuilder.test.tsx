@@ -118,6 +118,104 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(mergeButton).toBeEnabled();
   });
 
+  it('does not toggle selection from desktop row body clicks', () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    const mergeButton = screen.getByRole('button', {name: /save\/merge results/i});
+    fireEvent.click(screen.getAllByText('Bravo Project')[0]);
+    expect(mergeButton).toBeDisabled();
+
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    expect(mergeButton).toBeEnabled();
+  });
+
+  it('can undo search-table row deletion and refresh a standard search table', () => {
+    const onRefreshRows = vi.fn();
+    render(
+      <PastProjectsBuilder
+        rows={ROWS}
+        loading={false}
+        error={null}
+        onRefreshRows={onRefreshRows}
+        onCreateShare={vi.fn()}
+      />,
+    );
+
+    const undoButton = screen.getByRole('button', {name: /undo row change/i});
+    expect(undoButton).toBeDisabled();
+
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /delete selected rows/i}));
+
+    expect(screen.queryByText('Bravo Project')).toBeNull();
+    expect(undoButton).toBeEnabled();
+
+    fireEvent.click(undoButton);
+    expect(screen.getAllByText('Bravo Project').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', {name: /refresh search table/i}));
+    expect(onRefreshRows).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Refreshing this search table/i)).toBeInTheDocument();
+  });
+
+  it('refreshes only the requesting search table and keeps other tables curated', () => {
+    const onRefreshRows = vi.fn();
+    const {rerender} = render(
+      <PastProjectsBuilder
+        rows={ROWS}
+        loading={false}
+        error={null}
+        onRefreshRows={onRefreshRows}
+        onCreateShare={vi.fn()}
+      />,
+    );
+
+    // Open a second table and curate it: drop Bravo from table 2 only.
+    fireEvent.click(screen.getByRole('button', {name: '+ Search Table'}));
+    const table2 = screen
+      .getByRole('heading', {level: 3, name: 'Search Table 2'})
+      .closest('section') as HTMLElement;
+    fireEvent.click(within(table2).getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /delete selected rows/i}));
+    expect(within(table2).queryAllByText('Bravo Project')).toHaveLength(0);
+
+    // Ask table 1 to refresh — the parent starts a refetch while the stale rows stay mounted.
+    const table1 = screen
+      .getByRole('heading', {level: 3, name: 'Search Table 1'})
+      .closest('section') as HTMLElement;
+    fireEvent.click(within(table1).getByRole('button', {name: /refresh search table/i}));
+    expect(onRefreshRows).toHaveBeenCalledTimes(1);
+
+    // The refetch resolves with a new archive snapshot containing an extra project.
+    const refreshedRows = [
+      ...ROWS,
+      makeRow({team_number: 'T04', team_name: 'Team Delta', project_title: 'Delta Project'}),
+    ];
+    rerender(
+      <PastProjectsBuilder
+        rows={refreshedRows}
+        loading={false}
+        error={null}
+        onRefreshRows={onRefreshRows}
+        onCreateShare={vi.fn()}
+      />,
+    );
+
+    // Table 1 remounts with the fresh archive...
+    const refreshedTable1 = screen
+      .getByRole('heading', {level: 3, name: 'Search Table 1'})
+      .closest('section') as HTMLElement;
+    expect(within(refreshedTable1).getAllByText('Delta Project').length).toBeGreaterThan(0);
+
+    // ...while table 2 keeps its local curation: Bravo stays deleted, Delta is not injected.
+    const keptTable2 = screen
+      .getByRole('heading', {level: 3, name: 'Search Table 2'})
+      .closest('section') as HTMLElement;
+    expect(within(keptTable2).queryAllByText('Bravo Project')).toHaveLength(0);
+    expect(within(keptTable2).queryAllByText('Delta Project')).toHaveLength(0);
+    expect(screen.getByText('Search table refreshed from the latest past-project archive.')).toBeInTheDocument();
+  });
+
   it('omits the search table number until there are multiple tables', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
@@ -325,6 +423,31 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     const parsed = JSON.parse(stored as string) as Array<{project_title: string}>;
     expect(parsed).toHaveLength(1);
     expect(parsed[0].project_title).toBe('Bravo Project');
+  });
+
+  it('can reset merged results and undo the reset', () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save\/merge results/i}));
+    fireEvent.click(
+      within(screen.getByRole('dialog', {name: /save selected rows/i})).getByRole('button', {name: /save rows/i}),
+    );
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Bravo Project').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', {name: /reset merged results/i}));
+    fireEvent.click(
+      within(screen.getByRole('dialog', {name: /reset merged results/i})).getByRole('button', {
+        name: /reset merged results/i,
+      }),
+    );
+
+    expect(within(getMergedSection() as HTMLElement).queryByText('Bravo Project')).toBeNull();
+    expect(screen.getByText(/Merged results reset/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', {name: /undo merged change/i}));
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Bravo Project').length).toBeGreaterThan(0);
+    expect(screen.getByText('Merged results restored.')).toBeInTheDocument();
   });
 
   it('clears the persisted draft once a share is created successfully', async () => {

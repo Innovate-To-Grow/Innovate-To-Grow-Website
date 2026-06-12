@@ -155,7 +155,11 @@ class MemberChangeForm(UserChangeForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["admin_apps"].choices = admin_app_choices()
+        # ``admin_apps`` is absent for non-superusers (the admin marks it
+        # read-only so they can't self-grant app access), so only populate the
+        # choices when the field is actually editable on this form.
+        if "admin_apps" in self.fields:
+            self.fields["admin_apps"].choices = admin_app_choices()
 
     def clean_profile_image(self):
         value = self.cleaned_data.get("profile_image")

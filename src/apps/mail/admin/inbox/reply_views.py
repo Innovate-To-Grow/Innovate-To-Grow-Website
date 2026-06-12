@@ -1,12 +1,14 @@
 """Inbox reply admin views."""
 
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
 import apps.mail.admin.inbox as inbox_api
+from apps.core.access import user_can_access_app
 from apps.core.models import EmailServiceConfig
 
 from .helpers import build_original_from, build_reply_references, build_reply_subject
@@ -14,6 +16,10 @@ from .helpers import build_original_from, build_reply_references, build_reply_su
 
 def inbox_reply_view(request, uid):
     """Compose and send a reply to an inbox message."""
+    # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+    # per-app access itself. This can send mail on POST.
+    if not user_can_access_app(request.user, "mail"):
+        raise PermissionDenied("You do not have permission to reply from the mail inbox.")
     list_url = reverse("admin:mail_inbox_list")
     detail_url = reverse("admin:mail_inbox_detail", args=[uid])
 
@@ -73,6 +79,8 @@ def inbox_reply_view(request, uid):
 
 def inbox_reply_fragment_view(request, uid):
     """AJAX reply: GET returns form HTML, POST sends and returns JSON."""
+    if not user_can_access_app(request.user, "mail"):
+        raise PermissionDenied("You do not have permission to reply from the mail inbox.")
     try:
         msg = inbox_api.fetch_inbox_message(uid)
     except inbox_api.InboxError as exc:

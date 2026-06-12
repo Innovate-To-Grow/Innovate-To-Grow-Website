@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.urls import path, reverse
 
@@ -83,6 +84,11 @@ class PastProjectsSheetConfigAdmin(BaseModelAdmin):
         return custom_urls + super().get_urls()
 
     def pull_view(self, request):
+        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+        # per-app access itself — otherwise a staff member without the projects app
+        # could trigger a privileged Google Sheet sync here.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to sync past projects.")
         changelist_url = reverse("admin:projects_pastprojectssheetconfig_changelist")
         config = PastProjectsSheetConfig.load()
         if not config:
@@ -96,6 +102,11 @@ class PastProjectsSheetConfigAdmin(BaseModelAdmin):
         return redirect(changelist_url)
 
     def save_sync_settings_view(self, request):
+        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+        # per-app access itself — otherwise a staff member without the projects app
+        # could change the auto-sync configuration here.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to change sync settings.")
         changelist_url = reverse("admin:projects_pastprojectssheetconfig_changelist")
         if request.method != "POST":
             return redirect(changelist_url)

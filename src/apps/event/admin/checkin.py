@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse
 from django.middleware.csrf import get_token
 from django.template.response import TemplateResponse
@@ -86,6 +87,10 @@ class CheckInAdmin(BaseModelAdmin):
         return custom + urls
 
     def scanner_view(self, request, object_id):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the event app cannot open the scanner console.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to open the check-in console.")
         try:
             check_in = CheckIn.objects.select_related("event").get(pk=object_id)
         except CheckIn.DoesNotExist:
@@ -112,6 +117,10 @@ class CheckInAdmin(BaseModelAdmin):
         return TemplateResponse(request, "admin/event/checkin_scanner.html", context)
 
     def export_view(self, request, object_id):
+        # ``admin_view`` only enforces is_staff; re-check per-app access so a
+        # staff member without the event app cannot export check-in PII.
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to export check-in data.")
         try:
             check_in = CheckIn.objects.select_related("event").get(pk=object_id)
         except CheckIn.DoesNotExist:

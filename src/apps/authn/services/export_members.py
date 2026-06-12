@@ -9,6 +9,8 @@ from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from apps.core.services.sheets_safety import safe_sheet_value
+
 
 def export_members_to_excel(queryset) -> bytes:
     """
@@ -88,24 +90,27 @@ def export_members_to_excel(queryset) -> bytes:
         secondary = next((ce for ce in contact_emails if ce.email_type == "secondary"), None)
         phone = next(iter(contact_phones), None)
 
+        # Member-controlled text (name/title/org/email/phone) is neutralized so
+        # a value like ``=HYPERLINK(...)`` is not written as a live formula that
+        # executes when a staffer opens the export (CSV/formula injection).
         ws.append(
             [
                 str(member.id),
-                member.first_name,
-                member.last_name,
-                member.middle_name or "",
-                member.title or "",
-                member.organization or "",
+                safe_sheet_value(member.first_name),
+                safe_sheet_value(member.last_name),
+                safe_sheet_value(member.middle_name or ""),
+                safe_sheet_value(member.title or ""),
+                safe_sheet_value(member.organization or ""),
                 "Yes" if member.is_active else "No",
                 "Yes" if member.is_staff else "No",
                 member.date_joined.strftime("%Y-%m-%d %H:%M") if member.date_joined else "",
-                primary.email_address if primary else "",
+                safe_sheet_value(primary.email_address) if primary else "",
                 "Yes" if primary and primary.verified else "No",
                 "Yes" if primary and primary.subscribe else "No",
-                secondary.email_address if secondary else "",
+                safe_sheet_value(secondary.email_address) if secondary else "",
                 "Yes" if secondary and secondary.verified else "No",
                 "Yes" if secondary and secondary.subscribe else "No",
-                phone.to_e164() if phone else "",
+                safe_sheet_value(phone.to_e164()) if phone else "",
                 "Yes" if phone and phone.subscribe else "No",
                 "Yes" if phone and phone.verified else "No",
             ]

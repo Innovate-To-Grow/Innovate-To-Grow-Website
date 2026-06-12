@@ -35,10 +35,15 @@ describe('MySharedLinksSection', () => {
     mockListMyShares.mockResolvedValue([share()]);
     render(<MySharedLinksSection />);
 
+    expect(await screen.findByRole('heading', {level: 2, name: 'Past Project Curation Shared Links'})).toBeInTheDocument();
     expect(await screen.findByText('Spring finalists')).toBeInTheDocument();
     const openLink = screen.getByRole('link', {name: /open/i});
     expect(openLink).toHaveAttribute('href', '/past-projects/share-1');
     expect(openLink).toHaveClass('account-outline-btn');
+    expect(screen.getByRole('link', {name: /view full page/i})).toHaveAttribute(
+      'href',
+      '/account/past-project-curation-shared-links',
+    );
     expect(screen.queryByRole('button', {name: /copy link/i})).toBeNull();
     expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
   });

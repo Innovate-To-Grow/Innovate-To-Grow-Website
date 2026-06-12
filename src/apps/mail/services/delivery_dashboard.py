@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 
 import boto3
@@ -37,6 +38,17 @@ PERMISSION_ERROR_CODES = {
     "UnauthorizedOperation",
     "UnrecognizedClientException",
 }
+# Exception details never reach the JSON payload: the dashboard only sees these
+# fixed messages (keyed by reason) plus an allowlisted error code, while the
+# full exception text goes to the server log.
+PUBLIC_ERROR_MESSAGES = {
+    "permission": "The configured AWS credentials are missing the required SES suppression-list permissions.",
+    "aws_error": "AWS returned an error while reading the SES suppression list.",
+    "error": "An unexpected error occurred while reading the SES suppression list.",
+}
+_PUBLIC_ERROR_CODES = {code: code for code in PERMISSION_ERROR_CODES}
+
+logger = logging.getLogger(__name__)
 
 
 def get_delivery_dashboard_data(*, days: int = DEFAULT_WINDOW_DAYS, problem_limit: int | None = None) -> dict:
@@ -136,27 +148,27 @@ def fetch_suppressed_destinations(*, days: int = DEFAULT_WINDOW_DAYS, limit: int
                 break
             kwargs["NextToken"] = next_token
     except ClientError as exc:
+        logger.warning("Reading the SES suppression list failed: %s", exc)
         return [], _recipient_details_meta(
             False,
             _client_error_reason(exc),
-            error_code=_client_error_code(exc),
-            error_message=_client_error_message(exc),
+            error_code=_PUBLIC_ERROR_CODES.get(_client_error_code(exc), "AwsError"),
             required_actions=RECIPIENT_DETAIL_ACTIONS,
         )
     except BotoCoreError as exc:
+        logger.warning("Reading the SES suppression list failed: %s", exc)
         return [], _recipient_details_meta(
             False,
             "aws_error",
-            error_code=exc.__class__.__name__,
-            error_message=str(exc),
+            error_code="AwsError",
             required_actions=RECIPIENT_DETAIL_ACTIONS,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
+        logger.exception("Unexpected error reading the SES suppression list")
         return [], _recipient_details_meta(
             False,
             "error",
-            error_code=exc.__class__.__name__,
-            error_message=str(exc),
+            error_code="InternalError",
             required_actions=RECIPIENT_DETAIL_ACTIONS,
         )
 
@@ -419,7 +431,6 @@ def _recipient_details_meta(
     reason: str,
     *,
     error_code: str = "",
-    error_message: str = "",
     required_actions: tuple[str, ...] = (),
 ) -> dict:
     return {
@@ -428,7 +439,7 @@ def _recipient_details_meta(
         "source": "AWS SES account suppression list",
         "count": 0,
         "error_code": error_code,
-        "error_message": error_message[:320],
+        "error_message": PUBLIC_ERROR_MESSAGES.get(reason, ""),
         "required_actions": list(required_actions),
         "returned_count": 0,
         "total_count": 0,
@@ -475,10 +486,6 @@ def _display_dt(value) -> str:
 
 def _client_error_code(exc: ClientError) -> str:
     return exc.response.get("Error", {}).get("Code", "")
-
-
-def _client_error_message(exc: ClientError) -> str:
-    return exc.response.get("Error", {}).get("Message", "")
 
 
 def _client_error_reason(exc: ClientError) -> str:

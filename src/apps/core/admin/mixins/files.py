@@ -6,6 +6,8 @@ from io import BytesIO
 
 from django.http import HttpResponse
 
+from apps.core.services.sheets_safety import safe_sheet_value
+
 
 def generate_excel_response(admin_obj, request, queryset, columns):
     """Build an .xlsx file and return it as a download response."""
@@ -34,7 +36,13 @@ def generate_excel_response(admin_obj, request, queryset, columns):
     ws.append(header_cells)
 
     for obj in queryset:
-        row = [admin_obj.get_export_value(obj, name) for name, _label in columns]
+        # Neutralize string cells so an exported value like ``=HYPERLINK(...)``
+        # is not written as a live formula (openpyxl treats a leading "=" string
+        # as a formula). Non-string values keep their native type/formatting.
+        row = [
+            safe_sheet_value(value) if isinstance(value, str) else value
+            for value in (admin_obj.get_export_value(obj, name) for name, _label in columns)
+        ]
         ws.append(row)
 
     output = BytesIO()

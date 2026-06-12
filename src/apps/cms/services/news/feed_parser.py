@@ -2,15 +2,17 @@ import re
 import xml.etree.ElementTree as ET  # noqa: N817
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
-from urllib.request import Request, urlopen
+
+from .url_guard import safe_urlopen
 
 FEED_URL = "https://news.ucmerced.edu/taxonomy/term/221/all/feed"
 _DC_NS = "{http://purl.org/dc/elements/1.1/}"
 
 
 def fetch_feed(url: str = FEED_URL) -> bytes:
-    req = Request(url, headers={"User-Agent": "ITG-NewsSync/1.0"})
-    with urlopen(req, timeout=30) as resp:  # noqa: S310
+    # ``url`` is admin-configurable (NewsFeedSource.feed_url); fetch it through
+    # the SSRF guard so it can't reach internal/loopback hosts or file://.
+    with safe_urlopen(url, timeout=30, headers={"User-Agent": "ITG-NewsSync/1.0"}) as resp:
         return resp.read()
 
 

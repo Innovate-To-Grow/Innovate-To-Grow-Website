@@ -13,13 +13,25 @@ const MAX_PERSISTED_MESSAGES = 50;
  */
 let memorySessionId: string | null = null;
 
+/** Monotonic counter for the last-resort id, so ids stay unique within a tab. */
+let lastResortSequence = 0;
+
 /** Generate an opaque session id, tolerating environments without crypto.randomUUID. */
 function mintSessionId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    // randomUUID requires a secure context; getRandomValues works on plain HTTP
+    // too and is just as strong, so the id stays unguessable either way.
+    if (typeof crypto.getRandomValues === 'function') {
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      return `s-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+    }
   }
-  // Fallback id; only reached in environments lacking the Web Crypto UUID API.
-  return `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // No Web Crypto at all — unreachable in any supported browser; only synthetic
+  // test environments land here, so a non-random unique id is acceptable.
+  return `s-${Date.now().toString(36)}-${(lastResortSequence++).toString(36)}`;
 }
 
 /**

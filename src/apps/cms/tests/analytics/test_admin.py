@@ -19,6 +19,7 @@ from apps.cms.admin.analytics.page_view.stats import (
     compute_dashboard_stats,
 )
 from apps.cms.models import PageView
+from apps.event.tests.helpers import make_superuser
 
 Member = get_user_model()
 
@@ -209,29 +210,37 @@ class IPGeoLookupViewTests(TestCase):
     def setUp(self):
         cache.clear()
         self.factory = RequestFactory()
+        # The view now re-checks per-app access via ``request.user``; a raw
+        # RequestFactory request has no user, so attach a cms-granted one.
+        self.user = make_superuser(email="geo-lookup-master@example.com")
 
     def tearDown(self):
         cache.clear()
+
+    def _get(self, params):
+        request = self.factory.get("/ip-geo-lookup/", params)
+        request.user = self.user
+        return request
 
     @staticmethod
     def _body(response):
         return json.loads(response.content)
 
     def test_missing_ip_returns_400(self):
-        request = self.factory.get("/ip-geo-lookup/", {"ip": "  "})
+        request = self._get({"ip": "  "})
         response = ip_geo_lookup_view(request)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(self._body(response)["error"], "No IP provided")
 
     def test_invalid_ip_returns_400(self):
-        request = self.factory.get("/ip-geo-lookup/", {"ip": "not-an-ip"})
+        request = self._get({"ip": "not-an-ip"})
         response = ip_geo_lookup_view(request)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(self._body(response)["error"], "Invalid IP address")
 
     def test_cached_result_returned_without_network(self):
         cache.set(f"{IP_GEO_CACHE_PREFIX}8.8.8.8", {"ip": "8.8.8.8", "city": "Cached City"}, 60)
-        request = self.factory.get("/ip-geo-lookup/", {"ip": "8.8.8.8"})
+        request = self._get({"ip": "8.8.8.8"})
 
         with patch("requests.get") as mock_get:
             response = ip_geo_lookup_view(request)
@@ -253,7 +262,7 @@ class IPGeoLookupViewTests(TestCase):
             "org": "Google",
             "as": "AS15169",
         }
-        request = self.factory.get("/ip-geo-lookup/", {"ip": "8.8.8.8"})
+        request = self._get({"ip": "8.8.8.8"})
 
         with patch("requests.get") as mock_get:
             mock_get.return_value.json.return_value = payload
@@ -269,7 +278,7 @@ class IPGeoLookupViewTests(TestCase):
         self.assertEqual(cache.get(f"{IP_GEO_CACHE_PREFIX}8.8.8.8")["city"], "Mountain View")
 
     def test_failed_lookup_status_fail_not_cached(self):
-        request = self.factory.get("/ip-geo-lookup/", {"ip": "8.8.8.8"})
+        request = self._get({"ip": "8.8.8.8"})
 
         with patch("requests.get") as mock_get:
             mock_get.return_value.json.return_value = {"status": "fail", "message": "reserved range"}
@@ -283,7 +292,7 @@ class IPGeoLookupViewTests(TestCase):
         self.assertIsNone(cache.get(f"{IP_GEO_CACHE_PREFIX}8.8.8.8"))
 
     def test_network_error_returns_502(self):
-        request = self.factory.get("/ip-geo-lookup/", {"ip": "8.8.8.8"})
+        request = self._get({"ip": "8.8.8.8"})
 
         with patch("requests.get", side_effect=Exception("boom")):
             response = ip_geo_lookup_view(request)

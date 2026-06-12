@@ -3,35 +3,35 @@ function format(d) {
     return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">' +
         '<tr>' +
         '<td><b>Track:</b></td>' +
-        '<td>' + d.Track + '</td>' +
+        '<td>' + escapeSheetText(d.Track) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td><b>Class:</b></td>' +
-        '<td>' + d.Class + '</td>' +
+        '<td>' + escapeSheetText(d.Class) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td><b>Team#:</b></td>' +
-        '<td>' + d["Team#"] + '</td>' +
+        '<td>' + escapeSheetText(d["Team#"]) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td><b>Team Name:</b></td>' +
-        '<td>' + d["Team Name"] + '</td>' +
+        '<td>' + escapeSheetText(d["Team Name"]) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td><b>Students Names:</b></td>' +
-        '<td>' + d["Student Names"] + '</td>' +
+        '<td>' + escapeSheetText(d["Student Names"]) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td><b>Project Title:</b></td>' +
-        '<td>' + d["Project Title"] + '</td>' +
+        '<td>' + escapeSheetText(d["Project Title"]) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td><b>Organization:</b></td>' +
-        '<td>' + d.Organization + '</td>' +
+        '<td>' + escapeSheetText(d.Organization) + '</td>' +
         '</tr>' +
         '<tr>' +
         '<td><b>Summary:</b></td>' +
-        '<td>' + d["Short Summary"] + '</td>' +
+        '<td>' + escapeSheetText(d["Short Summary"]) + '</td>' +
         '</tr>'
     '</table>';
 }
@@ -68,6 +68,7 @@ $(document).ready(function () {
 function fnLoadDataTableInstance() {
     // #example refers to the html table, 'id="example"'
     console.log("second");
+    var sheetTextRenderer = $.fn.dataTable.render.text();
     var table = $('#example').DataTable({
         dom: 'Bfrtip',
         pageLength: 10,
@@ -79,15 +80,15 @@ function fnLoadDataTableInstance() {
             {
                 "className": 'details-control',
                 "orderable": false,
-                "data": "Buttons",
+                "data": null,
                 "defaultContent": ''
             },
-            {"data": "Track"},
-            {"data": "Class"},
-            {"data": "Team#"},
-            {"data": "Team Name"},
-            {"data": "Project Title"},
-            {"data": "Organization"},
+            {"data": "Track", "render": sheetTextRenderer},
+            {"data": "Class", "render": sheetTextRenderer},
+            {"data": "Team#", "render": sheetTextRenderer},
+            {"data": "Team Name", "render": sheetTextRenderer},
+            {"data": "Project Title", "render": sheetTextRenderer},
+            {"data": "Organization", "render": sheetTextRenderer},
 
         ],
         order: [

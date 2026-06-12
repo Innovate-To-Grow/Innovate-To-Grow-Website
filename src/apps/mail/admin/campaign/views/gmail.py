@@ -1,6 +1,7 @@
 """Gmail import views for campaign admin."""
 
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -17,6 +18,11 @@ class CampaignGmailMixin:
         return HttpResponseRedirect(reverse("admin:mail_emailcampaign_import_gmail_html", args=[object_id]))
 
     def import_gmail_html_view(self, request, object_id):
+        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
+        # per-app access itself. This stages a mutation of the campaign body —
+        # require change access.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to import Gmail HTML into this campaign.")
         obj = EmailCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_emailcampaign_change", args=[object_id])
         if obj.status != "draft":
@@ -51,6 +57,10 @@ class CampaignGmailMixin:
         return TemplateResponse(request, "admin/mail/import_gmail_html.html", context)
 
     def import_gmail_html_confirm_view(self, request, object_id):
+        # State-changing flow (writes the imported HTML into the campaign body) —
+        # require change access.
+        if not self.has_change_permission(request):
+            raise PermissionDenied("You do not have permission to import Gmail HTML into this campaign.")
         obj = EmailCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_emailcampaign_change", args=[object_id])
         selection_url = reverse("admin:mail_emailcampaign_import_gmail_html", args=[object_id])

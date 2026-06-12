@@ -1,7 +1,9 @@
 import json
 
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse, StreamingHttpResponse
 
+from apps.core.access import user_can_access_app
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import (
     ChatConversation,
@@ -24,6 +26,9 @@ def _stream_callable():
 
 def chat_send_view(request, conversation_id):
     """Accept a user message, stream the ADK/Bedrock response back as SSE."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     try:

@@ -6,6 +6,7 @@ from django.template.response import TemplateResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 import apps.system_intelligence.admin.actions as actions_api
+from apps.core.access import user_can_access_app
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
 from .lookup import _changed_preview_blocks, _cms_preview_page, _get_user_action_request
@@ -14,6 +15,9 @@ from .rendering import _render_preview_blocks
 
 def action_approve_view(request, action_id):
     """Approve and apply a pending System Intelligence action request."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     try:
@@ -37,6 +41,9 @@ def action_approve_view(request, action_id):
 
 def action_reject_view(request, action_id):
     """Reject a pending System Intelligence action request."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     try:
@@ -75,6 +82,9 @@ def _action_error_response(exc, *, action):
 @xframe_options_sameorigin
 def action_preview_view(request, action_id):
     """Render a same-origin iframe preview for a pending CMS page action."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     try:
         action = _get_user_action_request(request, action_id)
     except PermissionDenied as exc:
@@ -99,6 +109,9 @@ def action_preview_view(request, action_id):
 @xframe_options_sameorigin
 def action_full_preview_view(request, action_id):
     """Render the full proposed CMS page in a new admin preview tab."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     try:
         action = _get_user_action_request(request, action_id)
     except PermissionDenied as exc:

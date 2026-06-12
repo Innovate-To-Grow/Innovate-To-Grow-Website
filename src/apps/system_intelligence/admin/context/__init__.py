@@ -1,7 +1,9 @@
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
+from apps.core.access import user_can_access_app
 from apps.system_intelligence.admin.adk_web import SYSTEM_INTELLIGENCE_ADK_DEV_UI_PATH
 
 UUID_PLACEHOLDER = "00000000-0000-0000-0000-000000000000"
@@ -9,6 +11,9 @@ UUID_PLACEHOLDER = "00000000-0000-0000-0000-000000000000"
 
 def chat_list_view(request):
     """Render the primary System Intelligence chat UI."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     context = {
         **admin.site.each_context(request),
         "title": "Chat",
@@ -19,6 +24,9 @@ def chat_list_view(request):
 
 def debug_view(request):
     """Render the official ADK Web shell wrapper for debugging."""
+    # admin_view only enforces is_staff; re-check the per-app model here.
+    if not user_can_access_app(request.user, "system_intelligence"):
+        raise PermissionDenied("You do not have permission to access System Intelligence.")
     context = {
         **admin.site.each_context(request),
         "title": "System Intelligence Debug",
