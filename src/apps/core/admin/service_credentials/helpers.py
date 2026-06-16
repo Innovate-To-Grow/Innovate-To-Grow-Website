@@ -53,7 +53,7 @@ def _send_test_email(*, config, recipient):
 
 
 def _send_test_sms(*, phone_number):
-    """Send a test SMS using AWS SNS (origination number from active AWSCredentialConfig)."""
+    """Send a test SMS via AWS End User Messaging (origination number from active AWSCredentialConfig)."""
     from apps.authn.services.sms import publish_plain_sms
 
     message_id = publish_plain_sms(

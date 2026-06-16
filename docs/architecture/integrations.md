@@ -19,13 +19,13 @@ See [Google Sheets Integration](../integrations/google-sheets/index.md) for full
 
 ## AWS shared credentials
 
-A single IAM access key and AWS region power SES, SNS, and Bedrock. They are stored in `AWSCredentialConfig` (`src/apps/core/models/base/service_credentials/aws.py`) and resolved by `src/apps/core/services/aws/credentials.py`. The same admin page also holds the SNS origination phone number.
+A single IAM access key and AWS region power SES, SMS (End User Messaging), and Bedrock. They are stored in `AWSCredentialConfig` (`src/apps/core/models/base/service_credentials/aws.py`) and resolved by `src/apps/core/services/aws/credentials.py`.
 
 | Field | Used by |
 |-------|--------|
-| `access_key_id` / `secret_access_key` | SES, SNS, Bedrock |
-| `default_region` | Shared AWS region for SES, SNS, and Bedrock |
-| `sms_from_number` | SNS origination number for OTP SMS |
+| `access_key_id` / `secret_access_key` | SES, SMS, Bedrock |
+| `default_region` | Shared AWS region for SES, SMS, and Bedrock |
+| `sms_from_number` | SMS origination number for OTP SMS (optional override; auto-detected from End User Messaging when blank) |
 
 ## AWS SES (Email)
 
@@ -41,17 +41,18 @@ Primary email delivery service in production.
 
 Delivery uses AWS SES when an active `AWSCredentialConfig` is configured; otherwise it falls back to the SMTP fields on `EmailServiceConfig`. In development, `EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'` prints emails to stdout.
 
-## AWS SNS (SMS)
+## AWS End User Messaging (SMS)
 
 Used for phone number verification during event registration and contact management.
 
 | Concern | Implementation |
 |---------|---------------|
-| SMS settings | Shared `AWSCredentialConfig` IAM key + `default_region` + `sms_from_number` + OTP template |
+| SMS settings | Shared `AWSCredentialConfig` IAM key + `default_region` + optional `sms_from_number` override + OTP template |
+| Origination resolution | `src/apps/core/services/aws/sms.py` (`describe_phone_numbers`, cached) |
 | Send verification | `src/apps/authn/services/sms/sns_verify.py` |
 | Event phone verify | `src/apps/event/views/registration/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
 
-OTP codes are generated locally, stored in cache, and delivered via `sns:Publish`. Requires a registered SNS origination phone number on `AWSCredentialConfig.sms_from_number` and IAM permission `sns:Publish`.
+OTP codes are generated locally, stored in cache, and delivered via AWS End User Messaging (`pinpoint-sms-voice-v2:SendTextMessage`). The origination number is auto-detected from the account's End User Messaging phone numbers (`DescribePhoneNumbers`), or set manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions `sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`. The legacy `sns:Publish` path cannot use an End-User-Messaging-managed origination number.
 
 ## Amazon Bedrock (System Intelligence)
 
