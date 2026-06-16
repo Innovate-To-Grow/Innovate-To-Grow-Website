@@ -40,7 +40,9 @@ export const useEventRegistration = () => {
   const [phoneSending, setPhoneSending] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
-  const initialPhoneRef = useRef<{digits: string; region: string} | null>(null);
+  // Snapshot of the phone as loaded from the member profile. Held in state (not a ref)
+  // because `phoneChanged` is derived during render and must react when the snapshot is set.
+  const [initialPhone, setInitialPhone] = useState<{digits: string; region: string} | null>(null);
   const initialProfileRef = useRef<{first_name: string; middle_name: string; last_name: string; organization: string; title: string} | null>(null);
 
   // Pre-fill attendee fields from member profile
@@ -92,7 +94,7 @@ export const useEventRegistration = () => {
         setPhoneRegion(region);
         setPhoneVerified(Boolean(data.member_phone.verified));
         setPhoneCodeSent(Boolean(data.member_phone.verified));
-        initialPhoneRef.current = {digits: normalizedDigits || phone, region};
+        setInitialPhone({digits: normalizedDigits || phone, region});
       }
       if (data.member_profile && !hasRequiredNameFields(data.member_profile)) {
         navigate(completeProfilePath, {replace: true});
@@ -120,6 +122,7 @@ export const useEventRegistration = () => {
     }
 
     if (isAuthenticated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- every setState inside loadOptionsAndRoute runs after `await fetchRegistrationOptions()`, so they are asynchronous (post-await) and do not cause synchronous cascading renders; the rule cannot see through the indirect async call.
       void loadOptionsAndRoute();
     } else {
       // Not authenticated — load options for event banner + email step
@@ -274,9 +277,9 @@ export const useEventRegistration = () => {
     setPhoneRegion(value);
   };
 
-  const phoneChanged = initialPhoneRef.current === null
-    || attendeePhone !== initialPhoneRef.current.digits
-    || phoneRegion !== initialPhoneRef.current.region;
+  const phoneChanged = initialPhone === null
+    || attendeePhone !== initialPhone.digits
+    || phoneRegion !== initialPhone.region;
 
   const phoneError = useMemo(
     () => {

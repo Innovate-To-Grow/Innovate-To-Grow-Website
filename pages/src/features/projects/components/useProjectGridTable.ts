@@ -49,6 +49,13 @@ export function useProjectGridTable({
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Reset the user's in-progress search when the seed prop changes (it tracks the
+    // ?value= URL param / external team search, which can change while mounted).
+    // `search` holds intervening user input, so this is a genuine prop-change reset,
+    // not a derivable value. Doing it during render with a previous-prop ref would
+    // shift the update from after-paint to render-phase — an observable timing change
+    // we must not introduce — so the effect-phase sync stays.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- external prop-change reset; render-phase alternative would change effect timing
     setSearch(initialSearch);
   }, [initialSearch]);
 
@@ -73,7 +80,17 @@ export function useProjectGridTable({
   );
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
-  const currentPage = Math.min(page, totalPages - 1);
+  const maxPage = totalPages - 1;
+  // Persist the clamp back into `page` during render (React's "adjust state when a
+  // derived value changes" pattern — a render-phase setState, not an effect, so it is
+  // not a cascading-render risk). This matters when the row count shrinks under the
+  // current page and then grows again (e.g. an Undo restores removed rows): without
+  // writing the clamped value back, the stale out-of-range index would resurface and
+  // jump the user forward. The guard makes it converge in one extra render.
+  if (page > maxPage) {
+    setPage(maxPage);
+  }
+  const currentPage = Math.min(page, maxPage);
 
   const pagedRows = useMemo(
     () => sortedRows.slice(currentPage * pageSize, (currentPage + 1) * pageSize),
@@ -99,7 +116,10 @@ export function useProjectGridTable({
       return;
     }
     // Seed every expandable row open. Adding an already-present key is a no-op, so a
-    // user can still collapse rows afterward without this re-expanding them.
+    // user can still collapse rows afterward without this re-expanding them. The
+    // functional updater merges into prior expand state derived from rows/props, so it
+    // cannot be replaced by a render-time derivation without dropping user toggles.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- merges seed-open keys into existing expand state; not derivable in render without losing user toggles
     setExpandedKeys((current) => {
       const next = new Set(current);
       expandableKeys.forEach((rowKey) => next.add(rowKey));
@@ -108,14 +128,13 @@ export function useProjectGridTable({
   }, [expandAllByDefault, expandableKeys]);
 
   useEffect(() => {
-    if (currentPage !== page) {
-      setPage(currentPage);
-    }
-  }, [currentPage, page]);
-
-  useEffect(() => {
     const rowKeys = new Set(rows.map((row) => row.__key));
 
+    // Prune expanded/selected keys for rows that no longer exist when `rows` changes,
+    // while keeping the rest of the user's expand/selection state. Both updaters read
+    // prior state, so this stale-key cleanup is genuine React-to-prop sync, not a value
+    // derivable in render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prunes stale keys against current rows; preserves remaining user expand state
     setExpandedKeys((current) => {
       const next = new Set<string>();
       current.forEach((rowKey) => {

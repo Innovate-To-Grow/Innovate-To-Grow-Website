@@ -74,6 +74,7 @@ export const SubscribePage = () => {
 
     if (step === 'email' || step === 'code') {
       if (shouldStartInProfile) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- external sync: isAuthenticated flips asynchronously via the i2g-auth-state-change event (not a local handler), so this transition out of email/code must stay in the effect; showing the loader synchronously before the profile fetch is load-bearing for the auth-timing gap.
         setProfileLoading(true);
       }
       setStep(shouldStartInProfile ? 'profile' : 'manage');
@@ -90,6 +91,7 @@ export const SubscribePage = () => {
 
     let cancelled = false;
     if (step === 'profile') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- external sync: ensures the loader shows before the async getProfile() resolves; this guards the hasStoredAccessToken auth-timing path where the effect (re)runs on a profile-link load and must not flash the form before data arrives.
       setProfileLoading(true);
     }
 
