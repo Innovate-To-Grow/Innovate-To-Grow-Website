@@ -109,7 +109,28 @@ class AWSCredentialConfig(models.Model):
 
     @property
     def sns_configured(self) -> bool:
-        return self.is_configured and bool(self.sms_from_number)
+        """SMS is ready when credentials exist and an origination number is available.
+
+        The number is taken from ``sms_from_number`` when set (manual override),
+        otherwise auto-detected from AWS End User Messaging (DescribePhoneNumbers, cached).
+        """
+        if not self.is_configured:
+            return False
+        if self.sms_from_number:
+            return True
+        from apps.core.services.aws import sms as sms_service
+
+        return sms_service.origination_number_available()
+
+    def resolved_sms_from_number(self) -> str:
+        """The origination number to send from: manual override, else auto-detected."""
+        if self.sms_from_number:
+            return self.sms_from_number
+        if not self.is_configured:
+            return ""
+        from apps.core.services.aws import sms as sms_service
+
+        return sms_service.resolve_origination_number() or ""
 
     def render_sms_otp_message(self, code: str) -> str:
         template = self.sms_message_template.strip() or (

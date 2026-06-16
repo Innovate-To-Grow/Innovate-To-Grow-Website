@@ -1,8 +1,12 @@
 """
-AWS SNS SMS service for phone number verification.
+AWS SMS service for phone number verification.
 
-OTP codes are generated locally, stored in cache, and delivered via SNS publish.
-AWS credentials, region, and origination number all live on AWSCredentialConfig.
+OTP codes are generated locally, stored in cache, and delivered through AWS
+End User Messaging (``pinpoint-sms-voice-v2`` SendTextMessage). Dedicated
+origination numbers (toll-free/10DLC) are managed by End User Messaging, so the
+legacy ``sns:Publish`` path cannot use them — it rejects the number with
+"does not belong to the account". AWS credentials, region, and the origination
+identity all live on AWSCredentialConfig.
 """
 
 from __future__ import annotations
@@ -65,21 +69,21 @@ def _random_code() -> str:
 
 
 def _assert_configured():
-    """Ensure AWS SNS settings are ready."""
+    """Ensure AWS SMS settings are ready."""
     aws = _load_aws_config()
     if not aws.sns_configured:
         raise PhoneVerificationDeliveryError("SMS is not configured.")
     return aws
 
 
-def _get_sns_client():
+def _get_smsvoice_client():
     try:
         creds = resolve_aws_credentials("sns")
     except AwsCredentialsError as exc:
         raise PhoneVerificationDeliveryError("AWS credentials are not configured.") from exc
 
     return boto3.client(
-        "sns",
+        "pinpoint-sms-voice-v2",
         region_name=creds.region,
         aws_access_key_id=creds.access_key_id,
         aws_secret_access_key=creds.secret_access_key,
@@ -87,32 +91,30 @@ def _get_sns_client():
 
 
 def _publish_sms(*, phone_number: str, message: str, aws_config) -> str:
-    client = _get_sns_client()
-    message_attributes = {
-        "AWS.SNS.SMS.SMSType": {"DataType": "String", "StringValue": "Transactional"},
-    }
-    if aws_config.sms_from_number:
-        message_attributes["AWS.MM.SMS.OriginationNumber"] = {
-            "DataType": "String",
-            "StringValue": aws_config.sms_from_number,
-        }
+    origination_identity = aws_config.resolved_sms_from_number()
+    if not origination_identity:
+        raise PhoneVerificationDeliveryError("SMS is not configured.")
 
+    client = _get_smsvoice_client()
     try:
-        response = client.publish(
-            PhoneNumber=phone_number,
-            Message=message,
-            MessageAttributes=message_attributes,
+        response = client.send_text_message(
+            DestinationPhoneNumber=phone_number,
+            OriginationIdentity=origination_identity,
+            MessageBody=message,
+            MessageType="TRANSACTIONAL",
         )
     except ClientError as exc:
         error_code = exc.response.get("Error", {}).get("Code", "")
-        logger.warning("SNS publish failed: code=%s", error_code)
-        if error_code in {"Throttling", "ThrottlingException", "TooManyRequestsException"}:
+        logger.warning("send_text_message failed: code=%s", error_code)
+        if error_code in {"ThrottlingException", "TooManyRequestsException", "ServiceQuotaExceededException"}:
             raise PhoneVerificationThrottled("Too many verification attempts. Please try again later.") from exc
-        if error_code in {"InvalidParameter", "InvalidParameterException", "OptedOut"}:
+        if error_code == "ValidationException":
             raise PhoneVerificationInvalid("Invalid phone number.") from exc
+        # ConflictException / ResourceNotFoundException / AccessDeniedException point at the
+        # origination identity or account state, not a bad recipient — surface as delivery errors.
         raise PhoneVerificationDeliveryError("Failed to send verification SMS.") from exc
     except BotoCoreError as exc:
-        logger.warning("SNS publish failed", exc_info=True)
+        logger.warning("send_text_message failed", exc_info=True)
         raise PhoneVerificationDeliveryError("Failed to send verification SMS.") from exc
 
     return response.get("MessageId", "")
@@ -133,7 +135,7 @@ def _record_send(phone_number: str) -> None:
 
 def start_phone_verification(phone_number: str) -> str:
     """
-    Generate an OTP, store it in cache, and send it via AWS SNS.
+    Generate an OTP, store it in cache, and send it via AWS End User Messaging.
     Returns the verification status (``pending``).
     """
     aws_config = _assert_configured()
@@ -154,7 +156,7 @@ def start_phone_verification(phone_number: str) -> str:
 
     message_id = _publish_sms(phone_number=phone_number, message=message, aws_config=aws_config)
     _record_send(phone_number)
-    logger.info("Phone verification started via SNS: message_id=%s", message_id)
+    logger.info("Phone verification started: message_id=%s", message_id)
     return DEFAULT_STATUS
 
 
@@ -189,7 +191,7 @@ def check_phone_verification(phone_number: str, code: str) -> str:
 
 
 def publish_plain_sms(*, phone_number: str, message: str) -> str:
-    """Send a plain SMS message via SNS (used by admin test-send)."""
+    """Send a plain SMS message via AWS End User Messaging (used by admin test-send)."""
     aws_config = _load_aws_config()
     if not aws_config.sns_configured:
         raise PhoneVerificationDeliveryError("SMS is not configured.")

@@ -1,4 +1,5 @@
 from io import StringIO
+from unittest.mock import patch
 
 from django.core.management import CommandError, call_command
 from django.test import TestCase
@@ -23,6 +24,10 @@ class VerifyServiceConfigsCommandTest(TestCase):
         EmailServiceConfig.objects.all().delete()
         GoogleCredentialConfig.objects.all().delete()
         AWSCredentialConfig.objects.all().delete()
+        # Default: no origination number auto-detected from AWS (no live calls in tests).
+        patcher = patch("apps.core.services.aws.sms.origination_number_available", return_value=False)
+        self.mock_origination_available = patcher.start()
+        self.addCleanup(patcher.stop)
 
     def _run(self, *args):
         out = StringIO()
@@ -73,6 +78,13 @@ class VerifyServiceConfigsCommandTest(TestCase):
     def test_strict_with_require_sms_passes_when_configured(self):
         self._create_email()
         self._create_aws(sms_from_number="+12065550000")
+        out, _ = self._run("--strict", "--require-sms")
+        self.assertIn("passed", out)
+
+    def test_strict_with_require_sms_passes_when_number_auto_resolved(self):
+        self._create_email()
+        self._create_aws()  # no manual override; number comes from AWS
+        self.mock_origination_available.return_value = True
         out, _ = self._run("--strict", "--require-sms")
         self.assertIn("passed", out)
 
