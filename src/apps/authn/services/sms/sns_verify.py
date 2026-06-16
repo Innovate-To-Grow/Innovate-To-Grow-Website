@@ -108,8 +108,10 @@ def _publish_sms(*, phone_number: str, message: str, aws_config) -> str:
         logger.warning("send_text_message failed: code=%s", error_code)
         if error_code in {"ThrottlingException", "TooManyRequestsException", "ServiceQuotaExceededException"}:
             raise PhoneVerificationThrottled("Too many verification attempts. Please try again later.") from exc
-        if error_code in {"ValidationException", "ConflictException"}:
+        if error_code == "ValidationException":
             raise PhoneVerificationInvalid("Invalid phone number.") from exc
+        # ConflictException / ResourceNotFoundException / AccessDeniedException point at the
+        # origination identity or account state, not a bad recipient — surface as delivery errors.
         raise PhoneVerificationDeliveryError("Failed to send verification SMS.") from exc
     except BotoCoreError as exc:
         logger.warning("send_text_message failed", exc_info=True)

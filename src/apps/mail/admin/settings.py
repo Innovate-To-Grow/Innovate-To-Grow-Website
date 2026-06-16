@@ -216,7 +216,7 @@ def mail_settings_test_sms_view(request):
         "input_label": "Recipient phone number",
         "input_type": "tel",
         "input_placeholder": "2345678901",
-        "input_help": "Select country code and enter the phone number. The message will be sent through AWS SNS.",
+        "input_help": "Select country code and enter the phone number. The message will be sent through AWS End User Messaging.",
         "submit_label": "Send Test SMS",
         "cancel_url": settings_url,
     }

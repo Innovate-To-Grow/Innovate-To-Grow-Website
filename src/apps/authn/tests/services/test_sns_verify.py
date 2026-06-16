@@ -192,6 +192,20 @@ class SnsVerifyServiceTest(TestCase):
         with self.assertRaises(PhoneVerificationThrottled):
             start_phone_verification(self.phone)
 
+    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
+    def test_start_phone_verification_maps_conflict_to_delivery_error(self, _mock_code, mock_boto_client):
+        # ConflictException is an origination-identity/account-state problem, not a bad recipient.
+        mock_client = MagicMock()
+        mock_client.send_text_message.side_effect = ClientError(
+            {"Error": {"Code": "ConflictException", "Message": "Number in conflicting state"}},
+            "SendTextMessage",
+        )
+        mock_boto_client.return_value = mock_client
+
+        with self.assertRaises(PhoneVerificationDeliveryError):
+            start_phone_verification(self.phone)
+
 
 @override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
 class SnsVerifyExtraCoverageTest(TestCase):

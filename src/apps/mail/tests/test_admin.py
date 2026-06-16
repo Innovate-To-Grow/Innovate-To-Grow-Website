@@ -127,7 +127,7 @@ class MailSettingsAdminTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Send Test SMS")
-        self.assertContains(response, "AWS SNS")
+        self.assertContains(response, "AWS End User Messaging")
 
     @patch("apps.mail.admin.settings._send_test_email")
     def test_test_email_post_uses_active_mail_config(self, mock_send_test_email):
