@@ -64,7 +64,8 @@ class Command(BaseCommand):
         self._report("AWS SNS SMS", aws, sms_ok, required=options["require_sms"])
         if not sms_ok:
             (failures if options["require_sms"] else warnings).append(
-                "AWS SNS SMS is not configured (needs an SMS origination number on AWS Credentials)."
+                "AWS SNS SMS is not configured (no active SMS origination number found for the AWS "
+                "account; register one in SNS/Pinpoint, or set a manual override on AWS Credentials)."
             )
 
         google = GoogleCredentialConfig.load()

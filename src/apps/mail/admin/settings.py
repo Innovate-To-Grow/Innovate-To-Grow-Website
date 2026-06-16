@@ -38,7 +38,6 @@ class AwsDeliveryForm(forms.ModelForm):
             "access_key_id",
             "secret_access_key",
             "default_region",
-            "sms_from_number",
             "sms_message_template",
         )
         widgets = {
@@ -87,6 +86,10 @@ def _require_mail_access(request):
 
 def mail_settings_view(request):
     _require_mail_access(request)
+    if request.GET.get("refresh"):
+        from apps.core.services.aws.sms import clear_origination_number_cache
+
+        clear_origination_number_cache()
     email_config = EmailServiceConfig.load()
     aws_config = AWSCredentialConfig.load()
     context = _notification_delivery_context(request, email_config, aws_config)
@@ -122,7 +125,7 @@ def mail_settings_edit_view(request):
                 email_form[name]
                 for name in ("name", "is_active", "ses_from_name", "ses_from_email", "ses_max_send_rate")
             ],
-            "sms_fields": [aws_form[name] for name in ("sms_from_number", "sms_message_template")],
+            "sms_fields": [aws_form[name] for name in ("sms_message_template",)],
         }
     )
     return TemplateResponse(request, "admin/mail/settings_edit.html", context)
@@ -140,6 +143,8 @@ def _notification_delivery_context(request, email_config, aws_config):
         "aws_status": "Active" if aws_config.is_active else "Inactive",
         "masked_access_key": _mask_key(aws_config.access_key_id),
         "secret_key_status": "Configured" if aws_config.secret_access_key else "Not configured",
+        "resolved_sms_number": aws_config.resolved_sms_from_number(),
+        "sms_number_is_override": bool(aws_config.sms_from_number),
         "sms_template_display": aws_config.sms_message_template or "Default OTP message",
         "email_provider": email_provider,
         "email_provider_color": email_provider_color,

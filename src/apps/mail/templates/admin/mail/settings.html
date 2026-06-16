@@ -119,9 +119,13 @@
         <h3 class="mb-4 text-sm font-semibold text-font-important-light dark:text-font-important-dark">SMS Notifications</h3>
         <dl class="space-y-4">
             <div>
-                <dt class="text-xs font-medium uppercase text-base-400">SMS Origination Number</dt>
-                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
-                    {{ aws_config.sms_from_number|default:"Not configured" }}
+                <dt class="text-xs font-medium uppercase text-base-400">
+                    SMS Origination Number
+                    {% if not sms_number_is_override %}<span class="normal-case">(auto-detected)</span>{% endif %}
+                </dt>
+                <dd class="mt-1 flex items-center gap-2 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    {{ resolved_sms_number|default:"None found on AWS account" }}
+                    <a href="?refresh=1" class="text-xs font-normal text-primary-600 hover:underline dark:text-primary-400">Re-detect</a>
                 </dd>
             </div>
             <div>

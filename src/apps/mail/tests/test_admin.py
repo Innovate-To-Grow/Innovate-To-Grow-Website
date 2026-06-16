@@ -81,6 +81,8 @@ class MailSettingsAdminTest(TestCase):
         self.assertContains(response, 'name="aws-access_key_id"')
         self.assertContains(response, "Save Notification Delivery")
         self.assertContains(response, 'href="/admin/mail/settings/"')
+        # Origination number is auto-detected from AWS, not hand-edited here.
+        self.assertNotContains(response, 'name="aws-sms_from_number"')
 
     def test_settings_edit_post_updates_notification_delivery_config(self):
         response = self.client.post(
@@ -96,7 +98,6 @@ class MailSettingsAdminTest(TestCase):
                 "aws-access_key_id": "updated-key",
                 "aws-secret_access_key": "updated-secret",
                 "aws-default_region": "us-east-1",
-                "aws-sms_from_number": "+12065550123",
                 "aws-sms_message_template": "Code: {code}",
             },
         )
@@ -110,7 +111,9 @@ class MailSettingsAdminTest(TestCase):
         self.assertEqual(self.config.ses_max_send_rate, 8)
         self.assertEqual(self.aws_config.name, "Updated AWS")
         self.assertEqual(self.aws_config.default_region, "us-east-1")
-        self.assertEqual(self.aws_config.sms_from_number, "+12065550123")
+        self.assertEqual(self.aws_config.sms_message_template, "Code: {code}")
+        # The manual override field is not part of the form; it stays untouched.
+        self.assertEqual(self.aws_config.sms_from_number, "+12065550000")
 
     def test_test_email_view_renders_form(self):
         response = self.client.get(reverse("admin:mail_settings_test_email"))

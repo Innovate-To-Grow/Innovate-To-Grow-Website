@@ -11,7 +11,7 @@ from apps.authn.services.sms.sns_verify import (
     PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
-    _get_sns_client,
+    _get_smsvoice_client,
     _otp_cache_key,
     _random_code,
     _send_count_cache_key,
@@ -82,7 +82,7 @@ class SnsVerifyServiceTest(TestCase):
 
     def _mock_publish(self, mock_boto_client):
         mock_client = MagicMock()
-        mock_client.publish.return_value = {"MessageId": "msg-123"}
+        mock_client.send_text_message.return_value = {"MessageId": "msg-123"}
         mock_boto_client.return_value = mock_client
         return mock_client
 
@@ -94,14 +94,12 @@ class SnsVerifyServiceTest(TestCase):
         status = start_phone_verification(self.phone)
 
         self.assertEqual(status, "pending")
-        mock_client.publish.assert_called_once()
-        publish_kwargs = mock_client.publish.call_args.kwargs
-        self.assertEqual(publish_kwargs["PhoneNumber"], self.phone)
-        self.assertIn("123456", publish_kwargs["Message"])
-        self.assertEqual(
-            publish_kwargs["MessageAttributes"]["AWS.MM.SMS.OriginationNumber"]["StringValue"],
-            self.origination_number,
-        )
+        mock_client.send_text_message.assert_called_once()
+        send_kwargs = mock_client.send_text_message.call_args.kwargs
+        self.assertEqual(send_kwargs["DestinationPhoneNumber"], self.phone)
+        self.assertIn("123456", send_kwargs["MessageBody"])
+        self.assertEqual(send_kwargs["MessageType"], "TRANSACTIONAL")
+        self.assertEqual(send_kwargs["OriginationIdentity"], self.origination_number)
 
     @patch("apps.authn.services.sms.sns_verify.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
@@ -145,20 +143,36 @@ class SnsVerifyServiceTest(TestCase):
         with self.assertRaises(PhoneVerificationThrottled):
             start_phone_verification(self.phone)
 
-    def test_start_phone_verification_requires_origination_number(self):
+    @patch("apps.core.services.aws.sms.origination_number_available", return_value=False)
+    def test_start_phone_verification_requires_origination_number(self, _mock_available):
         self.aws_config.sms_from_number = ""
         self.aws_config.save(update_fields=["sms_from_number"])
 
         with self.assertRaises(PhoneVerificationDeliveryError):
             start_phone_verification(self.phone)
 
+    @patch("apps.core.services.aws.sms.resolve_origination_number", return_value="+18005550000")
+    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
+    def test_start_phone_verification_uses_auto_resolved_origination_number(
+        self, _mock_code, mock_boto_client, _mock_resolve
+    ):
+        self.aws_config.sms_from_number = ""
+        self.aws_config.save(update_fields=["sms_from_number"])
+        mock_client = self._mock_publish(mock_boto_client)
+
+        start_phone_verification(self.phone)
+
+        send_kwargs = mock_client.send_text_message.call_args.kwargs
+        self.assertEqual(send_kwargs["OriginationIdentity"], "+18005550000")
+
     @patch("apps.authn.services.sms.sns_verify.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_maps_invalid_phone_error(self, _mock_code, mock_boto_client):
         mock_client = MagicMock()
-        mock_client.publish.side_effect = ClientError(
-            {"Error": {"Code": "InvalidParameter", "Message": "Invalid phone"}},
-            "Publish",
+        mock_client.send_text_message.side_effect = ClientError(
+            {"Error": {"Code": "ValidationException", "Message": "Invalid phone"}},
+            "SendTextMessage",
         )
         mock_boto_client.return_value = mock_client
 
@@ -169,9 +183,9 @@ class SnsVerifyServiceTest(TestCase):
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_maps_throttling_error(self, _mock_code, mock_boto_client):
         mock_client = MagicMock()
-        mock_client.publish.side_effect = ClientError(
-            {"Error": {"Code": "Throttling", "Message": "Rate exceeded"}},
-            "Publish",
+        mock_client.send_text_message.side_effect = ClientError(
+            {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}},
+            "SendTextMessage",
         )
         mock_boto_client.return_value = mock_client
 
@@ -201,10 +215,10 @@ class SnsVerifyExtraCoverageTest(TestCase):
         self.assertTrue(code.isdigit())
 
     @patch("apps.authn.services.sms.sns_verify.resolve_aws_credentials")
-    def test_get_sns_client_raises_delivery_error_when_no_credentials(self, mock_resolve):
+    def test_get_smsvoice_client_raises_delivery_error_when_no_credentials(self, mock_resolve):
         mock_resolve.side_effect = AwsCredentialsError("missing")
         with self.assertRaises(PhoneVerificationDeliveryError):
-            _get_sns_client()
+            _get_smsvoice_client()
 
     @patch("apps.authn.services.sms.sns_verify.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
@@ -212,7 +226,7 @@ class SnsVerifyExtraCoverageTest(TestCase):
         from botocore.exceptions import BotoCoreError
 
         mock_client = MagicMock()
-        mock_client.publish.side_effect = BotoCoreError()
+        mock_client.send_text_message.side_effect = BotoCoreError()
         mock_boto_client.return_value = mock_client
 
         with self.assertRaises(PhoneVerificationDeliveryError):
@@ -222,9 +236,9 @@ class SnsVerifyExtraCoverageTest(TestCase):
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_publish_maps_unknown_client_error_to_delivery_error(self, _mock_code, mock_boto_client):
         mock_client = MagicMock()
-        mock_client.publish.side_effect = ClientError(
+        mock_client.send_text_message.side_effect = ClientError(
             {"Error": {"Code": "SomethingElse", "Message": "boom"}},
-            "Publish",
+            "SendTextMessage",
         )
         mock_boto_client.return_value = mock_client
 
@@ -259,15 +273,16 @@ class SnsVerifyExtraCoverageTest(TestCase):
     @patch("apps.authn.services.sms.sns_verify.boto3.client")
     def test_publish_plain_sms_sends_message(self, mock_boto_client):
         mock_client = MagicMock()
-        mock_client.publish.return_value = {"MessageId": "plain-1"}
+        mock_client.send_text_message.return_value = {"MessageId": "plain-1"}
         mock_boto_client.return_value = mock_client
 
         message_id = publish_plain_sms(phone_number=self.phone, message="hello")
 
         self.assertEqual(message_id, "plain-1")
-        mock_client.publish.assert_called_once()
+        mock_client.send_text_message.assert_called_once()
 
-    def test_publish_plain_sms_raises_when_not_configured(self):
+    @patch("apps.core.services.aws.sms.origination_number_available", return_value=False)
+    def test_publish_plain_sms_raises_when_not_configured(self, _mock_available):
         self.aws_config.sms_from_number = ""
         self.aws_config.save(update_fields=["sms_from_number"])
 
@@ -291,7 +306,8 @@ class AwsSmsConfigTest(TestCase):
 
         self.assertTrue(config.is_configured)
 
-    def test_is_configured_false_without_origination_number(self):
+    @patch("apps.core.services.aws.sms.origination_number_available", return_value=False)
+    def test_sns_configured_false_when_no_number_can_be_resolved(self, _mock_available):
         AWSCredentialConfig.objects.create(
             name="AWS",
             is_active=True,
@@ -301,6 +317,18 @@ class AwsSmsConfigTest(TestCase):
         config = AWSCredentialConfig.load()
 
         self.assertFalse(config.sns_configured)
+
+    @patch("apps.core.services.aws.sms.origination_number_available", return_value=True)
+    def test_sns_configured_true_when_number_auto_resolved(self, _mock_available):
+        AWSCredentialConfig.objects.create(
+            name="AWS",
+            is_active=True,
+            access_key_id="aws-key",
+            secret_access_key="aws-secret",
+        )
+        config = AWSCredentialConfig.load()
+
+        self.assertTrue(config.sns_configured)
 
     def test_render_otp_message_uses_default_template(self):
         config = AWSCredentialConfig()
