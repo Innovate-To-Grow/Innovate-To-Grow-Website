@@ -97,8 +97,22 @@ export const useAccountDashboard = () => {
 
   useEffect(() => {
     if (!isAuthenticated || requiresProfileCompletion) return;
-    void loadProfile();
-  }, [isAuthenticated, requiresProfileCompletion, loadProfile]);
+    // profileLoading starts true (useState), so the mount load skips the
+    // synchronous setProfileLoading(true) that loadProfile() does for the retry
+    // button. Defining the loader inline keeps every setState behind an await,
+    // mirroring the tickets/live-event effects below.
+    const loadProfileOnMount = async () => {
+      try {
+        applyProfile(await getProfile());
+      } catch (err: unknown) {
+        console.error('[AccountPage] Profile fetch failed:', err);
+        setProfileError(getAuthApiErrorMessage(err));
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+    void loadProfileOnMount();
+  }, [isAuthenticated, requiresProfileCompletion, applyProfile]);
 
   useEffect(() => {
     if (!isAuthenticated || requiresProfileCompletion) return;

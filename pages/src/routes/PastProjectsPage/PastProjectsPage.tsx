@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useMemo, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
 import {
   MergedResultsTable,
@@ -15,12 +15,18 @@ export const PastProjectsPage = () => {
   const sharedMode = Boolean(shareId);
   const {share, loading: shareLoading, error: shareError} = usePastProjectShareData(shareId);
   const [editableShare, setEditableShare] = useState<PastProjectShare | null>(null);
+  // Reset the local override to the freshly fetched share whenever `share` changes identity.
+  // This is the render-phase equivalent of the old `useEffect(() => setEditableShare(share), [share])`
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes):
+  // `activeShare` already falls back to `share` when the override is stale, so the rendered output is
+  // unchanged, but this avoids the effect's extra cascading commit.
+  const [prevShare, setPrevShare] = useState(share);
+  if (share !== prevShare) {
+    setPrevShare(share);
+    setEditableShare(share);
+  }
   const activeShare = editableShare?.id === shareId ? editableShare : share;
   const {rows, loading, error, refetch} = usePastProjectGridData(!sharedMode || Boolean(activeShare?.can_edit));
-
-  useEffect(() => {
-    setEditableShare(share);
-  }, [share]);
 
   const sharedItems = useMemo(
     () => createProjectGridItems(activeShare?.rows || [], `shared-${shareId || 'past-projects'}`),

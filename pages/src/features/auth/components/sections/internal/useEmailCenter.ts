@@ -89,11 +89,11 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
 
   const hasSecondaryEmail = contactEmails.some((e) => e.email_type === 'secondary');
 
-  useEffect(() => {
-    if (hasSecondaryEmail && addType === 'secondary') {
-      setAddType('other');
-    }
-  }, [hasSecondaryEmail, addType]);
+  // Derive the effective add type during render instead of correcting it in an effect:
+  // when a secondary email already exists, a 'secondary' selection is coerced to 'other'.
+  // The 'secondary' <option> is disabled in that state, so this only ever fixes up the
+  // default/reset value, never a user choice.
+  const effectiveAddType: 'secondary' | 'other' = hasSecondaryEmail && addType === 'secondary' ? 'other' : addType;
 
   const handleContactTypeChange = async (contact: ContactEmail, newType: 'secondary' | 'other') => {
     clearMessages();
@@ -115,7 +115,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     setAddError(null);
     clearMessages();
     try {
-      const created = await createContactEmail({email_address: addEmail.trim(), email_type: addType, subscribe: addSubscribe});
+      const created = await createContactEmail({email_address: addEmail.trim(), email_type: effectiveAddType, subscribe: addSubscribe});
       setContactEmails((current) => [created, ...current]);
       setAddEmail('');
       setAddType('secondary');
@@ -273,7 +273,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     addError,
     addLoading,
     addSubscribe,
-    addType,
+    addType: effectiveAddType,
     contactEmails,
     hasSecondaryEmail,
     error,

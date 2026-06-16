@@ -145,7 +145,6 @@ export const MergedResultsTable = ({
     defaultSortDirection: 'desc',
     expandAllByDefault: sharedMode,
   });
-  const [shareUrl, setShareUrl] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [isSharing, setIsSharing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -160,30 +159,36 @@ export const MergedResultsTable = ({
   const [excludedProjectNoteInsertFields, setExcludedProjectNoteInsertFields] = useState<
     Set<PastProjectNoteInsertField>
   >(() => new Set());
+  // Track the last note/title props we synced drafts from, so a prop change resets the draft and
+  // closes the inline editor — done during render (React's documented "adjusting state on prop
+  // change" pattern) rather than in an effect, avoiding the extra commit a synchronous setState in
+  // an effect would cause.
+  const [lastSyncedNote, setLastSyncedNote] = useState(note ?? '');
+  const [lastSyncedTitle, setLastSyncedTitle] = useState(title);
   const editTitleInputRef = useRef<HTMLInputElement>(null);
   const isMountedRef = useRef(true);
+
+  // The shareable URL is just the current page URL in shared mode — derive it from the prop instead
+  // of mirroring window.location.href into state via an effect.
+  const shareUrl = sharedMode ? window.location.href : '';
+
+  if (lastSyncedNote !== (note ?? '')) {
+    setLastSyncedNote(note ?? '');
+    setEditNoteDraft(note ?? '');
+    setIsEditingSharedNote(false);
+  }
+
+  if (lastSyncedTitle !== title) {
+    setLastSyncedTitle(title);
+    setEditTitleDraft(title);
+    setIsEditingSharedTitle(false);
+  }
 
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (sharedMode) {
-      setShareUrl(window.location.href);
-    }
-  }, [sharedMode]);
-
-  useEffect(() => {
-    setEditNoteDraft(note ?? '');
-    setIsEditingSharedNote(false);
-  }, [note]);
-
-  useEffect(() => {
-    setEditTitleDraft(title);
-    setIsEditingSharedTitle(false);
-  }, [title]);
 
   useEffect(() => {
     if (isEditingSharedTitle) {
