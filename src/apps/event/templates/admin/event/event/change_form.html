@@ -76,7 +76,7 @@
                     </div>
                     <div class="flex gap-2">
                         <span class="w-20 shrink-0 text-font-subtle-light dark:text-font-subtle-dark">From:</span>
-                        <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ aws_config.sms_from_number|default:"-" }}</span>
+                        <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ aws_config.resolved_sms_from_number|default:"-" }}</span>
                     </div>
                 </div>
                 <div class="mt-3">

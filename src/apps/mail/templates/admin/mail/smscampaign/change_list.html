@@ -18,7 +18,7 @@
         </div>
         <div>
             <span class="text-base-400">Origination number:</span>
-            <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ aws_config.sms_from_number }}</span>
+            <span class="font-medium text-font-default-light dark:text-font-default-dark">{{ aws_config.resolved_sms_from_number|default:"Auto-detect: none found" }}</span>
         </div>
         <div>
             <span class="text-base-400">AWS Key:</span>
