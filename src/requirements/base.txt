@@ -21,7 +21,7 @@ openpyxl>=3.1.5
 
 # Google APIs
 google-api-python-client>=2.197.0
-google-auth>=2.53.0
+google-auth>=2.55.0
 # Floor raised to 2.2.0: every google-adk 1.x and the 2.0/2.1 releases pin
 # starlette<1, which is incompatible with the starlette>=1.2.1 floor below
 # (CVE-2026-48710). 2.2.0 is the first release whose constraint is
