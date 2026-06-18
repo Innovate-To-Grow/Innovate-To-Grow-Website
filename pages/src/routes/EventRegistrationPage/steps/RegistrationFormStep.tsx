@@ -21,7 +21,6 @@ interface RegistrationFormStepProps {
   attendeePhone: string;
   primaryEmail: string;
   phoneError: string | null;
-  phoneRegion: string;
   onFirstNameChange: (value: string) => void;
   onMiddleNameChange: (value: string) => void;
   onLastNameChange: (value: string) => void;
@@ -32,7 +31,6 @@ interface RegistrationFormStepProps {
   onAnswerChange: (questionId: string, answer: string) => void;
   onSecondaryEmailChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
-  onPhoneRegionChange: (value: string) => void;
   phoneCode: string;
   phoneCodeSent: boolean;
   phoneSending: boolean;
@@ -59,7 +57,6 @@ export const RegistrationFormStep = ({
   attendeePhone,
   primaryEmail,
   phoneError,
-  phoneRegion,
   onFirstNameChange,
   onMiddleNameChange,
   onLastNameChange,
@@ -70,7 +67,6 @@ export const RegistrationFormStep = ({
   onAnswerChange,
   onSecondaryEmailChange,
   onPhoneChange,
-  onPhoneRegionChange,
   phoneCode,
   phoneCodeSent,
   phoneSending,
@@ -292,23 +288,11 @@ export const RegistrationFormStep = ({
               Phone Number {options.verify_phone ? <span className="required-mark">*</span> : null}
             </label>
             <div className="event-reg-phone-row">
-              <select
-                className="event-reg-phone-region event-reg-input--editable"
-                value={phoneRegion}
-                onChange={(e) => onPhoneRegionChange(e.target.value)}
-                disabled={submitting}
-              >
-                {options.phone_regions.map((r) => (
-                  <option key={r.code} value={r.code}>
-                    +{r.code.split('-')[0]} {r.label}
-                  </option>
-                ))}
-              </select>
               <input
                 id="phone"
                 type="tel"
                 className="event-reg-input event-reg-input--editable"
-                value={phoneFocused ? attendeePhone : formatPhoneDisplay(attendeePhone, phoneRegion)}
+                value={phoneFocused ? attendeePhone : formatPhoneDisplay(attendeePhone)}
                 onChange={(e) => onPhoneChange(stripPhoneFormat(e.target.value))}
                 onFocus={() => setPhoneFocused(true)}
                 onBlur={() => setPhoneFocused(false)}

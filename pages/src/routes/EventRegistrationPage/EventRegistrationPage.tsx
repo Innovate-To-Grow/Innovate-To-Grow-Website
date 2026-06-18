@@ -84,7 +84,6 @@ export const EventRegistrationPage = () => {
           attendeePhone={reg.attendeePhone}
           primaryEmail={reg.primaryEmail}
           phoneError={reg.phoneError}
-          phoneRegion={reg.phoneRegion}
           onFirstNameChange={reg.setAttendeeFirstName}
           onMiddleNameChange={reg.setAttendeeMiddleName}
           onLastNameChange={reg.setAttendeeLastName}
@@ -99,7 +98,6 @@ export const EventRegistrationPage = () => {
           onAnswerChange={(questionId, answer) => reg.setAnswers((current) => ({...current, [questionId]: answer}))}
           onSecondaryEmailChange={reg.setAttendeeSecondaryEmail}
           onPhoneChange={reg.handlePhoneChange}
-          onPhoneRegionChange={reg.handlePhoneRegionChange}
           phoneCode={reg.phoneCode}
           phoneCodeSent={reg.phoneCodeSent}
           phoneSending={reg.phoneSending}

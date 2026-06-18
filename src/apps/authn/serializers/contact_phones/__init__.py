@@ -31,7 +31,7 @@ class ContactPhoneCreateSerializer(serializers.Serializer):
     """Serializer for creating a new contact phone."""
 
     phone_number = serializers.CharField(required=True)
-    region = serializers.ChoiceField(choices=PHONE_REGION_CHOICES, required=True)
+    region = serializers.ChoiceField(choices=PHONE_REGION_CHOICES, required=False, default="1-US")
     subscribe = serializers.BooleanField(default=False)
 
     # noinspection PyMethodMayBeStatic
@@ -51,11 +51,12 @@ class ContactPhoneCreateSerializer(serializers.Serializer):
         if not digits.isdigit():
             raise serializers.ValidationError("Phone number must contain only digits (and an optional leading +).")
 
-        if len(digits) < 7:
-            raise serializers.ValidationError("Phone number is too short (minimum 7 digits).")
+        # US-only: drop an optional leading country code "1", then require exactly 10 national digits.
+        if len(digits) == 11 and digits.startswith("1"):
+            digits = digits[1:]
 
-        if len(digits) > 15:
-            raise serializers.ValidationError("Phone number is too long (maximum 15 digits).")
+        if len(digits) != 10:
+            raise serializers.ValidationError("US phone numbers must be exactly 10 digits.")
 
         # Store the cleaned value (normalization to E.164 happens in the service layer)
         return cleaned

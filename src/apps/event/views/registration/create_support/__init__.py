@@ -127,7 +127,8 @@ def registration_create_kwargs(request, event, ticket, question_answers, data):
 def apply_phone_fields(request, event, data, create_kwargs) -> None:
     import apps.event.views.registration as registration_api
 
-    phone_region = data.get("attendee_phone_region", "1-US")
+    # US-only: AWS SNS only delivers to US numbers; ignore any client-supplied region.
+    phone_region = "1-US"
     if data.get("attendee_phone") and event.collect_phone:
         phone_error = registration_api._validate_phone_digits(
             data["attendee_phone"],
@@ -174,6 +175,6 @@ def sync_registration_to_account(user, registration, event, data):
         sync_phone_to_account(
             user,
             registration.attendee_phone,
-            region=data.get("attendee_phone_region", "1-US"),
+            region="1-US",
             verified=registration.phone_verified,
         )
