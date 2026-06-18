@@ -11,7 +11,7 @@ class PastProjectsAPIViewTest(TestCase):
         self.client = APIClient()
         cache.clear()
 
-    def test_excludes_newest_published_semester(self):
+    def test_includes_newest_published_semester(self):
         Semester.objects.create(year=2025, season=2, is_published=True)
         Semester.objects.create(year=2025, season=1, is_published=True)
         Semester.objects.create(year=2024, season=2, is_published=True)
@@ -20,8 +20,8 @@ class PastProjectsAPIViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         labels = [s["label"] for s in response.data["results"]]
-        # Fall 2025 is newest, should not appear in past
-        self.assertNotIn("2025-2 Fall", labels)
+        # Every published semester appears, including the newest (Fall 2025).
+        self.assertIn("2025-2 Fall", labels)
         self.assertIn("2025-1 Spring", labels)
         self.assertIn("2024-2 Fall", labels)
 
@@ -33,9 +33,11 @@ class PastProjectsAPIViewTest(TestCase):
         response = self.client.get("/projects/past/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data["results"]), 1)
-        self.assertEqual(len(response.data["results"][0]["projects"]), 1)
-        self.assertEqual(response.data["results"][0]["projects"][0]["project_title"], "Old Project")
+        # Both published semesters appear; the nested project rides on its own semester.
+        self.assertEqual(len(response.data["results"]), 2)
+        by_label = {s["label"]: s for s in response.data["results"]}
+        self.assertEqual(len(by_label["2024-1 Spring"]["projects"]), 1)
+        self.assertEqual(by_label["2024-1 Spring"]["projects"][0]["project_title"], "Old Project")
 
     def test_returns_paginated_response(self):
         Semester.objects.create(year=2026, season=1, is_published=True)
@@ -50,13 +52,14 @@ class PastProjectsAPIViewTest(TestCase):
         self.assertEqual(len(response.data["results"]), 5)
         self.assertIsNotNone(response.data["next"])
 
-    def test_empty_when_only_one_published_semester(self):
+    def test_single_published_semester_is_listed(self):
         Semester.objects.create(year=2025, season=1, is_published=True)
 
         response = self.client.get("/projects/past/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["results"], [])
+        labels = [s["label"] for s in response.data["results"]]
+        self.assertEqual(labels, ["2025-1 Spring"])
 
     def test_no_auth_required(self):
         response = self.client.get("/projects/past/")

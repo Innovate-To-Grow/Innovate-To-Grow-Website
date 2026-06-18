@@ -11,7 +11,7 @@ class AllPastProjectsAPIViewTests(TestCase):
         cache.clear()
         self.client = APIClient()
 
-        # Newest published semester = "current"
+        # Newest published semester — included like any other past semester.
         self.current = Semester.objects.create(year=2025, season=2, is_published=True)
         self.past1 = Semester.objects.create(year=2025, season=1, is_published=True)
         self.past2 = Semester.objects.create(year=2024, season=2, is_published=True)
@@ -54,10 +54,11 @@ class AllPastProjectsAPIViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(response.data, list)
 
-    def test_excludes_current_semester(self):
+    def test_includes_newest_semester(self):
+        # The newest published semester is a real past semester and must not be hidden.
         response = self.client.get("/projects/past-all/")
         titles = [p["project_title"] for p in response.data]
-        self.assertNotIn("Current Project", titles)
+        self.assertIn("Current Project", titles)
 
     def test_excludes_unpublished(self):
         response = self.client.get("/projects/past-all/")
@@ -89,8 +90,10 @@ class AllPastProjectsAPIViewTests(TestCase):
     def test_ordering(self):
         response = self.client.get("/projects/past-all/")
         titles = [p["project_title"] for p in response.data]
-        self.assertEqual(titles.index("Past Project 1"), 0)
-        self.assertEqual(titles.index("Past Project 2"), 1)
+        # Newest semester first: 2025-2 (Current), then 2025-1 (Past 1), then 2024-2 (Past 2).
+        self.assertEqual(titles.index("Current Project"), 0)
+        self.assertEqual(titles.index("Past Project 1"), 1)
+        self.assertEqual(titles.index("Past Project 2"), 2)
 
     def test_cache_works(self):
         response1 = self.client.get("/projects/past-all/")
@@ -98,8 +101,8 @@ class AllPastProjectsAPIViewTests(TestCase):
 
         cached = cache.get("projects:past-all")
         self.assertIsNotNone(cached)
-        self.assertEqual(len(cached), 2)
+        self.assertEqual(len(cached), 3)
 
         response2 = self.client.get("/projects/past-all/")
         self.assertEqual(response2.status_code, 200)
-        self.assertEqual(len(response2.data), 2)
+        self.assertEqual(len(response2.data), 3)
