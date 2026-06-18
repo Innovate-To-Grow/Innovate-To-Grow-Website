@@ -112,8 +112,10 @@ class ContactPhone(ProjectControlModel):
     # contact phone number
     phone_number = models.CharField(max_length=20, unique=True, help_text="National digits only (e.g. 2095765113)")
 
-    # contact phone region
-    region = models.CharField(max_length=20, choices=PHONE_REGION_CHOICES, help_text="Region of the phone number")
+    # contact phone region (US-only; AWS SNS only delivers to US numbers)
+    region = models.CharField(
+        max_length=20, choices=PHONE_REGION_CHOICES, default="1-US", help_text="Region of the phone number"
+    )
 
     # subscribe
     subscribe = models.BooleanField(

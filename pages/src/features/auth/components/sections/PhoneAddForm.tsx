@@ -1,7 +1,5 @@
 import type {FormEvent} from 'react';
-import {PHONE_REGION_CHOICES} from '@/lib/phoneRegions';
 import {StatusAlert} from '../shared/StatusAlert';
-import {getDialCode} from './internal/helpers';
 import {PhoneConsentFields} from './PhoneConsentFields';
 import {
   canSubmitNationalPhone,
@@ -11,13 +9,11 @@ import {
 } from './internal/phoneInput';
 
 interface PhoneAddFormProps {
-  addRegion: string;
   addPhoneNumber: string;
   addSubscribe: boolean;
   addTermsAccepted: boolean;
   addLoading: boolean;
   addError: string | null;
-  onRegionChange: (value: string) => void;
   onPhoneNumberChange: (value: string) => void;
   onSubscribeChange: (checked: boolean) => void;
   onTermsAcceptedChange: (checked: boolean) => void;
@@ -26,24 +22,21 @@ interface PhoneAddFormProps {
 }
 
 export const PhoneAddForm = ({
-  addRegion,
   addPhoneNumber,
   addSubscribe,
   addTermsAccepted,
   addLoading,
   addError,
-  onRegionChange,
   onPhoneNumberChange,
   onSubscribeChange,
   onTermsAcceptedChange,
   onSubmit,
   onCancel,
 }: PhoneAddFormProps) => {
-  const phoneDisplay = formatNationalInputDisplay(addRegion, addPhoneNumber);
-  const phonePlaceholder =
-    addRegion === '1-US' || addRegion === '1-CA' ? '(555) 123-4567' : 'Enter number without country code';
+  const phoneDisplay = formatNationalInputDisplay(addPhoneNumber);
+  const phonePlaceholder = '(555) 123-4567';
   const hasPhoneNumber = addPhoneNumber.length > 0;
-  const canSubmitPhone = !hasPhoneNumber || canSubmitNationalPhone(addPhoneNumber, addRegion);
+  const canSubmitPhone = !hasPhoneNumber || canSubmitNationalPhone(addPhoneNumber);
   const canSubmitForm = addTermsAccepted && canSubmitPhone;
 
   return (
@@ -52,22 +45,6 @@ export const PhoneAddForm = ({
       {addError ? <StatusAlert tone="error" message={addError} style={{marginBottom: '0.75rem'}} /> : null}
       <form onSubmit={onSubmit} className="email-center-add-fields">
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="add-phone-region">Region</label>
-          <select
-            id="add-phone-region"
-            className="auth-form-input auth-form-select"
-            value={addRegion}
-            onChange={(event) => onRegionChange(event.target.value)}
-            disabled={addLoading}
-          >
-            {PHONE_REGION_CHOICES.map((region) => (
-              <option key={region.code} value={region.code}>
-                {region.label} ({getDialCode(region.code)})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="auth-form-group">
           <label className="auth-form-label" htmlFor="add-phone-number">Phone Number</label>
           <input
             id="add-phone-number"
@@ -75,13 +52,13 @@ export const PhoneAddForm = ({
             className="auth-form-input"
             inputMode="numeric"
             autoComplete="tel-national"
-            maxLength={nationalInputMaxLength(addRegion)}
+            maxLength={nationalInputMaxLength()}
             value={phoneDisplay}
             onChange={(event) =>
-              onPhoneNumberChange(parsePhoneInputToNationalDigits(event.target.value, addRegion))
+              onPhoneNumberChange(parsePhoneInputToNationalDigits(event.target.value))
             }
             placeholder={phonePlaceholder}
-            aria-invalid={!canSubmitNationalPhone(addPhoneNumber, addRegion) && addPhoneNumber.length > 0}
+            aria-invalid={!canSubmitNationalPhone(addPhoneNumber) && addPhoneNumber.length > 0}
             disabled={addLoading}
           />
           <p className="auth-help-text phone-add-optional-help">The phone number field is optional.</p>

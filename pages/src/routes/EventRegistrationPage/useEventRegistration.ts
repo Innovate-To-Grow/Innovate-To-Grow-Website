@@ -225,7 +225,7 @@ export const useEventRegistration = () => {
   };
 
   const handleSendPhoneCode = async () => {
-    if (!attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim(), phoneRegion)) return;
+    if (!attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim())) return;
     setPhoneSending(true);
     setError(null);
     try {
@@ -256,7 +256,7 @@ export const useEventRegistration = () => {
   };
 
   const handlePhoneChange = (value: string) => {
-    const capped = value.slice(0, maxPhoneDigits(phoneRegion));
+    const capped = value.slice(0, maxPhoneDigits());
     if (capped !== attendeePhone) {
       setPhoneVerified(false);
       setPhoneCodeSent(false);
@@ -264,17 +264,6 @@ export const useEventRegistration = () => {
       setNormalizedPhone('');
     }
     setAttendeePhone(capped);
-  };
-
-  const handlePhoneRegionChange = (value: string) => {
-    if (value !== phoneRegion) {
-      setPhoneVerified(false);
-      setPhoneCodeSent(false);
-      setPhoneCode('');
-      setNormalizedPhone('');
-      setAttendeePhone((prev) => prev.slice(0, maxPhoneDigits(value)));
-    }
-    setPhoneRegion(value);
   };
 
   const phoneChanged = initialPhone === null
@@ -285,9 +274,9 @@ export const useEventRegistration = () => {
     () => {
       if (!attendeePhone.trim()) return null;
       if (!phoneChanged) return null;
-      return validatePhoneDigits(attendeePhone.trim(), phoneRegion);
+      return validatePhoneDigits(attendeePhone.trim());
     },
-    [attendeePhone, phoneRegion, phoneChanged],
+    [attendeePhone, phoneChanged],
   );
 
   return {
@@ -326,7 +315,6 @@ export const useEventRegistration = () => {
     setAttendeeOrgType,
     handlePhoneChange,
     setAttendeeSecondaryEmail,
-    handlePhoneRegionChange,
     setPhoneCode,
     setCode,
     setEmail,

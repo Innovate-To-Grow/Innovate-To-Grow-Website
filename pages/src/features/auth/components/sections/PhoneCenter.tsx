@@ -62,13 +62,11 @@ export const PhoneCenter = () => {
                 />
             ) : pc.showAddForm ? (
                 <PhoneAddForm
-                    addRegion={pc.addRegion}
                     addPhoneNumber={pc.addPhoneNumber}
                     addSubscribe={pc.addSubscribe}
                     addTermsAccepted={pc.addTermsAccepted}
                     addLoading={pc.addLoading}
                     addError={pc.addError}
-                    onRegionChange={pc.handleAddRegionChange}
                     onPhoneNumberChange={pc.setAddPhoneNumber}
                     onSubscribeChange={pc.setAddSubscribe}
                     onTermsAcceptedChange={pc.setAddTermsAccepted}

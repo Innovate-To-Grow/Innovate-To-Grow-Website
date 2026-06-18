@@ -26,26 +26,20 @@ class ValidatePhoneDigitsTest(SimpleTestCase):
             "Phone number is too short (minimum 4 digits).",
         )
 
-    def test_generic_region_too_short(self):
+    def test_us_too_short_rejected(self):
         self.assertEqual(
-            _validate_phone_digits("123", "44"),
-            "Phone number is too short (minimum 4 digits).",
+            _validate_phone_digits("123", "1-US"),
+            "US phone numbers must be exactly 10 digits.",
         )
 
-    def test_generic_region_too_long(self):
+    def test_us_too_long_rejected(self):
         self.assertEqual(
-            _validate_phone_digits("1234567890123456", "44"),
-            "Phone number is too long (maximum 15 digits).",
+            _validate_phone_digits("1234567890123456", "1-US"),
+            "US phone numbers must be exactly 10 digits.",
         )
-
-    def test_generic_region_valid_length_passes(self):
-        self.assertIsNone(_validate_phone_digits("1234567", "44"))
 
     def test_us_valid_ten_digits_passes(self):
         self.assertIsNone(_validate_phone_digits("5551234567", "1-US"))
-
-    def test_china_valid_eleven_digits_passes(self):
-        self.assertIsNone(_validate_phone_digits("13812345678", "86"))
 
     def test_plus_country_code_with_valid_remainder_passes(self):
         self.assertIsNone(_validate_phone_digits("+15551234567", "1-US"))

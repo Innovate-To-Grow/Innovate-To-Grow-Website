@@ -32,15 +32,8 @@ def _validate_phone_digits(phone: str, region: str) -> str | None:
 
     if not digits:
         return "Phone number is too short (minimum 4 digits)."
-    if country_code == "1":
-        return None if len(digits) == 10 else "US/Canada phone numbers must be exactly 10 digits."
-    if country_code == "86":
-        return None if len(digits) == 11 else "China phone numbers must be exactly 11 digits."
-    if len(digits) < 4:
-        return "Phone number is too short (minimum 4 digits)."
-    if len(digits) > 15:
-        return "Phone number is too long (maximum 15 digits)."
-    return None
+    # US-only: AWS SNS only delivers to US numbers, which are always 10 national digits.
+    return None if len(digits) == 10 else "US phone numbers must be exactly 10 digits."
 
 
 def _phone_verification_cache_key(user, phone: str) -> str:
