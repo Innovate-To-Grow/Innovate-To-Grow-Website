@@ -112,6 +112,34 @@ describe('MergedResultsTable', () => {
     expect(await screen.findByText('Opening shareable link...')).toBeInTheDocument();
   });
 
+  it('select-all + Remove Selected only removes rows matching the active search, never hidden rows', async () => {
+    const onDeleteRows = vi.fn();
+    const {container} = render(
+      <MergedResultsTable
+        rows={makeItems([baseRow, addedRow])}
+        onCreateShare={vi.fn()}
+        onDeleteRow={vi.fn()}
+        onDeleteRows={onDeleteRows}
+        onUndoRows={vi.fn()}
+        onResetRows={vi.fn()}
+      />,
+    );
+
+    // Narrow the visible rows to just the "Irrigation Sensor" row; "Shared Project" is hidden.
+    fireEvent.change(screen.getByPlaceholderText(/search merged results/i), {target: {value: 'Irrigation'}});
+    await waitFor(() =>
+      expect(within(desktopTable(container)).queryByText('Shared Project')).not.toBeInTheDocument(),
+    );
+
+    fireEvent.click(within(desktopTable(container)).getByLabelText('Select all rows'));
+    fireEvent.click(screen.getByRole('button', {name: /remove selected/i}));
+
+    expect(onDeleteRows).toHaveBeenCalledTimes(1);
+    const removed = onDeleteRows.mock.calls[0][0];
+    expect(removed).toHaveLength(1);
+    expect(removed[0]).toMatchObject({project_title: 'Irrigation Sensor'});
+  });
+
   it('inserts visible project details and individual links into the share note', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
 

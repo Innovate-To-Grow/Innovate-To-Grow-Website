@@ -22,10 +22,15 @@ interface SearchTableCardProps {
   title: string;
   /** Label for the per-table merge button (e.g. "Save Selected" in the builder). */
   mergeLabel?: string;
+  /** Disable the merge button (e.g. while an async add from another table is in flight). */
+  mergeDisabled?: boolean;
   onRemove: (tableId: string) => void;
   onRefresh?: (tableId: string) => void;
-  /** Push this table's checked rows into the shared/merged results. */
-  onMergeSelected: (rows: ProjectGridRow[]) => void;
+  /**
+   * Push this table's checked rows into the shared/merged results. May be async; resolve to `false`
+   * to signal failure so the selection is kept (otherwise the selection is cleared on success).
+   */
+  onMergeSelected: (rows: ProjectGridRow[]) => void | boolean | Promise<void | boolean>;
 }
 
 function SearchTableRemoveIcon() {
@@ -52,6 +57,7 @@ export function SearchTableCard({
   tableId,
   title,
   mergeLabel = 'Save Selected',
+  mergeDisabled = false,
   onRemove,
   onRefresh,
   onMergeSelected,
@@ -97,13 +103,17 @@ export function SearchTableCard({
     table.clearSelection();
   }, [rows, table]);
 
-  const handleSaveSelectedRows = useCallback(() => {
+  const handleSaveSelectedRows = useCallback(async () => {
     if (!table.hasSelection) {
       return;
     }
 
-    onMergeSelected(table.selectedRows.map(stripProjectGridItem));
-    table.clearSelection();
+    // Clear the selection only once the merge resolves successfully — a failed async add (shared
+    // mode) keeps the checkboxes so the user can retry without re-selecting every row.
+    const result = await onMergeSelected(table.selectedRows.map(stripProjectGridItem));
+    if (result !== false) {
+      table.clearSelection();
+    }
   }, [onMergeSelected, table]);
 
   const handleUndoLastRowAction = useCallback(() => {
@@ -180,8 +190,8 @@ export function SearchTableCard({
               <button
                 type="button"
                 className="itg-btn itg-btn-primary"
-                onClick={handleSaveSelectedRows}
-                disabled={!table.hasSelection}
+                onClick={() => void handleSaveSelectedRows()}
+                disabled={!table.hasSelection || mergeDisabled}
               >
                 {mergeLabel}
               </button>

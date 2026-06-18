@@ -207,9 +207,9 @@ export const SharedPastProjectMergeSearch = ({
   // Save = add a single search table's checked rows into the shared result. Projects already in the
   // shared result (by fingerprint) are skipped so each project is stored once.
   const handleMergeSelected = useCallback(
-    async (selected: ProjectGridRow[]) => {
+    async (selected: ProjectGridRow[]): Promise<boolean> => {
       if (!selected.length) {
-        return;
+        return true;
       }
 
       const seenFingerprints = new Set(currentFingerprints);
@@ -225,7 +225,7 @@ export const SharedPastProjectMergeSearch = ({
 
       if (!rowsToAppend.length) {
         setBuilderMessage('Those projects are already in this shared result.');
-        return;
+        return true;
       }
 
       setIsSaving(true);
@@ -233,8 +233,11 @@ export const SharedPastProjectMergeSearch = ({
       try {
         await onAddRows(rowsToAppend);
         setBuilderMessage(`${rowsToAppend.length} project${rowsToAppend.length === 1 ? '' : 's'} added.`);
+        return true;
       } catch {
+        // Keep the user's selection (return false) so they can retry without re-checking rows.
         setBuilderMessage('Unable to add selected projects. Please try again.');
+        return false;
       } finally {
         setIsSaving(false);
       }
@@ -289,6 +292,7 @@ export const SharedPastProjectMergeSearch = ({
                 key={table.rowsResetKey === undefined ? table.id : `${table.id}-${table.rowsResetKey}`}
                 canRemove={searchTables.length > 1}
                 mergeLabel="Add Selected"
+                mergeDisabled={isSaving}
                 description={
                   isAISearchTable
                     ? 'Use AI to load matching past projects into this table, then select rows to add.'
@@ -324,7 +328,7 @@ export const SharedPastProjectMergeSearch = ({
                 resultsMotionKey={isAISearchTable ? table.rowsResetKey : undefined}
                 onRemove={handleRemoveSearchTable}
                 onRefresh={isAISearchTable || !onRefreshRows ? undefined : handleRefreshSearchTable}
-                onMergeSelected={(selected) => void handleMergeSelected(selected)}
+                onMergeSelected={handleMergeSelected}
               />
             );
           })}

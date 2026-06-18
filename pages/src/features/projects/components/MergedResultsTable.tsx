@@ -670,10 +670,15 @@ export const MergedResultsTable = ({
         selectedKeys={table.selectedKeys}
         onToggleSelected={table.toggleSelected}
         onToggleSelectAll={() => {
-          if (table.selectedKeys.size === rows.length && rows.length > 0) {
+          // Select-all targets the rows currently visible (matching the active search), so a
+          // narrowed view + Remove Selected can never delete rows the user cannot see.
+          const visible = table.filteredRows;
+          const allVisibleSelected =
+            visible.length > 0 && visible.every((row) => table.selectedKeys.has(row.__key));
+          if (allVisibleSelected) {
             table.clearSelection();
           } else {
-            table.selectAllRows();
+            table.selectRows(visible);
           }
         }}
         toolbarPlacement="bottom"
