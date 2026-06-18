@@ -499,7 +499,9 @@ describe('MergedResultsTable', () => {
     await waitFor(() => {
       expect(onUpdateShare).toHaveBeenCalledWith([normalizedAddedRow], 'Original Name', 'Owner note');
     });
-    expect(undoButton).toBeEnabled();
+    // The button enables only after the post-await state commits (setSharedRowsUndo +
+    // setIsSavingShareEdit(false)), which lands in a later microtask than the mock call above.
+    await waitFor(() => expect(undoButton).toBeEnabled());
 
     fireEvent.click(undoButton);
 
