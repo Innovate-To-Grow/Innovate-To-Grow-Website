@@ -117,6 +117,15 @@ class ContactPhoneTests(APITestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_create_rejects_non_us_length(self):
+        # US-only: a 7-9 digit number must be rejected (was accepted under the old 7-15 bounds).
+        response = self.client.post(
+            "/authn/contact-phones/",
+            {"phone_number": "5551234"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
     def test_create_rejects_invalid_region(self):
         response = self.client.post(
             "/authn/contact-phones/",

@@ -124,6 +124,18 @@ class PhoneValidationTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("10 digits", response.data["detail"])
 
+    @patch("apps.authn.services.sms.start_phone_verification")
+    def test_send_code_ignores_client_region_and_pins_us(self, mock_start):
+        # US-only: a client-supplied non-US region must be ignored, not used to build the E.164.
+        response = self.client.post(
+            "/event/send-phone-code/",
+            {"phone": "5551234567", "region": "52"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["phone"], "+15551234567")
+        mock_start.assert_called_once_with("+15551234567")
+
     @patch("apps.event.services.ticket_mail.send_ticket_email")
     def test_registration_rejects_invalid_phone(self, _mock_email):
         event = make_event(is_live=True, collect_phone=True, verify_phone=False)
