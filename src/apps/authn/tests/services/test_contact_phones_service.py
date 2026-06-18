@@ -45,6 +45,13 @@ class NormalizationHelperTests(TestCase):
     def test_infer_region_falls_back_to_us_when_no_current(self):
         self.assertEqual(infer_region_from_e164("0001234"), "1-US")
 
+    def test_infer_region_keeps_legacy_non_us_region(self):
+        # A legacy national number can begin with "1" (e.g. China 13800138000 / region "86").
+        # With the US-only choice list it must NOT be reclassified to "1-US", which would
+        # strip the leading "1" and drop a digit during admin normalization.
+        self.assertEqual(infer_region_from_e164("13800138000", "86"), "86")
+        self.assertEqual(normalize_to_national("13800138000", "86"), "13800138000")
+
 
 class PhoneVerificationServiceTests(TestCase):
     def setUp(self):

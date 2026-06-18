@@ -53,7 +53,8 @@ class EventRegistrationAdminForm(forms.ModelForm):
             return phone
         from apps.event.views.registration import _validate_phone_digits
 
-        error = _validate_phone_digits(phone, "0-GENERIC")
+        # US-only: AWS SNS only delivers to US numbers.
+        error = _validate_phone_digits(phone, "1-US")
         if error:
             raise forms.ValidationError(error)
         return phone

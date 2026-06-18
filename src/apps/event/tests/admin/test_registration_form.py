@@ -100,6 +100,13 @@ class EventRegistrationAdminFormCleanTest(TestCase):
         form.is_valid()
         self.assertEqual(form.cleaned_data.get("attendee_phone"), "5551234567")
 
+    def test_clean_attendee_phone_accepts_us_e164(self):
+        # Regression: the admin form previously validated with a "0-GENERIC" sentinel region
+        # whose country code "0" never stripped the +1, rejecting valid US E.164 numbers.
+        form = EventRegistrationAdminForm(data=self._base_data(attendee_phone="+12095765113"))
+        form.is_valid()
+        self.assertEqual(form.cleaned_data.get("attendee_phone"), "+12095765113")
+
     def test_init_limits_ticket_queryset_for_existing_instance(self):
         registration = make_registration(self.member, self.event, self.ticket)
         other_event = make_event(name="Excluded Event")

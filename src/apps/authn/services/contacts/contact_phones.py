@@ -57,6 +57,11 @@ def infer_region_from_e164(phone: str, current_region: str = "") -> str:
 
     For +1 (shared by US and Canada), preserves *current_region* when it is
     already ``"1-CA"``; otherwise defaults to ``"1-US"``.
+
+    The choice list is US-only, so the ``"1"`` prefix also matches the national
+    numbers of other countries that happen to begin with ``1``. Never reclassify
+    a record that already carries a non-US/CA region (e.g. a legacy ``"86"`` row)
+    — doing so would strip the wrong country code and drop a digit.
     """
     lookup = _build_region_lookup()
     digits = re.sub(r"\D", "", phone)
@@ -64,6 +69,8 @@ def infer_region_from_e164(phone: str, current_region: str = "") -> str:
     for cc, region_code in lookup:
         if digits.startswith(cc):
             if cc == "1":
+                if current_region and current_region not in ("1-US", "1-CA"):
+                    return current_region
                 return current_region if current_region == "1-CA" else "1-US"
             return region_code
 

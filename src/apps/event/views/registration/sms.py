@@ -19,7 +19,8 @@ class SendPhoneCodeView(APIView):
         import apps.event.views.registration as registration_api
 
         phone = request.data.get("phone", "").strip()
-        region = request.data.get("region", "1-US")
+        # US-only: AWS SNS only delivers to US numbers; ignore any client-supplied region.
+        region = "1-US"
         if not phone:
             return Response(
                 {"detail": "Phone number is required."},
@@ -68,7 +69,8 @@ class VerifyPhoneCodeView(APIView):
 
         phone = request.data.get("phone", "").strip()
         code = request.data.get("code", "").strip()
-        region = request.data.get("region", "1-US")
+        # US-only: ignore any client-supplied region so the cache key / E.164 match the send path.
+        region = "1-US"
         if not phone or not code:
             return Response(
                 {"detail": "Phone and code are required."},
