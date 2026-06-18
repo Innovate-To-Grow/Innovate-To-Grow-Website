@@ -159,9 +159,11 @@ class PastProjectAISearchAPIViewTests(TestCase):
         self.assertTrue(response.data["available"])
         self.assertEqual(response.data["query"], "solar")
         self.assertEqual(response.data["usage"]["totalTokens"], 13)
+        # The newest published semester is included now, so the current project is serialized too
+        # (in AI order); only the invalid id and the unpublished project are dropped.
         self.assertEqual(
             [project["project_title"] for project in response.data["results"]],
-            ["Battery Health Monitor", "Solar Sensor Irrigation Network"],
+            ["Battery Health Monitor", "Current Solar Project", "Solar Sensor Irrigation Network"],
         )
 
     def test_candidate_search_uses_past_project_boundary(self):
@@ -170,7 +172,8 @@ class PastProjectAISearchAPIViewTests(TestCase):
 
         self.assertIn("Solar Sensor Irrigation Network", titles)
         self.assertIn("Battery Health Monitor", titles)
-        self.assertNotIn("Current Solar Project", titles)
+        # Every published semester is in scope, including the newest; only unpublished is excluded.
+        self.assertIn("Current Solar Project", titles)
         self.assertNotIn("Unpublished Solar Project", titles)
 
     def test_success_logs_source_user_and_results(self):
