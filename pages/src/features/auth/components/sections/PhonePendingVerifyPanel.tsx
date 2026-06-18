@@ -42,7 +42,7 @@ export const PhonePendingVerifyPanel = ({
     <h3 className="account-subsection-title email-center-pending-verify-title">Verify phone number</h3>
     <p className="account-status-text email-center-pending-verify-intro">
       Enter the 6-digit code we sent to{' '}
-      <strong>{formatPhoneDisplay(phone.phone_number, phone.region)}</strong>. Verification is required to save this number.
+      <strong>{formatPhoneDisplay(phone.phone_number)}</strong>. Verification is required to save this number.
     </p>
     <form onSubmit={onVerifySubmit} className="email-center-pending-verify-form">
       <div className="email-center-pending-verify-code">

@@ -39,8 +39,7 @@ export const PhoneCard = ({
     <div className="email-center-row">
       <div className="email-center-card-main">
         <div className="email-center-card-heading">
-          <span className="email-center-card-title">{formatPhoneDisplay(phone.phone_number, phone.region)}</span>
-          <span className="email-center-badge primary">{phone.region_display}</span>
+          <span className="email-center-card-title">{formatPhoneDisplay(phone.phone_number)}</span>
           <span className={`email-center-badge ${phone.verified ? 'verified' : 'unverified'}`}>
             {phone.verified ? 'Verified' : 'Unverified'}
           </span>

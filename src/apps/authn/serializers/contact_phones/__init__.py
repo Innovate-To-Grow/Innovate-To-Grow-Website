@@ -31,7 +31,7 @@ class ContactPhoneCreateSerializer(serializers.Serializer):
     """Serializer for creating a new contact phone."""
 
     phone_number = serializers.CharField(required=True)
-    region = serializers.ChoiceField(choices=PHONE_REGION_CHOICES, required=True)
+    region = serializers.ChoiceField(choices=PHONE_REGION_CHOICES, required=False, default="1-US")
     subscribe = serializers.BooleanField(default=False)
 
     # noinspection PyMethodMayBeStatic

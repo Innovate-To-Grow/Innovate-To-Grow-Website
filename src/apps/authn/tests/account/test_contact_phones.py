@@ -83,14 +83,14 @@ class ContactPhoneTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["phone_number"], "2025551234")
 
-    def test_create_preserves_international_prefix(self):
+    def test_create_strips_country_code_prefix(self):
         response = self.client.post(
             "/authn/contact-phones/",
-            {"phone_number": "+8613800138000", "region": "86"},
+            {"phone_number": "+12025551234", "region": "1-US"},
             format="json",
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["phone_number"], "13800138000")
+        self.assertEqual(response.data["phone_number"], "2025551234")
 
     def test_create_rejects_duplicate(self):
         ContactPhone.objects.create(member=self.other_member, phone_number="2025551234", region="1-US")

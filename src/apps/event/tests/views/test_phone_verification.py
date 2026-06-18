@@ -124,24 +124,6 @@ class PhoneValidationTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("10 digits", response.data["detail"])
 
-    def test_send_code_rejects_short_china_number(self):
-        response = self.client.post(
-            "/event/send-phone-code/",
-            {"phone": "1381234567", "region": "86"},
-            format="json",
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("11 digits", response.data["detail"])
-
-    def test_send_code_rejects_too_short_generic(self):
-        response = self.client.post(
-            "/event/send-phone-code/",
-            {"phone": "123", "region": "44"},
-            format="json",
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("too short", response.data["detail"])
-
     @patch("apps.event.services.ticket_mail.send_ticket_email")
     def test_registration_rejects_invalid_phone(self, _mock_email):
         event = make_event(is_live=True, collect_phone=True, verify_phone=False)

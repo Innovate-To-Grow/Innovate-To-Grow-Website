@@ -9,7 +9,7 @@ import {
     type ContactPhone,
 } from '@/features/auth/api';
 import {USER_FACING_GENERIC_ERROR} from '../../shared/apiErrors';
-import {canSubmitNationalPhone, capNationalDigitsForRegion} from './phoneInput';
+import {canSubmitNationalPhone} from './phoneInput';
 
 export const usePhoneCenter = () => {
     const [phones, setPhones] = useState<ContactPhone[]>([]);
@@ -20,7 +20,6 @@ export const usePhoneCenter = () => {
     // Add form state
     const [showAddForm, setShowAddForm] = useState(false);
     const [addPhoneNumber, setAddPhoneNumber] = useState('');
-    const [addRegion, setAddRegion] = useState('1-US');
     const [addSubscribe, setAddSubscribe] = useState(false);
     const [addTermsAccepted, setAddTermsAccepted] = useState(false);
     const [addLoading, setAddLoading] = useState(false);
@@ -63,15 +62,9 @@ export const usePhoneCenter = () => {
         setVerifyCode('');
         setVerifyError(null);
         setAddPhoneNumber('');
-        setAddRegion('1-US');
         setAddSubscribe(false);
         setAddTermsAccepted(false);
         setAddError(null);
-    };
-
-    const handleAddRegionChange = (region: string) => {
-        setAddRegion(region);
-        setAddPhoneNumber((prev) => capNationalDigitsForRegion(prev, region));
     };
 
     const handleSubscribeToggle = async (phone: ContactPhone) => {
@@ -97,18 +90,17 @@ export const usePhoneCenter = () => {
             setAddError(null);
             return;
         }
-        if (!canSubmitNationalPhone(addPhoneNumber, addRegion)) return;
+        if (!canSubmitNationalPhone(addPhoneNumber)) return;
         setAddLoading(true);
         setAddError(null);
         clearMessages();
         try {
             const created = await createContactPhone({
                 phone_number: addPhoneNumber,
-                region: addRegion,
+                region: '1-US',
                 subscribe: addSubscribe,
             });
             setAddPhoneNumber('');
-            setAddRegion('1-US');
             setPendingNewPhone(created);
             setVerifyingId(created.id);
             setVerifyCode('');
@@ -247,9 +239,6 @@ export const usePhoneCenter = () => {
         pendingNewPhone,
         addPhoneNumber,
         setAddPhoneNumber,
-        addRegion,
-        setAddRegion,
-        handleAddRegionChange,
         addSubscribe,
         setAddSubscribe,
         addTermsAccepted,

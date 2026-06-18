@@ -87,14 +87,13 @@ export const useEventRegistration = () => {
 
       if (data.collect_phone && data.member_phone) {
         const phone = data.member_phone.phone_number || '';
-        const region = data.member_phone.region || '1-US';
-        const countryCode = region.split('-')[0];
-        const normalizedDigits = phone.startsWith(`+${countryCode}`) ? phone.slice(countryCode.length + 1) : phone;
+        // US-only: strip a leading +1 to recover the national digits.
+        const normalizedDigits = phone.startsWith('+1') ? phone.slice(2) : phone;
         setAttendeePhone((prev) => prev || normalizedDigits || phone);
-        setPhoneRegion(region);
+        setPhoneRegion('1-US');
         setPhoneVerified(Boolean(data.member_phone.verified));
         setPhoneCodeSent(Boolean(data.member_phone.verified));
-        setInitialPhone({digits: normalizedDigits || phone, region});
+        setInitialPhone({digits: normalizedDigits || phone, region: '1-US'});
       }
       if (data.member_profile && !hasRequiredNameFields(data.member_profile)) {
         navigate(completeProfilePath, {replace: true});
@@ -225,7 +224,7 @@ export const useEventRegistration = () => {
   };
 
   const handleSendPhoneCode = async () => {
-    if (!attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim(), phoneRegion)) return;
+    if (!attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim())) return;
     setPhoneSending(true);
     setError(null);
     try {
@@ -256,7 +255,7 @@ export const useEventRegistration = () => {
   };
 
   const handlePhoneChange = (value: string) => {
-    const capped = value.slice(0, maxPhoneDigits(phoneRegion));
+    const capped = value.slice(0, maxPhoneDigits());
     if (capped !== attendeePhone) {
       setPhoneVerified(false);
       setPhoneCodeSent(false);
@@ -264,17 +263,6 @@ export const useEventRegistration = () => {
       setNormalizedPhone('');
     }
     setAttendeePhone(capped);
-  };
-
-  const handlePhoneRegionChange = (value: string) => {
-    if (value !== phoneRegion) {
-      setPhoneVerified(false);
-      setPhoneCodeSent(false);
-      setPhoneCode('');
-      setNormalizedPhone('');
-      setAttendeePhone((prev) => prev.slice(0, maxPhoneDigits(value)));
-    }
-    setPhoneRegion(value);
   };
 
   const phoneChanged = initialPhone === null
@@ -285,9 +273,9 @@ export const useEventRegistration = () => {
     () => {
       if (!attendeePhone.trim()) return null;
       if (!phoneChanged) return null;
-      return validatePhoneDigits(attendeePhone.trim(), phoneRegion);
+      return validatePhoneDigits(attendeePhone.trim());
     },
-    [attendeePhone, phoneRegion, phoneChanged],
+    [attendeePhone, phoneChanged],
   );
 
   return {
@@ -326,7 +314,6 @@ export const useEventRegistration = () => {
     setAttendeeOrgType,
     handlePhoneChange,
     setAttendeeSecondaryEmail,
-    handlePhoneRegionChange,
     setPhoneCode,
     setCode,
     setEmail,
