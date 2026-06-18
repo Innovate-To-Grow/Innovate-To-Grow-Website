@@ -88,15 +88,12 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     // No saved results yet.
     expect(getMergedSection()).toBeNull();
 
-    // Check exactly one row, then Save/Merge. (The grid renders a desktop table
-    // and mobile cards, so each row's checkbox/label appears twice — target the
-    // first match; both checkboxes map to the same row key.)
+    // Check exactly one row, then Save Selected — the per-table merge button. (The grid renders a
+    // desktop table and mobile cards, so each row's checkbox/label appears twice — target the first
+    // match; both checkboxes map to the same row key.) There is no confirmation dialog anymore.
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save\/merge results/i}));
-
-    const dialog = screen.getByRole('dialog', {name: /save selected rows/i});
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
     expect(window.confirm).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole('button', {name: /save rows/i}));
 
     const merged = getMergedSection();
     expect(merged).not.toBeNull();
@@ -107,10 +104,10 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(mergedView.queryByText('Charlie Project')).toBeNull();
   });
 
-  it('disables Save/Merge until a row is selected and never merges everything by default', () => {
+  it('disables Save Selected until a row is selected and never merges everything by default', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    const mergeButton = screen.getByRole('button', {name: /save\/merge results/i});
+    const mergeButton = screen.getByRole('button', {name: /save selected/i});
     expect(mergeButton).toBeDisabled();
 
     // Selecting a row enables it.
@@ -121,7 +118,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   it('does not toggle selection from desktop row body clicks', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    const mergeButton = screen.getByRole('button', {name: /save\/merge results/i});
+    const mergeButton = screen.getByRole('button', {name: /save selected/i});
     fireEvent.click(screen.getAllByText('Bravo Project')[0]);
     expect(mergeButton).toBeDisabled();
 
@@ -145,7 +142,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(undoButton).toBeDisabled();
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /delete selected rows/i}));
+    fireEvent.click(screen.getByRole('button', {name: /delete selected/i}));
 
     expect(screen.queryByText('Bravo Project')).toBeNull();
     expect(undoButton).toBeEnabled();
@@ -176,7 +173,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       .getByRole('heading', {level: 3, name: 'Search Table 2'})
       .closest('section') as HTMLElement;
     fireEvent.click(within(table2).getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /delete selected rows/i}));
+    fireEvent.click(within(table2).getByRole('button', {name: /delete selected/i}));
     expect(within(table2).queryAllByText('Bravo Project')).toHaveLength(0);
 
     // Ask table 1 to refresh — the parent starts a refetch while the stale rows stay mounted.
@@ -278,12 +275,12 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(await screen.findByRole('heading', {level: 3, name: 'AI Search Table: solar sensors'})).toBeInTheDocument();
     expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar sensors', 10);
 
-    fireEvent.click((await screen.findAllByLabelText('Select Solar Sensor Platform'))[0]);
-    await waitFor(() => expect(screen.getByRole('button', {name: /save\/merge results/i})).toBeEnabled());
-    fireEvent.click(screen.getByRole('button', {name: /save\/merge results/i}));
-
-    const dialog = screen.getByRole('dialog', {name: /save selected rows/i});
-    fireEvent.click(within(dialog).getByRole('button', {name: /save rows/i}));
+    const aiTable = screen
+      .getByRole('heading', {level: 3, name: 'AI Search Table: solar sensors'})
+      .closest('section') as HTMLElement;
+    fireEvent.click((await within(aiTable).findAllByLabelText('Select Solar Sensor Platform'))[0]);
+    await waitFor(() => expect(within(aiTable).getByRole('button', {name: /save selected/i})).toBeEnabled());
+    fireEvent.click(within(aiTable).getByRole('button', {name: /save selected/i}));
 
     const merged = getMergedSection();
     expect(merged).not.toBeNull();
@@ -413,10 +410,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save\/merge results/i}));
-    fireEvent.click(
-      within(screen.getByRole('dialog', {name: /save selected rows/i})).getByRole('button', {name: /save rows/i}),
-    );
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
 
     const stored = sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY);
     expect(stored).not.toBeNull();
@@ -429,10 +423,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save\/merge results/i}));
-    fireEvent.click(
-      within(screen.getByRole('dialog', {name: /save selected rows/i})).getByRole('button', {name: /save rows/i}),
-    );
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
     expect(within(getMergedSection() as HTMLElement).getAllByText('Bravo Project').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', {name: /reset merged results/i}));
@@ -455,14 +446,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save\/merge results/i}));
-    fireEvent.click(
-      within(screen.getByRole('dialog', {name: /save selected rows/i})).getByRole('button', {name: /save rows/i}),
-    );
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
 
-    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'My picks'}});
-    fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
+    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'My picks'}});
+    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull());
@@ -475,14 +463,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save\/merge results/i}));
-    fireEvent.click(
-      within(screen.getByRole('dialog', {name: /save selected rows/i})).getByRole('button', {name: /save rows/i}),
-    );
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
 
-    fireEvent.change(screen.getByLabelText(/name this shared link/i), {target: {value: 'My picks'}});
-    fireEvent.click(screen.getByRole('button', {name: /get shareable url/i}));
+    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'My picks'}});
+    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
     // Draft retained after the rejection — the clear runs only after a successful await.

@@ -259,7 +259,7 @@ export const ProjectGridTable = ({
                   className="itg-btn itg-btn-outline project-grid-toggle-details"
                   onClick={onToggleAllDetails}
                 >
-                  {allDetailsExpanded ? 'Hide All Details' : 'Show All Details'}
+                  {allDetailsExpanded ? 'Hide All Details' : 'View All Details'}
                 </button>
               ) : null}
             </div>

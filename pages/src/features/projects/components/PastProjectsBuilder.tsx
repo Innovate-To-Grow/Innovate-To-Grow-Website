@@ -7,7 +7,7 @@ import {PastProjectsAISearchForm} from './builder/PastProjectsAISearchForm';
 import {PastProjectsActionBar} from './builder/PastProjectsActionBar';
 import {PastProjectsDialog} from './builder/PastProjectsDialog';
 import {MergedResultsTable, type PastProjectShareCreationResult} from './MergedResultsTable';
-import {SearchTableCard, type SearchTableHandle} from './SearchTableCard';
+import {SearchTableCard} from './SearchTableCard';
 import {
   createProjectGridFingerprint,
   createProjectGridItems,
@@ -102,7 +102,6 @@ export const PastProjectsBuilder = ({
 }: PastProjectsBuilderProps) => {
   const {isAuthenticated} = useAuth();
   const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
-  const [selectionState, setSelectionState] = useState<Record<string, boolean>>({});
   // Seed from any draft persisted before a login reload so the merged results survive the round-trip.
   const [mergedRows, setMergedRows] = useState<ProjectGridItem[]>(() =>
     createProjectGridItems(readPersistedMergedRows(), 'restored'),
@@ -110,14 +109,11 @@ export const PastProjectsBuilder = ({
   const [mergedRowsUndo, setMergedRowsUndo] = useState<ProjectGridItem[] | null>(null);
   const [builderMessage, setBuilderMessage] = useState('');
   const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
-  const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const tableSequence = useRef(1);
   const mergeSequence = useRef(0);
-  const tableRefs = useRef<Record<string, SearchTableHandle | null>>({});
   const pendingRefreshTableId = useRef<string | null>(null);
   const lastSeenRows = useRef(rows);
 
-  const hasAnySelection = Object.values(selectionState).some(Boolean);
   const hasAISearchTable = searchTables.some((table) => table.type === 'ai');
   const standardSearchTableIds = searchTables.filter((table) => table.type === 'standard').map((table) => table.id);
   const standardSearchTableCount = standardSearchTableIds.length;
@@ -153,13 +149,6 @@ export const PastProjectsBuilder = ({
     },
     [onCreateShare],
   );
-
-  const handleSelectionStateChange = useCallback((tableId: string, hasSelection: boolean) => {
-    setSelectionState((current) => {
-      if (current[tableId] === hasSelection) return current;
-      return {...current, [tableId]: hasSelection};
-    });
-  }, []);
 
   const handleAddSearchTable = () => {
     tableSequence.current += 1;
@@ -253,12 +242,6 @@ export const PastProjectsBuilder = ({
 
   const handleRemoveSearchTable = (tableId: string) => {
     setSearchTables((current) => current.filter((table) => table.id !== tableId));
-    setSelectionState((current) => {
-      const next = {...current};
-      delete next[tableId];
-      return next;
-    });
-    delete tableRefs.current[tableId];
   };
 
   // Refresh is per-table: the refetch keeps serving stale rows (so the stack stays mounted and
@@ -291,51 +274,19 @@ export const PastProjectsBuilder = ({
     [onRefreshRows],
   );
 
-  const applyToSearchTables = (action: (table: SearchTableHandle) => void) => {
-    searchTables.forEach(({id}) => {
-      const table = tableRefs.current[id];
-      if (table) {
-        action(table);
-      }
-    });
-  };
-
-  const handleMergeResults = () => {
-    if (!searchTables.length) {
-      return;
-    }
-
-    // Save/Merge stores only the rows the user has explicitly checked. Without a
-    // selection there is nothing to save — guide the user instead of silently
-    // merging the entire archive (the original bug).
-    if (!hasAnySelection) {
-      setBuilderMessage('Select the rows you want to save (check their boxes), then choose Save/Merge Results.');
-      return;
-    }
-
-    setIsMergeDialogOpen(true);
-  };
-
-  const handleConfirmMergeResults = () => {
-    setIsMergeDialogOpen(false);
-
-    if (!searchTables.length || !hasAnySelection) {
-      return;
-    }
-
-    const nextMergedRows = [...mergedRows];
-    const seenFingerprints = new Set(
-      nextMergedRows.map((row) => createProjectGridFingerprint(stripProjectGridItem(row))),
-    );
-
-    const rowsToAppend: ProjectGridRow[] = [];
-
-    searchTables.forEach(({id}) => {
-      const table = tableRefs.current[id];
-      if (!table) {
+  // Save = merge a single search table's checked rows into the saved results. Duplicates already
+  // saved (by fingerprint) are skipped so a project is stored once.
+  const handleMergeSelectedFromTable = useCallback(
+    (selected: ProjectGridRow[]) => {
+      if (!selected.length) {
         return;
       }
-      table.getSelectedRows().forEach((row) => {
+
+      const seenFingerprints = new Set(
+        mergedRows.map((row) => createProjectGridFingerprint(stripProjectGridItem(row))),
+      );
+      const rowsToAppend: ProjectGridRow[] = [];
+      selected.forEach((row) => {
         const fingerprint = createProjectGridFingerprint(row);
         if (seenFingerprints.has(fingerprint)) {
           return;
@@ -343,29 +294,39 @@ export const PastProjectsBuilder = ({
         seenFingerprints.add(fingerprint);
         rowsToAppend.push(row);
       });
-    });
 
-    if (rowsToAppend.length) {
+      if (!rowsToAppend.length) {
+        setBuilderMessage('Those rows are already in your saved results.');
+        return;
+      }
+
       mergeSequence.current += 1;
-      nextMergedRows.push(...createProjectGridItems(rowsToAppend, `merged-${mergeSequence.current}`));
+      setMergedRows((current) => [
+        ...current,
+        ...createProjectGridItems(rowsToAppend, `merged-${mergeSequence.current}`),
+      ]);
       setMergedRowsUndo(null);
-      setMergedRows(nextMergedRows);
       setBuilderMessage(`${rowsToAppend.length} row${rowsToAppend.length === 1 ? '' : 's'} saved into merged results.`);
-    } else {
-      setBuilderMessage('Those rows are already in your saved results.');
-    }
-
-    searchTables.forEach(({id}) => {
-      delete tableRefs.current[id];
-    });
-    setSearchTables([]);
-    setSelectionState({});
-  };
+    },
+    [mergedRows],
+  );
 
   const handleDeleteMergedRow = (row: ProjectGridItem) => {
     setMergedRowsUndo(mergedRows);
     setMergedRows((current) => current.filter((item) => item.__key !== row.__key));
     setBuilderMessage('Project removed from merged results.');
+  };
+
+  const handleDeleteMergedRows = (rowsToRemove: ProjectGridItem[]) => {
+    if (!rowsToRemove.length) {
+      return;
+    }
+    const removeKeys = new Set(rowsToRemove.map((row) => row.__key));
+    setMergedRowsUndo(mergedRows);
+    setMergedRows((current) => current.filter((item) => !removeKeys.has(item.__key)));
+    setBuilderMessage(
+      `${rowsToRemove.length} project${rowsToRemove.length === 1 ? '' : 's'} removed from merged results.`,
+    );
   };
 
   const handleUndoMergedRows = () => {
@@ -395,6 +356,7 @@ export const PastProjectsBuilder = ({
           rows={mergedRows}
           onCreateShare={handleCreateShare}
           onDeleteRow={handleDeleteMergedRow}
+          onDeleteRows={handleDeleteMergedRows}
           canUndoRows={Boolean(mergedRowsUndo)}
           onUndoRows={handleUndoMergedRows}
           onResetRows={handleResetMergedRows}
@@ -404,16 +366,11 @@ export const PastProjectsBuilder = ({
       <PastProjectsActionBar
         builderMessage={builderMessage}
         error={error}
-        hasAnySelection={hasAnySelection}
         loading={loading}
-        searchTableCount={searchTables.length}
         aiSearchDisabled={hasAISearchTable}
         aiSearchLoginRequired={!isAuthenticated}
         onAddAISearchTable={handleAddAISearchTable}
         onAddSearchTable={handleAddSearchTable}
-        onMergeResults={handleMergeResults}
-        onDeleteSelectedRows={() => applyToSearchTables((table) => table.deleteSelectedRows())}
-        onKeepSelectedRows={() => applyToSearchTables((table) => table.keepSelectedRows())}
       />
 
       {isAISearchLoginDialogOpen ? (
@@ -427,20 +384,6 @@ export const PastProjectsBuilder = ({
           }}
         >
           <p>You need to sign in before using AI search.</p>
-        </PastProjectsDialog>
-      ) : null}
-
-      {isMergeDialogOpen ? (
-        <PastProjectsDialog
-          title="Save selected rows?"
-          confirmLabel="Save Rows"
-          onCancel={() => setIsMergeDialogOpen(false)}
-          onConfirm={handleConfirmMergeResults}
-        >
-          <p>
-            Save the selected rows from all open search tables into your merged results? Duplicate projects already
-            saved will be skipped.
-          </p>
         </PastProjectsDialog>
       ) : null}
 
@@ -462,13 +405,10 @@ export const PastProjectsBuilder = ({
             return (
               <SearchTableCard
                 key={table.rowsResetKey === undefined ? table.id : `${table.id}-${table.rowsResetKey}`}
-                ref={(instance) => {
-                  tableRefs.current[table.id] = instance;
-                }}
                 canRemove={searchTables.length > 1}
                 description={
                   isAISearchTable
-                    ? 'Use AI to load matching past projects into this table, then select rows to merge.'
+                    ? 'Use AI to load matching past projects into this table, then select rows to save.'
                     : undefined
                 }
                 emptyMessage={
@@ -501,7 +441,7 @@ export const PastProjectsBuilder = ({
                 resultsMotionKey={isAISearchTable ? table.rowsResetKey : undefined}
                 onRemove={handleRemoveSearchTable}
                 onRefresh={isAISearchTable || !onRefreshRows ? undefined : handleRefreshSearchTable}
-                onSelectionStateChange={handleSelectionStateChange}
+                onMergeSelected={handleMergeSelectedFromTable}
               />
             );
           })}

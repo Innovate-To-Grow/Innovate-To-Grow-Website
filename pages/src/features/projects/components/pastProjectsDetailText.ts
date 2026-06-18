@@ -1,11 +1,19 @@
 import DOMPurify from 'dompurify';
-import {getPastProjectDetailUrl, type ProjectGridRow} from './projectGrid';
+import {createProjectGridFingerprint, getPastProjectDetailUrl, type ProjectGridRow} from './projectGrid';
 
 const RICH_DETAIL_ALLOWED_TAGS = ['br', 'div', 'p', 'b', 'strong', 'i', 'em', 'u', 'mark', 'a'];
-const RICH_DETAIL_ALLOWED_ATTR = ['href', 'data-past-project-note-curation'];
+// The per-project marker attribute lets a re-insert append only projects not already present
+// (preserving hand edits). It must stay in sync with the backend DETAILS_ALLOWED_ATTRIBUTES so it
+// survives a save round-trip.
+const RICH_DETAIL_ALLOWED_ATTR = ['href', 'data-past-project-note-curation', 'data-past-project-key'];
 const PAST_PROJECT_NOTE_CURATION_ATTR = 'data-past-project-note-curation';
 const PAST_PROJECT_NOTE_CURATION_VALUE = 'project-summary';
 const PAST_PROJECT_NOTE_CURATION_SELECTOR = `div[${PAST_PROJECT_NOTE_CURATION_ATTR}="${PAST_PROJECT_NOTE_CURATION_VALUE}"]`;
+// Each inserted project is wrapped in its own div tagged with its dedup fingerprint, so a re-insert
+// can read which projects are already in the curation block and skip them.
+const PAST_PROJECT_NOTE_ITEM_ATTR = 'data-past-project-key';
+const PAST_PROJECT_NOTE_ITEM_SELECTOR = `[${PAST_PROJECT_NOTE_ITEM_ATTR}]`;
+const PAST_PROJECT_NOTE_SEPARATOR_HTML = '<div>------------------------------</div>';
 
 export const PAST_PROJECT_NOTE_INSERT_FIELDS = [
   {key: 'project_label', label: 'Project label'},
@@ -82,7 +90,27 @@ const individualProjectHref = (row: ProjectGridRow) => {
   return getPastProjectDetailUrl(row.id);
 };
 
-const projectInsertHtml = (row: ProjectGridRow, index: number, excludedFields: Set<PastProjectNoteInsertField>) => {
+// Compact, stable hash (FNV-1a → base36) so the per-project marker stays short instead of embedding
+// the whole fingerprint (which would bloat the note and duplicate the abstract text).
+const hashString = (value: string) => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+};
+
+// The dedup identity for an inserted project — id-independent so the same project matches whether
+// or not it carries a UUID (mirrors createProjectGridItems' fingerprint-based key).
+const projectInsertKey = (row: ProjectGridRow) => hashString(createProjectGridFingerprint(row));
+
+// The field rows for a single project (without the per-project wrapper).
+const projectInsertFieldsHtml = (
+  row: ProjectGridRow,
+  index: number,
+  excludedFields: Set<PastProjectNoteInsertField>,
+) => {
   const href = individualProjectHref(row);
   const include = (field: PastProjectNoteInsertField, html: string) => (excludedFields.has(field) ? '' : html);
   return [
@@ -110,15 +138,37 @@ const projectInsertHtml = (row: ProjectGridRow, index: number, excludedFields: S
     .join('');
 };
 
+// A single project wrapped in a keyed div, so re-inserts can detect it. Returns '' when every
+// field is excluded (nothing to show).
+const projectInsertBlockHtml = (
+  row: ProjectGridRow,
+  index: number,
+  excludedFields: Set<PastProjectNoteInsertField>,
+) => {
+  const fields = projectInsertFieldsHtml(row, index, excludedFields);
+  if (!fields) {
+    return '';
+  }
+  return `<div ${PAST_PROJECT_NOTE_ITEM_ATTR}="${escapeHtml(projectInsertKey(row))}">${fields}</div>`;
+};
+
+// Build keyed project blocks joined by separators, numbered starting at `startIndex`.
+const buildProjectBlocksHtml = (
+  rows: ProjectGridRow[],
+  excludedFields: Set<PastProjectNoteInsertField>,
+  startIndex: number,
+) =>
+  rows
+    .map((row, offset) => projectInsertBlockHtml(row, startIndex + offset, excludedFields))
+    .filter(Boolean)
+    .join(PAST_PROJECT_NOTE_SEPARATOR_HTML);
+
 export const buildPastProjectsNoteInsertHtml = (
   rows: ProjectGridRow[],
   options: PastProjectNoteInsertOptions = {},
 ) => {
   const excludedFields = new Set(options.excludedFields ?? []);
-  const projectHtml = rows
-    .map((row, index) => projectInsertHtml(row, index, excludedFields))
-    .filter(Boolean)
-    .join('<div>------------------------------</div>');
+  const projectHtml = buildProjectBlocksHtml(rows, excludedFields, 0);
 
   if (!projectHtml) {
     return '';
@@ -134,25 +184,38 @@ export const appendPastProjectsNoteInsertHtml = (
   rows: ProjectGridRow[],
   options: PastProjectNoteInsertOptions = {},
 ) => {
-  const insertHtml = buildPastProjectsNoteInsertHtml(rows, options);
+  const excludedFields = new Set(options.excludedFields ?? []);
   const sanitizedCurrent = sanitizePastProjectsDetailHtml(currentHtml);
+
   if (typeof document !== 'undefined') {
     const currentTemplate = document.createElement('template');
     currentTemplate.innerHTML = sanitizedCurrent;
     const existingCuration = currentTemplate.content.querySelector(PAST_PROJECT_NOTE_CURATION_SELECTOR);
 
     if (existingCuration) {
-      if (!insertHtml) {
-        existingCuration.remove();
-        return sanitizePastProjectsDetailHtml(currentTemplate.innerHTML);
+      // Append only projects not already present, so any hand edits to existing inserted text
+      // survive a re-insert. Numbering continues after the projects already in the block.
+      const existingBlocks = existingCuration.querySelectorAll(PAST_PROJECT_NOTE_ITEM_SELECTOR);
+      const existingKeys = new Set(
+        Array.from(existingBlocks).map((block) => block.getAttribute(PAST_PROJECT_NOTE_ITEM_ATTR) ?? ''),
+      );
+      const newRows = rows.filter((row) => !existingKeys.has(projectInsertKey(row)));
+      const newBlocksHtml = buildProjectBlocksHtml(newRows, excludedFields, existingBlocks.length);
+
+      if (!newBlocksHtml) {
+        // Nothing new to add — leave the (possibly edited) note untouched.
+        return sanitizedCurrent;
       }
-      const insertTemplate = document.createElement('template');
-      insertTemplate.innerHTML = insertHtml;
-      existingCuration.replaceWith(insertTemplate.content.cloneNode(true));
+
+      const prefix = existingBlocks.length ? PAST_PROJECT_NOTE_SEPARATOR_HTML : '';
+      const appendTemplate = document.createElement('template');
+      appendTemplate.innerHTML = `${prefix}${newBlocksHtml}`;
+      existingCuration.appendChild(appendTemplate.content.cloneNode(true));
       return sanitizePastProjectsDetailHtml(currentTemplate.innerHTML);
     }
   }
 
+  const insertHtml = buildPastProjectsNoteInsertHtml(rows, options);
   if (!insertHtml) {
     return sanitizedCurrent;
   }

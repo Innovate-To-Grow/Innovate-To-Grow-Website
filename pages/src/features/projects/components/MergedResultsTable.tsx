@@ -41,6 +41,7 @@ interface MergedResultsTableProps {
   ) => Promise<PastProjectShareCreationResult>;
   onUpdateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<void>;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  onDeleteRows?: (rows: ProjectGridItem[]) => void;
   canUndoRows?: boolean;
   onUndoRows?: () => void;
   onResetRows?: () => void;
@@ -130,6 +131,7 @@ export const MergedResultsTable = ({
   onCreateShare,
   onUpdateShare,
   onDeleteRow,
+  onDeleteRows,
   canUndoRows = false,
   onUndoRows,
   onResetRows,
@@ -137,6 +139,9 @@ export const MergedResultsTable = ({
   const {isAuthenticated} = useAuth();
   const canShare = !sharedMode && Boolean(onCreateShare) && isAuthenticated;
   const canEditShared = sharedMode && editable && Boolean(onUpdateShare);
+  // Checkbox-based bulk removal of merged rows (builder only — shared-mode edits go through the API
+  // per row). Drives the "check rows → Remove Selected" flow.
+  const canBulkRemove = !sharedMode && Boolean(onDeleteRows);
 
   const table = useProjectGridTable({
     rows,
@@ -240,7 +245,9 @@ export const MergedResultsTable = ({
 
   const handleCreateShare = async () => {
     const trimmedName = nameDraft.trim();
-    if (!onCreateShare || !visibleRows.length || !trimmedName) {
+    // name is optional — when blank the backend derives one from the curation content. Only rows are
+    // required.
+    if (!onCreateShare || !visibleRows.length) {
       return;
     }
 
@@ -412,6 +419,14 @@ export const MergedResultsTable = ({
     onDeleteRow(row);
   };
 
+  const handleRemoveSelectedMergedRows = () => {
+    if (!onDeleteRows || !table.hasSelection) {
+      return;
+    }
+    onDeleteRows(table.selectedRows);
+    table.clearSelection();
+  };
+
   const handleUndoSharedRows = async () => {
     if (!sharedRowsUndo) {
       return;
@@ -461,14 +476,27 @@ export const MergedResultsTable = ({
     </div>
   ) : null;
 
+  // Reused at the top of the curation (so it's reachable without scrolling past a long list) and in
+  // the bottom toolbar.
+  const createShareButton = canShare ? (
+    <button
+      type="button"
+      className="itg-btn itg-btn-primary"
+      onClick={() => void handleCreateShare()}
+      disabled={!visibleRows.length || isSharing}
+    >
+      {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
+    </button>
+  ) : null;
+
   const sharedNoteAction = (
     <button
       type="button"
       className={`project-grid-share-editor-icon-button project-grid-share-note-action${
         isEditingSharedNote ? ' is-active' : ''
       }`}
-      aria-label={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
-      title={isEditingSharedNote ? 'Save Note' : 'Edit Note'}
+      aria-label={isEditingSharedNote ? 'Save Curation Note' : 'Edit Curation Note'}
+      title={isEditingSharedNote ? 'Save Curation Note' : 'Edit Curation Note'}
       onClick={() => void handleSharedNoteAction()}
       disabled={isSavingShareEdit}
     >
@@ -494,9 +522,9 @@ export const MergedResultsTable = ({
     <div className={`project-grid-share-editor${isEditingSharedNote ? ' is-editing' : ''}`}>
       <RichTextDetailEditor
         id="past-project-shared-note-editor"
-        label="Note"
+        label="Curation note"
         value={editNoteDraft}
-        placeholder="Add a note (shown at the top of the shared page)."
+        placeholder="Add a curation note (shown at the top of the shared page)."
         readOnly={!isEditingSharedNote}
         autoFocus={isEditingSharedNote}
         headerAction={sharedNoteHeaderAction}
@@ -536,8 +564,8 @@ export const MergedResultsTable = ({
           )}
           <p className="project-grid-card-copy">
             {sharedMode
-              ? 'Browse the saved merged results from this shared link.'
-              : 'Merge filtered search tables into one saved result set, then export or share it.'}
+              ? 'Browse the saved curation from this shared link.'
+              : 'Save rows from your search tables into one curation, then export it or get a shareable link.'}
           </p>
         </div>
         {canEditShared ? (
@@ -562,7 +590,7 @@ export const MergedResultsTable = ({
 
       {!sharedEditor && sharedNoteHasContent ? (
         <div className="project-grid-shared-note">
-          <p className="project-grid-shared-note-label">Note</p>
+          <p className="project-grid-shared-note-label">Curation note</p>
           <RichDetailPreview className="project-grid-shared-detail-text" html={sharedNoteHtml} />
         </div>
       ) : null}
@@ -572,7 +600,7 @@ export const MergedResultsTable = ({
           <>
             <div className="project-grid-share-note">
               <label className="project-grid-share-note-label" htmlFor="past-project-share-name">
-                Name this shared link
+                Name this curation (optional)
               </label>
               <input
                 id="past-project-share-name"
@@ -580,16 +608,16 @@ export const MergedResultsTable = ({
                 className="project-grid-share-name-input"
                 value={nameDraft}
                 maxLength={200}
-                placeholder="e.g. Spring 2025 finalists"
+                placeholder="e.g. Spring 2025 finalists — defaults to the start of your curation"
                 onChange={(event) => setNameDraft(event.target.value)}
               />
             </div>
             <div className="project-grid-share-note">
               <RichTextDetailEditor
                 id="past-project-share-note"
-                label="Add a note (shown at the top of the shared page)"
+                label="Add a curation note (shown at the top of the shared page)"
                 value={noteDraft}
-                placeholder="Optional — add context for whoever opens the shared link."
+                placeholder="Optional — add context for whoever opens the shareable link."
                 headerAction={
                   <ProjectNoteInsertControl
                     rows={visibleRows}
@@ -601,6 +629,7 @@ export const MergedResultsTable = ({
                 onChange={setNoteDraft}
               />
             </div>
+            <div className="project-grid-share-actions project-grid-share-actions--top">{createShareButton}</div>
           </>
         ) : (
           <p className="project-grid-share-login-hint">
@@ -637,6 +666,16 @@ export const MergedResultsTable = ({
         emptyMessage="No merged results saved yet."
         countLabel="results"
         onDeleteRow={sharedMode ? (canEditShared ? handleDeleteSharedRow : undefined) : handleDeleteMergedRow}
+        selectable={canBulkRemove}
+        selectedKeys={table.selectedKeys}
+        onToggleSelected={table.toggleSelected}
+        onToggleSelectAll={() => {
+          if (table.selectedKeys.size === rows.length && rows.length > 0) {
+            table.clearSelection();
+          } else {
+            table.selectAllRows();
+          }
+        }}
         toolbarPlacement="bottom"
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
@@ -666,8 +705,18 @@ export const MergedResultsTable = ({
                 Microsoft Word
               </button>
             </div>
-            {onUndoRows || onResetRows || canEditShared ? (
+            {onUndoRows || onResetRows || canEditShared || canBulkRemove ? (
               <div className="project-grid-toolbar-cluster" aria-label="Recovery">
+                {canBulkRemove ? (
+                  <button
+                    type="button"
+                    className="itg-btn itg-btn-outline"
+                    onClick={handleRemoveSelectedMergedRows}
+                    disabled={!table.hasSelection}
+                  >
+                    Remove Selected
+                  </button>
+                ) : null}
                 {onUndoRows ? (
                   <button
                     type="button"
@@ -712,14 +761,7 @@ export const MergedResultsTable = ({
             ) : null}
             {canShare ? (
               <div className="project-grid-toolbar-cluster" aria-label="Share link">
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-primary"
-                  onClick={() => void handleCreateShare()}
-                  disabled={!visibleRows.length || isSharing || !nameDraft.trim()}
-                >
-                  {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
-                </button>
+                {createShareButton}
               </div>
             ) : null}
           </div>

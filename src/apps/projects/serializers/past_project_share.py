@@ -1,3 +1,4 @@
+import html
 import re
 import uuid
 
@@ -7,11 +8,20 @@ from rest_framework import serializers
 
 from ..models import PastProjectShare, Project
 
+# When the user does not name a curation, derive one from its content (the email request: "is the
+# name necessary? … or just a default e.g. the first N characters of the curation").
+DEFAULT_NAME_MAX_CHARS = 60
+
 # Allowlist for the stored details_text HTML: inline emphasis + line/paragraph structure, no
 # attributes. Defense-in-depth so safety does not rely solely on every client render calling
 # DOMPurify.
 DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark", "a"]
-DETAILS_ALLOWED_ATTRIBUTES = {"a": ["href"], "div": ["data-past-project-note-curation"]}
+DETAILS_ALLOWED_ATTRIBUTES = {
+    "a": ["href"],
+    # data-past-project-key tags each inserted project so a re-insert can append only new projects;
+    # it must survive sanitize. Kept in sync with the frontend RICH_DETAIL_ALLOWED_ATTR.
+    "div": ["data-past-project-note-curation", "data-past-project-key"],
+}
 
 # Generous cap: a generated detail for ~1000 projects with long abstracts is well under this
 # (low hundreds of KB), so it never rejects a legitimate large share, but it stops absurd
@@ -28,6 +38,28 @@ def sanitize_details_text(value: str) -> str:
     if not value:
         return value
     return bleach.clean(value, tags=DETAILS_ALLOWED_TAGS, attributes=DETAILS_ALLOWED_ATTRIBUTES, strip=True)
+
+
+def _strip_html_to_text(value: str) -> str:
+    """Flatten the (already sanitized) note HTML to collapsed plain text for name derivation."""
+    if not value:
+        return ""
+    no_tags = re.sub(r"<[^>]+>", " ", value)
+    return re.sub(r"\s+", " ", html.unescape(no_tags)).strip()
+
+
+def _default_share_name(note: str, rows) -> str:
+    """Derive a curation name when the user leaves it blank: the first chars of the note, else the
+    first project's title, else a generic fallback."""
+    candidate = _strip_html_to_text(note or "")
+    if not candidate and rows:
+        candidate = str((rows[0] or {}).get("project_title", "") or "").strip()
+    candidate = candidate.strip()
+    if not candidate:
+        return "Untitled curation"
+    if len(candidate) > DEFAULT_NAME_MAX_CHARS:
+        return candidate[: DEFAULT_NAME_MAX_CHARS - 1].rstrip() + "…"
+    return candidate
 
 
 def _normalized_text_key(value):
@@ -156,7 +188,7 @@ class PastProjectShareRowSerializer(serializers.Serializer):
 
 
 class PastProjectShareSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(required=True, allow_blank=False, max_length=200)
+    name = serializers.CharField(required=False, allow_blank=True, default="", max_length=200)
     rows = PastProjectShareRowSerializer(many=True)
     note = serializers.CharField(
         required=False, allow_blank=True, default="", trim_whitespace=False, max_length=NOTE_MAX_LENGTH
@@ -172,9 +204,8 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "rows", "note", "details_text", "share_url", "can_edit", "created_at"]
         read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
-    # name uses DRF CharField defaults (allow_blank=False + trim_whitespace=True), so
-    # empty/whitespace-only names are rejected and the stored value is auto-trimmed —
-    # no custom validate_name needed.
+    # name is optional: a blank/omitted name is replaced with one derived from the curation content
+    # (see _default_share_name) in create()/update(). trim_whitespace=True still trims a given name.
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -213,13 +244,30 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         user = getattr(request, "user", None)
         created_by = user if (user is not None and user.is_authenticated) else None
+        note = validated_data.get("note", "")
+        rows = validated_data["rows"]
+        name = (validated_data.get("name") or "").strip() or _default_share_name(note, rows)
         return PastProjectShare.objects.create(
-            name=validated_data["name"],
-            rows=validated_data["rows"],
-            note=validated_data.get("note", ""),
+            name=name,
+            rows=rows,
+            note=note,
             details_text=validated_data.get("details_text", ""),
             created_by=created_by,
         )
+
+    def update(self, instance, validated_data):
+        # Apply content first so a blank name can be derived from the updated note/rows.
+        if "rows" in validated_data:
+            instance.rows = validated_data["rows"]
+        if "note" in validated_data:
+            instance.note = validated_data["note"]
+        if "details_text" in validated_data:
+            instance.details_text = validated_data["details_text"]
+        if "name" in validated_data:
+            name = (validated_data.get("name") or "").strip()
+            instance.name = name or _default_share_name(instance.note, instance.rows)
+        instance.save()
+        return instance
 
 
 class PastProjectShareListSerializer(serializers.ModelSerializer):

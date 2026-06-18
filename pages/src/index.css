@@ -506,6 +506,13 @@ body .project-grid-share-result-copy {
   gap: 0.2rem;
 }
 
+/* Top-of-curation "Get Shareable URL" action, so it is reachable without scrolling past a long list. */
+body .project-grid-share-actions--top {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 1.5rem 0.5rem;
+}
+
 body .project-grid-share-result-label {
   margin: 0;
   color: var(--itg-color-primary);

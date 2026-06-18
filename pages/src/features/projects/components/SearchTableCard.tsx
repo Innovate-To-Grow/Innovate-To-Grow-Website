@@ -1,4 +1,4 @@
-import {forwardRef, useCallback, useEffect, useImperativeHandle, useState, type ReactNode} from 'react';
+import {useCallback, useState, type ReactNode} from 'react';
 import {ProjectGridTable} from './ProjectGridTable';
 import {useProjectGridTable} from './useProjectGridTable';
 import {
@@ -8,14 +8,6 @@ import {
   type ProjectGridItem,
   type ProjectGridRow,
 } from './projectGrid';
-
-export interface SearchTableHandle {
-  clearSelection: () => void;
-  deleteSelectedRows: () => void;
-  getSelectedRows: () => ProjectGridRow[];
-  hasSelection: () => boolean;
-  keepSelectedRows: () => void;
-}
 
 interface SearchTableCardProps {
   canRemove: boolean;
@@ -28,9 +20,12 @@ interface SearchTableCardProps {
   controlsStatus?: ReactNode;
   tableId: string;
   title: string;
+  /** Label for the per-table merge button (e.g. "Save Selected" in the builder). */
+  mergeLabel?: string;
   onRemove: (tableId: string) => void;
   onRefresh?: (tableId: string) => void;
-  onSelectionStateChange: (tableId: string, hasSelection: boolean) => void;
+  /** Push this table's checked rows into the shared/merged results. */
+  onMergeSelected: (rows: ProjectGridRow[]) => void;
 }
 
 function SearchTableRemoveIcon() {
@@ -45,24 +40,22 @@ function SearchTableRemoveIcon() {
   );
 }
 
-export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProps>(function SearchTableCard(
-  {
-    canRemove,
-    className,
-    description = 'Filter this table, select rows to keep or delete, then merge the remaining results.',
-    emptyMessage = 'No rows available in this search table.',
-    initialRows,
-    resultsMotionKey,
-    searchControl,
-    controlsStatus,
-    tableId,
-    title,
-    onRemove,
-    onRefresh,
-    onSelectionStateChange,
-  },
-  ref,
-) {
+export function SearchTableCard({
+  canRemove,
+  className,
+  description = 'Filter this table, select rows to save, delete, or keep, then save the rest into your results.',
+  emptyMessage = 'No rows available in this search table.',
+  initialRows,
+  resultsMotionKey,
+  searchControl,
+  controlsStatus,
+  tableId,
+  title,
+  mergeLabel = 'Save Selected',
+  onRemove,
+  onRefresh,
+  onMergeSelected,
+}: SearchTableCardProps) {
   const [rows, setRows] = useState<ProjectGridItem[]>(() => createProjectGridItems(initialRows, tableId));
   const [undoRows, setUndoRows] = useState<ProjectGridItem[] | null>(null);
   const table = useProjectGridTable({
@@ -104,6 +97,15 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
     table.clearSelection();
   }, [rows, table]);
 
+  const handleSaveSelectedRows = useCallback(() => {
+    if (!table.hasSelection) {
+      return;
+    }
+
+    onMergeSelected(table.selectedRows.map(stripProjectGridItem));
+    table.clearSelection();
+  }, [onMergeSelected, table]);
+
   const handleUndoLastRowAction = useCallback(() => {
     if (!undoRows) {
       return;
@@ -113,22 +115,6 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
     setUndoRows(null);
     table.clearSelection();
   }, [table, undoRows]);
-
-  useEffect(() => {
-    onSelectionStateChange(tableId, table.hasSelection);
-  }, [onSelectionStateChange, table.hasSelection, tableId]);
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      clearSelection: table.clearSelection,
-      deleteSelectedRows: handleDeleteSelectedRows,
-      getSelectedRows: () => table.selectedRows.map(stripProjectGridItem),
-      hasSelection: () => table.hasSelection,
-      keepSelectedRows: handleKeepSelectedRows,
-    }),
-    [handleDeleteSelectedRows, handleKeepSelectedRows, table],
-  );
 
   return (
     <section className={`project-grid-card search-table-card${className ? ` ${className}` : ''}`}>
@@ -191,11 +177,30 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
           }}
           toolbar={
             <div className="project-grid-inline-actions">
-              {onRefresh ? (
-                <button type="button" className="itg-btn itg-btn-outline" onClick={() => onRefresh(tableId)}>
-                  Refresh Search Table
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="itg-btn itg-btn-primary"
+                onClick={handleSaveSelectedRows}
+                disabled={!table.hasSelection}
+              >
+                {mergeLabel}
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={handleDeleteSelectedRows}
+                disabled={!table.hasSelection}
+              >
+                Delete Selected
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={handleKeepSelectedRows}
+                disabled={!table.hasSelection}
+              >
+                Keep Selected
+              </button>
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
@@ -210,10 +215,15 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
               <button type="button" className="itg-btn itg-btn-outline" onClick={table.clearSelection}>
                 Deselect
               </button>
+              {onRefresh ? (
+                <button type="button" className="itg-btn itg-btn-outline" onClick={() => onRefresh(tableId)}>
+                  Refresh Search Table
+                </button>
+              ) : null}
             </div>
           }
         />
       </div>
     </section>
   );
-});
+}

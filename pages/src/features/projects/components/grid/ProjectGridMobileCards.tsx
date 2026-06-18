@@ -107,7 +107,12 @@ const MobileCard = ({
           {individualHref ? (
             <div className="project-grid-individual-link-row">
               <span className="project-grid-individual-link-label">Individual Project URL</span>
-              <a className="project-grid-individual-link" href={individualHref}>
+              <a
+                className="project-grid-individual-link"
+                href={individualHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 {individualHref}
               </a>
             </div>
