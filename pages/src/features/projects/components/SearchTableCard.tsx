@@ -1,4 +1,4 @@
-import {forwardRef, useCallback, useEffect, useImperativeHandle, useState, type ReactNode} from 'react';
+import {useCallback, useState, type ReactNode} from 'react';
 import {ProjectGridTable} from './ProjectGridTable';
 import {useProjectGridTable} from './useProjectGridTable';
 import {
@@ -8,14 +8,6 @@ import {
   type ProjectGridItem,
   type ProjectGridRow,
 } from './projectGrid';
-
-export interface SearchTableHandle {
-  clearSelection: () => void;
-  deleteSelectedRows: () => void;
-  getSelectedRows: () => ProjectGridRow[];
-  hasSelection: () => boolean;
-  keepSelectedRows: () => void;
-}
 
 interface SearchTableCardProps {
   canRemove: boolean;
@@ -28,9 +20,17 @@ interface SearchTableCardProps {
   controlsStatus?: ReactNode;
   tableId: string;
   title: string;
+  /** Label for the per-table merge button (e.g. "Save Selected" in the builder). */
+  mergeLabel?: string;
+  /** Disable the merge button (e.g. while an async add from another table is in flight). */
+  mergeDisabled?: boolean;
   onRemove: (tableId: string) => void;
   onRefresh?: (tableId: string) => void;
-  onSelectionStateChange: (tableId: string, hasSelection: boolean) => void;
+  /**
+   * Push this table's checked rows into the shared/merged results. May be async; resolve to `false`
+   * to signal failure so the selection is kept (otherwise the selection is cleared on success).
+   */
+  onMergeSelected: (rows: ProjectGridRow[]) => void | boolean | Promise<void | boolean>;
 }
 
 function SearchTableRemoveIcon() {
@@ -45,24 +45,23 @@ function SearchTableRemoveIcon() {
   );
 }
 
-export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProps>(function SearchTableCard(
-  {
-    canRemove,
-    className,
-    description = 'Filter this table, select rows to keep or delete, then merge the remaining results.',
-    emptyMessage = 'No rows available in this search table.',
-    initialRows,
-    resultsMotionKey,
-    searchControl,
-    controlsStatus,
-    tableId,
-    title,
-    onRemove,
-    onRefresh,
-    onSelectionStateChange,
-  },
-  ref,
-) {
+export function SearchTableCard({
+  canRemove,
+  className,
+  description = 'Filter this table, select rows to save, delete, or keep, then save the rest into your results.',
+  emptyMessage = 'No rows available in this search table.',
+  initialRows,
+  resultsMotionKey,
+  searchControl,
+  controlsStatus,
+  tableId,
+  title,
+  mergeLabel = 'Save Selected',
+  mergeDisabled = false,
+  onRemove,
+  onRefresh,
+  onMergeSelected,
+}: SearchTableCardProps) {
   const [rows, setRows] = useState<ProjectGridItem[]>(() => createProjectGridItems(initialRows, tableId));
   const [undoRows, setUndoRows] = useState<ProjectGridItem[] | null>(null);
   const table = useProjectGridTable({
@@ -104,6 +103,19 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
     table.clearSelection();
   }, [rows, table]);
 
+  const handleSaveSelectedRows = useCallback(async () => {
+    if (!table.hasSelection) {
+      return;
+    }
+
+    // Clear the selection only once the merge resolves successfully — a failed async add (shared
+    // mode) keeps the checkboxes so the user can retry without re-selecting every row.
+    const result = await onMergeSelected(table.selectedRows.map(stripProjectGridItem));
+    if (result !== false) {
+      table.clearSelection();
+    }
+  }, [onMergeSelected, table]);
+
   const handleUndoLastRowAction = useCallback(() => {
     if (!undoRows) {
       return;
@@ -113,22 +125,6 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
     setUndoRows(null);
     table.clearSelection();
   }, [table, undoRows]);
-
-  useEffect(() => {
-    onSelectionStateChange(tableId, table.hasSelection);
-  }, [onSelectionStateChange, table.hasSelection, tableId]);
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      clearSelection: table.clearSelection,
-      deleteSelectedRows: handleDeleteSelectedRows,
-      getSelectedRows: () => table.selectedRows.map(stripProjectGridItem),
-      hasSelection: () => table.hasSelection,
-      keepSelectedRows: handleKeepSelectedRows,
-    }),
-    [handleDeleteSelectedRows, handleKeepSelectedRows, table],
-  );
 
   return (
     <section className={`project-grid-card search-table-card${className ? ` ${className}` : ''}`}>
@@ -191,11 +187,30 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
           }}
           toolbar={
             <div className="project-grid-inline-actions">
-              {onRefresh ? (
-                <button type="button" className="itg-btn itg-btn-outline" onClick={() => onRefresh(tableId)}>
-                  Refresh Search Table
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="itg-btn itg-btn-primary"
+                onClick={() => void handleSaveSelectedRows()}
+                disabled={!table.hasSelection || mergeDisabled}
+              >
+                {mergeLabel}
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={handleDeleteSelectedRows}
+                disabled={!table.hasSelection}
+              >
+                Delete Selected
+              </button>
+              <button
+                type="button"
+                className="itg-btn itg-btn-outline"
+                onClick={handleKeepSelectedRows}
+                disabled={!table.hasSelection}
+              >
+                Keep Selected
+              </button>
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
@@ -210,10 +225,15 @@ export const SearchTableCard = forwardRef<SearchTableHandle, SearchTableCardProp
               <button type="button" className="itg-btn itg-btn-outline" onClick={table.clearSelection}>
                 Deselect
               </button>
+              {onRefresh ? (
+                <button type="button" className="itg-btn itg-btn-outline" onClick={() => onRefresh(tableId)}>
+                  Refresh Search Table
+                </button>
+              ) : null}
             </div>
           }
         />
       </div>
     </section>
   );
-});
+}

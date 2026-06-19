@@ -8,7 +8,7 @@ from django.db.models import Q, QuerySet
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import BedrockError, normalize_bedrock_model_id
 from apps.core.services.bedrock.clients import get_client
-from apps.projects.models import Project, Semester
+from apps.projects.models import Project
 from apps.system_intelligence.models import SystemIntelligenceConfig
 
 logger = logging.getLogger(__name__)
@@ -38,11 +38,10 @@ _STOP_WORDS = {
 
 
 def past_project_ai_queryset() -> QuerySet[Project]:
-    """Published past projects, matching /projects/past-all/ semantics."""
-    newest_pk = Semester.objects.filter(is_published=True).values("pk")[:1]
+    """Published past projects, matching /projects/past-all/ semantics (every published semester,
+    including the newest — it is a real past term imported by the sheet sync)."""
     return (
         Project.objects.filter(semester__is_published=True)
-        .exclude(semester__pk__in=newest_pk)
         .select_related("semester")
         .order_by("-semester__year", "-semester__season", "class_code", "team_number")
     )

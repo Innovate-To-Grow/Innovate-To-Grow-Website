@@ -1,9 +1,8 @@
 """Pins the documented interaction between sheet sync and the past-all API.
 
-The /projects/past-all/ endpoint hides the newest *published* semester (treated
-as the in-flight "current" semester, owned by the event flow). A sheet sync only
-publishes the semesters it imports, so as long as the active event semester is
-newer than everything in the sheet, syncing historical rows never hides it.
+The /projects/past-all/ endpoint lists every published semester, including the newest one. A sheet
+sync publishes the semesters it imports, so synced history (including the most recent term) appears
+in past projects immediately.
 """
 
 from django.core.cache import cache
@@ -20,12 +19,12 @@ class SheetSyncVisibilityTest(TestCase):
         self.api = APIClient()
         self.config = PastProjectsSheetConfig.objects.create(name="Prod", is_active=True)
 
-    def test_current_semester_stays_hidden_after_sync(self):
-        # Event-owned current semester (newest published), populated outside the sheet.
-        current = Semester.objects.create(year=2026, season=1, is_published=True)
-        Project.objects.create(semester=current, project_title="Current Project", source=Project.Source.MANUAL)
+    def test_newest_semester_visible_after_sync(self):
+        # Newest published semester, populated outside the sheet.
+        newest = Semester.objects.create(year=2026, season=1, is_published=True)
+        Project.objects.create(semester=newest, project_title="Newest Project", source=Project.Source.MANUAL)
 
-        # Sheet carries only older history.
+        # Sheet carries older history.
         records = [
             {
                 "Year-Semester": "2024-2 Fall",
@@ -43,6 +42,6 @@ class SheetSyncVisibilityTest(TestCase):
 
         response = self.api.get("/projects/past-all/")
         titles = [p["project_title"] for p in response.data]
-        # The current semester is still excluded; synced history is shown.
-        self.assertNotIn("Current Project", titles)
+        # The newest semester is no longer hidden; synced history is shown alongside it.
+        self.assertIn("Newest Project", titles)
         self.assertIn("Historical Project", titles)

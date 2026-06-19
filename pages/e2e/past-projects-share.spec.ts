@@ -59,7 +59,7 @@ test.describe('past projects shared page', () => {
     await expect(page.getByRole('textbox', {name: 'Note'})).toHaveCount(0);
     await expect(page.getByRole('button', {name: 'Highlight'})).toHaveCount(0);
     await expect(page.getByRole('button', {name: 'Bold'})).toHaveCount(0);
-    await expect(page.getByRole('button', {name: /edit note/i})).toHaveCount(0);
+    await expect(page.getByRole('button', {name: /edit curation note/i})).toHaveCount(0);
     await expect(page.getByRole('button', {name: /edit name/i})).toHaveCount(0);
   });
 
@@ -68,7 +68,7 @@ test.describe('past projects shared page', () => {
     await mockPastProjectShare(page, shareFixture({can_edit: true}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
-    await expect(page.getByRole('button', {name: /edit note/i}).first()).toBeVisible();
+    await expect(page.getByRole('button', {name: /edit curation note/i}).first()).toBeVisible();
     await expect(page.getByRole('button', {name: /edit name/i}).first()).toBeVisible();
   });
 
@@ -77,7 +77,7 @@ test.describe('past projects shared page', () => {
     await mockPastProjectShare(page, shareFixture({can_edit: true}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
-    await page.getByRole('button', {name: /edit note/i}).first().click();
+    await page.getByRole('button', {name: /edit curation note/i}).first().click();
     const editor = noteEditor(page);
     await editor.click();
     await page.keyboard.type('Hello world');
@@ -91,7 +91,7 @@ test.describe('past projects shared page', () => {
     await mockPastProjectShare(page, shareFixture({can_edit: true}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
-    await page.getByRole('button', {name: /edit note/i}).first().click();
+    await page.getByRole('button', {name: /edit curation note/i}).first().click();
     const editor = noteEditor(page);
     await editor.click();
     await page.keyboard.type('Highlight me');

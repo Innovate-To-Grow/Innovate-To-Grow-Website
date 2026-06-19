@@ -29,6 +29,7 @@ interface ProjectGridDesktopTableProps {
   emptyMessage: string;
   selectable: boolean;
   selectedKeys: Set<string>;
+  selectAllStateRows?: ProjectGridItem[];
   onToggleSelected?: (rowKey: string) => void;
   onToggleSelectAll?: () => void;
   sortField: ProjectGridColumn['key'];
@@ -44,11 +45,13 @@ const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: bool
 
 export const ProjectGridDesktopTable = ({
   columns,
-  rows, pagedRows, emptyMessage, selectable, selectedKeys, onToggleSelected, onToggleSelectAll,
+  rows, pagedRows, emptyMessage, selectable, selectedKeys, selectAllStateRows, onToggleSelected, onToggleSelectAll,
   sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow,
 }: ProjectGridDesktopTableProps) => {
-  const allSelected = selectable && rows.length > 0 && selectedKeys.size === rows.length;
-  const partiallySelected = selectable && selectedKeys.size > 0 && selectedKeys.size < rows.length;
+  const selectionScopeRows = selectAllStateRows ?? rows;
+  const selectedInScopeCount = selectionScopeRows.filter((row) => selectedKeys.has(row.__key)).length;
+  const allSelected = selectable && selectionScopeRows.length > 0 && selectedInScopeCount === selectionScopeRows.length;
+  const partiallySelected = selectable && selectedInScopeCount > 0 && !allSelected;
   const colSpan = detailColspan(columns.length, selectable, Boolean(onDeleteRow));
 
   return (
@@ -200,7 +203,12 @@ const DesktopRow = ({
               {individualHref ? (
                 <div className="project-grid-individual-link-row">
                   <span className="project-grid-individual-link-label">Individual Project URL</span>
-                  <a className="project-grid-individual-link" href={individualHref}>
+                  <a
+                    className="project-grid-individual-link"
+                    href={individualHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     {individualHref}
                   </a>
                 </div>

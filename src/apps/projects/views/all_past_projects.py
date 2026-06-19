@@ -3,12 +3,17 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from ..models import Project, Semester
+from ..models import Project
 from ..serializers import ProjectTableSerializer
 
 
 class AllPastProjectsAPIView(ListAPIView):
-    """Flat list of all projects from published past semesters (excludes current)."""
+    """Flat list of all projects from every published semester.
+
+    Past projects come from the Google Sheet sync, which publishes the semesters it imports, so the
+    newest published semester is a real past semester (e.g. the most recently completed term) and is
+    included — it is never treated as a hidden "current" semester.
+    """
 
     permission_classes = [AllowAny]
     serializer_class = ProjectTableSerializer
@@ -16,10 +21,8 @@ class AllPastProjectsAPIView(ListAPIView):
 
     # noinspection PyMethodMayBeStatic
     def get_queryset(self):
-        newest_pk = Semester.objects.filter(is_published=True).values("pk")[:1]
         return (
             Project.objects.filter(semester__is_published=True)
-            .exclude(semester__pk__in=newest_pk)
             .select_related("semester")
             .order_by("-semester__year", "-semester__season", "class_code", "team_number")
         )

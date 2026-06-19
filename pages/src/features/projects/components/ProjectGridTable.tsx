@@ -40,6 +40,7 @@ interface ProjectGridTableProps {
   toolbarPlacement?: 'top' | 'bottom';
   selectable?: boolean;
   selectedKeys?: Set<string>;
+  selectAllStateRows?: ProjectGridItem[];
   onToggleSelected?: (rowKey: string) => void;
   onToggleSelectAll?: () => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
@@ -214,6 +215,7 @@ export const ProjectGridTable = ({
   toolbarPlacement = 'top',
   selectable = false,
   selectedKeys = new Set<string>(),
+  selectAllStateRows,
   onToggleSelected,
   onToggleSelectAll,
   onDeleteRow,
@@ -259,7 +261,7 @@ export const ProjectGridTable = ({
                   className="itg-btn itg-btn-outline project-grid-toggle-details"
                   onClick={onToggleAllDetails}
                 >
-                  {allDetailsExpanded ? 'Hide All Details' : 'Show All Details'}
+                  {allDetailsExpanded ? 'Hide All Details' : 'View All Details'}
                 </button>
               ) : null}
             </div>
@@ -280,6 +282,7 @@ export const ProjectGridTable = ({
             emptyMessage={emptyMessage}
             selectable={selectable}
             selectedKeys={selectedKeys}
+            selectAllStateRows={selectAllStateRows}
             onToggleSelected={onToggleSelected}
             onToggleSelectAll={onToggleSelectAll}
             sortField={sortField}

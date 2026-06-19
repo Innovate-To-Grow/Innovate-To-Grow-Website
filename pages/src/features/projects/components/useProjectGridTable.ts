@@ -198,6 +198,12 @@ export function useProjectGridTable({
     setSelectedKeys(new Set(rows.map((row) => row.__key)));
   };
 
+  // Replace the selection with exactly the given rows. Used for a filter-aware "select all" that
+  // must not reach rows hidden by the active search (so a later bulk delete can't remove unseen rows).
+  const selectRows = (rowsToSelect: ProjectGridItem[]) => {
+    setSelectedKeys(new Set(rowsToSelect.map((row) => row.__key)));
+  };
+
   const toggleAllDetails = () => {
     if (allDetailsExpanded) {
       setExpandedKeys(new Set());
@@ -239,6 +245,7 @@ export function useProjectGridTable({
     toggleSelected,
     clearSelection,
     selectAllRows,
+    selectRows,
     toggleAllDetails,
     allDetailsExpanded,
     hasSelection: selectedKeys.size > 0,

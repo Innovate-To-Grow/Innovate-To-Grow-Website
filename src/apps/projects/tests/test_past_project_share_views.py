@@ -59,20 +59,51 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(len(response.data["rows"]), 1)
         self.assertTrue(PastProjectShare.objects.filter(pk=response.data["id"]).exists())
 
-    def test_create_requires_name(self):
-        response = self.client.post("/projects/past-shares/", {"rows": [sample_row()]}, format="json")
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("name", response.data)
+    def test_create_without_name_derives_default_from_note(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            {"rows": [sample_row()], "note": "<div>Spring 2026 finalists shortlist</div>"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "Spring 2026 finalists shortlist")
 
-    def test_create_rejects_blank_name(self):
-        response = self.client.post("/projects/past-shares/", sample_payload(name=""), format="json")
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("name", response.data)
+    def test_create_blank_name_falls_back_to_first_project_title(self):
+        # No name and no note → default from the first row's project title.
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(name="", note=""),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.name, "Shared Project")
 
-    def test_create_rejects_whitespace_name(self):
-        response = self.client.post("/projects/past-shares/", sample_payload(name="   "), format="json")
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("name", response.data)
+    def test_create_whitespace_name_derives_default(self):
+        response = self.client.post("/projects/past-shares/", sample_payload(name="   ", note=""), format="json")
+        self.assertEqual(response.status_code, 201)
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.name, "Shared Project")
+
+    def test_create_long_note_default_name_is_truncated(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            {"rows": [sample_row()], "note": "<div>" + ("x" * 200) + "</div>"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        name = response.data["name"]
+        self.assertLessEqual(len(name), 60)
+        self.assertTrue(name.endswith("…"))
+
+    def test_create_explicit_name_still_wins(self):
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(name="Chosen name", note="<div>ignored for naming</div>"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "Chosen name")
 
     def test_create_persists_trimmed_name(self):
         response = self.client.post(
@@ -613,14 +644,16 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(share.note, "Replaced note")
         self.assertEqual(share.rows[0]["team_number"], "T42")
 
-    def test_put_requires_all_fields(self):
-        # PUT is a full update: omitting a required field (name) is a 400.
+    def test_put_without_name_derives_default(self):
+        # name is optional even on a full PUT: omitting it derives a default from the content
+        # (here, no note → the first project title) rather than 400.
         share = PastProjectShare.objects.create(name="Old", rows=[sample_row()], created_by=self.member)
 
         response = self.client.put(f"/projects/past-shares/{share.pk}/", {"rows": [sample_row()]}, format="json")
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("name", response.data)
+        self.assertEqual(response.status_code, 200)
+        share.refresh_from_db()
+        self.assertEqual(share.name, "Shared Project")
 
     def test_patch_own_share_rejects_empty_rows(self):
         share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)

@@ -14,9 +14,8 @@ class PastProjectsAPIView(ListAPIView):
 
     # noinspection PyMethodMayBeStatic
     def get_queryset(self):
-        newest_pk = Semester.objects.filter(is_published=True).values("pk")[:1]
-        return (
-            Semester.objects.filter(is_published=True)
-            .exclude(pk__in=newest_pk)
-            .prefetch_related(Prefetch("projects", queryset=Project.objects.order_by("class_code", "team_number")))
+        # Every published semester is a past semester (all are imported + published by the sheet
+        # sync), so the newest published semester is included rather than hidden as "current".
+        return Semester.objects.filter(is_published=True).prefetch_related(
+            Prefetch("projects", queryset=Project.objects.order_by("class_code", "team_number"))
         )

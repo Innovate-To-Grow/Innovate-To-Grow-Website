@@ -84,17 +84,15 @@ describe('SharedPastProjectMergeSearch', () => {
     );
 
     expect(screen.getByRole('heading', {level: 2, name: 'Add Projects from Full Archive'})).toBeInTheDocument();
-    expect(screen.getByText('More help: buttons, merge & tables')).toBeInTheDocument();
-    expect(screen.getAllByText('Add Selected Projects').length).toBeGreaterThan(1);
+    expect(screen.getByText('More help: buttons, saving & tables')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', {name: 'Add Selected'}).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     expect(screen.queryByText('Alpha Project')).toBeNull();
     expect(screen.getAllByText('Bravo Project').length).toBeGreaterThan(0);
 
+    // The per-table merge button adds the checked rows directly — there is no confirmation dialog.
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected projects/i}));
-
-    const dialog = screen.getByRole('dialog', {name: /add selected projects/i});
-    fireEvent.click(within(dialog).getByRole('button', {name: /add projects/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() => {
       expect(onAddRows).toHaveBeenCalledWith([
@@ -195,12 +193,12 @@ describe('SharedPastProjectMergeSearch', () => {
     expect(await screen.findByRole('heading', {level: 3, name: 'AI Search Table: solar pump'})).toBeInTheDocument();
     expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar pump', 10);
 
-    fireEvent.click((await screen.findAllByLabelText('Select Solar Pump Station'))[0]);
-    await waitFor(() => expect(screen.getByRole('button', {name: /add selected projects/i})).toBeEnabled());
-    fireEvent.click(screen.getByRole('button', {name: /add selected projects/i}));
-    fireEvent.click(within(screen.getByRole('dialog', {name: /add selected projects/i})).getByRole('button', {
-      name: /add projects/i,
-    }));
+    const aiTable = screen
+      .getByRole('heading', {level: 3, name: 'AI Search Table: solar pump'})
+      .closest('section') as HTMLElement;
+    fireEvent.click((await within(aiTable).findAllByLabelText('Select Solar Pump Station'))[0]);
+    await waitFor(() => expect(within(aiTable).getByRole('button', {name: /add selected/i})).toBeEnabled());
+    fireEvent.click(within(aiTable).getByRole('button', {name: /add selected/i}));
 
     await waitFor(() => {
       expect(onAddRows).toHaveBeenCalledWith([expectedGridRow]);
