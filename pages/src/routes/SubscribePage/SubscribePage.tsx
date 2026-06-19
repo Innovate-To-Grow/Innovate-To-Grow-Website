@@ -1,9 +1,17 @@
 import {useEffect, useState, type FormEvent} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {useAuth} from '@/features/auth';
-import {getAccessToken, getProfile, updateProfileFields} from '@/features/auth';
+import {
+  getAccessToken,
+  getContactEmails,
+  getContactPhones,
+  getProfile,
+  updateContactEmail,
+  updateContactPhone,
+  updateProfileFields,
+} from '@/features/auth';
 import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
-import type {ProfileResponse} from '@/features/auth/api/types';
+import type {ContactEmail, ContactPhone, ProfileResponse} from '@/features/auth/api/types';
 import {CodeStep} from './steps/CodeStep';
 import {EmailStep} from './steps/EmailStep';
 import {ManageStep} from './steps/ManageStep';
@@ -51,6 +59,11 @@ export const SubscribePage = () => {
   const [saving, setSaving] = useState(false);
   const [profileLoading, setProfileLoading] = useState(() => isAuthenticated && shouldStartInProfile);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [contactEmails, setContactEmails] = useState<ContactEmail[]>([]);
+  const [contactPhones, setContactPhones] = useState<ContactPhone[]>([]);
+  const [preferencesLoading, setPreferencesLoading] = useState(false);
+  const [preferenceSavingId, setPreferenceSavingId] = useState<string | null>(null);
+  const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
 
   const applyProfileToForm = (nextProfile: ProfileResponse) => {
     setFirstName(nextProfile.first_name ?? '');
@@ -81,19 +94,17 @@ export const SubscribePage = () => {
     }
   }, [isAuthenticated, shouldStartInProfile, step]);
 
-  // Fetch profile data for both the manage screen and the direct profile-link
-  // flow so existing account details are preserved.
+  // Fetch profile data for the direct profile-link flow so existing account
+  // details are preserved before completion.
   useEffect(() => {
     const hasSession = isAuthenticated || hasStoredAccessToken();
-    if (!hasSession || (step !== 'manage' && step !== 'profile')) {
+    if (!hasSession || step !== 'profile') {
       return;
     }
 
     let cancelled = false;
-    if (step === 'profile') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- external sync: ensures the loader shows before the async getProfile() resolves; this guards the hasStoredAccessToken auth-timing path where the effect (re)runs on a profile-link load and must not flash the form before data arrives.
-      setProfileLoading(true);
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- external sync: ensures the loader shows before the async getProfile() resolves; this guards the hasStoredAccessToken auth-timing path where the effect (re)runs on a profile-link load and must not flash the form before data arrives.
+    setProfileLoading(true);
 
     getProfile()
       .then((nextProfile) => {
@@ -101,18 +112,49 @@ export const SubscribePage = () => {
           return;
         }
         setProfile(nextProfile);
-        if (step === 'profile') {
-          applyProfileToForm(nextProfile);
-        }
+        applyProfileToForm(nextProfile);
       })
       .catch(() => {
         if (!cancelled) {
-          setError(step === 'profile' ? 'Failed to load your profile.' : 'Failed to load subscription status.');
+          setError('Failed to load your profile.');
         }
       })
       .finally(() => {
-        if (!cancelled && step === 'profile') {
+        if (!cancelled) {
           setProfileLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [step, isAuthenticated]);
+
+  useEffect(() => {
+    const hasSession = isAuthenticated || hasStoredAccessToken();
+    if (!hasSession || step !== 'manage') {
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all([getProfile(), getContactEmails(), getContactPhones()])
+      .then(([nextProfile, nextContactEmails, nextContactPhones]) => {
+        if (cancelled) {
+          return;
+        }
+        setProfile(nextProfile);
+        setContactEmails(nextContactEmails);
+        setContactPhones(nextContactPhones);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError('Failed to load subscription preferences.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPreferencesLoading(false);
         }
       });
 
@@ -123,7 +165,15 @@ export const SubscribePage = () => {
 
   const clearPageError = () => {
     setError(null);
+    setPreferenceMessage(null);
     clearError();
+  };
+
+  const getPreferenceMessage = (kind: 'email' | 'phone', subscribed: boolean) => {
+    if (kind === 'phone') {
+      return `Text Messages ${subscribed ? 'enabled' : 'disabled'}.`;
+    }
+    return `Newsletters ${subscribed ? 'enabled' : 'disabled'}.`;
   };
 
   const handleEmailSubmit = async (event: FormEvent) => {
@@ -146,6 +196,7 @@ export const SubscribePage = () => {
         setProfileLoading(true);
         setStep('profile');
       } else {
+        setPreferencesLoading(true);
         setStep('manage');
       }
     } catch (err: unknown) {
@@ -187,6 +238,7 @@ export const SubscribePage = () => {
         clearProfileCompletionRequirement();
       }
       setProfile(updated);
+      setPreferencesLoading(true);
       setStep('manage');
     } catch (err: unknown) {
       setError(getSubscribeErrorMessage(err));
@@ -195,34 +247,63 @@ export const SubscribePage = () => {
     }
   };
 
-  const handleSubscriptionToggle = async (subscribed: boolean) => {
+  const handlePrimaryEmailToggle = async (subscribed: boolean) => {
     clearPageError();
-    setSaving(true);
+    setPreferenceSavingId('primary-email');
     try {
       const updated = await updateProfileFields({email_subscribe: subscribed});
       setProfile(updated);
+      setPreferenceMessage(getPreferenceMessage('email', subscribed));
     } catch (err: unknown) {
       setError(getSubscribeErrorMessage(err));
     } finally {
-      setSaving(false);
+      setPreferenceSavingId(null);
+    }
+  };
+
+  const handleContactEmailToggle = async (contact: ContactEmail, subscribed: boolean) => {
+    clearPageError();
+    setPreferenceSavingId(`email-${contact.id}`);
+    try {
+      const updated = await updateContactEmail(contact.id, {subscribe: subscribed});
+      setContactEmails((current) => current.map((item) => (item.id === contact.id ? updated : item)));
+      setPreferenceMessage(getPreferenceMessage('email', subscribed));
+    } catch (err: unknown) {
+      setError(getSubscribeErrorMessage(err));
+    } finally {
+      setPreferenceSavingId(null);
+    }
+  };
+
+  const handleContactPhoneToggle = async (phone: ContactPhone, subscribed: boolean) => {
+    clearPageError();
+    setPreferenceSavingId(`phone-${phone.id}`);
+    try {
+      const updated = await updateContactPhone(phone.id, {subscribe: subscribed});
+      setContactPhones((current) => current.map((item) => (item.id === phone.id ? updated : item)));
+      setPreferenceMessage(getPreferenceMessage('phone', subscribed));
+    } catch (err: unknown) {
+      setError(getSubscribeErrorMessage(err));
+    } finally {
+      setPreferenceSavingId(null);
     }
   };
 
   return (
     <div className="subscribe-page">
-      <h1 className="subscribe-title">Newsletter</h1>
+      <h1 className="subscribe-title">Subscriptions</h1>
 
       <div className="subscribe-info">
         <h2>Stay Updated</h2>
         <p>
           {step === 'manage'
-            ? 'Manage your email subscription preferences below.'
+            ? 'Manage your email and text message subscription preferences below.'
             : 'Subscribe to receive updates and announcements from Innovate to Grow.'}
         </p>
         {step === 'manage' ? (
           <p className="subscribe-info-note">
-            This newsletter setting does not affect I2G event emails or account-related notifications—you will still
-            receive those when applicable.
+            These settings do not affect I2G event emails or account-related notifications—you will still receive those
+            when applicable.
           </p>
         ) : null}
       </div>
@@ -304,8 +385,14 @@ export const SubscribePage = () => {
       {step === 'manage' && (
         <ManageStep
           profile={profile}
-          saving={saving}
-          onToggle={handleSubscriptionToggle}
+          contactEmails={contactEmails}
+          contactPhones={contactPhones}
+          loading={preferencesLoading}
+          savingId={preferenceSavingId}
+          message={preferenceMessage}
+          onPrimaryEmailToggle={handlePrimaryEmailToggle}
+          onContactEmailToggle={handleContactEmailToggle}
+          onContactPhoneToggle={handleContactPhoneToggle}
         />
       )}
     </div>

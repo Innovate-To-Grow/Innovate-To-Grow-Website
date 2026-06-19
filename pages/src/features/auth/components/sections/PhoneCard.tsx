@@ -45,10 +45,10 @@ export const PhoneCard = ({
           </span>
         </div>
         <div className="email-center-actions">
-          <label className="email-center-toggle" aria-label="Allow SMS Message">
+          <label className="email-center-toggle" aria-label="Text Messages">
             <input type="checkbox" checked={phone.subscribe} onChange={() => onToggleSubscribe(phone)} />
             <span className="email-center-toggle-slider" />
-            <span className="email-center-toggle-label">Allow SMS Message</span>
+            <span className="email-center-toggle-label">Text Messages</span>
           </label>
           {!phone.verified && verifyingId !== phone.id ? (
             <button type="button" className="email-center-btn verify" onClick={() => onToggleVerify(phone.id)}>

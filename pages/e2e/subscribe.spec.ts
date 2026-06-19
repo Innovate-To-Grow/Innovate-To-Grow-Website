@@ -19,6 +19,44 @@ test('newsletter email-code flow completes profile and manages subscription', {t
     },
   });
   const patchPayloads = await mockProfileEndpoint(page, profileRef);
+  const contactEmails = [{
+    id: 'contact-email-e2e-1',
+    email_address: 'secondary@example.com',
+    email_type: 'secondary',
+    subscribe: false,
+    verified: true,
+    created_at: '2026-01-02T00:00:00Z',
+  }];
+  const contactPhones = [{
+    id: 'contact-phone-e2e-1',
+    phone_number: '+14155550132',
+    region: '1-US',
+    region_display: 'United States',
+    subscribe: true,
+    verified: true,
+    created_at: '2026-01-03T00:00:00Z',
+  }];
+  const contactEmailPatchPayloads: unknown[] = [];
+  const contactPhonePatchPayloads: unknown[] = [];
+
+  await page.route('**/authn/contact-emails/', (route) =>
+    route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(contactEmails)}),
+  );
+  await page.route('**/authn/contact-emails/contact-email-e2e-1/', async (route) => {
+    const payload = route.request().postDataJSON();
+    contactEmailPatchPayloads.push(payload);
+    contactEmails[0] = {...contactEmails[0], ...(payload as Partial<typeof contactEmails[number]>)};
+    await route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(contactEmails[0])});
+  });
+  await page.route('**/authn/contact-phones/', (route) =>
+    route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(contactPhones)}),
+  );
+  await page.route('**/authn/contact-phones/contact-phone-e2e-1/', async (route) => {
+    const payload = route.request().postDataJSON();
+    contactPhonePatchPayloads.push(payload);
+    contactPhones[0] = {...contactPhones[0], ...(payload as Partial<typeof contactPhones[number]>)};
+    await route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(contactPhones[0])});
+  });
 
   await page.goto('/subscribe', {waitUntil: 'domcontentloaded'});
 
@@ -38,8 +76,10 @@ test('newsletter email-code flow completes profile and manages subscription', {t
   await page.getByPlaceholder('Your title or position (e.g. CEO, Director)').fill('Director');
   await page.getByRole('button', {name: 'Continue'}).click();
 
-  await expect(page.getByText('Manage your email subscription preferences below.')).toBeVisible();
+  await expect(page.getByText('Manage your email and text message subscription preferences below.')).toBeVisible();
   await expect(page.getByText(email)).toBeVisible();
+  await expect(page.getByText('secondary@example.com')).toBeVisible();
+  await expect(page.getByText('(415)555-0132')).toBeVisible();
   expect(patchPayloads[0]).toEqual({
     first_name: 'Ada',
     middle_name: '',
@@ -50,6 +90,14 @@ test('newsletter email-code flow completes profile and manages subscription', {t
   });
 
   await page.getByRole('button', {name: 'Turn off newsletter subscription'}).click();
-  await expect(page.getByText('You have been unsubscribed from updates and announcements.')).toBeVisible();
+  await expect(page.getByText('Newsletters disabled.')).toBeVisible();
   expect(patchPayloads[1]).toEqual({email_subscribe: false});
+
+  await page.getByRole('button', {name: 'Turn on newsletter subscription for secondary@example.com'}).click();
+  await expect(page.getByText('Newsletters enabled.')).toBeVisible();
+  expect(contactEmailPatchPayloads[0]).toEqual({subscribe: true});
+
+  await page.getByRole('button', {name: 'Turn off text messages for (415)555-0132'}).click();
+  await expect(page.getByText('Text Messages disabled.')).toBeVisible();
+  expect(contactPhonePatchPayloads[0]).toEqual({subscribe: false});
 });

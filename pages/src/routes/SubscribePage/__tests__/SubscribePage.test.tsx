@@ -7,6 +7,10 @@ import {SubscribePage} from '../SubscribePage';
 const mockUseAuth = vi.fn();
 const mockGetProfile = vi.fn();
 const mockUpdateProfileFields = vi.fn();
+const mockGetContactEmails = vi.fn();
+const mockGetContactPhones = vi.fn();
+const mockUpdateContactEmail = vi.fn();
+const mockUpdateContactPhone = vi.fn();
 
 vi.mock('@/features/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/auth')>();
@@ -15,6 +19,10 @@ vi.mock('@/features/auth', async (importOriginal) => {
     useAuth: () => mockUseAuth(),
     getProfile: (...args: unknown[]) => mockGetProfile(...args),
     updateProfileFields: (...args: unknown[]) => mockUpdateProfileFields(...args),
+    getContactEmails: (...args: unknown[]) => mockGetContactEmails(...args),
+    getContactPhones: (...args: unknown[]) => mockGetContactPhones(...args),
+    updateContactEmail: (...args: unknown[]) => mockUpdateContactEmail(...args),
+    updateContactPhone: (...args: unknown[]) => mockUpdateContactPhone(...args),
   };
 });
 
@@ -67,12 +75,18 @@ describe('SubscribePage', () => {
     mockUseAuth.mockReset();
     mockGetProfile.mockReset();
     mockUpdateProfileFields.mockReset();
+    mockGetContactEmails.mockReset();
+    mockGetContactPhones.mockReset();
+    mockUpdateContactEmail.mockReset();
+    mockUpdateContactPhone.mockReset();
     baseAuth.clearError.mockReset();
     baseAuth.clearProfileCompletionRequirement.mockReset();
     baseAuth.requestEmailAuthCode.mockClear();
     baseAuth.verifyEmailAuthCode.mockClear();
 
     mockGetProfile.mockResolvedValue(profileData);
+    mockGetContactEmails.mockResolvedValue([]);
+    mockGetContactPhones.mockResolvedValue([]);
     mockUseAuth.mockReturnValue({...baseAuth});
   });
 
@@ -170,7 +184,7 @@ describe('SubscribePage', () => {
     const emailElements = await screen.findAllByText('member@example.com');
     expect(emailElements.length).toBeGreaterThanOrEqual(1);
 
-    const newsletterLabels = screen.getAllByText('Newsletter');
+    const newsletterLabels = screen.getAllByText('Newsletters');
     expect(newsletterLabels.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -262,7 +276,7 @@ describe('SubscribePage', () => {
       });
     });
 
-    expect(await screen.findByText('Manage your email subscription preferences below.')).toBeInTheDocument();
+    expect(await screen.findByText('Manage your email and text message subscription preferences below.')).toBeInTheDocument();
   });
 
   it('toggles subscription in manage step', async () => {
@@ -291,6 +305,73 @@ describe('SubscribePage', () => {
 
     await waitFor(() => {
       expect(mockUpdateProfileFields).toHaveBeenCalledWith({email_subscribe: false});
+    });
+  });
+
+  it('shows all contact emails and phones in the manage step and toggles each preference', async () => {
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: {member_uuid: 'uuid-1', email: 'member@example.com'},
+      isAuthenticated: true,
+    });
+
+    mockGetProfile.mockResolvedValue({...profileData, email_subscribe: true});
+    mockGetContactEmails.mockResolvedValue([
+      {
+        id: 'email-2',
+        email_address: 'secondary@example.com',
+        email_type: 'secondary',
+        subscribe: false,
+        verified: true,
+        created_at: '2026-01-02',
+      },
+    ]);
+    mockGetContactPhones.mockResolvedValue([
+      {
+        id: 'phone-1',
+        phone_number: '+14155550132',
+        region: '1-US',
+        region_display: 'United States',
+        subscribe: true,
+        verified: true,
+        created_at: '2026-01-03',
+      },
+    ]);
+    mockUpdateContactEmail.mockResolvedValue({
+      id: 'email-2',
+      email_address: 'secondary@example.com',
+      email_type: 'secondary',
+      subscribe: true,
+      verified: true,
+      created_at: '2026-01-02',
+    });
+    mockUpdateContactPhone.mockResolvedValue({
+      id: 'phone-1',
+      phone_number: '+14155550132',
+      region: '1-US',
+      region_display: 'United States',
+      subscribe: false,
+      verified: true,
+      created_at: '2026-01-03',
+    });
+
+    render(
+      <MemoryRouter>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('secondary@example.com')).toBeInTheDocument();
+    expect(await screen.findByText('(415)555-0132')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', {name: 'Turn on newsletter subscription for secondary@example.com'}));
+    await waitFor(() => {
+      expect(mockUpdateContactEmail).toHaveBeenCalledWith('email-2', {subscribe: true});
+    });
+
+    fireEvent.click(screen.getByRole('button', {name: 'Turn off text messages for (415)555-0132'}));
+    await waitFor(() => {
+      expect(mockUpdateContactPhone).toHaveBeenCalledWith('phone-1', {subscribe: false});
     });
   });
 
