@@ -131,7 +131,10 @@ describe('MergedResultsTable', () => {
       expect(within(desktopTable(container)).queryByText('Shared Project')).not.toBeInTheDocument(),
     );
 
-    fireEvent.click(within(desktopTable(container)).getByLabelText('Select all rows'));
+    const selectAll = within(desktopTable(container)).getByLabelText('Select all rows') as HTMLInputElement;
+    fireEvent.click(selectAll);
+    expect(selectAll).toBeChecked();
+
     fireEvent.click(screen.getByRole('button', {name: /remove selected/i}));
 
     expect(onDeleteRows).toHaveBeenCalledTimes(1);
@@ -395,6 +398,21 @@ describe('MergedResultsTable', () => {
     expect(within(mobileCards).getByText('Individual Project URL')).toBeVisible();
   });
 
+  it('lets an id-only row expand so its individual project URL is reachable', () => {
+    const idOnlyRow: ProjectGridRow = {...rowWithId, abstract: '', student_names: ''};
+    const {container} = render(<MergedResultsTable rows={makeItems([idOnlyRow])} />);
+    const detailButton = within(desktopTable(container)).getByRole('button', {name: 'View'});
+
+    expect(detailButton).toBeEnabled();
+    fireEvent.click(detailButton);
+
+    const expectedHref = new URL(`/past-projects/project/${rowWithId.id}`, window.location.origin).href;
+    const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
+    expect(desktopLink).not.toBeNull();
+    expect(desktopLink.getAttribute('href')).toBe(expectedHref);
+    expect(desktopLink).toHaveTextContent(expectedHref);
+  });
+
   it('does not show an individual link for legacy rows without an id', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} />);
 
@@ -452,6 +470,31 @@ describe('MergedResultsTable', () => {
     await waitFor(() => {
       expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Updated Name', 'Owner note');
     });
+    expect(await screen.findByText('Name updated.')).toBeInTheDocument();
+  });
+
+  it('lets an editable shared page clear the name so the backend can derive a default', async () => {
+    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Original Name"
+        note="Owner note"
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
+    fireEvent.change(screen.getByLabelText('Shared page name'), {target: {value: '   '}});
+    fireEvent.click(screen.getByRole('button', {name: /save name/i}));
+
+    await waitFor(() => {
+      expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], '', 'Owner note');
+    });
+    expect(screen.queryByText('Name is required.')).toBeNull();
     expect(await screen.findByText('Name updated.')).toBeInTheDocument();
   });
 

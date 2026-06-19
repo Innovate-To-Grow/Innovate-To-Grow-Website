@@ -361,11 +361,6 @@ export const MergedResultsTable = ({
     }
 
     const trimmedTitle = editTitleDraft.trim();
-    if (!trimmedTitle) {
-      setStatusMessage('Name is required.');
-      return;
-    }
-
     if (!hasTitleChanges) {
       setIsEditingSharedTitle(false);
       return;
@@ -668,6 +663,7 @@ export const MergedResultsTable = ({
         onDeleteRow={sharedMode ? (canEditShared ? handleDeleteSharedRow : undefined) : handleDeleteMergedRow}
         selectable={canBulkRemove}
         selectedKeys={table.selectedKeys}
+        selectAllStateRows={table.filteredRows}
         onToggleSelected={table.toggleSelected}
         onToggleSelectAll={() => {
           // Select-all targets the rows currently visible (matching the active search), so a

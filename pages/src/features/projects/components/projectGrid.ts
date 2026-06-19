@@ -117,7 +117,7 @@ export const getPastProjectDetailUrl = (projectId: string) => {
   return origin ? new URL(path, origin).href : path;
 };
 
-export const hasProjectGridDetails = (row: ProjectGridRow) => Boolean(row.abstract || row.student_names);
+export const hasProjectGridDetails = (row: ProjectGridRow) => Boolean(row.id || row.abstract || row.student_names);
 
 export const getProjectGridSearchValue = (row: ProjectGridRow) =>
   [
