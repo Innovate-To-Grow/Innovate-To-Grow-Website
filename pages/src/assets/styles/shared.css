@@ -44,3 +44,66 @@
   text-decoration: underline;
   text-underline-offset: 0.125rem;
 }
+
+.subscribe-preference-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.subscribe-preference-group + .subscribe-preference-group {
+  margin-top: 1.25rem;
+}
+
+.subscribe-preference-heading {
+  margin: 0;
+  color: var(--account-primary, #003366);
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.subscribe-preference-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.subscribe-preference-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--account-border, #d9e1ec);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.subscribe-preference-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.subscribe-preference-meta,
+.subscribe-empty {
+  color: var(--account-text-secondary, #6b7280);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.subscribe-preference-meta {
+  display: block;
+}
+
+.subscribe-empty {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .subscribe-preference-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .subscribe-manage-status {
+    justify-content: space-between;
+  }
+}
