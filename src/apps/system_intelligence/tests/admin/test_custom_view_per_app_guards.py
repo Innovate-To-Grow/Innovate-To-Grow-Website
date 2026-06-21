@@ -68,7 +68,6 @@ class SystemIntelligenceCustomViewGuardTests(TestCase):
         """Map every guarded view name to (url, http_method)."""
         return [
             (reverse("admin:system_intelligence"), "get"),
-            (reverse("admin:system_intelligence_debug"), "get"),
             (reverse("admin:system_intelligence_conversations"), "get"),
             (reverse("admin:system_intelligence_new"), "post"),
             (reverse("admin:system_intelligence_usage_dashboard"), "get"),

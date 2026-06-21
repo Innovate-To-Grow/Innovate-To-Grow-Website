@@ -1,4 +1,4 @@
-from apps.system_intelligence.services.adk import invoke_system_intelligence_stream
+from apps.system_intelligence.services.agents import invoke_system_intelligence_stream
 
 from .model_admin import SystemIntelligenceActionRequestAdmin, SystemIntelligenceConfigAdmin
 from .urls import get_system_intelligence_urls

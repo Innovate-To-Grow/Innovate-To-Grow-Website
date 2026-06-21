@@ -1,7 +1,7 @@
 """Coverage tests for the system_intelligence tools batch.
 
-These exercise the async ADK tool wrappers (legacy, exports, approval) plus the
-domain/cms/event read helpers and the shared query helpers. External LLM/ADK
+These exercise the async agent tool wrappers (legacy, exports, approval) plus the
+domain/cms/event read helpers and the shared query helpers. External LLM/agent
 machinery is never invoked: the read tools run real ORM queries through
 ``run_action_service_async`` and the legacy tools dispatch through the local
 ``TOOL_REGISTRY``.

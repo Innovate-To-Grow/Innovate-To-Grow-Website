@@ -11,7 +11,7 @@ from apps.system_intelligence.models import (
     SystemIntelligenceActionRequest,
     SystemIntelligenceConfig,
 )
-from apps.system_intelligence.services.adk.context_manager import (
+from apps.system_intelligence.services.agents.context_manager import (
     RECENT_TARGET_TURNS,
     ensure_context_summary,
 )

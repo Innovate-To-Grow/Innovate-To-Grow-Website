@@ -1,8 +1,8 @@
 /*
- * Google Material / ADK admin theme bridge.
+ * Google Material admin theme bridge.
  *
  * The admin is still rendered by Django Unfold, so this file maps Material 3
- * and ADK Web design tokens onto the variables/classes Unfold already emits.
+ * design tokens onto the variables/classes Unfold already emits.
  */
 
 :root {
@@ -67,11 +67,11 @@
     --md-sys-state-hover-opacity: 0.08;
     --md-sys-state-focus-opacity: 0.12;
 
-    --adk-web-accent-color: #8ab4f8;
-    --adk-web-link-color: #305f9d;
-    --adk-web-chat-user-bg: #d5e3ff;
-    --adk-web-chat-bot-bg: #f3f0f0;
-    --adk-web-chat-input-bg: #f3f0f0;
+    --si-agent-accent-color: #8ab4f8;
+    --si-agent-link-color: #305f9d;
+    --si-agent-chat-user-bg: #d5e3ff;
+    --si-agent-chat-bot-bg: #f3f0f0;
+    --si-agent-chat-input-bg: #f3f0f0;
 
     --font-family-primary: "Google Sans", "Roboto", "Helvetica Neue", Arial, sans-serif;
     --border-radius: var(--md-sys-shape-corner-medium);
@@ -113,11 +113,11 @@ html.dark-theme {
     --md-sys-color-error: #ffb4ab;
     --md-sys-color-error-container: #690005;
 
-    --adk-web-accent-color: #8ab4f8;
-    --adk-web-link-color: #aecbfa;
-    --adk-web-chat-user-bg: #1a1a1a;
-    --adk-web-chat-bot-bg: #303030;
-    --adk-web-chat-input-bg: #1a1a1a;
+    --si-agent-accent-color: #8ab4f8;
+    --si-agent-link-color: #aecbfa;
+    --si-agent-chat-user-bg: #1a1a1a;
+    --si-agent-chat-bot-bg: #303030;
+    --si-agent-chat-input-bg: #1a1a1a;
 }
 
 html,
@@ -137,7 +137,7 @@ body,
 }
 
 a {
-    color: var(--adk-web-link-color);
+    color: var(--si-agent-link-color);
 }
 
 a:hover {

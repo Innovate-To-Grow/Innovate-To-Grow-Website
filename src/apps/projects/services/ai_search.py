@@ -7,9 +7,9 @@ from django.db.models import Q, QuerySet
 
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import BedrockError, normalize_bedrock_model_id
-from apps.core.services.bedrock.clients import get_client
 from apps.projects.models import Project
 from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.services.agents import run_tool_free_agent
 
 logger = logging.getLogger(__name__)
 
@@ -114,11 +114,6 @@ def _build_prompt(*, query: str, candidates: list[Project], limit: int) -> str:
     )
 
 
-def _extract_text(response) -> str:
-    content = response["output"]["message"]["content"]
-    return "".join(block["text"] for block in content if "text" in block)
-
-
 def _json_fragment(text: str):
     stripped = text.strip()
     if stripped.startswith("{") or stripped.startswith("["):
@@ -194,30 +189,36 @@ def run_past_project_ai_search(*, query: str, limit: int, config: SystemIntellig
         "Your only job is to select matching project IDs from the supplied candidate list."
     )
     prompt = _build_prompt(query=query, candidates=candidates, limit=limit)
-    client = get_client(AWSCredentialConfig.load())
-    base_kwargs = {
-        "modelId": normalized_model_id,
-        "messages": [{"role": "user", "content": [{"text": prompt}]}],
-        "system": [{"text": system_text}],
-    }
-    inference = {
-        "maxTokens": min(config.public_assistant_max_response_tokens, 700),
-        "temperature": config.public_assistant_temperature,
-    }
+    aws_config = AWSCredentialConfig.load()
+    max_tokens = min(config.public_assistant_max_response_tokens, 700)
 
     try:
-        response = client.converse(**base_kwargs, inferenceConfig=inference)
+        result = run_tool_free_agent(
+            system_text=system_text,
+            input_data=prompt,
+            aws_config=aws_config,
+            model_id=normalized_model_id,
+            max_tokens=max_tokens,
+            temperature=config.public_assistant_temperature,
+            agent_name="past_project_ai_search",
+        )
     except Exception as exc:  # noqa: BLE001
         if not _is_temperature_error(exc):
             raise BedrockError(f"Past project AI search error: {exc}") from exc
         try:
-            response = client.converse(
-                **base_kwargs,
-                inferenceConfig={"maxTokens": min(config.public_assistant_max_response_tokens, 700)},
+            result = run_tool_free_agent(
+                system_text=system_text,
+                input_data=prompt,
+                aws_config=aws_config,
+                model_id=normalized_model_id,
+                max_tokens=max_tokens,
+                temperature=config.public_assistant_temperature,
+                include_temperature=False,
+                agent_name="past_project_ai_search",
             )
         except Exception as retry_exc:  # noqa: BLE001
             raise BedrockError(f"Past project AI search error: {retry_exc}") from retry_exc
 
-    text = _extract_text(response)
-    usage = response.get("usage") or _estimate_usage(system_text, prompt, text)
+    text = result.text
+    usage = result.usage or _estimate_usage(system_text, prompt, text)
     return {"project_ids": _parse_ids(text)[:limit], "usage": usage}

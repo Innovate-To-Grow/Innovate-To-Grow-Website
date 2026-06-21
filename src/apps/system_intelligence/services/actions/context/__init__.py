@@ -17,7 +17,7 @@ ACTION_USER_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 
 
 def set_action_context(conversation_id: str | None, user_id: str | None) -> tuple[contextvars.Token, contextvars.Token]:
-    """Store chat context for ADK tools that run without direct request args."""
+    """Store chat context for agent tools that run without direct request args."""
     return (
         ACTION_CONVERSATION_ID.set(str(conversation_id) if conversation_id else None),
         ACTION_USER_ID.set(str(user_id) if user_id else None),

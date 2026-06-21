@@ -1,5 +1,5 @@
 from django.test import override_settings
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 
 from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
 
@@ -13,16 +13,14 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertContains(response, 'id="si-root"')
         self.assertContains(response, "Conversations")
         self.assertContains(response, "Message AI Assistant")
-        self.assertContains(response, "ADK Debug")
+        self.assertNotContains(response, "Agent Debug")
         self.assertContains(response, "data-si-sidebar-toggle")
         self.assertContains(response, 'aria-controls="si-chat-sidebar-body"')
         self.assertContains(response, 'id="si-chat-sidebar-body"')
-        self.assertContains(response, reverse("admin:system_intelligence_debug"))
         self.assertContains(response, "system_intelligence/css/chat-layout.css")
         self.assertContains(response, "system_intelligence/css/chat-sidebar.css")
         self.assertContains(response, "system_intelligence/js/chat-state.js")
-        self.assertNotContains(response, 'title="System Intelligence ADK Web"')
-        self.assertNotContains(response, 'src="/admin/system-intelligence/adk/dev-ui/"')
+        self.assertNotContains(response, "system-intelligence/debug")
 
     def test_main_page_renders_chat_endpoint_config_and_controls(self):
         response = self.client.get(reverse("admin:system_intelligence"))
@@ -46,13 +44,18 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertContains(response, 'data-si-command="retry"')
         self.assertContains(response, 'data-si-command="compact"')
 
-    def test_debug_page_embeds_adk_web_shell(self):
-        response = self.client.get(reverse("admin:system_intelligence_debug"))
+    def test_debug_page_route_is_removed(self):
+        with self.assertRaises(NoReverseMatch):
+            reverse("admin:system_intelligence_debug")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'title="System Intelligence ADK Web"')
-        self.assertContains(response, 'src="/admin/system-intelligence/adk/dev-ui/"')
-        self.assertNotContains(response, 'id="si-root"')
+        response = self.client.get("/admin/system-intelligence/debug/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_agent_debug_backend_route_is_removed(self):
+        removed_backend_path = "/admin/system-intelligence/" + "".join(("a", "d", "k")) + "/dev-ui/"
+        response = self.client.get(removed_backend_path)
+
+        self.assertEqual(response.status_code, 404)
 
     def test_legacy_page_is_removed(self):
         response = self.client.get("/admin/system-intelligence/legacy/")

@@ -1,4 +1,4 @@
-"""ADK tool wrappers that produce downloadable Excel exports.
+"""Agent tool wrappers that produce downloadable Excel exports.
 
 The agent calls these when an admin asks to "export", "download", "save as
 xlsx", etc. Each wrapper is a thin layer over

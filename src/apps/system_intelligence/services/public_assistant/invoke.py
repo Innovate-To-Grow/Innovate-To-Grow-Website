@@ -1,16 +1,16 @@
-"""Tool-free Bedrock Converse invocation for the public assistant.
+"""Tool-free OpenAI Agents SDK invocation for the public assistant.
 
-This path is TOOL-FREE by construction: it builds the Converse request itself
-and never attaches a ``toolConfig``, never imports the admin ADK tools, and
-never reuses the admin system prompt. The only model id, prompt, and inference
-parameters come from the public fields on ``SystemIntelligenceConfig``.
+This path is TOOL-FREE by construction: it builds a tool-free agent, never
+imports the admin tools, and never reuses the admin system prompt. The only
+model id, prompt, and inference parameters come from the public fields on
+``SystemIntelligenceConfig``.
 """
 
 import logging
 
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import BedrockError, normalize_bedrock_model_id
-from apps.core.services.bedrock.clients import get_client
+from apps.system_intelligence.services.agents import run_tool_free_agent
 
 from .context import build_public_context
 
@@ -20,13 +20,12 @@ _VALID_ROLES = {"user", "assistant"}
 
 
 def _trimmed_messages(history, message: str) -> list[dict]:
-    """Build Bedrock content-block messages from history + the new user turn.
+    """Build agent input messages from history + the new user turn.
 
-    Roles are coerced to user/assistant and blank turns dropped. Bedrock's
-    Converse API (Anthropic models) requires the transcript to begin with a
-    user turn and to strictly alternate user/assistant; visitor-supplied
-    history is untrusted, so we enforce both here rather than letting a
-    malformed ``history`` degrade into a Bedrock ValidationException (HTTP 502):
+    Roles are coerced to user/assistant and blank turns dropped. The Bedrock
+    Anthropic chat models behind the agent expect the transcript to begin with
+    a user turn and to strictly alternate user/assistant; visitor-supplied
+    history is untrusted, so we enforce both here before invoking the agent:
 
     - drop any leading assistant turns so the first turn is always ``user``;
     - collapse consecutive same-role turns, keeping the most recent one.
@@ -62,7 +61,7 @@ def _trimmed_messages(history, message: str) -> list[dict]:
     else:
         messages.append({"role": "user", "text": message})
 
-    return [{"role": t["role"], "content": [{"text": t["text"]}]} for t in messages]
+    return [{"role": t["role"], "content": t["text"]} for t in messages]
 
 
 def _estimate_usage(system_text: str, messages: list[dict], reply_text: str) -> dict:
@@ -73,18 +72,13 @@ def _estimate_usage(system_text: str, messages: list[dict], reply_text: str) -> 
     under-charged when prior turns are present.
     """
     output_tokens = len(reply_text) // 4
-    message_chars = sum(len(block["text"]) for turn in messages for block in turn["content"])
+    message_chars = sum(len(turn["content"]) for turn in messages)
     input_tokens = (len(system_text) + message_chars) // 4
     return {
         "inputTokens": input_tokens,
         "outputTokens": output_tokens,
         "totalTokens": input_tokens + output_tokens,
     }
-
-
-def _extract_text(response) -> str:
-    content = response["output"]["message"]["content"]
-    return "".join(block["text"] for block in content if "text" in block)
 
 
 def _is_temperature_error(exc: Exception) -> bool:
@@ -106,7 +100,7 @@ def _is_temperature_error(exc: Exception) -> bool:
 
 
 def answer_public_question(*, message, history, config, context=None) -> dict:
-    """Answer a public question with a tool-free Bedrock Converse call.
+    """Answer a public question with a tool-free Agents SDK Bedrock call.
 
     Returns ``{"text": str, "usage": {"inputTokens", "outputTokens", "totalTokens"}}``.
     Raises ``BedrockError`` if the model id is invalid or the call fails.
@@ -122,35 +116,40 @@ def answer_public_question(*, message, history, config, context=None) -> dict:
         system_text += "\n\nCONTEXT:\n" + context
 
     messages = _trimmed_messages(history, message)
-    client = get_client(AWSCredentialConfig.load())
-
-    base_kwargs = {
-        "modelId": normalized_model_id,
-        "messages": messages,
-        "system": [{"text": system_text}],
-    }
-    inference = {
-        "maxTokens": config.public_assistant_max_response_tokens,
-        "temperature": config.public_assistant_temperature,
-    }
+    aws_config = AWSCredentialConfig.load()
 
     try:
-        response = client.converse(**base_kwargs, inferenceConfig=inference)
+        result = run_tool_free_agent(
+            system_text=system_text,
+            input_data=messages,
+            aws_config=aws_config,
+            model_id=normalized_model_id,
+            max_tokens=config.public_assistant_max_response_tokens,
+            temperature=config.public_assistant_temperature,
+            agent_name="system_intelligence_public_assistant",
+        )
     except Exception as exc:  # noqa: BLE001 - re-raised as BedrockError below
-        # Some models reject `temperature`; retry once without it (best effort).
         if _is_temperature_error(exc):
             try:
-                inference_no_temp = {"maxTokens": config.public_assistant_max_response_tokens}
-                response = client.converse(**base_kwargs, inferenceConfig=inference_no_temp)
+                result = run_tool_free_agent(
+                    system_text=system_text,
+                    input_data=messages,
+                    aws_config=aws_config,
+                    model_id=normalized_model_id,
+                    max_tokens=config.public_assistant_max_response_tokens,
+                    temperature=config.public_assistant_temperature,
+                    include_temperature=False,
+                    agent_name="system_intelligence_public_assistant",
+                )
             except Exception as retry_exc:  # noqa: BLE001
-                logger.exception("Public assistant Bedrock call failed on retry")
+                logger.exception("Public assistant agent call failed on retry")
                 raise BedrockError(f"Public assistant error: {retry_exc}") from retry_exc
         else:
-            logger.exception("Public assistant Bedrock call failed")
+            logger.exception("Public assistant agent call failed")
             raise BedrockError(f"Public assistant error: {exc}") from exc
 
-    text = _extract_text(response)
-    usage = response.get("usage") or {}
+    text = result.text
+    usage = result.usage or {}
     if not usage.get("totalTokens"):
         usage = _estimate_usage(system_text, messages, text)
     return {"text": text, "usage": usage}

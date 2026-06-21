@@ -4,7 +4,6 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 from apps.core.access import user_can_access_app
-from apps.system_intelligence.admin.adk_web import SYSTEM_INTELLIGENCE_ADK_DEV_UI_PATH
 
 UUID_PLACEHOLDER = "00000000-0000-0000-0000-000000000000"
 
@@ -22,25 +21,11 @@ def chat_list_view(request):
     return TemplateResponse(request, "admin/system_intelligence/system_intelligence_chat.html", context)
 
 
-def debug_view(request):
-    """Render the official ADK Web shell wrapper for debugging."""
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
-    context = {
-        **admin.site.each_context(request),
-        "title": "System Intelligence Debug",
-        "adk_web_url": SYSTEM_INTELLIGENCE_ADK_DEV_UI_PATH,
-    }
-    return TemplateResponse(request, "admin/system_intelligence/system_intelligence_adk.html", context)
-
-
 def _chat_config():
     return {
         "urls": {
             "conversations": reverse("admin:system_intelligence_conversations"),
             "newConversation": reverse("admin:system_intelligence_new"),
-            "debug": reverse("admin:system_intelligence_debug"),
             "detail": reverse("admin:system_intelligence_detail", args=[UUID_PLACEHOLDER]),
             "send": reverse("admin:system_intelligence_send", args=[UUID_PLACEHOLDER]),
             "command": reverse("admin:system_intelligence_command", args=[UUID_PLACEHOLDER]),
