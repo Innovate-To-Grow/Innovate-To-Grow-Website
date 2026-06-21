@@ -14,7 +14,7 @@ from .constants import (
     READ_ONLY_AGENT_DEBUG_INSTRUCTION,
 )
 from .events import StreamState, normalize_agent_stream_event, usage_event
-from .litellm import bedrock_litellm_environment, build_litellm_model
+from .litellm import bedrock_litellm_credentials, build_litellm_model
 
 PLAN_MODE = "plan"
 
@@ -45,16 +45,15 @@ async def run_agent_invocation(
     )
     input_items = normalize_input_messages([*previous_messages, {"role": "user", "content": user_message}])
     state = StreamState()
-    with bedrock_litellm_environment(aws_config):
-        result = runner_class().run_streamed(
-            agent,
-            input=input_items,
-            max_turns=MAX_LLM_CALLS,
-            run_config=build_run_config(),
-        )
-        async for stream_event in result.stream_events():
-            for event in normalize_agent_stream_event(stream_event, state):
-                yield event
+    result = runner_class().run_streamed(
+        agent,
+        input=input_items,
+        max_turns=MAX_LLM_CALLS,
+        run_config=build_run_config(),
+    )
+    async for stream_event in result.stream_events():
+        for event in normalize_agent_stream_event(stream_event, state):
+            yield event
     final_usage = usage_event(getattr(getattr(result, "context_wrapper", None), "usage", None))
     if final_usage:
         yield final_usage
@@ -106,6 +105,7 @@ def build_agent(
             max_tokens=chat_config.max_tokens,
             temperature=chat_config.temperature,
             include_temperature=include_temperature,
+            extra_args=bedrock_litellm_credentials(aws_config),
         ),
         tools=build_agent_tools(include_writes=tool_include_writes, include_exports=include_exports),
     )
@@ -117,17 +117,31 @@ def build_agent_tools(*, include_writes: bool = True, include_exports: bool = Tr
     from apps.system_intelligence.services.tools import get_agent_tool_callables
 
     return [
-        function_tool(tool)
+        # strict_mode=False: several tools accept open ``dict[str, Any]`` / ``list[dict]``
+        # params (run_custom_query/search_records filters, propose_* fields, export_*
+        # filters). Pydantic renders those with ``additionalProperties: true``, which the
+        # Agents SDK strict JSON-schema validator rejects with a UserError at construction.
+        function_tool(tool, strict_mode=False)
         for tool in get_agent_tool_callables(include_writes=include_writes, include_exports=include_exports)
     ]
 
 
-def build_model_settings(*, max_tokens: int, temperature: float | None, include_temperature: bool):
+def build_model_settings(
+    *,
+    max_tokens: int,
+    temperature: float | None,
+    include_temperature: bool,
+    extra_args: dict[str, Any] | None = None,
+):
     from agents import ModelSettings
 
     kwargs: dict[str, Any] = {"max_tokens": max_tokens}
     if include_temperature:
         kwargs["temperature"] = temperature
+    if extra_args:
+        # Threaded into litellm.acompletion(**kwargs) by LitellmModel; carries the
+        # per-call Bedrock AWS credentials so we never mutate process-global os.environ.
+        kwargs["extra_args"] = extra_args
     return ModelSettings(**kwargs)
 
 
@@ -189,16 +203,16 @@ async def run_tool_free_agent_async(
             max_tokens=max_tokens,
             temperature=temperature,
             include_temperature=include_temperature,
+            extra_args=bedrock_litellm_credentials(aws_config),
         ),
         tools=[],
     )
-    with bedrock_litellm_environment(aws_config):
-        result = await runner_class().run(
-            agent,
-            input=input_data,
-            max_turns=1,
-            run_config=build_run_config(),
-        )
+    result = await runner_class().run(
+        agent,
+        input=input_data,
+        max_turns=1,
+        run_config=build_run_config(),
+    )
     return AgentTextResult(
         text=str(getattr(result, "final_output", "") or "").strip(),
         usage=usage_payload(getattr(getattr(result, "context_wrapper", None), "usage", None)),

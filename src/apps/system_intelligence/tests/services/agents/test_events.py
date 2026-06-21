@@ -67,6 +67,50 @@ class SystemIntelligenceAgentEventTests(SimpleTestCase):
             ],
         )
 
+    @staticmethod
+    def _message_output(text):
+        return SimpleNamespace(
+            type="run_item_stream_event",
+            name="message_output_created",
+            item=SimpleNamespace(
+                type="message_output_item",
+                raw_item=SimpleNamespace(content=[SimpleNamespace(text=text)]),
+            ),
+        )
+
+    def test_message_output_emits_full_text_when_no_deltas_were_streamed(self):
+        # Provider never emitted response.output_text.delta -> message_output is the only source.
+        state = _StreamState()
+        self.assertEqual(
+            _normalize_agent_stream_event(self._message_output("Full answer"), state),
+            [{"type": "text", "chunk": "Full answer"}],
+        )
+        self.assertEqual(state.streamed_text, "Full answer")
+
+    def test_message_output_is_suppressed_when_fully_streamed(self):
+        state = _StreamState()
+        state.streamed_text = "Hello world"
+        self.assertEqual(_normalize_agent_stream_event(self._message_output("Hello world"), state), [])
+
+    def test_message_output_after_tool_call_is_not_dropped(self):
+        # Regression: a second message whose text does not share the accumulated prefix
+        # must still be delivered (the old removeprefix logic silently dropped it).
+        state = _StreamState()
+        state.streamed_text = "First answer."
+        self.assertEqual(
+            _normalize_agent_stream_event(self._message_output("Second answer."), state),
+            [{"type": "text", "chunk": "Second answer."}],
+        )
+        self.assertEqual(state.streamed_text, "First answer.Second answer.")
+
+    def test_message_output_emits_divergent_extension(self):
+        state = _StreamState()
+        state.streamed_text = "Hello"
+        self.assertEqual(
+            _normalize_agent_stream_event(self._message_output("Hello world"), state),
+            [{"type": "text", "chunk": " world"}],
+        )
+
     def test_usage_event_maps_agents_usage_to_existing_shape(self):
         usage = SimpleNamespace(input_tokens=10, output_tokens=4, total_tokens=14)
 

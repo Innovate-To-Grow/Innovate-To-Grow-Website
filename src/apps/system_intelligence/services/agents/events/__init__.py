@@ -46,17 +46,30 @@ def text_delta_events(data: Any, state: StreamState) -> list[dict[str, Any]]:
 
 
 def message_output_events(item: Any, state: StreamState) -> list[dict[str, Any]]:
+    """Emit the final message text not already delivered via raw streaming deltas.
+
+    The goal is to never DROP assistant text and never DUPLICATE it:
+
+    - Fully streamed already (``streamed_text`` ends with this message): emit nothing.
+    - Streamed deltas delivered a leading chunk of this message: emit only the remainder.
+    - No overlap (a provider that does not emit ``response.output_text.delta``, or a
+      fresh message after a tool call): emit the whole message text.
+
+    The previous implementation used a bare ``removeprefix`` that silently dropped the
+    final message whenever it was not a clean prefix-extension of the accumulated
+    deltas (e.g. a second message after a tool call, or a re-rendered final).
+    """
     text = extract_message_text(item)
     if not text:
         return []
-    if not state.streamed_text:
-        state.streamed_text = text
-        return [{"type": "text", "chunk": text}]
-    suffix = text.removeprefix(state.streamed_text)
-    if suffix and suffix != text:
-        state.streamed_text += suffix
-        return [{"type": "text", "chunk": suffix}]
-    return []
+    if state.streamed_text.endswith(text):
+        return []
+    if state.streamed_text and text.startswith(state.streamed_text):
+        remainder = text[len(state.streamed_text) :]
+        state.streamed_text += remainder
+        return [{"type": "text", "chunk": remainder}]
+    state.streamed_text += text
+    return [{"type": "text", "chunk": text}]
 
 
 def remember_tool_call(item: Any, state: StreamState) -> None:

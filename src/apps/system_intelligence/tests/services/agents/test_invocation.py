@@ -9,7 +9,7 @@ from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.agents import (
     _TEMPERATURE_DEPRECATED_MODEL_IDS,
-    _bedrock_litellm_environment,
+    _bedrock_litellm_credentials,
     _invoke_system_intelligence_stream_async,
     _to_litellm_bedrock_model,
     invoke_system_intelligence_stream,
@@ -158,9 +158,21 @@ class SystemIntelligenceAgentInvocationTests(TestCase):
         with self.assertRaises(SystemIntelligenceAgentError):
             _to_litellm_bedrock_model("")
 
-    def test_bedrock_environment_is_scoped_and_restored(self):
-        original_key = os.environ.get("AWS_ACCESS_KEY_ID")
-        with _bedrock_litellm_environment(self.aws_config):
-            self.assertEqual(os.environ["AWS_ACCESS_KEY_ID"], "test-key")
-            self.assertEqual(os.environ["AWS_DEFAULT_REGION"], "us-west-2")
-        self.assertEqual(os.environ.get("AWS_ACCESS_KEY_ID"), original_key)
+    def test_bedrock_credentials_are_passed_per_call_without_touching_os_environ(self):
+        original = os.environ.get("AWS_ACCESS_KEY_ID")
+        creds = _bedrock_litellm_credentials(self.aws_config)
+        self.assertEqual(
+            creds,
+            {
+                "aws_access_key_id": "test-key",
+                "aws_secret_access_key": "test-secret",
+                "aws_region_name": "us-west-2",
+            },
+        )
+        # Credentials are returned for ModelSettings.extra_args, never written to env.
+        self.assertEqual(os.environ.get("AWS_ACCESS_KEY_ID"), original)
+
+    def test_bedrock_credentials_require_configured_aws(self):
+        unconfigured = AWSCredentialConfig(name="empty", is_active=True)
+        with self.assertRaises(SystemIntelligenceAgentError):
+            _bedrock_litellm_credentials(unconfigured)

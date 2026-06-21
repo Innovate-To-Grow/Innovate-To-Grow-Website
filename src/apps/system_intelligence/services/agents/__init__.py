@@ -21,7 +21,7 @@ from .events import normalize_agent_stream_event as _normalize_agent_stream_even
 from .events import usage_event as _usage_event
 from .history import split_history_and_current_message as _split_history_and_current_message
 from .litellm import (
-    bedrock_litellm_environment as _bedrock_litellm_environment,
+    bedrock_litellm_credentials as _bedrock_litellm_credentials,
 )
 from .litellm import (
     build_litellm_model as _build_litellm_model,

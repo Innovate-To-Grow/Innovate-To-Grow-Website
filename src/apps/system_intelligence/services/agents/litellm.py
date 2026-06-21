@@ -1,8 +1,5 @@
 import logging
 import os
-import threading
-from collections.abc import Iterator
-from contextlib import contextmanager
 
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import normalize_bedrock_model_id
@@ -10,15 +7,6 @@ from apps.core.services.bedrock import normalize_bedrock_model_id
 from .errors import SystemIntelligenceAgentError
 
 logger = logging.getLogger(__name__)
-
-_AWS_ENV_KEYS = (
-    "AWS_ACCESS_KEY_ID",
-    "AWS_SECRET_ACCESS_KEY",
-    "AWS_DEFAULT_REGION",
-    "AWS_REGION",
-    "AWS_REGION_NAME",
-)
-_AWS_ENV_LOCK = threading.RLock()
 
 
 def build_litellm_model(*, aws_config: AWSCredentialConfig, model_id: str):
@@ -40,31 +28,25 @@ def to_litellm_bedrock_model(model_id: str) -> str:
     return f"bedrock/{normalized_model_id}"
 
 
-@contextmanager
-def bedrock_litellm_environment(aws_config: AWSCredentialConfig) -> Iterator[None]:
-    """Expose the active AWS config to LiteLLM for the duration of one model call."""
+def bedrock_litellm_credentials(aws_config: AWSCredentialConfig) -> dict[str, str]:
+    """Per-call AWS credentials for LiteLLM's Bedrock provider.
+
+    Returned dict is threaded through ``ModelSettings.extra_args`` ->
+    ``litellm.acompletion(**kwargs)`` so each model call carries its own
+    credentials. This deliberately avoids mutating process-global ``os.environ``:
+    doing so could leak the System Intelligence IAM identity into other AWS clients
+    in the same process (S3/SES/SNS) and forced a process-wide lock to be held
+    across the entire Bedrock network round-trip, serializing all inference.
+    """
     if not aws_config.is_configured:
         raise SystemIntelligenceAgentError(
             "AWS credentials are not configured. Add an active AWS Credential Config first."
         )
-    next_values = {
-        "AWS_ACCESS_KEY_ID": aws_config.access_key_id,
-        "AWS_SECRET_ACCESS_KEY": aws_config.secret_access_key,
-        "AWS_DEFAULT_REGION": aws_config.region,
-        "AWS_REGION": aws_config.region,
-        "AWS_REGION_NAME": aws_config.region,
+    return {
+        "aws_access_key_id": aws_config.access_key_id,
+        "aws_secret_access_key": aws_config.secret_access_key,
+        "aws_region_name": aws_config.region,
     }
-    with _AWS_ENV_LOCK:
-        previous_values = {key: os.environ.get(key) for key in _AWS_ENV_KEYS}
-        os.environ.update(next_values)
-        try:
-            yield
-        finally:
-            for key, value in previous_values.items():
-                if value is None:
-                    os.environ.pop(key, None)
-                else:
-                    os.environ[key] = value
 
 
 def configure_agents_tracing() -> None:

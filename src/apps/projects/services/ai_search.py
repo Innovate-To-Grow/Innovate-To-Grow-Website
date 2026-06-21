@@ -220,5 +220,9 @@ def run_past_project_ai_search(*, query: str, limit: int, config: SystemIntellig
             raise BedrockError(f"Past project AI search error: {retry_exc}") from retry_exc
 
     text = result.text
-    usage = result.usage or _estimate_usage(system_text, prompt, text)
+    usage = result.usage or {}
+    if not usage.get("totalTokens"):
+        # usage_payload always returns a (possibly all-zero) dict, so fall back on the
+        # char-based estimate whenever the model reported no usable token totals.
+        usage = _estimate_usage(system_text, prompt, text)
     return {"project_ids": _parse_ids(text)[:limit], "usage": usage}
