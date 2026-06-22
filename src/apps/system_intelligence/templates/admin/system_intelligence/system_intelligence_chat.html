@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
-{% block content_title %}{{ title }}{% endblock %}
+{% block content_title %}{% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
@@ -65,8 +65,7 @@
     <section class="si-chat-alert" data-si-alert hidden></section>
     <section class="si-chat-messages" data-si-messages aria-live="polite">
       <div class="si-chat-empty">
-        <h3>Ask about members, events, CMS, projects, email, or analytics.</h3>
-        <p>Responses can include tool results, approval requests, previews, and exports.</p>
+        <h3>How can I help today?</h3>
       </div>
     </section>
 

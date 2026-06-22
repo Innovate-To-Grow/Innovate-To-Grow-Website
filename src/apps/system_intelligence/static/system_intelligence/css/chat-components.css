@@ -3,7 +3,7 @@
 .si-action-buttons a,
 .si-action-buttons button {
   border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--md-sys-color-surface-container-lowest, #fff);
   color: var(--md-sys-color-primary, #305f9d);
   cursor: pointer;
@@ -19,9 +19,9 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  border-radius: 8px;
-  min-height: 36px;
-  padding: 6px 8px;
+  border-radius: 24px;
+  min-height: 40px;
+  padding: 6px 10px;
 }
 
 .si-conversation.is-active {
@@ -80,7 +80,8 @@
 }
 
 .si-chat-alert {
-  margin: 12px 18px 0;
+  width: min(920px, calc(100% - 48px));
+  margin: 8px auto 0;
   border: 1px solid color-mix(in srgb, var(--md-sys-color-error, #ba1a1a) 35%, transparent);
   border-radius: 8px;
   background: var(--md-sys-color-error-container, #ffdad6);
@@ -96,10 +97,16 @@
   text-align: center;
 }
 
+.si-chat-empty h3 {
+  color: var(--md-sys-color-on-surface, #202124);
+  font-size: 42px;
+  font-weight: 500;
+}
+
 .si-message {
   display: flex;
   margin: 0 auto 16px;
-  max-width: 880px;
+  max-width: 920px;
 }
 
 .si-message-user {
@@ -108,8 +115,8 @@
 
 .si-message-body {
   max-width: min(760px, 82%);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border-radius: 20px;
+  padding: 12px 16px;
   color: var(--md-sys-color-on-surface, #202124);
   font-size: 14px;
   line-height: 1.55;
@@ -121,12 +128,14 @@
 }
 
 .si-message-assistant .si-message-body {
-  background: var(--md-sys-color-surface-container, #f6f3f3);
+  border-radius: 4px;
+  background: transparent;
+  padding-inline: 0;
 }
 
 .si-tool-call,
 .si-action-card {
-  max-width: 880px;
+  max-width: 920px;
   margin: 8px auto 16px;
   border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
   border-radius: 8px;
@@ -165,17 +174,26 @@
 
 .si-chat-composer textarea {
   max-height: 160px;
-  min-height: 44px;
+  min-height: 56px;
   resize: none;
-  border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border: 0;
+  border-radius: 28px;
+  background: var(--md-sys-color-surface-container, #f1f3f4);
+  color: var(--md-sys-color-on-surface, #202124);
+  padding: 17px 20px;
 }
 
 .si-chat-composer button {
   align-self: end;
-  min-height: 44px;
+  min-width: 64px;
+  min-height: 48px;
   border-color: var(--md-sys-color-primary, #305f9d);
   background: var(--md-sys-color-primary, #305f9d);
   color: var(--md-sys-color-on-primary, #fff);
+}
+
+@media (max-width: 640px) {
+  .si-chat-empty h3 {
+    font-size: 32px;
+  }
 }
