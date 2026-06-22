@@ -11,7 +11,7 @@
 }
 
 #main > .bg-white.border-b {
-  display: none !important;
+  margin-bottom: 0 !important;
 }
 
 #main > .grow {

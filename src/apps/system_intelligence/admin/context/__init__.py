@@ -15,7 +15,7 @@ def chat_list_view(request):
         raise PermissionDenied("You do not have permission to access System Intelligence.")
     context = {
         **admin.site.each_context(request),
-        "title": "Chat",
+        "title": "System Intelligence",
         "chat_config": _chat_config(),
     }
     return TemplateResponse(request, "admin/system_intelligence/system_intelligence_chat.html", context)

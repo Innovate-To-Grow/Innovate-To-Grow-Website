@@ -12,6 +12,7 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="si-root"')
         self.assertContains(response, "Conversations")
+        self.assertContains(response, "System Intelligence")
         self.assertContains(response, "Message AI Assistant")
         self.assertNotContains(response, "Welcome")
         self.assertNotContains(response, "Agent Debug")
