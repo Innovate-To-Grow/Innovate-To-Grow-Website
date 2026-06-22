@@ -18,6 +18,8 @@ class PastProjectShare(ProjectControlModel):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "Project Resource Share"
+        verbose_name_plural = "Project Resource Shares"
 
     def __str__(self):
-        return self.name or f"Past Project Share {self.pk}"
+        return self.name or f"Project Resource Share {self.pk}"

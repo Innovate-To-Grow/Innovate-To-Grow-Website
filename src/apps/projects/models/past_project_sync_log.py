@@ -29,8 +29,8 @@ class PastProjectSyncLog(ProjectControlModel):
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Past Project Sync Log"
-        verbose_name_plural = "Past Project Sync Logs"
+        verbose_name = "Project Resource Sync Log"
+        verbose_name_plural = "Project Resource Sync Logs"
 
     def __str__(self):
         return f"{self.config} — {self.get_sync_type_display()} — {self.get_status_display()}"

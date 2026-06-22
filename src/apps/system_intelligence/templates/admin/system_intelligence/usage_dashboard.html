@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load i18n static %}
+{% load i18n static unfold %}
 
 {% block title %}{{ title }}{% endblock %}
 {% block content_title %}{{ page_title }}{% endblock %}
@@ -11,6 +11,8 @@
 {% endblock %}
 
 {% block content %}
+{% tab_list "system_intelligence_assistant_tools" %}
+
 <div id="si-usage-root" class="mb-6" data-usage-data-url="{% url 'admin:system_intelligence_usage_data' %}">
   <div class="si-usage-hero rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-5 mb-5">
     <div class="si-usage-hero-row flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

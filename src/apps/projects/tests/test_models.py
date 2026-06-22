@@ -57,4 +57,4 @@ class ProjectModelTest(TestCase):
 class PastProjectShareModelTest(TestCase):
     def test_str_includes_pk(self):
         share = PastProjectShare.objects.create(rows=[{"project_title": "Demo"}])
-        self.assertEqual(str(share), f"Past Project Share {share.pk}")
+        self.assertEqual(str(share), f"Project Resource Share {share.pk}")

@@ -16,8 +16,6 @@ from .checks import (
 )
 from .patterns import BRAND_NAMES, HIGH_THRESHOLD, MEDIUM_THRESHOLD
 
-LLM_REVIEW_CACHE_TTL = 1800
-
 
 def analyze_email(
     msg: dict[str, Any],
@@ -61,34 +59,15 @@ def analyze_email(
 
 
 def assess_email(msg: dict[str, Any], *, folder: str = "INBOX") -> dict[str, Any]:
-    """Rule scoring + (for the uncertain band) a cached, optional AI second opinion."""
-    from django.core.cache import cache
-
-    from apps.mail.models import ScamDetectorConfig
-
+    """Rule scoring + (for the uncertain band) a best-effort AI second opinion."""
     from .llm_classifier import llm_review
 
-    config = ScamDetectorConfig.load()
+    result = analyze_email(msg)
 
-    if config.is_trusted_sender(msg.get("from_email", "")):
-        return _trusted_result()
-
-    result = analyze_email(
-        msg,
-        brands=config.brand_keywords(),
-        medium_threshold=config.medium_threshold,
-        high_threshold=config.high_threshold,
-    )
-
-    if result["risk_level"] != config.ai_review_band or not config.ai_review_enabled:
+    if result["risk_level"] != "medium":
         return result
 
-    cache_key = f"scam:llm:{folder}:{msg.get('uid', '')}"
-    review = cache.get(cache_key)
-    if review is None:
-        review = llm_review(msg)
-        if review:
-            cache.set(cache_key, review, LLM_REVIEW_CACHE_TTL)
+    review = llm_review(msg)
     if review:
         _merge_ai_review(result, review)
     return result
@@ -131,19 +110,6 @@ def _band_for_percent(percent: int) -> str:
     if percent >= _FUSED_MEDIUM_PERCENT:
         return "medium"
     return "low"
-
-
-def _trusted_result() -> dict[str, Any]:
-    return {
-        "risk_level": "low",
-        "score": 0,
-        "score_percent": 0,
-        "reasons": [],
-        "findings": [],
-        "summary": "Sender is on the trusted allowlist; automated checks were skipped.",
-        "recommendation": "Continue normal handling.",
-        "link_warnings": [],
-    }
 
 
 def _score_percent(score: int, high_threshold: int = HIGH_THRESHOLD) -> int:

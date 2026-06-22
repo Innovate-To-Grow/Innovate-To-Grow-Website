@@ -5,6 +5,10 @@
  * design tokens onto the variables/classes Unfold already emits.
  */
 
+html[x-cloak] {
+    display: block !important;
+}
+
 :root {
     color-scheme: light;
 

@@ -1,7 +1,7 @@
 """
 CSV import service for past projects.
 
-Parses CSV files exported from the legacy "Past Projects" Google Sheet
+Parses CSV files exported from the legacy "Project Resources" Google Sheet
 and creates Semester + Project records.
 """
 

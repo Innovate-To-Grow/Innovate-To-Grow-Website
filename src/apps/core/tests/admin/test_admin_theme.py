@@ -62,6 +62,7 @@ class AdminThemeRenderingTests(TestCase):
         self.assertContains(response, "Light")
         self.assertContains(response, "Dark")
         self.assertContains(response, "System")
+        self.assertContains(response, "html[x-cloak] { display: block !important; }")
 
     def test_theme_toggle_styles_are_loaded_after_unfold_styles(self):
         response = self.client.get(reverse("admin:index"))
@@ -77,6 +78,30 @@ class AdminThemeRenderingTests(TestCase):
         source = Path(path).read_text()
         self.assertIn(".i2g-admin-theme-toggle__button", source)
         self.assertIn(".i2g-admin-theme-toggle__option.is-active", source)
+
+    def test_root_x_cloak_does_not_hide_admin_shell(self):
+        response = self.client.get(reverse("admin:index"))
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<html", html)
+        self.assertIn("x-cloak", html)
+        self.assertIn("/static/admin/css/google-material-admin.css", html)
+        self.assertLess(
+            html.index("/static/unfold/css/styles.css"),
+            html.index("/static/admin/css/google-material-admin-overrides.css"),
+        )
+
+        for style_path in (
+            "admin/css/google-material-admin.css",
+            "admin/css/google-material-admin-overrides.css",
+        ):
+            with self.subTest(style_path=style_path):
+                path = finders.find(style_path)
+                self.assertIsNotNone(path)
+                source = Path(path).read_text()
+                self.assertIn("html[x-cloak]", source)
+                self.assertIn("display: block !important", source)
 
     def test_admin_theme_runtime_loaded_before_unfold_app(self):
         authenticated_response = self.client.get(reverse("admin:index"))

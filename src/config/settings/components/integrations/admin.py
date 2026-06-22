@@ -26,12 +26,10 @@ def _is_system_intelligence_chat(request):
     return path.startswith("/admin/system-intelligence/") and not path.startswith("/admin/system-intelligence/usage/")
 
 
-def _is_system_intelligence_usage(request):
-    return request.path.startswith("/admin/system-intelligence/usage/")
-
-
-def _is_mail_delivery_dashboard(request):
-    return request.path.startswith("/admin/mail/delivery-dashboard/")
+def _is_mail_delivery_operations(request):
+    return request.path.startswith("/admin/mail/delivery-dashboard/") or request.path.startswith(
+        "/admin/mail/settings/"
+    )
 
 
 UNFOLD = {
@@ -108,20 +106,23 @@ UNFOLD = {
                 {"title": "Sync Logs", "link": "/admin/cms/newssynclog/"},
             ],
         },
-        # projects.semester / projects.project are intentionally omitted from TABS.
-        # Duplicating the same links in TABS and SIDEBAR triggers Unfold's
-        # _get_is_tab_active(), which marks both sidebar rows active when either
-        # changelist is open (peer tabs, not parent/child).
-        # The sync-log is safe in TABS because it is NOT in the SIDEBAR (only the
-        # config is), mirroring the event.currentprojectschedule grouping above.
+        {
+            "models": ["projects.project", "projects.semester"],
+            "items": [
+                {"title": "Projects", "link": "/admin/projects/project/"},
+                {"title": "Semesters", "link": "/admin/projects/semester/"},
+            ],
+        },
         {
             "models": [
                 "projects.pastprojectssheetconfig",
+                "projects.pastprojectshare",
                 "projects.pastprojectsynclog",
             ],
             "items": [
-                {"title": "Past Projects Sheet", "link": "/admin/projects/pastprojectssheetconfig/"},
-                {"title": "Past Project Sync Logs", "link": "/admin/projects/pastprojectsynclog/"},
+                {"title": "Project Resources", "link": "/admin/projects/pastprojectssheetconfig/"},
+                {"title": "Shared Links", "link": "/admin/projects/pastprojectshare/"},
+                {"title": "Project Resource Sync Logs", "link": "/admin/projects/pastprojectsynclog/"},
             ],
         },
         {
@@ -161,10 +162,49 @@ UNFOLD = {
             ],
         },
         {
-            "models": ["authn.membersheetsyncconfig", "authn.membersheetsynclog"],
+            "page": "mail_delivery_operations",
             "items": [
-                {"title": "Sync Config", "link": "/admin/authn/membersheetsyncconfig/"},
+                {"title": "Delivery Dashboard", "link": "/admin/mail/delivery-dashboard/"},
+                {"title": "Notification Delivery", "link": "/admin/mail/settings/"},
+            ],
+        },
+        {
+            "models": ["authn.member", "authn.membersheetsyncconfig", "authn.membersheetsynclog"],
+            "items": [
+                {"title": "Members", "link": "/admin/authn/member/"},
+                {"title": "Member Sheet Sync", "link": "/admin/authn/membersheetsyncconfig/"},
                 {"title": "Sync Logs", "link": "/admin/authn/membersheetsynclog/"},
+            ],
+        },
+        {
+            "models": [
+                "cli_admin.cliaccesstoken",
+                "cli_admin.cliauthorizationcode",
+                "cli_admin.cliauditlog",
+            ],
+            "items": [
+                {"title": "Access Tokens", "link": "/admin/cli_admin/cliaccesstoken/"},
+                {"title": "Authorization Codes", "link": "/admin/cli_admin/cliauthorizationcode/"},
+                {"title": "Audit Log", "link": "/admin/cli_admin/cliauditlog/"},
+            ],
+        },
+        {
+            "models": [
+                "system_intelligence.systemintelligenceconfig",
+                "system_intelligence.assistantconversationlog",
+            ],
+            "items": [
+                {"title": "Assistant Settings", "link": "/admin/system_intelligence/systemintelligenceconfig/"},
+                {"title": "Usage Dashboard", "link": "/admin/system-intelligence/usage/"},
+                {"title": "Conversation Logs", "link": "/admin/system_intelligence/assistantconversationlog/"},
+            ],
+        },
+        {
+            "page": "system_intelligence_assistant_tools",
+            "items": [
+                {"title": "Assistant Settings", "link": "/admin/system_intelligence/systemintelligenceconfig/"},
+                {"title": "Usage Dashboard", "link": "/admin/system-intelligence/usage/"},
+                {"title": "Conversation Logs", "link": "/admin/system_intelligence/assistantconversationlog/"},
             ],
         },
     ],
@@ -197,15 +237,9 @@ UNFOLD = {
                 "permission": _can("projects"),
                 "items": [
                     {"title": "Projects", "link": "/admin/projects/project/", "permission": _can("projects")},
-                    {"title": "Semesters", "link": "/admin/projects/semester/", "permission": _can("projects")},
                     {
-                        "title": "Past Projects Sheet",
+                        "title": "Project Resources",
                         "link": "/admin/projects/pastprojectssheetconfig/",
-                        "permission": _can("projects"),
-                    },
-                    {
-                        "title": "Shared Links",
-                        "link": "/admin/projects/pastprojectshare/",
                         "permission": _can("projects"),
                     },
                 ],
@@ -221,11 +255,6 @@ UNFOLD = {
                         "link": "/admin/authn/admininvitation/",
                         "permission": _can("authn"),
                     },
-                    {
-                        "title": "Member Sheet Sync",
-                        "link": "/admin/authn/membersheetsyncconfig/",
-                        "permission": _can("authn"),
-                    },
                 ],
             },
             {
@@ -233,15 +262,13 @@ UNFOLD = {
                 "permission": _can("mail"),
                 "items": [
                     {
-                        "title": "Delivery Dashboard",
+                        "title": "Delivery Operations",
                         "link": "/admin/mail/delivery-dashboard/",
                         "permission": _can("mail"),
-                        "active": _is_mail_delivery_dashboard,
+                        "active": _is_mail_delivery_operations,
                     },
                     {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/", "permission": _can("mail")},
                     {"title": "Gmail Inbox", "link": "/admin/mail/inbox/", "permission": _can("mail")},
-                    {"title": "Scam Detection", "link": "/admin/mail/scamdetectorconfig/", "permission": _can("mail")},
-                    {"title": "Notification Delivery", "link": "/admin/mail/settings/", "permission": _can("mail")},
                 ],
             },
             {
@@ -255,19 +282,8 @@ UNFOLD = {
                         "active": _is_system_intelligence_chat,
                     },
                     {
-                        "title": "Assistant Settings",
+                        "title": "Assistant Tools",
                         "link": "/admin/system_intelligence/systemintelligenceconfig/",
-                        "permission": _can("system_intelligence"),
-                    },
-                    {
-                        "title": "Usage Dashboard",
-                        "link": "/admin/system-intelligence/usage/",
-                        "permission": _can("system_intelligence"),
-                        "active": _is_system_intelligence_usage,
-                    },
-                    {
-                        "title": "Conversation Logs",
-                        "link": "/admin/system_intelligence/assistantconversationlog/",
                         "permission": _can("system_intelligence"),
                     },
                 ],
@@ -282,7 +298,7 @@ UNFOLD = {
                         "permission": _can("core"),
                     },
                     {
-                        "title": "Service Configs",
+                        "title": "Service Credentials",
                         "link": "/admin/core/awscredentialconfig/",
                         "permission": _can("core"),
                     },
@@ -294,16 +310,10 @@ UNFOLD = {
                 "permission": _can("cli_admin"),
                 "items": [
                     {
-                        "title": "Access Tokens",
+                        "title": "CLI Access & Audit",
                         "link": "/admin/cli_admin/cliaccesstoken/",
                         "permission": _can("cli_admin"),
                     },
-                    {
-                        "title": "Authorization Codes",
-                        "link": "/admin/cli_admin/cliauthorizationcode/",
-                        "permission": _can("cli_admin"),
-                    },
-                    {"title": "Audit Log", "link": "/admin/cli_admin/cliauditlog/", "permission": _can("cli_admin")},
                 ],
             },
         ],
