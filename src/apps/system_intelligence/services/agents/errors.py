@@ -51,4 +51,16 @@ def is_temperature_deprecated_error(exc: Exception) -> bool:
         messages.append(str(current).lower())
         current = current.__cause__ or current.__context__
     message = "\n".join(messages)
-    return "temperature" in message and "deprecated" in message
+    if "temperature" not in message and "sampling" not in message:
+        return False
+    return any(
+        marker in message
+        for marker in (
+            "deprecated",
+            "does not support",
+            "not supported",
+            "unsupported",
+            "unsupportedparamserror",
+            "only temperature=",
+        )
+    )

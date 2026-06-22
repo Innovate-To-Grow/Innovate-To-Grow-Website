@@ -113,6 +113,39 @@ class SystemIntelligenceAgentInvocationTests(TestCase):
         self.assertEqual(asyncio.run(collect()), [{"type": "text", "chunk": "Retried"}])
         self.assertEqual(build_calls, [True, False])
 
+    def test_async_adapter_retries_without_temperature_when_litellm_rejects_it(self):
+        _TEMPERATURE_DEPRECATED_MODEL_IDS.clear()
+        self.addCleanup(_TEMPERATURE_DEPRECATED_MODEL_IDS.clear)
+        build_calls = []
+
+        async def fake_run_agent_invocation(*args, include_temperature, **kwargs):
+            build_calls.append(include_temperature)
+            if include_temperature:
+                raise Exception(
+                    "litellm.UnsupportedParamsError: us.anthropic.claude-opus-4-7 "
+                    "does not support temperature=0.7. Only temperature=1 is supported."
+                )
+            yield {"type": "text", "chunk": "Retried"}
+
+        async def collect():
+            with patch(
+                "apps.system_intelligence.services.agents.stream.run_agent_invocation",
+                side_effect=fake_run_agent_invocation,
+            ):
+                return [
+                    event
+                    async for event in _invoke_system_intelligence_stream_async(
+                        [{"role": "user", "content": "Current"}],
+                        chat_config=self.chat_config,
+                        aws_config=self.aws_config,
+                        model_id=self.chat_config.default_model_id,
+                        user_id="42",
+                    )
+                ]
+
+        self.assertEqual(asyncio.run(collect()), [{"type": "text", "chunk": "Retried"}])
+        self.assertEqual(build_calls, [True, False])
+
     def test_sync_stream_wraps_bedrock_dns_error(self):
         async def failing_async_stream(*args, **kwargs):
             raise Exception(
