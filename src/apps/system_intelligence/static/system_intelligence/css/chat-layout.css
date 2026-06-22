@@ -68,6 +68,10 @@
   background: transparent;
 }
 
+.si-chat-toolbar-main {
+  min-width: 0;
+}
+
 .si-chat-sidebar h2,
 .si-chat-toolbar h2,
 .si-chat-empty h3 {
@@ -75,6 +79,12 @@
   color: var(--md-sys-color-on-surface, #202124);
   font-size: 16px;
   font-weight: 600;
+}
+
+.si-chat-toolbar h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .si-chat-sidebar p,
@@ -109,6 +119,18 @@
   letter-spacing: 0;
 }
 
+.si-chat-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.si-chat-meta [data-si-status] {
+  flex: 0 0 auto;
+}
+
 .si-chat-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -120,18 +142,19 @@
   flex: 1 1 0;
   min-height: 0;
   overflow: auto;
-  padding: 28px 24px 132px;
+  padding: 28px 24px;
   background: var(--md-sys-color-surface-container-lowest, #fff);
 }
 
 .si-chat-composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  width: min(920px, calc(100% - 48px));
-  margin: 0 auto;
-  padding: 0 0 24px;
-  background: transparent;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
+  background: var(--md-sys-color-surface-container-low, #f8fafd);
 }
 
 @media (max-width: 900px) {
@@ -151,11 +174,10 @@
   }
 
   .si-chat-messages {
-    padding: 20px 16px 124px;
+    padding: 20px 16px;
   }
 
   .si-chat-composer {
-    width: calc(100% - 32px);
-    padding-bottom: 16px;
+    padding: 14px 16px 16px;
   }
 }

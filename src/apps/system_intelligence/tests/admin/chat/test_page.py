@@ -13,6 +13,8 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertContains(response, 'id="si-root"')
         self.assertContains(response, "Conversations")
         self.assertContains(response, "System Intelligence")
+        self.assertContains(response, "Model")
+        self.assertContains(response, self.chat_config.default_model_id)
         self.assertContains(response, "Message AI Assistant")
         self.assertNotContains(response, "Welcome")
         self.assertNotContains(response, "Agent Debug")

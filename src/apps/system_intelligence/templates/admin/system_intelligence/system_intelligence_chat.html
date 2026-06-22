@@ -7,9 +7,9 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-layout.css' %}?v=20260622-si-header-title">
-<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-components.css' %}?v=20260622-si-header-title">
-<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-sidebar.css' %}?v=20260622-si-header-title">
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-layout.css' %}?v=20260622-si-model-composer">
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-components.css' %}?v=20260622-si-model-composer">
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-sidebar.css' %}?v=20260622-si-model-composer">
 {{ chat_config|json_script:"si-chat-config" }}
 <script defer src="{% static 'system_intelligence/js/chat-state.js' %}"></script>
 <script defer src="{% static 'system_intelligence/js/chat-render.js' %}"></script>
@@ -47,10 +47,16 @@
 
   <main class="si-chat-main" aria-label="AI Assistant chat">
     <header class="si-chat-toolbar">
-      <div>
+      <div class="si-chat-toolbar-main">
         <p class="si-chat-eyebrow">AI Assistant</p>
         <h2 data-si-title>New Chat</h2>
-        <p data-si-status>Ready</p>
+        <div class="si-chat-meta">
+          <p data-si-status>Ready</p>
+          <span class="si-model-pill" title="{{ selected_model_id|default:'No model selected' }}">
+            <span class="si-model-pill-label">Model</span>
+            <span class="si-model-pill-name">{{ selected_model_label }}</span>
+          </span>
+        </div>
       </div>
       <div class="si-chat-toolbar-actions">
         <label class="si-plan-toggle">
