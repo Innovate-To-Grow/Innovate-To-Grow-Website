@@ -13,6 +13,7 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertContains(response, 'id="si-root"')
         self.assertContains(response, "Conversations")
         self.assertContains(response, "Message AI Assistant")
+        self.assertNotContains(response, "Welcome")
         self.assertNotContains(response, "Agent Debug")
         self.assertContains(response, "data-si-sidebar-toggle")
         self.assertContains(response, 'aria-controls="si-chat-sidebar-body"')

@@ -2,13 +2,15 @@
 {% load static %}
 
 {% block title %}{{ title }}{% endblock %}
+{% block header %}{% endblock %}
+{% block messages %}{% endblock %}
 {% block content_title %}{% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-layout.css' %}?v=20260622-si-full-bleed">
-<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-components.css' %}?v=20260622-si-full-bleed">
-<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-sidebar.css' %}?v=20260622-si-full-bleed">
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-layout.css' %}?v=20260622-si-no-header">
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-components.css' %}?v=20260622-si-no-header">
+<link rel="stylesheet" href="{% static 'system_intelligence/css/chat-sidebar.css' %}?v=20260622-si-no-header">
 {{ chat_config|json_script:"si-chat-config" }}
 <script defer src="{% static 'system_intelligence/js/chat-state.js' %}"></script>
 <script defer src="{% static 'system_intelligence/js/chat-render.js' %}"></script>
