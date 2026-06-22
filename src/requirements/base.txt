@@ -27,7 +27,7 @@ google-auth>=2.55.0
 # (CVE-2026-48710). 2.2.0 is the first release whose constraint is
 # starlette<2,>=1.0.1, so it is the minimal version that lets the resolver pick
 # a patched starlette.
-google-adk>=2.2.0,<3.0
+google-adk>=2.3.0,<3.0
 # google-adk requires opentelemetry but sets no version floor. Pin a floor that
 # includes the gen_ai semantic-convention attributes adk's telemetry imports, so
 # an environment with a stale pre-installed opentelemetry can't break adk import.
