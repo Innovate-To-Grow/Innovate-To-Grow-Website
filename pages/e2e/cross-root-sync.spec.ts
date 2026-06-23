@@ -37,7 +37,7 @@ test('login in #root flips #menu-root to the member email', {tag: '@core'}, asyn
   await expectSignedOut(page);
 
   await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', {name: /continue with email/i}).click();
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
   await expect(page).toHaveURL(/\/verify-email\?flow=auth/);
 
   await page.getByLabel('6-digit verification code').fill('123456');
