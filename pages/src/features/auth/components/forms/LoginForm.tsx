@@ -2,12 +2,11 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { getPostAuthPath } from '@/features/auth/api/redirects';
-import { canSubmitNationalPhone, parsePhoneInputToNationalDigits } from '../sections/internal/phoneInput';
-import { LoginEmailMode } from './LoginEmailMode';
+import { identifyLoginInput } from '../sections/internal/identifyLoginInput';
+import { LoginIdentifierMode } from './LoginIdentifierMode';
 import { LoginPasswordMode } from './LoginPasswordMode';
-import { LoginPhoneMode } from './LoginPhoneMode';
 
-type LoginMode = 'email' | 'password' | 'phone';
+type LoginMode = 'identifier' | 'password';
 
 interface LoginFormProps {
   /** Safe internal path to return to after a successful sign-in. */
@@ -24,52 +23,52 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
     clearError,
   } = useAuth();
   const navigate = useNavigate();
+  const identifierInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
-  const phoneInputRef = useRef<HTMLInputElement>(null);
 
+  // `identifier` is the unified email-or-phone field; `email` is the password mode's
+  // dedicated email field (password sign-in is email-only).
+  const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [mode, setMode] = useState<LoginMode>('email');
+  const [mode, setMode] = useState<LoginMode>('identifier');
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const returnToParam = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : '';
 
-  const validateEmail = (requirePassword: boolean) => {
-    const trimmedEmail = email.trim();
-    const emailInput = emailInputRef.current;
-
-    if (!trimmedEmail) {
-      setValidationError('Please enter your email address.');
-      return false;
-    }
-
-    if (emailInput && !emailInput.validity.valid) {
-      setValidationError('Please enter a valid email address.');
-      return false;
-    }
-
-    if (requirePassword && !password) {
-      setValidationError('Please enter your password.');
-      return false;
-    }
-
+  const clearFeedback = () => {
+    clearError();
+    setInfoMessage(null);
     setValidationError(null);
-    return true;
   };
 
-  const handleEmailSubmit = async (event: FormEvent) => {
+  // One input, two flows: detect whether the user typed an email or a US phone
+  // number and route to the matching passwordless verification step.
+  const handleIdentifierSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setInfoMessage(null);
     clearError();
-    if (!validateEmail(false)) return;
+
+    const parsed = identifyLoginInput(identifier);
+    if (parsed.type === 'invalid') {
+      setValidationError('Please enter a valid email address or 10-digit US phone number.');
+      return;
+    }
+    setValidationError(null);
+
     try {
-      const response = await requestEmailAuthCode(email, 'login');
-      setInfoMessage(response.message);
-      // Carry returnTo across the email-code step so verification lands the user back
-      // on the page that sent them to log in.
-      navigate(`/verify-email?flow=auth&email=${encodeURIComponent(email.trim().toLowerCase())}${returnToParam}`);
+      if (parsed.type === 'email') {
+        const response = await requestEmailAuthCode(parsed.value, 'login');
+        setInfoMessage(response.message);
+        // Carry returnTo across the code step so verification lands the user back
+        // on the page that sent them to log in.
+        navigate(`/verify-email?flow=auth&email=${encodeURIComponent(parsed.value.toLowerCase())}${returnToParam}`);
+      } else {
+        const response = await requestPhoneAuthCode(parsed.nationalDigits, '1-US', 'login');
+        setInfoMessage(response.message);
+        navigate(`/verify-phone?phone=${encodeURIComponent(parsed.nationalDigits)}${returnToParam}`);
+      }
     } catch {
       // Error handled by context
     }
@@ -79,7 +78,22 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
     event.preventDefault();
     setInfoMessage(null);
     clearError();
-    if (!validateEmail(true)) return;
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setValidationError('Please enter your email address.');
+      return;
+    }
+    if (emailInputRef.current && !emailInputRef.current.validity.valid) {
+      setValidationError('Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setValidationError('Please enter your password.');
+      return;
+    }
+    setValidationError(null);
+
     try {
       const response = await login(email, password);
       navigate(getPostAuthPath(response, returnTo), { replace: true });
@@ -88,36 +102,21 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
     }
   };
 
-  const handlePhoneSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setInfoMessage(null);
-    clearError();
-    if (!canSubmitNationalPhone(phone)) {
-      setValidationError('Please enter a 10-digit US phone number.');
-      return;
+  const switchToPassword = () => {
+    // Prefill the password email if the unified field already holds an email.
+    const parsed = identifyLoginInput(identifier);
+    if (parsed.type === 'email') {
+      setEmail(parsed.value);
     }
-    setValidationError(null);
-    try {
-      const response = await requestPhoneAuthCode(phone, '1-US', 'login');
-      setInfoMessage(response.message);
-      navigate(`/verify-phone?phone=${encodeURIComponent(phone)}${returnToParam}`);
-    } catch {
-      // Error handled by context
-    }
-  };
-
-  const switchMode = (next: LoginMode) => {
-    setMode(next);
+    setMode('password');
     setPassword('');
-    clearError();
-    setInfoMessage(null);
-    setValidationError(null);
+    clearFeedback();
   };
 
-  const clearFeedback = () => {
-    clearError();
-    setInfoMessage(null);
-    setValidationError(null);
+  const switchToIdentifier = () => {
+    setMode('identifier');
+    setPassword('');
+    clearFeedback();
   };
 
   return (
@@ -140,7 +139,7 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
         </div>
       )}
 
-      {mode === 'password' && (
+      {mode === 'password' ? (
         <LoginPasswordMode
           email={email}
           password={password}
@@ -156,36 +155,19 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
             setValidationError(null);
           }}
           onSubmit={handlePasswordSubmit}
-          onSwitchToCode={() => switchMode('email')}
+          onSwitchToCode={switchToIdentifier}
         />
-      )}
-
-      {mode === 'phone' && (
-        <LoginPhoneMode
-          phone={phone}
+      ) : (
+        <LoginIdentifierMode
+          identifier={identifier}
           isLoading={isLoading}
-          phoneInputRef={phoneInputRef}
-          onPhoneChange={(value) => {
-            setPhone(parsePhoneInputToNationalDigits(value));
+          identifierInputRef={identifierInputRef}
+          onIdentifierChange={(value) => {
+            setIdentifier(value);
             clearFeedback();
           }}
-          onSubmit={handlePhoneSubmit}
-          onSwitchToEmail={() => switchMode('email')}
-        />
-      )}
-
-      {mode === 'email' && (
-        <LoginEmailMode
-          email={email}
-          isLoading={isLoading}
-          emailInputRef={emailInputRef}
-          onEmailChange={(value) => {
-            setEmail(value);
-            clearFeedback();
-          }}
-          onSubmit={handleEmailSubmit}
-          onSwitchToPassword={() => switchMode('password')}
-          onSwitchToPhone={() => switchMode('phone')}
+          onSubmit={handleIdentifierSubmit}
+          onSwitchToPassword={switchToPassword}
         />
       )}
     </>

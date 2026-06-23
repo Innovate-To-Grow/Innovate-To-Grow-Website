@@ -26,7 +26,7 @@ const renderForm = (returnTo?: string | null) =>
     </MemoryRouter>,
   );
 
-describe('LoginForm phone mode', () => {
+describe('LoginForm phone detection', () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
     mockNavigate.mockReset();
@@ -44,40 +44,41 @@ describe('LoginForm phone mode', () => {
     cleanup();
   });
 
-  it('requests a phone code and navigates to verify-phone with national digits', async () => {
+  it('detects a formatted phone number and routes to verify-phone with national digits', async () => {
     renderForm('/past-projects');
     const authValue = mockUseAuth.mock.results.at(-1)?.value;
 
-    fireEvent.click(screen.getByRole('button', {name: 'Use phone number instead'}));
-    fireEvent.change(screen.getByLabelText('Phone number'), {target: {value: '(202) 555-0123'}});
-    fireEvent.click(screen.getByRole('button', {name: 'Continue with Phone'}));
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: '(202) 555-0123'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
 
     await waitFor(() => {
       expect(authValue.requestPhoneAuthCode).toHaveBeenCalledWith('2025550123', '1-US', 'login');
     });
+    expect(authValue.requestEmailAuthCode).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/verify-phone?phone=2025550123&returnTo=%2Fpast-projects');
   });
 
-  it('keeps submit disabled until a full 10-digit number is entered', () => {
+  it('accepts a +1-prefixed number', async () => {
     renderForm();
-    fireEvent.click(screen.getByRole('button', {name: 'Use phone number instead'}));
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
 
-    const submit = screen.getByRole('button', {name: 'Continue with Phone'});
-    expect(submit).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: '+1 202 555 0123'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
 
-    fireEvent.change(screen.getByLabelText('Phone number'), {target: {value: '202555'}});
-    expect(submit).toBeDisabled();
-
-    fireEvent.change(screen.getByLabelText('Phone number'), {target: {value: '2025550123'}});
-    expect(submit).toBeEnabled();
+    await waitFor(() => {
+      expect(authValue.requestPhoneAuthCode).toHaveBeenCalledWith('2025550123', '1-US', 'login');
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('/verify-phone?phone=2025550123');
   });
 
-  it('can switch back to email mode', () => {
+  it('can switch to password mode and back to the unified field', () => {
     renderForm();
-    fireEvent.click(screen.getByRole('button', {name: 'Use phone number instead'}));
-    expect(screen.getByLabelText('Phone number')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email or phone number')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', {name: 'Use email instead'}));
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with email code'}));
+    expect(screen.getByLabelText('Email or phone number')).toBeInTheDocument();
   });
 });
