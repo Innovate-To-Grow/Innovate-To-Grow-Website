@@ -10,8 +10,8 @@ from apps.system_intelligence.models import (
     ChatMessage,
     SystemIntelligenceConfig,
 )
-from apps.system_intelligence.services.adk import invoke_system_intelligence_stream as _default_stream
-from apps.system_intelligence.services.adk.context_manager import prepare_conversation_context
+from apps.system_intelligence.services.agents import invoke_system_intelligence_stream as _default_stream
+from apps.system_intelligence.services.agents.context_manager import prepare_conversation_context
 
 from .stream_helpers import _create_assistant_message, _handle_stream_event, _sse, _stream_exception
 
@@ -25,7 +25,7 @@ def _stream_callable():
 
 
 def chat_send_view(request, conversation_id):
-    """Accept a user message, stream the ADK/Bedrock response back as SSE."""
+    """Accept a user message, stream the Agent/Bedrock response back as SSE."""
     # admin_view only enforces is_staff; re-check the per-app model here.
     if not user_can_access_app(request.user, "system_intelligence"):
         raise PermissionDenied("You do not have permission to access System Intelligence.")

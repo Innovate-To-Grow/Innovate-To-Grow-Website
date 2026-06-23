@@ -3,6 +3,10 @@
    Keep override-only rules here when UNFOLD["STYLES"] loses cascade order.
 */
 
+html[x-cloak] {
+    display: block !important;
+}
+
 #changelist input.action-select,
 #changelist input.action-toggle {
     appearance: none !important;

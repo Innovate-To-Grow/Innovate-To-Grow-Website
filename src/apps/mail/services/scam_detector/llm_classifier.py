@@ -13,7 +13,6 @@ from typing import Any
 
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import invoke_bedrock
-from apps.mail.models import ScamDetectorConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 
 logger = logging.getLogger(__name__)
@@ -32,8 +31,6 @@ _SYSTEM_PROMPT = (
 
 def llm_review(msg: dict[str, Any]) -> dict[str, Any] | None:
     """Return a normalized AI verdict dict, or None to fall back to the rules."""
-    if not ScamDetectorConfig.load().ai_review_enabled:
-        return None
     if not AWSCredentialConfig.load().is_configured:
         return None
 

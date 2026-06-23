@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class SystemIntelligenceConfig(AppConfig):
-    """Admin AI assistant and ADK integration."""
+    """Admin AI assistant and agent integration."""
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.system_intelligence"

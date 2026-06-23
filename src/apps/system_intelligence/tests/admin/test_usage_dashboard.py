@@ -50,6 +50,10 @@ class UsageDashboardViewTest(TestCase):
         # The banner reason is embedded in the injected JSON.
         self.assertContains(response, "unconfigured")
         self.assertContains(response, "si-usage-refresh")
+        self.assertContains(response, 'id="tabs-items"')
+        self.assertContains(response, 'href="/admin/system_intelligence/systemintelligenceconfig/"')
+        self.assertContains(response, 'href="/admin/system-intelligence/usage/" class="active"')
+        self.assertContains(response, 'href="/admin/system_intelligence/assistantconversationlog/"')
         self.assertNotContains(response, "si-usage-fullscreen")
         fetch.assert_called_once()
 

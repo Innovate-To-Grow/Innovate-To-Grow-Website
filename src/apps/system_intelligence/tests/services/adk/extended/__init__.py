@@ -1,1 +1,0 @@
-"""Extended ADK tool tests."""

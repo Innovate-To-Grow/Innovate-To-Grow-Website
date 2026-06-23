@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -7,7 +7,7 @@ from rest_framework.test import APIClient
 
 from apps.core.models import AWSCredentialConfig
 from apps.projects.models import Project, Semester
-from apps.projects.services.ai_search import find_ai_search_candidates
+from apps.projects.services.ai_search import find_ai_search_candidates, run_past_project_ai_search
 from apps.system_intelligence.models import (
     AssistantConversationLog,
     AssistantMessageLog,
@@ -175,6 +175,20 @@ class PastProjectAISearchAPIViewTests(TestCase):
         # Every published semester is in scope, including the newest; only unpublished is excluded.
         self.assertIn("Current Solar Project", titles)
         self.assertNotIn("Unpublished Solar Project", titles)
+
+    def test_service_uses_tool_free_agent_and_parses_ids(self):
+        result = MagicMock(
+            text=f'{{"ids": ["{self.past_project_b.id}", "{self.past_project_a.id}"], "reason": "solar"}}',
+            usage={"inputTokens": 8, "outputTokens": 4, "totalTokens": 12},
+        )
+
+        with patch("apps.projects.services.ai_search.run_tool_free_agent", return_value=result) as mock_agent:
+            outcome = run_past_project_ai_search(query="solar", limit=2, config=self.config)
+
+        self.assertEqual(outcome["project_ids"], [str(self.past_project_b.id), str(self.past_project_a.id)])
+        self.assertEqual(outcome["usage"]["totalTokens"], 12)
+        mock_agent.assert_called_once()
+        self.assertEqual(mock_agent.call_args.kwargs["agent_name"], "past_project_ai_search")
 
     def test_success_logs_source_user_and_results(self):
         self.authenticate()

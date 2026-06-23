@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 8px;
-  min-height: 64px;
+  min-height: 72px;
 }
 
 .si-chat-sidebar-title {
@@ -21,7 +21,7 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--md-sys-color-surface-container-lowest, #fff);
   color: var(--md-sys-color-primary, #305f9d);
   cursor: pointer;
@@ -39,7 +39,7 @@
 .si-chat-new {
   gap: 6px;
   min-width: 92px;
-  height: 32px;
+  height: 36px;
   padding: 0 10px;
   white-space: nowrap;
 }

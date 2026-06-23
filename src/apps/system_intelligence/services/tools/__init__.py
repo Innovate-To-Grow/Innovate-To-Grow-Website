@@ -53,13 +53,13 @@ from .legacy import (
     search_projects,
     search_semesters,
 )
-from .registry import get_adk_tool_metadata, get_adk_tools
+from .registry import get_agent_tool_callables, get_agent_tool_metadata
 
 __all__ = [
     "close_old_connections",
     "count_members",
-    "get_adk_tool_metadata",
-    "get_adk_tools",
+    "get_agent_tool_callables",
+    "get_agent_tool_metadata",
     "get_campaign_stats",
     "get_campaign_recipient_logs",
     "get_checkin_stats",

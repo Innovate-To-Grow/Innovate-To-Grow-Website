@@ -60,15 +60,15 @@ from .legacy import (
 )
 
 
-def get_adk_tools(*, include_writes: bool = True, include_exports: bool = True) -> list:
-    """Return callable tools for Google ADK agent construction.
+def get_agent_tool_callables(*, include_writes: bool = True, include_exports: bool = True) -> list:
+    """Return callable tools for System Intelligence agent construction.
 
     When ``include_writes`` is ``False`` (e.g. plan mode), the propose_* and
     other DB-mutating tools are removed entirely so the agent cannot invoke
     them even if the system prompt fails to dissuade it. ``include_exports`` is
     separate because exports generate files but do not mutate domain records.
     """
-    from apps.system_intelligence.services.adk.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
+    from apps.system_intelligence.services.agents.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
 
     tools = [
         search_members,
@@ -136,12 +136,12 @@ def get_adk_tools(*, include_writes: bool = True, include_exports: bool = True) 
     return tools
 
 
-def get_adk_tool_metadata() -> list[dict[str, str]]:
+def get_agent_tool_metadata() -> list[dict[str, str]]:
     """Return simple tool metadata for the admin info panel."""
     return [
         {
             "name": tool.__name__,
             "description": (tool.__doc__ or "").strip().splitlines()[0] if tool.__doc__ else "",
         }
-        for tool in get_adk_tools()
+        for tool in get_agent_tool_callables()
     ]

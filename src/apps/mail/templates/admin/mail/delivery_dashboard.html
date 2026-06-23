@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load static %}
+{% load static unfold %}
 
 {% block title %}{{ title }}{% endblock %}
 {% block content_title %}{{ page_title }}{% endblock %}
@@ -11,6 +11,8 @@
 {% endblock %}
 
 {% block content %}
+{% tab_list "mail_delivery_operations" %}
+
 <div id="mail-delivery-dashboard-root" class="i2g-delivery-dashboard mb-6" data-dashboard-url="{% url 'admin:mail_delivery_dashboard_data' %}">
   <div class="i2g-delivery-hero rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-5 mb-5">
     <div class="i2g-delivery-hero-row flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

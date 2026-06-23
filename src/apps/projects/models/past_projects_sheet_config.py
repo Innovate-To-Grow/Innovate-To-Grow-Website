@@ -19,7 +19,7 @@ class PastProjectsSheetConfig(ActiveModel, ProjectControlModel):
         blank=True,
         default="",
         verbose_name="Google Sheet ID",
-        help_text="The spreadsheet ID containing past-project rows (the part of the URL after /d/).",
+        help_text="The spreadsheet ID containing project resource rows (the part of the URL after /d/).",
     )
     worksheet_name = models.CharField(
         max_length=255,
@@ -43,8 +43,8 @@ class PastProjectsSheetConfig(ActiveModel, ProjectControlModel):
     sync_count = models.PositiveIntegerField(default=0, editable=False, verbose_name="Projects Synced (last run)")
 
     class Meta:
-        verbose_name = "Past Projects Sheet"
-        verbose_name_plural = "Past Projects Sheet"
+        verbose_name = "Project Resource"
+        verbose_name_plural = "Project Resources"
 
     def __str__(self):
         return self.name or "Not configured"

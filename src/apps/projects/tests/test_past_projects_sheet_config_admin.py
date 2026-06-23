@@ -127,7 +127,7 @@ class ChangelistViewTest(TestCase):
     def test_renders_pull_button_and_google_card_without_config(self):
         response = self.client.get(self.changelist)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Pull Past Projects")
+        self.assertContains(response, "Pull Project Resources")
         self.assertContains(response, "No active Google service account configured.")
         self.assertContains(response, "No active configuration.")
         self.assertIsNone(response.context["config"])

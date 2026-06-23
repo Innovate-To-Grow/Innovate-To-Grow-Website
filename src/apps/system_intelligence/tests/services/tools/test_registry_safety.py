@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
-from apps.system_intelligence.services.adk.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
-from apps.system_intelligence.services.tools.registry import get_adk_tools
+from apps.system_intelligence.services.agents.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
+from apps.system_intelligence.services.tools.registry import get_agent_tool_callables
 
 READ_TOOL_NAMES = frozenset(
     {
@@ -54,7 +54,7 @@ READ_TOOL_NAMES = frozenset(
 
 class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
     def test_every_registered_tool_is_classified(self):
-        registered = {tool.__name__ for tool in get_adk_tools()}
+        registered = {tool.__name__ for tool in get_agent_tool_callables()}
         classified = READ_TOOL_NAMES | WRITE_TOOL_NAMES | EXPORT_TOOL_NAMES
         unclassified = registered - classified
         self.assertFalse(
@@ -62,7 +62,7 @@ class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
             (
                 f"Unclassified system-intelligence tools detected: {sorted(unclassified)}. "
                 "Add each to READ_TOOL_NAMES, WRITE_TOOL_NAMES (in "
-                "apps.system_intelligence.services.adk.constants), or EXPORT_TOOL_NAMES "
+                "apps.system_intelligence.services.agents.constants), or EXPORT_TOOL_NAMES "
                 "based on whether the tool reads, proposes a human-approved write, or "
                 "generates a download. Tools that mutate user data outside the "
                 "propose/approve flow MUST NOT be added."
@@ -75,10 +75,12 @@ class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
         self.assertFalse(WRITE_TOOL_NAMES & EXPORT_TOOL_NAMES)
 
     def test_plan_mode_strips_all_write_tools(self):
-        plan_tools = {tool.__name__ for tool in get_adk_tools(include_writes=False)}
+        plan_tools = {tool.__name__ for tool in get_agent_tool_callables(include_writes=False)}
         self.assertFalse(plan_tools & WRITE_TOOL_NAMES)
 
-    def test_adk_web_read_only_mode_strips_export_tools(self):
-        read_only_tools = {tool.__name__ for tool in get_adk_tools(include_writes=False, include_exports=False)}
+    def test_agent_read_only_mode_strips_export_tools(self):
+        read_only_tools = {
+            tool.__name__ for tool in get_agent_tool_callables(include_writes=False, include_exports=False)
+        }
         self.assertFalse(read_only_tools & WRITE_TOOL_NAMES)
         self.assertFalse(read_only_tools & EXPORT_TOOL_NAMES)

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.authn.models import ContactEmail
@@ -47,6 +47,7 @@ class PastProjectShareAdminTest(TestCase):
         self.assertIn("<pre", preview)
         self.assertIn("project_title", preview)
 
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
     def test_delete_view_removes_share(self):
         response = self.client.post(
             reverse("admin:projects_pastprojectshare_delete", args=[self.share.pk]),
@@ -57,7 +58,7 @@ class PastProjectShareAdminTest(TestCase):
 
     def test_str_falls_back_when_name_blank(self):
         legacy = PastProjectShare.objects.create(name="", rows=[])
-        self.assertEqual(str(legacy), f"Past Project Share {legacy.pk}")
+        self.assertEqual(str(legacy), f"Project Resource Share {legacy.pk}")
 
     def _staff_request(self):
         class _Req:
