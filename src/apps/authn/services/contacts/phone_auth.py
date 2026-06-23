@@ -25,6 +25,18 @@ from apps.authn.services.contacts.contact_phones import (
 from apps.authn.services.email_challenges import AuthChallengeInvalid
 
 
+class PhoneAccountInactive(Exception):
+    """Raised when a phone login resolves to a deactivated member.
+
+    ``is_active=False`` is the project's only account-disable mechanism (admin
+    ``deactivate_members``, unsubscribe filters, staff-login gating). Proving
+    phone ownership must NOT silently revive a disabled account, so the login
+    path rejects it instead of reactivating — mirroring the email-code flow,
+    which returns a generic invalid-code 400 for ``flow == "login"`` when the
+    member is inactive. The view maps this to that same generic 400.
+    """
+
+
 def request_phone_auth(phone_number: str, region: str = "1-US") -> dict:
     """Send an SMS verification code for passwordless phone auth.
 
@@ -54,12 +66,18 @@ def _create_blank_active_member():
 
 
 def _login_existing(contact: ContactPhone):
-    """Return the member owning ``contact``, activating it and marking the phone
-    verified if needed (phone ownership was just proven this request)."""
+    """Return the member owning ``contact``, marking the phone verified if needed
+    (phone ownership was just proven this request).
+
+    Raises :class:`PhoneAccountInactive` when the member is deactivated — a
+    disabled account must not be revived by a phone login. The guard runs before
+    any mutation so a rejected attempt leaves the member and contact untouched.
+    Only ever reached on the login path (register/orphan-claim create a fresh
+    active member), so there is no legitimate reactivation case here.
+    """
     member = contact.member
     if not member.is_active:
-        member.is_active = True
-        member.save(update_fields=["is_active", "updated_at"])
+        raise PhoneAccountInactive
     if not contact.verified:
         contact.verified = True
         contact.save(update_fields=["verified", "updated_at"])

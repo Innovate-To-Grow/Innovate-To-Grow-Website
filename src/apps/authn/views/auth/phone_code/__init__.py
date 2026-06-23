@@ -15,6 +15,7 @@ from apps.authn.serializers import (
     UnifiedPhoneAuthVerifySerializer,
 )
 from apps.authn.services import (
+    PhoneAccountInactive,
     PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
@@ -74,6 +75,11 @@ class PhoneAuthVerifyCodeView(APIView):
         except PhoneVerificationDeliveryError:
             return Response({"detail": PHONE_VERIFICATION_DELIVERY_FAILED}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        member, flow = resolve_or_create_member_by_phone(phone_number, region)
+        try:
+            member, flow = resolve_or_create_member_by_phone(phone_number, region)
+        except PhoneAccountInactive:
+            # A deactivated account must not be revived via phone login; mirror
+            # the email flow's generic invalid-code 400 (no enumeration leak).
+            return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
         message = "Login successful." if flow == "login" else "Registration successful."
         return Response(build_auth_success_payload(member, message), status=status.HTTP_200_OK)

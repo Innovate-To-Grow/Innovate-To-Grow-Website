@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from apps.authn.models import ContactPhone
-from apps.authn.services.contacts.phone_auth import resolve_or_create_member_by_phone
+from apps.authn.services.contacts.phone_auth import PhoneAccountInactive, resolve_or_create_member_by_phone
 from apps.authn.services.email_challenges import AuthChallengeInvalid
 
 Member = get_user_model()
@@ -34,14 +34,17 @@ class ResolveOrCreateMemberByPhoneTests(TestCase):
         self.assertEqual(flow, "login")
         self.assertEqual(member.id, existing.id)
 
-    def test_activates_inactive_member_and_verifies_phone_on_login(self):
+    def test_rejects_inactive_member_on_login_without_mutating(self):
+        # A disabled account must not be silently revived by proving phone
+        # ownership (mirrors the email-code login policy). The guard runs before
+        # any write, so the member stays inactive and the phone stays unverified.
         existing = Member.objects.create_user(is_active=False)
         ContactPhone.objects.create(member=existing, phone_number="2025550123", region="1-US", verified=False)
-        member, flow = resolve_or_create_member_by_phone("2025550123", "1-US")
-        self.assertEqual(flow, "login")
-        member.refresh_from_db()
-        self.assertTrue(member.is_active)
-        self.assertTrue(ContactPhone.objects.get(phone_number="2025550123").verified)
+        with self.assertRaises(PhoneAccountInactive):
+            resolve_or_create_member_by_phone("2025550123", "1-US")
+        existing.refresh_from_db()
+        self.assertFalse(existing.is_active)
+        self.assertFalse(ContactPhone.objects.get(phone_number="2025550123").verified)
 
     def test_claims_orphan_member_less_phone(self):
         ContactPhone.objects.create(member=None, phone_number="2025550123", region="1-US", verified=False)
