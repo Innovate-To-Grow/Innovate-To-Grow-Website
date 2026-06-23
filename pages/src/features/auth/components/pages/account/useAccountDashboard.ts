@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState, type ChangeEvent, type FormEvent} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../../AuthContext';
+import {formatE164ForDisplay} from '@/features/auth/components/sections/internal/phoneInput';
 import {
   confirmAccountDeletion,
   confirmPasswordChange,
@@ -368,7 +369,7 @@ export const useAccountDashboard = () => {
 
   return {
     canRender: isAuthenticated && !requiresProfileCompletion,
-    displayEmail: profile?.email || user?.email,
+    displayEmail: profile?.email || user?.email || formatE164ForDisplay(user?.phone ?? ''),
     imageError,
     imageUploading,
     isEditingProfile,

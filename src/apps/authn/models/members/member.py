@@ -122,10 +122,11 @@ class Member(AbstractUser, ProjectControlModel):
         """Return the member's primary phone in E.164, or empty string.
 
         ContactPhone has no ``phone_type`` (unlike ContactEmail), so pick
-        deterministically: the earliest verified phone, else the earliest phone.
+        deterministically in a single query: verified phones sort first
+        (``-verified``), then the earliest within that group — i.e. the earliest
+        verified phone, else the earliest phone overall. ``build_auth_success_payload``
+        calls this on every login, so it stays one query (not two) even when the
+        account has no phone.
         """
-        contact = (
-            self.contact_phones.filter(verified=True).order_by("created_at").first()
-            or self.contact_phones.order_by("created_at").first()
-        )
+        contact = self.contact_phones.order_by("-verified", "created_at").first()
         return contact.to_e164() if contact else ""

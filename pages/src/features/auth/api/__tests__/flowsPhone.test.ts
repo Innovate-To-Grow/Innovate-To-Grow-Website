@@ -68,5 +68,11 @@ describe('phone auth flows', () => {
       expect(mocks.persist).toHaveBeenCalledWith(response);
       expect(result).toEqual(response);
     });
+
+    it('does not persist a session when the verify request fails', async () => {
+      mocks.post.mockRejectedValue(new Error('invalid code'));
+      await expect(verifyPhoneAuthCode('2025550123', '000000')).rejects.toThrow();
+      expect(mocks.persist).not.toHaveBeenCalled();
+    });
   });
 });

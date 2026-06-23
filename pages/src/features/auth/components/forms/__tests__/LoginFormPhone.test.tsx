@@ -81,4 +81,32 @@ describe('LoginForm phone detection', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Sign in with email code'}));
     expect(screen.getByLabelText('Email or phone number')).toBeInTheDocument();
   });
+
+  it('does not navigate when the phone code request fails', async () => {
+    renderForm();
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+    authValue.requestPhoneAuthCode.mockRejectedValue(new Error('delivery error'));
+
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: '2025550123'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
+
+    await waitFor(() => {
+      expect(authValue.requestPhoneAuthCode).toHaveBeenCalled();
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate when the email code request fails', async () => {
+    renderForm();
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+    authValue.requestEmailAuthCode.mockRejectedValue(new Error('too many requests'));
+
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: 'user@example.com'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
+
+    await waitFor(() => {
+      expect(authValue.requestEmailAuthCode).toHaveBeenCalled();
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
 });

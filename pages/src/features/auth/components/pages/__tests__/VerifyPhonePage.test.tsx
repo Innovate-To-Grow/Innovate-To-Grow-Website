@@ -93,4 +93,18 @@ describe('VerifyPhonePage', () => {
     renderAt('/verify-phone?phone=123');
     expect(screen.queryByRole('button', {name: 'Verify'})).not.toBeInTheDocument();
   });
+
+  it('stays on the verify screen when verification fails', async () => {
+    renderAt('/verify-phone?phone=2025550123');
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+    authValue.verifyPhoneAuthCode.mockRejectedValue(new Error('invalid code'));
+
+    fireEvent.change(screen.getByRole('textbox', {name: '6-digit verification code'}), {target: {value: '000000'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Verify'}));
+
+    await waitFor(() => {
+      expect(authValue.verifyPhoneAuthCode).toHaveBeenCalled();
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
 });

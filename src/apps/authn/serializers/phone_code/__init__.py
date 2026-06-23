@@ -43,6 +43,10 @@ class BasePhoneAuthSerializer(serializers.Serializer):
 class UnifiedPhoneAuthRequestSerializer(BasePhoneAuthSerializer):
     """Request an SMS verification code for passwordless signup/login."""
 
+    # `source` mirrors the email request serializer for API parity and lets the
+    # client declare the entry point (login / subscribe / event_registration).
+    # The phone request flow does not yet branch on it, so it is validated (an
+    # unknown source is a 400) but not consumed.
     source = serializers.ChoiceField(choices=PHONE_AUTH_SOURCE_CHOICES, required=False, default="login")
 
     def save(self):

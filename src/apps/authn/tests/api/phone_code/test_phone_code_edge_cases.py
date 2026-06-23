@@ -70,6 +70,14 @@ class PhoneAuthEdgeCaseTests(APITestCase):
         response = self.client.post(VERIFY_URL, {"phone_number": "2025550123", "code": "12"}, format="json")
         self.assertEqual(response.status_code, 400)
 
+    def test_request_accepts_known_source(self, _start):
+        response = self.client.post(REQUEST_URL, {"phone_number": "2025550123", "source": "subscribe"}, format="json")
+        self.assertEqual(response.status_code, 202)
+
+    def test_request_rejects_unknown_source(self, _start):
+        response = self.client.post(REQUEST_URL, {"phone_number": "2025550123", "source": "bogus"}, format="json")
+        self.assertEqual(response.status_code, 400)
+
     # ── Abuse / enumeration ──────────────────────────────
     def test_request_rate_limited_per_ip(self, _start):
         statuses = [

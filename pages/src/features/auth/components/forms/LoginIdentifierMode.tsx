@@ -22,6 +22,9 @@ export const LoginIdentifierMode = ({
 }: LoginIdentifierModeProps) => {
   const parsed = identifyLoginInput(identifier);
   const canSubmit = parsed.type !== 'invalid';
+  // Only flag invalid once the user has actually typed something, so an empty
+  // field isn't announced as an error on first focus.
+  const showInvalid = parsed.type === 'invalid' && identifier.trim().length > 0;
   // Live feedback so the smart detection is visible as the user types.
   const hint =
     parsed.type === 'email'
@@ -48,8 +51,12 @@ export const LoginIdentifierMode = ({
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
+          aria-describedby="login-identifier-hint"
+          aria-invalid={showInvalid}
         />
-        <span className="auth-help-text">{hint}</span>
+        <span id="login-identifier-hint" className="auth-help-text">
+          {hint}
+        </span>
       </div>
 
       <PrivacyLegalNotice />
