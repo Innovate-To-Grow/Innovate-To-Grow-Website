@@ -76,7 +76,10 @@ def resolve_or_create_member_by_phone(phone_number: str, region: str = "1-US"):
     national = normalize_to_national(phone_number, region)
     with transaction.atomic():
         existing = (
-            ContactPhone.objects.select_for_update().select_related("member").filter(phone_number=national).first()
+            ContactPhone.objects.select_for_update(of=("self",))
+            .select_related("member")
+            .filter(phone_number=national)
+            .first()
         )
         if existing is not None and existing.member is not None:
             return _login_existing(existing), "login"
@@ -102,7 +105,10 @@ def resolve_or_create_member_by_phone(phone_number: str, region: str = "1-US"):
             return member, "register"
         except AuthChallengeInvalid:
             existing = (
-                ContactPhone.objects.select_for_update().select_related("member").filter(phone_number=national).first()
+                ContactPhone.objects.select_for_update(of=("self",))
+                .select_related("member")
+                .filter(phone_number=national)
+                .first()
             )
             if existing is not None and existing.member is not None:
                 return _login_existing(existing), "login"
