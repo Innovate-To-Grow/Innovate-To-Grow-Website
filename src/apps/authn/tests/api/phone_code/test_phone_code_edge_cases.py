@@ -70,6 +70,12 @@ class PhoneAuthEdgeCaseTests(APITestCase):
         response = self.client.post(VERIFY_URL, {"phone_number": "2025550123", "code": "12"}, format="json")
         self.assertEqual(response.status_code, 400)
 
+    def test_verify_rejects_right_length_non_digit_code(self, _start):
+        # 6 chars clears the length check, so the digit-regex guard in
+        # validate_code is what rejects it.
+        response = self.client.post(VERIFY_URL, {"phone_number": "2025550123", "code": "12a45z"}, format="json")
+        self.assertEqual(response.status_code, 400)
+
     def test_request_accepts_known_source(self, _start):
         response = self.client.post(REQUEST_URL, {"phone_number": "2025550123", "source": "subscribe"}, format="json")
         self.assertEqual(response.status_code, 202)
