@@ -38,6 +38,7 @@ const PastProjectCurationSharedLinksPage = React.lazy(() => import('@/features/a
 const CompleteProfilePage = React.lazy(() => import('@/features/auth/components/pages/CompleteProfilePage').then(m => ({default: m.CompleteProfilePage})));
 const ForgotPasswordPage = React.lazy(() => import('@/features/auth/components/pages/ForgotPasswordPage').then(m => ({default: m.ForgotPasswordPage})));
 const VerifyEmailPage = React.lazy(() => import('@/features/auth/components/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
+const VerifyPhonePage = React.lazy(() => import('@/features/auth/components/pages/VerifyPhonePage').then(m => ({default: m.VerifyPhonePage})));
 
 // Content pages (lazy) — only non-CMS pages
 const NewsPage = React.lazy(() => import('@/routes/NewsPage').then(m => ({default: m.NewsPage})));
@@ -112,6 +113,7 @@ export const router = createBrowserRouter([
             {path: 'register', element: lazyRoute(<RegisterPage/>)},
             {path: 'forgot-password', element: lazyRoute(<ForgotPasswordPage/>)},
             {path: 'verify-email', element: lazyRoute(<VerifyEmailPage/>)},
+            {path: 'verify-phone', element: lazyRoute(<VerifyPhonePage/>)},
             {path: 'complete-profile', element: lazyRoute(<CompleteProfilePage/>)},
 
             // Account management

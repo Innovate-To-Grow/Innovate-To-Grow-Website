@@ -8,6 +8,7 @@ interface LoginEmailModeProps {
   onEmailChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onSwitchToPassword: () => void;
+  onSwitchToPhone: () => void;
 }
 
 export const LoginEmailMode = ({
@@ -17,6 +18,7 @@ export const LoginEmailMode = ({
   onEmailChange,
   onSubmit,
   onSwitchToPassword,
+  onSwitchToPhone,
 }: LoginEmailModeProps) => {
   return (
     <form className="auth-form" onSubmit={onSubmit} noValidate>
@@ -53,7 +55,10 @@ export const LoginEmailMode = ({
         )}
       </button>
 
-      <div style={{ textAlign: 'center' }}>
+      <div className="auth-inline-links" style={{ justifyContent: 'center' }}>
+        <button type="button" className="auth-text-link" onClick={onSwitchToPhone} style={{ fontSize: '0.8125rem' }}>
+          Use phone number instead
+        </button>
         <button type="button" className="auth-text-link" onClick={onSwitchToPassword} style={{ fontSize: '0.8125rem' }}>
           Sign in with password instead
         </button>

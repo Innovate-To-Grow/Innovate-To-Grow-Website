@@ -31,6 +31,7 @@ def build_auth_success_payload(
         "user": {
             "member_uuid": str(member.member_uuid),
             "email": member.get_primary_email(),
+            "phone": member.get_primary_phone(),
             "is_staff": member.is_staff,
         },
         "next_step": resolved_next_step,

@@ -27,6 +27,11 @@ REST_FRAMEWORK = {
         # service-level cap is keyed per destination number (bypassable by
         # rotating numbers), so this per-actor limit bounds toll-fraud / pumping.
         "phone_code_request": "5/minute",
+        # Per-IP cap on the PUBLIC passwordless phone-auth SMS request endpoint.
+        # phone_code_request above is a UserRateThrottle (no-op for anonymous
+        # callers), so this anon scope is what actually bounds toll-fraud / SMS
+        # pumping on the unauthenticated signup/login endpoint.
+        "phone_auth_code_request": "5/minute",
         # Per-authenticated-user cap on email verification-code sends (the shared
         # email_code_request throttle is anon-only and a no-op once authenticated,
         # so it cannot stop bombing an attacker-supplied address).

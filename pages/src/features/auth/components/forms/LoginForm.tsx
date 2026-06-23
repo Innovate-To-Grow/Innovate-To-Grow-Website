@@ -2,8 +2,12 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { getPostAuthPath } from '@/features/auth/api/redirects';
+import { canSubmitNationalPhone, parsePhoneInputToNationalDigits } from '../sections/internal/phoneInput';
 import { LoginEmailMode } from './LoginEmailMode';
 import { LoginPasswordMode } from './LoginPasswordMode';
+import { LoginPhoneMode } from './LoginPhoneMode';
+
+type LoginMode = 'email' | 'password' | 'phone';
 
 interface LoginFormProps {
   /** Safe internal path to return to after a successful sign-in. */
@@ -14,20 +18,25 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
   const {
     login,
     requestEmailAuthCode,
+    requestPhoneAuthCode,
     error,
     isLoading,
     clearError,
   } = useAuth();
   const navigate = useNavigate();
   const emailInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [mode, setMode] = useState<LoginMode>('email');
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const validateForm = (requirePassword: boolean) => {
+  const returnToParam = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : '';
+
+  const validateEmail = (requirePassword: boolean) => {
     const trimmedEmail = email.trim();
     const emailInput = emailInputRef.current;
 
@@ -54,13 +63,12 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
     event.preventDefault();
     setInfoMessage(null);
     clearError();
-    if (!validateForm(false)) return;
+    if (!validateEmail(false)) return;
     try {
       const response = await requestEmailAuthCode(email, 'login');
       setInfoMessage(response.message);
       // Carry returnTo across the email-code step so verification lands the user back
       // on the page that sent them to log in.
-      const returnToParam = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : '';
       navigate(`/verify-email?flow=auth&email=${encodeURIComponent(email.trim().toLowerCase())}${returnToParam}`);
     } catch {
       // Error handled by context
@@ -71,7 +79,7 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
     event.preventDefault();
     setInfoMessage(null);
     clearError();
-    if (!validateForm(true)) return;
+    if (!validateEmail(true)) return;
     try {
       const response = await login(email, password);
       navigate(getPostAuthPath(response, returnTo), { replace: true });
@@ -80,9 +88,33 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
     }
   };
 
-  const switchMode = (toPassword: boolean) => {
-    setShowPasswordForm(toPassword);
+  const handlePhoneSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setInfoMessage(null);
+    clearError();
+    if (!canSubmitNationalPhone(phone)) {
+      setValidationError('Please enter a 10-digit US phone number.');
+      return;
+    }
+    setValidationError(null);
+    try {
+      const response = await requestPhoneAuthCode(phone, '1-US', 'login');
+      setInfoMessage(response.message);
+      navigate(`/verify-phone?phone=${encodeURIComponent(phone)}${returnToParam}`);
+    } catch {
+      // Error handled by context
+    }
+  };
+
+  const switchMode = (next: LoginMode) => {
+    setMode(next);
     setPassword('');
+    clearError();
+    setInfoMessage(null);
+    setValidationError(null);
+  };
+
+  const clearFeedback = () => {
     clearError();
     setInfoMessage(null);
     setValidationError(null);
@@ -108,7 +140,7 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
         </div>
       )}
 
-      {showPasswordForm ? (
+      {mode === 'password' && (
         <LoginPasswordMode
           email={email}
           password={password}
@@ -116,9 +148,7 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
           emailInputRef={emailInputRef}
           onEmailChange={(value) => {
             setEmail(value);
-            clearError();
-            setInfoMessage(null);
-            setValidationError(null);
+            clearFeedback();
           }}
           onPasswordChange={(value) => {
             setPassword(value);
@@ -126,21 +156,36 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
             setValidationError(null);
           }}
           onSubmit={handlePasswordSubmit}
-          onSwitchToCode={() => switchMode(false)}
+          onSwitchToCode={() => switchMode('email')}
         />
-      ) : (
+      )}
+
+      {mode === 'phone' && (
+        <LoginPhoneMode
+          phone={phone}
+          isLoading={isLoading}
+          phoneInputRef={phoneInputRef}
+          onPhoneChange={(value) => {
+            setPhone(parsePhoneInputToNationalDigits(value));
+            clearFeedback();
+          }}
+          onSubmit={handlePhoneSubmit}
+          onSwitchToEmail={() => switchMode('email')}
+        />
+      )}
+
+      {mode === 'email' && (
         <LoginEmailMode
           email={email}
           isLoading={isLoading}
           emailInputRef={emailInputRef}
           onEmailChange={(value) => {
             setEmail(value);
-            clearError();
-            setInfoMessage(null);
-            setValidationError(null);
+            clearFeedback();
           }}
           onSubmit={handleEmailSubmit}
-          onSwitchToPassword={() => switchMode(true)}
+          onSwitchToPassword={() => switchMode('password')}
+          onSwitchToPhone={() => switchMode('phone')}
         />
       )}
     </>
