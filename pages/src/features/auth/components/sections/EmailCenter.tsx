@@ -5,6 +5,7 @@ import {EmailAddForm} from './EmailAddForm';
 import {ContactEmailCard} from './ContactEmailCard';
 import {PrimaryEmailCard} from './PrimaryEmailCard';
 import {StatusAlert} from '../shared/StatusAlert';
+import {normalizeEmailAddress} from './internal/emailAddress';
 import {useEmailCenter} from './internal/useEmailCenter';
 
 interface EmailCenterProps {
@@ -14,6 +15,7 @@ interface EmailCenterProps {
 
 export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
     const emailCenter = useEmailCenter({profile, onProfileUpdate});
+    const primaryEmail = normalizeEmailAddress(profile.email);
 
     return (
         <div className="account-section">
@@ -22,21 +24,24 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
             {emailCenter.successMessage ? <StatusAlert tone="success" message={emailCenter.successMessage} style={{marginBottom: '1rem'}} /> : null}
             {emailCenter.error ? <StatusAlert tone="error" message={emailCenter.error} style={{marginBottom: '1rem'}} /> : null}
 
-            <PrimaryEmailCard
-                profile={profile}
-                subscribeSaving={emailCenter.subscribeSaving}
-                verifying={emailCenter.primaryVerifying}
-                verifyCode={emailCenter.primaryVerifyCode}
-                verifyLoading={emailCenter.primaryVerifyLoading}
-                verifyError={emailCenter.primaryVerifyError}
-                resendLoading={emailCenter.primaryResendLoading}
-                onToggleSubscribe={emailCenter.handlePrimarySubscribeToggle}
-                onToggleVerify={emailCenter.handlePrimaryToggleVerify}
-                onVerifyCodeChange={emailCenter.setPrimaryVerifyCode}
-                onVerifySubmit={emailCenter.handlePrimaryVerifySubmit}
-                onResend={emailCenter.handlePrimaryResend}
-                onCancelVerify={emailCenter.handlePrimaryCancelVerify}
-            />
+            {primaryEmail ? (
+                <PrimaryEmailCard
+                    profile={profile}
+                    email={primaryEmail}
+                    subscribeSaving={emailCenter.subscribeSaving}
+                    verifying={emailCenter.primaryVerifying}
+                    verifyCode={emailCenter.primaryVerifyCode}
+                    verifyLoading={emailCenter.primaryVerifyLoading}
+                    verifyError={emailCenter.primaryVerifyError}
+                    resendLoading={emailCenter.primaryResendLoading}
+                    onToggleSubscribe={emailCenter.handlePrimarySubscribeToggle}
+                    onToggleVerify={emailCenter.handlePrimaryToggleVerify}
+                    onVerifyCodeChange={emailCenter.setPrimaryVerifyCode}
+                    onVerifySubmit={emailCenter.handlePrimaryVerifySubmit}
+                    onResend={emailCenter.handlePrimaryResend}
+                    onCancelVerify={emailCenter.handlePrimaryCancelVerify}
+                />
+            ) : null}
 
             {emailCenter.loading ? (
                 <p className="account-status-text">Loading connected emails...</p>

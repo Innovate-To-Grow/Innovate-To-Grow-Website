@@ -1,5 +1,6 @@
 import {Link} from 'react-router-dom';
 import type {ContactEmail, ContactPhone, ProfileResponse} from '@/features/auth/api/types';
+import {normalizeEmailAddress} from '@/features/auth/components/sections/internal/emailAddress';
 import {formatPhoneDisplay} from '@/features/auth/components/sections/internal/helpers';
 
 interface ManageStepProps {
@@ -55,30 +56,34 @@ export const ManageStep = ({
     );
   }
 
+  const primaryEmail = normalizeEmailAddress(profile.email);
+
   return (
     <div className="subscribe-section">
       <section className="subscribe-preference-group" aria-labelledby="subscribe-email-preferences">
         <h3 id="subscribe-email-preferences" className="subscribe-preference-heading">Email Newsletters</h3>
         <div className="subscribe-preference-list">
-          <div className="subscribe-preference-item">
-            <div className="subscribe-preference-copy">
-              <span className="subscribe-manage-email-value">{profile.email}</span>
-              <span className="subscribe-preference-meta">
-                Primary email - {verifiedLabel(profile.email_verified)}
-              </span>
+          {primaryEmail ? (
+            <div className="subscribe-preference-item">
+              <div className="subscribe-preference-copy">
+                <span className="subscribe-manage-email-value">{primaryEmail}</span>
+                <span className="subscribe-preference-meta">
+                  Primary email - {verifiedLabel(profile.email_verified)}
+                </span>
+              </div>
+              <div className="subscribe-manage-status">
+                <span className="subscribe-manage-status-label">Newsletters</span>
+                <ToggleButton
+                  active={profile.email_subscribe}
+                  disabled={savingId !== null}
+                  label={
+                    profile.email_subscribe ? 'Turn off newsletter subscription' : 'Turn on newsletter subscription'
+                  }
+                  onToggle={() => void onPrimaryEmailToggle(!profile.email_subscribe)}
+                />
+              </div>
             </div>
-            <div className="subscribe-manage-status">
-              <span className="subscribe-manage-status-label">Newsletters</span>
-              <ToggleButton
-                active={profile.email_subscribe}
-                disabled={savingId !== null}
-                label={
-                  profile.email_subscribe ? 'Turn off newsletter subscription' : 'Turn on newsletter subscription'
-                }
-                onToggle={() => void onPrimaryEmailToggle(!profile.email_subscribe)}
-              />
-            </div>
-          </div>
+          ) : null}
 
           {contactEmails.map((contact) => (
             <div key={contact.id} className="subscribe-preference-item">
@@ -103,6 +108,10 @@ export const ManageStep = ({
               </div>
             </div>
           ))}
+
+          {!primaryEmail && contactEmails.length === 0 ? (
+            <p className="subscribe-empty">No email addresses are connected to this account.</p>
+          ) : null}
         </div>
       </section>
 
