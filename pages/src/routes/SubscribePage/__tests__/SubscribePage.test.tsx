@@ -188,6 +188,36 @@ describe('SubscribePage', () => {
     expect(newsletterLabels.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('hides the primary newsletter row for phone-only accounts', async () => {
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: {member_uuid: 'uuid-1', email: ''},
+      isAuthenticated: true,
+    });
+
+    mockGetProfile.mockResolvedValue({
+      ...profileData,
+      email: '',
+      email_verified: false,
+      primary_email_id: null,
+      email_subscribe: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockGetProfile).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText('No email addresses are connected to this account.')).toBeInTheDocument();
+    expect(screen.queryByText('Primary email - Unverified')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Turn on newsletter subscription'})).not.toBeInTheDocument();
+  });
+
   it('opens directly on the profile step when the query requests it', async () => {
     mockUseAuth.mockReturnValue({
       ...baseAuth,

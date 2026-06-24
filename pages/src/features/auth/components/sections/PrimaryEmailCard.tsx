@@ -5,6 +5,7 @@ import {StatusAlert} from '../shared/StatusAlert';
 
 interface PrimaryEmailCardProps {
   profile: ProfileResponse;
+  email: string;
   subscribeSaving: boolean;
   verifying: boolean;
   verifyCode: string;
@@ -21,6 +22,7 @@ interface PrimaryEmailCardProps {
 
 export const PrimaryEmailCard = ({
   profile,
+  email,
   subscribeSaving,
   verifying,
   verifyCode,
@@ -38,7 +40,7 @@ export const PrimaryEmailCard = ({
     <div className="email-center-row">
       <div className="email-center-card-main">
         <div className="email-center-card-heading">
-          <span className="email-center-card-title email-center-card-title--emphasis">{profile.email}</span>
+          <span className="email-center-card-title email-center-card-title--emphasis">{email}</span>
           <span className="email-center-badge primary">Primary</span>
           <span className={`email-center-badge ${profile.email_verified ? 'verified' : 'unverified'}`}>
             {profile.email_verified ? 'Verified' : 'Unverified'}
