@@ -48,6 +48,39 @@ export async function mockEmailAuthFlow(
   return {requestPayloads, verifyPayloads};
 }
 
+export interface PhoneAuthMockResult {
+  requestPayloads: unknown[];
+  verifyPayloads: unknown[];
+}
+
+// Phone-auth twin of mockEmailAuthFlow: stubs the SMS request + verify endpoints
+// and captures their payloads. On verifyStatus >= 400 it returns the same generic
+// invalid-code detail the backend uses (no enumeration leak).
+export async function mockPhoneAuthFlow(
+  page: Page,
+  opts: {verifyResponse?: LoginResponse | EmailAuthVerifyResponse; verifyStatus?: number} = {},
+): Promise<PhoneAuthMockResult> {
+  const requestPayloads: unknown[] = [];
+  const verifyPayloads: unknown[] = [];
+
+  await page.route('**/authn/phone-auth/request-code/', async (route) => {
+    requestPayloads.push(route.request().postDataJSON());
+    await route.fulfill(json({message: 'Verification code sent.'}));
+  });
+
+  await page.route('**/authn/phone-auth/verify-code/', async (route) => {
+    verifyPayloads.push(route.request().postDataJSON());
+    const status = opts.verifyStatus ?? 200;
+    if (status >= 400) {
+      await route.fulfill(json({detail: 'Verification code is invalid or has expired.'}, status));
+      return;
+    }
+    await route.fulfill(json(opts.verifyResponse ?? loginResponse()));
+  });
+
+  return {requestPayloads, verifyPayloads};
+}
+
 export interface PasswordResetMockResult {
   requestPayloads: unknown[];
   verifyPayloads: unknown[];

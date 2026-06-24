@@ -41,6 +41,10 @@ from .auth.email_code import (
 )
 from .auth.login import LoginView
 from .auth.logout import LogoutView
+from .auth.phone_code import (
+    PhoneAuthRequestCodeView,
+    PhoneAuthVerifyCodeView,
+)
 from .auth.public_key import PublicKeyView
 from .auth.register import RegisterView
 from .auth.token import PublicTokenRefreshView
@@ -58,6 +62,8 @@ __all__ = [
     "EmailAuthVerifyCodeView",
     "LoginCodeRequestView",
     "LoginCodeVerifyView",
+    "PhoneAuthRequestCodeView",
+    "PhoneAuthVerifyCodeView",
     "ProfileView",
     "AccountEmailsView",
     "ChangePasswordView",

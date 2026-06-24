@@ -28,7 +28,7 @@ test('email-code login routes /login → verify → /account', {tag: '@core'}, a
 
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', {name: /continue with email/i}).click();
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
 
   await expect(page).toHaveURL(
     new RegExp(`/verify-email\\?flow=auth&email=${encodeURIComponent(email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
@@ -54,7 +54,7 @@ test('verify with requires_profile_completion routes to /complete-profile', asyn
 
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', {name: /continue with email/i}).click();
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
   await page.getByLabel('6-digit verification code').fill('123456');
   await page.getByRole('button', {name: 'Continue', exact: true}).click();
 
@@ -66,7 +66,7 @@ test('verify-code error keeps the user on the verify screen', async ({page}) => 
 
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await page.getByLabel('Email').fill('bad-code@example.com');
-  await page.getByRole('button', {name: /continue with email/i}).click();
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
   await page.getByLabel('6-digit verification code').fill('000000');
   await page.getByRole('button', {name: 'Continue', exact: true}).click();
 

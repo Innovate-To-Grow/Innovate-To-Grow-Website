@@ -34,6 +34,10 @@ from .email_code import (
     UnifiedEmailAuthVerifySerializer,
 )
 from .login import LoginSerializer
+from .phone_code import (
+    UnifiedPhoneAuthRequestSerializer,
+    UnifiedPhoneAuthVerifySerializer,
+)
 from .profile import ProfileSerializer
 from .register import RegisterSerializer
 from .subscribe import SubscribeSerializer
@@ -68,4 +72,6 @@ __all__ = [
     "SubscribeSerializer",
     "UnifiedEmailAuthRequestSerializer",
     "UnifiedEmailAuthVerifySerializer",
+    "UnifiedPhoneAuthRequestSerializer",
+    "UnifiedPhoneAuthVerifySerializer",
 ]

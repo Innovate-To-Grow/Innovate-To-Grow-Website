@@ -16,6 +16,11 @@ from .contacts.contact_phones import (
     request_phone_verification,
     verify_phone_code,
 )
+from .contacts.phone_auth import (
+    PhoneAccountInactive,
+    request_phone_auth,
+    resolve_or_create_member_by_phone,
+)
 from .create_member import CreateMemberService
 from .email.auth_email import (
     ResolvedAuthEmail,
@@ -93,6 +98,10 @@ __all__ = [
     "delete_contact_phone",
     "request_phone_verification",
     "verify_phone_code",
+    # Passwordless phone auth
+    "request_phone_auth",
+    "resolve_or_create_member_by_phone",
+    "PhoneAccountInactive",
     # SMS exceptions
     "PhoneVerificationError",
     "PhoneVerificationInvalid",

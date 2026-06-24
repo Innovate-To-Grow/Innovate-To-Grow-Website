@@ -9,14 +9,17 @@ import {
   login as apiLogin,
   logout as apiLogout,
   register as apiRegister,
+  type PhoneAuthSource,
   requestEmailAuthCode as apiRequestEmailAuthCode,
   requestLoginCode as apiRequestLoginCode,
   requestPasswordChangeCode as apiRequestPasswordChangeCode,
   requestPasswordReset as apiRequestPasswordReset,
+  requestPhoneAuthCode as apiRequestPhoneAuthCode,
   resendRegistrationCode as apiResendRegistrationCode,
   type LoginResponse,
   type User,
   verifyEmailAuthCode as apiVerifyEmailAuthCode,
+  verifyPhoneAuthCode as apiVerifyPhoneAuthCode,
   verifyLoginCode as apiVerifyLoginCode,
   verifyPasswordChangeCode as apiVerifyPasswordChangeCode,
   verifyPasswordResetCode as apiVerifyPasswordResetCode,
@@ -82,6 +85,12 @@ export function useAuthActions({
     });
   }, [applyAuthResponse, runWithErrorHandling]);
 
+  const verifyPhoneAuthCode = useCallback(async (phoneNumber: string, code: string, region: string = '1-US') => {
+    return runWithErrorHandling(async () => {
+      return applyAuthResponse(await apiVerifyPhoneAuthCode(phoneNumber, code, region));
+    });
+  }, [applyAuthResponse, runWithErrorHandling]);
+
   const verifyRegistrationCode = useCallback(async (email: string, code: string) => {
     return runWithErrorHandling(async () => {
       return applyAuthResponse(await apiVerifyRegistrationCode(email, code));
@@ -127,6 +136,12 @@ export function useAuthActions({
       [runWithErrorHandling],
     ),
     verifyEmailAuthCode,
+    requestPhoneAuthCode: useCallback(
+      async (phoneNumber: string, region: string = '1-US', source: PhoneAuthSource = 'login') =>
+        runWithErrorHandling(() => apiRequestPhoneAuthCode(phoneNumber, region, source)),
+      [runWithErrorHandling],
+    ),
+    verifyPhoneAuthCode,
     requestLoginCode: useCallback(async (email: string) => runWithErrorHandling(() => apiRequestLoginCode(email)), [runWithErrorHandling]),
     verifyLoginCode,
     verifyRegistrationCode,

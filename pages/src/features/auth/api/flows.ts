@@ -13,6 +13,7 @@ import type {
   EmailAuthVerifyResponse,
   LoginResponse,
   MessageResponse,
+  PhoneAuthSource,
   RegisterResponse,
   VerificationTokenResponse,
 } from './types';
@@ -101,6 +102,33 @@ export const verifyLoginCode = async (email: string, code: string): Promise<Logi
 
 export const verifyEmailAuthCode = async (email: string, code: string): Promise<EmailAuthVerifyResponse> => {
   const response = await authApi.post<EmailAuthVerifyResponse>('/authn/email-auth/verify-code/', { email, code });
+  persistAuthSession(response.data);
+  return response.data;
+};
+
+export const requestPhoneAuthCode = async (
+  phoneNumber: string,
+  region: string = '1-US',
+  source: PhoneAuthSource = 'login',
+): Promise<EmailAuthRequestResponse> => {
+  const response = await authApi.post<EmailAuthRequestResponse>('/authn/phone-auth/request-code/', {
+    phone_number: phoneNumber,
+    region,
+    source,
+  });
+  return response.data;
+};
+
+export const verifyPhoneAuthCode = async (
+  phoneNumber: string,
+  code: string,
+  region: string = '1-US',
+): Promise<EmailAuthVerifyResponse> => {
+  const response = await authApi.post<EmailAuthVerifyResponse>('/authn/phone-auth/verify-code/', {
+    phone_number: phoneNumber,
+    region,
+    code,
+  });
   persistAuthSession(response.data);
   return response.data;
 };
