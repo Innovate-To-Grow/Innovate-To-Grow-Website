@@ -61,7 +61,7 @@ test('newsletter email-code flow completes profile and manages subscription', {t
   await page.goto('/subscribe', {waitUntil: 'domcontentloaded'});
 
   await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', {name: /continue with email/i}).click();
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
   await expect(page.getByLabel('Verification Code')).toBeVisible();
   expect(requestPayloads).toEqual([{email, source: 'subscribe'}]);
 
