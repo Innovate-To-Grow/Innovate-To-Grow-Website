@@ -31,3 +31,10 @@ export function canSubmitNationalPhone(digits: string): boolean {
   if (!digits || !/^\d+$/.test(digits)) return false;
   return digits.length === 10;
 }
+
+/** Human-readable display for an E.164 (or any) phone string, e.g. "+12025550123" → "(202)555-0123". */
+export function formatE164ForDisplay(value: string): string {
+  if (!value) return '';
+  const national = parsePhoneInputToNationalDigits(value);
+  return canSubmitNationalPhone(national) ? formatNationalInputDisplay(national) : value;
+}

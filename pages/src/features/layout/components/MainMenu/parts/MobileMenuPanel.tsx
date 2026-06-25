@@ -1,5 +1,6 @@
 import {type MenuItem} from '@/features/layout/api';
 import {type User} from '@/features/auth/api/types';
+import {formatE164ForDisplay} from '@/features/auth/components/sections/internal/phoneInput';
 import {type LayoutLoadState} from '../../LayoutProvider/context';
 import {MenuTree} from './MenuTree';
 import {MENU_BAR_SKELETON_WIDTHS_PX} from './shared';
@@ -87,7 +88,7 @@ export const MobileMenuPanel = ({
               ) : (
                 <i className="fa fa-user-circle" />
               )}
-              <span>{user?.email || 'Member'}</span>
+              <span>{user?.email || formatE164ForDisplay(user?.phone ?? '') || 'Member'}</span>
             </div>
             <div className="header-mobile-member-actions">
               <button type="button" className="header-mobile-action" onClick={onAccountClick}>

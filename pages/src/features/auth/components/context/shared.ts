@@ -4,6 +4,7 @@ import type {
   EmailAuthVerifyResponse,
   LoginResponse,
   MessageResponse,
+  PhoneAuthSource,
   RegisterResponse,
   User,
   VerificationTokenResponse,
@@ -25,6 +26,8 @@ export interface AuthContextValue {
   register: (email: string, password: string, passwordConfirm: string, firstName: string, lastName: string, organization: string, title?: string) => Promise<RegisterResponse>;
   requestEmailAuthCode: (email: string, source?: EmailAuthSource) => Promise<EmailAuthRequestResponse>;
   verifyEmailAuthCode: (email: string, code: string) => Promise<EmailAuthVerifyResponse>;
+  requestPhoneAuthCode: (phoneNumber: string, region?: string, source?: PhoneAuthSource) => Promise<EmailAuthRequestResponse>;
+  verifyPhoneAuthCode: (phoneNumber: string, code: string, region?: string) => Promise<EmailAuthVerifyResponse>;
   requestLoginCode: (email: string) => Promise<MessageResponse>;
   verifyLoginCode: (email: string, code: string) => Promise<LoginResponse>;
   verifyRegistrationCode: (email: string, code: string) => Promise<LoginResponse>;
@@ -55,6 +58,8 @@ export const defaultContextValue: AuthContextValue = {
   register: notImplemented,
   requestEmailAuthCode: notImplemented,
   verifyEmailAuthCode: notImplemented,
+  requestPhoneAuthCode: notImplemented,
+  verifyPhoneAuthCode: notImplemented,
   requestLoginCode: notImplemented,
   verifyLoginCode: notImplemented,
   verifyRegistrationCode: notImplemented,

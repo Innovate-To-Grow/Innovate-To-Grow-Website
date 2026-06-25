@@ -33,6 +33,8 @@ from .views import (
     PasswordResetConfirmView,
     PasswordResetRequestView,
     PasswordResetVerifyView,
+    PhoneAuthRequestCodeView,
+    PhoneAuthVerifyCodeView,
     ProfileView,
     PublicKeyView,
     PublicTokenRefreshView,
@@ -51,6 +53,9 @@ urlpatterns = [
     # Unified email auth
     path("email-auth/request-code/", EmailAuthRequestCodeView.as_view(), name="email-auth-request-code"),
     path("email-auth/verify-code/", EmailAuthVerifyCodeView.as_view(), name="email-auth-verify-code"),
+    # Unified phone auth (passwordless SMS code)
+    path("phone-auth/request-code/", PhoneAuthRequestCodeView.as_view(), name="phone-auth-request-code"),
+    path("phone-auth/verify-code/", PhoneAuthVerifyCodeView.as_view(), name="phone-auth-verify-code"),
     # Registration
     path("register/", RegisterView.as_view(), name="register"),
     path("register/verify-code/", RegisterVerifyCodeView.as_view(), name="register-verify-code"),
