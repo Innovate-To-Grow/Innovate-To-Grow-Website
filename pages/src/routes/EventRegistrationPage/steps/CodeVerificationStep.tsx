@@ -46,7 +46,7 @@ export const CodeVerificationStep = ({
       style={{marginTop: '0.75rem', background: 'none', border: 'none', color: '#003366', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline'}}
       onClick={onBack}
     >
-      Use a different email
+      Use a different email or phone
     </button>
   </div>
 );

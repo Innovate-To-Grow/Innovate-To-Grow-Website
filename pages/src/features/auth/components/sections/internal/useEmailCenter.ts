@@ -44,6 +44,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
   const [primaryVerifyError, setPrimaryVerifyError] = useState<string | null>(null);
   const [primaryResendLoading, setPrimaryResendLoading] = useState(false);
   const [makePrimaryLoadingId, setMakePrimaryLoadingId] = useState<string | null>(null);
+  const [primaryDeleteLoading, setPrimaryDeleteLoading] = useState(false);
 
   useEffect(() => {
     const fetchEmails = async () => {
@@ -268,6 +269,27 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     }
   };
 
+  const handlePrimaryDelete = async () => {
+    if (!profile.primary_email_id) return;
+    if (!window.confirm('Are you sure you want to remove your primary email?')) return;
+    clearMessages();
+    setPrimaryDeleteLoading(true);
+    try {
+      await deleteContactEmail(profile.primary_email_id);
+      // The backend promotes another email to primary (or leaves none for a
+      // phone-only account), so refresh both the profile and the connected list.
+      onProfileUpdate(await getProfile());
+      setContactEmails(await getContactEmails());
+      setSuccessMessage('Email removed.');
+    } catch (err) {
+      // Backend returns a 409 with an actionable message when this would remove
+      // the member's last verified recovery contact.
+      setError(getAuthApiErrorMessage(err));
+    } finally {
+      setPrimaryDeleteLoading(false);
+    }
+  };
+
   return {
     addEmail,
     addError,
@@ -292,6 +314,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     primaryVerifyError,
     primaryResendLoading,
     makePrimaryLoadingId,
+    primaryDeleteLoading,
     setAddEmail,
     setAddError,
     setAddSubscribe,
@@ -305,6 +328,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     handleContactSubscribeToggle,
     handleContactTypeChange,
     handleDelete,
+    handlePrimaryDelete,
     handlePrimarySubscribeToggle,
     handlePrimaryToggleVerify,
     handlePrimaryVerifySubmit,

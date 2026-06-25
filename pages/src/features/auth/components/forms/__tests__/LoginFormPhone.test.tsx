@@ -78,7 +78,7 @@ describe('LoginForm phone detection', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with email code'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with a verification code'}));
     expect(screen.getByLabelText('Email or phone number')).toBeInTheDocument();
   });
 

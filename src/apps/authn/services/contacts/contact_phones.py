@@ -4,10 +4,14 @@ Service layer for managing contact phones (add, delete, normalize).
 
 import re
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 from apps.authn.models import ContactPhone
 from apps.authn.models.contact.phone_regions import PHONE_REGION_CHOICES
+from apps.authn.services.account_recovery.recovery import (
+    LastRecoveryContactError,
+    count_verified_recovery_contacts,
+)
 from apps.authn.services.email_challenges import AuthChallengeInvalid
 
 # Country-code prefixes sorted longest-first so "852" matches before "8".
@@ -108,10 +112,22 @@ def create_contact_phone(*, member, phone_number: str, region: str, subscribe: b
     return contact_phone
 
 
+@transaction.atomic
 def delete_contact_phone(*, member, contact_phone_id):
-    contact_phone = ContactPhone.objects.filter(pk=contact_phone_id, member=member).first()
+    """Delete a contact phone, enforcing the last-verified-recovery-contact rule.
+
+    Deleting a *verified* phone is blocked when it would leave the member with no
+    verified recovery contact (a verified email or another verified phone counts as
+    a survivor). Deleting an unverified phone is always allowed.
+    """
+    contact_phone = ContactPhone.objects.select_for_update().filter(pk=contact_phone_id, member=member).first()
     if contact_phone is None:
         raise AuthChallengeInvalid("Contact phone not found.")
+
+    if contact_phone.verified and count_verified_recovery_contacts(member, exclude_phone_pk=contact_phone.pk) == 0:
+        raise LastRecoveryContactError(
+            "You can't remove your only verified recovery method. Add and verify another email or phone first."
+        )
 
     contact_phone.delete()
 

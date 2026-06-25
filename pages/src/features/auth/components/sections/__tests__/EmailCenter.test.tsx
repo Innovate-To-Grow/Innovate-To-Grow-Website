@@ -96,4 +96,50 @@ describe('EmailCenter', () => {
     expect(screen.getByText('secondary@example.com')).toBeInTheDocument();
     expect(screen.getByText(/verified recovery method/i)).toBeInTheDocument();
   });
+
+  it('lets the user remove the primary email when the account stays safe', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mocks.deleteContactEmail.mockResolvedValue(undefined);
+    mocks.getProfile.mockResolvedValue(baseProfile({email: '', primary_email_id: null}));
+    mocks.getContactEmails.mockResolvedValue([]);
+
+    render(
+      <EmailCenter
+        profile={baseProfile({email: 'primary@example.com', primary_email_id: 'pe-1', email_verified: true})}
+        onProfileUpdate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', {name: 'Remove'}));
+
+    await waitFor(() => {
+      expect(mocks.deleteContactEmail).toHaveBeenCalledWith('pe-1');
+    });
+    expect(mocks.getProfile).toHaveBeenCalled();
+  });
+
+  it('keeps the primary email and shows the backend error when its removal is blocked', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mocks.deleteContactEmail.mockRejectedValue({
+      response: {
+        status: 409,
+        data: {detail: 'You cannot remove your only verified recovery method. Add and verify another email or phone first.'},
+      },
+    });
+
+    render(
+      <EmailCenter
+        profile={baseProfile({email: 'primary@example.com', primary_email_id: 'pe-1', email_verified: true})}
+        onProfileUpdate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', {name: 'Remove'}));
+
+    await waitFor(() => {
+      expect(mocks.deleteContactEmail).toHaveBeenCalledWith('pe-1');
+    });
+    expect(screen.getByText('primary@example.com')).toBeInTheDocument();
+    expect(screen.getByText(/verified recovery method/i)).toBeInTheDocument();
+  });
 });

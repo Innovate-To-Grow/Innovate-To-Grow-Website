@@ -73,7 +73,7 @@ export const LoginPasswordMode = ({
 
       <div className="auth-inline-links">
         <button type="button" className="auth-text-link" onClick={onSwitchToCode} style={{ fontSize: '0.8125rem' }}>
-          Sign in with email code
+          Sign in with a verification code
         </button>
         <Link to="/forgot-password" className="auth-text-link" style={{ fontSize: '0.8125rem' }}>
           Forgot password?

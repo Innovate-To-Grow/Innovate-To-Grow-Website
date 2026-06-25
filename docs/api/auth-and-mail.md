@@ -298,6 +298,17 @@ Creates a new contact phone. SMS verification is requested separately via `reque
 
 Verifies phone with SMS OTP code (delivered via AWS SNS).
 
+### `DELETE /authn/contact-phones/{id}/`
+
+Deletes a contact phone. Enforces the **same** last-verified-recovery-contact rule as email deletion
+(symmetric): removing a *verified* phone is blocked with **409** when it would leave the member with no
+verified recovery contact (a verified email or another verified phone counts as a survivor). Deleting an
+unverified phone is always allowed.
+
+> Note: the unauthenticated **Subscribe** and **Event Registration** entry screens accept an email **or**
+> a phone identifier (the existing passwordless code flows, `source=subscribe` / `event_registration`);
+> the event ticket is still delivered to an email collected on the registration form.
+
 ## Account deletion
 
 ### `POST /authn/delete-account/`
