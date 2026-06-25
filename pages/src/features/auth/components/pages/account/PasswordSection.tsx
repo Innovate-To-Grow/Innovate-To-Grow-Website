@@ -40,7 +40,7 @@ export const PasswordSection = ({
       <div className="account-password-header">
         <div>
           <h2 className="account-section-title">Change Password</h2>
-          <p className="account-password-help">Use a verification code sent to your email before setting a new password.</p>
+          <p className="account-password-help">Use a verification code sent to your email or phone before setting a new password.</p>
         </div>
         {!passwordCodeRequested && !passwordVerificationToken ? (
           <button

@@ -2,61 +2,120 @@
 
 from __future__ import annotations
 
+import logging
+
 from rest_framework import serializers
 
 from apps.authn.constants import VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
 from apps.authn.serializers.helpers import decrypt_password_pair
 from apps.authn.services import (
     AuthChallengeInvalid,
+    NoRecoveryChannelError,
+    PhoneVerificationError,
+    PhoneVerificationInvalid,
+    PhoneVerificationThrottled,
     consume_verification_token,
     delete_member_account,
     get_member_auth_emails,
     issue_email_challenge,
     mark_challenge_verified,
-    resolve_auth_email,
+    normalize_email,
+    request_sms_password_code,
+    resolve_login_identifier,
+    select_recovery_channel,
     verify_email_code,
+    verify_sms_password_code_and_mint,
 )
 
-from .base import PURPOSE, BaseCodeVerifySerializer, BaseEmailSerializer
+from .base import PURPOSE, BaseCodeVerifySerializer
+
+logger = logging.getLogger(__name__)
 
 
-class PasswordResetRequestSerializer(BaseEmailSerializer):
+def _identifier_value(data: dict) -> str:
+    """Read the login identifier from ``identifier`` (preferred) or the legacy ``email`` alias."""
+    return (data.get("identifier") or data.get("email") or "").strip()
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Request a password-reset code by email or phone (enumeration-safe).
+
+    Accepts ``identifier`` (an email address or a phone number); ``email`` is kept
+    as a backward-compatible alias. The response is identical whether or not an
+    account exists, and the channel follows the identifier the caller supplied.
+    """
+
+    identifier = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.CharField(required=False, allow_blank=True)
+
     def save(self):
-        resolved = resolve_auth_email(self.validated_data["email"], require_active=True)
+        resolved = resolve_login_identifier(_identifier_value(self.validated_data), require_active=True)
         if resolved is not None:
-            issue_email_challenge(
-                member=resolved.member,
-                purpose=PURPOSE.PASSWORD_RESET,
-                target_email=resolved.delivery_email,
-            )
+            if resolved.via == "email":
+                issue_email_challenge(
+                    member=resolved.member,
+                    purpose=PURPOSE.PASSWORD_RESET,
+                    target_email=resolved.email,
+                )
+            else:
+                try:
+                    request_sms_password_code(e164=resolved.e164)
+                except PhoneVerificationError:
+                    # Stay enumeration-safe on this public endpoint: never surface
+                    # per-number SMS send state. The generic response is returned
+                    # regardless; the per-number send cap is the backstop.
+                    logger.warning("Password-reset SMS send failed", exc_info=True)
         return {"message": "If an eligible account exists, a verification code has been sent."}
 
 
-class PasswordResetVerifySerializer(BaseCodeVerifySerializer):
-    purpose = PURPOSE.PASSWORD_RESET
+class PasswordResetVerifySerializer(serializers.Serializer):
+    """Verify a password-reset code (email or SMS) and mint a verification token."""
+
+    identifier = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.CharField(required=False, allow_blank=True)
+    code = serializers.CharField(required=True, min_length=6, max_length=6)
+
+    def validate(self, attrs: dict) -> dict:
+        resolved = resolve_login_identifier(_identifier_value(attrs), require_active=True)
+        if resolved is None:
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
+
+        if resolved.via == "email":
+            try:
+                challenge = verify_email_code(
+                    purpose=PURPOSE.PASSWORD_RESET, target_email=resolved.email, code=attrs["code"]
+                )
+            except AuthChallengeInvalid as exc:
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+            attrs["verification_token"] = mark_challenge_verified(challenge)
+        else:
+            try:
+                attrs["verification_token"] = verify_sms_password_code_and_mint(
+                    member=resolved.member, purpose=PURPOSE.PASSWORD_RESET, e164=resolved.e164, code=attrs["code"]
+                )
+            except (PhoneVerificationInvalid, PhoneVerificationThrottled) as exc:
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+        return attrs
 
     def save(self):
-        challenge = self.validated_data["challenge"]
         return {
             "message": "Verification code accepted.",
-            "verification_token": mark_challenge_verified(challenge),
+            "verification_token": self.validated_data["verification_token"],
         }
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
+    identifier = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.CharField(required=False, allow_blank=True)
     verification_token = serializers.CharField(required=True)
     new_password = serializers.CharField(write_only=True, required=True)
     new_password_confirm = serializers.CharField(write_only=True, required=True)
     key_id = serializers.CharField(required=False, allow_blank=True)
 
-    def validate_email(self, value: str) -> str:
-        return BaseEmailSerializer().validate_email(value)
-
     def validate(self, attrs: dict) -> dict:
-        resolved = resolve_auth_email(attrs["email"], require_active=True)
+        resolved = resolve_login_identifier(_identifier_value(attrs), require_active=True)
         if resolved is None:
-            raise serializers.ValidationError({"email": "No eligible account found for this email."})
+            raise serializers.ValidationError({"detail": VERIFICATION_CONFIRM_INVALID})
         attrs["resolved_member"] = resolved.member
         attrs["decrypted_new_password"] = decrypt_password_pair(attrs, user=resolved.member)
         return attrs
@@ -76,37 +135,96 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         return {"message": "Password reset successfully."}
 
 
-class ChangePasswordCodeRequestSerializer(BaseEmailSerializer):
-    def validate_email(self, value: str) -> str:
-        email = super().validate_email(value)
-        eligible = set(get_member_auth_emails(self.context["request"].user))
-        if email not in eligible:
-            raise serializers.ValidationError("This email is not eligible for password change verification.")
-        return email
+class ChangePasswordCodeRequestSerializer(serializers.Serializer):
+    """Request a password-create/change verification code.
 
-    def save(self):
-        issue_email_challenge(
-            member=self.context["request"].user,
-            purpose=PURPOSE.PASSWORD_CHANGE,
-            target_email=self.validated_data["email"],
-        )
-        return {"message": "Verification code sent."}
+    The verification channel is chosen by ``select_recovery_channel`` (verified
+    primary email -> any verified email -> verified phone via SMS). ``email`` is
+    optional and only used to disambiguate when the member has several verified
+    emails (legacy clients echo it); it must be one of the member's verified emails.
+    """
 
-
-class ChangePasswordCodeVerifySerializer(BaseCodeVerifySerializer):
-    purpose = PURPOSE.PASSWORD_CHANGE
+    email = serializers.EmailField(required=False, allow_blank=True)
 
     def validate(self, attrs: dict) -> dict:
-        attrs = super().validate(attrs)
-        if attrs["member"] != self.context["request"].user:
-            raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
+        member = self.context["request"].user
+        requested = normalize_email(attrs["email"]) if attrs.get("email") else None
+        if requested and requested not in set(get_member_auth_emails(member)):
+            raise serializers.ValidationError({"email": "This email is not eligible for password change verification."})
+        try:
+            attrs["selected"] = select_recovery_channel(member, requested_email=requested)
+        except NoRecoveryChannelError as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
         return attrs
 
     def save(self):
-        challenge = self.validated_data["challenge"]
+        member = self.context["request"].user
+        selected = self.validated_data["selected"]
+        if selected.channel == "email":
+            issue_email_challenge(
+                member=member,
+                purpose=PURPOSE.PASSWORD_CHANGE,
+                target_email=selected.target_email,
+            )
+        else:
+            request_sms_password_code(e164=selected.e164)
+        return {
+            "message": "Verification code sent.",
+            "channel": selected.channel,
+            "destination": selected.masked_destination,
+        }
+
+
+class ChangePasswordCodeVerifySerializer(serializers.Serializer):
+    """Verify a password-change code (email or SMS) and mint a verification token.
+
+    The channel is re-derived deterministically from member state, so the same
+    channel chosen at request time is used here; ``email`` disambiguates the email
+    case for members with several verified emails.
+    """
+
+    email = serializers.EmailField(required=False, allow_blank=True)
+    code = serializers.CharField(required=True, min_length=6, max_length=6)
+
+    def validate(self, attrs: dict) -> dict:
+        member = self.context["request"].user
+        requested = normalize_email(attrs["email"]) if attrs.get("email") else None
+        try:
+            selected = select_recovery_channel(member, requested_email=requested)
+        except NoRecoveryChannelError as exc:
+            raise serializers.ValidationError({"detail": str(exc)}) from exc
+
+        if selected.channel == "email":
+            try:
+                challenge = verify_email_code(
+                    purpose=PURPOSE.PASSWORD_CHANGE,
+                    target_email=selected.target_email,
+                    code=attrs["code"],
+                )
+            except AuthChallengeInvalid as exc:
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+            if challenge.member != member:
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
+            attrs["verification_token"] = mark_challenge_verified(challenge)
+        else:
+            try:
+                attrs["verification_token"] = verify_sms_password_code_and_mint(
+                    member=member,
+                    purpose=PURPOSE.PASSWORD_CHANGE,
+                    e164=selected.e164,
+                    code=attrs["code"],
+                )
+            except (PhoneVerificationInvalid, PhoneVerificationThrottled) as exc:
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+
+        attrs["channel"] = selected.channel
+        return attrs
+
+    def save(self):
         return {
             "message": "Verification code accepted.",
-            "verification_token": mark_challenge_verified(challenge),
+            "verification_token": self.validated_data["verification_token"],
+            "channel": self.validated_data["channel"],
         }
 
 

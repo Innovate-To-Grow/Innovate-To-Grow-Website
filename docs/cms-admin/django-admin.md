@@ -39,6 +39,25 @@ Related models are grouped into tabs in the admin interface. Tab configuration i
 
 `AdminLoginView` (`src/apps/authn/views/admin/login.py`) replaces the default Django admin login at `/admin/login/`. It integrates with the platform's auth system.
 
+### Member admin — search
+
+`MemberAdmin` (`src/apps/authn/admin/members/member.py`) keeps the default `search_fields`
+(related contact email, first/middle/last name, id, organization, title) and additionally supports
+**phone-number search** via an overridden `get_search_results`:
+
+- The query is reduced to digits (`re.sub(r"\D", "", term)`), so formatted input — spaces,
+  parentheses, hyphens, dots, and a leading `+` — is accepted.
+- Phones are stored as **national** digits (`ContactPhone.phone_number`), so an 11-digit `1XXXXXXXXXX`
+  is also tried as the national `XXXXXXXXXX`. This makes `+1 555 123 4567`, `15551234567`, the
+  national `5551234567`, and partials such as `555123` / `1234567` all resolve to the same member.
+- Phone matches are OR-ed into the same base queryset (so list filters still apply) and de-duplicated,
+  so a member who owns several matching phones appears once.
+
+Phone search is scoped to the member admin; the `ContactEmail` admin is unchanged, and `ContactPhone`
+admin already searches `phone_number` directly. `phone_number` is already indexed; no new index was
+added (a leading-wildcard `icontains` can't use a btree index, but the contact table is small — a
+`pg_trgm` GIN index is a possible future optimization).
+
 ### Email campaign admin
 
 `EmailCampaignAdmin` (`src/apps/mail/admin/campaign.py`) provides:

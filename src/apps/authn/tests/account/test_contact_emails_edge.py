@@ -145,8 +145,18 @@ class AccountEmailCodeViewEdgeTests(APITestCase):
         )
         self.client.force_authenticate(user=self.member)
 
-    def test_change_password_request_invalid_payload(self):
-        # No email field -> serializer invalid.
+    @patch("apps.authn.services.email.send_email.send_verification_email")
+    def test_change_password_request_without_email_selects_verified_email(self, _mock_send):
+        # An empty payload is now valid: the backend auto-selects the verification
+        # channel (the member's verified email here), mirroring the phone-only SMS path.
+        resp = self.client.post("/authn/change-password/request-code/", {}, format="json")
+        self.assertEqual(resp.status_code, 202)
+        self.assertEqual(resp.data["channel"], "email")
+
+    def test_change_password_request_without_recovery_contact_returns_400(self):
+        # A member with no verified email or phone has no channel to verify through.
+        member = Member.objects.create_user(password="StrongPass123!", is_active=True)
+        self.client.force_authenticate(user=member)
         resp = self.client.post("/authn/change-password/request-code/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
 

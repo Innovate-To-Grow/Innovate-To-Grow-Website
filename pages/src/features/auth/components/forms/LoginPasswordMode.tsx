@@ -27,18 +27,18 @@ export const LoginPasswordMode = ({
     <form className="auth-form" onSubmit={onSubmit} noValidate>
       <div className="auth-form-group">
         <label className="auth-form-label" htmlFor="login-email">
-          Email
+          Email or Phone
         </label>
         <input
           ref={emailInputRef}
           id="login-email"
-          type="email"
+          type="text"
           className="auth-form-input"
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
-          placeholder="your@email.com"
+          placeholder="you@email.com or (201) 555-0123"
           required
-          autoComplete="email"
+          autoComplete="username"
         />
       </div>
 

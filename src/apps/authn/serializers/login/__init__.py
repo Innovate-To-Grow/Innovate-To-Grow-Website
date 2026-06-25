@@ -2,24 +2,30 @@
 Login serializer for user authentication.
 """
 
-from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
 from apps.authn.serializers.helpers import decrypt_field
-from apps.authn.services import resolve_auth_email
-
-Member = get_user_model()
+from apps.authn.services import resolve_login_identifier
 
 
 class LoginSerializer(serializers.Serializer):
     """
-    Serializer for user login with email and password.
-    Password should be RSA encrypted with the public key.
+    Serializer for password login with an email **or** phone identifier.
+
+    The password should be RSA encrypted with the public key. The legacy ``email``
+    field is preserved for backward compatibility (clients post the identifier in
+    it); ``identifier`` is an explicit alias and takes precedence when both are sent.
     """
 
-    email = serializers.EmailField(
-        required=True,
-        help_text="Email address.",
+    email = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Email address or phone number.",
+    )
+    identifier = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Email address or phone number (alias for email).",
     )
     password = serializers.CharField(
         write_only=True,
@@ -34,7 +40,7 @@ class LoginSerializer(serializers.Serializer):
 
     # noinspection PyMethodMayBeStatic
     def validate(self, attrs: dict) -> dict:
-        email = attrs.get("email", "").lower()
+        identifier = (attrs.get("identifier") or attrs.get("email") or "").strip()
         key_id = attrs.get("key_id", "")
 
         try:
@@ -42,17 +48,16 @@ class LoginSerializer(serializers.Serializer):
         except serializers.ValidationError as exc:
             raise serializers.ValidationError({"password": exc.detail}) from exc
 
-        resolved = resolve_auth_email(email, require_active=False)
-        if resolved is None:
+        # Resolve the identifier to a member (verified email or verified phone), then
+        # authenticate that member directly. Every failure mode returns the same
+        # neutral error to avoid account enumeration.
+        resolved = resolve_login_identifier(identifier, require_active=False)
+        if resolved is None or not resolved.member.is_active:
             raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})
+
         member = resolved.member
-
-        if not member.is_active:
+        if not member.check_password(password):
             raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})
 
-        user = authenticate(username=email, password=password)
-        if user is None:
-            raise serializers.ValidationError({"non_field_errors": ["Invalid credentials."]})
-
-        attrs["user"] = user
+        attrs["user"] = member
         return attrs

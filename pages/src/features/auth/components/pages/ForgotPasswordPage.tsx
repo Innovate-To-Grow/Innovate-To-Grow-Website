@@ -54,11 +54,11 @@ export const ForgotPasswordPage = () => {
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="auth-form-group">
             <label className="auth-form-label" htmlFor="forgot-email">
-              Email
+              Email or Phone
             </label>
             <input
               id="forgot-email"
-              type="email"
+              type="text"
               className="auth-form-input"
               value={email}
               onChange={(event) => {
@@ -66,12 +66,12 @@ export const ForgotPasswordPage = () => {
                 clearError();
                 setInfoMessage(null);
               }}
-              placeholder="your@email.com"
-              autoComplete="email"
+              placeholder="you@email.com or (201) 555-0123"
+              autoComplete="username"
               required
             />
             <span className="auth-help-text">
-              Use your account email or any verified contact email linked to the account.
+              Use your account email or a verified phone number linked to the account.
             </span>
           </div>
 

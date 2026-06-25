@@ -96,7 +96,7 @@ describe('LoginForm unified email/phone field', () => {
     authValue.login.mockResolvedValue({next_step: 'account', requires_profile_completion: false});
 
     fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'ada@example.com'}});
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'ada@example.com'}});
     fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'hunter2!'}});
     fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
 
@@ -106,11 +106,26 @@ describe('LoginForm unified email/phone field', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/past-projects', {replace: true});
   });
 
+  it('signs in with a phone number and password', async () => {
+    renderForm();
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+    authValue.login.mockResolvedValue({next_step: 'account', requires_profile_completion: false});
+
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: '(202) 555-0123'}});
+    fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'hunter2!'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
+
+    await waitFor(() => {
+      expect(authValue.login).toHaveBeenCalledWith('2025550123', 'hunter2!');
+    });
+  });
+
   it('prefills the password email from a typed email when switching modes', () => {
     renderForm();
     fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: 'ada@example.com'}});
     fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
 
-    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('ada@example.com');
+    expect((screen.getByLabelText('Email or Phone') as HTMLInputElement).value).toBe('ada@example.com');
   });
 });

@@ -22,6 +22,7 @@ from apps.authn.serializers import (
 )
 from apps.authn.services import (
     AuthChallengeInvalid,
+    LastRecoveryContactError,
     create_contact_email,
     delete_contact_email,
     make_contact_email_primary,
@@ -109,7 +110,13 @@ class ContactEmailDetailView(APIView):
         if contact_email is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        delete_contact_email(member=request.user, contact_email_id=pk)
+        try:
+            delete_contact_email(member=request.user, contact_email_id=pk)
+        except LastRecoveryContactError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except AuthChallengeInvalid:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

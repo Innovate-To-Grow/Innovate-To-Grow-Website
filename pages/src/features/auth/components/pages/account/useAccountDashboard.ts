@@ -49,6 +49,7 @@ export const useAccountDashboard = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordChannel, setPasswordChannel] = useState<'email' | 'sms' | null>(null);
   const [deleteCodeRequested, setDeleteCodeRequested] = useState(false);
   const [deleteCode, setDeleteCode] = useState('');
   const [deleteVerificationToken, setDeleteVerificationToken] = useState<string | null>(null);
@@ -229,6 +230,7 @@ export const useAccountDashboard = () => {
     setPasswordVerificationToken(null);
     setNewPassword('');
     setConfirmPassword('');
+    setPasswordChannel(null);
   }, []);
 
   const resetDeleteForm = useCallback(() => {
@@ -237,15 +239,14 @@ export const useAccountDashboard = () => {
     setDeleteVerificationToken(null);
   }, []);
 
-  const getPasswordEmail = useCallback(() => firstEmailAddress(profile?.email, user?.email), [profile?.email, user?.email]);
+  // Pass the primary email when one exists so the backend can disambiguate; a
+  // phone-only account has none, and the backend then sends the code via SMS.
+  const getPasswordEmail = useCallback(
+    () => firstEmailAddress(profile?.email, user?.email) || undefined,
+    [profile?.email, user?.email],
+  );
 
   const handlePasswordRequestCode = async () => {
-    const email = getPasswordEmail();
-    if (!email) {
-      setPasswordError('No account email is available for password verification.');
-      return;
-    }
-
     setPasswordLoading(true);
     clearPasswordFeedback();
     setPasswordVerificationToken(null);
@@ -253,10 +254,13 @@ export const useAccountDashboard = () => {
     setConfirmPassword('');
 
     try {
-      const response = await requestPasswordChangeCode(email);
+      const response = await requestPasswordChangeCode(getPasswordEmail());
       setPasswordCodeRequested(true);
       setPasswordCode('');
-      setPasswordMessage(response.message || 'Verification code sent.');
+      setPasswordChannel(response.channel ?? null);
+      const sentTo = response.destination ? ` to ${response.destination}` : '';
+      const channelLabel = response.channel === 'sms' ? 'texted a code' : 'emailed a code';
+      setPasswordMessage(response.message || `We ${channelLabel}${sentTo}.`);
     } catch (err: unknown) {
       setPasswordError(getAuthApiErrorMessage(err));
     } finally {
@@ -266,17 +270,11 @@ export const useAccountDashboard = () => {
 
   const handlePasswordVerifyCode = async (event: FormEvent) => {
     event.preventDefault();
-    const email = getPasswordEmail();
-    if (!email) {
-      setPasswordError('No account email is available for password verification.');
-      return;
-    }
-
     setPasswordLoading(true);
     clearPasswordFeedback();
 
     try {
-      const response = await verifyPasswordChangeCode(email, passwordCode);
+      const response = await verifyPasswordChangeCode(passwordCode, getPasswordEmail());
       setPasswordVerificationToken(response.verification_token);
       setPasswordMessage(response.message || 'Code verified. You can now enter a new password.');
     } catch (err: unknown) {
@@ -391,6 +389,7 @@ export const useAccountDashboard = () => {
     passwordLoading,
     passwordMessage,
     passwordError,
+    passwordChannel,
     deleteCodeRequested,
     deleteCode,
     deleteVerificationToken,
