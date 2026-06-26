@@ -20,7 +20,7 @@ test('unauthenticated start shows the email step', async ({page}) => {
   await expect(page.getByRole('heading', {name: 'Event Registration'})).toBeVisible();
 
   await page.getByLabel('Email').fill('reg@example.com');
-  await page.getByRole('button', {name: /continue with email/i}).click();
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
   await expect(page.getByLabel('Verification Code')).toBeVisible();
 });
 
@@ -33,7 +33,7 @@ test('completes a registration to the ticket confirmation', {tag: '@core'}, asyn
   await page.goto('/event-registration', {waitUntil: 'domcontentloaded'});
 
   await page.getByLabel('Email').fill(email);
-  await page.getByRole('button', {name: /continue with email/i}).click();
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
   await page.getByLabel('Verification Code').fill('123456');
   await page.getByRole('button', {name: 'Verify Code'}).click();
 

@@ -13,6 +13,7 @@ import type {
   EmailAuthVerifyResponse,
   LoginResponse,
   MessageResponse,
+  PasswordChangeRequestResponse,
   PhoneAuthSource,
   RegisterResponse,
   VerificationTokenResponse,
@@ -190,16 +191,24 @@ export const confirmPasswordReset = async (
   return response.data;
 };
 
-export const requestPasswordChangeCode = async (email: string): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>('/authn/change-password/request-code/', { email });
+export const requestPasswordChangeCode = async (email?: string): Promise<PasswordChangeRequestResponse> => {
+  // Omit `email` entirely for phone-only accounts; the backend then selects the
+  // verification channel (verified email, else SMS) and reports it in the response.
+  const response = await authApi.post<PasswordChangeRequestResponse>(
+    '/authn/change-password/request-code/',
+    email ? { email } : {},
+  );
   return response.data;
 };
 
 export const verifyPasswordChangeCode = async (
-  email: string,
   code: string,
+  email?: string,
 ): Promise<VerificationTokenResponse> => {
-  const response = await authApi.post<VerificationTokenResponse>('/authn/change-password/verify-code/', { email, code });
+  const response = await authApi.post<VerificationTokenResponse>(
+    '/authn/change-password/verify-code/',
+    email ? { email, code } : { code },
+  );
   return response.data;
 };
 

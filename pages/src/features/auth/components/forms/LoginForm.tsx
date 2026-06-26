@@ -79,13 +79,14 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
     setInfoMessage(null);
     clearError();
 
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setValidationError('Please enter your email address.');
+    const trimmedIdentifier = email.trim();
+    if (!trimmedIdentifier) {
+      setValidationError('Please enter your email or phone number.');
       return;
     }
-    if (emailInputRef.current && !emailInputRef.current.validity.valid) {
-      setValidationError('Please enter a valid email address.');
+    const parsed = identifyLoginInput(trimmedIdentifier);
+    if (parsed.type === 'invalid') {
+      setValidationError('Please enter a valid email address or 10-digit US phone number.');
       return;
     }
     if (!password) {
@@ -95,7 +96,8 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
     setValidationError(null);
 
     try {
-      const response = await login(email, password);
+      const identifier = parsed.type === 'phone' ? parsed.nationalDigits : parsed.value;
+      const response = await login(identifier, password);
       navigate(getPostAuthPath(response, returnTo), { replace: true });
     } catch {
       // Error handled by context

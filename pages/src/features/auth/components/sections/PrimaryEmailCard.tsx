@@ -12,12 +12,14 @@ interface PrimaryEmailCardProps {
   verifyLoading: boolean;
   verifyError: string | null;
   resendLoading: boolean;
+  deleteLoading: boolean;
   onToggleSubscribe: () => void;
   onToggleVerify: () => void;
   onVerifyCodeChange: (value: string) => void;
   onVerifySubmit: (event: FormEvent) => void;
   onResend: () => void;
   onCancelVerify: () => void;
+  onDelete: () => void;
 }
 
 export const PrimaryEmailCard = ({
@@ -29,12 +31,14 @@ export const PrimaryEmailCard = ({
   verifyLoading,
   verifyError,
   resendLoading,
+  deleteLoading,
   onToggleSubscribe,
   onToggleVerify,
   onVerifyCodeChange,
   onVerifySubmit,
   onResend,
   onCancelVerify,
+  onDelete,
 }: PrimaryEmailCardProps) => (
   <div className="email-center-card">
     <div className="email-center-row">
@@ -55,6 +59,11 @@ export const PrimaryEmailCard = ({
           {!profile.email_verified && profile.primary_email_id && !verifying ? (
             <button type="button" className="email-center-btn verify" disabled={resendLoading} onClick={onToggleVerify}>
               Verify
+            </button>
+          ) : null}
+          {profile.primary_email_id && !verifying ? (
+            <button type="button" className="email-center-btn delete" disabled={deleteLoading} onClick={onDelete}>
+              {deleteLoading ? 'Removing...' : 'Remove'}
             </button>
           ) : null}
         </div>

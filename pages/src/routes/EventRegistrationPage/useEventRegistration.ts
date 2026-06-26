@@ -6,12 +6,20 @@ import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhone
 import {maxPhoneDigits, validatePhoneDigits} from '@/lib/phoneRegions';
 import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
 import {buildCompleteProfilePath} from '@/features/auth/api/redirects';
+import {identifyLoginInput} from '@/features/auth/components/sections/internal/identifyLoginInput';
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
 
 export type OrganizationType = 'individual' | 'organization';
 
 export const useEventRegistration = () => {
-  const {isAuthenticated, requiresProfileCompletion, requestEmailAuthCode, verifyEmailAuthCode} = useAuth();
+  const {
+    isAuthenticated,
+    requiresProfileCompletion,
+    requestEmailAuthCode,
+    verifyEmailAuthCode,
+    requestPhoneAuthCode,
+    verifyPhoneAuthCode,
+  } = useAuth();
   const navigate = useNavigate();
   const completeProfilePath = buildCompleteProfilePath('/event-registration');
   const [step, setStep] = useState<EventRegistrationStep>('loading');
@@ -19,6 +27,9 @@ export const useEventRegistration = () => {
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
+  const [identifierType, setIdentifierType] = useState<'email' | 'phone'>('email');
+  // Canonical value sent to the verify call: a trimmed email or 10 national digits.
+  const [authValue, setAuthValue] = useState('');
   const [code, setCode] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -137,12 +148,26 @@ export const useEventRegistration = () => {
     }
   }, [completeProfilePath, isAuthenticated, loadOptionsAndRoute, navigate, requiresProfileCompletion]);
 
+  // Entry accepts an email OR a US phone number; route to the matching passwordless flow.
   const handleEmailSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    const parsed = identifyLoginInput(email.trim());
+    if (parsed.type === 'invalid') {
+      setError('Please enter a valid email address or 10-digit US phone number.');
+      return;
+    }
     setAuthLoading(true);
     setError(null);
     try {
-      await requestEmailAuthCode(email.trim(), 'event_registration');
+      if (parsed.type === 'email') {
+        await requestEmailAuthCode(parsed.value, 'event_registration');
+        setIdentifierType('email');
+        setAuthValue(parsed.value);
+      } else {
+        await requestPhoneAuthCode(parsed.nationalDigits, '1-US', 'event_registration');
+        setIdentifierType('phone');
+        setAuthValue(parsed.nationalDigits);
+      }
       setStep('code');
     } catch (err: unknown) {
       setError(getRegistrationErrorMessage(err));
@@ -156,7 +181,10 @@ export const useEventRegistration = () => {
     setAuthLoading(true);
     setError(null);
     try {
-      const result = await verifyEmailAuthCode(email.trim(), code.trim());
+      const result =
+        identifierType === 'phone'
+          ? await verifyPhoneAuthCode(authValue, code.trim(), '1-US')
+          : await verifyEmailAuthCode(authValue, code.trim());
       if (result.next_step === 'complete_profile' || result.requires_profile_completion) {
         navigate(completeProfilePath, {replace: true});
         return;

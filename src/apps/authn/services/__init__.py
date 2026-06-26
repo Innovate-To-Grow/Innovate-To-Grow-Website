@@ -3,6 +3,17 @@ Authn app services.
 """
 
 from .account import delete_member_account
+from .account_recovery import (
+    LastRecoveryContactError,
+    NoRecoveryChannelError,
+    RecoveryChannel,
+    count_verified_recovery_contacts,
+    mask_email,
+    mask_phone,
+    request_sms_password_code,
+    select_recovery_channel,
+    verify_sms_password_code_and_mint,
+)
 from .contacts.contact_emails import (
     create_contact_email,
     delete_contact_email,
@@ -24,12 +35,14 @@ from .contacts.phone_auth import (
 from .create_member import CreateMemberService
 from .email.auth_email import (
     ResolvedAuthEmail,
+    ResolvedLoginIdentifier,
     claim_unclaimed_contact_email,
     get_member_auth_emails,
     get_pending_registration_member,
     normalize_email,
     registration_email_conflicts,
     resolve_auth_email,
+    resolve_login_identifier,
 )
 from .email_challenges import (
     AuthChallengeDeliveryError,
@@ -69,10 +82,22 @@ __all__ = [
     "generate_template_excel",
     "ImportResult",
     "delete_member_account",
+    # Account recovery (password channel selection + SMS bridge)
+    "RecoveryChannel",
+    "select_recovery_channel",
+    "mask_email",
+    "mask_phone",
+    "count_verified_recovery_contacts",
+    "LastRecoveryContactError",
+    "NoRecoveryChannelError",
+    "request_sms_password_code",
+    "verify_sms_password_code_and_mint",
     # Auth email helpers
     "ResolvedAuthEmail",
+    "ResolvedLoginIdentifier",
     "normalize_email",
     "resolve_auth_email",
+    "resolve_login_identifier",
     "get_member_auth_emails",
     "claim_unclaimed_contact_email",
     "get_pending_registration_member",

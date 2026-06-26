@@ -92,7 +92,7 @@ class EmailCodePasswordChangeTests(APITestCase):
         self.assertTrue(self.member.check_password("CodeChangedPass123!"))
 
     def test_password_reset_confirm_requires_matching_email(self, _mock_code, _mock_send):
-        """Correct token but wrong email → 400 'No eligible account found' (S10 fix)."""
+        """Correct token but wrong identifier → 400 with a uniform error (no enumeration)."""
         # Request + verify code for member
         self.client.post(
             "/authn/password-reset/request-code/",
@@ -119,7 +119,7 @@ class EmailCodePasswordChangeTests(APITestCase):
             format="json",
         )
         self.assertEqual(confirm_response.status_code, 400)
-        self.assertIn("No eligible account found", str(confirm_response.data))
+        self.assertIn("Verification token is invalid", str(confirm_response.data))
 
     def test_password_reset_confirm_rejects_other_users_token(self, _mock_code, _mock_send):
         """Member B's email + member A's token → 400 'Verification token is invalid' (S10 fix)."""

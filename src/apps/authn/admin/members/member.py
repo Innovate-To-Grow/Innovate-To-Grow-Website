@@ -3,12 +3,14 @@ Member admin configuration.
 """
 
 import logging
+import re
 import uuid
 
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
@@ -180,6 +182,31 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
                 if field not in readonly:
                     readonly.append(field)
         return readonly
+
+    def get_search_results(self, request, queryset, search_term):
+        """Extend the default search (email/name/id/...) with phone-number matching.
+
+        Phones are stored as national digits via ``ContactPhone.phone_number``, so the
+        query is reduced to digits and an 11-digit ``1XXXXXXXXXX`` is also tried as the
+        national ``XXXXXXXXXX`` — letting ``+1 555 123 4567``, ``15551234567``,
+        ``5551234567``, and partials like ``555123`` / ``1234567`` all find the same
+        member. Phone matches are taken from the same base queryset so list filters
+        still apply, and ``may_have_duplicates`` makes the changelist de-duplicate
+        members that own several matching phones.
+        """
+        base = queryset
+        queryset, may_have_duplicates = super().get_search_results(request, base, search_term)
+
+        digits = re.sub(r"\D", "", search_term or "")
+        if digits:
+            national = digits[1:] if len(digits) == 11 and digits.startswith("1") else digits
+            phone_q = Q(contact_phones__phone_number__icontains=national)
+            if national != digits:
+                phone_q |= Q(contact_phones__phone_number__icontains=digits)
+            queryset |= base.filter(phone_q)
+            may_have_duplicates = True
+
+        return queryset, may_have_duplicates
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}

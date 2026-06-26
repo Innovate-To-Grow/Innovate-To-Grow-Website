@@ -57,6 +57,14 @@ export interface VerificationTokenResponse {
   verification_token: string;
 }
 
+export interface PasswordChangeRequestResponse {
+  message: string;
+  /** Channel the verification code was sent through (email, or SMS for phone-only accounts). */
+  channel?: 'email' | 'sms';
+  /** Masked destination for display, e.g. "(•••) •••-4567". */
+  destination?: string;
+}
+
 export interface AccountEmailsResponse {
   emails: string[];
 }

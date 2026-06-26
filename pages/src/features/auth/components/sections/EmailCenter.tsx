@@ -34,12 +34,14 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
                     verifyLoading={emailCenter.primaryVerifyLoading}
                     verifyError={emailCenter.primaryVerifyError}
                     resendLoading={emailCenter.primaryResendLoading}
+                    deleteLoading={emailCenter.primaryDeleteLoading}
                     onToggleSubscribe={emailCenter.handlePrimarySubscribeToggle}
                     onToggleVerify={emailCenter.handlePrimaryToggleVerify}
                     onVerifyCodeChange={emailCenter.setPrimaryVerifyCode}
                     onVerifySubmit={emailCenter.handlePrimaryVerifySubmit}
                     onResend={emailCenter.handlePrimaryResend}
                     onCancelVerify={emailCenter.handlePrimaryCancelVerify}
+                    onDelete={emailCenter.handlePrimaryDelete}
                 />
             ) : null}
 

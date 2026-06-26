@@ -33,10 +33,12 @@ import {
   register,
   requestEmailAuthCode,
   requestLoginCode,
+  requestPasswordChangeCode,
   requestPasswordReset,
   subscribe,
   verifyEmailAuthCode,
   verifyLoginCode,
+  verifyPasswordChangeCode,
   verifyRegistrationCode,
 } from '../flows';
 
@@ -189,6 +191,34 @@ describe('auth flows', () => {
       const result = await subscribe('a@b.com');
       expect(mocks.post).toHaveBeenCalledWith('/authn/subscribe/', {email: 'a@b.com'});
       expect(result).toEqual({message: 'subscribed'});
+    });
+  });
+
+  describe('password change code (channel-aware)', () => {
+    it('omits email for phone-only accounts and surfaces the SMS channel', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'Verification code sent.', channel: 'sms', destination: '(•••) •••-4567'}});
+
+      const result = await requestPasswordChangeCode();
+
+      expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/request-code/', {});
+      expect(result.channel).toBe('sms');
+      expect(result.destination).toBe('(•••) •••-4567');
+    });
+
+    it('includes the email when one is supplied (disambiguation)', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'Verification code sent.', channel: 'email'}});
+
+      await requestPasswordChangeCode('a@b.com');
+
+      expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/request-code/', {email: 'a@b.com'});
+    });
+
+    it('verifies with only the code for phone-only accounts', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'ok', verification_token: 'tok'}});
+
+      await verifyPasswordChangeCode('123456');
+
+      expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/verify-code/', {code: '123456'});
     });
   });
 });
