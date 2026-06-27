@@ -2,7 +2,7 @@
 // password through SMS verification from the account page; and an account with a
 // verified phone can remove its primary email (the verified phone keeps it safe).
 import {test, expect} from './fixtures';
-import {loginResponse, mockProfileEndpoint, mockPublicKey, profileResponse, seedAuthenticatedSession} from './helpers';
+import {loginResponse, mintFakeJwt, mockProfileEndpoint, mockPublicKey, profileResponse, seedAuthenticatedSession} from './helpers';
 
 const PHONE = '2025550123';
 const PHONE_E164 = '+12025550123';
@@ -14,6 +14,14 @@ function json(body: unknown, status = 200) {
 async function stubAccountSideEffects(page: import('@playwright/test').Page) {
   // Phone-only account: no primary email yet.
   await mockProfileEndpoint(page, {current: profileResponse({email: '', primary_email_id: null, email_verified: false})});
+  // Keep the just-logged-in session alive on /account. The mocked login mints a
+  // fake access token, so any un-mocked authenticated side request (e.g. the
+  // shell's /projects/past-shares/mine/) 401s against the real CI backend and
+  // trips the api-client refresh->logout cascade, bouncing the user to /login
+  // before the SMS code message can render. Make refresh succeed to defeat it.
+  await page.route('**/authn/refresh/', (route) =>
+    route.fulfill(json({access: mintFakeJwt(), refresh: 'refresh-e2e'})),
+  );
   await page.route('**/event/my-tickets/', (route) => route.fulfill(json([])));
   await page.route('**/event/registration-options/', (route) => route.fulfill(json({detail: 'none'}, 404)));
   await page.route('**/authn/account-emails/', (route) => route.fulfill(json({emails: []})));
