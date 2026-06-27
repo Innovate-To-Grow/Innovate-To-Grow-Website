@@ -30,6 +30,8 @@ PR_DEFAULT_PROJECTS = ["chromium"]
 
 AUTH_SPECS = [
     "e2e/auth-login.spec.ts",
+    "e2e/auth-phone-login.spec.ts",
+    "e2e/auth-phone-password.spec.ts",
     "e2e/auth-password-reset.spec.ts",
     "e2e/auth-token-login.spec.ts",
     "e2e/account.spec.ts",
@@ -201,7 +203,12 @@ class E2EPlan:
 
 def _ordered_specs(specs: set[str]) -> list[str]:
     order = AUTH_SPECS + PROJECT_SPECS + CONTENT_SPECS + EVENT_SPECS + MOBILE_SPECS
-    return [spec for spec in dict.fromkeys(order) if spec in specs]
+    ordered = [spec for spec in dict.fromkeys(order) if spec in specs]
+    # A directly-changed spec (added via SPEC_TO_PATH_RE) that belongs to no
+    # category list must still run — otherwise editing the spec itself would
+    # silently drop it from the plan. Append any such leftovers deterministically.
+    remaining = sorted(specs - set(ordered))
+    return ordered + remaining
 
 
 def _full_plan(projects: list[str]) -> E2EPlan:
