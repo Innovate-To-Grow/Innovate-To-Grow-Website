@@ -27,6 +27,16 @@ class PlanE2ETests(unittest.TestCase):
         self.assertIn("e2e/subscribe.spec.ts", plan.specs)
         self.assertIn("e2e/complete-profile.spec.ts", plan.specs)
         self.assertIn("e2e/cross-root-sync.spec.ts", plan.specs)
+        self.assertIn("e2e/auth-phone-login.spec.ts", plan.specs)
+        self.assertIn("e2e/auth-phone-password.spec.ts", plan.specs)
+
+    def test_directly_changed_spec_without_category_still_runs(self):
+        # A spec belonging to no category list must still run when edited
+        # directly — otherwise _ordered_specs would silently drop it.
+        plan = plan_e2e_tests("pull_request", ["pages/e2e/past-projects-share.spec.ts"])
+
+        self.assertIn("e2e/past-projects-share.spec.ts", plan.specs)
+        self.assertEqual(plan.matrix[0].spec_args, "e2e/past-projects-share.spec.ts")
 
     def test_project_paths_run_projects_spec(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/features/projects/api/client.ts"])
