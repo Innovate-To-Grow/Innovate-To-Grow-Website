@@ -1,6 +1,10 @@
 export interface User {
   member_uuid: string;
+  /** Primary email, or "" for a phone-only account. Always present from the backend. */
   email: string;
+  /** Primary phone in E.164, or "" for an email-only account. Optional for backward
+   * compatibility with sessions stored before phone auth shipped. */
+  phone?: string;
   profile_image?: string;
   is_staff?: boolean;
 }
@@ -13,6 +17,7 @@ export interface AuthTokens {
 export type AuthNextStep = 'account' | 'complete_profile';
 export type EmailAuthSource = 'login' | 'subscribe' | 'event_registration' | 'register';
 export type EmailAuthFlow = 'auth' | 'login' | 'register';
+export type PhoneAuthSource = 'login' | 'subscribe' | 'event_registration';
 
 export interface LoginResponse {
   message: string;
@@ -50,6 +55,14 @@ export interface MessageResponse {
 export interface VerificationTokenResponse {
   message: string;
   verification_token: string;
+}
+
+export interface PasswordChangeRequestResponse {
+  message: string;
+  /** Channel the verification code was sent through (email, or SMS for phone-only accounts). */
+  channel?: 'email' | 'sms';
+  /** Masked destination for display, e.g. "(•••) •••-4567". */
+  destination?: string;
 }
 
 export interface AccountEmailsResponse {

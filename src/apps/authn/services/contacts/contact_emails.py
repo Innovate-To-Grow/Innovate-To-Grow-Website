@@ -11,6 +11,10 @@ from django.db import IntegrityError, transaction
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
+from apps.authn.services.account_recovery.recovery import (
+    LastRecoveryContactError,
+    count_verified_recovery_contacts,
+)
 from apps.authn.services.email.auth_email import normalize_email, registration_email_conflicts
 from apps.authn.services.email_challenges import (
     AuthChallengeInvalid,
@@ -58,25 +62,37 @@ def _notify_email_owner_in_background(email: str):
 
 
 def create_contact_email(*, member, email_address: str, email_type: str = "secondary", subscribe: bool = True):
-    if email_type == "secondary" and _member_has_secondary(member):
-        raise AuthChallengeInvalid(
-            "You already have a secondary email. Change the existing one to 'other' first, or add this email as 'other'."
-        )
-
     normalized = normalize_email(email_address)
 
     if registration_email_conflicts(normalized):
         _notify_email_owner_in_background(normalized)
         raise AuthChallengeInvalid("This email address is already in use.")
 
+    # Decide the type and insert atomically so the "does the member already have a
+    # primary?" check can't race with a concurrent add. A member must hold exactly
+    # one primary once they own any email, so the first email (or any email added
+    # while the account has no primary — e.g. a legacy gap) is forced to primary,
+    # regardless of the requested type. Verification status stays independent
+    # (assigning primary never marks the email verified).
     try:
-        contact_email = ContactEmail.objects.create(
-            member=member,
-            email_address=normalized,
-            email_type=email_type,
-            subscribe=subscribe,
-            verified=False,
-        )
+        with transaction.atomic():
+            existing = list(ContactEmail.objects.select_for_update().filter(member=member))
+            has_primary = any(c.email_type == "primary" for c in existing)
+            effective_type = "primary" if not has_primary else email_type
+
+            if effective_type == "secondary" and any(c.email_type == "secondary" for c in existing):
+                raise AuthChallengeInvalid(
+                    "You already have a secondary email. Change the existing one to 'other' first, "
+                    "or add this email as 'other'."
+                )
+
+            contact_email = ContactEmail.objects.create(
+                member=member,
+                email_address=normalized,
+                email_type=effective_type,
+                subscribe=subscribe,
+                verified=False,
+            )
     except IntegrityError:
         _notify_email_owner_in_background(normalized)
         raise AuthChallengeInvalid("This email address is already in use.")
@@ -113,12 +129,37 @@ def resend_contact_email_verification(*, member, contact_email_id):
     return {"message": "Verification code sent."}
 
 
+@transaction.atomic
 def delete_contact_email(*, member, contact_email_id):
-    contact_email = ContactEmail.objects.filter(pk=contact_email_id, member=member).first()
-    if contact_email is None:
+    """Delete a contact email, enforcing the recovery-contact and primary invariants.
+
+    Deletion is blocked when it would remove the member's last verified recovery
+    contact (a verified phone or another verified email counts as a survivor). If
+    the deleted email is the primary, another remaining email is promoted
+    deterministically (prefer verified, else oldest); if no email remains, the
+    account may legitimately have no primary (e.g. a phone-only account).
+    """
+    contact = ContactEmail.objects.select_for_update().filter(pk=contact_email_id, member=member).first()
+    if contact is None:
         raise AuthChallengeInvalid("Contact email not found.")
 
-    contact_email.delete()
+    # Deleting an *unverified* email never reduces recovery capability, so only
+    # guard verified emails. The guard checks what would remain *after* deletion.
+    if contact.verified and count_verified_recovery_contacts(member, exclude_email_pk=contact.pk) == 0:
+        raise LastRecoveryContactError(
+            "You can't remove your only verified recovery method. Add and verify another email or phone first."
+        )
+
+    was_primary = contact.email_type == "primary"
+    contact.delete()
+
+    if was_primary:
+        replacement = (
+            ContactEmail.objects.select_for_update().filter(member=member).order_by("-verified", "created_at").first()
+        )
+        if replacement is not None:
+            replacement.email_type = "primary"
+            replacement.save(update_fields=["email_type", "updated_at"])
 
 
 @transaction.atomic

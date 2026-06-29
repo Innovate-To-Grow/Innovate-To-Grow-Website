@@ -26,13 +26,14 @@ const renderForm = (returnTo?: string | null) =>
     </MemoryRouter>,
   );
 
-describe('LoginForm returnTo threading', () => {
+describe('LoginForm unified email/phone field', () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
     mockNavigate.mockReset();
     mockUseAuth.mockReturnValue({
       login: vi.fn(),
       requestEmailAuthCode: vi.fn().mockResolvedValue({message: 'Code sent.'}),
+      requestPhoneAuthCode: vi.fn().mockResolvedValue({message: 'Code sent.'}),
       error: null,
       isLoading: false,
       clearError: vi.fn(),
@@ -43,32 +44,50 @@ describe('LoginForm returnTo threading', () => {
     cleanup();
   });
 
-  it('forwards a safe returnTo to the email-code verification step', async () => {
+  it('routes an email entry to the email-code step and threads returnTo', async () => {
     renderForm('/past-projects');
     const authValue = mockUseAuth.mock.results.at(-1)?.value;
 
-    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'ada@example.com'}});
-    fireEvent.click(screen.getByRole('button', {name: 'Continue with Email'}));
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: 'ada@example.com'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
 
     await waitFor(() => {
       expect(authValue.requestEmailAuthCode).toHaveBeenCalledWith('ada@example.com', 'login');
     });
+    expect(authValue.requestPhoneAuthCode).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith(
       '/verify-email?flow=auth&email=ada%40example.com&returnTo=%2Fpast-projects',
     );
   });
 
-  it('omits the returnTo param from the verification step when none is supplied', async () => {
+  it('omits returnTo from the verification step when none is supplied', async () => {
     renderForm();
     const authValue = mockUseAuth.mock.results.at(-1)?.value;
 
-    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'ada@example.com'}});
-    fireEvent.click(screen.getByRole('button', {name: 'Continue with Email'}));
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: 'ada@example.com'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
 
     await waitFor(() => {
       expect(authValue.requestEmailAuthCode).toHaveBeenCalled();
     });
     expect(mockNavigate).toHaveBeenCalledWith('/verify-email?flow=auth&email=ada%40example.com');
+  });
+
+  it('disables Continue until the field holds a valid email or phone', () => {
+    renderForm();
+    const submit = screen.getByRole('button', {name: 'Continue'});
+    const input = screen.getByLabelText('Email or phone number');
+
+    expect(submit).toBeDisabled();
+
+    fireEvent.change(input, {target: {value: 'not-an-identifier'}});
+    expect(submit).toBeDisabled();
+
+    fireEvent.change(input, {target: {value: 'ada@example.com'}});
+    expect(submit).toBeEnabled();
+
+    fireEvent.change(input, {target: {value: '2025550123'}});
+    expect(submit).toBeEnabled();
   });
 
   it('returns a password sign-in to the safe returnTo', async () => {
@@ -77,7 +96,7 @@ describe('LoginForm returnTo threading', () => {
     authValue.login.mockResolvedValue({next_step: 'account', requires_profile_completion: false});
 
     fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'ada@example.com'}});
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'ada@example.com'}});
     fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'hunter2!'}});
     fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
 
@@ -85,5 +104,28 @@ describe('LoginForm returnTo threading', () => {
       expect(authValue.login).toHaveBeenCalledWith('ada@example.com', 'hunter2!');
     });
     expect(mockNavigate).toHaveBeenCalledWith('/past-projects', {replace: true});
+  });
+
+  it('signs in with a phone number and password', async () => {
+    renderForm();
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+    authValue.login.mockResolvedValue({next_step: 'account', requires_profile_completion: false});
+
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: '(202) 555-0123'}});
+    fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'hunter2!'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
+
+    await waitFor(() => {
+      expect(authValue.login).toHaveBeenCalledWith('2025550123', 'hunter2!');
+    });
+  });
+
+  it('prefills the password email from a typed email when switching modes', () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: 'ada@example.com'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
+
+    expect((screen.getByLabelText('Email or Phone') as HTMLInputElement).value).toBe('ada@example.com');
   });
 });

@@ -5,40 +5,46 @@ import {StatusAlert} from '../shared/StatusAlert';
 
 interface PrimaryEmailCardProps {
   profile: ProfileResponse;
+  email: string;
   subscribeSaving: boolean;
   verifying: boolean;
   verifyCode: string;
   verifyLoading: boolean;
   verifyError: string | null;
   resendLoading: boolean;
+  deleteLoading: boolean;
   onToggleSubscribe: () => void;
   onToggleVerify: () => void;
   onVerifyCodeChange: (value: string) => void;
   onVerifySubmit: (event: FormEvent) => void;
   onResend: () => void;
   onCancelVerify: () => void;
+  onDelete: () => void;
 }
 
 export const PrimaryEmailCard = ({
   profile,
+  email,
   subscribeSaving,
   verifying,
   verifyCode,
   verifyLoading,
   verifyError,
   resendLoading,
+  deleteLoading,
   onToggleSubscribe,
   onToggleVerify,
   onVerifyCodeChange,
   onVerifySubmit,
   onResend,
   onCancelVerify,
+  onDelete,
 }: PrimaryEmailCardProps) => (
   <div className="email-center-card">
     <div className="email-center-row">
       <div className="email-center-card-main">
         <div className="email-center-card-heading">
-          <span className="email-center-card-title email-center-card-title--emphasis">{profile.email}</span>
+          <span className="email-center-card-title email-center-card-title--emphasis">{email}</span>
           <span className="email-center-badge primary">Primary</span>
           <span className={`email-center-badge ${profile.email_verified ? 'verified' : 'unverified'}`}>
             {profile.email_verified ? 'Verified' : 'Unverified'}
@@ -53,6 +59,11 @@ export const PrimaryEmailCard = ({
           {!profile.email_verified && profile.primary_email_id && !verifying ? (
             <button type="button" className="email-center-btn verify" disabled={resendLoading} onClick={onToggleVerify}>
               Verify
+            </button>
+          ) : null}
+          {profile.primary_email_id && !verifying ? (
+            <button type="button" className="email-center-btn delete" disabled={deleteLoading} onClick={onDelete}>
+              {deleteLoading ? 'Removing...' : 'Remove'}
             </button>
           ) : null}
         </div>

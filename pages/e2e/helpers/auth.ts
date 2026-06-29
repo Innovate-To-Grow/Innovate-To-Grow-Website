@@ -41,6 +41,7 @@ export async function seedAuthenticatedSession(
   opts: SeedAuthOptions = {},
 ): Promise<SeededSession> {
   const user: User = {member_uuid: 'member-e2e', email: 'member@example.com', ...opts.user};
+  const authEmails = user.email.includes('@') ? [user.email] : [];
   const access = mintFakeJwt({exp: opts.accessExp});
 
   await page.addInitScript(
@@ -99,7 +100,7 @@ export async function seedAuthenticatedSession(
     // EmailCenter / PhoneCenter fetch these on mount; left unmocked against a
     // live backend they 401 with the fake token and trigger the logout cascade.
     await page.route('**/authn/account-emails/', (route) =>
-      route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({emails: [user.email]})}),
+      route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({emails: authEmails})}),
     );
     await page.route('**/authn/contact-emails/', (route) =>
       route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
@@ -171,6 +172,7 @@ export async function mockAccountDashboard(
   opts: {email?: string} = {},
 ): Promise<void> {
   const email = opts.email ?? 'member@example.com';
+  const authEmails = email.includes('@') ? [email] : [];
   await mockProfileEndpoint(page, {current: profileResponse({email})});
   await page.route('**/event/my-tickets/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
@@ -188,7 +190,7 @@ export async function mockAccountDashboard(
     }),
   );
   await page.route('**/authn/account-emails/', (route) =>
-    route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({emails: [email]})}),
+    route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({emails: authEmails})}),
   );
   await page.route('**/authn/contact-emails/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),

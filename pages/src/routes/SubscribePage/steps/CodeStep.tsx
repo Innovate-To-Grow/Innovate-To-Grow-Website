@@ -67,7 +67,7 @@ export const CodeStep = ({
       </form>
       <div className="subscribe-code-actions">
         <button type="button" className="subscribe-back-link" onClick={onBack}>
-          Use a different email
+          Use a different email or phone
         </button>
         <button
           type="button"

@@ -117,3 +117,16 @@ class Member(AbstractUser, ProjectControlModel):
         if prefetched is not None:
             return prefetched
         return self.contact_emails.filter(email_type="primary").order_by("created_at").first()
+
+    def get_primary_phone(self) -> str:
+        """Return the member's primary phone in E.164, or empty string.
+
+        ContactPhone has no ``phone_type`` (unlike ContactEmail), so pick
+        deterministically in a single query: verified phones sort first
+        (``-verified``), then the earliest within that group — i.e. the earliest
+        verified phone, else the earliest phone overall. ``build_auth_success_payload``
+        calls this on every login, so it stays one query (not two) even when the
+        account has no phone.
+        """
+        contact = self.contact_phones.order_by("-verified", "created_at").first()
+        return contact.to_e164() if contact else ""

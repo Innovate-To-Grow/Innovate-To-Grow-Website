@@ -13,6 +13,8 @@ import type {
   EmailAuthVerifyResponse,
   LoginResponse,
   MessageResponse,
+  PasswordChangeRequestResponse,
+  PhoneAuthSource,
   RegisterResponse,
   VerificationTokenResponse,
 } from './types';
@@ -105,6 +107,33 @@ export const verifyEmailAuthCode = async (email: string, code: string): Promise<
   return response.data;
 };
 
+export const requestPhoneAuthCode = async (
+  phoneNumber: string,
+  region: string = '1-US',
+  source: PhoneAuthSource = 'login',
+): Promise<EmailAuthRequestResponse> => {
+  const response = await authApi.post<EmailAuthRequestResponse>('/authn/phone-auth/request-code/', {
+    phone_number: phoneNumber,
+    region,
+    source,
+  });
+  return response.data;
+};
+
+export const verifyPhoneAuthCode = async (
+  phoneNumber: string,
+  code: string,
+  region: string = '1-US',
+): Promise<EmailAuthVerifyResponse> => {
+  const response = await authApi.post<EmailAuthVerifyResponse>('/authn/phone-auth/verify-code/', {
+    phone_number: phoneNumber,
+    region,
+    code,
+  });
+  persistAuthSession(response.data);
+  return response.data;
+};
+
 export const verifyRegistrationCode = async (email: string, code: string): Promise<LoginResponse> => {
   const response = await authApi.post<LoginResponse>('/authn/register/verify-code/', { email, code });
   persistAuthSession(response.data);
@@ -162,16 +191,24 @@ export const confirmPasswordReset = async (
   return response.data;
 };
 
-export const requestPasswordChangeCode = async (email: string): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>('/authn/change-password/request-code/', { email });
+export const requestPasswordChangeCode = async (email?: string): Promise<PasswordChangeRequestResponse> => {
+  // Omit `email` entirely for phone-only accounts; the backend then selects the
+  // verification channel (verified email, else SMS) and reports it in the response.
+  const response = await authApi.post<PasswordChangeRequestResponse>(
+    '/authn/change-password/request-code/',
+    email ? { email } : {},
+  );
   return response.data;
 };
 
 export const verifyPasswordChangeCode = async (
-  email: string,
   code: string,
+  email?: string,
 ): Promise<VerificationTokenResponse> => {
-  const response = await authApi.post<VerificationTokenResponse>('/authn/change-password/verify-code/', { email, code });
+  const response = await authApi.post<VerificationTokenResponse>(
+    '/authn/change-password/verify-code/',
+    email ? { email, code } : { code },
+  );
   return response.data;
 };
 

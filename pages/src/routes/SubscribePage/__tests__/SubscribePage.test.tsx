@@ -48,6 +48,13 @@ const baseAuth = {
     user: {member_uuid: 'uuid-1', email: 'test@example.com'},
     requires_profile_completion: true,
   }),
+  requestPhoneAuthCode: vi.fn().mockResolvedValue({message: 'ok'}),
+  verifyPhoneAuthCode: vi.fn().mockResolvedValue({
+    access: 'jwt',
+    refresh: 'jwt-r',
+    user: {member_uuid: 'uuid-1', phone: '+12025550123'},
+    requires_profile_completion: false,
+  }),
 };
 
 const profileData = {
@@ -83,6 +90,8 @@ describe('SubscribePage', () => {
     baseAuth.clearProfileCompletionRequirement.mockReset();
     baseAuth.requestEmailAuthCode.mockClear();
     baseAuth.verifyEmailAuthCode.mockClear();
+    baseAuth.requestPhoneAuthCode.mockClear();
+    baseAuth.verifyPhoneAuthCode.mockClear();
 
     mockGetProfile.mockResolvedValue(profileData);
     mockGetContactEmails.mockResolvedValue([]);
@@ -97,7 +106,7 @@ describe('SubscribePage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email or Phone')).toBeInTheDocument();
   });
 
   it('transitions from email to code step on submit', async () => {
@@ -107,14 +116,30 @@ describe('SubscribePage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'test@example.com'}});
-    fireEvent.submit(screen.getByLabelText('Email').closest('form')!);
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'test@example.com'}});
+    fireEvent.submit(screen.getByLabelText('Email or Phone').closest('form')!);
 
     await waitFor(() => {
       expect(baseAuth.requestEmailAuthCode).toHaveBeenCalledWith('test@example.com', 'subscribe');
     });
 
     expect(await screen.findByLabelText('Verification Code')).toBeInTheDocument();
+  });
+
+  it('routes a phone entry to the SMS-code flow with the subscribe source', async () => {
+    render(
+      <MemoryRouter>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: '(202) 555-0123'}});
+    fireEvent.submit(screen.getByLabelText('Email or Phone').closest('form')!);
+
+    await waitFor(() => {
+      expect(baseAuth.requestPhoneAuthCode).toHaveBeenCalledWith('2025550123', '1-US', 'subscribe');
+    });
+    expect(baseAuth.requestEmailAuthCode).not.toHaveBeenCalled();
   });
 
   it('transitions from code to profile step when profile is incomplete', async () => {
@@ -142,8 +167,8 @@ describe('SubscribePage', () => {
     );
 
     // Go to code step
-    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'test@example.com'}});
-    fireEvent.submit(screen.getByLabelText('Email').closest('form')!);
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'test@example.com'}});
+    fireEvent.submit(screen.getByLabelText('Email or Phone').closest('form')!);
     await screen.findByLabelText('Verification Code');
 
     // Submit code
@@ -186,6 +211,36 @@ describe('SubscribePage', () => {
 
     const newsletterLabels = screen.getAllByText('Newsletters');
     expect(newsletterLabels.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('hides the primary newsletter row for phone-only accounts', async () => {
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: {member_uuid: 'uuid-1', email: ''},
+      isAuthenticated: true,
+    });
+
+    mockGetProfile.mockResolvedValue({
+      ...profileData,
+      email: '',
+      email_verified: false,
+      primary_email_id: null,
+      email_subscribe: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockGetProfile).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText('No email addresses are connected to this account.')).toBeInTheDocument();
+    expect(screen.queryByText('Primary email - Unverified')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Turn on newsletter subscription'})).not.toBeInTheDocument();
   });
 
   it('opens directly on the profile step when the query requests it', async () => {
@@ -415,8 +470,8 @@ describe('SubscribePage', () => {
     );
 
     // Navigate to code step
-    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'test@example.com'}});
-    fireEvent.submit(screen.getByLabelText('Email').closest('form')!);
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'test@example.com'}});
+    fireEvent.submit(screen.getByLabelText('Email or Phone').closest('form')!);
     await screen.findByLabelText('Verification Code');
 
     // Verify code → profile step

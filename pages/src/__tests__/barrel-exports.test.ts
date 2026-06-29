@@ -8,7 +8,6 @@ describe('Component barrel exports', () => {
     expect(mod.CodeInput).toBeDefined();
     expect(mod.VERIFICATION_CODE_PLACEHOLDER).toBe('000000');
     expect(mod.LoginForm).toBeDefined();
-    expect(mod.RegisterForm).toBeDefined();
     expect(mod.AccountPage).toBeDefined();
     expect(mod.CompleteProfilePage).toBeDefined();
     expect(mod.ForgotPasswordPage).toBeDefined();

@@ -3,6 +3,17 @@ Authn app services.
 """
 
 from .account import delete_member_account
+from .account_recovery import (
+    LastRecoveryContactError,
+    NoRecoveryChannelError,
+    RecoveryChannel,
+    count_verified_recovery_contacts,
+    mask_email,
+    mask_phone,
+    request_sms_password_code,
+    select_recovery_channel,
+    verify_sms_password_code_and_mint,
+)
 from .contacts.contact_emails import (
     create_contact_email,
     delete_contact_email,
@@ -16,15 +27,22 @@ from .contacts.contact_phones import (
     request_phone_verification,
     verify_phone_code,
 )
+from .contacts.phone_auth import (
+    PhoneAccountInactive,
+    request_phone_auth,
+    resolve_or_create_member_by_phone,
+)
 from .create_member import CreateMemberService
 from .email.auth_email import (
     ResolvedAuthEmail,
+    ResolvedLoginIdentifier,
     claim_unclaimed_contact_email,
     get_member_auth_emails,
     get_pending_registration_member,
     normalize_email,
     registration_email_conflicts,
     resolve_auth_email,
+    resolve_login_identifier,
 )
 from .email_challenges import (
     AuthChallengeDeliveryError,
@@ -64,10 +82,22 @@ __all__ = [
     "generate_template_excel",
     "ImportResult",
     "delete_member_account",
+    # Account recovery (password channel selection + SMS bridge)
+    "RecoveryChannel",
+    "select_recovery_channel",
+    "mask_email",
+    "mask_phone",
+    "count_verified_recovery_contacts",
+    "LastRecoveryContactError",
+    "NoRecoveryChannelError",
+    "request_sms_password_code",
+    "verify_sms_password_code_and_mint",
     # Auth email helpers
     "ResolvedAuthEmail",
+    "ResolvedLoginIdentifier",
     "normalize_email",
     "resolve_auth_email",
+    "resolve_login_identifier",
     "get_member_auth_emails",
     "claim_unclaimed_contact_email",
     "get_pending_registration_member",
@@ -93,6 +123,10 @@ __all__ = [
     "delete_contact_phone",
     "request_phone_verification",
     "verify_phone_code",
+    # Passwordless phone auth
+    "request_phone_auth",
+    "resolve_or_create_member_by_phone",
+    "PhoneAccountInactive",
     # SMS exceptions
     "PhoneVerificationError",
     "PhoneVerificationInvalid",

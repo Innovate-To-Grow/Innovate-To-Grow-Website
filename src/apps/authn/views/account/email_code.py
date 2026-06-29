@@ -19,7 +19,7 @@ from apps.authn.serializers import (
     DeleteAccountCodeVerifySerializer,
 )
 from apps.authn.services import AuthChallengeInvalid
-from apps.authn.throttles import EmailCodeUserRequestThrottle, EmailCodeVerifyThrottle
+from apps.authn.throttles import EmailCodeUserRequestThrottle, EmailCodeVerifyThrottle, PhoneCodeRequestThrottle
 
 from ..helpers import challenge_error_response
 
@@ -35,7 +35,10 @@ class AccountEmailsView(APIView):
 
 class ChangePasswordCodeRequestView(APIView):
     permission_classes = [IsAuthenticated]
-    throttle_classes = [EmailCodeUserRequestThrottle]
+    # Per-user caps on both the email send budget and the SMS send budget — the
+    # channel isn't known until the serializer runs, so apply both (equal 5/min
+    # scopes). The SMS service also enforces a per-number hourly send cap.
+    throttle_classes = [EmailCodeUserRequestThrottle, PhoneCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

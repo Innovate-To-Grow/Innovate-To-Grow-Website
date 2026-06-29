@@ -48,29 +48,39 @@ Creates a new member account. Passwords are RSA-encrypted by the frontend before
 
 ### `POST /authn/login/`
 
-Password-based login with RSA-encrypted password.
+Password-based login with an **email or phone** identifier and an RSA-encrypted password.
 
 **Request:**
 ```json
 {
-  "email": "user@example.com",
-  "encrypted_password": "<base64>",
+  "email": "user@example.com",   // email address OR phone number (e.g. "2095551234", "+1 209 555 1234")
+  "password": "<base64>",        // RSA-encrypted
   "key_id": "<uuid>"
 }
 ```
+
+The `email` field accepts an email address or a phone number and is kept for backward
+compatibility; an explicit `identifier` field is also accepted and takes precedence when
+both are sent. The identifier is resolved via `resolve_login_identifier`
+(`services/email/auth_email.py`): an `@`-containing value matches a **verified** `ContactEmail`
+(email-first), otherwise the digits are normalized and matched against a **verified**
+`ContactPhone`. Unverified contacts never authenticate.
 
 **Response:**
 ```json
 {
   "access": "<jwt>",
   "refresh": "<jwt>",
-  "user": { "id": "<uuid>", "email": "...", "first_name": "...", ... },
+  "user": { "member_uuid": "<uuid>", "email": "...", "phone": "...", ... },
   "requires_profile_completion": false
 }
 ```
 
 **Behavior:**
-- Generic error message ("Invalid credentials.") regardless of whether email or password is wrong
+- Generic error message ("Invalid credentials.") for every failure mode (wrong password,
+  unknown identifier, unverified phone, inactive account) to prevent account enumeration
+- Phone-only accounts can sign in here once they have set a password (see *Password management*),
+  and continue to use the passwordless phone-OTP flow (`/authn/phone-auth/*`)
 - RSA keypair rotated on each successful login
 - Throttled: 10 requests/minute (`LoginRateThrottle`)
 
@@ -159,13 +169,56 @@ On success it stores JWT credentials in the SPA and routes based on `source`.
 
 ## Password management
 
-### `POST /authn/password-reset/confirm/`
+Both the authenticated **create/change-password** flow and the unauthenticated
+**password-reset** flow verify the user through a recovery contact before a password is set.
+Verification can happen over **email** (a hashed `EmailAuthChallenge` code) or, when no
+verified email exists, **SMS** (the shared phone-OTP infrastructure). On a successful code
+check, a one-time `verification_token` is minted (stored hashed on a `VERIFIED`
+`EmailAuthChallenge` row) and consumed by the matching `confirm` step. The SMS channel reuses
+the same token/confirm path — it is not a parallel mechanism — via a channel-aware
+`EmailAuthChallenge` (`channel`, `target_phone` fields; see migration `0015`).
 
-Completes password reset using a verification token from the email challenge flow.
+### Verification-channel selection
 
-### `POST /authn/change-password/`
+For the authenticated create/change-password flow the channel is chosen by
+`select_recovery_channel` (`services/account_recovery/channel_select.py`) in this order:
 
-Authenticated endpoint. Requires current password + verification token. Optionally blacklists the current refresh token and returns new tokens.
+1. a verified **primary** email;
+2. otherwise **any** verified contact email;
+3. otherwise a verified **phone** via SMS;
+4. otherwise a `400` validation error (*"No verified email or phone is available…"*).
+
+For the password-reset flow the channel follows the identifier the caller supplied (email → email,
+phone → SMS).
+
+### `POST /authn/change-password/request-code/`
+
+Authenticated. `email` is **optional** — when omitted, the channel is selected automatically (the
+phone-only path). When supplied it must be one of the member's verified emails (used to
+disambiguate between several verified emails).
+
+- **Response:** `{ "message": "...", "channel": "email" | "sms", "destination": "<masked>" }`
+- Throttled per-user for both email and SMS sends; the SMS service also enforces a per-number cap.
+
+### `POST /authn/change-password/verify-code/`
+
+Authenticated. Body: `{ "code": "<6 digits>", "email": "<optional>" }`. Verifies the code on the
+selected channel and returns `{ "message": "...", "verification_token": "...", "channel": "..." }`.
+
+### `POST /authn/change-password/confirm/`
+
+Authenticated. Body: `{ "verification_token", "new_password", "new_password_confirm", "key_id" }`.
+Consumes the token (channel-agnostic) and sets the password. Unchanged by the SMS work.
+
+> `POST /authn/change-password/` (the separate *current-password* change endpoint) is unchanged.
+
+### Password reset (`POST /authn/password-reset/{request-code,verify-code,confirm}/`)
+
+Unauthenticated, enumeration-safe. Accepts an `identifier` (email **or** phone; `email` kept as a
+backward-compatible alias). The request step always returns the same generic message regardless of
+whether an account exists. Verify/confirm return uniform `"Verification token is invalid or has
+expired."` errors so the endpoint never reveals account existence. The public request endpoint
+applies a per-IP SMS throttle when the identifier is a phone number.
 
 ## Token refresh
 
@@ -197,11 +250,31 @@ Lists the authenticated user's contact emails.
 
 ### `POST /authn/contact-emails/`
 
-Creates a new contact email. Throttled: 5/hour.
+Creates a new contact email. Throttled: 5/hour. Verification status is independent of primary status
+(a new email is always created unverified).
+
+**Primary-email invariant:** a member who owns any contact email must have exactly one `primary`.
+When the member has **no** primary (their first email, or a legacy gap), the new email is forced to
+`primary` regardless of the requested `email_type`; this is decided atomically under a row lock so
+concurrent adds can't create two primaries. Adding a further email while a primary exists keeps the
+requested type and never replaces the existing primary. (Existing inconsistent rows are repaired by
+data migration `0016`: promote one email when none is primary — prefer verified, else oldest — and
+demote extras when several are primary.)
 
 ### `PATCH /authn/contact-emails/{id}/`
 
 Updates a contact email (type, subscribe status).
+
+### `DELETE /authn/contact-emails/{id}/`
+
+Deletes a contact email, enforcing the recovery-contact policy atomically:
+
+- Deletion is **blocked** (`409 Conflict`, actionable message) when removing the email would leave the
+  member with **no verified recovery contact**. A verified phone or another verified email counts as a
+  survivor; deleting an *unverified* email is always allowed. A phone-only account with a verified
+  phone may therefore hold zero emails.
+- If the deleted email was `primary`, another remaining email is promoted deterministically (prefer
+  verified, else oldest). If no email remains, the account may have no primary.
 
 ### `POST /authn/contact-emails/{id}/verify/`
 
@@ -209,7 +282,7 @@ Initiates or completes email verification via challenge code.
 
 ### `POST /authn/contact-emails/{id}/make-primary/`
 
-Promotes a verified contact email to primary.
+Promotes a verified contact email to primary (atomic; the previous primary is demoted).
 
 ## Contact phones
 
@@ -224,6 +297,17 @@ Creates a new contact phone. SMS verification is requested separately via `reque
 ### `POST /authn/contact-phones/{id}/verify/`
 
 Verifies phone with SMS OTP code (delivered via AWS SNS).
+
+### `DELETE /authn/contact-phones/{id}/`
+
+Deletes a contact phone. Enforces the **same** last-verified-recovery-contact rule as email deletion
+(symmetric): removing a *verified* phone is blocked with **409** when it would leave the member with no
+verified recovery contact (a verified email or another verified phone counts as a survivor). Deleting an
+unverified phone is always allowed.
+
+> Note: the unauthenticated **Subscribe** and **Event Registration** entry screens accept an email **or**
+> a phone identifier (the existing passwordless code flows, `source=subscribe` / `event_registration`);
+> the event ticket is still delivered to an email collected on the registration form.
 
 ## Account deletion
 

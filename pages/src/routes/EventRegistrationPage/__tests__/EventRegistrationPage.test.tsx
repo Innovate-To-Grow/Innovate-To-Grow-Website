@@ -1,6 +1,6 @@
-import {fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {EventRegistrationPage} from '../EventRegistrationPage';
 
@@ -38,6 +38,12 @@ vi.mock('react-router-dom', async () => {
 describe('EventRegistrationPage', () => {
   const requestEmailAuthCode = vi.fn();
   const verifyEmailAuthCode = vi.fn();
+  const requestPhoneAuthCode = vi.fn();
+  const verifyPhoneAuthCode = vi.fn();
+
+  afterEach(() => {
+    cleanup();
+  });
 
   beforeEach(() => {
     mockUseAuth.mockReset();
@@ -45,12 +51,16 @@ describe('EventRegistrationPage', () => {
     mockFetchRegistrationOptions.mockReset();
     requestEmailAuthCode.mockReset();
     verifyEmailAuthCode.mockReset();
+    requestPhoneAuthCode.mockReset();
+    verifyPhoneAuthCode.mockReset();
 
     mockUseAuth.mockReturnValue({
       isAuthenticated: false,
       requiresProfileCompletion: false,
       requestEmailAuthCode,
       verifyEmailAuthCode,
+      requestPhoneAuthCode,
+      verifyPhoneAuthCode,
     });
 
     mockFetchRegistrationOptions.mockResolvedValue({
@@ -81,6 +91,34 @@ describe('EventRegistrationPage', () => {
       next_step: 'complete_profile',
       requires_profile_completion: true,
     });
+    requestPhoneAuthCode.mockResolvedValue({message: 'ok'});
+    verifyPhoneAuthCode.mockResolvedValue({
+      message: 'Login successful.',
+      access: 'access-token',
+      refresh: 'refresh-token',
+      user: {member_uuid: 'member-1', phone: '+12025550123'},
+      next_step: 'complete_profile',
+      requires_profile_completion: true,
+    });
+  });
+
+  it('routes a phone entry to the SMS-code flow with the event_registration source', async () => {
+    render(
+      <MemoryRouter initialEntries={['/event-registration']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByLabelText('Email or Phone');
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: '(202) 555-0123'}});
+    fireEvent.submit(screen.getByRole('button', {name: 'Continue'}).closest('form')!);
+
+    await waitFor(() => {
+      expect(requestPhoneAuthCode).toHaveBeenCalledWith('2025550123', '1-US', 'event_registration');
+    });
+    expect(requestEmailAuthCode).not.toHaveBeenCalled();
   });
 
   it('redirects incomplete email-auth signups to complete-profile before showing the form', async () => {
@@ -92,10 +130,10 @@ describe('EventRegistrationPage', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByLabelText('Email');
+    await screen.findByLabelText('Email or Phone');
 
-    fireEvent.change(screen.getByLabelText('Email'), {target: {value: 'ada@example.com'}});
-    fireEvent.submit(screen.getByRole('button', {name: 'Continue with Email'}).closest('form')!);
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'ada@example.com'}});
+    fireEvent.submit(screen.getByRole('button', {name: 'Continue'}).closest('form')!);
 
     await waitFor(() => {
       expect(requestEmailAuthCode).toHaveBeenCalledWith('ada@example.com', 'event_registration');

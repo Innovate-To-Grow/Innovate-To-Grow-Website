@@ -8,10 +8,12 @@ export const DetailsSection = ({displayEmail, dateJoined}: DetailsSectionProps) 
     <h2 className="account-section-title">Account Details</h2>
 
     <div className="account-details-rows">
-      <div className="account-readonly-group">
-        <span className="account-detail-label">Email</span>
-        <span className="account-readonly-value">{displayEmail}</span>
-      </div>
+      {displayEmail ? (
+        <div className="account-readonly-group">
+          <span className="account-detail-label">Email</span>
+          <span className="account-readonly-value">{displayEmail}</span>
+        </div>
+      ) : null}
 
       {dateJoined ? (
         <div className="account-readonly-group">

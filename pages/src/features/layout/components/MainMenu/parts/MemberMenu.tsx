@@ -1,4 +1,5 @@
 import {type User} from '@/features/auth/api/types';
+import {formatE164ForDisplay} from '@/features/auth/components/sections/internal/phoneInput';
 
 interface MemberMenuProps {
   user: User | null;
@@ -41,7 +42,7 @@ export const MemberMenu = ({
           ) : (
             <i className="fa fa-user-circle" />
           )}
-          <span className="member-name">{user?.email || 'Member'}</span>
+          <span className="member-name">{user?.email || formatE164ForDisplay(user?.phone ?? '') || 'Member'}</span>
           <i className="fa fa-angle-down member-arrow" />
         </button>
         {isOpen && (

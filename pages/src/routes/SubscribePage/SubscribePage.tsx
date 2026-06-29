@@ -11,6 +11,7 @@ import {
   updateProfileFields,
 } from '@/features/auth';
 import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
+import {identifyLoginInput} from '@/features/auth/components/sections/internal/identifyLoginInput';
 import type {ContactEmail, ContactPhone, ProfileResponse} from '@/features/auth/api/types';
 import {CodeStep} from './steps/CodeStep';
 import {EmailStep} from './steps/EmailStep';
@@ -36,6 +37,8 @@ export const SubscribePage = () => {
     isLoading,
     requestEmailAuthCode,
     verifyEmailAuthCode,
+    requestPhoneAuthCode,
+    verifyPhoneAuthCode,
     clearError,
     clearProfileCompletionRequirement,
   } = useAuth();
@@ -48,6 +51,9 @@ export const SubscribePage = () => {
     return shouldStartInProfile ? 'profile' : 'manage';
   });
   const [email, setEmail] = useState('');
+  const [identifierType, setIdentifierType] = useState<'email' | 'phone'>('email');
+  // Canonical value sent to the verify/resend calls: a normalized email or 10 national digits.
+  const [authValue, setAuthValue] = useState('');
   const [code, setCode] = useState('');
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
@@ -176,11 +182,26 @@ export const SubscribePage = () => {
     return `Newsletters ${subscribed ? 'enabled' : 'disabled'}.`;
   };
 
+  // Entry accepts an email OR a US phone number; route to the matching passwordless flow.
   const handleEmailSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    const parsed = identifyLoginInput(email.trim());
+    if (parsed.type === 'invalid') {
+      setError('Please enter a valid email address or 10-digit US phone number.');
+      return;
+    }
     clearPageError();
     try {
-      await requestEmailAuthCode(email.trim().toLowerCase(), 'subscribe');
+      if (parsed.type === 'email') {
+        const normalized = parsed.value.toLowerCase();
+        await requestEmailAuthCode(normalized, 'subscribe');
+        setIdentifierType('email');
+        setAuthValue(normalized);
+      } else {
+        await requestPhoneAuthCode(parsed.nationalDigits, '1-US', 'subscribe');
+        setIdentifierType('phone');
+        setAuthValue(parsed.nationalDigits);
+      }
       setStep('code');
     } catch (err: unknown) {
       setError(getSubscribeErrorMessage(err));
@@ -191,7 +212,10 @@ export const SubscribePage = () => {
     event.preventDefault();
     clearPageError();
     try {
-      const result = await verifyEmailAuthCode(email.trim().toLowerCase(), code);
+      const result =
+        identifierType === 'phone'
+          ? await verifyPhoneAuthCode(authValue, code, '1-US')
+          : await verifyEmailAuthCode(authValue, code);
       if (result.requires_profile_completion) {
         setProfileLoading(true);
         setStep('profile');
@@ -207,7 +231,11 @@ export const SubscribePage = () => {
   const handleResendCode = async () => {
     clearPageError();
     try {
-      await requestEmailAuthCode(email.trim().toLowerCase(), 'subscribe');
+      if (identifierType === 'phone') {
+        await requestPhoneAuthCode(authValue, '1-US', 'subscribe');
+      } else {
+        await requestEmailAuthCode(authValue, 'subscribe');
+      }
     } catch (err: unknown) {
       setError(getSubscribeErrorMessage(err));
     }

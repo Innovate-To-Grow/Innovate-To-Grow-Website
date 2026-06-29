@@ -10,27 +10,28 @@ interface EmailStepProps {
 export const EmailStep = ({email, authLoading, onEmailChange, onSubmit}: EmailStepProps) => (
   <div className="subscribe-section">
     <p className="subscribe-hint">
-      Enter your email to continue. If an account with this email already exists, you'll be signed in.
+      Enter your email or phone to continue. If an account already exists, you'll be signed in.
     </p>
     <form onSubmit={onSubmit}>
       <div className="subscribe-form-group">
         <label className="subscribe-label" htmlFor="subscribe-email">
-          Email
+          Email or Phone
         </label>
         <input
           id="subscribe-email"
-          type="email"
+          type="text"
           className="subscribe-input"
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
-          placeholder="you@example.com"
+          placeholder="you@example.com or (201) 555-0123"
+          autoComplete="username"
           required
           autoFocus
           disabled={authLoading}
         />
       </div>
       <button type="submit" className="subscribe-submit" disabled={authLoading || !email.trim()}>
-        {authLoading ? <><span className="subscribe-spinner" /> Sending code...</> : 'Continue with Email'}
+        {authLoading ? <><span className="subscribe-spinner" /> Sending code...</> : 'Continue'}
       </button>
     </form>
   </div>

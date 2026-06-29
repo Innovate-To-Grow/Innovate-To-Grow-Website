@@ -18,6 +18,36 @@ test('account dashboard renders the member profile', {tag: '@core'}, async ({pag
   await expect(page.locator('.account-page')).toContainText(email);
 });
 
+test('phone-only account does not render empty email placeholders', async ({page}) => {
+  await seedAuthenticatedSession(page, {
+    user: {email: '', phone: '+12063338881'},
+    profile: {
+      email: '',
+      email_verified: false,
+      primary_email_id: null,
+      first_name: 'Hongzhe',
+      last_name: 'Xie',
+    },
+  });
+
+  await page.goto('/account', {waitUntil: 'domcontentloaded'});
+
+  const emailSection = page.locator('.account-section').filter({
+    has: page.getByRole('heading', {name: 'Account Emails & Newsletters'}),
+  });
+  await expect(emailSection).toBeVisible();
+  await expect(emailSection.locator('.email-center-card')).toHaveCount(0);
+  await expect(emailSection.getByRole('button', {name: 'Add Email'})).toBeVisible();
+
+  const detailsSection = page.locator('.account-section').filter({
+    has: page.getByRole('heading', {name: 'Account Details'}),
+  });
+  await expect(detailsSection).toBeVisible();
+  await expect(detailsSection).not.toContainText('(206)333-8881');
+  await expect(detailsSection.getByText('Email')).toHaveCount(0);
+  await expect(detailsSection.getByText('Member Since')).toBeVisible();
+});
+
 test('editing the profile sends a PATCH', async ({page}) => {
   const {patchPayloads} = await seedAuthenticatedSession(page, {
     profile: {first_name: 'Ada', last_name: 'Lovelace', organization: 'Acme Corp'},

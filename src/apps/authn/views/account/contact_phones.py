@@ -22,6 +22,7 @@ from apps.authn.serializers import (
     ContactPhoneVerifyCodeSerializer,
 )
 from apps.authn.services import (
+    LastRecoveryContactError,
     PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
@@ -84,6 +85,8 @@ class ContactPhoneDetailView(APIView):
     def delete(self, request, pk):
         try:
             delete_contact_phone(member=request.user, contact_phone_id=pk)
+        except LastRecoveryContactError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
         except AuthChallengeInvalid:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
