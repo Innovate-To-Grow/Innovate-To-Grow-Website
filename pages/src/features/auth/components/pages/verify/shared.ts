@@ -2,7 +2,7 @@ export type VerifyFlow = 'auth' | 'login' | 'register' | 'reset' | 'change';
 
 export const FLOW_META: Record<VerifyFlow, {title: string; subtitle: string; buttonLabel: string}> = {
   auth: {
-    title: 'Verify Your Email',
+    title: 'Verify Your Identity',
     subtitle: 'Enter the 6-digit code we sent to continue signing in or setting up your account.',
     buttonLabel: 'Continue',
   },
@@ -12,7 +12,7 @@ export const FLOW_META: Record<VerifyFlow, {title: string; subtitle: string; but
     buttonLabel: 'Verify and Sign In',
   },
   register: {
-    title: 'Verify Your Email',
+    title: 'Activate Your Account',
     subtitle: 'Enter the 6-digit code to activate your new account.',
     buttonLabel: 'Verify and Activate',
   },
