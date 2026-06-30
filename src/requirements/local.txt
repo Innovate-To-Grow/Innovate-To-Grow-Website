@@ -6,7 +6,7 @@
 -r production.txt
 
 # Linter / formatter
-ruff==0.15.17
+ruff==0.15.20
 
 # Development Only
 # django-debug-toolbar>=4.0.0
