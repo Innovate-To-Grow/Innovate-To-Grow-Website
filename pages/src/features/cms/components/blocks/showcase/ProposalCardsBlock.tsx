@@ -1,6 +1,6 @@
 import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
 
-interface Proposal {
+export interface ProposalCard {
   type: string;
   title: string;
   organization: string;
@@ -9,10 +9,10 @@ interface Proposal {
   objectives: string;
 }
 
-interface ProposalCardsData {
+export interface ProposalCardsData {
   heading?: string;
   footer_html?: string;
-  proposals: Proposal[];
+  proposals: ProposalCard[];
 }
 
 export const ProposalCardsBlock = ({ data }: { data: ProposalCardsData }) => {

@@ -11,6 +11,8 @@ import {
 import {SharedLinksList} from '../sections/internal/SharedLinksList';
 import {useMySharedLinks} from '../sections/internal/useMySharedLinks';
 
+import './account/accountSharedLinks.css';
+
 export const PastProjectCurationSharedLinksPage = () => {
   const {isAuthenticated, requiresProfileCompletion} = useAuth();
   const canLoadShares = isAuthenticated && !requiresProfileCompletion;

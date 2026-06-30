@@ -1,7 +1,7 @@
 import type { ElementType } from 'react';
 import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
 
-interface RichTextData {
+export interface RichTextData {
   heading?: string;
   heading_level?: number;
   body_html: string;

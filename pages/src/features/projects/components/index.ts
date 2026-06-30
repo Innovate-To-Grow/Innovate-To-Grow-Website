@@ -1,3 +1,5 @@
+import './projects.css';
+
 export {MergedResultsTable} from './MergedResultsTable';
 export {PastProjectsBuilder} from './PastProjectsBuilder';
 export {ProjectGridTable} from './ProjectGridTable';

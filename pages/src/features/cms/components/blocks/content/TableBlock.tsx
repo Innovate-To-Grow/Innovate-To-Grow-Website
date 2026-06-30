@@ -1,4 +1,4 @@
-interface TableBlockData {
+export interface TableBlockData {
   heading?: string;
   columns?: unknown[];
   rows?: unknown[];
