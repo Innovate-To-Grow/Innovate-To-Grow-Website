@@ -30,6 +30,7 @@ from .member_helpers import (
     export_members_vcard_response,
     get_full_name_display,
     get_primary_email_display,
+    get_primary_phone_display,
     import_excel_view,
     normalize_inline_uuid_none_values,
 )
@@ -41,6 +42,10 @@ logger = logging.getLogger(__name__)
 class MemberAdmin(BaseModelAdmin, UserAdmin):
     """Custom admin for Member with profile, contact, import, and export tooling."""
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.prefetch_related("contact_emails", "contact_phones")
+
     form = MemberChangeForm
     add_form = MemberCreationForm
     # Django's default AdminPasswordChangeForm does not apply Unfold INPUT_CLASSES;
@@ -50,6 +55,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     list_display = (
         "get_full_name_display",
         "get_primary_email_display",
+        "get_primary_phone_display",
         "organization",
         "is_active",
         "is_staff",
@@ -102,6 +108,10 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     @admin.display(description="Primary Email")
     def get_primary_email_display(self, obj):
         return get_primary_email_display(obj)
+
+    @admin.display(description="Primary Phone")
+    def get_primary_phone_display(self, obj):
+        return get_primary_phone_display(obj)
 
     @admin.display(description="Full Name")
     def get_full_name_display(self, obj):

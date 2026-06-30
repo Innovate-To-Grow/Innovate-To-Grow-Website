@@ -25,6 +25,10 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         )
 
     def test_sidebar_exposes_at_most_one_entry_for_each_tab_group(self):
+        # The contact-info (authn.contactemail / authn.contactphone) tab group is
+        # the ONE intentional exception: Emails and Phones are separate sidebar
+        # links so admins can reach either list directly. Every other tab group
+        # must have at most one sidebar entry.
         sidebar_links = []
         for section in settings.UNFOLD["SIDEBAR"]["navigation"]:
             for item in section["items"]:
@@ -38,6 +42,15 @@ class AdminSidebarNavigationTest(SimpleTestCase):
                 for section_title, item_title, link in sidebar_links
                 if link in tab_links
             ]
+
+            # The contact email/phone tab group has separate sidebar entries by design.
+            if "authn.contactemail" in tab.get("models", []) and "authn.contactphone" in tab.get("models", []):
+                self.assertEqual(
+                    len(exposed_items),
+                    2,
+                    f"Contact-info tab group should expose exactly 2 sidebar entries: {exposed_items}",
+                )
+                continue
 
             with self.subTest(tab=tab_key):
                 self.assertLessEqual(
@@ -174,9 +187,11 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         item_titles = {item["title"] for item in members_section["items"]}
 
         self.assertIn("Members", item_titles)
-        self.assertIn("Contact Info", item_titles)
+        self.assertIn("Emails", item_titles)
+        self.assertIn("Phones", item_titles)
         self.assertIn("Admin Invitations", item_titles)
         self.assertNotIn("Member Sheet Sync", item_titles)
+        self.assertNotIn("Contact Info", item_titles)
 
     def test_member_sheet_sync_is_grouped_under_members_tabs(self):
         tabs = settings.UNFOLD["TABS"]
