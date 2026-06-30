@@ -7,6 +7,8 @@ interface LoginPasswordModeProps {
   password: string;
   isLoading: boolean;
   emailInputRef: RefObject<HTMLInputElement | null>;
+  /** Whether the current identifier was detected as a phone number. */
+  isPhone: boolean;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -18,6 +20,7 @@ export const LoginPasswordMode = ({
   password,
   isLoading,
   emailInputRef,
+  isPhone,
   onEmailChange,
   onPasswordChange,
   onSubmit,
@@ -39,7 +42,14 @@ export const LoginPasswordMode = ({
           placeholder="you@email.com or (201) 555-0123"
           required
           autoComplete="username"
+          aria-describedby={isPhone ? "login-password-phone-hint" : undefined}
         />
+        {isPhone && (
+          <span id="login-password-phone-hint" className="auth-help-text">
+            If you created your account with a phone number and haven't set a password yet,
+            use the verification code option below, then set a password from your account page.
+          </span>
+        )}
       </div>
 
       <div className="auth-form-group">

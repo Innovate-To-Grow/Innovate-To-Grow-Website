@@ -10,6 +10,10 @@ def get_primary_email_display(member):
     return member.get_primary_email() or "-"
 
 
+def get_primary_phone_display(member):
+    return member.get_primary_phone() or "-"
+
+
 def get_full_name_display(member):
     return member.get_full_name() or "-"
 

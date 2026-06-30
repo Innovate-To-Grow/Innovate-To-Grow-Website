@@ -147,6 +147,7 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
           password={password}
           isLoading={isLoading}
           emailInputRef={emailInputRef}
+          isPhone={identifyLoginInput(email).type === 'phone'}
           onEmailChange={(value) => {
             setEmail(value);
             clearFeedback();

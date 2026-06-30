@@ -7,7 +7,12 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.authn.constants import VERIFICATION_THROTTLED
-from apps.authn.services import AuthChallengeDeliveryError, AuthChallengeThrottled
+from apps.authn.services import (
+    AuthChallengeDeliveryError,
+    AuthChallengeThrottled,
+    PhoneVerificationDeliveryError,
+    PhoneVerificationThrottled,
+)
 
 
 def build_auth_success_payload(
@@ -45,4 +50,8 @@ def challenge_error_response(exc: Exception) -> Response:
         return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     if isinstance(exc, AuthChallengeDeliveryError):
         return Response({"detail": "Failed to send verification email."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    if isinstance(exc, PhoneVerificationThrottled):
+        return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    if isinstance(exc, PhoneVerificationDeliveryError):
+        return Response({"detail": "Failed to send verification SMS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     raise exc

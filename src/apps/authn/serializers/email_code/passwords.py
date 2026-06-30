@@ -167,7 +167,13 @@ class ChangePasswordCodeRequestSerializer(serializers.Serializer):
                 target_email=selected.target_email,
             )
         else:
-            request_sms_password_code(e164=selected.e164)
+            try:
+                request_sms_password_code(e164=selected.e164)
+            except PhoneVerificationError:
+                # Stay user-friendly: never surface per-number SMS send state.
+                # The generic message is returned regardless; the per-number send
+                # cap is the backstop.
+                logger.warning("Password-change SMS send failed for member %s", member.id, exc_info=True)
         return {
             "message": "Verification code sent.",
             "channel": selected.channel,
@@ -185,6 +191,7 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
 
     email = serializers.EmailField(required=False, allow_blank=True)
     code = serializers.CharField(required=True, min_length=6, max_length=6)
+    channel = serializers.ChoiceField(choices=["email", "sms"], required=False)
 
     def validate(self, attrs: dict) -> dict:
         member = self.context["request"].user
@@ -193,6 +200,12 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
             selected = select_recovery_channel(member, requested_email=requested)
         except NoRecoveryChannelError as exc:
             raise serializers.ValidationError({"detail": str(exc)}) from exc
+
+        client_channel = attrs.get("channel")
+        if client_channel and client_channel != selected.channel:
+            raise serializers.ValidationError(
+                {"detail": "Your contact methods changed since the code was sent. Please request a new code."}
+            )
 
         if selected.channel == "email":
             try:
@@ -255,7 +268,9 @@ class DeleteAccountCodeRequestSerializer(serializers.Serializer):
         member = self.context["request"].user
         email = member.get_primary_email()
         if not email:
-            raise serializers.ValidationError({"detail": "No primary email is available for account deletion."})
+            raise serializers.ValidationError(
+                {"detail": "No verified email is available for account deletion. Add and verify an email first."}
+            )
 
         issue_email_challenge(
             member=member,
@@ -275,7 +290,9 @@ class DeleteAccountCodeVerifySerializer(serializers.Serializer):
         member = self.context["request"].user
         email = member.get_primary_email()
         if not email:
-            raise serializers.ValidationError({"detail": "No primary email is available for account deletion."})
+            raise serializers.ValidationError(
+                {"detail": "No verified email is available for account deletion. Add and verify an email first."}
+            )
 
         try:
             challenge = verify_email_code(

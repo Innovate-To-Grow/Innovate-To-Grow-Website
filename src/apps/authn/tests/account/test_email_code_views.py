@@ -124,7 +124,7 @@ class DeleteAccountCodeViewEdgeTests(APITestCase):
         self.email.delete()
         resp = self.client.post("/authn/delete-account/request-code/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("No primary email", str(resp.data))
+        self.assertIn("No verified email", str(resp.data))
 
     def test_request_code_throttled_returns_429(self, _code, _send):
         """save() raising AuthChallengeThrottled -> challenge_error_response -> 429 (lines 96-97)."""
