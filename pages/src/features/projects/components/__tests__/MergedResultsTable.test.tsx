@@ -23,7 +23,15 @@ const exportMocks = vi.hoisted(() => ({
   exportProjectRowsWord: vi.fn(),
 }));
 
-vi.mock('../export', () => exportMocks);
+vi.mock('../export/excelExport', () => ({
+  exportProjectRowsExcel: exportMocks.exportProjectRowsExcel,
+}));
+vi.mock('../export/pdfExport', () => ({
+  exportProjectRowsPdf: exportMocks.exportProjectRowsPdf,
+}));
+vi.mock('../export/wordExport', () => ({
+  exportProjectRowsWord: exportMocks.exportProjectRowsWord,
+}));
 
 const baseRow: ProjectGridRow = {
   semester_label: '2025-1 Spring',
@@ -235,7 +243,7 @@ describe('MergedResultsTable', () => {
     expect(onCreateShare.mock.calls[0][1]).toBe('');
   });
 
-  it('passes the visible rows and export context to the chosen exporter', () => {
+  it('passes the visible rows and export context to the chosen exporter', async () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
     const exportCluster = container.querySelector(
       '.project-grid-toolbar-cluster[aria-label="Export"]',
@@ -243,7 +251,7 @@ describe('MergedResultsTable', () => {
 
     fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
 
-    expect(exportMocks.exportProjectRowsExcel).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(exportMocks.exportProjectRowsExcel).toHaveBeenCalledTimes(1));
     const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsExcel.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
@@ -287,7 +295,7 @@ describe('MergedResultsTable', () => {
     expect(rowsArg[0]).toMatchObject({project_title: 'Irrigation Sensor'});
   });
 
-  it('exports the full shared snapshot even when the viewer has filtered the table', () => {
+  it('exports the full shared snapshot even when the viewer has filtered the table', async () => {
     const {container} = render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} sharedMode />);
 
     fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Irrigation'}});
@@ -296,7 +304,7 @@ describe('MergedResultsTable', () => {
     ) as HTMLElement;
     fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
 
-    expect(exportMocks.exportProjectRowsExcel).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(exportMocks.exportProjectRowsExcel).toHaveBeenCalledTimes(1));
     expect(exportMocks.exportProjectRowsExcel.mock.calls[0][0]).toHaveLength(2);
   });
 

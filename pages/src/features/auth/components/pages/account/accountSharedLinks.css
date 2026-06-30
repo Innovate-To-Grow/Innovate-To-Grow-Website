@@ -1,0 +1,74 @@
+body .account-shares-actions .account-outline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+body .account-shares-header,
+body .account-shared-links-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+body .account-shares-header {
+  margin-bottom: 1.25rem;
+}
+
+body .account-shares-header .account-section-title,
+body .account-shared-links-page-header .account-page-title {
+  margin-bottom: 0;
+}
+
+body .account-shares-page-link,
+body .account-shared-links-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+body .account-shared-links-page {
+  max-width: 880px;
+}
+
+body .account-shared-links-page-header {
+  margin-bottom: 1.5rem;
+}
+
+body .account-shared-links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+body .account-shared-links-toolbar {
+  display: grid;
+  gap: 0.45rem;
+}
+
+body .account-shared-links-search {
+  max-width: 42rem;
+}
+
+body .account-shared-links-count {
+  margin-top: 0.1rem;
+}
+
+@media (max-width: 600px) {
+  body .account-shares-header,
+  body .account-shared-links-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  body .account-shares-page-link,
+  body .account-shared-links-back {
+    width: 100%;
+  }
+}

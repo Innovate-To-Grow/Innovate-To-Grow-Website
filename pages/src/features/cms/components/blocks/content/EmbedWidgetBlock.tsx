@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-interface EmbedWidgetData {
+export interface EmbedWidgetData {
   slug: string;
   heading?: string;
   height?: number | string;

@@ -8,6 +8,8 @@ import {EmailCenter} from '../sections/EmailCenter';
 import {MySharedLinksSection} from '../sections/MySharedLinksSection';
 import {PhoneCenter} from '../sections/PhoneCenter';
 
+import './account/accountSharedLinks.css';
+
 export const AccountPage = () => {
     const account = useAccountDashboard();
 
