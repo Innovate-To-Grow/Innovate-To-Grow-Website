@@ -132,7 +132,7 @@ export async function mockEventRegistration(
   const created: unknown[] = [];
   const options = opts.options ?? registrationOptions();
 
-  await page.route('**/event/registration-options/', (route) =>
+  await page.route('**/event/registration-options/**', (route) =>
     route.fulfill(json(options)),
   );
   await page.route('**/event/registration-events/', (route) =>

@@ -32,7 +32,7 @@ test('login in #root flips #menu-root to the member email', {tag: '@core'}, asyn
   await page.route('**/event/registration-events/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
   );
-  await page.route('**/event/registration-options/', (route) =>
+  await page.route('**/event/registration-options/**', (route) =>
     route.fulfill({status: 404, contentType: 'application/json', body: JSON.stringify({detail: 'none'})}),
   );
 

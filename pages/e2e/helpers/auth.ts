@@ -93,7 +93,7 @@ export async function seedAuthenticatedSession(
     await page.route('**/event/registration-events/', (route) =>
       route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
     );
-    await page.route('**/event/registration-options/', (route) =>
+    await page.route('**/event/registration-options/**', (route) =>
       route.fulfill({
         status: 404,
         contentType: 'application/json',
@@ -183,7 +183,7 @@ export async function mockAccountDashboard(
   await page.route('**/event/registration-events/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
   );
-  await page.route('**/event/registration-options/', (route) =>
+  await page.route('**/event/registration-options/**', (route) =>
     route.fulfill({status: 404, contentType: 'application/json', body: JSON.stringify({detail: 'none'})}),
   );
   // Keep a seeded session alive on /account: an un-mocked 401 here would trip
