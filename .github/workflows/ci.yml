@@ -273,7 +273,7 @@ jobs:
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: src/.venv
           key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
@@ -327,7 +327,7 @@ jobs:
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: src/.venv
           key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
@@ -441,7 +441,7 @@ jobs:
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: src/.venv
           key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
@@ -542,7 +542,7 @@ jobs:
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: src/.venv
           key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
@@ -1065,7 +1065,7 @@ jobs:
       # re-pull it from the registry on every CI run. Both Trivy steps point at
       # this dir via TRIVY_CACHE_DIR.
       - name: Cache Trivy vulnerability database
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.cache/trivy
           key: trivy-db-${{ github.run_id }}
@@ -1095,7 +1095,7 @@ jobs:
 
       - name: Upload Trivy SARIF to GitHub Security tab
         if: ${{ github.event_name == 'push' && !cancelled() }}
-        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: trivy-results.sarif
           category: trivy-backend-image
@@ -1439,7 +1439,7 @@ jobs:
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: src/.venv
           key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
@@ -1478,7 +1478,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           # The -cfw suffix (chromium+firefox+webkit) busts any older cache that
