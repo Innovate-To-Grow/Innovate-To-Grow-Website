@@ -13,7 +13,7 @@ class EventRegistrationCreateViewTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.member = make_member(first_name="Jane", last_name="Doe")
-        self.event = make_event(is_live=True)
+        self.event = make_event(registration_open=True)
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
 
     def _post(self, data=None, authenticate=True):
@@ -33,9 +33,9 @@ class EventRegistrationCreateViewTest(TestCase):
         response = self._post({"event_slug": "nonexistent", "ticket_id": str(self.ticket.pk)})
         self.assertEqual(response.status_code, 404)
 
-    def test_non_live_event_returns_404(self):
-        self.event.is_live = False
-        self.event.save()
+    def test_closed_event_returns_404(self):
+        self.event.registration_open = False
+        self.event.save(update_fields=["registration_open", "updated_at"])
         response = self._post()
         self.assertEqual(response.status_code, 404)
 
@@ -78,6 +78,16 @@ class EventRegistrationCreateViewTest(TestCase):
         response = self._post()
         self.assertIn("registration", response.data)
         self.assertIn("id", response.data["registration"])
+
+    def test_member_can_register_for_two_different_open_events(self):
+        first = self._post()
+        other_event = make_event(name="Other Open Event", slug="other-open-event", registration_open=True)
+        other_ticket = Ticket.objects.create(event=other_event, name="VIP")
+        second = self._post({"event_slug": other_event.slug, "ticket_id": str(other_ticket.pk)})
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(EventRegistration.objects.filter(member=self.member).count(), 2)
 
     def test_required_question_missing_answer_returns_400(self):
         Question.objects.create(event=self.event, text="Required Q", is_required=True)

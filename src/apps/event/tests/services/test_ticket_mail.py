@@ -5,7 +5,11 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.event.models import EventRegistration, Ticket
-from apps.event.services.ticket_mail import TICKET_LOGIN_REDIRECT_PATH, _issue_ticket_login_link, send_ticket_email
+from apps.event.services.ticket_mail import (
+    _issue_ticket_login_link,
+    send_ticket_email,
+    ticket_login_redirect_path,
+)
 from apps.event.tests.helpers import make_event, make_member
 from apps.mail.models import LoginLinkToken
 
@@ -163,7 +167,7 @@ class TicketLoginLinkIssuanceTest(TestCase):
         token = LoginLinkToken.objects.get(registration=self.registration)
         self.assertEqual(token.member_id, self.member.pk)
         self.assertIsNone(token.campaign)
-        self.assertEqual(token.redirect_path, TICKET_LOGIN_REDIRECT_PATH)
+        self.assertEqual(token.redirect_path, ticket_login_redirect_path(self.registration))
         self.assertIn(f"/login-link?token={token.token}", url)
 
     def test_validity_comes_from_event_config(self):

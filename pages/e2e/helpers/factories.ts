@@ -4,6 +4,7 @@
 import type {LoginResponse, ProfileResponse, User} from '../../src/features/auth/api/types';
 import type {
   EventRegistrationOptions,
+  EventRegistrationSummary,
   EventSchedulePayload,
   Registration,
 } from '../../src/features/events/api';
@@ -82,6 +83,21 @@ export function registrationOptions(
     member_profile: null,
     member_phone: null,
     phone_regions: [{code: '1-US', label: 'United States'}],
+    ...overrides,
+  };
+}
+
+export function registrationEvent(
+  overrides: Partial<EventRegistrationSummary> = {},
+): EventRegistrationSummary {
+  return {
+    id: 'event-e2e',
+    name: 'E2E Showcase',
+    slug: 'e2e-showcase',
+    date: '2026-05-01',
+    location: 'E2E Hall',
+    description: 'End-to-end smoke event.',
+    registration: null,
     ...overrides,
   };
 }

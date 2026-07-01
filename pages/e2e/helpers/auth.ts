@@ -90,7 +90,10 @@ export async function seedAuthenticatedSession(
     await page.route('**/event/my-tickets/', (route) =>
       route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
     );
-    await page.route('**/event/registration-options/', (route) =>
+    await page.route('**/event/registration-events/', (route) =>
+      route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
+    );
+    await page.route('**/event/registration-options/**', (route) =>
       route.fulfill({
         status: 404,
         contentType: 'application/json',
@@ -157,7 +160,7 @@ export async function mockProfileEndpoint(
 /**
  * Stub the endpoints AccountPage fires on mount so navigating to /account does
  * not hang on un-mocked network. Covers the dashboard data calls (`getProfile`,
- * `fetchMyTickets`, `fetchRegistrationOptions`) AND the EmailCenter/PhoneCenter
+ * `fetchMyTickets`, `fetchRegistrationEvents`) AND the EmailCenter/PhoneCenter
  * mounts (`account-emails`, `contact-emails`, `contact-phones`) plus a
  * succeeding `refresh`. The session-guard mocks are load-bearing: left unmocked
  * they 401 against the live E2E backend with the fake token, and the api-client
@@ -177,7 +180,10 @@ export async function mockAccountDashboard(
   await page.route('**/event/my-tickets/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
   );
-  await page.route('**/event/registration-options/', (route) =>
+  await page.route('**/event/registration-events/', (route) =>
+    route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
+  );
+  await page.route('**/event/registration-options/**', (route) =>
     route.fulfill({status: 404, contentType: 'application/json', body: JSON.stringify({detail: 'none'})}),
   );
   // Keep a seeded session alive on /account: an un-mocked 401 here would trip

@@ -637,7 +637,110 @@ body .account-shared-links-count {
   margin-top: 0.1rem;
 }
 
+body .event-reg-event-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+body .event-reg-event-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid rgba(15, 45, 82, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(15, 45, 82, 0.06);
+}
+
+body .event-reg-event-card.is-selected {
+  border-color: rgba(15, 45, 82, 0.36);
+}
+
+body .event-reg-event-card-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+body .event-reg-event-card-title {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+body .event-reg-event-status {
+  flex-shrink: 0;
+  border: 1px solid rgba(35, 120, 71, 0.25);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: #eef8f1;
+  color: #237847;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+body .event-reg-event-status.is-registered {
+  border-color: rgba(15, 45, 82, 0.22);
+  background: #eef5fd;
+  color: var(--itg-color-primary);
+}
+
+body .event-reg-event-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+}
+
+body .event-reg-event-meta div {
+  min-width: 0;
+}
+
+body .event-reg-event-meta dt {
+  color: var(--itg-color-muted, #5d6b7c);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+body .event-reg-event-meta dd {
+  margin: 0.2rem 0 0;
+  color: var(--itg-color-text-dark);
+  overflow-wrap: anywhere;
+}
+
+body .event-reg-event-description {
+  margin: 0.8rem 0 0;
+  color: var(--itg-color-text, #374151);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+body .event-reg-event-action {
+  min-width: 8.5rem;
+}
+
 @media (max-width: 600px) {
+  body .event-reg-event-card {
+    grid-template-columns: 1fr;
+  }
+
+  body .event-reg-event-card-header {
+    flex-direction: column;
+  }
+
+  body .event-reg-event-meta {
+    grid-template-columns: 1fr;
+  }
+
+  body .event-reg-event-action {
+    width: 100%;
+  }
+
   body .account-shares-header,
   body .account-shared-links-page-header {
     align-items: stretch;

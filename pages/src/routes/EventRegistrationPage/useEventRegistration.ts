@@ -1,8 +1,17 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type FormEvent} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useNavigate, useSearchParams} from 'react-router-dom';
 import {useAuth} from '@/features/auth';
 import {updateProfileFields} from '@/features/auth';
-import {createRegistration, fetchRegistrationOptions, sendPhoneCode, verifyPhoneCode, type EventRegistrationOptions, type Registration} from '@/features/events/api';
+import {
+  createRegistration,
+  fetchRegistrationEvents,
+  fetchRegistrationOptions,
+  sendPhoneCode,
+  verifyPhoneCode,
+  type EventRegistrationOptions,
+  type EventRegistrationSummary,
+  type Registration,
+} from '@/features/events/api';
 import {maxPhoneDigits, validatePhoneDigits} from '@/lib/phoneRegions';
 import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
 import {buildCompleteProfilePath} from '@/features/auth/api/redirects';
@@ -10,6 +19,9 @@ import {identifyLoginInput} from '@/features/auth/components/sections/internal/i
 import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
 
 export type OrganizationType = 'individual' | 'organization';
+
+const registrationPathForEvent = (eventSlug?: string | null) =>
+  eventSlug ? `/event-registration?event=${encodeURIComponent(eventSlug)}` : '/event-registration';
 
 export const useEventRegistration = () => {
   const {
@@ -21,8 +33,11 @@ export const useEventRegistration = () => {
     verifyPhoneAuthCode,
   } = useAuth();
   const navigate = useNavigate();
-  const completeProfilePath = buildCompleteProfilePath('/event-registration');
+  const [searchParams] = useSearchParams();
+  const eventSlugParam = searchParams.get('event') || '';
   const [step, setStep] = useState<EventRegistrationStep>('loading');
+  const [events, setEvents] = useState<EventRegistrationSummary[]>([]);
+  const [selectedEventSlug, setSelectedEventSlug] = useState(eventSlugParam);
   const [options, setOptions] = useState<EventRegistrationOptions | null>(null);
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,19 +71,46 @@ export const useEventRegistration = () => {
   const [initialPhone, setInitialPhone] = useState<{digits: string; region: string} | null>(null);
   const initialProfileRef = useRef<{first_name: string; middle_name: string; last_name: string; organization: string; title: string} | null>(null);
 
-  // Pre-fill attendee fields from member profile
+  const selectedRegistrationPath = registrationPathForEvent(selectedEventSlug || eventSlugParam);
+  const completeProfilePath = buildCompleteProfilePath(selectedRegistrationPath);
+  const profileCompletionPathForQueryEvent = buildCompleteProfilePath(registrationPathForEvent(eventSlugParam));
+
+  const resetEventForm = useCallback(() => {
+    setOptions(null);
+    setRegistration(null);
+    setSelectedTicketId(null);
+    setAnswers({});
+    setAttendeeFirstName('');
+    setAttendeeMiddleName('');
+    setAttendeeLastName('');
+    setAttendeeOrganization('');
+    setAttendeeTitle('');
+    setAttendeeOrgType('organization');
+    setAttendeeSecondaryEmail('');
+    setAttendeePhone('');
+    setPrimaryEmail('');
+    setPhoneRegion('1-US');
+    setPhoneCode('');
+    setPhoneVerified(false);
+    setNormalizedPhone('');
+    setPhoneCodeSent(false);
+    setInitialPhone(null);
+    initialProfileRef.current = null;
+  }, []);
+
+  // Pre-fill attendee fields from member profile.
   const prefillFromProfile = useCallback((data: EventRegistrationOptions) => {
     if (data.member_profile) {
       const p = data.member_profile;
-      setAttendeeFirstName((prev) => prev || p.first_name);
-      setAttendeeMiddleName((prev) => prev || p.middle_name);
-      setAttendeeLastName((prev) => prev || p.last_name);
+      setAttendeeFirstName(p.first_name);
+      setAttendeeMiddleName(p.middle_name);
+      setAttendeeLastName(p.last_name);
       const org = p.organization || '';
       const normalized = org.trim().toLowerCase();
       const isIndividual = ['individual', 'personal'].includes(normalized);
       setAttendeeOrgType(isIndividual ? 'individual' : 'organization');
-      setAttendeeOrganization((prev) => prev || (isIndividual ? '' : org));
-      setAttendeeTitle((prev) => prev || p.title || '');
+      setAttendeeOrganization(isIndividual ? '' : org);
+      setAttendeeTitle(p.title || '');
       initialProfileRef.current = {
         first_name: p.first_name,
         middle_name: p.middle_name,
@@ -79,11 +121,26 @@ export const useEventRegistration = () => {
     }
   }, []);
 
-  // Core function: fetch options and decide the next step
-  const loadOptionsAndRoute = useCallback(async () => {
+  const syncEventRegistration = useCallback((eventSlug: string, nextRegistration: Registration | null) => {
+    setEvents((current) =>
+      current.map((event) =>
+        event.slug === eventSlug
+          ? {
+              ...event,
+              registration: nextRegistration,
+            }
+          : event,
+      ),
+    );
+  }, []);
+
+  const loadOptionsAndRoute = useCallback(async (eventSlug: string, fallbackToEventList = false) => {
     try {
-      const data = await fetchRegistrationOptions();
+      resetEventForm();
+      setSelectedEventSlug(eventSlug);
+      const data = await fetchRegistrationOptions(eventSlug);
       setOptions(data);
+      syncEventRegistration(data.slug, data.registration);
 
       if (data.registration) {
         setRegistration(data.registration);
@@ -92,7 +149,7 @@ export const useEventRegistration = () => {
       }
 
       if (data.allow_secondary_email && data.member_emails?.length >= 2) {
-        setAttendeeSecondaryEmail((prev) => prev || data.member_emails[1]);
+        setAttendeeSecondaryEmail(data.member_emails[1]);
       }
       setPrimaryEmail(data.member_emails?.[0] || '');
 
@@ -100,14 +157,14 @@ export const useEventRegistration = () => {
         const phone = data.member_phone.phone_number || '';
         // US-only: strip a leading +1 to recover the national digits.
         const normalizedDigits = phone.startsWith('+1') ? phone.slice(2) : phone;
-        setAttendeePhone((prev) => prev || normalizedDigits || phone);
+        setAttendeePhone(normalizedDigits || phone);
         setPhoneRegion('1-US');
         setPhoneVerified(Boolean(data.member_phone.verified));
         setPhoneCodeSent(Boolean(data.member_phone.verified));
         setInitialPhone({digits: normalizedDigits || phone, region: '1-US'});
       }
       if (data.member_profile && !hasRequiredNameFields(data.member_profile)) {
-        navigate(completeProfilePath, {replace: true});
+        navigate(buildCompleteProfilePath(registrationPathForEvent(data.slug)), {replace: true});
         return;
       }
       prefillFromProfile(data);
@@ -119,34 +176,109 @@ export const useEventRegistration = () => {
         return;
       }
       const message = getRegistrationErrorMessage(err);
-      setError(message.toLowerCase().includes('no live event') ? 'No event is currently accepting registrations.' : message);
-      setStep('loading');
+      setError(
+        message.toLowerCase().includes('accepting registrations')
+          ? 'This event is not currently accepting registrations.'
+          : message,
+      );
+      setStep(fallbackToEventList ? 'select' : 'loading');
     }
-  }, [completeProfilePath, navigate, prefillFromProfile]);
+  }, [navigate, prefillFromProfile, resetEventForm, syncEventRegistration]);
 
-  // On mount: load options to determine initial step
+  const loadPublicOptionsForEmailStep = useCallback(async (eventSlug: string) => {
+    try {
+      resetEventForm();
+      setSelectedEventSlug(eventSlug);
+      const data = await fetchRegistrationOptions(eventSlug);
+      setOptions(data);
+      syncEventRegistration(data.slug, data.registration);
+      setStep('email');
+    } catch (err: unknown) {
+      setError(getRegistrationErrorMessage(err));
+      setStep('email');
+    }
+  }, [resetEventForm, syncEventRegistration]);
+
   useEffect(() => {
     if (isAuthenticated && requiresProfileCompletion) {
-      navigate(completeProfilePath, {replace: true});
+      navigate(profileCompletionPathForQueryEvent, {replace: true});
       return;
     }
 
-    if (isAuthenticated) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- every setState inside loadOptionsAndRoute runs after `await fetchRegistrationOptions()`, so they are asynchronous (post-await) and do not cause synchronous cascading renders; the rule cannot see through the indirect async call.
-      void loadOptionsAndRoute();
-    } else {
-      // Not authenticated — load options for event banner + email step
-      fetchRegistrationOptions()
-        .then((data) => {
-          setOptions(data);
-          setStep('email');
-        })
-        .catch((err: unknown) => {
-          setError(getRegistrationErrorMessage(err));
-          setStep('email');
-        });
-    }
-  }, [completeProfilePath, isAuthenticated, loadOptionsAndRoute, navigate, requiresProfileCompletion]);
+    let cancelled = false;
+    const boot = async () => {
+      setStep('loading');
+      setError(null);
+      try {
+        const eventList = await fetchRegistrationEvents();
+        if (cancelled) return;
+        setEvents(eventList);
+
+        if (eventList.length === 0) {
+          setSelectedEventSlug('');
+          setOptions(null);
+          setError('No event is currently accepting registrations.');
+          setStep('loading');
+          return;
+        }
+
+        const nextSlug = eventSlugParam || (eventList.length === 1 ? eventList[0].slug : '');
+        if (!nextSlug) {
+          setSelectedEventSlug('');
+          setOptions(null);
+          setRegistration(null);
+          setStep('select');
+          return;
+        }
+
+        if (!eventList.some((event) => event.slug === nextSlug)) {
+          setSelectedEventSlug('');
+          setOptions(null);
+          setRegistration(null);
+          setError('This event is not currently accepting registrations.');
+          setStep(eventList.length > 1 ? 'select' : 'loading');
+          return;
+        }
+
+        if (isAuthenticated) {
+          await loadOptionsAndRoute(nextSlug, eventList.length > 1);
+        } else {
+          await loadPublicOptionsForEmailStep(nextSlug);
+        }
+      } catch (err: unknown) {
+        if (cancelled) return;
+        setError(getRegistrationErrorMessage(err));
+        setStep('loading');
+      }
+    };
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    eventSlugParam,
+    isAuthenticated,
+    loadOptionsAndRoute,
+    loadPublicOptionsForEmailStep,
+    navigate,
+    profileCompletionPathForQueryEvent,
+    requiresProfileCompletion,
+  ]);
+
+  const handleSelectEvent = (eventSlug: string) => {
+    setError(null);
+    navigate(registrationPathForEvent(eventSlug));
+  };
+
+  const handleShowEventList = () => {
+    setError(null);
+    setOptions(null);
+    setRegistration(null);
+    setSelectedEventSlug('');
+    setStep(events.length > 0 ? 'select' : 'loading');
+    navigate('/event-registration');
+  };
 
   // Entry accepts an email OR a US phone number; route to the matching passwordless flow.
   const handleEmailSubmit = async (event: FormEvent) => {
@@ -190,7 +322,9 @@ export const useEventRegistration = () => {
         return;
       }
       setStep('loading');
-      await loadOptionsAndRoute();
+      if (selectedEventSlug) {
+        await loadOptionsAndRoute(selectedEventSlug, events.length > 1);
+      }
     } catch (err: unknown) {
       setError(getRegistrationErrorMessage(err));
     } finally {
@@ -204,7 +338,7 @@ export const useEventRegistration = () => {
     setSubmitting(true);
     setError(null);
     try {
-      // Sync profile if fields changed
+      // Sync profile if fields changed.
       const orgValue = attendeeOrgType === 'individual' ? 'Individual' : attendeeOrganization.trim();
       const titleValue = attendeeOrgType === 'organization' ? attendeeTitle.trim() : '';
       const prev = initialProfileRef.current;
@@ -237,11 +371,13 @@ export const useEventRegistration = () => {
         attendee_phone_region: options.collect_phone && attendeePhone.trim() ? phoneRegion : undefined,
       });
       setRegistration(result);
+      syncEventRegistration(options.slug, result);
       setStep('done');
     } catch (err: unknown) {
       const axiosErr = err as {response?: {status?: number; data?: {registration?: Registration}}};
       if (axiosErr.response?.status === 409 && axiosErr.response.data?.registration) {
         setRegistration(axiosErr.response.data.registration);
+        syncEventRegistration(options.slug, axiosErr.response.data.registration);
         setStep('done');
       } else {
         setError(getRegistrationErrorMessage(err));
@@ -328,8 +464,10 @@ export const useEventRegistration = () => {
     code,
     email,
     error,
+    events,
     options,
     registration,
+    selectedEventSlug,
     selectedTicketId,
     step,
     submitting,
@@ -351,6 +489,8 @@ export const useEventRegistration = () => {
     handleCodeSubmit,
     handleEmailSubmit,
     handleRegistrationSubmit,
+    handleSelectEvent,
+    handleShowEventList,
     handleSendPhoneCode,
     handleVerifyPhoneCode,
   };
