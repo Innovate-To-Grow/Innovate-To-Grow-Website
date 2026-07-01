@@ -23,6 +23,7 @@ async function stubAccountSideEffects(page: import('@playwright/test').Page) {
     route.fulfill(json({access: mintFakeJwt(), refresh: 'refresh-e2e'})),
   );
   await page.route('**/event/my-tickets/', (route) => route.fulfill(json([])));
+  await page.route('**/event/registration-events/', (route) => route.fulfill(json([])));
   await page.route('**/event/registration-options/', (route) => route.fulfill(json({detail: 'none'}, 404)));
   await page.route('**/authn/account-emails/', (route) => route.fulfill(json({emails: []})));
   await page.route('**/authn/contact-emails/', (route) => route.fulfill(json([])));
@@ -99,6 +100,7 @@ test('account with a verified phone can remove its primary email', {tag: '@core'
   };
   await mockProfileEndpoint(page, profileRef);
   await page.route('**/event/my-tickets/', (route) => route.fulfill(json([])));
+  await page.route('**/event/registration-events/', (route) => route.fulfill(json([])));
   await page.route('**/event/registration-options/', (route) => route.fulfill(json({detail: 'none'}, 404)));
   await page.route('**/authn/account-emails/', (route) => route.fulfill(json({emails: ['primary@example.com']})));
   await page.route('**/authn/contact-emails/', (route) => route.fulfill(json([]))); // list excludes the primary

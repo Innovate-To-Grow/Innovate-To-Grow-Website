@@ -1,7 +1,7 @@
 import logging
 
 from .create import EventRegistrationCreateView
-from .options import EventRegistrationOptionsView
+from .options import EventRegistrationEventsView, EventRegistrationOptionsView
 from .phones import (
     _clear_phone_verification,
     _consume_phone_verification,
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "EventRegistrationCreateView",
+    "EventRegistrationEventsView",
     "EventRegistrationOptionsView",
     "MyTicketsView",
     "ResendTicketEmailView",

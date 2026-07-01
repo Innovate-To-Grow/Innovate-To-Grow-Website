@@ -1,17 +1,24 @@
 import {Link} from 'react-router-dom';
-import type {EventRegistrationOptions, Registration} from '@/features/events/api';
+import type {EventRegistrationSummary, Registration} from '@/features/events/api';
 
 interface TicketsSectionProps {
   tickets: Registration[];
-  liveEvent: EventRegistrationOptions | null;
+  openEvents: EventRegistrationSummary[];
   ticketsLoading: boolean;
   liveEventLoading: boolean;
   resendingId: string | null;
   onResendTicketEmail: (registrationId: string) => void;
 }
 
-const formatDate = (date: string) =>
-  new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
+const formatDate = (date: string) => {
+  const datePart = date.includes('T') ? date.split('T')[0] : date;
+  return new Date(`${datePart}T00:00:00`).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
 
 const RegistrationCard = ({
   ticket,
@@ -55,7 +62,7 @@ const RegistrationCard = ({
   </div>
 );
 
-const OpenRegistrationCard = ({event}: {event: EventRegistrationOptions}) => {
+const OpenRegistrationCard = ({event}: {event: EventRegistrationSummary}) => {
   const location = event.location?.trim() ?? '';
   const description = event.description?.trim() ?? '';
   const showDescription = Boolean(description && description !== location);
@@ -79,7 +86,7 @@ const OpenRegistrationCard = ({event}: {event: EventRegistrationOptions}) => {
       </ul>
       {showDescription ? <p className="account-open-reg-description">{description}</p> : null}
       <div className="account-open-reg-actions">
-        <Link to="/event-registration" className="account-edit-btn account-open-reg-cta">
+        <Link to={`/event-registration?event=${encodeURIComponent(event.slug)}`} className="account-edit-btn account-open-reg-cta">
           Register for this event
         </Link>
       </div>
@@ -89,21 +96,21 @@ const OpenRegistrationCard = ({event}: {event: EventRegistrationOptions}) => {
 
 export const TicketsSection = ({
   tickets,
-  liveEvent,
+  openEvents,
   ticketsLoading,
   liveEventLoading,
   resendingId,
   onResendTicketEmail,
 }: TicketsSectionProps) => {
   const loading = ticketsLoading || liveEventLoading;
-  const liveEventId = liveEvent?.id ?? null;
-  const liveRegistration: Registration | null =
-    liveEventId != null
-      ? tickets.find((t) => t.event.id === liveEventId) ?? liveEvent?.registration ?? null
-      : null;
-  const otherRegistrations = liveEventId != null ? tickets.filter((t) => t.event.id !== liveEventId) : tickets;
-  const showOpenLiveEvent = liveEvent != null && liveRegistration == null;
-  const hasRows = showOpenLiveEvent || liveRegistration != null || otherRegistrations.length > 0;
+  const registrationsByEventId = new Map(tickets.map((ticket) => [ticket.event.id, ticket]));
+  const openUnregisteredEvents = openEvents.filter((event) => !registrationsByEventId.has(event.id) && !event.registration);
+  const ticketIds = new Set(tickets.map((ticket) => ticket.id));
+  const openEventRegistrations = openEvents
+    .map((event) => event.registration)
+    .filter((registration): registration is Registration => registration !== null && !ticketIds.has(registration.id));
+  const allRegistrations = [...tickets, ...openEventRegistrations];
+  const hasRows = openUnregisteredEvents.length > 0 || allRegistrations.length > 0;
 
   return (
     <div className="account-section">
@@ -114,15 +121,10 @@ export const TicketsSection = ({
         <p className="account-status-text">No open registrations right now, and no past event registrations on this account.</p>
       ) : (
         <div className="account-ticket-list">
-          {showOpenLiveEvent ? <OpenRegistrationCard event={liveEvent} /> : null}
-          {liveRegistration ? (
-            <RegistrationCard
-              ticket={liveRegistration}
-              resendingId={resendingId}
-              onResendTicketEmail={onResendTicketEmail}
-            />
-          ) : null}
-          {otherRegistrations.map((ticket) => (
+          {openUnregisteredEvents.map((event) => (
+            <OpenRegistrationCard key={event.id} event={event} />
+          ))}
+          {allRegistrations.map((ticket) => (
             <RegistrationCard
               key={ticket.id}
               ticket={ticket}

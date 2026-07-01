@@ -19,7 +19,7 @@ class RegistrationRequestError(Exception):
 
 def get_event(data):
     try:
-        return Event.objects.get(slug=data["event_slug"], is_live=True)
+        return Event.objects.get(slug=data["event_slug"], registration_open=True)
     except Event.DoesNotExist:
         return Response(
             {"detail": "Event not found or not currently accepting registrations."},

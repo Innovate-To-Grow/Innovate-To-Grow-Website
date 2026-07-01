@@ -39,6 +39,18 @@ class EventModelTest(TestCase):
         event = make_event()
         self.assertFalse(event.is_live)
 
+    def test_registration_open_defaults_to_false(self):
+        event = make_event()
+        self.assertFalse(event.registration_open)
+
+    def test_multiple_events_can_be_open_for_registration(self):
+        first = make_event(name="First", registration_open=True)
+        second = make_event(name="Second", registration_open=True)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertTrue(first.registration_open)
+        self.assertTrue(second.registration_open)
+
     def test_only_one_live_event_is_preserved(self):
         first = make_event(name="First", is_live=True)
         second = make_event(name="Second", is_live=True)

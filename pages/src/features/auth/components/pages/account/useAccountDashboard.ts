@@ -15,10 +15,10 @@ import {
   type ProfileResponse,
 } from '@/features/auth/api';
 import {
+  fetchRegistrationEvents,
   fetchMyTickets,
-  fetchRegistrationOptions,
   resendTicketEmail,
-  type EventRegistrationOptions,
+  type EventRegistrationSummary,
   type Registration,
 } from '@/features/events/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
@@ -58,7 +58,7 @@ export const useAccountDashboard = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<Registration[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
-  const [liveEventOptions, setLiveEventOptions] = useState<EventRegistrationOptions | null>(null);
+  const [registrationEvents, setRegistrationEvents] = useState<EventRegistrationSummary[]>([]);
   const [liveEventLoading, setLiveEventLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
@@ -134,9 +134,9 @@ export const useAccountDashboard = () => {
     if (!isAuthenticated || requiresProfileCompletion) return;
     const loadLiveEvent = async () => {
       try {
-        setLiveEventOptions(await fetchRegistrationOptions());
+        setRegistrationEvents(await fetchRegistrationEvents());
       } catch {
-        setLiveEventOptions(null);
+        setRegistrationEvents([]);
       } finally {
         setLiveEventLoading(false);
       }
@@ -402,7 +402,7 @@ export const useAccountDashboard = () => {
     middleName,
     tickets,
     ticketsLoading,
-    liveEventOptions,
+    registrationEvents,
     liveEventLoading,
     setProfile,
     setFirstName,

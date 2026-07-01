@@ -9,6 +9,7 @@ import logging
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from urllib.parse import quote
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -82,6 +83,10 @@ def _send_via_ses(*, config, mime_message) -> bool:
 TICKET_LOGIN_REDIRECT_PATH = "/event-registration"
 
 
+def ticket_login_redirect_path(registration: EventRegistration) -> str:
+    return f"{TICKET_LOGIN_REDIRECT_PATH}?event={quote(registration.event.slug)}"
+
+
 def _issue_ticket_login_link(registration: EventRegistration) -> str:
     """Issue a unified login link for a ticket email, replacing any earlier one.
 
@@ -97,7 +102,7 @@ def _issue_ticket_login_link(registration: EventRegistration) -> str:
     return issue_login_link(
         member_id=registration.member_id,
         registration=registration,
-        redirect_path=TICKET_LOGIN_REDIRECT_PATH,
+        redirect_path=ticket_login_redirect_path(registration),
         validity_days=registration.event.ticket_login_validity_days,
     )
 
