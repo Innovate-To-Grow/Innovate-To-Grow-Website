@@ -182,6 +182,31 @@ function authHeaders() {
   return token ? {Authorization: `Bearer ${token}`} : {};
 }
 
+// Deploy-skew fallback: a backend without /event/registration-events/ (route 404s) is the old
+// single-event build, whose /event/registration-options/ returns the one live event or 404.
+async function fetchRegistrationEventsFallback(): Promise<EventRegistrationSummary[]> {
+  try {
+    const options = await fetchRegistrationOptions();
+    return [
+      {
+        id: options.id,
+        name: options.name,
+        slug: options.slug,
+        date: options.date,
+        location: options.location,
+        description: options.description,
+        registration: options.registration,
+      },
+    ];
+  } catch (err: unknown) {
+    const status = (err as {response?: {status?: number}}).response?.status;
+    if (status === 404) {
+      return [];
+    }
+    throw err;
+  }
+}
+
 export async function fetchRegistrationEvents(): Promise<EventRegistrationSummary[]> {
   const headers = authHeaders();
   try {
@@ -194,6 +219,9 @@ export async function fetchRegistrationEvents(): Promise<EventRegistrationSummar
     if (status === 401) {
       const response = await api.get<EventRegistrationSummary[]>('/event/registration-events/');
       return response.data;
+    }
+    if (status === 404) {
+      return fetchRegistrationEventsFallback();
     }
     throw err;
   }
