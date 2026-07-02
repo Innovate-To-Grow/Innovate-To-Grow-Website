@@ -249,8 +249,7 @@ UNFOLD = {
                 "permission": _can("authn"),
                 "items": [
                     {"title": "Members", "link": "/admin/authn/member/", "permission": _can("authn")},
-                    {"title": "Emails", "link": "/admin/authn/contactemail/", "permission": _can("authn")},
-                    {"title": "Phones", "link": "/admin/authn/contactphone/", "permission": _can("authn")},
+                    {"title": "Emails & Phones", "link": "/admin/authn/contactemail/", "permission": _can("authn")},
                     {
                         "title": "Admin Invitations",
                         "link": "/admin/authn/admininvitation/",

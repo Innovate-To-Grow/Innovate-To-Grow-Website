@@ -49,3 +49,20 @@ class MemberAdminPhoneSearchTests(TestCase):
 
     def test_unrelated_term_returns_no_match(self):
         self.assertNotIn(self.member, self._search("zzzznomatch"))
+
+
+class MemberAdminChangelistRenderTests(TestCase):
+    """Render the real changelist page — list_display callables run against the
+    prefetched queryset here, which unit tests on the admin class never exercise."""
+
+    def test_changelist_renders_with_contact_phones(self):
+        from apps.event.tests.helpers import make_superuser
+
+        member = Member.objects.create_user(is_active=True, first_name="Ada", last_name="Lovelace")
+        ContactPhone.objects.create(member=member, phone_number="5551234567", region="1-US", verified=True)
+
+        self.client.force_login(make_superuser())
+        response = self.client.get("/admin/authn/member/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "+15551234567")
