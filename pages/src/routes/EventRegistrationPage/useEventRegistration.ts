@@ -33,7 +33,7 @@ export const useEventRegistration = () => {
     verifyPhoneAuthCode,
   } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const eventSlugParam = searchParams.get('event') || '';
   const [step, setStep] = useState<EventRegistrationStep>('loading');
   const [events, setEvents] = useState<EventRegistrationSummary[]>([]);
@@ -266,9 +266,14 @@ export const useEventRegistration = () => {
     requiresProfileCompletion,
   ]);
 
+  // Selection updates only the query string (never the pathname) so it works identically on
+  // /event-registration and inside the chromeless /_embed/:embedSlug iframe; copying the current
+  // params preserves the embed's hide-titles/hide-sections flags. Boot re-runs via eventSlugParam.
   const handleSelectEvent = (eventSlug: string) => {
     setError(null);
-    navigate(registrationPathForEvent(eventSlug));
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('event', eventSlug);
+    setSearchParams(nextParams);
   };
 
   const handleShowEventList = () => {
@@ -277,7 +282,9 @@ export const useEventRegistration = () => {
     setRegistration(null);
     setSelectedEventSlug('');
     setStep(events.length > 0 ? 'select' : 'loading');
-    navigate('/event-registration');
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('event');
+    setSearchParams(nextParams);
   };
 
   // Entry accepts an email OR a US phone number; route to the matching passwordless flow.

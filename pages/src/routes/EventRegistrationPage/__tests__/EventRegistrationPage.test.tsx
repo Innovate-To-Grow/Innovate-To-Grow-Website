@@ -1,5 +1,5 @@
 import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
-import {MemoryRouter, Route, Routes} from 'react-router-dom';
+import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {EventRegistrationPage} from '../EventRegistrationPage';
@@ -185,7 +185,7 @@ describe('EventRegistrationPage', () => {
     fireEvent.submit(screen.getByRole('button', {name: 'Continue'}).closest('form')!);
 
     await waitFor(() => {
-      expect(requestEmailAuthCode).toHaveBeenCalledWith('ada@example.com', 'event_registration');
+      expect(requestEmailAuthCode).toHaveBeenCalledWith('ada@example.com', 'event_registration', 'demo-day');
     });
 
     const codeInput = await screen.findByLabelText('Verification Code');
@@ -301,9 +301,66 @@ describe('EventRegistrationPage', () => {
     await screen.findByRole('heading', {name: 'Spring Showcase'});
     fireEvent.click(screen.getAllByRole('button', {name: 'Register'})[1]);
 
+    // Selection is a search-param change (no navigate) so it also works inside /_embed routes.
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/event-registration?event=fall-showcase');
+      expect(mockFetchRegistrationOptions).toHaveBeenCalledWith('fall-showcase');
     });
+    await screen.findByText(/Fall event/);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('keeps event selection on the embed route without changing the pathname', async () => {
+    mockFetchRegistrationEvents.mockResolvedValue([
+      {
+        id: 'event-spring',
+        name: 'Spring Showcase',
+        slug: 'spring-showcase',
+        date: '2026-05-01',
+        location: 'Campus',
+        description: 'Spring event',
+        registration: null,
+      },
+      {
+        id: 'event-fall',
+        name: 'Fall Showcase',
+        slug: 'fall-showcase',
+        date: '2026-10-01',
+        location: 'Conference Center',
+        description: 'Fall event',
+        registration: null,
+      },
+    ]);
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="location-probe">{location.pathname + location.search}</div>;
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/_embed/reg-widget?hide-titles=1']}>
+        <Routes>
+          <Route
+            path="/_embed/:embedSlug"
+            element={
+              <>
+                <EventRegistrationPage />
+                <LocationProbe />
+              </>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('heading', {name: 'Spring Showcase'});
+    fireEvent.click(screen.getAllByRole('button', {name: 'Register'})[0]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location-probe').textContent).toBe(
+        '/_embed/reg-widget?hide-titles=1&event=spring-showcase',
+      );
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('submits registration with the selected event slug', async () => {
