@@ -97,6 +97,34 @@ class SendVerificationEmailTests(TestCase):
         self.assertIn("email=member%40example.com", html)
 
     @override_settings(FRONTEND_URL="https://www.example.com")
+    def test_render_body_includes_event_param_for_event_registration(self):
+        html = _render_email_body(
+            recipient="member@example.com",
+            code="123456",
+            purpose="login",
+            link_flow="auth",
+            link_source="event_registration",
+            link_event="fall-showcase",
+        )
+
+        self.assertIn("Continue to Event Registration", html)
+        self.assertIn("event=fall-showcase", html)
+
+    @override_settings(FRONTEND_URL="https://www.example.com")
+    def test_render_body_omits_event_param_when_no_event(self):
+        html = _render_email_body(
+            recipient="member@example.com",
+            code="123456",
+            purpose="login",
+            link_flow="auth",
+            link_source="event_registration",
+            link_event="",
+        )
+
+        self.assertIn("email-auth-link?flow=auth", html)
+        self.assertNotIn("event=", html)
+
+    @override_settings(FRONTEND_URL="https://www.example.com")
     def test_render_body_omits_public_link_for_admin_login(self):
         html = _render_email_body(
             recipient="admin@example.com",

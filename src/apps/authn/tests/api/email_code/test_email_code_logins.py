@@ -161,6 +161,45 @@ class EmailCodeAuthLoginTests(APITestCase):
         self.assertEqual(mock_send.call_args.kwargs["link_flow"], "auth")
         self.assertEqual(mock_send.call_args.kwargs["link_source"], "subscribe")
 
+    def test_unified_email_auth_forwards_event_slug_to_email_link(self, _mock_code, mock_send):
+        response = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": self.primary_email.email_address, "source": "event_registration", "event": "demo-day"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(mock_send.call_args.kwargs["link_event"], "demo-day")
+
+    def test_unified_email_auth_defaults_event_to_empty(self, _mock_code, mock_send):
+        response = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": self.primary_email.email_address, "source": "event_registration"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(mock_send.call_args.kwargs["link_event"], "")
+
+    def test_unified_email_auth_rejects_invalid_event_slug(self, _mock_code, _mock_send):
+        response = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": self.primary_email.email_address, "source": "event_registration", "event": "bad slug!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_unified_email_auth_forwards_event_slug_on_register_branch(self, _mock_code, mock_send):
+        response = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": "brand-new@example.com", "source": "event_registration", "event": "demo-day"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(mock_send.call_args.kwargs["link_event"], "demo-day")
+
     def test_unified_email_auth_uses_login_flow_for_verified_contact_email(self, _mock_code, _mock_send):
         request_response = self.client.post(
             "/authn/email-auth/request-code/",

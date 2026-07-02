@@ -124,6 +124,25 @@ describe('auth flows', () => {
       await requestEmailAuthCode('a@b.com');
       expect(mocks.post).toHaveBeenCalledWith('/authn/email-auth/request-code/', {email: 'a@b.com', source: 'login'});
     });
+
+    it('includes the event slug when provided', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'ok'}});
+      await requestEmailAuthCode('a@b.com', 'event_registration', 'demo-day');
+      expect(mocks.post).toHaveBeenCalledWith('/authn/email-auth/request-code/', {
+        email: 'a@b.com',
+        source: 'event_registration',
+        event: 'demo-day',
+      });
+    });
+
+    it('omits the event key when no event is given', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'ok'}});
+      await requestEmailAuthCode('a@b.com', 'event_registration');
+      expect(mocks.post).toHaveBeenCalledWith('/authn/email-auth/request-code/', {
+        email: 'a@b.com',
+        source: 'event_registration',
+      });
+    });
   });
 
   describe('verifyLoginCode', () => {

@@ -17,6 +17,7 @@ export function EmailAuthLinkPage() {
   const source = useMemo(() => searchParams.get('source'), [searchParams]);
   const email = useMemo(() => searchParams.get('email')?.trim().toLowerCase() ?? '', [searchParams]);
   const code = useMemo(() => searchParams.get('code')?.trim() ?? '', [searchParams]);
+  const eventSlug = useMemo(() => searchParams.get('event'), [searchParams]);
   const [error, setError] = useState<string | null>(
     isEmailAuthFlow(flow) && isEmailAuthSource(source) && email && /^\d{6}$/.test(code)
       ? null
@@ -34,7 +35,7 @@ export function EmailAuthLinkPage() {
       .then((response) => {
         if (!cancelled) {
           dispatchAuthStateChange();
-          navigate(getEmailAuthSourcePath(source, response), {replace: true});
+          navigate(getEmailAuthSourcePath(source, response, eventSlug), {replace: true});
         }
       })
       .catch((err: unknown) => {
@@ -46,7 +47,7 @@ export function EmailAuthLinkPage() {
     return () => {
       cancelled = true;
     };
-  }, [code, email, flow, navigate, source]);
+  }, [code, email, eventSlug, flow, navigate, source]);
 
   if (error) {
     return (

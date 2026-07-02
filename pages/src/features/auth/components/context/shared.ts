@@ -24,7 +24,7 @@ export interface AuthContextValue {
   error: string | null;
   login: (email: string, password: string) => Promise<LoginResponse>;
   register: (email: string, password: string, passwordConfirm: string, firstName: string, lastName: string, organization: string, title?: string) => Promise<RegisterResponse>;
-  requestEmailAuthCode: (email: string, source?: EmailAuthSource) => Promise<EmailAuthRequestResponse>;
+  requestEmailAuthCode: (email: string, source?: EmailAuthSource, event?: string) => Promise<EmailAuthRequestResponse>;
   verifyEmailAuthCode: (email: string, code: string) => Promise<EmailAuthVerifyResponse>;
   requestPhoneAuthCode: (phoneNumber: string, region?: string, source?: PhoneAuthSource) => Promise<EmailAuthRequestResponse>;
   verifyPhoneAuthCode: (phoneNumber: string, code: string, region?: string) => Promise<EmailAuthVerifyResponse>;

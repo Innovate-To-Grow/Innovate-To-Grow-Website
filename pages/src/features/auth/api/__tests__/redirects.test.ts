@@ -61,6 +61,22 @@ describe('auth redirects', () => {
     })).toBe('/event-registration');
   });
 
+  it('carries the event slug back to the registration page', () => {
+    expect(getEmailAuthSourcePath('event_registration', {
+      next_step: 'account',
+      requires_profile_completion: false,
+      redirect_to: '/schedule',
+    }, 'fall-showcase')).toBe('/event-registration?event=fall-showcase');
+  });
+
+  it('carries the event slug through the complete-profile detour', () => {
+    expect(getEmailAuthSourcePath('event_registration', {
+      next_step: 'complete_profile',
+      requires_profile_completion: true,
+      redirect_to: '/schedule',
+    }, 'fall-showcase')).toBe('/complete-profile?returnTo=%2Fevent-registration%3Fevent%3Dfall-showcase');
+  });
+
   it('builds a bare /login path when no returnTo is supplied', () => {
     expect(buildLoginPath()).toBe('/login');
     expect(buildLoginPath('')).toBe('/login');

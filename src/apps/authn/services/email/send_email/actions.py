@@ -13,6 +13,7 @@ def build_email_action(
     purpose: str,
     link_flow: str | None,
     link_source: str | None,
+    link_event: str | None = None,
 ):
     frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
     normalized_email = (recipient or "").strip().lower()
@@ -31,6 +32,7 @@ def build_email_action(
             "source": link_source,
             "email": normalized_email,
             "code": code,
+            **({"event": link_event} if link_event else {}),
         }
     )
     return {
@@ -47,6 +49,7 @@ def render_email_body(
     purpose: str,
     link_flow: str | None = None,
     link_source: str | None = None,
+    link_event: str | None = None,
 ) -> str:
     action = build_email_action(
         recipient=recipient,
@@ -54,6 +57,7 @@ def render_email_body(
         purpose=purpose,
         link_flow=link_flow,
         link_source=link_source,
+        link_event=link_event,
     )
     return render_to_string(
         "authn/email/verification_code.html",

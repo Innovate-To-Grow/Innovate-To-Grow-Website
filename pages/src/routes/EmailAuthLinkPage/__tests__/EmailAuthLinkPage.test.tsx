@@ -88,6 +88,29 @@ describe('EmailAuthLinkPage', () => {
     });
   });
 
+  it('carries the event slug from the link back to the registration page', async () => {
+    mockConsumeEmailAuthQuery.mockResolvedValue({
+      message: 'Login successful.',
+      access: 'access-token',
+      refresh: 'refresh-token',
+      user: {member_uuid: '123', email: 'ada@example.com'},
+      next_step: 'account',
+      requires_profile_completion: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/email-auth-link?flow=auth&source=event_registration&email=ada%40example.com&code=123456&event=fall-showcase']}>
+        <Routes>
+          <Route path="/email-auth-link" element={<EmailAuthLinkPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/event-registration?event=fall-showcase', {replace: true});
+    });
+  });
+
   it('routes login email links through the login verify flow and into the account page', async () => {
     mockConsumeEmailAuthQuery.mockResolvedValue({
       message: 'Login successful.',

@@ -292,7 +292,7 @@ export const useEventRegistration = () => {
     setError(null);
     try {
       if (parsed.type === 'email') {
-        await requestEmailAuthCode(parsed.value, 'event_registration');
+        await requestEmailAuthCode(parsed.value, 'event_registration', selectedEventSlug || eventSlugParam || undefined);
         setIdentifierType('email');
         setAuthValue(parsed.value);
       } else {

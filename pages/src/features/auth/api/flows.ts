@@ -90,8 +90,13 @@ export const requestLoginCode = async (email: string): Promise<MessageResponse> 
 export const requestEmailAuthCode = async (
   email: string,
   source: EmailAuthSource = 'login',
+  event?: string,
 ): Promise<EmailAuthRequestResponse> => {
-  const response = await authApi.post<EmailAuthRequestResponse>('/authn/email-auth/request-code/', { email, source });
+  const response = await authApi.post<EmailAuthRequestResponse>('/authn/email-auth/request-code/', {
+    email,
+    source,
+    ...(event ? {event} : {}),
+  });
   return response.data;
 };
 
