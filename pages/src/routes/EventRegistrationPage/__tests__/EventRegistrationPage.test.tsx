@@ -309,6 +309,48 @@ describe('EventRegistrationPage', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it('shows the fatal empty state when no events are open', async () => {
+    mockFetchRegistrationEvents.mockResolvedValue([]);
+
+    render(
+      <MemoryRouter initialEntries={['/event-registration']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('No event is currently accepting registrations.');
+    expect(mockFetchRegistrationOptions).not.toHaveBeenCalled();
+  });
+
+  it('recovers from a stale event deep link by showing the open-event list', async () => {
+    mockFetchRegistrationEvents.mockResolvedValue([
+      {
+        id: 'event-spring',
+        name: 'Spring Showcase',
+        slug: 'spring-showcase',
+        date: '2026-05-01',
+        location: 'Campus',
+        description: 'Spring event',
+        registration: null,
+      },
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={['/event-registration?event=closed-event']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('This event is not currently accepting registrations.');
+    await screen.findByRole('heading', {name: 'Spring Showcase'});
+    expect(screen.getByRole('button', {name: 'Register'})).toBeTruthy();
+    expect(mockFetchRegistrationOptions).not.toHaveBeenCalled();
+  });
+
   it('keeps event selection on the embed route without changing the pathname', async () => {
     mockFetchRegistrationEvents.mockResolvedValue([
       {

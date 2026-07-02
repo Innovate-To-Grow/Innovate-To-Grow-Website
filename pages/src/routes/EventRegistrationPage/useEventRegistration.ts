@@ -134,11 +134,17 @@ export const useEventRegistration = () => {
     );
   }, []);
 
+  // Guards against a superseded options fetch (rapid event switching) applying its state after
+  // a newer request started; only the latest request may touch state past its await.
+  const optionsRequestRef = useRef(0);
+
   const loadOptionsAndRoute = useCallback(async (eventSlug: string, fallbackToEventList = false) => {
+    const requestId = ++optionsRequestRef.current;
     try {
       resetEventForm();
       setSelectedEventSlug(eventSlug);
       const data = await fetchRegistrationOptions(eventSlug);
+      if (requestId !== optionsRequestRef.current) return;
       setOptions(data);
       syncEventRegistration(data.slug, data.registration);
 
@@ -170,6 +176,7 @@ export const useEventRegistration = () => {
       prefillFromProfile(data);
       setStep('form');
     } catch (err: unknown) {
+      if (requestId !== optionsRequestRef.current) return;
       const axiosErr = err as {response?: {status?: number}};
       if (axiosErr.response?.status === 401) {
         setStep('email');
@@ -186,14 +193,17 @@ export const useEventRegistration = () => {
   }, [navigate, prefillFromProfile, resetEventForm, syncEventRegistration]);
 
   const loadPublicOptionsForEmailStep = useCallback(async (eventSlug: string) => {
+    const requestId = ++optionsRequestRef.current;
     try {
       resetEventForm();
       setSelectedEventSlug(eventSlug);
       const data = await fetchRegistrationOptions(eventSlug);
+      if (requestId !== optionsRequestRef.current) return;
       setOptions(data);
       syncEventRegistration(data.slug, data.registration);
       setStep('email');
     } catch (err: unknown) {
+      if (requestId !== optionsRequestRef.current) return;
       setError(getRegistrationErrorMessage(err));
       setStep('email');
     }
@@ -236,12 +246,13 @@ export const useEventRegistration = () => {
           setOptions(null);
           setRegistration(null);
           setError('This event is not currently accepting registrations.');
-          setStep(eventList.length > 1 ? 'select' : 'loading');
+          // Recover onto the event list (even with a single open event) instead of a dead end.
+          setStep('select');
           return;
         }
 
         if (isAuthenticated) {
-          await loadOptionsAndRoute(nextSlug, eventList.length > 1);
+          await loadOptionsAndRoute(nextSlug, true);
         } else {
           await loadPublicOptionsForEmailStep(nextSlug);
         }
@@ -330,7 +341,7 @@ export const useEventRegistration = () => {
       }
       setStep('loading');
       if (selectedEventSlug) {
-        await loadOptionsAndRoute(selectedEventSlug, events.length > 1);
+        await loadOptionsAndRoute(selectedEventSlug, events.length >= 1);
       }
     } catch (err: unknown) {
       setError(getRegistrationErrorMessage(err));
