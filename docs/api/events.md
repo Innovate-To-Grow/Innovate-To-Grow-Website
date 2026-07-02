@@ -68,7 +68,6 @@ Creates an event registration for an event whose `registration_open=true`.
   "attendee_organization": "Example Co",
   "attendee_secondary_email": null,
   "attendee_phone": null,
-  "attendee_phone_region": null,
   "answers": [
     {"question_id": "<uuid>", "answer": "Computer Science"}
   ]

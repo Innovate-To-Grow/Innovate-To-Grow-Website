@@ -85,6 +85,10 @@ For production, this should be run on a schedule (cron or scheduled task).
 
 ## Event operations
 
+### Opening and closing registration
+
+Public registration is controlled per event by the **Registration open** checkbox in Event admin. It is independent of **Is live** (the featured-event flag), and multiple events can accept registrations at once.
+
 ### Registration sheet sync
 
 From Event admin:
