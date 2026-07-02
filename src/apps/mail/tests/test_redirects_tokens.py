@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 
 from apps.cms.models import CMSPage
-from apps.event.tests.helpers import make_member
+from apps.event.tests.helpers import make_event, make_member
 from apps.mail.services.audience.converters import members_to_recipients
 from apps.mail.services.unsubscribe_token import (
     build_oneclick_unsubscribe_url,
@@ -55,6 +55,28 @@ class LoginRedirectChoiceTests(TestCase):
             choices = dict(get_login_redirect_choices())
 
         # Still returns app routes + default without raising.
+        self.assertIn(DEFAULT_LOGIN_REDIRECT_PATH, choices)
+
+    def test_open_registration_events_included_and_closed_excluded(self):
+        make_event(name="Open Event", slug="open-event", registration_open=True)
+        make_event(name="Closed Event", slug="closed-event", registration_open=False)
+
+        choices = dict(get_login_redirect_choices())
+
+        self.assertIn("/event-registration?event=open-event", choices)
+        self.assertEqual(
+            choices["/event-registration?event=open-event"],
+            "Event Registration — Open Event (/event-registration?event=open-event)",
+        )
+        self.assertNotIn("/event-registration?event=closed-event", choices)
+
+    def test_event_query_failure_is_swallowed(self):
+        with patch(
+            "apps.event.models.Event.objects.filter",
+            side_effect=RuntimeError("db down"),
+        ):
+            choices = dict(get_login_redirect_choices())
+
         self.assertIn(DEFAULT_LOGIN_REDIRECT_PATH, choices)
 
     def test_current_path_appended_when_not_already_present(self):

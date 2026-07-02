@@ -120,6 +120,15 @@ class SearchEventsToolTests(TestCase):
         self.assertIn("Fall Expo", result)
         self.assertNotIn("Spring Showcase", result)
 
+    def test_filters_by_registration_open(self):
+        make_event(name="Open Expo", date=datetime.date(2025, 12, 1), registration_open=True)
+
+        result = search_events({"registration_open": True})
+
+        self.assertIn("Open Expo", result)
+        self.assertNotIn("Spring Showcase", result)
+        self.assertNotIn("Fall Expo", result)
+
     def test_filters_by_date_range(self):
         result = search_events({"date_from": "2025-06-01"})
         self.assertIn("Fall Expo", result)
