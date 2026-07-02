@@ -1,6 +1,6 @@
-import {render, screen} from '@testing-library/react';
+import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
-import {describe, expect, it, vi} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {TicketsSection} from '../TicketsSection';
 import type {EventRegistrationSummary, Registration} from '@/features/events/api';
@@ -47,6 +47,10 @@ const openEvent = (overrides: Partial<EventRegistrationSummary> = {}): EventRegi
 });
 
 describe('TicketsSection', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('renders existing registrations and multiple open registration links', () => {
     render(
       <MemoryRouter>
@@ -54,7 +58,7 @@ describe('TicketsSection', () => {
           tickets={[registration()]}
           openEvents={[openEvent(), openEvent({id: 'event-winter', name: 'Winter Showcase', slug: 'winter-showcase'})]}
           ticketsLoading={false}
-          liveEventLoading={false}
+          registrationEventsLoading={false}
           resendingId={null}
           onResendTicketEmail={vi.fn()}
         />
@@ -68,5 +72,103 @@ describe('TicketsSection', () => {
       'href',
       '/event-registration?event=fall-showcase',
     );
+  });
+
+  it('renders an open-event registration missing from my-tickets as a ticket card', () => {
+    const fallRegistration = registration({
+      id: 'registration-fall',
+      ticket_code: 'I2G-FALL',
+      event: {
+        id: 'event-fall',
+        name: 'Fall Showcase',
+        slug: 'fall-showcase',
+        date: '2026-10-01',
+        location: 'Conference Center',
+        description: 'Fall event',
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <TicketsSection
+          tickets={[]}
+          openEvents={[openEvent({registration: fallRegistration})]}
+          ticketsLoading={false}
+          registrationEventsLoading={false}
+          resendingId={null}
+          onResendTicketEmail={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('I2G-FALL')).toBeInTheDocument();
+    expect(screen.queryByRole('link', {name: 'Register for this event'})).not.toBeInTheDocument();
+  });
+
+  it('deduplicates a registration present in both tickets and the open-events feed', () => {
+    const fallRegistration = registration({
+      id: 'registration-fall',
+      ticket_code: 'I2G-FALL',
+      event: {
+        id: 'event-fall',
+        name: 'Fall Showcase',
+        slug: 'fall-showcase',
+        date: '2026-10-01',
+        location: 'Conference Center',
+        description: 'Fall event',
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <TicketsSection
+          tickets={[fallRegistration]}
+          openEvents={[openEvent({registration: fallRegistration})]}
+          ticketsLoading={false}
+          registrationEventsLoading={false}
+          resendingId={null}
+          onResendTicketEmail={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText('I2G-FALL')).toHaveLength(1);
+    expect(screen.queryByRole('link', {name: 'Register for this event'})).not.toBeInTheDocument();
+  });
+
+  it('shows the loading state while either feed is loading', () => {
+    render(
+      <MemoryRouter>
+        <TicketsSection
+          tickets={[]}
+          openEvents={[]}
+          ticketsLoading={false}
+          registrationEventsLoading={true}
+          resendingId={null}
+          onResendTicketEmail={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Loading registrations...')).toBeInTheDocument();
+  });
+
+  it('shows the empty state when both feeds are empty', () => {
+    render(
+      <MemoryRouter>
+        <TicketsSection
+          tickets={[]}
+          openEvents={[]}
+          ticketsLoading={false}
+          registrationEventsLoading={false}
+          resendingId={null}
+          onResendTicketEmail={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText('No open registrations right now, and no past event registrations on this account.'),
+    ).toBeInTheDocument();
   });
 });

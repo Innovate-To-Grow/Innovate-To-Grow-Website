@@ -59,7 +59,7 @@ export const useAccountDashboard = () => {
   const [tickets, setTickets] = useState<Registration[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [registrationEvents, setRegistrationEvents] = useState<EventRegistrationSummary[]>([]);
-  const [liveEventLoading, setLiveEventLoading] = useState(true);
+  const [registrationEventsLoading, setRegistrationEventsLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export const useAccountDashboard = () => {
     // profileLoading starts true (useState), so the mount load skips the
     // synchronous setProfileLoading(true) that loadProfile() does for the retry
     // button. Defining the loader inline keeps every setState behind an await,
-    // mirroring the tickets/live-event effects below.
+    // mirroring the tickets/registration-events effects below.
     const loadProfileOnMount = async () => {
       try {
         applyProfile(await getProfile());
@@ -132,16 +132,16 @@ export const useAccountDashboard = () => {
 
   useEffect(() => {
     if (!isAuthenticated || requiresProfileCompletion) return;
-    const loadLiveEvent = async () => {
+    const loadRegistrationEvents = async () => {
       try {
         setRegistrationEvents(await fetchRegistrationEvents());
       } catch {
         setRegistrationEvents([]);
       } finally {
-        setLiveEventLoading(false);
+        setRegistrationEventsLoading(false);
       }
     };
-    void loadLiveEvent();
+    void loadRegistrationEvents();
   }, [isAuthenticated, requiresProfileCompletion]);
 
   const handleResendTicketEmail = async (registrationId: string) => {
@@ -403,7 +403,7 @@ export const useAccountDashboard = () => {
     tickets,
     ticketsLoading,
     registrationEvents,
-    liveEventLoading,
+    registrationEventsLoading,
     setProfile,
     setFirstName,
     setMiddleName,

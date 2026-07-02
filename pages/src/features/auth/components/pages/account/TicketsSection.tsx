@@ -5,7 +5,7 @@ interface TicketsSectionProps {
   tickets: Registration[];
   openEvents: EventRegistrationSummary[];
   ticketsLoading: boolean;
-  liveEventLoading: boolean;
+  registrationEventsLoading: boolean;
   resendingId: string | null;
   onResendTicketEmail: (registrationId: string) => void;
 }
@@ -98,11 +98,11 @@ export const TicketsSection = ({
   tickets,
   openEvents,
   ticketsLoading,
-  liveEventLoading,
+  registrationEventsLoading,
   resendingId,
   onResendTicketEmail,
 }: TicketsSectionProps) => {
-  const loading = ticketsLoading || liveEventLoading;
+  const loading = ticketsLoading || registrationEventsLoading;
   const registrationsByEventId = new Map(tickets.map((ticket) => [ticket.event.id, ticket]));
   const openUnregisteredEvents = openEvents.filter((event) => !registrationsByEventId.has(event.id) && !event.registration);
   const ticketIds = new Set(tickets.map((ticket) => ticket.id));
