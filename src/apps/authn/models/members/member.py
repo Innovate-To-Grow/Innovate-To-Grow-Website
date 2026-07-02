@@ -127,7 +127,7 @@ class Member(AbstractUser, ProjectControlModel):
         cache = getattr(self, "_prefetched_objects_cache", None)
         if not cache or "contact_phones" not in cache:
             return None
-        phones = cache["contact_phones"]
+        phones = list(cache["contact_phones"])
         if not phones:
             return None
         phones.sort(key=lambda p: (-p.verified, p.created_at))
