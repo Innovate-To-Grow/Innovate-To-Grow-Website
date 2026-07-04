@@ -1,15 +1,33 @@
 // Pure response builders (no Playwright). Each returns a fully-typed object
 // shaped like the real API response so specs stay declarative and a single
 // `overrides` arg covers the per-test variation.
-import type {LoginResponse, ProfileResponse, User} from '../../src/features/auth/api/types';
+import type {
+  ContactEmail,
+  ContactPhone,
+  LoginResponse,
+  ProfileResponse,
+  User,
+} from '../../src/features/auth/api/types';
 import type {
   EventRegistrationOptions,
   EventSchedulePayload,
   Registration,
 } from '../../src/features/events/api';
 import type {NewsArticle, PaginatedResponse} from '../../src/features/news/api';
-import type {ProjectDetail, ProjectTableRow} from '../../src/features/projects/api';
-import type {CMSPageResponse} from '../../src/features/cms/api';
+import type {
+  PastProjectAISearchResponse,
+  PastProjectShare,
+  PastProjectShareSummary,
+  ProjectDetail,
+  ProjectGridRow,
+  ProjectTableRow,
+} from '../../src/features/projects/api';
+import type {CMSEmbedResponse, CMSPageResponse} from '../../src/features/cms/api';
+import type {
+  AssistantChatSuccessBody,
+  AssistantChatUnavailableBody,
+  AssistantConfig,
+} from '../../src/features/assistant/api';
 
 /**
  * A non-cryptographic JWT whose only meaningful content is the payload `exp`.
@@ -262,4 +280,176 @@ export function cmsAcknowledgementPage(overrides: Partial<CMSPageResponse> = {})
     ],
     ...overrides,
   };
+}
+
+// -- assistant -----------------------------------------------------------
+
+export function assistantConfig(overrides: Partial<AssistantConfig> = {}): AssistantConfig {
+  return {
+    enabled: true,
+    welcome_message: 'Hi! I can help answer questions about Innovate to Grow.',
+    starter_questions: [
+      'What is Innovate to Grow?',
+      'How do I get involved as a sponsor?',
+      'When is the next event?',
+    ],
+    unavailable_message: 'The assistant is currently unavailable.',
+    max_message_chars: 2000,
+    ...overrides,
+  };
+}
+
+export function assistantChatSuccess(
+  overrides: Partial<AssistantChatSuccessBody> = {},
+): AssistantChatSuccessBody {
+  return {
+    available: true,
+    reply: 'Innovate to Grow is a program at UC Merced that connects students with industry sponsors.',
+    usage: {inputTokens: 50, outputTokens: 20, totalTokens: 70},
+    ...overrides,
+  };
+}
+
+export function assistantChatUnavailable(
+  overrides: Partial<AssistantChatUnavailableBody> = {},
+): AssistantChatUnavailableBody {
+  return {
+    available: false,
+    message: 'The assistant is currently unavailable.',
+    ...overrides,
+  };
+}
+
+// -- CMS embed -----------------------------------------------------------
+
+export function cmsEmbedResponse(overrides: Partial<CMSEmbedResponse> = {}): CMSEmbedResponse {
+  return {
+    widget_type: 'blocks',
+    blocks: [
+      {
+        block_type: 'rich_text',
+        sort_order: 0,
+        data: {body_html: '<p>Embedded content block.</p>'},
+      },
+    ],
+    page_css_class: '',
+    page_css: ':root {}',
+    ...overrides,
+  };
+}
+
+// -- past project shares -------------------------------------------------
+
+export function pastProjectShare(overrides: Partial<PastProjectShare> = {}): PastProjectShare {
+  const rows: ProjectGridRow[] = pastProjectRows().map((r) => ({
+    id: r.id,
+    semester_label: r.semester_label,
+    class_code: r.class_code,
+    team_number: r.team_number,
+    team_name: r.team_name,
+    project_title: r.project_title,
+    organization: r.organization,
+    industry: r.industry,
+    abstract: r.abstract,
+    student_names: r.student_names,
+    is_presenting: r.is_presenting ? 'Yes' : 'No',
+  }));
+
+  return {
+    id: 'share-e2e-1',
+    name: 'Curated E2E Projects',
+    rows,
+    note: '<p>Check out these projects!</p>',
+    details_text: '',
+    share_url: '/past-projects/share-e2e-1',
+    can_edit: false,
+    created_at: '2026-07-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+export function pastProjectShareSummary(
+  overrides: Partial<PastProjectShareSummary> = {},
+): PastProjectShareSummary {
+  return {
+    id: 'share-e2e-1',
+    name: 'Curated E2E Projects',
+    note: '<p>Check out these projects!</p>',
+    share_url: '/past-projects/share-e2e-1',
+    row_count: 2,
+    created_at: '2026-07-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+// -- AI search -----------------------------------------------------------
+
+export function aiSearchResponse(
+  overrides: Partial<PastProjectAISearchResponse> = {},
+): PastProjectAISearchResponse {
+  return {
+    available: true,
+    query: 'irrigation',
+    results: [pastProjectRows()[0]],
+    usage: {inputTokens: 100, outputTokens: 50, totalTokens: 150},
+    ...overrides,
+  };
+}
+
+// -- account emails / contacts ------------------------------------------
+
+export function accountEmail(overrides: Partial<{email: string}> = {}): {email: string} {
+  return {email: 'member@example.com', ...overrides};
+}
+
+export function contactEmail(overrides: Partial<ContactEmail> = {}): ContactEmail {
+  return {
+    id: 'cemail-e2e-1',
+    email_address: 'work@example.com',
+    email_type: 'secondary',
+    subscribe: false,
+    verified: false,
+    created_at: '2026-07-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+export function contactPhone(overrides: Partial<ContactPhone> = {}): ContactPhone {
+  return {
+    id: 'cphone-e2e-1',
+    phone_number: '+12065551234',
+    region: '1-US',
+    region_display: 'United States',
+    subscribe: false,
+    verified: false,
+    created_at: '2026-07-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+// -- generic CMS page ----------------------------------------------------
+
+export function cmsPageResponse(overrides: Partial<CMSPageResponse> = {}): CMSPageResponse {
+  return {
+    slug: 'about',
+    route: '/about',
+    title: 'About Us',
+    page_css_class: '',
+    page_css: '',
+    meta_description: '',
+    blocks: [
+      {
+        block_type: 'rich_text',
+        sort_order: 0,
+        data: {body_html: '<h2>Who We Are</h2><p>Innovate to Grow connects UC Merced students with industry.</p>'},
+      },
+    ],
+    ...overrides,
+  };
+}
+
+// -- my tickets ----------------------------------------------------------
+
+export function myTicket(overrides: Partial<Registration> = {}): Registration {
+  return registration(overrides);
 }

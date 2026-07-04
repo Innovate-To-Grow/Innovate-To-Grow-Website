@@ -94,3 +94,10 @@ test('/login while authenticated redirects to /account', async ({page}) => {
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await expect(page).toHaveURL(/\/account$/);
 });
+
+test('/profile redirects to /account', async ({page}) => {
+  await seedAuthenticatedSession(page, {user: {email: 'profile@example.com'}});
+  await stubAccountMounts(page, 'profile@example.com');
+  await page.goto('/profile', {waitUntil: 'domcontentloaded'});
+  await expect(page).toHaveURL(/\/account$/);
+});

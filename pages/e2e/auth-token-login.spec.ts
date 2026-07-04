@@ -2,7 +2,13 @@
 // and render success/error states. Unsubscribe tokens intentionally do not sign
 // the member in.
 import {test, expect} from './fixtures';
-import {expectSignedInAs, loginResponse, mockAccountDashboard} from './helpers';
+import {
+  expectSignedInAs,
+  loginResponse,
+  mockAccountDashboard,
+  mockEmailAuthFlow,
+  mockEventRegistration,
+} from './helpers';
 
 const SUCCESS = loginResponse({user: {email: 'token-login@example.com', member_uuid: 'm-token'}});
 
@@ -125,4 +131,12 @@ test('email-auth-link verifies the code and signs the member in', {tag: '@core'}
 test('email-auth-link with malformed params shows the guard error', async ({page}) => {
   await page.goto('/email-auth-link?flow=auth&source=subscribe&email=x@example.com', {waitUntil: 'domcontentloaded'});
   await expect(page.getByText('This email link is invalid or incomplete.')).toBeVisible();
+});
+
+test('/membership/events legacy redirect navigates to event registration', async ({page}) => {
+  await mockEventRegistration(page);
+  await mockEmailAuthFlow(page);
+  await page.goto('/membership/events', {waitUntil: 'domcontentloaded'});
+  // Should redirect to /event-registration.
+  await expect(page).toHaveURL(/\/event-registration/);
 });

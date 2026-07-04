@@ -33,6 +33,33 @@ test('redirects to /account when no completion is required', async ({page}) => {
   await expect(page).toHaveURL(/\/account$/);
 });
 
+test('profile with organization type fields', async ({page}) => {
+  const {patchPayloads} = await seedAuthenticatedSession(page, {
+    requiresProfileCompletion: true,
+    profile: {first_name: '', last_name: '', organization: ''},
+  });
+
+  await page.goto('/complete-profile', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('First Name').fill('Ada');
+  await page.getByLabel('Last Name').fill('Lovelace');
+  // Organization type radio — select "Organization"
+  const orgRadio = page.getByLabel(/organization/i).first();
+  if (await orgRadio.isVisible()) {
+    await orgRadio.check();
+  }
+  await page.getByPlaceholder('Company or organization name').fill('Acme Corp');
+  await page.getByPlaceholder('Your title or position').fill('Director');
+  await page.getByRole('button', {name: 'Continue to Account'}).click();
+
+  await expect(page).toHaveURL(/\/account$/);
+  expect(patchPayloads[0]).toMatchObject({
+    first_name: 'Ada',
+    last_name: 'Lovelace',
+    organization: 'Acme Corp',
+    title: 'Director',
+  });
+});
+
 test('redirects to /login when logged out', async ({page}) => {
   await page.goto('/complete-profile', {waitUntil: 'domcontentloaded'});
   await expect(page).toHaveURL(/\/login$/);

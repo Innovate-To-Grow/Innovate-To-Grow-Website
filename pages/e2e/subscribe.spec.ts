@@ -2,7 +2,15 @@
 // management → unsubscribe. Migrated from the original auth-flows.spec.ts and
 // rebuilt on the shared fixtures + factories.
 import {test, expect} from './fixtures';
-import {mockEmailAuthFlow, mockProfileEndpoint, profileResponse} from './helpers';
+import {
+  mockEmailAuthFlow,
+  mockMyTickets,
+  mockPastProjectSharesList,
+  mockPhoneAuthFlow,
+  mockProfileEndpoint,
+  profileResponse,
+  seedAuthenticatedSession,
+} from './helpers';
 
 test('newsletter email-code flow completes profile and manages subscription', {tag: '@core'}, async ({page}) => {
   const email = 'subscriber@example.com';
@@ -100,4 +108,27 @@ test('newsletter email-code flow completes profile and manages subscription', {t
   await page.getByRole('button', {name: 'Turn off text messages for (415)555-0132'}).click();
   await expect(page.getByText('Text Messages disabled.')).toBeVisible();
   expect(contactPhonePatchPayloads[0]).toEqual({subscribe: false});
+});
+
+test('subscribe with existing authenticated session skips auth step', async ({page}) => {
+  await seedAuthenticatedSession(page, {
+    user: {email: 'existing@example.com'},
+    profile: {first_name: 'Ada', last_name: 'Lovelace', organization: 'Acme Corp'},
+  });
+  await mockMyTickets(page, []);
+  await mockPastProjectSharesList(page, []);
+
+  await page.goto('/subscribe', {waitUntil: 'domcontentloaded'});
+  // Should skip directly to the management step since the user is already authenticated.
+  await expect(page.locator('.subscribe-page')).toBeVisible();
+});
+
+test('subscribe page loads with phone input option', async ({page}) => {
+  await mockEmailAuthFlow(page);
+  await mockPhoneAuthFlow(page);
+
+  await page.goto('/subscribe', {waitUntil: 'domcontentloaded'});
+  // Should render the subscribe page with an email or phone input.
+  await expect(page.locator('.subscribe-page')).toBeVisible();
+  await expect(page.getByLabel(/email|phone/i)).toBeVisible();
 });

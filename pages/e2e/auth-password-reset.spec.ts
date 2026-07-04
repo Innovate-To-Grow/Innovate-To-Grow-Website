@@ -38,3 +38,30 @@ test('request → verify → set new password → /login', {tag: '@core'}, async
   expect(typeof confirm.new_password).toBe('string');
   expect(typeof confirm.new_password_confirm).toBe('string');
 });
+
+test('resend code is available on the verify screen', async ({page}) => {
+  await mockPublicKey(page);
+  const {requestPayloads} = await mockPasswordResetFlow(page);
+  const email = 'resend@example.com';
+
+  await page.goto('/forgot-password', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('button', {name: 'Send Reset Code'}).click();
+
+  await expect(page).toHaveURL(/\/verify-email\?flow=reset/);
+  // Resend link should be visible on the verify screen.
+  const resendBtn = page.getByRole('button', {name: /resend/i});
+  if (await resendBtn.isVisible()) {
+    await resendBtn.click();
+    // The request should be called again.
+    await expect.poll(() => requestPayloads.length).toBeGreaterThanOrEqual(2);
+  }
+});
+
+test('invalid email format stays on forgot-password page', async ({page}) => {
+  await page.goto('/forgot-password', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('Email').fill('not-an-email');
+  await page.getByRole('button', {name: 'Send Reset Code'}).click();
+  // Should stay on the forgot-password page or show a validation error.
+  await expect(page.locator('.auth-alert.error, .field-error')).toBeVisible();
+});

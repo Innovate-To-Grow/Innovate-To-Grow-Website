@@ -58,3 +58,39 @@ test('already-registered member sees the confirmation immediately', async ({page
   await expect(page.getByRole('heading', {name: "You're Registered!"})).toBeVisible();
   await expect(page.getByText('E2E-TICKET-001')).toBeVisible();
 });
+
+test('phone verification within registration form', async ({page}) => {
+  const email = 'phone-reg@example.com';
+  await mockEventRegistration(page, {
+    options: registrationOptions({collect_phone: true, verify_phone: true}),
+  });
+  await mockEmailAuthFlow(page, {verifyResponse: loginResponse({user: {email}, next_step: 'account'})});
+  await mockProfileEndpoint(page, {current: profileResponse({email})});
+
+  await page.goto('/event-registration', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
+  await page.getByLabel('Verification Code').fill('123456');
+  await page.getByRole('button', {name: 'Verify Code'}).click();
+
+  // Phone field should be visible when collect_phone is true.
+  await expect(page.locator('#attendee-phone')).toBeVisible();
+});
+
+test('secondary email field when event allows it', async ({page}) => {
+  const email = 'secondary-email@example.com';
+  await mockEventRegistration(page, {
+    options: registrationOptions({allow_secondary_email: true}),
+  });
+  await mockEmailAuthFlow(page, {verifyResponse: loginResponse({user: {email}, next_step: 'account'})});
+  await mockProfileEndpoint(page, {current: profileResponse({email})});
+
+  await page.goto('/event-registration', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
+  await page.getByLabel('Verification Code').fill('123456');
+  await page.getByRole('button', {name: 'Verify Code'}).click();
+
+  // Secondary email field should be visible.
+  await expect(page.locator('#secondary-email')).toBeVisible();
+});
