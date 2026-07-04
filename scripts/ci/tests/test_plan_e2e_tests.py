@@ -22,40 +22,43 @@ class PlanE2ETests(unittest.TestCase):
         plan = plan_e2e_tests("pull_request", ["pages/src/features/auth/components/Login.tsx"])
 
         self.assertEqual(plan.projects, ["chromium"])
-        self.assertIn("e2e/auth-login.spec.ts", plan.specs)
-        self.assertIn("e2e/account.spec.ts", plan.specs)
-        self.assertIn("e2e/subscribe.spec.ts", plan.specs)
-        self.assertIn("e2e/complete-profile.spec.ts", plan.specs)
-        self.assertIn("e2e/cross-root-sync.spec.ts", plan.specs)
-        self.assertIn("e2e/auth-phone-login.spec.ts", plan.specs)
-        self.assertIn("e2e/auth-phone-password.spec.ts", plan.specs)
+        self.assertIn("e2e/auth/", plan.specs)
+        self.assertIn("e2e/account/", plan.specs)
+        self.assertIn("e2e/events/subscribe.spec.ts", plan.specs)
 
     def test_directly_changed_spec_without_category_still_runs(self):
         # A spec belonging to no category list must still run when edited
         # directly — otherwise _ordered_specs would silently drop it.
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/past-projects-share.spec.ts"])
+        plan = plan_e2e_tests("pull_request", ["pages/e2e/assistant.spec.ts"])
 
-        self.assertIn("e2e/past-projects-share.spec.ts", plan.specs)
-        self.assertEqual(plan.matrix[0].spec_args, "e2e/past-projects-share.spec.ts")
+        self.assertIn("e2e/assistant.spec.ts", plan.specs)
+        self.assertEqual(plan.matrix[0].spec_args, "e2e/assistant.spec.ts")
+
+    def test_directly_changed_nested_spec_still_runs(self):
+        # Specs live in feature subdirectories; the direct-change regex must
+        # match nested paths too.
+        plan = plan_e2e_tests("pull_request", ["pages/e2e/projects/past-share.spec.ts"])
+
+        self.assertIn("e2e/projects/past-share.spec.ts", plan.specs)
 
     def test_project_paths_run_projects_spec(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/features/projects/api/client.ts"])
 
-        self.assertEqual(plan.specs, ["e2e/projects.spec.ts"])
-        self.assertEqual(plan.matrix[0].spec_args, "e2e/projects.spec.ts")
+        self.assertEqual(plan.specs, ["e2e/projects/"])
+        self.assertEqual(plan.matrix[0].spec_args, "e2e/projects/")
 
     def test_cms_news_content_layout_paths_run_content_specs(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/features/cms/components/RichText.tsx"])
 
-        self.assertIn("e2e/content-archive.spec.ts", plan.specs)
-        self.assertIn("e2e/news.spec.ts", plan.specs)
+        self.assertIn("e2e/content/", plan.specs)
+        self.assertIn("e2e/events/schedule.spec.ts", plan.specs)
         self.assertIn("e2e/smoke.live.spec.ts", plan.specs)
-        self.assertIn("e2e/cross-root-sync.spec.ts", plan.specs)
+        self.assertIn("e2e/auth/cross-root-sync.spec.ts", plan.specs)
 
-    def test_event_paths_run_event_registration_spec(self):
+    def test_event_paths_run_event_specs(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/routes/EventRegistrationPage/index.tsx"])
 
-        self.assertEqual(plan.specs, ["e2e/event-registration.spec.ts"])
+        self.assertEqual(plan.specs, ["e2e/events/"])
 
     def test_mobile_paths_add_pixel7_and_mobile_spec(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/components/MobileMenu.tsx"])
@@ -103,9 +106,9 @@ class PlanE2ETests(unittest.TestCase):
         outputs = dict(line.split("=", 1) for line in plan.github_outputs().splitlines())
 
         self.assertEqual(json.loads(outputs["projects"]), ["chromium"])
-        self.assertEqual(json.loads(outputs["specs"]), ["e2e/projects.spec.ts"])
-        self.assertEqual(outputs["spec_args"], "e2e/projects.spec.ts")
-        self.assertEqual(json.loads(outputs["matrix"]), [{"project": "chromium", "spec_args": "e2e/projects.spec.ts"}])
+        self.assertEqual(json.loads(outputs["specs"]), ["e2e/projects/"])
+        self.assertEqual(outputs["spec_args"], "e2e/projects/")
+        self.assertEqual(json.loads(outputs["matrix"]), [{"project": "chromium", "spec_args": "e2e/projects/"}])
 
 
 if __name__ == "__main__":

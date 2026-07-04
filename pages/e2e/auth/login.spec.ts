@@ -1,13 +1,13 @@
 // Email-code login journey + the verify-email route guards. Password login is
 // intentionally not exercised here (RSA-OAEP fixture, duplicate of vitest).
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   loginResponse,
   mockEmailAuthFlow,
   mockProfileEndpoint,
   profileResponse,
   seedAuthenticatedSession,
-} from './helpers';
+} from '../helpers';
 
 async function stubAccountMounts(page: import('@playwright/test').Page, email: string) {
   await mockProfileEndpoint(page, {current: profileResponse({email})});

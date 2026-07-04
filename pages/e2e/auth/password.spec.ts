@@ -1,10 +1,10 @@
 // /login password mode: email + encrypted-password login via /authn/login/.
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   mockAccountDashboard,
   mockPasswordLogin,
   mockPublicKey,
-} from './helpers';
+} from '../helpers';
 
 test('switch from identifier mode to password mode', async ({page}) => {
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
@@ -29,11 +29,12 @@ test('successful password login redirects to /account', async ({page}) => {
 
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await page.getByText(/sign in with password/i).click();
-  await page.locator('#login-identifier').fill('member@example.com');
+  await page.locator('#login-email').fill('member@example.com');
   await page.locator('input[type="password"]').fill('correct-password');
-  await page.getByRole('button', {name: /sign in/i}).click();
+  await page.locator('#root').getByRole('button', {name: 'Sign In', exact: true}).click();
 
   await expect.poll(() => loginPayloads.length).toBeGreaterThan(0);
+  await expect(page).toHaveURL(/\/account/);
 });
 
 test('invalid credentials show error message', async ({page}) => {
@@ -42,11 +43,11 @@ test('invalid credentials show error message', async ({page}) => {
 
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await page.getByText(/sign in with password/i).click();
-  await page.locator('#login-identifier').fill('wrong@example.com');
+  await page.locator('#login-email').fill('wrong@example.com');
   await page.locator('input[type="password"]').fill('wrong');
-  await page.getByRole('button', {name: /sign in/i}).click();
+  await page.locator('#root').getByRole('button', {name: 'Sign In', exact: true}).click();
 
-  await expect(page.locator('.login-error')).toBeVisible();
+  await expect(page.locator('.auth-alert.error')).toBeVisible();
 });
 
 test('switch back from password mode to identifier mode', async ({page}) => {
@@ -54,6 +55,6 @@ test('switch back from password mode to identifier mode', async ({page}) => {
   await page.getByText(/sign in with password/i).click();
   await expect(page.locator('input[type="password"]')).toBeVisible();
   // The link to switch back should be present.
-  await page.getByText(/sign in with email/i).click();
+  await page.getByRole('button', {name: /sign in with a verification code/i}).click();
   await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });

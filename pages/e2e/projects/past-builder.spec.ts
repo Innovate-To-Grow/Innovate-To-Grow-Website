@@ -1,7 +1,7 @@
 // /past-projects builder mode: multi-search-table workflow with AI search,
 // merge/remove/undo/reset, share creation. Covers authenticated + unauthenticated
 // paths.
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   aiSearchResponse,
   mockAiSearch,
@@ -11,7 +11,7 @@ import {
   pastProjectRows,
   pastProjectShare,
   seedAuthenticatedSession,
-} from './helpers';
+} from '../helpers';
 
 test('past projects builder page renders', async ({page}) => {
   await mockPastProjects(page, pastProjectRows());
@@ -80,5 +80,5 @@ test('shared links page lists user shares', async ({page}) => {
     {id: 'share-1', name: 'Curated List', note: '<p>Notes</p>', share_url: '/past-projects/share-1', row_count: 3, created_at: '2026-07-01T00:00:00Z'},
   ]);
   await page.goto('/account/past-project-curation-shared-links', {waitUntil: 'domcontentloaded'});
-  await expect(page.locator('.shared-links-page')).toContainText('Curated List');
+  await expect(page.locator('.account-shared-links-page')).toContainText('Curated List');
 });

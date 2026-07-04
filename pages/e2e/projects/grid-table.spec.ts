@@ -1,8 +1,8 @@
 // ProjectGridTable interactivity: column sorting, search, row expand/collapse,
 // page size, pagination, and mobile card layout. Uses /current-projects as the
 // canvas since it renders the grid with data from /event/schedule/.
-import {test, expect} from './fixtures';
-import {mockSchedule, schedulePayload} from './helpers';
+import {test, expect} from '../fixtures';
+import {mockSchedule, schedulePayload} from '../helpers';
 
 // Helper: build a schedule payload with many projects for pagination tests.
 function largePayload(projectCount = 15) {

@@ -1,8 +1,8 @@
 // Forgot-password journey, driven all the way through the encrypted confirm
 // step. `mockPublicKey` serves a real RSA key so the browser's Web Crypto can
 // encrypt; the confirm mock asserts the request body shape, not the plaintext.
-import {test, expect} from './fixtures';
-import {mockPasswordResetFlow, mockPublicKey} from './helpers';
+import {test, expect} from '../fixtures';
+import {mockPasswordResetFlow, mockPublicKey} from '../helpers';
 
 test('request → verify → set new password → /login', {tag: '@core'}, async ({page}) => {
   await mockPublicKey(page);
@@ -58,10 +58,20 @@ test('resend code is available on the verify screen', async ({page}) => {
   }
 });
 
-test('invalid email format stays on forgot-password page', async ({page}) => {
+test('malformed identifier still follows the enumeration-safe reset flow', async ({page}) => {
+  // The identifier field intentionally has no format validation (it accepts
+  // phones too) and the backend always answers 202, so even a malformed value
+  // proceeds to the verify screen rather than surfacing an error.
+  const {requestPayloads} = await mockPasswordResetFlow(page);
   await page.goto('/forgot-password', {waitUntil: 'domcontentloaded'});
-  await page.getByLabel('Email').fill('not-an-email');
+  await page.getByLabel('Email or Phone').fill('not-an-email');
   await page.getByRole('button', {name: 'Send Reset Code'}).click();
-  // Should stay on the forgot-password page or show a validation error.
-  await expect(page.locator('.auth-alert.error, .field-error')).toBeVisible();
+  await expect(page).toHaveURL(/\/verify-email\?flow=reset&email=not-an-email/);
+  expect(requestPayloads).toEqual([{email: 'not-an-email'}]);
+});
+
+test('empty identifier keeps the submit button disabled', async ({page}) => {
+  await page.goto('/forgot-password', {waitUntil: 'domcontentloaded'});
+  await expect(page.getByRole('button', {name: 'Send Reset Code'})).toBeDisabled();
+  await expect(page).toHaveURL(/\/forgot-password/);
 });

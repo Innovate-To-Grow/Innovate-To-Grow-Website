@@ -1,7 +1,7 @@
 // CMS block type rendering: exercises each block type through CMSPageComponent.
 // Uses the actual block data shapes matching each component's interface.
-import {test, expect} from './fixtures';
-import {cmsPageResponse, mockCmsPage} from './helpers';
+import {test, expect} from '../fixtures';
+import {cmsPageResponse, mockCmsPage} from '../helpers';
 
 test('RichTextBlock renders HTML content', async ({page}) => {
   await mockCmsPage(page, 'richtext', cmsPageResponse({

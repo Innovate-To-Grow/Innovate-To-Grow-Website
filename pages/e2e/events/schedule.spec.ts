@@ -1,13 +1,16 @@
 // /schedule: full interactive event schedule with winners, expo, presentation
 // tracks (desktop table + mobile cards), and embedded project grid search.
-import {test, expect} from './fixtures';
-import {mockSchedule, schedulePayload} from './helpers';
+import {test, expect} from '../fixtures';
+import {mockSchedule, schedulePayload} from '../helpers';
 
 test('renders event name, date, location, and description', {tag: '@core'}, async ({page}) => {
   await mockSchedule(page, schedulePayload());
   await page.goto('/schedule', {waitUntil: 'domcontentloaded'});
-  await expect(page.getByRole('heading', {name: 'Event Schedule'})).toBeVisible();
-  await expect(page.locator('.schedule-page')).toContainText('E2E Showcase');
+  // Once data loads the page title is the event name — the static
+  // "Event Schedule" h1 only exists in the loading/error states.
+  await expect(page.getByRole('heading', {name: 'E2E Showcase'})).toBeVisible();
+  await expect(page.locator('.schedule-page')).toContainText('E2E Hall');
+  await expect(page.locator('.schedule-page')).toContainText('End-to-end showcase schedule.');
 });
 
 test('winners section renders when show_winners is true', async ({page}) => {
@@ -165,7 +168,9 @@ test('empty schedule without sections or projects', async ({page}) => {
   });
   await mockSchedule(page, empty);
   await page.goto('/schedule', {waitUntil: 'domcontentloaded'});
-  await expect(page.getByRole('heading', {name: 'Event Schedule'})).toBeVisible();
+  // The loaded h1 is the event name ("Event Schedule" is only the
+  // loading/error-state heading); an empty payload must still render it.
+  await expect(page.getByRole('heading', {name: 'E2E Showcase'})).toBeVisible();
 });
 
 test('schedule with multiple presentation tracks and sections', async ({page}) => {

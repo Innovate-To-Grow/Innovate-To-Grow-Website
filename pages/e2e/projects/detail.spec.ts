@@ -1,6 +1,6 @@
 // /projects/:id and /past-projects/project/:id: project detail page.
-import {test, expect} from './fixtures';
-import {mockProjectDetail, projectDetail} from './helpers';
+import {test, expect} from '../fixtures';
+import {mockProjectDetail, projectDetail} from '../helpers';
 
 test('project detail renders title and abstract', {tag: '@core'}, async ({page}) => {
   await mockProjectDetail(page, projectDetail());

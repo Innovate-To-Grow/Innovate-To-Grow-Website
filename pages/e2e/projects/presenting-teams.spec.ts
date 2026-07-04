@@ -1,6 +1,6 @@
 // /presenting-teams: filtered project grid showing only presenting teams.
-import {test, expect} from './fixtures';
-import {mockSchedule, schedulePayload} from './helpers';
+import {test, expect} from '../fixtures';
+import {mockSchedule, schedulePayload} from '../helpers';
 
 test('presenting teams grid renders', async ({page}) => {
   await mockSchedule(page, schedulePayload());

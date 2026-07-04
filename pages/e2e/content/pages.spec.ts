@@ -1,8 +1,8 @@
 // / (homepage) and catch-all `*`: CMS-powered pages via HomepageResolver and
 // CMSPageComponent. Asserts on heading elements rendered from block content
 // rather than the (document.title-only) page title.
-import {test, expect} from './fixtures';
-import {cmsPageResponse, mockCmsPage} from './helpers';
+import {test, expect} from '../fixtures';
+import {cmsPageResponse, mockCmsPage} from '../helpers';
 
 test('homepage renders CMS blocks via HomepageResolver', {tag: '@core'}, async ({page}) => {
   await mockCmsPage(page, '', cmsPageResponse({
@@ -53,5 +53,7 @@ test('CMS page with empty blocks array still mounts', async ({page}) => {
     route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(cmsPageResponse({blocks: []}))}),
   );
   await page.goto('/', {waitUntil: 'networkidle'});
-  await expect(page.locator('.cms-page')).toBeVisible();
+  // With zero blocks the container renders empty (zero height), so assert it
+  // mounted in the DOM rather than that it is visible.
+  await expect(page.locator('.cms-page')).toBeAttached();
 });

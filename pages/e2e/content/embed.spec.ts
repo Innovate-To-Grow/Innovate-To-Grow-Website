@@ -1,6 +1,6 @@
 // /_embed/:embedSlug: public embed widget rendered in an isolated iframe.
-import {test, expect} from './fixtures';
-import {cmsEmbedResponse, mockCmsEmbed} from './helpers';
+import {test, expect} from '../fixtures';
+import {cmsEmbedResponse, mockCmsEmbed} from '../helpers';
 
 test('embed page renders CMS blocks', async ({page}) => {
   await mockCmsEmbed(page, 'test-embed', cmsEmbedResponse({widget_type: 'blocks'}));

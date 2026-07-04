@@ -1,7 +1,7 @@
 // /subscribe end-to-end: email-code → inline profile completion → subscription
 // management → unsubscribe. Migrated from the original auth-flows.spec.ts and
 // rebuilt on the shared fixtures + factories.
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   mockEmailAuthFlow,
   mockMyTickets,
@@ -10,7 +10,7 @@ import {
   mockProfileEndpoint,
   profileResponse,
   seedAuthenticatedSession,
-} from './helpers';
+} from '../helpers';
 
 test('newsletter email-code flow completes profile and manages subscription', {tag: '@core'}, async ({page}) => {
   const email = 'subscriber@example.com';

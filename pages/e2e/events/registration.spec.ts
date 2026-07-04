@@ -1,6 +1,6 @@
 // Event registration: the unauthenticated email step, a full completion to the
 // ticket confirmation, and the already-registered short-circuit.
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   loginResponse,
   mockEmailAuthFlow,
@@ -10,7 +10,7 @@ import {
   registration,
   registrationOptions,
   seedAuthenticatedSession,
-} from './helpers';
+} from '../helpers';
 
 test('unauthenticated start shows the email step', async ({page}) => {
   await mockEventRegistration(page);
@@ -74,7 +74,7 @@ test('phone verification within registration form', async ({page}) => {
   await page.getByRole('button', {name: 'Verify Code'}).click();
 
   // Phone field should be visible when collect_phone is true.
-  await expect(page.locator('#attendee-phone')).toBeVisible();
+  await expect(page.locator('#phone')).toBeVisible();
 });
 
 test('secondary email field when event allows it', async ({page}) => {

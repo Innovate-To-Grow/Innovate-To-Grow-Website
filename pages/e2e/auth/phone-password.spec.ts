@@ -1,8 +1,8 @@
 // Regression: a phone-only account can sign in with phone + password and set a
 // password through SMS verification from the account page; and an account with a
 // verified phone can remove its primary email (the verified phone keeps it safe).
-import {test, expect} from './fixtures';
-import {loginResponse, mintFakeJwt, mockProfileEndpoint, mockPublicKey, profileResponse, seedAuthenticatedSession} from './helpers';
+import {test, expect} from '../fixtures';
+import {loginResponse, mintFakeJwt, mockProfileEndpoint, mockPublicKey, profileResponse, seedAuthenticatedSession} from '../helpers';
 
 const PHONE = '2025550123';
 const PHONE_E164 = '+12025550123';

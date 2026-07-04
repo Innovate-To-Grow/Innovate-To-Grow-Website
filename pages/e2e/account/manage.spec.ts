@@ -1,6 +1,6 @@
 // /account deep features: EmailCenter, PhoneCenter, PasswordSection,
 // DeleteAccountSection, TicketsSection, and MySharedLinksSection.
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   contactEmail,
   contactPhone,
@@ -13,7 +13,7 @@ import {
   mockPastProjectSharesList,
   myTicket,
   seedAuthenticatedSession,
-} from './helpers';
+} from '../helpers';
 
 // -- EmailCenter -----------------------------------------------------------
 
@@ -22,8 +22,8 @@ test('EmailCenter: add a contact email', async ({page}) => {
   const {created} = await mockContactEmailsCRUD(page);
   await page.goto('/account', {waitUntil: 'domcontentloaded'});
   await page.getByRole('button', {name: /add email/i}).click();
-  await page.locator('#new-email-address').fill('work@example.com');
-  await page.getByRole('button', {name: /add/i}).click();
+  await page.locator('#add-contact-email').fill('work@example.com');
+  await page.getByRole('button', {name: /add & send verification/i}).click();
   await expect.poll(() => created.length).toBeGreaterThan(0);
   expect((created[0] as Record<string, unknown>).email_address).toBe('work@example.com');
 });
@@ -60,14 +60,13 @@ test('PhoneCenter: add a contact phone', async ({page}) => {
   await seedAuthenticatedSession(page, {profile: {first_name: 'Ada', last_name: 'Lovelace'}});
   const {created} = await mockContactPhonesCRUD(page);
   await page.goto('/account', {waitUntil: 'domcontentloaded'});
-  const addPhoneBtn = page.getByRole('button', {name: /add phone/i});
-  if (await addPhoneBtn.isVisible()) {
-    await addPhoneBtn.click();
-    await page.locator('#new-phone-number').fill('+12065551234');
-    await page.locator('#new-phone-region').selectOption('1-US');
-    await page.getByRole('button', {name: /add/i}).click();
-    await expect.poll(() => created.length).toBeGreaterThan(0);
-  }
+  await page.getByRole('button', {name: 'Add Phone', exact: true}).click();
+  // The input is a 10-digit US national number; the terms checkbox is
+  // required before the form can submit (PhoneAddForm.tsx).
+  await page.locator('#add-phone-number').fill('2065551234');
+  await page.locator('#add-phone-terms').check();
+  await page.getByRole('button', {name: 'Add Phone', exact: true}).click();
+  await expect.poll(() => created.length).toBeGreaterThan(0);
 });
 
 test('PhoneCenter: delete a contact phone', async ({page}) => {

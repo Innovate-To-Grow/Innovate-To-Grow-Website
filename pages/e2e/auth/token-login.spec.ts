@@ -1,14 +1,14 @@
 // Token login entry points POST a token, persist sessions where appropriate,
 // and render success/error states. Unsubscribe tokens intentionally do not sign
 // the member in.
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   expectSignedInAs,
   loginResponse,
   mockAccountDashboard,
   mockEmailAuthFlow,
   mockEventRegistration,
-} from './helpers';
+} from '../helpers';
 
 const SUCCESS = loginResponse({user: {email: 'token-login@example.com', member_uuid: 'm-token'}});
 
@@ -133,10 +133,12 @@ test('email-auth-link with malformed params shows the guard error', async ({page
   await expect(page.getByText('This email link is invalid or incomplete.')).toBeVisible();
 });
 
-test('/membership/events legacy redirect navigates to event registration', async ({page}) => {
+test('/membership/events legacy alias renders the event registration page', async ({page}) => {
   await mockEventRegistration(page);
   await mockEmailAuthFlow(page);
   await page.goto('/membership/events', {waitUntil: 'domcontentloaded'});
-  // Should redirect to /event-registration.
-  await expect(page).toHaveURL(/\/event-registration/);
+  // The legacy path renders EventRegistrationPage in place (no redirect hop),
+  // so old emailed/bookmarked URLs keep working — see router.tsx.
+  await expect(page).toHaveURL(/\/membership\/events/);
+  await expect(page.getByRole('heading', {name: 'Event Registration', level: 1})).toBeVisible();
 });
