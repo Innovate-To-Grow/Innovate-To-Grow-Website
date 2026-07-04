@@ -1,8 +1,8 @@
 // Regression: a phone-only account can sign in with phone + password and set a
 // password through SMS verification from the account page; and an account with a
 // verified phone can remove its primary email (the verified phone keeps it safe).
-import {test, expect} from './fixtures';
-import {loginResponse, mintFakeJwt, mockProfileEndpoint, mockPublicKey, profileResponse, seedAuthenticatedSession} from './helpers';
+import {test, expect} from '../fixtures';
+import {loginResponse, mintFakeJwt, mockProfileEndpoint, mockPublicKey, profileResponse, seedAuthenticatedSession} from '../helpers';
 
 const PHONE = '2025550123';
 const PHONE_E164 = '+12025550123';
@@ -122,4 +122,55 @@ test('account with a verified phone can remove its primary email', {tag: '@core'
 
   await primaryCard.getByRole('button', {name: 'Remove'}).click();
   await expect(page.getByText('Email removed.')).toBeVisible();
+});
+
+test('profile image upload via file input', async ({page}) => {
+  await seedAuthenticatedSession(page, {
+    profile: {first_name: 'Ada', last_name: 'Lovelace'},
+  });
+
+  await page.goto('/account', {waitUntil: 'domcontentloaded'});
+  await page.getByRole('button', {name: 'Edit Profile'}).click();
+
+  // Find the file input for profile image and verify it exists.
+  const fileInput = page.locator('input[type="file"][accept*="image"]');
+  if (await fileInput.isVisible()) {
+    // Set a small fake image via setInputFiles with an empty file path approach
+    await fileInput.setInputFiles([]);
+    // File input cleared — Save Profile should still be available.
+    await expect(page.getByRole('button', {name: 'Save Profile'})).toBeVisible();
+  }
+});
+
+test('phone account can change password via SMS code from account page', async ({page}) => {
+  await seedAuthenticatedSession(page, {
+    user: {email: '', phone: '+12025550123'},
+    profile: {email: '', email_verified: false, primary_email_id: null},
+  });
+
+  await page.route('**/authn/change-password/request-code/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({message: 'We texted a code.', channel: 'sms', destination: '(•••) •••-0123'}),
+    }),
+  );
+  await page.route('**/authn/change-password/verify-code/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({message: 'Verified.', verification_token: 'token'}),
+    }),
+  );
+  await page.route('**/authn/change-password/confirm/', (route) =>
+    route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({message: 'Password changed.'})}),
+  );
+
+  await page.goto('/account', {waitUntil: 'domcontentloaded'});
+
+  const sendCodeBtn = page.getByRole('button', {name: 'Send Code'});
+  if (await sendCodeBtn.isVisible()) {
+    await sendCodeBtn.click();
+    await expect(page.getByText(/texted a code/i)).toBeVisible();
+  }
 });

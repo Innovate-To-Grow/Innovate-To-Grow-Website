@@ -1,8 +1,8 @@
 // /account dashboard (seeded auth): renders, edits the profile (PATCH), and
 // guards when logged out. Sign-out + cross-root flip is covered in
 // cross-root-sync.spec.ts.
-import {test, expect} from './fixtures';
-import {seedAuthenticatedSession} from './helpers';
+import {test, expect} from '../fixtures';
+import {seedAuthenticatedSession} from '../helpers';
 
 test('account dashboard renders the member profile', {tag: '@core'}, async ({page}) => {
   const email = 'account@example.com';

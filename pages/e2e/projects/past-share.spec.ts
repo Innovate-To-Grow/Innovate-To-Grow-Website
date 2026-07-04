@@ -5,8 +5,8 @@
 // off without re-selecting (real <mark> wrap/re-select + the sync effect not rewriting the user's
 // own edit). Desktop engines only (untagged → no @mobile).
 import type {PastProjectShare} from '../src/features/projects/api';
-import {mockPastProjects, mockPastProjectShare, pastProjectRows} from './helpers';
-import {expect, test} from './fixtures';
+import {mockPastProjects, mockPastProjectShare, pastProjectRows} from '../helpers';
+import {expect, test} from '../fixtures';
 
 const SHARE_ID = 'share-e2e-1';
 

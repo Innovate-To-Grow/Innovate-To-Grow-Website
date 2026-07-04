@@ -115,3 +115,15 @@ class GetPrimaryPhoneTests(TestCase):
         member = Member.objects.create_user(is_active=True)
         ContactPhone.objects.create(member=member, phone_number="2025550001", region="1-US", verified=False)
         self.assertEqual(member.get_primary_phone(), "+12025550001")
+
+    def test_uses_prefetch_cache_without_extra_queries(self):
+        # Regression: the prefetch cache holds a QuerySet (no .sort()); the
+        # member admin changelist prefetches contact_phones, so a list() copy
+        # is required or every /admin/authn/member/ render 500s.
+        member = Member.objects.create_user(is_active=True)
+        ContactPhone.objects.create(member=member, phone_number="2025550001", region="1-US", verified=False)
+        ContactPhone.objects.create(member=member, phone_number="2025550002", region="1-US", verified=True)
+
+        prefetched = Member.objects.prefetch_related("contact_phones").get(pk=member.pk)
+        with self.assertNumQueries(0):
+            self.assertEqual(prefetched.get_primary_phone(), "+12025550002")
