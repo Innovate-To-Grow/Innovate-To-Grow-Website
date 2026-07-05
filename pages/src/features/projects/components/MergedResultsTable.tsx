@@ -2,12 +2,7 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {buildLoginPath} from '@/features/auth/api/redirects';
 import {ProjectGridTable} from './ProjectGridTable';
-import {
-  exportProjectRowsExcel,
-  exportProjectRowsPdf,
-  exportProjectRowsWord,
-  type ProjectRowsExporter,
-} from './export';
+import type {ProjectRowsExporter} from './export/exportTypes';
 import {useProjectGridTable} from './useProjectGridTable';
 import {
   PAST_PROJECT_GRID_COLUMNS,
@@ -58,6 +53,19 @@ export type PastProjectShareCreationResult =
 // effectively-empty note (whitespace / a stray <br>) back to "" so it does not render an empty box.
 const prepareNoteForSave = (html: string) =>
   pastProjectsDetailHtmlToPlainText(html).trim() ? sanitizePastProjectsDetailHtml(html) : '';
+
+type ProjectRowsExportFormat = 'pdf' | 'excel' | 'word';
+
+async function loadProjectRowsExporter(format: ProjectRowsExportFormat): Promise<ProjectRowsExporter> {
+  switch (format) {
+    case 'pdf':
+      return (await import('./export/pdfExport')).exportProjectRowsPdf;
+    case 'excel':
+      return (await import('./export/excelExport')).exportProjectRowsExcel;
+    case 'word':
+      return (await import('./export/wordExport')).exportProjectRowsWord;
+  }
+}
 
 interface ProjectNoteInsertControlProps {
   rows: ProjectGridRow[];
@@ -227,8 +235,9 @@ export const MergedResultsTable = ({
     [excludedProjectNoteInsertFields],
   );
 
-  const handleExport = async (exporter: ProjectRowsExporter, label: string) => {
+  const handleExport = async (format: ProjectRowsExportFormat, label: string) => {
     try {
+      const exporter = await loadProjectRowsExporter(format);
       await exporter(exportRows, exportFileBaseName, exportContext);
     } catch {
       // Dynamic-import (code-split chunk) or serialization failures otherwise reject silently.
@@ -684,7 +693,7 @@ export const MergedResultsTable = ({
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void handleExport(exportProjectRowsPdf, 'PDF')}
+                onClick={() => void handleExport('pdf', 'PDF')}
                 disabled={!exportRows.length}
               >
                 PDF
@@ -692,7 +701,7 @@ export const MergedResultsTable = ({
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void handleExport(exportProjectRowsExcel, 'Excel')}
+                onClick={() => void handleExport('excel', 'Excel')}
                 disabled={!exportRows.length}
               >
                 Excel
@@ -700,7 +709,7 @@ export const MergedResultsTable = ({
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
-                onClick={() => void handleExport(exportProjectRowsWord, 'Microsoft Word')}
+                onClick={() => void handleExport('word', 'Microsoft Word')}
                 disabled={!exportRows.length}
               >
                 Microsoft Word

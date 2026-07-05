@@ -1,16 +1,16 @@
 import { Link } from 'react-router-dom';
 import { safeHref } from '@/lib/safeHref';
 
-interface NavItem {
+export interface NavigationGridItem {
   title: string;
   description?: string;
   url: string;
   is_external?: boolean;
 }
 
-interface NavigationGridData {
+export interface NavigationGridData {
   heading?: string;
-  items: NavItem[];
+  items: NavigationGridItem[];
 }
 
 export const NavigationGridBlock = ({ data }: { data: NavigationGridData }) => {

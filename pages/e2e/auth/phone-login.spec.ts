@@ -2,8 +2,8 @@
 // guards. Twin of auth-login.spec.ts (which covers the email branch). The smart
 // "Email or phone number" field detects a US number and routes to /verify-phone;
 // a new number registers, an existing one logs in — both passwordless.
-import {test, expect} from './fixtures';
-import {loginResponse, mockAccountDashboard, mockPhoneAuthFlow, mockProfileEndpoint, profileResponse} from './helpers';
+import {test, expect} from '../fixtures';
+import {loginResponse, mockAccountDashboard, mockPhoneAuthFlow, mockProfileEndpoint, profileResponse} from '../helpers';
 
 const PHONE_INPUT = '2025550123';
 const PHONE_E164 = '+12025550123';

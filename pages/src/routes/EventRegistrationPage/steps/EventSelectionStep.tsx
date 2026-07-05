@@ -1,5 +1,6 @@
 import type {EventRegistrationSummary} from '@/features/events/api';
 import {formatEventDate} from './helpers';
+import './eventSelection.css';
 
 interface EventSelectionStepProps {
   events: EventRegistrationSummary[];

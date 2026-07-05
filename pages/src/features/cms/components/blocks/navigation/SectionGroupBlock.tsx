@@ -1,15 +1,15 @@
 import type { ElementType } from 'react';
 import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
 
-interface Section {
+export interface SectionGroupSection {
   heading: string;
   heading_level?: number;
   body_html: string;
 }
 
-interface SectionGroupData {
+export interface SectionGroupData {
   heading?: string;
-  sections: Section[];
+  sections: SectionGroupSection[];
 }
 
 export const SectionGroupBlock = ({ data }: { data: SectionGroupData }) => {

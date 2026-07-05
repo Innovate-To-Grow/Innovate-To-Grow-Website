@@ -1,17 +1,17 @@
 import { safeHref } from '@/lib/safeHref';
 
-interface ContactItem {
+export interface ContactInfoItem {
   label: string;
   value: string;
   type: 'email' | 'phone' | 'text' | 'url';
 }
 
-interface ContactInfoData {
+export interface ContactInfoData {
   heading?: string;
-  items: ContactItem[];
+  items: ContactInfoItem[];
 }
 
-function renderValue(item: ContactItem) {
+function renderValue(item: ContactInfoItem) {
   switch (item.type) {
     case 'email':
       return <a href={`mailto:${item.value}`}>{item.value}</a>;

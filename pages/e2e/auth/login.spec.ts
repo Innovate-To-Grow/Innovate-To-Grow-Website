@@ -1,13 +1,13 @@
 // Email-code login journey + the verify-email route guards. Password login is
 // intentionally not exercised here (RSA-OAEP fixture, duplicate of vitest).
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   loginResponse,
   mockEmailAuthFlow,
   mockProfileEndpoint,
   profileResponse,
   seedAuthenticatedSession,
-} from './helpers';
+} from '../helpers';
 
 async function stubAccountMounts(page: import('@playwright/test').Page, email: string) {
   await mockProfileEndpoint(page, {current: profileResponse({email})});
@@ -95,5 +95,12 @@ test('verify-email flow=change while logged out redirects to /login', async ({pa
 test('/login while authenticated redirects to /account', async ({page}) => {
   await seedAuthenticatedSession(page, {user: {email: 'already-in@example.com'}});
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
+  await expect(page).toHaveURL(/\/account$/);
+});
+
+test('/profile redirects to /account', async ({page}) => {
+  await seedAuthenticatedSession(page, {user: {email: 'profile@example.com'}});
+  await stubAccountMounts(page, 'profile@example.com');
+  await page.goto('/profile', {waitUntil: 'domcontentloaded'});
   await expect(page).toHaveURL(/\/account$/);
 });

@@ -1,11 +1,11 @@
 import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
 
-interface FaqItem {
+export interface FaqItem {
   question: string;
   answer_html: string;
 }
 
-interface FaqListData {
+export interface FaqListData {
   heading?: string;
   items: FaqItem[];
 }

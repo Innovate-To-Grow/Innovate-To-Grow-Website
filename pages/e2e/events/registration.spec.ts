@@ -1,6 +1,6 @@
 // Event registration: the unauthenticated email step, a full completion to the
 // ticket confirmation, and the already-registered short-circuit.
-import {test, expect} from './fixtures';
+import {test, expect} from '../fixtures';
 import {
   loginResponse,
   mockEmailAuthFlow,
@@ -11,7 +11,7 @@ import {
   registrationEvent,
   registrationOptions,
   seedAuthenticatedSession,
-} from './helpers';
+} from '../helpers';
 
 test('unauthenticated start shows the email step', async ({page}) => {
   await mockEventRegistration(page);
@@ -152,4 +152,40 @@ test('account dashboard shows an existing registration and another open event', 
     'href',
     '/event-registration?event=fall-showcase',
   );
+});
+
+test('phone verification within registration form', async ({page}) => {
+  const email = 'phone-reg@example.com';
+  await mockEventRegistration(page, {
+    options: registrationOptions({collect_phone: true, verify_phone: true}),
+  });
+  await mockEmailAuthFlow(page, {verifyResponse: loginResponse({user: {email}, next_step: 'account'})});
+  await mockProfileEndpoint(page, {current: profileResponse({email})});
+
+  await page.goto('/event-registration', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
+  await page.getByLabel('Verification Code').fill('123456');
+  await page.getByRole('button', {name: 'Verify Code'}).click();
+
+  // Phone field should be visible when collect_phone is true.
+  await expect(page.locator('#phone')).toBeVisible();
+});
+
+test('secondary email field when event allows it', async ({page}) => {
+  const email = 'secondary-email@example.com';
+  await mockEventRegistration(page, {
+    options: registrationOptions({allow_secondary_email: true}),
+  });
+  await mockEmailAuthFlow(page, {verifyResponse: loginResponse({user: {email}, next_step: 'account'})});
+  await mockProfileEndpoint(page, {current: profileResponse({email})});
+
+  await page.goto('/event-registration', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
+  await page.getByLabel('Verification Code').fill('123456');
+  await page.getByRole('button', {name: 'Verify Code'}).click();
+
+  // Secondary email field should be visible.
+  await expect(page.locator('#secondary-email')).toBeVisible();
 });

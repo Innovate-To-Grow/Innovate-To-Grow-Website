@@ -1,14 +1,14 @@
 import { Link } from 'react-router-dom';
 import { safeHref } from '@/lib/safeHref';
 
-interface LinkItem {
+export interface LinkItem {
   label: string;
   url: string;
   description?: string;
   is_external?: boolean;
 }
 
-interface LinkListData {
+export interface LinkListData {
   heading?: string;
   style?: 'list' | 'grid' | 'inline';
   items: LinkItem[];

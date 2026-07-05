@@ -28,29 +28,26 @@ FULL_PROJECTS = [
 ]
 PR_DEFAULT_PROJECTS = ["chromium"]
 
+# Spec entries are Playwright CLI path filters: a directory runs every spec
+# under it, a file runs just that spec (specs live in feature subdirectories
+# under pages/e2e/).
 AUTH_SPECS = [
-    "e2e/auth-login.spec.ts",
-    "e2e/auth-phone-login.spec.ts",
-    "e2e/auth-phone-password.spec.ts",
-    "e2e/auth-password-reset.spec.ts",
-    "e2e/auth-token-login.spec.ts",
-    "e2e/account.spec.ts",
-    "e2e/subscribe.spec.ts",
-    "e2e/complete-profile.spec.ts",
-    "e2e/cross-root-sync.spec.ts",
+    "e2e/auth/",
+    "e2e/account/",
+    "e2e/events/subscribe.spec.ts",
 ]
-PROJECT_SPECS = ["e2e/projects.spec.ts"]
+PROJECT_SPECS = ["e2e/projects/"]
 CONTENT_SPECS = [
-    "e2e/content-archive.spec.ts",
-    "e2e/news.spec.ts",
+    "e2e/content/",
+    "e2e/events/schedule.spec.ts",
     "e2e/smoke.live.spec.ts",
-    "e2e/cross-root-sync.spec.ts",
+    "e2e/auth/cross-root-sync.spec.ts",
 ]
-EVENT_SPECS = ["e2e/event-registration.spec.ts"]
+EVENT_SPECS = ["e2e/events/"]
 MOBILE_SPECS = ["e2e/mobile.spec.ts"]
 DESKTOP_MOBILE_COMPANION_SPECS = ["e2e/smoke.live.spec.ts"]
 
-SPEC_TO_PATH_RE = re.compile(r"^pages/(e2e/[^/]+\.spec\.ts)$")
+SPEC_TO_PATH_RE = re.compile(r"^pages/(e2e/(?:[^/]+/)*[^/]+\.spec\.ts)$")
 
 
 def _normalize_files(files: Iterable[str]) -> list[str]:
