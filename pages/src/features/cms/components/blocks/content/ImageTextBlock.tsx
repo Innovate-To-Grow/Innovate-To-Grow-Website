@@ -1,6 +1,6 @@
 import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
 
-interface ImageTextData {
+export interface ImageTextData {
   heading?: string;
   image_url?: string;
   image_alt?: string;

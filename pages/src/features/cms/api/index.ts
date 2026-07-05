@@ -1,13 +1,47 @@
 import { api } from '@/lib/api-client';
+import type {ContactInfoData} from '@/features/cms/components/blocks/content/ContactInfoBlock';
+import type {EmbedData} from '@/features/cms/components/blocks/content/EmbedBlock';
+import type {EmbedWidgetData} from '@/features/cms/components/blocks/content/EmbedWidgetBlock';
+import type {FaqListData} from '@/features/cms/components/blocks/content/FaqListBlock';
+import type {ImageTextData} from '@/features/cms/components/blocks/content/ImageTextBlock';
+import type {LinkListData} from '@/features/cms/components/blocks/content/LinkListBlock';
+import type {RichTextData} from '@/features/cms/components/blocks/content/RichTextBlock';
+import type {TableBlockData} from '@/features/cms/components/blocks/content/TableBlock';
+import type {NavigationGridData} from '@/features/cms/components/blocks/navigation/NavigationGridBlock';
+import type {SectionGroupData} from '@/features/cms/components/blocks/navigation/SectionGroupBlock';
+import type {ProposalCardsData} from '@/features/cms/components/blocks/showcase/ProposalCardsBlock';
+import type {SponsorYearBlockData} from '@/features/cms/components/blocks/showcase/SponsorYearBlock';
 
 const CMS_ROUTE_SEGMENT_RE = /^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$/;
 const URL_SCHEME_RE = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 
-export interface CMSBlock {
+interface CMSBlockBase {
   block_type: string;
   sort_order: number;
   data: Record<string, unknown>;
 }
+
+export type CMSKnownBlock =
+  | {block_type: 'rich_text'; sort_order: number; data: RichTextData}
+  | {block_type: 'contact_info'; sort_order: number; data: ContactInfoData}
+  | {block_type: 'navigation_grid'; sort_order: number; data: NavigationGridData}
+  | {block_type: 'link_list'; sort_order: number; data: LinkListData}
+  | {block_type: 'faq_list'; sort_order: number; data: FaqListData}
+  | {block_type: 'image_text'; sort_order: number; data: ImageTextData}
+  | {block_type: 'section_group'; sort_order: number; data: SectionGroupData}
+  | {block_type: 'proposal_cards'; sort_order: number; data: ProposalCardsData}
+  | {block_type: 'table'; sort_order: number; data: TableBlockData}
+  | {block_type: 'sponsor_year'; sort_order: number; data: SponsorYearBlockData}
+  | {block_type: 'embed'; sort_order: number; data: EmbedData}
+  | {block_type: 'embed_widget'; sort_order: number; data: EmbedWidgetData};
+
+export type CMSKnownBlockType = CMSKnownBlock['block_type'];
+
+export interface CMSUnknownBlock extends CMSBlockBase {
+  block_type: string;
+}
+
+export type CMSBlock = CMSKnownBlock | CMSUnknownBlock;
 
 export interface CMSPageResponse {
   slug: string;

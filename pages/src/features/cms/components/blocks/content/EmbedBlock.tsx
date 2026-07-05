@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-interface EmbedData {
+export interface EmbedData {
   src: string;
   title?: string;
   heading?: string;

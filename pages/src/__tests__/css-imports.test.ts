@@ -14,6 +14,12 @@ describe('CSS imports resolve', () => {
     ['SheetsDataTable', () => import('@/components/ui/SheetsDataTable/SheetsDataTable')],
     ['MaintenanceMode', () => import('@/app/MaintenanceMode/MaintenanceMode')],
     ['HealthCheckProvider', () => import('@/app/MaintenanceMode/HealthCheckProvider')],
+    ['Projects components', () => import('@/features/projects/components')],
+    ['AccountPage', () => import('@/features/auth/components/pages/AccountPage')],
+    [
+      'PastProjectCurationSharedLinksPage',
+      () => import('@/features/auth/components/pages/PastProjectCurationSharedLinksPage'),
+    ],
   ] as const;
 
   it.each(componentsWithCSS)('%s CSS import resolves', async (_name, importFn) => {

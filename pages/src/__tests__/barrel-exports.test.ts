@@ -3,17 +3,18 @@ import {describe, it, expect} from 'vitest';
 describe('Component barrel exports', () => {
   it('components/Auth exports resolve', async () => {
     const mod = await import('@/features/auth');
+    const exports = mod as Record<string, unknown>;
     expect(mod.AuthProvider).toBeDefined();
     expect(mod.useAuth).toBeDefined();
     expect(mod.CodeInput).toBeDefined();
     expect(mod.VERIFICATION_CODE_PLACEHOLDER).toBe('000000');
     expect(mod.LoginForm).toBeDefined();
-    expect(mod.AccountPage).toBeDefined();
-    expect(mod.CompleteProfilePage).toBeDefined();
-    expect(mod.ForgotPasswordPage).toBeDefined();
-    expect(mod.LoginPage).toBeDefined();
-    expect(mod.RegisterPage).toBeDefined();
-    expect(mod.VerifyEmailPage).toBeDefined();
+    expect(exports.AccountPage).toBeUndefined();
+    expect(exports.CompleteProfilePage).toBeUndefined();
+    expect(exports.ForgotPasswordPage).toBeUndefined();
+    expect(exports.LoginPage).toBeUndefined();
+    expect(exports.RegisterPage).toBeUndefined();
+    expect(exports.VerifyEmailPage).toBeUndefined();
   });
 
   it('components/CMS exports resolve', async () => {
