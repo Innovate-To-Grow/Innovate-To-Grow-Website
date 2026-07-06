@@ -13,11 +13,15 @@ def search_events(params):
         qs = qs.filter(name__icontains=params["name"])
     if params.get("is_live") is not None:
         qs = qs.filter(is_live=params["is_live"])
+    if params.get("registration_open") is not None:
+        qs = qs.filter(registration_open=params["registration_open"])
     if params.get("date_from"):
         qs = qs.filter(date__gte=params["date_from"])
     if params.get("date_to"):
         qs = qs.filter(date__lte=params["date_to"])
-    return _serialize_rows(qs.order_by("-date"), ["id", "name", "slug", "date", "location", "is_live"])
+    return _serialize_rows(
+        qs.order_by("-date"), ["id", "name", "slug", "date", "location", "is_live", "registration_open"]
+    )
 
 
 def get_event_registrations(params):

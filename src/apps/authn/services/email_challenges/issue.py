@@ -63,6 +63,7 @@ def issue_email_challenge(
     target_email: str,
     link_flow: str | None = None,
     link_source: str | None = None,
+    link_event: str | None = None,
 ) -> EmailAuthChallenge:
     import apps.authn.services.email_challenges as api
     from apps.authn.services.email.send_email import send_verification_email
@@ -80,6 +81,7 @@ def issue_email_challenge(
             purpose=purpose,
             link_flow=link_flow,
             link_source=link_source,
+            link_event=link_event,
         )
     except Exception as exc:
         logger.exception("Failed to send verification email")

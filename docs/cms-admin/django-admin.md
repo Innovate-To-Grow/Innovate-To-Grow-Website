@@ -74,6 +74,10 @@ Event admin includes:
 - Schedule sync from Google Sheets
 - Check-in record management
 
+Two independent event flags:
+- **Is live** marks the single featured event that powers `/schedule` and current projects; setting it automatically demotes the previous live event.
+- **Registration open** controls whether the event appears in public registration and accepts new registrations. Multiple events can be open at the same time, and an event can accept registrations without being live (or vice versa).
+
 ### Project admin
 
 Semester admin includes:

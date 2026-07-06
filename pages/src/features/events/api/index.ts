@@ -90,6 +90,10 @@ export interface EventRegistrationOptions {
   phone_regions: Array<{code: string; label: string}>;
 }
 
+export interface EventRegistrationSummary extends RegistrationEvent {
+  registration: Registration | null;
+}
+
 export interface ScheduleAgendaItem {
   id: string;
   time: string;
@@ -178,11 +182,57 @@ function authHeaders() {
   return token ? {Authorization: `Bearer ${token}`} : {};
 }
 
-export async function fetchRegistrationOptions(): Promise<EventRegistrationOptions> {
+// Deploy-skew fallback: a backend without /event/registration-events/ (route 404s) is the old
+// single-event build, whose /event/registration-options/ returns the one live event or 404.
+async function fetchRegistrationEventsFallback(): Promise<EventRegistrationSummary[]> {
+  try {
+    const options = await fetchRegistrationOptions();
+    return [
+      {
+        id: options.id,
+        name: options.name,
+        slug: options.slug,
+        date: options.date,
+        location: options.location,
+        description: options.description,
+        registration: options.registration,
+      },
+    ];
+  } catch (err: unknown) {
+    const status = (err as {response?: {status?: number}}).response?.status;
+    if (status === 404) {
+      return [];
+    }
+    throw err;
+  }
+}
+
+export async function fetchRegistrationEvents(): Promise<EventRegistrationSummary[]> {
+  const headers = authHeaders();
+  try {
+    const response = await api.get<EventRegistrationSummary[]>('/event/registration-events/', {
+      ...(Object.keys(headers).length > 0 ? {headers} : {}),
+    });
+    return response.data;
+  } catch (err: unknown) {
+    const status = (err as {response?: {status?: number}}).response?.status;
+    if (status === 401) {
+      const response = await api.get<EventRegistrationSummary[]>('/event/registration-events/');
+      return response.data;
+    }
+    if (status === 404) {
+      return fetchRegistrationEventsFallback();
+    }
+    throw err;
+  }
+}
+
+export async function fetchRegistrationOptions(eventSlug?: string | null): Promise<EventRegistrationOptions> {
   const headers = authHeaders();
   try {
     const response = await api.get<EventRegistrationOptions>('/event/registration-options/', {
       ...(Object.keys(headers).length > 0 ? {headers} : {}),
+      ...(eventSlug ? {params: {event_slug: eventSlug}} : {}),
     });
     return response.data;
   } catch (err: unknown) {
@@ -190,7 +240,9 @@ export async function fetchRegistrationOptions(): Promise<EventRegistrationOptio
     // Expired or invalid JWT is still sent as Bearer; DRF may return 401. Retry without auth —
     // AllowAny endpoint returns the same public event payload (member_* fields empty).
     if (status === 401) {
-      const response = await api.get<EventRegistrationOptions>('/event/registration-options/');
+      const response = await api.get<EventRegistrationOptions>('/event/registration-options/', {
+        ...(eventSlug ? {params: {event_slug: eventSlug}} : {}),
+      });
       return response.data;
     }
     throw err;

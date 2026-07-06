@@ -62,6 +62,7 @@ def send_verification_email(
     purpose: str,
     link_flow: str | None = None,
     link_source: str | None = None,
+    link_event: str | None = None,
 ):
     import apps.authn.services.email.send_email as email_api
 
@@ -76,6 +77,7 @@ def send_verification_email(
         purpose=purpose,
         link_flow=link_flow,
         link_source=link_source,
+        link_event=link_event,
     )
 
     if email_api._send_via_ses(

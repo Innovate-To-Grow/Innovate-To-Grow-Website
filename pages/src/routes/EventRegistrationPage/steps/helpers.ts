@@ -1,7 +1,8 @@
-export type EventRegistrationStep = 'loading' | 'email' | 'code' | 'form' | 'done';
+export type EventRegistrationStep = 'loading' | 'select' | 'email' | 'code' | 'form' | 'done';
 
 export function formatEventDate(dateStr: string): string {
-  const date = new Date(`${dateStr}T00:00:00`);
+  const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+  const date = new Date(`${datePart}T00:00:00`);
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',

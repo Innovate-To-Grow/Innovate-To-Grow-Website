@@ -184,6 +184,19 @@ class EventsToolsTest(TestCase):
         result = search_events({"name": "Demo", "is_live": True, "date_from": "2000-01-01", "date_to": "2999-01-01"})
         self.assertIn("Demo Day", result)
 
+    def test_search_events_filters_by_registration_open(self):
+        from apps.event.models import Event
+
+        self._make_event()
+        Event.objects.create(
+            name="Open Day", slug="open-day", date="2025-07-15", location="Hall", registration_open=True
+        )
+
+        result = search_events({"registration_open": True})
+
+        self.assertIn("Open Day", result)
+        self.assertNotIn("Demo Day", result)
+
     def test_get_event_registrations_count_only(self):
         event = self._make_event()
         self._make_registration(event)

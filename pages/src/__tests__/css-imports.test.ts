@@ -20,6 +20,7 @@ describe('CSS imports resolve', () => {
       'PastProjectCurationSharedLinksPage',
       () => import('@/features/auth/components/pages/PastProjectCurationSharedLinksPage'),
     ],
+    ['EventRegistrationPage', () => import('@/routes/EventRegistrationPage')],
   ] as const;
 
   it.each(componentsWithCSS)('%s CSS import resolves', async (_name, importFn) => {

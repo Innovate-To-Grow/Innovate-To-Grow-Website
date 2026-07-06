@@ -9,7 +9,7 @@ import type {
   EmailAuthVerifyResponse,
   LoginResponse,
 } from '../../src/features/auth/api/types';
-import type {EventRegistrationOptions, Registration} from '../../src/features/events/api';
+import type {EventRegistrationOptions, EventRegistrationSummary, Registration} from '../../src/features/events/api';
 import type {NewsArticle, PaginatedResponse} from '../../src/features/news/api';
 import type {
   PastProjectAISearchResponse,
@@ -29,6 +29,7 @@ import {
   loginResponse,
   newsList,
   registration as buildRegistration,
+  registrationEvent,
   registrationOptions,
 } from './factories';
 
@@ -139,12 +140,24 @@ export interface EventRegistrationMockResult {
 
 export async function mockEventRegistration(
   page: Page,
-  opts: {options?: EventRegistrationOptions; registration?: Registration} = {},
+  opts: {events?: EventRegistrationSummary[]; options?: EventRegistrationOptions; registration?: Registration} = {},
 ): Promise<EventRegistrationMockResult> {
   const created: unknown[] = [];
+  const options = opts.options ?? registrationOptions();
 
-  await page.route('**/event/registration-options/', (route) =>
-    route.fulfill(json(opts.options ?? registrationOptions())),
+  await page.route('**/event/registration-options/**', (route) =>
+    route.fulfill(json(options)),
+  );
+  await page.route('**/event/registration-events/', (route) =>
+    route.fulfill(json(opts.events ?? [registrationEvent({
+      id: options.id,
+      name: options.name,
+      slug: options.slug,
+      date: options.date,
+      location: options.location,
+      description: options.description,
+      registration: options.registration,
+    })])),
   );
 
   await page.route('**/event/registrations/', async (route) => {

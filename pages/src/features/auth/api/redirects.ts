@@ -67,6 +67,7 @@ export const getPostAuthPath = (
 export const getEmailAuthSourcePath = (
   source: EmailAuthSource,
   response: Pick<LoginResponse, 'next_step' | 'redirect_to' | 'requires_profile_completion'>,
+  eventSlug?: string | null,
 ): string => {
   if (source === 'subscribe') {
     if (response.next_step === 'complete_profile' || response.requires_profile_completion) {
@@ -76,10 +77,13 @@ export const getEmailAuthSourcePath = (
   }
 
   if (source === 'event_registration') {
+    const registrationPath = eventSlug
+      ? `/event-registration?event=${encodeURIComponent(eventSlug)}`
+      : '/event-registration';
     if (response.next_step === 'complete_profile' || response.requires_profile_completion) {
-      return buildCompleteProfilePath('/event-registration');
+      return buildCompleteProfilePath(registrationPath);
     }
-    return '/event-registration';
+    return registrationPath;
   }
 
   return getPostAuthPath(response);

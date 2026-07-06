@@ -32,7 +32,7 @@ ALLOWED_QUERY_FIELDS = {
     },
     "ContactEmail": {"id", "email_address", "email_type", "verified", "subscribe", "created_at", "updated_at"},
     "ContactPhone": {"id", "phone_number", "phone_type", "verified", "created_at", "updated_at"},
-    "Event": {"id", "name", "slug", "date", "location", "is_live", "created_at", "updated_at"},
+    "Event": {"id", "name", "slug", "date", "location", "is_live", "registration_open", "created_at", "updated_at"},
     "EventRegistration": {
         "id",
         "attendee_first_name",

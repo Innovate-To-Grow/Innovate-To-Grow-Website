@@ -29,6 +29,20 @@ def get_login_redirect_choices(*, current_path: str | None = None) -> list[tuple
         seen.add(path)
 
     try:
+        from apps.event.models import Event
+
+        open_events = Event.objects.filter(registration_open=True).order_by("date", "name")
+        for event in open_events:
+            path = f"/event-registration?event={event.slug}"
+            # EmailCampaign.login_redirect_path and LoginLinkToken.redirect_path are max_length=200.
+            if path in seen or len(path) > 200:
+                continue
+            choices.append((path, f"Event Registration — {event.name} ({path})"))
+            seen.add(path)
+    except Exception:
+        pass
+
+    try:
         cms_pages = CMSPage.objects.filter(status="published").order_by("title").values("route", "title")
         for page in cms_pages:
             path = page["route"]

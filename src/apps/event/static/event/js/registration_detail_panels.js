@@ -89,6 +89,7 @@
         L("Location", d.location);
         if (d.description) L("Description", d.description);
         L("Status", d.is_live ? "Live" : "Not live");
+        L("Registration", d.registration_open ? "Open" : "Closed");
 
         var flags = [];
         if (d.allow_secondary_email) flags.push("Secondary email");

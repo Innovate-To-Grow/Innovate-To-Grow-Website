@@ -39,6 +39,18 @@ def _serialize_question(question) -> dict:
     }
 
 
+def build_event_registration_summary_payload(event, registration=None, request=None) -> dict:
+    return {
+        "id": str(event.pk),
+        "name": event.name,
+        "slug": event.slug,
+        "date": event.date.isoformat(),
+        "location": event.location,
+        "description": event.description,
+        "registration": build_registration_payload(registration, request=request) if registration else None,
+    }
+
+
 # noinspection PyUnusedLocal
 def build_registration_payload(registration, request=None) -> dict:
     return {

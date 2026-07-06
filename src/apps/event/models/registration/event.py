@@ -13,6 +13,11 @@ class Event(ProjectControlModel):
     location = models.CharField(max_length=255)
     description = models.TextField()
     is_live = models.BooleanField(default=False)
+    registration_open = models.BooleanField(
+        default=False,
+        verbose_name="Registration open",
+        help_text="Allow this event to appear in public registration and accept new registrations.",
+    )
     allow_secondary_email = models.BooleanField(
         default=False,
         help_text="Prompt registrants to enter a secondary email address.",

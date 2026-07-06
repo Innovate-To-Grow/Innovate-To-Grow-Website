@@ -13,7 +13,7 @@ class RegistrationCreateIntegrityErrorTest(TestCase):
         self.client = APIClient()
         self.member = make_member(first_name="Jane", last_name="Doe")
         self.client.force_authenticate(self.member)
-        self.event = make_event(is_live=True)
+        self.event = make_event(registration_open=True)
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
 
     def _post(self):

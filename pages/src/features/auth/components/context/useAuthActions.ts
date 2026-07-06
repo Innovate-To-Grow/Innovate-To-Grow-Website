@@ -132,7 +132,8 @@ export function useAuthActions({
       return runWithErrorHandling(() => apiRegister(email, password, passwordConfirm, firstName, lastName, organization, title));
     }, [runWithErrorHandling]),
     requestEmailAuthCode: useCallback(
-      async (email: string, source: EmailAuthSource = 'login') => runWithErrorHandling(() => apiRequestEmailAuthCode(email, source)),
+      async (email: string, source: EmailAuthSource = 'login', event?: string) =>
+        runWithErrorHandling(() => apiRequestEmailAuthCode(email, source, event)),
       [runWithErrorHandling],
     ),
     verifyEmailAuthCode,

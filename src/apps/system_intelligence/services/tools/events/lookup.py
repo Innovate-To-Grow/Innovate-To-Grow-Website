@@ -15,6 +15,7 @@ EVENT_FIELDS = [
     "location",
     "description",
     "is_live",
+    "registration_open",
     "allow_secondary_email",
     "collect_phone",
     "verify_phone",

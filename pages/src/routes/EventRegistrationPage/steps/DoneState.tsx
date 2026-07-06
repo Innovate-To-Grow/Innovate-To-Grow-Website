@@ -6,9 +6,11 @@ import {useState} from 'react';
 
 interface DoneStateProps {
   registration: Registration;
+  showChooseAnother?: boolean;
+  onChooseAnother?: () => void;
 }
 
-export const DoneState = ({registration}: DoneStateProps) => {
+export const DoneState = ({registration, showChooseAnother = false, onChooseAnother}: DoneStateProps) => {
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
 
@@ -54,6 +56,16 @@ export const DoneState = ({registration}: DoneStateProps) => {
         ) : null}
 
         <div style={{display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap'}}>
+          {showChooseAnother ? (
+            <button
+              type="button"
+              className="event-reg-submit"
+              style={{flex: 1}}
+              onClick={onChooseAnother}
+            >
+              View Other Events
+            </button>
+          ) : null}
           <button
             type="button"
             className="event-reg-submit"

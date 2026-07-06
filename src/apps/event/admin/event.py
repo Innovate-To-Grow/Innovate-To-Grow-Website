@@ -81,10 +81,11 @@ class EventAdmin(BaseModelAdmin):
         "date",
         "location",
         "is_live",
+        "registration_open",
         "secondary_email_badge",
         "phone_badge",
     )
-    list_filter = ("is_live", "date", "allow_secondary_email", "collect_phone")
+    list_filter = ("is_live", "registration_open", "date", "allow_secondary_email", "collect_phone")
     search_fields = ("name", "location")
     readonly_fields = (
         "created_at",
@@ -104,7 +105,7 @@ class EventAdmin(BaseModelAdmin):
                     ("name", "slug"),
                     ("date", "location"),
                     "description",
-                    "is_live",
+                    ("is_live", "registration_open"),
                 ),
             },
         ),

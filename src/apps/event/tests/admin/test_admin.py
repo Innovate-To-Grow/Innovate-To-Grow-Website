@@ -681,7 +681,7 @@ class EventRegistrationAdminTest(TestCase):
         self.assertEqual(data["title"], "Prof")
 
     def test_event_info_endpoint(self):
-        event = make_event(name="Info Test")
+        event = make_event(name="Info Test", registration_open=True)
         Ticket.objects.create(event=event, name="GA")
         Ticket.objects.create(event=event, name="VIP")
         response = self.client.get(f"/admin/event/eventregistration/event-info/{event.pk}/")
@@ -690,6 +690,8 @@ class EventRegistrationAdminTest(TestCase):
         self.assertEqual(data["name"], "Info Test")
         self.assertEqual(data["date"], "2025-06-15")
         self.assertEqual(data["location"], "Test Venue")
+        self.assertFalse(data["is_live"])
+        self.assertTrue(data["registration_open"])
         self.assertEqual(data["total_registrations"], 0)
         ticket_names = [t["name"] for t in data["tickets"]]
         self.assertIn("GA", ticket_names)

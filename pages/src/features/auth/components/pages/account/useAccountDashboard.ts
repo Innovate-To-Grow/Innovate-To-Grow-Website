@@ -15,10 +15,10 @@ import {
   type ProfileResponse,
 } from '@/features/auth/api';
 import {
+  fetchRegistrationEvents,
   fetchMyTickets,
-  fetchRegistrationOptions,
   resendTicketEmail,
-  type EventRegistrationOptions,
+  type EventRegistrationSummary,
   type Registration,
 } from '@/features/events/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
@@ -58,8 +58,8 @@ export const useAccountDashboard = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [tickets, setTickets] = useState<Registration[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
-  const [liveEventOptions, setLiveEventOptions] = useState<EventRegistrationOptions | null>(null);
-  const [liveEventLoading, setLiveEventLoading] = useState(true);
+  const [registrationEvents, setRegistrationEvents] = useState<EventRegistrationSummary[]>([]);
+  const [registrationEventsLoading, setRegistrationEventsLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export const useAccountDashboard = () => {
     // profileLoading starts true (useState), so the mount load skips the
     // synchronous setProfileLoading(true) that loadProfile() does for the retry
     // button. Defining the loader inline keeps every setState behind an await,
-    // mirroring the tickets/live-event effects below.
+    // mirroring the tickets/registration-events effects below.
     const loadProfileOnMount = async () => {
       try {
         applyProfile(await getProfile());
@@ -132,16 +132,16 @@ export const useAccountDashboard = () => {
 
   useEffect(() => {
     if (!isAuthenticated || requiresProfileCompletion) return;
-    const loadLiveEvent = async () => {
+    const loadRegistrationEvents = async () => {
       try {
-        setLiveEventOptions(await fetchRegistrationOptions());
+        setRegistrationEvents(await fetchRegistrationEvents());
       } catch {
-        setLiveEventOptions(null);
+        setRegistrationEvents([]);
       } finally {
-        setLiveEventLoading(false);
+        setRegistrationEventsLoading(false);
       }
     };
-    void loadLiveEvent();
+    void loadRegistrationEvents();
   }, [isAuthenticated, requiresProfileCompletion]);
 
   const handleResendTicketEmail = async (registrationId: string) => {
@@ -402,8 +402,8 @@ export const useAccountDashboard = () => {
     middleName,
     tickets,
     ticketsLoading,
-    liveEventOptions,
-    liveEventLoading,
+    registrationEvents,
+    registrationEventsLoading,
     setProfile,
     setFirstName,
     setMiddleName,

@@ -96,9 +96,9 @@ The frontend router (`pages/src/app/router.tsx`) maps browser URLs to React comp
 | `/news/:id` | `/news/{id}/` |
 | `/past-projects` | `/projects/past/` |
 | `/projects/:id` | `/projects/{id}/` |
-| `/event-registration` | `/event/registration-options/`, `/event/registrations/` |
+| `/event-registration` | `/event/registration-events/`, `/event/registration-options/`, `/event/registrations/` |
 | `/schedule` | `/event/schedule/` |
-| `/account` | `/authn/profile/`, `/authn/contact-emails/`, `/authn/contact-phones/` |
+| `/account` | `/authn/profile/`, `/authn/contact-emails/`, `/authn/contact-phones/`, `/event/registration-events/`, `/event/my-tickets/` |
 | `*` (catch-all) | `/cms/pages/{path}/` |
 
 ## Extension points

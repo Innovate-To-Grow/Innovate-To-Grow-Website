@@ -47,6 +47,9 @@ class LoginCodeVerifySerializer(BaseCodeVerifySerializer):
 
 class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
     source = serializers.ChoiceField(choices=EMAIL_AUTH_SOURCE_CHOICES, required=False, default="login")
+    # Event slug carried into the emailed auth link so the user lands back on the event they
+    # were registering for. Format-validated only; a stale slug degrades to the event list.
+    event = serializers.SlugField(required=False, allow_blank=True, default="")
 
     def _create_pending_member(self, email: str) -> Member:
         from apps.authn.models import ContactEmail
@@ -85,6 +88,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
     def save(self):
         email = self.validated_data["email"]
         source = self.validated_data["source"]
+        event = self.validated_data.get("event", "")
         generic_response = {"message": "Check your email for a verification code."}
         resolved = resolve_auth_email(email, require_active=True)
         if resolved is not None:
@@ -94,6 +98,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
                 target_email=resolved.delivery_email,
                 link_flow="auth",
                 link_source=source,
+                link_event=event,
             )
             return generic_response
 
@@ -112,6 +117,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
             target_email=email,
             link_flow="auth",
             link_source=source,
+            link_event=event,
         )
         return generic_response
 

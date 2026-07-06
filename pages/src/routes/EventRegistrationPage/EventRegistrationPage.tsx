@@ -1,6 +1,7 @@
 import {CodeVerificationStep} from './steps/CodeVerificationStep';
 import {DoneState} from './steps/DoneState';
 import {EmailAuthStep} from './steps/EmailAuthStep';
+import {EventSelectionStep} from './steps/EventSelectionStep';
 import {formatEventDate} from './steps/helpers';
 import {LoadingState} from './steps/LoadingState';
 import {RegistrationFormStep} from './steps/RegistrationFormStep';
@@ -10,7 +11,13 @@ export const EventRegistrationPage = () => {
   const reg = useEventRegistration();
 
   if (reg.step === 'done' && reg.registration) {
-    return <DoneState registration={reg.registration} />;
+    return (
+      <DoneState
+        registration={reg.registration}
+        showChooseAnother={reg.events.length > 1}
+        onChooseAnother={reg.handleShowEventList}
+      />
+    );
   }
 
   // Fatal: no event payload and we only have an error (e.g. no live event for authenticated bootstrap)
@@ -43,6 +50,14 @@ export const EventRegistrationPage = () => {
       {routingLoading ? <div className="event-reg-loading event-reg-loading--inline">Loading registration form...</div> : null}
 
       {reg.error ? <div className="event-reg-alert error">{reg.error}</div> : null}
+
+      {reg.step === 'select' ? (
+        <EventSelectionStep
+          events={reg.events}
+          selectedEventSlug={reg.selectedEventSlug}
+          onSelect={reg.handleSelectEvent}
+        />
+      ) : null}
 
       {reg.step === 'email' ? (
         <EmailAuthStep

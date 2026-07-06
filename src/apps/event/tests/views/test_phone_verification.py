@@ -40,7 +40,7 @@ class PhoneVerificationViewsTest(TestCase):
     @patch("apps.event.services.ticket_mail.send_ticket_email")
     @patch("apps.authn.services.sms.check_phone_verification", return_value="approved")
     def test_verified_phone_proof_is_consumed_by_registration(self, _mock_check, _mock_ticket_email):
-        event = make_event(is_live=True, collect_phone=True, verify_phone=True)
+        event = make_event(registration_open=True, collect_phone=True, verify_phone=True)
         ticket = Ticket.objects.create(event=event, name="GA")
 
         verify_response = self.client.post(
@@ -70,7 +70,11 @@ class PhoneVerificationViewsTest(TestCase):
         self.assertTrue(registration.phone_verified)
 
         second_event = make_event(
-            name="Second Demo Day", slug="second-demo-day", is_live=True, collect_phone=True, verify_phone=True
+            name="Second Demo Day",
+            slug="second-demo-day",
+            registration_open=True,
+            collect_phone=True,
+            verify_phone=True,
         )
         second_ticket = Ticket.objects.create(event=second_event, name="VIP")
         replay_response = self.client.post(
@@ -138,7 +142,7 @@ class PhoneValidationTest(TestCase):
 
     @patch("apps.event.services.ticket_mail.send_ticket_email")
     def test_registration_rejects_invalid_phone(self, _mock_email):
-        event = make_event(is_live=True, collect_phone=True, verify_phone=False)
+        event = make_event(registration_open=True, collect_phone=True, verify_phone=False)
         ticket = Ticket.objects.create(event=event, name="GA")
         response = self.client.post(
             "/event/registrations/",

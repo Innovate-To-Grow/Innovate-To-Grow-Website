@@ -67,6 +67,7 @@ class RegistrationInfoViewsMixin:
                 "location": event.location,
                 "description": event.description,
                 "is_live": event.is_live,
+                "registration_open": event.registration_open,
                 "allow_secondary_email": event.allow_secondary_email,
                 "collect_phone": event.collect_phone,
                 "verify_phone": event.verify_phone,
