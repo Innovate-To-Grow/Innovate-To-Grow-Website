@@ -20,7 +20,7 @@ pdf417gen>=0.8.1
 openpyxl>=3.1.5
 
 # Google APIs
-google-api-python-client>=2.197.0
+google-api-python-client>=2.198.0
 google-auth>=2.55.0
 gspread>=6.2.1
 
