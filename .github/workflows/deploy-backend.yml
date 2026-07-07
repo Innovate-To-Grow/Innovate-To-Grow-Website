@@ -46,6 +46,9 @@ jobs:
             backend_url: https://api.i2g.ucmerced.edu
             api_base_url: https://api.i2g.ucmerced.edu
             storage_bucket: itg-static-assets
+            ensure_default_admin: "false"
+            superuser_first_name: I2G
+            superuser_last_name: Admin
           - target: demo
             environment_name: AWS ECS(DEMO) - Prod
             environment_url: https://demo.i2g.ucmerced.edu/admin
@@ -58,6 +61,9 @@ jobs:
             backend_url: https://demo.i2g.ucmerced.edu
             api_base_url: https://demo-api.i2g.ucmerced.edu
             storage_bucket: itg-demo-static-assets
+            ensure_default_admin: "true"
+            superuser_first_name: Demo
+            superuser_last_name: Admin
     environment:
       name: ${{ matrix.environment_name }}
       url: ${{ matrix.environment_url }}
@@ -200,7 +206,10 @@ jobs:
           UVICORN_LIMIT_CONCURRENCY: ${{ vars.UVICORN_LIMIT_CONCURRENCY || '20' }}
           DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
           DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
+          DJANGO_SUPERUSER_FIRST_NAME: ${{ vars.DJANGO_SUPERUSER_FIRST_NAME || matrix.superuser_first_name }}
+          DJANGO_SUPERUSER_LAST_NAME: ${{ vars.DJANGO_SUPERUSER_LAST_NAME || matrix.superuser_last_name }}
           DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ vars.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN || secrets.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
+          ENSURE_DEFAULT_ADMIN: ${{ vars.ENSURE_DEFAULT_ADMIN || matrix.ensure_default_admin }}
           FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
           BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL || matrix.api_base_url }}
@@ -283,6 +292,9 @@ jobs:
               "__AWS_LOG_GROUP__": env_value("ECS_LOG_GROUP", "/ecs/itg-backend"),
               "__DJANGO_SUPERUSER_USERNAME__": env_value("DJANGO_SUPERUSER_USERNAME"),
               "__DJANGO_SUPERUSER_EMAIL__": env_value("DJANGO_SUPERUSER_EMAIL"),
+              "__DJANGO_SUPERUSER_FIRST_NAME__": env_value("DJANGO_SUPERUSER_FIRST_NAME", "Demo"),
+              "__DJANGO_SUPERUSER_LAST_NAME__": env_value("DJANGO_SUPERUSER_LAST_NAME", "Admin"),
+              "__ENSURE_DEFAULT_ADMIN__": env_value("ENSURE_DEFAULT_ADMIN", "false"),
           }
           secret_mapping = {
               "__DJANGO_SECRET_KEY_SECRET_ARN__": env_value("DJANGO_SECRET_KEY_SECRET_ARN"),
@@ -294,6 +306,10 @@ jobs:
               "__DJANGO_SECRET_KEY_SECRET_ARN__",
               "__DB_PASSWORD_SECRET_ARN__",
           }
+          if mapping["__ENSURE_DEFAULT_ADMIN__"].strip().lower() in {"1", "true", "yes", "on"}:
+              if not mapping["__DJANGO_SUPERUSER_EMAIL__"].strip():
+                  raise SystemExit("DJANGO_SUPERUSER_EMAIL is required when ENSURE_DEFAULT_ADMIN is true.")
+              required_secret_placeholders.add("__DJANGO_SUPERUSER_PASSWORD_SECRET_ARN__")
 
           def require_secret_ref_arn(name: str, value: str) -> None:
               # Catch a pasted literal secret / typo'd name at render time:

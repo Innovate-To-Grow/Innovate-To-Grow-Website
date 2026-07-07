@@ -88,6 +88,18 @@
         {
           "name": "DJANGO_SUPERUSER_EMAIL",
           "value": "__DJANGO_SUPERUSER_EMAIL__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_FIRST_NAME",
+          "value": "__DJANGO_SUPERUSER_FIRST_NAME__"
+        },
+        {
+          "name": "DJANGO_SUPERUSER_LAST_NAME",
+          "value": "__DJANGO_SUPERUSER_LAST_NAME__"
+        },
+        {
+          "name": "ENSURE_DEFAULT_ADMIN",
+          "value": "__ENSURE_DEFAULT_ADMIN__"
         }
       ],
       "logConfiguration": {
