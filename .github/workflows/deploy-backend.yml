@@ -24,15 +24,52 @@ env:
 
 jobs:
   deploy:
-    name: Deploy Backend
+    name: Deploy Backend (${{ matrix.target }})
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: prod
+            environment_name: AWS ECS - Prod
+            environment_url: https://api.i2g.ucmerced.edu
+            ecr_repository: itg-backend
+            ecs_cluster: itg-backend-cluster
+            ecs_service: itg-backend-service
+            task_family: itg-backend
+            log_group: /ecs/itg-backend
+            frontend_url: https://i2g.ucmerced.edu
+            backend_url: https://api.i2g.ucmerced.edu
+            api_base_url: https://api.i2g.ucmerced.edu
+            storage_bucket: itg-static-assets
+          - target: demo
+            environment_name: AWS ECS(DEMO) - Prod
+            environment_url: https://demo.i2g.ucmerced.edu/admin
+            ecr_repository: itg-backend
+            ecs_cluster: itg-backend-cluster
+            ecs_service: itg-backend-demo-service
+            task_family: itg-backend-demo
+            log_group: /ecs/itg-backend-demo
+            frontend_url: https://demo.i2g.ucmerced.edu
+            backend_url: https://demo.i2g.ucmerced.edu
+            api_base_url: https://demo-api.i2g.ucmerced.edu
+            storage_bucket: itg-demo-static-assets
     environment:
-      name: AWS ECS - Prod
-      url: https://api.i2g.ucmerced.edu
+      name: ${{ matrix.environment_name }}
+      url: ${{ matrix.environment_url }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || matrix.ecr_repository }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || matrix.ecs_cluster }}
+      ECS_SERVICE: ${{ vars.ECS_SERVICE || matrix.ecs_service }}
+      ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION || 'aws/task-definition.json' }}
+      CONTAINER_NAME: ${{ vars.CONTAINER_NAME || 'itg-backend' }}
+      ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY || matrix.task_family }}
+      ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP || matrix.log_group }}
 
     steps:
       - name: Checkout code
@@ -54,8 +91,8 @@ jobs:
           DB_NAME: ${{ vars.DB_NAME }}
           DB_USER: ${{ vars.DB_USER }}
           DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || vars.VITE_API_BASE_URL }}
+          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
         run: |
@@ -118,7 +155,7 @@ jobs:
       - name: Upload Django static assets to S3
         env:
           IMAGE_URI: ${{ steps.image.outputs.image }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
+          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
           AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
         run: |
           set -euo pipefail
@@ -164,16 +201,18 @@ jobs:
           DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
           DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
           DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ vars.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN || secrets.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || vars.VITE_API_BASE_URL }}
-          API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
+          API_BASE_URL: ${{ vars.VITE_API_BASE_URL || matrix.api_base_url }}
           DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
           CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
           CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
+          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
           AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+          ECS_TASK_FAMILY: ${{ env.ECS_TASK_FAMILY }}
+          ECS_LOG_GROUP: ${{ env.ECS_LOG_GROUP }}
         run: |
           python - <<'PY'
           import json
@@ -194,18 +233,29 @@ jobs:
               taskdef = json.load(f)
 
           frontend_url = env_value("FRONTEND_URL").strip()
+          backend_url = env_value("BACKEND_URL").strip()
           api_base_url = env_value("API_BASE_URL").strip()
+
+          def url_origin(value: str) -> str:
+              parsed = urlparse(value)
+              if parsed.scheme and parsed.netloc:
+                  return f"{parsed.scheme}://{parsed.netloc}"
+              return value.rstrip("/")
+
+          frontend_origin = url_origin(frontend_url)
+          backend_origin = url_origin(backend_url)
+          api_origin = url_origin(api_base_url)
 
           csrf_origins = env_value("CSRF_TRUSTED_ORIGINS").strip()
           if not csrf_origins:
-              csrf_values = [x for x in [frontend_url, api_base_url] if x]
+              csrf_values = [x for x in [frontend_origin, backend_origin, api_origin] if x]
               csrf_origins = ",".join(csrf_values)
 
-          cors_origins = env_value("CORS_ALLOWED_ORIGINS").strip() or frontend_url
+          cors_origins = env_value("CORS_ALLOWED_ORIGINS").strip() or frontend_origin
 
           configured_allowed_hosts = env_value("DJANGO_ALLOWED_HOSTS").strip()
           hosts = [host.strip() for host in configured_allowed_hosts.split(",") if host.strip()]
-          for origin in [api_base_url, frontend_url]:
+          for origin in [api_base_url, frontend_url, backend_url]:
               parsed = urlparse(origin)
               if parsed.hostname:
                   hosts.append(parsed.hostname)
@@ -214,6 +264,7 @@ jobs:
           allowed_hosts = ",".join(dict.fromkeys([h for h in hosts if h]))
 
           mapping = {
+              "__TASK_FAMILY__": env_value("ECS_TASK_FAMILY", "itg-backend"),
               "__DJANGO_ALLOWED_HOSTS__": allowed_hosts,
               "__DB_NAME__": env_value("DB_NAME"),
               "__DB_USER__": env_value("DB_USER"),
@@ -226,9 +277,10 @@ jobs:
               "__CSRF_TRUSTED_ORIGINS__": csrf_origins,
               "__CORS_ALLOWED_ORIGINS__": cors_origins,
               "__FRONTEND_URL__": frontend_url,
-              "__BACKEND_URL__": env_value("BACKEND_URL"),
+              "__BACKEND_URL__": backend_url,
               "__AWS_STORAGE_BUCKET_NAME__": env_value("AWS_STORAGE_BUCKET_NAME", "itg-static-assets"),
               "__AWS_S3_REGION_NAME__": env_value("AWS_S3_REGION_NAME", "us-west-2"),
+              "__AWS_LOG_GROUP__": env_value("ECS_LOG_GROUP", "/ecs/itg-backend"),
               "__DJANGO_SUPERUSER_USERNAME__": env_value("DJANGO_SUPERUSER_USERNAME"),
               "__DJANGO_SUPERUSER_EMAIL__": env_value("DJANGO_SUPERUSER_EMAIL"),
           }
@@ -266,6 +318,10 @@ jobs:
 
           container = taskdef["containerDefinitions"][0]
           container["image"] = os.environ["IMAGE_URI"]
+          taskdef["family"] = mapping["__TASK_FAMILY__"]
+          container.setdefault("logConfiguration", {}).setdefault("options", {})["awslogs-group"] = mapping[
+              "__AWS_LOG_GROUP__"
+          ]
 
           for item in container.get("environment", []):
               value = item.get("value", "")
@@ -342,8 +398,8 @@ jobs:
 
       - name: Smoke check deployed health endpoint and CORS
         env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
-          API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
+          API_BASE_URL: ${{ vars.BACKEND_SMOKE_URL || vars.VITE_API_BASE_URL || matrix.api_base_url }}
         run: |
           set -euo pipefail
 
