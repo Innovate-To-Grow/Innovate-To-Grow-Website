@@ -17,15 +17,33 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy Frontend
+    name: Deploy Frontend (${{ matrix.target }})
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: prod
+            environment_name: AWS Amplify - Prod
+            environment_url: https://i2g.ucmerced.edu
+            frontend_url: https://i2g.ucmerced.edu
+            api_base_url: https://api.i2g.ucmerced.edu
+            backend_proxy_url: https://api.i2g.ucmerced.edu
+            proxy_admin_paths: "false"
+          - target: demo
+            environment_name: AWS Amplify(DEMO) - Prod
+            environment_url: https://demo.i2g.ucmerced.edu
+            frontend_url: https://demo.i2g.ucmerced.edu
+            api_base_url: https://demo.i2g.ucmerced.edu/api
+            backend_proxy_url: https://demo-api.i2g.ucmerced.edu
+            proxy_admin_paths: "true"
     environment:
-      name: AWS Amplify - Prod
-      url: https://i2g.ucmerced.edu
+      name: ${{ matrix.environment_name }}
+      url: ${{ matrix.environment_url }}
     defaults:
       run:
         working-directory: pages
@@ -38,15 +56,19 @@ jobs:
 
       - name: Validate required deploy configuration
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
+          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
         run: |
+          if [ -z "$AMPLIFY_APP_ID" ]; then
+            echo "::error::AMPLIFY_APP_ID is required for the Amplify deployment."
+            exit 1
+          fi
           if [ -z "$VITE_API_BASE_URL" ]; then
             echo "::error::VITE_API_BASE_URL is required for the Amplify build."
             exit 1
           fi
 
       - name: Set up Node.js
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/setup-node@v6
         with:
           node-version: "20"
@@ -54,23 +76,12 @@ jobs:
           cache-dependency-path: pages/package-lock.json
 
       - name: Install dependencies
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: npm ci
 
       - name: Build frontend
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
-
-      - name: Download production frontend artifact
-        if: ${{ github.event_name == 'workflow_run' }}
-        uses: actions/download-artifact@v8
-        with:
-          name: frontend-dist-prod
-          path: pages/dist
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ github.token }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -82,7 +93,9 @@ jobs:
       - name: Configure Amplify rewrite rules (sitemap, API, SPA)
         env:
           AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
+          AMPLIFY_BACKEND_PROXY_URL: ${{ vars.AMPLIFY_BACKEND_PROXY_URL || matrix.backend_proxy_url }}
+          AMPLIFY_PROXY_ADMIN_PATHS: ${{ vars.AMPLIFY_PROXY_ADMIN_PATHS || matrix.proxy_admin_paths }}
         run: |
           python - <<'PY'
           import json
@@ -91,10 +104,19 @@ jobs:
 
           app_id = os.environ["AMPLIFY_APP_ID"].strip()
           api_base_url = os.environ["VITE_API_BASE_URL"].strip().rstrip("/")
+          backend_proxy_url = os.environ.get("AMPLIFY_BACKEND_PROXY_URL", "").strip().rstrip("/")
+          proxy_admin_paths = os.environ.get("AMPLIFY_PROXY_ADMIN_PATHS", "").strip().lower() in {
+              "1",
+              "true",
+              "yes",
+              "on",
+          }
           if not app_id:
               raise SystemExit("AMPLIFY_APP_ID is required to configure rewrite rules.")
           if not api_base_url:
               raise SystemExit("VITE_API_BASE_URL is required to configure rewrite rules.")
+          if not backend_proxy_url:
+              backend_proxy_url = api_base_url
 
           app_payload = subprocess.check_output(
               ["aws", "amplify", "get-app", "--app-id", app_id, "--output", "json"],
@@ -105,9 +127,36 @@ jobs:
 
           sitemap_rule = {
               "source": "/sitemap.xml",
-              "target": f"{api_base_url}/sitemap.xml",
+              "target": f"{backend_proxy_url}/sitemap.xml",
               "status": "200",
           }
+          api_rule = {
+              "source": "/api/<*>",
+              "target": f"{backend_proxy_url}/<*>",
+              "status": "200",
+          }
+          admin_rules = [
+              {
+                  "source": "/admin",
+                  "target": f"{backend_proxy_url}/admin/",
+                  "status": "200",
+              },
+              {
+                  "source": "/admin/<*>",
+                  "target": f"{backend_proxy_url}/admin/<*>",
+                  "status": "200",
+              },
+              {
+                  "source": "/static/<*>",
+                  "target": f"{backend_proxy_url}/static/<*>",
+                  "status": "200",
+              },
+              {
+                  "source": "/media/<*>",
+                  "target": f"{backend_proxy_url}/media/<*>",
+                  "status": "200",
+              },
+          ]
 
           # SPA deep-link fallback. The previous "/<*>" rule with status "404-200"
           # did NOT rewrite on the custom domain — hard navigations to client routes
@@ -134,10 +183,15 @@ jobs:
               rule
               for rule in existing_rules
               if rule.get("source") != sitemap_rule["source"]
+              and rule.get("source") != api_rule["source"]
+              and rule.get("source") not in {admin_rule["source"] for admin_rule in admin_rules}
               and rule.get("target") != "/index.html"
           ]
 
-          merged_rules = [sitemap_rule] + preserved + [spa_rule]
+          merged_rules = [sitemap_rule, api_rule]
+          if proxy_admin_paths:
+              merged_rules += admin_rules
+          merged_rules += preserved + [spa_rule]
 
           with open("custom-rules.json", "w", encoding="utf-8") as f:
               json.dump(merged_rules, f)
@@ -159,7 +213,7 @@ jobs:
         id: deploy-amplify
         env:
           AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BRANCH: main
+          AMPLIFY_BRANCH: ${{ vars.AMPLIFY_BRANCH || 'main' }}
         run: |
           # Create a deployment and get the upload URL + job ID
           DEPLOY_RESULT=$(aws amplify create-deployment \
@@ -192,7 +246,7 @@ jobs:
       - name: Wait for Amplify deployment to finish
         env:
           AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BRANCH: main
+          AMPLIFY_BRANCH: ${{ vars.AMPLIFY_BRANCH || 'main' }}
           JOB_ID: ${{ steps.deploy-amplify.outputs.job-id }}
         run: |
           set -euo pipefail
@@ -226,8 +280,8 @@ jobs:
 
       - name: Smoke check deployed frontend
         env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
         run: |
           set -euo pipefail
 

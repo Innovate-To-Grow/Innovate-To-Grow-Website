@@ -72,12 +72,37 @@ Uses SQLite (dev settings) for fast test execution.
    - CORS header validation
    - JSON response validation
 
+The backend deploy job runs a target matrix:
+
+| Target | GitHub Environment | Default ECS service | Default URL |
+|--------|--------------------|---------------------|-------------|
+| `prod` | `AWS ECS - Prod` | `itg-backend-service` | `https://api.i2g.ucmerced.edu` |
+| `demo` | `AWS ECS(DEMO) - Prod` | `itg-backend-demo-service` | `https://demo.i2g.ucmerced.edu/admin` |
+
+Each target uses the same backend Docker image tag, but reads its own GitHub
+Environment variables and secrets for database, storage, CORS, and ECS service
+selection. The demo backend also has a direct origin,
+`https://demo-api.i2g.ucmerced.edu`, for health checks and Amplify proxy rules.
+
 ### Frontend (`deploy-frontend.yml`)
 
 1. Build with `npm run build`
 2. Zip the `dist/` output
 3. Upload to S3 via AWS pre-signed URL
 4. Trigger Amplify deployment
+
+The frontend deploy job also runs a target matrix:
+
+| Target | GitHub Environment | Default URL | Default API base |
+|--------|--------------------|-------------|------------------|
+| `prod` | `AWS Amplify - Prod` | `https://i2g.ucmerced.edu` | `https://api.i2g.ucmerced.edu` |
+| `demo` | `AWS Amplify(DEMO) - Prod` | `https://demo.i2g.ucmerced.edu` | `https://demo.i2g.ucmerced.edu/api` |
+
+Unlike the single production artifact built in CI, each frontend deploy target
+builds in the deploy job so `VITE_API_BASE_URL` can come from that target's
+GitHub Environment. Demo also supports Amplify rewrite rules for `/admin`,
+`/static`, and `/media` so `https://demo.i2g.ucmerced.edu/admin` can front a
+separate backend origin.
 
 Both deploy workflows use AWS credentials stored in GitHub Secrets.
 

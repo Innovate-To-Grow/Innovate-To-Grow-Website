@@ -1,5 +1,5 @@
 {
-  "family": "itg-backend",
+  "family": "__TASK_FAMILY__",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
@@ -93,7 +93,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/itg-backend",
+          "awslogs-group": "__AWS_LOG_GROUP__",
           "awslogs-region": "us-west-2",
           "awslogs-stream-prefix": "ecs"
         }

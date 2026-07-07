@@ -78,6 +78,56 @@ A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/serv
 | `CSRF_TRUSTED_ORIGINS` | Comma-separated trusted origins | Yes |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated CORS origins | Yes |
 | `VITE_API_BASE_URL` | Backend API URL for frontend build | Yes (build-time) |
+| `BACKEND_SMOKE_URL` | Optional direct backend URL for backend deploy smoke checks | No |
+| `AMPLIFY_BACKEND_PROXY_URL` | Optional backend origin used by Amplify rewrite rules | No |
+| `AMPLIFY_PROXY_ADMIN_PATHS` | Enable Amplify `/admin`, `/static`, and `/media` proxy rules | No |
+
+### Production targets
+
+The deploy workflows run separate GitHub Environment targets for production and
+demo. The demo target is intended to use isolated backend data and deployment
+resources while sharing the same source code and container image.
+
+| GitHub Environment | Purpose |
+|--------------------|---------|
+| `AWS ECS - Prod` | Existing production backend |
+| `AWS ECS(DEMO) - Prod` | Demo backend, default admin URL `https://demo.i2g.ucmerced.edu/admin` |
+| `AWS Amplify - Prod` | Existing production frontend |
+| `AWS Amplify(DEMO) - Prod` | Demo frontend, default URL `https://demo.i2g.ucmerced.edu` |
+
+### Demo target values
+
+The demo site is deployed as a separate frontend, backend service, static asset
+bucket, and PostgreSQL database. To keep demo cost low, the demo database is a
+separate logical database on the existing RDS instance, not a second RDS
+instance.
+
+| Setting | Value |
+|---------|-------|
+| Frontend URL | `https://demo.i2g.ucmerced.edu` |
+| Admin URL | `https://demo.i2g.ucmerced.edu/admin` |
+| Direct backend origin | `https://demo-api.i2g.ucmerced.edu` |
+| Amplify app id | `d216f5mwm2zgtd` |
+| Amplify branch | `main` |
+| ECS cluster | `itg-backend-cluster` |
+| ECS service | `itg-backend-demo-service` |
+| ECS task family | `itg-backend-demo` |
+| ECS log group | `/ecs/itg-backend-demo` |
+| Database host | `i2g-prod-postgres-west2.cerh6zqru5na.us-west-2.rds.amazonaws.com` |
+| Database name | `innovate_to_grow_demo` |
+| S3 static/media bucket | `itg-demo-static-assets` |
+
+Configure `AWS Amplify(DEMO) - Prod` with `AMPLIFY_APP_ID=d216f5mwm2zgtd`,
+`AMPLIFY_BRANCH=main`, `FRONTEND_URL=https://demo.i2g.ucmerced.edu`,
+`VITE_API_BASE_URL=https://demo.i2g.ucmerced.edu/api`,
+`AMPLIFY_BACKEND_PROXY_URL=https://demo-api.i2g.ucmerced.edu`, and
+`AMPLIFY_PROXY_ADMIN_PATHS=true`.
+
+Configure `AWS ECS(DEMO) - Prod` with the ECS, database, URL, CORS/CSRF, and
+S3 values above. Reuse the existing deployment AWS credentials and secret ARN
+variables for `DJANGO_SECRET_KEY`, `DB_PASSWORD`, and
+`DJANGO_SUPERUSER_PASSWORD` unless separate demo credentials are intentionally
+created.
 
 ### Google Sheets
 
