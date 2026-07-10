@@ -79,12 +79,24 @@ describe('event API', () => {
     it('falls back to the legacy options endpoint when the route 404s', async () => {
       apiMock.get
         .mockRejectedValueOnce({response: {status: 404}})
-        .mockResolvedValueOnce({data: {...eventFields, registration: null, tickets: [], questions: []}});
+        .mockResolvedValueOnce({
+          data: {
+            ...eventFields,
+            end_date: '2026-10-22',
+            registration: null,
+            tickets: [],
+            questions: [],
+          },
+        });
 
       const events = await fetchRegistrationEvents();
 
       expect(apiMock.get).toHaveBeenNthCalledWith(2, '/event/registration-options/', {});
-      expect(events).toEqual([{...eventFields, registration: null}]);
+      expect(events).toEqual([{
+        ...eventFields,
+        end_date: '2026-10-22',
+        registration: null,
+      }]);
     });
 
     it('returns an empty list when the legacy fallback also 404s', async () => {

@@ -10,10 +10,18 @@ from urllib.parse import quote, urlencode
 TIMEZONE = "America/Los_Angeles"
 
 
-def generate_ics(*, event_uid, event_name, event_date, event_location, event_description=""):
-    """Generate an ICS calendar string for an all-day event in Pacific time."""
-    date_str = event_date.strftime("%Y%m%d")
-    next_day = (event_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+def generate_ics(
+    *,
+    event_uid,
+    event_name,
+    event_start_date,
+    event_end_date,
+    event_location,
+    event_description="",
+):
+    """Generate an ICS calendar string for an inclusive all-day event range."""
+    date_str = event_start_date.strftime("%Y%m%d")
+    exclusive_end = (event_end_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
     now = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
 
     lines = [
@@ -27,7 +35,7 @@ def generate_ics(*, event_uid, event_name, event_date, event_location, event_des
         f"UID:{event_uid}@i2g.ucmerced.edu",
         f"DTSTAMP:{now}",
         f"DTSTART;VALUE=DATE:{date_str}",
-        f"DTEND;VALUE=DATE:{next_day}",
+        f"DTEND;VALUE=DATE:{exclusive_end}",
         f"SUMMARY:{_ics_escape(event_name)}",
         f"LOCATION:{_ics_escape(event_location)}",
     ]
@@ -40,16 +48,23 @@ def generate_ics(*, event_uid, event_name, event_date, event_location, event_des
     return "\r\n".join(lines)
 
 
-def build_google_calendar_url(*, event_name, event_date, event_location, event_description=""):
-    """Build a Google Calendar 'Add Event' URL for an all-day event."""
-    date_str = event_date.strftime("%Y%m%d")
-    next_day = (event_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+def build_google_calendar_url(
+    *,
+    event_name,
+    event_start_date,
+    event_end_date,
+    event_location,
+    event_description="",
+):
+    """Build a Google Calendar URL for an inclusive all-day event range."""
+    date_str = event_start_date.strftime("%Y%m%d")
+    exclusive_end = (event_end_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
 
     params = urlencode(
         {
             "action": "TEMPLATE",
             "text": event_name,
-            "dates": f"{date_str}/{next_day}",
+            "dates": f"{date_str}/{exclusive_end}",
             "location": event_location,
             "details": event_description or "",
             "ctz": TIMEZONE,

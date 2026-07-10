@@ -7,6 +7,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail
+from apps.event.models import Event, Question, Ticket
 from apps.projects.models import Project, Semester
 
 
@@ -61,6 +62,16 @@ class SeedAdminE2ECommandTests(TestCase):
         self.assertEqual(str(semester), "2099-2 Fall")
         self.assertEqual(project.project_title, "E2E Solar Orchard Dashboard")
         self.assertEqual(project.organization, "Innovate To Grow QA")
+
+        event = Event.objects.get(slug="e2e-event-copy-template")
+        self.assertEqual(event.name, "E2E Event Copy Template")
+        self.assertEqual(event.end_date.isoformat(), "2099-05-16")
+        self.assertFalse(event.registration_open)
+        self.assertTrue(event.collect_phone)
+        self.assertTrue(event.verify_phone)
+        self.assertEqual(Ticket.objects.filter(event=event, name="E2E General Admission").count(), 1)
+        self.assertEqual(Question.objects.filter(event=event, text="What brings you to the E2E Event?").count(), 1)
+
         seeded_member_count = Member.objects.filter(
             contact_emails__email_address__contains="e2e-test@example.com"
         ).count()

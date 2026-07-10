@@ -50,11 +50,18 @@ class EventRegistrationOptionsViewTest(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_response_includes_event_fields(self):
-        event = make_event(name="Spring Showcase", registration_open=True)
+        event = make_event(
+            name="Spring Showcase",
+            date=datetime.date(2026, 5, 10),
+            end_date=datetime.date(2026, 5, 12),
+            registration_open=True,
+        )
         response = self.client.get("/event/registration-options/")
         data = response.data
         self.assertEqual(data["name"], "Spring Showcase")
         self.assertEqual(data["slug"], event.slug)
+        self.assertEqual(data["date"], "2026-05-10")
+        self.assertEqual(data["end_date"], "2026-05-12")
         self.assertEqual(data["location"], event.location)
 
     def test_response_includes_tickets_array(self):
@@ -141,13 +148,21 @@ class EventRegistrationEventsViewTest(TestCase):
         self.client = APIClient()
 
     def test_returns_open_events_only(self):
-        open_event = make_event(name="Open Showcase", slug="open-showcase", registration_open=True)
+        open_event = make_event(
+            name="Open Showcase",
+            slug="open-showcase",
+            date=datetime.date(2026, 12, 31),
+            end_date=datetime.date(2027, 1, 2),
+            registration_open=True,
+        )
         make_event(name="Closed Showcase", slug="closed-showcase", registration_open=False)
 
         response = self.client.get("/event/registration-events/")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual([event["slug"] for event in response.data], [open_event.slug])
+        self.assertEqual(response.data[0]["date"], "2026-12-31")
+        self.assertEqual(response.data[0]["end_date"], "2027-01-02")
 
     def test_returns_events_sorted_by_date_then_name(self):
         later = make_event(

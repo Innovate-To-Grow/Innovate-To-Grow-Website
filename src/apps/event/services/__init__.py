@@ -1,3 +1,4 @@
+from .date_ranges import format_event_date_range
 from .schedule_sync import (
     ScheduleSyncError,
     ScheduleSyncStats,
@@ -15,6 +16,7 @@ __all__ = [
     "ScheduleSyncStats",
     "build_ticket_access_token",
     "fetch_schedule_sheet_records",
+    "format_event_date_range",
     "generate_ticket_barcode_data_url",
     "get_registration_from_access_token",
     "sync_schedule",

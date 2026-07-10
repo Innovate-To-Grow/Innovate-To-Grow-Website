@@ -92,6 +92,15 @@ class DefinitionsTest(TestCase):
         self.assertIsInstance(defs, list)
         self.assertGreater(len(defs), 0)
 
+    def test_search_events_contract_uses_registration_and_date_range(self):
+        definition = next(item for item in get_tool_definitions() if item["toolSpec"]["name"] == "search_events")
+        properties = definition["toolSpec"]["inputSchema"]["json"]["properties"]
+
+        self.assertNotIn("is_live", properties)
+        self.assertIn("registration_open", properties)
+        self.assertIn("date_from", properties)
+        self.assertIn("date_to", properties)
+
 
 # ---------- analytics ----------
 
@@ -157,11 +166,15 @@ class CmsToolsTest(TestCase):
 
 
 class EventsToolsTest(TestCase):
-    def _make_event(self, name="Demo Day"):
+    def _make_event(self, name="Demo Day", date="2025-06-15", end_date=None):
         from apps.event.models import Event
 
         return Event.objects.create(
-            name=name, slug=name.lower().replace(" ", "-"), date="2025-06-15", location="Hall", is_live=True
+            name=name,
+            slug=name.lower().replace(" ", "-"),
+            date=date,
+            end_date=end_date or date,
+            location="Hall",
         )
 
     def _make_registration(self, event, email="ann@example.com"):
@@ -181,15 +194,44 @@ class EventsToolsTest(TestCase):
 
     def test_search_events_filters(self):
         self._make_event()
-        result = search_events({"name": "Demo", "is_live": True, "date_from": "2000-01-01", "date_to": "2999-01-01"})
+        result = search_events({"name": "Demo", "date_from": "2000-01-01", "date_to": "2999-01-01"})
         self.assertIn("Demo Day", result)
+        self.assertIn('"end_date": "2025-06-15"', result)
+        self.assertNotIn('"is_live"', result)
+
+    def test_search_events_date_window_matches_overlapping_event_ranges(self):
+        self._make_event("Overlapping", date="2025-05-30", end_date="2025-06-03")
+        self._make_event("Before", date="2025-05-01", end_date="2025-05-31")
+        self._make_event("After", date="2025-06-02", end_date="2025-06-10")
+
+        result = search_events({"date_from": "2025-06-01", "date_to": "2025-06-01"})
+
+        self.assertIn("Overlapping", result)
+        self.assertNotIn("Before", result)
+        self.assertNotIn("After", result)
+
+    def test_search_events_resolves_transitional_null_end_date(self):
+        from apps.event.models import Event
+
+        event = self._make_event("Legacy task Event", date="2025-06-01")
+        Event.objects.filter(pk=event.pk).update(end_date=None)
+
+        result = search_events({"date_from": "2025-06-01", "date_to": "2025-06-01"})
+
+        self.assertIn("Legacy task Event", result)
+        self.assertIn('"end_date": "2025-06-01"', result)
 
     def test_search_events_filters_by_registration_open(self):
         from apps.event.models import Event
 
         self._make_event()
         Event.objects.create(
-            name="Open Day", slug="open-day", date="2025-07-15", location="Hall", registration_open=True
+            name="Open Day",
+            slug="open-day",
+            date="2025-07-15",
+            end_date="2025-07-15",
+            location="Hall",
+            registration_open=True,
         )
 
         result = search_events({"registration_open": True})
@@ -352,6 +394,13 @@ class CustomQueryKeyTest(TestCase):
     def test_allowed_output_fields_sorted(self):
         fields = allowed_output_fields("Semester")
         self.assertEqual(fields, sorted(fields))
+
+    def test_event_allowlist_exposes_date_range_without_legacy_live_flag(self):
+        fields = allowed_output_fields("Event")
+
+        self.assertIn("date", fields)
+        self.assertIn("end_date", fields)
+        self.assertNotIn("is_live", fields)
 
     def test_validate_output_fields_invalid(self):
         msg = validate_output_fields("Semester", ["year", "nope"])

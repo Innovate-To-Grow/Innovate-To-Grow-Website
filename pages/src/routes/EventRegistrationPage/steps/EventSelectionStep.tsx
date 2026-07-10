@@ -1,5 +1,5 @@
 import type {EventRegistrationSummary} from '@/features/events/api';
-import {formatEventDate} from './helpers';
+import {formatEventDateRange} from '@/features/events/formatEventDateRange';
 import './eventSelection.css';
 
 interface EventSelectionStepProps {
@@ -33,7 +33,7 @@ export const EventSelectionStep = ({events, selectedEventSlug, onSelect}: EventS
               <dl className="event-reg-event-meta">
                 <div>
                   <dt>Date</dt>
-                  <dd>{formatEventDate(event.date)}</dd>
+                  <dd>{formatEventDateRange(event.date, event.end_date)}</dd>
                 </div>
                 <div>
                   <dt>Location</dt>

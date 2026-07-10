@@ -20,6 +20,7 @@ export interface RegistrationEvent {
   name: string;
   slug: string;
   date: string;
+  end_date?: string;
   location: string;
   description: string;
 }
@@ -76,6 +77,7 @@ export interface EventRegistrationOptions {
   name: string;
   slug: string;
   date: string;
+  end_date?: string;
   location: string;
   description: string;
   allow_secondary_email: boolean;
@@ -193,6 +195,7 @@ async function fetchRegistrationEventsFallback(): Promise<EventRegistrationSumma
         name: options.name,
         slug: options.slug,
         date: options.date,
+        end_date: options.end_date,
         location: options.location,
         description: options.description,
         registration: options.registration,

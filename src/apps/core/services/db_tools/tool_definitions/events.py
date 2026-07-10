@@ -3,13 +3,12 @@ from .common import prop, tool_spec
 DEFINITIONS = [
     tool_spec(
         "search_events",
-        "Search events by name, date range, live status, or open-registration status.",
+        "Search events by name, overlapping date range, or open-registration status.",
         {
             "name": prop("string", "Search by event name (partial match)"),
-            "is_live": prop("boolean", "Filter by live status"),
             "registration_open": prop("boolean", "Filter by whether public registration is open"),
-            "date_from": prop("string", "Start date (YYYY-MM-DD)"),
-            "date_to": prop("string", "End date (YYYY-MM-DD)"),
+            "date_from": prop("string", "Inclusive start of the search window (YYYY-MM-DD)"),
+            "date_to": prop("string", "Inclusive end of the search window (YYYY-MM-DD)"),
         },
     ),
     tool_spec(

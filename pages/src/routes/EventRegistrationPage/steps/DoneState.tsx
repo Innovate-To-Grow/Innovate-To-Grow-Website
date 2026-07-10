@@ -1,7 +1,7 @@
 import {Link} from 'react-router-dom';
 import type {Registration} from '@/features/events/api';
 import {resendTicketEmail} from '@/features/events/api';
-import {formatEventDate} from './helpers';
+import {formatEventDateRange} from '@/features/events/formatEventDateRange';
 import {useState} from 'react';
 
 interface DoneStateProps {
@@ -43,7 +43,7 @@ export const DoneState = ({registration, showChooseAnother = false, onChooseAnot
           <p><strong>Name:</strong> {registration.attendee_name}</p>
           <p><strong>Email:</strong> {registration.attendee_email}</p>
           <p><strong>Ticket:</strong> {registration.ticket.name}</p>
-          <p><strong>Date:</strong> {formatEventDate(registration.event.date)}</p>
+          <p><strong>Date:</strong> {formatEventDateRange(registration.event.date, registration.event.end_date)}</p>
           <p><strong>Location:</strong> {registration.event.location}</p>
           {registration.event.description ? <p style={{marginTop: '0.75rem', fontSize: '0.9rem', color: '#4b5563', lineHeight: 1.5}}>{registration.event.description}</p> : null}
         </div>

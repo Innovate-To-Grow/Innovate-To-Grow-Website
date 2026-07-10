@@ -13,14 +13,23 @@ class RegistrationExportMixin:
     def get_export_fields(self):
         return list(EXPORT_FIELDS)
 
+    def _resolve_columns(self, request):
+        """Accept the former Event Date key without showing it in new exports."""
+        selected = request.POST.getlist("export_fields")
+        all_fields = {**dict(self.get_export_fields()), "event_date": "Event Date"}
+        columns = [(name, all_fields[name]) for name in selected if name in all_fields]
+        return columns or list(self.get_export_fields())
+
     def get_export_value(self, obj, field_name):
         member = obj.member
         if field_name == "event_name":
             return obj.event.name
         if field_name == "event_slug":
             return obj.event.slug
-        if field_name == "event_date":
+        if field_name in {"event_date", "event_start_date"}:
             return obj.event.date
+        if field_name == "event_end_date":
+            return obj.event.effective_end_date
         if field_name == "ticket_name":
             return obj.ticket.name
         if field_name == "attendee_name":

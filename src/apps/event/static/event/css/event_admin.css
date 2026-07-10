@@ -1,0 +1,18 @@
+.event-admin-dependent-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.event-admin-dependent-disabled label {
+  cursor: not-allowed;
+}
+
+.event-admin-visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}

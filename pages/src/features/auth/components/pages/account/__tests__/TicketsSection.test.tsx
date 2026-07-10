@@ -74,6 +74,36 @@ describe('TicketsSection', () => {
     );
   });
 
+  it('renders date ranges for both ticket and open-event cards', () => {
+    const crossYearRegistration = registration({
+      event: {
+        id: 'event-spring',
+        name: 'Year End Showcase',
+        slug: 'year-end-showcase',
+        date: '2026-12-31',
+        end_date: '2027-01-02',
+        location: 'Campus',
+        description: 'Year end event',
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <TicketsSection
+          tickets={[crossYearRegistration]}
+          openEvents={[openEvent({date: '2026-05-30', end_date: '2026-06-02'})]}
+          ticketsLoading={false}
+          registrationEventsLoading={false}
+          resendingId={null}
+          onResendTicketEmail={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Thursday, December 31, 2026 – Saturday, January 2, 2027')).toBeInTheDocument();
+    expect(screen.getByText('Saturday, May 30 – Tuesday, June 2, 2026')).toBeInTheDocument();
+  });
+
   it('renders an open-event registration missing from my-tickets as a ticket card', () => {
     const fallRegistration = registration({
       id: 'registration-fall',

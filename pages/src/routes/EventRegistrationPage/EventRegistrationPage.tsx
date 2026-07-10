@@ -2,7 +2,7 @@ import {CodeVerificationStep} from './steps/CodeVerificationStep';
 import {DoneState} from './steps/DoneState';
 import {EmailAuthStep} from './steps/EmailAuthStep';
 import {EventSelectionStep} from './steps/EventSelectionStep';
-import {formatEventDate} from './steps/helpers';
+import {formatEventDateRange} from '@/features/events/formatEventDateRange';
 import {LoadingState} from './steps/LoadingState';
 import {RegistrationFormStep} from './steps/RegistrationFormStep';
 import {useEventRegistration} from './useEventRegistration';
@@ -36,7 +36,7 @@ export const EventRegistrationPage = () => {
         <div className="event-reg-info">
           <h2>{reg.options.name}</h2>
           <p>
-            <strong>Date:</strong> {formatEventDate(reg.options.date)}
+            <strong>Date:</strong> {formatEventDateRange(reg.options.date, reg.options.end_date)}
           </p>
           <p>
             <strong>Location:</strong> {reg.options.location}

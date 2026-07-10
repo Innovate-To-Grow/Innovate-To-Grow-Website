@@ -500,7 +500,13 @@ class DataExportRelatedValueTest(TestCase):
         from apps.event.models import CheckIn, Event
 
         admin = _DataExportAdmin()
-        event = Event.objects.create(name="E", slug="e-export", date="2025-06-15", location="L")
+        event = Event.objects.create(
+            name="E",
+            slug="e-export",
+            date="2025-06-15",
+            end_date="2025-06-15",
+            location="L",
+        )
         check_in = CheckIn.objects.create(event=event, name="Door")
         result = admin.get_export_value(check_in, "event")
         self.assertEqual(result, str(event))
@@ -532,6 +538,7 @@ class DataExportDateFieldTest(TestCase):
             name="Test Event",
             slug="test-export-date",
             date="2025-06-15",
+            end_date="2025-06-15",
             location="Room A",
             description="Testing",
         )

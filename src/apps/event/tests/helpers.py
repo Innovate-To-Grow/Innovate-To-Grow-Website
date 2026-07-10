@@ -11,9 +11,11 @@ def make_member(email="test@example.com", **kwargs):
 
 
 def make_event(name="Demo Day", date=None, **kwargs):
+    start_date = date or datetime.date(2025, 6, 15)
     defaults = {
         "name": name,
-        "date": date or datetime.date(2025, 6, 15),
+        "date": start_date,
+        "end_date": start_date,
         "location": "Test Venue",
         "description": "A test event.",
     }

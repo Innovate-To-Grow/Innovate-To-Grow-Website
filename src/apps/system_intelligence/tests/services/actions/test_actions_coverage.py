@@ -291,7 +291,13 @@ class CascadeImpactTests(TestCase):
 
         from apps.event.models import Event, Ticket
 
-        event = Event.objects.create(name="Demo Day", date=datetime.date(2025, 6, 15), location="V", description="d")
+        event = Event.objects.create(
+            name="Demo Day",
+            date=datetime.date(2025, 6, 15),
+            end_date=datetime.date(2025, 6, 15),
+            location="V",
+            description="d",
+        )
         for index in range(ticket_count):
             Ticket.objects.create(event=event, name=f"Ticket {index}")
         return event

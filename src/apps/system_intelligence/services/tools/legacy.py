@@ -21,12 +21,11 @@ async def count_members(is_staff: bool | None = None, is_active: bool | None = N
 
 async def search_events(
     name: str | None = None,
-    is_live: bool | None = None,
     registration_open: bool | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
 ):
-    """Search events by name, live status, open-registration status, or date range."""
+    """Search events by name, open-registration status, or overlapping date range."""
     return await run_tool_async("search_events", locals())
 
 

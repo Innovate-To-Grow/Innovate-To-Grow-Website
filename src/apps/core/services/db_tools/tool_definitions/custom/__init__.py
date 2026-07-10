@@ -6,7 +6,10 @@ DEFINITIONS = [
         "Run a flexible database query against any allowed model. Available models: Member, ContactEmail, ContactPhone, Event, EventRegistration, Ticket, CheckIn, CheckInRecord, Project, Semester, EmailCampaign, RecipientLog, CMSPage, CMSBlock, NewsArticle, NewsFeedSource, PageView, Menu. Filters use Django ORM lookup syntax (e.g. name__icontains, date__gte).",
         {
             "model": prop("string", "Model name (e.g. Member, Event)"),
-            "filters": prop("object", "Django ORM filter kwargs (e.g. {name__icontains: demo, is_live: true})"),
+            "filters": prop(
+                "object",
+                "Django ORM filter kwargs (e.g. {name__icontains: demo, registration_open: true})",
+            ),
             "ordering": {"description": "Field(s) to order by (string or array of strings, prefix with - for desc)"},
             "fields": {
                 "type": "array",

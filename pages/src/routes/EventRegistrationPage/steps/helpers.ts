@@ -1,16 +1,5 @@
 export type EventRegistrationStep = 'loading' | 'select' | 'email' | 'code' | 'form' | 'done';
 
-export function formatEventDate(dateStr: string): string {
-  const datePart = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
-  const date = new Date(`${datePart}T00:00:00`);
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
 export function getRegistrationErrorMessage(err: unknown): string {
   if (typeof err === 'object' && err !== null) {
     const axiosError = err as {response?: {data?: Record<string, unknown>}};

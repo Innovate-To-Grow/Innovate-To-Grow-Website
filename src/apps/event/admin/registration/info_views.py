@@ -3,6 +3,7 @@ from django.db.models import Count
 from django.http import JsonResponse
 
 from ...models import Event
+from ...services import format_event_date_range
 
 
 class RegistrationInfoViewsMixin:
@@ -64,9 +65,10 @@ class RegistrationInfoViewsMixin:
                 "name": event.name,
                 "slug": event.slug,
                 "date": event.date.isoformat(),
+                "end_date": event.effective_end_date.isoformat(),
+                "date_range": format_event_date_range(event.date, event.effective_end_date),
                 "location": event.location,
                 "description": event.description,
-                "is_live": event.is_live,
                 "registration_open": event.registration_open,
                 "allow_secondary_email": event.allow_secondary_email,
                 "collect_phone": event.collect_phone,

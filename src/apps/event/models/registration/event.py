@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models, transaction
+from django.db import models
 from django.utils.text import slugify
 
 from apps.core.models import ProjectControlModel
@@ -9,10 +9,10 @@ from apps.core.models import ProjectControlModel
 class Event(ProjectControlModel):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
-    date = models.DateField()
+    date = models.DateField(verbose_name="Start date")
+    end_date = models.DateField(verbose_name="End date")
     location = models.CharField(max_length=255)
     description = models.TextField()
-    is_live = models.BooleanField(default=False)
     registration_open = models.BooleanField(
         default=False,
         verbose_name="Registration open",
@@ -24,11 +24,14 @@ class Event(ProjectControlModel):
     )
     collect_phone = models.BooleanField(
         default=False,
-        help_text="Show a phone number field on the registration form.",
+        verbose_name="Prompt for Phone Number",
+        help_text="Prompt registrants to enter a phone number on the registration form.",
     )
     verify_phone = models.BooleanField(
         default=False,
-        help_text="Require phone number verification via SMS code. Only applies when phone collection is enabled.",
+        help_text=(
+            "Require phone number verification via SMS code. Only available when Prompt for Phone Number is enabled."
+        ),
     )
     ticket_login_validity_days = models.PositiveSmallIntegerField(
         default=30,
@@ -80,26 +83,47 @@ class Event(ProjectControlModel):
 
     class Meta:
         ordering = ["-date"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(end_date__gte=models.F("date")),
+                name="event_end_date_gte_start_date",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(collect_phone=True) | models.Q(verify_phone=False),
+                name="event_verify_phone_requires_prompt",
+            ),
+        ]
 
     def __str__(self):
         return self.name
 
+    @property
+    def effective_end_date(self):
+        """Return a safe inclusive end date during the rolling migration window."""
+        return self.end_date or self.date
+
+    def clean_fields(self, exclude=None):
+        # Rows written by the previous application revision have a null
+        # ``end_date`` during the expand phase. Normalize a loaded row before
+        # full_clean() so CLI/System Intelligence can safely update unrelated
+        # fields and persist the single-day range.
+        excluded = set(exclude or ())
+        if not self._state.adding and "end_date" not in excluded and self.end_date is None and self.date is not None:
+            self.end_date = self.date
+        super().clean_fields(exclude=exclude)
+
     def clean(self):
         super().clean()
+        if self.date and self.end_date and self.end_date < self.date:
+            raise ValidationError({"end_date": "End date cannot be before start date."})
         if self.verify_phone and not self.collect_phone:
-            raise ValidationError({"verify_phone": "Cannot verify phone without collecting it."})
+            raise ValidationError({"verify_phone": "Cannot verify phone without prompting for a phone number."})
 
     def save(self, *args, **kwargs):
+        if self.end_date is None and self.date is not None:
+            self.end_date = self.date
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = {*kwargs["update_fields"], "end_date"}
         if not self.slug:
             self.slug = slugify(self.name)
-        update_fields = kwargs.get("update_fields")
-        will_demote = self.is_live and (update_fields is None or "is_live" in update_fields)
-        # Promote-self and demote-others must be atomic and serialized, or two
-        # concurrent live-promotions can interleave and leave zero live events
-        # (each demotes the other). The lock serializes promotions; no-op on SQLite.
-        with transaction.atomic():
-            if will_demote:
-                list(Event.objects.select_for_update().filter(is_live=True).exclude(pk=self.pk))
-            super().save(*args, **kwargs)
-            if will_demote:
-                Event.objects.exclude(pk=self.pk).filter(is_live=True).update(is_live=False)
+        super().save(*args, **kwargs)

@@ -1,10 +1,11 @@
+import datetime
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory, TestCase
 
-from apps.event.admin.event import EventAdmin, QuestionInline, TicketInline
+from apps.event.admin.event import EventAdmin, EventAdminForm, QuestionInline, TicketInline
 from apps.event.models import Event
 from apps.event.services.registration_sheet_sync import RegistrationSyncError
 from apps.event.tests.helpers import make_event, make_superuser
@@ -48,25 +49,42 @@ class EventAdminBadgeTest(TestCase):
         self.admin = EventAdmin(Event, AdminSite())
 
     def test_secondary_email_badge_on(self):
-        self.assertEqual(self.admin.secondary_email_badge(Event(allow_secondary_email=True)), ("On", "success"))
+        self.assertEqual(self.admin.secondary_email_badge(Event(allow_secondary_email=True)), ("on", "On"))
 
     def test_secondary_email_badge_off(self):
-        self.assertEqual(self.admin.secondary_email_badge(Event(allow_secondary_email=False)), ("Off", "info"))
+        self.assertEqual(self.admin.secondary_email_badge(Event(allow_secondary_email=False)), ("off", "Off"))
 
     def test_phone_badge_verified(self):
         self.assertEqual(
             self.admin.phone_badge(Event(collect_phone=True, verify_phone=True)),
-            ("Verified", "warning"),
+            ("prompt_verify", "Prompt + verification"),
         )
 
     def test_phone_badge_collect(self):
         self.assertEqual(
             self.admin.phone_badge(Event(collect_phone=True, verify_phone=False)),
-            ("Collect", "success"),
+            ("prompt", "Prompt"),
         )
 
     def test_phone_badge_off(self):
-        self.assertEqual(self.admin.phone_badge(Event(collect_phone=False, verify_phone=False)), ("Off", "info"))
+        self.assertEqual(self.admin.phone_badge(Event(collect_phone=False, verify_phone=False)), ("off", "Off"))
+
+    def test_date_range_collapses_single_day(self):
+        event = Event(date=datetime.date(2026, 5, 14), end_date=datetime.date(2026, 5, 14))
+        self.assertEqual(self.admin.date_range(event), "May 14, 2026")
+
+    def test_date_range_displays_multiple_days(self):
+        event = Event(date=datetime.date(2026, 5, 31), end_date=datetime.date(2026, 6, 2))
+        self.assertEqual(self.admin.date_range(event), "May 31–June 2, 2026")
+
+    def test_change_form_prefills_transitional_null_end_date(self):
+        event = make_event(name="Legacy single-day Event")
+        Event.objects.filter(pk=event.pk).update(end_date=None)
+        event.refresh_from_db()
+
+        form = EventAdminForm(instance=event)
+
+        self.assertEqual(form.initial["end_date"], event.date)
 
 
 class EventAdminSyncActionTest(TestCase):

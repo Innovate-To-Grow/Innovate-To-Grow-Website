@@ -42,6 +42,12 @@ cd src && python manage.py migrate           # Apply
 
 **Critical rule:** Never edit a migration that has been merged to `main`. Create a new migration instead. The CI pipeline validates migrations against PostgreSQL to catch issues SQLite won't surface.
 
+#### Event date-range rollout cleanup
+
+Migration `event.0008_event_date_range_and_registration_status` uses an expand/contract rollout because ECS tasks run migrations while the previous task revision may still be serving traffic. Django removes `is_live` immediately, but its physical database column is temporarily retained with a `false` database default. `end_date` is required and range-validated by the new application state and forms, but existing values remain `NULL`, the physical column remains nullable, and the physical date-range constraint is deferred so an old task can finish an insert or move its single Event date safely.
+
+After the new revision is fully deployed and every old task has drained, add a follow-up migration that backfills `end_date IS NULL` rows from `date`, materializes the `event_end_date_gte_start_date` check constraint, makes `end_date` physically `NOT NULL`, and drops the physical `is_live` column. Normalize invalid phone settings again before the contract step as a defensive check. Do not combine that contract step into the first rolling deployment.
+
 ## Service configuration
 
 ### Seeding skeleton configs
@@ -87,7 +93,7 @@ For production, this should be run on a schedule (cron or scheduled task).
 
 ### Opening and closing registration
 
-Public registration is controlled per event by the **Registration open** checkbox in Event admin. It is independent of **Is live** (the featured-event flag), and multiple events can accept registrations at once.
+Public registration is controlled per event by the **Registration open** checkbox in Event admin, and multiple events can accept registrations at once. Event date ranges include both the start and end dates. Schedule/current-project publication is configured separately through `CurrentProjectSchedule`.
 
 ### Registration sheet sync
 

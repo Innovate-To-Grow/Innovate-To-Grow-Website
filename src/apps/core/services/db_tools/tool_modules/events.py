@@ -1,6 +1,6 @@
 import json
 
-from django.db.models import Count
+from django.db.models import Count, Q
 
 from ..helpers import _serialize_rows, _truncate
 
@@ -11,16 +11,16 @@ def search_events(params):
     qs = Event.objects.all()
     if params.get("name"):
         qs = qs.filter(name__icontains=params["name"])
-    if params.get("is_live") is not None:
-        qs = qs.filter(is_live=params["is_live"])
     if params.get("registration_open") is not None:
         qs = qs.filter(registration_open=params["registration_open"])
     if params.get("date_from"):
-        qs = qs.filter(date__gte=params["date_from"])
+        qs = qs.filter(Q(end_date__gte=params["date_from"]) | Q(end_date__isnull=True, date__gte=params["date_from"]))
     if params.get("date_to"):
         qs = qs.filter(date__lte=params["date_to"])
     return _serialize_rows(
-        qs.order_by("-date"), ["id", "name", "slug", "date", "location", "is_live", "registration_open"]
+        qs.order_by("-date"),
+        ["id", "name", "slug", "date", "end_date", "location", "registration_open"],
+        fallback_fields={"end_date": "date"},
     )
 
 

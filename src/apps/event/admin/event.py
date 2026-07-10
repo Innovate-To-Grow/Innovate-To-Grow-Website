@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib import admin, messages
+from django.core.exceptions import ValidationError
+from django.http import Http404
 from unfold.admin import TabularInline
 from unfold.decorators import display
 
@@ -7,6 +9,10 @@ from apps.core.admin import BaseModelAdmin
 from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from ..models import Event, Question, Ticket
+from ..services.date_ranges import format_event_date_range
+
+COPY_SOURCE_ATTR = "_event_admin_copy_source"
+COPY_INLINE_INITIAL_ATTR = "_event_admin_copy_inline_initial"
 
 
 class EventRelatedInlineMixin:
@@ -50,6 +56,12 @@ class EventRelatedInlineMixin:
             return ma.has_add_permission(request)
         return ma.has_change_permission(request, obj)
 
+    def get_extra(self, request, obj=None, **kwargs):
+        initial_by_model = getattr(request, COPY_INLINE_INITIAL_ATTR, {})
+        if (obj is None or obj._state.adding) and self.model in initial_by_model:
+            return len(initial_by_model[self.model])
+        return super().get_extra(request, obj, **kwargs)
+
 
 class TicketInline(EventRelatedInlineMixin, TabularInline):
     model = Ticket
@@ -64,12 +76,34 @@ class QuestionInline(EventRelatedInlineMixin, TabularInline):
 
 
 class EventAdminForm(forms.ModelForm):
+    verify_phone_dependency_hint_id = "event-verify-phone-dependency-hint"
+
     class Meta:
         model = Event
         fields = "__all__"
         labels = {
             "allow_secondary_email": "Prompt for Second Email",
+            "collect_phone": "Prompt for Phone Number",
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if (
+            not self.is_bound
+            and not self.instance._state.adding
+            and self.instance.end_date is None
+            and self.instance.date is not None
+        ):
+            self.initial["end_date"] = self.instance.date
+        widget = self.fields["verify_phone"].widget
+        described_by = str(widget.attrs.get("aria-describedby") or "").split()
+        if self.verify_phone_dependency_hint_id not in described_by:
+            described_by.append(self.verify_phone_dependency_hint_id)
+        widget.attrs["aria-describedby"] = " ".join(described_by)
+
+    class Media:
+        css = {"all": ("event/css/event_admin.css",)}
+        js = ("event/js/event_admin.js",)
 
 
 @admin.register(Event)
@@ -78,14 +112,13 @@ class EventAdmin(BaseModelAdmin):
     form = EventAdminForm
     list_display = (
         "name",
-        "date",
+        "date_range",
         "location",
-        "is_live",
         "registration_open",
         "secondary_email_badge",
         "phone_badge",
     )
-    list_filter = ("is_live", "registration_open", "date", "allow_secondary_email", "collect_phone")
+    list_filter = ("registration_open", "date", "end_date", "allow_secondary_email", "collect_phone")
     search_fields = ("name", "location")
     readonly_fields = (
         "created_at",
@@ -103,9 +136,10 @@ class EventAdmin(BaseModelAdmin):
             {
                 "fields": (
                     ("name", "slug"),
-                    ("date", "location"),
+                    ("date", "end_date"),
+                    "location",
                     "description",
-                    ("is_live", "registration_open"),
+                    "registration_open",
                 ),
             },
         ),
@@ -117,6 +151,13 @@ class EventAdmin(BaseModelAdmin):
                     "allow_secondary_email",
                     ("collect_phone", "verify_phone"),
                 ),
+            },
+        ),
+        (
+            "Ticket Access Options",
+            {
+                "description": "Control the login link included in ticket confirmation emails.",
+                "fields": (("ticket_login_validity_days", "ticket_login_reusable"),),
             },
         ),
         (
@@ -159,8 +200,83 @@ class EventAdmin(BaseModelAdmin):
         return super().change_view(request, object_id, form_url, extra_context)
 
     def add_view(self, request, form_url="", extra_context=None):
-        extra_context = {**(extra_context or {}), **self._get_site_settings_context()}
+        copy_source = self._prepare_copy_source(request)
+        copy_source_events = [
+            {
+                "pk": event.pk,
+                "name": event.name,
+                "date_range": format_event_date_range(event.date, event.effective_end_date),
+            }
+            for event in Event.objects.order_by("-date", "name")
+        ]
+        extra_context = {
+            **(extra_context or {}),
+            **self._get_site_settings_context(),
+            "copy_source": copy_source,
+            "copy_source_events": copy_source_events,
+        }
         return super().add_view(request, form_url, extra_context)
+
+    def _prepare_copy_source(self, request):
+        if hasattr(request, COPY_SOURCE_ATTR):
+            return getattr(request, COPY_SOURCE_ATTR)
+
+        source_id = request.GET.get("copy_from", "").strip()
+        source = None
+        if source_id:
+            try:
+                source = Event.objects.prefetch_related("tickets", "questions").get(pk=source_id)
+            except (Event.DoesNotExist, ValidationError, ValueError) as exc:
+                raise Http404("The Event selected as a copy source does not exist.") from exc
+
+        inline_initial = {}
+        if source is not None:
+            inline_initial = {
+                Ticket: [{"name": ticket.name, "order": ticket.order} for ticket in source.tickets.all()],
+                Question: [
+                    {"text": question.text, "is_required": question.is_required, "order": question.order}
+                    for question in source.questions.all()
+                ],
+            }
+
+        setattr(request, COPY_SOURCE_ATTR, source)
+        setattr(request, COPY_INLINE_INITIAL_ATTR, inline_initial)
+        return source
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        source = self._prepare_copy_source(request)
+        if source is None:
+            return initial
+
+        initial.update(
+            {
+                "name": "",
+                "slug": "",
+                "date": source.date,
+                "end_date": source.effective_end_date,
+                "location": source.location,
+                "description": source.description,
+                "registration_open": False,
+                "allow_secondary_email": source.allow_secondary_email,
+                "collect_phone": source.collect_phone,
+                "verify_phone": source.verify_phone,
+                "ticket_login_validity_days": source.ticket_login_validity_days,
+                "ticket_login_reusable": source.ticket_login_reusable,
+                "registration_sheet_id": "",
+                "registration_sheet_gid": None,
+            }
+        )
+        return initial
+
+    def get_formset_kwargs(self, request, obj, inline, prefix):
+        kwargs = super().get_formset_kwargs(request, obj, inline, prefix)
+        if request.method == "GET" and (obj is None or obj._state.adding):
+            self._prepare_copy_source(request)
+            initial_by_model = getattr(request, COPY_INLINE_INITIAL_ATTR, {})
+            if inline.model in initial_by_model:
+                kwargs["initial"] = initial_by_model[inline.model]
+        return kwargs
 
     @admin.action(description="Sync registrations to Google Sheet")
     def sync_registrations_to_sheet(self, request, queryset):
@@ -176,16 +292,23 @@ class EventAdmin(BaseModelAdmin):
     actions = ["sync_registrations_to_sheet"]
     actions_no_confirmation = ["sync_registrations_to_sheet"]
 
-    @display(description="2nd Email", label=True)
+    @display(description="Date range", ordering="date")
+    def date_range(self, obj):
+        return format_event_date_range(obj.date, obj.effective_end_date)
+
+    @display(description="2nd Email", label={"on": "success", "off": "info"})
     def secondary_email_badge(self, obj):
         if obj.allow_secondary_email:
-            return "On", "success"
-        return "Off", "info"
+            return "on", "On"
+        return "off", "Off"
 
-    @display(description="Phone", label=True)
+    @display(
+        description="Phone",
+        label={"prompt_verify": "warning", "prompt": "success", "off": "info"},
+    )
     def phone_badge(self, obj):
         if obj.collect_phone and obj.verify_phone:
-            return "Verified", "warning"
+            return "prompt_verify", "Prompt + verification"
         if obj.collect_phone:
-            return "Collect", "success"
-        return "Off", "info"
+            return "prompt", "Prompt"
+        return "off", "Off"

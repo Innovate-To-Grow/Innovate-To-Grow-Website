@@ -85,15 +85,14 @@
           lines.push('<span style="color:var(--color-base-500,#64748b)">' + label + ":</span> " + html);
         };
 
-        L("Date", d.date);
+        L("Date", d.date_range || (d.date === d.end_date ? d.date : d.date + " – " + d.end_date));
         L("Location", d.location);
         if (d.description) L("Description", d.description);
-        L("Status", d.is_live ? "Live" : "Not live");
         L("Registration", d.registration_open ? "Open" : "Closed");
 
         var flags = [];
         if (d.allow_secondary_email) flags.push("Secondary email");
-        if (d.collect_phone) flags.push("Collect phone");
+        if (d.collect_phone) flags.push("Prompt for Phone Number");
         if (d.verify_phone) flags.push("Verify phone");
         if (flags.length) L("Options", flags.join(", "));
 

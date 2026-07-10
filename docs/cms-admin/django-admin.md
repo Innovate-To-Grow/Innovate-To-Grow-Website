@@ -70,13 +70,15 @@ added (a leading-wildcard `icontains` can't use a btree index, but the contact t
 
 Event admin includes:
 - Registration management with filtering
+- Inclusive start/end dates for single-day and multi-day events
+- Safe prefill from an existing event when creating a new event; identity, registration availability, and sync state are reset before review
 - Google Sheets sync actions (registration sync, full replace)
 - Schedule sync from Google Sheets
 - Check-in record management
 
-Two independent event flags:
-- **Is live** marks the single featured event that powers `/schedule` and current projects; setting it automatically demotes the previous live event.
-- **Registration open** controls whether the event appears in public registration and accepts new registrations. Multiple events can be open at the same time, and an event can accept registrations without being live (or vice versa).
+**Registration open** controls whether the event appears in public registration and accepts new registrations. Multiple events can be open at the same time; there is no separate featured/live Event flag. Schedule and current-project selection are managed independently through `CurrentProjectSchedule`.
+
+Registration form settings use **Prompt for Phone Number** and **Verify phone**. Verification is disabled and cleared when the phone prompt is off. Registration exports provide separate **Event Start Date** and **Event End Date** columns.
 
 ### Project admin
 
