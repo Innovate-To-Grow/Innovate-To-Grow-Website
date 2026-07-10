@@ -7,6 +7,7 @@ const nonstaffEmail = process.env.ADMIN_E2E_NONSTAFF_EMAIL ?? 'admin-e2e-nonstaf
 const actionEmail = process.env.ADMIN_E2E_ACTION_EMAIL ?? 'action-e2e@example.com';
 const seededProjectTitle = 'E2E Solar Orchard Dashboard';
 const seededSemesterLabel = '2099-2 Fall';
+const seededEventTemplateName = 'E2E Event Copy Template';
 const themeRuntimeErrorPattern =
   /theme is not defined|adminTheme is not defined|themeBindings is not defined|openModal is not defined/i;
 
@@ -148,6 +149,87 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await expect(page).toHaveURL(/\/admin\/projects\/project\/\?q=Solar\+Orchard/);
     await expect(page.locator('body')).toContainText(seededProjectTitle);
     await expect(page.locator('body')).not.toContainText(/0 projects|0 results/i);
+  });
+
+  test('loads a safe Event template and enforces dependent phone options', async ({page}) => {
+    await adminLogin(page);
+    await expectAdminDocument(page, '/admin/event/event/add/');
+
+    const sourceSelect = page.locator('#event-copy-source');
+    await expect(sourceSelect).toBeVisible();
+    await expect(page.locator('#id_collect_phone')).not.toBeChecked();
+    await expect(page.locator('#id_verify_phone')).not.toBeChecked();
+    await expect(page.locator('#id_verify_phone')).toBeDisabled();
+    await expect(page.locator('#id_verify_phone')).toHaveAttribute(
+      'aria-describedby',
+      /event-verify-phone-dependency-hint/,
+    );
+    await expect(page.locator('#event-verify-phone-dependency-hint')).toContainText(
+      'Enable Prompt for Phone Number',
+    );
+    const sourceValue = await sourceSelect.locator('option', {hasText: seededEventTemplateName}).getAttribute('value');
+    expect(sourceValue).not.toBeNull();
+
+    const nameInput = page.locator('input[name="name"]');
+    const startDate = page.locator('input[name="date"]');
+    const endDate = page.locator('input[name="end_date"]');
+    await nameInput.fill('Unsaved Event Name');
+    await startDate.fill('2099-06-01');
+    await expect(endDate).toHaveValue('2099-06-01');
+    await startDate.fill('2099-06-03');
+    await expect(endDate).toHaveValue('2099-06-03');
+    await endDate.fill('2099-06-08');
+    await startDate.fill('2099-06-04');
+    await expect(endDate).toHaveValue('2099-06-08');
+
+    await sourceSelect.selectOption(sourceValue!);
+    page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toContain('discard your unsaved Event, Ticket, and Question changes');
+      await dialog.dismiss();
+    });
+    await page.getByRole('button', {name: /load event data/i}).click();
+    await expect(page).not.toHaveURL(/\?copy_from=/);
+    await expect(nameInput).toHaveValue('Unsaved Event Name');
+    await expect(startDate).toHaveValue('2099-06-04');
+    await expect(endDate).toHaveValue('2099-06-08');
+
+    await page.reload({waitUntil: 'domcontentloaded'});
+    await page.locator('#event-copy-source').selectOption(sourceValue!);
+    await page.getByRole('button', {name: /load event data/i}).click();
+
+    await expect(page).toHaveURL(/\/admin\/event\/event\/add\/\?copy_from=/);
+    await expect(page.locator('body')).toContainText(`Loaded safe template data from ${seededEventTemplateName}`);
+    await expect(page.locator('input[name="name"]')).toHaveValue('');
+    await expect(page.locator('input[name="slug"]')).toHaveValue('');
+    await expect(page.locator('input[name="date"]')).toHaveValue('2099-05-14');
+    await expect(page.locator('input[name="end_date"]')).toHaveValue('2099-05-16');
+    await expect(page.locator('input[name="location"]')).toHaveValue('E2E Event Hall');
+    await expect(page.locator('input[name="registration_open"]')).not.toBeChecked();
+    await expect(page.locator('input[name="tickets-0-name"]')).toHaveValue('E2E General Admission');
+    await expect(page.locator('input[name="questions-0-text"]')).toHaveValue('What brings you to the E2E Event?');
+
+    await page.locator('input[name="date"]').fill('2099-06-01');
+    await expect(page.locator('input[name="end_date"]')).toHaveValue('2099-06-03');
+    await page.locator('input[name="end_date"]').fill('2099-06-10');
+    await page.locator('input[name="date"]').fill('2099-06-02');
+    await expect(page.locator('input[name="end_date"]')).toHaveValue('2099-06-10');
+
+    const promptPhone = page.locator('#id_collect_phone');
+    const verifyPhone = page.locator('#id_verify_phone');
+    await expect(promptPhone).toBeChecked();
+    await expect(verifyPhone).toBeChecked();
+    await expect(verifyPhone).toBeEnabled();
+    await expect(page.locator('#event-verify-phone-dependency-hint')).toContainText(
+      'Verify phone is available',
+    );
+
+    await promptPhone.uncheck();
+    await expect(verifyPhone).not.toBeChecked();
+    await expect(verifyPhone).toBeDisabled();
+
+    await promptPhone.check();
+    await expect(verifyPhone).toBeEnabled();
+    await expect(verifyPhone).not.toBeChecked();
   });
 
   test('applies a project changelist filter from querystring-backed admin filters', async ({page}) => {

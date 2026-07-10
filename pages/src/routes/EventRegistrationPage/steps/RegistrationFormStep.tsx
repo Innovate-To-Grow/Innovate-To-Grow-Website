@@ -88,7 +88,8 @@ export const RegistrationFormStep = ({
   const missingLastName = !attendeeLastName.trim();
   const missingOrganization = attendeeOrgType === 'organization' && !attendeeOrganization.trim();
   const missingTicket = !selectedTicketId;
-  const phoneNotVerified = options.verify_phone && !phoneVerified;
+  const phoneVerificationRequired = options.collect_phone && options.verify_phone;
+  const phoneNotVerified = phoneVerificationRequired && !phoneVerified;
   const phoneHasError = options.collect_phone && !!phoneError;
   const missingRequiredAnswers = options.questions
     .filter((q) => q.is_required)
@@ -285,7 +286,7 @@ export const RegistrationFormStep = ({
         {options.collect_phone ? (
           <div className={`event-reg-form-group${errorClass(phoneNotVerified || phoneHasError)}`}>
             <label className="event-reg-label" htmlFor="phone">
-              Phone Number {options.verify_phone ? <span className="required-mark">*</span> : null}
+              Phone Number {phoneVerificationRequired ? <span className="required-mark">*</span> : null}
             </label>
             <div className="event-reg-phone-row">
               <input
@@ -299,7 +300,7 @@ export const RegistrationFormStep = ({
                 placeholder="Phone number"
                 disabled={submitting}
               />
-              {options.verify_phone && !phoneVerified ? (
+              {phoneVerificationRequired && !phoneVerified ? (
                 <button
                   type="button"
                   className="event-reg-phone-action"
@@ -319,7 +320,7 @@ export const RegistrationFormStep = ({
             {showError && phoneNotVerified && !phoneError ? (
               <p className="event-reg-field-error">Phone number must be verified.</p>
             ) : null}
-            {options.verify_phone && phoneCodeSent && !phoneVerified ? (
+            {phoneVerificationRequired && phoneCodeSent && !phoneVerified ? (
               <div className="event-reg-phone-code-row">
                 <input
                   type="text"

@@ -19,6 +19,7 @@ from django.utils import timezone
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 from apps.event.models import EventRegistration
 from apps.event.services.calendar import build_google_calendar_url, generate_ics
+from apps.event.services.date_ranges import format_event_date_range
 from apps.event.services.ticket_assets import (
     generate_ticket_barcode_png_bytes,
 )
@@ -121,7 +122,8 @@ def send_ticket_email(registration: EventRegistration) -> None:
     event = registration.event
     google_cal_url = build_google_calendar_url(
         event_name=event.name,
-        event_date=event.date,
+        event_start_date=event.date,
+        event_end_date=event.effective_end_date,
         event_location=event.location,
         event_description=event.description,
     )
@@ -130,7 +132,7 @@ def send_ticket_email(registration: EventRegistration) -> None:
         {
             "attendee_name": registration.attendee_name or registration.attendee_email,
             "event_name": event.name,
-            "event_date": event.date.strftime("%B %d, %Y"),
+            "event_date_range": format_event_date_range(event.date, event.effective_end_date),
             "event_location": event.location,
             "ticket_name": registration.ticket.name,
             "ticket_code": registration.ticket_code,
@@ -144,7 +146,8 @@ def send_ticket_email(registration: EventRegistration) -> None:
     ics_data = generate_ics(
         event_uid=str(event.pk),
         event_name=event.name,
-        event_date=event.date,
+        event_start_date=event.date,
+        event_end_date=event.effective_end_date,
         event_location=event.location,
         event_description=event.description,
     )

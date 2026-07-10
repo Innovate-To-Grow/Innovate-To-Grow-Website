@@ -1,5 +1,6 @@
 import {Link} from 'react-router-dom';
 import type {EventRegistrationSummary, Registration} from '@/features/events/api';
+import {formatEventDateRange} from '@/features/events/formatEventDateRange';
 
 interface TicketsSectionProps {
   tickets: Registration[];
@@ -9,16 +10,6 @@ interface TicketsSectionProps {
   resendingId: string | null;
   onResendTicketEmail: (registrationId: string) => void;
 }
-
-const formatDate = (date: string) => {
-  const datePart = date.includes('T') ? date.split('T')[0] : date;
-  return new Date(`${datePart}T00:00:00`).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
 
 const RegistrationCard = ({
   ticket,
@@ -32,7 +23,7 @@ const RegistrationCard = ({
   <div className="account-ticket-card">
     <div className="account-ticket-name">{ticket.event.name}</div>
     <div className="account-ticket-detail">
-      <strong>Date:</strong> {formatDate(ticket.event.date)}
+      <strong>Date:</strong> {formatEventDateRange(ticket.event.date, ticket.event.end_date)}
     </div>
     <div className="account-ticket-detail">
       <strong>Location:</strong> {ticket.event.location}
@@ -77,7 +68,7 @@ const OpenRegistrationCard = ({event}: {event: EventRegistrationSummary}) => {
       <ul className="account-open-reg-details">
         <li>
           <span className="account-open-reg-detail-label">Date</span>
-          <span className="account-open-reg-detail-value">{formatDate(event.date)}</span>
+          <span className="account-open-reg-detail-value">{formatEventDateRange(event.date, event.end_date)}</span>
         </li>
         <li>
           <span className="account-open-reg-detail-label">Location</span>

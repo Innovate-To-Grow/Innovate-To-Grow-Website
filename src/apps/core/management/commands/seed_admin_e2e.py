@@ -1,12 +1,14 @@
 """Seed deterministic records for browser-driven Django admin E2E tests."""
 
 import os
+from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from apps.authn.models import ContactEmail
+from apps.event.models import Event, Question, Ticket
 from apps.projects.models import Project, Semester
 
 DEFAULT_EMAIL = "admin-e2e@example.com"
@@ -15,6 +17,7 @@ DEFAULT_NONSTAFF_EMAIL = "admin-e2e-nonstaff@example.com"
 DEFAULT_ACTION_EMAIL = "action-e2e@example.com"
 DEFAULT_FIRST_NAME = "Admin"
 DEFAULT_LAST_NAME = "E2E"
+DEFAULT_EVENT_NAME = "E2E Event Copy Template"
 
 
 class Command(BaseCommand):
@@ -56,11 +59,13 @@ class Command(BaseCommand):
             self._upsert_action_contact_email(action_email)
             semester = self._upsert_sample_semester()
             project = self._upsert_sample_project(semester)
+            event = self._upsert_sample_event()
 
         self.stdout.write(
             self.style.SUCCESS(
                 "Seeded admin E2E data: "
-                f"email={email}, member={member.pk}, semester={semester.label}, project={project.project_title}"
+                f"email={email}, member={member.pk}, semester={semester.label}, "
+                f"project={project.project_title}, event={event.name}"
             )
         )
 
@@ -169,3 +174,28 @@ class Command(BaseCommand):
             },
         )
         return project
+
+    def _upsert_sample_event(self):
+        event, _ = Event.objects.update_or_create(
+            slug="e2e-event-copy-template",
+            defaults={
+                "name": DEFAULT_EVENT_NAME,
+                "date": date(2099, 5, 14),
+                "end_date": date(2099, 5, 16),
+                "location": "E2E Event Hall",
+                "description": "Seed Event used to verify the safe Add Event copy flow.",
+                "registration_open": False,
+                "allow_secondary_email": True,
+                "collect_phone": True,
+                "verify_phone": True,
+                "ticket_login_validity_days": 45,
+                "ticket_login_reusable": False,
+            },
+        )
+        Ticket.objects.update_or_create(event=event, name="E2E General Admission", defaults={"order": 1})
+        Question.objects.update_or_create(
+            event=event,
+            text="What brings you to the E2E Event?",
+            defaults={"is_required": True, "order": 1},
+        )
+        return event

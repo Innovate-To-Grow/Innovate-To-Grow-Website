@@ -119,7 +119,7 @@ class SystemIntelligenceExtendedToolTests(TransactionTestCase):
         )
         ContactPhone.objects.create(member=member, phone_number="2095550100", region="1-US", verified=True)
 
-        event = make_event(name="Demo Day", date=datetime.date(2026, 5, 1), is_live=True)
+        event = make_event(name="Demo Day", date=datetime.date(2026, 5, 1))
         ticket = make_ticket(event, name="General")
         Question.objects.create(event=event, text="Dietary restrictions?", is_required=False)
         registration = make_registration(

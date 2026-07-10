@@ -207,7 +207,13 @@ class ComputeDeleteDiffTest(TestCase):
         """Reverse relations (no `column` attr) are skipped in the delete diff."""
         from apps.event.models import Event
 
-        event = Event.objects.create(name="E", slug="del-rev", date="2025-06-15", location="L")
+        event = Event.objects.create(
+            name="E",
+            slug="del-rev",
+            date="2025-06-15",
+            end_date="2025-06-15",
+            location="L",
+        )
         diff = compute_delete_diff(event)
         field_names = [d["field"] for d in diff]
         # Concrete columns appear...
@@ -293,12 +299,24 @@ class ComputeChangeDiffExtraTest(TestCase):
         """A changed FK field resolves the related object via getattr."""
         from apps.event.models import CheckIn, Event
 
-        event = Event.objects.create(name="E", slug="e-fk", date="2025-06-15", location="L")
+        event = Event.objects.create(
+            name="E",
+            slug="e-fk",
+            date="2025-06-15",
+            end_date="2025-06-15",
+            location="L",
+        )
         check_in = CheckIn.objects.create(event=event, name="Door")
         form = MagicMock()
         form.changed_data = ["event"]
         form.fields = {"event": MagicMock(label="Event")}
-        new_event = Event.objects.create(name="E2", slug="e2-fk", date="2025-06-16", location="L2")
+        new_event = Event.objects.create(
+            name="E2",
+            slug="e2-fk",
+            date="2025-06-16",
+            end_date="2025-06-16",
+            location="L2",
+        )
         form.cleaned_data = {"event": new_event}
 
         diff = compute_change_diff(CheckIn, check_in.pk, form)

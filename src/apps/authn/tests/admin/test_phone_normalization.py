@@ -74,7 +74,11 @@ class RegistrationPhoneChangesTests(TestCase):
     def setUp(self):
         self.member = _member()
         self.event = Event.objects.create(
-            name="Demo", location="Online", date=datetime.date(2030, 1, 1), description="d"
+            name="Demo",
+            location="Online",
+            date=datetime.date(2030, 1, 1),
+            end_date=datetime.date(2030, 1, 1),
+            description="d",
         )
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
 

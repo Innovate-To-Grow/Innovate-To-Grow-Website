@@ -16,10 +16,13 @@ def _truncate(text, limit=MAX_RESULT_CHARS):
     return text[:limit] + f"\n... (truncated, {len(text)} total chars)"
 
 
-def _serialize_rows(qs, fields, limit=MAX_ROWS):
+def _serialize_rows(qs, fields, limit=MAX_ROWS, *, fallback_fields=None):
     """Serialize a queryset to a JSON-ish string."""
     rows = list(qs.values(*fields)[:limit])
     for row in rows:
+        for field, fallback_field in (fallback_fields or {}).items():
+            if row.get(field) is None:
+                row[field] = row.get(fallback_field)
         for k, v in row.items():
             if isinstance(v, datetime):
                 row[k] = v.isoformat()

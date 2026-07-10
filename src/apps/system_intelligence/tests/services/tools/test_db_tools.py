@@ -102,8 +102,12 @@ class CountMembersToolTests(TestCase):
 
 class SearchEventsToolTests(TestCase):
     def setUp(self):
-        self.e1 = make_event(name="Spring Showcase", date=datetime.date(2025, 4, 10))
-        self.e2 = make_event(name="Fall Expo", date=datetime.date(2025, 10, 20), is_live=True)
+        self.e1 = make_event(
+            name="Spring Showcase",
+            date=datetime.date(2025, 4, 10),
+            end_date=datetime.date(2025, 4, 12),
+        )
+        self.e2 = make_event(name="Fall Expo", date=datetime.date(2025, 10, 20))
 
     def test_returns_all_with_no_filters(self):
         result = search_events({})
@@ -115,10 +119,12 @@ class SearchEventsToolTests(TestCase):
         self.assertIn("Spring Showcase", result)
         self.assertNotIn("Fall Expo", result)
 
-    def test_filters_by_is_live(self):
-        result = search_events({"is_live": True})
-        self.assertIn("Fall Expo", result)
-        self.assertNotIn("Spring Showcase", result)
+    def test_returns_date_range_without_legacy_live_flag(self):
+        result = search_events({"name": "Spring"})
+
+        self.assertIn('"date": "2025-04-10"', result)
+        self.assertIn('"end_date": "2025-04-12"', result)
+        self.assertNotIn('"is_live"', result)
 
     def test_filters_by_registration_open(self):
         make_event(name="Open Expo", date=datetime.date(2025, 12, 1), registration_open=True)
@@ -133,6 +139,19 @@ class SearchEventsToolTests(TestCase):
         result = search_events({"date_from": "2025-06-01"})
         self.assertIn("Fall Expo", result)
         self.assertNotIn("Spring Showcase", result)
+
+    def test_date_range_filter_uses_event_interval_overlap(self):
+        make_event(
+            name="Multi-day Expo",
+            date=datetime.date(2025, 5, 30),
+            end_date=datetime.date(2025, 6, 3),
+        )
+
+        result = search_events({"date_from": "2025-06-01", "date_to": "2025-06-01"})
+
+        self.assertIn("Multi-day Expo", result)
+        self.assertNotIn("Spring Showcase", result)
+        self.assertNotIn("Fall Expo", result)
 
 
 class GetEventRegistrationsToolTests(TestCase):

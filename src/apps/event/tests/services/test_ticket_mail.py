@@ -1,3 +1,5 @@
+import datetime
+import email as email_lib
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
@@ -29,7 +31,7 @@ def _aws_creds():
 class SendTicketEmailTest(TestCase):
     def setUp(self):
         self.member = make_member()
-        self.event = make_event(is_live=True)
+        self.event = make_event()
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
         self.registration = EventRegistration.objects.create(member=self.member, event=self.event, ticket=self.ticket)
 
@@ -150,13 +152,42 @@ class SendTicketEmailTest(TestCase):
         self.assertEqual(self.registration.ticket_email_error, "")
         self.assertIsNotNone(self.registration.ticket_email_sent_at)
 
+    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket_mail.boto3")
+    @patch("apps.event.services.ticket_mail._load_config")
+    def test_cross_year_range_is_in_email_and_calendar_links(self, mock_load_config, mock_boto3, mock_resolve):
+        mock_load_config.return_value = _mock_config(ses_configured=True)
+        mock_resolve.return_value = _aws_creds()
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+        self.event.date = datetime.date(2026, 12, 31)
+        self.event.end_date = datetime.date(2027, 1, 2)
+        self.event.save(update_fields=["date", "end_date", "updated_at"])
+
+        send_ticket_email(self.registration)
+
+        raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
+        message = email_lib.message_from_string(raw_data)
+        html = next(
+            part.get_payload(decode=True).decode() for part in message.walk() if part.get_content_type() == "text/html"
+        )
+        calendar = next(
+            part.get_payload(decode=True).decode()
+            for part in message.walk()
+            if part.get_content_type() == "text/calendar"
+        )
+        self.assertIn("December 31, 2026–January 2, 2027", html)
+        self.assertIn("dates=20261231%2F20270103", html)
+        self.assertIn("DTSTART;VALUE=DATE:20261231", calendar)
+        self.assertIn("DTEND;VALUE=DATE:20270103", calendar)
+
 
 class TicketLoginLinkIssuanceTest(TestCase):
     """Ticket emails issue unified LoginLinkToken rows scoped to the registration."""
 
     def setUp(self):
         self.member = make_member()
-        self.event = make_event(is_live=True)
+        self.event = make_event()
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
         self.registration = EventRegistration.objects.create(member=self.member, event=self.event, ticket=self.ticket)
 
@@ -210,8 +241,6 @@ class TicketLoginLinkIssuanceTest(TestCase):
         token = LoginLinkToken.objects.get(registration=self.registration)
         raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
         # The HTML body is a base64 MIME part — decode it before matching.
-        import email as email_lib
-
         message = email_lib.message_from_string(raw_data)
         html = next(
             part.get_payload(decode=True).decode() for part in message.walk() if part.get_content_type() == "text/html"

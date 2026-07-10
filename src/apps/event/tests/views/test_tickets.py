@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from unittest.mock import patch
 
@@ -14,7 +15,10 @@ class MyTicketsViewTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.member = make_member()
-        self.event = make_event(is_live=True)
+        self.event = make_event(
+            date=datetime.date(2026, 12, 31),
+            end_date=datetime.date(2027, 1, 2),
+        )
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
 
     def test_unauthenticated_returns_401(self):
@@ -51,6 +55,8 @@ class MyTicketsViewTest(TestCase):
         self.assertIn("event", entry)
         self.assertIn("ticket", entry)
         self.assertIn("barcode_image", entry)
+        self.assertEqual(entry["event"]["date"], "2026-12-31")
+        self.assertEqual(entry["event"]["end_date"], "2027-01-02")
 
     def test_multiple_registrations_returned(self):
         event2 = make_event(name="Event 2", slug="event-2")
@@ -69,7 +75,7 @@ class ResendTicketEmailViewTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.member = make_member()
-        self.event = make_event(is_live=True)
+        self.event = make_event()
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
         self.registration = EventRegistration.objects.create(member=self.member, event=self.event, ticket=self.ticket)
 

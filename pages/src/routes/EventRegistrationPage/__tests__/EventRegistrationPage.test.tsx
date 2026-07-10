@@ -170,6 +170,38 @@ describe('EventRegistrationPage', () => {
     expect(requestEmailAuthCode).not.toHaveBeenCalled();
   });
 
+  it('renders the selected event date range in the registration header', async () => {
+    mockFetchRegistrationOptions.mockResolvedValue({
+      id: 'event-1',
+      name: 'Demo Day',
+      slug: 'demo-day',
+      date: '2026-05-01',
+      end_date: '2026-05-03',
+      location: 'Campus',
+      description: 'Event description',
+      allow_secondary_email: false,
+      collect_phone: false,
+      verify_phone: false,
+      tickets: [{id: 'ticket-1', name: 'General Admission'}],
+      questions: [],
+      registration: null,
+      member_emails: [],
+      member_profile: null,
+      member_phone: null,
+      phone_regions: [{code: '1-US', label: 'United States'}],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/event-registration']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Friday, May 1 – Sunday, May 3, 2026')).toBeInTheDocument();
+  });
+
   it('redirects incomplete email-auth signups to complete-profile before showing the form', async () => {
     render(
       <MemoryRouter initialEntries={['/event-registration']}>
@@ -257,6 +289,7 @@ describe('EventRegistrationPage', () => {
         name: 'Spring Showcase',
         slug: 'spring-showcase',
         date: '2026-05-01',
+        end_date: '2026-05-03',
         location: 'Campus',
         description: 'Spring event',
         registration: null,
@@ -299,6 +332,7 @@ describe('EventRegistrationPage', () => {
     );
 
     await screen.findByRole('heading', {name: 'Spring Showcase'});
+    expect(screen.getByText('Friday, May 1 – Sunday, May 3, 2026')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', {name: 'Register'})[1]);
 
     // Selection is a search-param change (no navigate) so it also works inside /_embed routes.
@@ -501,6 +535,7 @@ describe('EventRegistrationPage', () => {
         name: 'Fall Showcase',
         slug: 'fall-showcase',
         date: '2026-10-01',
+        end_date: '2026-10-03',
         location: 'Conference Center',
         description: 'Fall event',
       },
@@ -555,6 +590,7 @@ describe('EventRegistrationPage', () => {
     );
 
     await screen.findByRole('heading', {name: "You're Registered!"});
+    expect(screen.getByText('Thursday, October 1 – Saturday, October 3, 2026')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', {name: 'View Other Events'}));
 
     await screen.findByRole('heading', {name: 'Spring Showcase'});

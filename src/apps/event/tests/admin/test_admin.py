@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 from unittest.mock import patch
 
@@ -8,7 +9,7 @@ from openpyxl import load_workbook
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.event.admin.registration import EventRegistrationAdmin
-from apps.event.models import CheckIn, CheckInRecord, EventRegistration, Ticket
+from apps.event.models import CheckIn, CheckInRecord, Event, EventRegistration, Question, Ticket
 from apps.event.services import ScheduleSyncStats
 from apps.event.tests.helpers import (
     make_event,
@@ -31,6 +32,143 @@ class EventAdminTest(TestCase):
     def test_add_form_accessible(self):
         response = self.client.get("/admin/event/event/add/")
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Copy from existing Event")
+        self.assertContains(response, "event/js/event_admin.js")
+        self.assertContains(response, "event/css/event_admin.css")
+        self.assertContains(response, "Prompt for Phone Number")
+        self.assertContains(response, 'id="event-copy-source-hint"')
+        self.assertContains(response, 'aria-describedby="event-copy-source-hint"')
+        self.assertContains(response, 'aria-hidden="true"')
+        self.assertContains(response, 'id="event-verify-phone-dependency-hint"')
+        self.assertContains(response, "event-verify-phone-dependency-hint", count=2)
+
+    def test_add_form_loads_safe_copy_source_without_creating_event(self):
+        source = make_event(
+            name="Source Event",
+            date="2026-05-14",
+            end_date="2026-05-16",
+            location="Source Hall",
+            description="Reusable source description.",
+            registration_open=True,
+            allow_secondary_email=True,
+            collect_phone=True,
+            verify_phone=True,
+            ticket_login_validity_days=45,
+            ticket_login_reusable=False,
+            registration_sheet_id="source-sheet",
+            registration_sheet_gid=987,
+            registration_sheet_sync_count=22,
+            registration_sheet_sync_error="old error",
+        )
+        source_ticket = Ticket.objects.create(event=source, name="VIP", order=3)
+        source_question = Question.objects.create(event=source, text="Why attend?", is_required=True, order=4)
+        CheckIn.objects.create(event=source, name="Source entrance")
+        original_count = Event.objects.count()
+
+        response = self.client.get(f"/admin/event/event/add/?copy_from={source.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Event.objects.count(), original_count)
+        self.assertContains(response, "Loaded safe template data from")
+        self.assertContains(response, "<strong>Source Event</strong>", html=True)
+        self.assertContains(response, "Source Event — May 14–16, 2026")
+        initial = response.context["adminform"].form.initial
+        self.assertEqual(initial["name"], "")
+        self.assertEqual(initial["slug"], "")
+        self.assertEqual(str(initial["date"]), "2026-05-14")
+        self.assertEqual(str(initial["end_date"]), "2026-05-16")
+        self.assertEqual(initial["location"], "Source Hall")
+        self.assertFalse(initial["registration_open"])
+        self.assertTrue(initial["allow_secondary_email"])
+        self.assertTrue(initial["collect_phone"])
+        self.assertTrue(initial["verify_phone"])
+        self.assertEqual(initial["ticket_login_validity_days"], 45)
+        self.assertFalse(initial["ticket_login_reusable"])
+        self.assertEqual(initial["registration_sheet_id"], "")
+        self.assertIsNone(initial["registration_sheet_gid"])
+
+        inline_forms = {inline.opts.model: inline.formset.forms for inline in response.context["inline_admin_formsets"]}
+        self.assertEqual(inline_forms[Ticket][0].initial, {"name": "VIP", "order": 3})
+        self.assertEqual(
+            inline_forms[Question][0].initial,
+            {"text": "Why attend?", "is_required": True, "order": 4},
+        )
+        source_ticket.refresh_from_db()
+        source_question.refresh_from_db()
+
+    def test_add_form_rejects_missing_copy_source(self):
+        response = self.client.get("/admin/event/event/add/?copy_from=not-a-valid-id")
+        self.assertEqual(response.status_code, 404)
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
+    def test_saving_loaded_copy_creates_new_children_and_resets_operational_data(self):
+        source = make_event(
+            name="Save Source Event",
+            registration_open=True,
+            allow_secondary_email=True,
+            collect_phone=True,
+            verify_phone=True,
+            registration_sheet_id="source-sheet",
+            registration_sheet_gid=42,
+        )
+        source_ticket = Ticket.objects.create(event=source, name="General Admission", order=1)
+        source_question = Question.objects.create(event=source, text="Role?", is_required=True, order=2)
+        CheckIn.objects.create(event=source, name="Source entrance")
+
+        response = self.client.post(
+            f"/admin/event/event/add/?copy_from={source.pk}",
+            {
+                "name": "New Copied Event",
+                "slug": "new-copied-event",
+                "date": "2026-10-01",
+                "end_date": "2026-10-03",
+                "location": source.location,
+                "description": source.description,
+                "allow_secondary_email": "on",
+                "collect_phone": "on",
+                "verify_phone": "on",
+                "ticket_login_validity_days": "30",
+                "ticket_login_reusable": "on",
+                "registration_sheet_id": "",
+                "registration_sheet_gid": "",
+                "tickets-TOTAL_FORMS": "1",
+                "tickets-INITIAL_FORMS": "0",
+                "tickets-MIN_NUM_FORMS": "0",
+                "tickets-MAX_NUM_FORMS": "1000",
+                "tickets-0-name": source_ticket.name,
+                "tickets-0-order": str(source_ticket.order),
+                "questions-TOTAL_FORMS": "1",
+                "questions-INITIAL_FORMS": "0",
+                "questions-MIN_NUM_FORMS": "0",
+                "questions-MAX_NUM_FORMS": "1000",
+                "questions-0-text": source_question.text,
+                "questions-0-is_required": "on",
+                "questions-0-order": str(source_question.order),
+                "_save": "Save",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        copied = Event.objects.get(slug="new-copied-event")
+        self.assertFalse(copied.registration_open)
+        self.assertTrue(copied.allow_secondary_email)
+        self.assertTrue(copied.collect_phone)
+        self.assertTrue(copied.verify_phone)
+        self.assertEqual(copied.ticket_login_validity_days, source.ticket_login_validity_days)
+        self.assertEqual(copied.ticket_login_reusable, source.ticket_login_reusable)
+        self.assertEqual(copied.registration_sheet_id, "")
+        self.assertIsNone(copied.registration_sheet_gid)
+        self.assertEqual(copied.registration_sheet_sync_count, 0)
+        self.assertEqual(copied.registration_sheet_sync_error, "")
+        self.assertEqual(copied.check_ins.count(), 0)
+        copied_ticket = copied.tickets.get(name=source_ticket.name)
+        copied_question = copied.questions.get(text=source_question.text)
+        self.assertNotEqual(copied_ticket.pk, source_ticket.pk)
+        self.assertNotEqual(copied_ticket.barcode, source_ticket.barcode)
+        self.assertNotEqual(copied_question.pk, source_question.pk)
+        source.refresh_from_db()
+        self.assertTrue(source.registration_open)
+        self.assertEqual(source.registration_sheet_id, "source-sheet")
 
     def test_change_page_shows_inlines_for_staff_with_event_app_access(self):
         """Inlines match Event admin access (the ``event`` app grant), not per-model
@@ -59,8 +197,8 @@ class EventAdminTest(TestCase):
         response = self.client.get("/admin/event/event/?q=Searchable")
         self.assertEqual(response.status_code, 200)
 
-    def test_list_filter_by_is_live(self):
-        response = self.client.get("/admin/event/event/?is_live__exact=1")
+    def test_list_filter_by_registration_open(self):
+        response = self.client.get("/admin/event/event/?registration_open__exact=1")
         self.assertEqual(response.status_code, 200)
 
     @patch("apps.event.admin.current_project.sync_schedule")
@@ -262,6 +400,90 @@ class EventRegistrationAdminTest(TestCase):
         self.assertContains(response, "Member Organization")
         self.assertContains(response, "Member Primary Email")
         self.assertContains(response, "Member Phone Numbers")
+        self.assertContains(response, "Event Start Date")
+        self.assertContains(response, "Event End Date")
+        self.assertNotContains(response, 'value="event_date"')
+
+    def test_export_includes_event_start_and_end_dates(self):
+        event = make_event(name="Multi-day Export", date="2025-06-15", end_date="2025-06-17")
+        ticket = make_ticket(event)
+        member = make_member(email="export-dates@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.post(
+            "/admin/event/eventregistration/",
+            {
+                "action": "export_data",
+                ACTION_CHECKBOX_NAME: str(registration.pk),
+                "export_confirm": "1",
+                "export_format": "json",
+                "export_filename": "registration_dates",
+                "export_fields": ["event_date", "event_start_date", "event_end_date"],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            json.loads(response.content),
+            [
+                {
+                    "event_date": "2025-06-15",
+                    "event_start_date": "2025-06-15",
+                    "event_end_date": "2025-06-17",
+                }
+            ],
+        )
+
+    def test_export_accepts_legacy_event_date_selection(self):
+        event = make_event(name="Legacy Export", date="2025-06-15", end_date="2025-06-17")
+        ticket = make_ticket(event)
+        member = make_member(email="legacy-export-date@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.post(
+            "/admin/event/eventregistration/",
+            {
+                "action": "export_data",
+                ACTION_CHECKBOX_NAME: str(registration.pk),
+                "export_confirm": "1",
+                "export_format": "json",
+                "export_fields": ["event_date"],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content), [{"event_date": "2025-06-15"}])
+
+    def test_export_old_null_end_date_falls_back_to_start_date(self):
+        event = make_event(name="Rolling Deploy Export", date="2025-06-15")
+        Event.objects.filter(pk=event.pk).update(end_date=None)
+        ticket = make_ticket(event)
+        member = make_member(email="export-null-end-date@example.com")
+        registration = make_registration(member, event, ticket)
+
+        response = self.client.post(
+            "/admin/event/eventregistration/",
+            {
+                "action": "export_data",
+                ACTION_CHECKBOX_NAME: str(registration.pk),
+                "export_confirm": "1",
+                "export_format": "json",
+                "export_filename": "registration_legacy_date",
+                "export_fields": ["event_date", "event_start_date", "event_end_date"],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            json.loads(response.content),
+            [
+                {
+                    "event_date": "2025-06-15",
+                    "event_start_date": "2025-06-15",
+                    "event_end_date": "2025-06-15",
+                }
+            ],
+        )
 
     def test_export_excel_includes_member_profile_and_contacts(self):
         event = make_event(name="Export Event")
@@ -681,7 +903,13 @@ class EventRegistrationAdminTest(TestCase):
         self.assertEqual(data["title"], "Prof")
 
     def test_event_info_endpoint(self):
-        event = make_event(name="Info Test", registration_open=True)
+        event = make_event(
+            name="Info Test",
+            end_date="2025-06-17",
+            registration_open=True,
+            collect_phone=True,
+            verify_phone=True,
+        )
         Ticket.objects.create(event=event, name="GA")
         Ticket.objects.create(event=event, name="VIP")
         response = self.client.get(f"/admin/event/eventregistration/event-info/{event.pk}/")
@@ -689,9 +917,13 @@ class EventRegistrationAdminTest(TestCase):
         data = response.json()
         self.assertEqual(data["name"], "Info Test")
         self.assertEqual(data["date"], "2025-06-15")
+        self.assertEqual(data["end_date"], "2025-06-17")
+        self.assertEqual(data["date_range"], "June 15–17, 2025")
         self.assertEqual(data["location"], "Test Venue")
-        self.assertFalse(data["is_live"])
+        self.assertNotIn("is_live", data)
         self.assertTrue(data["registration_open"])
+        self.assertTrue(data["collect_phone"])
+        self.assertTrue(data["verify_phone"])
         self.assertEqual(data["total_registrations"], 0)
         ticket_names = [t["name"] for t in data["tickets"]]
         self.assertIn("GA", ticket_names)

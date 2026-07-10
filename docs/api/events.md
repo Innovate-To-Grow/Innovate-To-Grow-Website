@@ -4,7 +4,7 @@ Event registration, ticketing, schedule, and check-in endpoints. All under `/eve
 
 ## Overview
 
-The event system manages the Innovate To Grow showcase event lifecycle: registration with custom questions, ticket generation with barcodes, schedule display, and day-of check-in scanning. `Event.is_live` still identifies the single featured/current event, while `Event.registration_open` controls which events currently accept public registration. Multiple events can have `registration_open=true` at the same time.
+The event system manages the Innovate To Grow showcase event lifecycle: registration with custom questions, ticket generation with barcodes, schedule display, and day-of check-in scanning. `Event.registration_open` is the sole event-registration availability flag, and multiple events can have it enabled at the same time. Schedule and current-project selection remain configured separately through `CurrentProjectSchedule`.
 
 ## Code locations
 
@@ -20,7 +20,7 @@ The event system manages the Innovate To Grow showcase event lifecycle: registra
 
 | Model | Purpose |
 |-------|---------|
-| `Event` | Event configuration (name, slug, date, location, registration settings) |
+| `Event` | Event configuration (name, slug, inclusive start/end dates, location, registration settings) |
 | `EventRegistration` | One registration per member per event, with ticket code and custom answers |
 | `Ticket` | Ticket types (free, paid, VIP, etc.) |
 | `Question` | Custom registration form questions (stored as JSON answers) |
@@ -32,13 +32,15 @@ The event system manages the Innovate To Grow showcase event lifecycle: registra
 | `EventScheduleSlot` | Individual presentation or break slots |
 | `EventAgendaItem` | Agenda items (keynotes, networking, etc.) |
 
+Event-bearing registration and ticket responses expose `date` as the inclusive start date and `end_date` as the inclusive end date. For a single-day event the values are equal. Calendar downloads convert the inclusive end date to the next day when emitting the exclusive end required for an all-day calendar event.
+
 ## Endpoints
 
 ### Registration
 
 #### `GET /event/registration-options/`
 
-Returns one open event's registration form structure: available ticket types, custom questions, and event configuration (whether to collect secondary email, phone, etc.).
+Returns one open event's registration form structure: available ticket types, custom questions, the event date range, and form configuration (whether to prompt for secondary email or a phone number, and whether phone verification is required).
 
 **Query parameters:**
 - `event_slug` — preferred event selector.
@@ -50,7 +52,7 @@ When no event slug is provided, legacy behavior is preserved only if exactly one
 
 #### `GET /event/registration-events/`
 
-Returns all events with `registration_open=true`, sorted by date then name. If the request includes a valid authenticated user, each event includes that user's existing registration for the event, or `null`.
+Returns all events with `registration_open=true`, sorted by start date then name. Each event includes `date` and `end_date`. If the request includes a valid authenticated user, each event also includes that user's existing registration for the event, or `null`.
 
 **Permission:** AllowAny
 
@@ -97,7 +99,7 @@ Ticket confirmation emails no longer use a dedicated `/event/ticket-login/` endp
 
 #### `GET /event/schedule/`
 
-Returns the current event's full schedule: sections (time blocks), tracks (rooms), slots (presentations), and agenda items.
+Returns the selected `CurrentProjectSchedule` (or the active/default schedule when no `schedule_id` is supplied): sections (time blocks), tracks (rooms), slots (presentations), and agenda items.
 
 **Permission:** AllowAny
 
@@ -150,7 +152,7 @@ Returns check-in statistics for the current event.
 
 ### Phone verification
 
-Used when the event requires phone collection with verification.
+Used when **Prompt for Phone Number** and phone verification are both enabled for the event.
 
 #### `POST /event/send-phone-code/`
 

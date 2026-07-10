@@ -10,6 +10,7 @@ from apps.event.serializers.registration import (
     _serialize_question,
     _serialize_ticket_option,
     build_event_registration_option_payload,
+    build_event_registration_summary_payload,
     build_registration_payload,
 )
 from apps.event.tests.helpers import make_event, make_member
@@ -183,6 +184,17 @@ class BuildRegistrationPayloadTest(TestCase):
         event_data = result["event"]
         self.assertEqual(event_data["name"], self.event.name)
         self.assertEqual(event_data["slug"], self.event.slug)
+        self.assertEqual(event_data["date"], self.event.date.isoformat())
+        self.assertEqual(event_data["end_date"], self.event.end_date.isoformat())
+
+    def test_phone_verification_requires_phone_collection(self):
+        self.registration.attendee_phone = "5551234567"
+        self.registration.event.collect_phone = False
+        self.registration.event.verify_phone = True
+
+        result = build_registration_payload(self.registration)
+
+        self.assertFalse(result["phone_verification_required"])
 
     def test_ticket_nested_dict_structure(self):
         result = build_registration_payload(self.registration)
@@ -216,7 +228,7 @@ class BuildRegistrationPayloadTest(TestCase):
 
 class BuildEventRegistrationOptionPayloadTest(TestCase):
     def setUp(self):
-        self.event = make_event(is_live=True)
+        self.event = make_event()
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
         self.question = Question.objects.create(event=self.event, text="Role?")
 
@@ -224,6 +236,8 @@ class BuildEventRegistrationOptionPayloadTest(TestCase):
         result = build_event_registration_option_payload(self.event)
         self.assertEqual(result["name"], self.event.name)
         self.assertEqual(result["slug"], self.event.slug)
+        self.assertEqual(result["date"], self.event.date.isoformat())
+        self.assertEqual(result["end_date"], self.event.end_date.isoformat())
 
     def test_tickets_list_serialized(self):
         result = build_event_registration_option_payload(self.event)
@@ -247,7 +261,36 @@ class BuildEventRegistrationOptionPayloadTest(TestCase):
         self.assertEqual(result["registration"]["id"], str(reg.pk))
 
     def test_empty_tickets_and_questions(self):
-        event = Event.objects.create(name="Empty Event", date=datetime.date(2025, 7, 1), location="V", description="D")
+        event = Event.objects.create(
+            name="Empty Event",
+            date=datetime.date(2025, 7, 1),
+            end_date=datetime.date(2025, 7, 1),
+            location="V",
+            description="D",
+        )
         result = build_event_registration_option_payload(event)
         self.assertEqual(result["tickets"], [])
         self.assertEqual(result["questions"], [])
+
+
+class BuildEventRegistrationSummaryPayloadTest(TestCase):
+    def test_contains_inclusive_date_range(self):
+        event = make_event(
+            date=datetime.date(2026, 12, 31),
+            end_date=datetime.date(2027, 1, 2),
+        )
+
+        result = build_event_registration_summary_payload(event)
+
+        self.assertEqual(result["date"], "2026-12-31")
+        self.assertEqual(result["end_date"], "2027-01-02")
+
+    def test_transitional_null_end_date_falls_back_to_start_date(self):
+        event = make_event(date=datetime.date(2026, 7, 10))
+        Event.objects.filter(pk=event.pk).update(end_date=None)
+        event.refresh_from_db()
+
+        result = build_event_registration_summary_payload(event)
+
+        self.assertEqual(result["date"], "2026-07-10")
+        self.assertEqual(result["end_date"], "2026-07-10")

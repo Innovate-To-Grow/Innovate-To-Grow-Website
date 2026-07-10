@@ -6,11 +6,12 @@ from apps.event.services.calendar import build_google_calendar_url, generate_ics
 
 
 class GenerateIcsTest(TestCase):
-    def test_all_day_event(self):
+    def test_single_day_event_uses_next_day_as_exclusive_end(self):
         ics = generate_ics(
             event_uid="abc-123",
             event_name="Demo Day",
-            event_date=datetime.date(2026, 5, 10),
+            event_start_date=datetime.date(2026, 5, 10),
+            event_end_date=datetime.date(2026, 5, 10),
             event_location="UC Merced",
             event_description="Annual showcase",
         )
@@ -24,11 +25,36 @@ class GenerateIcsTest(TestCase):
         self.assertIn("BEGIN:VCALENDAR", ics)
         self.assertIn("END:VCALENDAR", ics)
 
+    def test_multi_day_event_uses_day_after_inclusive_end(self):
+        ics = generate_ics(
+            event_uid="multi",
+            event_name="Conference",
+            event_start_date=datetime.date(2026, 5, 10),
+            event_end_date=datetime.date(2026, 5, 12),
+            event_location="UC Merced",
+        )
+
+        self.assertIn("DTSTART;VALUE=DATE:20260510", ics)
+        self.assertIn("DTEND;VALUE=DATE:20260513", ics)
+
+    def test_cross_year_event_uses_next_year_exclusive_end(self):
+        ics = generate_ics(
+            event_uid="new-year",
+            event_name="New Year Conference",
+            event_start_date=datetime.date(2026, 12, 31),
+            event_end_date=datetime.date(2027, 1, 2),
+            event_location="UC Merced",
+        )
+
+        self.assertIn("DTSTART;VALUE=DATE:20261231", ics)
+        self.assertIn("DTEND;VALUE=DATE:20270103", ics)
+
     def test_no_description(self):
         ics = generate_ics(
             event_uid="xyz",
             event_name="Test",
-            event_date=datetime.date(2026, 1, 1),
+            event_start_date=datetime.date(2026, 1, 1),
+            event_end_date=datetime.date(2026, 1, 1),
             event_location="Online",
         )
         self.assertNotIn("DESCRIPTION", ics)
@@ -37,7 +63,8 @@ class GenerateIcsTest(TestCase):
         ics = generate_ics(
             event_uid="esc",
             event_name="A, B; C",
-            event_date=datetime.date(2026, 3, 15),
+            event_start_date=datetime.date(2026, 3, 15),
+            event_end_date=datetime.date(2026, 3, 15),
             event_location="Room 1; Floor 2",
         )
         self.assertIn("SUMMARY:A\\, B\\; C", ics)
@@ -45,10 +72,11 @@ class GenerateIcsTest(TestCase):
 
 
 class BuildGoogleCalendarUrlTest(TestCase):
-    def test_url_format(self):
+    def test_single_day_url_format(self):
         url = build_google_calendar_url(
             event_name="Demo Day",
-            event_date=datetime.date(2026, 5, 10),
+            event_start_date=datetime.date(2026, 5, 10),
+            event_end_date=datetime.date(2026, 5, 10),
             event_location="UC Merced",
             event_description="Showcase",
         )
@@ -58,3 +86,23 @@ class BuildGoogleCalendarUrlTest(TestCase):
         self.assertIn("location=UC%20Merced", url)
         self.assertIn("details=Showcase", url)
         self.assertIn("ctz=America%2FLos_Angeles", url)
+
+    def test_multi_day_url_uses_day_after_inclusive_end(self):
+        url = build_google_calendar_url(
+            event_name="Conference",
+            event_start_date=datetime.date(2026, 5, 10),
+            event_end_date=datetime.date(2026, 5, 12),
+            event_location="UC Merced",
+        )
+
+        self.assertIn("dates=20260510%2F20260513", url)
+
+    def test_cross_year_url_uses_next_year_exclusive_end(self):
+        url = build_google_calendar_url(
+            event_name="New Year Conference",
+            event_start_date=datetime.date(2026, 12, 31),
+            event_end_date=datetime.date(2027, 1, 2),
+            event_location="UC Merced",
+        )
+
+        self.assertIn("dates=20261231%2F20270103", url)

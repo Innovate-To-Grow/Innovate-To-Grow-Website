@@ -48,6 +48,9 @@ class SystemIntelligenceExtendedToolTests(TransactionTestCase):
 
         event_detail = asyncio.run(system_intelligence_tools.get_event_detail(event_id=str(data["event"].pk)))
         self.assertEqual(event_detail["counts"]["registrations"], 1)
+        self.assertEqual(event_detail["event"]["date"], "2026-05-01")
+        self.assertEqual(event_detail["event"]["end_date"], "2026-05-03")
+        self.assertNotIn("is_live", event_detail["event"])
 
         registrations = asyncio.run(system_intelligence_tools.search_event_registrations(email="ada@example.com"))
         self.assertEqual(registrations["total"], 1)
@@ -125,7 +128,11 @@ class SystemIntelligenceExtendedToolTests(TransactionTestCase):
         )
         ContactPhone.objects.create(member=member, phone_number="2095550100", region="1-US", verified=True)
 
-        event = make_event(name="Demo Day", date=datetime.date(2026, 5, 1), is_live=True)
+        event = make_event(
+            name="Demo Day",
+            date=datetime.date(2026, 5, 1),
+            end_date=datetime.date(2026, 5, 3),
+        )
         ticket = make_ticket(event, name="General")
         Question.objects.create(event=event, text="Dietary restrictions?", is_required=False)
         registration = make_registration(

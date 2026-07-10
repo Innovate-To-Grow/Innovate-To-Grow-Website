@@ -12,9 +12,9 @@ EVENT_FIELDS = [
     "name",
     "slug",
     "date",
+    "end_date",
     "location",
     "description",
-    "is_live",
     "registration_open",
     "allow_secondary_email",
     "collect_phone",
@@ -46,8 +46,11 @@ def _find_event(event_id: str | None = None, slug: str | None = None, name: str 
 
 def _get_event_detail(event_id: str | None = None, slug: str | None = None, name: str | None = None) -> dict[str, Any]:
     event = _find_event(event_id, slug, name)
+    event_payload = object_payload(event, EVENT_FIELDS)
+    if event_payload["end_date"] is None:
+        event_payload["end_date"] = event_payload["date"]
     return {
-        "event": object_payload(event, EVENT_FIELDS),
+        "event": event_payload,
         "tickets": queryset_payload(event.tickets.all(), ["id", "name", "order", "created_at"], limit=50)["rows"],
         "questions": queryset_payload(event.questions.all(), ["id", "text", "is_required", "order"], limit=50)["rows"],
         "counts": {

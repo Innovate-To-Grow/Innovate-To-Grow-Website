@@ -45,6 +45,7 @@ def build_event_registration_summary_payload(event, registration=None, request=N
         "name": event.name,
         "slug": event.slug,
         "date": event.date.isoformat(),
+        "end_date": event.effective_end_date.isoformat(),
         "location": event.location,
         "description": event.description,
         "registration": build_registration_payload(registration, request=request) if registration else None,
@@ -63,8 +64,11 @@ def build_registration_payload(registration, request=None) -> dict:
         "attendee_secondary_email": registration.attendee_secondary_email,
         "attendee_phone": registration.attendee_phone,
         "phone_verified": registration.phone_verified,
-        "phone_verification_required": (
-            registration.event.verify_phone and registration.attendee_phone and not registration.phone_verified
+        "phone_verification_required": bool(
+            registration.event.collect_phone
+            and registration.event.verify_phone
+            and registration.attendee_phone
+            and not registration.phone_verified
         ),
         "attendee_organization": registration.attendee_organization,
         "registered_at": registration.created_at.isoformat(),
@@ -79,6 +83,7 @@ def build_registration_payload(registration, request=None) -> dict:
             "name": registration.event.name,
             "slug": registration.event.slug,
             "date": registration.event.date.isoformat(),
+            "end_date": registration.event.effective_end_date.isoformat(),
             "location": registration.event.location,
             "description": registration.event.description,
         },
@@ -129,6 +134,7 @@ def build_event_registration_option_payload(event, registration=None, request=No
         "name": event.name,
         "slug": event.slug,
         "date": event.date.isoformat(),
+        "end_date": event.effective_end_date.isoformat(),
         "location": event.location,
         "description": event.description,
         "allow_secondary_email": event.allow_secondary_email,
