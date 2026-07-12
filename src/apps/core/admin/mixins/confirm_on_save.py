@@ -2,9 +2,12 @@ import uuid
 
 from django.contrib import messages
 from django.contrib.admin import helpers
+from django.contrib.admin.exceptions import DisallowedModelAdminToField
+from django.contrib.admin.options import TO_FIELD_VAR
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.forms.formsets import all_valid
 from django.http import HttpResponseBase, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -39,11 +42,34 @@ class ConfirmOnSaveMixin:
 
     def _invalid_confirmation_token_response(self, request, session_key):
         messages.error(request, "Invalid confirmation token. Please start over.")
-        request.session.pop(session_key, None)
+        self._discard_pending_confirmation(request, session_key)
         return HttpResponseRedirect(self._changelist_url())
+
+    @staticmethod
+    def _discard_pending_confirmation(request, session_key):
+        """Remove pending confirmation state and any uploads it owns."""
+        pending = request.session.pop(session_key, None)
+        if not isinstance(pending, dict):
+            return
+        file_keys = pending.get("file_keys", {})
+        if not isinstance(file_keys, dict):
+            return
+        for cache_key in file_keys.values():
+            cache.delete(cache_key)
 
     def get_confirmation_word(self, obj=None):
         return self.opts.verbose_name
+
+    def get_confirmation_diff(self, request, obj, form, formsets, action_type):
+        """Return the serializable diff shown before saving an admin form.
+
+        Subclasses may use the already-validated inline ``formsets`` to add
+        related-object details. The default intentionally preserves the
+        existing main-form-only confirmation output.
+        """
+        if action_type == "add":
+            return compute_add_diff(form)
+        return compute_change_diff(self.model, obj.pk, form)
 
     def get_urls(self):
         custom = [
@@ -81,28 +107,51 @@ class ConfirmOnSaveMixin:
         if "_confirmed_save" in request.POST:
             return self._execute_confirmed_save(request, object_id, form_url, extra_context)
 
+        # A new submission supersedes any abandoned confirmation for this
+        # model. Clear it before validation so an invalid replacement cannot
+        # leave an older payload available at the confirmation URL.
+        self._discard_pending_confirmation(request, self._session_key())
+
+        to_field = request.POST.get(TO_FIELD_VAR, request.GET.get(TO_FIELD_VAR))
+        if to_field and not self.to_field_allowed(request, to_field):
+            raise DisallowedModelAdminToField(f"The field {to_field} cannot be referenced.")
+
+        if "_saveasnew" in request.POST:
+            object_id = None
+
         add = object_id is None
-        if not add:
-            obj = self.get_object(request, unquote(object_id))
+        if add:
+            if not self.has_add_permission(request):
+                raise PermissionDenied
+            obj = None
+        else:
+            obj = self.get_object(request, unquote(object_id), to_field)
+            if not self.has_change_permission(request, obj):
+                raise PermissionDenied
             if obj is None:
                 return super().changeform_view(request, object_id, form_url, extra_context)
-        else:
-            obj = None
 
         ModelForm = self.get_form(request, obj, change=not add)
         form = ModelForm(request.POST, request.FILES, instance=obj)
+        formsets, _inline_instances = self._create_formsets(
+            request,
+            form.instance,
+            change=not add,
+        )
 
-        if not form.is_valid():
+        form_valid = form.is_valid()
+        formsets_valid = all_valid(formsets)
+        if not form_valid or not formsets_valid:
             return super().changeform_view(request, object_id, form_url, extra_context)
 
         if add:
-            diff = compute_add_diff(form)
             action_type = "add"
             object_repr = str(form.cleaned_data.get("name", "") or self.opts.verbose_name)
         else:
-            diff = compute_change_diff(self.model, obj.pk, form)
             action_type = "change"
             object_repr = str(obj)
+
+        diff = self.get_confirmation_diff(request, obj, form, formsets, action_type)
 
         if not diff and action_type == "change":
             return super().changeform_view(request, object_id, form_url, extra_context)
@@ -142,6 +191,8 @@ class ConfirmOnSaveMixin:
 
         if "_confirmed_delete" in request.POST:
             return self._execute_confirmed_delete(request, object_id, extra_context)
+
+        self._discard_pending_confirmation(request, self._session_key())
 
         obj = self.get_object(request, unquote(object_id))
         if obj is None:

@@ -1,3 +1,9 @@
+from .copy_template import (
+    EventCopyTemplate,
+    QuestionCopySnapshot,
+    TicketCopySnapshot,
+    build_event_copy_template,
+)
 from .date_ranges import format_event_date_range
 from .schedule_sync import (
     ScheduleSyncError,
@@ -12,8 +18,12 @@ from .ticket_assets import (
 )
 
 __all__ = [
+    "EventCopyTemplate",
+    "QuestionCopySnapshot",
     "ScheduleSyncError",
     "ScheduleSyncStats",
+    "TicketCopySnapshot",
+    "build_event_copy_template",
     "build_ticket_access_token",
     "fetch_schedule_sheet_records",
     "format_event_date_range",

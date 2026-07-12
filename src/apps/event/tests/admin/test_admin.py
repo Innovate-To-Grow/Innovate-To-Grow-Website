@@ -1,4 +1,5 @@
 import json
+import uuid
 from io import BytesIO
 from unittest.mock import patch
 
@@ -10,7 +11,7 @@ from openpyxl import load_workbook
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.event.admin.registration import EventRegistrationAdmin
 from apps.event.models import CheckIn, CheckInRecord, Event, EventRegistration, Question, Ticket
-from apps.event.services import ScheduleSyncStats
+from apps.event.services import ScheduleSyncStats, build_event_copy_template
 from apps.event.tests.helpers import (
     make_event,
     make_member,
@@ -24,6 +25,44 @@ class EventAdminTest(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
+
+    @staticmethod
+    def _copy_post_data(*, name, slug, ticket_rows=(), question_rows=(), **overrides):
+        data = {
+            "name": name,
+            "slug": slug,
+            "date": "2026-10-01",
+            "end_date": "2026-10-03",
+            "location": "Copied Hall",
+            "description": "Reviewed copied Event.",
+            "ticket_login_validity_days": "30",
+            "ticket_login_reusable": "on",
+            "registration_sheet_id": "",
+            "registration_sheet_gid": "",
+            "tickets-TOTAL_FORMS": str(len(ticket_rows)),
+            "tickets-INITIAL_FORMS": "0",
+            "tickets-MIN_NUM_FORMS": "0",
+            "tickets-MAX_NUM_FORMS": "1000",
+            "questions-TOTAL_FORMS": str(len(question_rows)),
+            "questions-INITIAL_FORMS": "0",
+            "questions-MIN_NUM_FORMS": "0",
+            "questions-MAX_NUM_FORMS": "1000",
+            "_save": "Save",
+        }
+        for index, row in enumerate(ticket_rows):
+            data[f"tickets-{index}-name"] = row["name"]
+            data[f"tickets-{index}-order"] = str(row["order"])
+            if row.get("DELETE"):
+                data[f"tickets-{index}-DELETE"] = "on"
+        for index, row in enumerate(question_rows):
+            data[f"questions-{index}-text"] = row["text"]
+            data[f"questions-{index}-order"] = str(row["order"])
+            if row.get("is_required"):
+                data[f"questions-{index}-is_required"] = "on"
+            if row.get("DELETE"):
+                data[f"questions-{index}-DELETE"] = "on"
+        data.update(overrides)
+        return data
 
     def test_changelist_accessible(self):
         response = self.client.get("/admin/event/event/")
@@ -41,6 +80,43 @@ class EventAdminTest(TestCase):
         self.assertContains(response, 'aria-hidden="true"')
         self.assertContains(response, 'id="event-verify-phone-dependency-hint"')
         self.assertContains(response, "event-verify-phone-dependency-hint", count=2)
+
+    def test_copy_template_builder_returns_ordered_safe_snapshot(self):
+        source = make_event(
+            name="Builder Source",
+            registration_open=True,
+            registration_sheet_id="private-source-sheet",
+            registration_sheet_gid=72,
+        )
+        later_ticket = Ticket.objects.create(event=source, name="VIP", order=20)
+        first_ticket = Ticket.objects.create(event=source, name="General", order=10)
+        later_question = Question.objects.create(event=source, text="Dietary needs?", order=9)
+        first_question = Question.objects.create(event=source, text="Role?", is_required=True, order=2)
+
+        template = build_event_copy_template(source)
+
+        self.assertEqual(template.source_id, source.pk)
+        self.assertEqual(template.source_name, source.name)
+        self.assertEqual(template.event_initial["name"], "")
+        self.assertEqual(template.event_initial["slug"], "")
+        self.assertFalse(template.event_initial["registration_open"])
+        self.assertEqual(template.event_initial["registration_sheet_id"], "")
+        self.assertIsNone(template.event_initial["registration_sheet_gid"])
+        self.assertEqual(
+            template.ticket_initial(),
+            [
+                {"name": first_ticket.name, "order": 10},
+                {"name": later_ticket.name, "order": 20},
+            ],
+        )
+        self.assertEqual(
+            template.question_initial(),
+            [
+                {"text": first_question.text, "is_required": True, "order": 2},
+                {"text": later_question.text, "is_required": False, "order": 9},
+            ],
+        )
+        self.assertNotIn("barcode", template.ticket_initial()[0])
 
     def test_add_form_loads_safe_copy_source_without_creating_event(self):
         source = make_event(
@@ -72,6 +148,8 @@ class EventAdminTest(TestCase):
         self.assertContains(response, "Loaded safe template data from")
         self.assertContains(response, "<strong>Source Event</strong>", html=True)
         self.assertContains(response, "Source Event — May 14–16, 2026")
+        self.assertContains(response, 'href="#tickets-group"')
+        self.assertContains(response, 'href="#questions-group"')
         initial = response.context["adminform"].form.initial
         self.assertEqual(initial["name"], "")
         self.assertEqual(initial["slug"], "")
@@ -96,9 +174,57 @@ class EventAdminTest(TestCase):
         source_ticket.refresh_from_db()
         source_question.refresh_from_db()
 
+    def test_add_form_loads_multiple_ticket_types_and_questions_in_order(self):
+        source = make_event(name="Multiple Children Source")
+        Ticket.objects.create(event=source, name="VIP", order=30)
+        Ticket.objects.create(event=source, name="General", order=10)
+        Ticket.objects.create(event=source, name="Student", order=20)
+        Question.objects.create(event=source, text="Optional note?", order=8)
+        Question.objects.create(event=source, text="Required role?", is_required=True, order=2)
+
+        response = self.client.get(f"/admin/event/event/add/?copy_from={source.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "3 Ticket types")
+        self.assertContains(response, "2 Questions")
+        inline_forms = {inline.opts.model: inline.formset.forms for inline in response.context["inline_admin_formsets"]}
+        self.assertEqual(
+            [form.initial for form in inline_forms[Ticket]],
+            [
+                {"name": "General", "order": 10},
+                {"name": "Student", "order": 20},
+                {"name": "VIP", "order": 30},
+            ],
+        )
+        self.assertEqual(
+            [form.initial for form in inline_forms[Question]],
+            [
+                {"text": "Required role?", "is_required": True, "order": 2},
+                {"text": "Optional note?", "is_required": False, "order": 8},
+            ],
+        )
+
+    def test_add_form_loads_source_with_zero_ticket_types_and_questions(self):
+        source = make_event(name="Empty Children Source")
+
+        response = self.client.get(f"/admin/event/event/add/?copy_from={source.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "0 Ticket types")
+        self.assertContains(response, "0 Questions")
+        inline_forms = {inline.opts.model: inline.formset.forms for inline in response.context["inline_admin_formsets"]}
+        self.assertEqual(inline_forms[Ticket], [])
+        self.assertEqual(inline_forms[Question], [])
+
     def test_add_form_rejects_missing_copy_source(self):
-        response = self.client.get("/admin/event/event/add/?copy_from=not-a-valid-id")
-        self.assertEqual(response.status_code, 404)
+        deleted_source = make_event(name="Deleted Copy Source")
+        deleted_source_id = deleted_source.pk
+        deleted_source.delete()
+
+        for source_id in ("not-a-valid-id", str(uuid.uuid4()), str(deleted_source_id)):
+            with self.subTest(source_id=source_id):
+                response = self.client.get(f"/admin/event/event/add/?copy_from={source_id}")
+                self.assertEqual(response.status_code, 404)
 
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
     def test_saving_loaded_copy_creates_new_children_and_resets_operational_data(self):
@@ -170,6 +296,211 @@ class EventAdminTest(TestCase):
         self.assertTrue(source.registration_open)
         self.assertEqual(source.registration_sheet_id, "source-sheet")
 
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
+    def test_saving_loaded_copy_uses_final_edited_deleted_and_added_inline_rows(self):
+        source = make_event(name="Editable Copy Source", registration_open=True)
+        source_tickets = [
+            Ticket.objects.create(event=source, name="General", order=1),
+            Ticket.objects.create(event=source, name="VIP", order=2),
+            Ticket.objects.create(event=source, name="Student", order=3),
+        ]
+        source_questions = [
+            Question.objects.create(event=source, text="Role?", is_required=True, order=1),
+            Question.objects.create(event=source, text="Dietary needs?", order=2),
+        ]
+        source_ticket_snapshot = list(source.tickets.values("pk", "name", "order", "barcode"))
+        source_question_snapshot = list(source.questions.values("pk", "text", "is_required", "order"))
+        self.client.get(f"/admin/event/event/add/?copy_from={source.pk}")
+
+        response = self.client.post(
+            f"/admin/event/event/add/?copy_from={source.pk}",
+            self._copy_post_data(
+                name="Reviewed Copy",
+                slug="reviewed-copy",
+                ticket_rows=[
+                    {"name": "General Admission", "order": 10},
+                    {"name": "VIP", "order": 2, "DELETE": True},
+                    {"name": "Student", "order": 3},
+                    {"name": "Sponsor", "order": 4},
+                ],
+                question_rows=[
+                    {"text": "Your role?", "is_required": False, "order": 5},
+                    {"text": "Dietary needs?", "order": 2, "DELETE": True},
+                    {"text": "Accessibility needs?", "is_required": True, "order": 3},
+                ],
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        copied = Event.objects.get(slug="reviewed-copy")
+        self.assertEqual(
+            list(copied.tickets.values_list("name", "order")),
+            [("Student", 3), ("Sponsor", 4), ("General Admission", 10)],
+        )
+        self.assertEqual(
+            list(copied.questions.values_list("text", "is_required", "order")),
+            [("Accessibility needs?", True, 3), ("Your role?", False, 5)],
+        )
+        source_ticket_ids = {ticket.pk for ticket in source_tickets}
+        source_ticket_barcodes = {ticket.barcode for ticket in source_tickets}
+        source_question_ids = {question.pk for question in source_questions}
+        self.assertTrue(source_ticket_ids.isdisjoint(copied.tickets.values_list("pk", flat=True)))
+        self.assertTrue(source_ticket_barcodes.isdisjoint(copied.tickets.values_list("barcode", flat=True)))
+        self.assertTrue(source_question_ids.isdisjoint(copied.questions.values_list("pk", flat=True)))
+        source.refresh_from_db()
+        self.assertTrue(source.registration_open)
+        self.assertEqual(list(source.tickets.values("pk", "name", "order", "barcode")), source_ticket_snapshot)
+        self.assertEqual(
+            list(source.questions.values("pk", "text", "is_required", "order")),
+            source_question_snapshot,
+        )
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_post_uses_loaded_snapshot_when_source_was_deleted_after_get(self):
+        source = make_event(name="Ephemeral Copy Source")
+        source_id = source.pk
+        Ticket.objects.create(event=source, name="Snapshot Ticket", order=2)
+        Question.objects.create(event=source, text="Snapshot question?", is_required=True, order=3)
+        self.assertEqual(self.client.get(f"/admin/event/event/add/?copy_from={source_id}").status_code, 200)
+        source.delete()
+
+        response = self.client.post(
+            f"/admin/event/event/add/?copy_from={source_id}",
+            self._copy_post_data(
+                name="Saved Detached Snapshot",
+                slug="saved-detached-snapshot",
+                ticket_rows=[{"name": "Snapshot Ticket", "order": 2}],
+                question_rows=[{"text": "Snapshot question?", "is_required": True, "order": 3}],
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("confirm-change", response.url)
+        pending = self.client.session["_admin_pending_change_event_event"]
+        response = self.client.post(
+            response.url,
+            {"token": pending["token"], "confirmation_word": "event"},
+        )
+        self.assertEqual(response.status_code, 302)
+        copied = Event.objects.get(slug="saved-detached-snapshot")
+        self.assertEqual(list(copied.tickets.values_list("name", flat=True)), ["Snapshot Ticket"])
+        self.assertEqual(list(copied.questions.values_list("text", flat=True)), ["Snapshot question?"])
+        self.assertFalse(Event.objects.filter(pk=source_id).exists())
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_confirmation_reviews_final_children_then_saves_new_rows_without_changing_source(self):
+        source = make_event(name="Confirmation Copy Source", registration_open=True)
+        kept_ticket = Ticket.objects.create(event=source, name="General", order=1)
+        deleted_ticket = Ticket.objects.create(event=source, name="Remove VIP", order=2)
+        kept_question = Question.objects.create(event=source, text="Role?", is_required=True, order=1)
+        deleted_question = Question.objects.create(event=source, text="Remove question?", order=2)
+        original_ticket_rows = list(source.tickets.values("pk", "name", "order", "barcode"))
+        original_question_rows = list(source.questions.values("pk", "text", "is_required", "order"))
+        self.client.get(f"/admin/event/event/add/?copy_from={source.pk}")
+
+        response = self.client.post(
+            f"/admin/event/event/add/?copy_from={source.pk}",
+            self._copy_post_data(
+                name="Confirmed Event Copy",
+                slug="confirmed-event-copy",
+                ticket_rows=[
+                    {"name": "General Edited", "order": 5},
+                    {"name": deleted_ticket.name, "order": deleted_ticket.order, "DELETE": True},
+                    {"name": "New Sponsor", "order": 2},
+                ],
+                question_rows=[
+                    {"text": "Role edited?", "is_required": False, "order": 4},
+                    {"text": deleted_question.text, "order": deleted_question.order, "DELETE": True},
+                    {"text": "New required question?", "is_required": True, "order": 3},
+                ],
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("confirm-change", response.url)
+        self.assertFalse(Event.objects.filter(slug="confirmed-event-copy").exists())
+
+        confirmation = self.client.get(response.url)
+        self.assertEqual(confirmation.status_code, 200)
+        child_diff = {
+            item["label"]: item["new_value"]
+            for item in confirmation.context["diff"]
+            if item["field"].startswith(("tickets", "questions"))
+        }
+        self.assertEqual(
+            child_diff,
+            {
+                "Ticket type 1": "New Sponsor — order 2",
+                "Ticket type 2": "General Edited — order 5",
+                "Question 1": "New required question? — required: Yes; order 3",
+                "Question 2": "Role edited? — required: No; order 4",
+            },
+        )
+        self.assertNotContains(confirmation, deleted_ticket.name)
+        self.assertNotContains(confirmation, deleted_question.text)
+
+        pending = self.client.session["_admin_pending_change_event_event"]
+        confirmed = self.client.post(
+            response.url,
+            {"token": pending["token"], "confirmation_word": "event"},
+        )
+
+        self.assertEqual(confirmed.status_code, 302)
+        copied = Event.objects.get(slug="confirmed-event-copy")
+        self.assertEqual(
+            list(copied.tickets.values_list("name", "order")),
+            [("New Sponsor", 2), ("General Edited", 5)],
+        )
+        self.assertEqual(
+            list(copied.questions.values_list("text", "is_required", "order")),
+            [("New required question?", True, 3), ("Role edited?", False, 4)],
+        )
+        self.assertNotIn(kept_ticket.pk, copied.tickets.values_list("pk", flat=True))
+        self.assertNotIn(kept_ticket.barcode, copied.tickets.values_list("barcode", flat=True))
+        self.assertNotIn(kept_question.pk, copied.questions.values_list("pk", flat=True))
+        source.refresh_from_db()
+        self.assertTrue(source.registration_open)
+        self.assertEqual(list(source.tickets.values("pk", "name", "order", "barcode")), original_ticket_rows)
+        self.assertEqual(
+            list(source.questions.values("pk", "text", "is_required", "order")),
+            original_question_rows,
+        )
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_confirmation_explicitly_shows_none_for_zero_children(self):
+        response = self.client.post(
+            "/admin/event/event/add/",
+            self._copy_post_data(name="No Children Copy", slug="no-children-copy"),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        confirmation = self.client.get(response.url)
+        child_diff = {
+            item["label"]: item["new_value"]
+            for item in confirmation.context["diff"]
+            if item["field"] in {"tickets", "questions"}
+        }
+        self.assertEqual(child_diff, {"Ticket types": "None", "Questions": "None"})
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_invalid_children_stay_on_add_form_without_pending_confirmation_or_event(self):
+        response = self.client.post(
+            "/admin/event/event/add/",
+            self._copy_post_data(
+                name="Invalid Children Copy",
+                slug="invalid-children-copy",
+                ticket_rows=[{"name": "", "order": 1}],
+                question_rows=[{"text": "", "is_required": True, "order": 1}],
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        inline_formsets = {inline.opts.model: inline.formset for inline in response.context["inline_admin_formsets"]}
+        self.assertIn("name", inline_formsets[Ticket].forms[0].errors)
+        self.assertIn("text", inline_formsets[Question].forms[0].errors)
+        self.assertNotIn("_admin_pending_change_event_event", self.client.session)
+        self.assertFalse(Event.objects.filter(slug="invalid-children-copy").exists())
+
     def test_change_page_shows_inlines_for_staff_with_event_app_access(self):
         """Inlines match Event admin access (the ``event`` app grant), not per-model
         Django permissions — see apps.core.access.user_can_access_app."""
@@ -191,6 +522,53 @@ class EventAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="tickets-group"')
         self.assertContains(response, 'id="questions-group"')
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_event_only_staff_can_load_and_save_copied_children(self):
+        source = make_event(name="Staff Copy Source")
+        Ticket.objects.create(event=source, name="Staff Ticket", order=1)
+        Question.objects.create(event=source, text="Staff question?", is_required=True, order=2)
+        editor = Member.objects.create_user(
+            password="testpass123",
+            is_staff=True,
+            is_superuser=False,
+            admin_apps=["event"],
+        )
+        ContactEmail.objects.create(
+            member=editor,
+            email_address="copy-editor@example.com",
+            email_type="primary",
+            verified=True,
+        )
+        self.client.logout()
+        self.client.login(username="copy-editor@example.com", password="testpass123")
+
+        loaded = self.client.get(f"/admin/event/event/add/?copy_from={source.pk}")
+
+        self.assertEqual(loaded.status_code, 200)
+        self.assertContains(loaded, 'value="Staff Ticket"')
+        self.assertContains(loaded, 'value="Staff question?"')
+        saved = self.client.post(
+            f"/admin/event/event/add/?copy_from={source.pk}",
+            self._copy_post_data(
+                name="Staff Saved Copy",
+                slug="staff-saved-copy",
+                ticket_rows=[{"name": "Staff Ticket", "order": 1}],
+                question_rows=[{"text": "Staff question?", "is_required": True, "order": 2}],
+            ),
+        )
+        self.assertEqual(saved.status_code, 302)
+        self.assertIn("confirm-change", saved.url)
+        self.assertEqual(self.client.get(saved.url).status_code, 200)
+        pending = self.client.session["_admin_pending_change_event_event"]
+        saved = self.client.post(
+            saved.url,
+            {"token": pending["token"], "confirmation_word": "event"},
+        )
+        self.assertEqual(saved.status_code, 302)
+        copied = Event.objects.get(slug="staff-saved-copy")
+        self.assertEqual(copied.tickets.get().name, "Staff Ticket")
+        self.assertEqual(copied.questions.get().text, "Staff question?")
 
     def test_search_by_name(self):
         make_event(name="Searchable Event")

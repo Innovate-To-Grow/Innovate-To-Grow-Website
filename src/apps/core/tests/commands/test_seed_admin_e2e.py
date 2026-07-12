@@ -69,8 +69,17 @@ class SeedAdminE2ECommandTests(TestCase):
         self.assertFalse(event.registration_open)
         self.assertTrue(event.collect_phone)
         self.assertTrue(event.verify_phone)
-        self.assertEqual(Ticket.objects.filter(event=event, name="E2E General Admission").count(), 1)
-        self.assertEqual(Question.objects.filter(event=event, text="What brings you to the E2E Event?").count(), 1)
+        self.assertEqual(
+            list(Ticket.objects.filter(event=event).values_list("name", "order")),
+            [("E2E General Admission", 1), ("E2E VIP Admission", 2)],
+        )
+        self.assertEqual(
+            list(Question.objects.filter(event=event).values_list("text", "is_required", "order")),
+            [
+                ("What brings you to the E2E Event?", True, 1),
+                ("Do you need accessibility accommodations?", False, 2),
+            ],
+        )
 
         seeded_member_count = Member.objects.filter(
             contact_emails__email_address__contains="e2e-test@example.com"

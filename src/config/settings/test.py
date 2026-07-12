@@ -30,5 +30,10 @@ DATABASES = {
     }
 }
 
-# Admin confirmation disabled in CI to avoid breaking existing admin tests
-ADMIN_REQUIRE_CONFIRMATION = False
+# Unit tests keep confirmation disabled by default. Browser E2E enables it with
+# an environment override so the live admin flow matches production behavior.
+ADMIN_REQUIRE_CONFIRMATION = os.environ.get("ADMIN_REQUIRE_CONFIRMATION", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}
