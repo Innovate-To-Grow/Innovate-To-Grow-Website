@@ -48,6 +48,13 @@ async function expectAdminDocument(page: Page, path: string) {
   await expect(page.locator('body')).not.toContainText(/Traceback|Internal Server Error/i);
 }
 
+async function confirmAdminSaveIfRequired(page: Page, confirmationWord: string) {
+  if (!/\/confirm-change\//.test(page.url())) return;
+
+  await page.locator('#confirm-input').fill(confirmationWord);
+  await page.locator('#confirm-btn').click();
+}
+
 async function runChangelistAction(page: Page, rowText: string, actionValue: string) {
   const row = page.locator('tr', {hasText: rowText}).first();
   await expect(row, `Expected an admin row containing ${rowText}`).toBeVisible();
@@ -199,6 +206,8 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
 
     await expect(page).toHaveURL(/\/admin\/event\/event\/add\/\?copy_from=/);
     await expect(page.locator('body')).toContainText(`Loaded safe template data from ${seededEventTemplateName}`);
+    await expect(page.getByRole('link', {name: '2 Ticket types'})).toHaveAttribute('href', '#tickets-group');
+    await expect(page.getByRole('link', {name: '2 Questions'})).toHaveAttribute('href', '#questions-group');
     await expect(page.locator('input[name="name"]')).toHaveValue('');
     await expect(page.locator('input[name="slug"]')).toHaveValue('');
     await expect(page.locator('input[name="date"]')).toHaveValue('2099-05-14');
@@ -232,6 +241,55 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await expect(verifyPhone).not.toBeChecked();
   });
 
+  test('copies Event Ticket types and Questions through confirmation', async ({page}) => {
+    await adminLogin(page);
+    await expectAdminDocument(page, '/admin/event/event/add/');
+
+    const sourceSelect = page.locator('#event-copy-source');
+    const sourceValue = await sourceSelect.locator('option', {hasText: seededEventTemplateName}).getAttribute('value');
+    expect(sourceValue).not.toBeNull();
+    await sourceSelect.selectOption(sourceValue!);
+    await page.getByRole('button', {name: /load event data/i}).click();
+
+    const copiedTicketName = 'E2E General Admission — copied and edited';
+    const copiedQuestionText = 'What should we know about your E2E goals?';
+    await expect(page.locator('input[name="tickets-0-name"]')).toBeVisible();
+    await expect(page.locator('input[name="tickets-1-name"]')).toHaveValue('E2E VIP Admission');
+    await expect(page.locator('input[name="questions-0-text"]')).toBeVisible();
+    await expect(page.locator('input[name="questions-1-text"]')).toHaveValue(
+      'Do you need accessibility accommodations?',
+    );
+    await page.locator('input[name="tickets-0-name"]').fill(copiedTicketName);
+    await page.locator('input[name="questions-0-text"]').fill(copiedQuestionText);
+
+    const suffix = Date.now().toString();
+    const eventName = `E2E Copied Event ${suffix}`;
+    const eventSlug = `e2e-copied-event-${suffix}`;
+    await page.locator('input[name="name"]').fill(eventName);
+    await page.locator('input[name="slug"]').fill(eventSlug);
+    await page.locator('button[name="_save"]').click();
+
+    await expect(page).toHaveURL(/\/admin\/event\/event\/confirm-change\//);
+    await expect(page.locator('body')).toContainText(copiedTicketName);
+    await expect(page.locator('body')).toContainText('E2E VIP Admission');
+    await expect(page.locator('body')).toContainText(copiedQuestionText);
+    await expect(page.locator('body')).toContainText('Do you need accessibility accommodations?');
+    await page.locator('#confirm-input').fill('Event');
+    await page.locator('#confirm-btn').click();
+
+    await expect(page).toHaveURL(/\/admin\/event\/event\//);
+    await expect(page.locator('body')).toContainText(/was added successfully|added successfully/i);
+    await page.locator('input[name="q"]').fill(eventName);
+    await page.locator('input[name="q"]').press('Enter');
+    await page.getByRole('link', {name: eventName}).first().click();
+    await expect(page.locator('input[name="tickets-0-name"]')).toHaveValue(copiedTicketName);
+    await expect(page.locator('input[name="tickets-1-name"]')).toHaveValue('E2E VIP Admission');
+    await expect(page.locator('input[name="questions-0-text"]')).toHaveValue(copiedQuestionText);
+    await expect(page.locator('input[name="questions-1-text"]')).toHaveValue(
+      'Do you need accessibility accommodations?',
+    );
+  });
+
   test('applies a project changelist filter from querystring-backed admin filters', async ({page}) => {
     await adminLogin(page);
     await expectAdminDocument(page, '/admin/projects/project/?industry=Testing');
@@ -252,6 +310,7 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await expect(page.locator('input[name="organization"]')).toBeVisible();
     await page.locator('input[name="organization"]').fill(updatedOrganization);
     await page.locator('button[name="_save"]').click();
+    await confirmAdminSaveIfRequired(page, 'Project');
 
     await expect(page).toHaveURL(/\/admin\/projects\/project\//);
     await expect(page.locator('body')).toContainText(/was changed successfully|changed successfully/i);
@@ -279,6 +338,7 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await page.locator('textarea[name="student_names"]').fill('Katherine Johnson; Dorothy Vaughan');
 
     await page.locator('button[name="_save"]').click();
+    await confirmAdminSaveIfRequired(page, 'Project');
 
     await expect(page).toHaveURL(/\/admin\/projects\/project\//);
     await expect(page.locator('body')).toContainText(/was added successfully|added successfully/i);

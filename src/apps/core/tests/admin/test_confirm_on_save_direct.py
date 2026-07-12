@@ -9,10 +9,13 @@ from unittest.mock import MagicMock, patch
 
 from django.contrib import admin
 from django.contrib.admin import helpers
+from django.contrib.admin.exceptions import DisallowedModelAdminToField
+from django.contrib.admin.options import TO_FIELD_VAR
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.backends.db import SessionStore
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponseRedirect, QueryDict
 from django.test import RequestFactory, TestCase, override_settings
@@ -72,11 +75,83 @@ class ChangeformObjectMissingTest(TestCase):
 
     def test_confirmed_save_key_routes_to_executor(self):
         request = _wire_request(self.factory.post("/admin/", {"_confirmed_save": "1", "hostname": "z.com"}))
+        pending = {"token": "keep-this-token", "file_keys": {}}
+        request.session[self.admin._session_key()] = pending
         sentinel = object()
         with patch.object(self.admin, "_execute_confirmed_save", return_value=sentinel) as exec_save:
             result = self.admin.changeform_view(request, object_id=None)
         self.assertIs(result, sentinel)
         exec_save.assert_called_once()
+        self.assertEqual(request.session[self.admin._session_key()], pending)
+
+    def test_save_as_new_checks_add_permission_before_constructing_formsets(self):
+        request = _wire_request(
+            self.factory.post(
+                "/admin/",
+                {"_saveasnew": "1", "hostname": "copy.com", "is_active": "on"},
+            )
+        )
+
+        with (
+            patch.object(self.admin, "has_add_permission", return_value=False) as has_add,
+            patch.object(self.admin, "get_object") as get_object,
+            patch.object(self.admin, "_create_formsets") as create_formsets,
+            patch.object(self.admin, "get_confirmation_diff") as diff_hook,
+        ):
+            with self.assertRaises(PermissionDenied):
+                self.admin.changeform_view(request, object_id="existing-object")
+
+        has_add.assert_called_once_with(request)
+        get_object.assert_not_called()
+        create_formsets.assert_not_called()
+        diff_hook.assert_not_called()
+
+    def test_change_checks_permission_before_constructing_formsets(self):
+        host = CMSEmbedAllowedHost.objects.create(hostname="readonly.com", is_active=True)
+        request = _wire_request(
+            self.factory.post(
+                "/admin/",
+                {"hostname": "changed.com", "is_active": "on"},
+            )
+        )
+
+        with (
+            patch.object(self.admin, "has_change_permission", return_value=False) as has_change,
+            patch.object(self.admin, "_create_formsets") as create_formsets,
+            patch.object(self.admin, "get_confirmation_diff") as diff_hook,
+        ):
+            with self.assertRaises(PermissionDenied):
+                self.admin.changeform_view(request, object_id=str(host.pk))
+
+        has_change.assert_called_once_with(request, host)
+        create_formsets.assert_not_called()
+        diff_hook.assert_not_called()
+
+    def test_disallowed_to_field_is_rejected_before_object_or_formset_lookup(self):
+        request = _wire_request(
+            self.factory.post(
+                "/admin/",
+                {
+                    TO_FIELD_VAR: "hostname",
+                    "hostname": "changed.com",
+                    "is_active": "on",
+                },
+            )
+        )
+
+        with (
+            patch.object(self.admin, "to_field_allowed", return_value=False) as allowed,
+            patch.object(self.admin, "get_object") as get_object,
+            patch.object(self.admin, "_create_formsets") as create_formsets,
+            patch.object(self.admin, "get_confirmation_diff") as diff_hook,
+        ):
+            with self.assertRaises(DisallowedModelAdminToField):
+                self.admin.changeform_view(request, object_id="existing-object")
+
+        allowed.assert_called_once_with(request, "hostname")
+        get_object.assert_not_called()
+        create_formsets.assert_not_called()
+        diff_hook.assert_not_called()
 
     def test_missing_object_defers_to_super(self):
         request = _wire_request(self.factory.post("/admin/", {"hostname": "x.com"}))
@@ -91,6 +166,69 @@ class ChangeformObjectMissingTest(TestCase):
             result = self.admin.changeform_view(request, object_id="deadbeef")
         self.assertIs(result, sentinel)
         super_view.assert_called_once()
+
+
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+class ChangeformInlineValidationTest(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.admin = _host_admin()
+
+    def test_confirmation_diff_hook_receives_validated_formsets(self):
+        request = _wire_request(
+            self.factory.post(
+                "/admin/",
+                {"hostname": "hook-arguments.com", "is_active": "on"},
+            )
+        )
+        formset = MagicMock()
+        formset.is_valid.return_value = True
+        custom_diff = [{"field": "inline", "label": "Inline", "new_value": "Included"}]
+
+        with (
+            patch.object(self.admin, "_create_formsets", return_value=([formset], [object()])),
+            patch.object(self.admin, "get_confirmation_diff", return_value=custom_diff) as diff_hook,
+        ):
+            response = self.admin.changeform_view(request, object_id=None)
+
+        self.assertIsInstance(response, HttpResponseRedirect)
+        formset.is_valid.assert_called_once_with()
+        diff_hook.assert_called_once()
+        hook_request, hook_obj, hook_form, hook_formsets, hook_action_type = diff_hook.call_args.args
+        self.assertIs(hook_request, request)
+        self.assertIsNone(hook_obj)
+        self.assertTrue(hook_form.is_valid())
+        self.assertEqual(hook_formsets, [formset])
+        self.assertEqual(hook_action_type, "add")
+        self.assertEqual(request.session[self.admin._session_key()]["diff"], custom_diff)
+
+    def test_invalid_inline_formset_returns_normal_change_form_without_confirmation(self):
+        request = _wire_request(
+            self.factory.post(
+                "/admin/",
+                {"hostname": "invalid-inline.com", "is_active": "on"},
+            )
+        )
+        invalid_formset = MagicMock()
+        invalid_formset.is_valid.return_value = False
+        normal_change_form = object()
+
+        with (
+            patch.object(self.admin, "_create_formsets", return_value=([invalid_formset], [object()])),
+            patch.object(self.admin, "get_confirmation_diff") as diff_hook,
+            patch(
+                "django.contrib.admin.options.ModelAdmin.changeform_view",
+                return_value=normal_change_form,
+            ) as super_view,
+        ):
+            response = self.admin.changeform_view(request, object_id=None)
+
+        self.assertIs(response, normal_change_form)
+        invalid_formset.is_valid.assert_called_once_with()
+        diff_hook.assert_not_called()
+        super_view.assert_called_once()
+        self.assertEqual(super_view.call_args.args[:3], (request, None, ""))
+        self.assertNotIn(self.admin._session_key(), request.session)
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
@@ -162,6 +300,49 @@ class FileUploadCachingTest(TestCase):
         self.assertEqual(restored["file"].read(), b"hello-bytes")
         # Cache entry consumed during restore.
         self.assertIsNone(cache.get(cache_key))
+
+    def test_invalid_replacement_clears_old_pending_token_and_cached_files(self):
+        admin_obj = _host_admin()
+        factory = RequestFactory()
+        first_request = _wire_request(
+            factory.post(
+                "/admin/",
+                {"hostname": "first-valid.com", "is_active": "on"},
+            )
+        )
+        first_request.FILES["attachment"] = SimpleUploadedFile(
+            "first.txt",
+            b"first-payload",
+            content_type="text/plain",
+        )
+
+        first_response = admin_obj.changeform_view(first_request, object_id=None)
+
+        self.assertIsInstance(first_response, HttpResponseRedirect)
+        session_key = admin_obj._session_key()
+        old_pending = first_request.session[session_key]
+        old_token = old_pending["token"]
+        old_cache_key = old_pending["file_keys"]["attachment"]
+        self.assertIsNotNone(cache.get(old_cache_key))
+
+        second_request = _wire_request(
+            factory.post(
+                "/admin/",
+                {"hostname": "", "is_active": "on"},
+            )
+        )
+        second_request.session = first_request.session
+        normal_change_form = object()
+        with patch(
+            "django.contrib.admin.options.ModelAdmin.changeform_view",
+            return_value=normal_change_form,
+        ):
+            second_response = admin_obj.changeform_view(second_request, object_id=None)
+
+        self.assertIs(second_response, normal_change_form)
+        self.assertNotIn(session_key, second_request.session)
+        self.assertIsNone(cache.get(old_cache_key))
+        self.assertNotEqual(second_request.session.get(session_key, {}).get("token"), old_token)
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)

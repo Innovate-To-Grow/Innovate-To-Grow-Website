@@ -192,10 +192,19 @@ class Command(BaseCommand):
                 "ticket_login_reusable": False,
             },
         )
-        Ticket.objects.update_or_create(event=event, name="E2E General Admission", defaults={"order": 1})
-        Question.objects.update_or_create(
-            event=event,
-            text="What brings you to the E2E Event?",
-            defaults={"is_required": True, "order": 1},
-        )
+        ticket_templates = {
+            "E2E General Admission": {"order": 1},
+            "E2E VIP Admission": {"order": 2},
+        }
+        event.tickets.exclude(name__in=ticket_templates).delete()
+        for name, defaults in ticket_templates.items():
+            Ticket.objects.update_or_create(event=event, name=name, defaults=defaults)
+
+        question_templates = {
+            "What brings you to the E2E Event?": {"is_required": True, "order": 1},
+            "Do you need accessibility accommodations?": {"is_required": False, "order": 2},
+        }
+        event.questions.exclude(text__in=question_templates).delete()
+        for text, defaults in question_templates.items():
+            Question.objects.update_or_create(event=event, text=text, defaults=defaults)
         return event
