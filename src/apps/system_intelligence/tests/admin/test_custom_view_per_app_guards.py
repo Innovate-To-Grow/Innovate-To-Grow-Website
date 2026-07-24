@@ -13,6 +13,7 @@ entry; these tests drive the real URLs through the test client to confirm:
 """
 
 import uuid
+from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase
@@ -95,7 +96,11 @@ class SystemIntelligenceCustomViewGuardTests(TestCase):
                     f"{method.upper()} {url} should be forbidden for a staff member without the app",
                 )
 
-    def test_staff_with_app_is_not_forbidden(self):
+    @patch(
+        "apps.system_intelligence.admin.dashboard.get_dashboard_context",
+        return_value={"cloudwatch": {}},
+    )
+    def test_staff_with_app_is_not_forbidden(self, _mock_dashboard_context):
         self.client.force_login(self.allowed_user)
         convo = self._convo_for(self.allowed_user)
         for url, method in self._urls(convo.id, uuid.uuid4(), uuid.uuid4()):
@@ -107,7 +112,11 @@ class SystemIntelligenceCustomViewGuardTests(TestCase):
                     f"{method.upper()} {url} should be allowed for a staff member with the app",
                 )
 
-    def test_superuser_is_not_forbidden(self):
+    @patch(
+        "apps.system_intelligence.admin.dashboard.get_dashboard_context",
+        return_value={"cloudwatch": {}},
+    )
+    def test_superuser_is_not_forbidden(self, _mock_dashboard_context):
         self.client.force_login(self.superuser)
         convo = self._convo_for(self.superuser)
         for url, method in self._urls(convo.id, uuid.uuid4(), uuid.uuid4()):
