@@ -1,7 +1,7 @@
 # Django Backend Dependencies — base (shared across all environments)
 
 # Core Framework
-Django>=5.2.15,<7.0
+Django>=5.2.16,<7.0
 djangorestframework==3.17.1
 djangorestframework-simplejwt>=5.5.1
 
