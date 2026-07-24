@@ -92,9 +92,10 @@ class AWSCredentialConfigAdminTests(TestCase):
 
     def test_default_model_is_managed_on_system_intelligence_config(self):
         aws_response = self.client.get(reverse("admin:core_awscredentialconfig_change", args=[self.config.pk]))
-        system_response = self.client.get(
-            reverse("admin:system_intelligence_systemintelligenceconfig_change", args=[self.chat_config.pk])
-        )
+        with patch("apps.core.services.bedrock.get_available_models", return_value=[]):
+            system_response = self.client.get(
+                reverse("admin:system_intelligence_systemintelligenceconfig_change", args=[self.chat_config.pk])
+            )
 
         self.assertEqual(aws_response.status_code, 200)
         self.assertNotContains(aws_response, "Default AI Model")
