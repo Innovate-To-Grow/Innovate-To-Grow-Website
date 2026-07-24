@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../AuthContext';
 import { getProfile, updateProfileFields } from '@/features/auth/api';
 import { getSafeInternalRedirectPath } from '@/features/auth/api/redirects';

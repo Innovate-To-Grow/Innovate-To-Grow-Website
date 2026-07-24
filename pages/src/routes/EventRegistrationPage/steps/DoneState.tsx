@@ -1,4 +1,4 @@
-import {Link} from 'react-router-dom';
+import {Link} from 'react-router';
 import type {Registration} from '@/features/events/api';
 import {resendTicketEmail} from '@/features/events/api';
 import {formatEventDateRange} from '@/features/events/formatEventDateRange';

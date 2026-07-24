@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { FormEvent, RefObject } from 'react';
 import { PrivacyLegalNotice } from '../shared/PrivacyLegalNotice';
 

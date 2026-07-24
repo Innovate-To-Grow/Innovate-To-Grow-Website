@@ -1,5 +1,5 @@
 import {useMemo} from 'react';
-import {useSearchParams} from 'react-router-dom';
+import {useSearchParams} from 'react-router';
 import {ProjectGridTable, PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '@/features/projects';
 import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
 

@@ -1,6 +1,6 @@
 import type {CSSProperties} from 'react';
 import {useEffect, useMemo, useState} from 'react';
-import {useSearchParams} from 'react-router-dom';
+import {useSearchParams} from 'react-router';
 import {ProjectGridTable, PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '@/features/projects';
 import {useCurrentEventSchedule} from '@/features/events/hooks/useCurrentEventSchedule';
 import {scheduleProjectToGridRow} from '@/features/projects/api';

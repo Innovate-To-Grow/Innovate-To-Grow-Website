@@ -1,5 +1,5 @@
 import {useMemo, useState} from 'react';
-import {Navigate} from 'react-router-dom';
+import {Navigate} from 'react-router';
 import {buildCompleteProfilePath, buildLoginPath} from '@/features/auth/api/redirects';
 import {useAuth} from '../AuthContext';
 import {StatusAlert} from '../shared/StatusAlert';

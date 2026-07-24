@@ -1,5 +1,5 @@
 import React, {Suspense, type ReactElement} from 'react';
-import {createBrowserRouter, Navigate} from 'react-router-dom';
+import {createBrowserRouter, Navigate} from 'react-router';
 import {Layout} from '@/features/layout';
 import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';

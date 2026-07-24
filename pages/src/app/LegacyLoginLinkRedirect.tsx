@@ -1,4 +1,4 @@
-import {Navigate, useLocation} from 'react-router-dom';
+import {Navigate, useLocation} from 'react-router';
 
 // Preserves ?token=... while forwarding old email links (/magic-login,
 // /ticket-login) to /login-link.
