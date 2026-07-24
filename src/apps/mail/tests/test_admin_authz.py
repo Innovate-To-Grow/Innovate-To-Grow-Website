@@ -32,6 +32,7 @@ def _make_delivery_configs():
         access_key_id="AKIATEST",
         secret_access_key="secret",
         default_region="us-west-2",
+        sms_from_number="+12065550000",
     )
     EmailServiceConfig.objects.all().delete()
     return EmailServiceConfig.objects.create(
