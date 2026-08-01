@@ -215,18 +215,23 @@ jobs:
           background_enabled="$(normalize_boolean "$BACKGROUND_JOBS_ENABLED")"
           worker_enabled="$(normalize_boolean "$BACKGROUND_WORKER_ENABLED")"
           ensure_admin="$(normalize_boolean "$ENSURE_DEFAULT_ADMIN")"
+          # shellcheck disable=SC2153 # Supplied by the job-level env block.
           csp_report_only="$(normalize_boolean "$CSP_REPORT_ONLY")"
           if [ "$background_enabled" = "true" ] && [ "$worker_enabled" != "true" ]; then
             echo "::error::BACKGROUND_JOBS_ENABLED requires BACKGROUND_WORKER_ENABLED=true."
             exit 1
           fi
-          echo "BACKGROUND_JOBS_ENABLED=$background_enabled" >> "$GITHUB_ENV"
-          echo "BACKGROUND_WORKER_ENABLED=$worker_enabled" >> "$GITHUB_ENV"
-          echo "ENSURE_DEFAULT_ADMIN=$ensure_admin" >> "$GITHUB_ENV"
-          echo "CSP_REPORT_ONLY=$csp_report_only" >> "$GITHUB_ENV"
-          echo "background-enabled=$background_enabled" >> "$GITHUB_OUTPUT"
-          echo "worker-enabled=$worker_enabled" >> "$GITHUB_OUTPUT"
-          echo "ensure-admin=$ensure_admin" >> "$GITHUB_OUTPUT"
+          {
+            echo "BACKGROUND_JOBS_ENABLED=$background_enabled"
+            echo "BACKGROUND_WORKER_ENABLED=$worker_enabled"
+            echo "ENSURE_DEFAULT_ADMIN=$ensure_admin"
+            echo "CSP_REPORT_ONLY=$csp_report_only"
+          } >> "$GITHUB_ENV"
+          {
+            echo "background-enabled=$background_enabled"
+            echo "worker-enabled=$worker_enabled"
+            echo "ensure-admin=$ensure_admin"
+          } >> "$GITHUB_OUTPUT"
 
           missing=()
           for name in \
@@ -455,7 +460,7 @@ jobs:
           active="$(aws ecs describe-services \
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_WORKER_SERVICE" \
-            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --query "services[0].deployments[?status==\`PRIMARY\`].taskDefinition | [0]" \
             --output text)"
           if [ "$active" != "$EXPECTED_TASK_DEFINITION" ]; then
             echo "::error::Worker deployment rolled back (expected $EXPECTED_TASK_DEFINITION, active $active)."
@@ -551,7 +556,7 @@ jobs:
           active="$(aws ecs describe-services \
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
-            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --query "services[0].deployments[?status==\`PRIMARY\`].taskDefinition | [0]" \
             --output text)"
           if [ "$active" != "$EXPECTED_TASK_DEFINITION" ]; then
             echo "::error::Web deployment rolled back (expected $EXPECTED_TASK_DEFINITION, active $active)."

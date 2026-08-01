@@ -104,11 +104,11 @@ jobs:
           {
             echo "## Production artifact selection"
             echo
-            printf -- '- Commit: `%s`\n' "$DEPLOY_SHA"
-            printf -- '- CI run: `%s`\n' "$CI_RUN_ID"
-            printf -- '- Backend: `%s`\n' "$backend"
-            printf -- '- Frontend: `%s`\n' "$frontend"
-            printf -- '- Archive: `%s`\n' "$archive"
+            printf -- '%s\n' "- Commit: \`$DEPLOY_SHA\`"
+            printf -- '%s\n' "- CI run: \`$CI_RUN_ID\`"
+            printf -- '%s\n' "- Backend: \`$backend\`"
+            printf -- '%s\n' "- Frontend: \`$frontend\`"
+            printf -- '%s\n' "- Archive: \`$archive\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   approve:
@@ -130,10 +130,10 @@ jobs:
           {
             echo "## Approved production deployment set"
             echo
-            printf -- '- Commit: `%s`\n' "$DEPLOY_SHA"
-            printf -- '- Backend: `%s`\n' "$BACKEND"
-            printf -- '- Frontend: `%s`\n' "$FRONTEND"
-            printf -- '- Archive: `%s`\n' "$ARCHIVE"
+            printf -- '%s\n' "- Commit: \`$DEPLOY_SHA\`"
+            printf -- '%s\n' "- Backend: \`$BACKEND\`"
+            printf -- '%s\n' "- Frontend: \`$FRONTEND\`"
+            printf -- '%s\n' "- Archive: \`$ARCHIVE\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-backend:

@@ -256,10 +256,8 @@ class DeploymentWorkflowContractTests(unittest.TestCase):
         self.assertIn("vars.CSP_REPORT_ONLY", job["env"]["CSP_REPORT_ONLY"])
         validation = named_step(job, "Validate deployment configuration")["run"]
         self.assertIn('normalize_boolean "$CSP_REPORT_ONLY"', validation)
-        self.assertIn(
-            'echo "CSP_REPORT_ONLY=$csp_report_only" >> "$GITHUB_ENV"',
-            validation,
-        )
+        self.assertIn('echo "CSP_REPORT_ONLY=$csp_report_only"', validation)
+        self.assertIn('} >> "$GITHUB_ENV"', validation)
 
         task_template = json.loads(
             (REPOSITORY_ROOT / "aws/task-definition.json").read_text(

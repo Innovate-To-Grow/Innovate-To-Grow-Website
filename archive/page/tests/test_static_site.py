@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PAGES = sorted((ROOT / "templates" / "events").glob("*.html"))
 BASE_TEMPLATE = ROOT / "templates" / "base.html"
 SHARED_CSS = ROOT / "static" / "css" / "i2g-archive.css"
+DOCKERFILE = ROOT / "Dockerfile"
 
 _ASSET_RE = re.compile(r"""(?:src|href)=["'](/?static/[^"'?#]+)["']""")
 _KEY_RE = re.compile(r"AIzaSy[A-Za-z0-9_-]+")
@@ -34,6 +35,14 @@ def serve():
 def test_pages_were_discovered():
     # Guard against the glob silently matching nothing.
     assert len(PAGES) > 5
+
+
+def test_runtime_image_removes_python_build_tooling():
+    production_stage = DOCKERFILE.read_text().split("\nFROM ", maxsplit=2)[-1]
+    uninstall = "python -m pip uninstall --yes setuptools wheel pip"
+
+    assert uninstall in production_stage
+    assert production_stage.index(uninstall) < production_stage.index("USER app")
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)

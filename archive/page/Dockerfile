@@ -23,6 +23,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# The runtime does not install packages. Removing build tooling also removes
+# setuptools' vendored jaraco.context and wheel copies from the attack surface.
+RUN python -m pip uninstall --yes setuptools wheel pip
+
 RUN groupadd --system app \
  && useradd --system --gid app --home /app --shell /usr/sbin/nologin app
 
