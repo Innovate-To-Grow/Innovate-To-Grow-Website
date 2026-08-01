@@ -37,6 +37,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# The runtime does not install packages. Removing build tooling also removes
+# setuptools' vendored jaraco.context and wheel copies from the attack surface.
+RUN python -m pip uninstall --yes setuptools wheel pip
+
 # Runtime libs only. libpq5 is the runtime sibling of libpq-dev used by
 # psycopg2. Version pinned (DL3008); refresh alongside libpq-dev above.
 RUN apt-get update && apt-get install -y --no-install-recommends \

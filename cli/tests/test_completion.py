@@ -1,3 +1,4 @@
+from click import unstyle
 from i2g_admin.app import app
 from typer.testing import CliRunner
 
@@ -37,6 +38,6 @@ def test_completion_show_garbage_shell_exits_nonzero():
 
 
 def test_completion_group_help_points_at_install_completion():
-    result = runner.invoke(app, ["completion", "--help"])
+    result = runner.invoke(app, ["completion", "--help"], color=True)
     assert result.exit_code == 0
-    assert "--install-completion" in result.output
+    assert "--install-completion" in unstyle(result.output)
