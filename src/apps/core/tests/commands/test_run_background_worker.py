@@ -8,9 +8,13 @@ from apps.core.management.commands import run_background_worker
 
 
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
-    def _run_once(self):
+    def _run_once(self, *, purged_row_count=0):
         command = run_background_worker.Command(stdout=StringIO())
-        with patch.object(run_background_worker, "purge_retired_auth_keypairs") as purge:
+        with patch.object(
+            run_background_worker,
+            "purge_retired_auth_keypairs",
+            return_value=purged_row_count,
+        ) as purge:
             command.handle(
                 once=True,
                 batch_size=10,
@@ -31,9 +35,13 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
         _metrics,
         _publish,
     ):
-        purge = self._run_once()
+        with self.assertLogs(run_background_worker.logger, level="INFO") as logs:
+            purge = self._run_once(purged_row_count=2)
 
         purge.assert_called_once_with()
+        self.assertEqual(
+            logs.output, ["INFO:apps.core.management.commands.run_background_worker:Purged retired RSA keypair rows"]
+        )
 
     @patch.object(run_background_worker, "publish_worker_metrics")
     @patch.object(

@@ -6,11 +6,14 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
+from rest_framework import serializers
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail, EmailAuthChallenge
+from apps.authn.serializers.email_code.passwords import PasswordResetConfirmSerializer
 from apps.authn.services import (
     AuthChallengeDeliveryError,
+    AuthChallengeInvalid,
     AuthChallengeThrottled,
 )
 from apps.authn.views.helpers import challenge_error_response
@@ -18,6 +21,28 @@ from apps.authn.views.helpers import challenge_error_response
 Member = get_user_model()
 PURPOSE_LOGIN = EmailAuthChallenge.Purpose.LOGIN
 PURPOSE_REGISTER = EmailAuthChallenge.Purpose.REGISTER
+
+
+class PasswordResetSerializerSecurityTests(APITestCase):
+    @patch(
+        "apps.authn.serializers.email_code.passwords.consume_verification_token",
+        side_effect=AuthChallengeInvalid("internal challenge details"),
+    )
+    @patch("apps.authn.serializers.email_code.passwords.validate_password")
+    def test_confirm_suppresses_internal_exception_context(self, _validate_password, _consume):
+        serializer = PasswordResetConfirmSerializer()
+        serializer._validated_data = {
+            "decrypted_new_password": "StrongPass123!",
+            "resolved_member": object(),
+            "verification_token": "opaque-token",
+        }
+
+        with self.assertRaises(serializers.ValidationError) as raised:
+            serializer.save()
+
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertTrue(raised.exception.__suppress_context__)
+        self.assertNotIn("internal challenge details", str(raised.exception.detail))
 
 
 class ChallengeErrorResponseTests(APITestCase):

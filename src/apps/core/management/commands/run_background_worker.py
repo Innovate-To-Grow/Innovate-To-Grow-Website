@@ -47,9 +47,12 @@ class Command(BaseCommand):
             now_monotonic = time.monotonic()
             if now_monotonic >= next_key_purge_at:
                 try:
-                    deleted = purge_retired_auth_keypairs()
-                    if deleted:
-                        logger.info("Purged %s retired RSA keypair row(s)", deleted)
+                    purged_row_count = purge_retired_auth_keypairs()
+                    if purged_row_count:
+                        # Keep key material and values derived from the key store
+                        # out of logs. The static event is enough for operators;
+                        # detailed counts belong in controlled metrics.
+                        logger.info("Purged retired RSA keypair rows")
                 except Exception:  # noqa: BLE001 - maintenance must not stop delivery.
                     logger.exception("Retired RSA key purge failed")
                 finally:

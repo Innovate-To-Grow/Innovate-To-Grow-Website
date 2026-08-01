@@ -103,8 +103,8 @@ class PasswordResetVerifySerializer(serializers.Serializer):
                     code=attrs["code"],
                     member=resolved.member,
                 )
-            except AuthChallengeInvalid as exc:
-                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+            except AuthChallengeInvalid:
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from None
         else:
             try:
                 attrs["verification_token"] = verify_sms_password_code_and_mint(
@@ -114,8 +114,8 @@ class PasswordResetVerifySerializer(serializers.Serializer):
                     code=attrs["code"],
                     challenge_id=attrs.get("challenge_id"),
                 )
-            except (PhoneVerificationInvalid, PhoneVerificationThrottled) as exc:
-                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+            except (PhoneVerificationInvalid, PhoneVerificationThrottled):
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from None
         return attrs
 
     def save(self):
@@ -151,8 +151,8 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
                 verification_token=self.validated_data["verification_token"],
                 member=resolved_member,
             )
-        except AuthChallengeInvalid as exc:
-            raise serializers.ValidationError({"detail": VERIFICATION_CONFIRM_INVALID}) from exc
+        except AuthChallengeInvalid:
+            raise serializers.ValidationError({"detail": VERIFICATION_CONFIRM_INVALID}) from None
         member = challenge.member
         member.set_password(new_password)
         member.save(update_fields=["password"])
@@ -178,7 +178,7 @@ class ChangePasswordCodeRequestSerializer(serializers.Serializer):
         try:
             attrs["selected"] = select_recovery_channel(member, requested_email=requested)
         except NoRecoveryChannelError as exc:
-            raise serializers.ValidationError({"detail": str(exc)}) from exc
+            raise serializers.ValidationError({"detail": str(exc)}) from None
         return attrs
 
     def save(self):
@@ -225,7 +225,7 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
         try:
             selected = select_recovery_channel(member, requested_email=requested)
         except NoRecoveryChannelError as exc:
-            raise serializers.ValidationError({"detail": str(exc)}) from exc
+            raise serializers.ValidationError({"detail": str(exc)}) from None
 
         client_channel = attrs.get("channel")
         if client_channel and client_channel != selected.channel:
@@ -241,8 +241,8 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
                     code=attrs["code"],
                     member=member,
                 )
-            except AuthChallengeInvalid as exc:
-                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+            except AuthChallengeInvalid:
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from None
         else:
             try:
                 attrs["verification_token"] = verify_sms_password_code_and_mint(
@@ -252,8 +252,8 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
                     code=attrs["code"],
                     challenge_id=attrs.get("challenge_id"),
                 )
-            except (PhoneVerificationInvalid, PhoneVerificationThrottled) as exc:
-                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+            except (PhoneVerificationInvalid, PhoneVerificationThrottled):
+                raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from None
 
         attrs["channel"] = selected.channel
         return attrs
@@ -328,8 +328,8 @@ class DeleteAccountCodeVerifySerializer(serializers.Serializer):
                 code=attrs["code"],
                 member=member,
             )
-        except AuthChallengeInvalid as exc:
-            raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
+        except AuthChallengeInvalid:
+            raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from None
 
         if challenge.member != member:
             raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
