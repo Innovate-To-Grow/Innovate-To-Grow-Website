@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useParams, Link } from 'react-router-dom';
+import { useLocation, useParams, Link } from 'react-router';
 import { fetchProjectDetail, type ProjectDetail } from '@/features/projects/api';
 import { formatSemesterLabel } from '@/lib/semester';
 

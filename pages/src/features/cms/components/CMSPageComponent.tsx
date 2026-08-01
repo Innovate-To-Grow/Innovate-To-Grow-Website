@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { BlockRenderer } from './BlockRenderer';

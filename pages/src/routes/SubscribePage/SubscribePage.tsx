@@ -1,5 +1,5 @@
 import {useEffect, useState, type FormEvent} from 'react';
-import {useSearchParams} from 'react-router-dom';
+import {useSearchParams} from 'react-router';
 import {useAuth} from '@/features/auth';
 import {
   getAccessToken,

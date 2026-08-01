@@ -1,5 +1,5 @@
 import type {CMSBlock} from '@/features/cms/api';
-import {Link, useLocation} from 'react-router-dom';
+import {Link, useLocation} from 'react-router';
 import {
   SponsorYearBlock,
   type SponsorYearBlockData,

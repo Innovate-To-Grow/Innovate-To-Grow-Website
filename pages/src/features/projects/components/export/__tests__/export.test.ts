@@ -126,6 +126,32 @@ describe('buildProjectsWorksheet', () => {
     expect(joined).not.toContain('Notes');
   });
 
+  it('serializes the generated workbook to XLSX and reloads it', async () => {
+    const workbook = new ExcelJS.Workbook();
+    buildProjectsWorksheet(workbook, [row], {title: 'Round-trip Excel'}, null);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    expect(bytes[0]).toBe(0x50);
+    expect(bytes[1]).toBe(0x4b);
+
+    const reloadedWorkbook = new ExcelJS.Workbook();
+    await reloadedWorkbook.xlsx.load(buffer);
+    const worksheet = reloadedWorkbook.getWorksheet('Projects');
+    const cellText: string[] = [];
+
+    worksheet?.eachRow((sheetRow) =>
+      sheetRow.eachCell((cell) => {
+        cellText.push(cell.text);
+      }),
+    );
+
+    expect(worksheet).toBeDefined();
+    expect(cellText).toContain('Round-trip Excel');
+    expect(cellText).toContain('Rotary Joint Testing System');
+  });
+
   it('builds the worksheet without an image when no logo is provided', () => {
     const workbook = new ExcelJS.Workbook();
     buildProjectsWorksheet(workbook, [row], {title: 'No Logo'}, null);

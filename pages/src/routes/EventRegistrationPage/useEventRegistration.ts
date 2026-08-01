@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type FormEvent} from 'react';
-import {useNavigate, useSearchParams} from 'react-router-dom';
+import {useNavigate, useSearchParams} from 'react-router';
 import {useAuth} from '@/features/auth';
 import {updateProfileFields} from '@/features/auth';
 import {

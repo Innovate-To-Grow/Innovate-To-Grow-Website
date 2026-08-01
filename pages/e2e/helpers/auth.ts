@@ -136,7 +136,7 @@ export async function mockProfileEndpoint(
       return;
     }
     if (request.method() === 'PATCH') {
-      let payload: Record<string, unknown> = {};
+      let payload: Record<string, unknown>;
       try {
         payload = request.postDataJSON() as Record<string, unknown>;
       } catch {

@@ -29,7 +29,7 @@ Thanks for your interest in helping build the UC Merced Innovate to Grow (ITG) w
 | Tool | Recommended Version | Notes |
 | --- | --- | --- |
 | Python | 3.11+ | Matches Django 4.2 support window. |
-| Node.js | 18 LTS or 20 LTS | Required for Vite dev server. |
+| Node.js | 22.22+ | Required by React Router 8 and the Vite dev server. |
 | npm | 10+ | Ships with Node LTS installers. |
 | SQLite | 3.35+ | Used for local dev database. |
 | Git | 2.40+ | Enable `autocrlf=input` to avoid newline churn. |

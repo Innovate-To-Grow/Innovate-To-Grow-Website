@@ -24,7 +24,7 @@ Configured in `pages/vite.config.ts`:
 | Chunk | Contents |
 |-------|----------|
 | `react-vendor` | `react`, `react-dom` |
-| `router` | `react-router`, `react-router-dom` |
+| `router` | `react-router` |
 | Main bundle | Application code (lazy-loaded page components) |
 
 All page components are lazy-loaded via `React.lazy()`, reducing the initial bundle size.

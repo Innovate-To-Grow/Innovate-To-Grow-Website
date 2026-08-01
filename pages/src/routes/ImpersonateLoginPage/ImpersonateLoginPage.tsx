@@ -1,5 +1,5 @@
 import {useEffect, useState, useMemo} from 'react';
-import {useSearchParams, useNavigate} from 'react-router-dom';
+import {useSearchParams, useNavigate} from 'react-router';
 import {impersonateAutoLogin} from '@/features/auth/api/session';
 import {dispatchAuthStateChange} from '@/features/auth/components/context/shared';
 import {getPostAuthPath} from '@/features/auth/api/redirects';

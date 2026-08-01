@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {useNavigate, useSearchParams} from 'react-router-dom';
+import {useNavigate, useSearchParams} from 'react-router';
 import {dispatchAuthStateChange, getAuthErrorMessage} from '@/features/auth/components/context/shared';
 import {consumeEmailAuthQuery, type EmailAuthFlow, type EmailAuthSource} from '@/features/auth';
 import {getEmailAuthSourcePath} from '@/features/auth/api/redirects';

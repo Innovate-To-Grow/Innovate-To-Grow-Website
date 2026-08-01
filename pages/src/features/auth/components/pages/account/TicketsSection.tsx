@@ -1,4 +1,4 @@
-import {Link} from 'react-router-dom';
+import {Link} from 'react-router';
 import type {EventRegistrationSummary, Registration} from '@/features/events/api';
 import {formatEventDateRange} from '@/features/events/formatEventDateRange';
 

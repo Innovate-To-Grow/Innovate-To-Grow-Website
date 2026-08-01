@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState, type ChangeEvent, type FormEvent} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useNavigate} from 'react-router';
 import {useAuth} from '../../AuthContext';
 import {firstEmailAddress} from '@/features/auth/components/sections/internal/emailAddress';
 import {
