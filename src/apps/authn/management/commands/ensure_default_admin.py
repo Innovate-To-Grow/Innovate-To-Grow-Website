@@ -43,12 +43,9 @@ class Command(BaseCommand):
             raise CommandError("--password-env is required.")
 
         with transaction.atomic():
-            contact = (
-                ContactEmail.objects.select_for_update()
-                .select_related("member")
-                .filter(email_address__iexact=email)
-                .first()
-            )
+            # Only the contact row needs locking. Joining the nullable member
+            # relation makes PostgreSQL reject FOR UPDATE on the outer join.
+            contact = ContactEmail.objects.select_for_update().filter(email_address__iexact=email).first()
             if contact is not None:
                 self.stdout.write(
                     self.style.WARNING(
