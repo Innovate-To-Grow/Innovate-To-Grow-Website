@@ -20,6 +20,13 @@ common_args="
 # Keep the generated header stable even though verification writes to /tmp.
 export CUSTOM_COMPILE_COMMAND="./scripts/compile-requirements.sh"
 
+# Seed the temporary outputs with the committed locks so pip-compile reuses
+# their versions, matching compile-requirements.sh. The diff then detects
+# requirement input drift without failing merely because PyPI published a new
+# version of an otherwise unconstrained transitive dependency.
+cp requirements/production.lock.txt "$tmp_dir/production.lock.txt"
+cp requirements/local.lock.txt "$tmp_dir/local.lock.txt"
+
 # shellcheck disable=SC2086
 python -m piptools compile --quiet $common_args \
   --output-file "$tmp_dir/production.lock.txt" \

@@ -18,6 +18,13 @@ common_args="
 "
 export CUSTOM_COMPILE_COMMAND="./compile-requirements.sh"
 
+# Seed the temporary outputs with the committed locks so pip-compile reuses
+# their versions, matching compile-requirements.sh. The diff then detects
+# requirement input drift without failing merely because PyPI published a new
+# version of an otherwise unconstrained transitive dependency.
+cp requirements.txt "$tmp_dir/requirements.txt"
+cp requirements-dev.txt "$tmp_dir/requirements-dev.txt"
+
 # shellcheck disable=SC2086
 python -m piptools compile --quiet $common_args \
   --output-file "$tmp_dir/requirements.txt" \
