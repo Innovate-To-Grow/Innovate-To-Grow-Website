@@ -132,6 +132,7 @@ class ContactPhoneVerifyCodeView(APIView):
                 member=request.user,
                 contact_phone_id=pk,
                 code=serializer.validated_data["code"],
+                challenge_id=serializer.validated_data.get("challenge_id"),
             )
         except AuthChallengeInvalid:
             return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)

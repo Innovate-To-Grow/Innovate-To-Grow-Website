@@ -66,6 +66,10 @@
           "value": "__CORS_ALLOWED_ORIGINS__"
         },
         {
+          "name": "CSP_REPORT_ONLY",
+          "value": "__CSP_REPORT_ONLY__"
+        },
+        {
           "name": "FRONTEND_URL",
           "value": "__FRONTEND_URL__"
         },

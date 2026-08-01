@@ -27,9 +27,16 @@ def handle_notification(envelope: dict[str, Any]) -> None:
         return
 
     handler = EVENT_HANDLERS.get(event_type, unknown)
+    campaign_ids = set()
     with transaction.atomic():
         logs = list(RecipientLog.objects.select_for_update().filter(ses_message_id=ses_message_id))
         for log in logs:
             if log.last_sns_message_id and log.last_sns_message_id == sns_message_id:
                 continue
             handler(log, ses_event, sns_message_id)
+            campaign_ids.add(log.campaign_id)
+    if campaign_ids:
+        from apps.mail.services.background_jobs import aggregate_email_campaign
+
+        for campaign_id in campaign_ids:
+            aggregate_email_campaign(campaign_id)

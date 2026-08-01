@@ -8,12 +8,11 @@ import json
 import re
 import shlex
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
-
-FULL_PROJECTS = [
+LOCAL_PROJECTS = [
     "chromium",
     "firefox",
     "webkit",
@@ -26,7 +25,10 @@ FULL_PROJECTS = [
     "galaxy-s26-ultra",
     "galaxy-tab-s9",
 ]
+LIVE_PROJECT = "live-chromium"
+FULL_PROJECTS = [*LOCAL_PROJECTS, LIVE_PROJECT]
 PR_DEFAULT_PROJECTS = ["chromium"]
+PR_FULL_PROJECTS = ["chromium", LIVE_PROJECT]
 
 # Spec entries are Playwright CLI path filters: a directory runs every spec
 # under it, a file runs just that spec (specs live in feature subdirectories
@@ -46,6 +48,7 @@ CONTENT_SPECS = [
 EVENT_SPECS = ["e2e/events/"]
 MOBILE_SPECS = ["e2e/mobile.spec.ts"]
 DESKTOP_MOBILE_COMPANION_SPECS = ["e2e/smoke.live.spec.ts"]
+LIVE_SPECS = {"e2e/smoke.live.spec.ts", "e2e/admin.spec.ts"}
 
 SPEC_TO_PATH_RE = re.compile(r"^pages/(e2e/(?:[^/]+/)*[^/]+\.spec\.ts)$")
 
@@ -78,6 +81,9 @@ def _is_global_path(path: str) -> bool:
         "pages/package.json",
         "pages/package-lock.json",
         "pages/playwright.config.ts",
+        "pages/playwright.live.config.ts",
+        "pages/playwright.local.config.ts",
+        "pages/playwright.projects.ts",
         "pages/tsconfig.json",
         "pages/tsconfig.app.json",
         "pages/tsconfig.node.json",
@@ -184,10 +190,7 @@ class E2EPlan:
         return " ".join(shlex.quote(spec) for spec in self.specs)
 
     def github_outputs(self) -> str:
-        matrix = [
-            {"project": leg.project, "spec_args": leg.spec_args}
-            for leg in self.matrix
-        ]
+        matrix = [{"project": leg.project, "spec_args": leg.spec_args} for leg in self.matrix]
         return "\n".join(
             [
                 f"projects={json.dumps(self.projects, separators=(',', ':'))}",
@@ -239,13 +242,13 @@ def plan_e2e_tests(event_name: str, changed_files: Iterable[str]) -> E2EPlan:
         return _full_plan(FULL_PROJECTS.copy())
 
     if not files:
-        return _full_plan(PR_DEFAULT_PROJECTS.copy())
+        return _full_plan(PR_FULL_PROJECTS.copy())
 
     mobile_related = any(_is_mobile_path(path) for path in files)
     harness_related = any(_is_e2e_harness_path(path) for path in files)
     if any(_is_global_path(path) for path in files):
         projects = _augment_pr_projects(
-            PR_DEFAULT_PROJECTS.copy(),
+            PR_FULL_PROJECTS.copy(),
             mobile_related=mobile_related,
             harness_related=harness_related,
         )
@@ -258,21 +261,33 @@ def plan_e2e_tests(event_name: str, changed_files: Iterable[str]) -> E2EPlan:
             specs.update(MOBILE_SPECS)
 
     if not specs:
-        return _full_plan(PR_DEFAULT_PROJECTS.copy())
+        return _full_plan(PR_FULL_PROJECTS.copy())
 
-    projects = _augment_pr_projects(
-        PR_DEFAULT_PROJECTS.copy(),
-        mobile_related=mobile_related,
-        harness_related=harness_related,
-    )
-
-    desktop_specs = specs.difference(MOBILE_SPECS)
+    local_specs = specs.difference(LIVE_SPECS)
+    live_specs = specs.intersection(LIVE_SPECS)
+    desktop_specs = local_specs.difference(MOBILE_SPECS)
     if mobile_related and not desktop_specs:
-        desktop_specs.update(DESKTOP_MOBILE_COMPANION_SPECS)
+        live_specs.update(DESKTOP_MOBILE_COMPANION_SPECS)
+        specs.update(DESKTOP_MOBILE_COMPANION_SPECS)
+
+    projects: list[str] = []
+    if desktop_specs:
+        projects.extend(PR_DEFAULT_PROJECTS)
+    if mobile_related and "pixel7" not in projects:
+        projects.append("pixel7")
+    if harness_related and "webkit" not in projects:
+        projects.append("webkit")
+    if live_specs:
+        projects.append(LIVE_PROJECT)
 
     matrix: list[E2ELeg] = []
     for project in projects:
-        leg_specs = specs if project == "pixel7" else desktop_specs
+        if project == LIVE_PROJECT:
+            leg_specs = live_specs
+        elif project == "pixel7":
+            leg_specs = local_specs
+        else:
+            leg_specs = desktop_specs
         ordered = _ordered_specs(leg_specs)
         matrix.append(E2ELeg(project=project, spec_args=" ".join(shlex.quote(spec) for spec in ordered)))
 

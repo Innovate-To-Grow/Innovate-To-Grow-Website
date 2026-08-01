@@ -89,13 +89,19 @@ Audience resolution is handled by `src/apps/mail/services/audience.py`.
 
 ### Sending
 
-`src/apps/mail/services/send_campaign.py`:
+`src/apps/mail/services/` and the PostgreSQL outbox:
 
-1. Resolves audience to recipient list
-2. Personalizes the body for each recipient
-3. Sends via active `EmailServiceConfig` (AWS SES primary, SMTP fallback)
-4. Logs each send attempt in `RecipientLog`
-5. Updates campaign `sent_count` and `status`
+1. Resolve the audience and materialize one recipient log plus one durable job
+   per recipient
+2. Personalize the body for each recipient
+3. Send via AWS SES only with explicitly active email/AWS configuration
+4. Persist processing, retry, failed, and uncertain-delivery state per
+   recipient
+5. Aggregate campaign state/counts from the recipient logs
+
+Provider calls whose outcome cannot be determined are marked `uncertain` and
+are never resent automatically. Reconcile provider evidence before using the
+explicit admin retry action.
 
 ### Login link tokens
 

@@ -23,7 +23,14 @@ class RSAKeypairAdmin(BaseModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         """Keys are read-only after creation (auto-generated)."""
         if obj:  # Editing existing object
-            return "key_id", "public_key_pem", "private_key_pem", "created_at", "rotated_at"
+            return (
+                "key_id",
+                "is_active",
+                "public_key_pem",
+                "private_key_pem",
+                "created_at",
+                "rotated_at",
+            )
         return ("key_id",)
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
@@ -51,21 +58,21 @@ class RSAKeypairAdmin(BaseModelAdmin):
             )
 
     # Actions
-    actions = ["deactivate_keypairs", "activate_keypairs", "regenerate_keys"]
+    actions = ["deactivate_keypairs", "regenerate_keys"]
 
     @admin.action(description="Deactivate selected keypairs")
     def deactivate_keypairs(self, request, queryset):
-        updated = queryset.update(is_active=False)
+        updated = 0
+        for keypair in queryset.filter(is_active=True):
+            keypair.deactivate()
+            updated += 1
         self.message_user(request, f"{updated} keypair(s) deactivated.")
-
-    @admin.action(description="Activate selected keypairs")
-    def activate_keypairs(self, request, queryset):
-        updated = queryset.update(is_active=True)
-        self.message_user(request, f"{updated} keypair(s) activated.")
 
     @admin.action(description="Regenerate keys for selected keypairs")
     def regenerate_keys(self, request, queryset):
+        updated = 0
         for keypair in queryset:
-            public_pem, private_pem = RSAKeypair.generate_keypair()
-            keypair.rotate(public_pem, private_pem)
-        self.message_user(request, f"{queryset.count()} keypair(s) regenerated.")
+            if keypair.is_active:
+                keypair.rotate()
+                updated += 1
+        self.message_user(request, f"{updated} keypair(s) regenerated.")

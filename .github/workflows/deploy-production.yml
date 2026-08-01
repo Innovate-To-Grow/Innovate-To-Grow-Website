@@ -1,0 +1,179 @@
+name: Deploy Production
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  select:
+    name: Select immutable production artifacts
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      archive: ${{ steps.select.outputs.archive }}
+      backend: ${{ steps.select.outputs.backend }}
+      ci_run_id: ${{ steps.select.outputs.ci-run-id }}
+      deploy_sha: ${{ steps.select.outputs.deploy-sha }}
+      frontend: ${{ steps.select.outputs.frontend }}
+      any_deploy: ${{ steps.select.outputs.any-deploy }}
+    steps:
+      - name: Validate CI run and select deployable components
+        id: select
+        env:
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$DEPLOY_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::The triggering CI run did not provide a full commit SHA."
+            exit 1
+          fi
+          if ! printf '%s' "$CI_RUN_ID" | grep -Eq '^[1-9][0-9]*$'; then
+            echo "::error::The triggering CI run ID is invalid."
+            exit 1
+          fi
+
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}")"
+          run_sha="$(jq --raw-output '.head_sha' <<<"$run_json")"
+          run_conclusion="$(jq --raw-output '.conclusion' <<<"$run_json")"
+          run_event="$(jq --raw-output '.event' <<<"$run_json")"
+          run_branch="$(jq --raw-output '.head_branch' <<<"$run_json")"
+          run_path="$(jq --raw-output '.path' <<<"$run_json")"
+          if [ "$run_sha" != "$DEPLOY_SHA" ] ||
+             [ "$run_conclusion" != "success" ] ||
+             [ "$run_event" != "push" ] ||
+             [ "$run_branch" != "main" ] ||
+             [ "$run_path" != ".github/workflows/ci.yml" ]; then
+            echo "::error::Run $CI_RUN_ID is not a successful main-branch CI run for $DEPLOY_SHA."
+            exit 1
+          fi
+
+          jobs_json="$(
+            gh api --paginate --slurp \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/jobs?per_page=100"
+          )"
+          backend_count="$(
+            jq \
+              '[.[].jobs[] | select(.name == "Backend Image Publish" and .conclusion == "success")] | length' \
+              <<<"$jobs_json"
+          )"
+          frontend_count="$(
+            jq \
+              '[.[].jobs[] | select(.name | startswith("Frontend Deploy Build Artifact")) | select(.conclusion == "success")] | length' \
+              <<<"$jobs_json"
+          )"
+          archive_count="$(
+            jq \
+              '[.[].jobs[] | select(.name == "Archive Image Publish" and .conclusion == "success")] | length' \
+              <<<"$jobs_json"
+          )"
+
+          backend=false
+          frontend=false
+          archive=false
+          [ "$backend_count" -gt 0 ] && backend=true
+          [ "$frontend_count" -gt 0 ] && frontend=true
+          [ "$archive_count" -gt 0 ] && archive=true
+
+          any_deploy=false
+          if [ "$backend" = true ] || [ "$frontend" = true ] || [ "$archive" = true ]; then
+            any_deploy=true
+          fi
+
+          {
+            echo "archive=$archive"
+            echo "backend=$backend"
+            echo "ci-run-id=$CI_RUN_ID"
+            echo "deploy-sha=$DEPLOY_SHA"
+            echo "frontend=$frontend"
+            echo "any-deploy=$any_deploy"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Production artifact selection"
+            echo
+            printf -- '- Commit: `%s`\n' "$DEPLOY_SHA"
+            printf -- '- CI run: `%s`\n' "$CI_RUN_ID"
+            printf -- '- Backend: `%s`\n' "$backend"
+            printf -- '- Frontend: `%s`\n' "$frontend"
+            printf -- '- Archive: `%s`\n' "$archive"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  approve:
+    name: Approve all selected production deployments
+    needs: select
+    if: ${{ needs.select.outputs.any_deploy == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: Production Deployments
+    steps:
+      - name: Record unified approval
+        env:
+          ARCHIVE: ${{ needs.select.outputs.archive }}
+          BACKEND: ${{ needs.select.outputs.backend }}
+          DEPLOY_SHA: ${{ needs.select.outputs.deploy_sha }}
+          FRONTEND: ${{ needs.select.outputs.frontend }}
+        run: |
+          {
+            echo "## Approved production deployment set"
+            echo
+            printf -- '- Commit: `%s`\n' "$DEPLOY_SHA"
+            printf -- '- Backend: `%s`\n' "$BACKEND"
+            printf -- '- Frontend: `%s`\n' "$FRONTEND"
+            printf -- '- Archive: `%s`\n' "$ARCHIVE"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-backend:
+    name: Deploy selected backend targets
+    needs: [select, approve]
+    if: ${{ needs.select.outputs.backend == 'true' }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-backend.yml
+    with:
+      deploy_sha: ${{ needs.select.outputs.deploy_sha }}
+      ci_run_id: ${{ needs.select.outputs.ci_run_id }}
+    secrets: inherit
+
+  deploy-frontend:
+    name: Deploy selected frontend targets
+    needs: [select, approve]
+    if: ${{ needs.select.outputs.frontend == 'true' }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      deploy_sha: ${{ needs.select.outputs.deploy_sha }}
+      ci_run_id: ${{ needs.select.outputs.ci_run_id }}
+    secrets: inherit
+
+  deploy-archive:
+    name: Deploy selected archive target
+    needs: [select, approve]
+    if: ${{ needs.select.outputs.archive == 'true' }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-archive.yml
+    with:
+      deploy_sha: ${{ needs.select.outputs.deploy_sha }}
+      ci_run_id: ${{ needs.select.outputs.ci_run_id }}
+    secrets: inherit

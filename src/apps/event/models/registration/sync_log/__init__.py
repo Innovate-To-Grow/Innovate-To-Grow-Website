@@ -21,6 +21,9 @@ class RegistrationSheetSyncLog(ProjectControlModel):
     status = models.CharField(max_length=10, choices=Status.choices)
     rows_written = models.PositiveIntegerField(default=0)
     error_message = models.TextField(blank=True, default="")
+    cursor_from = models.DateTimeField(null=True, blank=True)
+    cursor_to = models.DateTimeField(null=True, blank=True)
+    selected_registration_ids = models.JSONField(default=list, db_default=[], blank=True)
 
     class Meta:
         ordering = ["-created_at"]

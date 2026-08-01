@@ -2,8 +2,6 @@
 
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
-from django.template.loader import render_to_string
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
@@ -48,7 +46,8 @@ def inbox_fragment_view(request):
         inbox_api.logger.exception("Unexpected error refreshing inbox fragment.")
         error_message = inbox_api.INBOX_UNEXPECTED_ERROR_MESSAGE
 
-    html = render_to_string(
+    return TemplateResponse(
+        request,
         "admin/mail/inbox/_inbox_full_body.html",
         {
             "gmail_config": gmail_config,
@@ -58,6 +57,4 @@ def inbox_fragment_view(request):
             "limit_choices": inbox_api.INBOX_LIMIT_CHOICES,
             "folder": folder,
         },
-        request=request,
     )
-    return HttpResponse(html)

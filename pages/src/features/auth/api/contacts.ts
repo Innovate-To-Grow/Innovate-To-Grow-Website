@@ -1,5 +1,16 @@
 import { authApi } from './client';
-import type { ContactEmail, ContactPhone, MessageResponse } from './types';
+import type {
+  ContactEmail,
+  ContactPhone,
+  MessageResponse,
+  SmsChallengeResponse,
+} from './types';
+import {
+  contactPhoneChallengeScope,
+  forgetSmsChallenge,
+  readSmsChallenge,
+  rememberSmsChallenge,
+} from './smsChallenges';
 
 export const getContactPhones = async (): Promise<ContactPhone[]> => {
   const response = await authApi.get<ContactPhone[]>('/authn/contact-phones/');
@@ -27,13 +38,30 @@ export const deleteContactPhone = async (id: string): Promise<void> => {
   await authApi.delete(`/authn/contact-phones/${id}/`);
 };
 
-export const requestContactPhoneVerification = async (id: string): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>(`/authn/contact-phones/${id}/request-verification/`);
+export const requestContactPhoneVerification = async (id: string): Promise<SmsChallengeResponse> => {
+  const response = await authApi.post<SmsChallengeResponse>(`/authn/contact-phones/${id}/request-verification/`);
+  rememberSmsChallenge(
+    contactPhoneChallengeScope(id),
+    response.data.challenge_id,
+  );
   return response.data;
 };
 
-export const verifyContactPhoneCode = async (id: string, code: string): Promise<ContactPhone> => {
-  const response = await authApi.post<ContactPhone>(`/authn/contact-phones/${id}/verify-code/`, { code });
+export const verifyContactPhoneCode = async (
+  id: string,
+  code: string,
+  challengeId?: string,
+): Promise<ContactPhone> => {
+  const scope = contactPhoneChallengeScope(id);
+  const resolvedChallengeId = challengeId ?? readSmsChallenge(scope);
+  const response = await authApi.post<ContactPhone>(
+    `/authn/contact-phones/${id}/verify-code/`,
+    {
+      code,
+      ...(resolvedChallengeId ? {challenge_id: resolvedChallengeId} : {}),
+    },
+  );
+  forgetSmsChallenge(scope, resolvedChallengeId);
   return response.data;
 };
 

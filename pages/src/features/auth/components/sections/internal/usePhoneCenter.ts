@@ -137,12 +137,12 @@ export const usePhoneCenter = () => {
     const handleVerifySubmit = async (event: FormEvent) => {
         event.preventDefault();
         if (!verifyingId || verifyCode.length !== 6) return;
-        if (!addTermsAccepted) {
+        const targetId = verifyingId;
+        const wasPendingAdd = pendingNewPhone?.id === targetId;
+        if (wasPendingAdd && !addTermsAccepted) {
             setVerifyError('Please accept Terms of Service & Privacy Policy to continue.');
             return;
         }
-        const targetId = verifyingId;
-        const wasPendingAdd = pendingNewPhone?.id === targetId;
         setVerifyLoading(true);
         setVerifyError(null);
         clearMessages();

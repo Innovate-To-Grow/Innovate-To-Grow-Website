@@ -33,6 +33,18 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "")
 SES_CONFIGURATION_SET_NAME = os.environ.get("SES_CONFIGURATION_SET_NAME", "")
 SES_SNS_TOPIC_ARN = os.environ.get("SES_SNS_TOPIC_ARN", "")
 
+# Durable PostgreSQL outbox rollout. Deploy schema + worker with this false,
+# verify the worker heartbeat, then set true on web tasks to begin queueing.
+BACKGROUND_JOBS_ENABLED = os.environ.get("BACKGROUND_JOBS_ENABLED", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+}
+BACKGROUND_JOB_METRICS_NAMESPACE = os.environ.get(
+    "BACKGROUND_JOB_METRICS_NAMESPACE",
+    "",
+).strip()
+
 # ---------------------------------------------------------------------------
 # Internationalization / timezone
 # ---------------------------------------------------------------------------

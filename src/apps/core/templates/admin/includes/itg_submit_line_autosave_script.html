@@ -1,5 +1,5 @@
 {% load i18n %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
     (function () {
         var STORAGE_KEY = 'admin_autosave_enabled';
         var INTERVAL_MS = 30000;

@@ -1,6 +1,7 @@
 from django.apps import apps
 from rest_framework.response import Response
 
+from apps.core.access import user_can_access_app
 from apps.core.services.db_tools.safe_orm import is_model_denied, safe_model_fields
 
 from ..services.resolve import is_cli_denied, resolve_cli_model
@@ -19,7 +20,10 @@ class ModelListView(AdminAPIView):
     def get(self, request):
         rows = []
         for model in apps.get_models():
-            if _is_cli_denied(model, write=False):
+            if _is_cli_denied(model, write=False) or not user_can_access_app(
+                request.user,
+                model._meta.app_label,
+            ):
                 continue
             rows.append(
                 {
@@ -37,7 +41,12 @@ class ModelSchemaView(AdminAPIView):
     throttle_classes = [CliReadThrottle]
 
     def get(self, request, app_label, model_name):
-        model = resolve_cli_model(app_label, model_name, write=False)
+        model = resolve_cli_model(
+            app_label,
+            model_name,
+            write=False,
+            actor=request.user,
+        )
         return Response(
             {
                 "model": model._meta.label,

@@ -1,5 +1,6 @@
 """Passwordless phone-auth: existing-account (login) flow."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -13,7 +14,22 @@ Member = get_user_model()
 VERIFY_URL = "/authn/phone-auth/verify-code/"
 
 
-@patch("apps.authn.views.auth.phone_code.check_phone_verification", return_value="approved")
+def approve_phone_verification(
+    phone_number,
+    _code,
+    *,
+    approved_callback,
+    **_kwargs,
+):
+    return approved_callback(
+        SimpleNamespace(phone_number=phone_number or "+12025550123"),
+    )
+
+
+@patch(
+    "apps.authn.views.auth.phone_code.check_phone_verification",
+    side_effect=approve_phone_verification,
+)
 @patch("apps.authn.services.sms.start_phone_verification", return_value="pending")
 class PhoneAuthLoginTests(APITestCase):
     # noinspection PyAttributeOutsideInit

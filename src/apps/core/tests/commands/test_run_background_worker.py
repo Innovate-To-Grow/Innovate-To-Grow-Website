@@ -1,0 +1,109 @@
+from io import StringIO
+from types import SimpleNamespace
+from unittest.mock import call, patch
+
+from django.test import SimpleTestCase
+
+from apps.core.management.commands import run_background_worker
+
+
+class RunBackgroundWorkerCommandTests(SimpleTestCase):
+    def _run_once(self):
+        command = run_background_worker.Command(stdout=StringIO())
+        with patch.object(run_background_worker, "purge_retired_auth_keypairs") as purge:
+            command.handle(
+                once=True,
+                batch_size=10,
+                poll_seconds=0.25,
+                stale_minutes=10,
+                key_purge_seconds=3600,
+            )
+        return purge
+
+    @patch.object(run_background_worker, "publish_worker_metrics")
+    @patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1})
+    @patch.object(run_background_worker, "claim_jobs", return_value=[])
+    @patch.object(run_background_worker, "recover_stale_jobs")
+    def test_worker_runs_retired_key_purge_maintenance(
+        self,
+        _recover,
+        _claim,
+        _metrics,
+        _publish,
+    ):
+        purge = self._run_once()
+
+        purge.assert_called_once_with()
+
+    @patch.object(run_background_worker, "publish_worker_metrics")
+    @patch.object(
+        run_background_worker,
+        "worker_metrics",
+        side_effect=RuntimeError("metrics unavailable"),
+    )
+    @patch.object(run_background_worker, "claim_jobs", return_value=[])
+    @patch.object(run_background_worker, "recover_stale_jobs")
+    def test_metrics_failure_does_not_terminate_once_cycle(
+        self,
+        _recover,
+        _claim,
+        _metrics,
+        publish,
+    ):
+        self._run_once()
+
+        publish.assert_not_called()
+
+    @patch.object(run_background_worker, "publish_worker_metrics")
+    @patch.object(
+        run_background_worker,
+        "worker_metrics",
+        return_value={"heartbeat": 1},
+    )
+    @patch.object(run_background_worker, "process_claimed_job")
+    @patch.object(
+        run_background_worker,
+        "claim_jobs",
+        return_value=[SimpleNamespace(pk=1), SimpleNamespace(pk=2)],
+    )
+    @patch.object(run_background_worker, "recover_stale_jobs")
+    def test_job_boundary_failure_does_not_skip_remaining_batch(
+        self,
+        _recover,
+        _claim,
+        process,
+        _metrics,
+        _publish,
+    ):
+        process.side_effect = [RuntimeError("mirror unavailable"), True]
+
+        self._run_once()
+
+        self.assertEqual(
+            process.call_args_list,
+            [call(SimpleNamespace(pk=1)), call(SimpleNamespace(pk=2))],
+        )
+
+    @patch.object(run_background_worker, "publish_worker_metrics")
+    @patch.object(
+        run_background_worker,
+        "worker_metrics",
+        return_value={"heartbeat": 1},
+    )
+    @patch.object(run_background_worker, "claim_jobs")
+    @patch.object(
+        run_background_worker,
+        "recover_stale_jobs",
+        side_effect=RuntimeError("database temporarily unavailable"),
+    )
+    def test_maintenance_failure_does_not_terminate_cycle(
+        self,
+        _recover,
+        claim,
+        _metrics,
+        publish,
+    ):
+        self._run_once()
+
+        claim.assert_not_called()
+        publish.assert_called_once_with({"heartbeat": 1})

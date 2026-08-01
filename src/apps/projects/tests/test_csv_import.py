@@ -7,31 +7,26 @@ from apps.projects.services.csv_import import ImportResult, _parse_semester, imp
 
 
 class ParseSemesterTest(TestCase):
-    # _parse_semester only parses + get_or_creates the Semester now; publishing is
-    # handled atomically by import_projects_from_csv (see test_publish_flag and
-    # test_publish_is_atomic_with_bulk_create below).
+    # Parsing is intentionally side-effect-free. Semester rows are created only
+    # by a non-dry-run import transaction.
     def test_valid_year_semester(self):
-        semester = _parse_semester("2024-2 Fall")
-        self.assertIsNotNone(semester)
-        self.assertEqual(semester.year, 2024)
-        self.assertEqual(semester.season, 2)
-        self.assertFalse(semester.is_published)
+        self.assertEqual(_parse_semester("2024-2 Fall"), (2024, 2))
+        self.assertEqual(Semester.objects.count(), 0)
 
     def test_does_not_publish(self):
-        # Parsing must never flip is_published — that is the importer's job.
         Semester.objects.create(year=2022, season=1, is_published=False)
-        semester = _parse_semester("2022-1 Spring")
-        self.assertFalse(semester.is_published)
+        self.assertEqual(_parse_semester("2022-1 Spring"), (2022, 1))
+        self.assertFalse(Semester.objects.get(year=2022, season=1).is_published)
 
     def test_invalid_format_returns_none(self):
         self.assertIsNone(_parse_semester("bad data"))
         self.assertIsNone(_parse_semester(""))
 
-    def test_get_or_create_reuses_existing(self):
+    def test_existing_semester_is_not_touched(self):
         Semester.objects.create(year=2024, season=1)
-        semester = _parse_semester("2024-1 Spring")
+        parsed = _parse_semester("2024-1 Spring")
         self.assertEqual(Semester.objects.filter(year=2024, season=1).count(), 1)
-        self.assertEqual(semester.year, 2024)
+        self.assertEqual(parsed, (2024, 1))
 
 
 class ImportProjectsFromCSVTest(TestCase):
@@ -67,6 +62,7 @@ class ImportProjectsFromCSVTest(TestCase):
         result = import_projects_from_csv(csv_file, dry_run=True)
         self.assertEqual(result.created, 1)
         self.assertEqual(Project.objects.count(), 0)
+        self.assertEqual(Semester.objects.count(), 0)
 
     def test_skips_short_rows(self):
         csv_file = self._make_csv(["short,row"])

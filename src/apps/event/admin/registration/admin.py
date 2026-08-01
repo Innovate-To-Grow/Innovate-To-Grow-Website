@@ -133,7 +133,7 @@ class EventRegistrationAdmin(
 
     def response_change(self, request, obj):
         if "_send_ticket_email" in request.POST:
-            return redirect(request.path)
+            return redirect("admin:event_eventregistration_change", obj.pk)
         return super().response_change(request, obj)
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic

@@ -1,11 +1,9 @@
-import threading
-
 from apps.core.models import GoogleCredentialConfig
 
 from .rows import build_header as _build_header
 from .rows import build_row as _build_row
 from .rows import safe_sheet_value as _safe
-from .scheduler import _flush_pending_sync, _sync_in_progress, _sync_pending, schedule_member_sync
+from .scheduler import _flush_pending_sync, schedule_member_sync
 from .sheets import MemberSyncError, _get_worksheet
 from .sync import sync_members_to_sheet
 
@@ -19,10 +17,7 @@ __all__ = [
     "_build_row",
     "_flush_pending_sync",
     "_safe",
-    "_sync_in_progress",
-    "_sync_pending",
     "_get_worksheet",
     "schedule_member_sync",
     "sync_members_to_sheet",
-    "threading",
 ]

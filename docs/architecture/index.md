@@ -8,7 +8,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 - [Backend](backend.md) — Django apps, base models, settings, middleware, and auth system
 - [Frontend](frontend.md) — React roots, router, features, shared modules, and styling
 - [Request Flow](request-flow.md) — How requests move from browser through Vite/CDN to Django and back
-- [Integrations](integrations.md) — External services: Google Sheets, AWS SES/SNS/Bedrock, S3
+- [Integrations](integrations.md) — External services: Google Sheets, AWS SES/End User Messaging/Bedrock, S3
 
 ## Who this is for
 
@@ -22,9 +22,11 @@ Engineers who need to understand how the system is organized before making chang
 | UUID primary keys on all domain models | `ProjectControlModel` base class provides UUIDs, timestamps, and soft delete |
 | Block-based CMS | `CMSPage` + ordered `CMSBlock` records with JSON schemas replace the older GrapesJS system |
 | Service layer pattern | Business logic lives in `services/` modules, not in views or serializers |
-| Modular Django settings | `base.py` wildcard-imports from `components/`; `dev.py`, `ci.py`, `prod.py` extend it |
+| Modular Django settings | `base.py` assembles shared components; `local.py`, `test.py`, and `production.py` apply environment-specific overrides |
 | Per-endpoint throttling | Throttle classes applied per-view, not globally (global setting breaks test suite) |
-| Client-side RSA password encryption | Passwords encrypted with Web Crypto API before transmission; key rotated on login |
+| Client-side RSA password encryption | Passwords are encrypted with Web Crypto API; active keys rotate daily and retired key IDs remain decryptable for a bounded two-day window |
+| Server-authoritative auth bootstrap | Persisted tokens identify a local session generation, while `/authn/session/` supplies the current member/profile state |
+| Durable one-time challenges | Email, SMS, verification-token, and impersonation credentials use locked or conditional state transitions so concurrent reuse fails |
 
 ## Related sections
 

@@ -174,9 +174,9 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
             raise PermissionDenied("Staff and superuser accounts cannot be impersonated.")
         token = ImpersonationToken.generate_token()
         ImpersonationToken.objects.create(token=token, member=member, created_by=request.user)
-        logger.info("Admin %s created impersonation token for member %s", request.user.id, member.id)
+        logger.info("Administrator %s began impersonating member %s", request.user.id, member.id)
         frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
-        return redirect(f"{frontend_url}/impersonate-login?token={token}")
+        return redirect(f"{frontend_url}/impersonate-login#token={token}")
 
     # Granting admin-app access or staff status is an I2G Master (superuser)
     # responsibility. A non-superuser admin must not be able to widen their own

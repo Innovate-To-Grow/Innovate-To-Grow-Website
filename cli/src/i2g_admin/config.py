@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import stat
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -21,6 +22,7 @@ DOTENV_FILE = ".env"
 ENV_BASE_URL = "I2G_ADMIN_BASE_URL"
 # Name of the environment variable that selects the active named profile.
 ENV_PROFILE = "I2G_ADMIN_PROFILE"
+DOTENV_ALLOWED_KEYS = frozenset({ENV_BASE_URL, ENV_PROFILE})
 DEFAULT_PROFILE = "default"
 # http is only permitted to literal loopback hosts (local dev); everything else
 # must be https so the bearer token is never sent in cleartext to a remote host.
@@ -43,8 +45,12 @@ def _package_root() -> Path:
 
 
 def _dotenv_paths() -> list[Path]:
-    """.env locations, highest precedence first: current dir, then the cli/ root."""
-    return [Path.cwd() / DOTENV_FILE, _package_root() / DOTENV_FILE]
+    """Return the project-owned development .env path.
+
+    The process working directory is intentionally excluded: invoking the CLI
+    inside an untrusted checkout must not import that checkout's environment.
+    """
+    return [_package_root() / DOTENV_FILE]
 
 
 def _parse_dotenv(text: str) -> dict[str, str]:
@@ -56,17 +62,17 @@ def _parse_dotenv(text: str) -> dict[str, str]:
             continue
         key, _, value = line.partition("=")
         key = key.strip()
-        if key:
+        if key in DOTENV_ALLOWED_KEYS:
             values[key] = value.strip().strip('"').strip("'")
     return values
 
 
 def load_dotenv() -> None:
-    """Populate ``os.environ`` from the nearest .env file, never overriding real env vars.
+    """Populate CLI-owned environment keys from the project .env file.
 
-    Minimal, dependency-free loader. A value already present in the process
-    environment always wins, so an explicit shell export beats the file, and the
-    first .env found beats later ones.
+    A value already present in the process environment always wins. Keys such
+    as XDG_CONFIG_HOME, proxy settings, and CA bundle paths are never imported
+    from a dotenv file.
     """
     for path in _dotenv_paths():
         if not path.is_file():
@@ -85,7 +91,7 @@ def _write_secret_json(path: Path, data) -> None:
     """Write JSON with owner-only permissions (dir 0700, file 0600)."""
     directory = config_dir()
     directory.mkdir(parents=True, exist_ok=True)
-    os.chmod(directory, 0o700)
+    os.chmod(directory, stat.S_IRWXU)
     fd = os.open(str(path), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as handle:
         json.dump(data, handle)
@@ -147,8 +153,7 @@ def _load_config_strict() -> dict:
         return {}
     if data is _CORRUPT:
         raise CliError(
-            f"config.json is corrupt; refusing to overwrite it and lose other profiles. "
-            f"Fix or remove {path}."
+            f"config.json is corrupt; refusing to overwrite it and lose other profiles. Fix or remove {path}."
         )
     return data if isinstance(data, dict) else {}
 

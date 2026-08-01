@@ -397,6 +397,11 @@ class ConfigModelTests(SystemIntelligenceAdminBase):
         config = SystemIntelligenceConfig(name="Backup", is_active=False)
         self.assertEqual(str(config), "Backup")
 
-    def test_is_configured_is_always_true(self):
-        # config.py line 71.
-        self.assertTrue(SystemIntelligenceConfig().is_configured)
+    def test_is_configured_requires_saved_active_model(self):
+        self.assertFalse(SystemIntelligenceConfig().is_configured)
+        config = SystemIntelligenceConfig.objects.create(
+            name="Configured",
+            is_active=True,
+            default_model_id="model-id",
+        )
+        self.assertTrue(config.is_configured)

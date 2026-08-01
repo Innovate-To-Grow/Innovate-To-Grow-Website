@@ -76,7 +76,12 @@ class PhoneVerificationServiceTests(TestCase):
         phone = ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US")
         result = request_phone_verification(member=self.member, contact_phone_id=phone.pk)
         self.assertEqual(result, {"message": "Verification code sent via SMS."})
-        mock_start.assert_called_once_with("+12095551234")
+        mock_start.assert_called_once_with(
+            "+12095551234",
+            purpose="contact_phone_verify",
+            member=self.member,
+            context_identifier=str(phone.pk),
+        )
 
     def test_verify_phone_code_not_found_raises(self):
         import uuid
@@ -87,9 +92,21 @@ class PhoneVerificationServiceTests(TestCase):
     @patch("apps.authn.services.sms.check_phone_verification")
     def test_verify_phone_code_marks_verified(self, mock_check):
         phone = ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US")
+
+        def approve(*_args, **kwargs):
+            return kwargs["approved_callback"](object())
+
+        mock_check.side_effect = approve
         updated = verify_phone_code(member=self.member, contact_phone_id=phone.pk, code="123456")
         self.assertTrue(updated.verified)
-        mock_check.assert_called_once_with("+12095551234", "123456")
+        mock_check.assert_called_once()
+        args, kwargs = mock_check.call_args
+        self.assertEqual(args, ("+12095551234", "123456"))
+        self.assertEqual(kwargs["challenge_id"], None)
+        self.assertEqual(kwargs["purpose"], "contact_phone_verify")
+        self.assertEqual(kwargs["member"], self.member)
+        self.assertEqual(kwargs["context_identifier"], str(phone.pk))
+        self.assertTrue(callable(kwargs["approved_callback"]))
         phone.refresh_from_db()
         self.assertTrue(phone.verified)
 

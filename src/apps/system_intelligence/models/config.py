@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 
 from apps.core.models.base.control import ProjectControlModel
 
@@ -135,6 +135,24 @@ class SystemIntelligenceConfig(ProjectControlModel):
         verbose_name="Public Max History Messages",
         help_text="Number of prior conversation turns to keep when calling the model.",
     )
+    public_assistant_max_history_chars = models.PositiveIntegerField(
+        default=8000,
+        db_default=8000,
+        verbose_name="Public Max Total History Characters",
+        help_text="Maximum combined characters retained from prior turns. Oldest turns are trimmed first.",
+    )
+    public_assistant_max_context_chars = models.PositiveIntegerField(
+        default=24000,
+        db_default=24000,
+        verbose_name="Public Max Context Characters",
+        help_text="Maximum public grounding-context characters included in a model request.",
+    )
+    public_assistant_max_estimated_input_tokens = models.PositiveIntegerField(
+        default=12000,
+        db_default=12000,
+        verbose_name="Public Max Estimated Input Tokens",
+        help_text="Reject model requests whose estimated total input exceeds this limit.",
+    )
     public_assistant_starter_questions = models.JSONField(
         default=default_starter_questions,
         blank=True,
@@ -167,6 +185,13 @@ class SystemIntelligenceConfig(ProjectControlModel):
     class Meta:
         verbose_name = "System Intelligence Config"
         verbose_name_plural = "System Intelligence Configs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=models.Q(is_active=True),
+                name="system_one_active_config",
+            ),
+        ]
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
@@ -174,19 +199,31 @@ class SystemIntelligenceConfig(ProjectControlModel):
 
     def save(self, *args, **kwargs):
         if self.is_active:
-            SystemIntelligenceConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
-        super().save(*args, **kwargs)
+            with transaction.atomic():
+                list(SystemIntelligenceConfig.objects.select_for_update().filter(is_active=True).exclude(pk=self.pk))
+                SystemIntelligenceConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):
-        obj = cls.objects.filter(is_active=True).first()
-        if obj is None:
-            obj = cls.objects.order_by("-updated_at").first()
-        return obj if obj is not None else cls(id=None)
+        """Load only an explicitly active configuration."""
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            # Keep a model-shaped object for display code, but remove provider
+            # model IDs so every invocation path fails closed.
+            return cls(
+                id=None,
+                default_model_id="",
+                public_assistant_model_id="",
+                public_assistant_enabled=False,
+            )
 
     @property
     def is_configured(self):
-        return True
+        return bool(self.pk and self.is_active and self.default_model_id)
 
     @property
     def public_model_id(self) -> str:

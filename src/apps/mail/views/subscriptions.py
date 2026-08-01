@@ -3,12 +3,11 @@
 import logging
 
 from django.conf import settings
-from django.http import HttpResponse
-from django.template.loader import render_to_string
+from django.template.response import TemplateResponse
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
-from apps.authn.services import email as email_api
+from apps.mail.services.subscription_notifications import send_subscription_confirmation
 from apps.mail.services.unsubscribe_token import (
     build_resubscribe_token,
     get_member_from_oneclick_token,
@@ -38,28 +37,29 @@ class OneClickUnsubscribeView(APIView):
         if primary and primary.subscribe:
             primary.subscribe = False
             primary.save(update_fields=["subscribe"])
-            _send_unsubscribe_confirmation(member)
+            _send_unsubscribe_confirmation(member, token)
 
         return member
 
-    def _handle_unsubscribe(self, token):
+    def _handle_unsubscribe(self, request, token):
         result = self._unsubscribe(token)
         if isinstance(result, str):
-            return HttpResponse(_render_unsubscribe_page(error=result), status=400, content_type="text/html")
+            return _render_unsubscribe_page(request, error=result, status=400)
 
         resubscribe_token = build_resubscribe_token(result)
-        return HttpResponse(
-            _render_unsubscribe_page(member=result, resubscribe_token=resubscribe_token),
-            content_type="text/html",
+        return _render_unsubscribe_page(
+            request,
+            member=result,
+            resubscribe_token=resubscribe_token,
         )
 
     # noinspection PyMethodMayBeStatic
     def get(self, request, token):
-        return self._handle_unsubscribe(token)
+        return self._handle_unsubscribe(request, token)
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, token):
-        return self._handle_unsubscribe(token)
+        return self._handle_unsubscribe(request, token)
 
 
 class ResubscribeView(APIView):
@@ -74,25 +74,26 @@ class ResubscribeView(APIView):
             member = get_member_from_resubscribe_token(token)
         except ValueError:
             logger.info("Resubscribe token rejected")
-            return HttpResponse(
-                _render_resubscribe_page(error=RESUBSCRIBE_LINK_INVALID_MESSAGE),
+            return _render_resubscribe_page(
+                request,
+                error=RESUBSCRIBE_LINK_INVALID_MESSAGE,
                 status=400,
-                content_type="text/html",
             )
 
         primary = member.get_primary_contact_email()
         if primary and not primary.subscribe:
             primary.subscribe = True
             primary.save(update_fields=["subscribe"])
-            _send_resubscribe_confirmation(member)
+            _send_resubscribe_confirmation(member, token)
 
-        return HttpResponse(_render_resubscribe_page(member=member), content_type="text/html")
+        return _render_resubscribe_page(request, member=member)
 
 
-def _render_unsubscribe_page(member=None, error=None, resubscribe_token=None):
+def _render_unsubscribe_page(request, member=None, error=None, resubscribe_token=None, status=200):
     """Return a standalone HTML page confirming unsubscribe or showing an error."""
     backend_url = (getattr(settings, "BACKEND_URL", "") or "").strip().rstrip("/")
-    return render_to_string(
+    return TemplateResponse(
+        request,
         "mail/email/unsubscribe_done.html",
         {
             "member": member,
@@ -100,52 +101,37 @@ def _render_unsubscribe_page(member=None, error=None, resubscribe_token=None):
             "frontend_url": (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/"),
             "resubscribe_url": f"{backend_url}/mail/resubscribe/{resubscribe_token}/" if resubscribe_token else "",
         },
+        status=status,
     )
 
 
-def _render_resubscribe_page(member=None, error=None):
+def _render_resubscribe_page(request, member=None, error=None, status=200):
     """Return a standalone HTML page confirming resubscription or showing an error."""
-    return render_to_string(
+    return TemplateResponse(
+        request,
         "mail/email/resubscribe_done.html",
         {
             "member": member,
             "error": error,
             "frontend_url": (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/"),
         },
+        status=status,
     )
 
 
-def _send_unsubscribe_confirmation(member):
+def _send_unsubscribe_confirmation(member, event_token):
     """Best-effort confirmation email after unsubscribe."""
-    primary_email = member.get_primary_email()
-    if not primary_email:
-        return
-
-    frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
-    email_api.send_notification_email(
-        recipient=primary_email,
-        subject="You've been unsubscribed - Innovate to Grow",
-        template="mail/email/unsubscribe_confirmation.html",
-        context={
-            "first_name": member.first_name or "there",
-            "account_url": f"{frontend_url}/account" if frontend_url else "",
-        },
+    send_subscription_confirmation(
+        member=member,
+        action="unsubscribe",
+        event_token=event_token,
     )
 
 
-def _send_resubscribe_confirmation(member):
+def _send_resubscribe_confirmation(member, event_token):
     """Best-effort confirmation email after resubscribe."""
-    primary_email = member.get_primary_email()
-    if not primary_email:
-        return
-
-    frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
-    email_api.send_notification_email(
-        recipient=primary_email,
-        subject="You've been resubscribed - Innovate to Grow",
-        template="mail/email/resubscribe_confirmation.html",
-        context={
-            "first_name": member.first_name or "there",
-            "account_url": f"{frontend_url}/account" if frontend_url else "",
-        },
+    send_subscription_confirmation(
+        member=member,
+        action="resubscribe",
+        event_token=event_token,
     )

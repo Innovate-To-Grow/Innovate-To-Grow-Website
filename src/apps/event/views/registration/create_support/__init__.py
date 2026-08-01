@@ -139,28 +139,48 @@ def apply_phone_fields(request, event, data, create_kwargs) -> None:
         phone = registration_api._normalize_phone(data["attendee_phone"], phone_region)
         create_kwargs["attendee_phone"] = phone
         if event.verify_phone:
-            if not is_phone_verified(request.user, phone, phone_region):
+            if not is_phone_verified(
+                request.user,
+                phone,
+                phone_region,
+                event=event,
+                challenge_id=data.get("phone_verification_challenge_id"),
+            ):
                 raise RegistrationRequestError("Please verify your phone number before completing registration.")
             create_kwargs["phone_verified"] = True
     elif event.verify_phone:
         raise RegistrationRequestError("A verified phone number is required for this event.")
 
 
-def is_phone_verified(user, phone: str, phone_region: str) -> bool:
-    import apps.event.views.registration as registration_api
-
+def is_phone_verified(user, phone: str, phone_region: str, *, event, challenge_id=None) -> bool:
     national_digits = normalize_to_national(phone, phone_region)
-    return (
-        registration_api._consume_phone_verification(
-            user,
-            phone,
-        )
-        or ContactPhone.objects.filter(
-            member=user,
-            phone_number=national_digits,
-            verified=True,
-        ).exists()
+    if ContactPhone.objects.filter(
+        member=user,
+        phone_number=national_digits,
+        verified=True,
+    ).exists():
+        return True
+
+    from apps.authn.services.sms import (
+        PhoneVerificationInvalid,
+        consume_verified_phone_challenge,
     )
+    from apps.event.views.registration.phones import (
+        LEGACY_EVENT_REGISTRATION_CONTEXT,
+    )
+
+    try:
+        consume_verified_phone_challenge(
+            phone_number=phone,
+            purpose="event_registration",
+            member=user,
+            context_identifier=f"event-registration:{event.pk}",
+            challenge_id=challenge_id,
+            compatibility_context_identifiers=(LEGACY_EVENT_REGISTRATION_CONTEXT,),
+        )
+    except PhoneVerificationInvalid:
+        return False
+    return True
 
 
 def sync_registration_to_account(user, registration, event, data):

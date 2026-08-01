@@ -5,28 +5,31 @@
 ```
 .
 ├── src/                    # Django backend (all Python code)
-│   ├── core/               # Framework: settings, models, middleware, management commands
-│   ├── authn/              # Authentication, Member model, contacts, admin invitations
-│   ├── cms/                # CMS pages, blocks, news, analytics, menus, footer
-│   ├── event/              # Events, registration, ticketing, schedule, check-in
-│   ├── projects/           # Past projects, semesters, sharing
-│   ├── mail/               # Email campaigns, recipient logs, magic login
-│   ├── sponsors/           # Sponsor management
+│   ├── apps/               # Django apps
+│   │   ├── core/           # Framework, settings models, middleware, durable jobs
+│   │   ├── authn/          # Authentication, Member, contacts, invitations
+│   │   ├── cms/            # CMS pages, news, analytics, menus, footer
+│   │   ├── event/          # Registration, ticketing, schedule, check-in
+│   │   ├── projects/       # Past projects, semesters, sharing
+│   │   ├── mail/           # Campaigns, recipient logs, login links
+│   │   └── sponsors/       # Sponsor management
+│   ├── config/             # Django settings, URLs, ASGI/WSGI
 │   ├── manage.py           # Django management entry point
-│   ├── requirements.txt    # Python dependencies
+│   ├── requirements/       # Inputs plus hashed local/production locks
+│   ├── requirements.txt    # Hash-checked local/CI convenience include
 │   ├── Dockerfile          # Production container image
 │   └── .env                # Local environment variables (not in version control)
 ├── pages/                  # React frontend (TypeScript + Vite)
 │   ├── src/                # Application source
-│   ├── index.html          # HTML shell with three React mount points
+│   ├── index.html          # HTML shell with independently mounted React roots
 │   ├── package.json        # Node dependencies and scripts
 │   ├── vite.config.ts      # Dev server proxy and build config
 │   └── vitest.config.ts    # Test runner config
 ├── aws/                    # ECS task definition template
 ├── docs/                   # Technical documentation (this directory)
-├── archive/                # Historical CSVs, exports, and backups
+├── archive/page/           # Standalone historical archive service
+├── cli/                    # Standalone i2g-admin Python CLI
 ├── .github/workflows/      # CI/CD pipelines
-├── .claude/                # Claude Code configuration and rules
 ├── pyproject.toml          # Ruff linter/formatter config
 ├── CONTRIBUTING.md         # Contributor guidelines
 └── README.md               # Project overview with doc links
@@ -37,7 +40,7 @@
 Each Django app under `src/` follows a consistent structure:
 
 ```
-src/<app>/
+src/apps/<app>/
 ├── models/             # or models.py — domain models
 ├── views/              # or views.py — API views
 ├── serializers/        # or serializers.py — DRF serializers

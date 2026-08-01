@@ -5,7 +5,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from apps.core.models import EmailServiceConfig
+from apps.core.models import BackgroundJob, EmailServiceConfig
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign
 
@@ -89,9 +89,13 @@ class CampaignSendConfirmationTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("status", response.url)
 
-    @patch("apps.mail.admin.campaign.views.send.campaign_api.threading.Thread")
-    def test_second_confirmation_post_does_not_start_duplicate_send(self, mock_thread):
-        campaign = _make_campaign(name="Race Campaign")
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_second_confirmation_post_does_not_start_duplicate_send(self):
+        campaign = _make_campaign(
+            name="Race Campaign",
+            audience_type="manual",
+            manual_emails="recipient@example.com",
+        )
 
         url = reverse("admin:mail_emailcampaign_send_confirm", args=[campaign.pk])
         first_response = self.client.post(url, {"confirmation_text": "Race Campaign"})
@@ -99,8 +103,12 @@ class CampaignSendConfirmationTest(TestCase):
 
         self.assertEqual(first_response.status_code, 302)
         self.assertContains(second_response, "already been sent")
-        mock_thread.assert_called_once()
-        mock_thread.return_value.start.assert_called_once()
+        campaign.refresh_from_db()
+        self.assertEqual(campaign.status, "queued")
+        self.assertEqual(
+            BackgroundJob.objects.filter(kind="mail.email_recipient").count(),
+            1,
+        )
 
     @patch("apps.mail.admin.campaign.views.send.CampaignSendMixin._background_send")
     @patch("apps.authn.services.email.send_email.senders.send_notification_email")

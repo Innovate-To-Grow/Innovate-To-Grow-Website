@@ -36,7 +36,7 @@ def build_email_action(
         }
     )
     return {
-        "url": f"{frontend_url}/email-auth-link?{params}",
+        "url": f"{frontend_url}/email-auth-link#{params}",
         "label": PUBLIC_LINK_LABELS[link_source],
         "description": PUBLIC_LINK_DESCRIPTIONS[link_source],
     }

@@ -1,3 +1,4 @@
+import {useId} from 'react';
 import {
   getPastProjectDetailUrl,
   hasProjectGridDetails,
@@ -70,6 +71,7 @@ const MobileCard = ({
 }: MobileCardProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const individualHref = row.id ? getPastProjectDetailUrl(row.id) : '';
+  const detailsId = useId();
 
   return (
     <div className={`project-grid-mobile-card${isExpanded ? ' is-expanded' : ''}${isSelected ? ' is-selected' : ''}`}>
@@ -96,14 +98,21 @@ const MobileCard = ({
       </div>
 
       <div className="project-grid-mobile-card-actions">
-        <button type="button" className="project-grid-detail-button" disabled={!hasDetails} onClick={() => hasDetails && onToggleExpanded(row.__key)}>
+        <button
+          type="button"
+          className="project-grid-detail-button"
+          disabled={!hasDetails}
+          aria-expanded={hasDetails ? isExpanded : undefined}
+          aria-controls={hasDetails ? detailsId : undefined}
+          onClick={() => hasDetails && onToggleExpanded(row.__key)}
+        >
           {hasDetails ? (isExpanded ? 'Hide Details' : 'View Details') : 'No Details'}
         </button>
         {onDeleteRow ? <button type="button" className="project-grid-delete-button" onClick={() => onDeleteRow(row)}>Remove</button> : null}
       </div>
 
       {isExpanded ? (
-        <div className="project-grid-mobile-card-details">
+        <div id={detailsId} className="project-grid-mobile-card-details">
           {individualHref ? (
             <div className="project-grid-individual-link-row">
               <span className="project-grid-individual-link-label">Individual Project URL</span>

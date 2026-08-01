@@ -17,6 +17,11 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.services.aws.provider_outcomes import (
+    NO_PROVIDER_RETRIES,
+    ProviderDeliveryError,
+    classify_aws_send_failure,
+)
 from apps.event.models import EventRegistration
 from apps.event.services.calendar import build_google_calendar_url, generate_ics
 from apps.event.services.date_ranges import format_event_date_range
@@ -59,7 +64,13 @@ def _build_mime_message(*, subject, from_address, recipients, html_body, barcode
     return msg
 
 
-def _send_via_ses(*, config, mime_message) -> bool:
+def _send_via_ses(
+    *,
+    config,
+    mime_message,
+    before_provider_call=None,
+    raise_provider_errors: bool = False,
+) -> bool:
     """Attempt to send via AWS SES send_raw_email. Returns True on success."""
     if not config.ses_configured:
         return False
@@ -70,14 +81,20 @@ def _send_via_ses(*, config, mime_message) -> bool:
             region_name=creds.region,
             aws_access_key_id=creds.access_key_id,
             aws_secret_access_key=creds.secret_access_key,
+            config=NO_PROVIDER_RETRIES,
         )
+        if before_provider_call is not None:
+            before_provider_call()
         client.send_raw_email(RawMessage={"Data": mime_message.as_string()})
         return True
     except AwsCredentialsError:
         logger.warning("SES send skipped: AWS credentials are not configured")
         return False
-    except (BotoCoreError, ClientError):
+    except (BotoCoreError, ClientError) as exc:
         logger.exception("SES send_raw_email failed")
+        if raise_provider_errors:
+            outcome, message = classify_aws_send_failure(exc, provider="SES")
+            raise ProviderDeliveryError(message, outcome=outcome) from exc
         return False
 
 
@@ -108,7 +125,12 @@ def _issue_ticket_login_link(registration: EventRegistration) -> str:
     )
 
 
-def send_ticket_email(registration: EventRegistration) -> None:
+def send_ticket_email(
+    registration: EventRegistration,
+    *,
+    before_provider_call=None,
+    raise_provider_errors: bool = False,
+) -> None:
     """
     Send a ticket confirmation email with an inline barcode.
 
@@ -168,7 +190,12 @@ def send_ticket_email(registration: EventRegistration) -> None:
     )
 
     try:
-        if _send_via_ses(config=config, mime_message=mime_message):
+        send_kwargs = {"config": config, "mime_message": mime_message}
+        if before_provider_call is not None:
+            send_kwargs["before_provider_call"] = before_provider_call
+        if raise_provider_errors:
+            send_kwargs["raise_provider_errors"] = True
+        if _send_via_ses(**send_kwargs):
             logger.info("Ticket email sent via SES for registration %s", registration.pk)
         else:
             raise RuntimeError("Ticket email delivery via AWS SES failed or is not configured.")

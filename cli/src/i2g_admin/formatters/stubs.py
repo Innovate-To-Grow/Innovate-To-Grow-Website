@@ -35,6 +35,15 @@ def _cell(value: Any) -> str:
     return str(value)
 
 
+def _spreadsheet_safe_cell(value: Any) -> str:
+    """Prevent CSV cells from being interpreted as spreadsheet formulas."""
+    text = _cell(value)
+    stripped = text.lstrip()
+    if text.startswith(("\t", "\r", "\n")) or stripped.startswith(("=", "+", "-", "@")):
+        return f"'{text}"
+    return text
+
+
 @register("text")
 def _format_text(data: Any) -> str:
     if isinstance(data, list):
@@ -57,6 +66,16 @@ def _format_yaml(data: Any) -> str:
 
 @register("csv")
 def _format_csv(data: Any) -> str:
+    return _format_csv_with(data, _spreadsheet_safe_cell)
+
+
+@register("csv-raw")
+def _format_csv_raw(data: Any) -> str:
+    """Machine-oriented CSV with values preserved exactly (unsafe for spreadsheets)."""
+    return _format_csv_with(data, _cell)
+
+
+def _format_csv_with(data: Any, render_cell) -> str:
     buffer = io.StringIO()
     if isinstance(data, list):
         if data and all(isinstance(row, dict) for row in data):
@@ -66,19 +85,19 @@ def _format_csv(data: Any) -> str:
                     if key not in columns:
                         columns.append(key)
             writer = csv.writer(buffer)
-            writer.writerow(columns)
+            writer.writerow([render_cell(column) for column in columns])
             for row in data:
-                writer.writerow([_cell(row.get(column)) for column in columns])
+                writer.writerow([render_cell(row.get(column)) for column in columns])
         else:
             writer = csv.writer(buffer)
             for row in data:
-                writer.writerow([_cell(row)])
+                writer.writerow([render_cell(row)])
     elif isinstance(data, dict):
         writer = csv.writer(buffer)
         writer.writerow(["key", "value"])
         for key, value in data.items():
-            writer.writerow([_cell(key), _cell(value)])
+            writer.writerow([render_cell(key), render_cell(value)])
     else:
         writer = csv.writer(buffer)
-        writer.writerow([_cell(data)])
+        writer.writerow([render_cell(data)])
     return buffer.getvalue()

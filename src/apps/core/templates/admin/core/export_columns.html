@@ -5,7 +5,7 @@
 {% block content_title %}<h1>{{ title }}</h1>{% endblock %}
 
 {% block content %}
-<style>
+<style nonce="{{ request.csp_nonce }}">
     .export-card {
         background: var(--md-sys-color-surface-container-lowest, var(--color-white, #fff));
         border: 1px solid var(--md-sys-color-outline-variant, var(--color-base-200, #e5e7eb));
@@ -231,7 +231,7 @@
                 Export
             </button>
             <a href="#"
-               onclick="window.history.back(); return false;"
+               data-admin-action="history-back"
                class="border border-base-200 px-5 py-2 rounded-md text-sm font-medium hover:bg-base-50 transition-colors dark:border-base-700 dark:hover:bg-base-800">
                 Cancel
             </a>
@@ -239,7 +239,7 @@
     </div>
 </form>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function () {
     var toggle = document.getElementById('toggle-all');
     var boxes = document.querySelectorAll('.export-field-cb');

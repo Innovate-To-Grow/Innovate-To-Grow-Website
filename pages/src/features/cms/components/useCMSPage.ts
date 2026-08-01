@@ -31,7 +31,7 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
   const params = new URLSearchParams(window.location.search);
   const previewToken = params.get('cms_preview_token');
   const livePreviewId = params.get('cms_live_preview');
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Normal / token-preview fetch
   useEffect(() => {
@@ -65,24 +65,28 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
 
     let cancelled = false;
 
-    const doFetch = () => {
-      fetchCMSLivePreview(livePreviewId)
-        .then((data) => {
-          if (!cancelled) {
-            setState({ route, page: data, error: null });
-          }
-        })
-        .catch(() => {
-          // Keep showing whatever we already have; don't blank the page on transient errors
-        });
+    const doFetch = async () => {
+      try {
+        const data = await fetchCMSLivePreview(livePreviewId);
+        if (!cancelled) {
+          setState({ route, page: data, error: null });
+        }
+      } catch {
+        // Keep showing whatever we already have; don't blank the page on transient errors
+      } finally {
+        // Schedule only after the current request settles, preventing an older
+        // overlapping response from replacing a newer preview revision.
+        if (!cancelled) {
+          pollRef.current = setTimeout(doFetch, LIVE_PREVIEW_POLL_MS);
+        }
+      }
     };
 
-    doFetch();
-    pollRef.current = setInterval(doFetch, LIVE_PREVIEW_POLL_MS);
+    void doFetch();
 
     return () => {
       cancelled = true;
-      if (pollRef.current) clearInterval(pollRef.current);
+      if (pollRef.current) clearTimeout(pollRef.current);
     };
   }, [livePreviewId, route]);
 

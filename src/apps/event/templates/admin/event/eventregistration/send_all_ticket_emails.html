@@ -60,7 +60,7 @@
                 </div>
             </form>
             {{ event_name|json_script:"event-name-data" }}
-            <script>
+            <script nonce="{{ request.csp_nonce }}">
             (function() {
                 const input = document.getElementById('confirm-input');
                 const btn = document.getElementById('confirm-send-btn');

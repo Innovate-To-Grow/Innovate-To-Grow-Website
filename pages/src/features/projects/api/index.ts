@@ -1,5 +1,9 @@
 import { api } from '@/lib/api-client';
-import {authApi, getAccessToken} from '@/features/auth';
+import {
+  authApi,
+  getAccessToken,
+  isDefinitiveAuthFailure,
+} from '@/features/auth';
 import {formatSemesterLabel} from '@/lib/semester';
 import type { PaginatedResponse } from '@/types/api';
 import type { ScheduleProjectRow } from '@/features/events/api';
@@ -82,6 +86,7 @@ export interface PastProjectShare {
   rows: ProjectGridRow[];
   note: string;
   details_text: string;
+  version: number;
   share_url: string;
   can_edit: boolean;
   created_at: string;
@@ -91,6 +96,7 @@ export interface PastProjectShareSummary {
   id: string;
   name: string;
   note: string;
+  version: number;
   share_url: string;
   row_count: number;
   created_at: string;
@@ -168,8 +174,8 @@ export const searchPastProjectsWithAI = async (
   return response.data;
 };
 
-export const fetchProjectDetail = async (id: string): Promise<ProjectDetail> => {
-  const response = await api.get<ProjectDetail>(`/projects/${id}/`);
+export const fetchProjectDetail = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
+  const response = await api.get<ProjectDetail>(`/projects/${id}/`, {signal});
   return response.data;
 };
 
@@ -194,7 +200,7 @@ export const fetchPastProjectShare = async (id: string): Promise<PastProjectShar
       return response.data;
     } catch (err) {
       const status = (err as {response?: {status?: number}}).response?.status;
-      if (status !== 401) {
+      if (status !== 401 || !isDefinitiveAuthFailure(err)) {
         throw err;
       }
     }
@@ -206,7 +212,8 @@ export const fetchPastProjectShare = async (id: string): Promise<PastProjectShar
 
 export const updatePastProjectShare = async (
   id: string,
-  payload: Pick<PastProjectShare, 'name' | 'rows' | 'note'>,
+  payload: Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>> &
+    Pick<PastProjectShare, 'version'>,
 ): Promise<PastProjectShare> => {
   const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
   return response.data;

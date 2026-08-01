@@ -19,19 +19,24 @@ export const ProjectDetailPage = () => {
 
   useEffect(() => {
     if (!id) return;
+    const controller = new AbortController();
     const load = async () => {
       setLoading(true);
       setError(null);
+      setProject(null);
       try {
-        const data = await fetchProjectDetail(id);
+        const data = await fetchProjectDetail(id, controller.signal);
+        if (controller.signal.aborted) return;
         setProject(data);
       } catch {
+        if (controller.signal.aborted) return;
         setError('Unable to load this project.');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
-    load();
+    void load();
+    return () => controller.abort();
   }, [id]);
 
   if (loading) {

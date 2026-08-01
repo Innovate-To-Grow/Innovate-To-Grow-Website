@@ -20,6 +20,7 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
     attendee_organization = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     attendee_secondary_email = serializers.EmailField(required=False, allow_blank=True, default="")
     attendee_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+    phone_verification_challenge_id = serializers.UUIDField(required=False)
     # US-only: the phone region is pinned to "1-US" server-side, so no client region field is accepted.
 
 

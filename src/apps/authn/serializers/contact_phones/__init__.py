@@ -84,6 +84,7 @@ class ContactPhoneVerifyCodeSerializer(serializers.Serializer):
     """Serializer for verifying a contact phone with a 6-digit code."""
 
     code = serializers.CharField(required=True, min_length=6, max_length=6)
+    challenge_id = serializers.UUIDField(required=False)
 
     # noinspection PyMethodMayBeStatic
     def validate_code(self, value):

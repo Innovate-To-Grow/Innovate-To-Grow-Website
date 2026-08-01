@@ -7,10 +7,9 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
-
 
 ALL_APPS = [
     "authn",
@@ -88,11 +87,7 @@ def plan_django_tests(event_name: str, changed_files: Iterable[str]) -> DjangoPl
     if any(_is_shared_backend_file(path) for path in files):
         return DjangoPlan(ALL_APPS.copy(), True)
 
-    changed_apps = {
-        match.group("app")
-        for path in files
-        if (match := APP_LOCAL_RE.match(path)) is not None
-    }
+    changed_apps = {match.group("app") for path in files if (match := APP_LOCAL_RE.match(path)) is not None}
 
     if not changed_apps:
         return DjangoPlan(ALL_APPS.copy(), True)

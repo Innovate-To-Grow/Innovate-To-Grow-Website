@@ -1,7 +1,7 @@
 """Campaign preview views."""
 
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from unfold.decorators import action
@@ -10,7 +10,12 @@ import apps.mail.admin.campaign as campaign_api
 from apps.core.utils.json_helpers import safe_json
 from apps.mail.models import EmailCampaign
 from apps.mail.services.personalize import personalize
-from apps.mail.services.preview import HTML_MARKER, SAMPLE_CONTEXT, render_email_html
+from apps.mail.services.preview import HTML_MARKER, SAMPLE_CONTEXT, build_email_render_context
+
+_PREVIEW_CSP = (
+    "sandbox; default-src 'none'; img-src 'self' data: https:; "
+    "style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+)
 
 
 class CampaignPreviewMixin:
@@ -74,5 +79,14 @@ class CampaignPreviewMixin:
             body = HTML_MARKER + body
         body_html = personalize(body, SAMPLE_CONTEXT)
         unsubscribe_url = "#unsubscribe-preview" if include_unsubscribe else ""
-        html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
-        return HttpResponse(html)
+        response = TemplateResponse(
+            request,
+            "mail/email/campaign_wrapper.html",
+            build_email_render_context(body_html, unsubscribe_url=unsubscribe_url),
+        )
+        # HTML campaigns intentionally support rich markup. Render the preview
+        # in a unique-origin sandbox so author-provided scripts, forms, and
+        # navigation cannot execute against the Django admin origin.
+        response["Content-Security-Policy"] = _PREVIEW_CSP
+        response["Referrer-Policy"] = "no-referrer"
+        return response

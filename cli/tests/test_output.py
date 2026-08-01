@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from i2g_admin.errors import CliError
 from i2g_admin.output import emit
 

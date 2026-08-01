@@ -2,13 +2,15 @@
 Service layer for passwordless phone authentication (signup + login).
 
 A caller proves ownership of a phone number via the SMS OTP in
-``services/sms/sns_verify.py`` (cache-keyed, member-independent, one-time). Once
-the code is approved, :func:`resolve_or_create_member_by_phone` either logs in
-the member that owns the number or creates a brand-new phone-only account.
+``services/sms/sns_verify.py`` (PostgreSQL-backed, purpose/context-bound, and
+one-time). Once the code is approved,
+:func:`resolve_or_create_member_by_phone` either logs in the member that owns
+the number or creates a brand-new phone-only account.
 
-This mirrors the unified passwordless *email* flow but the OTP is consumed in the
-view before this runs, so the member is created **active in one shot** (there is
-no "pending phone member" state to activate later).
+This mirrors the unified passwordless *email* flow. The OTP service invokes this
+member-resolution step as its approved callback, so OTP consumption, account
+creation/resolution, and JWT creation commit or roll back together. The member
+is created **active in one shot** (there is no "pending phone member" state).
 """
 
 from __future__ import annotations
@@ -48,8 +50,15 @@ def request_phone_auth(phone_number: str, region: str = "1-US") -> dict:
 
     national = normalize_to_national(phone_number, region)
     e164 = national_to_e164(national, region)
-    start_phone_verification(e164)
-    return {"message": "If this number can receive SMS, a verification code has been sent."}
+    challenge = start_phone_verification(
+        e164,
+        purpose="phone_auth",
+        context_identifier=region,
+    )
+    payload = {"message": "If this number can receive SMS, a verification code has been sent."}
+    if isinstance(challenge, dict) and challenge.get("challenge_id"):
+        payload["challenge_id"] = challenge["challenge_id"]
+    return payload
 
 
 def _create_blank_active_member():

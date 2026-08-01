@@ -64,6 +64,13 @@ class AWSCredentialConfig(models.Model):
     class Meta:
         verbose_name = "AWS Credential Config"
         verbose_name_plural = "AWS Credential Configs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=models.Q(is_active=True),
+                name="core_one_active_aws_config",
+            ),
+        ]
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
@@ -84,16 +91,17 @@ class AWSCredentialConfig(models.Model):
 
     @classmethod
     def load(cls):
-        """Load the active config, falling back to the most recently updated one.
+        """Load the active config.
 
-        Returns an unsaved instance with defaults when no rows exist so that
+        Returns an unsaved instance with defaults when no active row exists so that
         callers can safely access properties like ``is_configured`` without
-        guarding against ``None``.
+        guarding against ``None``. Inactive credentials are never used as a
+        fallback.
         """
-        obj = cls.objects.filter(is_active=True).first()
-        if obj is None:
-            obj = cls.objects.order_by("-updated_at").first()
-        return obj if obj is not None else cls()
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            return cls()
 
     @property
     def region(self) -> str:

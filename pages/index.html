@@ -6,18 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0, user-scalable=yes" />
     <title>Innovate To Grow | School of Engineering</title>
 
-    <!-- Detect iframe-isolated routes (admin block preview + public embed widget)
-         synchronously before any CSS applies, so the chrome-strip rules below
-         can target html[data-block-preview]. -->
-    <script>
-      (function () {
-        var p = window.location.pathname;
-        if (p === '/_block-preview' || p.indexOf('/_embed/') === 0) {
-          document.documentElement.dataset.blockPreview = '';
-        }
-      })();
-    </script>
-
     <!-- Critical CSS: paints an init-loader spinner the moment HTML parses, so
          first paint is never blank. The spinner uses #root:empty::before and
          auto-disappears the instant React mounts content into #root. Kept in
@@ -63,21 +51,6 @@
       html[data-block-preview] #content-wrapper { padding: 0; margin: 0; max-width: none; width: auto; }
       html[data-block-preview] #root:empty::before { display: none; }
     </style>
-    <!-- Font Awesome: load the local vendored copy asynchronously so icons don't block first paint. -->
-    <script>
-      (function () {
-        var href = '/static/vendor/font-awesome/4.7.0/css/font-awesome.min.css';
-        var link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'style';
-        link.href = href;
-        link.onload = function () {
-          link.onload = null;
-          link.rel = 'stylesheet';
-        };
-        document.head.appendChild(link);
-      })();
-    </script>
     <!-- Server-managed design tokens + stylesheets. Render-blocking so tokens
          resolve before first paint of the styled page; the inline spinner above
          already covers the pre-stylesheet paint window. -->
@@ -109,19 +82,6 @@
     <div id="chatbot-root"></div>
     <!-- END CHATBOT -->
 
-    <!-- Template Scripts (skipped in iframe-isolated routes: block preview + embeds) -->
-    <script>
-      (function () {
-        var p = window.location.pathname;
-        if (p === '/_block-preview' || p.indexOf('/_embed/') === 0) return;
-        (function (d) { var s = d.createElement("script"); s.setAttribute("data-account", "6Uvgvyrrph"); s.setAttribute("src", "https://cdn.userway.org/widget.js"); (d.body || d.head).appendChild(s); })(document);
-        (function() {
-          var sz = document.createElement('script'); sz.type = 'text/javascript'; sz.async = true;
-          sz.src = '//siteimproveanalytics.com/js/siteanalyze_8343.js';
-          var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(sz, s);
-        })();
-      })();
-    </script>
     <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website accessibility</a></noscript>
 
     <!-- React App Entry -->

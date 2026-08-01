@@ -65,7 +65,6 @@ class Base64ImageWidget(forms.ClearableFileInput):
 
     def render(self, name, value, attrs=None, renderer=None):
         from django.utils.html import format_html
-        from django.utils.safestring import mark_safe
 
         widget_html = super().render(name, None, attrs, renderer)
         # If there's existing base64 data, show a thumbnail preview above the upload control
@@ -80,7 +79,7 @@ class Base64ImageWidget(forms.ClearableFileInput):
                 "</div>",
                 src,
             )
-            return mark_safe(preview + widget_html)
+            return format_html("{}{}", preview, widget_html)
         return widget_html
 
 

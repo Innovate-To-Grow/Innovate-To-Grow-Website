@@ -15,7 +15,9 @@ from .base import *  # noqa: F403
 SECRET_KEY = "django-insecure-p+tt4i0o$9t!o1707ibkya=&-vlid7@88cz=gcc$*7h$$l1*ai"
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
+# This is a Django Host-header allowlist entry for the local dev server, not a
+# socket bind address.
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]  # nosec B104
 extra = os.environ.get("EXTRA_ALLOWED_HOSTS", "")
 if extra:
     ALLOWED_HOSTS += [h.strip() for h in extra.split(",") if h.strip()]

@@ -54,8 +54,10 @@ class UnifiedPhoneAuthRequestSerializer(BasePhoneAuthSerializer):
 
 
 class UnifiedPhoneAuthVerifySerializer(BasePhoneAuthSerializer):
-    """Verify an SMS code; the view consumes the OTP and resolves/creates the member."""
+    """Verify an SMS code using a challenge ID or the legacy phone lookup."""
 
+    phone_number = serializers.CharField(required=False)
+    challenge_id = serializers.UUIDField(required=False)
     code = serializers.CharField(required=True, min_length=6, max_length=6)
 
     # noinspection PyMethodMayBeStatic
@@ -64,3 +66,10 @@ class UnifiedPhoneAuthVerifySerializer(BasePhoneAuthSerializer):
         if not _CODE_RE.match(normalized):
             raise serializers.ValidationError("Code must be a 6-digit number.")
         return normalized
+
+    def validate(self, attrs):
+        if not attrs.get("challenge_id") and not attrs.get("phone_number"):
+            raise serializers.ValidationError(
+                {"challenge_id": "Provide challenge_id (preferred) or phone_number for legacy verification."}
+            )
+        return attrs

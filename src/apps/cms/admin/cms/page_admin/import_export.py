@@ -92,8 +92,12 @@ def process_page_data(pages_data, *, action, default_status, validate_required):
         result, blocks_data, existing = validate_page_data(page_data, block_type_keys, validate_required)
         if not result["errors"] and action == "execute":
             try:
-                page = upsert_page(page_data, existing, default_status)
-                replace_page_blocks(page, blocks_data)
+                with transaction.atomic():
+                    if existing is not None:
+                        existing = CMSPage.objects.select_for_update().get(pk=existing.pk)
+                        list(CMSBlock.objects.select_for_update().filter(page=existing))
+                    page = upsert_page(page_data, existing, default_status)
+                    replace_page_blocks(page, blocks_data)
                 result["success"] = True
             except Exception as exc:  # noqa: BLE001
                 result["errors"].append(str(exc))

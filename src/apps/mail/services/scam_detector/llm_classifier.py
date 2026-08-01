@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from copy import copy
 from typing import Any
 
 from apps.core.models import AWSCredentialConfig
@@ -60,12 +61,15 @@ def _build_prompt(msg: dict[str, Any]) -> str:
 
 def _call_bedrock(prompt: str) -> str:
     base = SystemIntelligenceConfig.load()
-    chat_config = SystemIntelligenceConfig(
-        default_model_id=base.default_model_id,
-        system_prompt=_SYSTEM_PROMPT,
-        max_tokens=512,
-        temperature=0.0,
-    )
+    if not base.is_configured:
+        return ""
+    # Retain the saved active configuration's identity so the provider boundary
+    # can enforce fail-closed activation while applying this task-specific,
+    # tool-free prompt to an in-memory copy.
+    chat_config = copy(base)
+    chat_config.system_prompt = _SYSTEM_PROMPT
+    chat_config.max_tokens = 512
+    chat_config.temperature = 0.0
     response = invoke_bedrock(
         [{"role": "user", "content": prompt}],
         chat_config=chat_config,

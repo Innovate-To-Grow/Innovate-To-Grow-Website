@@ -8,7 +8,7 @@ from .contact import ContactEmail, ContactPhone
 from .member_sheet_sync_config import MemberSheetSyncConfig
 from .member_sheet_sync_log import MemberSheetSyncLog
 from .members import AdminInvitation, Member
-from .security import EmailAuthChallenge, ImpersonationToken, RSAKeypair
+from .security import EmailAuthChallenge, ImpersonationToken, PhoneVerificationChallenge, RSAKeypair
 
 __all__ = [
     # Members
@@ -20,6 +20,7 @@ __all__ = [
     # Security
     "EmailAuthChallenge",
     "ImpersonationToken",
+    "PhoneVerificationChallenge",
     "RSAKeypair",
     # Sheet Sync
     "MemberSheetSyncConfig",

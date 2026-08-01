@@ -21,7 +21,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function() {
     var textarea = document.querySelector('textarea[name="{{ widget.name }}"]');
     if (!textarea) return;

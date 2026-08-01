@@ -28,7 +28,13 @@ test('phone-code login: unified field routes /login → verify-phone → /accoun
   await page.getByRole('button', {name: 'Verify', exact: true}).click();
 
   await expect(page).toHaveURL(/\/account$/);
-  expect(verifyPayloads).toEqual([{phone_number: PHONE_INPUT, region: '1-US', code: '654321'}]);
+  expect(verifyPayloads).toEqual([
+    {
+      challenge_id: 'a9a1d853-9687-4199-9f25-d93509e408aa',
+      region: '1-US',
+      code: '654321',
+    },
+  ]);
 });
 
 test('phone-code register: a new number routes to /complete-profile', async ({page}) => {

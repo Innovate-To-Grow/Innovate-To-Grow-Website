@@ -56,9 +56,38 @@ class ProductionCacheSettingsTests(SimpleTestCase):
             with self.assertRaisesMessage(ImproperlyConfigured, "DJANGO_SECRET_KEY must be set in production."):
                 reload_prod_settings()
 
-    def test_prod_staticfiles_overwrite_release_assets(self):
+    def test_prod_staticfiles_are_content_hashed_and_immutable(self):
         with patch.dict("os.environ", PROD_ENV, clear=True):
             prod_settings = reload_prod_settings()
 
         self.assertFalse(prod_settings.STORAGES["default"]["OPTIONS"]["file_overwrite"])
-        self.assertTrue(prod_settings.STORAGES["staticfiles"]["OPTIONS"]["file_overwrite"])
+        staticfiles = prod_settings.STORAGES["staticfiles"]
+        self.assertEqual(staticfiles["BACKEND"], "storages.backends.s3.S3ManifestStaticStorage")
+        self.assertFalse(staticfiles["OPTIONS"]["file_overwrite"])
+        self.assertIn("immutable", staticfiles["OPTIONS"]["object_parameters"]["CacheControl"])
+
+    def test_prod_installs_csp_middleware_after_base_initialization(self):
+        with patch.dict("os.environ", PROD_ENV, clear=True):
+            prod_settings = reload_prod_settings()
+
+        self.assertIn("apps.core.middleware.ContentSecurityPolicyMiddleware", prod_settings.MIDDLEWARE)
+
+    def test_prod_csp_enforcement_is_an_explicit_toggle(self):
+        with patch.dict(
+            "os.environ",
+            {
+                **PROD_ENV,
+                "CSP_REPORT_ONLY": "false",
+            },
+            clear=True,
+        ):
+            prod_settings = reload_prod_settings()
+
+        self.assertFalse(prod_settings.CSP_REPORT_ONLY)
+        self.assertEqual(prod_settings.CSP_SCRIPT_SOURCES, ("'self'", "https://cdn.jsdelivr.net"))
+        self.assertEqual(prod_settings.CSP_STYLE_SOURCES, ("'self'", "https://fonts.googleapis.com"))
+        self.assertEqual(prod_settings.CSP_FONT_SOURCES, ("'self'", "data:", "https://fonts.gstatic.com"))
+        self.assertEqual(
+            prod_settings.CSP_CONNECT_SOURCES,
+            ("'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"),
+        )

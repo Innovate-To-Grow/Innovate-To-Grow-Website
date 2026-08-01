@@ -1,8 +1,10 @@
 import json
+import re
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.authn.models import ContactEmail
@@ -127,6 +129,64 @@ class CMSPageChangeFormRenderTests(TestCase):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+    @override_settings(
+        CSP_REPORT_ONLY=False,
+        MIDDLEWARE=[*settings.MIDDLEWARE, "apps.core.middleware.ContentSecurityPolicyMiddleware"],
+    )
+    def test_change_form_renders_under_enforcing_csp_without_inline_handlers(self):
+        url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        header = response["Content-Security-Policy"]
+        nonce_match = re.search(r"'nonce-([^']+)'", header)
+        self.assertIsNotNone(nonce_match)
+        nonce = nonce_match.group(1)
+        html = response.content.decode()
+        inline_scripts = [
+            tag
+            for tag in re.findall(r"<script\b[^>]*>", html, flags=re.IGNORECASE)
+            if not re.search(r"\bsrc\s*=", tag, flags=re.IGNORECASE)
+        ]
+        style_elements = re.findall(r"<style\b[^>]*>", html, flags=re.IGNORECASE)
+        self.assertTrue(inline_scripts)
+        self.assertTrue(style_elements)
+        self.assertTrue(all(f'nonce="{nonce}"' in tag for tag in [*inline_scripts, *style_elements]))
+        self.assertNotRegex(html, r"\son[a-z]+\s*=\s*[\"']")
+        self.assertIn(
+            f'nonce="{nonce}" src="/static/admin/js/csp-actions.js',
+            html,
+        )
+        self.assertLess(
+            html.index("/static/admin/js/csp-actions.js"),
+            html.index("/static/admin/js/material-web-text-field.js"),
+        )
+
+    @override_settings(
+        CSP_REPORT_ONLY=False,
+        MIDDLEWARE=[*settings.MIDDLEWARE, "apps.core.middleware.ContentSecurityPolicyMiddleware"],
+    )
+    def test_pageview_dashboard_renders_under_enforcing_csp(self):
+        response = self.client.get(reverse("admin:cms_pageview_changelist"))
+
+        self.assertEqual(response.status_code, 200)
+        header = response["Content-Security-Policy"]
+        nonce = re.search(r"'nonce-([^']+)'", header).group(1)
+        html = response.content.decode()
+        inline_scripts = [
+            tag
+            for tag in re.findall(r"<script\b[^>]*>", html, flags=re.IGNORECASE)
+            if not re.search(r"\bsrc\s*=", tag, flags=re.IGNORECASE)
+        ]
+        style_elements = re.findall(r"<style\b[^>]*>", html, flags=re.IGNORECASE)
+
+        self.assertTrue(inline_scripts)
+        self.assertTrue(style_elements)
+        self.assertTrue(all(f'nonce="{nonce}"' in tag for tag in [*inline_scripts, *style_elements]))
+        self.assertNotRegex(html, r"\son[a-z]+\s*=\s*[\"']")
+        self.assertIn("chart.js@4.5.1/", html)
+        self.assertIn("chartjs-plugin-datalabels@2.2.0/", html)
 
     def test_change_form_contains_route_editor_config_with_page_id(self):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])

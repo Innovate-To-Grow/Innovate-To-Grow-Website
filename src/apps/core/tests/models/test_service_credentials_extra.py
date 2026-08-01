@@ -21,6 +21,19 @@ VALID_GOOGLE_JSON = {
 
 
 class AwsConfigPropertiesTest(TestCase):
+    def test_load_does_not_fall_back_to_inactive_credentials(self):
+        AWSCredentialConfig.objects.create(
+            name="Inactive",
+            access_key_id="K",
+            secret_access_key="S",
+            is_active=False,
+        )
+
+        loaded = AWSCredentialConfig.load()
+
+        self.assertIsNone(loaded.pk)
+        self.assertFalse(loaded.is_configured)
+
     def test_ses_configured_mirrors_is_configured(self):
         configured = AWSCredentialConfig(access_key_id="K", secret_access_key="S")
         self.assertTrue(configured.ses_configured)
@@ -43,9 +56,21 @@ class AwsConfigPropertiesTest(TestCase):
 
 
 class EmailConfigTest(TestCase):
+    def test_load_does_not_fall_back_to_inactive_sender(self):
+        EmailServiceConfig.objects.create(
+            name="Inactive",
+            ses_from_email="stale@example.com",
+            is_active=False,
+        )
+
+        loaded = EmailServiceConfig.load()
+
+        self.assertIsNone(loaded.pk)
+        self.assertNotEqual(loaded.ses_from_email, "stale@example.com")
+
     def test_str_configured_and_unconfigured(self):
         AWSCredentialConfig.objects.create(name="AWS", is_active=True, access_key_id="K", secret_access_key="S")
-        configured = EmailServiceConfig(name="Prod", is_active=True)
+        configured = EmailServiceConfig.objects.create(name="Prod", is_active=True)
         self.assertIn("AWS SES (active)", str(configured))
 
     def test_str_unconfigured(self):
@@ -63,15 +88,23 @@ class EmailConfigTest(TestCase):
 
     def test_ses_configured_reads_aws(self):
         AWSCredentialConfig.objects.create(name="AWS", is_active=True, access_key_id="K", secret_access_key="S")
-        self.assertTrue(EmailServiceConfig(name="P").ses_configured)
+        config = EmailServiceConfig.objects.create(name="P", is_active=True)
+        self.assertTrue(config.ses_configured)
+
+    def test_ses_configured_fails_closed_without_active_sender(self):
+        AWSCredentialConfig.objects.create(name="AWS", is_active=True, access_key_id="K", secret_access_key="S")
+        self.assertFalse(EmailServiceConfig(name="P").ses_configured)
 
 
 class GmailConfigTest(TestCase):
-    def test_load_falls_back_to_most_recent(self):
+    def test_load_does_not_fall_back_to_inactive_credentials(self):
         GmailAccessAccount.objects.create(name="Older", gmail_username="a@x.com")
-        newer = GmailAccessAccount.objects.create(name="Newer", gmail_username="b@x.com")
-        # No active config -> falls back to most recently updated.
-        self.assertEqual(GmailAccessAccount.load().pk, newer.pk)
+        GmailAccessAccount.objects.create(name="Newer", gmail_username="b@x.com")
+
+        loaded = GmailAccessAccount.load()
+
+        self.assertIsNone(loaded.pk)
+        self.assertFalse(loaded.is_configured)
 
 
 class GoogleConfigTest(TestCase):
@@ -94,10 +127,14 @@ class GoogleConfigTest(TestCase):
         empty = GoogleCredentialConfig(name="G", credentials_json={})
         self.assertIn("empty", str(empty))
 
-    def test_load_falls_back_to_recent(self):
+    def test_load_does_not_fall_back_to_inactive_credentials(self):
         GoogleCredentialConfig.objects.create(name="Older", credentials_json=VALID_GOOGLE_JSON)
-        newer = GoogleCredentialConfig.objects.create(name="Newer", credentials_json=VALID_GOOGLE_JSON)
-        self.assertEqual(GoogleCredentialConfig.load().pk, newer.pk)
+        GoogleCredentialConfig.objects.create(name="Newer", credentials_json=VALID_GOOGLE_JSON)
+
+        loaded = GoogleCredentialConfig.load()
+
+        self.assertIsNone(loaded.pk)
+        self.assertFalse(loaded.is_configured)
 
     def test_get_credentials_info(self):
         config = GoogleCredentialConfig(credentials_json=VALID_GOOGLE_JSON)

@@ -16,29 +16,17 @@ from apps.authn.services.unsubscribe_token import (
     get_member_from_unsubscribe_token,
 )
 from apps.authn.throttles import LoginRateThrottle
+from apps.mail.services.subscription_notifications import send_subscription_confirmation
 
 logger = logging.getLogger(__name__)
 
 
-def _send_unsubscribe_confirmation(member):
+def _send_unsubscribe_confirmation(member, event_token):
     """Best-effort confirmation email after unsubscribe."""
-    from django.conf import settings
-
-    from apps.authn.services.email import send_notification_email
-
-    primary_email = member.get_primary_email()
-    if not primary_email:
-        return
-
-    frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
-    send_notification_email(
-        recipient=primary_email,
-        subject="You've been unsubscribed - Innovate to Grow",
-        template="mail/email/unsubscribe_confirmation.html",
-        context={
-            "first_name": member.first_name or "there",
-            "account_url": f"{frontend_url}/account" if frontend_url else "",
-        },
+    send_subscription_confirmation(
+        member=member,
+        action="unsubscribe",
+        event_token=event_token,
     )
 
 
@@ -67,7 +55,7 @@ class UnsubscribeAutoLoginView(APIView):
         if primary and primary.subscribe:
             primary.subscribe = False
             primary.save(update_fields=["subscribe"])
-            _send_unsubscribe_confirmation(member)
+            _send_unsubscribe_confirmation(member, token)
 
         return Response(
             {"message": "You have been unsubscribed.", "unsubscribed": True},

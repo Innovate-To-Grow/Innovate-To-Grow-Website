@@ -7,6 +7,7 @@ model id, prompt, and inference parameters come from the public fields on
 """
 
 import logging
+import math
 
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import BedrockError, normalize_bedrock_model_id
@@ -17,6 +18,15 @@ from .context import build_public_context
 logger = logging.getLogger(__name__)
 
 _VALID_ROLES = {"user", "assistant"}
+_ENVELOPE_TOKENS_PER_MESSAGE = 8
+_SYSTEM_ENVELOPE_TOKENS = 8
+
+
+def _system_text(config, context: str) -> str:
+    text = config.public_assistant_system_prompt
+    if context:
+        text += "\n\nCONTEXT:\n" + context
+    return text
 
 
 def _trimmed_messages(history, message: str) -> list[dict]:
@@ -64,21 +74,53 @@ def _trimmed_messages(history, message: str) -> list[dict]:
     return [{"role": t["role"], "content": t["text"]} for t in messages]
 
 
+def _estimate_text_tokens(text: str) -> int:
+    """Return a deliberately conservative tokenizer-independent estimate.
+
+    A four-ASCII-characters-per-token approximation is useful for ordinary
+    English, but it materially undercounts CJK and emoji because ``len`` counts
+    Unicode code points rather than their UTF-8 representation. Bedrock can use
+    several model families and does not expose a local tokenizer, so charge one
+    token for every non-ASCII UTF-8 byte while retaining the established 4:1
+    estimate for ASCII. This intentionally favors enforcing the public quota
+    over accepting a token-dense request that was underestimated.
+    """
+    if not text:
+        return 0
+    ascii_chars = sum(character.isascii() for character in text)
+    utf8_bytes = len(text.encode("utf-8", errors="surrogatepass"))
+    non_ascii_bytes = utf8_bytes - ascii_chars
+    return math.ceil(ascii_chars / 4) + non_ascii_bytes
+
+
+def _estimate_input_tokens(system_text: str, messages: list[dict]) -> int:
+    return (
+        _estimate_text_tokens(system_text)
+        + _SYSTEM_ENVELOPE_TOKENS
+        + sum(_estimate_text_tokens(turn["content"]) + _ENVELOPE_TOKENS_PER_MESSAGE for turn in messages)
+    )
+
+
 def _estimate_usage(system_text: str, messages: list[dict], reply_text: str) -> dict:
-    """Conservative token estimate when Bedrock omits a usage block (~4 chars/token).
+    """Conservative token estimate when Bedrock omits a usage block.
 
     The input estimate covers the system prompt AND every message turn actually
     sent (history + the new user message), so the per-IP budget is not
     under-charged when prior turns are present.
     """
-    output_tokens = len(reply_text) // 4
-    message_chars = sum(len(turn["content"]) for turn in messages)
-    input_tokens = (len(system_text) + message_chars) // 4
+    output_tokens = _estimate_text_tokens(reply_text)
+    input_tokens = _estimate_input_tokens(system_text, messages)
     return {
         "inputTokens": input_tokens,
         "outputTokens": output_tokens,
         "totalTokens": input_tokens + output_tokens,
     }
+
+
+def estimate_public_input_tokens(*, message, history, config, context: str) -> int:
+    """Conservatively estimate the exact tool-free input assembled below."""
+    messages = _trimmed_messages(history, message)
+    return _estimate_input_tokens(_system_text(config, context), messages)
 
 
 def _is_temperature_error(exc: Exception) -> bool:
@@ -111,9 +153,7 @@ def answer_public_question(*, message, history, config, context=None) -> dict:
 
     if context is None:
         context = build_public_context()
-    system_text = config.public_assistant_system_prompt
-    if context:
-        system_text += "\n\nCONTEXT:\n" + context
+    system_text = _system_text(config, context)
 
     messages = _trimmed_messages(history, message)
     aws_config = AWSCredentialConfig.load()

@@ -68,6 +68,41 @@ class EmailCodeAuthRegisterTests(APITestCase):
         self.assertTrue(contact.subscribe)
         self.assertIn("access", verify_response.data)
 
+    def test_jwt_failure_rolls_back_activation_contact_and_code(self, _mock_code, _mock_send):
+        self.client.post(
+            "/authn/register/",
+            {
+                "email": "rollback@example.com",
+                "password": self.password,
+                "password_confirm": self.password,
+                "first_name": "Roll",
+                "last_name": "Back",
+                "organization": "Individual",
+            },
+            format="json",
+        )
+        contact = ContactEmail.objects.get(email_address="rollback@example.com")
+        member = contact.member
+        challenge = member.email_auth_challenges.get()
+
+        with patch(
+            "apps.authn.views.helpers.RefreshToken.for_user",
+            side_effect=RuntimeError("JWT creation failed"),
+        ):
+            with self.assertRaisesMessage(RuntimeError, "JWT creation failed"):
+                self.client.post(
+                    "/authn/register/verify-code/",
+                    {"email": "rollback@example.com", "code": "654321"},
+                    format="json",
+                )
+
+        member.refresh_from_db()
+        contact.refresh_from_db()
+        challenge.refresh_from_db()
+        self.assertFalse(member.is_active)
+        self.assertFalse(contact.verified)
+        self.assertEqual(challenge.status, challenge.Status.PENDING)
+
     def test_register_reuses_pending_member(self, _mock_code, _mock_send):
         pending = Member.objects.create_user(
             password="OldPass123!",

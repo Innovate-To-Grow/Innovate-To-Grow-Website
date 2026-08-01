@@ -1,18 +1,19 @@
 # Frontend Architecture
 
-The frontend is a React 19 application written in TypeScript, built with Vite, and located under `pages/`. It runs as a single-page application with three independent React roots.
+The frontend is a React 19 application written in TypeScript, built with Vite, and located under `pages/`. It runs as a single-page application with four independently mounted React roots.
 
-## Three React roots
+## React roots
 
-The HTML shell (`pages/index.html`) defines three mount points:
+The HTML shell (`pages/index.html`) defines four mount points:
 
 | Root | Mount point | Content | Has router? |
 |------|-------------|---------|-------------|
 | Main app | `#root` | Full SPA with page routing | Yes (BrowserRouter) |
 | Menu | `#menu-root` | `MainMenu` component only | No |
 | Footer | `#footer-root` | `Footer` component only | No |
+| Assistant | `#chatbot-root` | Public floating assistant widget | No |
 
-**Why three roots?** The menu and footer render independently of page navigation. This avoids re-rendering them on every route change and allows them to update their auth state without a full page reload.
+**Why separate roots?** The menu, footer, and assistant render independently of page navigation. This avoids re-rendering the page shell on every route change and allows the menu to update its auth state without a full page reload.
 
 ### Bootstrap sequence (`pages/src/main.tsx`)
 
@@ -22,16 +23,32 @@ Each root is created with `createRoot()` and wrapped in the appropriate provider
 #root:        HealthCheckProvider → AuthProvider → LayoutProvider → RouterProvider
 #menu-root:   AuthProvider → LayoutProvider → MainMenu
 #footer-root: LayoutProvider → Footer
+#chatbot-root: AssistantWidget
 ```
 
 ### Cross-root auth sync
 
-All three roots share authentication state through two mechanisms:
+The main and menu roots share authentication state through two mechanisms:
 
-1. **Custom event** `i2g-auth-state-change` — dispatched by `AuthProvider` when auth state changes. All roots listen for this event on `window`.
-2. **Storage event** — `localStorage` changes (tokens, user data) trigger the browser's native `storage` event, enabling cross-tab sync.
+1. **Custom event** `i2g-auth-state-change` — dispatched after a local auth-session change so separate roots in the same window resynchronize.
+2. **Storage event** — changes to the `i2g_auth_session` localStorage record trigger the browser's native `storage` event in other tabs.
 
 Any change to auth flow must ensure both mechanisms fire correctly.
+
+### Persisted session and startup bootstrap
+
+Authentication is stored as one versioned localStorage record named `i2g_auth_session`. Version 1 contains:
+
+- `generation` — a unique identifier for this login/session incarnation
+- `access` and `refresh` — the JWT pair
+- `user` — the last serialized user snapshot
+- `requires_profile_completion` — the last known routing flag
+
+`storage.ts` validates this record before use and performs a one-time migration from the former split-key format. New code must read and write the versioned record through the storage helpers rather than introduce another token or user key.
+
+The persisted user fields are a startup hint, not authoritative account state. Each `AuthProvider` begins in an initializing state, calls `bootstrapAuthSession()`, and does not render its children until bootstrap finishes. Bootstrap sends authenticated `GET /authn/session/`; the backend response supplies the authoritative current user and profile-completion state.
+
+Every request, refresh, bootstrap, logout, and session update is guarded by the session `generation` (and, where needed, the exact refresh/access token). A slow response from an old login cannot overwrite or clear a newer login from the same tab or another tab. Refreshes are deduplicated per generation, retry a failed authenticated request at most once, and discard the result if the active generation changed while the refresh was in flight.
 
 ## Router
 
@@ -69,6 +86,7 @@ Legacy URLs (e.g., `/profile`) redirect to their current equivalents (e.g., `/ac
 `src/features/auth/components/AuthContext.tsx`
 
 - Manages user state, authentication status, and profile completion requirement
+- Gates its children during the asynchronous authoritative session bootstrap
 - Provides 20+ auth action methods (login, register, email flows, password management, etc.)
 - Listens for `i2g-auth-state-change` and `storage` events
 
@@ -99,22 +117,22 @@ Each feature under `pages/src/features/` is a vertical slice (`api/`, `component
 
 ### API client (`lib/api-client.ts`)
 
-- Axios instance with `/api` base URL
-- **Request interceptor**: Injects `Authorization: Bearer <token>` from `localStorage`
-- **Response interceptor**: On 401, attempts token refresh via `/authn/refresh/`, then retries the original request
+- Plain Axios instance with `/api` base URL for public requests.
+- Does not attach credentials or refresh tokens.
+- Code that can carry a member session uses the auth-specific client in `features/auth/api/client.ts`.
 
-(The auth-specific Axios instance with automatic refresh + `i2g-auth-state-change` dispatch lives in `features/auth/api/client.ts`.)
+The auth-specific client tags each request with the session generation and access token it used. On a 401 it performs one generation-guarded refresh through `/authn/refresh/`, retries once with the fresh access token, and clears only the rejected generation if recovery fails. Session-bearing event and project requests use this client; public fallbacks remain explicit.
 
 ### Auth helpers (`features/auth/api/`)
 
 | Module | Responsibility |
 |--------|---------------|
-| `storage.ts` | localStorage keys (`i2g_access_token`, `i2g_refresh_token`, `i2g_user`), get/set/clear functions |
-| `client.ts` | Authenticated Axios instance with automatic token refresh |
+| `storage.ts` | Validate, migrate, read, update, and generation-guard the versioned `i2g_auth_session` record |
+| `client.ts` | Authenticated Axios instance with deduplicated, generation-guarded refresh and one retry |
 | `flows.ts` | Login, register, email auth, password reset/change, account deletion, auto-login flows |
 | `contacts.ts` | Contact email and phone CRUD + verification |
 | `profile.ts` | Profile read/update, image upload |
-| `session.ts` | Auto-login helpers (ticket, magic link, unsubscribe) |
+| `session.ts` | Authoritative `/authn/session/` bootstrap, guarded logout, and auto-login helpers |
 
 ### Crypto (`lib/crypto.ts`)
 

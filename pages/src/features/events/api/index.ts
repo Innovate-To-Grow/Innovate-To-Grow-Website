@@ -1,5 +1,9 @@
 import { api } from '@/lib/api-client';
-import {getAccessToken} from '@/features/auth';
+import {
+  authApi,
+  getStoredSession,
+  isDefinitiveAuthFailure,
+} from '@/features/auth';
 
 // --- Types ---
 
@@ -179,11 +183,6 @@ export interface EventSchedulePayload {
 
 // --- API Functions ---
 
-function authHeaders() {
-  const token = getAccessToken();
-  return token ? {Authorization: `Bearer ${token}`} : {};
-}
-
 // Deploy-skew fallback: a backend without /event/registration-events/ (route 404s) is the old
 // single-event build, whose /event/registration-options/ returns the one live event or 404.
 async function fetchRegistrationEventsFallback(): Promise<EventRegistrationSummary[]> {
@@ -211,15 +210,15 @@ async function fetchRegistrationEventsFallback(): Promise<EventRegistrationSumma
 }
 
 export async function fetchRegistrationEvents(): Promise<EventRegistrationSummary[]> {
-  const headers = authHeaders();
+  const hasSession = Boolean(getStoredSession());
   try {
-    const response = await api.get<EventRegistrationSummary[]>('/event/registration-events/', {
-      ...(Object.keys(headers).length > 0 ? {headers} : {}),
-    });
+    const response = await (hasSession ? authApi : api).get<EventRegistrationSummary[]>(
+      '/event/registration-events/',
+    );
     return response.data;
   } catch (err: unknown) {
     const status = (err as {response?: {status?: number}}).response?.status;
-    if (status === 401) {
+    if (status === 401 && isDefinitiveAuthFailure(err)) {
       const response = await api.get<EventRegistrationSummary[]>('/event/registration-events/');
       return response.data;
     }
@@ -231,18 +230,18 @@ export async function fetchRegistrationEvents(): Promise<EventRegistrationSummar
 }
 
 export async function fetchRegistrationOptions(eventSlug?: string | null): Promise<EventRegistrationOptions> {
-  const headers = authHeaders();
+  const hasSession = Boolean(getStoredSession());
   try {
-    const response = await api.get<EventRegistrationOptions>('/event/registration-options/', {
-      ...(Object.keys(headers).length > 0 ? {headers} : {}),
+    const response = await (hasSession ? authApi : api).get<EventRegistrationOptions>('/event/registration-options/', {
       ...(eventSlug ? {params: {event_slug: eventSlug}} : {}),
     });
     return response.data;
   } catch (err: unknown) {
     const status = (err as {response?: {status?: number}}).response?.status;
-    // Expired or invalid JWT is still sent as Bearer; DRF may return 401. Retry without auth —
-    // AllowAny endpoint returns the same public event payload (member_* fields empty).
-    if (status === 401) {
+    // AllowAny may retry without credentials only after the refresh endpoint
+    // definitively rejected this generation. Network/5xx failures and account
+    // switches must not replace a member-aware view with anonymous data.
+    if (status === 401 && isDefinitiveAuthFailure(err)) {
       const response = await api.get<EventRegistrationOptions>('/event/registration-options/', {
         ...(eventSlug ? {params: {event_slug: eventSlug}} : {}),
       });
@@ -269,43 +268,51 @@ export async function createRegistration(data: {
   attendee_secondary_email?: string;
   attendee_phone?: string;
   attendee_phone_region?: string;
+  phone_verification_challenge_id?: string;
 }): Promise<Registration> {
-  const response = await api.post<Registration>('/event/registrations/', data, {
-    headers: authHeaders(),
-  });
+  const response = await authApi.post<Registration>('/event/registrations/', data);
   return response.data;
 }
 
 export async function fetchMyTickets(): Promise<Registration[]> {
-  const response = await api.get<Registration[]>('/event/my-tickets/', {
-    headers: authHeaders(),
-  });
+  const response = await authApi.get<Registration[]>('/event/my-tickets/');
   return response.data;
 }
 
 export async function resendTicketEmail(registrationId: string): Promise<{message: string}> {
-  const response = await api.post<{message: string}>(
+  const response = await authApi.post<{message: string}>(
     `/event/my-tickets/${registrationId}/resend-email/`,
     {},
-    {headers: authHeaders()},
   );
   return response.data;
 }
 
-export async function sendPhoneCode(phone: string, region: string): Promise<{detail: string; phone: string}> {
-  const response = await api.post<{detail: string; phone: string}>(
+export async function sendPhoneCode(
+  phone: string,
+  region: string,
+  eventSlug: string,
+): Promise<{detail: string; phone: string; challenge_id: string}> {
+  const response = await authApi.post<{detail: string; phone: string; challenge_id: string}>(
     '/event/send-phone-code/',
-    {phone, region},
-    {headers: authHeaders()},
+    {phone, region, event_slug: eventSlug},
   );
   return response.data;
 }
 
-export async function verifyPhoneCode(phone: string, code: string): Promise<{detail: string; verified: boolean; phone: string}> {
-  const response = await api.post<{detail: string; verified: boolean; phone: string}>(
+export async function verifyPhoneCode(
+  phone: string,
+  code: string,
+  challengeId?: string,
+  eventSlug?: string,
+): Promise<{detail: string; verified: boolean; phone: string; challenge_id: string}> {
+  const response = await authApi.post<{detail: string; verified: boolean; phone: string; challenge_id: string}>(
     '/event/verify-phone-code/',
-    {phone, code},
-    {headers: authHeaders()},
+    {
+      phone,
+      code,
+      ...(challengeId ? {challenge_id: challengeId} : {}),
+      ...(eventSlug ? {event_slug: eventSlug} : {}),
+    },
   );
   return response.data;
 }

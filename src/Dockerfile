@@ -1,12 +1,11 @@
 # syntax=docker/dockerfile:1.7
-# Pin the base image by major-minor and (ideally) digest. Production images
-# should use a specific @sha256 digest once CI pins are in place; until then
-# the tag is updated through Dependabot/Renovate for visibility.
-FROM python:3.11-slim AS builder
+# Multi-platform OCI index for Python 3.11.15 slim-trixie, verified with:
+# docker buildx imagetools inspect python:3.11-slim
+# Keep the readable tag so Dependabot can propose a reviewed digest update.
+FROM python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93 AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /build
@@ -20,20 +19,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev=17.10-0+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
-# requirements.txt is a thin `-r requirements/local.txt` entrypoint, so the
-# nested requirements/ dir (base/local/production) must be copied too for the
-# -r include chain to resolve.
-COPY requirements.txt .
-COPY requirements/ requirements/
+# Production images consume the fully resolved, hash-checked Python 3.11 lock.
+# Development and CI tooling intentionally stays out of the runtime image.
+COPY requirements/production.lock.txt requirements/production.lock.txt
 
-# pip itself is pinned (DL3013). Resolved site-packages are staged under
-# /install so the production stage can copy them without dragging the
-# compiler toolchain.
-RUN pip install "pip==26.1" \
- && pip install --prefix=/install -r requirements.txt
+# Resolved site-packages are staged under /install so the production stage can
+# copy them without dragging the compiler toolchain.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefix=/install --require-hashes \
+        -r requirements/production.lock.txt
 
 
-FROM python:3.11-slim AS production
+FROM python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93 AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -53,23 +50,18 @@ WORKDIR /app
 # Copy installed Python packages from the builder.
 COPY --from=builder /install /usr/local
 
-# Refresh packaging tools in the runtime image as well. The base image ships
-# older pip/setuptools/wheel under /usr/local, and Trivy scans those packages
-# even though application dependencies are copied from the builder.
-RUN pip install "pip==26.1" "setuptools==82.0.1" "wheel==0.46.3"
-
 # Copy the application source.
 COPY --chown=app:app . .
 
 # Bake static assets into the image instead of running collectstatic at boot.
-# config.settings.local points at SQLite + local FS, which is enough for the
-# build-time staticfiles pass (no DB or S3 credentials needed). entrypoint.sh
-# is made executable in the same layer so there's one RUN for app setup.
-ENV DJANGO_SETTINGS_MODULE=config.settings.local
+# config.settings.build uses SQLite and filesystem-backed
+# ManifestStaticFilesStorage, so the exact image contains hashed assets and
+# staticfiles.json without needing DB or S3 credentials.
 RUN chmod +x entrypoint.sh \
  && mkdir -p data \
  && chown app:app data \
- && python manage.py collectstatic --noinput
+ && DJANGO_SETTINGS_MODULE=config.settings.build python manage.py collectstatic --noinput \
+ && test -s static/staticfiles.json
 
 USER app
 
@@ -81,3 +73,4 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/livez/')" || exit 1
 
 ENTRYPOINT ["./entrypoint.sh"]
+CMD ["uvicorn", "config.asgi:application", "--host", "0.0.0.0", "--port", "8000"]

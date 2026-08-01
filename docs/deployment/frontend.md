@@ -12,7 +12,7 @@ npm run build   # Runs: tsc -b && vite build
 
 This produces a `pages/dist/` directory containing:
 - `index.html` — Single HTML shell with three React mount points
-- Hashed JS bundles (main app, react-vendor chunk, router chunk)
+- Hashed JS bundles, including lazy feature/export chunks
 - CSS assets
 - Static assets (images, fonts)
 - Local vendor assets copied from `src/apps/core/static/vendor/` into `dist/static/vendor/`
@@ -25,6 +25,7 @@ Configured in `pages/vite.config.ts`:
 |-------|----------|
 | `react-vendor` | `react`, `react-dom` |
 | `router` | `react-router` |
+| Spreadsheet/PDF export chunks | Dynamically imported export libraries |
 | Main bundle | Application code (lazy-loaded page components) |
 
 All page components are lazy-loaded via `React.lazy()`, reducing the initial bundle size.
@@ -35,21 +36,31 @@ All page components are lazy-loaded via `React.lazy()`, reducing the initial bun
 |----------|---------|
 | `VITE_API_BASE_URL` | Backend API URL (baked into the build) |
 
-This must be set before building. In CI/CD, it's configured as a GitHub Actions secret.
+This must be set before building. CI builds separate production and demo
+artifacts once with their reviewed target URLs; deploy consumes those exact
+artifacts.
 
 ## Deployment flow
 
-Triggered by the `deploy-frontend.yml` GitHub Actions workflow:
+Called by the `deploy-production.yml` workflow after its unified approval (or
+by the separately approved break-glass workflow):
 
-1. **Build**: `npm run build` produces the `dist/` directory
-2. **Package**: `dist/` is zipped into a deployment artifact
-3. **Upload**: Artifact uploaded to S3 via a pre-signed URL
-4. **Deploy**: AWS Amplify API triggers a deployment from the uploaded artifact
+1. **Select**: Resolve the successful `main` CI run and immutable full SHA
+2. **Download**: Fetch the exact `frontend-dist-prod` or
+   `frontend-dist-demo` artifact from that CI run
+3. **Policy**: Render and validate the Amplify CSP configuration, including
+   the configured CMS iframe origins
+4. **Package/upload**: Zip the artifact and upload through the Amplify API
+5. **Deploy/smoke**: Wait for Amplify and verify content type plus semantic
+   application markers
 
 ### Trigger conditions
 
-- After successful CI completion (main branch)
-- Manual workflow dispatch
+- Automatically selected by `Deploy Production` after successful CI completion
+  on `main`
+- Normal production workflows have no manual trigger
+- Emergency rollback/redeploy uses the separately protected break-glass
+  workflow with a main-reachable full SHA and mandatory reason
 
 ## Amplify configuration
 
@@ -57,6 +68,8 @@ AWS Amplify serves the static site with:
 - S3 backend for file storage
 - CloudFront CDN for global distribution
 - SPA routing: all paths resolve to `index.html` (client-side routing)
+- A report-only or enforcing CSP generated from the exact required script
+  origins and configured CMS iframe hosts
 
 The SPA routing configuration is critical — without it, direct navigation to frontend routes (e.g., `/about`) would return 404 from the CDN.
 
@@ -76,3 +89,4 @@ This is different from local development, where Vite proxies API calls to Django
 - [CI/CD](ci-cd.md) — Build pipelines
 - [Architecture: Frontend](../architecture/frontend.md) — React architecture and routing
 - [Environments](environments.md) — Environment configuration
+- [Production Handoff Runbook](../operations/handoff-runbook.md) — CSP promotion and rollback

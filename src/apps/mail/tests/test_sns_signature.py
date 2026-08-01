@@ -142,10 +142,10 @@ class VerifySnsMessageTests(TestCase):
         envelope = _sign_envelope(_base_notification(), self.key)
         sns_signature._CERT_CACHE.clear()
         sns_signature._CERT_CACHE["https://sns.us-west-2.amazonaws.com/cert.pem"] = self.pem
-        with patch("apps.mail.services.sns_signature.urllib.request.urlopen") as mock_urlopen:
+        with patch("apps.mail.services.sns_signature.fetch_sns_https") as mock_fetch:
             verify_sns_message(envelope)
             verify_sns_message(envelope)
-            mock_urlopen.assert_not_called()
+            mock_fetch.assert_not_called()
 
     def test_invalid_signature_encoding_raises(self):
         # Cert is cached via setUp, so _fetch_cert succeeds and we reach b64decode.
@@ -210,39 +210,19 @@ class FetchCertTests(TestCase):
     def test_fetch_downloads_and_caches_pem(self):
         cert_url = "https://sns.us-west-2.amazonaws.com/cert.pem"
 
-        class _Resp:
-            def __enter__(self_inner):
-                return self_inner
-
-            def __exit__(self_inner, *args):
-                return False
-
-            def read(self_inner):
-                return b"PEM-BYTES"
-
-        with patch("apps.mail.services.sns_signature.urllib.request.urlopen", return_value=_Resp()) as mock_open:
+        with patch("apps.mail.services.sns_signature.fetch_sns_https", return_value=b"PEM-BYTES") as mock_fetch:
             pem = sns_signature._fetch_cert(cert_url)
 
         self.assertEqual(pem, b"PEM-BYTES")
         self.assertEqual(sns_signature._CERT_CACHE[cert_url], b"PEM-BYTES")
-        mock_open.assert_called_once()
+        mock_fetch.assert_called_once_with(cert_url)
 
     def test_fetch_evicts_cache_when_full(self):
         cert_url = "https://sns.us-west-2.amazonaws.com/cert.pem"
         for i in range(sns_signature._CERT_CACHE_MAX):
             sns_signature._CERT_CACHE[f"https://sns.amazonaws.com/{i}.pem"] = b"old"
 
-        class _Resp:
-            def __enter__(self_inner):
-                return self_inner
-
-            def __exit__(self_inner, *args):
-                return False
-
-            def read(self_inner):
-                return b"NEW-PEM"
-
-        with patch("apps.mail.services.sns_signature.urllib.request.urlopen", return_value=_Resp()):
+        with patch("apps.mail.services.sns_signature.fetch_sns_https", return_value=b"NEW-PEM"):
             pem = sns_signature._fetch_cert(cert_url)
 
         self.assertEqual(pem, b"NEW-PEM")

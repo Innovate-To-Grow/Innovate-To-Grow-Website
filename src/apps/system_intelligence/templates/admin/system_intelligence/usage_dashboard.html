@@ -73,7 +73,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function () {
   if (window.Chart && window.ChartDataLabels) {
     Chart.register(ChartDataLabels);

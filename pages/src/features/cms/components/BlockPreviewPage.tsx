@@ -7,7 +7,11 @@ import type { CMSBlock } from '@/features/cms/api';
  * Receives block data via window.postMessage from the parent admin page.
  *
  * Message protocol:
- *   { type: 'cms-block-preview', block: { block_type, sort_order, data }, pageCssClass? }
+ *   iframe URL: /_block-preview?nonce=<per-iframe random value>
+ *   parent → iframe:
+ *     { type: 'cms-block-preview', nonce, block: {...}, pageCssClass? }
+ *   iframe → parent:
+ *     { type: 'cms-block-preview-ready' | 'cms-block-preview-resize', nonce, ... }
  */
 
 // postMessage origin allowlist, frozen at module load.
@@ -87,16 +91,32 @@ function getInitialReadyTargetOrigins(): string[] {
   return [SAME_ORIGIN || window.location.origin];
 }
 
+function getExpectedPreviewNonce(): string {
+  const nonce = new URLSearchParams(window.location.search)
+    .get('nonce')
+    ?.trim();
+  return nonce && nonce.length <= 256 ? nonce : '';
+}
+
 export const BlockPreviewPage = () => {
   const [block, setBlock] = useState<CMSBlock | null>(null);
   const [pageCssClass, setPageCssClass] = useState('');
   const [trustedParentOrigin, setTrustedParentOrigin] = useState(getTrustedReferrerOrigin);
+  const [expectedNonce] = useState(getExpectedPreviewNonce);
 
   const handleMessage = useCallback((event: MessageEvent) => {
+    if (!expectedNonce) return;
+    if (event.source !== window.parent) return;
     const normalizedOrigin = normalizeOrigin(event.origin);
     if (!normalizedOrigin || !isTrustedParentOrigin(normalizedOrigin)) return;
     const msg = event.data;
-    if (!msg || msg.type !== 'cms-block-preview') return;
+    if (
+      !msg ||
+      msg.type !== 'cms-block-preview' ||
+      msg.nonce !== expectedNonce
+    ) {
+      return;
+    }
     setTrustedParentOrigin(normalizedOrigin);
     if (msg.block) {
       setBlock({
@@ -108,17 +128,20 @@ export const BlockPreviewPage = () => {
     if (msg.pageCssClass !== undefined) {
       setPageCssClass(msg.pageCssClass || '');
     }
-  }, []);
+  }, [expectedNonce]);
 
   useEffect(() => {
     window.addEventListener('message', handleMessage);
-    if (window.parent !== window) {
+    if (expectedNonce && window.parent !== window) {
       for (const origin of getInitialReadyTargetOrigins()) {
-        window.parent.postMessage({ type: 'cms-block-preview-ready' }, origin);
+        window.parent.postMessage(
+          {type: 'cms-block-preview-ready', nonce: expectedNonce},
+          origin,
+        );
       }
     }
     return () => window.removeEventListener('message', handleMessage);
-  }, [handleMessage]);
+  }, [expectedNonce, handleMessage]);
 
   useEffect(() => {
     if (!block || !trustedParentOrigin || window.parent === window) return;
@@ -131,7 +154,14 @@ export const BlockPreviewPage = () => {
         document.body ? document.body.offsetHeight : 0,
       );
       if (height > 0) {
-        window.parent.postMessage({ type: 'cms-block-preview-resize', height }, trustedParentOrigin);
+        window.parent.postMessage(
+          {
+            type: 'cms-block-preview-resize',
+            nonce: expectedNonce,
+            height,
+          },
+          trustedParentOrigin,
+        );
       }
     };
 
@@ -153,7 +183,7 @@ export const BlockPreviewPage = () => {
       resizeObserver?.disconnect();
       window.removeEventListener('load', reportHeight);
     };
-  }, [block, pageCssClass, trustedParentOrigin]);
+  }, [block, expectedNonce, pageCssClass, trustedParentOrigin]);
 
   if (!block) {
     return (

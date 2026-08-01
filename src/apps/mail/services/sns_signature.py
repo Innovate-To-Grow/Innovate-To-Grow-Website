@@ -10,7 +10,6 @@ SSRF to arbitrary hosts.
 
 import base64
 import logging
-import urllib.request
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
@@ -18,6 +17,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.x509 import load_pem_x509_certificate
 
 from apps.core.utils.security import SecurityValidationError, validate_aws_sns_https_url
+from apps.mail.services.sns_http import SnsHttpError, fetch_sns_https
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +62,10 @@ def _fetch_cert(cert_url: str) -> bytes:
     if cert_url in _CERT_CACHE:
         return _CERT_CACHE[cert_url]
 
-    with urllib.request.urlopen(cert_url, timeout=5) as resp:  # noqa: S310  # https + allowlist
-        pem = resp.read()
+    try:
+        pem = fetch_sns_https(cert_url)
+    except SnsHttpError as exc:
+        raise SnsVerificationError(str(exc)) from exc
 
     if len(_CERT_CACHE) >= _CERT_CACHE_MAX:
         _CERT_CACHE.clear()
@@ -99,7 +101,10 @@ def verify_sns_message(envelope: dict, *, allowed_topic_arns: set[str] | None = 
 
     canonical = _canonical_string(envelope)
 
-    hash_algo = hashes.SHA256() if signature_version == "2" else hashes.SHA1()  # noqa: S303  # legacy v1 SNS
+    # SNS SignatureVersion 1 mandates SHA-1. It authenticates an AWS-signed
+    # envelope whose certificate URL and topic are checked above; it is not
+    # used for password storage, integrity hashing, or a new protocol.
+    hash_algo = hashes.SHA256() if signature_version == "2" else hashes.SHA1()  # nosec B303
 
     try:
         public_key.verify(signature, canonical, padding.PKCS1v15(), hash_algo)

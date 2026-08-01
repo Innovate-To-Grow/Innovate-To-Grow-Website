@@ -88,6 +88,15 @@ TRUSTED_SHEET_URLS = {
     )
     for sheet_id, cell_range in ALLOWED_SHEET_RANGES
 }
+# Readiness uses one bounded cell from a spreadsheet that is already in the
+# server-side allowlist. Keep it separate from the public proxy allowlist so a
+# health probe cannot broaden the public API surface.
+READINESS_SHEET_ID = sorted(ALLOWED_SPREADSHEETS)[0]
+READINESS_CELL_RANGE = "A1"
+READINESS_SHEET_URL = UPSTREAM.format(
+    sheet_id=READINESS_SHEET_ID,
+    cell_range=urllib.parse.quote(READINESS_CELL_RANGE, safe=""),
+)
 
 EVENT_TEMPLATES = {
     "2020-fall-post-event": "events/2020-fall-post-event.html",
@@ -104,16 +113,23 @@ EVENT_TEMPLATES = {
 }
 
 
-def _fetch_values(upstream_url: str) -> tuple[dict, int]:
+def _fetch_values(
+    upstream_url: str,
+    *,
+    timeout_seconds: float = 10,
+) -> tuple[dict, int]:
     """Server-side Google Sheets call. Kept separate so tests can stub it."""
     key = os.getenv("SHEETS_API_KEY", "")
     if not key:
         return {"error": "SHEETS_API_KEY is not configured"}, 500
-    resp = requests.get(
-        upstream_url,
-        params={"alt": "json", "key": key},
-        timeout=10,
-    )
+    try:
+        resp = requests.get(
+            upstream_url,
+            params={"alt": "json", "key": key},
+            timeout=timeout_seconds,
+        )
+    except requests.RequestException:
+        return {"error": "upstream unavailable"}, 502
     try:
         body = resp.json()
     except ValueError:
@@ -131,8 +147,49 @@ def healthz():
     return jsonify({"status": "ok"}), 200
 
 
+@app.route("/readyz")
+def readyz():
+    """Readiness validates config and one bounded allowlisted Sheets request."""
+    if not os.getenv("SHEETS_API_KEY", "").strip():
+        return jsonify({"status": "not_ready", "sheets_api_key": "missing"}), 503
+    _body, upstream_status = _fetch_values(
+        READINESS_SHEET_URL,
+        timeout_seconds=3,
+    )
+    if upstream_status != 200:
+        return (
+            jsonify(
+                {
+                    "status": "not_ready",
+                    "sheets_api_key": "configured",
+                    "sheets_upstream": "unavailable",
+                }
+            ),
+            503,
+        )
+    return (
+        jsonify(
+            {
+                "status": "ok",
+                "sheets_api_key": "configured",
+                "sheets_upstream": "ok",
+            }
+        ),
+        200,
+    )
+
+
+def _cache_successful(response) -> bool:
+    """Cache Sheets data only; transient/configuration failures must be retried."""
+    # Flask-Caching evaluates the view's raw return value before Flask converts
+    # ``(response, status)`` into a final Response object.
+    if isinstance(response, tuple):
+        return len(response) < 2 or response[1] == 200
+    return getattr(response, "status_code", 200) == 200
+
+
 @app.route("/api/sheets/<sheet_id>/values/<path:cell_range>")
-@cache.cached()
+@cache.cached(response_filter=_cache_successful)
 def sheets_proxy(sheet_id: str, cell_range: str):
     upstream_url = TRUSTED_SHEET_URLS.get((sheet_id, cell_range))
     if upstream_url is None:
@@ -156,4 +213,5 @@ if __name__ == "__main__":
     #   flask --app app run --debug --port 5001
     from waitress import serve
 
-    serve(app, host="0.0.0.0", port=5001, threads=8)  # noqa: S104 - bind all interfaces in container
+    # The container listener must accept traffic from the ECS task ENI.
+    serve(app, host="0.0.0.0", port=5001, threads=8)  # nosec B104

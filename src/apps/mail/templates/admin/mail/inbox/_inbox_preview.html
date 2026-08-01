@@ -46,7 +46,7 @@ auto-size the frame to its content. Never add allow-scripts here:
 allow-scripts + allow-same-origin lets the framed email escape the sandbox
 into the admin origin (CSRF token / session cookies).
 {% endcomment %}
-<script type="application/json" id="inbox-preview-body-data">{{ body_html_json|safe }}</script>
+<script nonce="{{ request.csp_nonce }}" type="application/json" id="inbox-preview-body-data">{{ body_html_json|safe }}</script>
 <iframe id="inbox-preview-body"
         data-inbox-body-frame
         sandbox="allow-popups allow-same-origin"

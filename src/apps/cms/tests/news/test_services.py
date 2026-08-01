@@ -5,12 +5,14 @@ from django.test import TestCase
 from apps.cms.models import NewsArticle
 from apps.cms.services.news import sync_news
 from apps.cms.services.news.feed_parser import (
+    MAX_FEED_BYTES,
     extract_image_url,
     extract_summary,
     fetch_feed,
     parse_pub_date,
 )
-from apps.cms.services.news.scraper import scrape_article
+from apps.cms.services.news.scraper import MAX_ARTICLE_BYTES, scrape_article
+from apps.cms.services.news.url_guard import OversizedNewsResponseError
 
 SAMPLE_RSS = b"""<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -88,6 +90,17 @@ class FeedParserTest(TestCase):
         self.assertEqual(mock_open.call_args[0][0], "https://example.com/feed")
         self.assertEqual(mock_open.call_args[1]["headers"]["User-Agent"], "ITG-NewsSync/1.0")
 
+    @patch("apps.cms.services.news.feed_parser.safe_urlopen")
+    def test_fetch_feed_rejects_oversized_response(self, mock_open):
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = b"x" * (MAX_FEED_BYTES + 1)
+        mock_open.return_value.__enter__.return_value = mock_resp
+
+        with self.assertRaisesRegex(OversizedNewsResponseError, "RSS feed exceeds"):
+            fetch_feed("https://example.com/feed")
+
+        mock_resp.read.assert_called_once_with(MAX_FEED_BYTES + 1)
+
 
 SAMPLE_PAGE_HTML = """
 <html>
@@ -137,6 +150,16 @@ class ScraperTest(TestCase):
 
         result = scrape_article("https://news.ucmerced.edu/news/test")
         self.assertEqual(result["hero_image_url"], "https://news.ucmerced.edu/sites/img.jpg")
+
+    @patch("apps.cms.services.news.scraper.safe_urlopen")
+    def test_scrape_article_rejects_oversized_response(self, mock_open):
+        mock_resp = mock_open.return_value.__enter__.return_value
+        mock_resp.read.return_value = b"x" * (MAX_ARTICLE_BYTES + 1)
+
+        with self.assertRaisesRegex(OversizedNewsResponseError, "News article exceeds"):
+            scrape_article("https://news.ucmerced.edu/news/test")
+
+        mock_resp.read.assert_called_once_with(MAX_ARTICLE_BYTES + 1)
 
 
 class SyncNewsTest(TestCase):

@@ -54,6 +54,7 @@ from .email_challenges import (
     issue_email_challenge,
     mark_challenge_verified,
     verify_email_code,
+    verify_email_code_and_mint_token,
     verify_email_code_for_purposes,
 )
 from .import_members import (
@@ -67,6 +68,7 @@ from .rsa_manager import (
     get_or_create_auth_keypair,
     get_public_key_pem,
     is_encrypted_password,
+    purge_retired_auth_keypairs,
     rotate_auth_keypair,
 )
 from .sms import (
@@ -104,6 +106,7 @@ __all__ = [
     "registration_email_conflicts",
     "issue_email_challenge",
     "verify_email_code",
+    "verify_email_code_and_mint_token",
     "verify_email_code_for_purposes",
     "mark_challenge_verified",
     "consume_verification_token",
@@ -138,5 +141,6 @@ __all__ = [
     "get_public_key_pem",
     "decrypt_password",
     "is_encrypted_password",
+    "purge_retired_auth_keypairs",
     "RSADecryptionError",
 ]

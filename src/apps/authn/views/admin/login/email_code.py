@@ -129,7 +129,6 @@ class EmailCodeLoginMixin:
             form.add_error(None, "Verification code is invalid or has expired.")
             return render_admin_login(request, step="code", email=email, form=form)
 
-        login_api.consume_login_or_registration_challenge(challenge)
         member = challenge.member
         if not member.is_staff or not member.is_active:
             clear_admin_login_session(request)

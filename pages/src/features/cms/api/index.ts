@@ -122,6 +122,16 @@ export interface CMSEmbedResponse {
   schedule_id?: string | null;
 }
 
+export interface CMSEmbedHostsResponse {
+  hosts: string[];
+  revision: string;
+}
+
+export async function fetchCMSEmbedHosts(): Promise<CMSEmbedHostsResponse> {
+  const response = await api.get<CMSEmbedHostsResponse>('/cms/embed-hosts/');
+  return response.data;
+}
+
 export async function fetchCMSEmbed(
   embedSlug: string,
 ): Promise<CMSEmbedResponse> {

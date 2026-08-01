@@ -1,33 +1,101 @@
 name: Deploy Frontend to AWS Amplify
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      deploy_sha:
+        description: Full commit SHA whose CI artifact must be deployed.
+        required: true
+        type: string
+      ci_run_id:
+        description: Successful CI run ID that produced the frontend artifacts.
+        required: true
+        type: string
+    secrets:
+      AMPLIFY_APP_ID:
+        required: false
 
 permissions:
   actions: read
   contents: read
+  id-token: write
 
 concurrency:
-  group: deploy-frontend-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-frontend-production
+  cancel-in-progress: false
+
+env:
+  DEPLOY_SHA: ${{ inputs.deploy_sha }}
+  CI_RUN_ID: ${{ inputs.ci_run_id }}
 
 jobs:
+  gate:
+    name: Select immutable frontend artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ci_run_id: ${{ steps.gate.outputs.ci-run-id }}
+      deploy_sha: ${{ steps.gate.outputs.deploy-sha }}
+      should_deploy: ${{ steps.gate.outputs.should-deploy }}
+    steps:
+      - name: Validate SHA and inspect the artifact-producing CI run
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$DEPLOY_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::deploy_sha must be a full lowercase 40-character commit SHA."
+            exit 1
+          fi
+          if ! printf '%s' "$CI_RUN_ID" | grep -Eq '^[1-9][0-9]*$'; then
+            echo "::error::ci_run_id must be a positive GitHub Actions run ID."
+            exit 1
+          fi
+
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}")"
+          run_sha="$(jq --raw-output '.head_sha' <<<"$run_json")"
+          run_conclusion="$(jq --raw-output '.conclusion' <<<"$run_json")"
+          if [ "$run_sha" != "$DEPLOY_SHA" ] || [ "$run_conclusion" != "success" ]; then
+            echo "::error::CI run $CI_RUN_ID is not a successful run for $DEPLOY_SHA."
+            exit 1
+          fi
+          echo "deploy-sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+          echo "ci-run-id=$CI_RUN_ID" >> "$GITHUB_OUTPUT"
+
+          if [ "$EVENT_NAME" = "workflow_call" ]; then
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          successful_builds="$(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/jobs?per_page=100" \
+              --jq \
+              '[.jobs[] | select(.name | startswith("Frontend Deploy Build Artifact")) | select(.conclusion == "success")] | length' \
+              | awk '{total += $1} END {print total + 0}'
+          )"
+          if [ "$successful_builds" -gt 0 ]; then
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Frontend was unchanged; this CI run published no deploy artifact." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   deploy:
     name: Deploy Frontend (${{ matrix.target }})
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+    needs: gate
+    if: ${{ needs.gate.outputs.should_deploy == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: prod
+            artifact_name: frontend-dist-prod
             environment_name: AWS Amplify - Prod
             environment_url: https://i2g.ucmerced.edu
             frontend_url: https://i2g.ucmerced.edu
@@ -35,6 +103,7 @@ jobs:
             backend_proxy_url: https://api.i2g.ucmerced.edu
             proxy_admin_paths: "false"
           - target: demo
+            artifact_name: frontend-dist-demo
             environment_name: AWS Amplify(DEMO) - Prod
             environment_url: https://demo.i2g.ucmerced.edu
             frontend_url: https://demo.i2g.ucmerced.edu
@@ -47,76 +116,115 @@ jobs:
     defaults:
       run:
         working-directory: pages
+    env:
+      DEPLOY_SHA: ${{ needs.gate.outputs.deploy_sha }}
+      CI_RUN_ID: ${{ needs.gate.outputs.ci_run_id }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+      AWS_ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+      AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
+      AMPLIFY_BRANCH: ${{ vars.AMPLIFY_BRANCH || 'main' }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || matrix.api_base_url }}
+      AMPLIFY_BACKEND_PROXY_URL: ${{ vars.AMPLIFY_BACKEND_PROXY_URL || matrix.backend_proxy_url }}
+      AMPLIFY_PROXY_ADMIN_PATHS: ${{ vars.AMPLIFY_PROXY_ADMIN_PATHS || matrix.proxy_admin_paths }}
+      AMPLIFY_CSP_MODE: ${{ vars.AMPLIFY_CSP_MODE || 'report-only' }}
+      AMPLIFY_CSP_FRAME_SOURCES: ${{ vars.AMPLIFY_CSP_FRAME_SOURCES }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
+      - name: Checkout the CI-tested configuration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ env.DEPLOY_SHA }}
 
-      - name: Validate required deploy configuration
+      - name: Validate deploy configuration and artifact
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
-          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: ${{ matrix.artifact_name }}
         run: |
-          if [ -z "$AMPLIFY_APP_ID" ]; then
-            echo "::error::AMPLIFY_APP_ID is required for the Amplify deployment."
+          set -euo pipefail
+          missing=()
+          for name in \
+            AWS_ROLE_ARN AMPLIFY_APP_ID AMPLIFY_BRANCH FRONTEND_URL \
+            VITE_API_BASE_URL AMPLIFY_CSP_FRAME_SOURCES; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required config: ${missing[*]}"
             exit 1
           fi
-          if [ -z "$VITE_API_BASE_URL" ]; then
-            echo "::error::VITE_API_BASE_URL is required for the Amplify build."
+          case "$AMPLIFY_CSP_MODE" in
+            report-only|enforce) ;;
+            *)
+              echo "::error::AMPLIFY_CSP_MODE must be report-only or enforce."
+              exit 1
+              ;;
+          esac
+
+          python ../.github/scripts/render_amplify_headers.py \
+            --api-base-url "$VITE_API_BASE_URL" \
+            --backend-proxy-url "$AMPLIFY_BACKEND_PROXY_URL" \
+            --frame-sources "$AMPLIFY_CSP_FRAME_SOURCES" \
+            --mode "$AMPLIFY_CSP_MODE" \
+            --output /tmp/custom-headers-validation.yml
+
+          artifact_count="$(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/artifacts?per_page=100" \
+              --jq \
+              ".artifacts[] | select(.name == \"${ARTIFACT_NAME}\" and .expired == false) | .id" \
+              | wc -l \
+              | tr -d ' '
+          )"
+          if [ "$artifact_count" != "1" ]; then
+            echo "::error::Expected one unexpired $ARTIFACT_NAME artifact in CI run $CI_RUN_ID; found $artifact_count."
             exit 1
           fi
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Download the exact CI-built frontend artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
-          node-version: "22.22.0"
-          cache: "npm"
-          cache-dependency-path: pages/package-lock.json
+          name: ${{ matrix.artifact_name }}
+          path: pages/dist
+          github-token: ${{ github.token }}
+          run-id: ${{ env.CI_RUN_ID }}
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build frontend
-        run: npm run build
-        env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+      - name: Configure AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@451ce2a72e8d729a59ebeaacab82dbce58e7af4c
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: i2g-deploy-frontend-${{ matrix.target }}-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Configure Amplify rewrite rules (sitemap, API, SPA)
-        env:
-          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
-          AMPLIFY_BACKEND_PROXY_URL: ${{ vars.AMPLIFY_BACKEND_PROXY_URL || matrix.backend_proxy_url }}
-          AMPLIFY_PROXY_ADMIN_PATHS: ${{ vars.AMPLIFY_PROXY_ADMIN_PATHS || matrix.proxy_admin_paths }}
+      - name: Render Amplify security headers
+        run: |
+          python ../.github/scripts/render_amplify_headers.py \
+            --api-base-url "$VITE_API_BASE_URL" \
+            --backend-proxy-url "$AMPLIFY_BACKEND_PROXY_URL" \
+            --frame-sources "$AMPLIFY_CSP_FRAME_SOURCES" \
+            --mode "$AMPLIFY_CSP_MODE" \
+            --output custom-headers.yml
+
+      - name: Configure Amplify rewrites and security headers
         run: |
           python - <<'PY'
           import json
           import os
           import subprocess
 
+
           app_id = os.environ["AMPLIFY_APP_ID"].strip()
-          api_base_url = os.environ["VITE_API_BASE_URL"].strip().rstrip("/")
-          backend_proxy_url = os.environ.get("AMPLIFY_BACKEND_PROXY_URL", "").strip().rstrip("/")
-          proxy_admin_paths = os.environ.get("AMPLIFY_PROXY_ADMIN_PATHS", "").strip().lower() in {
+          backend_proxy_url = (
+              os.environ["AMPLIFY_BACKEND_PROXY_URL"].strip().rstrip("/")
+              or os.environ["VITE_API_BASE_URL"].strip().rstrip("/")
+          )
+          proxy_admin_paths = os.environ["AMPLIFY_PROXY_ADMIN_PATHS"].strip().lower() in {
               "1",
               "true",
               "yes",
               "on",
           }
-          if not app_id:
-              raise SystemExit("AMPLIFY_APP_ID is required to configure rewrite rules.")
-          if not api_base_url:
-              raise SystemExit("VITE_API_BASE_URL is required to configure rewrite rules.")
-          if not backend_proxy_url:
-              backend_proxy_url = api_base_url
 
           app_payload = subprocess.check_output(
               ["aws", "amplify", "get-app", "--app-id", app_id, "--output", "json"],
@@ -157,15 +265,6 @@ jobs:
                   "status": "200",
               },
           ]
-
-          # SPA deep-link fallback. The previous "/<*>" rule with status "404-200"
-          # did NOT rewrite on the custom domain — hard navigations to client routes
-          # (e.g. /past-projects/<id>) fell through to the S3 website endpoint and
-          # returned its index.html error document with a 404 status. This is the
-          # canonical Amplify SPA rule: any path WITHOUT a static-asset extension is
-          # rewritten (status 200) to /index.html so React Router can resolve it.
-          # It is placed LAST so the sitemap and /api/<*> passthrough rules win first
-          # (extensionless /api/... paths would otherwise match this rule).
           spa_rule = {
               "source": (
                   r"</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|webp|avif|"
@@ -174,27 +273,27 @@ jobs:
               "target": "/index.html",
               "status": "200",
           }
-
-          # Preserve any other existing rules (notably the /api/<*> backend
-          # passthrough) but drop the stale sitemap rule and ANY old SPA fallback
-          # (identified by target /index.html, e.g. the broken "/<*>" 404-200 rule),
-          # so re-running this step is idempotent.
+          managed_sources = {
+              sitemap_rule["source"],
+              api_rule["source"],
+              *(rule["source"] for rule in admin_rules),
+          }
           preserved = [
               rule
               for rule in existing_rules
-              if rule.get("source") != sitemap_rule["source"]
-              and rule.get("source") != api_rule["source"]
-              and rule.get("source") not in {admin_rule["source"] for admin_rule in admin_rules}
+              if rule.get("source") not in managed_sources
               and rule.get("target") != "/index.html"
           ]
-
-          merged_rules = [sitemap_rule, api_rule]
+          custom_rules = [sitemap_rule, api_rule]
           if proxy_admin_paths:
-              merged_rules += admin_rules
-          merged_rules += preserved + [spa_rule]
+              custom_rules.extend(admin_rules)
+          custom_rules.extend(preserved)
+          custom_rules.append(spa_rule)
+          with open("custom-rules.json", "w", encoding="utf-8") as rules_file:
+              json.dump(custom_rules, rules_file)
 
-          with open("custom-rules.json", "w", encoding="utf-8") as f:
-              json.dump(merged_rules, f)
+          with open("custom-headers.yml", encoding="utf-8") as headers_file:
+              custom_headers = headers_file.read()
 
           subprocess.check_call(
               [
@@ -205,53 +304,50 @@ jobs:
                   app_id,
                   "--custom-rules",
                   "file://custom-rules.json",
+                  "--custom-headers",
+                  custom_headers,
               ]
           )
           PY
 
-      - name: Deploy to AWS Amplify
+      - name: Upload the immutable artifact to Amplify
         id: deploy-amplify
-        env:
-          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BRANCH: ${{ vars.AMPLIFY_BRANCH || 'main' }}
         run: |
-          # Create a deployment and get the upload URL + job ID
-          DEPLOY_RESULT=$(aws amplify create-deployment \
+          set -euo pipefail
+          deploy_result="$(aws amplify create-deployment \
             --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$AMPLIFY_BRANCH")
+            --branch-name "$AMPLIFY_BRANCH")"
+          job_id="$(jq --raw-output '.jobId' <<<"$deploy_result")"
+          upload_url="$(jq --raw-output '.zipUploadUrl' <<<"$deploy_result")"
+          if [ -z "$job_id" ] || [ "$job_id" = "null" ] ||
+             [ -z "$upload_url" ] || [ "$upload_url" = "null" ]; then
+            echo "::error::Amplify did not return a job ID and upload URL."
+            exit 1
+          fi
 
-          JOB_ID=$(echo "$DEPLOY_RESULT" | jq -r '.jobId')
-          UPLOAD_URL=$(echo "$DEPLOY_RESULT" | jq -r '.zipUploadUrl')
-
-          echo "Job ID: $JOB_ID"
-
-          # Zip the build output
-          cd dist
-          zip -r ../build.zip .
-          cd ..
-
-          # Upload the zip to the pre-signed URL
-          curl -T build.zip "$UPLOAD_URL" \
-            -H "Content-Type: application/zip"
-
-          # Start the deployment
+          (
+            cd dist
+            zip --quiet --recurse-paths ../build.zip .
+          )
+          curl --fail --show-error --silent \
+            --request PUT \
+            --upload-file build.zip \
+            --header "Content-Type: application/zip" \
+            "$upload_url"
           aws amplify start-deployment \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$AMPLIFY_BRANCH" \
-            --job-id "$JOB_ID"
+            --job-id "$job_id" \
+            --output json >/dev/null
+          echo "job-id=$job_id" >> "$GITHUB_OUTPUT"
 
-          echo "job-id=$JOB_ID" >> "$GITHUB_OUTPUT"
-          echo "Deployment started successfully (Job ID: $JOB_ID). Check Amplify console for status."
-
-      - name: Wait for Amplify deployment to finish
+      - name: Wait for Amplify deployment
         env:
-          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BRANCH: ${{ vars.AMPLIFY_BRANCH || 'main' }}
           JOB_ID: ${{ steps.deploy-amplify.outputs.job-id }}
         run: |
           set -euo pipefail
-
-          while true; do
+          deadline="$((SECONDS + 900))"
+          while [ "$SECONDS" -lt "$deadline" ]; do
             status="$(aws amplify get-job \
               --app-id "$AMPLIFY_APP_ID" \
               --branch-name "$AMPLIFY_BRANCH" \
@@ -259,11 +355,8 @@ jobs:
               --query 'job.summary.status' \
               --output text)"
             echo "Amplify job $JOB_ID status: $status"
-
             case "$status" in
-              SUCCEED)
-                exit 0
-                ;;
+              SUCCEED) exit 0 ;;
               FAILED|CANCELLED)
                 aws amplify get-job \
                   --app-id "$AMPLIFY_APP_ID" \
@@ -272,27 +365,132 @@ jobs:
                   --output json
                 exit 1
                 ;;
-              *)
-                sleep 15
-                ;;
             esac
+            sleep 15
           done
+          echo "::error::Amplify job $JOB_ID did not finish within 15 minutes."
+          exit 1
 
-      - name: Smoke check deployed frontend
-        env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
+      - name: Smoke check HTML, bundled JavaScript, rewrites, and CSP
         run: |
           set -euo pipefail
+          headers="$(mktemp)"
+          html="$(mktemp)"
+          curl --fail --show-error --silent --location --max-time 30 \
+            --dump-header "$headers" \
+            --output "$html" \
+            "${FRONTEND_URL%/}/"
+          python - \
+            "$headers" \
+            "$html" \
+            "$FRONTEND_URL" \
+            "$AMPLIFY_CSP_MODE" \
+            "$AMPLIFY_BACKEND_PROXY_URL" \
+            "$AMPLIFY_CSP_FRAME_SOURCES" <<'PY'
+          import re
+          import sys
+          from email.parser import BytesParser
+          from urllib.parse import urljoin, urlparse
 
-          frontend="${FRONTEND_URL%/}"
-          api="${VITE_API_BASE_URL%/}"
+          sys.path.insert(0, "../.github/scripts")
+          from render_amplify_headers import origin, parse_frame_sources
 
-          for url in "$frontend/" "$frontend/robots.txt" "$frontend/sitemap.xml" "$api/readyz/"; do
-            echo "Checking $url"
-            curl --fail --show-error --silent --location --max-time 30 "$url" >/tmp/smoke-body
-            if [ ! -s /tmp/smoke-body ]; then
-              echo "::error::Smoke target returned an empty body: $url"
+          (
+              header_path,
+              html_path,
+              frontend_url,
+              csp_mode,
+              backend_proxy_url,
+              frame_sources,
+          ) = sys.argv[1:]
+          raw_headers = open(header_path, "rb").read().replace(b"\r\n", b"\n")
+          final_header_lines = raw_headers.strip().split(b"\n\n")[-1].splitlines()
+          headers = BytesParser().parsebytes(
+              b"\r\n".join(final_header_lines[1:]) + b"\r\n\r\n"
+          )
+          content_type = headers.get("Content-Type", "")
+          if "text/html" not in content_type.lower():
+              raise SystemExit(f"Unexpected root Content-Type: {content_type!r}")
+
+          expected_header = (
+              "Content-Security-Policy"
+              if csp_mode == "enforce"
+              else "Content-Security-Policy-Report-Only"
+          )
+          csp = headers.get(expected_header, "")
+          if not csp:
+              raise SystemExit(f"{expected_header} is missing.")
+          directives = {
+              item.strip().split(maxsplit=1)[0]: item.strip()
+              for item in csp.split(";")
+              if item.strip()
+          }
+          script_src = directives.get("script-src", "")
+          for source in (
+              "'self'",
+              "https://cdn.userway.org",
+              "https://siteimproveanalytics.com",
+          ):
+              if source not in script_src.split():
+                  raise SystemExit(f"script-src is missing {source}: {script_src}")
+          if "'unsafe-inline'" in script_src or "'unsafe-eval'" in script_src:
+              raise SystemExit(f"Unsafe script policy detected: {script_src}")
+          frame_src = directives.get("frame-src", "")
+          for source in parse_frame_sources(frame_sources):
+              if source not in frame_src.split():
+                  raise SystemExit(f"frame-src is missing CMS origin {source}: {frame_src}")
+          expected_report_uri = (
+              f"report-uri {origin(backend_proxy_url, 'AMPLIFY_BACKEND_PROXY_URL')}/csp-report/"
+          )
+          if directives.get("report-uri") != expected_report_uri:
+              raise SystemExit(
+                  f"Expected {expected_report_uri!r}; got {directives.get('report-uri')!r}."
+              )
+
+          html = open(html_path, encoding="utf-8").read()
+          if not re.search(r'<div\s+id=["\']root["\']', html):
+              raise SystemExit("Root HTML does not contain the React mount element.")
+          sources = re.findall(r'<script[^>]+src=["\']([^"\']+)', html)
+          if not sources:
+              raise SystemExit("Root HTML does not load a JavaScript bundle.")
+          frontend_origin = (
+              f"{urlparse(frontend_url).scheme}://{urlparse(frontend_url).netloc}"
+          )
+          for source in sources:
+              if urlparse(urljoin(frontend_url, source)).netloc != urlparse(
+                  frontend_origin
+              ).netloc:
+                  raise SystemExit(
+                      f"Third-party script remains inline in index.html: {source}"
+                  )
+          PY
+          asset_url="$(
+            python - "$html" "$FRONTEND_URL" <<'PY'
+          import re
+          import sys
+          from urllib.parse import urljoin
+
+          html = open(sys.argv[1], encoding="utf-8").read()
+          source = re.findall(r'<script[^>]+src=["\']([^"\']+)', html)[0]
+          print(urljoin(sys.argv[2].rstrip("/") + "/", source))
+          PY
+          )"
+          asset_type="$(curl --fail --show-error --silent --location \
+            --max-time 30 \
+            --output /tmp/frontend-bundle.js \
+            --write-out '%{content_type}' \
+            "$asset_url")"
+          case "$asset_type" in
+            *javascript*) ;;
+            *)
+              echo "::error::Unexpected JavaScript bundle Content-Type: $asset_type"
               exit 1
-            fi
+              ;;
+          esac
+          test -s /tmp/frontend-bundle.js
+
+          for path in robots.txt sitemap.xml; do
+            curl --fail --show-error --silent --location --max-time 30 \
+              "${FRONTEND_URL%/}/$path" > "/tmp/$path"
+            test -s "/tmp/$path"
           done

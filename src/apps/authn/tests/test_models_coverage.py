@@ -132,3 +132,4 @@ class RSAKeypairModelTests(TestCase):
         keypair.deactivate()
         keypair.refresh_from_db()
         self.assertFalse(keypair.is_active)
+        self.assertIsNotNone(keypair.rotated_at)

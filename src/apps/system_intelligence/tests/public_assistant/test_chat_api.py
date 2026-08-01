@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -23,6 +23,7 @@ MOCK_RESULT = {
 INVOKE_PATH = "apps.system_intelligence.views.public_assistant.answer_public_question"
 
 
+@override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=True)
 class PublicAssistantChatTestBase(TestCase):
     def setUp(self):
         # Clearing the cache resets both the throttle and the per-IP budget.
@@ -114,6 +115,32 @@ class ValidationTests(PublicAssistantChatTestBase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_history_item_uses_message_character_limit(self):
+        self.config.public_assistant_max_message_chars = 50
+        self.config.save()
+        response = self.client.post(
+            self.chat_url,
+            {
+                "message": "hi",
+                "history": [{"role": "user", "content": "x" * 51}],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_estimated_input_limit_rejects_before_model_call(self):
+        self.config.public_assistant_max_estimated_input_tokens = 5
+        self.config.save()
+        with patch(INVOKE_PATH) as mock_invoke:
+            response = self.client.post(
+                self.chat_url,
+                {"message": "This request is larger than five estimated tokens."},
+                format="json",
+            )
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.data["code"], "input_too_large")
+        mock_invoke.assert_not_called()
+
     def test_zero_max_chars_means_unlimited(self):
         # A non-positive cap disables the length check (matches the frontend),
         # rather than rejecting every message.
@@ -138,6 +165,27 @@ class HistoryTrimmingTests(PublicAssistantChatTestBase):
         # The last (most recent) turns are kept.
         self.assertEqual(passed_history[-1]["content"], "turn 9")
 
+    def test_total_history_chars_trim_oldest_turns(self):
+        self.config.public_assistant_max_history_chars = 12
+        self.config.public_assistant_max_history_messages = 10
+        self.config.save()
+        history = [
+            {"role": "user", "content": "old-old"},
+            {"role": "assistant", "content": "middle"},
+            {"role": "user", "content": "newest"},
+        ]
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
+            response = self.client.post(
+                self.chat_url,
+                {"message": "latest", "history": history},
+                format="json",
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            mock_invoke.call_args.kwargs["history"],
+            history[-2:],
+        )
+
 
 class BudgetTests(PublicAssistantChatTestBase):
     def test_budget_exceeded_returns_429_and_skips_model(self):
@@ -160,13 +208,27 @@ class BudgetTests(PublicAssistantChatTestBase):
         after = budget.tokens_used(ip_hash)
         self.assertEqual(after - before, MOCK_RESULT["usage"]["totalTokens"])
 
+    @override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False)
+    @patch(
+        "apps.system_intelligence.services.public_assistant.budget._shared_redis_client",
+        side_effect=budget.BudgetBackendUnavailable("redis down"),
+    )
+    def test_redis_failure_returns_graceful_503(self, _redis):
+        with patch(INVOKE_PATH) as mock_invoke:
+            response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.data["code"], "budget_unavailable")
+        mock_invoke.assert_not_called()
+
 
 class InvocationErrorTests(PublicAssistantChatTestBase):
     def test_model_error_returns_502(self):
+        ip_hash = budget.hash_ip("127.0.0.1")
         with patch(INVOKE_PATH, side_effect=RuntimeError("boom")):
             response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.data["code"], "assistant_error")
+        self.assertEqual(budget.tokens_used(ip_hash), 0)
 
 
 class ConfigEndpointTests(PublicAssistantChatTestBase):

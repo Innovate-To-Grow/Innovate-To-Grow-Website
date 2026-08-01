@@ -94,13 +94,15 @@ describe('storage', () => {
   });
 
   it('sets profile completion to true', async () => {
-    const {setProfileCompletionRequired, isProfileCompletionRequired} = await import('../storage');
+    const {setTokens, setProfileCompletionRequired, isProfileCompletionRequired} = await import('../storage');
+    setTokens({access: 'a', refresh: 'r'}, mockUser);
     setProfileCompletionRequired(true);
     expect(isProfileCompletionRequired()).toBe(true);
   });
 
   it('clears profile completion when set to false', async () => {
-    const {setProfileCompletionRequired, isProfileCompletionRequired} = await import('../storage');
+    const {setTokens, setProfileCompletionRequired, isProfileCompletionRequired} = await import('../storage');
+    setTokens({access: 'a', refresh: 'r'}, mockUser);
     setProfileCompletionRequired(true);
     setProfileCompletionRequired(false);
     expect(isProfileCompletionRequired()).toBe(false);
@@ -129,5 +131,106 @@ describe('storage', () => {
       requires_profile_completion: true,
     });
     expect(isProfileCompletionRequired()).toBe(true);
+  });
+
+  it('stores auth state in one versioned record', async () => {
+    const {persistAuthSession} = await import('../storage');
+    persistAuthSession({
+      access: 'one-access',
+      refresh: 'one-refresh',
+      user: mockUser,
+      requires_profile_completion: true,
+    });
+
+    const serialized = mockLocalStorage.getItem('i2g_auth_session');
+    expect(serialized).not.toBeNull();
+    expect(JSON.parse(serialized!)).toEqual(expect.objectContaining({
+      version: 1,
+      access: 'one-access',
+      refresh: 'one-refresh',
+      user: mockUser,
+      requires_profile_completion: true,
+      generation: expect.any(String),
+    }));
+    expect(mockLocalStorage.getItem('i2g_access_token')).toBeNull();
+    expect(mockLocalStorage.getItem('i2g_refresh_token')).toBeNull();
+    expect(mockLocalStorage.getItem('i2g_user')).toBeNull();
+  });
+
+  it('migrates and removes a complete legacy session', async () => {
+    mockLocalStorage.setItem('i2g_access_token', 'legacy-access');
+    mockLocalStorage.setItem('i2g_refresh_token', 'legacy-refresh');
+    mockLocalStorage.setItem('i2g_user', JSON.stringify(mockUser));
+    mockSessionStorage.setItem('i2g_profile_completion_required', 'true');
+
+    const {getStoredSession} = await import('../storage');
+    const session = getStoredSession();
+
+    expect(session).toEqual(expect.objectContaining({
+      version: 1,
+      access: 'legacy-access',
+      refresh: 'legacy-refresh',
+      user: mockUser,
+      requires_profile_completion: true,
+      generation: expect.any(String),
+    }));
+    expect(mockLocalStorage.getItem('i2g_access_token')).toBeNull();
+    expect(mockLocalStorage.getItem('i2g_refresh_token')).toBeNull();
+    expect(mockLocalStorage.getItem('i2g_user')).toBeNull();
+    expect(mockSessionStorage.getItem('i2g_profile_completion_required')).toBeNull();
+  });
+
+  it('rejects token updates and clears from an older generation', async () => {
+    const {
+      setTokens,
+      updateSessionTokens,
+      clearTokens,
+      getStoredSession,
+    } = await import('../storage');
+    const oldSession = setTokens({access: 'old-a', refresh: 'old-r'}, mockUser);
+    const currentSession = setTokens(
+      {access: 'new-a', refresh: 'new-r'},
+      {...mockUser, member_uuid: 'uuid-456', email: 'new@example.com'},
+    );
+
+    expect(updateSessionTokens(
+      {generation: oldSession.generation, refresh: oldSession.refresh},
+      {access: 'stale-a', refresh: 'stale-r'},
+    )).toBeNull();
+    expect(clearTokens({
+      generation: oldSession.generation,
+      refresh: oldSession.refresh,
+    })).toBe(false);
+    expect(getStoredSession()?.generation).toBe(currentSession.generation);
+    expect(getStoredSession()?.access).toBe('new-a');
+  });
+
+  it('does not clear profile completion for a replacement generation', async () => {
+    const {
+      clearProfileCompletionRequired,
+      getStoredSession,
+      persistAuthSession,
+    } = await import('../storage');
+    const oldSession = persistAuthSession({
+      access: 'old-a',
+      refresh: 'old-r',
+      user: mockUser,
+      requires_profile_completion: true,
+    });
+    const replacement = persistAuthSession({
+      access: 'new-a',
+      refresh: 'new-r',
+      user: {...mockUser, member_uuid: 'uuid-456', email: 'new@example.com'},
+      requires_profile_completion: true,
+    });
+
+    expect(
+      clearProfileCompletionRequired({
+        generation: oldSession.generation,
+        refresh: oldSession.refresh,
+      }),
+    ).toBe(false);
+    expect(getStoredSession()?.generation).toBe(replacement.generation);
+    expect(getStoredSession()?.requires_profile_completion).toBe(true);
   });
 });

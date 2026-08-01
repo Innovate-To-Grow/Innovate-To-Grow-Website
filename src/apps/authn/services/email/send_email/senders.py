@@ -9,22 +9,39 @@ logger = logging.getLogger(__name__)
 SES_DELIVERY_ERROR = "Email delivery via AWS SES failed or is not configured."
 
 
-def send_notification_email(*, recipient: str, subject: str, template: str, context: dict):
+def send_notification_email(
+    *,
+    recipient: str,
+    subject: str,
+    template: str,
+    context: dict,
+    before_provider_call=None,
+    raise_provider_errors: bool = False,
+) -> bool:
     import apps.authn.services.email.send_email as email_api
 
     config = email_api._load_config()
     html_body = render_to_string(template, context)
 
+    send_kwargs = {
+        "config": config,
+        "recipient": recipient,
+        "subject": subject,
+        "html_body": html_body,
+    }
+    if before_provider_call is not None:
+        send_kwargs["before_provider_call"] = before_provider_call
+    if raise_provider_errors:
+        send_kwargs["raise_provider_errors"] = True
+
     if email_api._send_via_ses(
-        config=config,
-        recipient=recipient,
-        subject=subject,
-        html_body=html_body,
+        **send_kwargs,
     ):
         logger.info("Notification email sent via SES")
-        return
+        return True
 
     logger.error("Notification email was not sent: %s", SES_DELIVERY_ERROR)
+    return False
 
 
 def send_admin_invitation_email(*, invitation, request=None):

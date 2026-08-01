@@ -16,9 +16,10 @@ cd cli && pip install -e .
 
 ## Configuration
 
-The CLI has **no baked-in backend URL** — set it via the environment, a `.env`
-file, or `configure`. Resolution order: `--profile`'s stored `base_url` →
-`I2G_ADMIN_BASE_URL` env / `.env` → error.
+The CLI has **no baked-in backend URL** — set it via the environment, the
+project-owned `cli/.env` file, or `configure`. It never loads `.env` from the
+current working directory. Resolution order: `--profile`'s stored `base_url` →
+`I2G_ADMIN_BASE_URL` env / `cli/.env` → error.
 
 ```bash
 i2g-admin configure set base_url http://127.0.0.1:8000   # persist for the active profile
@@ -59,7 +60,8 @@ i2g-admin logout
 These go **before** the command (as in `aws --output json s3 ls`):
 
 - `--profile <name>` — select a named configuration/credentials profile (also `I2G_ADMIN_PROFILE`).
-- `--output table|json|text|yaml|csv` — output format.
+- `--output table|json|text|yaml|csv|csv-raw` — output format. `csv` neutralizes
+  spreadsheet formulas; use `csv-raw` only for trusted machine consumers.
 - `--query <expr>` — client-side projection (JMESPath).
 - `--no-paginate` / `--max-items <n>` / `--page-size <n>` — auto-pagination controls (`records list` walks all pages by default).
 - `--max-attempts <n>` / `--connect-timeout <s>` / `--read-timeout <s>` — HTTP robustness (retries 429/5xx with exponential backoff + jitter, honoring `Retry-After`; default one attempt, timeouts 5s/30s).
@@ -77,8 +79,9 @@ Per-command: `--json` is a back-compat alias for `--output json`; `--data` accep
 `records count <app> <model>` · `records wait <app> <model> --until field=value` ·
 `completion show <shell>` · `records create/update --generate-cli-skeleton` / `--cli-input-json`.
 
-Access requires the logged-in account be active **and** staff. There are no per-model
-permission checks — staff status is the gate, backed by the backend's hard denylist.
+Access requires the logged-in account be active **and** staff. The `apps`
+command filters its output through the account's `admin_apps` grants (superusers
+bypass that filter), and the backend enforces the same grants for model access.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release notes and [`docs/cms-admin/cli-admin.md`](../docs/cms-admin/cli-admin.md) for the authoritative reference.
 

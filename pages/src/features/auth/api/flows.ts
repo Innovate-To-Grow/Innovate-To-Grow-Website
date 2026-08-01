@@ -2,10 +2,7 @@ import axios from 'axios';
 
 import { clearKeyCache, encryptPasswordWithCurrentKey } from '@/lib/crypto';
 import { authApi } from './client';
-import {
-  clearProfileCompletionRequired,
-  persistAuthSession,
-} from './storage';
+import {persistAuthSession} from './storage';
 import type {
   EmailAuthFlow,
   EmailAuthRequestResponse,
@@ -14,10 +11,20 @@ import type {
   LoginResponse,
   MessageResponse,
   PasswordChangeRequestResponse,
+  PhoneAuthRequestResponse,
   PhoneAuthSource,
   RegisterResponse,
+  SmsChallengeResponse,
   VerificationTokenResponse,
 } from './types';
+import {
+  forgetSmsChallenge,
+  passwordChangeChallengeScope,
+  passwordResetChallengeScope,
+  phoneAuthChallengeScope,
+  readSmsChallenge,
+  rememberSmsChallenge,
+} from './smsChallenges';
 
 const isEncryptionFailure = (error: unknown): boolean => {
   if (!error) return false;
@@ -54,7 +61,6 @@ export const register = async (
       organization,
       title,
     });
-    clearProfileCompletionRequired();
     return response.data;
   } catch (error) {
     if (isEncryptionFailure(error)) {
@@ -116,12 +122,16 @@ export const requestPhoneAuthCode = async (
   phoneNumber: string,
   region: string = '1-US',
   source: PhoneAuthSource = 'login',
-): Promise<EmailAuthRequestResponse> => {
-  const response = await authApi.post<EmailAuthRequestResponse>('/authn/phone-auth/request-code/', {
+): Promise<PhoneAuthRequestResponse> => {
+  const response = await authApi.post<PhoneAuthRequestResponse>('/authn/phone-auth/request-code/', {
     phone_number: phoneNumber,
     region,
     source,
   });
+  rememberSmsChallenge(
+    phoneAuthChallengeScope(phoneNumber, region),
+    response.data.challenge_id,
+  );
   return response.data;
 };
 
@@ -129,12 +139,18 @@ export const verifyPhoneAuthCode = async (
   phoneNumber: string,
   code: string,
   region: string = '1-US',
+  challengeId?: string,
 ): Promise<EmailAuthVerifyResponse> => {
+  const scope = phoneAuthChallengeScope(phoneNumber, region);
+  const resolvedChallengeId = challengeId ?? readSmsChallenge(scope);
   const response = await authApi.post<EmailAuthVerifyResponse>('/authn/phone-auth/verify-code/', {
-    phone_number: phoneNumber,
+    ...(resolvedChallengeId
+      ? {challenge_id: resolvedChallengeId}
+      : {phone_number: phoneNumber}),
     region,
     code,
   });
+  forgetSmsChallenge(scope, resolvedChallengeId);
   persistAuthSession(response.data);
   return response.data;
 };
@@ -168,13 +184,39 @@ export const resendRegistrationCode = async (email: string): Promise<MessageResp
   return response.data;
 };
 
-export const requestPasswordReset = async (email: string): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>('/authn/password-reset/request-code/', { email });
+export const requestPasswordReset = async (
+  email: string,
+): Promise<SmsChallengeResponse> => {
+  const response = await authApi.post<SmsChallengeResponse>(
+    '/authn/password-reset/request-code/',
+    {email},
+  );
+  // The public endpoint deliberately has the same response shape for email,
+  // phone, and unknown identifiers. Persist any opaque challenge returned; the
+  // email verifier safely ignores it, while SMS verification requires it.
+  rememberSmsChallenge(
+    passwordResetChallengeScope(email),
+    response.data.challenge_id,
+  );
   return response.data;
 };
 
-export const verifyPasswordResetCode = async (email: string, code: string): Promise<VerificationTokenResponse> => {
-  const response = await authApi.post<VerificationTokenResponse>('/authn/password-reset/verify-code/', { email, code });
+export const verifyPasswordResetCode = async (
+  email: string,
+  code: string,
+  challengeId?: string,
+): Promise<VerificationTokenResponse> => {
+  const scope = passwordResetChallengeScope(email);
+  const resolvedChallengeId = challengeId ?? readSmsChallenge(scope);
+  const response = await authApi.post<VerificationTokenResponse>(
+    '/authn/password-reset/verify-code/',
+    {
+      email,
+      code,
+      ...(resolvedChallengeId ? {challenge_id: resolvedChallengeId} : {}),
+    },
+  );
+  forgetSmsChallenge(scope, resolvedChallengeId);
   return response.data;
 };
 
@@ -203,17 +245,29 @@ export const requestPasswordChangeCode = async (email?: string): Promise<Passwor
     '/authn/change-password/request-code/',
     email ? { email } : {},
   );
+  rememberSmsChallenge(
+    passwordChangeChallengeScope(email),
+    response.data.channel === 'sms' ? response.data.challenge_id : undefined,
+  );
   return response.data;
 };
 
 export const verifyPasswordChangeCode = async (
   code: string,
   email?: string,
+  challengeId?: string,
 ): Promise<VerificationTokenResponse> => {
+  const scope = passwordChangeChallengeScope(email);
+  const resolvedChallengeId = challengeId ?? readSmsChallenge(scope);
   const response = await authApi.post<VerificationTokenResponse>(
     '/authn/change-password/verify-code/',
-    email ? { email, code } : { code },
+    {
+      ...(email ? {email} : {}),
+      code,
+      ...(resolvedChallengeId ? {challenge_id: resolvedChallengeId} : {}),
+    },
   );
+  forgetSmsChallenge(scope, resolvedChallengeId);
   return response.data;
 };
 

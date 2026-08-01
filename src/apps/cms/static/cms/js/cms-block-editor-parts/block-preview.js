@@ -11,10 +11,21 @@
     // Map of blockIdx → iframe element for active previews
     var iframeReadyMap = {};
 
-    function getPreviewUrl() {
+    function createPreviewNonce() {
+        if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+            return '';
+        }
+        var bytes = new Uint8Array(18);
+        window.crypto.getRandomValues(bytes);
+        return Array.from(bytes, function (value) {
+            return value.toString(16).padStart(2, '0');
+        }).join('');
+    }
+
+    function getPreviewUrl(nonce) {
         var config = window.CMS_ROUTE_EDITOR || {};
         var base = (config.frontendUrl || '').replace(/\/+$/, '') || window.location.origin;
-        return base + PREVIEW_PATH;
+        return base + PREVIEW_PATH + '?nonce=' + encodeURIComponent(nonce);
     }
 
     function getIframeOrigin(iframe) {
@@ -36,10 +47,19 @@
      */
     function renderPreviewPane(block, idx) {
         var iframeId = 'cms-bp-iframe-' + idx;
+        var nonce = createPreviewNonce();
+        if (!nonce) {
+            return '<div class="cms-block-preview-pane">'
+                + '<div class="bp-label">Preview unavailable</div>'
+                + '<div class="cms-block-preview-pane-inner">'
+                + '<p>Secure random number generation is unavailable in this browser.</p>'
+                + '</div></div>';
+        }
         return '<div class="cms-block-preview-pane">'
             + '<div class="bp-label">Preview</div>'
             + '<div class="cms-block-preview-pane-inner">'
-            + '<iframe id="' + iframeId + '" class="cms-bp-iframe" src="' + getPreviewUrl() + '" data-block-idx="' + idx + '"></iframe>'
+            + '<iframe id="' + iframeId + '" class="cms-bp-iframe" src="' + getPreviewUrl(nonce)
+            + '" data-block-idx="' + idx + '" data-preview-nonce="' + nonce + '"></iframe>'
             + '</div></div>';
     }
 
@@ -51,12 +71,15 @@
         iframeReadyMap = {};
         document.querySelectorAll('.cms-bp-iframe').forEach(function (iframe) {
             var idx = parseInt(iframe.getAttribute('data-block-idx'), 10);
+            var nonce = iframe.getAttribute('data-preview-nonce') || '';
             if (isNaN(idx) || idx >= blocks.length) return;
+            if (!nonce) return;
 
             function sendData() {
                 var pageCssClassEl = document.getElementById('id_page_css_class');
                 postToIframe(iframe, {
                     type: 'cms-block-preview',
+                    nonce: nonce,
                     block: {
                         block_type: blocks[idx].block_type,
                         sort_order: idx,
@@ -70,6 +93,7 @@
             function onMessage(event) {
                 if (event.source !== iframe.contentWindow) return;
                 if (event.origin !== getIframeOrigin(iframe)) return;
+                if (!event.data || event.data.nonce !== nonce) return;
                 if (event.data && event.data.type === 'cms-block-preview-ready') {
                     iframeReadyMap[idx] = iframe;
                     sendData();
@@ -102,9 +126,12 @@
     function updatePreview(idx, block) {
         var iframe = iframeReadyMap[idx];
         if (!iframe || !iframe.contentWindow) return;
+        var nonce = iframe.getAttribute('data-preview-nonce') || '';
+        if (!nonce) return;
         var pageCssClassEl = document.getElementById('id_page_css_class');
         postToIframe(iframe, {
             type: 'cms-block-preview',
+            nonce: nonce,
             block: {
                 block_type: block.block_type,
                 sort_order: idx,

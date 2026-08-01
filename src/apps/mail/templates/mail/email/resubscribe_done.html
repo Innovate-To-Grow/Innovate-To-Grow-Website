@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% if error %}Resubscribe Failed{% else %}Resubscribed{% endif %} - Innovate to Grow</title>
-  <style>
+  <style nonce="{{ request.csp_nonce }}">
     body { margin:0; padding:0; background:#f4f4f7; font-family:Arial,Helvetica,sans-serif; }
     .card { max-width:480px; margin:80px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.08); }
     .header { background:#0b1f3f; padding:28px 32px; text-align:center; border-bottom:4px solid #daa520; }

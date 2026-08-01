@@ -16,6 +16,7 @@ Official platform of **Innovate To Grow | University of California, Merced | Sch
 | API | [Index](docs/api/index.md) · [Auth & mail](docs/api/auth-and-mail.md) · [CMS & news](docs/api/cms-and-news.md) · [Events](docs/api/events.md) · [Projects](docs/api/projects.md) · [Routing](docs/api/routing-overview.md) |
 | CMS & Admin | [Index](docs/cms-admin/index.md) · [Content management](docs/cms-admin/content-management.md) · [Django admin](docs/cms-admin/django-admin.md) · [Members & mail](docs/cms-admin/member-and-mail-tools.md) · [Operations](docs/cms-admin/operations.md) |
 | Deployment | [Index](docs/deployment/index.md) · [Environments](docs/deployment/environments.md) · [Backend](docs/deployment/backend.md) · [Frontend](docs/deployment/frontend.md) · [CI/CD](docs/deployment/ci-cd.md) · [Local development](docs/deployment/local-development.md) |
+| Operations | [Production handoff runbook](docs/operations/handoff-runbook.md) |
 | Integrations | [Google Sheets](docs/integrations/google-sheets/) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
@@ -23,7 +24,8 @@ Official platform of **Innovate To Grow | University of California, Merced | Sch
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.11.x (the tracked `.python-version`, hashed locks, CI, and Docker
+  image all use this minor line)
 - Node.js 22.22+ (npm 10+)
 - SQLite 3.35+ (dev); PostgreSQL for CI and production
 
@@ -34,8 +36,8 @@ Official platform of **Innovate To Grow | University of California, Merced | Sch
 ### Backend — Django (http://localhost:8000)
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r src/requirements.txt
+python3.11 -m venv .venv && source .venv/bin/activate
+python -m pip install --require-hashes -r src/requirements.txt
 cp src/.env.example src/.env
 
 cd src

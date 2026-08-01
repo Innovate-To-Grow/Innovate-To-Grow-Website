@@ -26,7 +26,7 @@ def issue_login_link(*, member_id, validity_days, campaign=None, registration=No
         expires_at=timezone.now() + timezone.timedelta(days=validity_days),
     )
     frontend_url = getattr(settings, "FRONTEND_URL", "").rstrip("/")
-    return f"{frontend_url}{LOGIN_LINK_PATH}?token={token}"
+    return f"{frontend_url}{LOGIN_LINK_PATH}#token={token}"
 
 
 def revoke_login_links(queryset) -> int:

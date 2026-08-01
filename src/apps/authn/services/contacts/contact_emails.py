@@ -3,7 +3,6 @@ Service layer for managing contact emails (add, verify, delete).
 """
 
 import logging
-import threading
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -18,7 +17,6 @@ from apps.authn.services.account_recovery.recovery import (
 from apps.authn.services.email.auth_email import normalize_email, registration_email_conflicts
 from apps.authn.services.email_challenges import (
     AuthChallengeInvalid,
-    consume_login_or_registration_challenge,
     issue_email_challenge,
     verify_email_code,
 )
@@ -39,26 +37,31 @@ def _member_has_secondary(member, exclude_pk=None):
 
 
 def _notify_email_owner_in_background(email: str):
-    """Send a claim-attempt notification to the owner of the email, in a daemon thread."""
+    """Queue an owner notification, or send synchronously when jobs are disabled."""
+    frontend_url = getattr(settings, "FRONTEND_URL", "").rstrip("/")
+    account_url = f"{frontend_url}/account" if frontend_url else ""
+    notification = {
+        "recipient": email,
+        "subject": "Security notice - Innovate to Grow",
+        "template": "authn/email/email_claim_notification.html",
+        "context": {"account_url": account_url},
+    }
 
-    def _send():
+    if getattr(settings, "BACKGROUND_JOBS_ENABLED", False):
         try:
-            from apps.authn.services.email.send_email import send_notification_email
+            from apps.core.services.background_jobs import enqueue_notification_email
 
-            frontend_url = getattr(settings, "FRONTEND_URL", "").rstrip("/")
-            account_url = f"{frontend_url}/account" if frontend_url else ""
-
-            send_notification_email(
-                recipient=email,
-                subject="Security notice - Innovate to Grow",
-                template="authn/email/email_claim_notification.html",
-                context={"account_url": account_url},
-            )
+            enqueue_notification_email(**notification)
         except Exception:
-            logger.exception("Failed to send email claim notification to %s", email)
+            logger.exception("Failed to enqueue email claim notification to %s", email)
+        return
 
-    thread = threading.Thread(target=_send, daemon=True)
-    thread.start()
+    try:
+        from apps.authn.services.email.send_email import send_notification_email
+
+        send_notification_email(**notification)
+    except Exception:
+        logger.exception("Failed to send email claim notification to %s", email)
 
 
 def create_contact_email(*, member, email_address: str, email_type: str = "secondary", subscribe: bool = True):
@@ -76,6 +79,7 @@ def create_contact_email(*, member, email_address: str, email_type: str = "secon
     # (assigning primary never marks the email verified).
     try:
         with transaction.atomic():
+            Member.objects.select_for_update().get(pk=member.pk)
             existing = list(ContactEmail.objects.select_for_update().filter(member=member))
             has_primary = any(c.email_type == "primary" for c in existing)
             effective_type = "primary" if not has_primary else email_type
@@ -107,13 +111,30 @@ def verify_contact_email_code(*, member, contact_email_id, code: str):
     if contact_email is None:
         raise AuthChallengeInvalid("Contact email not found.")
 
-    challenge = verify_email_code(purpose=PURPOSE, target_email=contact_email.email_address, code=code)
-    consume_login_or_registration_challenge(challenge)
+    def mark_contact_verified(_challenge):
+        locked_contact = (
+            ContactEmail.objects.select_for_update()
+            .filter(
+                pk=contact_email.pk,
+                member=member,
+                email_address__iexact=contact_email.email_address,
+            )
+            .first()
+        )
+        if locked_contact is None:
+            raise AuthChallengeInvalid("Contact email not found.")
+        if not locked_contact.verified:
+            locked_contact.verified = True
+            locked_contact.save(update_fields=["verified", "updated_at"])
+        return locked_contact
 
-    contact_email.verified = True
-    contact_email.save(update_fields=["verified", "updated_at"])
-
-    return contact_email
+    return verify_email_code(
+        purpose=PURPOSE,
+        target_email=contact_email.email_address,
+        code=code,
+        member=member,
+        approved_callback=mark_contact_verified,
+    )
 
 
 def resend_contact_email_verification(*, member, contact_email_id):
@@ -139,6 +160,10 @@ def delete_contact_email(*, member, contact_email_id):
     deterministically (prefer verified, else oldest); if no email remains, the
     account may legitimately have no primary (e.g. a phone-only account).
     """
+    # The member row is the shared mutex for email and phone deletion. Locking
+    # only the target contact cannot serialize cross-table "last recovery
+    # method" checks.
+    Member.objects.select_for_update().get(pk=member.pk)
     contact = ContactEmail.objects.select_for_update().filter(pk=contact_email_id, member=member).first()
     if contact is None:
         raise AuthChallengeInvalid("Contact email not found.")
@@ -169,6 +194,7 @@ def make_contact_email_primary(*, member, contact_email_id):
 
     The previous primary becomes ``secondary`` (not deleted). Requires the target email to be verified.
     """
+    Member.objects.select_for_update().get(pk=member.pk)
     contact = ContactEmail.objects.select_for_update().filter(pk=contact_email_id, member=member).first()
     if contact is None:
         raise AuthChallengeInvalid("Contact email not found.")

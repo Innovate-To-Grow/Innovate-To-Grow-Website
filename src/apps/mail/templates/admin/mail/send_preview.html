@@ -76,7 +76,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
     document.getElementById('email-preview').srcdoc = {{ preview_html_json|safe }};
 </script>
 {% endblock %}

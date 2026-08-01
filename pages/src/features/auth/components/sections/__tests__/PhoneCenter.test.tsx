@@ -145,4 +145,44 @@ describe('PhoneCenter add form', () => {
     await waitFor(() => expect(mocks.updateContactPhone).toHaveBeenCalledWith('phone-1', {subscribe: false}));
     expect(mocks.verifyContactPhoneCode).toHaveBeenCalledWith('phone-1', '123456');
   });
+
+  it('verifies an existing phone without requiring the add-phone terms state', async () => {
+    mocks.getContactPhones.mockResolvedValue([
+      {
+        id: 'phone-existing',
+        phone_number: '5559876543',
+        region: '1-US',
+        region_display: 'United States',
+        subscribe: false,
+        verified: false,
+      },
+    ]);
+    mocks.requestContactPhoneVerification.mockResolvedValue({message: 'sent'});
+    mocks.verifyContactPhoneCode.mockResolvedValue({
+      id: 'phone-existing',
+      phone_number: '5559876543',
+      region: '1-US',
+      region_display: 'United States',
+      subscribe: false,
+      verified: true,
+    });
+
+    render(<PhoneCenter />);
+    fireEvent.click(await screen.findByRole('button', {name: 'Verify'}));
+    fireEvent.change(
+      await screen.findByLabelText('6-digit verification code'),
+      {target: {value: '654321'}},
+    );
+    fireEvent.click(screen.getByRole('button', {name: 'Submit code'}));
+
+    await waitFor(() =>
+      expect(mocks.verifyContactPhoneCode).toHaveBeenCalledWith(
+        'phone-existing',
+        '654321',
+      ),
+    );
+    expect(
+      screen.queryByText(/Please accept Terms of Service/i),
+    ).not.toBeInTheDocument();
+  });
 });

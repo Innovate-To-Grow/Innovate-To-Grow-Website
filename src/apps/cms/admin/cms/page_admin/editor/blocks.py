@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from apps.cms.models import CMSBlock, validate_block_data
+from apps.cms.models import CMSBlock, CMSPage, validate_block_data
 from apps.cms.models.content.cms.block_types import normalize_block_data_for_storage
 
 
@@ -30,8 +30,14 @@ def save_blocks_from_json(request, page, messages):
             pending_blocks.append(pending)
 
     with transaction.atomic():
-        page.blocks.all().delete()
+        # Share the parent-page mutex with AI approvals/imports, then lock the
+        # exact child set before destructive replacement.
+        locked_page = CMSPage.objects.select_for_update().get(pk=page.pk)
+        list(CMSBlock.objects.select_for_update().filter(page=locked_page))
+        CMSBlock.objects.filter(page=locked_page).delete()
         if pending_blocks:
+            for block in pending_blocks:
+                block.page = locked_page
             CMSBlock.objects.bulk_create(pending_blocks)
     transaction.on_commit(lambda: cache.delete(f"cms:page:{page.route}"))
 

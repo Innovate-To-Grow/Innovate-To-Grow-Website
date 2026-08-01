@@ -40,7 +40,9 @@ MEMBER_EMAIL_CHOICES = [
 
 STATUS_CHOICES = [
     ("draft", "Draft"),
+    ("queued", "Queued"),
     ("sending", "Sending"),
+    ("partial", "Partially sent"),
     ("sent", "Sent"),
     ("failed", "Failed"),
 ]

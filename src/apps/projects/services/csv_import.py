@@ -37,13 +37,12 @@ class ImportResult:
     errors: list[str] = field(default_factory=list)
 
 
-def _parse_semester(value: str) -> Semester | None:
+def _parse_semester(value: str) -> tuple[int, int] | None:
+    """Parse a semester label without reading from or mutating the database."""
     match = YEAR_SEMESTER_RE.match(value.strip())
     if not match:
         return None
-    year, season = int(match.group(1)), int(match.group(2))
-    semester, created = Semester.objects.get_or_create(year=year, season=season)
-    return semester
+    return int(match.group(1)), int(match.group(2))
 
 
 def import_projects_from_csv(csv_file, *, dry_run: bool = False, publish: bool = False) -> ImportResult:
@@ -70,12 +69,12 @@ def import_projects_from_csv(csv_file, *, dry_run: bool = False, publish: bool =
         reader = csv.reader(fh)
         next(reader, None)  # skip header
 
-        rows_to_create = []
-        # Track (semester_pk, class_code, team_number) staged this run so a single
+        parsed_rows: list[tuple[tuple[int, int], dict[str, str]]] = []
+        # Track (year, season, class_code, team_number) staged this run so a single
         # CSV containing internal duplicates does not insert them twice — the DB
         # existence check alone cannot see rows still pending in bulk_create.
         staged_keys: set[tuple] = set()
-        semesters_to_publish: set = set()
+        semesters_to_publish: set[tuple[int, int]] = set()
 
         for line_no, row in enumerate(reader, start=2):
             if len(row) < 5:
@@ -85,8 +84,8 @@ def import_projects_from_csv(csv_file, *, dry_run: bool = False, publish: bool =
             if not year_sem:
                 continue
 
-            semester = _parse_semester(year_sem)
-            if semester is None:
+            semester_key = _parse_semester(year_sem)
+            if semester_key is None:
                 result.errors.append(f"Row {line_no}: unparseable Year-Semester '{year_sem}'")
                 continue
 
@@ -100,11 +99,13 @@ def import_projects_from_csv(csv_file, *, dry_run: bool = False, publish: bool =
 
             # Duplicate check: same semester + class_code + team_number, against
             # both already-persisted rows and rows staged earlier in this import.
-            dup_key = (semester.pk, fields["class_code"], fields["team_number"])
+            year, season = semester_key
+            dup_key = (year, season, fields["class_code"], fields["team_number"])
             if (
                 dup_key in staged_keys
                 or Project.objects.filter(
-                    semester=semester,
+                    semester__year=year,
+                    semester__season=season,
                     class_code=fields["class_code"],
                     team_number=fields["team_number"],
                 ).exists()
@@ -113,18 +114,31 @@ def import_projects_from_csv(csv_file, *, dry_run: bool = False, publish: bool =
                 continue
 
             staged_keys.add(dup_key)
-            if publish and not semester.is_published:
-                semesters_to_publish.add(semester.pk)
-            rows_to_create.append(Project(semester=semester, **fields))
+            if publish:
+                semesters_to_publish.add(semester_key)
+            parsed_rows.append((semester_key, fields))
 
         if not dry_run:
-            # Publish semesters and insert projects in one transaction so a failed
-            # insert does not leave semesters published with no projects.
+            # Semester creation, publication, and project insertion are one
+            # transaction. Parsing and dry-run mode remain side-effect-free.
             with transaction.atomic():
+                semester_by_key = {}
+                for semester_key in {key for key, _fields in parsed_rows}:
+                    semester, _created = Semester.objects.get_or_create(
+                        year=semester_key[0],
+                        season=semester_key[1],
+                    )
+                    semester_by_key[semester_key] = semester
                 if semesters_to_publish:
-                    Semester.objects.filter(pk__in=semesters_to_publish, is_published=False).update(is_published=True)
+                    Semester.objects.filter(
+                        pk__in=[semester_by_key[key].pk for key in semesters_to_publish if key in semester_by_key],
+                        is_published=False,
+                    ).update(is_published=True)
+                rows_to_create = [
+                    Project(semester=semester_by_key[semester_key], **fields) for semester_key, fields in parsed_rows
+                ]
                 Project.objects.bulk_create(rows_to_create)
-        result.created = len(rows_to_create)
+        result.created = len(parsed_rows)
     finally:
         if should_close:
             fh.close()

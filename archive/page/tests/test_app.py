@@ -2,7 +2,15 @@
 
 import app as app_module
 import pytest
-from app import ALLOWED_SHEET_RANGES, ALLOWED_SPREADSHEETS, TRUSTED_SHEET_URLS, app
+import requests
+from app import (
+    ALLOWED_SHEET_RANGES,
+    ALLOWED_SPREADSHEETS,
+    READINESS_SHEET_ID,
+    READINESS_SHEET_URL,
+    TRUSTED_SHEET_URLS,
+    app,
+)
 
 A_SHEET, A_RANGE = sorted(ALLOWED_SHEET_RANGES)[0]
 A_URL = TRUSTED_SHEET_URLS[(A_SHEET, A_RANGE)]
@@ -124,6 +132,70 @@ def test_healthz_is_ok_without_a_key(client, monkeypatch):
     assert resp.get_json() == {"status": "ok"}
 
 
+def test_readyz_requires_sheets_key(client, monkeypatch):
+    monkeypatch.delenv("SHEETS_API_KEY", raising=False)
+    resp = client.get("/readyz")
+    assert resp.status_code == 503
+    assert resp.get_json() == {"status": "not_ready", "sheets_api_key": "missing"}
+
+
+def test_readyz_checks_one_bounded_allowlisted_sheet_cell(client, monkeypatch):
+    monkeypatch.setenv("SHEETS_API_KEY", "test-key")
+    calls = []
+
+    def fetch(url, **kwargs):
+        calls.append((url, kwargs))
+        return {"values": [["ready"]]}, 200
+
+    monkeypatch.setattr(app_module, "_fetch_values", fetch)
+    resp = client.get("/readyz")
+    assert resp.status_code == 200
+    assert resp.get_json() == {
+        "status": "ok",
+        "sheets_api_key": "configured",
+        "sheets_upstream": "ok",
+    }
+    assert READINESS_SHEET_ID in ALLOWED_SPREADSHEETS
+    assert calls == [
+        (
+            READINESS_SHEET_URL,
+            {"timeout_seconds": 3},
+        )
+    ]
+
+
+def test_readyz_returns_503_and_does_not_cache_upstream_failure(
+    client,
+    monkeypatch,
+):
+    monkeypatch.setenv("SHEETS_API_KEY", "test-key")
+    outcomes = iter(
+        [
+            ({"error": "upstream unavailable"}, 502),
+            ({"values": [["recovered"]]}, 200),
+        ]
+    )
+    calls = []
+
+    def fetch(url, **kwargs):
+        calls.append((url, kwargs))
+        return next(outcomes)
+
+    monkeypatch.setattr(app_module, "_fetch_values", fetch)
+
+    first = client.get("/readyz")
+    second = client.get("/readyz")
+
+    assert first.status_code == 503
+    assert first.get_json() == {
+        "status": "not_ready",
+        "sheets_api_key": "configured",
+        "sheets_upstream": "unavailable",
+    }
+    assert second.status_code == 200
+    assert len(calls) == 2
+
+
 def test_static_assets_are_served(client):
     assert client.get("/static/images/i2glogo.png").status_code == 200
 
@@ -214,6 +286,45 @@ def test_proxy_maps_upstream_failure_to_502(client, monkeypatch):
     assert b"AIzaSy" not in resp.data
 
 
+def test_proxy_does_not_cache_transient_failure(client, monkeypatch):
+    responses = iter(
+        [
+            ({"error": "upstream unavailable"}, 502),
+            ({"values": [["recovered"]]}, 200),
+        ]
+    )
+    calls = []
+
+    def fetch(url):
+        calls.append(url)
+        return next(responses)
+
+    monkeypatch.setattr(app_module, "_fetch_values", fetch)
+    first = client.get(f"/api/sheets/{A_SHEET}/values/{A_RANGE}")
+    second = client.get(f"/api/sheets/{A_SHEET}/values/{A_RANGE}")
+
+    assert first.status_code == 502
+    assert second.status_code == 200
+    assert second.get_json() == {"values": [["recovered"]]}
+    assert calls == [A_URL, A_URL]
+
+
+def test_proxy_caches_successful_response(client, monkeypatch):
+    calls = []
+
+    def fetch(url):
+        calls.append(url)
+        return {"values": [["cached"]]}, 200
+
+    monkeypatch.setattr(app_module, "_fetch_values", fetch)
+    first = client.get(f"/api/sheets/{A_SHEET}/values/{A_RANGE}")
+    second = client.get(f"/api/sheets/{A_SHEET}/values/{A_RANGE}")
+
+    assert first.status_code == second.status_code == 200
+    assert first.get_json() == second.get_json() == {"values": [["cached"]]}
+    assert calls == [A_URL]
+
+
 def test_missing_key_is_a_server_error(client, monkeypatch):
     monkeypatch.delenv("SHEETS_API_KEY", raising=False)
     monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: pytest.fail("no upstream call"))
@@ -257,3 +368,12 @@ def test_fetch_values_handles_non_json_upstream(monkeypatch):
     body, status = app_module._fetch_values(A_URL)
     assert status == 502
     assert body == {"error": "upstream returned non-JSON"}
+
+
+@pytest.mark.parametrize("error", [requests.Timeout("slow"), requests.ConnectionError("offline")])
+def test_fetch_values_handles_request_exception(monkeypatch, error):
+    monkeypatch.setenv("SHEETS_API_KEY", "test-key")
+    monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: (_ for _ in ()).throw(error))
+    body, status = app_module._fetch_values(A_URL)
+    assert status == 502
+    assert body == {"error": "upstream unavailable"}

@@ -33,6 +33,14 @@ export interface EmailAuthRequestResponse {
   message: string;
 }
 
+export interface PhoneAuthRequestResponse extends EmailAuthRequestResponse {
+  challenge_id?: string;
+}
+
+export interface SmsChallengeResponse extends MessageResponse {
+  challenge_id?: string;
+}
+
 export interface UnsubscribeResponse {
   message: string;
   unsubscribed: boolean;
@@ -63,6 +71,8 @@ export interface PasswordChangeRequestResponse {
   channel?: 'email' | 'sms';
   /** Masked destination for display, e.g. "(•••) •••-4567". */
   destination?: string;
+  /** Durable identifier for an SMS challenge; absent for email or legacy flows. */
+  challenge_id?: string;
 }
 
 export interface AccountEmailsResponse {

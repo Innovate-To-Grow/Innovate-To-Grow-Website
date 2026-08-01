@@ -43,3 +43,25 @@ class ReadEndpointTests(CliApiTestCase):
     def test_model_schema_denied_is_400(self):
         response = self.client.get("/admin-api/models/admin/logentry/schema/", **self.auth(self.raw))
         self.assertEqual(response.status_code, 400)
+
+    def test_model_metadata_is_filtered_by_admin_apps(self):
+        staff = make_staff(email="models-scoped@example.com", apps=["cms"])
+        _, raw = issue_token(staff)
+
+        response = self.client.get("/admin-api/models/", **self.auth(raw))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data)
+        self.assertEqual({row["app_label"] for row in response.data}, {"cms"})
+
+    def test_model_schema_requires_admin_app_access(self):
+        staff = make_staff(email="schema-scoped@example.com", apps=["cms"])
+        _, raw = issue_token(staff)
+
+        response = self.client.get(
+            "/admin-api/models/projects/semester/schema/",
+            **self.auth(raw),
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data["error"], "forbidden")

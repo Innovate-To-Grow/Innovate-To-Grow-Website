@@ -82,6 +82,10 @@ class PublicEmailCodeViewEdgeTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 400)
+        self.assertEqual(
+            EmailAuthChallenge.objects.get(member=self.inactive, purpose=PURPOSE_LOGIN).status,
+            EmailAuthChallenge.Status.PENDING,
+        )
 
     # ── unified verify login-with-inactive (lines 91-95) ──
 
@@ -104,6 +108,10 @@ class PublicEmailCodeViewEdgeTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 400)
+        self.assertEqual(
+            EmailAuthChallenge.objects.get(member=self.inactive, purpose=PURPOSE_LOGIN).status,
+            EmailAuthChallenge.Status.PENDING,
+        )
 
     # ── resend code view (line 140) ───────────────────────
 

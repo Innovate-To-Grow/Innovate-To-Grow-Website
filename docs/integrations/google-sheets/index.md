@@ -15,7 +15,7 @@ Engineers maintaining the event registration pipeline, admins configuring Google
 
 | Integration | Direction | Trigger | Service |
 |-------------|-----------|---------|---------|
-| Registration sync | Django → Sheets | On registration creation | `src/apps/event/services/registration_sheet_sync.py` |
+| Registration sync | Outbox worker → Sheets | Durable job created with registration | `src/apps/event/services/registration_sheet_sync/` |
 | Schedule sync | Sheets → Django | Admin action or management | `src/apps/event/services/schedule_sync.py` |
 | Past-projects sync | Sheets → Django | Admin Pull / cron | `src/apps/projects/services/sheet_sync/` |
 
@@ -25,13 +25,16 @@ Both integrations authenticate via a Google service account whose credentials ar
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `gspread` | 5.5.0 | Google Sheets API client |
-| `google-auth` | 2.35.0 | Service account authentication |
-| `google-api-python-client` | 2.170.0 | Google API discovery client |
+| `gspread` | 6.2.1 | Google Sheets API client |
+| `google-auth` | 2.56.2 | Service account authentication |
+| `google-api-python-client` | 2.198.0 | Google API discovery client |
 
 ## Authentication
 
-Credentials are stored in `GoogleCredentialConfig` (`src/apps/core/models/service_credentials.py`) as a JSON text field containing a Google service account key. The model validates that the JSON includes:
+Credentials are stored in `GoogleCredentialConfig`
+(`src/apps/core/models/base/service_credentials/google.py`) as a JSON text
+field containing a Google service account key. The model validates that the
+JSON includes:
 
 - `type`
 - `project_id`
@@ -39,7 +42,10 @@ Credentials are stored in `GoogleCredentialConfig` (`src/apps/core/models/servic
 - `client_email`
 - `token_uri`
 
-Only one `GoogleCredentialConfig` can be active at a time. The `load()` class method returns the active configuration. If no config exists or credentials are invalid, sync operations fail gracefully with logged errors.
+Only one `GoogleCredentialConfig` can be active at a time, enforced by a
+partial database unique constraint. `load()` returns only that explicit active
+configuration. If it is missing or invalid, sync jobs fail closed and retain
+the error for operators.
 
 The service account email must be granted **Editor** access to target spreadsheets.
 

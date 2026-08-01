@@ -71,4 +71,18 @@ export async function mockHealthyAppShell(page: Page) {
   await page.route('**/analytics/pageview/', async (route) => {
     await route.fulfill({status: 204});
   });
+
+  await page.route('**/assistant/config/', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        enabled: false,
+        welcome_message: '',
+        starter_questions: [],
+        unavailable_message: 'Assistant disabled in fixture-backed browser tests.',
+        max_message_chars: 2000,
+      }),
+    });
+  });
 }

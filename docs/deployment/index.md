@@ -9,6 +9,10 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 - [Backend Deployment](backend.md) — Docker, ECS Fargate, and Uvicorn
 - [Frontend Deployment](frontend.md) — Vite build and AWS Amplify
 - [CI/CD](ci-cd.md) — GitHub Actions pipelines
+- [Production Deployment Configuration](production.md) — GitHub Environments,
+  AWS identity, target variables, and protection rules
+- [Production Handoff Runbook](../operations/handoff-runbook.md) — Worker,
+  incident, reconciliation, rotation, rollback, and release procedures
 
 ## Who this is for
 
@@ -21,9 +25,10 @@ Engineers setting up a local development environment, deploying changes, or debu
 | Backend | Django dev server (port 8000) | Docker build + PostgreSQL service | ECS Fargate (Uvicorn, port 8000) |
 | Frontend | Vite dev server (port 5173) | npm build validation | AWS Amplify (S3 + CDN) |
 | Database | SQLite | PostgreSQL 16 (GH Actions service) | PostgreSQL + SSL |
-| Cache | LocMemCache | LocMemCache | Redis (file fallback) |
+| Cache | LocMemCache | LocMemCache | Redis (required for enabled assistant budgeting) |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
-| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP |
+| Email | Console (stdout) | Console (stdout) | AWS SES |
+| Durable jobs | In-process fallback by default | PostgreSQL outbox tests | PostgreSQL outbox + ECS worker |
 | Load balancer | None | None | ALB with health probes |
 
 ## Quick start
@@ -32,8 +37,8 @@ Engineers setting up a local development environment, deploying changes, or debu
 # Backend
 cd src
 cp .env.example .env          # Edit with your values
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+python3.11 -m venv .venv && source .venv/bin/activate
+python -m pip install --require-hashes -r requirements/local.lock.txt
 python manage.py migrate
 python manage.py createsuperuser  # Prompts for email
 python manage.py runserver

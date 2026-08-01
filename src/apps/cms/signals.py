@@ -11,13 +11,22 @@ from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import CMSBlock, CMSPage, FooterContent, Menu, NewsArticle, SiteSettings, StyleSheet
+from .models import CMSBlock, CMSEmbedAllowedHost, CMSPage, FooterContent, Menu, NewsArticle, SiteSettings, StyleSheet
+from .services.embed_hosts import invalidate_cache as invalidate_embed_host_cache
 from .views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
 
 
 def _clear_layout_caches():
     cache.delete(LAYOUT_CACHE_KEY)
     cache.delete(LAYOUT_STYLESHEET_CACHE_KEY)
+
+
+@receiver([post_save, post_delete], sender=CMSEmbedAllowedHost)
+# noinspection PyUnusedLocal
+def invalidate_embed_host_policy(sender, instance, **kwargs):
+    """Keep CSP, backend sanitization, and browser policy on one revision."""
+
+    transaction.on_commit(invalidate_embed_host_cache)
 
 
 @receiver([post_save, post_delete], sender=Menu)

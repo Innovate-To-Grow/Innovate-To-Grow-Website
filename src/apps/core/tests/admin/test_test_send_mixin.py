@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory, TestCase
+from django.urls import reverse
 
 from apps.core.admin.service_credentials.aws import AWSCredentialConfigAdmin
 from apps.core.admin.service_credentials.helpers import (
@@ -128,6 +129,7 @@ class TestEmailViewTest(TestCase):
         with patch.object(EmailServiceConfig, "load", return_value=EmailServiceConfig(name="Prod")):
             response = self.admin.test_email_list_view(request)
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:core_awscredentialconfig_test_email"))
         self.assertIn("Please provide a recipient email address.", _messages(request))
 
     def test_post_success(self):
@@ -173,6 +175,14 @@ class TestSmsViewTest(TestCase):
             response = self.admin.test_sms_list_view(request)
         self.assertEqual(response.template_name, "admin/core/test_send_form.html")
         self.assertIn("Send Test SMS", response.context_data["title"])
+
+    def test_post_missing_recipient_redirects_to_canonical_form(self):
+        request = _request("post", self.user, {"recipient": ""}, path="//attacker.example")
+        with patch.object(AWSCredentialConfig, "load", return_value=AWSCredentialConfig(name="AWS")):
+            response = self.admin.test_sms_list_view(request)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("admin:core_awscredentialconfig_test_sms"))
+        self.assertIn("Please provide a phone number.", _messages(request))
 
     def test_post_missing_recipient_errors(self):
         request = _request("post", self.user, {"recipient": ""}, path="/admin/test-sms/")

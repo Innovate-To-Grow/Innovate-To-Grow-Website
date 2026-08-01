@@ -7,6 +7,7 @@
 
 # Linter / formatter
 ruff==0.15.17
+coverage[toml]==7.6.10
 
 # Development Only
 # django-debug-toolbar>=4.0.0

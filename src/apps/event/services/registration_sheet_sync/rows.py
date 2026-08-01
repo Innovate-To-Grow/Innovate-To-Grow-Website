@@ -1,6 +1,8 @@
 from apps.core.services.sheets_safety import safe_sheet_value
 from apps.event.models import Event, EventRegistration
 
+REGISTRATION_ID_COLUMN = "Registration ID"
+
 
 def build_header(event: Event, question_texts: list[str]) -> list[str]:
     header = [
@@ -19,6 +21,9 @@ def build_header(event: Event, question_texts: list[str]) -> list[str]:
         header.append("Membership Secondary")
     header.append("Ticket Type")
     header.extend(question_texts)
+    # Stable application-owned identifier. Keep this final so adding dynamic
+    # questions never shifts the idempotency column for existing sheets.
+    header.append(REGISTRATION_ID_COLUMN)
     return header
 
 
@@ -49,4 +54,5 @@ def build_row(
     row.append(safe_sheet_value(registration.ticket.name))
     for question_text in question_texts:
         row.append(safe_sheet_value(answers_map.get(question_text, "")))
+    row.append(str(registration.pk))
     return row

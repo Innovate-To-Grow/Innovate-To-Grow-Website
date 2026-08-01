@@ -135,7 +135,7 @@ test('TicketsSection: renders tickets from API', async ({page}) => {
 test('MySharedLinksSection: renders shared links', async ({page}) => {
   await seedAuthenticatedSession(page);
   await mockPastProjectSharesList(page, [
-    {id: 'share-1', name: 'My Curated Projects', note: '', share_url: '/past-projects/share-1', row_count: 2, created_at: '2026-07-01T00:00:00Z'},
+    {id: 'share-1', name: 'My Curated Projects', note: '', version: 1, share_url: '/past-projects/share-1', row_count: 2, created_at: '2026-07-01T00:00:00Z'},
   ]);
   await page.goto('/account', {waitUntil: 'domcontentloaded'});
   await expect(page.locator('.account-page')).toContainText('My Curated Projects');

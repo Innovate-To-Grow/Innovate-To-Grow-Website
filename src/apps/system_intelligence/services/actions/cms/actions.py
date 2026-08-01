@@ -73,8 +73,14 @@ def apply_cms_page_update(action: SystemIntelligenceActionRequest) -> None:
     proposed = action.payload.get("page")
     if not isinstance(proposed, dict):
         raise ActionRequestError("Invalid CMS page action payload.")
-    page = CMSPage.objects.prefetch_related("blocks").filter(pk=action.target_pk).first() if action.target_pk else None
+    page = CMSPage.objects.select_for_update().filter(pk=action.target_pk).first() if action.target_pk else None
+    if action.target_pk and page is None:
+        raise ActionRequestError("CMS page no longer exists; review a fresh proposal before applying this change.")
     if page is not None:
+        # The parent row is the shared mutex for every CMS block mutation. Lock
+        # existing children too so the snapshot and destructive replacement
+        # cover the exact rows reviewed by the approver.
+        list(CMSBlock.objects.select_for_update().filter(page=page).order_by("sort_order"))
         assert_snapshot_unchanged(action.before_snapshot, serialize_cms_page(page), "CMS page")
     validate_cms_page_payload(proposed, page)
     old_route = page.route if page else ""

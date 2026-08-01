@@ -459,6 +459,34 @@ class CmsActionTests(SystemIntelligenceActionBase):
             cms_actions.apply_cms_page_update(action)
         self.assertIn("Invalid CMS page action payload", str(cm.exception))
 
+    def test_apply_cms_page_update_rejects_deleted_target(self):
+        page = CMSPage.objects.create(slug="deleted", route="/deleted", title="Deleted", status="draft")
+        action = SystemIntelligenceActionRequest.objects.create(
+            conversation=self.conversation,
+            created_by=self.admin_user,
+            action_type=SystemIntelligenceActionRequest.ACTION_CMS_PAGE_UPDATE,
+            target_app_label="cms",
+            target_model="CMSPage",
+            target_pk=str(page.pk),
+            title="Stale CMS update",
+            payload={
+                "page": {
+                    "slug": "deleted",
+                    "route": "/deleted",
+                    "title": "Should not be recreated",
+                    "status": "draft",
+                    "blocks": [],
+                }
+            },
+        )
+        page.delete()
+
+        with self.assertRaises(ActionRequestError) as cm:
+            cms_actions.apply_cms_page_update(action)
+
+        self.assertIn("no longer exists", str(cm.exception))
+        self.assertFalse(CMSPage.objects.filter(slug="deleted").exists())
+
 
 # ---------------------------------------------------------------------------
 # context/__init__.py

@@ -1,10 +1,10 @@
 import re
-from hashlib import sha256
 
-from django.core.cache import cache
-
-PHONE_VERIFICATION_TTL = 900
 DIGITS_ONLY = re.compile(r"^\d+$")
+# Compatibility context for event-registration clients that predate event_slug
+# and challenge_id. It is accepted only by event registration and remains
+# member/phone-bound and single-use. Remove no earlier than 2026-10-23.
+LEGACY_EVENT_REGISTRATION_CONTEXT = "event-registration:legacy-phone-only-v1"
 
 
 def _normalize_phone(phone: str, region: str) -> str:
@@ -34,28 +34,3 @@ def _validate_phone_digits(phone: str, region: str) -> str | None:
         return "Phone number is too short (minimum 4 digits)."
     # US-only: AWS SNS only delivers to US numbers, which are always 10 national digits.
     return None if len(digits) == 10 else "US phone numbers must be exactly 10 digits."
-
-
-def _phone_verification_cache_key(user, phone: str) -> str:
-    phone_digest = sha256(phone.encode("utf-8")).hexdigest()
-    return f"event:phone-verified:{user.pk}:{phone_digest}"
-
-
-def _clear_phone_verification(user, phone: str) -> None:
-    cache.delete(_phone_verification_cache_key(user, phone))
-
-
-def _mark_phone_verified(user, phone: str) -> None:
-    cache.set(
-        _phone_verification_cache_key(user, phone),
-        True,
-        timeout=PHONE_VERIFICATION_TTL,
-    )
-
-
-def _consume_phone_verification(user, phone: str) -> bool:
-    cache_key = _phone_verification_cache_key(user, phone)
-    verified = cache.get(cache_key) is True
-    if verified:
-        cache.delete(cache_key)
-    return verified

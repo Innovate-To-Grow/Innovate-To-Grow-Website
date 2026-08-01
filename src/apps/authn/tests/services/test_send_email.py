@@ -12,6 +12,10 @@ from apps.authn.services.email.send_email import (
     send_notification_email,
     send_verification_email,
 )
+from apps.core.services.aws.provider_outcomes import (
+    PROVIDER_OUTCOME_TRANSIENT,
+    ProviderDeliveryError,
+)
 
 
 def _fake_config(**overrides):
@@ -45,6 +49,10 @@ class SendViaSesTests(TestCase):
         result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
         self.assertTrue(result)
         mock_boto3.client.return_value.send_email.assert_called_once()
+        self.assertEqual(
+            mock_boto3.client.call_args.kwargs["config"].retries["total_max_attempts"],
+            1,
+        )
 
     @patch("apps.authn.services.email.send_email.transport.resolve_aws_credentials")
     @patch("apps.authn.services.email.send_email.boto3")
@@ -61,6 +69,32 @@ class SendViaSesTests(TestCase):
         result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
         self.assertFalse(result)
 
+    @patch("apps.authn.services.email.send_email.transport.resolve_aws_credentials")
+    @patch("apps.authn.services.email.send_email.boto3")
+    def test_worker_mode_raises_sanitized_transient_error(self, mock_boto3, mock_resolve):
+        from botocore.exceptions import ClientError
+
+        from apps.core.services.aws.credentials import AwsCredentials
+
+        mock_resolve.return_value = AwsCredentials(access_key_id="k", secret_access_key="s", region="us-west-2")
+        mock_boto3.client.return_value.send_email.side_effect = ClientError(
+            {"Error": {"Code": "ThrottlingException", "Message": "secret detail"}},
+            "SendEmail",
+        )
+        config = _fake_config(ses_configured=True)
+
+        with self.assertRaises(ProviderDeliveryError) as raised:
+            _send_via_ses(
+                config=config,
+                recipient="a@b.com",
+                subject="Hi",
+                html_body="<p>Hi</p>",
+                raise_provider_errors=True,
+            )
+
+        self.assertEqual(raised.exception.outcome, PROVIDER_OUTCOME_TRANSIENT)
+        self.assertNotIn("secret detail", str(raised.exception))
+
 
 class SendVerificationEmailTests(TestCase):
     """Tests for the full send_verification_email flow."""
@@ -76,7 +110,7 @@ class SendVerificationEmailTests(TestCase):
         )
 
         self.assertIn("Continue Registration", html)
-        self.assertIn("email-auth-link?flow=register", html)
+        self.assertIn("email-auth-link#flow=register", html)
         self.assertIn("source=register", html)
         self.assertIn("email=new-user%40example.com", html)
         self.assertIn("code=123456", html)
@@ -92,7 +126,7 @@ class SendVerificationEmailTests(TestCase):
         )
 
         self.assertIn("Sign In to Your Account", html)
-        self.assertIn("email-auth-link?flow=auth", html)
+        self.assertIn("email-auth-link#flow=auth", html)
         self.assertIn("source=login", html)
         self.assertIn("email=member%40example.com", html)
 
@@ -121,7 +155,7 @@ class SendVerificationEmailTests(TestCase):
             link_event="",
         )
 
-        self.assertIn("email-auth-link?flow=auth", html)
+        self.assertIn("email-auth-link#flow=auth", html)
         self.assertNotIn("event=", html)
 
     @override_settings(FRONTEND_URL="https://www.example.com")
@@ -132,7 +166,7 @@ class SendVerificationEmailTests(TestCase):
             purpose="admin_login",
         )
 
-        self.assertNotIn("email-auth-link?", html)
+        self.assertNotIn("email-auth-link", html)
         self.assertNotIn("Continue Registration", html)
         self.assertNotIn("Sign In to Your Account", html)
 

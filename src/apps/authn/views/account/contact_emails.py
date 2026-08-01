@@ -2,6 +2,8 @@
 Views for contact email management (CRUD + verification).
 """
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -33,9 +35,42 @@ from apps.authn.throttles import ContactEmailCreateThrottle, EmailCodeUserReques
 
 from ..helpers import challenge_error_response
 
+Member = get_user_model()
+
 
 def _get_contact_email(request, pk):
     return ContactEmail.objects.filter(pk=pk, member=request.user).first()
+
+
+@transaction.atomic
+def _update_contact_email(member, pk, validated_data):
+    """Serialize type changes with primary swaps/deletes on the member mutex."""
+    Member.objects.select_for_update().get(pk=member.pk)
+    contact_email = ContactEmail.objects.select_for_update().filter(pk=pk, member=member).first()
+    if contact_email is None:
+        return None, "not_found"
+
+    requested_type = validated_data.get("email_type")
+    if contact_email.email_type == "primary" and requested_type and requested_type != "primary":
+        return contact_email, "primary_demotion"
+    if requested_type == "secondary":
+        has_secondary = (
+            ContactEmail.objects.select_for_update()
+            .filter(member=member, email_type="secondary")
+            .exclude(pk=pk)
+            .exists()
+        )
+        if has_secondary:
+            return contact_email, "secondary_exists"
+
+    update_fields = []
+    for field in ("email_type", "subscribe"):
+        if field in validated_data:
+            setattr(contact_email, field, validated_data[field])
+            update_fields.append(field)
+    if update_fields:
+        contact_email.save(update_fields=update_fields + ["updated_at"])
+    return contact_email, ""
 
 
 class ContactEmailListCreateView(APIView):
@@ -78,29 +113,31 @@ class ContactEmailDetailView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def patch(self, request, pk):
-        contact_email = _get_contact_email(request, pk)
-        if contact_email is None:
-            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-
         serializer = ContactEmailUpdateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if serializer.validated_data.get("email_type") == "secondary":
-            if ContactEmail.objects.filter(member=request.user, email_type="secondary").exclude(pk=pk).exists():
-                return Response(
-                    {"email_type": ["You already have a secondary email."]},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        update_fields = []
-        for field in ("email_type", "subscribe"):
-            if field in serializer.validated_data:
-                setattr(contact_email, field, serializer.validated_data[field])
-                update_fields.append(field)
-
-        if update_fields:
-            contact_email.save(update_fields=update_fields + ["updated_at"])
+        contact_email, error = _update_contact_email(
+            request.user,
+            pk,
+            serializer.validated_data,
+        )
+        if error == "not_found":
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        if error == "primary_demotion":
+            return Response(
+                {
+                    "email_type": [
+                        "The primary email cannot be demoted directly. Make another verified email primary first."
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if error == "secondary_exists":
+            return Response(
+                {"email_type": ["You already have a secondary email."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(ContactEmailSerializer(contact_email).data, status=status.HTTP_200_OK)
 

@@ -35,6 +35,7 @@ import {
 describe('contacts API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
   });
 
   describe('phones', () => {
@@ -65,18 +66,42 @@ describe('contacts API', () => {
       expect(mocks.delete).toHaveBeenCalledWith('/authn/contact-phones/1/');
     });
 
-    it('requestContactPhoneVerification posts to verify endpoint', async () => {
-      mocks.post.mockResolvedValue({data: {message: 'sent'}});
+    it('requestContactPhoneVerification persists the returned challenge', async () => {
+      const challengeId = '87f80894-955d-49d7-b5f3-2aed231087b1';
+      mocks.post.mockResolvedValue({
+        data: {message: 'sent', challenge_id: challengeId},
+      });
       const result = await requestContactPhoneVerification('phone-id');
       expect(mocks.post).toHaveBeenCalledWith('/authn/contact-phones/phone-id/request-verification/');
       expect(result.message).toBe('sent');
+      expect(result.challenge_id).toBe(challengeId);
     });
 
-    it('verifyContactPhoneCode posts code', async () => {
-      mocks.post.mockResolvedValue({data: {id: 'p1', verified: true}});
+    it('verifyContactPhoneCode passes the persisted challenge', async () => {
+      const challengeId = '87f80894-955d-49d7-b5f3-2aed231087b1';
+      mocks.post
+        .mockResolvedValueOnce({
+          data: {message: 'sent', challenge_id: challengeId},
+        })
+        .mockResolvedValueOnce({data: {id: 'p1', verified: true}});
+      await requestContactPhoneVerification('p1');
       const result = await verifyContactPhoneCode('p1', '123456');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/contact-phones/p1/verify-code/', {code: '123456'});
+      expect(mocks.post).toHaveBeenLastCalledWith(
+        '/authn/contact-phones/p1/verify-code/',
+        {code: '123456', challenge_id: challengeId},
+      );
       expect(result.verified).toBe(true);
+    });
+
+    it('verifyContactPhoneCode keeps the legacy code-only payload', async () => {
+      mocks.post.mockResolvedValue({data: {id: 'p1', verified: true}});
+
+      await verifyContactPhoneCode('p1', '123456');
+
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/contact-phones/p1/verify-code/',
+        {code: '123456'},
+      );
     });
   });
 

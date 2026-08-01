@@ -246,7 +246,7 @@ class LoginLinkServiceTests(APITestCase):
         url = issue_login_link(member_id=self.member.pk, validity_days=7)
 
         link = LoginLinkToken.objects.get(member=self.member)
-        self.assertEqual(url, f"https://front.example.com/login-link?token={link.token}")
+        self.assertEqual(url, f"https://front.example.com/login-link#token={link.token}")
 
     def test_issue_login_link_freezes_validity(self):
         before = timezone.now() + timedelta(days=21)

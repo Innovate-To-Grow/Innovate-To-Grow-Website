@@ -1,105 +1,211 @@
 name: Deploy Archive to AWS ECS
 
-# Builds the archived event-pages site (archive/page/) and deploys it to its
-# own ECS Fargate service behind the shared prod ALB
-# (host: archive.i2g.ucmerced.edu). The Google Sheets API key is injected by
-# ECS at task launch from Secrets Manager / SSM via the task definition's
-# `secrets` block — only its ARN (SHEETS_API_KEY_SECRET_ARN) lives in GitHub
-# Actions configuration and in the registered task definition.
-
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-  # Manual trigger: deploy the current ref on demand (e.g. to re-ship without
-  # waiting for a CI run). Matches deploy-frontend.yml.
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      deploy_sha:
+        description: Full commit SHA whose CI-published image must be deployed.
+        required: true
+        type: string
+      ci_run_id:
+        description: Successful CI run ID that published the archive image digest.
+        required: true
+        type: string
+    secrets:
+      ECS_EXECUTION_ROLE_ARN:
+        required: false
+      ECS_TASK_ROLE_ARN:
+        required: false
+      SHEETS_API_KEY_SECRET_ARN:
+        required: false
 
 permissions:
+  actions: read
   contents: read
+  id-token: write
 
 concurrency:
-  group: deploy-archive-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-archive-production
+  cancel-in-progress: false
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+  AWS_ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
   ECR_REPOSITORY: itg-archive
   ECS_CLUSTER: itg-backend-cluster
   ECS_SERVICE: itg-archive-service
   ECS_TASK_DEFINITION: aws/archive-task-definition.json
   CONTAINER_NAME: itg-archive
+  DEPLOY_SHA: ${{ inputs.deploy_sha }}
+  CI_RUN_ID: ${{ inputs.ci_run_id }}
 
 jobs:
+  gate:
+    name: Select immutable archive artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ci_run_id: ${{ steps.gate.outputs.ci-run-id }}
+      deploy_sha: ${{ steps.gate.outputs.deploy-sha }}
+      should_deploy: ${{ steps.gate.outputs.should-deploy }}
+    steps:
+      - name: Validate SHA and inspect the triggering CI run
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$DEPLOY_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::deploy_sha must be a full lowercase 40-character commit SHA."
+            exit 1
+          fi
+          if ! printf '%s' "$CI_RUN_ID" | grep -Eq '^[1-9][0-9]*$'; then
+            echo "::error::ci_run_id must be a positive GitHub Actions run ID."
+            exit 1
+          fi
+
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}")"
+          run_sha="$(jq --raw-output '.head_sha' <<<"$run_json")"
+          run_conclusion="$(jq --raw-output '.conclusion' <<<"$run_json")"
+          run_event="$(jq --raw-output '.event' <<<"$run_json")"
+          run_branch="$(jq --raw-output '.head_branch' <<<"$run_json")"
+          run_path="$(jq --raw-output '.path' <<<"$run_json")"
+          if [ "$run_sha" != "$DEPLOY_SHA" ] ||
+             [ "$run_conclusion" != "success" ] ||
+             [ "$run_event" != "push" ] ||
+             [ "$run_branch" != "main" ] ||
+             [ "$run_path" != ".github/workflows/ci.yml" ]; then
+            echo "::error::CI run $CI_RUN_ID is not a successful main CI run for $DEPLOY_SHA."
+            exit 1
+          fi
+          echo "deploy-sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+          echo "ci-run-id=$CI_RUN_ID" >> "$GITHUB_OUTPUT"
+
+          conclusion="$(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/jobs?per_page=100" \
+              --jq '.jobs[] | select(.name == "Archive Image Publish") | .conclusion' \
+              | tail -n 1
+          )"
+          if [ "$conclusion" = "success" ]; then
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "workflow_call" ]; then
+            echo "::error::CI run $CI_RUN_ID did not publish an archive image."
+            exit 1
+          else
+            echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Archive was unchanged; this CI run published no archive image." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   deploy:
-    name: Build & Deploy Archive
-    # Deploy on every successful CI run on main, or on a manual dispatch —
-    # matching deploy-backend.yml / deploy-frontend.yml (no path gate). A
-    # path-diff gate was unreliable: when archive changes land on a different
-    # commit than the one CI runs on (e.g. an archive merge followed by a
-    # CI-only merge), the merge-commit diff misses archive/ and the deploy is
-    # skipped. The build is fast and the deploy is idempotent, so always
-    # deploying is simpler and never misses a change.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+    name: Deploy CI-published Archive
+    needs: gate
+    if: ${{ needs.gate.outputs.should_deploy == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
       name: AWS ECS - Archive Prod
       url: https://archive.i2g.ucmerced.edu
+    env:
+      DEPLOY_SHA: ${{ needs.gate.outputs.deploy_sha }}
+      CI_RUN_ID: ${{ needs.gate.outputs.ci_run_id }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Validate required deployment configuration
+      - name: Validate deployment configuration
         env:
           SHEETS_API_KEY_SECRET_ARN: ${{ vars.SHEETS_API_KEY_SECRET_ARN || secrets.SHEETS_API_KEY_SECRET_ARN }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
         run: |
+          set -euo pipefail
           missing=()
-          for name in SHEETS_API_KEY_SECRET_ARN ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
+          for name in AWS_ROLE_ARN SHEETS_API_KEY_SECRET_ARN ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
             if [ -z "${!name}" ]; then
               missing+=("$name")
             fi
           done
           if [ "${#missing[@]}" -gt 0 ]; then
-            echo "Missing required config: ${missing[*]}"
+            echo "::error::Missing required config: ${missing[*]}"
             exit 1
           fi
 
-      # SECURITY: SHEETS_API_KEY is injected by ECS from Secrets Manager or
-      # SSM Parameter Store. Keep only its secret ARN/name in GitHub Actions.
+      - name: Checkout the CI-tested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Download CI-captured archive image provenance
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: archive-image-manifest-${{ env.DEPLOY_SHA }}
+          path: ${{ runner.temp }}/archive-image-provenance
+          github-token: ${{ github.token }}
+          run-id: ${{ env.CI_RUN_ID }}
+
+      - name: Validate archive image provenance
+        id: provenance
+        env:
+          MANIFEST_PATH: ${{ runner.temp }}/archive-image-provenance/archive-image-manifest.json
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+
+          with open(os.environ["MANIFEST_PATH"], encoding="utf-8") as manifest_file:
+              manifest = json.load(manifest_file)
+          if set(manifest) != {"sha", "repository", "digest"}:
+              raise SystemExit("Archive image provenance has an unexpected schema.")
+          if manifest["sha"] != os.environ["DEPLOY_SHA"]:
+              raise SystemExit("Archive image provenance SHA does not match DEPLOY_SHA.")
+          if manifest["repository"] != os.environ["ECR_REPOSITORY"]:
+              raise SystemExit("Archive image provenance repository does not match ECR_REPOSITORY.")
+          digest = manifest["digest"]
+          if not isinstance(digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
+              raise SystemExit("Archive image provenance digest is invalid.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"digest={digest}\n")
+          PY
+
+      - name: Configure AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@451ce2a72e8d729a59ebeaacab82dbce58e7af4c
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: i2g-deploy-archive-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64
 
-      - name: Build, tag, and push Docker image
-        id: build-image
+      - name: Verify the CI-published archive image digest
+        id: image
         env:
+          CAPTURED_DIGEST: ${{ steps.provenance.outputs.digest }}
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" archive/page/
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          current_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=$DEPLOY_SHA" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+          if ! printf '%s' "$current_digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            echo "::error::No CI-published archive image found for $DEPLOY_SHA."
+            exit 1
+          fi
+          if [ "$current_digest" != "$CAPTURED_DIGEST" ]; then
+            echo "::error::Archive SHA tag digest no longer matches the CI-captured digest."
+            exit 1
+          fi
+          echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}@${CAPTURED_DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Render ECS task definition from template
         id: task-def
         env:
-          IMAGE_URI: ${{ steps.build-image.outputs.image }}
+          IMAGE_URI: ${{ steps.image.outputs.image }}
           SHEETS_API_KEY_SECRET_ARN: ${{ vars.SHEETS_API_KEY_SECRET_ARN || secrets.SHEETS_API_KEY_SECRET_ARN }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
@@ -111,37 +217,28 @@ jobs:
           with open("aws/archive-task-definition.json", encoding="utf-8") as f:
               taskdef = json.load(f)
 
-          exec_role = os.environ.get("ECS_EXECUTION_ROLE_ARN", "").strip()
-          task_role = os.environ.get("ECS_TASK_ROLE_ARN", "").strip()
-          if not exec_role or not task_role:
-              raise SystemExit("ECS_EXECUTION_ROLE_ARN and ECS_TASK_ROLE_ARN are required.")
-          taskdef["executionRoleArn"] = exec_role
-          taskdef["taskRoleArn"] = task_role
-
+          taskdef["executionRoleArn"] = os.environ["ECS_EXECUTION_ROLE_ARN"].strip()
+          taskdef["taskRoleArn"] = os.environ["ECS_TASK_ROLE_ARN"].strip()
           container = taskdef["containerDefinitions"][0]
           container["image"] = os.environ["IMAGE_URI"]
 
-          sheets_api_key_secret = os.environ.get("SHEETS_API_KEY_SECRET_ARN", "").strip()
-          if not sheets_api_key_secret:
-              raise SystemExit("SHEETS_API_KEY_SECRET_ARN is required.")
-          # Catch a pasted literal key / typo'd name at render time instead of
-          # a rolled-back deploy at task launch.
-          if not sheets_api_key_secret.startswith(("arn:aws:secretsmanager:", "arn:aws:ssm:")):
+          secret_arn = os.environ["SHEETS_API_KEY_SECRET_ARN"].strip()
+          if not secret_arn.startswith(("arn:aws:secretsmanager:", "arn:aws:ssm:")):
               raise SystemExit(
                   "SHEETS_API_KEY_SECRET_ARN must be a Secrets Manager or SSM Parameter Store ARN."
               )
           for item in container.get("secrets", []):
               if item.get("valueFrom") == "__SHEETS_API_KEY_SECRET_ARN__":
-                  item["valueFrom"] = sheets_api_key_secret
+                  item["valueFrom"] = secret_arn
 
           with open("rendered-archive-task-definition.json", "w", encoding="utf-8") as f:
               json.dump(taskdef, f, indent=2)
           PY
           echo "task-definition=rendered-archive-task-definition.json" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy to ECS
+      - name: Deploy immutable image to ECS
         id: deploy-ecs
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        uses: aws-actions/amazon-ecs-deploy-task-definition@c465972ecbd160473f22e683363b422a5412a3de
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}
@@ -153,35 +250,88 @@ jobs:
           QUERY_PRIMARY: 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]'
         run: |
           set -euo pipefail
-          expected_taskdef="${{ steps.deploy-ecs.outputs.task-definition-arn }}"
-          active_taskdef="$(aws ecs describe-services \
-            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
-            --query "$QUERY_PRIMARY" --output text)"
-          echo "Expected: $expected_taskdef"
-          echo "Active:   $active_taskdef"
-          if [ "$active_taskdef" != "$expected_taskdef" ]; then
-            echo "::error::Deployment rolled back!"
-            aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
-              --query 'services[0].events[0:5].message' --output table
+          expected="${{ steps.deploy-ecs.outputs.task-definition-arn }}"
+          active="$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query "$QUERY_PRIMARY" \
+            --output text)"
+          if [ "$active" != "$expected" ]; then
+            echo "::error::Archive deployment rolled back (expected $expected, active $active)."
+            aws ecs describe-services \
+              --cluster "$ECS_CLUSTER" \
+              --services "$ECS_SERVICE" \
+              --query 'services[0].events[0:5].message' \
+              --output table
             exit 1
           fi
 
-      - name: Smoke check deployed site over HTTPS
+      - name: Smoke check readiness, page, and Sheets proxy
         run: |
           set -euo pipefail
           base="https://archive.i2g.ucmerced.edu"
 
-          status="$(curl -sS -o /dev/null -w '%{http_code}' "$base/healthz")"
-          if [ "$status" != "200" ]; then
-            echo "Health check failed: $status"
+          curl --fail --show-error --silent --max-time 30 \
+            --dump-header /tmp/archive-health.headers \
+            --output /tmp/archive-health.json \
+            "$base/healthz"
+          curl --fail --show-error --silent --max-time 30 \
+            --dump-header /tmp/archive-ready.headers \
+            --output /tmp/archive-ready.json \
+            "$base/readyz"
+
+          python - <<'PY'
+          import json
+
+          def assert_content_type(path, expected):
+              with open(path, encoding="iso-8859-1") as f:
+                  headers = f.read().lower()
+              if f"content-type: {expected}" not in headers:
+                  raise SystemExit(f"{path} did not include Content-Type {expected}")
+
+          assert_content_type("/tmp/archive-health.headers", "application/json")
+          assert_content_type("/tmp/archive-ready.headers", "application/json")
+          with open("/tmp/archive-health.json", encoding="utf-8") as f:
+              health = json.load(f)
+          with open("/tmp/archive-ready.json", encoding="utf-8") as f:
+              ready = json.load(f)
+          if health != {"status": "ok"}:
+              raise SystemExit(f"Unexpected liveness payload: {health}")
+          if ready.get("status") != "ok" or ready.get("sheets_api_key") != "configured":
+              raise SystemExit(f"Unexpected readiness payload: {ready}")
+          PY
+
+          curl --fail --show-error --silent --max-time 30 \
+            --dump-header /tmp/archive-page.headers \
+            --output /tmp/archive-page.html \
+            "$base/2025-fall-event.html"
+          grep -qi '^content-type: text/html' /tmp/archive-page.headers || {
+            echo "::error::Archive event page did not return text/html."
+            exit 1
+          }
+          page="$(< /tmp/archive-page.html)"
+          echo "$page" | grep -q '/static/js/i2g-embed.js' || {
+            echo "::error::Archive embed helper is missing."
+            exit 1
+          }
+          if echo "$page" | grep -q 'AIzaSy'; then
+            echo "::error::A Google API key leaked into the served page."
             exit 1
           fi
 
-          # A served page must carry the embed helper and not leak the key.
-          page="$(curl -sS "$base/2025-fall-event.html")"
-          echo "$page" | grep -q '/static/js/i2g-embed.js' || { echo "embed helper missing"; exit 1; }
-          if echo "$page" | grep -q 'AIzaSy'; then
-            echo "::error::API key leaked into a served page!"
-            exit 1
-          fi
-          echo "Smoke check passed for $base"
+          curl --fail --show-error --silent --max-time 30 \
+            --dump-header /tmp/archive-sheet.headers \
+            --output /tmp/archive-sheet.json \
+            "$base/api/sheets/1188BQGCadaysxPN7VkVdcFeLhOi4zbwDVWdeMCcQQB4/values/A1%3AY76"
+
+          python - <<'PY'
+          import json
+
+          with open("/tmp/archive-sheet.headers", encoding="iso-8859-1") as f:
+              if "content-type: application/json" not in f.read().lower():
+                  raise SystemExit("Sheets smoke response was not application/json")
+          with open("/tmp/archive-sheet.json", encoding="utf-8") as f:
+              payload = json.load(f)
+          if not isinstance(payload.get("values"), list):
+              raise SystemExit(f"Sheets smoke response has no values array: {payload}")
+          PY

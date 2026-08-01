@@ -74,37 +74,27 @@ class CampaignSendViewTests(TestCase):
 
 
 class CampaignBackgroundSendTests(TestCase):
-    def setUp(self):
-        # _background_send runs in a real thread in production and calls
-        # django.db.connections.close_all() to drop the parent thread's handles.
-        # Invoked synchronously here it would close the test's own connection —
-        # harmless on SQLite but raises InterfaceError on PostgreSQL. Neutralize
-        # the cross-thread connection teardown for these direct calls.
-        patcher = patch("django.db.connections.close_all")
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
-    @patch("apps.mail.services.send_campaign.send_campaign")
-    def test_background_send_runs_service(self, mock_send):
+    @patch("apps.mail.services.background_jobs.dispatch_email_campaign")
+    def test_background_send_dispatches_through_durable_service(self, mock_dispatch):
         admin_user = make_superuser()
         campaign = EmailCampaign.objects.create(subject="BG", body="x", status="sending")
 
         EmailCampaignAdmin._background_send(campaign.pk, admin_user.pk)
 
-        mock_send.assert_called_once()
-        self.assertEqual(mock_send.call_args.args[0].pk, campaign.pk)
-        self.assertEqual(mock_send.call_args.kwargs["sent_by"].pk, admin_user.pk)
+        mock_dispatch.assert_called_once()
+        self.assertEqual(mock_dispatch.call_args.args[0].pk, campaign.pk)
+        self.assertEqual(mock_dispatch.call_args.kwargs["sent_by"].pk, admin_user.pk)
 
-    @patch("apps.mail.services.send_campaign.send_campaign", side_effect=RuntimeError("boom"))
-    def test_background_send_marks_failed_on_error(self, mock_send):
+    @patch(
+        "apps.mail.services.background_jobs.dispatch_email_campaign",
+        side_effect=RuntimeError("boom"),
+    )
+    def test_background_send_propagates_dispatch_error_to_admin_boundary(self, _mock_dispatch):
         admin_user = make_superuser()
         campaign = EmailCampaign.objects.create(subject="BG Fail", body="x", status="sending")
 
-        EmailCampaignAdmin._background_send(campaign.pk, admin_user.pk)
-
-        campaign.refresh_from_db()
-        self.assertEqual(campaign.status, "failed")
-        self.assertEqual(campaign.error_message, "Campaign send failed. Check server logs for details.")
+        with self.assertRaisesMessage(RuntimeError, "boom"):
+            EmailCampaignAdmin._background_send(campaign.pk, admin_user.pk)
 
 
 class CampaignPreviewViewTests(TestCase):
@@ -149,6 +139,9 @@ class CampaignPreviewViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Rich")
+        self.assertIn("sandbox", response["Content-Security-Policy"])
+        self.assertIn("form-action 'none'", response["Content-Security-Policy"])
+        self.assertEqual(response["Referrer-Policy"], "no-referrer")
 
     def test_inline_preview_post_plain_without_unsubscribe(self):
         response = self.client.post(

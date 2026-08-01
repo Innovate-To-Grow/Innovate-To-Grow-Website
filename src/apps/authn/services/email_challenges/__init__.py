@@ -10,6 +10,7 @@ from .verify import (
     consume_verification_token,
     mark_challenge_verified,
     verify_email_code,
+    verify_email_code_and_mint_token,
     verify_email_code_for_purposes,
 )
 
@@ -52,5 +53,6 @@ __all__ = [
     "issue_email_challenge",
     "mark_challenge_verified",
     "verify_email_code",
+    "verify_email_code_and_mint_token",
     "verify_email_code_for_purposes",
 ]

@@ -18,7 +18,7 @@ GMAIL_LIST_CACHE_TTL = 300
 GMAIL_MSG_CACHE_TTL = 1800
 LOGIN_LINK_PLACEHOLDER = "{{ login_link }}"
 # Matches both the current /login-link path and the legacy /magic-login alias.
-LOGIN_LINK_URL_RE = re.compile(r"(?P<url>[^\s\"'<>]*/(?:login-link|magic-login)/?\?[^\s\"'<>]+)")
+LOGIN_LINK_URL_RE = re.compile(r"(?P<url>[^\s\"'<>]*/(?:login-link|magic-login)/?[?#][^\s\"'<>]+)")
 
 
 def list_recent_sent_messages(
@@ -157,7 +157,9 @@ def _replace_login_link_urls(value: str) -> str:
 def _is_token_bearing_login_link_url(url: str) -> bool:
     parsed = urlsplit(url)
     path = parsed.path.rstrip("/")
-    return (path.endswith("/login-link") or path.endswith("/magic-login")) and bool(parse_qs(parsed.query).get("token"))
+    return (path.endswith("/login-link") or path.endswith("/magic-login")) and bool(
+        parse_qs(parsed.fragment).get("token") or parse_qs(parsed.query).get("token")
+    )
 
 
 def find_message_by_uid(mailbox, message_id: str):

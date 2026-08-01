@@ -1,11 +1,24 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.forms.models import BaseInlineFormSet, InlineForeignKeyField
 from unfold.admin import TabularInline
 
 from apps.core.access import user_can_access_app
 
-from ...models import ContactEmail, ContactPhone
+from ...models import ContactEmail, ContactPhone, Member
+
+PRIMARY_EMAIL_INLINE_EDIT_ERROR = (
+    "The current primary email's address and type cannot be edited directly. "
+    "Make another verified email primary from the Contact Emails admin."
+)
+PRIMARY_EMAIL_INLINE_DELETE_ERROR = (
+    "The current primary email cannot be deleted directly. Make another email primary first."
+)
+PRIMARY_EMAIL_INLINE_PROMOTION_ERROR = (
+    "A primary email cannot be assigned directly. "
+    "Use the 'Make selected email primary' action in the Contact Emails admin."
+)
 
 
 class NoneSafeUUIDField(forms.UUIDField):
@@ -116,6 +129,43 @@ class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInl
 
         def clean(self_fs):
             original_clean(self_fs)
+            # Member is the shared mutex used by the contact-email services.
+            # The admin change view already owns an outer transaction, so this
+            # lock remains held through save_formset() and prevents a concurrent
+            # primary swap from invalidating the checks below.
+            if (
+                self_fs.instance.pk
+                and not self_fs.instance._state.adding
+                and transaction.get_connection().in_atomic_block
+            ):
+                Member.objects.select_for_update().get(pk=self_fs.instance.pk)
+
+            persisted_emails = ContactEmail.objects.in_bulk(
+                form.instance.pk for form in self_fs.forms if form.instance.pk
+            )
+
+            for form in self_fs.forms:
+                if not hasattr(form, "cleaned_data"):
+                    continue
+                persisted = persisted_emails.get(form.instance.pk)
+                if persisted is None:
+                    continue
+
+                delete_requested = form.cleaned_data.get("DELETE", False)
+                requested_type = form.cleaned_data.get("email_type")
+                if requested_type is None and form.is_bound:
+                    requested_type = form.data.get(form.add_prefix("email_type"))
+                requested_type = requested_type or persisted.email_type
+                protected_changes = {"email_address", "email_type"}.intersection(form.changed_data)
+
+                if persisted.email_type == "primary":
+                    if delete_requested:
+                        raise ValidationError(PRIMARY_EMAIL_INLINE_DELETE_ERROR)
+                    if protected_changes:
+                        raise ValidationError(PRIMARY_EMAIL_INLINE_EDIT_ERROR)
+                elif requested_type == "primary":
+                    raise ValidationError(PRIMARY_EMAIL_INLINE_PROMOTION_ERROR)
+
             primary_count = sum(
                 1
                 for form in self_fs.forms

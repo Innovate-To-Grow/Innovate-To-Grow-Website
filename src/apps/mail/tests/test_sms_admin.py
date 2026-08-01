@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
-from apps.core.models import AWSCredentialConfig
+from apps.core.models import AWSCredentialConfig, BackgroundJob
 from apps.event.tests.helpers import make_admin, make_event, make_member, make_superuser, make_ticket
 from apps.mail.admin.sms_campaign import (
     SmsCampaignAdmin,
@@ -76,8 +76,8 @@ class SmsCampaignAdminTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "+12095551001")
 
-    @patch("apps.mail.admin.sms_campaign.threading.Thread")
-    def test_confirm_send_starts_background_sms_send(self, mock_thread):
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_confirm_send_starts_durable_sms_send(self):
         member = make_member(email="recipient@example.com")
         _add_phone(member, "2095551001")
         campaign = SmsCampaign.objects.create(name="Confirm SMS", message="Hi", audience_type="all_members")
@@ -89,12 +89,13 @@ class SmsCampaignAdminTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("status", response.url)
-        mock_thread.assert_called_once()
-        mock_thread.return_value.start.assert_called_once()
+        campaign.refresh_from_db()
+        self.assertEqual(campaign.status, "queued")
+        self.assertEqual(BackgroundJob.objects.filter(kind="mail.sms_recipient").count(), 1)
 
-    @patch("apps.mail.admin.sms_campaign.threading.Thread")
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
     @patch("apps.authn.services.email.send_email.senders.send_notification_email")
-    def test_confirm_send_does_not_notify_staff(self, mock_notify, mock_thread):
+    def test_confirm_send_does_not_notify_staff(self, mock_notify):
         other_staff = Member.objects.create_user(password="testpass123", is_staff=True)
         ContactEmail.objects.create(
             member=other_staff,
@@ -116,11 +117,11 @@ class SmsCampaignAdminTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("status", response.url)
-        mock_thread.assert_called_once()
+        self.assertEqual(BackgroundJob.objects.filter(kind="mail.sms_recipient").count(), 1)
         mock_notify.assert_not_called()
 
-    @patch("apps.mail.admin.sms_campaign.threading.Thread")
-    def test_wrong_confirmation_text_rejects_send(self, mock_thread):
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_wrong_confirmation_text_rejects_send(self):
         campaign = SmsCampaign.objects.create(
             name="Confirm SMS", message="Hi", audience_type="manual", manual_phones="+12095551001"
         )
@@ -132,7 +133,7 @@ class SmsCampaignAdminTests(TestCase):
         )
 
         self.assertContains(response, "Confirmation text does not match campaign name")
-        mock_thread.assert_not_called()
+        self.assertFalse(BackgroundJob.objects.filter(kind="mail.sms_recipient").exists())
         campaign.refresh_from_db()
         self.assertEqual(campaign.status, "draft")
 
@@ -479,38 +480,28 @@ class SmsCampaignStatusViewTests(TestCase):
 
 
 class SmsBackgroundSendTests(TestCase):
-    def setUp(self):
-        # _background_send runs in a real thread in production and calls
-        # django.db.connections.close_all() to drop the parent thread's handles.
-        # Invoked synchronously here it would close the test's own connection —
-        # harmless on SQLite but raises InterfaceError on PostgreSQL. Neutralize
-        # the cross-thread connection teardown for these direct calls.
-        patcher = patch("django.db.connections.close_all")
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
-    @patch("apps.mail.services.send_sms_campaign.send_sms_campaign")
-    def test_background_send_invokes_service(self, mock_send):
+    @patch("apps.mail.services.background_jobs.dispatch_sms_campaign")
+    def test_background_send_invokes_durable_dispatch(self, mock_dispatch):
         admin_user = make_superuser()
         campaign = SmsCampaign.objects.create(name="BG SMS", message="Hi", status="sending")
 
         SmsCampaignAdmin._background_send(campaign.pk, admin_user.pk)
 
-        mock_send.assert_called_once()
-        called_campaign = mock_send.call_args.args[0]
+        mock_dispatch.assert_called_once()
+        called_campaign = mock_dispatch.call_args.args[0]
         self.assertEqual(called_campaign.pk, campaign.pk)
-        self.assertEqual(mock_send.call_args.kwargs["sent_by"].pk, admin_user.pk)
+        self.assertEqual(mock_dispatch.call_args.kwargs["sent_by"].pk, admin_user.pk)
 
-    @patch("apps.mail.services.send_sms_campaign.send_sms_campaign", side_effect=RuntimeError("boom"))
-    def test_background_send_marks_failed_on_exception(self, mock_send):
+    @patch(
+        "apps.mail.services.background_jobs.dispatch_sms_campaign",
+        side_effect=RuntimeError("boom"),
+    )
+    def test_background_send_propagates_dispatch_error(self, _mock_dispatch):
         admin_user = make_superuser()
         campaign = SmsCampaign.objects.create(name="BG Fail SMS", message="Hi", status="sending")
 
-        SmsCampaignAdmin._background_send(campaign.pk, admin_user.pk)
-
-        campaign.refresh_from_db()
-        self.assertEqual(campaign.status, "failed")
-        self.assertEqual(campaign.error_message, "SMS campaign send failed. Check server logs for details.")
+        with self.assertRaisesMessage(RuntimeError, "boom"):
+            SmsCampaignAdmin._background_send(campaign.pk, admin_user.pk)
 
 
 class SmsCampaignChangelistConfigTests(TestCase):

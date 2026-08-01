@@ -13,6 +13,7 @@ from apps.mail.services.scam_detector.llm_classifier import (
     _parse_json,
     llm_review,
 )
+from apps.system_intelligence.models import SystemIntelligenceConfig
 
 _LLM_PATH = "apps.mail.services.scam_detector.llm_classifier.invoke_bedrock"
 
@@ -32,9 +33,14 @@ def _medium_msg(**overrides):
 
 
 def _aws_configured():
-    return AWSCredentialConfig.objects.create(
+    aws = AWSCredentialConfig.objects.create(
         name="AWS", is_active=True, access_key_id="AKID", secret_access_key="SECRET", default_region="us-west-2"
     )
+    SystemIntelligenceConfig.objects.create(
+        name="Mail scam review",
+        is_active=True,
+    )
+    return aws
 
 
 class LlmParsingTests(SimpleTestCase):
@@ -75,6 +81,22 @@ class LlmParsingTests(SimpleTestCase):
 class LlmReviewTests(TestCase):
     def test_unconfigured_aws_returns_none(self):
         self.assertIsNone(llm_review(_medium_msg()))
+
+    def test_no_active_system_intelligence_config_fails_closed(self):
+        AWSCredentialConfig.objects.create(
+            name="AWS",
+            is_active=True,
+            access_key_id="AKID",
+            secret_access_key="test",
+            default_region="us-west-2",
+        )
+        SystemIntelligenceConfig.objects.create(
+            name="Inactive",
+            is_active=False,
+        )
+        with patch(_LLM_PATH) as invoke:
+            self.assertIsNone(llm_review(_medium_msg()))
+        invoke.assert_not_called()
 
     def test_success_returns_normalized(self):
         _aws_configured()

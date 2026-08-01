@@ -3,7 +3,29 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.event.models import Event
 from apps.event.throttles import PhoneCodeRequestThrottle
+
+
+def _verification_context(event_slug: str | None) -> str | None:
+    eligible = Event.objects.filter(
+        registration_open=True,
+        collect_phone=True,
+        verify_phone=True,
+    )
+    if event_slug:
+        event = eligible.filter(slug=event_slug).first()
+        return f"event-registration:{event.pk}" if event else None
+
+    # One-release compatibility bridge for clients predating event_slug and
+    # challenge_id. The grant remains member/phone-bound and single-use, and
+    # registration is the only path allowed to consume this legacy context.
+    # Remove no earlier than 2026-10-23.
+    if eligible.exists():
+        from .phones import LEGACY_EVENT_REGISTRATION_CONTEXT
+
+        return LEGACY_EVENT_REGISTRATION_CONTEXT
+    return None
 
 
 class SendPhoneCodeView(APIView):
@@ -19,8 +41,14 @@ class SendPhoneCodeView(APIView):
         import apps.event.views.registration as registration_api
 
         phone = request.data.get("phone", "").strip()
+        verification_context = _verification_context(request.data.get("event_slug"))
         # US-only: AWS SNS only delivers to US numbers; ignore any client-supplied region.
         region = "1-US"
+        if verification_context is None:
+            return Response(
+                {"detail": "An open event requiring phone verification is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if not phone:
             return Response(
                 {"detail": "Phone number is required."},
@@ -39,8 +67,12 @@ class SendPhoneCodeView(APIView):
                 start_phone_verification,
             )
 
-            registration_api._clear_phone_verification(request.user, phone)
-            start_phone_verification(phone)
+            challenge = start_phone_verification(
+                phone,
+                purpose="event_registration",
+                member=request.user,
+                context_identifier=verification_context,
+            )
         except PhoneVerificationInvalid:
             return Response(
                 {"detail": "Invalid phone number."},
@@ -55,7 +87,13 @@ class SendPhoneCodeView(APIView):
             )
             return _sms_unavailable_response()
 
-        return Response({"detail": "Verification code sent.", "phone": phone})
+        return Response(
+            {
+                "detail": "Verification code sent.",
+                "phone": phone,
+                "challenge_id": challenge["challenge_id"],
+            }
+        )
 
 
 class VerifyPhoneCodeView(APIView):
@@ -69,8 +107,16 @@ class VerifyPhoneCodeView(APIView):
 
         phone = request.data.get("phone", "").strip()
         code = request.data.get("code", "").strip()
-        # US-only: ignore any client-supplied region so the cache key / E.164 match the send path.
+        challenge_id = request.data.get("challenge_id")
+        verification_context = _verification_context(request.data.get("event_slug"))
+        # US-only: ignore any client-supplied region so the durable challenge's
+        # E.164 number matches the send path.
         region = "1-US"
+        if verification_context is None:
+            return Response(
+                {"detail": "An open event requiring phone verification is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if not phone or not code:
             return Response(
                 {"detail": "Phone and code are required."},
@@ -85,7 +131,15 @@ class VerifyPhoneCodeView(APIView):
                 check_phone_verification,
             )
 
-            check_phone_verification(phone, code)
+            challenge = check_phone_verification(
+                phone,
+                code,
+                challenge_id=challenge_id,
+                purpose="event_registration",
+                member=request.user,
+                context_identifier=verification_context,
+                consume=False,
+            )
         except PhoneVerificationThrottled:
             return Response(
                 {"detail": "Too many failed attempts. Please request a new code."},
@@ -103,8 +157,14 @@ class VerifyPhoneCodeView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        registration_api._mark_phone_verified(request.user, phone)
-        return Response({"detail": "Phone verified.", "phone": phone, "verified": True})
+        return Response(
+            {
+                "detail": "Phone verified.",
+                "phone": phone,
+                "verified": True,
+                "challenge_id": str(challenge.pk),
+            }
+        )
 
 
 def _sms_unavailable_response():

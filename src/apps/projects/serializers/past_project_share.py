@@ -4,6 +4,8 @@ import uuid
 
 import bleach
 from django.conf import settings
+from django.db.models import F
+from django.utils import timezone
 from rest_framework import serializers
 
 from ..models import PastProjectShare, Project
@@ -31,6 +33,10 @@ DETAILS_TEXT_MAX_LENGTH = 2_000_000
 # The share-level note is rich text (HTML). Cap well above plain-text length so emphasis tags
 # don't reject a reasonable note, but far below the details cap.
 NOTE_MAX_LENGTH = 50_000
+
+
+class StalePastProjectShareSnapshot(Exception):
+    """Raised when an optimistic shared-project update loses its version race."""
 
 
 def sanitize_details_text(value: str) -> str:
@@ -198,10 +204,21 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     )
     share_url = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
+    version = serializers.IntegerField(required=False, min_value=1)
 
     class Meta:
         model = PastProjectShare
-        fields = ["id", "name", "rows", "note", "details_text", "share_url", "can_edit", "created_at"]
+        fields = [
+            "id",
+            "name",
+            "rows",
+            "note",
+            "details_text",
+            "version",
+            "share_url",
+            "can_edit",
+            "created_at",
+        ]
         read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
     # name is optional: a blank/omitted name is replaced with one derived from the curation content
@@ -256,17 +273,20 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         )
 
     def update(self, instance, validated_data):
-        # Apply content first so a blank name can be derived from the updated note/rows.
-        if "rows" in validated_data:
-            instance.rows = validated_data["rows"]
-        if "note" in validated_data:
-            instance.note = validated_data["note"]
-        if "details_text" in validated_data:
-            instance.details_text = validated_data["details_text"]
+        expected_version = validated_data.pop("version")
+        next_rows = validated_data.get("rows", instance.rows)
+        next_note = validated_data.get("note", instance.note)
+        updates = {
+            field: validated_data[field] for field in ("rows", "note", "details_text") if field in validated_data
+        }
         if "name" in validated_data:
             name = (validated_data.get("name") or "").strip()
-            instance.name = name or _default_share_name(instance.note, instance.rows)
-        instance.save()
+            updates["name"] = name or _default_share_name(next_note, next_rows)
+        updates.update(version=F("version") + 1, updated_at=timezone.now())
+        updated = type(instance).objects.filter(pk=instance.pk, version=expected_version).update(**updates)
+        if updated != 1:
+            raise StalePastProjectShareSnapshot
+        instance.refresh_from_db()
         return instance
 
 
@@ -278,7 +298,7 @@ class PastProjectShareListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PastProjectShare
-        fields = ["id", "name", "note", "share_url", "row_count", "created_at"]
+        fields = ["id", "name", "note", "version", "share_url", "row_count", "created_at"]
 
     def get_share_url(self, obj):
         return _share_url(obj, self.context.get("request"))

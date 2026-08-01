@@ -27,7 +27,11 @@ def main(
     profile: str | None = typer.Option(
         None, "--profile", envvar=config.ENV_PROFILE, help="Named config/credentials profile."
     ),
-    output: str = typer.Option("table", "--output", help="Output format: table, json (text/yaml/csv when available)."),
+    output: str = typer.Option(
+        "table",
+        "--output",
+        help="Output format: table, json, text, yaml, csv, or csv-raw (unsafe for spreadsheets).",
+    ),
     query: str | None = typer.Option(None, "--query", help="Client-side JMESPath projection of the result."),
     no_paginate: bool = typer.Option(False, "--no-paginate", help="Disable automatic pagination."),
     max_items: int | None = typer.Option(None, "--max-items", help="Stop after this many items when paginating."),

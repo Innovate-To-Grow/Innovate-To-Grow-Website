@@ -39,12 +39,14 @@ import {
   verifyEmailAuthCode,
   verifyLoginCode,
   verifyPasswordChangeCode,
+  verifyPasswordResetCode,
   verifyRegistrationCode,
 } from '../flows';
 
 describe('auth flows', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     mocks.encrypt.mockResolvedValue({encryptedPassword: 'enc-pw', keyId: 'key-1'});
   });
 
@@ -65,7 +67,7 @@ describe('auth flows', () => {
         organization: 'Org',
         title: 'Title',
       }));
-      expect(mocks.clearProfileCompletion).toHaveBeenCalled();
+      expect(mocks.clearProfileCompletion).not.toHaveBeenCalled();
     });
 
     it('clears key cache on encryption failure', async () => {
@@ -179,11 +181,47 @@ describe('auth flows', () => {
   });
 
   describe('requestPasswordReset', () => {
-    it('posts to password-reset request endpoint', async () => {
-      mocks.post.mockResolvedValue({data: {message: 'sent'}});
+    it('persists the opaque challenge and passes it to verification', async () => {
+      const challengeId = 'f34d515f-cb90-43b4-acd0-246554abdaaa';
+      mocks.post
+        .mockResolvedValueOnce({
+          data: {message: 'sent', challenge_id: challengeId},
+        })
+        .mockResolvedValueOnce({
+          data: {message: 'verified', verification_token: 'reset-token'},
+        });
+
       const result = await requestPasswordReset('a@b.com');
+
       expect(mocks.post).toHaveBeenCalledWith('/authn/password-reset/request-code/', {email: 'a@b.com'});
-      expect(result).toEqual({message: 'sent'});
+      expect(result).toEqual({message: 'sent', challenge_id: challengeId});
+
+      await verifyPasswordResetCode('a@b.com', '123456');
+
+      expect(mocks.post).toHaveBeenLastCalledWith(
+        '/authn/password-reset/verify-code/',
+        {
+          email: 'a@b.com',
+          code: '123456',
+          challenge_id: challengeId,
+        },
+      );
+    });
+
+    it('keeps the legacy verify payload when the response omits a challenge', async () => {
+      mocks.post
+        .mockResolvedValueOnce({data: {message: 'sent'}})
+        .mockResolvedValueOnce({
+          data: {message: 'verified', verification_token: 'reset-token'},
+        });
+
+      await requestPasswordReset('legacy@example.com');
+      await verifyPasswordResetCode('legacy@example.com', '654321');
+
+      expect(mocks.post).toHaveBeenLastCalledWith(
+        '/authn/password-reset/verify-code/',
+        {email: 'legacy@example.com', code: '654321'},
+      );
     });
   });
 
@@ -215,13 +253,15 @@ describe('auth flows', () => {
 
   describe('password change code (channel-aware)', () => {
     it('omits email for phone-only accounts and surfaces the SMS channel', async () => {
-      mocks.post.mockResolvedValue({data: {message: 'Verification code sent.', channel: 'sms', destination: '(•••) •••-4567'}});
+      const challengeId = 'c742ef5b-e34f-491d-91f2-8ead9bc10401';
+      mocks.post.mockResolvedValue({data: {message: 'Verification code sent.', channel: 'sms', destination: '(•••) •••-4567', challenge_id: challengeId}});
 
       const result = await requestPasswordChangeCode();
 
       expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/request-code/', {});
       expect(result.channel).toBe('sms');
       expect(result.destination).toBe('(•••) •••-4567');
+      expect(result.challenge_id).toBe(challengeId);
     });
 
     it('includes the email when one is supplied (disambiguation)', async () => {
@@ -232,12 +272,38 @@ describe('auth flows', () => {
       expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/request-code/', {email: 'a@b.com'});
     });
 
-    it('verifies with only the code for phone-only accounts', async () => {
-      mocks.post.mockResolvedValue({data: {message: 'ok', verification_token: 'tok'}});
+    it('passes the persisted challenge when verifying an SMS password-change code', async () => {
+      const challengeId = 'c742ef5b-e34f-491d-91f2-8ead9bc10401';
+      mocks.post
+        .mockResolvedValueOnce({
+          data: {
+            message: 'Verification code sent.',
+            channel: 'sms',
+            challenge_id: challengeId,
+          },
+        })
+        .mockResolvedValueOnce({data: {message: 'ok', verification_token: 'tok'}});
+
+      await requestPasswordChangeCode();
+      await verifyPasswordChangeCode('123456');
+
+      expect(mocks.post).toHaveBeenLastCalledWith('/authn/change-password/verify-code/', {
+        code: '123456',
+        challenge_id: challengeId,
+      });
+    });
+
+    it('keeps the legacy code-only verification payload without a challenge', async () => {
+      mocks.post.mockResolvedValue({
+        data: {message: 'ok', verification_token: 'tok'},
+      });
 
       await verifyPasswordChangeCode('123456');
 
-      expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/verify-code/', {code: '123456'});
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/change-password/verify-code/',
+        {code: '123456'},
+      );
     });
   });
 });

@@ -20,3 +20,9 @@ class PublicModelIdTests(TestCase):
         self.assertIsInstance(questions, list)
         self.assertTrue(questions)
         self.assertTrue(all(isinstance(q, str) for q in questions))
+
+    def test_public_input_limits_have_bounded_defaults(self):
+        config = SystemIntelligenceConfig()
+        self.assertEqual(config.public_assistant_max_history_chars, 8000)
+        self.assertEqual(config.public_assistant_max_context_chars, 24000)
+        self.assertEqual(config.public_assistant_max_estimated_input_tokens, 12000)

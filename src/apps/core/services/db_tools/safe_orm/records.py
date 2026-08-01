@@ -8,9 +8,10 @@ from .json import json_safe
 from .safety import field_output_name, safe_model_fields
 
 
-def get_object(model: type[models.Model], pk: str) -> models.Model:
+def get_object(model: type[models.Model], pk: str, *, for_update: bool = False) -> models.Model:
     try:
-        return model.objects.get(pk=pk)
+        queryset = model.objects.select_for_update() if for_update else model.objects
+        return queryset.get(pk=pk)
     except model.DoesNotExist as exc:
         raise ActionRequestError(f"{model._meta.label} record '{pk}' was not found.") from exc
     except (TypeError, ValueError, ValidationError) as exc:

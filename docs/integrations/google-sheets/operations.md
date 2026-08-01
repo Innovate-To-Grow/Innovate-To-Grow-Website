@@ -31,6 +31,10 @@ In Django admin → Events → Event:
 1. Set `registration_sheet_id` to the Google Sheets document ID (from the URL: `docs.google.com/spreadsheets/d/{THIS_PART}/edit`)
 2. Set `registration_sheet_gid` to the worksheet GID (from the URL: `#gid={THIS_PART}`)
 
+The managed registration schema ends with a protected `Registration ID`
+column. Do not move, rename, edit, or add columns after it. A first full sync
+backs up a populated legacy/drifted tab before establishing this schema.
+
 ### 5. Configure the past-projects sheet
 
 In Django admin → **Projects → Past Projects Sheet**:
@@ -89,28 +93,34 @@ Google service-account credentials are stored in the database via [`GoogleCreden
 |-------|-------|-----|
 | `SpreadsheetNotFound` | Sheet ID is wrong or service account lacks access | Verify ID and sharing permissions |
 | `WorksheetNotFound` | GID doesn't match any worksheet in the spreadsheet | Check the GID in the sheet URL |
-| `APIError 429` | Google Sheets API rate limit exceeded | Wait and retry; the debounce mechanism should prevent this |
+| `APIError 429` | Google Sheets API rate limit exceeded | Let the durable job retry with backoff; inspect queue age and quota before an explicit retry |
 | `InvalidCredentials` | JSON key is malformed or expired | Re-generate the service account key |
 | No `GoogleCredentialConfig` found | No active config in database | Create one in Django admin |
+| Invalid/missing `Registration ID` | Legacy sheet or header drift | Back up the sheet and run the Event full-sync action |
 
 ### Data drift
 
 If sheet data doesn't match database records:
 
-1. Use the "Full replace sync" admin action on the Event model
-2. This overwrites all sheet rows with current database state
-3. Verify the sheet after sync completes
+1. Export or independently back up the current sheet
+2. Use the "Full replace sync" admin action on one canary Event
+3. Confirm the automatic backup tab exists when the old schema differed
+4. Compare database registrations with unique final-column IDs at the logged cutoff
+5. Confirm the final `Registration ID` column is protected
+6. Create one canary registration and confirm append mode adds it exactly once
 
 ### Local development
 
-For local testing without Google API access:
-- Registration sync will log a warning and skip silently if no `GoogleCredentialConfig` is configured
-- This does not block registration creation — the primary operation always succeeds
+For local testing without Google API access, leave
+`BACKGROUND_JOBS_ENABLED=false` or avoid processing Sheets jobs. A configured
+sync with no active `GoogleCredentialConfig` fails closed and records the
+error; it does not silently select an inactive credential.
 
 ## Monitoring
 
 In production, monitor:
 - `RegistrationSheetSyncLog` records for failed syncs
+- Background worker heartbeat, queue depth, oldest-job age, and failed jobs
 - CloudWatch logs for Google API errors
 - Google Sheets API quotas in Google Cloud Console
 
@@ -119,3 +129,4 @@ In production, monitor:
 - [Data Flow](data-flow.md) — Technical sync details
 - [Deployment: Environments](../../deployment/environments.md) — Full environment variable reference
 - [CMS & Admin: Operations](../../cms-admin/operations.md) — General operational guidance
+- [Production Handoff Runbook](../../operations/handoff-runbook.md) — Reconciliation and incident steps

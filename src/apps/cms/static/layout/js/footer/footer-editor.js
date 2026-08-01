@@ -49,6 +49,10 @@
     window.addSocialLink = () => updateAndRender(() => footerData.social_links.push({ href: '#', icon_class: 'fa fa-facebook', aria_label: 'Facebook', target: '_blank', rel: 'noopener' }), true);
     window.removeSocialLink = idx => updateAndRender(() => footerData.social_links.splice(idx, 1), true);
     window.updateSocialLink = (idx, field, value) => updateAndRender(() => { footerData.social_links[idx][field] = value; });
+    window.updateSocialPlatform = (idx, value, label) => updateAndRender(() => {
+        footerData.social_links[idx].icon_class = value;
+        footerData.social_links[idx].aria_label = label;
+    }, true);
     window.addFooterLink = type => updateAndRender(() => footerData.footer_links.push({ type: type || 'external', label: 'New Link', href: ['app', 'cms'].includes(type) ? '' : '#', target: type === 'external' ? '_blank' : '', rel: type === 'external' ? 'noopener' : '' }), true);
     window.removeFooterLink = idx => updateAndRender(() => footerData.footer_links.splice(idx, 1), true);
     window.updateFooterLink = (idx, field, value) => updateAndRender(() => { footerData.footer_links[idx][field] = value; });

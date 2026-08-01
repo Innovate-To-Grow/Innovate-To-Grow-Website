@@ -2,8 +2,7 @@
 
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.template.loader import render_to_string
+from django.http import HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
@@ -22,6 +21,7 @@ def inbox_reply_view(request, uid):
         raise PermissionDenied("You do not have permission to reply from the mail inbox.")
     list_url = reverse("admin:mail_inbox_list")
     detail_url = reverse("admin:mail_inbox_detail", args=[uid])
+    reply_url = reverse("admin:mail_inbox_reply", args=[uid])
 
     try:
         msg = inbox_api.fetch_inbox_message(uid)
@@ -44,7 +44,7 @@ def inbox_reply_view(request, uid):
 
         if not reply_body:
             messages.error(request, "Reply body cannot be empty.")
-            return HttpResponseRedirect(request.path)
+            return HttpResponseRedirect(reply_url)
 
         error = inbox_api.send_reply(
             to_email=to_email,
@@ -60,7 +60,7 @@ def inbox_reply_view(request, uid):
 
         if error:
             messages.error(request, error)
-            return HttpResponseRedirect(request.path)
+            return HttpResponseRedirect(reply_url)
 
         messages.success(request, f"Reply sent to {to_email}.")
         return HttpResponseRedirect(detail_url)
@@ -96,7 +96,8 @@ def inbox_reply_fragment_view(request, uid):
     if request.method == "POST":
         return _send_reply_fragment(request, msg, reply_subject)
 
-    html = render_to_string(
+    return TemplateResponse(
+        request,
         "admin/mail/inbox/_inbox_reply_form.html",
         {
             "msg": msg,
@@ -104,9 +105,7 @@ def inbox_reply_fragment_view(request, uid):
             "from_address": email_config.source_address,
             "reply_fragment_url": reverse("admin:mail_inbox_reply_fragment", args=[uid]),
         },
-        request=request,
     )
-    return HttpResponse(html)
 
 
 def _send_reply_fragment(request, msg, reply_subject):
@@ -142,4 +141,8 @@ def _send_reply_fragment(request, msg, reply_subject):
 def _reply_load_error_response(request):
     if request.method == "POST":
         return JsonResponse({"ok": False, "error": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE})
-    return HttpResponse(f'<div class="p-4 text-sm text-red-600">{inbox_api.INBOX_MESSAGE_ERROR_MESSAGE}</div>')
+    return TemplateResponse(
+        request,
+        "admin/mail/inbox/_fragment_error.html",
+        {"error_message": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE},
+    )

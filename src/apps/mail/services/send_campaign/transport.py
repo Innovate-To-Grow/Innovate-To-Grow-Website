@@ -7,8 +7,21 @@ from django.conf import settings
 
 from apps.core.models import EmailServiceConfig
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.services.aws.provider_outcomes import (
+    NO_PROVIDER_RETRIES,
+    PROVIDER_OUTCOME_PERMANENT,
+    PROVIDER_OUTCOME_SUCCESS,
+    PROVIDER_OUTCOME_TRANSIENT,
+    PROVIDER_OUTCOME_UNCERTAIN,
+    classify_aws_send_failure,
+)
 
 logger = logging.getLogger(__name__)
+
+SES_OUTCOME_SUCCESS = PROVIDER_OUTCOME_SUCCESS
+SES_OUTCOME_TRANSIENT = PROVIDER_OUTCOME_TRANSIENT
+SES_OUTCOME_PERMANENT = PROVIDER_OUTCOME_PERMANENT
+SES_OUTCOME_UNCERTAIN = PROVIDER_OUTCOME_UNCERTAIN
 
 
 @dataclass
@@ -18,6 +31,11 @@ class SesSendResult:
     message_id: str = ""
     error: str = ""
     provider: str = "ses"
+    outcome: str = ""
+
+    def __post_init__(self):
+        if not self.outcome:
+            self.outcome = SES_OUTCOME_UNCERTAIN if self.error else SES_OUTCOME_SUCCESS
 
 
 def _get_ses_client(config):
@@ -32,6 +50,7 @@ def _get_ses_client(config):
             region_name=creds.region,
             aws_access_key_id=creds.access_key_id,
             aws_secret_access_key=creds.secret_access_key,
+            config=NO_PROVIDER_RETRIES,
         )
     except AwsCredentialsError:
         logger.warning("SES client not built: AWS credentials are not configured")
@@ -97,5 +116,11 @@ def _send_via_ses(
         response = ses_client.send_raw_email(**kwargs)
         return SesSendResult(message_id=response.get("MessageId", ""))
     except Exception as exc:
-        logger.exception("SES send failed for %s", recipient)
-        return SesSendResult(error=str(exc))
+        logger.exception("SES send failed")
+        outcome, error = _classify_ses_failure(exc)
+        return SesSendResult(error=error, outcome=outcome)
+
+
+def _classify_ses_failure(exc: Exception) -> tuple[str, str]:
+    """Classify whether a failed SES call is safe to retry or may have landed."""
+    return classify_aws_send_failure(exc, provider="SES")

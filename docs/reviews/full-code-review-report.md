@@ -1,5 +1,10 @@
 # Full Code Review Report
 
+> **Historical snapshot — superseded.** Findings and status in this file
+> describe an earlier repository state and are not the current handoff state.
+> Use the [handoff runbook](../operations/handoff-runbook.md) and current
+> architecture/deployment documentation for operations and verification.
+
 ## 1. Executive Summary
 
 The repository is in generally workable shape: the backend is modular, the frontend structure is understandable, and the automated backend test surface is much stronger than average for a project of this size. The codebase also shows clear intent around separation of apps, admin workflows, and public API boundaries.

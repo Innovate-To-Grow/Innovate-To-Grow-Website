@@ -1,33 +1,111 @@
 name: Deploy Backend to AWS ECS
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      deploy_sha:
+        description: Full commit SHA whose CI-published image must be deployed.
+        required: true
+        type: string
+      ci_run_id:
+        description: Successful CI run ID that published the backend image digest.
+        required: true
+        type: string
+    secrets:
+      DB_PASSWORD_SECRET_ARN:
+        required: false
+      DJANGO_SECRET_KEY_SECRET_ARN:
+        required: false
+      DJANGO_SUPERUSER_EMAIL:
+        required: false
+      DJANGO_SUPERUSER_PASSWORD_SECRET_ARN:
+        required: false
+      DJANGO_SUPERUSER_USERNAME:
+        required: false
+      ECS_EXECUTION_ROLE_ARN:
+        required: false
+      ECS_TASK_ROLE_ARN:
+        required: false
+      REDIS_URL_SECRET_ARN:
+        required: false
 
 permissions:
+  actions: read
   contents: read
+  id-token: write
 
 concurrency:
-  group: deploy-backend-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-backend-production
+  cancel-in-progress: false
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
-  ECR_REPOSITORY: itg-backend
-  ECS_CLUSTER: itg-backend-cluster
-  ECS_SERVICE: itg-backend-service
-  ECS_TASK_DEFINITION: aws/task-definition.json
-  CONTAINER_NAME: itg-backend
+  DEPLOY_SHA: ${{ inputs.deploy_sha }}
+  CI_RUN_ID: ${{ inputs.ci_run_id }}
 
 jobs:
+  gate:
+    name: Select immutable backend artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ci_run_id: ${{ steps.gate.outputs.ci-run-id }}
+      deploy_sha: ${{ steps.gate.outputs.deploy-sha }}
+      should_deploy: ${{ steps.gate.outputs.should-deploy }}
+    steps:
+      - name: Validate SHA and inspect the triggering CI run
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$DEPLOY_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::deploy_sha must be a full lowercase 40-character commit SHA."
+            exit 1
+          fi
+          if ! printf '%s' "$CI_RUN_ID" | grep -Eq '^[1-9][0-9]*$'; then
+            echo "::error::ci_run_id must be a positive GitHub Actions run ID."
+            exit 1
+          fi
+
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}")"
+          run_sha="$(jq --raw-output '.head_sha' <<<"$run_json")"
+          run_conclusion="$(jq --raw-output '.conclusion' <<<"$run_json")"
+          run_event="$(jq --raw-output '.event' <<<"$run_json")"
+          run_branch="$(jq --raw-output '.head_branch' <<<"$run_json")"
+          run_path="$(jq --raw-output '.path' <<<"$run_json")"
+          if [ "$run_sha" != "$DEPLOY_SHA" ] ||
+             [ "$run_conclusion" != "success" ] ||
+             [ "$run_event" != "push" ] ||
+             [ "$run_branch" != "main" ] ||
+             [ "$run_path" != ".github/workflows/ci.yml" ]; then
+            echo "::error::CI run $CI_RUN_ID is not a successful main CI run for $DEPLOY_SHA."
+            exit 1
+          fi
+          echo "deploy-sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+          echo "ci-run-id=$CI_RUN_ID" >> "$GITHUB_OUTPUT"
+
+          conclusion="$(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/jobs?per_page=100" \
+              --jq '.jobs[] | select(.name == "Backend Image Publish") | .conclusion' \
+              | tail -n 1
+          )"
+          if [ "$conclusion" = "success" ]; then
+            echo "should-deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "workflow_call" ]; then
+            echo "::error::CI run $CI_RUN_ID did not publish a backend image."
+            exit 1
+          else
+            echo "should-deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Backend was unchanged; this CI run published no backend image." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   deploy:
     name: Deploy Backend (${{ matrix.target }})
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+    needs: gate
+    if: ${{ needs.gate.outputs.should_deploy == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -46,7 +124,7 @@ jobs:
             backend_url: https://api.i2g.ucmerced.edu
             api_base_url: https://api.i2g.ucmerced.edu
             storage_bucket: itg-static-assets
-            ensure_default_admin: "false"
+            metrics_namespace: I2G/BackgroundJobs/Prod
             superuser_first_name: I2G
             superuser_last_name: Admin
           - target: demo
@@ -61,414 +139,464 @@ jobs:
             backend_url: https://demo.i2g.ucmerced.edu
             api_base_url: https://demo-api.i2g.ucmerced.edu
             storage_bucket: itg-demo-static-assets
-            ensure_default_admin: "true"
+            metrics_namespace: I2G/BackgroundJobs/Demo
             superuser_first_name: Demo
             superuser_last_name: Admin
     environment:
       name: ${{ matrix.environment_name }}
       url: ${{ matrix.environment_url }}
     env:
-      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
+      DEPLOY_SHA: ${{ needs.gate.outputs.deploy_sha }}
+      CI_RUN_ID: ${{ needs.gate.outputs.ci_run_id }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+      AWS_ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
       ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || matrix.ecr_repository }}
       ECS_CLUSTER: ${{ vars.ECS_CLUSTER || matrix.ecs_cluster }}
       ECS_SERVICE: ${{ vars.ECS_SERVICE || matrix.ecs_service }}
-      ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION || 'aws/task-definition.json' }}
-      CONTAINER_NAME: ${{ vars.CONTAINER_NAME || 'itg-backend' }}
       ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY || matrix.task_family }}
       ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP || matrix.log_group }}
+      CONTAINER_NAME: itg-backend
+      DJANGO_SECRET_KEY_SECRET_ARN: ${{ vars.DJANGO_SECRET_KEY_SECRET_ARN || secrets.DJANGO_SECRET_KEY_SECRET_ARN }}
+      DB_ENGINE: ${{ vars.DB_ENGINE }}
+      DB_NAME: ${{ vars.DB_NAME }}
+      DB_USER: ${{ vars.DB_USER }}
+      DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
+      DB_HOST: ${{ vars.DB_HOST }}
+      DB_PORT: ${{ vars.DB_PORT || '5432' }}
+      DB_CONN_MAX_AGE: ${{ vars.DB_CONN_MAX_AGE || '0' }}
+      DB_CONN_HEALTH_CHECKS: ${{ vars.DB_CONN_HEALTH_CHECKS || 'true' }}
+      REDIS_URL_SECRET_ARN: ${{ vars.REDIS_URL_SECRET_ARN || secrets.REDIS_URL_SECRET_ARN }}
+      WEB_CONCURRENCY: ${{ vars.WEB_CONCURRENCY || '2' }}
+      UVICORN_LIMIT_CONCURRENCY: ${{ vars.UVICORN_LIMIT_CONCURRENCY || '20' }}
+      DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
+      DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
+      DJANGO_SUPERUSER_FIRST_NAME: ${{ vars.DJANGO_SUPERUSER_FIRST_NAME || matrix.superuser_first_name }}
+      DJANGO_SUPERUSER_LAST_NAME: ${{ vars.DJANGO_SUPERUSER_LAST_NAME || matrix.superuser_last_name }}
+      DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ vars.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN || secrets.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
+      ENSURE_DEFAULT_ADMIN: ${{ matrix.target == 'demo' && (vars.ENSURE_DEFAULT_ADMIN || 'true') || 'false' }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
+      BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
+      API_BASE_URL: ${{ vars.VITE_API_BASE_URL || matrix.api_base_url }}
+      DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
+      CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
+      CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+      CSP_REPORT_ONLY: ${{ vars.CSP_REPORT_ONLY || 'true' }}
+      AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
+      AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
+      ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
+      ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+      BACKGROUND_JOBS_ENABLED: ${{ vars.BACKGROUND_JOBS_ENABLED || 'false' }}
+      BACKGROUND_WORKER_ENABLED: ${{ vars.BACKGROUND_WORKER_ENABLED || vars.BACKGROUND_JOBS_ENABLED || 'false' }}
+      BACKGROUND_JOB_METRICS_NAMESPACE: ${{ vars.BACKGROUND_JOB_METRICS_NAMESPACE || matrix.metrics_namespace }}
+      BACKGROUND_WORKER_HEARTBEAT_MAX_AGE_SECONDS: ${{ vars.BACKGROUND_WORKER_HEARTBEAT_MAX_AGE_SECONDS || '180' }}
+      BACKGROUND_WORKER_HEARTBEAT_TIMEOUT_SECONDS: ${{ vars.BACKGROUND_WORKER_HEARTBEAT_TIMEOUT_SECONDS || '300' }}
+      ECS_WORKER_SERVICE: ${{ vars.ECS_WORKER_SERVICE }}
+      ECS_WORKER_TASK_FAMILY: ${{ vars.ECS_WORKER_TASK_FAMILY }}
+      ECS_WORKER_LOG_GROUP: ${{ vars.ECS_WORKER_LOG_GROUP }}
+      WORKER_CONTAINER_NAME: itg-background-worker
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Validate required deployment configuration
-        env:
-          DJANGO_SECRET_KEY_SECRET_ARN: ${{ vars.DJANGO_SECRET_KEY_SECRET_ARN || secrets.DJANGO_SECRET_KEY_SECRET_ARN }}
-          DB_HOST: ${{ vars.DB_HOST }}
-          DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
-          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
-          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+      - name: Validate deployment configuration
+        id: config
         run: |
+          set -euo pipefail
+
+          normalize_boolean() {
+            case "${1,,}" in
+              1|true|yes|on) printf 'true' ;;
+              0|false|no|off) printf 'false' ;;
+              *)
+                echo "::error::Invalid boolean value: $1" >&2
+                return 1
+                ;;
+            esac
+          }
+
+          background_enabled="$(normalize_boolean "$BACKGROUND_JOBS_ENABLED")"
+          worker_enabled="$(normalize_boolean "$BACKGROUND_WORKER_ENABLED")"
+          ensure_admin="$(normalize_boolean "$ENSURE_DEFAULT_ADMIN")"
+          csp_report_only="$(normalize_boolean "$CSP_REPORT_ONLY")"
+          if [ "$background_enabled" = "true" ] && [ "$worker_enabled" != "true" ]; then
+            echo "::error::BACKGROUND_JOBS_ENABLED requires BACKGROUND_WORKER_ENABLED=true."
+            exit 1
+          fi
+          echo "BACKGROUND_JOBS_ENABLED=$background_enabled" >> "$GITHUB_ENV"
+          echo "BACKGROUND_WORKER_ENABLED=$worker_enabled" >> "$GITHUB_ENV"
+          echo "ENSURE_DEFAULT_ADMIN=$ensure_admin" >> "$GITHUB_ENV"
+          echo "CSP_REPORT_ONLY=$csp_report_only" >> "$GITHUB_ENV"
+          echo "background-enabled=$background_enabled" >> "$GITHUB_OUTPUT"
+          echo "worker-enabled=$worker_enabled" >> "$GITHUB_OUTPUT"
+          echo "ensure-admin=$ensure_admin" >> "$GITHUB_OUTPUT"
+
           missing=()
-          for name in DJANGO_SECRET_KEY_SECRET_ARN DB_HOST DB_NAME DB_USER DB_PASSWORD_SECRET_ARN AWS_STORAGE_BUCKET_NAME BACKEND_URL ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
+          for name in \
+            AWS_ROLE_ARN DJANGO_SECRET_KEY_SECRET_ARN DB_NAME DB_USER \
+            DB_PASSWORD_SECRET_ARN DB_HOST AWS_STORAGE_BUCKET_NAME BACKEND_URL \
+            ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
             if [ -z "${!name}" ]; then
               missing+=("$name")
             fi
           done
+          if [ "$worker_enabled" = "true" ]; then
+            for name in \
+              REDIS_URL_SECRET_ARN ECS_WORKER_SERVICE ECS_WORKER_TASK_FAMILY \
+              ECS_WORKER_LOG_GROUP BACKGROUND_JOB_METRICS_NAMESPACE \
+              BACKGROUND_WORKER_HEARTBEAT_MAX_AGE_SECONDS \
+              BACKGROUND_WORKER_HEARTBEAT_TIMEOUT_SECONDS; do
+              if [ -z "${!name}" ]; then
+                missing+=("$name")
+              fi
+            done
+          fi
+          if [ "$ensure_admin" = "true" ]; then
+            for name in \
+              DJANGO_SUPERUSER_EMAIL DJANGO_SUPERUSER_PASSWORD_SECRET_ARN; do
+              if [ -z "${!name}" ]; then
+                missing+=("$name")
+              fi
+            done
+          fi
           if [ "${#missing[@]}" -gt 0 ]; then
-            echo "Missing required config: ${missing[*]}"
+            echo "::error::Missing required config: ${missing[*]}"
             exit 1
           fi
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Set up Docker Buildx
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-
-      - name: Build and tag Docker image
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: src
-          load: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Resolve Docker image URI
-        id: image
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_run" ]; then
-            image_tag="$WORKFLOW_RUN_SHA"
-          else
-            image_tag="$GITHUB_SHA"
+          if [ "$worker_enabled" = "true" ]; then
+            for name in \
+              BACKGROUND_WORKER_HEARTBEAT_MAX_AGE_SECONDS \
+              BACKGROUND_WORKER_HEARTBEAT_TIMEOUT_SECONDS; do
+              if ! printf '%s' "${!name}" | grep -Eq '^[1-9][0-9]*$'; then
+                echo "::error::$name must be a positive integer number of seconds."
+                exit 1
+              fi
+            done
           fi
-          echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}:${image_tag}" >> "$GITHUB_OUTPUT"
 
-      - name: Pull published Docker image
-        if: ${{ github.event_name == 'workflow_run' }}
-        run: docker pull "${{ steps.image.outputs.image }}"
+      - name: Checkout the CI-tested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
-      # SECURITY: Production secret values must live in AWS Secrets Manager
-      # or SSM Parameter Store. This workflow renders only valueFrom ARNs into
-      # the ECS task definition so DescribeTaskDefinition cannot reveal secret
-      # material. Configure *_SECRET_ARN repository/environment variables or
-      # GitHub secrets with the AWS secret/parameter ARNs.
+      - name: Download CI-captured backend image provenance
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: backend-image-manifest-${{ env.DEPLOY_SHA }}
+          path: ${{ runner.temp }}/backend-image-provenance
+          github-token: ${{ github.token }}
+          run-id: ${{ env.CI_RUN_ID }}
 
-      - name: Upload Django static assets to S3
+      - name: Validate backend image provenance
+        id: provenance
         env:
-          IMAGE_URI: ${{ steps.image.outputs.image }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
-          AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
-        run: |
-          set -euo pipefail
-
-          # Extract baked static files from the image and sync to S3.
-          # This avoids Django's collectstatic S3 backend which requires
-          # s3:DeleteObject permissions we intentionally withhold from the
-          # deploy user.
-          CONTAINER_ID=$(docker create "$IMAGE_URI")
-          docker cp "$CONTAINER_ID:/app/static" ./static-export
-          docker rm "$CONTAINER_ID"
-
-          aws s3 sync ./static-export "s3://${AWS_STORAGE_BUCKET_NAME}/static" \
-            --region "${AWS_S3_REGION_NAME}" \
-            --cache-control "max-age=86400" \
-            --size-only
-
-      - name: Push Docker image to ECR
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-
-      - name: Render ECS task definition from template
-        id: task-def
-        env:
-          IMAGE_URI: ${{ steps.image.outputs.image }}
-          DJANGO_SECRET_KEY_SECRET_ARN: ${{ vars.DJANGO_SECRET_KEY_SECRET_ARN || secrets.DJANGO_SECRET_KEY_SECRET_ARN }}
-          DB_ENGINE: ${{ vars.DB_ENGINE }}
-          DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
-          DB_HOST: ${{ vars.DB_HOST }}
-          DB_PORT: ${{ vars.DB_PORT }}
-          DB_CONN_MAX_AGE: ${{ vars.DB_CONN_MAX_AGE || '0' }}
-          DB_CONN_HEALTH_CHECKS: ${{ vars.DB_CONN_HEALTH_CHECKS || 'true' }}
-          REDIS_URL_SECRET_ARN: ${{ vars.REDIS_URL_SECRET_ARN || secrets.REDIS_URL_SECRET_ARN }}
-          WEB_CONCURRENCY: ${{ vars.WEB_CONCURRENCY || '2' }}
-          UVICORN_LIMIT_CONCURRENCY: ${{ vars.UVICORN_LIMIT_CONCURRENCY || '20' }}
-          DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
-          DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
-          DJANGO_SUPERUSER_FIRST_NAME: ${{ vars.DJANGO_SUPERUSER_FIRST_NAME || matrix.superuser_first_name }}
-          DJANGO_SUPERUSER_LAST_NAME: ${{ vars.DJANGO_SUPERUSER_LAST_NAME || matrix.superuser_last_name }}
-          DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ vars.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN || secrets.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
-          ENSURE_DEFAULT_ADMIN: ${{ vars.ENSURE_DEFAULT_ADMIN || matrix.ensure_default_admin }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
-          API_BASE_URL: ${{ vars.VITE_API_BASE_URL || matrix.api_base_url }}
-          DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
-          CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
-          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
-          AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
-          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
-          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
-          ECS_TASK_FAMILY: ${{ env.ECS_TASK_FAMILY }}
-          ECS_LOG_GROUP: ${{ env.ECS_LOG_GROUP }}
+          MANIFEST_PATH: ${{ runner.temp }}/backend-image-provenance/backend-image-manifest.json
         run: |
           python - <<'PY'
           import json
           import os
-          from urllib.parse import urlparse
+          import re
 
-          template_path = "aws/task-definition.json"
-          output_path = "rendered-task-definition.json"
-          empty_sentinels = {"__EMPTY__", "__UNSET__", "null", "None"}
-
-          def env_value(name: str, default: str = "") -> str:
-              value = os.environ.get(name, default)
-              if value is None:
-                  return ""
-              return "" if value in empty_sentinels else value
-
-          with open(template_path, "r", encoding="utf-8") as f:
-              taskdef = json.load(f)
-
-          frontend_url = env_value("FRONTEND_URL").strip()
-          backend_url = env_value("BACKEND_URL").strip()
-          api_base_url = env_value("API_BASE_URL").strip()
-
-          def url_origin(value: str) -> str:
-              parsed = urlparse(value)
-              if parsed.scheme and parsed.netloc:
-                  return f"{parsed.scheme}://{parsed.netloc}"
-              return value.rstrip("/")
-
-          frontend_origin = url_origin(frontend_url)
-          backend_origin = url_origin(backend_url)
-          api_origin = url_origin(api_base_url)
-
-          csrf_origins = env_value("CSRF_TRUSTED_ORIGINS").strip()
-          if not csrf_origins:
-              csrf_values = [x for x in [frontend_origin, backend_origin, api_origin] if x]
-              csrf_origins = ",".join(csrf_values)
-
-          cors_origins = env_value("CORS_ALLOWED_ORIGINS").strip() or frontend_origin
-
-          configured_allowed_hosts = env_value("DJANGO_ALLOWED_HOSTS").strip()
-          hosts = [host.strip() for host in configured_allowed_hosts.split(",") if host.strip()]
-          for origin in [api_base_url, frontend_url, backend_url]:
-              parsed = urlparse(origin)
-              if parsed.hostname:
-                  hosts.append(parsed.hostname)
-          if not configured_allowed_hosts:
-              hosts.extend([".cloudfront.net", ".elb.amazonaws.com"])
-          allowed_hosts = ",".join(dict.fromkeys([h for h in hosts if h]))
-
-          mapping = {
-              "__TASK_FAMILY__": env_value("ECS_TASK_FAMILY", "itg-backend"),
-              "__DJANGO_ALLOWED_HOSTS__": allowed_hosts,
-              "__DB_NAME__": env_value("DB_NAME"),
-              "__DB_USER__": env_value("DB_USER"),
-              "__DB_HOST__": env_value("DB_HOST"),
-              "__DB_PORT__": env_value("DB_PORT", "5432"),
-              "__DB_CONN_MAX_AGE__": env_value("DB_CONN_MAX_AGE", "0"),
-              "__DB_CONN_HEALTH_CHECKS__": env_value("DB_CONN_HEALTH_CHECKS", "true"),
-              "__WEB_CONCURRENCY__": env_value("WEB_CONCURRENCY", "2"),
-              "__UVICORN_LIMIT_CONCURRENCY__": env_value("UVICORN_LIMIT_CONCURRENCY", "20"),
-              "__CSRF_TRUSTED_ORIGINS__": csrf_origins,
-              "__CORS_ALLOWED_ORIGINS__": cors_origins,
-              "__FRONTEND_URL__": frontend_url,
-              "__BACKEND_URL__": backend_url,
-              "__AWS_STORAGE_BUCKET_NAME__": env_value("AWS_STORAGE_BUCKET_NAME", "itg-static-assets"),
-              "__AWS_S3_REGION_NAME__": env_value("AWS_S3_REGION_NAME", "us-west-2"),
-              "__AWS_LOG_GROUP__": env_value("ECS_LOG_GROUP", "/ecs/itg-backend"),
-              "__DJANGO_SUPERUSER_USERNAME__": env_value("DJANGO_SUPERUSER_USERNAME"),
-              "__DJANGO_SUPERUSER_EMAIL__": env_value("DJANGO_SUPERUSER_EMAIL"),
-              "__DJANGO_SUPERUSER_FIRST_NAME__": env_value("DJANGO_SUPERUSER_FIRST_NAME", "Demo"),
-              "__DJANGO_SUPERUSER_LAST_NAME__": env_value("DJANGO_SUPERUSER_LAST_NAME", "Admin"),
-              "__ENSURE_DEFAULT_ADMIN__": env_value("ENSURE_DEFAULT_ADMIN", "false"),
-          }
-          secret_mapping = {
-              "__DJANGO_SECRET_KEY_SECRET_ARN__": env_value("DJANGO_SECRET_KEY_SECRET_ARN"),
-              "__DB_PASSWORD_SECRET_ARN__": env_value("DB_PASSWORD_SECRET_ARN"),
-              "__REDIS_URL_SECRET_ARN__": env_value("REDIS_URL_SECRET_ARN"),
-              "__DJANGO_SUPERUSER_PASSWORD_SECRET_ARN__": env_value("DJANGO_SUPERUSER_PASSWORD_SECRET_ARN"),
-          }
-          required_secret_placeholders = {
-              "__DJANGO_SECRET_KEY_SECRET_ARN__",
-              "__DB_PASSWORD_SECRET_ARN__",
-          }
-          if mapping["__ENSURE_DEFAULT_ADMIN__"].strip().lower() in {"1", "true", "yes", "on"}:
-              if not mapping["__DJANGO_SUPERUSER_EMAIL__"].strip():
-                  raise SystemExit("DJANGO_SUPERUSER_EMAIL is required when ENSURE_DEFAULT_ADMIN is true.")
-              required_secret_placeholders.add("__DJANGO_SUPERUSER_PASSWORD_SECRET_ARN__")
-
-          def require_secret_ref_arn(name: str, value: str) -> None:
-              # Catch a pasted literal secret / typo'd name at render time:
-              # a bad reference would otherwise register fine and only fail
-              # at task launch, surfacing as a rolled-back deploy.
-              if not value.startswith(("arn:aws:secretsmanager:", "arn:aws:ssm:")):
-                  raise SystemExit(
-                      f"{name} must be a Secrets Manager or SSM Parameter Store ARN "
-                      "(arn:aws:secretsmanager:... or arn:aws:ssm:...)."
-                  )
-
-          # Substitute IAM role ARNs so the account ID is not baked into the
-          # checked-in task-definition template.
-          exec_role = env_value("ECS_EXECUTION_ROLE_ARN").strip()
-          task_role = env_value("ECS_TASK_ROLE_ARN").strip()
-          if not exec_role:
-              raise SystemExit("ECS_EXECUTION_ROLE_ARN is required to render the ECS task definition.")
-          if not task_role:
-              raise SystemExit("ECS_TASK_ROLE_ARN is required to render the ECS task definition.")
-          taskdef["executionRoleArn"] = exec_role
-          taskdef["taskRoleArn"] = task_role
-
-          container = taskdef["containerDefinitions"][0]
-          container["image"] = os.environ["IMAGE_URI"]
-          taskdef["family"] = mapping["__TASK_FAMILY__"]
-          container.setdefault("logConfiguration", {}).setdefault("options", {})["awslogs-group"] = mapping[
-              "__AWS_LOG_GROUP__"
-          ]
-
-          for item in container.get("environment", []):
-              value = item.get("value", "")
-              if value in mapping:
-                  item["value"] = mapping[value]
-
-          rendered_secrets = []
-          for item in container.get("secrets", []):
-              value_from = item.get("valueFrom", "")
-              if value_from not in secret_mapping:
-                  rendered_secrets.append(item)
-                  continue
-
-              secret_arn = secret_mapping[value_from].strip()
-              if not secret_arn:
-                  if value_from in required_secret_placeholders:
-                      raise SystemExit(f"{value_from.strip('_')} is required to render the ECS task definition.")
-                  continue
-
-              require_secret_ref_arn(value_from.strip("_"), secret_arn)
-              item["valueFrom"] = secret_arn
-              rendered_secrets.append(item)
-          container["secrets"] = rendered_secrets
-
-          # Optional DB_ENGINE override; prod defaults to PostgreSQL if unset.
-          db_engine = env_value("DB_ENGINE").strip()
-          if db_engine:
-              container["environment"].append({"name": "DB_ENGINE", "value": db_engine})
-
-          with open(output_path, "w", encoding="utf-8") as f:
-              json.dump(taskdef, f, indent=2)
+          with open(os.environ["MANIFEST_PATH"], encoding="utf-8") as manifest_file:
+              manifest = json.load(manifest_file)
+          if set(manifest) != {"sha", "repository", "digest"}:
+              raise SystemExit("Backend image provenance has an unexpected schema.")
+          if manifest["sha"] != os.environ["DEPLOY_SHA"]:
+              raise SystemExit("Backend image provenance SHA does not match DEPLOY_SHA.")
+          if manifest["repository"] != os.environ["ECR_REPOSITORY"]:
+              raise SystemExit("Backend image provenance repository does not match ECR_REPOSITORY.")
+          digest = manifest["digest"]
+          if not isinstance(digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
+              raise SystemExit("Backend image provenance digest is invalid.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"digest={digest}\n")
           PY
-          echo "task-definition=rendered-task-definition.json" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy to ECS
-        id: deploy-ecs
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      - name: Configure AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@451ce2a72e8d729a59ebeaacab82dbce58e7af4c
         with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: i2g-deploy-backend-${{ matrix.target }}-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Verify deployment was not rolled back
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64
+
+      - name: Verify the CI-published backend image digest
+        id: image
         env:
-          QUERY_PRIMARY: 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]'
-          QUERY_EVENTS: 'services[0].events[0:5].message'
+          CAPTURED_DIGEST: ${{ steps.provenance.outputs.digest }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           set -euo pipefail
-
-          expected_taskdef="${{ steps.deploy-ecs.outputs.task-definition-arn }}"
-          echo "Expected task definition: $expected_taskdef"
-
-          # Get the primary deployment's task definition
-          active_taskdef="$(aws ecs describe-services \
-            --cluster "$ECS_CLUSTER" \
-            --services "$ECS_SERVICE" \
-            --query "$QUERY_PRIMARY" \
+          current_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=$DEPLOY_SHA" \
+            --query 'imageDetails[0].imageDigest' \
             --output text)"
-          echo "Active task definition:   $active_taskdef"
+          if ! printf '%s' "$current_digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            echo "::error::No CI-published backend image exists for $DEPLOY_SHA."
+            exit 1
+          fi
+          if [ "$current_digest" != "$CAPTURED_DIGEST" ]; then
+            echo "::error::Backend SHA tag digest no longer matches the CI-captured digest."
+            exit 1
+          fi
+          echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}@${CAPTURED_DIGEST}" >> "$GITHUB_OUTPUT"
 
-          if [ "$active_taskdef" != "$expected_taskdef" ]; then
-            echo "::error::Deployment rolled back! Expected $expected_taskdef but service is running $active_taskdef"
-            echo "Checking recent ECS events for failure details..."
+      - name: Pull the immutable backend image
+        run: docker pull "${{ steps.image.outputs.image }}"
+
+      - name: Render web, one-off, and worker task definitions
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image }}
+        run: |
+          python .github/scripts/render_backend_task_definitions.py \
+            --web-template aws/task-definition.json \
+            --worker-template aws/worker-task-definition.json \
+            --web-output rendered-web-task-definition.json \
+            --one-off-output rendered-one-off-task-definition.json \
+            --worker-output rendered-worker-task-definition.json
+
+      - name: Register one-off task definition
+        id: one-off-task
+        run: |
+          set -euo pipefail
+          task_definition_arn="$(aws ecs register-task-definition \
+            --cli-input-json file://rendered-one-off-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)"
+          echo "task-definition-arn=$task_definition_arn" >> "$GITHUB_OUTPUT"
+
+      - name: Run schema migration under the database advisory lock
+        run: |
+          bash .github/scripts/run-ecs-one-off.sh \
+            "$ECS_CLUSTER" \
+            "$ECS_SERVICE" \
+            "${{ steps.one-off-task.outputs.task-definition-arn }}" \
+            "$CONTAINER_NAME" \
+            python manage.py migrate_locked --noinput
+
+      - name: Create the demo administrator if it does not exist
+        if: ${{ matrix.target == 'demo' && steps.config.outputs.ensure-admin == 'true' }}
+        run: |
+          bash .github/scripts/run-ecs-one-off.sh \
+            "$ECS_CLUSTER" \
+            "$ECS_SERVICE" \
+            "${{ steps.one-off-task.outputs.task-definition-arn }}" \
+            "$CONTAINER_NAME" \
+            python manage.py ensure_default_admin --yes
+
+      - name: Upload versioned Django static assets
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          static_export="$(mktemp -d)"
+          container_id="$(docker create "$IMAGE_URI")"
+          cleanup() {
+            docker rm "$container_id" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker cp "$container_id:/app/static/." "$static_export/"
+          STATIC_EXPORT="$static_export" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          manifest_path = Path(os.environ["STATIC_EXPORT"]) / "staticfiles.json"
+          with manifest_path.open(encoding="utf-8") as manifest_file:
+              manifest = json.load(manifest_file)
+          paths = manifest.get("paths")
+          if not isinstance(paths, dict) or not paths:
+              raise SystemExit("The deployed image has no static asset manifest.")
+          unhashed = [source for source, target in paths.items() if source == target]
+          if unhashed:
+              raise SystemExit(f"Static manifest contains unhashed assets: {unhashed[:5]}")
+          PY
+
+          # Upload immutable content-addressed objects first, then publish the
+          # mutable manifest as the release pointer. Old hashes are retained
+          # so rolling tasks and rollbacks continue to resolve their assets.
+          aws s3 sync "$static_export/" \
+            "s3://${AWS_STORAGE_BUCKET_NAME}/static/" \
+            --region "$AWS_S3_REGION_NAME" \
+            --exclude "staticfiles.json" \
+            --cache-control "public,max-age=31536000,immutable"
+          aws s3 cp "$static_export/staticfiles.json" \
+            "s3://${AWS_STORAGE_BUCKET_NAME}/static/staticfiles.json" \
+            --region "$AWS_S3_REGION_NAME" \
+            --cache-control "no-cache"
+
+      - name: Register and deploy the single background worker
+        id: deploy-worker
+        if: ${{ steps.config.outputs.worker-enabled == 'true' }}
+        run: |
+          set -euo pipefail
+          task_definition_arn="$(aws ecs register-task-definition \
+            --cli-input-json file://rendered-worker-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)"
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_WORKER_SERVICE" \
+            --task-definition "$task_definition_arn" \
+            --desired-count 1 \
+            --output json >/dev/null
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_WORKER_SERVICE"
+          echo "task-definition-arn=$task_definition_arn" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the worker service did not roll back
+        if: ${{ steps.config.outputs.worker-enabled == 'true' }}
+        env:
+          EXPECTED_TASK_DEFINITION: ${{ steps.deploy-worker.outputs.task-definition-arn }}
+        run: |
+          set -euo pipefail
+          active="$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_WORKER_SERVICE" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --output text)"
+          if [ "$active" != "$EXPECTED_TASK_DEFINITION" ]; then
+            echo "::error::Worker deployment rolled back (expected $EXPECTED_TASK_DEFINITION, active $active)."
             aws ecs describe-services \
               --cluster "$ECS_CLUSTER" \
-              --services "$ECS_SERVICE" \
-              --query "$QUERY_EVENTS" \
+              --services "$ECS_WORKER_SERVICE" \
+              --query 'services[0].events[0:5].message' \
               --output table
             exit 1
           fi
 
-          echo "Deployment verified: service is running the expected task definition."
-
-      - name: Smoke check deployed health endpoint and CORS
-        env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
-          API_BASE_URL: ${{ vars.BACKEND_SMOKE_URL || vars.VITE_API_BASE_URL || matrix.api_base_url }}
+      - name: Verify a fresh CloudWatch worker heartbeat
+        if: ${{ steps.config.outputs.worker-enabled == 'true' }}
         run: |
           set -euo pipefail
+          deadline=$((SECONDS + BACKGROUND_WORKER_HEARTBEAT_TIMEOUT_SECONDS))
+          gate_started_epoch="$(date -u +%s)"
+          required_bucket_epoch=$((((gate_started_epoch / 60) + 1) * 60))
+          start_time="$(date -u --date="@$required_bucket_epoch" '+%Y-%m-%dT%H:%M:%SZ')"
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            now_epoch="$(date -u +%s)"
+            end_time="$(date -u --date='1 minute' '+%Y-%m-%dT%H:%M:%SZ')"
+            datapoints_file="$(mktemp)"
+            aws cloudwatch get-metric-statistics \
+              --region "$AWS_S3_REGION_NAME" \
+              --namespace "$BACKGROUND_JOB_METRICS_NAMESPACE" \
+              --metric-name WorkerHeartbeat \
+              --start-time "$start_time" \
+              --end-time "$end_time" \
+              --period 60 \
+              --statistics Maximum \
+              --output json > "$datapoints_file"
+            latest_epoch="$(
+              python - "$datapoints_file" <<'PY'
+          import json
+          import sys
+          from datetime import datetime
 
-          if [ -z "${FRONTEND_URL:-}" ]; then
-            echo "FRONTEND_URL is required for smoke checks."
+          with open(sys.argv[1], encoding="utf-8") as response:
+              payload = json.load(response)
+          timestamps = [
+              datetime.fromisoformat(item["Timestamp"].replace("Z", "+00:00")).timestamp()
+              for item in payload.get("Datapoints", [])
+              if item.get("Maximum", 0) > 0 and item.get("Timestamp")
+          ]
+          if timestamps:
+              print(int(max(timestamps)))
+          PY
+            )"
+            rm -f "$datapoints_file"
+            if [ -n "$latest_epoch" ]; then
+              heartbeat_age=$((now_epoch - latest_epoch))
+              if [ "$latest_epoch" -ge "$required_bucket_epoch" ] \
+                && [ "$heartbeat_age" -ge 0 ] \
+                && [ "$heartbeat_age" -le "$BACKGROUND_WORKER_HEARTBEAT_MAX_AGE_SECONDS" ]; then
+                echo "Fresh WorkerHeartbeat observed in $BACKGROUND_JOB_METRICS_NAMESPACE (${heartbeat_age}s old)."
+                break
+              fi
+            fi
+            sleep 10
+          done
+          if [ -z "${latest_epoch:-}" ] \
+            || [ "$latest_epoch" -lt "$required_bucket_epoch" ] \
+            || [ "$heartbeat_age" -lt 0 ] \
+            || [ "$heartbeat_age" -gt "$BACKGROUND_WORKER_HEARTBEAT_MAX_AGE_SECONDS" ]; then
+            echo "::error::No fresh WorkerHeartbeat was observed in $BACKGROUND_JOB_METRICS_NAMESPACE."
             exit 1
           fi
 
-          if [ -z "${API_BASE_URL:-}" ]; then
-            echo "VITE_API_BASE_URL is required for smoke checks."
+      - name: Register and deploy the web task definition
+        id: deploy-web
+        run: |
+          set -euo pipefail
+          task_definition_arn="$(aws ecs register-task-definition \
+            --cli-input-json file://rendered-web-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)"
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --task-definition "$task_definition_arn" \
+            --output json >/dev/null
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE"
+          echo "task-definition-arn=$task_definition_arn" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the web service did not roll back
+        env:
+          EXPECTED_TASK_DEFINITION: ${{ steps.deploy-web.outputs.task-definition-arn }}
+        run: |
+          set -euo pipefail
+          active="$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --output text)"
+          if [ "$active" != "$EXPECTED_TASK_DEFINITION" ]; then
+            echo "::error::Web deployment rolled back (expected $EXPECTED_TASK_DEFINITION, active $active)."
+            aws ecs describe-services \
+              --cluster "$ECS_CLUSTER" \
+              --services "$ECS_SERVICE" \
+              --query 'services[0].events[0:5].message' \
+              --output table
             exit 1
           fi
 
-          health_url="${API_BASE_URL%/}/readyz/"
+      - name: Smoke check readiness and CORS
+        env:
+          SMOKE_API_BASE_URL: ${{ vars.BACKEND_SMOKE_URL || vars.VITE_API_BASE_URL || matrix.api_base_url }}
+        run: |
+          set -euo pipefail
+          health_url="${SMOKE_API_BASE_URL%/}/readyz/"
           headers_file="$(mktemp)"
-          headers_clean="$(mktemp)"
           body_file="$(mktemp)"
-
-          status_code="$(curl -sS -D "$headers_file" -o "$body_file" \
-            -H "Origin: $FRONTEND_URL" \
-            "$health_url" \
-            -w "%{http_code}")"
-
-          tr -d '\r' < "$headers_file" > "$headers_clean"
-
+          status_code="$(curl --show-error --silent \
+            --dump-header "$headers_file" \
+            --output "$body_file" \
+            --header "Origin: $FRONTEND_URL" \
+            --max-time 30 \
+            --write-out '%{http_code}' \
+            "$health_url")"
           if [ "$status_code" != "200" ]; then
-            echo "Readiness check failed with status $status_code"
-            echo "Response headers:"
-            cat "$headers_clean"
-            echo "Response body:"
+            echo "::error::Readiness check returned HTTP $status_code."
             cat "$body_file"
             exit 1
           fi
-
-          cors_origin="$(awk -F': ' 'tolower($1) == "access-control-allow-origin" {print $2; exit}' "$headers_clean")"
+          tr -d '\r' < "$headers_file" > "${headers_file}.clean"
+          cors_origin="$(awk -F': ' \
+            'tolower($1) == "access-control-allow-origin" {print $2; exit}' \
+            "${headers_file}.clean")"
           if [ "$cors_origin" != "$FRONTEND_URL" ]; then
-            echo "Expected Access-Control-Allow-Origin: $FRONTEND_URL"
-            echo "Actual Access-Control-Allow-Origin: ${cors_origin:-<missing>}"
-            echo "Response headers:"
-            cat "$headers_clean"
+            echo "::error::Expected Access-Control-Allow-Origin: $FRONTEND_URL; got ${cors_origin:-<missing>}."
             exit 1
           fi
-
-          python - <<'PY' "$body_file"
+          python - "$body_file" <<'PY'
           import json
           import sys
 
-          path = sys.argv[1]
-          with open(path, "r", encoding="utf-8") as f:
-              payload = json.load(f)
-
-          if payload.get("status") not in ("ok", "maintenance"):
-              raise SystemExit(f"Unexpected health payload: {payload}")
+          with open(sys.argv[1], encoding="utf-8") as response:
+              payload = json.load(response)
+          if payload.get("status") not in {"ok", "maintenance"}:
+              raise SystemExit(f"Unexpected readiness payload: {payload}")
           PY
-
-          echo "Readiness/CORS smoke check passed for $health_url"

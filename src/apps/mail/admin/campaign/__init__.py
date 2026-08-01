@@ -1,7 +1,5 @@
 """Email campaign admin package with patch-compatible service aliases."""
 
-import threading
-
 from apps.mail.services.audience import get_recipients
 from apps.mail.services.gmail_import import (
     GMAIL_FOLDER_DISPLAY,
@@ -33,5 +31,4 @@ __all__ = [
     "list_recent_sent_messages",
     "render_preview",
     "resolve_gmail_mailbox",
-    "threading",
 ]

@@ -2,6 +2,7 @@ import logging
 from datetime import timedelta
 
 from django.core.cache import cache
+from django.http import HttpResponseNotModified
 from django.utils import timezone
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny, BasePermission
@@ -10,11 +11,34 @@ from rest_framework.views import APIView
 
 from apps.cms.models import CMSPage
 from apps.cms.serializers.cms import CMSPageSerializer
+from apps.cms.services.embed_hosts import CACHE_TTL as EMBED_HOST_CACHE_TTL
+from apps.cms.services.embed_hosts import get_allowed_hosts_snapshot
 from apps.core.access import user_can_access_app
 
 logger = logging.getLogger(__name__)
 
 _LIVE_PREVIEW_TTL = 600  # 10 minutes
+
+
+class CMSEmbedHostsView(APIView):
+    """Publish the iframe allowlist used by browser-side sanitization."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    # noinspection PyMethodMayBeStatic
+    def get(self, request):
+        snapshot = get_allowed_hosts_snapshot()
+        etag = f'"{snapshot["revision"]}"'
+        if request.headers.get("If-None-Match") == etag:
+            response = HttpResponseNotModified()
+        else:
+            response = Response(snapshot)
+        response["ETag"] = etag
+        response["Cache-Control"] = (
+            f"public, max-age={EMBED_HOST_CACHE_TTL}, stale-while-revalidate={EMBED_HOST_CACHE_TTL}"
+        )
+        return response
 
 
 class HasCMSAppAccess(BasePermission):

@@ -1,10 +1,14 @@
 import uuid
-from unittest.mock import patch
+from datetime import timedelta
+from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
+from django.contrib.auth.hashers import make_password
+from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.authn.models import ContactPhone
+from apps.authn.models import ContactPhone, PhoneVerificationChallenge
+from apps.core.models import BackgroundJob
 from apps.event.models import EventRegistration, Question, Ticket
 from apps.event.tests.helpers import make_event, make_member
 
@@ -53,10 +57,51 @@ class EventRegistrationCreateViewTest(TestCase):
         response = self._post()
         self.assertEqual(response.status_code, 201)
 
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_registration_and_delivery_jobs_commit_together(self):
+        self.event.registration_sheet_id = "sheet-id"
+        self.event.save(update_fields=["registration_sheet_id", "updated_at"])
+
+        response = self._post()
+
+        self.assertEqual(response.status_code, 201)
+        registration = EventRegistration.objects.get(member=self.member, event=self.event)
+        self.assertSetEqual(
+            set(
+                BackgroundJob.objects.filter(
+                    payload__registration_id=str(registration.pk),
+                ).values_list("kind", flat=True)
+            )
+            | set(
+                BackgroundJob.objects.filter(
+                    kind="event.registration_sheet_sync",
+                    payload__event_id=str(self.event.pk),
+                ).values_list("kind", flat=True)
+            ),
+            {"event.registration_sheet_sync", "event.ticket_email"},
+        )
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_job_insert_failure_rolls_back_registration(self):
+        self.event.registration_sheet_id = "sheet-id"
+        self.event.save(update_fields=["registration_sheet_id", "updated_at"])
+        self.client.raise_request_exception = False
+
+        with patch(
+            "apps.core.services.background_jobs.enqueue_job",
+            side_effect=[(MagicMock(), True), RuntimeError("outbox unavailable")],
+        ):
+            response = self._post()
+
+        self.assertEqual(response.status_code, 500)
+        self.assertFalse(EventRegistration.objects.filter(member=self.member, event=self.event).exists())
+        self.assertFalse(BackgroundJob.objects.filter(kind__startswith="event.").exists())
+
     @patch("apps.event.services.ticket_mail.send_ticket_email", side_effect=Exception("SMTP error"))
     def test_ticket_email_failure_logs_stack_trace_and_still_registers(self, _mock_send):
         with patch("apps.event.views.registration.logger.warning") as warning:
-            response = self._post()
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self._post()
 
         self.assertEqual(response.status_code, 201)
         warning.assert_called_once_with("Failed to send initial ticket email", exc_info=True)
@@ -159,6 +204,42 @@ class EventRegistrationCreateViewTest(TestCase):
         response = self._post(data)
         self.assertEqual(response.status_code, 400)
         self.assertIn("attendee_last_name", response.data)
+
+    def test_registration_failure_rolls_back_phone_proof_consumption(self):
+        self.event.collect_phone = True
+        self.event.verify_phone = True
+        self.event.save(update_fields=["collect_phone", "verify_phone", "updated_at"])
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number="+15551234567",
+            purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+            member=self.member,
+            context_identifier=f"event-registration:{self.event.pk}",
+            code_hash=make_password("123456"),
+            status=PhoneVerificationChallenge.Status.VERIFIED,
+            verified_at=timezone.now(),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        self.client.raise_request_exception = False
+
+        with patch(
+            "apps.event.views.registration.create.sync_registration_to_account",
+            side_effect=RuntimeError("database follow-up failed"),
+        ):
+            response = self._post(
+                {
+                    "event_slug": self.event.slug,
+                    "ticket_id": str(self.ticket.pk),
+                    "attendee_first_name": "Jane",
+                    "attendee_last_name": "Doe",
+                    "attendee_phone": "5551234567",
+                    "phone_verification_challenge_id": str(challenge.pk),
+                }
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertFalse(EventRegistration.objects.filter(member=self.member, event=self.event).exists())
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.VERIFIED)
 
     def test_required_question_with_valid_answer_succeeds(self):
         q = Question.objects.create(event=self.event, text="Required Q", is_required=True)

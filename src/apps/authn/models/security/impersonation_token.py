@@ -54,6 +54,29 @@ class ImpersonationToken(ProjectControlModel):
         self.used_at = timezone.now()
         self.save(update_fields=["is_used", "used_at", "updated_at"])
 
+    def try_mark_used(self) -> bool:
+        """Atomically consume this token, returning whether this caller won."""
+
+        now = timezone.now()
+        updated = (
+            type(self)
+            .objects.filter(
+                pk=self.pk,
+                is_used=False,
+                expires_at__gt=now,
+            )
+            .update(
+                is_used=True,
+                used_at=now,
+                updated_at=now,
+            )
+        )
+        if updated:
+            self.is_used = True
+            self.used_at = now
+            return True
+        return False
+
     @staticmethod
     def generate_token():
         return secrets.token_urlsafe(48)

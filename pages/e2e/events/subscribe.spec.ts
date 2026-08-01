@@ -8,6 +8,7 @@ import {
   mockPastProjectSharesList,
   mockPhoneAuthFlow,
   mockProfileEndpoint,
+  mintFakeJwt,
   profileResponse,
   seedAuthenticatedSession,
 } from '../helpers';
@@ -19,7 +20,7 @@ test('newsletter email-code flow completes profile and manages subscription', {t
   const {requestPayloads, verifyPayloads} = await mockEmailAuthFlow(page, {
     verifyResponse: {
       message: 'Login successful.',
-      access: 'access-token',
+      access: mintFakeJwt(),
       refresh: 'refresh-token',
       user: {member_uuid: profileRef.current.member_uuid, email},
       next_step: 'complete_profile',
@@ -85,9 +86,11 @@ test('newsletter email-code flow completes profile and manages subscription', {t
   await page.getByRole('button', {name: 'Continue'}).click();
 
   await expect(page.getByText('Manage your email and text message subscription preferences below.')).toBeVisible();
-  await expect(page.getByText(email)).toBeVisible();
-  await expect(page.getByText('secondary@example.com')).toBeVisible();
-  await expect(page.getByText('(415)555-0132')).toBeVisible();
+  const emailPreferences = page.getByRole('region', {name: 'Email Newsletters'});
+  const textMessagePreferences = page.getByRole('region', {name: 'Text Messages'});
+  await expect(emailPreferences.getByText(email, {exact: true})).toBeVisible();
+  await expect(emailPreferences.getByText('secondary@example.com', {exact: true})).toBeVisible();
+  await expect(textMessagePreferences.getByText('(415)555-0132', {exact: true})).toBeVisible();
   expect(patchPayloads[0]).toEqual({
     first_name: 'Ada',
     middle_name: '',

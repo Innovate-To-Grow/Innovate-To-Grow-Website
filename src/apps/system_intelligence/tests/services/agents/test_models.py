@@ -59,3 +59,14 @@ class SystemIntelligenceProjectControlModelTests(TestCase):
 
         self.assertIsNone(config.pk)
         self.assertTrue(config._state.adding)
+        self.assertFalse(config.is_configured)
+        self.assertEqual(config.default_model_id, "")
+
+    def test_system_intelligence_config_load_ignores_inactive_row(self):
+        SystemIntelligenceConfig.objects.create(name="Stale", is_active=False)
+
+        config = SystemIntelligenceConfig.load()
+
+        self.assertIsNone(config.pk)
+        self.assertTrue(config._state.adding)
+        self.assertFalse(config.is_configured)

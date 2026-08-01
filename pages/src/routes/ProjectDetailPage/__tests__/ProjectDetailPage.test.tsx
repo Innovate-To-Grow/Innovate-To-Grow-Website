@@ -1,6 +1,6 @@
-import {cleanup, render, screen} from '@testing-library/react';
+import {act, cleanup, render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {MemoryRouter, Route, Routes} from 'react-router';
+import {createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes} from 'react-router';
 
 import {ProjectDetailPage} from '../ProjectDetailPage';
 import {fetchProjectDetail} from '@/features/projects/api';
@@ -48,7 +48,10 @@ describe('ProjectDetailPage', () => {
     expect(await screen.findByRole('heading', {name: 'Rotary Joint Testing System'})).toBeInTheDocument();
     const backLink = screen.getByRole('link', {name: /back to past projects/i});
     expect(backLink.getAttribute('href')).toBe('/past-projects');
-    expect(fetchProjectDetail).toHaveBeenCalledWith(projectDetail.id);
+    expect(fetchProjectDetail).toHaveBeenCalledWith(
+      projectDetail.id,
+      expect.any(AbortSignal),
+    );
   });
 
   it('keeps the current-projects back link on the legacy project route', async () => {
@@ -96,5 +99,53 @@ describe('ProjectDetailPage', () => {
     expect(await screen.findByText('Unable to load this project.')).toBeInTheDocument();
     const backLink = screen.getByRole('link', {name: /back to projects/i});
     expect(backLink.getAttribute('href')).toBe('/current-projects');
+  });
+
+  it('aborts and ignores a stale detail response after route navigation', async () => {
+    let resolveFirst!: (value: typeof projectDetail) => void;
+    let resolveSecond!: (value: typeof projectDetail) => void;
+    const first = new Promise<typeof projectDetail>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const second = new Promise<typeof projectDetail>((resolve) => {
+      resolveSecond = resolve;
+    });
+    vi.mocked(fetchProjectDetail).mockImplementation((id) =>
+      id === 'project-a' ? first : second,
+    );
+    const router = createMemoryRouter(
+      [{path: '/projects/:id', element: <ProjectDetailPage />}],
+      {initialEntries: ['/projects/project-a']},
+    );
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() =>
+      expect(fetchProjectDetail).toHaveBeenCalledWith(
+        'project-a',
+        expect.any(AbortSignal),
+      ),
+    );
+    const firstSignal = vi.mocked(fetchProjectDetail).mock.calls[0][1];
+
+    await act(async () => {
+      await router.navigate('/projects/project-b');
+    });
+    resolveSecond({...projectDetail, project_title: 'Project B'});
+    expect(
+      await screen.findByRole('heading', {name: 'Project B'}),
+    ).toBeInTheDocument();
+
+    resolveFirst({...projectDetail, project_title: 'Project A'});
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(firstSignal?.aborted).toBe(true);
+    expect(
+      screen.getByRole('heading', {name: 'Project B'}),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', {name: 'Project A'}),
+    ).toBeNull();
   });
 });

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import uuid
 
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from apps.authn.constants import VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
@@ -18,12 +20,11 @@ from apps.authn.services import (
     delete_member_account,
     get_member_auth_emails,
     issue_email_challenge,
-    mark_challenge_verified,
     normalize_email,
     request_sms_password_code,
     resolve_login_identifier,
     select_recovery_channel,
-    verify_email_code,
+    verify_email_code_and_mint_token,
     verify_sms_password_code_and_mint,
 )
 
@@ -49,6 +50,10 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.CharField(required=False, allow_blank=True)
 
     def save(self):
+        # Always return an opaque ID so response shape cannot reveal whether the
+        # identifier resolved. For an eligible SMS account it is replaced with
+        # the durable challenge ID; email/unknown identifiers receive a decoy.
+        challenge_id = str(uuid.uuid4())
         resolved = resolve_login_identifier(_identifier_value(self.validated_data), require_active=True)
         if resolved is not None:
             if resolved.via == "email":
@@ -59,13 +64,22 @@ class PasswordResetRequestSerializer(serializers.Serializer):
                 )
             else:
                 try:
-                    request_sms_password_code(e164=resolved.e164)
+                    issued_challenge_id = request_sms_password_code(
+                        member=resolved.member,
+                        e164=resolved.e164,
+                        purpose=PURPOSE.PASSWORD_RESET,
+                    )
+                    if issued_challenge_id:
+                        challenge_id = issued_challenge_id
                 except PhoneVerificationError:
                     # Stay enumeration-safe on this public endpoint: never surface
                     # per-number SMS send state. The generic response is returned
                     # regardless; the per-number send cap is the backstop.
                     logger.warning("Password-reset SMS send failed", exc_info=True)
-        return {"message": "If an eligible account exists, a verification code has been sent."}
+        return {
+            "message": "If an eligible account exists, a verification code has been sent.",
+            "challenge_id": challenge_id,
+        }
 
 
 class PasswordResetVerifySerializer(serializers.Serializer):
@@ -74,6 +88,7 @@ class PasswordResetVerifySerializer(serializers.Serializer):
     identifier = serializers.CharField(required=False, allow_blank=True)
     email = serializers.CharField(required=False, allow_blank=True)
     code = serializers.CharField(required=True, min_length=6, max_length=6)
+    challenge_id = serializers.UUIDField(required=False)
 
     def validate(self, attrs: dict) -> dict:
         resolved = resolve_login_identifier(_identifier_value(attrs), require_active=True)
@@ -82,16 +97,22 @@ class PasswordResetVerifySerializer(serializers.Serializer):
 
         if resolved.via == "email":
             try:
-                challenge = verify_email_code(
-                    purpose=PURPOSE.PASSWORD_RESET, target_email=resolved.email, code=attrs["code"]
+                _, attrs["verification_token"] = verify_email_code_and_mint_token(
+                    purpose=PURPOSE.PASSWORD_RESET,
+                    target_email=resolved.email,
+                    code=attrs["code"],
+                    member=resolved.member,
                 )
             except AuthChallengeInvalid as exc:
                 raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
-            attrs["verification_token"] = mark_challenge_verified(challenge)
         else:
             try:
                 attrs["verification_token"] = verify_sms_password_code_and_mint(
-                    member=resolved.member, purpose=PURPOSE.PASSWORD_RESET, e164=resolved.e164, code=attrs["code"]
+                    member=resolved.member,
+                    purpose=PURPOSE.PASSWORD_RESET,
+                    e164=resolved.e164,
+                    code=attrs["code"],
+                    challenge_id=attrs.get("challenge_id"),
                 )
             except (PhoneVerificationInvalid, PhoneVerificationThrottled) as exc:
                 raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
@@ -121,16 +142,19 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         return attrs
 
     def save(self):
+        new_password = self.validated_data["decrypted_new_password"]
+        resolved_member = self.validated_data["resolved_member"]
+        validate_password(new_password, user=resolved_member)
         try:
             challenge = consume_verification_token(
                 purpose=PURPOSE.PASSWORD_RESET,
                 verification_token=self.validated_data["verification_token"],
-                member=self.validated_data["resolved_member"],
+                member=resolved_member,
             )
         except AuthChallengeInvalid as exc:
             raise serializers.ValidationError({"detail": VERIFICATION_CONFIRM_INVALID}) from exc
         member = challenge.member
-        member.set_password(self.validated_data["decrypted_new_password"])
+        member.set_password(new_password)
         member.save(update_fields=["password"])
         return {"message": "Password reset successfully."}
 
@@ -167,18 +191,19 @@ class ChangePasswordCodeRequestSerializer(serializers.Serializer):
                 target_email=selected.target_email,
             )
         else:
-            try:
-                request_sms_password_code(e164=selected.e164)
-            except PhoneVerificationError:
-                # Stay user-friendly: never surface per-number SMS send state.
-                # The generic message is returned regardless; the per-number send
-                # cap is the backstop.
-                logger.warning("Password-change SMS send failed for member %s", member.id, exc_info=True)
-        return {
+            challenge_id = request_sms_password_code(
+                member=member,
+                e164=selected.e164,
+                purpose=PURPOSE.PASSWORD_CHANGE,
+            )
+        payload = {
             "message": "Verification code sent.",
             "channel": selected.channel,
             "destination": selected.masked_destination,
         }
+        if selected.channel == "sms":
+            payload["challenge_id"] = challenge_id
+        return payload
 
 
 class ChangePasswordCodeVerifySerializer(serializers.Serializer):
@@ -192,6 +217,7 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, allow_blank=True)
     code = serializers.CharField(required=True, min_length=6, max_length=6)
     channel = serializers.ChoiceField(choices=["email", "sms"], required=False)
+    challenge_id = serializers.UUIDField(required=False)
 
     def validate(self, attrs: dict) -> dict:
         member = self.context["request"].user
@@ -209,16 +235,14 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
 
         if selected.channel == "email":
             try:
-                challenge = verify_email_code(
+                _, attrs["verification_token"] = verify_email_code_and_mint_token(
                     purpose=PURPOSE.PASSWORD_CHANGE,
                     target_email=selected.target_email,
                     code=attrs["code"],
+                    member=member,
                 )
             except AuthChallengeInvalid as exc:
                 raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
-            if challenge.member != member:
-                raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
-            attrs["verification_token"] = mark_challenge_verified(challenge)
         else:
             try:
                 attrs["verification_token"] = verify_sms_password_code_and_mint(
@@ -226,6 +250,7 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
                     purpose=PURPOSE.PASSWORD_CHANGE,
                     e164=selected.e164,
                     code=attrs["code"],
+                    challenge_id=attrs.get("challenge_id"),
                 )
             except (PhoneVerificationInvalid, PhoneVerificationThrottled) as exc:
                 raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
@@ -253,12 +278,14 @@ class ChangePasswordCodeConfirmSerializer(serializers.Serializer):
 
     def save(self):
         member = self.context["request"].user
+        new_password = self.validated_data["decrypted_new_password"]
+        validate_password(new_password, user=member)
         consume_verification_token(
             purpose=PURPOSE.PASSWORD_CHANGE,
             verification_token=self.validated_data["verification_token"],
             member=member,
         )
-        member.set_password(self.validated_data["decrypted_new_password"])
+        member.set_password(new_password)
         member.save(update_fields=["password"])
         return {"message": "Password changed successfully."}
 
@@ -295,10 +322,11 @@ class DeleteAccountCodeVerifySerializer(serializers.Serializer):
             )
 
         try:
-            challenge = verify_email_code(
+            challenge, verification_token = verify_email_code_and_mint_token(
                 purpose=PURPOSE.ACCOUNT_DELETE,
                 target_email=email,
                 code=attrs["code"],
+                member=member,
             )
         except AuthChallengeInvalid as exc:
             raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
@@ -307,13 +335,13 @@ class DeleteAccountCodeVerifySerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
 
         attrs["challenge"] = challenge
+        attrs["verification_token"] = verification_token
         return attrs
 
     def save(self):
-        challenge = self.validated_data["challenge"]
         return {
             "message": "Deletion verification code accepted.",
-            "verification_token": mark_challenge_verified(challenge),
+            "verification_token": self.validated_data["verification_token"],
         }
 
 

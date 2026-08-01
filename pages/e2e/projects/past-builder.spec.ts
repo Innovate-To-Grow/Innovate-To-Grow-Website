@@ -77,7 +77,7 @@ test('create share with name and note', async ({page}) => {
 test('shared links page lists user shares', async ({page}) => {
   await seedAuthenticatedSession(page);
   await mockPastProjectSharesList(page, [
-    {id: 'share-1', name: 'Curated List', note: '<p>Notes</p>', share_url: '/past-projects/share-1', row_count: 3, created_at: '2026-07-01T00:00:00Z'},
+    {id: 'share-1', name: 'Curated List', note: '<p>Notes</p>', version: 1, share_url: '/past-projects/share-1', row_count: 3, created_at: '2026-07-01T00:00:00Z'},
   ]);
   await page.goto('/account/past-project-curation-shared-links', {waitUntil: 'domcontentloaded'});
   await expect(page.locator('.account-shared-links-page')).toContainText('Curated List');

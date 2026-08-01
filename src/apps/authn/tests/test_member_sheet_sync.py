@@ -1,8 +1,12 @@
 """Tests for member-to-Google-Sheet sync service."""
 
+import importlib
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase, TransactionTestCase
+from django.apps import apps
+from django.test import TestCase, TransactionTestCase, override_settings
+from django.utils import timezone
 
 from apps.authn.models import ContactEmail, ContactPhone, Member, MemberSheetSyncConfig, MemberSheetSyncLog
 from apps.authn.services.member_sheet_sync import (
@@ -10,10 +14,9 @@ from apps.authn.services.member_sheet_sync import (
     _build_header,
     _build_row,
     _safe,
-    _sync_in_progress,
-    _sync_pending,
     sync_members_to_sheet,
 )
+from apps.core.models import BackgroundJob
 
 
 def _create_member(first="Alice", middle="", last="Smith", org="Acme", title="Dev", active=True):
@@ -196,27 +199,43 @@ class ScheduleMemberSyncTests(TestCase):
 
         schedule_member_sync()  # should not raise
 
-    @patch("apps.authn.services.member_sheet_sync.threading.Timer")
-    def test_noop_when_auto_sync_disabled(self, mock_timer_cls):
+        self.assertFalse(BackgroundJob.objects.exists())
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_noop_when_auto_sync_disabled(self):
         _enable_config(auto_sync=False)
 
         from apps.authn.services.member_sheet_sync import schedule_member_sync
 
         schedule_member_sync()
-        mock_timer_cls.assert_not_called()
 
-    @patch("apps.authn.services.member_sheet_sync.threading.Timer")
-    def test_starts_timer_when_configured(self, mock_timer_cls):
+        self.assertFalse(BackgroundJob.objects.exists())
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_enqueues_durable_job_when_configured(self):
         _enable_config()
-        mock_timer = MagicMock()
-        mock_timer_cls.return_value = mock_timer
 
         from apps.authn.services.member_sheet_sync import schedule_member_sync
 
         schedule_member_sync()
 
-        mock_timer_cls.assert_called_once()
-        mock_timer.start.assert_called_once()
+        self.assertTrue(
+            BackgroundJob.objects.filter(
+                kind="authn.member_sheet_sync",
+                status=BackgroundJob.Status.PENDING,
+            ).exists()
+        )
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=False)
+    @patch("apps.authn.services.member_sheet_sync.scheduler._flush_pending_sync")
+    def test_rollout_fallback_runs_synchronously(self, flush):
+        _enable_config()
+
+        from apps.authn.services.member_sheet_sync import schedule_member_sync
+
+        schedule_member_sync()
+
+        flush.assert_called_once_with()
 
 
 class FormulaInjectionTests(TestCase):
@@ -244,6 +263,18 @@ class FormulaInjectionTests(TestCase):
 
 
 class SingletonEnforcementTests(TestCase):
+    def test_load_does_not_fall_back_to_disabled_config(self):
+        stale = MemberSheetSyncConfig.objects.create(
+            is_enabled=False,
+            google_sheet_id="stale-sheet",
+        )
+
+        loaded = MemberSheetSyncConfig.load()
+
+        self.assertNotEqual(loaded.pk, stale.pk)
+        self.assertTrue(loaded._state.adding)
+        self.assertFalse(loaded.is_configured)
+
     def test_saving_enabled_config_disables_others(self):
         first = MemberSheetSyncConfig.objects.create(is_enabled=True, google_sheet_id="sheet-a")
         second = MemberSheetSyncConfig.objects.create(is_enabled=True, google_sheet_id="sheet-b")
@@ -257,56 +288,44 @@ class SingletonEnforcementTests(TestCase):
         enabled.refresh_from_db()
         self.assertTrue(enabled.is_enabled)
 
+    def test_migration_promotes_legacy_latest_fallback(self):
+        older = MemberSheetSyncConfig.objects.create(is_enabled=False, google_sheet_id="sheet-a")
+        newer = MemberSheetSyncConfig.objects.create(is_enabled=False, google_sheet_id="sheet-b")
+        now = timezone.now()
+        MemberSheetSyncConfig.objects.filter(pk=older.pk).update(updated_at=now - timedelta(days=1))
+        MemberSheetSyncConfig.objects.filter(pk=newer.pk).update(updated_at=now)
+        normalize = importlib.import_module("apps.authn.migrations.0017_auth_security_invariants").normalize_singletons
 
-class InFlightGuardTests(TestCase):
+        normalize(apps, None)
+
+        older.refresh_from_db()
+        newer.refresh_from_db()
+        self.assertFalse(older.is_enabled)
+        self.assertTrue(newer.is_enabled)
+
+
+@override_settings(BACKGROUND_JOBS_ENABLED=True)
+class DurableFollowUpTests(TestCase):
     def setUp(self):
         _enable_config()
-        _create_member()
 
-    def tearDown(self):
-        _sync_in_progress.clear()
-        _sync_pending.clear()
+    def test_change_during_processing_creates_follow_up_job(self):
+        from apps.authn.services.member_sheet_sync import schedule_member_sync
 
-    @patch("apps.authn.services.member_sheet_sync._get_worksheet")
-    @patch("apps.authn.services.member_sheet_sync.GoogleCredentialConfig")
-    def test_queues_follow_up_when_already_in_flight(self, mock_cred_cls, mock_get_ws):
-        mock_cred = MagicMock()
-        mock_cred.is_configured = True
-        mock_cred_cls.load.return_value = mock_cred
+        schedule_member_sync()
+        first = BackgroundJob.objects.get()
+        BackgroundJob.objects.filter(pk=first.pk).update(
+            status=BackgroundJob.Status.PROCESSING,
+            claim_token=BackgroundJob.new_claim_token(),
+        )
 
-        _sync_in_progress.set()
-        try:
-            result = sync_members_to_sheet(sync_type="full")
-        finally:
-            _sync_in_progress.clear()
+        schedule_member_sync()
 
-        self.assertEqual(result, 0)
-        self.assertTrue(_sync_pending.is_set())
-        mock_get_ws.assert_not_called()
-
-    @patch("apps.authn.services.member_sheet_sync.threading.Timer")
-    @patch("apps.authn.services.member_sheet_sync._get_worksheet")
-    @patch("apps.authn.services.member_sheet_sync.GoogleCredentialConfig")
-    def test_pending_sync_schedules_follow_up_after_active_write_finishes(
-        self, mock_cred_cls, mock_get_ws, mock_timer_cls
-    ):
-        mock_cred = MagicMock()
-        mock_cred.is_configured = True
-        mock_cred_cls.load.return_value = mock_cred
-        mock_ws = MagicMock()
-        mock_get_ws.return_value = mock_ws
-        mock_timer = MagicMock()
-        mock_timer_cls.return_value = mock_timer
-        _sync_pending.set()
-
-        result = sync_members_to_sheet(sync_type="full")
-
-        self.assertEqual(result, 1)
-        self.assertFalse(_sync_pending.is_set())
-        self.assertFalse(_sync_in_progress.is_set())
-        mock_timer_cls.assert_called_once()
-        self.assertEqual(mock_timer_cls.call_args.args[0], 0)
-        mock_timer.start.assert_called_once()
+        self.assertEqual(BackgroundJob.objects.count(), 2)
+        self.assertEqual(
+            BackgroundJob.objects.filter(status=BackgroundJob.Status.PENDING).count(),
+            1,
+        )
 
 
 class SignalSchedulingTests(TransactionTestCase):

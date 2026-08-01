@@ -173,4 +173,5 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
 
 
 def _password_rate_key(request):
-    return f"{_RATE_LIMIT_PREFIX}{request.META.get('REMOTE_ADDR', 'unknown')}"
+    client_address = request.META.get("REMOTE_ADDR", "unknown")
+    return "".join((_RATE_LIMIT_PREFIX, client_address))

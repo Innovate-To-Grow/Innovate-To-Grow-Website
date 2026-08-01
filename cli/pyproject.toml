@@ -8,7 +8,11 @@ version = "0.2.0"
 description = "Terminal CLI for remote record management of the Innovate-To-Grow backend via OAuth2 + PKCE."
 requires-python = ">=3.11"
 dependencies = [
-    "typer>=0.12",
+    # Keep Click explicit because Typer also supports programmatic use without
+    # its CLI dependency. This tested pair preserves global
+    # --profile/--output/--query handling and includes Click's 2026 security fix.
+    "click==8.3.3",
+    "typer==0.18.0",
     "requests>=2.31",
     "rich>=13",
     "pyyaml>=6",

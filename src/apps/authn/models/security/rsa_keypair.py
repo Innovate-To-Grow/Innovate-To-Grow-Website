@@ -3,7 +3,7 @@ import uuid
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from apps.core.models import ProjectControlModel
@@ -103,28 +103,55 @@ class RSAKeypair(ProjectControlModel):
         verbose_name = "RSA Keypair"
         verbose_name_plural = "RSA Keypairs"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name"],
+                condition=models.Q(is_active=True),
+                name="authn_one_active_rsa_name",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.key_id})"
 
-    def rotate(self, public_key_pem: str, private_key_pem: str):
+    @transaction.atomic
+    def rotate(
+        self,
+        public_key_pem: str | None = None,
+        private_key_pem: str | None = None,
+    ):
+        """Retire this key and return a newly created active key row.
+
+        Rotation must never overwrite the private key identified by ``key_id``:
+        clients may still submit ciphertext produced with that identifier during
+        the decryption-retention window.
         """
-        Replace keys and timestamp the rotation.
-        """
-        self.public_key_pem = public_key_pem
-        self.private_key_pem = private_key_pem
-        self.rotated_at = timezone.now()
-        self.save(
-            update_fields=[
-                "public_key_pem",
-                "private_key_pem",
-                "rotated_at",
-            ]
+        current = type(self).objects.select_for_update().get(pk=self.pk)
+        if not current.is_active:
+            raise ValueError("Only an active RSA keypair can be rotated.")
+
+        if not public_key_pem or not private_key_pem:
+            public_key_pem, private_key_pem = type(self).generate_keypair()
+
+        retired_at = timezone.now()
+        current.is_active = False
+        current.rotated_at = retired_at
+        current.save(update_fields=["is_active", "rotated_at", "updated_at"])
+
+        replacement = type(self).objects.create(
+            name=current.name,
+            public_key_pem=public_key_pem,
+            private_key_pem=private_key_pem,
+            is_active=True,
         )
+        self.is_active = False
+        self.rotated_at = retired_at
+        return replacement
 
     def deactivate(self):
         """
         Mark this keypair as inactive without deleting it.
         """
         self.is_active = False
-        self.save(update_fields=["is_active"])
+        self.rotated_at = timezone.now()
+        self.save(update_fields=["is_active", "rotated_at", "updated_at"])

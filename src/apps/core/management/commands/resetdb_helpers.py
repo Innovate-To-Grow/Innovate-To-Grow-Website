@@ -50,7 +50,8 @@ def reset_mysql(connection):
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         cursor.execute("SHOW TABLES;")
         for (table,) in cursor.fetchall():
-            cursor.execute(f"DROP TABLE IF EXISTS `{table}` CASCADE;")
+            quoted_table = connection.ops.quote_name(table)
+            cursor.execute(f"DROP TABLE IF EXISTS {quoted_table} CASCADE;")
         cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
 
 
@@ -79,7 +80,8 @@ def drop_sqlite_tables(connection):
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         for (table,) in cursor.fetchall():
             if table != "sqlite_sequence":
-                cursor.execute(f'DROP TABLE IF EXISTS "{table}";')
+                quoted_table = connection.ops.quote_name(table)
+                cursor.execute(f"DROP TABLE IF EXISTS {quoted_table};")
         cursor.execute("PRAGMA foreign_keys = ON;")
 
 

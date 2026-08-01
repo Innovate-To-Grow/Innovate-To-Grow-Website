@@ -2,11 +2,15 @@
 
 from unittest.mock import MagicMock, patch
 
+from botocore.exceptions import ClientError, EndpointConnectionError
 from django.test import TestCase, override_settings
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.core.services.aws.credentials import AwsCredentialsError
 from apps.mail.services.send_campaign.transport import (
+    SES_OUTCOME_PERMANENT,
+    SES_OUTCOME_TRANSIENT,
+    SES_OUTCOME_UNCERTAIN,
     SesSendResult,
     _build_raw_ses_message,
     _build_unsubscribe_headers,
@@ -43,6 +47,10 @@ class GetSesClientTests(TestCase):
         self.assertIsNotNone(result)
         mock_client.assert_called_once()
         self.assertEqual(mock_client.call_args.args[0], "ses")
+        self.assertEqual(
+            mock_client.call_args.kwargs["config"].retries["total_max_attempts"],
+            1,
+        )
 
     def _active_aws(self):
         AWSCredentialConfig.objects.all().delete()
@@ -151,8 +159,59 @@ class SendViaSesTests(TestCase):
             html_body="<p>Hi</p>",
         )
 
-        self.assertEqual(result.error, "SES down")
+        self.assertEqual(result.outcome, SES_OUTCOME_UNCERTAIN)
+        self.assertIn("could not be confirmed", result.error)
         self.assertEqual(result.message_id, "")
+
+    def test_throttle_response_is_definitive_transient(self):
+        client = MagicMock()
+        client.send_raw_email.side_effect = ClientError(
+            {"Error": {"Code": "ThrottlingException", "Message": "slow down"}},
+            "SendRawEmail",
+        )
+
+        result = _send_via_ses(
+            ses_client=client,
+            source="from@example.com",
+            recipient="to@example.com",
+            subject="Hi",
+            html_body="<p>Hi</p>",
+        )
+
+        self.assertEqual(result.outcome, SES_OUTCOME_TRANSIENT)
+
+    def test_access_denied_response_is_definitive_permanent(self):
+        client = MagicMock()
+        client.send_raw_email.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "denied"}},
+            "SendRawEmail",
+        )
+
+        result = _send_via_ses(
+            ses_client=client,
+            source="from@example.com",
+            recipient="to@example.com",
+            subject="Hi",
+            html_body="<p>Hi</p>",
+        )
+
+        self.assertEqual(result.outcome, SES_OUTCOME_PERMANENT)
+
+    def test_endpoint_connection_failure_is_safe_to_retry(self):
+        client = MagicMock()
+        client.send_raw_email.side_effect = EndpointConnectionError(
+            endpoint_url="https://email.us-west-2.amazonaws.com"
+        )
+
+        result = _send_via_ses(
+            ses_client=client,
+            source="from@example.com",
+            recipient="to@example.com",
+            subject="Hi",
+            html_body="<p>Hi</p>",
+        )
+
+        self.assertEqual(result.outcome, SES_OUTCOME_TRANSIENT)
 
     def test_send_via_ses_omits_configuration_set_when_empty(self):
         client = MagicMock()
@@ -175,3 +234,4 @@ class SesSendResultTests(TestCase):
         self.assertEqual(result.provider, "ses")
         self.assertEqual(result.message_id, "")
         self.assertEqual(result.error, "")
+        self.assertEqual(result.outcome, "success")

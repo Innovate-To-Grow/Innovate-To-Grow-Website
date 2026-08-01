@@ -71,6 +71,9 @@ class ApiClient:
         self.max_attempts = max(1, max_attempts)
         self.retry_statuses = tuple(retry_statuses)
         self.session = requests.Session()
+        # Bearer-token traffic must not silently inherit proxy or custom CA
+        # settings from an untrusted process environment.
+        self.session.trust_env = False
         self.session.headers["Authorization"] = f"Bearer {token}"
 
     def _backoff_delay(self, attempt):

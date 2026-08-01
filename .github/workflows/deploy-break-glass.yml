@@ -1,0 +1,165 @@
+name: Break-glass Production Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Production component to redeploy.
+        required: true
+        type: choice
+        options:
+          - backend
+          - frontend
+          - archive
+      deploy_sha:
+        description: Full tested commit SHA to deploy.
+        required: true
+        type: string
+      reason:
+        description: Incident/change reason (at least 20 characters).
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: deploy-break-glass-production
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Authorize tested production rollback/redeploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Configure required reviewers on this environment in GitHub. This
+    # environment is intentionally separate from each normal deploy target.
+    environment:
+      name: Production Break Glass
+    outputs:
+      ci_run_id: ${{ steps.verify.outputs.ci-run-id }}
+      component: ${{ inputs.component }}
+      deploy_sha: ${{ steps.verify.outputs.deploy-sha }}
+    steps:
+      - name: Validate operator input
+        env:
+          DEPLOY_SHA: ${{ inputs.deploy_sha }}
+          DEPLOY_REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$DEPLOY_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::deploy_sha must be a full lowercase 40-character commit SHA."
+            exit 1
+          fi
+          python - <<'PY'
+          import os
+
+          reason = os.environ["DEPLOY_REASON"].strip()
+          if len(reason) < 20:
+              raise SystemExit("Break-glass reason must contain at least 20 characters.")
+          PY
+
+      - name: Checkout the requested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.deploy_sha }}
+          fetch-depth: 0
+
+      - name: Verify main ancestry and successful CI
+        id: verify
+        env:
+          DEPLOY_SHA: ${{ inputs.deploy_sha }}
+          DEPLOY_REASON: ${{ inputs.reason }}
+          DEPLOY_COMPONENT: ${{ inputs.component }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git cat-file -e "${DEPLOY_SHA}^{commit}"
+          if ! git merge-base --is-ancestor "$DEPLOY_SHA" origin/main; then
+            echo "::error::$DEPLOY_SHA is not an ancestor of origin/main."
+            exit 1
+          fi
+
+          ci_run_id="$(
+            gh api --method GET \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+              -f head_sha="$DEPLOY_SHA" \
+              -f status=completed \
+              -f per_page=100 \
+              --jq \
+              '[.workflow_runs[] | select(.conclusion == "success" and .event == "push" and .head_branch == "main")] | sort_by(.run_number) | last | .id // empty'
+          )"
+          if ! printf '%s' "$ci_run_id" | grep -Eq '^[1-9][0-9]*$'; then
+            echo "::error::No successful main-branch CI run exists for $DEPLOY_SHA."
+            exit 1
+          fi
+
+          echo "deploy-sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+          echo "ci-run-id=$ci_run_id" >> "$GITHUB_OUTPUT"
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import html
+          import os
+
+          print("## Authorized break-glass deploy")
+          print()
+          print(f"- Component: `{html.escape(os.environ['DEPLOY_COMPONENT'])}`")
+          print(f"- Commit: `{html.escape(os.environ['DEPLOY_SHA'])}`")
+          print(f"- Operator: `{html.escape(os.environ['GITHUB_ACTOR'])}`")
+          print(f"- Reason: {html.escape(os.environ['DEPLOY_REASON'].strip())}")
+          PY
+
+  deploy-backend:
+    name: Break-glass backend deploy
+    needs: authorize
+    if: ${{ needs.authorize.outputs.component == 'backend' }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-backend.yml
+    with:
+      deploy_sha: ${{ needs.authorize.outputs.deploy_sha }}
+      ci_run_id: ${{ needs.authorize.outputs.ci_run_id }}
+    secrets:
+      DB_PASSWORD_SECRET_ARN: ${{ secrets.DB_PASSWORD_SECRET_ARN }}
+      DJANGO_SECRET_KEY_SECRET_ARN: ${{ secrets.DJANGO_SECRET_KEY_SECRET_ARN }}
+      DJANGO_SUPERUSER_EMAIL: ${{ secrets.DJANGO_SUPERUSER_EMAIL }}
+      DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ secrets.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
+      DJANGO_SUPERUSER_USERNAME: ${{ secrets.DJANGO_SUPERUSER_USERNAME }}
+      ECS_EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+      ECS_TASK_ROLE_ARN: ${{ secrets.ECS_TASK_ROLE_ARN }}
+      REDIS_URL_SECRET_ARN: ${{ secrets.REDIS_URL_SECRET_ARN }}
+
+  deploy-frontend:
+    name: Break-glass frontend deploy
+    needs: authorize
+    if: ${{ needs.authorize.outputs.component == 'frontend' }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      deploy_sha: ${{ needs.authorize.outputs.deploy_sha }}
+      ci_run_id: ${{ needs.authorize.outputs.ci_run_id }}
+    secrets:
+      AMPLIFY_APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
+
+  deploy-archive:
+    name: Break-glass archive deploy
+    needs: authorize
+    if: ${{ needs.authorize.outputs.component == 'archive' }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-archive.yml
+    with:
+      deploy_sha: ${{ needs.authorize.outputs.deploy_sha }}
+      ci_run_id: ${{ needs.authorize.outputs.ci_run_id }}
+    secrets:
+      ECS_EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+      ECS_TASK_ROLE_ARN: ${{ secrets.ECS_TASK_ROLE_ARN }}
+      SHEETS_API_KEY_SECRET_ARN: ${{ secrets.SHEETS_API_KEY_SECRET_ARN }}

@@ -6,7 +6,7 @@ Maintenance tasks, data management, and operational guidance for administrators.
 
 ### Enabling
 
-The `SiteMaintenanceControl` model (`src/apps/core/models/web.py`) controls maintenance mode:
+The `SiteMaintenanceControl` model (`src/apps/core/models/base/web.py`) controls maintenance mode:
 
 1. In Django admin → Site Settings → Site Maintenance Control
 2. Set `is_maintenance = True`
@@ -56,7 +56,7 @@ After the new revision is fully deployed and every old task has drained, add a f
 cd src && python manage.py seed_service_configs
 ```
 
-Creates an empty active `EmailServiceConfig` row for backend defaults. AWS credentials, region, SNS origination number, and SMS OTP template are entered through the AWS Credentials admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
+Creates an empty active `EmailServiceConfig` row for backend defaults. AWS credentials, region, End User Messaging origination number, and SMS OTP template are entered through the AWS Credentials admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
 
 ### Verifying configs before deploy
 
@@ -64,20 +64,168 @@ Creates an empty active `EmailServiceConfig` row for backend defaults. AWS crede
 cd src && python manage.py verify_service_configs --strict
 ```
 
-Confirms an active `EmailServiceConfig` is configured (SES or SMTP). Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
+Confirms an active `EmailServiceConfig` and AWS credentials are configured for SES. Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
 
 ### Managing via admin
 
-Singleton configuration models in Django admin → Site Settings:
+Configuration models are available in Django admin:
 
-| Model | Purpose | Key action |
-|-------|---------|-----------|
-| `AWSCredentialConfig` | Shared AWS IAM key, shared AWS region, SNS origination number, SMS OTP template — drives SES, SNS, Bedrock | Set active config |
-| `EmailServiceConfig` | Hidden backend defaults for sender identity, campaign send rate, SMTP fallback | Managed by seed/defaults |
-| `GoogleCredentialConfig` | Google service account JSON | Paste credentials JSON |
-| `SiteMaintenanceControl` | Maintenance mode toggle | Enable/disable |
+| Model | Admin area | Purpose |
+|-------|------------|---------|
+| `AWSCredentialConfig` | Site Settings | Shared AWS IAM key, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
+| `EmailServiceConfig` | Site Settings | Sender identity and campaign send rate |
+| `GoogleCredentialConfig` | Site Settings | Google service-account JSON |
+| `GmailAccessAccount` | Site Settings | Gmail IMAP import account |
+| `MemberSheetSyncConfig` | Members & Auth | Member-to-Sheets selection |
+| `CurrentProjectSchedule` | Events | Published current-project schedule/source |
+| `PastProjectsSheetConfig` | Projects | Past-project Sheets source |
+| `SystemIntelligenceConfig` | System Intelligence | Bedrock and public-assistant behavior |
+| `SiteMaintenanceControl` | Site Settings | Maintenance mode toggle |
 
-Only one of each can be active. Setting a new config as active deactivates the previous one.
+The selector models permit only one active/enabled row in their scope; saving a replacement demotes the previous row. `SiteMaintenanceControl` is a separate true singleton stored at primary key `1`.
+
+### Active configuration recovery
+
+Active selection is fail-closed. Runtime `load()` methods never fall back to an inactive row:
+
+- AWS, email, Google, Gmail, system-intelligence, current-schedule, and past-project selectors permit at most one active row.
+- Member Sheet Sync permits at most one enabled row.
+- RSA permits at most one active row per key name.
+- AWS, Google, and Gmail loaders return an unsaved, unconfigured default; Email returns unsaved sender defaults; Member Sheet Sync returns an unsaved disabled default; System Intelligence returns unsaved defaults; schedule/project loaders return `None`.
+- An unexpected duplicate raises instead of letting `.load()` choose a row. The database constraints should make that state impossible after the invariant migrations.
+
+Check active-row counts without printing credentials:
+
+```bash
+cd src
+python manage.py shell -c "from apps.core.models import AWSCredentialConfig as A, EmailServiceConfig as E, GoogleCredentialConfig as G, GmailAccessAccount as M; print({'aws': A.objects.filter(is_active=True).count(), 'email': E.objects.filter(is_active=True).count(), 'google': G.objects.filter(is_active=True).count(), 'gmail': M.objects.filter(is_active=True).count()})"
+python manage.py shell -c "from apps.authn.models import MemberSheetSyncConfig as M, RSAKeypair as R; print({'member_sync': M.objects.filter(is_enabled=True).count(), 'auth_rsa': R.objects.filter(name='auth-encryption', is_active=True).count()})"
+python manage.py shell -c "from apps.event.models import CurrentProjectSchedule as E; from apps.projects.models import PastProjectsSheetConfig as P; from apps.system_intelligence.models import SystemIntelligenceConfig as S; print({'schedule': E.objects.filter(is_active=True).count(), 'past_projects': P.objects.filter(is_active=True).count(), 'system_intelligence': S.objects.filter(is_active=True).count()})"
+```
+
+Every value must be `0` or `1`. A required service showing `0` is an explicit outage/configuration state, not permission to use an old row. In Django admin, inspect the inactive records, select the intended row, mark it active/enabled, and save normally; model save logic deactivates the previous row transactionally. Do not use bulk SQL to bypass model logic.
+
+Then verify the services required by this environment:
+
+```bash
+python manage.py verify_service_configs --strict --require-aws --require-sms --require-google
+```
+
+If an invariant migration kept the wrong deterministic winner, reactivate the intended row through the admin after the migration finishes. Do not fake or reverse the constraint migration as a configuration-recovery technique.
+
+## Authentication incident and handoff runbook
+
+### Migration verification
+
+The current security/configuration rollout must preserve these app-local dependency chains:
+
+| App | Ordering |
+|-----|----------|
+| `authn` | `0015` → `0016` → `0017_auth_security_invariants` |
+| `core` | `0027_backgroundjob` → `0028_active_config_invariants` → `0029_deliveryratelimit` |
+| `event` | `0009_registration_sheet_sync_audit` → `0010_active_schedule_invariant` |
+| `projects` | `0008_pastprojectshare_version` → `0009_active_sheet_config_invariant` |
+| `system_intelligence` | `0005_active_config_invariant` → `0006_public_assistant_input_limits` |
+
+Inspect the graph and plan first:
+
+```bash
+cd src
+python manage.py showmigrations authn core event projects system_intelligence
+python manage.py migrate --plan
+```
+
+For PostgreSQL, run the migration through the advisory-lock command:
+
+```bash
+python manage.py migrate_locked --noinput --lock-timeout-seconds 600
+python manage.py migrate_locked --check --lock-timeout-seconds 60
+```
+
+`migrate_locked` refuses non-PostgreSQL databases. It waits up to the configured timeout for the repository-specific session advisory lock and exits without migrating if it cannot acquire it.
+
+### Session/bootstrap failures
+
+`GET /authn/session/` is the authoritative authenticated profile bootstrap. Expected triage:
+
+| Result | Meaning | Recovery |
+|--------|---------|----------|
+| `200` | JWT is valid; response contains current profile state and next step | Do not replace it with stale browser profile data |
+| First `401`, then `200` | Access token expired and the client refreshed successfully | Expected |
+| Repeated `401` | Refresh is missing, rejected, blacklisted, or belongs to an obsolete local generation | Sign in again; do not copy tokens between accounts/tabs |
+| `5xx` | Backend/database/profile serialization failure | Check application logs and database readiness; a client retry must not overwrite a newer session generation |
+
+The endpoint itself never issues tokens. Token rotation remains the responsibility of `/authn/refresh/`.
+
+### SMS challenge failures
+
+SMS request endpoints need an explicitly active, configured AWS record to send. Verification of a code that was already sent uses only `PhoneVerificationChallenge`; it does not make an AWS call.
+
+Inspect recent challenge metadata without displaying phone numbers or code hashes:
+
+```bash
+python manage.py shell -c "from apps.authn.models import PhoneVerificationChallenge as C; print(list(C.objects.order_by('-created_at').values('id', 'purpose', 'status', 'attempts', 'max_attempts', 'expires_at', 'consumed_at')[:20]))"
+```
+
+The supported purposes are `phone_auth`, `contact_phone_verify`,
+`password_reset`, `password_change`, and `event_registration`. A successful
+verification changes exactly one matching row from `pending` to `consumed`.
+Wrong attempts persist; five attempts or expiry changes the row to `expired`.
+A new request for the same phone and purpose/context expires the prior pending
+row before creating another.
+
+When verification fails:
+
+1. Confirm the caller returned the `challenge_id` from the matching request and did not mix purposes or browser tabs.
+2. Check status, expiry, and attempt count. Do not reset a used/expired row or try to recover the hashed OTP.
+3. Issue a new request and use its new ID. Phone-only lookup is a one-release compatibility path, not an operator recovery mechanism.
+4. If requesting the replacement returns `503`, run `verify_service_configs --strict --require-aws --require-sms` and repair the active AWS config.
+
+Password-reset request responses always contain a `challenge_id`; email and unknown identifiers receive a decoy UUID to preserve the enumeration-safe response shape. Do not infer account existence from that field.
+
+### RSA encryption failures
+
+List auth key metadata without exposing private key material:
+
+```bash
+python manage.py shell -c "from apps.authn.models import RSAKeypair as R; print(list(R.objects.filter(name='auth-encryption').order_by('-created_at').values('key_id', 'is_active', 'created_at', 'rotated_at')))"
+```
+
+Exactly one row should be active. It rotates after one day into a new row;
+retired rows remain decryptable for 24 hours, remain stored until 48 hours, and
+are then purged opportunistically. An unknown or expired `key_id`
+intentionally fails closed.
+
+- For an isolated stale-key error, have the client discard its cached key, fetch `/authn/public-key/`, and encrypt the password again. Never retry the old ciphertext against the current key.
+- If no active row exists, requesting `/authn/public-key/` creates one. The equivalent controlled recovery command is:
+
+  ```bash
+  python manage.py shell -c "from apps.authn.services.rsa_manager import get_or_create_auth_keypair; key = get_or_create_auth_keypair(); print({'key_id': str(key.key_id), 'created': key.created_at.isoformat()})"
+  ```
+
+- If private-key decryption began failing after `DJANGO_SECRET_KEY` changed,
+  confirm the secret change first. Restore the prior secret when continuity is
+  required, or deliberately regenerate the active `auth-encryption` key in
+  Django admin and require clients to refetch. Do not reactivate a retired key;
+  preserve it through the 48-hour retention window.
+
+### One-time credential replay
+
+- Email login/registration codes, password/deletion verification tokens, and SMS challenges use locked or conditional state transitions. One concurrent caller succeeds; later callers receive an invalid/expired response.
+- Impersonation links expire after five minutes and are conditionally marked used before JWT issuance. An already-used result is expected replay protection; issue a fresh link instead of changing `is_used`.
+- Failed email/SMS attempts and expiry transitions are deliberately committed before error responses. Do not treat a rising attempt counter as a transaction bug.
+
+### Handoff acceptance checklist
+
+- [ ] `showmigrations` marks the five invariant migrations applied and `migrate_locked --check` exits successfully on PostgreSQL.
+- [ ] `python manage.py check` and `python manage.py makemigrations --check --dry-run` pass.
+- [ ] The public-key endpoint returns one current `auth-encryption` key ID; an authenticated session request returns the current profile/next-step state.
+- [ ] Every SMS consumer persists and returns `challenge_id`, including phone auth, contact verification, password change, and phone password reset.
+- [ ] The active-row count commands show no value above `1`, and required services pass `verify_service_configs --strict` with the appropriate requirement flags.
+- [ ] Operators know that SMS verification survives a post-send AWS outage,
+  retired RSA keys decrypt for 24 hours and remain stored for 48, and replayed
+  codes/tokens must not be reset for reuse.
+- [ ] Before removing phone-number-only verification, tests and observed traffic confirm no supported client still uses the compatibility path.
 
 ## News sync
 
@@ -98,8 +246,11 @@ Public registration is controlled per event by the **Registration open** checkbo
 ### Registration sheet sync
 
 From Event admin:
-- **Automatic**: New registrations are synced to Google Sheets with 15-second debounce
-- **Full replace**: Admin action to overwrite all sheet data with current database records
+- **Automatic**: The registration transaction creates a durable Sheets job;
+  the worker serializes by event and appends only missing `Registration ID`
+  values
+- **Full replace**: Admin action backs up a populated legacy/drifted tab,
+  replaces it from PostgreSQL, and protects the final ID column
 
 ### Schedule import
 
@@ -163,5 +314,7 @@ Use `/livez/` for container liveness and `/readyz/` for database-backed readines
 
 - [Django Admin](django-admin.md) — Admin interface navigation
 - [Content Management](content-management.md) — CMS publishing workflow
+- [API: Auth & Mail](../api/auth-and-mail.md) — Session, challenge, key, and one-time credential contracts
+- [Local Development](../deployment/local-development.md) — Migration graph and authentication smoke checks
 - [Google Sheets: Operations](../integrations/google-sheets/operations.md) — Sheets-specific troubleshooting
 - [Deployment: Environments](../deployment/environments.md) — Environment configuration

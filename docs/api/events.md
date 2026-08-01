@@ -78,8 +78,10 @@ Creates an event registration for an event whose `registration_open=true`.
 
 **Behavior:**
 - Generates a unique ticket code (`I2G-{random}`)
-- Sends ticket confirmation email with barcode
-- Syncs registration to Google Sheets (debounced, 15-second batch)
+- Creates durable ticket-email and registration-Sheets jobs in the same
+  database transaction as the registration
+- The worker sends the barcode email and idempotently syncs the bounded
+  registration snapshot to Google Sheets
 - One registration per member per event (unique constraint)
 - The same member can register once for each different open event
 
@@ -156,11 +158,24 @@ Used when **Prompt for Phone Number** and phone verification are both enabled fo
 
 #### `POST /event/send-phone-code/`
 
-Sends an SMS verification code via AWS SNS.
+Creates and sends a durable SMS verification challenge. Returns
+`challenge_id`; the challenge is bound to the event-registration purpose and
+event context. New clients send
+`{ "phone": "...", "region": "1-US", "event_slug": "<event>" }`.
 
 #### `POST /event/verify-phone-code/`
 
-Verifies the SMS code.
+Verifies `{ "phone", "code", "challenge_id", "event_slug" }` and moves the
+event-bound grant to `VERIFIED`. Registration submits
+`phone_verification_challenge_id`; its transaction performs the one-time
+`VERIFIED → CONSUMED` transition, so a failed registration does not burn the
+proof.
+
+For the one-release compatibility window ending no earlier than 2026-10-23,
+`event_slug` may be omitted only when exactly one open event requires phone
+verification; the server binds the challenge to that unambiguous event.
+Verification without `challenge_id` may likewise resolve the newest matching
+challenge. New clients must send both fields.
 
 ## Google Sheets sync
 
@@ -168,7 +183,11 @@ Event registrations can be synced to a Google Sheet configured on the `Event` mo
 - `registration_sheet_id` — Google Sheets document ID
 - `registration_sheet_gid` — Specific worksheet GID
 
-The sync is debounced (15-second batch window) to avoid API rate limits. See [Google Sheets Integration](../integrations/google-sheets/index.md) for details.
+The PostgreSQL outbox worker serializes syncs per event, captures a cutoff,
+deduplicates by the final protected `Registration ID` column, and advances the
+cursor only after a confirmed write. See
+[Google Sheets Integration](../integrations/google-sheets/index.md) for
+details.
 
 ## Related pages
 
