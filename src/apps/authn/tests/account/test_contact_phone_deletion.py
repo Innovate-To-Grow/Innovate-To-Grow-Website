@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APITestCase
 
+from apps.authn.constants import LAST_RECOVERY_CONTACT_DELETE_FAILED
 from apps.authn.models import ContactEmail, ContactPhone
 
 Member = get_user_model()
@@ -27,7 +28,7 @@ class PhoneDeletionPolicyTests(APITestCase):
         phone = self._phone()
         response = self.client.delete(_url(phone.id))
         self.assertEqual(response.status_code, 409)
-        self.assertIn("recovery method", str(response.data))
+        self.assertEqual(response.data, {"detail": LAST_RECOVERY_CONTACT_DELETE_FAILED})
         self.assertTrue(ContactPhone.objects.filter(pk=phone.pk).exists())
 
     def test_delete_phone_allowed_when_verified_email_remains(self):

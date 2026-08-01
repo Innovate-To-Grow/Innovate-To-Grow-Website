@@ -4,12 +4,12 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {EmailAuthLinkPage} from '../EmailAuthLinkPage';
 
-const mockConsumeEmailAuthQuery = vi.fn();
+const mockVerifyEmailAuthCode = vi.fn();
 const mockNavigate = vi.fn();
 const mockDispatchAuthStateChange = vi.fn();
 
 vi.mock('@/features/auth', () => ({
-  consumeEmailAuthQuery: (...args: unknown[]) => mockConsumeEmailAuthQuery(...args),
+  verifyEmailAuthCode: (...args: unknown[]) => mockVerifyEmailAuthCode(...args),
 }));
 
 vi.mock('@/features/auth/components/context/shared', async () => {
@@ -30,13 +30,13 @@ vi.mock('react-router', async () => {
 
 describe('EmailAuthLinkPage', () => {
   beforeEach(() => {
-    mockConsumeEmailAuthQuery.mockReset();
+    mockVerifyEmailAuthCode.mockReset();
     mockNavigate.mockReset();
     mockDispatchAuthStateChange.mockReset();
   });
 
   it('routes subscribe email links to the profile step when completion is required', async () => {
-    mockConsumeEmailAuthQuery.mockResolvedValue({
+    mockVerifyEmailAuthCode.mockResolvedValue({
       message: 'Login successful.',
       access: 'access-token',
       refresh: 'refresh-token',
@@ -54,11 +54,7 @@ describe('EmailAuthLinkPage', () => {
     );
 
     await waitFor(() => {
-      expect(mockConsumeEmailAuthQuery).toHaveBeenCalledWith({
-        flow: 'auth',
-        email: 'ada@example.com',
-        code: '123456',
-      });
+      expect(mockVerifyEmailAuthCode).toHaveBeenCalledWith('ada@example.com', '123456');
     });
 
     expect(mockDispatchAuthStateChange).toHaveBeenCalled();
@@ -66,7 +62,7 @@ describe('EmailAuthLinkPage', () => {
   });
 
   it('routes incomplete event registration links through complete-profile first', async () => {
-    mockConsumeEmailAuthQuery.mockResolvedValue({
+    mockVerifyEmailAuthCode.mockResolvedValue({
       message: 'Login successful.',
       access: 'access-token',
       refresh: 'refresh-token',
@@ -89,7 +85,7 @@ describe('EmailAuthLinkPage', () => {
   });
 
   it('carries the event slug from the link back to the registration page', async () => {
-    mockConsumeEmailAuthQuery.mockResolvedValue({
+    mockVerifyEmailAuthCode.mockResolvedValue({
       message: 'Login successful.',
       access: 'access-token',
       refresh: 'refresh-token',
@@ -111,8 +107,8 @@ describe('EmailAuthLinkPage', () => {
     });
   });
 
-  it('routes login email links through the login verify flow and into the account page', async () => {
-    mockConsumeEmailAuthQuery.mockResolvedValue({
+  it('uses unified server-side verification even when the link contains a login flow hint', async () => {
+    mockVerifyEmailAuthCode.mockResolvedValue({
       message: 'Login successful.',
       access: 'access-token',
       refresh: 'refresh-token',
@@ -130,11 +126,7 @@ describe('EmailAuthLinkPage', () => {
     );
 
     await waitFor(() => {
-      expect(mockConsumeEmailAuthQuery).toHaveBeenCalledWith({
-        flow: 'login',
-        email: 'ada@example.com',
-        code: '123456',
-      });
+      expect(mockVerifyEmailAuthCode).toHaveBeenCalledWith('ada@example.com', '123456');
     });
 
     expect(mockDispatchAuthStateChange).toHaveBeenCalled();
@@ -151,11 +143,11 @@ describe('EmailAuthLinkPage', () => {
     );
 
     expect(screen.getByText('This email link is invalid or incomplete.')).toBeInTheDocument();
-    expect(mockConsumeEmailAuthQuery).not.toHaveBeenCalled();
+    expect(mockVerifyEmailAuthCode).not.toHaveBeenCalled();
   });
 
   it('shows the backend validation error when the verification code is invalid or expired', async () => {
-    mockConsumeEmailAuthQuery.mockRejectedValue({
+    mockVerifyEmailAuthCode.mockRejectedValue({
       response: {
         status: 400,
         data: {detail: 'Verification code is invalid or has expired.'},
@@ -179,7 +171,7 @@ describe('EmailAuthLinkPage', () => {
   });
 
   it('shows a transient error message when verification fails for non-code reasons', async () => {
-    mockConsumeEmailAuthQuery.mockRejectedValue({
+    mockVerifyEmailAuthCode.mockRejectedValue({
       response: {
         status: 503,
         data: {},

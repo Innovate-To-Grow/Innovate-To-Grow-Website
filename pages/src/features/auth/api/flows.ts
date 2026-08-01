@@ -4,7 +4,6 @@ import { clearKeyCache, encryptPasswordWithCurrentKey } from '@/lib/crypto';
 import { authApi } from './client';
 import {persistAuthSession} from './storage';
 import type {
-  EmailAuthFlow,
   EmailAuthRequestResponse,
   EmailAuthSource,
   EmailAuthVerifyResponse,
@@ -159,24 +158,6 @@ export const verifyRegistrationCode = async (email: string, code: string): Promi
   const response = await authApi.post<LoginResponse>('/authn/register/verify-code/', { email, code });
   persistAuthSession(response.data);
   return response.data;
-};
-
-export const consumeEmailAuthQuery = async ({
-  flow,
-  email,
-  code,
-}: {
-  flow: EmailAuthFlow;
-  email: string;
-  code: string;
-}): Promise<LoginResponse | EmailAuthVerifyResponse> => {
-  if (flow === 'auth') {
-    return verifyEmailAuthCode(email, code);
-  }
-  if (flow === 'login') {
-    return verifyLoginCode(email, code);
-  }
-  return verifyRegistrationCode(email, code);
 };
 
 export const resendRegistrationCode = async (email: string): Promise<MessageResponse> => {

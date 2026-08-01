@@ -13,6 +13,7 @@ from apps.authn.constants import (
     CONTACT_EMAIL_ADD_FAILED,
     CONTACT_EMAIL_PRIMARY_FAILED,
     CONTACT_EMAIL_SEND_FAILED,
+    LAST_RECOVERY_CONTACT_DELETE_FAILED,
     VERIFICATION_INVALID,
 )
 from apps.authn.models import ContactEmail
@@ -149,8 +150,8 @@ class ContactEmailDetailView(APIView):
 
         try:
             delete_contact_email(member=request.user, contact_email_id=pk)
-        except LastRecoveryContactError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except LastRecoveryContactError:
+            return Response({"detail": LAST_RECOVERY_CONTACT_DELETE_FAILED}, status=status.HTTP_409_CONFLICT)
         except AuthChallengeInvalid:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
