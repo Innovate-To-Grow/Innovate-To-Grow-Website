@@ -6,6 +6,9 @@ VERIFICATION_LINK_INVALID = "Verification link is invalid or has expired."
 VERIFICATION_CONFIRM_INVALID = "Verification token is invalid or has expired."
 VERIFICATION_THROTTLED = "Too many verification attempts. Please try again later."
 PHONE_VERIFICATION_DELIVERY_FAILED = "Failed to send verification SMS."
+RECOVERY_CHANNEL_UNAVAILABLE = (
+    "No verified email or phone is available for password verification. Add and verify a contact method first."
+)
 CONTACT_EMAIL_ADD_FAILED = "Unable to add this email address."
 CONTACT_EMAIL_SEND_FAILED = "Unable to send verification code for this email."
 CONTACT_EMAIL_PRIMARY_FAILED = "Unable to update primary email."

@@ -15,6 +15,7 @@ from django.core.cache import cache
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.authn.constants import RECOVERY_CHANNEL_UNAVAILABLE
 from apps.authn.models import (
     ContactEmail,
     ContactPhone,
@@ -202,7 +203,7 @@ class PhoneOnlyPasswordCreateViaSmsTests(APITestCase):
         self.phone.delete()
         response = self.client.post(REQUEST_URL, {}, format="json")
         self.assertEqual(response.status_code, 400)
-        self.assertIn("No verified email or phone", str(response.data))
+        self.assertEqual(str(response.data["detail"][0]), RECOVERY_CHANNEL_UNAVAILABLE)
 
 
 class SmsPasswordAtomicityTests(APITestCase):

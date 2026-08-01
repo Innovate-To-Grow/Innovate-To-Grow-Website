@@ -8,7 +8,7 @@ import uuid
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from apps.authn.constants import VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
+from apps.authn.constants import RECOVERY_CHANNEL_UNAVAILABLE, VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
 from apps.authn.serializers.helpers import decrypt_password_pair
 from apps.authn.services import (
     AuthChallengeInvalid,
@@ -177,8 +177,8 @@ class ChangePasswordCodeRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError({"email": "This email is not eligible for password change verification."})
         try:
             attrs["selected"] = select_recovery_channel(member, requested_email=requested)
-        except NoRecoveryChannelError as exc:
-            raise serializers.ValidationError({"detail": str(exc)}) from None
+        except NoRecoveryChannelError:
+            raise serializers.ValidationError({"detail": RECOVERY_CHANNEL_UNAVAILABLE}) from None
         return attrs
 
     def save(self):
@@ -224,8 +224,8 @@ class ChangePasswordCodeVerifySerializer(serializers.Serializer):
         requested = normalize_email(attrs["email"]) if attrs.get("email") else None
         try:
             selected = select_recovery_channel(member, requested_email=requested)
-        except NoRecoveryChannelError as exc:
-            raise serializers.ValidationError({"detail": str(exc)}) from None
+        except NoRecoveryChannelError:
+            raise serializers.ValidationError({"detail": RECOVERY_CHANNEL_UNAVAILABLE}) from None
 
         client_channel = attrs.get("channel")
         if client_channel and client_channel != selected.channel:

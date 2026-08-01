@@ -1,6 +1,7 @@
 """Edge-case coverage for public email-code views and helpers."""
 
 from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -9,12 +10,18 @@ from django.core.cache import cache
 from rest_framework import serializers
 from rest_framework.test import APITestCase
 
+from apps.authn.constants import RECOVERY_CHANNEL_UNAVAILABLE
 from apps.authn.models import ContactEmail, EmailAuthChallenge
-from apps.authn.serializers.email_code.passwords import PasswordResetConfirmSerializer
+from apps.authn.serializers.email_code.passwords import (
+    ChangePasswordCodeRequestSerializer,
+    ChangePasswordCodeVerifySerializer,
+    PasswordResetConfirmSerializer,
+)
 from apps.authn.services import (
     AuthChallengeDeliveryError,
     AuthChallengeInvalid,
     AuthChallengeThrottled,
+    NoRecoveryChannelError,
 )
 from apps.authn.views.helpers import challenge_error_response
 
@@ -43,6 +50,25 @@ class PasswordResetSerializerSecurityTests(APITestCase):
         self.assertIsNone(raised.exception.__cause__)
         self.assertTrue(raised.exception.__suppress_context__)
         self.assertNotIn("internal challenge details", str(raised.exception.detail))
+
+    @patch(
+        "apps.authn.serializers.email_code.passwords.select_recovery_channel",
+        side_effect=NoRecoveryChannelError("internal recovery diagnostics"),
+    )
+    def test_password_change_serializers_use_client_safe_recovery_error(self, _select):
+        request = SimpleNamespace(user=object())
+        serializer_classes = (ChangePasswordCodeRequestSerializer, ChangePasswordCodeVerifySerializer)
+
+        for serializer_class in serializer_classes:
+            with self.subTest(serializer=serializer_class.__name__):
+                serializer = serializer_class(context={"request": request})
+                with self.assertRaises(serializers.ValidationError) as raised:
+                    serializer.validate({})
+
+                self.assertEqual(str(raised.exception.detail["detail"]), RECOVERY_CHANNEL_UNAVAILABLE)
+                self.assertIsNone(raised.exception.__cause__)
+                self.assertTrue(raised.exception.__suppress_context__)
+                self.assertNotIn("internal recovery diagnostics", str(raised.exception.detail))
 
 
 class ChallengeErrorResponseTests(APITestCase):
