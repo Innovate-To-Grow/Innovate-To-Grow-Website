@@ -1,7 +1,12 @@
-# Convenience entrypoint for local development and CI. The committed lock was
-# resolved for Python 3.11 and includes hashes for every distribution.
+# Dependency manifest entrypoint.
 #
-# Source constraints remain in requirements/{base,production,local}.txt.
-# Regenerate both locks with:
-#   ./scripts/compile-requirements.sh
--r requirements/local.lock.txt
+# Dependencies are split under requirements/:
+#   requirements/base.txt        — shared across all environments
+#   requirements/production.txt  — base + WSGI/ASGI servers, PostgreSQL, Redis, S3
+#   requirements/local.txt       — production + dev/CI tooling (ruff, ...)
+#
+# This file resolves to the local/CI closure so every existing consumer
+# (`pip install -r requirements.txt`, the Docker build, pip-audit, and the
+# setup-python pip cache keyed on src/requirements.txt) keeps working unchanged.
+# For a lean production image, install requirements/production.txt instead.
+-r requirements/local.txt
