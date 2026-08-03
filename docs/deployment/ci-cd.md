@@ -1,170 +1,150 @@
 # CI/CD
 
-GitHub Actions validates every deployable component, publishes immutable
-artifacts from successful `main` runs, and promotes those exact artifacts to
-production. The required branch-protection check is `CI Result`.
+GitHub Actions pipelines for linting, testing, building, and deploying.
 
-## Workflows
+## Workflow files
 
 | File | Purpose | Trigger |
-|---|---|---|
-| `.github/workflows/ci.yml` | Tests, coverage, security, builds, scans, artifact publication | Push and pull request |
-| `.github/workflows/lint.yml` | Reusable Ruff, format, and Bandit gate | Called by CI |
-| `.github/workflows/codeql.yml` | CodeQL analysis | Push, pull request, schedule |
-| `.github/workflows/deploy-production.yml` | Select CI artifacts and approve the complete production deployment set once | Successful `main` CI |
-| `.github/workflows/deploy-backend.yml` | Promote backend image/static assets to ECS/S3 | Reusable call |
-| `.github/workflows/deploy-frontend.yml` | Promote target-specific frontend artifact to Amplify | Reusable call |
-| `.github/workflows/deploy-archive.yml` | Promote archive image to ECS | Reusable call |
-| `.github/workflows/deploy-break-glass.yml` | Audited immutable emergency deploy | Manual, protected environment |
+|------|---------|---------|
+| `.github/workflows/lint.yml` | Code style checks | Push and PR |
+| `.github/workflows/ci.yml` | Full test and build pipeline | Push and PR |
+| `.github/workflows/deploy-production.yml` | Unified production approval and deployment orchestration | CI success on main, or manual on main |
+| `.github/workflows/deploy-backend.yml` | Backend deployment to ECS | Reusable workflow call |
+| `.github/workflows/deploy-frontend.yml` | Frontend deployment to Amplify | Reusable workflow call |
+| `.github/workflows/deploy-archive.yml` | Archive deployment to ECS | Reusable workflow call |
 
-Normal production deploy workflows do not expose `workflow_dispatch`.
-`Deploy Production` inspects the successful CI run, shows all selected
-components behind one `Production Deployments` approval card, and then invokes
-only the reusable workflows whose immutable artifacts exist.
+## CI pipeline (`ci.yml`)
 
-## Change routing
+Runs on every push and pull request. All stages must pass before deployment workflows trigger.
 
-Pull requests run the affected component jobs plus the stable aggregate result.
-Every push to `main` runs the complete deployable suite so publication never
-depends on an incomplete path filter. CLI-only and archive-only changes have
-dedicated required result jobs.
+### Stage 1: Code style (`lint.yml`)
 
-## Backend gate
+**Backend (Python):**
+- Uses Ruff 0.8.0
+- `ruff check .` — lint check
+- `ruff format --check .` — format check
 
-Backend validation includes:
+**Frontend (TypeScript):**
+- ESLint
+- TypeScript type check (`npx tsc --noEmit`)
 
-- Ruff, format, Bandit, Django system checks, and migration drift
-- hashed lock-file verification and Python dependency audit
-- PostgreSQL migration and concurrency coverage
-- partitioned Django tests with coverage enforcement
-- production settings, CSP, manifest-static, and service-config checks
-- Semgrep
-- Dockerfile lint, production image build, Trivy scan, and runtime smoke
-- export of the exact scanned image for publication
+### Stage 2: Django build and test
 
-The Docker image installs only `requirements/production.lock.txt`, is based on
-a digest-pinned Python 3.11 image, and contains its generated
-`staticfiles.json` plus content-hashed static objects.
+- Python 3.11
+- `python manage.py migrate` — verify migrations apply
+- `python manage.py test --settings=config.settings.local` — run test suite
+- `python manage.py check` — Django system checks
 
-## Frontend gate
+Uses SQLite (dev settings) for fast test execution.
 
-Frontend validation includes:
+### Stage 3: Docker build test
 
-- ESLint and TypeScript
-- Vitest and coverage
-- production and target-specific Vite builds
-- initial/chunk bundle budgets
-- `npm audit --audit-level=moderate`
-- supply-chain reporting
-- Playwright local and live/admin projects with self-contained PostgreSQL,
-  Django seed data, and Vite services in CI
+- Builds the backend Docker image from `src/Dockerfile`
+- Exports the image as a build artifact
+- Validates the image builds successfully without runtime errors
 
-CI publishes separate `frontend-dist-prod` and `frontend-dist-demo` artifacts.
-Deployment does not run another Vite build.
+### Stage 4: PostgreSQL migration test
 
-## CLI gate
+- Spins up PostgreSQL 16 as a GitHub Actions service container
+- Runs `python manage.py migrate --settings=config.settings.test`
+- Validates no pending migrations (`python manage.py makemigrations --check`)
+- Catches migration issues that don't surface with SQLite
 
-Changes under `cli/` run:
+### Stage 5: Frontend tests
 
-- Ruff
-- the complete CLI test suite and coverage
-- Bandit
-- pip-audit
-- wheel/sdist build
-- Semgrep
+- Node.js 22.22.2 (or another release allowed by `pages/package.json`)
+- Vitest with 4096 MB Node memory limit
+- Runs `npm test`
 
-API discovery and record-operation tests cover the same `admin_apps`
-authorization boundary.
+### Stage 6: Frontend build
 
-## Archive gate
+- `npm run build` (TypeScript compilation + Vite build)
+- Validates the production build succeeds
 
-Changes under `archive/` run:
+## Deploy pipelines
 
-- Ruff, tests, coverage, Bandit, and pip-audit
-- dependency lock verification
-- Dockerfile lint
-- archive image build, Trivy scan, and runtime/semantic smoke tests
-- export of the exact scanned image for publication
+`Deploy Production` is the only automatic production entry point. After a
+successful `main` CI run, it requests one approval through the protected
+`Production Deployments` environment and then calls all three component
+workflows with the triggering commit SHA. See
+[Production Deployment Approval](production.md) for environment setup and the
+reviewer migration procedure.
 
-Archive readiness checks configuration plus a small allowlisted Sheets
-request. Upstream failures are never cached as successful readiness.
+### Backend (`deploy-backend.yml`)
 
-## Security policy
+1. Pull the SHA-tagged Docker image published by the successful CI run
+2. Extract and upload Django static assets
+3. Render ECS task definition from `aws/task-definition.json` template
+4. Deploy to ECS via `aws-actions/amazon-ecs-deploy-task-definition@v2`
+5. Run smoke tests:
+   - Readiness endpoint check (`/readyz/`)
+   - CORS header validation
+   - JSON response validation
 
-CodeQL runs on pull requests as well as pushes and schedule. Semgrep and
-fixable High/Critical Trivy findings are release-blocking. An exception must be
-declared in the validated policy file with an owner, rationale, and expiry; an
-untracked suppression is not an acceptable release mechanism. Third-party
-Actions are pinned to full commit SHAs.
+The backend deploy job runs a target matrix:
 
-## Immutable publication and deployment
+| Target | GitHub Environment | Default ECS service | Default URL |
+|--------|--------------------|---------------------|-------------|
+| `prod` | `AWS ECS - Prod` | `itg-backend-service` | `https://api.i2g.ucmerced.edu` |
+| `demo` | `AWS ECS(DEMO) - Prod` | `itg-backend-demo-service` | `https://demo.i2g.ucmerced.edu/admin` |
 
-On a successful `main` run, CI publishes:
+Each target uses the same backend Docker image tag, but reads its own GitHub
+Environment variables and secrets for database, storage, CORS, and ECS service
+selection. The demo backend also has a direct origin,
+`https://demo-api.i2g.ucmerced.edu`, for health checks and Amplify proxy rules.
 
-- backend and archive images tagged with the full commit SHA
-- the exact exported images that were scanned
-- production and demo frontend artifacts
+### Frontend (`deploy-frontend.yml`)
 
-Deployment resolves the triggering CI run and SHA, obtains short-lived AWS
-credentials through GitHub OIDC, and rejects missing/mismatched artifacts.
-ECR repositories should enforce tag immutability.
+1. Build with `npm run build`
+2. Zip the `dist/` output
+3. Upload to S3 via AWS pre-signed URL
+4. Trigger Amplify deployment
 
-Backend deployment:
+The frontend deploy job also runs a target matrix:
 
-1. Registers an isolated one-off task and runs `migrate_locked`.
-2. Verifies the migration exit code.
-3. Uploads and verifies manifest-hashed static files from the tested image.
-4. Updates the worker independently when `BACKGROUND_WORKER_ENABLED=true`,
-   including while web queue production remains disabled.
-5. Requires a fresh, target-isolated CloudWatch `WorkerHeartbeat` before
-   updating the web service; queue production cannot be enabled without the
-   worker rollout flag.
-6. Runs readiness, semantic, CORS, SHA/digest, and worker checks.
+| Target | GitHub Environment | Default URL | Default API base |
+|--------|--------------------|-------------|------------------|
+| `prod` | `AWS Amplify - Prod` | `https://i2g.ucmerced.edu` | `https://api.i2g.ucmerced.edu` |
+| `demo` | `AWS Amplify(DEMO) - Prod` | `https://demo.i2g.ucmerced.edu` | `https://demo.i2g.ucmerced.edu/api` |
 
-Frontend/archive deployment waits for the service and checks content type plus
-semantic payload markers—not only HTTP 200.
+Unlike the single production artifact built in CI, each frontend deploy target
+builds in the deploy job so `VITE_API_BASE_URL` can come from that target's
+GitHub Environment. Demo also supports Amplify rewrite rules for `/admin`,
+`/static`, and `/media` so `https://demo.i2g.ucmerced.edu/admin` can front a
+separate backend origin.
 
-Each production service/environment uses a constant concurrency group and
-`cancel-in-progress: false`, so a newer run does not cancel an active rollout.
+### Archive (`deploy-archive.yml`)
 
-## Break-glass
+The archive workflow checks out the approved commit, builds and publishes its
+container image, deploys the ECS service, and runs HTTPS smoke checks.
 
-**Break-glass Production Deploy** accepts a component, full 40-character SHA,
-and mandatory reason. Authorization verifies that the SHA is reachable from
-`main` and has a successful push CI run. The `Production Break Glass`
-environment must require a human reviewer. It then calls the same reusable
-immutable deployment workflow as the normal path.
+All component workflows use credentials and target-specific configuration from
+their existing GitHub Environments.
 
-## Branch protection
+## Branch strategy
 
-Require:
+- **CI** runs on all pushes and PRs to any branch
+- **Deployment** triggers only after successful CI completion on `main`
+- **Manual deployment** starts only from the unified workflow on `main`
+- Component workflows are reusable calls and cannot bypass the unified approval gate
 
-- `CI Result`
-- CodeQL
-- current review/approval rules
-- protected `main`
+## Monitoring CI
 
-Configure required reviewers on the shared `Production Deployments` gate and a
-separate reviewer group on `Production Break Glass`. Keep required reviewers
-off the individual AWS target environments after the shared gate is live; they
-continue to scope target-specific variables and secrets. Do not store
-long-lived AWS access keys in repository or environment secrets.
+- All workflow runs visible at the repository's Actions tab
+- Deploy smoke tests catch basic runtime issues (readiness, CORS)
+- CloudWatch logs capture runtime errors after deployment
 
-## Local workflow checks
+## Adding to the pipeline
 
-```bash
-python -m unittest discover -s .github/scripts/tests -p 'test_*.py'
-actionlint
-```
-
-Run the component checks listed in
-[Local Development](local-development.md) before pushing. The canonical
-evidence is the GitHub Actions run because it supplies PostgreSQL, browser,
-container, scan, and artifact-publication conditions.
+When adding new CI stages:
+1. Add the step to the appropriate workflow file in `.github/workflows/`
+2. For new backend checks, use `--settings=config.settings.local` (SQLite) or `--settings=config.settings.test` (PostgreSQL)
+3. For new frontend checks, use a Node.js release allowed by `pages/package.json`
+4. Keep stages independent where possible for parallel execution
 
 ## Related pages
 
-- [Backend Deployment](backend.md)
-- [Frontend Deployment](frontend.md)
-- [Environments](environments.md)
-- [Production Handoff Runbook](../operations/handoff-runbook.md)
+- [Backend Deployment](backend.md) — ECS deployment details
+- [Frontend Deployment](frontend.md) — Amplify deployment details
+- [Environments](environments.md) — CI vs dev vs prod settings
+- [Local Development](local-development.md) — Running the same checks locally

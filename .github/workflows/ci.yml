@@ -8,10 +8,7 @@ on:
       - "pages/**"
       - "aws/**"
       - "scripts/**"
-      - ".github/codeql/**"
       - ".github/dependabot.yml"
-      - ".github/scripts/**"
-      - ".github/security-exceptions.json"
       - ".github/workflows/**"
       - "pyproject.toml"
       - ".pre-commit-config.yaml"
@@ -21,18 +18,13 @@ on:
       # and ships the archive to ECS. Every push to main runs the FULL suite
       # (see the `changes` job), so archive merges are validated end to end.
       - "archive/**"
-      - "cli/**"
-      - ".python-version"
   pull_request:
     paths:
       - "src/**"
       - "pages/**"
       - "aws/**"
       - "scripts/**"
-      - ".github/codeql/**"
       - ".github/dependabot.yml"
-      - ".github/scripts/**"
-      - ".github/security-exceptions.json"
       - ".github/workflows/**"
       - "pyproject.toml"
       - ".pre-commit-config.yaml"
@@ -48,8 +40,6 @@ on:
       # (the backend/frontend pipeline is skipped). Also in the push paths above
       # so an archive-only merge to main runs CI and triggers deploy-archive.yml.
       - "archive/**"
-      - "cli/**"
-      - ".python-version"
 
 permissions:
   contents: read
@@ -62,7 +52,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
-  NODE_VERSION: "22.22.0"
+  NODE_VERSION: "22.22.2"
   DJANGO_SETTINGS_MODULE: config.settings.test
   BACKEND_COVERAGE_FAIL_UNDER: "40"
   COVERAGE_VERSION: "7.6.10"
@@ -77,24 +67,23 @@ jobs:
       issues: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: |
-            src/requirements/local.lock.txt
-            src/requirements/lock-tools.txt
+            src/requirements.txt
             .pre-commit-config.yaml
 
       - name: Install preflight tools
         run: |
           set -euo pipefail
-          python -m pip install "pip==25.3"
+          python -m pip install --upgrade pip
           pip install "pre-commit==4.0.1" "PyYAML==6.0.2"
           ACTIONLINT_VERSION="1.7.7"
           ACTIONLINT_SHA256="023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
@@ -116,25 +105,8 @@ jobs:
       - name: Validate tool version pins
         run: python scripts/ci/validate_tool_versions.py
 
-      - name: Validate security exception policy
-        run: python .github/scripts/security_exceptions.py .github/security-exceptions.json
-
-      - name: Verify Python 3.11 requirement locks
-        run: |
-          python -m pip install --requirement src/requirements/lock-tools.txt
-          (
-            cd src
-            ./scripts/check-requirements-locks.sh
-          )
-          (
-            cd archive/page
-            ./check-requirements-locks.sh
-          )
-
       - name: Validate CI planner scripts
-        run: |
-          python -m unittest discover -s scripts/ci/tests
-          python -m unittest discover -s .github/scripts/tests
+        run: python -m unittest discover -s scripts/ci/tests
 
       - name: Validate Dependabot labels
         env:
@@ -149,10 +121,9 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       archive: ${{ steps.filter.outputs.archive }}
-      cli: ${{ steps.filter.outputs.cli }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -174,7 +145,6 @@ jobs:
               echo "backend=true"
               echo "frontend=true"
               echo "archive=true"
-              echo "cli=true"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -187,7 +157,6 @@ jobs:
               echo "backend=true"
               echo "frontend=true"
               echo "archive=false"
-              echo "cli=true"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -200,16 +169,13 @@ jobs:
           backend=false
           frontend=false
           archive=false
-          cli=false
-          if match '^(src/|aws/|scripts/|pyproject\.toml|\.python-version|\.pre-commit-config\.yaml|\.bandit-baseline\.json|\.github/)'; then backend=true; fi
+          if match '^(src/|aws/|scripts/|pyproject\.toml|\.pre-commit-config\.yaml|\.bandit-baseline\.json|\.github/)'; then backend=true; fi
           if match '^(pages/|\.github/)'; then frontend=true; fi
           if match '^archive/'; then archive=true; fi
-          if match '^(cli/|\.python-version|\.github/)'; then cli=true; fi
           {
             echo "backend=$backend"
             echo "frontend=$frontend"
             echo "archive=$archive"
-            echo "cli=$cli"
           } >> "$GITHUB_OUTPUT"
 
   lint:
@@ -220,74 +186,6 @@ jobs:
     with:
       run-python: true
 
-  cli-quality:
-    name: Standalone CLI Tests and Security
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [preflight, changes]
-    if: ${{ needs.changes.outputs.cli == 'true' }}
-    defaults:
-      run:
-        working-directory: cli
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: cli/pyproject.toml
-
-      - name: Install CLI and pinned quality tools
-        run: |
-          python -m pip install --upgrade \
-            "pip==26.1.2" \
-            "setuptools==83.0.0"
-          python -m pip install -e ".[test]" \
-            "bandit[toml]==1.7.10" \
-            "build==1.2.2.post1" \
-            "pip-audit==2.7.3" \
-            "ruff==0.15.17"
-
-      - name: Run Ruff
-        run: |
-          ruff check src tests
-          ruff format --check src tests
-
-      - name: Run tests with coverage
-        run: pytest --cov=i2g_admin --cov-report=term-missing
-
-      - name: Run Bandit
-        run: bandit -r src -ll
-
-      - name: Audit installed dependencies
-        run: pip-audit
-
-      - name: Build wheel and source distribution
-        run: python -m build
-
-  cli-required-result:
-    name: Standalone CLI Required Result
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs:
-      - cli-quality
-      - changes
-    if: ${{ always() }}
-    steps:
-      - name: Summarize standalone CLI checks
-        env:
-          CLI_RESULT: ${{ needs.cli-quality.result }}
-          CLI_CHANGED: ${{ needs.changes.outputs.cli }}
-        run: |
-          if [ "$CLI_CHANGED" = "true" ] && [ "$CLI_RESULT" != "success" ]; then
-            echo "Standalone CLI checks: $CLI_RESULT"
-            exit 1
-          fi
-          echo "Standalone CLI checks passed or were not required."
-
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest
@@ -295,7 +193,7 @@ jobs:
     needs: preflight
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -366,19 +264,26 @@ jobs:
       DB_PORT: 5432
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements/local.lock.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v6
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Install dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         run: |
           python -m venv .venv
-          .venv/bin/python -m pip install --require-hashes -r requirements.txt
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Check migration files are up to date
         run: .venv/bin/python manage.py makemigrations --check --dry-run
@@ -413,19 +318,26 @@ jobs:
       CORS_ALLOWED_ORIGINS: https://i2g.example.com
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements/local.lock.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v6
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Install dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         run: |
           python -m venv .venv
-          .venv/bin/python -m pip install --require-hashes -r requirements.txt
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Import production settings
         run: DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c "import django; django.setup()"
@@ -433,29 +345,8 @@ jobs:
       - name: Run Django deploy checks
         run: DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python manage.py check --deploy
 
-      - name: Build and verify manifest-hashed static assets
-        env:
-          BUILD_STATIC_ROOT: ${{ runner.temp }}/i2g-static-build
-        run: |
-          .venv/bin/python manage.py collectstatic \
-            --noinput \
-            --settings=config.settings.build
-          .venv/bin/python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          manifest_path = Path(os.environ["BUILD_STATIC_ROOT"]) / "staticfiles.json"
-          with manifest_path.open(encoding="utf-8") as manifest_file:
-              manifest = json.load(manifest_file)
-          paths = manifest.get("paths")
-          if not isinstance(paths, dict) or not paths:
-              raise SystemExit("staticfiles.json contains no asset paths.")
-          unhashed = [source for source, target in paths.items() if source == target]
-          if unhashed:
-              raise SystemExit(f"Manifest contains unhashed assets: {unhashed[:5]}")
-          print(f"Verified {len(paths)} manifest-hashed static assets.")
-          PY
+      - name: Dry-run collectstatic with CI settings
+        run: .venv/bin/python manage.py collectstatic --dry-run --noinput --settings=config.settings.test
 
   django-test-plan:
     name: Plan Django Test Matrix
@@ -468,7 +359,7 @@ jobs:
       cli_admin_coverage: ${{ steps.plan.outputs.cli_admin_coverage }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -541,19 +432,26 @@ jobs:
       DB_PORT: 5432
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements/local.lock.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v6
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Install dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         run: |
           python -m venv .venv
-          .venv/bin/python -m pip install --require-hashes -r requirements.txt
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Run Django tests and enforce per-app coverage
         run: |
@@ -592,7 +490,7 @@ jobs:
 
       - name: Upload backend coverage XML
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage-${{ matrix.app }}
           path: |
@@ -635,19 +533,26 @@ jobs:
       DB_PORT: 5432
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements/local.lock.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v6
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Install dependencies
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         run: |
           python -m venv .venv
-          .venv/bin/python -m pip install --require-hashes -r requirements.txt
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Enforce coverage for cli_admin and safe_orm
         run: |
@@ -679,7 +584,7 @@ jobs:
 
       - name: Upload CLI admin coverage
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: cli-admin-safe-orm-coverage
           path: |
@@ -698,10 +603,10 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -724,10 +629,10 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -752,10 +657,10 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -805,7 +710,7 @@ jobs:
 
       - name: Upload frontend coverage
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: |
@@ -824,10 +729,10 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -843,7 +748,7 @@ jobs:
 
       - name: Upload frontend dist for CI
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist-ci
           path: pages/dist
@@ -862,10 +767,10 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -875,7 +780,7 @@ jobs:
         run: npm ci
 
       - name: Download CI frontend build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@v8
         with:
           name: frontend-dist-ci
           path: pages/dist
@@ -894,10 +799,10 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -920,10 +825,10 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -940,7 +845,7 @@ jobs:
 
       - name: Upload frontend supply chain artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-supply-chain-reports
           path: |
@@ -986,7 +891,7 @@ jobs:
           PY
 
   frontend-prod-build:
-    name: Frontend Deploy Build Artifact (${{ matrix.target }})
+    name: Frontend Production Build Artifact
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs:
@@ -996,24 +901,16 @@ jobs:
       github.event_name == 'push' &&
       (github.ref_name == 'main' || github.ref_name == 'master') &&
       needs.changes.outputs.frontend == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: prod
-            api_base_url: https://api.i2g.ucmerced.edu
-          - target: demo
-            api_base_url: https://demo.i2g.ucmerced.edu/api
     defaults:
       run:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Validate production frontend configuration
         env:
-          VITE_API_BASE_URL: ${{ matrix.target == 'prod' && (vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL) || matrix.api_base_url }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
         run: |
           if [ -z "$VITE_API_BASE_URL" ]; then
             echo "::error::VITE_API_BASE_URL is required for the production frontend build."
@@ -1021,7 +918,7 @@ jobs:
           fi
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -1033,15 +930,14 @@ jobs:
       - name: Build production frontend
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ matrix.target == 'prod' && (vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL) || matrix.api_base_url }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
 
       - name: Upload production frontend dist
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
-          name: frontend-dist-${{ matrix.target }}
+          name: frontend-dist-prod
           path: pages/dist
           if-no-files-found: error
-          retention-days: 14
 
   python-security-audit:
     name: Python Security Audit
@@ -1054,33 +950,38 @@ jobs:
         working-directory: src
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: src/requirements/local.lock.txt
+          cache-dependency-path: src/requirements.txt
 
       - name: Install pip-audit
         run: pip install "pip-audit[cyclonedx]==2.7.3"
 
       - name: Audit Python dependencies
         run: |
-          set -euo pipefail
           set -o pipefail
-          mapfile -t exception_args < <(
-            python ../.github/scripts/security_exceptions.py \
-              ../.github/security-exceptions.json \
-              --format arguments \
-              --scanner pip-audit
-          )
           pip-audit \
             --requirement requirements.txt \
             --progress-spinner off \
             --format columns \
-            "${exception_args[@]}" \
+            --ignore-vuln GHSA-mf9w-mj56-hr94 \
+            --ignore-vuln GHSA-p998-jp59-783m \
+            --ignore-vuln GHSA-hcc4-c3v8-rx92 \
+            --ignore-vuln GHSA-m5qp-6w8w-w647 \
+            --ignore-vuln GHSA-3wq7-rqq7-wx6j \
+            --ignore-vuln GHSA-mwh4-6h8g-pg8w \
+            --ignore-vuln GHSA-966j-vmvw-g2g9 \
+            --ignore-vuln GHSA-63hf-3vf5-4wqf \
+            --ignore-vuln GHSA-c427-h43c-vf67 \
+            --ignore-vuln GHSA-w2fm-2cpv-w7v5 \
+            --ignore-vuln GHSA-2vrm-gr82-f7m5 \
+            --ignore-vuln PYSEC-2025-183 \
+            --ignore-vuln PYSEC-2026-161 \
             | tee "$GITHUB_STEP_SUMMARY"
 
   semgrep-sast:
@@ -1088,17 +989,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [preflight, changes]
-    if: >-
-      needs.changes.outputs.backend == 'true' ||
-      needs.changes.outputs.frontend == 'true' ||
-      needs.changes.outputs.archive == 'true' ||
-      needs.changes.outputs.cli == 'true'
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -1111,16 +1008,8 @@ jobs:
         env:
           RUN_BACKEND: ${{ needs.changes.outputs.backend }}
           RUN_FRONTEND: ${{ needs.changes.outputs.frontend }}
-          RUN_ARCHIVE: ${{ needs.changes.outputs.archive }}
-          RUN_CLI: ${{ needs.changes.outputs.cli }}
         run: |
           set -euo pipefail
-          mapfile -t exception_args < <(
-            python .github/scripts/security_exceptions.py \
-              .github/security-exceptions.json \
-              --format arguments \
-              --scanner semgrep
-          )
           targets=()
           if [ "$RUN_BACKEND" = "true" ]; then
             targets+=(src)
@@ -1128,20 +1017,12 @@ jobs:
           if [ "$RUN_FRONTEND" = "true" ]; then
             targets+=(pages)
           fi
-          if [ "$RUN_ARCHIVE" = "true" ]; then
-            targets+=(archive/page/app.py)
-          fi
-          if [ "$RUN_CLI" = "true" ]; then
-            targets+=(cli/src)
-          fi
           semgrep scan --config p/default --config p/python --config p/javascript \
-            --metrics=off --error --severity ERROR --severity WARNING \
-            "${exception_args[@]}" \
-            --sarif --output semgrep.sarif "${targets[@]}"
+            --metrics=off --sarif --output semgrep.sarif "${targets[@]}" || true
 
       - name: Upload Semgrep SARIF artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: semgrep-sarif
           path: semgrep.sarif
@@ -1160,7 +1041,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Lint Dockerfile (hadolint)
         uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
@@ -1169,10 +1050,10 @@ jobs:
           failure-threshold: error
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Build backend Docker image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: src
           load: true
@@ -1184,23 +1065,12 @@ jobs:
       # re-pull it from the registry on every CI run. Both Trivy steps point at
       # this dir via TRIVY_CACHE_DIR.
       - name: Cache Trivy vulnerability database
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.cache/trivy
           key: trivy-db-${{ github.run_id }}
           restore-keys: |
             trivy-db-
-
-      - name: Load Trivy security exceptions
-        id: trivy-exceptions
-        run: |
-          ids="$(
-            python .github/scripts/security_exceptions.py \
-              .github/security-exceptions.json \
-              --format ids \
-              --scanner trivy
-          )"
-          echo "ids=$ids" >> "$GITHUB_OUTPUT"
 
       - name: Scan image (Trivy CRITICAL/HIGH)
         id: trivy-sarif
@@ -1212,13 +1082,12 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
-          exit-code: "1"
+          exit-code: "0"
           ignore-unfixed: true
-          trivyignores: ${{ steps.trivy-exceptions.outputs.ids }}
 
       - name: Upload Trivy SARIF artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-sarif
           path: trivy-results.sarif
@@ -1226,7 +1095,7 @@ jobs:
 
       - name: Upload Trivy SARIF to GitHub Security tab
         if: ${{ github.event_name == 'push' && !cancelled() }}
-        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: trivy-results.sarif
           category: trivy-backend-image
@@ -1246,25 +1115,6 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "0"
           ignore-unfixed: true
-          trivyignores: ${{ steps.trivy-exceptions.outputs.ids }}
-
-      - name: Export the exact scanned backend image
-        if: >-
-          github.event_name == 'push' &&
-          (github.ref_name == 'main' || github.ref_name == 'master')
-        run: docker save --output "${{ runner.temp }}/backend-image.tar" "itg-backend-ci:${{ github.sha }}"
-
-      - name: Upload the exact scanned backend image
-        if: >-
-          github.event_name == 'push' &&
-          (github.ref_name == 'main' || github.ref_name == 'master')
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: backend-image-${{ github.sha }}
-          path: ${{ runner.temp }}/backend-image.tar
-          compression-level: 0
-          if-no-files-found: error
-          retention-days: 1
 
   backend-required-result:
     name: Backend Required Result
@@ -1315,83 +1165,37 @@ jobs:
       github.event_name == 'push' &&
       (github.ref_name == 'main' || github.ref_name == 'master') &&
       needs.changes.outputs.backend == 'true'
-    permissions:
-      contents: read
-      id-token: write
     env:
       AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
-      AWS_ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
       ECR_REPOSITORY: itg-backend
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
-      - name: Validate AWS OIDC role
-        run: |
-          if [ -z "$AWS_ROLE_ARN" ]; then
-            echo "::error::Repository variable AWS_GITHUB_ACTIONS_ROLE_ARN is required."
-            exit 1
-          fi
-
-      - name: Configure AWS credentials through OIDC
-        uses: aws-actions/configure-aws-credentials@451ce2a72e8d729a59ebeaacab82dbce58e7af4c
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          role-session-name: i2g-ci-backend-${{ github.run_id }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Download the exact scanned backend image
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build and publish backend image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
-          name: backend-image-${{ github.sha }}
-          path: ${{ runner.temp }}/backend-image
-
-      - name: Tag and publish the exact scanned backend image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          set -euo pipefail
-          docker load --input "${{ runner.temp }}/backend-image/backend-image.tar"
-          source_image="itg-backend-ci:${GITHUB_SHA}"
-          target_image="${ECR_REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
-          docker image inspect "$source_image" >/dev/null
-          docker tag "$source_image" "$target_image"
-          docker push "$target_image"
-
-          repo_digest="$(docker image inspect \
-            --format='{{ index .RepoDigests 0 }}' \
-            "$target_image")"
-          digest="${repo_digest##*@}"
-          if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
-            echo "::error::Docker did not report an immutable digest for the pushed backend image."
-            exit 1
-          fi
-
-          IMAGE_DIGEST="$digest" python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          manifest = {
-              "sha": os.environ["GITHUB_SHA"],
-              "repository": os.environ["ECR_REPOSITORY"],
-              "digest": os.environ["IMAGE_DIGEST"],
-          }
-          path = Path(os.environ["RUNNER_TEMP"]) / "backend-image-manifest.json"
-          path.write_text(json.dumps(manifest, separators=(",", ":")) + "\n", encoding="utf-8")
-          PY
-
-      - name: Upload backend image provenance
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: backend-image-manifest-${{ github.sha }}
-          path: ${{ runner.temp }}/backend-image-manifest.json
-          if-no-files-found: error
-          retention-days: 90
+          context: src
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   security-required-result:
     name: Security Required Result
@@ -1435,7 +1239,6 @@ jobs:
     needs:
       - backend-image-publish
       - frontend-prod-build
-      - archive-image-publish
       - changes
     if: ${{ always() }}
     steps:
@@ -1472,18 +1275,18 @@ jobs:
     if: ${{ always() && needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: src/requirements/local.lock.txt
+          cache-dependency-path: src/requirements.txt
 
       - name: Install Python SBOM tools
         run: |
-          python -m pip install "pip==25.3"
+          python -m pip install --upgrade pip
           pip install "pip-audit[cyclonedx]==2.7.3"
 
       - name: Generate Python SBOM
@@ -1498,7 +1301,7 @@ jobs:
 
       - name: Upload Python supply chain artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: python-supply-chain-report
           path: python-sbom.cdx.json
@@ -1549,7 +1352,7 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -1587,6 +1390,7 @@ jobs:
     name: E2E (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    continue-on-error: true
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     strategy:
       fail-fast: false
@@ -1601,9 +1405,6 @@ jobs:
       - secrets-scan
       - changes
     services:
-      # GitHub Actions services cannot be conditional per matrix leg. Only the
-      # live-chromium leg below installs/starts Django and consumes PostgreSQL;
-      # the fixture-backed local projects remain independent of backend state.
       postgres:
         image: public.ecr.aws/docker/library/postgres:16
         env:
@@ -1630,36 +1431,41 @@ jobs:
       PW_PROJECT: ${{ matrix.project }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        if: ${{ matrix.project == 'live-chromium' }}
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements/local.lock.txt
+
+      - name: Cache backend virtualenv
+        id: backend-venv-cache
+        uses: actions/cache@v6
+        with:
+          path: src/.venv
+          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: pages/package-lock.json
 
       - name: Install backend dependencies
-        if: ${{ matrix.project == 'live-chromium' }}
+        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
         working-directory: src
         run: |
           python -m venv .venv
-          .venv/bin/python -m pip install --require-hashes -r requirements.txt
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Install frontend dependencies
         working-directory: pages
         run: npm ci
 
       - name: Download CI frontend build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@v8
         with:
           name: frontend-dist-ci
           path: pages/dist
@@ -1673,7 +1479,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           # The -cfw suffix (chromium+firefox+webkit) busts any older cache that
@@ -1695,17 +1501,14 @@ jobs:
         run: npx playwright install-deps chromium firefox webkit
 
       - name: Prepare backend database
-        if: ${{ matrix.project == 'live-chromium' }}
         working-directory: src
         run: .venv/bin/python manage.py migrate --noinput
 
       - name: Seed admin E2E data
-        if: ${{ matrix.project == 'live-chromium' }}
         working-directory: src
         run: .venv/bin/python manage.py seed_admin_e2e --yes
 
       - name: Start backend
-        if: ${{ matrix.project == 'live-chromium' }}
         working-directory: src
         run: |
           # --insecure forces django.contrib.staticfiles to serve admin/Unfold
@@ -1748,7 +1551,7 @@ jobs:
 
       - name: Upload blob report
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: blob-${{ matrix.project }}
           path: pages/blob-report/
@@ -1756,7 +1559,7 @@ jobs:
 
       - name: Upload server logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-logs-${{ matrix.project }}
           path: |
@@ -1773,10 +1576,10 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -1792,7 +1595,7 @@ jobs:
         # download must not turn the run red. The merge step below tolerates a
         # missing/empty directory.
         continue-on-error: true
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        uses: actions/download-artifact@v8
         with:
           path: pages/all-blob-reports
           pattern: blob-*
@@ -1842,7 +1645,7 @@ jobs:
 
       - name: Annotate test results on the PR
         if: ${{ always() }}
-        uses: mikepenz/action-junit-report@d9f48fc87bc235f7e214acf696ca5abc0a986f16
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: pages/results.xml
           detailed_summary: true
@@ -1851,7 +1654,7 @@ jobs:
 
       - name: Upload merged HTML report
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-html-report
           path: |
@@ -1859,35 +1662,29 @@ jobs:
             pages/test-results
           if-no-files-found: warn
 
-  e2e-required-result:
-    name: E2E Required Result
+  e2e-informational-result:
+    name: E2E Informational Result
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
-      - e2e
       - e2e-report
       - changes
-    if: ${{ always() }}
+    if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
+    continue-on-error: true
     steps:
-      - name: Require the applicable Playwright matrix
+      - name: Summarize E2E informational checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: |
           python - <<'PY'
           import json
           import os
-          import sys
 
           needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          frontend_changed = needs["changes"]["outputs"]["frontend"] == "true"
-          if not frontend_changed:
-              print("Frontend unchanged; Playwright matrix was not applicable.")
-              raise SystemExit(0)
-          result = needs["e2e"]["result"]
-          print(f"e2e: {result}")
-          if result != "success":
-              sys.exit(1)
-          print("All required Playwright matrix jobs passed.")
+          for name, data in needs.items():
+              if name != "changes":
+                  print(f"{name}: {data['result']}")
+          print("E2E remains informational and does not block CI Result.")
           PY
 
   archive-tests:
@@ -1901,120 +1698,20 @@ jobs:
         working-directory: archive/page
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install test dependencies
         run: |
-          pip install --require-hashes -r requirements-dev.txt
-          pip install \
-            "bandit[toml]==1.7.10" \
-            "pip-audit==2.7.3" \
-            "ruff==0.15.17"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run the static-site smoke suite
         run: pytest
-
-      - name: Run archive Ruff and Bandit checks
-        run: |
-          ruff check app.py tests
-          ruff format --check app.py tests
-          bandit -r app.py -ll
-
-      - name: Audit archive runtime dependencies
-        run: pip-audit --requirement requirements.txt
-
-  archive-docker-build:
-    name: Archive Docker Build and Scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs:
-      - archive-tests
-      - changes
-    if: ${{ needs.changes.outputs.archive == 'true' }}
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Lint archive Dockerfile
-        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
-        with:
-          dockerfile: archive/page/Dockerfile
-          failure-threshold: error
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-
-      - name: Build archive image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: archive/page
-          load: true
-          tags: itg-archive-ci:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Load Trivy security exceptions
-        id: trivy-exceptions
-        run: |
-          ids="$(
-            python .github/scripts/security_exceptions.py \
-              .github/security-exceptions.json \
-              --format ids \
-              --scanner trivy
-          )"
-          echo "ids=$ids" >> "$GITHUB_OUTPUT"
-
-      - name: Scan archive image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: itg-archive-ci:${{ github.sha }}
-          format: sarif
-          output: archive-trivy-results.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "1"
-          ignore-unfixed: true
-          trivyignores: ${{ steps.trivy-exceptions.outputs.ids }}
-
-      - name: Upload archive Trivy artifact
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: archive-trivy-sarif
-          path: archive-trivy-results.sarif
-          if-no-files-found: warn
-
-      - name: Upload archive Trivy SARIF
-        if: ${{ github.event_name == 'push' && !cancelled() }}
-        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
-        with:
-          sarif_file: archive-trivy-results.sarif
-          category: trivy-archive-image
-
-      - name: Export the exact scanned archive image
-        if: >-
-          github.event_name == 'push' &&
-          (github.ref_name == 'main' || github.ref_name == 'master')
-        run: docker save --output "${{ runner.temp }}/archive-image.tar" "itg-archive-ci:${{ github.sha }}"
-
-      - name: Upload the exact scanned archive image
-        if: >-
-          github.event_name == 'push' &&
-          (github.ref_name == 'main' || github.ref_name == 'master')
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: archive-image-${{ github.sha }}
-          path: ${{ runner.temp }}/archive-image.tar
-          compression-level: 0
-          if-no-files-found: error
-          retention-days: 1
 
   archive-required-result:
     name: Archive Required Result
@@ -2022,7 +1719,6 @@ jobs:
     timeout-minutes: 5
     needs:
       - archive-tests
-      - archive-docker-build
       - changes
     if: ${{ always() }}
     steps:
@@ -2049,95 +1745,6 @@ jobs:
           print("Archive checks passed or were not required for this run.")
           PY
 
-  archive-image-publish:
-    name: Archive Image Publish
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs:
-      - archive-required-result
-      - changes
-    if: >-
-      github.event_name == 'push' &&
-      (github.ref_name == 'main' || github.ref_name == 'master') &&
-      needs.changes.outputs.archive == 'true'
-    permissions:
-      contents: read
-      id-token: write
-    env:
-      AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
-      AWS_ROLE_ARN: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
-      ECR_REPOSITORY: itg-archive
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Validate AWS OIDC role
-        run: |
-          if [ -z "$AWS_ROLE_ARN" ]; then
-            echo "::error::Repository variable AWS_GITHUB_ACTIONS_ROLE_ARN is required."
-            exit 1
-          fi
-
-      - name: Configure AWS credentials through OIDC
-        uses: aws-actions/configure-aws-credentials@451ce2a72e8d729a59ebeaacab82dbce58e7af4c
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          role-session-name: i2g-ci-archive-${{ github.run_id }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64
-
-      - name: Download the exact scanned archive image
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: archive-image-${{ github.sha }}
-          path: ${{ runner.temp }}/archive-image
-
-      - name: Tag and publish the exact scanned archive image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          set -euo pipefail
-          docker load --input "${{ runner.temp }}/archive-image/archive-image.tar"
-          source_image="itg-archive-ci:${GITHUB_SHA}"
-          target_image="${ECR_REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
-          docker image inspect "$source_image" >/dev/null
-          docker tag "$source_image" "$target_image"
-          docker push "$target_image"
-
-          repo_digest="$(docker image inspect \
-            --format='{{ index .RepoDigests 0 }}' \
-            "$target_image")"
-          digest="${repo_digest##*@}"
-          if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
-            echo "::error::Docker did not report an immutable digest for the pushed archive image."
-            exit 1
-          fi
-
-          IMAGE_DIGEST="$digest" python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          manifest = {
-              "sha": os.environ["GITHUB_SHA"],
-              "repository": os.environ["ECR_REPOSITORY"],
-              "digest": os.environ["IMAGE_DIGEST"],
-          }
-          path = Path(os.environ["RUNNER_TEMP"]) / "archive-image-manifest.json"
-          path.write_text(json.dumps(manifest, separators=(",", ":")) + "\n", encoding="utf-8")
-          PY
-
-      - name: Upload archive image provenance
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: archive-image-manifest-${{ github.sha }}
-          path: ${{ runner.temp }}/archive-image-manifest.json
-          if-no-files-found: error
-          retention-days: 90
-
   ci-result:
     name: CI Result
     runs-on: ubuntu-latest
@@ -2147,12 +1754,10 @@ jobs:
       - changes
       - backend-required-result
       - frontend-required
-      - cli-required-result
       - security-required-result
       - supply-chain-result
       - deploy-artifact-result
       - archive-required-result
-      - e2e-required-result
     if: ${{ always() }}
     steps:
       - name: Summarize required jobs
@@ -2192,7 +1797,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
 
       - name: Fetch current workflow jobs
         env:

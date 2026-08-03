@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -26,7 +26,7 @@ def _format_duration(started_at: str | None, completed_at: str | None) -> str:
     if start is None:
         return "n/a"
     if end is None:
-        end = datetime.now(UTC)
+        end = datetime.now(timezone.utc)
     total_seconds = max(0, int((end - start).total_seconds()))
     minutes, seconds = divmod(total_seconds, 60)
     hours, minutes = divmod(minutes, 60)

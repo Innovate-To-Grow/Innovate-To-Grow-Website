@@ -22,7 +22,7 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `DJANGO_SECRET_KEY` | Django secret key | Yes |
 | `DJANGO_SETTINGS_MODULE` | Settings module path | Yes |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated hostnames | Yes |
+| `ALLOWED_HOSTS` | Comma-separated hostnames | Yes |
 | `DEBUG` | Debug mode (never `True` in prod) | No (defaults to `False`) |
 
 ### Database
@@ -44,25 +44,6 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
 | `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
-| `CSP_REPORT_ONLY` | Emit report-only CSP when true; enforce when false | No (defaults to true) |
-
-### Durable jobs
-
-| Variable | Purpose | Required in prod |
-|----------|---------|-----------------|
-| `BACKGROUND_WORKER_ENABLED` | Deploy one ECS consumer before changing web queue production | For worker deployment; defaults to the legacy queue flag |
-| `BACKGROUND_JOBS_ENABLED` | Let web processes enqueue durable jobs | No (safe default `false`; requires worker flag `true`) |
-| `BACKGROUND_JOB_METRICS_NAMESPACE` | Environment-isolated CloudWatch worker metrics namespace | For worker deployment |
-| `BACKGROUND_WORKER_HEARTBEAT_MAX_AGE_SECONDS` | Maximum accepted heartbeat age during deploy | No (defaults to 180) |
-| `BACKGROUND_WORKER_HEARTBEAT_TIMEOUT_SECONDS` | Time allowed for the heartbeat gate | No (defaults to 300) |
-| `ECS_WORKER_SERVICE` | Existing ECS service updated to one consumer | For worker deployment |
-| `ECS_WORKER_TASK_FAMILY` | Worker task-definition family | For worker deployment |
-| `ECS_WORKER_LOG_GROUP` | Worker CloudWatch Logs group | For worker deployment |
-
-Use distinct metrics namespaces for production and demo. Initial rollout is
-`BACKGROUND_WORKER_ENABLED=true` with `BACKGROUND_JOBS_ENABLED=false`; only
-turn the latter on after the deployment observes a fresh `WorkerHeartbeat`.
-Both flags default off when no legacy value exists.
 
 ### AWS / Storage
 
@@ -70,11 +51,9 @@ Both flags default off when no legacy value exists.
 |----------|---------|-----------------|
 | `AWS_STORAGE_BUCKET_NAME` | S3 bucket for static/media files | Yes |
 | `AWS_S3_REGION_NAME` | S3 region | Yes |
+| `AWS_ACCESS_KEY_ID` | S3 access key | Yes |
+| `AWS_SECRET_ACCESS_KEY` | S3 secret key | Yes |
 | `AWS_S3_ENDPOINT_URL` | Custom S3 endpoint (for R2 compatibility) | No |
-
-ECS accesses S3 through `ECS_TASK_ROLE_ARN`; do not inject long-lived
-`AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` values into web or worker tasks.
-GitHub deployment uses a separate environment-scoped OIDC role.
 
 ### AWS services (SES, SNS, Bedrock)
 
@@ -89,7 +68,7 @@ A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/serv
 
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
-| `REDIS_URL` | Shared Redis connection URL | When the public assistant or durable worker is enabled; optional otherwise |
+| `REDIS_URL` | Redis connection URL | No (falls back to file cache) |
 
 ### Frontend / CORS
 
@@ -102,31 +81,26 @@ A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/serv
 | `BACKEND_SMOKE_URL` | Optional direct backend URL for backend deploy smoke checks | No |
 | `AMPLIFY_BACKEND_PROXY_URL` | Optional backend origin used by Amplify rewrite rules | No |
 | `AMPLIFY_PROXY_ADMIN_PATHS` | Enable Amplify `/admin`, `/static`, and `/media` proxy rules | No |
-| `AMPLIFY_CSP_FRAME_SOURCES` | Exact/wildcard HTTPS iframe origins allowed by deployed CSP | Yes for frontend deploy |
-| `AMPLIFY_CSP_MODE` | `report-only` during observation, then `enforce` | No (defaults to `report-only`) |
 
 ### Production targets
 
-The `Deploy Production` workflow places every selected component behind one
-`Production Deployments` approval gate. Component jobs then use separate GitHub
-Environment targets for production and demo variables, secrets, URLs, and
-deployment history. The demo target is intended to use isolated backend data
-and deployment resources while sharing the same source code and container
-image.
+The deploy workflows run separate GitHub Environment targets for production and
+demo. The demo target is intended to use isolated backend data and deployment
+resources while sharing the same source code and container image.
 
 | GitHub Environment | Purpose |
 |--------------------|---------|
-| `Production Deployments` | Required-reviewer gate that approves the complete normal deployment set once |
+| `Production Deployments` | Single required-reviewer gate shared by every production deployment |
 | `AWS ECS - Prod` | Existing production backend |
 | `AWS ECS(DEMO) - Prod` | Demo backend, default admin URL `https://demo.i2g.ucmerced.edu/admin` |
 | `AWS Amplify - Prod` | Existing production frontend |
 | `AWS Amplify(DEMO) - Prod` | Demo frontend, default URL `https://demo.i2g.ucmerced.edu` |
+| `AWS ECS - Archive Prod` | Archived event-pages ECS service |
 
-After the shared gate is active on `main`, configure required reviewers only
-on `Production Deployments`, not on each AWS target environment. A target with
-its own required reviewers creates an additional approval card. Keep the
-target environments because jobs can read their environment-scoped variables
-and secrets only when they reference those environments.
+Keep required reviewers on `Production Deployments`. The five target
+environments continue to provide target-specific variables, secrets, URLs, and
+deployment history, but must not also require reviewers after the unified gate
+has been verified; otherwise GitHub requests a second approval.
 
 ### Demo target values
 
@@ -157,10 +131,10 @@ Configure `AWS Amplify(DEMO) - Prod` with `AMPLIFY_APP_ID=d216f5mwm2zgtd`,
 `AMPLIFY_PROXY_ADMIN_PATHS=true`.
 
 Configure `AWS ECS(DEMO) - Prod` with the ECS, database, URL, CORS/CSRF, and
-S3 values above. Reuse the existing OIDC deployment role plus secret ARN
-variables for `DJANGO_SECRET_KEY`, `DB_PASSWORD`, and the create-only
-`DJANGO_SUPERUSER_PASSWORD` input unless separate demo credentials are
-intentionally created.
+S3 values above. Reuse the existing deployment AWS credentials and secret ARN
+variables for `DJANGO_SECRET_KEY`, `DB_PASSWORD`, and
+`DJANGO_SUPERUSER_PASSWORD` unless separate demo credentials are intentionally
+created.
 
 ### Google Sheets
 
@@ -173,7 +147,7 @@ These integrations read credentials from Django admin → Site Settings at runti
 | Model | Purpose |
 |-------|---------|
 | `AWSCredentialConfig` | Shared AWS IAM key + region + SMS origination number + OTP template |
-| `EmailServiceConfig` | Explicitly active SES sender identity and campaign rate |
+| `EmailServiceConfig` | Sender identity, campaign rate, SMTP fallback |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
 
 Before removing legacy env vars from a deployed environment, run `python manage.py verify_service_configs --strict` against the prod DB to confirm active rows exist. See [CMS & Admin → Operations](../cms-admin/operations.md#service-configuration).
@@ -183,22 +157,16 @@ Before removing legacy env vars from a deployed environment, run `python manage.
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
 | `RSA_KEY_PASSPHRASE` | Passphrase for RSA key encryption | Recommended |
-| `ENSURE_DEFAULT_ADMIN` | Run the explicit create-only demo admin one-off | No (defaults true only for demo) |
-| `DJANGO_SUPERUSER_EMAIL` | Email used only by that one-off | When the one-off is enabled |
-| `DJANGO_SUPERUSER_PASSWORD_SECRET_ARN` | Secret reference used only by that one-off | When the one-off is enabled |
-
-Normal web and worker startup never creates or updates an administrator.
-`ensure_default_admin --yes` runs as an explicit one-off after migration and
-will not reset, reactivate, or promote an existing account.
+| `DJANGO_SUPERUSER_EMAIL` | Initial superuser email (ECS startup) | No |
+| `DJANGO_SUPERUSER_PASSWORD` | Initial superuser password (ECS startup) | No |
 
 ## Feature comparison
 
 | Feature | Dev | CI | Prod |
 |---------|-----|-----|------|
 | Database | SQLite | PostgreSQL 16 | PostgreSQL + SSL |
-| Cache | LocMemCache | LocMemCache | Redis; required when the public assistant is enabled |
-| Email | Console for Django-native dev mail | Console for Django-native test mail | AWS SES |
-| Durable jobs | In-process fallback by default | PostgreSQL outbox tests | PostgreSQL outbox + ECS worker |
+| Cache | LocMemCache | LocMemCache | Redis (file fallback) |
+| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Password hashers | Plain text OK | Plain text OK | Argon2/bcrypt required |
 | Debug mode | True | False | False |

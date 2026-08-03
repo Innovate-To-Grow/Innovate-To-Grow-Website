@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from scripts.ci.plan_e2e_tests import FULL_PROJECTS, LIVE_PROJECT, plan_e2e_tests
+from scripts.ci.plan_e2e_tests import FULL_PROJECTS, plan_e2e_tests
 
 
 class PlanE2ETests(unittest.TestCase):
@@ -17,7 +17,6 @@ class PlanE2ETests(unittest.TestCase):
 
         for device in ("iphone-17-pro-max", "galaxy-s26-ultra", "galaxy-tab-s9"):
             self.assertIn(device, plan.projects)
-        self.assertIn(LIVE_PROJECT, plan.projects)
 
     def test_auth_paths_run_auth_account_subscribe_profile_specs(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/features/auth/components/Login.tsx"])
@@ -55,10 +54,6 @@ class PlanE2ETests(unittest.TestCase):
         self.assertIn("e2e/events/schedule.spec.ts", plan.specs)
         self.assertIn("e2e/smoke.live.spec.ts", plan.specs)
         self.assertIn("e2e/auth/cross-root-sync.spec.ts", plan.specs)
-        by_project = {leg.project: leg.spec_args for leg in plan.matrix}
-        self.assertEqual(plan.projects, ["chromium", LIVE_PROJECT])
-        self.assertNotIn("smoke.live", by_project["chromium"])
-        self.assertEqual(by_project[LIVE_PROJECT], "e2e/smoke.live.spec.ts")
 
     def test_event_paths_run_event_specs(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/routes/EventRegistrationPage/index.tsx"])
@@ -68,37 +63,24 @@ class PlanE2ETests(unittest.TestCase):
     def test_mobile_paths_add_pixel7_and_mobile_spec(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/components/MobileMenu.tsx"])
 
-        self.assertEqual(plan.projects, ["pixel7", LIVE_PROJECT])
+        self.assertEqual(plan.projects, ["chromium", "pixel7"])
         self.assertIn("e2e/mobile.spec.ts", plan.specs)
         by_project = {leg.project: leg.spec_args for leg in plan.matrix}
+        self.assertEqual(by_project["chromium"], "e2e/smoke.live.spec.ts")
         self.assertIn("e2e/mobile.spec.ts", by_project["pixel7"])
-        self.assertEqual(by_project[LIVE_PROJECT], "e2e/smoke.live.spec.ts")
 
     def test_global_config_change_runs_full_chromium(self):
         plan = plan_e2e_tests("pull_request", ["pages/playwright.config.ts"])
 
-        self.assertEqual(plan.projects, ["chromium", LIVE_PROJECT])
+        self.assertEqual(plan.projects, ["chromium"])
         self.assertEqual(plan.specs, [])
-        self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
-
-    def test_direct_live_spec_runs_only_in_live_project(self):
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/smoke.live.spec.ts"])
-
-        self.assertEqual(plan.projects, [LIVE_PROJECT])
-        self.assertEqual(plan.matrix[0].spec_args, "e2e/smoke.live.spec.ts")
-
-    def test_direct_admin_spec_runs_only_in_live_project(self):
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/admin.spec.ts"])
-
-        self.assertEqual(plan.projects, [LIVE_PROJECT])
-        self.assertEqual(plan.matrix[0].spec_args, "e2e/admin.spec.ts")
+        self.assertEqual(plan.matrix[0].spec_args, "")
 
     def test_e2e_helper_change_adds_webkit_leg_on_pr(self):
         plan = plan_e2e_tests("pull_request", ["pages/e2e/helpers/auth.ts"])
 
         self.assertIn("chromium", plan.projects)
         self.assertIn("webkit", plan.projects)
-        self.assertIn(LIVE_PROJECT, plan.projects)
         # A harness change is global, so each leg runs the full suite.
         self.assertEqual(plan.specs, [])
         self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
