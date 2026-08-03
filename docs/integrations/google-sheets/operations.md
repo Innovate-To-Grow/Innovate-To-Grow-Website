@@ -129,4 +129,3 @@ In production, monitor:
 - [Data Flow](data-flow.md) — Technical sync details
 - [Deployment: Environments](../../deployment/environments.md) — Full environment variable reference
 - [CMS & Admin: Operations](../../cms-admin/operations.md) — General operational guidance
-- [Production Handoff Runbook](../../operations/handoff-runbook.md) — Reconciliation and incident steps

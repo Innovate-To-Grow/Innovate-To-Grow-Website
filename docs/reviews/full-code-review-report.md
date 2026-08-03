@@ -2,8 +2,8 @@
 
 > **Historical snapshot — superseded.** Findings and status in this file
 > describe an earlier repository state and are not the current handoff state.
-> Use the [handoff runbook](../operations/handoff-runbook.md) and current
-> architecture/deployment documentation for operations and verification.
+> Refer to the current [architecture](../architecture/index.md) and
+> [deployment](../deployment/index.md) documentation for operations and verification.
 
 ## 1. Executive Summary
 

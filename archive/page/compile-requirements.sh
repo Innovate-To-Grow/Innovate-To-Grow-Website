@@ -16,6 +16,9 @@ common_args="
 --allow-unsafe
 "
 
+# Keep generated headers stable across developer machines and CI.
+export CUSTOM_COMPILE_COMMAND="./compile-requirements.sh"
+
 # shellcheck disable=SC2086
 python -m piptools compile $common_args \
   --output-file requirements.txt \

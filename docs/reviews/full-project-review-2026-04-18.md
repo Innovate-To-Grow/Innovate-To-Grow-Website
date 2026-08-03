@@ -2,8 +2,8 @@
 
 > **Historical snapshot — superseded.** Findings and status in this file
 > describe the repository on 2026-04-18 and are not the current handoff state.
-> Use the [handoff runbook](../operations/handoff-runbook.md) and current
-> architecture/deployment documentation for operations and verification.
+> Refer to the current [architecture](../architecture/index.md) and
+> [deployment](../deployment/index.md) documentation for operations and verification.
 
 **Scope:** Entire Innovate-To-Grow website — Django 5.2 backend (`src/`), React 19 + TypeScript frontend (`pages/`), infrastructure (`aws/`, `.github/`, `Dockerfile`), and dependencies.
 
