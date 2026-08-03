@@ -24,7 +24,7 @@ Official platform of **Innovate To Grow | University of California, Merced | Sch
 ## Prerequisites
 
 - Python 3.11+
-- Node.js 22.22+ (npm 10+)
+- Node.js 22.22.2 (npm 10+; other supported releases are listed in `pages/package.json`)
 - SQLite 3.35+ (dev); PostgreSQL for CI and production
 
 ---
