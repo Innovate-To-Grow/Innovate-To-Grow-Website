@@ -106,29 +106,6 @@ updates:
         patterns:
           - "*"
 
-  # Standalone administration CLI
-  - package-ecosystem: pip
-    directory: /cli
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - python
-    commit-message:
-      prefix: "chore(deps-cli)"
-      include: scope
-    groups:
-      all-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
-
   # Backend container base image
   - package-ecosystem: docker
     directory: /src
@@ -139,22 +116,6 @@ updates:
     open-pull-requests-limit: 2
     labels:
       - dependencies
-      - docker
-    commit-message:
-      prefix: "chore(deps)"
-      include: scope
-
-  # Archive container base image
-  - package-ecosystem: docker
-    directory: /archive/page
-    schedule:
-      interval: monthly
-      time: "09:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 2
-    labels:
-      - dependencies
-      - archive
       - docker
     commit-message:
       prefix: "chore(deps)"
