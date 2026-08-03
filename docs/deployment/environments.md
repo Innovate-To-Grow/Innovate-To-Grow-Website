@@ -90,10 +90,17 @@ resources while sharing the same source code and container image.
 
 | GitHub Environment | Purpose |
 |--------------------|---------|
+| `Production Deployments` | Single required-reviewer gate shared by every production deployment |
 | `AWS ECS - Prod` | Existing production backend |
 | `AWS ECS(DEMO) - Prod` | Demo backend, default admin URL `https://demo.i2g.ucmerced.edu/admin` |
 | `AWS Amplify - Prod` | Existing production frontend |
 | `AWS Amplify(DEMO) - Prod` | Demo frontend, default URL `https://demo.i2g.ucmerced.edu` |
+| `AWS ECS - Archive Prod` | Archived event-pages ECS service |
+
+Keep required reviewers on `Production Deployments`. The five target
+environments continue to provide target-specific variables, secrets, URLs, and
+deployment history, but must not also require reviewers after the unified gate
+has been verified; otherwise GitHub requests a second approval.
 
 ### Demo target values
 
