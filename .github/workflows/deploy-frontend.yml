@@ -1,26 +1,24 @@
 name: Deploy Frontend to AWS Amplify
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      deploy_sha:
+        description: Full commit SHA from the successful CI run.
+        required: true
+        type: string
 
 permissions:
   actions: read
   contents: read
 
 concurrency:
-  group: deploy-frontend-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-frontend-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: Deploy Frontend (${{ matrix.target }})
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -52,7 +50,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ inputs.deploy_sha }}
 
       - name: Validate required deploy configuration
         env:

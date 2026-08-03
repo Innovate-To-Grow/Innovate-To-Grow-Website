@@ -8,20 +8,19 @@ name: Deploy Archive to AWS ECS
 # Actions configuration and in the registered task definition.
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-  # Manual trigger: deploy the current ref on demand (e.g. to re-ship without
-  # waiting for a CI run). Matches deploy-frontend.yml.
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      deploy_sha:
+        description: Full commit SHA from the successful CI run.
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-archive-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-archive-production
+  cancel-in-progress: false
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
@@ -34,16 +33,6 @@ env:
 jobs:
   deploy:
     name: Build & Deploy Archive
-    # Deploy on every successful CI run on main, or on a manual dispatch —
-    # matching deploy-backend.yml / deploy-frontend.yml (no path gate). A
-    # path-diff gate was unreliable: when archive changes land on a different
-    # commit than the one CI runs on (e.g. an archive merge followed by a
-    # CI-only merge), the merge-commit diff misses archive/ and the deploy is
-    # skipped. The build is fast and the deploy is idempotent, so always
-    # deploying is simpler and never misses a change.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -53,6 +42,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.deploy_sha }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -89,7 +80,7 @@ jobs:
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: ${{ inputs.deploy_sha }}
         run: |
           docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" archive/page/
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"

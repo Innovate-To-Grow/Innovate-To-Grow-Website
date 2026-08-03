@@ -8,8 +8,10 @@ GitHub Actions pipelines for linting, testing, building, and deploying.
 |------|---------|---------|
 | `.github/workflows/lint.yml` | Code style checks | Push and PR |
 | `.github/workflows/ci.yml` | Full test and build pipeline | Push and PR |
-| `.github/workflows/deploy-backend.yml` | Backend deployment to ECS | CI success on main, or manual |
-| `.github/workflows/deploy-frontend.yml` | Frontend deployment to Amplify | CI success on main, or manual |
+| `.github/workflows/deploy-production.yml` | Unified production approval and deployment orchestration | CI success on main, or manual on main |
+| `.github/workflows/deploy-backend.yml` | Backend deployment to ECS | Reusable workflow call |
+| `.github/workflows/deploy-frontend.yml` | Frontend deployment to Amplify | Reusable workflow call |
+| `.github/workflows/deploy-archive.yml` | Archive deployment to ECS | Reusable workflow call |
 
 ## CI pipeline (`ci.yml`)
 
@@ -61,10 +63,17 @@ Uses SQLite (dev settings) for fast test execution.
 
 ## Deploy pipelines
 
+`Deploy Production` is the only automatic production entry point. After a
+successful `main` CI run, it requests one approval through the protected
+`Production Deployments` environment and then calls all three component
+workflows with the triggering commit SHA. See
+[Production Deployment Approval](production.md) for environment setup and the
+reviewer migration procedure.
+
 ### Backend (`deploy-backend.yml`)
 
-1. Build Docker image
-2. Push to AWS ECR
+1. Pull the SHA-tagged Docker image published by the successful CI run
+2. Extract and upload Django static assets
 3. Render ECS task definition from `aws/task-definition.json` template
 4. Deploy to ECS via `aws-actions/amazon-ecs-deploy-task-definition@v2`
 5. Run smoke tests:
@@ -104,13 +113,20 @@ GitHub Environment. Demo also supports Amplify rewrite rules for `/admin`,
 `/static`, and `/media` so `https://demo.i2g.ucmerced.edu/admin` can front a
 separate backend origin.
 
-Both deploy workflows use AWS credentials stored in GitHub Secrets.
+### Archive (`deploy-archive.yml`)
+
+The archive workflow checks out the approved commit, builds and publishes its
+container image, deploys the ECS service, and runs HTTPS smoke checks.
+
+All component workflows use credentials and target-specific configuration from
+their existing GitHub Environments.
 
 ## Branch strategy
 
 - **CI** runs on all pushes and PRs to any branch
-- **Deployment** triggers only on successful CI completion on `main`
-- Both deploy workflows support manual dispatch for ad-hoc deployments
+- **Deployment** triggers only after successful CI completion on `main`
+- **Manual deployment** starts only from the unified workflow on `main`
+- Component workflows are reusable calls and cannot bypass the unified approval gate
 
 ## Monitoring CI
 

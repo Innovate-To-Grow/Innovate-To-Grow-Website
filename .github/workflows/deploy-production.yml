@@ -1,0 +1,65 @@
+name: Deploy Production
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  approve:
+    name: Approve all production deployments
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: Production Deployments
+    steps:
+      - name: Record unified approval
+        env:
+          DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          {
+            echo "## Approved production deployment"
+            echo
+            printf -- '%s\n' "- Commit: \`$DEPLOY_SHA\`"
+            echo "- Targets: backend prod/demo, frontend prod/demo, archive prod"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-backend:
+    name: Deploy backend targets
+    needs: approve
+    uses: ./.github/workflows/deploy-backend.yml
+    with:
+      deploy_sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      build_image: ${{ github.event_name == 'workflow_dispatch' }}
+    secrets: inherit
+
+  deploy-frontend:
+    name: Deploy frontend targets
+    needs: approve
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      deploy_sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+    secrets: inherit
+
+  deploy-archive:
+    name: Deploy archive target
+    needs: approve
+    uses: ./.github/workflows/deploy-archive.yml
+    with:
+      deploy_sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+    secrets: inherit
