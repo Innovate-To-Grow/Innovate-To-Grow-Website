@@ -85,4 +85,16 @@ export async function mockHealthyAppShell(page: Page) {
       }),
     });
   });
+
+  // AccountPage mounts MySharedLinksSection for every authenticated session.
+  // Letting this request reach the CI backend with a fixture JWT triggers the
+  // refresh -> retry -> logout cascade and unmounts the page mid-test. Specs
+  // that exercise shared links register a more specific stateful mock later.
+  await page.route('**/projects/past-shares/mine/', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '[]',
+    });
+  });
 }
