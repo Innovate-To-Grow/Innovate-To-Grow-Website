@@ -50,7 +50,7 @@ Uses SQLite (dev settings) for fast test execution.
 
 ### Stage 5: Frontend tests
 
-- Node.js 22.22 or newer
+- Node.js 22.22.2 (or another release allowed by `pages/package.json`)
 - Vitest with 4096 MB Node memory limit
 - Runs `npm test`
 
@@ -123,7 +123,7 @@ Both deploy workflows use AWS credentials stored in GitHub Secrets.
 When adding new CI stages:
 1. Add the step to the appropriate workflow file in `.github/workflows/`
 2. For new backend checks, use `--settings=config.settings.local` (SQLite) or `--settings=config.settings.test` (PostgreSQL)
-3. For new frontend checks, ensure Node.js 22.22+ compatibility
+3. For new frontend checks, use a Node.js release allowed by `pages/package.json`
 4. Keep stages independent where possible for parallel execution
 
 ## Related pages

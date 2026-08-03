@@ -5,7 +5,7 @@ Setting up and running the project for local development.
 ## Prerequisites
 
 - Python 3.11+
-- Node.js 22.22+ with npm 10+
+- Node.js 22.22.2 with npm 10+ (or another release allowed by `pages/package.json`)
 - Git
 
 ## Backend setup
