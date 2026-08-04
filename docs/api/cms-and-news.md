@@ -26,7 +26,7 @@ Fetches a published CMS page by its route path. The route can be multi-segment (
 
 **Permission:** AllowAny
 
-**Response:**
+**Published page response:**
 ```json
 {
   "id": "<uuid>",
@@ -52,6 +52,22 @@ Fetches a published CMS page by its route path. The route can be multi-segment (
   ]
 }
 ```
+
+If the requested path is an active legacy route, the same endpoint returns a
+permanent internal mapping instead of page content:
+
+```json
+{
+  "redirect_to": "/new-path",
+  "permanent": true
+}
+```
+
+The React client follows this response with `location.replace()`, preserving
+the browser's original query string and fragment. `?preview=true` bypasses
+route redirects so editors are never navigated away from preview mode. At the
+edge, the same active mappings are published as HTTP 301 rules when Amplify
+synchronization is configured.
 
 **Block types:** `hero`, `text`, `image`, `cta`, `cards`, `testimonials`, and others. Each type has a JSON schema defining its `data` structure, validated by `validate_block_data()`.
 
@@ -83,6 +99,7 @@ frontend strips every iframe.
 | Model | Purpose |
 |-------|---------|
 | `CMSPage` | Route-addressable page with status (draft, published, archived) |
+| `RouteRedirect` | Immutable legacy source path mapped to a published internal destination |
 | `CMSBlock` | Ordered content block within a page (JSON data by type) |
 | `CMSAsset` | Uploaded media files (images, PDFs) |
 | `SiteSettings` | Global settings including `homepage_route` |

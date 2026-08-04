@@ -44,6 +44,8 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
 | `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
+| `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | No (defaults to false) |
+| `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
 
 ### AWS / Storage
 
@@ -79,8 +81,22 @@ A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/serv
 | `CORS_ALLOWED_ORIGINS` | Comma-separated CORS origins | Yes |
 | `VITE_API_BASE_URL` | Backend API URL for frontend build | Yes (build-time) |
 | `BACKEND_SMOKE_URL` | Optional direct backend URL for backend deploy smoke checks | No |
-| `AMPLIFY_BACKEND_PROXY_URL` | Optional backend origin used by Amplify rewrite rules | No |
+| `AMPLIFY_BACKEND_PROXY_URL` | Backend origin used by the canonical Amplify rewrite rules | Yes when `AMPLIFY_APP_ID` is set |
 | `AMPLIFY_PROXY_ADMIN_PATHS` | Enable Amplify `/admin`, `/static`, and `/media` proxy rules | No |
+| `AMPLIFY_APP_ID` | Amplify app whose edge rules receive active CMS route redirects | Required for edge 301 sync |
+| `AMPLIFY_CONFIG_REVISION` | Monotonic backend deployment generation (`<run_id>.<run_attempt>`) used to order Amplify configurations | Injected automatically by deployment |
+
+Route-redirect synchronization uses the ECS task role through boto3's ambient credentials. Scope that role to `amplify:GetApp` and `amplify:UpdateApp` for the environment's specific Amplify app ARN; do not reuse the database-managed SES/SNS credentials for this operation. The backend worker is the only repository-managed writer of the full Amplify custom-rule list; it reconciles the sitemap, API, optional admin/static/media proxies, CMS 301s, and final SPA fallback while preserving unrelated rules. The frontend deploy workflow publishes assets only and must not call `UpdateApp`. Without the app ID, IAM permission, or an enabled background worker, the existing CMS SPA fallback remains available and the admin reports edge synchronization as pending or failed.
+
+The backend deployment defaults `AMPLIFY_BACKEND_PROXY_URL` to the target's
+direct API origin (`api.i2g.ucmerced.edu` for production and
+`demo-api.i2g.ucmerced.edu` for demo) and defaults admin-path proxying to false
+for production and true for demo. Set the same values in each target's ECS
+GitHub Environment if overriding them. `AMPLIFY_CONFIG_REVISION` is stamped by
+the workflow from GitHub's numeric run ID and attempt; do not define or override
+it in a GitHub Environment. If `BACKGROUND_JOB_METRICS_NAMESPACE`
+is enabled, also grant the task role `cloudwatch:PutMetricData`; leaving it
+empty avoids that permission and does not affect job processing.
 
 ### Production targets
 

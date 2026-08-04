@@ -60,6 +60,21 @@ The React frontend's catch-all route (`*`) loads `CMSPageComponent`:
 
 CMS-specific styles live in `pages/src/components/CMS/styles/` and `pages/src/components/CMS/page-styles/`.
 
+## Route redirects
+
+Route redirects are managed in Django admin under **Content Management System → Route Redirects**. They are intended for exact, permanent moves from an old public path to an existing internal destination.
+
+- New redirects start inactive and must be reviewed before activation.
+- Sources are case-sensitive, immutable after creation, and can be disabled but not deleted.
+- Destinations must be a published CMS page or a registered public application route; external URLs, redirect chains, and cycles are rejected.
+- A CMS page referenced by an active redirect cannot be unpublished, archived, or deleted until the mapping is disabled or retargeted.
+- Active mappings are returned by the CMS page API so the SPA can recover immediately even when edge synchronization is unavailable.
+- When `AMPLIFY_APP_ID` and the background worker are configured, active mappings are also reconciled into Amplify as HTTP 301 rules. The admin shows pending or failed synchronization without disabling the SPA fallback.
+
+Changing the route of a previously published CMS page offers to keep the old path as a permanent redirect. Existing redirects that targeted the old path are repointed directly to the new route so the change does not create a redirect chain.
+
+Permanent redirects may be cached by browsers and search engines. Verify both paths before activation, and disable a record instead of trying to delete its history.
+
 ## News articles
 
 ### Sync from RSS feeds

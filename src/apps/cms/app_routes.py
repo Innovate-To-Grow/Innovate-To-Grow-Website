@@ -24,3 +24,54 @@ APP_ROUTES = [
 ]
 
 EMBEDDABLE_APP_ROUTES = [r for r in APP_ROUTES if r.get("embeddable")]
+
+
+# Browser routes owned by dedicated React components.  This registry is kept
+# separate from ``APP_ROUTES`` because that list is intentionally limited to
+# routes that are useful in menu/login pickers and still contains ``/event``,
+# which is CMS-backed in the current React router.
+PUBLIC_APP_ROUTES = [
+    {"url": "/membership/events", "title": "Membership Events"},
+    {"url": "/news", "title": "News"},
+    {"url": "/current-projects", "title": "Current Projects"},
+    {"url": "/presenting-teams", "title": "Presenting Teams"},
+    {"url": "/past-projects", "title": "Past Projects"},
+    {"url": "/event-registration", "title": "Event Registration"},
+    {"url": "/schedule", "title": "Event Schedule"},
+    {"url": "/acknowledgement", "title": "Partners & Sponsors"},
+    {"url": "/subscribe", "title": "Subscribe"},
+    {"url": "/login-link", "title": "Login Link"},
+    {"url": "/magic-login", "title": "Legacy Magic Login"},
+    {"url": "/ticket-login", "title": "Legacy Ticket Login"},
+    {"url": "/unsubscribe-login", "title": "Unsubscribe Login"},
+    {"url": "/email-auth-link", "title": "Email Authentication Link"},
+    {"url": "/impersonate-login", "title": "Impersonation Login"},
+    {"url": "/profile", "title": "Profile Redirect"},
+    {"url": "/login", "title": "Login"},
+    {"url": "/register", "title": "Register"},
+    {"url": "/forgot-password", "title": "Forgot Password"},
+    {"url": "/verify-email", "title": "Verify Email"},
+    {"url": "/verify-phone", "title": "Verify Phone"},
+    {"url": "/complete-profile", "title": "Complete Profile"},
+    {"url": "/account", "title": "Account"},
+    {
+        "url": "/account/past-project-curation-shared-links",
+        "title": "Past Project Curation Shared Links",
+    },
+]
+
+# React-router dynamic patterns.  ``:name`` represents one non-empty path
+# segment.  Concrete paths matching these patterns are application-owned and
+# cannot be claimed as CMS pages or redirect sources.
+PUBLIC_APP_ROUTE_PATTERNS = [
+    "/news/:id",
+    "/past-projects/project/:id",
+    "/past-projects/:shareId",
+    "/projects/:id",
+    "/events/:eventSlug",
+    "/_embed/:embedSlug",
+]
+
+# React-only utility routes that must never be claimed as CMS pages or legacy
+# redirect sources, but are not valid public redirect destinations.
+PROTECTED_APP_ROUTES = ["/_block-preview"]

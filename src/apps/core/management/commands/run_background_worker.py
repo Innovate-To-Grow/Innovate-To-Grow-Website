@@ -3,6 +3,7 @@ import logging
 import signal
 import time
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.authn.services.rsa_manager import purge_retired_auth_keypairs
@@ -15,6 +16,30 @@ from apps.core.services.background_jobs import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def schedule_startup_reconciliation() -> bool:
+    """Bootstrap edge rules once this deployment's durable worker is online."""
+
+    if not getattr(settings, "BACKGROUND_JOBS_ENABLED", False):
+        return False
+    if not str(getattr(settings, "AMPLIFY_APP_ID", "") or "").strip():
+        return False
+
+    try:
+        # Local import keeps the generic queue reusable without making the core
+        # app import CMS models during Django startup.
+        from apps.cms.services.amplify_redirects import schedule_amplify_redirect_sync
+
+        job = schedule_amplify_redirect_sync(immediate=True)
+    except Exception:  # noqa: BLE001 - startup scheduling must not stop delivery.
+        logger.exception("Could not schedule startup Amplify reconciliation")
+        return False
+
+    if job is not None:
+        logger.info("Scheduled startup Amplify reconciliation")
+        return True
+    return False
 
 
 class Command(BaseCommand):
@@ -40,6 +65,7 @@ class Command(BaseCommand):
         batch_size = max(1, options["batch_size"])
         key_purge_seconds = max(300, options.get("key_purge_seconds", 3600))
         next_key_purge_at = 0.0
+        schedule_startup_reconciliation()
 
         while not stopping:
             from datetime import timedelta

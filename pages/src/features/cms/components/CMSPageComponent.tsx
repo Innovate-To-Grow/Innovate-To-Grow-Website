@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { BlockRenderer } from './BlockRenderer';
+import {
+  clearCMSRouteRedirectChain,
+  performCMSRouteRedirect,
+} from './cmsRouteRedirect';
 import { useCMSPage } from './useCMSPage';
 
 function formatExpiryTime(isoString: string): string {
@@ -17,10 +21,24 @@ interface CMSPageComponentProps {
 export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   const location = useLocation();
   const route = routeOverride || location.pathname;
-  const preview = new URLSearchParams(location.search).has('cms_preview');
+  const searchParams = new URLSearchParams(location.search);
+  const preview = searchParams.has('cms_preview');
+  const hasPreviewToken = searchParams.has('cms_preview_token');
 
-  const { page, loading, error, isLivePreview } = useCMSPage(route, preview);
+  const { page, redirectTo, loading, error, isLivePreview } = useCMSPage(route, preview);
   const [showPreviewModal, setShowPreviewModal] = useState(isLivePreview);
+  const [redirectFailure, setRedirectFailure] = useState<{
+    key: string;
+    kind: 'not_found' | 'error';
+  } | null>(null);
+  const redirectAttemptRef = useRef<{
+    key: string;
+    failure: 'not_found' | 'error' | null;
+  } | null>(null);
+  const redirectKey = redirectTo ? `${route}\n${redirectTo}` : null;
+  const currentRedirectFailure = redirectFailure?.key === redirectKey
+    ? redirectFailure.kind
+    : null;
 
   const expiresAt = page?.expires_at;
   const expiryDisplay = useMemo(() => {
@@ -34,6 +52,57 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
       document.title = `${page.title}${suffix} | Innovate to Grow`;
     }
   }, [page?.title, isLivePreview]);
+
+  useEffect(() => {
+    if (
+      !redirectTo
+      || !redirectKey
+      || preview
+      || hasPreviewToken
+      || isLivePreview
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const publishFailure = (kind: 'not_found' | 'error') => {
+      queueMicrotask(() => {
+        if (!cancelled) {
+          setRedirectFailure({key: redirectKey, kind});
+        }
+      });
+    };
+
+    const previousAttempt = redirectAttemptRef.current;
+    if (previousAttempt?.key === redirectKey) {
+      if (previousAttempt.failure) {
+        publishFailure(previousAttempt.failure);
+      }
+    } else {
+      try {
+        const result = performCMSRouteRedirect(redirectTo);
+        const failure = result === 'redirected' ? null : 'not_found';
+        redirectAttemptRef.current = {key: redirectKey, failure};
+        if (failure) publishFailure(failure);
+      } catch {
+        redirectAttemptRef.current = {key: redirectKey, failure: 'error'};
+        publishFailure('error');
+      }
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [redirectTo, redirectKey, preview, hasPreviewToken, isLivePreview]);
+
+  // A successfully loaded destination ends the tab-scoped redirect chain. A
+  // later, independent visit to the same legacy URL must be allowed to start a
+  // fresh redirect.
+  useEffect(() => {
+    if (page && !redirectTo && !preview && !hasPreviewToken && !isLivePreview) {
+      clearCMSRouteRedirectChain();
+    }
+  }, [page, redirectTo, preview, hasPreviewToken, isLivePreview]);
 
   // Inject per-page CSS from the backend
   useEffect(() => {
@@ -54,7 +123,23 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
     return <div className="cms-page-loading" />;
   }
 
-  if (!isLivePreview && (error === 'not_found' || !page)) {
+  if (!isLivePreview && currentRedirectFailure === 'not_found') {
+    return <NotFoundPage />;
+  }
+
+  if (!isLivePreview && currentRedirectFailure === 'error') {
+    return (
+      <div className="cms-page-error">
+        <p>Something went wrong loading this page.</p>
+      </div>
+    );
+  }
+
+  if (!isLivePreview && redirectTo) {
+    return <div className="cms-page-loading" />;
+  }
+
+  if (!isLivePreview && error === 'not_found') {
     return <NotFoundPage />;
   }
 
@@ -64,6 +149,10 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
         <p>Something went wrong loading this page.</p>
       </div>
     );
+  }
+
+  if (!isLivePreview && !page) {
+    return <NotFoundPage />;
   }
 
   return (

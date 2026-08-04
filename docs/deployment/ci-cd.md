@@ -74,9 +74,10 @@ reviewer migration procedure.
 
 1. Pull the SHA-tagged Docker image published by the successful CI run
 2. Extract and upload Django static assets
-3. Render ECS task definition from `aws/task-definition.json` template
-4. Deploy to ECS via `aws-actions/amazon-ecs-deploy-task-definition@v2`
-5. Run smoke tests:
+3. Render both the Web and no-port background-worker containers from `aws/task-definition.json`
+4. Validate shared image/env/secrets, worker entrypoint isolation, health dependency, and the task CPU/memory envelope
+5. Deploy the two-container task to ECS via `aws-actions/amazon-ecs-deploy-task-definition@v2`
+6. Run smoke tests:
    - Readiness endpoint check (`/readyz/`)
    - CORS header validation
    - JSON response validation
@@ -109,9 +110,10 @@ The frontend deploy job also runs a target matrix:
 
 Unlike the single production artifact built in CI, each frontend deploy target
 builds in the deploy job so `VITE_API_BASE_URL` can come from that target's
-GitHub Environment. Demo also supports Amplify rewrite rules for `/admin`,
-`/static`, and `/media` so `https://demo.i2g.ucmerced.edu/admin` can front a
-separate backend origin.
+GitHub Environment. The backend worker is the sole writer of Amplify custom
+rules; for demo it includes `/admin`, `/static`, and `/media` proxies so
+`https://demo.i2g.ucmerced.edu/admin` can front a separate backend origin. The
+frontend workflow only publishes the build and never replaces the rule list.
 
 ### Archive (`deploy-archive.yml`)
 

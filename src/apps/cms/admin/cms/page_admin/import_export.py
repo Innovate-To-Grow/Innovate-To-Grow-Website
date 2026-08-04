@@ -2,6 +2,7 @@ import json
 
 from django.contrib import messages
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
 from django.http import HttpResponse
@@ -89,7 +90,12 @@ def process_page_data(pages_data, *, action, default_status, validate_required):
     block_type_keys = {choice[0] for choice in BLOCK_TYPE_CHOICES}
     results = []
     for page_data in pages_data:
-        result, blocks_data, existing = validate_page_data(page_data, block_type_keys, validate_required)
+        result, blocks_data, existing = validate_page_data(
+            page_data,
+            block_type_keys,
+            validate_required,
+            default_status=default_status,
+        )
         if not result["errors"] and action == "execute":
             try:
                 with transaction.atomic():
@@ -105,7 +111,7 @@ def process_page_data(pages_data, *, action, default_status, validate_required):
     return results
 
 
-def validate_page_data(page_data, block_type_keys, validate_required):
+def validate_page_data(page_data, block_type_keys, validate_required, default_status="draft"):
     slug = page_data.get("slug", "")
     title = page_data.get("title", "")
     route = page_data.get("route", "")
@@ -128,11 +134,26 @@ def validate_page_data(page_data, block_type_keys, validate_required):
             result["errors"].append(f"Block #{index + 1} ({block_type}): {exc}")
     existing = CMSPage.objects.filter(slug=slug).first() if slug else None
     result["action"] = "update" if existing else "create"
+    if slug and route and title:
+        candidate = CMSPage.objects.get(pk=existing.pk) if existing else CMSPage()
+        for field, value in _page_payload(page_data, default_status).items():
+            setattr(candidate, field, value)
+        try:
+            candidate.full_clean()
+        except ValidationError as exc:
+            if hasattr(exc, "message_dict"):
+                result["errors"].extend(
+                    f"{field}: {message}"
+                    for field, field_messages in exc.message_dict.items()
+                    for message in field_messages
+                )
+            else:
+                result["errors"].extend(exc.messages)
     return result, page_data.get("blocks", []), existing
 
 
-def upsert_page(page_data, existing, default_status):
-    payload = {
+def _page_payload(page_data, default_status):
+    return {
         "slug": page_data.get("slug", ""),
         "route": page_data.get("route", f"/{page_data.get('slug', '')}"),
         "title": page_data.get("title", ""),
@@ -141,13 +162,21 @@ def upsert_page(page_data, existing, default_status):
         "status": page_data.get("status", default_status),
         "sort_order": page_data.get("sort_order", 0),
     }
+
+
+def upsert_page(page_data, existing, default_status):
+    payload = _page_payload(page_data, default_status)
     if existing:
         for key, value in payload.items():
             setattr(existing, key, value)
+        existing.full_clean()
         existing.save()
         existing.blocks.all().delete()
         return existing
-    return CMSPage.objects.create(**payload)
+    page = CMSPage(**payload)
+    page.full_clean()
+    page.save()
+    return page
 
 
 def replace_page_blocks(page, blocks_data):

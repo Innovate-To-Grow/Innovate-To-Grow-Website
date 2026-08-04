@@ -10,9 +10,16 @@ def _mail_handlers():
     return background_jobs
 
 
+def _cms_handlers():
+    from apps.cms.services import amplify_redirects
+
+    return amplify_redirects
+
+
 _HANDLER_LOADERS = {
     "authn.member_sheet_sync": lambda: _core_handlers().sync_member_sheet_job,
     "authn.notification_email": lambda: _core_handlers().send_notification_email_job,
+    "cms.amplify_redirects": lambda: _cms_handlers().sync_amplify_redirects_job,
     "event.registration_sheet_sync": lambda: _core_handlers().sync_registration_sheet_job,
     "event.ticket_email": lambda: _core_handlers().send_ticket_email_job,
     "mail.email_recipient": lambda: _mail_handlers().send_email_recipient_job,
@@ -20,6 +27,7 @@ _HANDLER_LOADERS = {
 }
 
 _STATE_HANDLER_LOADERS = {
+    "cms.amplify_redirects": lambda: _cms_handlers().sync_amplify_redirect_job_state,
     "mail.email_recipient": lambda: _mail_handlers().sync_delivery_job_state,
     "mail.sms_recipient": lambda: _mail_handlers().sync_delivery_job_state,
 }

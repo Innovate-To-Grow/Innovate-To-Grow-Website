@@ -9,8 +9,12 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.utils import timezone
 
-from apps.cms.models import CMSPage
-from apps.cms.models.content.cms.cms_page import normalize_cms_route, validate_cms_route
+from apps.cms.services.route_redirects import normalize_and_validate_cms_page_route, page_route_conflicts
+
+# Compatibility hook retained for tests and callers that patch the editor's
+# route validator.  The implementation now delegates to the shared domain
+# validator used by CMS pages and RouteRedirect.
+validate_cms_route = normalize_and_validate_cms_page_route
 
 
 def preview_store_response(request):
@@ -29,28 +33,28 @@ def preview_store_response(request):
 def route_conflict_response(request):
     route = request.GET.get("route", "")
     page_id = request.GET.get("page_id")
-    normalized_route = normalize_cms_route(route)
     try:
-        normalized_route = validate_cms_route(normalized_route)
+        route = validate_cms_route(route)
     except ValidationError as exc:
         return JsonResponse(
             {
-                "normalized_route": normalized_route,
+                "normalized_route": route,
                 "has_conflict": False,
                 "is_valid": False,
                 "message": exc.messages[0],
+                "conflicts": [{"code": "invalid", "field": "route", "message": exc.messages[0]}],
             }
         )
-
-    conflict_qs = CMSPage.objects.filter(route=normalized_route)
-    if page_id:
-        conflict_qs = conflict_qs.exclude(pk=page_id)
-    conflict = conflict_qs.values("title", "status").first()
+    normalized_route, conflicts = page_route_conflicts(route, exclude_page_id=page_id)
+    invalid = next((conflict for conflict in conflicts if conflict.code == "invalid"), None)
     return JsonResponse(
         {
             "normalized_route": normalized_route,
-            "has_conflict": bool(conflict),
-            "is_valid": True,
-            "message": f'Already used by "{conflict["title"]}" ({conflict["status"]}).' if conflict else "",
+            "has_conflict": bool(conflicts) and invalid is None,
+            "is_valid": invalid is None,
+            "message": conflicts[0].message if conflicts else "",
+            "conflicts": [
+                {"code": conflict.code, "field": conflict.field, "message": conflict.message} for conflict in conflicts
+            ],
         }
     )

@@ -2,7 +2,7 @@ from io import StringIO
 from types import SimpleNamespace
 from unittest.mock import call, patch
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from apps.core.management.commands import run_background_worker
 
@@ -10,11 +10,14 @@ from apps.core.management.commands import run_background_worker
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
     def _run_once(self, *, purged_row_count=0):
         command = run_background_worker.Command(stdout=StringIO())
-        with patch.object(
-            run_background_worker,
-            "purge_retired_auth_keypairs",
-            return_value=purged_row_count,
-        ) as purge:
+        with (
+            patch.object(
+                run_background_worker,
+                "purge_retired_auth_keypairs",
+                return_value=purged_row_count,
+            ) as purge,
+            patch.object(run_background_worker, "schedule_startup_reconciliation"),
+        ):
             command.handle(
                 once=True,
                 batch_size=10,
@@ -115,3 +118,43 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
 
         claim.assert_not_called()
         publish.assert_called_once_with({"heartbeat": 1})
+
+
+class RunBackgroundWorkerStartupTests(SimpleTestCase):
+    @override_settings(BACKGROUND_JOBS_ENABLED=False, AMPLIFY_APP_ID="app-123")
+    def test_startup_reconciliation_respects_background_jobs_rollout_flag(self):
+        with patch(
+            "apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync",
+        ) as schedule:
+            self.assertFalse(run_background_worker.schedule_startup_reconciliation())
+
+        schedule.assert_not_called()
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=True, AMPLIFY_APP_ID="")
+    def test_startup_reconciliation_requires_amplify_app(self):
+        with patch(
+            "apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync",
+        ) as schedule:
+            self.assertFalse(run_background_worker.schedule_startup_reconciliation())
+
+        schedule.assert_not_called()
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=True, AMPLIFY_APP_ID="app-123")
+    def test_startup_reconciliation_is_immediate(self):
+        with patch(
+            "apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync",
+            return_value=SimpleNamespace(pk=1),
+        ) as schedule:
+            with self.assertLogs(run_background_worker.logger, level="INFO"):
+                self.assertTrue(run_background_worker.schedule_startup_reconciliation())
+
+        schedule.assert_called_once_with(immediate=True)
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=True, AMPLIFY_APP_ID="app-123")
+    def test_startup_reconciliation_failure_does_not_stop_worker(self):
+        with patch(
+            "apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync",
+            side_effect=RuntimeError("provider unavailable"),
+        ):
+            with self.assertLogs(run_background_worker.logger, level="ERROR"):
+                self.assertFalse(run_background_worker.schedule_startup_reconciliation())

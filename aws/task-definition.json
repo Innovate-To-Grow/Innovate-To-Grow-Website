@@ -2,14 +2,16 @@
   "family": "__TASK_FAMILY__",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "512",
-  "memory": "1024",
+  "cpu": "1024",
+  "memory": "2048",
   "executionRoleArn": "__ECS_EXECUTION_ROLE_ARN__",
   "taskRoleArn": "__ECS_TASK_ROLE_ARN__",
   "containerDefinitions": [
     {
       "name": "itg-backend",
       "image": "394167325273.dkr.ecr.us-west-2.amazonaws.com/itg-backend:latest",
+      "cpu": 768,
+      "memoryReservation": 1024,
       "portMappings": [
         {
           "containerPort": 8000,
@@ -82,6 +84,34 @@
           "value": "__AWS_S3_REGION_NAME__"
         },
         {
+          "name": "AWS_REGION",
+          "value": "__AWS_REGION__"
+        },
+        {
+          "name": "AMPLIFY_APP_ID",
+          "value": "__AMPLIFY_APP_ID__"
+        },
+        {
+          "name": "AMPLIFY_BACKEND_PROXY_URL",
+          "value": "__AMPLIFY_BACKEND_PROXY_URL__"
+        },
+        {
+          "name": "AMPLIFY_PROXY_ADMIN_PATHS",
+          "value": "__AMPLIFY_PROXY_ADMIN_PATHS__"
+        },
+        {
+          "name": "AMPLIFY_CONFIG_REVISION",
+          "value": "__AMPLIFY_CONFIG_REVISION__"
+        },
+        {
+          "name": "BACKGROUND_JOBS_ENABLED",
+          "value": "__BACKGROUND_JOBS_ENABLED__"
+        },
+        {
+          "name": "BACKGROUND_JOB_METRICS_NAMESPACE",
+          "value": "__BACKGROUND_JOB_METRICS_NAMESPACE__"
+        },
+        {
           "name": "DJANGO_SUPERUSER_USERNAME",
           "value": "__DJANGO_SUPERUSER_USERNAME__"
         },
@@ -136,6 +166,36 @@
           "valueFrom": "__DJANGO_SUPERUSER_PASSWORD_SECRET_ARN__"
         }
       ]
+    },
+    {
+      "name": "itg-background-worker",
+      "image": "394167325273.dkr.ecr.us-west-2.amazonaws.com/itg-backend:latest",
+      "cpu": 256,
+      "memoryReservation": 512,
+      "essential": true,
+      "entryPoint": ["python"],
+      "command": [
+        "manage.py",
+        "run_background_worker",
+        "--settings=config.settings.production"
+      ],
+      "dependsOn": [
+        {
+          "containerName": "itg-backend",
+          "condition": "HEALTHY"
+        }
+      ],
+      "stopTimeout": 120,
+      "environment": [],
+      "secrets": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "__AWS_LOG_GROUP__",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "worker"
+        }
+      }
     }
   ]
 }

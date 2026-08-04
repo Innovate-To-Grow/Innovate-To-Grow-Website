@@ -12,7 +12,12 @@ from pathlib import Path
 from django.conf import settings
 from django.test import SimpleTestCase
 
-from apps.cms.app_routes import EMBEDDABLE_APP_ROUTES
+from apps.cms.app_routes import (
+    EMBEDDABLE_APP_ROUTES,
+    PROTECTED_APP_ROUTES,
+    PUBLIC_APP_ROUTE_PATTERNS,
+    PUBLIC_APP_ROUTES,
+)
 from apps.cms.embed_sections import ROUTE_HIDDEN_SECTION_PRESETS
 
 EMBED_REGISTRY_PATH = (
@@ -23,6 +28,7 @@ EMBED_REGISTRY_PATH = (
 # Accepts both single and double quotes so the test stays stable across
 # Prettier configs and hand-edits.
 _ROUTE_KEY_RE = re.compile(r"""^\s*['"](/[\w-]+)['"]:\s*React\.lazy""", flags=re.MULTILINE)
+_ROUTER_PATH_RE = re.compile(r"""\{\s*path:\s*['"]([^'"]+)['"]""")
 
 
 def _frontend_embed_routes() -> set[str]:
@@ -31,6 +37,24 @@ def _frontend_embed_routes() -> set[str]:
 
 
 class AppRoutesParityTests(SimpleTestCase):
+    def test_public_route_conflict_registry_matches_frontend_router(self):
+        source = (Path(settings.BASE_DIR).parent / "pages" / "src" / "app" / "router.tsx").read_text(encoding="utf-8")
+        frontend_routes = {
+            value if value.startswith("/") else f"/{value}"
+            for value in _ROUTER_PATH_RE.findall(source)
+            if value not in {"/", "*"}
+        }
+        backend_routes = {
+            *(entry["url"] for entry in PUBLIC_APP_ROUTES),
+            *PUBLIC_APP_ROUTE_PATTERNS,
+            *PROTECTED_APP_ROUTES,
+        }
+        self.assertEqual(
+            backend_routes,
+            frontend_routes,
+            "Public/protected backend route registries drifted from pages/src/app/router.tsx.",
+        )
+
     def test_embed_app_route_components_match_embeddable_routes(self):
         backend = {r["url"] for r in EMBEDDABLE_APP_ROUTES}
         frontend = _frontend_embed_routes()

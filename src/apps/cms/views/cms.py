@@ -2,6 +2,7 @@ import logging
 from datetime import timedelta
 
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseNotModified
 from django.utils import timezone
 from rest_framework.authentication import SessionAuthentication
@@ -9,10 +10,14 @@ from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.cms.models import CMSPage
+from apps.cms.models import CMSPage, RouteRedirect
 from apps.cms.serializers.cms import CMSPageSerializer
 from apps.cms.services.embed_hosts import CACHE_TTL as EMBED_HOST_CACHE_TTL
 from apps.cms.services.embed_hosts import get_allowed_hosts_snapshot
+from apps.cms.services.route_redirects import (
+    normalize_and_validate_cms_page_route,
+    normalize_and_validate_legacy_source,
+)
 from apps.core.access import user_can_access_app
 
 logger = logging.getLogger(__name__)
@@ -129,13 +134,36 @@ class CMSPageView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def get(self, request, route_path=""):
-        route = f"/{route_path}" if route_path else "/"
+        raw_route = f"/{route_path}" if route_path else "/"
+        if raw_route.startswith("//"):
+            return Response({"detail": "Page not found."}, status=404)
         is_preview = request.query_params.get("preview") == "true"
 
         if not is_preview:
-            cached = cache.get(f"cms:page:{route}")
-            if cached is not None:
-                return Response(cached)
+            try:
+                legacy_route = normalize_and_validate_legacy_source(raw_route)
+            except ValidationError:
+                legacy_route = None
+
+            if legacy_route is not None:
+                cached = cache.get(f"cms:page:{legacy_route}")
+                if cached is not None:
+                    return Response(cached)
+
+                redirect = (
+                    RouteRedirect.objects.filter(source_path=legacy_route, is_active=True)
+                    .only("destination_path")
+                    .first()
+                )
+                if redirect is not None:
+                    data = {"redirect_to": redirect.destination_path, "permanent": True}
+                    cache.set(f"cms:page:{legacy_route}", data, timeout=300)
+                    return Response(data)
+
+        try:
+            route = normalize_and_validate_cms_page_route(raw_route)
+        except ValidationError:
+            return Response({"detail": "Page not found."}, status=404)
 
         qs = CMSPage.objects.prefetch_related("blocks")
         if is_preview and user_can_access_app(request.user, "cms"):

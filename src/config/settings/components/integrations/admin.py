@@ -219,6 +219,11 @@ UNFOLD = {
                 "permission": _can("cms"),
                 "items": [
                     {"title": "Page Content", "link": "/admin/cms/cmspage/", "permission": _can("cms")},
+                    {
+                        "title": "Route Redirects",
+                        "link": "/admin/cms/routeredirect/",
+                        "permission": _can("cms"),
+                    },
                     {"title": "News Management", "link": "/admin/cms/newsarticle/", "permission": _can("cms")},
                     {"title": "Page Analytics", "link": "/admin/cms/pageview/", "permission": _can("cms")},
                 ],

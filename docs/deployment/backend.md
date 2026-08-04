@@ -1,6 +1,8 @@
 # Backend Deployment
 
-The backend runs as a Docker container on AWS ECS Fargate, fronted by an Application Load Balancer.
+The backend runs as one AWS ECS Fargate task with a Web container and a durable
+background-worker sidecar. Only the Web container is registered with the
+Application Load Balancer.
 
 ## Docker image
 
@@ -33,10 +35,33 @@ The CI pipeline builds and validates the Docker image on every push.
 |---------|-------|
 | Task family | `itg-backend` |
 | Network mode | `awsvpc` (Fargate) |
-| CPU | 512 (0.5 vCPU) |
-| Memory | 1024 MB |
-| Container port | 8000 |
-| Log driver | `awslogs` → CloudWatch `/ecs/itg-backend` (us-west-2) |
+| CPU | 1024 (1 vCPU) |
+| Memory | 2048 MB |
+| Web | `itg-backend`: 768 CPU units, 1024 MB reservation, port 8000 |
+| Worker | `itg-background-worker`: 256 CPU units, 512 MB reservation, no port |
+| Log driver | `awslogs` → CloudWatch `/ecs/itg-backend` (`ecs` and `worker` stream prefixes) |
+
+Both containers use the same SHA-pinned image, environment, Secrets Manager or
+SSM references, task role, database, and cache. The worker explicitly replaces
+the image entrypoint with:
+
+```text
+python manage.py run_background_worker --settings=config.settings.production
+```
+
+It therefore does not run startup migrations, create the demo administrator,
+collect static files, or start Uvicorn. Its ECS `HEALTHY` dependency on
+`itg-backend` delays the worker until the Web entrypoint has completed
+migrations and the liveness check passes. The worker is essential: an
+unexpected worker exit replaces the whole task instead of leaving a healthy
+Web process with an unconsumed queue. SIGTERM receives the Fargate maximum
+120-second stop window.
+
+The task was increased from 0.5 vCPU/1 GiB to 1 vCPU/2 GiB so the second Django
+runtime cannot starve Web requests or trigger avoidable out-of-memory restarts.
+The tradeoff is the higher Fargate task price. ECS service scaling creates one
+worker per Web task; row-level queue claiming makes that concurrency safe, but
+operators should include worker/database load when raising the Web maximum.
 
 ## ECS service scaling
 
@@ -64,7 +89,7 @@ python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/
 
 ### Environment injection
 
-The deploy workflow (`deploy-backend.yml`) substitutes GitHub Secrets into the task definition template using a Python script. All environment variables listed in [Environments](environments.md) are injected at deploy time.
+The deploy workflow (`deploy-backend.yml`) substitutes GitHub Secrets into the task definition template using a Python script. All environment variables listed in [Environments](environments.md) are injected at deploy time. It stamps both Web and worker with `AMPLIFY_CONFIG_REVISION=<github.run_id>.<github.run_attempt>`, giving every deployment attempt a shared, monotonically comparable Amplify configuration generation.
 
 ## Deployment flow
 
@@ -72,9 +97,10 @@ Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 
 1. **Build**: Docker image built from `src/Dockerfile`
 2. **Push**: Image pushed to AWS ECR
-3. **Task definition**: Template rendered with environment variables from GitHub Secrets
-4. **Deploy**: ECS task definition updated via `aws-actions/amazon-ecs-deploy-task-definition@v2`
-5. **Smoke tests**: Automated checks after deploy:
+3. **Task definition**: Template rendered with environment variables and secret ARNs; the same values are copied to the worker
+4. **Validation**: Deployment fails if the worker can run the Web entrypoint, exposes a port, loses shared configuration, or exceeds the task resource envelope
+5. **Deploy**: ECS task definition updated via `aws-actions/amazon-ecs-deploy-task-definition@v2`
+6. **Smoke tests**: Automated checks after deploy:
    - Readiness endpoint responds at `/readyz/`
    - CORS headers present
    - JSON response validates
