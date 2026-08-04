@@ -21,8 +21,27 @@
     function renderAll() { renderApi.renderAll(document.getElementById('menu-items-container'), document.getElementById('json-editor'), menuItems, routes); }
     function updatePreview() { renderApi.updatePreview(iframe, menuItems); }
     function syncToJson() { if (jsonInput) jsonInput.value = JSON.stringify(menuItems); document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2); updatePreview(); }
-    function getItemByPath(path) { return eval(path); }
-    function setItemProperty(path, property, value) { eval(`${path}.${property} = ${JSON.stringify(value)}`); }
+    function getItemByPath(path) {
+        if (typeof path !== 'string' || !/^menuItems(?:(?:\[\d+\])|(?:\.children))*$/.test(path)) return null;
+        let current = menuItems;
+        const tokens = path.slice('menuItems'.length).match(/\[\d+\]|\.children/g) || [];
+        for (const token of tokens) {
+            if (token === '.children') {
+                current = current && current.children;
+            } else {
+                const index = parseInt(token.slice(1, -1), 10);
+                current = Array.isArray(current) ? current[index] : null;
+            }
+            if (current == null) return null;
+        }
+        return current;
+    }
+
+    function setItemProperty(path, property, value) {
+        if (!['type', 'title', 'url', 'icon', 'open_in_new_tab'].includes(property)) return;
+        const item = getItemByPath(path);
+        if (item && typeof item === 'object' && !Array.isArray(item)) item[property] = value;
+    }
 
     window.addMenuItem = function (type) {
         menuItems.push({ type, title: type === 'home' ? 'Home' : type === 'app' ? 'New App Link' : 'New External Link', url: type === 'home' ? '/' : '', icon: '', open_in_new_tab: type === 'external', children: [] });
@@ -32,6 +51,7 @@
 
     window.addChildItem = function (parentPath) {
         const parent = getItemByPath(parentPath);
+        if (!parent || typeof parent !== 'object' || Array.isArray(parent)) return;
         if (!parent.children) parent.children = [];
         parent.children.push({ type: 'external', title: 'New Child Link', url: '', icon: '', open_in_new_tab: false, children: [] });
         renderAll();
@@ -40,6 +60,7 @@
 
     window.selectAppRoute = function (path, url) {
         const item = getItemByPath(path);
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return;
         item.url = url;
         const route = routes.allRoutes.find(entry => entry.url === url);
         if (route) {
@@ -53,6 +74,7 @@
     window.updateItem = function (path, property, value) { setItemProperty(path, property, value); renderAll(); syncToJson(); };
     window.changeItemType = function (path, newType) {
         const item = getItemByPath(path);
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return;
         if (item.type === newType) return;
         item.type = newType;
         delete item.page_slug;
@@ -67,7 +89,9 @@
     window.removeItem = function (path) {
         const match = path.match(/(.+)\[(\d+)]$/);
         if (!match) return;
-        eval(match[1]).splice(parseInt(match[2], 10), 1);
+        const parent = getItemByPath(match[1]);
+        if (!Array.isArray(parent)) return;
+        parent.splice(parseInt(match[2], 10), 1);
         renderAll();
         syncToJson();
     };
@@ -75,7 +99,8 @@
     window.moveItem = function (path, direction) {
         const match = path.match(/(.+)\[(\d+)]$/);
         if (!match) return;
-        const parent = eval(match[1]);
+        const parent = getItemByPath(match[1]);
+        if (!Array.isArray(parent)) return;
         const index = parseInt(match[2], 10);
         const nextIndex = index + direction;
         if (nextIndex < 0 || nextIndex >= parent.length) return;
@@ -85,9 +110,8 @@
     };
 
     window.toggleJsonView = function () { document.getElementById('json-raw-view').classList.toggle('show'); };
-    window.copyJson = function () {
+    window.copyJson = function (btn) {
         const editor = document.getElementById('json-editor');
-        const btn = event && event.target;
         editor.select();
         try { navigator.clipboard && window.isSecureContext ? navigator.clipboard.writeText(editor.value) : document.execCommand('copy'); }
         catch (e) {}
@@ -96,9 +120,8 @@
         setTimeout(() => { btn.textContent = 'Copy JSON'; }, 1200);
     };
 
-    window.applyJson = function () {
+    window.applyJson = function (btn) {
         const editor = document.getElementById('json-editor');
-        const btn = event && event.target;
         try {
             const parsed = JSON.parse(editor.value.trim() || '[]');
             if (!Array.isArray(parsed)) throw new Error('must be a JSON array');

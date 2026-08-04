@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from apps.authn.constants import (
     CONTACT_PHONE_ADD_FAILED,
     CONTACT_PHONE_SEND_FAILED,
+    LAST_RECOVERY_CONTACT_DELETE_FAILED,
     PHONE_VERIFICATION_DELIVERY_FAILED,
     VERIFICATION_INVALID,
     VERIFICATION_THROTTLED,
@@ -85,8 +86,8 @@ class ContactPhoneDetailView(APIView):
     def delete(self, request, pk):
         try:
             delete_contact_phone(member=request.user, contact_phone_id=pk)
-        except LastRecoveryContactError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except LastRecoveryContactError:
+            return Response({"detail": LAST_RECOVERY_CONTACT_DELETE_FAILED}, status=status.HTTP_409_CONFLICT)
         except AuthChallengeInvalid:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -132,6 +133,7 @@ class ContactPhoneVerifyCodeView(APIView):
                 member=request.user,
                 contact_phone_id=pk,
                 code=serializer.validated_data["code"],
+                challenge_id=serializer.validated_data.get("challenge_id"),
             )
         except AuthChallengeInvalid:
             return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)

@@ -1,4 +1,4 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -46,20 +46,23 @@ class EventRegistrationCreateView(APIView):
             return answer_response
 
         try:
-            registration = create_registration(
-                request,
-                event,
-                ticket,
-                answer_response,
-                data,
-            )
+            with transaction.atomic():
+                registration = create_registration(
+                    request,
+                    event,
+                    ticket,
+                    answer_response,
+                    data,
+                )
+                sync_registration_to_account(request.user, registration, event, data)
+                # With durable jobs enabled, both outbox rows are inserted here
+                # and commit atomically with the registration/account changes.
+                send_initial_ticket_email(registration)
         except RegistrationRequestError as exc:
             return exc.response
         except IntegrityError:
             return duplicate_registration_response(request, event)
 
-        sync_registration_to_account(request.user, registration, event, data)
-        send_initial_ticket_email(registration)
         registration.refresh_from_db()
         return Response(
             build_registration_payload(registration, request=request),

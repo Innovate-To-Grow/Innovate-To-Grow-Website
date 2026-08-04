@@ -1,10 +1,14 @@
 """Tests for email_challenges verify/queries internals and the challenge model."""
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from threading import Barrier
+from unittest import skipUnless
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from django.test import TestCase
+from django.db import close_old_connections, connection, connections
+from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
 from apps.authn.models import ContactEmail
@@ -14,6 +18,7 @@ from apps.authn.services.email_challenges import (
     consume_verification_token,
     mark_challenge_verified,
     verify_email_code,
+    verify_email_code_and_mint_token,
 )
 from apps.authn.services.email_challenges.queries import assert_within_limit, get_latest_pending
 
@@ -51,27 +56,88 @@ class VerifyEmailCodeTests(TestCase):
             verify_email_code(purpose=PURPOSE, target_email="user@example.com", code="123456")
 
     def test_expired_challenge_marked_and_raises(self):
-        # verify_email_code is @transaction.atomic: the mark_expired() write is rolled back
-        # when AuthChallengeInvalid propagates, but the branch (lines 41-43) still executes.
-        _make_challenge(self.member, expires_at=timezone.now() - timedelta(minutes=1))
+        challenge = _make_challenge(self.member, expires_at=timezone.now() - timedelta(minutes=1))
         with self.assertRaisesMessage(AuthChallengeInvalid, "invalid or has expired"):
             verify_email_code(purpose=PURPOSE, target_email="user@example.com", code="123456")
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.EXPIRED)
 
     def test_wrong_code_raises_invalid(self):
-        _make_challenge(self.member)
+        challenge = _make_challenge(self.member)
         with self.assertRaisesMessage(AuthChallengeInvalid, "invalid or has expired"):
             verify_email_code(purpose=PURPOSE, target_email="user@example.com", code="000000")
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.attempts, 1)
 
     def test_wrong_code_on_last_attempt_raises(self):
-        # Exercises the attempts >= max_attempts branch (line 47-48) on a wrong code.
-        _make_challenge(self.member, attempts=4)
+        challenge = _make_challenge(self.member, attempts=4)
         with self.assertRaisesMessage(AuthChallengeInvalid, "invalid or has expired"):
             verify_email_code(purpose=PURPOSE, target_email="user@example.com", code="000000")
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.attempts, 5)
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.EXPIRED)
 
-    def test_correct_code_returns_challenge(self):
+    def test_correct_code_consumes_challenge(self):
         _make_challenge(self.member)
         result = verify_email_code(purpose=PURPOSE, target_email="user@example.com", code="123456")
-        self.assertEqual(result.status, EmailAuthChallenge.Status.PENDING)
+        self.assertEqual(result.status, EmailAuthChallenge.Status.CONSUMED)
+        with self.assertRaises(AuthChallengeInvalid):
+            verify_email_code(purpose=PURPOSE, target_email="user@example.com", code="123456")
+
+    def test_correct_code_returns_approved_callback_result(self):
+        challenge = _make_challenge(self.member)
+
+        result = verify_email_code(
+            purpose=PURPOSE,
+            target_email="user@example.com",
+            code="123456",
+            approved_callback=lambda approved: f"approved:{approved.pk}",
+        )
+
+        self.assertEqual(result, f"approved:{challenge.pk}")
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.CONSUMED)
+
+    def test_approved_callback_failure_rolls_back_code_and_member_write(self):
+        challenge = _make_challenge(self.member)
+        original_first_name = self.member.first_name
+
+        def fail_after_member_write(_approved):
+            Member.objects.filter(pk=self.member.pk).update(first_name="Not committed")
+            raise RuntimeError("JWT creation failed")
+
+        with self.assertRaisesMessage(RuntimeError, "JWT creation failed"):
+            verify_email_code(
+                purpose=PURPOSE,
+                target_email="user@example.com",
+                code="123456",
+                approved_callback=fail_after_member_write,
+            )
+
+        challenge.refresh_from_db()
+        self.member.refresh_from_db()
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.PENDING)
+        self.assertEqual(self.member.first_name, original_first_name)
+
+    def test_correct_code_and_token_creation_are_one_transition(self):
+        challenge = _make_challenge(self.member)
+        verified, token = verify_email_code_and_mint_token(
+            purpose=PURPOSE,
+            target_email="user@example.com",
+            code="123456",
+            member=self.member,
+        )
+        self.assertEqual(verified.status, EmailAuthChallenge.Status.VERIFIED)
+        self.assertTrue(token)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.VERIFIED)
+        with self.assertRaises(AuthChallengeInvalid):
+            verify_email_code_and_mint_token(
+                purpose=PURPOSE,
+                target_email="user@example.com",
+                code="123456",
+                member=self.member,
+            )
 
 
 class ConsumeVerificationTokenTests(TestCase):
@@ -83,10 +149,10 @@ class ConsumeVerificationTokenTests(TestCase):
         token = mark_challenge_verified(challenge)
         consumed = consume_verification_token(purpose=PURPOSE, verification_token=token, member=self.member)
         self.assertEqual(consumed.status, EmailAuthChallenge.Status.CONSUMED)
+        with self.assertRaises(AuthChallengeInvalid):
+            consume_verification_token(purpose=PURPOSE, verification_token=token, member=self.member)
 
     def test_expired_verified_challenge_skipped(self):
-        # The expired branch (lines 98-100) marks the challenge expired then continues;
-        # the surrounding @transaction.atomic rolls that write back when the final raise fires.
         challenge = _make_challenge(self.member, status=EmailAuthChallenge.Status.VERIFIED)
         challenge.verification_token_hash = make_password("tok")
         challenge.expires_at = timezone.now() - timedelta(seconds=1)
@@ -94,12 +160,20 @@ class ConsumeVerificationTokenTests(TestCase):
         challenge.save(update_fields=["verification_token_hash", "expires_at", "verified_at"])
         with self.assertRaises(AuthChallengeInvalid):
             consume_verification_token(purpose=PURPOSE, verification_token="tok", member=self.member)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.EXPIRED)
 
     def test_invalid_token_raises(self):
         challenge = _make_challenge(self.member)
         mark_challenge_verified(challenge)
         with self.assertRaises(AuthChallengeInvalid):
             consume_verification_token(purpose=PURPOSE, verification_token="wrong", member=self.member)
+
+    def test_challenge_can_only_transition_to_verified_once(self):
+        challenge = _make_challenge(self.member)
+        mark_challenge_verified(challenge)
+        with self.assertRaises(AuthChallengeInvalid):
+            mark_challenge_verified(challenge)
 
 
 class QueriesTests(TestCase):
@@ -155,3 +229,60 @@ class EmailAuthChallengeModelTests(TestCase):
 
     def test_default_expiry_in_future(self):
         self.assertGreater(EmailAuthChallenge.default_expiry(), timezone.now())
+
+
+@skipUnless(connection.vendor == "postgresql", "requires PostgreSQL row-lock semantics")
+class EmailChallengeConcurrencyTests(TransactionTestCase):
+    reset_sequences = True
+
+    def setUp(self):
+        self.member = _make_member()
+
+    @staticmethod
+    def _run_concurrently(action):
+        barrier = Barrier(2)
+
+        def attempt():
+            close_old_connections()
+            barrier.wait()
+            try:
+                return action()
+            except AuthChallengeInvalid:
+                return None
+            finally:
+                connections.close_all()
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            return list(executor.map(lambda _: attempt(), range(2)))
+
+    def test_only_one_caller_can_consume_a_correct_code(self):
+        challenge = _make_challenge(self.member)
+
+        def verify():
+            return verify_email_code(
+                purpose=PURPOSE,
+                target_email="user@example.com",
+                code="123456",
+            ).pk
+
+        results = self._run_concurrently(verify)
+        self.assertEqual(sum(result is not None for result in results), 1)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.CONSUMED)
+
+    def test_only_one_caller_can_mint_a_verification_token(self):
+        challenge = _make_challenge(self.member)
+
+        def verify_and_mint():
+            _, token = verify_email_code_and_mint_token(
+                purpose=PURPOSE,
+                target_email="user@example.com",
+                code="123456",
+                member=self.member,
+            )
+            return token
+
+        results = self._run_concurrently(verify_and_mint)
+        self.assertEqual(sum(result is not None for result in results), 1)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.VERIFIED)

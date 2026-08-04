@@ -23,11 +23,15 @@ from apps.core.services.bedrock import normalize_bedrock_model_id
 from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog, SystemIntelligenceConfig
 from apps.system_intelligence.serializers import PublicAssistantChatSerializer
 from apps.system_intelligence.services.public_assistant import (
+    BudgetBackendUnavailable,
     answer_public_question,
-    check_budget,
+    build_public_context,
     client_ip,
+    estimate_public_input_tokens,
     hash_ip,
-    record_usage,
+    reconcile_budget,
+    release_budget,
+    reserve_budget,
 )
 from apps.system_intelligence.services.usage_log import log_assistant_turn
 
@@ -35,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 _BUDGET_MESSAGE = "You've reached the assistant usage limit for now. Please try again later."
 _ERROR_MESSAGE = "The assistant ran into a problem answering that. Please try again in a moment."
+_BUDGET_UNAVAILABLE_MESSAGE = "The assistant is temporarily unavailable. Please try again in a moment."
 
 
 class PublicAssistantThrottle(AnonRateThrottle):
@@ -87,6 +92,7 @@ class PublicAssistantChatView(APIView):
         serializer = PublicAssistantChatSerializer(
             data=request.data,
             max_message_chars=config.public_assistant_max_message_chars,
+            max_history_chars=config.public_assistant_max_history_chars,
         )
         serializer.is_valid(raise_exception=True)
         message = serializer.validated_data["message"]
@@ -114,8 +120,54 @@ class PublicAssistantChatView(APIView):
             )
             return _unavailable_response(config)
 
-        # 4. Per-IP token budget (checked BEFORE the model call).
-        if not check_budget(ip_hash, config.public_assistant_ip_token_limit):
+        try:
+            context = build_public_context(
+                char_cap=config.public_assistant_max_context_chars,
+            )
+        except Exception:
+            logger.exception("Public assistant context cache is unavailable")
+            return Response(
+                {
+                    "detail": _BUDGET_UNAVAILABLE_MESSAGE,
+                    "code": "budget_unavailable",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        estimated_input = estimate_public_input_tokens(
+            message=message,
+            history=history,
+            config=config,
+            context=context,
+        )
+        input_limit = config.public_assistant_max_estimated_input_tokens
+        if input_limit > 0 and estimated_input > input_limit:
+            return Response(
+                {
+                    "detail": "The request is too large for the public assistant.",
+                    "code": "input_too_large",
+                },
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            )
+
+        # 4. Atomically reserve estimated input + maximum output in shared Redis.
+        try:
+            reservation = reserve_budget(
+                ip_hash,
+                estimated_input_tokens=estimated_input,
+                maximum_output_tokens=config.public_assistant_max_response_tokens,
+                limit=config.public_assistant_ip_token_limit,
+                window_seconds=config.public_assistant_ip_token_window_seconds,
+            )
+        except BudgetBackendUnavailable:
+            logger.exception("Public assistant shared budget is unavailable")
+            return Response(
+                {
+                    "detail": _BUDGET_UNAVAILABLE_MESSAGE,
+                    "code": "budget_unavailable",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        if reservation is None:
             log_assistant_turn(
                 source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
                 session_id=session_id,
@@ -133,9 +185,18 @@ class PublicAssistantChatView(APIView):
         # 5. Invoke the tool-free model.
         started = time.monotonic()
         try:
-            result = answer_public_question(message=message, history=history, config=config)
+            result = answer_public_question(
+                message=message,
+                history=history,
+                config=config,
+                context=context,
+            )
         except Exception:
             logger.exception("Public assistant invocation failed")
+            try:
+                release_budget(reservation)
+            except BudgetBackendUnavailable:
+                logger.exception("Could not release failed public-assistant reservation")
             log_assistant_turn(
                 source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
                 session_id=session_id,
@@ -155,7 +216,10 @@ class PublicAssistantChatView(APIView):
         # 6. Record usage and return.
         usage = result.get("usage") or {}
         spent = usage.get("totalTokens") or 0
-        record_usage(ip_hash, spent, config.public_assistant_ip_token_window_seconds)
+        try:
+            reconcile_budget(reservation, spent)
+        except BudgetBackendUnavailable:
+            logger.exception("Could not reconcile public-assistant reservation")
         reply = result.get("text", "")
         log_assistant_turn(
             source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,

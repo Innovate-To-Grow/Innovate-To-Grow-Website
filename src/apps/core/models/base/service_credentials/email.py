@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 
 
 class EmailServiceConfig(models.Model):
@@ -48,6 +48,13 @@ class EmailServiceConfig(models.Model):
     class Meta:
         verbose_name = "Email Service Config"
         verbose_name_plural = "Email Service Configs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=models.Q(is_active=True),
+                name="core_one_active_email_config",
+            ),
+        ]
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
@@ -56,21 +63,26 @@ class EmailServiceConfig(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_active:
-            EmailServiceConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
-        super().save(*args, **kwargs)
+            with transaction.atomic():
+                list(EmailServiceConfig.objects.select_for_update().filter(is_active=True).exclude(pk=self.pk))
+                EmailServiceConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):
-        """Load the active config, falling back to the most recently updated one.
+        """Load the active config.
 
-        Returns an unsaved instance with defaults when no rows exist so that
+        Returns an unsaved instance with defaults when no active row exists so that
         callers can safely access properties like ``ses_configured`` without
-        guarding against ``None``.
+        guarding against ``None``. Inactive sender settings are never used as a
+        fallback.
         """
-        obj = cls.objects.filter(is_active=True).first()
-        if obj is None:
-            obj = cls.objects.order_by("-updated_at").first()
-        return obj if obj is not None else cls()
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            return cls()
 
     @property
     def source_address(self):
@@ -81,7 +93,7 @@ class EmailServiceConfig(models.Model):
 
     @property
     def ses_configured(self):
-        """SES is configured when the active AWSCredentialConfig has IAM keys."""
+        """SES requires both an active sender row and active AWS credentials."""
         from apps.core.models import AWSCredentialConfig
 
-        return AWSCredentialConfig.load().ses_configured
+        return bool(self.pk and self.is_active and self.ses_from_email and AWSCredentialConfig.load().ses_configured)

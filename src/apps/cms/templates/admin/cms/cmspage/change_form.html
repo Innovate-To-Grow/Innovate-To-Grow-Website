@@ -5,8 +5,9 @@
     {{ block.super }}
     {% if current_page_id %}
         <li class="border border-base-200 select-none max-lg:-mt-px max-lg:first:rounded-t-default max-lg:last:rounded-b-default min-lg:-ml-px min-lg:first:rounded-l-default min-lg:last:rounded-r-default hover:text-primary-600 dark:border-base-700 dark:hover:text-primary-500">
-            <a href="javascript:void(0)"
-               onclick="openLivePreview(); return false;"
+            <a href="#"
+               data-admin-call="openLivePreview"
+               data-admin-event="click"
                title="Open a live-updating preview in a new tab"
                class="cursor-pointer flex grow items-center gap-2 px-3 py-2 text-left whitespace-nowrap">
                 <span class="material-symbols-outlined">visibility</span>
@@ -36,19 +37,19 @@
             <span class="cms-preview-title">Live Preview</span>
             <div class="cms-preview-actions">
                 <span id="cms-preview-sync-status" class="cms-preview-sync-status"></span>
-                <button type="button" onclick="setPreviewDevice('mobile')" title="Mobile (375px)" class="cms-preview-device-btn" data-device="mobile">
+                <button type="button" data-admin-call="setPreviewDevice" data-admin-event="click" data-admin-args='["mobile"]' title="Mobile (375px)" class="cms-preview-device-btn" data-device="mobile">
                     <span class="material-symbols-outlined">smartphone</span>
                 </button>
-                <button type="button" onclick="setPreviewDevice('tablet')" title="Tablet (768px)" class="cms-preview-device-btn" data-device="tablet">
+                <button type="button" data-admin-call="setPreviewDevice" data-admin-event="click" data-admin-args='["tablet"]' title="Tablet (768px)" class="cms-preview-device-btn" data-device="tablet">
                     <span class="material-symbols-outlined">tablet_mac</span>
                 </button>
-                <button type="button" onclick="setPreviewDevice('desktop')" title="Desktop (100%)" class="cms-preview-device-btn is-active" data-device="desktop">
+                <button type="button" data-admin-call="setPreviewDevice" data-admin-event="click" data-admin-args='["desktop"]' title="Desktop (100%)" class="cms-preview-device-btn is-active" data-device="desktop">
                     <span class="material-symbols-outlined">monitor</span>
                 </button>
-                <button type="button" onclick="refreshInlinePreview()" title="Refresh preview">
+                <button type="button" data-admin-call="refreshInlinePreview" data-admin-event="click" title="Refresh preview">
                     <span class="material-symbols-outlined">refresh</span>
                 </button>
-                <button type="button" onclick="openLivePreview()" title="Open in new tab">
+                <button type="button" data-admin-call="openLivePreview" data-admin-event="click" title="Open in new tab">
                     <span class="material-symbols-outlined">open_in_new</span>
                 </button>
             </div>
@@ -63,7 +64,7 @@
         <div class="visual-editor-header">
             <h3>Content Blocks</h3>
             {% if current_page_id %}
-                <button type="button" class="cms-inline-preview-toggle" onclick="toggleInlinePreview()" title="Toggle inline live preview">
+                <button type="button" class="cms-inline-preview-toggle" data-admin-call="toggleInlinePreview" data-admin-event="click" title="Toggle inline live preview">
                     <span class="material-symbols-outlined">visibility</span>
                     Preview
                 </button>
@@ -85,17 +86,17 @@
                 <select id="cms-add-block-type">
                     <option value="">-- Select block type --</option>
                 </select>
-                <button type="button" class="btn-add-block" onclick="addBlock()">+ Add Block</button>
+                <button type="button" class="btn-add-block" data-admin-call="addBlock" data-admin-event="click">+ Add Block</button>
             </div>
 
             <!-- JSON Toggle -->
             <div class="json-toggle" style="margin-top: 20px;">
-                <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
+                <button type="button" class="json-toggle-btn" data-admin-call="toggleJsonView" data-admin-event="click">Show/Hide Raw JSON</button>
                 <div id="json-raw-view" class="json-raw-view">
                     <textarea id="json-editor" placeholder="Block data as JSON array..."></textarea>
                     <div class="json-editor-actions">
-                        <button type="button" class="btn-apply-json" onclick="applyJson()">Apply JSON</button>
-                        <button type="button" class="btn-apply-json" onclick="copyJson()">Copy JSON</button>
+                        <button type="button" class="btn-apply-json" data-admin-call="applyJson" data-admin-event="click">Apply JSON</button>
+                        <button type="button" class="btn-apply-json" data-admin-call="copyJson" data-admin-event="click">Copy JSON</button>
                         <span class="json-editor-hint">Edit the raw JSON and click Apply to update the visual editor</span>
                     </div>
                 </div>
@@ -111,7 +112,7 @@
     {{ block.super }}
 
     <!-- Inject data for JS -->
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
         window.CMS_BLOCK_SCHEMAS = {{ block_schemas_json|safe }};
         window.CMS_BLOCK_TYPE_CHOICES = {{ block_type_choices_json|safe }};
         window.CMS_INITIAL_BLOCKS = {{ initial_blocks_json|safe }};

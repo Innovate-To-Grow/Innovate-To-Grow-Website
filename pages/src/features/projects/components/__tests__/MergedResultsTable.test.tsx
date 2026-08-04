@@ -387,7 +387,14 @@ describe('MergedResultsTable', () => {
   it('shows the individual project URL in expanded desktop and mobile details', () => {
     const {container} = render(<MergedResultsTable rows={makeItems([rowWithId])} />);
 
-    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'View'}));
+    const desktopDetailsButton = within(desktopTable(container)).getByRole('button', {name: 'View'});
+    expect(desktopDetailsButton).toHaveAttribute('aria-expanded', 'false');
+    const desktopDetailsId = desktopDetailsButton.getAttribute('aria-controls');
+    expect(desktopDetailsId).toBeTruthy();
+
+    fireEvent.click(desktopDetailsButton);
+    expect(desktopDetailsButton).toHaveAttribute('aria-expanded', 'true');
+    expect(document.getElementById(desktopDetailsId as string)).not.toBeNull();
 
     const expectedHref = new URL(`/past-projects/project/${rowWithId.id}`, window.location.origin).href;
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
@@ -404,6 +411,26 @@ describe('MergedResultsTable', () => {
     expect(mobileLink).toHaveTextContent(expectedHref);
     expect(mobileLink).toBeVisible();
     expect(within(mobileCards).getByText('Individual Project URL')).toBeVisible();
+    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: 'Hide Details'});
+    expect(mobileDetailsButton).toHaveAttribute('aria-expanded', 'true');
+    const mobileDetailsId = mobileDetailsButton.getAttribute('aria-controls');
+    expect(mobileDetailsId).toBeTruthy();
+    expect(document.getElementById(mobileDetailsId as string)).not.toBeNull();
+  });
+
+  it('exposes the current desktop sort direction to assistive technology', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} />);
+    const table = desktopTable(container);
+    const semesterHeader = within(table).getByRole('columnheader', {name: /year-semester/i});
+    const titleHeader = within(table).getByRole('columnheader', {name: /project title/i});
+
+    expect(semesterHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(titleHeader).toHaveAttribute('aria-sort', 'none');
+
+    fireEvent.click(within(titleHeader).getByRole('button'));
+
+    expect(semesterHeader).toHaveAttribute('aria-sort', 'none');
+    expect(titleHeader).toHaveAttribute('aria-sort', 'ascending');
   });
 
   it('lets an id-only row expand so its individual project URL is reachable', () => {

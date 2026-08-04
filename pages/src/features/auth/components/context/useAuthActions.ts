@@ -24,7 +24,7 @@ import {
   verifyPasswordChangeCode as apiVerifyPasswordChangeCode,
   verifyPasswordResetCode as apiVerifyPasswordResetCode,
   verifyRegistrationCode as apiVerifyRegistrationCode,
-  isAuthenticated as checkIsAuthenticated,
+  getStoredSession,
   updateStoredUser,
 } from '@/features/auth/api';
 
@@ -85,9 +85,9 @@ export function useAuthActions({
     });
   }, [applyAuthResponse, runWithErrorHandling]);
 
-  const verifyPhoneAuthCode = useCallback(async (phoneNumber: string, code: string, region: string = '1-US') => {
+  const verifyPhoneAuthCode = useCallback(async (phoneNumber: string, code: string, region: string = '1-US', challengeId?: string) => {
     return runWithErrorHandling(async () => {
-      return applyAuthResponse(await apiVerifyPhoneAuthCode(phoneNumber, code, region));
+      return applyAuthResponse(await apiVerifyPhoneAuthCode(phoneNumber, code, region, challengeId));
     });
   }, [applyAuthResponse, runWithErrorHandling]);
 
@@ -104,22 +104,23 @@ export function useAuthActions({
     dispatchAuthStateChange();
   }, [setRequiresProfileCompletion, setUser]);
 
-  const clearProfileCompletionRequirement = useCallback(() => {
-    clearProfileCompletionRequiredStorage();
+  const clearProfileCompletionRequirement = useCallback((guard?: {generation: string; refresh?: string}) => {
+    if (!clearProfileCompletionRequiredStorage(guard)) return false;
     setRequiresProfileCompletion(false);
     dispatchAuthStateChange();
+    return true;
   }, [setRequiresProfileCompletion]);
 
   const refreshProfile = useCallback(async () => {
-    if (!checkIsAuthenticated()) return;
+    const snapshot = getStoredSession();
+    if (!snapshot) return;
     try {
       const profile = await apiGetProfile();
-      setUser((prev) => {
-        if (!prev) return null;
-        const nextUser = { ...prev, profile_image: profile.profile_image };
-        updateStoredUser(() => nextUser);
-        return nextUser;
-      });
+      const updated = updateStoredUser(
+        (current) => ({...current, profile_image: profile.profile_image}),
+        snapshot.generation,
+      );
+      if (updated) setUser(updated);
     } catch {
       // User may have been logged out; ignore background refresh failures.
     }
@@ -148,12 +149,12 @@ export function useAuthActions({
     verifyRegistrationCode,
     resendRegistrationCode: useCallback(async (email: string) => runWithErrorHandling(() => apiResendRegistrationCode(email)), [runWithErrorHandling]),
     requestPasswordReset: useCallback(async (email: string) => runWithErrorHandling(() => apiRequestPasswordReset(email)), [runWithErrorHandling]),
-    verifyPasswordResetCode: useCallback(async (email: string, code: string) => runWithErrorHandling(() => apiVerifyPasswordResetCode(email, code)), [runWithErrorHandling]),
+    verifyPasswordResetCode: useCallback(async (email: string, code: string, challengeId?: string) => runWithErrorHandling(() => apiVerifyPasswordResetCode(email, code, challengeId)), [runWithErrorHandling]),
     confirmPasswordReset: useCallback(async (email: string, verificationToken: string, newPassword: string, confirmPassword: string) => {
       return runWithErrorHandling(() => apiConfirmPasswordReset(email, verificationToken, newPassword, confirmPassword));
     }, [runWithErrorHandling]),
-    requestPasswordChangeCode: useCallback(async (email: string) => runWithErrorHandling(() => apiRequestPasswordChangeCode(email)), [runWithErrorHandling]),
-    verifyPasswordChangeCode: useCallback(async (email: string, code: string) => runWithErrorHandling(() => apiVerifyPasswordChangeCode(email, code)), [runWithErrorHandling]),
+    requestPasswordChangeCode: useCallback(async (email?: string) => runWithErrorHandling(() => apiRequestPasswordChangeCode(email)), [runWithErrorHandling]),
+    verifyPasswordChangeCode: useCallback(async (email: string, code: string, challengeId?: string) => runWithErrorHandling(() => apiVerifyPasswordChangeCode(code, email, challengeId)), [runWithErrorHandling]),
     confirmPasswordChange: useCallback(async (verificationToken: string, newPassword: string, confirmPassword: string) => {
       return runWithErrorHandling(() => apiConfirmPasswordChange(verificationToken, newPassword, confirmPassword));
     }, [runWithErrorHandling]),

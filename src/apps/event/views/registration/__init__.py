@@ -3,9 +3,7 @@ import logging
 from .create import EventRegistrationCreateView
 from .options import EventRegistrationEventsView, EventRegistrationOptionsView
 from .phones import (
-    _clear_phone_verification,
-    _consume_phone_verification,
-    _mark_phone_verified,
+    LEGACY_EVENT_REGISTRATION_CONTEXT,
     _normalize_phone,
     _validate_phone_digits,
 )
@@ -22,9 +20,7 @@ __all__ = [
     "ResendTicketEmailView",
     "SendPhoneCodeView",
     "VerifyPhoneCodeView",
-    "_clear_phone_verification",
-    "_consume_phone_verification",
-    "_mark_phone_verified",
+    "LEGACY_EVENT_REGISTRATION_CONTEXT",
     "_normalize_phone",
     "_validate_phone_digits",
     "logger",

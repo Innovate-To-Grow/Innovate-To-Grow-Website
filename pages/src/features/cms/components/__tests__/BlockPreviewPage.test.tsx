@@ -7,8 +7,9 @@ import {BlockPreviewPage} from '../BlockPreviewPage';
  * Unit tests for the admin block-preview iframe page.
  *
  * Contract:
- *   - On mount, posts {type: 'cms-block-preview-ready'} to window.parent
- *   - Listens for {type: 'cms-block-preview', block, pageCssClass} messages
+ *   - Reads the per-iframe nonce from `?nonce=...`
+ *   - On mount, posts {type: 'cms-block-preview-ready', nonce} to window.parent
+ *   - Listens for {type: 'cms-block-preview', nonce, block, pageCssClass} messages
  *   - Renders the single block via BlockRenderer inside a wrapper div with
  *     the provided pageCssClass (or 'cms-page' default)
  *   - Shows a placeholder until the first valid message arrives
@@ -52,10 +53,33 @@ function stubLayoutDimension(
   };
 }
 
+const PREVIEW_NONCE = 'test-preview-nonce';
+
+const parentMessage = (init: MessageEventInit) => {
+  const data =
+    init.data && typeof init.data === 'object'
+      ? {
+          ...init.data,
+          nonce:
+            (init.data as {nonce?: unknown}).nonce ?? PREVIEW_NONCE,
+        }
+      : init.data;
+  return new MessageEvent('message', {
+    ...init,
+    data,
+    source: window.parent,
+  });
+};
+
 describe('BlockPreviewPage', () => {
   let postMessageSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    window.history.replaceState(
+      {},
+      '',
+      `/_block-preview?nonce=${PREVIEW_NONCE}`,
+    );
     // Stub window.parent.postMessage. In jsdom, window.parent === window by default.
     postMessageSpy = vi.fn();
     Object.defineProperty(window, 'parent', {
@@ -75,6 +99,7 @@ describe('BlockPreviewPage', () => {
       configurable: true,
       value: window,
     });
+    window.history.replaceState({}, '', '/');
   });
 
   it('renders the waiting-for-data placeholder on mount', () => {
@@ -85,7 +110,10 @@ describe('BlockPreviewPage', () => {
   it('posts a ready signal to window.parent on mount', () => {
     render(<BlockPreviewPage />);
     expect(postMessageSpy).toHaveBeenCalledWith(
-      expect.objectContaining({type: 'cms-block-preview-ready'}),
+      expect.objectContaining({
+        type: 'cms-block-preview-ready',
+        nonce: PREVIEW_NONCE,
+      }),
       window.location.origin,
     );
   });
@@ -94,7 +122,7 @@ describe('BlockPreviewPage', () => {
     render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
@@ -111,7 +139,7 @@ describe('BlockPreviewPage', () => {
     render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
@@ -127,7 +155,7 @@ describe('BlockPreviewPage', () => {
     const {container} = render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
@@ -144,7 +172,7 @@ describe('BlockPreviewPage', () => {
     const {container} = render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
@@ -160,7 +188,7 @@ describe('BlockPreviewPage', () => {
     render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: window.location.origin,
           data: {type: 'unrelated-message', block: {block_type: 'rich_text', sort_order: 0, data: {}}},
         }),
@@ -173,7 +201,7 @@ describe('BlockPreviewPage', () => {
     render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {origin: window.location.origin, data: 'plain-string'}),
+        parentMessage({origin: window.location.origin, data: 'plain-string'}),
       );
     });
     expect(screen.getByText(/waiting for block data/i)).toBeInTheDocument();
@@ -183,7 +211,7 @@ describe('BlockPreviewPage', () => {
     render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
@@ -196,7 +224,7 @@ describe('BlockPreviewPage', () => {
 
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
@@ -219,11 +247,75 @@ describe('BlockPreviewPage', () => {
     render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: 'https://evil.example.com',
           data: {
             type: 'cms-block-preview',
             block: {block_type: 'rich_text', sort_order: 0, data: {heading: 'attacker'}},
+          },
+        }),
+      );
+    });
+    expect(screen.getByText(/waiting for block data/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('blk-rich_text')).not.toBeInTheDocument();
+  });
+
+  it('ignores parent messages with a missing or mismatched nonce', () => {
+    render(<BlockPreviewPage />);
+    const payload = {
+      type: 'cms-block-preview',
+      block: {
+        block_type: 'rich_text',
+        sort_order: 0,
+        data: {heading: 'untrusted-nonce'},
+      },
+    };
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          source: window.parent,
+          origin: window.location.origin,
+          data: payload,
+        }),
+      );
+      window.dispatchEvent(
+        parentMessage({
+          origin: window.location.origin,
+          data: {...payload, nonce: 'wrong-preview-nonce'},
+        }),
+      );
+    });
+
+    expect(screen.getByText(/waiting for block data/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('blk-rich_text')).not.toBeInTheDocument();
+  });
+
+  it('does not signal readiness when its URL has no nonce', () => {
+    window.history.replaceState({}, '', '/_block-preview');
+
+    render(<BlockPreviewPage />);
+
+    expect(postMessageSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({type: 'cms-block-preview-ready'}),
+      expect.any(String),
+    );
+  });
+
+  it('ignores trusted-origin messages from a window other than the parent', () => {
+    render(<BlockPreviewPage />);
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          source: {} as WindowProxy,
+          origin: window.location.origin,
+          data: {
+            type: 'cms-block-preview',
+            block: {
+              block_type: 'rich_text',
+              sort_order: 0,
+              data: {heading: 'sibling-window'},
+            },
           },
         }),
       );
@@ -240,7 +332,7 @@ describe('BlockPreviewPage', () => {
     render(<ReloadedBlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: 'http://127.0.0.1:8000',
           data: {
             type: 'cms-block-preview',
@@ -262,7 +354,7 @@ describe('BlockPreviewPage', () => {
     render(<ReloadedBlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: 'http://127.0.0.1:8000',
           data: {
             type: 'cms-block-preview',
@@ -287,7 +379,7 @@ describe('BlockPreviewPage', () => {
     render(<ReloadedBlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: 'https://admin.example.com',
           data: {
             type: 'cms-block-preview',
@@ -309,7 +401,7 @@ describe('BlockPreviewPage', () => {
     render(<ReloadedBlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: 'https://api.example.com',
           data: {
             type: 'cms-block-preview',
@@ -338,7 +430,7 @@ describe('BlockPreviewPage', () => {
       render(<ReloadedBlockPreviewPage />);
       act(() => {
         window.dispatchEvent(
-          new MessageEvent('message', {
+          parentMessage({
             origin: 'https://admin.example.com',
             data: {
               type: 'cms-block-preview',
@@ -350,7 +442,11 @@ describe('BlockPreviewPage', () => {
 
       await waitFor(() => {
         expect(postMessageSpy).toHaveBeenCalledWith(
-          expect.objectContaining({type: 'cms-block-preview-resize', height: 240}),
+          expect.objectContaining({
+            type: 'cms-block-preview-resize',
+            nonce: PREVIEW_NONCE,
+            height: 240,
+          }),
           'https://admin.example.com',
         );
       });
@@ -368,7 +464,7 @@ describe('BlockPreviewPage', () => {
     render(<ReloadedBlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: 'https://cms.example.com',
           data: {
             type: 'cms-block-preview',
@@ -386,7 +482,7 @@ describe('BlockPreviewPage', () => {
     render(<BlockPreviewPage />);
     act(() => {
       window.dispatchEvent(
-        new MessageEvent('message', {
+        parentMessage({
           origin: window.location.origin,
           data: {
             type: 'cms-block-preview',
@@ -407,11 +503,17 @@ describe('BlockPreviewPage', () => {
     render(<ReloadedBlockPreviewPage />);
 
     expect(postMessageSpy).toHaveBeenCalledWith(
-      expect.objectContaining({type: 'cms-block-preview-ready'}),
+      expect.objectContaining({
+        type: 'cms-block-preview-ready',
+        nonce: PREVIEW_NONCE,
+      }),
       'https://admin1.example.com',
     );
     expect(postMessageSpy).toHaveBeenCalledWith(
-      expect.objectContaining({type: 'cms-block-preview-ready'}),
+      expect.objectContaining({
+        type: 'cms-block-preview-ready',
+        nonce: PREVIEW_NONCE,
+      }),
       'https://admin2.example.com',
     );
     vi.unstubAllEnvs();

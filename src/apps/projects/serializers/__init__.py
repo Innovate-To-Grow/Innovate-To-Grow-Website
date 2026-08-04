@@ -3,6 +3,7 @@ from .past_project_share import (
     PastProjectShareListSerializer,
     PastProjectShareRowSerializer,
     PastProjectShareSerializer,
+    StalePastProjectShareSnapshot,
 )
 from .project import ProjectDetailSerializer, ProjectListSerializer, ProjectTableSerializer
 from .semester import SemesterWithFullProjectsSerializer, SemesterWithProjectsSerializer
@@ -12,6 +13,7 @@ __all__ = [
     "PastProjectShareListSerializer",
     "PastProjectShareRowSerializer",
     "PastProjectShareSerializer",
+    "StalePastProjectShareSnapshot",
     "ProjectDetailSerializer",
     "ProjectListSerializer",
     "ProjectTableSerializer",

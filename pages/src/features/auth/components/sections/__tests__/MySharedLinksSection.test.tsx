@@ -15,6 +15,7 @@ const share = (overrides = {}) => ({
   id: 'share-1',
   name: 'Spring finalists',
   note: '',
+  version: 1,
   share_url: 'https://example.test/past-projects/share-1',
   row_count: 3,
   created_at: '2026-06-05T00:00:00Z',

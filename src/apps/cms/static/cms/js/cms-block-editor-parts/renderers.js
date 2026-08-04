@@ -36,18 +36,18 @@
         const isCollapsed = collapsedSet.has(idx);
         const isPreview = previewSet && previewSet.has(idx);
         let actions = '';
-        actions += `<button type="button" class="btn-block-preview-toggle${isPreview ? ' is-active' : ''}" onclick="toggleBlockPreview(${idx})" title="Toggle preview"><span class="material-symbols-outlined">visibility</span></button>`;
-        if (idx > 0) actions += `<button type="button" class="btn-block-move" onclick="moveBlock(${idx}, -1)" title="Move up">&uarr;</button>`;
-        if (idx < blocks.length - 1) actions += `<button type="button" class="btn-block-move" onclick="moveBlock(${idx}, 1)" title="Move down">&darr;</button>`;
-        actions += `<button type="button" class="btn-block-delete" onclick="removeBlock(${idx})" title="Delete block">&times;</button>`;
+        actions += `<button type="button" class="btn-block-preview-toggle${isPreview ? ' is-active' : ''}" ${P.actionAttrs('toggleBlockPreview', 'click', [idx])} title="Toggle preview"><span class="material-symbols-outlined">visibility</span></button>`;
+        if (idx > 0) actions += `<button type="button" class="btn-block-move" ${P.actionAttrs('moveBlock', 'click', [idx, -1])} title="Move up">&uarr;</button>`;
+        if (idx < blocks.length - 1) actions += `<button type="button" class="btn-block-move" ${P.actionAttrs('moveBlock', 'click', [idx, 1])} title="Move down">&darr;</button>`;
+        actions += `<button type="button" class="btn-block-delete" ${P.actionAttrs('removeBlock', 'click', [idx])} title="Delete block">&times;</button>`;
         let previewPane = '';
         if (isPreview && window.ITGCmsBlockPreview) {
             previewPane = window.ITGCmsBlockPreview.renderPreviewPane(block, idx);
         }
-        return `<div class="cms-block-card${isCollapsed ? ' is-collapsed' : ''}" data-index="${idx}"><div class="cms-block-card-header" onclick="toggleCollapse(${idx})"><span class="cms-block-card-title"><span class="cms-block-collapse-icon">&rsaquo;</span><span class="block-order">#${idx + 1}</span><span class="cms-block-type-badge type-${P.escapeAttr(block.block_type)}">${P.escapeHtml(P.getTypeLabel(block.block_type))}</span><span class="cms-block-label-text">${P.escapeHtml(block.admin_label || '')}</span></span><div class="cms-block-card-actions" onclick="event.stopPropagation();">${actions}</div></div>${isCollapsed ? '' : `<div class="cms-block-card-body">${renderAdminLabel(block, idx)}${renderBlockFields(block, idx)}${previewPane}</div>`}</div>`;
+        return `<div class="cms-block-card${isCollapsed ? ' is-collapsed' : ''}" data-index="${idx}"><div class="cms-block-card-header" ${P.actionAttrs('toggleCollapse', 'click', [idx])}><span class="cms-block-card-title"><span class="cms-block-collapse-icon">&rsaquo;</span><span class="block-order">#${idx + 1}</span><span class="cms-block-type-badge type-${P.escapeAttr(block.block_type)}">${P.escapeHtml(P.getTypeLabel(block.block_type))}</span><span class="cms-block-label-text">${P.escapeHtml(block.admin_label || '')}</span></span><div class="cms-block-card-actions">${actions}</div></div>${isCollapsed ? '' : `<div class="cms-block-card-body">${renderAdminLabel(block, idx)}${renderBlockFields(block, idx)}${previewPane}</div>`}</div>`;
     }
 
-    function renderAdminLabel(block, idx) { return `<div class="cms-block-admin-label"><label>Admin Label</label><input type="text" value="${P.escapeAttr(block.admin_label)}" placeholder="Optional label for admin identification" onchange="updateBlockProp(${idx}, 'admin_label', this.value)"></div>`; }
+    function renderAdminLabel(block, idx) { return `<div class="cms-block-admin-label"><label>Admin Label</label><input type="text" value="${P.escapeAttr(block.admin_label)}" placeholder="Optional label for admin identification" ${P.actionAttrs('updateBlockProp', 'change', [idx, 'admin_label'], 'value')}></div>`; }
     function renderBlockFields(block, idx) { const renderer = renderers[block.block_type]; return renderer ? renderer(block.data || {}, idx) : P.renderJsonSubEditor(block.data || {}, idx); }
     function renderHeroFields(data, idx) { return P.textField('Heading', data.heading, idx, 'heading') + P.textField('Subheading', data.subheading, idx, 'subheading') + '<div class="cms-block-field-row">' + P.textField('Image URL', data.image_url, idx, 'image_url', {asset: 'image'}) + P.textField('Image Alt Text', data.image_alt, idx, 'image_alt') + '</div>'; }
     function renderRichTextField(data, idx) { return '<div class="cms-block-field-row">' + P.textField('Heading', data.heading, idx, 'heading') + P.selectField('Heading Level', data.heading_level, idx, 'heading_level', [['', 'Default'], ['1', 'H1'], ['2', 'H2'], ['3', 'H3'], ['4', 'H4'], ['5', 'H5'], ['6', 'H6']]) + '</div>' + P.htmlField('Body HTML', data.body_html, idx, 'body_html'); }
@@ -88,7 +88,7 @@
     }
 
     function renderEmbedWidgetSelectField(label, value, idx, options) {
-        return `<div class="cms-block-field field-small"><label>${P.escapeHtml(label)}</label><select onchange="updateEmbedWidgetSlug(${idx}, this.value)">${options.map(opt => `<option value="${P.escapeAttr(opt[0])}"${String(value || '') === String(opt[0]) ? ' selected' : ''}>${P.escapeHtml(opt[1])}</option>`).join('')}</select></div>`;
+        return `<div class="cms-block-field field-small"><label>${P.escapeHtml(label)}</label><select ${P.actionAttrs('updateEmbedWidgetSlug', 'change', [idx], 'value')}>${options.map(opt => `<option value="${P.escapeAttr(opt[0])}"${String(value || '') === String(opt[0]) ? ' selected' : ''}>${P.escapeHtml(opt[1])}</option>`).join('')}</select></div>`;
     }
 
     function renderHiddenSectionFields(data, idx) {
@@ -98,7 +98,7 @@
         const checkboxes = presets.map(preset => {
             const id = `hidden-section-${idx}-${P.escapeAttr(preset.key)}`;
             return '<div class="cms-block-field-checkbox">'
-                + `<input type="checkbox" id="${id}"${selected.has(preset.key) ? ' checked' : ''} onchange="updateEmbedWidgetHiddenSection(${idx}, '${P.escapeAttr(preset.key)}', this.checked)">`
+                + `<input type="checkbox" id="${id}"${selected.has(preset.key) ? ' checked' : ''} ${P.actionAttrs('updateEmbedWidgetHiddenSection', 'change', [idx, preset.key], 'checked')}>`
                 + `<label for="${id}">${P.escapeHtml(preset.label)}</label>`
                 + '</div>';
         }).join('');

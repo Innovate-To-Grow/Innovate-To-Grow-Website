@@ -31,15 +31,14 @@ class ImpersonateLoginView(APIView):
         except ImpersonationToken.DoesNotExist:
             return Response({"detail": "Invalid impersonation link."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not impersonation.is_valid:
+        if not impersonation.try_mark_used():
+            impersonation.refresh_from_db(fields=["is_used", "expires_at"])
             detail = (
                 "This impersonation link has already been used."
                 if impersonation.is_used
                 else "This impersonation link has expired."
             )
             return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
-
-        impersonation.mark_used()
 
         logger.info(
             "Admin %s (%s) impersonated member %s (%s)",

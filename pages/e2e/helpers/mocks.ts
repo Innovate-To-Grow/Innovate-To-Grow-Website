@@ -81,10 +81,16 @@ export async function mockPhoneAuthFlow(
 ): Promise<PhoneAuthMockResult> {
   const requestPayloads: unknown[] = [];
   const verifyPayloads: unknown[] = [];
+  const challengeId = 'a9a1d853-9687-4199-9f25-d93509e408aa';
 
   await page.route('**/authn/phone-auth/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());
-    await route.fulfill(json({message: 'Verification code sent.'}));
+    await route.fulfill(
+      json({
+        message: 'Verification code sent.',
+        challenge_id: challengeId,
+      }),
+    );
   });
 
   await page.route('**/authn/phone-auth/verify-code/', async (route) => {
@@ -108,7 +114,11 @@ export interface PasswordResetMockResult {
 
 export async function mockPasswordResetFlow(
   page: Page,
-  opts: {verifyToken?: string; confirmMessage?: string} = {},
+  opts: {
+    requestChallengeId?: string;
+    verifyToken?: string;
+    confirmMessage?: string;
+  } = {},
 ): Promise<PasswordResetMockResult> {
   const requestPayloads: unknown[] = [];
   const verifyPayloads: unknown[] = [];
@@ -116,7 +126,14 @@ export async function mockPasswordResetFlow(
 
   await page.route('**/authn/password-reset/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());
-    await route.fulfill(json({message: 'Reset code sent.'}));
+    await route.fulfill(
+      json({
+        message: 'Reset code sent.',
+        ...(opts.requestChallengeId
+          ? {challenge_id: opts.requestChallengeId}
+          : {}),
+      }),
+    );
   });
 
   await page.route('**/authn/password-reset/verify-code/', async (route) => {
@@ -226,14 +243,33 @@ export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Pro
 export async function mockPastProjectShare(page: Page, share: PastProjectShare): Promise<void> {
   // Covers GET (view) and PATCH/PUT (owner edit): the update echoes the merged share back.
   // RegExp (not a glob) so it matches the trailing-slash detail URL `.../past-shares/<id>/`.
+  let current = {...share};
   await page.route(/\/projects\/past-shares\/[^/]+\/?(\?.*)?$/, (route) => {
     const method = route.request().method();
     if (method === 'PATCH' || method === 'PUT') {
       const body = (route.request().postDataJSON() ?? {}) as Partial<PastProjectShare>;
-      route.fulfill(json({...share, ...body}));
+      if (body.version !== current.version) {
+        route.fulfill(
+          json(
+            {
+              code: 'stale_snapshot',
+              detail: 'This shared project changed.',
+              current,
+            },
+            409,
+          ),
+        );
+        return;
+      }
+      current = {
+        ...current,
+        ...body,
+        version: current.version + 1,
+      };
+      route.fulfill(json(current));
       return;
     }
-    route.fulfill(json(share));
+    route.fulfill(json(current));
   });
 }
 
@@ -394,6 +430,7 @@ export async function mockPastProjectShareCreate(
           rows: [],
           note: '',
           details_text: '',
+          version: 1,
           share_url: '/past-projects/share-new',
           can_edit: true,
           created_at: new Date().toISOString(),
@@ -495,7 +532,12 @@ export async function mockContactEmailsCRUD(
       return;
     }
     if (action === 'request-verification') {
-      await route.fulfill(json({message: 'Verification code sent.'}));
+      await route.fulfill(
+        json({
+          message: 'Verification code sent.',
+          challenge_id: '87f80894-955d-49d7-b5f3-2aed231087b1',
+        }),
+      );
       return;
     }
     if (action === 'verify-code') {

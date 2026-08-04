@@ -63,10 +63,13 @@ Rate limits are applied per-view, not globally. Active throttle classes:
 | Throttle | Rate | Applied to |
 |----------|------|------------|
 | `LoginRateThrottle` | 10/min | Login endpoint |
-| `EmailCodeRequestThrottle` | 10/min | Email code request endpoints |
-| `EmailCodeVerifyThrottle` | 20/min | Email code verification endpoints |
+| `EmailCodeRequestThrottle` | 30/min | Anonymous email code request endpoints |
+| `EmailCodeVerifyThrottle` | 60/min | Code verification and token-confirmation endpoints |
+| `PhoneAuthCodeRequestThrottle` | 5/min | Anonymous phone-auth and phone password-reset SMS requests |
+| `PhoneCodeRequestThrottle` | 5/min | Authenticated contact-phone/password-change SMS requests |
+| `EmailCodeUserRequestThrottle` | 5/min | Authenticated email verification requests |
 | `ContactEmailCreateThrottle` | 5/hour | Contact email creation |
-| `PastProjectShareThrottle` | 10/hour | Project sharing |
+| `PastProjectShareThrottle` | 10/min | Project sharing |
 
 ### Base URL
 

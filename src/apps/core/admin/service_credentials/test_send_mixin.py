@@ -46,13 +46,14 @@ class TestSendViewsMixin:
     def test_email_list_view(self, request):
         config = EmailServiceConfig.load()
         opts = self.model._meta
+        form_url = reverse(f"admin:{opts.app_label}_{opts.model_name}_test_email")
         changelist_url = reverse(f"admin:{opts.app_label}_{opts.model_name}_changelist")
 
         if request.method == "POST":
             recipient = request.POST.get("recipient", "").strip()
             if not recipient:
                 messages.error(request, "Please provide a recipient email address.")
-                return HttpResponseRedirect(request.path)
+                return HttpResponseRedirect(form_url)
             try:
                 provider = _send_test_email(config=config, recipient=recipient)
                 messages.success(request, f"Test email sent to {recipient} via {provider} (config: {config.name}).")
@@ -75,6 +76,7 @@ class TestSendViewsMixin:
     def test_sms_list_view(self, request):
         config = AWSCredentialConfig.load()
         opts = self.model._meta
+        form_url = reverse(f"admin:{opts.app_label}_{opts.model_name}_test_sms")
         changelist_url = reverse(f"admin:{opts.app_label}_{opts.model_name}_changelist")
 
         if request.method == "POST":
@@ -82,7 +84,7 @@ class TestSendViewsMixin:
             recipient = request.POST.get("recipient", "").strip()
             if not recipient:
                 messages.error(request, "Please provide a phone number.")
-                return HttpResponseRedirect(request.path)
+                return HttpResponseRedirect(form_url)
             full_number = _normalize_phone_number(country_code, recipient)
             try:
                 result = _send_test_sms(phone_number=full_number)

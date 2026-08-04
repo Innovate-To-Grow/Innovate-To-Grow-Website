@@ -140,6 +140,21 @@ class AdminThemeRenderingTests(TestCase):
             with self.subTest(style_path=style_path):
                 self.assertIsNotNone(finders.find(style_path))
 
+    def test_configured_unfold_scripts_are_resolvable_static_assets(self):
+        for script_factory in settings.UNFOLD["SCRIPTS"]:
+            script_path = script_factory(None).removeprefix("/static/")
+            with self.subTest(script_path=script_path):
+                self.assertIsNotNone(finders.find(script_path))
+
+    def test_htmx_csp_bootstrap_disables_dynamic_code_paths(self):
+        path = finders.find("admin/js/htmx-csp-config.js")
+        self.assertIsNotNone(path)
+        source = Path(path).read_text()
+
+        self.assertIn("allowEval = false", source)
+        self.assertIn("allowScriptTags = false", source)
+        self.assertIn("includeIndicatorStyles = false", source)
+
     def test_google_material_admin_css_covers_dark_custom_dashboards(self):
         path = finders.find("admin/css/google-material-admin.css")
         self.assertIsNotNone(path)

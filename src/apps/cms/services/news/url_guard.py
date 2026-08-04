@@ -174,3 +174,19 @@ def safe_urlopen(url: str, *, timeout: float, headers: dict | None = None):
         _ValidatingRedirectHandler(),
     )
     return opener.open(request, timeout=timeout)
+
+
+class OversizedNewsResponseError(ValueError):
+    """Raised when a remote news document exceeds its configured byte limit."""
+
+
+def read_bounded_response(response, *, max_bytes: int, label: str) -> bytes:
+    """Read at most ``max_bytes + 1`` bytes and reject oversized documents.
+
+    Passing a size to ``read`` prevents an untrusted peer from forcing an
+    unbounded allocation even when Content-Length is absent or dishonest.
+    """
+    payload = response.read(max_bytes + 1)
+    if len(payload) > max_bytes:
+        raise OversizedNewsResponseError(f"{label} exceeds the {max_bytes}-byte response limit.")
+    return payload

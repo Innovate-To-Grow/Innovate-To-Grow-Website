@@ -63,6 +63,7 @@ export const useEventRegistration = () => {
   const [phoneCode, setPhoneCode] = useState('');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [normalizedPhone, setNormalizedPhone] = useState('');
+  const [phoneChallengeId, setPhoneChallengeId] = useState('');
   const [phoneSending, setPhoneSending] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
@@ -93,6 +94,7 @@ export const useEventRegistration = () => {
     setPhoneCode('');
     setPhoneVerified(false);
     setNormalizedPhone('');
+    setPhoneChallengeId('');
     setPhoneCodeSent(false);
     setInitialPhone(null);
     initialProfileRef.current = null;
@@ -387,6 +389,10 @@ export const useEventRegistration = () => {
         attendee_secondary_email: options.allow_secondary_email ? attendeeSecondaryEmail.trim() || undefined : undefined,
         attendee_phone: options.collect_phone ? attendeePhone.trim() || undefined : undefined,
         attendee_phone_region: options.collect_phone && attendeePhone.trim() ? phoneRegion : undefined,
+        phone_verification_challenge_id:
+          options.verify_phone && phoneVerified && phoneChallengeId
+            ? phoneChallengeId
+            : undefined,
       });
       setRegistration(result);
       syncEventRegistration(options.slug, result);
@@ -406,12 +412,14 @@ export const useEventRegistration = () => {
   };
 
   const handleSendPhoneCode = async () => {
-    if (!attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim())) return;
+    const eventSlug = options?.slug;
+    if (!eventSlug || !attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim())) return;
     setPhoneSending(true);
     setError(null);
     try {
-      const result = await sendPhoneCode(attendeePhone.trim(), phoneRegion);
+      const result = await sendPhoneCode(attendeePhone.trim(), phoneRegion, eventSlug);
       setNormalizedPhone(result.phone);
+      setPhoneChallengeId(result.challenge_id);
       setPhoneCodeSent(true);
     } catch (err: unknown) {
       setError(getRegistrationErrorMessage(err));
@@ -421,12 +429,19 @@ export const useEventRegistration = () => {
   };
 
   const handleVerifyPhoneCode = async () => {
-    if (!normalizedPhone || !phoneCode.trim()) return;
+    const eventSlug = options?.slug;
+    if (!eventSlug || !normalizedPhone || !phoneCode.trim()) return;
     setVerifyingPhone(true);
     setError(null);
     try {
-      const result = await verifyPhoneCode(normalizedPhone, phoneCode.trim());
+      const result = await verifyPhoneCode(
+        normalizedPhone,
+        phoneCode.trim(),
+        phoneChallengeId || undefined,
+        eventSlug,
+      );
       setNormalizedPhone(result.phone);
+      setPhoneChallengeId(result.challenge_id);
       setPhoneVerified(true);
       setError(null);
     } catch (err: unknown) {
@@ -443,6 +458,7 @@ export const useEventRegistration = () => {
       setPhoneCodeSent(false);
       setPhoneCode('');
       setNormalizedPhone('');
+      setPhoneChallengeId('');
     }
     setAttendeePhone(capped);
   };

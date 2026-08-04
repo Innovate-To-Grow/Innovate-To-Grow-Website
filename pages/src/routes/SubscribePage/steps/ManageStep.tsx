@@ -4,10 +4,9 @@ import {normalizeEmailAddress} from '@/features/auth/components/sections/interna
 import {formatPhoneDisplay} from '@/features/auth/components/sections/internal/helpers';
 
 interface ManageStepProps {
-  profile: ProfileResponse | null;
+  profile: ProfileResponse;
   contactEmails: ContactEmail[];
   contactPhones: ContactPhone[];
-  loading: boolean;
   savingId: string | null;
   message: string | null;
   onPrimaryEmailToggle: (subscribed: boolean) => Promise<void>;
@@ -41,21 +40,12 @@ export const ManageStep = ({
   profile,
   contactEmails,
   contactPhones,
-  loading,
   savingId,
   message,
   onPrimaryEmailToggle,
   onContactEmailToggle,
   onContactPhoneToggle,
 }: ManageStepProps) => {
-  if (loading || !profile) {
-    return (
-      <div className="subscribe-section">
-        <p className="subscribe-hint">Loading subscription preferences...</p>
-      </div>
-    );
-  }
-
   const primaryEmail = normalizeEmailAddress(profile.email);
 
   return (

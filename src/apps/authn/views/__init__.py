@@ -47,6 +47,7 @@ from .auth.phone_code import (
 )
 from .auth.public_key import PublicKeyView
 from .auth.register import RegisterView
+from .auth.session import SessionView
 from .auth.token import PublicTokenRefreshView
 from .impersonate_login import ImpersonateLoginView
 from .subscribe import SubscribeView
@@ -54,6 +55,7 @@ from .unsubscribe_login import UnsubscribeAutoLoginView
 
 __all__ = [
     "RegisterView",
+    "SessionView",
     "RegisterVerifyCodeView",
     "RegisterResendCodeView",
     "LoginView",

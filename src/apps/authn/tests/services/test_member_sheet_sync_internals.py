@@ -3,7 +3,8 @@
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from apps.authn.models import ContactEmail, ContactPhone, MemberSheetSyncConfig
 from apps.authn.services.member_sheet_sync.rows import build_row
@@ -13,6 +14,7 @@ from apps.authn.services.member_sheet_sync.scheduler import (
     schedule_member_sync,
 )
 from apps.authn.services.member_sheet_sync.sheets import MemberSyncError, _get_worksheet
+from apps.core.models import BackgroundJob
 
 Member = get_user_model()
 
@@ -94,10 +96,6 @@ class GetWorksheetTests(TestCase):
 class SyncMembersErrorTests(TestCase):
     def setUp(self):
         MemberSheetSyncConfig.objects.create(is_enabled=True, auto_sync_enabled=True, google_sheet_id="sheet-id")
-        from apps.authn.services.member_sheet_sync import _sync_in_progress, _sync_pending
-
-        _sync_in_progress.clear()
-        _sync_pending.clear()
 
     @patch("apps.authn.services.member_sheet_sync._get_worksheet")
     def test_member_sync_error_is_reraised_and_logged(self, mock_get_ws):
@@ -123,34 +121,25 @@ class BuildRowPhoneTests(TestCase):
 
 
 class SchedulerTests(TestCase):
-    def setUp(self):
-        # _flush_pending_sync runs in a background Timer thread in production and
-        # calls close_old_connections() to refresh that thread's DB handle. The
-        # direct synchronous calls below would otherwise close the test's own
-        # connection — harmless on SQLite but raises InterfaceError on
-        # PostgreSQL (and corrupts later tests in this class via ordering).
-        patcher = patch("apps.authn.services.member_sheet_sync.scheduler.close_old_connections")
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
-    @patch("apps.authn.services.member_sheet_sync.threading.Timer")
-    def test_schedule_immediate_sync_starts_timer(self, mock_timer_cls):
-        mock_timer = MagicMock()
-        mock_timer_cls.return_value = mock_timer
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_schedule_immediate_sync_enqueues_ready_job(self):
+        before = timezone.now()
         schedule_immediate_sync()
-        mock_timer.start.assert_called_once()
-        self.assertTrue(mock_timer.daemon)
 
-    @patch("apps.authn.services.member_sheet_sync.threading.Timer")
-    def test_schedule_member_sync_cancels_existing_timer(self, mock_timer_cls):
+        job = BackgroundJob.objects.get(kind="authn.member_sheet_sync")
+        self.assertLessEqual(job.available_at, timezone.now())
+        self.assertGreaterEqual(job.available_at, before)
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_schedule_member_sync_coalesces_queued_job(self):
         MemberSheetSyncConfig.objects.create(is_enabled=True, auto_sync_enabled=True, google_sheet_id="sheet-id")
-        first = MagicMock()
-        second = MagicMock()
-        mock_timer_cls.side_effect = [first, second]
         schedule_member_sync()
+        first = BackgroundJob.objects.get(kind="authn.member_sheet_sync")
         schedule_member_sync()
-        first.cancel.assert_called_once()
-        second.start.assert_called_once()
+
+        self.assertEqual(BackgroundJob.objects.filter(kind="authn.member_sheet_sync").count(), 1)
+        first.refresh_from_db()
+        self.assertGreater(first.available_at, timezone.now())
 
     @patch("apps.authn.services.member_sheet_sync.sync_members_to_sheet")
     def test_flush_pending_sync_runs_sync(self, mock_sync):

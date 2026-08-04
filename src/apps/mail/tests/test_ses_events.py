@@ -189,12 +189,12 @@ class SubscriptionUrlopenFailureTests(TestCase):
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
         with patch(
-            "apps.mail.services.ses_events.subscription.urllib.request.urlopen",
+            "apps.mail.services.ses_events.subscription.fetch_sns_https",
             side_effect=RuntimeError("network down"),
-        ) as mock_urlopen:
+        ) as mock_fetch:
             # Should not raise even though the confirmation request failed.
             process_sns_envelope(envelope)
-            mock_urlopen.assert_called_once()
+            mock_fetch.assert_called_once()
 
 
 class ParseTimestampTests(TestCase):
@@ -228,11 +228,10 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription&Token=abc",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
-            mock_urlopen.return_value.__enter__.return_value.read.return_value = b"<ok/>"
+        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https", return_value=b"<ok/>") as mock_fetch:
             process_sns_envelope(envelope)
-            mock_urlopen.assert_called_once()
-            self.assertIn("ConfirmSubscription", mock_urlopen.call_args.args[0])
+            mock_fetch.assert_called_once()
+            self.assertIn("ConfirmSubscription", mock_fetch.call_args.args[0])
 
     def test_non_amazonaws_subscribe_url_is_skipped(self):
         envelope = {
@@ -240,9 +239,9 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://evil.example.com/trick",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
+        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https") as mock_fetch:
             process_sns_envelope(envelope)
-            mock_urlopen.assert_not_called()
+            mock_fetch.assert_not_called()
 
     def test_amazonaws_lookalike_subscribe_url_is_skipped(self):
         envelope = {
@@ -250,9 +249,9 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com.evil.example/?Action=ConfirmSubscription",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
+        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https") as mock_fetch:
             process_sns_envelope(envelope)
-            mock_urlopen.assert_not_called()
+            mock_fetch.assert_not_called()
 
     def test_http_subscribe_url_is_skipped(self):
         envelope = {
@@ -260,9 +259,9 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "http://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
+        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https") as mock_fetch:
             process_sns_envelope(envelope)
-            mock_urlopen.assert_not_called()
+            mock_fetch.assert_not_called()
 
     def test_non_confirm_subscribe_url_action_is_skipped(self):
         envelope = {
@@ -270,6 +269,6 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=GetTopicAttributes",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.urllib.request.urlopen") as mock_urlopen:
+        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https") as mock_fetch:
             process_sns_envelope(envelope)
-            mock_urlopen.assert_not_called()
+            mock_fetch.assert_not_called()

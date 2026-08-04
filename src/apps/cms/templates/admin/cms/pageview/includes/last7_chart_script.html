@@ -1,4 +1,4 @@
-<script>
+<script nonce="{{ request.csp_nonce }}">
     (function () {
         Chart.register(ChartDataLabels);
         const labels = [{% for day in last_7_days %}"{{ day.date|date:'M d' }}"{% if not forloop.last %},{% endif %}{% endfor %}];

@@ -28,7 +28,7 @@ export const fetchLatestNews = async (): Promise<NewsArticle | null> => {
   return response.results[0] ?? null;
 };
 
-export const fetchNewsDetail = async (id: string): Promise<NewsArticle> => {
-  const response = await api.get<NewsArticle>(`/news/${id}/`);
+export const fetchNewsDetail = async (id: string, signal?: AbortSignal): Promise<NewsArticle> => {
+  const response = await api.get<NewsArticle>(`/news/${id}/`, {signal});
   return response.data;
 };

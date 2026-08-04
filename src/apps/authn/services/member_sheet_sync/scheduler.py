@@ -1,64 +1,83 @@
 import logging
-import threading
+import uuid
+from datetime import timedelta
 
-from django.db import close_old_connections
+from django.db import transaction
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-_sync_timer: threading.Timer | None = None
-_sync_lock = threading.Lock()
-_sync_in_progress = threading.Event()
-_sync_pending = threading.Event()
+MEMBER_SHEET_JOB_KIND = "authn.member_sheet_sync"
+DEBOUNCE_SECONDS = 15
 
 
 def schedule_member_sync() -> None:
-    global _sync_timer
-
     from apps.authn.models import MemberSheetSyncConfig
 
     config = MemberSheetSyncConfig.load()
     if not config.is_configured or not config.auto_sync_enabled:
         return
 
-    import apps.authn.services.member_sheet_sync as sync_api
+    from apps.core.services.background_jobs import jobs_enabled
 
-    with _sync_lock:
-        if _sync_timer is not None:
-            _sync_timer.cancel()
-        _sync_timer = sync_api.threading.Timer(
-            sync_api.DEBOUNCE_SECONDS,
-            _flush_pending_sync,
-        )
-        _sync_timer.daemon = True
-        _sync_timer.start()
+    if jobs_enabled():
+        _enqueue_durable_sync(immediate=False)
+    else:
+        # Expand-first rollout fallback. This is intentionally synchronous so
+        # work cannot disappear when a web process exits.
+        _flush_pending_sync()
 
 
 def schedule_immediate_sync() -> None:
-    global _sync_timer
+    from apps.core.services.background_jobs import jobs_enabled
 
-    import apps.authn.services.member_sheet_sync as sync_api
-
-    with _sync_lock:
-        if _sync_timer is not None:
-            _sync_timer.cancel()
-        _sync_timer = sync_api.threading.Timer(0, _flush_pending_sync)
-        _sync_timer.daemon = True
-        _sync_timer.start()
+    if jobs_enabled():
+        _enqueue_durable_sync(immediate=True)
+    else:
+        _flush_pending_sync()
 
 
-def _flush_pending_sync() -> None:
-    global _sync_timer
+def _enqueue_durable_sync(*, immediate: bool):
+    """Coalesce queued full-sync work without losing writes during a claim."""
+    from apps.core.models import BackgroundJob
+    from apps.core.services.background_jobs import enqueue_job
 
-    with _sync_lock:
-        _sync_timer = None
+    available_at = timezone.now()
+    if not immediate:
+        available_at += timedelta(seconds=DEBOUNCE_SECONDS)
 
+    with transaction.atomic():
+        queued = (
+            BackgroundJob.objects.select_for_update()
+            .filter(
+                kind=MEMBER_SHEET_JOB_KIND,
+                status__in=[BackgroundJob.Status.PENDING, BackgroundJob.Status.RETRY],
+            )
+            .order_by("created_at")
+            .first()
+        )
+        if queued is not None:
+            queued.available_at = available_at
+            queued.last_error = ""
+            queued.save(update_fields=["available_at", "last_error", "updated_at"])
+            return queued
+        job, _created = enqueue_job(
+            kind=MEMBER_SHEET_JOB_KIND,
+            dedupe_key=str(uuid.uuid4()),
+            payload={},
+            can_retry_after_claim=True,
+            available_at=available_at,
+        )
+        return job
+
+
+def _flush_pending_sync(*, raise_errors: bool = False) -> None:
     try:
-        close_old_connections()
         from apps.authn.models import MemberSheetSyncLog
         from apps.authn.services.member_sheet_sync import sync_members_to_sheet
 
         sync_members_to_sheet(sync_type=MemberSheetSyncLog.SyncType.DEBOUNCED)
     except Exception:
-        logger.exception("Debounced member sheet sync failed.")
-    finally:
-        close_old_connections()
+        logger.exception("Member sheet sync failed.")
+        if raise_errors:
+            raise

@@ -52,7 +52,10 @@ class CampaignStatusMixin:
                 "name": log.recipient_name,
                 "error": _short_error(log.error_message),
             }
-            for log in RecipientLog.objects.filter(campaign=obj, status="failed").order_by("-updated_at")
+            for log in RecipientLog.objects.filter(
+                campaign=obj,
+                status__in=["failed", "uncertain"],
+            ).order_by("-updated_at")
         ]
         first_sent_at = (
             RecipientLog.objects.filter(campaign=obj, sent_at__isnull=False)

@@ -133,17 +133,22 @@ class UnifiedEmailAuthVerifySerializer(BaseEmailSerializer):
 
     def validate(self, attrs: dict) -> dict:
         attrs = super().validate(attrs)
+        approved_callback = self.context.get("approved_callback")
         try:
-            challenge = verify_email_code_for_purposes(
+            result = verify_email_code_for_purposes(
                 purposes=[PURPOSE.LOGIN, PURPOSE.REGISTER],
                 target_email=attrs["email"],
                 code=attrs["code"],
+                approved_callback=approved_callback,
             )
         except AuthChallengeInvalid as exc:
             raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
 
-        attrs["challenge"] = challenge
-        attrs["flow"] = "register" if challenge.purpose == PURPOSE.REGISTER else "login"
+        if approved_callback is not None:
+            attrs["approved_result"] = result
+        else:
+            attrs["challenge"] = result
+            attrs["flow"] = "register" if result.purpose == PURPOSE.REGISTER else "login"
         return attrs
 
 

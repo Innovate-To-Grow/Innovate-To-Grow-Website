@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 
 
 class GmailAccessAccount(models.Model):
@@ -45,6 +45,13 @@ class GmailAccessAccount(models.Model):
     class Meta:
         verbose_name = "Gmail Access Account"
         verbose_name_plural = "Gmail Access Accounts"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=models.Q(is_active=True),
+                name="core_one_active_gmail_account",
+            ),
+        ]
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
@@ -53,16 +60,20 @@ class GmailAccessAccount(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_active:
-            GmailAccessAccount.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
-        super().save(*args, **kwargs)
+            with transaction.atomic():
+                list(GmailAccessAccount.objects.select_for_update().filter(is_active=True).exclude(pk=self.pk))
+                GmailAccessAccount.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):
-        """Load the active config, falling back to the most recently updated one."""
-        obj = cls.objects.filter(is_active=True).first()
-        if obj is None:
-            obj = cls.objects.order_by("-updated_at").first()
-        return obj if obj is not None else cls()
+        """Load the active account without falling back to inactive credentials."""
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            return cls()
 
     @property
     def is_configured(self):

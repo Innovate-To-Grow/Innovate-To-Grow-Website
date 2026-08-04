@@ -1,13 +1,19 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../AuthContext';
-import { getProfile, updateProfileFields } from '@/features/auth/api';
+import {
+  getProfile,
+  getStoredSession,
+  isCurrentSession,
+  updateProfileFields,
+} from '@/features/auth/api';
 import { getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
 import { getAuthErrorMessage } from '../context/shared';
 import { CompleteProfileForm } from './CompleteProfileForm';
 
 export const CompleteProfilePage = () => {
   const {
+    user,
     isAuthenticated,
     requiresProfileCompletion,
     clearProfileCompletionRequirement,
@@ -30,10 +36,28 @@ export const CompleteProfilePage = () => {
     if (!isAuthenticated || !requiresProfileCompletion) {
       return;
     }
+    const session = getStoredSession();
+    if (!session) return;
+    const guard = {
+      generation: session.generation,
+      refresh: session.refresh,
+    };
+    let active = true;
 
     const loadProfile = async () => {
+      await Promise.resolve();
+      if (!active || !isCurrentSession(guard)) return;
+      setIsBootstrapping(true);
+      setError(null);
+      setFirstName('');
+      setMiddleName('');
+      setLastName('');
+      setOrganizationType('organization');
+      setOrganization('');
+      setTitle('');
       try {
         const profile = await getProfile();
+        if (!active || !isCurrentSession(guard)) return;
         setFirstName(profile.first_name ?? '');
         setMiddleName(profile.middle_name ?? '');
         setLastName(profile.last_name ?? '');
@@ -44,14 +68,24 @@ export const CompleteProfilePage = () => {
         setOrganization(isIndividual ? '' : org);
         setTitle(profile.title ?? '');
       } catch (err: unknown) {
+        if (!active || !isCurrentSession(guard)) return;
         setError(getAuthErrorMessage(err));
       } finally {
-        setIsBootstrapping(false);
+        if (active && isCurrentSession(guard)) {
+          setIsBootstrapping(false);
+        }
       }
     };
 
-    loadProfile();
-  }, [isAuthenticated, requiresProfileCompletion]);
+    void loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [
+    isAuthenticated,
+    requiresProfileCompletion,
+    user?.member_uuid,
+  ]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -83,6 +117,12 @@ export const CompleteProfilePage = () => {
     setError(null);
 
     try {
+      const session = getStoredSession();
+      if (!session) return;
+      const guard = {
+        generation: session.generation,
+        refresh: session.refresh,
+      };
       const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
       const titleValue = organizationType === 'organization' ? title.trim() : '';
       await updateProfileFields({
@@ -92,7 +132,7 @@ export const CompleteProfilePage = () => {
         organization: orgValue,
         title: titleValue,
       });
-      clearProfileCompletionRequirement();
+      if (!clearProfileCompletionRequirement(guard)) return;
       navigate(returnTo ?? '/account', { replace: true });
     } catch (err: unknown) {
       setError(getAuthErrorMessage(err));

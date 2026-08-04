@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 
 from apps.core.models import ProjectControlModel
 
@@ -21,8 +21,8 @@ class MemberSheetSyncConfig(ProjectControlModel):
         verbose_name="Auto Sync",
         help_text=(
             "Automatically sync to the sheet when a member, contact email, or contact phone "
-            "is created, updated, or deleted. Each Gunicorn worker debounces independently — "
-            "in multi-worker deployments, bursts of writes may produce one sync per worker."
+            "is created, updated, or deleted. Changes are coalesced through the durable "
+            "background-job queue."
         ),
     )
     google_sheet_id = models.CharField(
@@ -46,6 +46,13 @@ class MemberSheetSyncConfig(ProjectControlModel):
     class Meta:
         verbose_name = "Member Sheet Sync Config"
         verbose_name_plural = "Member Sheet Sync Configs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_enabled"],
+                condition=models.Q(is_enabled=True),
+                name="authn_one_enabled_member_sync",
+            ),
+        ]
 
     def __str__(self):
         status = "enabled" if self.is_enabled else "disabled"
@@ -56,21 +63,26 @@ class MemberSheetSyncConfig(ProjectControlModel):
         # Enforce a single enabled config — saving an enabled row demotes any others.
         # Mirrors the pattern in core.models.GoogleCredentialConfig.save().
         if self.is_enabled:
-            type(self).objects.filter(is_enabled=True).exclude(pk=self.pk).update(is_enabled=False)
-        super().save(*args, **kwargs)
+            with transaction.atomic():
+                list(type(self).objects.select_for_update().filter(is_enabled=True).exclude(pk=self.pk))
+                type(self).objects.filter(is_enabled=True).exclude(pk=self.pk).update(is_enabled=False)
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):
-        """Load the active config, falling back to the most recently updated one.
+        """Load the explicitly enabled config.
 
-        Returns an unsaved instance with defaults when no rows exist so that
+        Returns an unsaved instance with defaults when no enabled row exists so that
         callers can safely access properties like ``is_configured`` without
-        guarding against ``None``.
+        guarding against ``None``. Disabled sync settings are never used as a
+        fallback.
         """
-        obj = cls.objects.filter(is_enabled=True).order_by("-updated_at").first()
-        if obj is None:
-            obj = cls.objects.order_by("-updated_at").first()
-        return obj if obj is not None else cls()
+        try:
+            return cls.objects.get(is_enabled=True)
+        except cls.DoesNotExist:
+            return cls()
 
     @property
     def is_configured(self):

@@ -170,7 +170,7 @@ def mail_settings_test_email_view(request):
         recipient = request.POST.get("recipient", "").strip()
         if not recipient:
             messages.error(request, "Please provide a recipient email address.")
-            return HttpResponseRedirect(request.path)
+            return HttpResponseRedirect(reverse("admin:mail_settings_test_email"))
         try:
             provider = _send_test_email(config=config, recipient=recipient)
             messages.success(request, f"Test email sent to {recipient} via {provider} (config: {config.name}).")
@@ -201,7 +201,7 @@ def mail_settings_test_sms_view(request):
         recipient = request.POST.get("recipient", "").strip()
         if not recipient:
             messages.error(request, "Please provide a phone number.")
-            return HttpResponseRedirect(request.path)
+            return HttpResponseRedirect(reverse("admin:mail_settings_test_sms"))
         full_number = _normalize_phone_number(country_code, recipient)
         try:
             result = _send_test_sms(phone_number=full_number)

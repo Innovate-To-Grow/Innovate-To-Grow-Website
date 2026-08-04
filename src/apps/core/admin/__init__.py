@@ -4,6 +4,7 @@ Core admin utilities and base classes.
 Provides shared functionality for admin interfaces across all apps.
 """
 
+from .background_jobs import BackgroundJobAdmin  # noqa: F401 - register admin
 from .base import BaseModelAdmin, ReadOnlyModelAdmin
 from .log_entry import LogEntryAdmin  # noqa: F401 - register admin
 from .maintenance import SiteMaintenanceControlAdmin  # noqa: F401 - register admin

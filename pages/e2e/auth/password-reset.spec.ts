@@ -58,6 +58,27 @@ test('resend code is available on the verify screen', async ({page}) => {
   }
 });
 
+test('phone reset forwards the request challenge to verification', async ({page}) => {
+  const challengeId = '2bc9ba75-f3dd-4633-9bf8-0400e0d30cbf';
+  const {verifyPayloads} = await mockPasswordResetFlow(page, {
+    requestChallengeId: challengeId,
+  });
+  const phone = '2025550123';
+
+  await page.goto('/forgot-password', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('Email or Phone').fill(phone);
+  await page.getByRole('button', {name: 'Send Reset Code'}).click();
+  await page.getByLabel('6-digit verification code').fill('654321');
+  await page.getByRole('button', {name: 'Verify Code'}).click();
+
+  await expect(
+    page.getByText('Code verified. Set your new password below.'),
+  ).toBeVisible();
+  expect(verifyPayloads).toEqual([
+    {email: phone, code: '654321', challenge_id: challengeId},
+  ]);
+});
+
 test('malformed identifier still follows the enumeration-safe reset flow', async ({page}) => {
   // The identifier field intentionally has no format validation (it accepts
   // phones too) and the backend always answers 202, so even a malformed value

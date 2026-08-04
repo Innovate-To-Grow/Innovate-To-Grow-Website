@@ -60,6 +60,11 @@ def test_bearer_header_is_set():
     assert client.session.headers["Authorization"] == "Bearer secret-token"
 
 
+def test_client_does_not_trust_ambient_proxy_or_ca_environment():
+    client = ApiClient(BASE, "secret-token")
+    assert client.session.trust_env is False
+
+
 def test_rejects_non_https_remote_base_url():
     with pytest.raises(CliError):
         ApiClient("http://remote.example.com", "tok")

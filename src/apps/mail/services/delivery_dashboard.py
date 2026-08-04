@@ -454,7 +454,7 @@ def _recipient_details_meta(
 def _aws_meta(metric_payload: dict, recipient_details: dict) -> dict:
     email_config = EmailServiceConfig.load()
     aws_config = AWSCredentialConfig.load()
-    configured = bool(email_config.ses_from_email and aws_config.ses_configured)
+    configured = email_config.ses_configured
     return {
         "configured": configured,
         "email_config": email_config.name,

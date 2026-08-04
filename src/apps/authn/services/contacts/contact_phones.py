@@ -6,7 +6,7 @@ import re
 
 from django.db import IntegrityError, transaction
 
-from apps.authn.models import ContactPhone
+from apps.authn.models import ContactPhone, Member
 from apps.authn.models.contact.phone_regions import PHONE_REGION_CHOICES
 from apps.authn.services.account_recovery.recovery import (
     LastRecoveryContactError,
@@ -120,6 +120,9 @@ def delete_contact_phone(*, member, contact_phone_id):
     verified recovery contact (a verified email or another verified phone counts as
     a survivor). Deleting an unverified phone is always allowed.
     """
+    # Serialize this check with email deletion by using the owning member as a
+    # cross-table mutex.
+    Member.objects.select_for_update().get(pk=member.pk)
     contact_phone = ContactPhone.objects.select_for_update().filter(pk=contact_phone_id, member=member).first()
     if contact_phone is None:
         raise AuthChallengeInvalid("Contact phone not found.")
@@ -143,11 +146,19 @@ def request_phone_verification(*, member, contact_phone_id):
         raise AuthChallengeInvalid("This phone number is already verified.")
 
     e164 = national_to_e164(contact_phone.phone_number, contact_phone.region)
-    start_phone_verification(e164)
-    return {"message": "Verification code sent via SMS."}
+    challenge = start_phone_verification(
+        e164,
+        purpose="contact_phone_verify",
+        member=member,
+        context_identifier=str(contact_phone.pk),
+    )
+    payload = {"message": "Verification code sent via SMS."}
+    if isinstance(challenge, dict) and challenge.get("challenge_id"):
+        payload["challenge_id"] = challenge["challenge_id"]
+    return payload
 
 
-def verify_phone_code(*, member, contact_phone_id, code: str):
+def verify_phone_code(*, member, contact_phone_id, code: str, challenge_id=None):
     """Verify an SMS OTP code and mark the phone as verified."""
     from apps.authn.services.sms import check_phone_verification
 
@@ -156,8 +167,31 @@ def verify_phone_code(*, member, contact_phone_id, code: str):
         raise AuthChallengeInvalid("Contact phone not found.")
 
     e164 = national_to_e164(contact_phone.phone_number, contact_phone.region)
-    check_phone_verification(e164, code)
 
-    contact_phone.verified = True
-    contact_phone.save(update_fields=["verified", "updated_at"])
-    return contact_phone
+    def mark_contact_verified(_challenge):
+        locked_contact = (
+            ContactPhone.objects.select_for_update()
+            .filter(
+                pk=contact_phone.pk,
+                member=member,
+                phone_number=contact_phone.phone_number,
+                region=contact_phone.region,
+            )
+            .first()
+        )
+        if locked_contact is None:
+            raise AuthChallengeInvalid("Contact phone not found.")
+        if not locked_contact.verified:
+            locked_contact.verified = True
+            locked_contact.save(update_fields=["verified", "updated_at"])
+        return locked_contact
+
+    return check_phone_verification(
+        e164,
+        code,
+        challenge_id=challenge_id,
+        purpose="contact_phone_verify",
+        member=member,
+        context_identifier=str(contact_phone.pk),
+        approved_callback=mark_contact_verified,
+    )

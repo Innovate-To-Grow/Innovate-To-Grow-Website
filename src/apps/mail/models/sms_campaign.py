@@ -38,8 +38,11 @@ SMS_PHONE_POLICY_CHOICES = [
 
 SMS_LOG_STATUS_CHOICES = [
     ("pending", "Pending"),
+    ("processing", "Processing"),
+    ("retry", "Retry scheduled"),
     ("sent", "Sent"),
     ("failed", "Failed"),
+    ("uncertain", "Uncertain delivery"),
 ]
 
 E164_RE = re.compile(r"^\+[1-9]\d{6,14}$")
@@ -201,6 +204,11 @@ class SmsRecipientLog(ProjectControlModel):
     error_message = models.TextField(blank=True, default="")
     sns_message_id = models.CharField(max_length=256, blank=True, default="", db_index=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0, db_default=0)
+    available_at = models.DateTimeField(null=True, blank=True)
+    claim_token = models.UUIDField(null=True, blank=True, editable=False)
+    claimed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    uncertain_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ["-updated_at"]

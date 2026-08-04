@@ -91,7 +91,7 @@
 </div>
 
 {{ confirmation_word|json_script:"confirmation-word-data" }}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function() {
     const input = document.getElementById('confirm-input');
     const btn = document.getElementById('confirm-btn');

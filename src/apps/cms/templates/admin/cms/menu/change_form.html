@@ -20,19 +20,19 @@
             <div id="menu-items-container" class="menu-items-container"></div>
 
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button type="button" class="btn-add" onclick="addMenuItem('home')">+ Add Home</button>
-                <button type="button" class="btn-add" onclick="addMenuItem('app')">+ Add App Route</button>
-                <button type="button" class="btn-add" onclick="addMenuItem('external')">+ Add External Link</button>
+                <button type="button" class="btn-add" data-admin-call="addMenuItem" data-admin-event="click" data-admin-args='["home"]'>+ Add Home</button>
+                <button type="button" class="btn-add" data-admin-call="addMenuItem" data-admin-event="click" data-admin-args='["app"]'>+ Add App Route</button>
+                <button type="button" class="btn-add" data-admin-call="addMenuItem" data-admin-event="click" data-admin-args='["external"]'>+ Add External Link</button>
             </div>
 
             <!-- JSON Toggle -->
             <div class="json-toggle">
-                <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
+                <button type="button" class="json-toggle-btn" data-admin-call="toggleJsonView" data-admin-event="click">Show/Hide Raw JSON</button>
                 <div id="json-raw-view" class="json-raw-view">
                     <textarea id="json-editor"></textarea>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button type="button" class="json-toggle-btn" onclick="copyJson()">Copy JSON</button>
-                        <button type="button" class="json-toggle-btn" onclick="applyJson()">Apply JSON</button>
+                        <button type="button" class="json-toggle-btn" data-admin-call="copyJson" data-admin-event="click" data-admin-value="element">Copy JSON</button>
+                        <button type="button" class="json-toggle-btn" data-admin-call="applyJson" data-admin-event="click" data-admin-value="element">Apply JSON</button>
                     </div>
                 </div>
             </div>
@@ -44,7 +44,7 @@
     {{ block.super }}
     {% static 'vendor/font-awesome/4.7.0/css/font-awesome.min.css' as font_awesome_css %}
 
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
         window.ITG_FONT_AWESOME_CSS = "{{ font_awesome_css|escapejs }}";
         window.APP_ROUTES = {{ app_routes_json|safe }};
         window.CMS_ROUTES = {{ cms_routes_json|safe }};

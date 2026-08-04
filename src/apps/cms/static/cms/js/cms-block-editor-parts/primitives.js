@@ -39,6 +39,12 @@
         return `${prefix}-${blockIdx}-${String(dataPath || '').replace(/[^A-Za-z0-9_-]+/g, '-')}`;
     }
 
+    function actionAttrs(call, eventName, args, valueSource) {
+        const serializedArgs = escapeAttr(JSON.stringify(args || []));
+        const valueAttr = valueSource ? ` data-admin-value="${escapeAttr(valueSource)}"` : '';
+        return `data-admin-call="${escapeAttr(call)}" data-admin-event="${escapeAttr(eventName)}" data-admin-args="${serializedArgs}"${valueAttr}`;
+    }
+
     function assetButton(kind, blockIdx, dataPath, filter, fieldIdValue) {
         const label = kind === 'html' ? 'Insert Asset' : 'Select Asset';
         return `<button type="button" class="cms-asset-picker-trigger" data-asset-target-kind="${escapeAttr(kind)}" data-block-idx="${blockIdx}" data-data-path="${escapeAttr(dataPath)}" data-asset-filter="${escapeAttr(filter || 'any')}" data-field-id="${escapeAttr(fieldIdValue)}">${escapeHtml(label)}</button>`;
@@ -48,26 +54,26 @@
         const opts = options || {};
         const id = fieldId('cms-field', blockIdx, dataPath);
         const picker = opts.asset ? assetButton('url', blockIdx, dataPath, opts.asset, id) : '';
-        return `<div class="cms-block-field"><label for="${escapeAttr(id)}">${escapeHtml(label)}</label><div class="cms-asset-field-control"><input id="${escapeAttr(id)}" type="text" value="${escapeAttr(value)}" oninput="updateBlockData(${blockIdx}, '${dataPath}', this.value)">${picker}</div></div>`;
+        return `<div class="cms-block-field"><label for="${escapeAttr(id)}">${escapeHtml(label)}</label><div class="cms-asset-field-control"><input id="${escapeAttr(id)}" type="text" value="${escapeAttr(value)}" ${actionAttrs('updateBlockData', 'input', [blockIdx, dataPath], 'value')}>${picker}</div></div>`;
     }
-    function textFieldDirect(label, value, blockIdx, dataPath) { return `<div class="cms-block-field"><label>${escapeHtml(label)}</label><input type="text" value="${escapeAttr(value)}" oninput="updateBlockDataDirect(${blockIdx}, '${dataPath}', this.value)"></div>`; }
+    function textFieldDirect(label, value, blockIdx, dataPath) { return `<div class="cms-block-field"><label>${escapeHtml(label)}</label><input type="text" value="${escapeAttr(value)}" ${actionAttrs('updateBlockDataDirect', 'input', [blockIdx, dataPath], 'value')}></div>`; }
     function htmlField(label, value, blockIdx, dataPath) {
         const id = fieldId('cms-html-field', blockIdx, dataPath);
-        return `<div class="cms-block-field"><div class="cms-asset-html-label-row"><label for="${escapeAttr(id)}">${escapeHtml(label)}</label>${assetButton('html', blockIdx, dataPath, 'any', id)}</div><textarea id="${escapeAttr(id)}" class="html-field" oninput="updateBlockData(${blockIdx}, '${dataPath}', this.value)">${escapeHtml(value || '')}</textarea><span class="field-hint">Supports HTML markup</span></div>`;
+        return `<div class="cms-block-field"><div class="cms-asset-html-label-row"><label for="${escapeAttr(id)}">${escapeHtml(label)}</label>${assetButton('html', blockIdx, dataPath, 'any', id)}</div><textarea id="${escapeAttr(id)}" class="html-field" ${actionAttrs('updateBlockData', 'input', [blockIdx, dataPath], 'value')}>${escapeHtml(value || '')}</textarea><span class="field-hint">Supports HTML markup</span></div>`;
     }
-    function selectField(label, value, blockIdx, dataPath, options) { return `<div class="cms-block-field field-small"><label>${escapeHtml(label)}</label><select onchange="updateBlockData(${blockIdx}, '${dataPath}', this.value)">${options.map(opt => `<option value="${escapeAttr(opt[0])}"${String(value) === String(opt[0]) ? ' selected' : ''}>${escapeHtml(opt[1])}</option>`).join('')}</select></div>`; }
-    function checkboxField(label, value, blockIdx, dataPath) { const id = 'cb-' + blockIdx + '-' + dataPath.replace(/\./g, '-'); return `<div class="cms-block-field-checkbox"><input type="checkbox" id="${id}"${value ? ' checked' : ''} onchange="updateBlockData(${blockIdx}, '${dataPath}', this.checked)"><label for="${id}">${escapeHtml(label)}</label></div>`; }
-    function renderJsonSubEditor(data, blockIdx, fieldName, label) { return `<div class="cms-json-subeditor"><div class="cms-block-field"><label>${escapeHtml(label || 'Data (JSON)')}</label><textarea oninput="updateBlockDataJson(${blockIdx}, '${fieldName || ''}', this.value)">${escapeHtml(JSON.stringify(fieldName ? data[fieldName] : data, null, 2))}</textarea></div></div>`; }
+    function selectField(label, value, blockIdx, dataPath, options) { return `<div class="cms-block-field field-small"><label>${escapeHtml(label)}</label><select ${actionAttrs('updateBlockData', 'change', [blockIdx, dataPath], 'value')}>${options.map(opt => `<option value="${escapeAttr(opt[0])}"${String(value) === String(opt[0]) ? ' selected' : ''}>${escapeHtml(opt[1])}</option>`).join('')}</select></div>`; }
+    function checkboxField(label, value, blockIdx, dataPath) { const id = 'cb-' + blockIdx + '-' + dataPath.replace(/\./g, '-'); return `<div class="cms-block-field-checkbox"><input type="checkbox" id="${id}"${value ? ' checked' : ''} ${actionAttrs('updateBlockData', 'change', [blockIdx, dataPath], 'checked')}><label for="${id}">${escapeHtml(label)}</label></div>`; }
+    function renderJsonSubEditor(data, blockIdx, fieldName, label) { return `<div class="cms-json-subeditor"><div class="cms-block-field"><label>${escapeHtml(label || 'Data (JSON)')}</label><textarea ${actionAttrs('updateBlockDataJson', 'input', [blockIdx, fieldName || ''], 'value')}>${escapeHtml(JSON.stringify(fieldName ? data[fieldName] : data, null, 2))}</textarea></div></div>`; }
 
     function renderRepeater(label, items, blockIdx, fieldName, renderItem) {
         const itemsHtml = !items.length ? '<p style="color:#999; font-style:italic; font-size:13px;">No items yet.</p>' : items.map((item, itemIdx) => {
             let itemActions = '';
-            if (itemIdx > 0) itemActions += `<button type="button" onclick="moveRepeaterItem(${blockIdx}, '${fieldName}', ${itemIdx}, -1)">&uarr;</button>`;
-            if (itemIdx < items.length - 1) itemActions += `<button type="button" onclick="moveRepeaterItem(${blockIdx}, '${fieldName}', ${itemIdx}, 1)">&darr;</button>`;
-            itemActions += `<button type="button" class="btn-repeater-delete" onclick="removeRepeaterItem(${blockIdx}, '${fieldName}', ${itemIdx})">&times;</button>`;
+            if (itemIdx > 0) itemActions += `<button type="button" ${actionAttrs('moveRepeaterItem', 'click', [blockIdx, fieldName, itemIdx, -1])}>&uarr;</button>`;
+            if (itemIdx < items.length - 1) itemActions += `<button type="button" ${actionAttrs('moveRepeaterItem', 'click', [blockIdx, fieldName, itemIdx, 1])}>&darr;</button>`;
+            itemActions += `<button type="button" class="btn-repeater-delete" ${actionAttrs('removeRepeaterItem', 'click', [blockIdx, fieldName, itemIdx])}>&times;</button>`;
             return `<div class="cms-repeater-item"><div class="cms-repeater-item-header"><span class="cms-repeater-item-number">Item ${itemIdx + 1}</span><div class="cms-repeater-item-actions">${itemActions}</div></div>${renderItem(item, itemIdx)}</div>`;
         }).join('');
-        return `<div class="cms-repeater"><div class="cms-repeater-header"><label>${escapeHtml(label)}</label></div><div class="cms-repeater-items">${itemsHtml}</div><button type="button" class="btn-repeater-add" onclick="addRepeaterItem(${blockIdx}, '${fieldName}')">+ Add ${escapeHtml(label.replace(/s$/, ''))}</button></div>`;
+        return `<div class="cms-repeater"><div class="cms-repeater-header"><label>${escapeHtml(label)}</label></div><div class="cms-repeater-items">${itemsHtml}</div><button type="button" class="btn-repeater-add" ${actionAttrs('addRepeaterItem', 'click', [blockIdx, fieldName])}>+ Add ${escapeHtml(label.replace(/s$/, ''))}</button></div>`;
     }
 
     function isSafePathPart(part) {
@@ -114,5 +120,5 @@
         return defaults[blockType + '.' + fieldName] ? defaults[blockType + '.' + fieldName]() : {};
     }
 
-    window.ITGCmsBlockPrimitives = { escapeHtml, escapeAttr, getTypeLabel, getDefaultData, textField, textFieldDirect, htmlField, selectField, checkboxField, renderJsonSubEditor, renderRepeater, setNestedValue, getRepeaterDefault };
+    window.ITGCmsBlockPrimitives = { escapeHtml, escapeAttr, actionAttrs, getTypeLabel, getDefaultData, textField, textFieldDirect, htmlField, selectField, checkboxField, renderJsonSubEditor, renderRepeater, setNestedValue, getRepeaterDefault };
 })();

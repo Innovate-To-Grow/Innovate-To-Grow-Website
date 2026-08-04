@@ -198,7 +198,10 @@ class PastProjectShareAPIViewTests(TestCase):
 
         response = self.client.patch(
             f"/projects/past-shares/{share.pk}/",
-            {"details_text": "<mark>new</mark><script>alert(1)</script>"},
+            {
+                "details_text": "<mark>new</mark><script>alert(1)</script>",
+                "version": share.version,
+            },
             format="json",
         )
 
@@ -322,7 +325,10 @@ class PastProjectShareAPIViewTests(TestCase):
 
         response = self.client.patch(
             f"/projects/past-shares/{share.pk}/",
-            {"note": "<strong>new</strong><script>alert(1)</script>"},
+            {
+                "note": "<strong>new</strong><script>alert(1)</script>",
+                "version": share.version,
+            },
             format="json",
         )
 
@@ -588,6 +594,7 @@ class PastProjectShareAPIViewTests(TestCase):
                 "note": "Updated note",
                 "details_text": "Updated project details",
                 "rows": next_rows,
+                "version": share.version,
             },
             format="json",
         )
@@ -598,6 +605,7 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(response.data["note"], "Updated note")
         self.assertEqual(response.data["details_text"], "Updated project details")
         self.assertEqual(response.data["rows"][0]["project_title"], "Added Project")
+        self.assertEqual(response.data["version"], 2)
         share.refresh_from_db()
         self.assertEqual(share.name, "Updated name")
         self.assertEqual(share.note, "Updated note")
@@ -616,7 +624,9 @@ class PastProjectShareAPIViewTests(TestCase):
         )
 
         response = self.client.patch(
-            f"/projects/past-shares/{share.pk}/", {"note": "Only the note changed"}, format="json"
+            f"/projects/past-shares/{share.pk}/",
+            {"note": "Only the note changed", "version": share.version},
+            format="json",
         )
 
         self.assertEqual(response.status_code, 200)
@@ -633,7 +643,12 @@ class PastProjectShareAPIViewTests(TestCase):
 
         response = self.client.put(
             f"/projects/past-shares/{share.pk}/",
-            sample_payload(name="Replaced", note="Replaced note", rows=[sample_row(team_number="T42")]),
+            sample_payload(
+                name="Replaced",
+                note="Replaced note",
+                rows=[sample_row(team_number="T42")],
+                version=share.version,
+            ),
             format="json",
         )
 
@@ -649,7 +664,11 @@ class PastProjectShareAPIViewTests(TestCase):
         # (here, no note → the first project title) rather than 400.
         share = PastProjectShare.objects.create(name="Old", rows=[sample_row()], created_by=self.member)
 
-        response = self.client.put(f"/projects/past-shares/{share.pk}/", {"rows": [sample_row()]}, format="json")
+        response = self.client.put(
+            f"/projects/past-shares/{share.pk}/",
+            {"rows": [sample_row()], "version": share.version},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
         share.refresh_from_db()
@@ -658,12 +677,48 @@ class PastProjectShareAPIViewTests(TestCase):
     def test_patch_own_share_rejects_empty_rows(self):
         share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
 
-        response = self.client.patch(f"/projects/past-shares/{share.pk}/", {"rows": []}, format="json")
+        response = self.client.patch(
+            f"/projects/past-shares/{share.pk}/",
+            {"rows": [], "version": share.version},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("rows", response.data)
         share.refresh_from_db()
         self.assertEqual(len(share.rows), 1)
+
+    def test_patch_requires_version(self):
+        share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
+
+        response = self.client.patch(
+            f"/projects/past-shares/{share.pk}/",
+            {"note": "Changed"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "version_required")
+
+    def test_patch_rejects_stale_version_with_current_snapshot(self):
+        share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
+        first = self.client.patch(
+            f"/projects/past-shares/{share.pk}/",
+            {"note": "First edit", "version": 1},
+            format="json",
+        )
+        self.assertEqual(first.status_code, 200)
+
+        stale = self.client.patch(
+            f"/projects/past-shares/{share.pk}/",
+            {"note": "Stale edit", "version": 1},
+            format="json",
+        )
+
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(stale.data["code"], "stale_snapshot")
+        self.assertEqual(stale.data["current"]["note"], "First edit")
+        self.assertEqual(stale.data["current"]["version"], 2)
 
     def test_patch_other_users_share_returns_404(self):
         other = Member.objects.create_user(password="OtherPass123!", is_active=True)

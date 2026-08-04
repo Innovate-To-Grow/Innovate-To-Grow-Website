@@ -1,8 +1,9 @@
 import {Navigate, useLocation} from 'react-router';
 
-// Preserves ?token=... while forwarding old email links (/magic-login,
-// /ticket-login) to /login-link.
+// Callback credentials have already been captured and scrubbed before the
+// browser router is created. Preserve any remaining, non-secret query/fragment
+// state while forwarding old email links to the canonical route.
 export function LegacyLoginLinkRedirect() {
-    const {search} = useLocation();
-    return <Navigate to={{pathname: '/login-link', search}} replace/>;
+    const {search, hash} = useLocation();
+    return <Navigate to={{pathname: '/login-link', search, hash}} replace/>;
 }

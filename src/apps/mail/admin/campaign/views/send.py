@@ -1,4 +1,4 @@
-"""Campaign send confirmation and background execution."""
+"""Campaign send confirmation and durable outbox dispatch."""
 
 import logging
 
@@ -46,17 +46,15 @@ class CampaignSendMixin:
                     messages.error(request, "Confirmation text does not match campaign name. Please try again.")
                     return HttpResponseRedirect(reverse("admin:mail_emailcampaign_send_confirm", args=[object_id]))
 
-            updated = EmailCampaign.objects.filter(pk=obj.pk, status="draft").update(status="sending")
-            if not updated:
+            try:
+                self._background_send(obj.pk, request.user.pk)
+            except ValueError:
                 messages.warning(request, "This campaign has already been sent.")
                 return HttpResponseRedirect(change_url)
-
-            thread = campaign_api.threading.Thread(
-                target=self._background_send,
-                args=(obj.pk, request.user.pk),
-                daemon=False,
-            )
-            thread.start()
+            except Exception:
+                logging.getLogger(__name__).exception("Campaign dispatch failed for %s", obj.pk)
+                messages.error(request, "Campaign could not be queued. Check server logs for details.")
+                return HttpResponseRedirect(change_url)
 
             return HttpResponseRedirect(reverse("admin:mail_emailcampaign_send_status", args=[object_id]))
 
@@ -72,24 +70,11 @@ class CampaignSendMixin:
 
     @staticmethod
     def _background_send(campaign_pk, user_pk):
-        """Run send_campaign in a background thread."""
-        import django
-
-        django.db.connections.close_all()
+        """Materialize recipient jobs (or synchronously dispatch during rollout)."""
         from apps.mail.models import EmailCampaign as CampaignModel
-        from apps.mail.services.send_campaign import send_campaign
+        from apps.mail.services.background_jobs import dispatch_email_campaign
 
         User = get_user_model()
         campaign = CampaignModel.objects.get(pk=campaign_pk)
         user = User.objects.get(pk=user_pk)
-        try:
-            send_campaign(campaign, sent_by=user)
-        except Exception:
-            logging.getLogger(__name__).exception("Background send failed for campaign %s", campaign_pk)
-            campaign.refresh_from_db()
-            if campaign.status in ("draft", "sending"):
-                campaign.status = "failed"
-            campaign.error_message = "Campaign send failed. Check server logs for details."
-            campaign.save(update_fields=["status", "error_message"])
-        finally:
-            django.db.connections.close_all()
+        return dispatch_email_campaign(campaign, sent_by=user)

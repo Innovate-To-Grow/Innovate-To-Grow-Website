@@ -4,6 +4,8 @@ import os
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -73,6 +75,11 @@ class Command(BaseCommand):
         Member = get_user_model()
         contact = ContactEmail.objects.select_related("member").filter(email_address__iexact=email).first()
         member = contact.member if contact else None
+        candidate = member or Member(first_name=first_name, last_name=last_name)
+        try:
+            validate_password(password, user=candidate)
+        except ValidationError as exc:
+            raise CommandError(f"Refusing weak E2E admin password: {'; '.join(exc.messages)}") from exc
 
         if member is None:
             member = Member.objects.create_user(
@@ -107,6 +114,11 @@ class Command(BaseCommand):
         Member = get_user_model()
         contact = ContactEmail.objects.select_related("member").filter(email_address__iexact=email).first()
         member = contact.member if contact else None
+        candidate = member or Member(first_name="Nonstaff", last_name="E2E")
+        try:
+            validate_password(password, user=candidate)
+        except ValidationError as exc:
+            raise CommandError(f"Refusing weak E2E nonstaff password: {'; '.join(exc.messages)}") from exc
 
         if member is None:
             member = Member.objects.create_user(

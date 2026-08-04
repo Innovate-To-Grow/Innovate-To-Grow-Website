@@ -1,3 +1,4 @@
+import {useId} from 'react';
 import {
   getPastProjectDetailUrl,
   hasProjectGridDetails,
@@ -82,7 +83,17 @@ export const ProjectGridDesktopTable = ({
             ) : null}
 
             {columns.map((column) => (
-              <th key={column.key}>
+              <th
+                key={column.key}
+                scope="col"
+                aria-sort={
+                  sortField === column.key
+                    ? sortDirection === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : 'none'
+                }
+              >
                 <button type="button" onClick={() => onSortChange(column.key)}>
                   <span>{column.label}</span>
                   {sortField === column.key ? (
@@ -151,6 +162,7 @@ const DesktopRow = ({
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const individualHref = row.id ? getPastProjectDetailUrl(row.id) : '';
+  const detailsId = useId();
 
   return (
     <>
@@ -175,6 +187,8 @@ const DesktopRow = ({
             type="button"
             className="project-grid-detail-button"
             disabled={!hasDetails}
+            aria-expanded={hasDetails ? isExpanded : undefined}
+            aria-controls={hasDetails ? detailsId : undefined}
             onClick={() => {
               if (hasDetails) onToggleExpanded(row.__key);
             }}
@@ -199,7 +213,7 @@ const DesktopRow = ({
       {isExpanded ? (
         <tr className="project-grid-detail-row">
           <td colSpan={colSpan}>
-            <div className="project-grid-detail-content">
+            <div id={detailsId} className="project-grid-detail-content">
               {individualHref ? (
                 <div className="project-grid-individual-link-row">
                   <span className="project-grid-individual-link-label">Individual Project URL</span>

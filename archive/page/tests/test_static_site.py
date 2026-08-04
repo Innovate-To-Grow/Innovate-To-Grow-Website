@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PAGES = sorted((ROOT / "templates" / "events").glob("*.html"))
 BASE_TEMPLATE = ROOT / "templates" / "base.html"
 SHARED_CSS = ROOT / "static" / "css" / "i2g-archive.css"
+DOCKERFILE = ROOT / "Dockerfile"
 
 _ASSET_RE = re.compile(r"""(?:src|href)=["'](/?static/[^"'?#]+)["']""")
 _KEY_RE = re.compile(r"AIzaSy[A-Za-z0-9_-]+")
@@ -34,6 +35,14 @@ def serve():
 def test_pages_were_discovered():
     # Guard against the glob silently matching nothing.
     assert len(PAGES) > 5
+
+
+def test_runtime_image_removes_python_build_tooling():
+    production_stage = DOCKERFILE.read_text().split("\nFROM ", maxsplit=2)[-1]
+    uninstall = "python -m pip uninstall --yes setuptools wheel pip"
+
+    assert uninstall in production_stage
+    assert production_stage.index(uninstall) < production_stage.index("USER app")
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
@@ -129,11 +138,11 @@ def test_referenced_static_assets_exist(serve, page):
 def test_2022_fall_sheet_cells_are_text_and_urls_are_validated():
     sources = _page_sources(ROOT / "templates" / "events" / "2022-fall-event.html")
     js = "\n".join(sources)
-    assert "document.createTextNode(value == null ? \"\" : String(value))" in js
+    assert 'document.createTextNode(value == null ? "" : String(value))' in js
     assert "$.fn.dataTable.render.text()" in js
     assert "escapeSheetText(d.Abstract)" in js
-    assert "escapeSheetText(d[\"Student Names\"])" in js
-    assert "url.protocol === \"http:\" || url.protocol === \"https:\"" in js
+    assert 'escapeSheetText(d["Student Names"])' in js
+    assert 'url.protocol === "http:" || url.protocol === "https:"' in js
     assert ".href = data.values" not in js
     assert ".prepend(data.values" not in js
     assert "<td>' + d.Abstract + '</td>" not in js

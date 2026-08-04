@@ -115,7 +115,7 @@
     </a>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function() {
     var statusUrl = "{{ status_json_url }}";
     var total = {{ campaign.total_recipients }};

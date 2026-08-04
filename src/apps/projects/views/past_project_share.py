@@ -4,7 +4,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import PastProjectShare
-from ..serializers import PastProjectShareListSerializer, PastProjectShareSerializer
+from ..serializers import (
+    PastProjectShareListSerializer,
+    PastProjectShareSerializer,
+    StalePastProjectShareSnapshot,
+)
 from ..throttles import PastProjectShareRateThrottle
 
 
@@ -41,10 +45,31 @@ class PastProjectShareDetailAPIView(RetrieveUpdateDestroyAPIView):
         instance = PastProjectShare.objects.filter(pk=kwargs["pk"], created_by=request.user).first()
         if instance is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        if "version" not in request.data:
+            return Response(
+                {
+                    "code": "version_required",
+                    "detail": "Include the version from the latest shared-project response.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         partial = kwargs.pop("partial", False)
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        try:
+            serializer.save()
+        except StalePastProjectShareSnapshot:
+            current = PastProjectShare.objects.filter(pk=instance.pk, created_by=request.user).first()
+            if current is None:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {
+                    "code": "stale_snapshot",
+                    "detail": "This shared project changed. Refetch it before applying another edit.",
+                    "current": self.get_serializer(current).data,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
         return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):

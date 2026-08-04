@@ -86,7 +86,7 @@
                 Open preview &rarr;
             </a>
         </div>
-        <textarea id="cms-widget-snippet" class="cms-widget-snippet" readonly onclick="this.select()"></textarea>
+        <textarea id="cms-widget-snippet" class="cms-widget-snippet" readonly data-admin-action="select-content"></textarea>
         <button type="button" class="btn-widget-copy" id="cms-widget-copy-btn">Copy snippet</button>
         <p id="cms-widget-hint" class="cms-widget-hint-warn" style="display:none;"></p>
     </div>
@@ -115,7 +115,7 @@
 {% block after_related_objects %}
     {{ block.super }}
 
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
         window.CMS_EMBED_WIDGET = {
             pageBlocksUrl: "{{ page_blocks_url|escapejs }}",
             pageInfoUrl: "{{ page_info_url|escapejs }}",

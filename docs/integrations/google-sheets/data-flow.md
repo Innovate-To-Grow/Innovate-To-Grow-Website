@@ -4,17 +4,22 @@ How data moves between the Django backend and Google Sheets.
 
 ## Registration sync (Django → Sheets)
 
-**Service:** `src/apps/event/services/registration_sheet_sync.py`
+**Service:** `src/apps/event/services/registration_sheet_sync/`
 
-When a new event registration is created, the system appends a row to the configured Google Sheet.
+When a new event registration is created, the same database transaction
+creates a deduplicated `BackgroundJob` outbox row. The ECS worker appends the
+registration snapshot to the configured Google Sheet.
 
 ### Flow
 
 1. `EventRegistrationCreateView` saves the registration
-2. Calls the registration sheet sync service
-3. Service checks if the event has `registration_sheet_id` and `registration_sheet_gid` set
-4. If configured, the registration is queued for batch append
-5. After a 15-second debounce window, all queued registrations are appended in a single API call
+2. Creates the Sheets job in the registration transaction when durable jobs
+   are enabled
+3. A worker claims the job and locks the event row, serializing syncs per event
+4. The worker captures a cutoff and selects the complete database snapshot
+   through that cutoff
+5. It reads existing stable registration UUIDs and appends only missing rows
+6. It advances the audit cursor only after the write is confirmed
 
 ### Sheet columns
 
@@ -24,19 +29,22 @@ When a new event registration is created, the system appends a row to the config
 | First Name | `attendee_first_name` |
 | Last Name | `attendee_last_name` |
 | Phone | `attendee_phone` (if collected) |
-| Timestamp | Registration creation time |
-| Email | `attendee_email` |
-| Ticket | Ticket type name |
+| When Started | Registration creation time |
+| Last Updated | Registration update time |
+| Membership Primary | `attendee_email` |
+| Membership Secondary | `attendee_secondary_email` when enabled |
+| Ticket Type | Ticket type name |
 | Custom questions | Dynamic columns based on `Question` model |
+| Registration ID | Stable registration UUID; final, application-managed, and protected |
 
-### Debounced batch append
+### Durable idempotent append
 
-To avoid hitting Google Sheets API rate limits, writes are debounced:
-
-1. Registration triggers a sync request
-2. If a batch window is already open (within 15 seconds), the registration is added to the pending batch
-3. After 15 seconds of no new registrations, the batch is flushed as a single append operation
-4. Each sync is logged in `RegistrationSheetSyncLog`
+`BackgroundJob` dedupe keys prevent duplicate queue records. The worker uses
+the final `Registration ID` column to make provider retries idempotent. It
+re-reads the full bounded snapshot on each run so a transaction that committed
+after an earlier read cannot be skipped because of timestamp/cursor ordering.
+`RegistrationSheetSyncLog` records the cursor range, selected IDs, written
+count, status, and sanitized error.
 
 ### Full replace sync
 
@@ -45,7 +53,9 @@ A recovery mechanism that replaces all sheet data with current database records.
 - Rows were accidentally deleted from the sheet
 - A bulk re-sync is needed after a data correction
 
-Triggered via Django admin action on the Event model.
+Triggered via Django admin action on the Event model. A populated sheet with a
+legacy or drifted header is duplicated before replacement; the exact new
+header is written and the final `Registration ID` column is protected.
 
 ## Schedule sync (Sheets → Django)
 
@@ -121,8 +131,10 @@ public page, otherwise the most recent synced semester would be hidden as "curre
 The registration and schedule sync services:
 - Check for valid `GoogleCredentialConfig` before attempting any API call
 - Log errors to `RegistrationSheetSyncLog` (registration) or application logs (schedule)
-- Do not raise exceptions that would interrupt the user-facing request
-- Fail open: if sync fails, the primary operation (registration creation, schedule display) still succeeds
+- Preserve the user-facing registration while recording a durable follow-up
+  job in the same transaction
+- Retry only known-safe transient failures and retain failed job/log evidence
+- Never advance a registration-sheet cursor on provider failure
 
 Past-projects sync is **explicit**, not request-triggered, so it fails loud instead of open:
 - It aborts with a `SheetSyncError` (and writes a FAILED `PastProjectSyncLog`) **before deleting anything**

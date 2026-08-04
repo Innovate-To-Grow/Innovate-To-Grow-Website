@@ -45,6 +45,13 @@ class CurrentProjectSchedule(ActiveModel, ProjectControlModel):
     class Meta:
         verbose_name = "Current Project and Schedule"
         verbose_name_plural = "Current Project and Schedule"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=models.Q(is_active=True),
+                name="event_one_active_schedule",
+            ),
+        ]
 
     def __str__(self):
         return self.name or "Not configured"
@@ -64,7 +71,10 @@ class CurrentProjectSchedule(ActiveModel, ProjectControlModel):
     @classmethod
     def load(cls):
         """Return the active config, or None if no active config exists."""
-        return cls.objects.filter(is_active=True).first()
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            return None
 
     @property
     def sync_is_due(self) -> bool:

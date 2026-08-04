@@ -8,6 +8,12 @@ class PastProjectShare(ProjectControlModel):
     rows = models.JSONField(default=list)
     note = models.TextField(blank=True, default="")
     details_text = models.TextField(blank=True, default="")
+    version = models.PositiveBigIntegerField(
+        default=1,
+        db_default=1,
+        editable=False,
+        help_text="Monotonic snapshot version used to reject stale whole-document updates.",
+    )
     created_by = models.ForeignKey(
         "authn.Member",
         null=True,

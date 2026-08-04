@@ -1,10 +1,14 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
+from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
+from apps.authn.models import PhoneVerificationChallenge
 from apps.authn.services.sms.sns_verify import (
     MAX_SENDS_PER_HOUR,
     MAX_VERIFY_ATTEMPTS,
@@ -12,10 +16,9 @@ from apps.authn.services.sms.sns_verify import (
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
     _get_smsvoice_client,
-    _otp_cache_key,
     _random_code,
-    _send_count_cache_key,
     check_phone_verification,
+    consume_verified_phone_challenge,
     publish_plain_sms,
     start_phone_verification,
 )
@@ -91,9 +94,14 @@ class SnsVerifyServiceTest(TestCase):
     def test_start_phone_verification_sends_sns_message(self, _mock_code, mock_boto_client):
         mock_client = self._mock_publish(mock_boto_client)
 
-        status = start_phone_verification(self.phone)
+        result = start_phone_verification(self.phone)
 
-        self.assertEqual(status, "pending")
+        self.assertEqual(result["status"], "pending")
+        challenge = PhoneVerificationChallenge.objects.get(pk=result["challenge_id"])
+        self.assertEqual(challenge.phone_number, self.phone)
+        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.PENDING)
+        self.assertIsNotNone(challenge.send_reserved_at)
+        self.assertIsNotNone(challenge.sent_at)
         mock_client.send_text_message.assert_called_once()
         send_kwargs = mock_client.send_text_message.call_args.kwargs
         self.assertEqual(send_kwargs["DestinationPhoneNumber"], self.phone)
@@ -105,41 +113,273 @@ class SnsVerifyServiceTest(TestCase):
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_check_phone_verification_accepts_valid_code(self, _mock_code, mock_boto_client):
         self._mock_publish(mock_boto_client)
-        start_phone_verification(self.phone)
+        started = start_phone_verification(self.phone)
 
-        result = check_phone_verification(self.phone, "123456")
+        result = check_phone_verification(
+            None,
+            "123456",
+            challenge_id=started["challenge_id"],
+        )
 
-        self.assertEqual(result, "approved")
-        self.assertIsNone(cache.get(_otp_cache_key(self.phone)))
+        self.assertEqual(result.status, PhoneVerificationChallenge.Status.CONSUMED)
+        self.assertEqual(result.phone_number, self.phone)
+
+    def test_approved_callback_and_consumption_roll_back_together(self):
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.PHONE_AUTH,
+            code_hash=make_password("123456"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        member_model = get_user_model()
+        initial_member_count = member_model.objects.count()
+
+        def fail_after_member_creation(_challenge):
+            member_model.objects.create_user(password="StrongPass123!")
+            raise RuntimeError("token creation failed")
+
+        with self.assertRaisesRegex(RuntimeError, "token creation failed"):
+            check_phone_verification(
+                None,
+                "123456",
+                challenge_id=challenge.pk,
+                approved_callback=fail_after_member_creation,
+            )
+
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.PENDING)
+        self.assertEqual(member_model.objects.count(), initial_member_count)
 
     @patch("apps.authn.services.sms.sns_verify.boto3.client")
-    def test_check_phone_verification_rejects_invalid_code(self, mock_boto_client):
-        cache.set(
-            _otp_cache_key(self.phone),
-            {"code_hash": make_password("123456"), "attempts": 0},
-            timeout=600,
+    @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
+    def test_verified_grant_is_consumed_once_with_matching_context(self, _mock_code, mock_boto_client):
+        self._mock_publish(mock_boto_client)
+        member = get_user_model().objects.create_user(password="StrongPass123!")
+        context = "event-registration:event-1"
+        started = start_phone_verification(
+            self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+            member=member,
+            context_identifier=context,
+        )
+
+        verified = check_phone_verification(
+            self.phone,
+            "123456",
+            challenge_id=started["challenge_id"],
+            purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+            member=member,
+            context_identifier=context,
+            consume=False,
+        )
+
+        self.assertEqual(verified.status, PhoneVerificationChallenge.Status.VERIFIED)
+        self.assertIsNotNone(verified.verified_at)
+        consumed = consume_verified_phone_challenge(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+            member=member,
+            context_identifier=context,
+            challenge_id=verified.pk,
+        )
+        self.assertEqual(consumed.status, PhoneVerificationChallenge.Status.CONSUMED)
+        with self.assertRaises(PhoneVerificationInvalid):
+            consume_verified_phone_challenge(
+                phone_number=self.phone,
+                purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+                member=member,
+                context_identifier=context,
+                challenge_id=verified.pk,
+            )
+
+    def test_verified_grant_cannot_cross_contexts(self):
+        member = get_user_model().objects.create_user(password="StrongPass123!")
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+            member=member,
+            context_identifier="event-registration:event-1",
+            code_hash=make_password("123456"),
+            status=PhoneVerificationChallenge.Status.VERIFIED,
+            verified_at=timezone.now(),
+            expires_at=timezone.now() + timedelta(minutes=10),
         )
 
         with self.assertRaises(PhoneVerificationInvalid):
-            check_phone_verification(self.phone, "000000")
+            consume_verified_phone_challenge(
+                phone_number=self.phone,
+                purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+                member=member,
+                context_identifier="event-registration:event-2",
+                challenge_id=challenge.pk,
+            )
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
-    def test_check_phone_verification_throttles_after_max_attempts(self, mock_boto_client):
-        cache.set(
-            _otp_cache_key(self.phone),
-            {"code_hash": make_password("123456"), "attempts": MAX_VERIFY_ATTEMPTS - 1},
-            timeout=600,
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.VERIFIED)
+
+    def test_check_phone_verification_rejects_invalid_code_and_persists_attempt(self):
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.PHONE_AUTH,
+            code_hash=make_password("123456"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        with self.assertRaises(PhoneVerificationInvalid):
+            check_phone_verification(None, "000000", challenge_id=challenge.pk)
+
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.attempts, 1)
+
+    def test_check_phone_verification_throttles_after_max_attempts(self):
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.PHONE_AUTH,
+            code_hash=make_password("123456"),
+            attempts=MAX_VERIFY_ATTEMPTS - 1,
+            max_attempts=MAX_VERIFY_ATTEMPTS,
+            expires_at=timezone.now() + timedelta(minutes=10),
         )
 
         with self.assertRaises(PhoneVerificationThrottled):
-            check_phone_verification(self.phone, "000000")
+            check_phone_verification(None, "000000", challenge_id=challenge.pk)
+
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.attempts, MAX_VERIFY_ATTEMPTS)
+        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.EXPIRED)
+
+    def test_consumed_challenge_cannot_be_replayed(self):
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.PHONE_AUTH,
+            code_hash=make_password("123456"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        check_phone_verification(None, "123456", challenge_id=challenge.pk)
+
+        with self.assertRaises(PhoneVerificationInvalid):
+            check_phone_verification(None, "123456", challenge_id=challenge.pk)
+
+    def test_legacy_phone_only_verification_uses_latest_pending_challenge(self):
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.PHONE_AUTH,
+            code_hash=make_password("123456"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        consumed = check_phone_verification(self.phone, "123456")
+
+        self.assertEqual(consumed.pk, challenge.pk)
+        self.assertEqual(consumed.status, PhoneVerificationChallenge.Status.CONSUMED)
+
+    def test_challenge_id_is_scoped_to_purpose(self):
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.PASSWORD_RESET,
+            code_hash=make_password("123456"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        with self.assertRaises(PhoneVerificationInvalid):
+            check_phone_verification(
+                None,
+                "123456",
+                challenge_id=challenge.pk,
+                purpose=PhoneVerificationChallenge.Purpose.PHONE_AUTH,
+            )
+
+    def test_challenge_id_is_bound_to_member_and_context(self):
+        member_model = get_user_model()
+        owner = member_model.objects.create_user(password="StrongPass123!")
+        other = member_model.objects.create_user(password="StrongPass123!")
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.CONTACT_PHONE_VERIFY,
+            member=owner,
+            context_identifier="contact-1",
+            code_hash=make_password("123456"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        with self.assertRaises(PhoneVerificationInvalid):
+            check_phone_verification(
+                self.phone,
+                "123456",
+                challenge_id=challenge.pk,
+                purpose=PhoneVerificationChallenge.Purpose.CONTACT_PHONE_VERIFY,
+                member=other,
+                context_identifier="contact-1",
+            )
+        consumed = check_phone_verification(
+            self.phone,
+            "123456",
+            challenge_id=challenge.pk,
+            purpose=PhoneVerificationChallenge.Purpose.CONTACT_PHONE_VERIFY,
+            member=owner,
+            context_identifier="contact-1",
+        )
+        self.assertEqual(consumed.pk, challenge.pk)
 
     @patch("apps.authn.services.sms.sns_verify.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_throttles_send_count(self, _mock_code, mock_boto_client):
         self._mock_publish(mock_boto_client)
-        cache.set(_send_count_cache_key(self.phone), MAX_SENDS_PER_HOUR, timeout=3600)
+        PhoneVerificationChallenge.objects.bulk_create(
+            [
+                PhoneVerificationChallenge(
+                    phone_number=self.phone,
+                    purpose=PhoneVerificationChallenge.Purpose.PHONE_AUTH,
+                    code_hash=make_password("123456"),
+                    status=PhoneVerificationChallenge.Status.EXPIRED,
+                    expires_at=timezone.now(),
+                    send_reserved_at=timezone.now(),
+                )
+                for _index in range(MAX_SENDS_PER_HOUR)
+            ]
+        )
 
+        with self.assertRaises(PhoneVerificationThrottled):
+            start_phone_verification(self.phone)
+
+    @patch(
+        "apps.authn.services.sms.sns_verify._mark_challenge_sent",
+        side_effect=RuntimeError("database unavailable after provider success"),
+    )
+    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
+    def test_provider_success_finalization_failure_preserves_reservation_and_usable_code(
+        self,
+        _mock_code,
+        mock_boto_client,
+        _mock_finalize,
+    ):
+        self._mock_publish(mock_boto_client)
+        PhoneVerificationChallenge.objects.bulk_create(
+            [
+                PhoneVerificationChallenge(
+                    phone_number=self.phone,
+                    purpose=PhoneVerificationChallenge.Purpose.CONTACT_PHONE_VERIFY,
+                    code_hash=make_password("000000"),
+                    status=PhoneVerificationChallenge.Status.EXPIRED,
+                    expires_at=timezone.now(),
+                    send_reserved_at=timezone.now(),
+                )
+                for _index in range(MAX_SENDS_PER_HOUR - 1)
+            ]
+        )
+
+        started = start_phone_verification(self.phone)
+
+        challenge = PhoneVerificationChallenge.objects.get(pk=started["challenge_id"])
+        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.SENDING)
+        self.assertIsNotNone(challenge.send_reserved_at)
+        consumed = check_phone_verification(
+            self.phone,
+            "123456",
+            challenge_id=challenge.pk,
+        )
+        self.assertEqual(consumed.status, PhoneVerificationChallenge.Status.CONSUMED)
         with self.assertRaises(PhoneVerificationThrottled):
             start_phone_verification(self.phone)
 
@@ -266,23 +506,27 @@ class SnsVerifyExtraCoverageTest(TestCase):
 
         with self.assertRaises(PhoneVerificationDeliveryError):
             start_phone_verification(self.phone)
-        # Cache entry should have been cleaned up after the template failure.
-        self.assertIsNone(cache.get(_otp_cache_key(self.phone)))
+        challenge = PhoneVerificationChallenge.objects.get(phone_number=self.phone)
+        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.EXPIRED)
+        self.assertIsNotNone(challenge.send_reserved_at)
 
     def test_check_phone_verification_no_payload_raises_invalid(self):
         with self.assertRaises(PhoneVerificationInvalid):
             check_phone_verification(self.phone, "123456")
 
     def test_check_phone_verification_already_at_max_attempts_throttles(self):
-        cache.set(
-            _otp_cache_key(self.phone),
-            {"code_hash": make_password("123456"), "attempts": MAX_VERIFY_ATTEMPTS},
-            timeout=600,
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.PHONE_AUTH,
+            code_hash=make_password("123456"),
+            attempts=MAX_VERIFY_ATTEMPTS,
+            max_attempts=MAX_VERIFY_ATTEMPTS,
+            expires_at=timezone.now() + timedelta(minutes=10),
         )
         with self.assertRaises(PhoneVerificationThrottled):
-            check_phone_verification(self.phone, "123456")
-        # Cache cleared on throttle.
-        self.assertIsNone(cache.get(_otp_cache_key(self.phone)))
+            check_phone_verification(None, "123456", challenge_id=challenge.pk)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.EXPIRED)
 
     @patch("apps.authn.services.sms.sns_verify.boto3.client")
     def test_publish_plain_sms_sends_message(self, mock_boto_client):

@@ -4,6 +4,10 @@ import {loginLinkAutoLogin} from '@/features/auth';
 import {dispatchAuthStateChange} from '@/features/auth/components/context/shared';
 import {getPostAuthPath} from '@/features/auth/api/redirects';
 import {getAccessToken} from '@/features/auth/api/storage';
+import {
+  clearAuthCallbackParams,
+  readAuthCallbackParams,
+} from '@/features/auth/api/callbackParams';
 
 function hasStoredAccessToken() {
   try {
@@ -16,12 +20,17 @@ function hasStoredAccessToken() {
 export function LoginLinkPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = useMemo(() => searchParams.get('token'), [searchParams]);
+  const callbackParams = useMemo(
+    () => readAuthCallbackParams('login-link', searchParams),
+    [searchParams],
+  );
+  const token = callbackParams.get('token');
   const [error, setError] = useState<string | null>(
     token ? null : 'No login token provided.',
   );
 
   useEffect(() => {
+    clearAuthCallbackParams('login-link');
     if (!token) return;
 
     let cancelled = false;

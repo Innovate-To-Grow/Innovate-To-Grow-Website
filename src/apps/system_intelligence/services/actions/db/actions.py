@@ -143,7 +143,7 @@ def apply_db_create(action: SystemIntelligenceActionRequest, model: type[models.
 
 
 def apply_db_update(action: SystemIntelligenceActionRequest, model: type[models.Model]) -> None:
-    obj = get_object(model, action.target_pk)
+    obj = get_object(model, action.target_pk, for_update=True)
     assert_snapshot_unchanged(action.before_snapshot, serialize_model_instance(obj, write=True), model._meta.label)
     changes = action.payload.get("changes")
     if not isinstance(changes, dict):
@@ -155,7 +155,7 @@ def apply_db_update(action: SystemIntelligenceActionRequest, model: type[models.
 
 
 def apply_db_delete(action: SystemIntelligenceActionRequest, model: type[models.Model]) -> None:
-    obj = get_object(model, action.target_pk)
+    obj = get_object(model, action.target_pk, for_update=True)
     assert_snapshot_unchanged(action.before_snapshot, serialize_model_instance(obj, write=True), model._meta.label)
     action.target_repr = record_repr(obj)
     obj.delete()

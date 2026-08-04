@@ -138,6 +138,25 @@ class ContactEmailServiceTests(TestCase):
         with self.assertRaises(AuthChallengeInvalid):
             verify_contact_email_code(member=self.member, contact_email_id=uuid.uuid4(), code="123456")
 
+    @patch("apps.authn.services.contacts.contact_emails.verify_email_code")
+    def test_verify_contact_email_code_marks_contact_inside_approved_callback(self, mock_verify):
+        contact = ContactEmail.objects.create(
+            member=self.member,
+            email_address="verify-me@example.com",
+            email_type="secondary",
+            verified=False,
+        )
+
+        def approve(**kwargs):
+            return kwargs["approved_callback"](object())
+
+        mock_verify.side_effect = approve
+        result = verify_contact_email_code(member=self.member, contact_email_id=contact.pk, code="123456")
+
+        self.assertEqual(result.pk, contact.pk)
+        self.assertTrue(result.verified)
+        self.assertTrue(callable(mock_verify.call_args.kwargs["approved_callback"]))
+
     def test_resend_verification_not_found(self):
         import uuid
 
@@ -163,19 +182,28 @@ class ContactEmailServiceTests(TestCase):
         with self.assertRaises(AuthChallengeInvalid):
             make_contact_email_primary(member=self.member, contact_email_id=uuid.uuid4())
 
-    @override_settings(FRONTEND_URL="https://example.com")
+    @override_settings(FRONTEND_URL="https://example.com", BACKGROUND_JOBS_ENABLED=False)
     @patch("apps.authn.services.email.send_email.send_notification_email")
     def test_notify_email_owner_logs_on_failure(self, mock_send):
-        # Run the background notifier synchronously to exercise its body + except branch.
         from apps.authn.services.contacts import contact_emails as svc
 
         mock_send.side_effect = RuntimeError("smtp down")
-        # Patch Thread so the target runs inline and we can assert send was attempted.
-        with patch.object(svc.threading, "Thread") as mock_thread:
-            svc._notify_email_owner_in_background("owner@example.com")
-            target = mock_thread.call_args.kwargs["target"]
-            target()  # runs _send, which catches the exception
+        svc._notify_email_owner_in_background("owner@example.com")
         mock_send.assert_called_once()
+
+    @override_settings(FRONTEND_URL="https://example.com", BACKGROUND_JOBS_ENABLED=True)
+    @patch("apps.core.services.background_jobs.enqueue_notification_email")
+    def test_notify_email_owner_uses_durable_queue_when_enabled(self, mock_enqueue):
+        from apps.authn.services.contacts import contact_emails as svc
+
+        svc._notify_email_owner_in_background("owner@example.com")
+
+        mock_enqueue.assert_called_once_with(
+            recipient="owner@example.com",
+            subject="Security notice - Innovate to Grow",
+            template="authn/email/email_claim_notification.html",
+            context={"account_url": "https://example.com/account"},
+        )
 
 
 class KeyEncryptionTests(TestCase):

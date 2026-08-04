@@ -1,4 +1,4 @@
-<script>
+<script nonce="{{ request.csp_nonce }}">
     (function () {
         const labels = [{% for h in hourly_views %}"{{ h.hour }}:00"{% if not forloop.last %},{% endif %}{% endfor %}];
         const data = [{% for h in hourly_views %}{{ h.count }}{% if not forloop.last %},{% endif %}{% endfor %}];

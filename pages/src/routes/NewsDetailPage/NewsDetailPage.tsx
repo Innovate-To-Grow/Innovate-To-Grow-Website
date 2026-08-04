@@ -16,19 +16,24 @@ export const NewsDetailPage = () => {
 
   useEffect(() => {
     if (!id) return;
+    const controller = new AbortController();
     const load = async () => {
       setLoading(true);
       setError(null);
+      setArticle(null);
       try {
-        const data = await fetchNewsDetail(id);
+        const data = await fetchNewsDetail(id, controller.signal);
+        if (controller.signal.aborted) return;
         setArticle(data);
       } catch {
+        if (controller.signal.aborted) return;
         setError('Unable to load this article.');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
-    load();
+    void load();
+    return () => controller.abort();
   }, [id]);
 
   if (loading) {

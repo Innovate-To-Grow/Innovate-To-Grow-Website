@@ -5,12 +5,15 @@ from apps.core.models import ProjectControlModel
 
 DELIVERY_STATUS_CHOICES = [
     ("pending", "Pending"),
+    ("processing", "Processing"),
+    ("retry", "Retry scheduled"),
     ("sent", "Sent"),
     ("delivered", "Delivered"),
     ("bounced", "Bounced"),
     ("complained", "Complained"),
     ("rejected", "Rejected"),
     ("failed", "Failed"),
+    ("uncertain", "Uncertain delivery"),
 ]
 
 BOUNCE_TYPE_CHOICES = [
@@ -40,6 +43,11 @@ class RecipientLog(ProjectControlModel):
     provider = models.CharField(max_length=16, blank=True, default="")
     error_message = models.TextField(blank=True, default="")
     sent_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0, db_default=0)
+    available_at = models.DateTimeField(null=True, blank=True)
+    claim_token = models.UUIDField(null=True, blank=True, editable=False)
+    claimed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    uncertain_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     # SES async event tracking
     ses_message_id = models.CharField(max_length=256, blank=True, default="", db_index=True)

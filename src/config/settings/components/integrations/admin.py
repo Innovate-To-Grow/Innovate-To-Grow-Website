@@ -57,6 +57,9 @@ UNFOLD = {
         lambda request: static("admin/css/tabs.css"),
         lambda request: static("admin/css/file-input.css"),
     ],
+    "SCRIPTS": [
+        lambda request: static("admin/js/htmx-csp-config.js"),
+    ],
     "TABS": [
         {
             "models": [

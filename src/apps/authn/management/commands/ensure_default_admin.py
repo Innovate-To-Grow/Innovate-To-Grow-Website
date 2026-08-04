@@ -1,4 +1,4 @@
-"""Ensure an idempotent default Django admin account exists."""
+"""Create a default Django admin account once, without repairing existing users."""
 
 import os
 
@@ -13,7 +13,7 @@ DEFAULT_LAST_NAME = "Admin"
 
 
 class Command(BaseCommand):
-    help = "Create or update a default superuser identified by email."
+    help = "Create a default superuser identified by email if it does not already exist."
 
     def add_arguments(self, parser):
         parser.add_argument("--yes", action="store_true", help="Confirm that this command may mutate admin users.")
@@ -34,7 +34,6 @@ class Command(BaseCommand):
 
         email = (options["email"] or "").strip().lower()
         password_env = (options["password_env"] or "").strip()
-        password = os.environ.get(password_env, "")
         first_name = (options["first_name"] or DEFAULT_FIRST_NAME).strip() or DEFAULT_FIRST_NAME
         last_name = (options["last_name"] or DEFAULT_LAST_NAME).strip() or DEFAULT_LAST_NAME
 
@@ -42,61 +41,47 @@ class Command(BaseCommand):
             raise CommandError("--email or DJANGO_SUPERUSER_EMAIL is required.")
         if not password_env:
             raise CommandError("--password-env is required.")
-        if not password:
-            raise CommandError(f"{password_env} must be set.")
 
         with transaction.atomic():
-            member, created = self._ensure_member(
+            # Only the contact row needs locking. Joining the nullable member
+            # relation makes PostgreSQL reject FOR UPDATE on the outer join.
+            contact = ContactEmail.objects.select_for_update().filter(email_address__iexact=email).first()
+            if contact is not None:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Default admin already exists; left unchanged: email={email}, member={contact.member_id}"
+                    )
+                )
+                return
+
+            password = os.environ.get(password_env, "")
+            if not password:
+                raise CommandError(f"{password_env} must be set.")
+
+            member = self._create_member(
                 email=email,
                 password=password,
                 first_name=first_name,
                 last_name=last_name,
             )
 
-        action = "created" if created else "updated"
-        self.stdout.write(self.style.SUCCESS(f"Default admin {action}: email={email}, member={member.pk}"))
+        self.stdout.write(self.style.SUCCESS(f"Default admin created: email={email}, member={member.pk}"))
 
-    def _ensure_member(self, *, email: str, password: str, first_name: str, last_name: str):
+    def _create_member(self, *, email: str, password: str, first_name: str, last_name: str):
         Member = get_user_model()
-        contact = ContactEmail.objects.select_related("member").filter(email_address__iexact=email).first()
-        member = contact.member if contact else None
-        created = member is None
-
-        if member is None:
-            member = Member.objects.create_user(
-                password=password,
-                first_name=first_name,
-                last_name=last_name,
-                is_active=True,
-                is_staff=True,
-                is_superuser=True,
-            )
-        else:
-            member.first_name = first_name
-            member.last_name = last_name
-            member.is_active = True
-            member.is_staff = True
-            member.is_superuser = True
-            member.set_password(password)
-            member.save(update_fields=["first_name", "last_name", "is_active", "is_staff", "is_superuser", "password"])
-
-        if contact is None:
-            contact = ContactEmail.objects.create(
-                member=member,
-                email_address=email,
-                email_type="primary",
-                verified=True,
-                subscribe=True,
-            )
-        else:
-            contact.member = member
-            contact.email_address = email
-            contact.email_type = "primary"
-            contact.verified = True
-            contact.subscribe = True
-            contact.save(update_fields=["member", "email_address", "email_type", "verified", "subscribe"])
-
-        ContactEmail.objects.filter(member=member, email_type="primary").exclude(pk=contact.pk).update(
-            email_type="secondary"
+        member = Member.objects.create_user(
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            is_active=True,
+            is_staff=True,
+            is_superuser=True,
         )
-        return member, created
+        ContactEmail.objects.create(
+            member=member,
+            email_address=email,
+            email_type="primary",
+            verified=True,
+            subscribe=True,
+        )
+        return member

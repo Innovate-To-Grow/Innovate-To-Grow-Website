@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.event.models import EventRegistration, Ticket
 from apps.event.services.ticket_mail import (
     _issue_ticket_login_link,
+    _send_via_ses,
     send_ticket_email,
 )
 from apps.event.tests.helpers import make_event, make_member
@@ -47,6 +48,10 @@ class SendTicketEmailTest(TestCase):
         send_ticket_email(self.registration)
 
         mock_client.send_raw_email.assert_called_once()
+        self.assertEqual(
+            mock_boto3.client.call_args.kwargs["config"].retries["total_max_attempts"],
+            1,
+        )
         raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
         self.assertIn("ticket-barcode", raw_data)
         self.assertIn(self.event.name, raw_data)
@@ -137,6 +142,31 @@ class SendTicketEmailTest(TestCase):
 
     @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
     @patch("apps.event.services.ticket_mail.boto3")
+    def test_worker_mode_classifies_lost_response_as_uncertain(self, mock_boto3, mock_resolve):
+        from botocore.exceptions import ReadTimeoutError
+
+        from apps.core.services.aws.provider_outcomes import (
+            PROVIDER_OUTCOME_UNCERTAIN,
+            ProviderDeliveryError,
+        )
+
+        mock_resolve.return_value = _aws_creds()
+        mock_boto3.client.return_value.send_raw_email.side_effect = ReadTimeoutError(
+            endpoint_url="https://email.us-west-2.amazonaws.com"
+        )
+
+        with self.assertRaises(ProviderDeliveryError) as raised:
+            _send_via_ses(
+                config=_mock_config(ses_configured=True),
+                mime_message=MagicMock(),
+                before_provider_call=MagicMock(),
+                raise_provider_errors=True,
+            )
+
+        self.assertEqual(raised.exception.outcome, PROVIDER_OUTCOME_UNCERTAIN)
+
+    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket_mail.boto3")
     @patch("apps.event.services.ticket_mail._load_config")
     def test_clears_previous_error_on_success(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
@@ -198,7 +228,7 @@ class TicketLoginLinkIssuanceTest(TestCase):
         self.assertEqual(token.member_id, self.member.pk)
         self.assertIsNone(token.campaign)
         self.assertEqual(token.redirect_path, "/event-registration?event=demo-day")
-        self.assertIn(f"/login-link?token={token.token}", url)
+        self.assertIn(f"/login-link#token={token.token}", url)
 
     def test_validity_comes_from_event_config(self):
         self.event.ticket_login_validity_days = 5
@@ -245,7 +275,7 @@ class TicketLoginLinkIssuanceTest(TestCase):
         html = next(
             part.get_payload(decode=True).decode() for part in message.walk() if part.get_content_type() == "text/html"
         )
-        self.assertIn(f"/login-link?token={token.token}", html)
+        self.assertIn(f"/login-link#token={token.token}", html)
 
     def test_registration_delete_cascades_tokens(self):
         _issue_ticket_login_link(self.registration)

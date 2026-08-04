@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import CommandError, call_command
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from apps.authn.backends import EmailAuthBackend
@@ -58,22 +59,17 @@ class RsaManagerEdgeTests(TestCase):
     def setUp(self):
         RSAKeypair.objects.all().delete()
 
-    def test_decrypt_with_unknown_key_id_falls_back_to_active(self):
-        # An unknown key_id falls back to the active keypair (lines 98-100), then fails to
-        # decrypt arbitrary bytes -> RSADecryptionError (lines 124-125).
+    def test_decrypt_with_unknown_key_id_fails_closed(self):
         get_or_create_auth_keypair()
-        with self.assertRaises(RSADecryptionError):
+        with self.assertRaisesMessage(RSADecryptionError, "Unknown RSA key identifier"):
             decrypt_password("bm90LXZhbGlkLWVuY3J5cHRlZA==", key_id="00000000-0000-0000-0000-000000000000")
 
-    def test_get_or_create_deactivates_duplicate_actives(self):
-        # Two active keypairs with the auth name -> the older is deactivated (line 47).
+    def test_database_rejects_duplicate_active_key_name(self):
         from apps.authn.services.rsa_manager import AUTH_KEY_NAME
 
         RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
-        RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
-        get_or_create_auth_keypair()
-        active = RSAKeypair.objects.filter(name=AUTH_KEY_NAME, is_active=True)
-        self.assertEqual(active.count(), 1)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
 
     @patch("apps.authn.services.rsa_manager.rotate_auth_keypair")
     def test_get_or_create_rotates_stale_key(self, mock_rotate):
@@ -124,7 +120,7 @@ class UnsubscribeUrlTests(TestCase):
     def test_build_unsubscribe_url_contains_token(self):
         member = _member(is_active=True)
         url = build_unsubscribe_url(member)
-        self.assertIn("/unsubscribe-login?token=", url)
+        self.assertIn("/unsubscribe-login#token=", url)
 
 
 class SyncMembersCommandTests(TestCase):

@@ -69,4 +69,4 @@ class SendViaSesTests(TestCase):
             html_body="B",
         )
         self.assertEqual(result.message_id, "")
-        self.assertIn("boom", result.error)
+        self.assertIn("could not be confirmed", result.error)

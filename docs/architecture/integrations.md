@@ -8,12 +8,17 @@ Used for event registration data sync and schedule/project data import.
 
 | Integration | Direction | Service file |
 |-------------|-----------|-------------|
-| Registration sheet sync | Django → Google Sheets (append rows) | `src/apps/event/services/registration_sheet_sync.py` |
+| Registration sheet sync | PostgreSQL outbox worker → Google Sheets (idempotent append) | `src/apps/event/services/registration_sheet_sync/` |
 | Schedule sync | Google Sheets → Django (import tracks, projects) | `src/apps/event/services/schedule_sync.py` |
 
-**Authentication**: Google service account credentials stored in `GoogleCredentialConfig` model (`src/apps/core/models/service_credentials.py`). The credential JSON is validated for required fields (`type`, `project_id`, `private_key`, `client_email`, `token_uri`).
+**Authentication**: Google service account credentials are stored in
+`GoogleCredentialConfig`
+(`src/apps/core/models/base/service_credentials/google.py`). The credential
+JSON is validated for required fields (`type`, `project_id`, `private_key`,
+`client_email`, `token_uri`).
 
-**Libraries**: `gspread` 5.5.0, `google-auth` 2.35.0, `google-api-python-client` 2.170.0.
+**Libraries**: `gspread` 6.2.1, `google-auth` 2.56.2,
+`google-api-python-client` 2.198.0.
 
 See [Google Sheets Integration](../integrations/google-sheets/index.md) for full details.
 
@@ -33,13 +38,16 @@ Primary email delivery service in production.
 
 | Concern | Implementation |
 |---------|---------------|
-| Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — sender address, campaign send rate, SMTP fallback |
+| Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — active sender identity and campaign send rate |
 | AWS credentials | Shared `AWSCredentialConfig` IAM key + `default_region` |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
 | Ticket confirmation | `src/apps/event/services/ticket_mail.py` |
 
-Delivery uses AWS SES when an active `AWSCredentialConfig` is configured; otherwise it falls back to the SMTP fields on `EmailServiceConfig`. In development, `EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'` prints emails to stdout.
+Application auth, ticket, and campaign delivery uses AWS SES only when both
+the email sender and AWS credential rows are explicitly active and configured;
+it fails closed otherwise. Transactional/campaign work is materialized as
+`BackgroundJob` rows when durable jobs are enabled.
 
 ## AWS End User Messaging (SMS)
 
@@ -52,7 +60,14 @@ Used for phone number verification during event registration and contact managem
 | Send verification | `src/apps/authn/services/sms/sns_verify.py` |
 | Event phone verify | `src/apps/event/views/registration/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
 
-OTP codes are generated locally, stored in cache, and delivered via AWS End User Messaging (`pinpoint-sms-voice-v2:SendTextMessage`). The origination number is auto-detected from the account's End User Messaging phone numbers (`DescribePhoneNumbers`), or set manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions `sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`. The legacy `sns:Publish` path cannot use an End-User-Messaging-managed origination number.
+OTP codes are generated locally, stored only as hashes in
+`PhoneVerificationChallenge`, and delivered via AWS End User Messaging
+(`pinpoint-sms-voice-v2:SendTextMessage`). Challenges are bound to purpose,
+phone, optional member, and context, with persistent attempt/send limits and
+one-time consumption. The origination number is auto-detected from the
+account's End User Messaging phone numbers (`DescribePhoneNumbers`), or set
+manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
+`sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`.
 
 ## Amazon Bedrock (System Intelligence)
 

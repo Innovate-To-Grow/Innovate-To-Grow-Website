@@ -213,6 +213,33 @@ describe('SubscribePage', () => {
     expect(newsletterLabels.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('shows a terminal preferences error and retries explicitly', async () => {
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: {member_uuid: 'uuid-1', email: 'member@example.com'},
+      isAuthenticated: true,
+    });
+    mockGetProfile.mockRejectedValueOnce(new Error('network down'));
+
+    render(
+      <MemoryRouter>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText('Failed to load subscription preferences.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Loading subscription preferences...'),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', {name: 'Retry'}));
+
+    expect(await screen.findByText('member@example.com')).toBeInTheDocument();
+    expect(mockGetProfile).toHaveBeenCalledTimes(2);
+  });
+
   it('hides the primary newsletter row for phone-only accounts', async () => {
     mockUseAuth.mockReturnValue({
       ...baseAuth,

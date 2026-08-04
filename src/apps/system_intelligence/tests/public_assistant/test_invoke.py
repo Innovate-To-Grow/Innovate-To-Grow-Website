@@ -78,6 +78,45 @@ class InvokeTests(TestCase):
             without_hist = invoke.answer_public_question(config=_config(), message="q", history=[], context="x")
         self.assertGreater(with_hist["usage"]["inputTokens"], without_hist["usage"]["inputTokens"])
 
+    def test_public_input_estimate_accounts_for_utf8_token_density(self):
+        config = _config(public_assistant_system_prompt="")
+
+        ascii_estimate = invoke.estimate_public_input_tokens(
+            config=config,
+            message="a" * 8,
+            history=[],
+            context="",
+        )
+        cjk_estimate = invoke.estimate_public_input_tokens(
+            config=config,
+            message="界" * 8,
+            history=[],
+            context="",
+        )
+        emoji_estimate = invoke.estimate_public_input_tokens(
+            config=config,
+            message="🙂" * 8,
+            history=[],
+            context="",
+        )
+
+        # System + one message envelope costs 16 tokens. ASCII retains the 4:1
+        # heuristic, while every non-ASCII UTF-8 byte is conservatively charged.
+        self.assertEqual(ascii_estimate, 18)
+        self.assertEqual(cjk_estimate, 40)
+        self.assertEqual(emoji_estimate, 48)
+
+    def test_missing_usage_conservatively_estimates_unicode_output(self):
+        with self._patch_agent(_agent_result("🙂" * 4, usage={})):
+            result = invoke.answer_public_question(
+                config=_config(public_assistant_system_prompt=""),
+                message="hi",
+                history=[],
+                context="",
+            )
+
+        self.assertEqual(result["usage"]["outputTokens"], 16)
+
     def test_leading_assistant_history_dropped(self):
         history = [{"role": "assistant", "content": "I am the assistant"}]
         with self._patch_agent(_agent_result("ans")) as patched:

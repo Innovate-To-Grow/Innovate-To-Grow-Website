@@ -62,4 +62,4 @@ def get_member_from_unsubscribe_token(token: str):
 def build_unsubscribe_url(member) -> str:
     """Build the full frontend URL for the unsubscribe auto-login page."""
     token = build_unsubscribe_login_token(member)
-    return build_frontend_absolute_url(f"/unsubscribe-login?token={token}")
+    return build_frontend_absolute_url(f"/unsubscribe-login#token={token}")

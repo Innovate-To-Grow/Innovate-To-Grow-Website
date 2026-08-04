@@ -2,6 +2,7 @@ from urllib.parse import urlencode, urlsplit
 
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
+from django.template.response import TemplateResponse
 from django.utils.crypto import constant_time_compare
 from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -83,7 +84,12 @@ class OAuthAuthorizeView(View):
         except RedirectUriError as exc:
             # public_message is a fixed developer-facing string (no user input or
             # traceback text), safe to return without exposing exception internals.
-            return HttpResponseBadRequest(exc.public_message)
+            return TemplateResponse(
+                request,
+                "cli_admin/oauth_error.html",
+                {"message": exc.public_message},
+                status=400,
+            )
 
         state = params.get("state") or ""
         raw_code = CliAuthorizationCode.generate_raw_code()

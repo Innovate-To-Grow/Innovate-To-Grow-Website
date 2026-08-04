@@ -57,7 +57,7 @@ def cli_update(*, actor, request_ip, app_label, model_name, pk, changes, expecte
     if not isinstance(changes, dict) or not changes:
         raise ActionRequestError("changes must be a non-empty object.")
     with transaction.atomic():
-        obj = cli_get_object(model, pk)
+        obj = cli_get_object(model, pk, for_update=True)
         before = serialize_model_instance(obj, write=True)
         _check_snapshot(model, before, expected_snapshot)
         clean = validate_write_payload(model, changes)
@@ -82,7 +82,7 @@ def cli_update(*, actor, request_ip, app_label, model_name, pk, changes, expecte
 def cli_delete(*, actor, request_ip, app_label, model_name, pk, confirm_cascade=False, expected_snapshot=None):
     model = resolve_cli_model(app_label, model_name, write=True, actor=actor)
     with transaction.atomic():
-        obj = cli_get_object(model, pk)
+        obj = cli_get_object(model, pk, for_update=True)
         before = serialize_model_instance(obj, write=True)
         _check_snapshot(model, before, expected_snapshot)
         cascade = collect_cascade_impact(obj)

@@ -2,11 +2,12 @@ import logging
 
 from bs4 import BeautifulSoup
 
-from .url_guard import safe_urlopen
+from .url_guard import read_bounded_response, safe_urlopen
 
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = 15
+MAX_ARTICLE_BYTES = 5 * 1024 * 1024
 
 
 def scrape_article(url: str) -> dict:
@@ -16,7 +17,11 @@ def scrape_article(url: str) -> dict:
     through ``safe_urlopen`` (SSRF guard) rather than ``urlopen`` directly.
     """
     with safe_urlopen(url, timeout=_TIMEOUT, headers={"User-Agent": "ITG-News-Scraper/1.0"}) as resp:
-        html = resp.read().decode("utf-8", errors="replace")
+        html = read_bounded_response(
+            resp,
+            max_bytes=MAX_ARTICLE_BYTES,
+            label="News article",
+        ).decode("utf-8", errors="replace")
 
     soup = BeautifulSoup(html, "html.parser")
 

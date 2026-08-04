@@ -31,6 +31,7 @@ function shareFixture(overrides: Partial<PastProjectShare> = {}): PastProjectSha
     ],
     note: '',
     details_text: '',
+    version: 1,
     share_url: `/past-projects/${SHARE_ID}`,
     can_edit: true,
     created_at: '2025-01-01T00:00:00Z',

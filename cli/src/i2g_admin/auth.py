@@ -66,17 +66,21 @@ def login(base_url, *, open_browser=webbrowser.open, server_factory=CallbackServ
 
 
 def _exchange(base_url, code, verifier, redirect_uri):
-    response = requests.post(
-        base_url.rstrip("/") + TOKEN_PATH,
-        json={
-            "grant_type": "authorization_code",
-            "code": code,
-            "code_verifier": verifier,
-            "redirect_uri": redirect_uri,
-            "client_id": CLIENT_ID,
-        },
-        timeout=EXCHANGE_TIMEOUT,
-    )
+    with requests.Session() as session:
+        # Match ApiClient: the OAuth code/token exchange must not inherit
+        # ambient proxy or CA-bundle variables from the caller's environment.
+        session.trust_env = False
+        response = session.post(
+            base_url.rstrip("/") + TOKEN_PATH,
+            json={
+                "grant_type": "authorization_code",
+                "code": code,
+                "code_verifier": verifier,
+                "redirect_uri": redirect_uri,
+                "client_id": CLIENT_ID,
+            },
+            timeout=EXCHANGE_TIMEOUT,
+        )
     if response.status_code != 200:
         raise AuthError(f"Token exchange failed ({response.status_code}).")
     return response.json()

@@ -642,7 +642,7 @@ class ChangePasswordTokenErrorTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("access", response.data)
-        self.assertTrue(any("Failed to blacklist" in m for m in logs.output))
+        self.assertTrue(any("Unable to invalidate the prior session" in m for m in logs.output))
         member.refresh_from_db()
         self.assertTrue(member.check_password("BrandNewPass123!"))
 
@@ -724,7 +724,7 @@ class UnsubscribeConfirmationTests(TestCase):
         member = Member.objects.create_user(first_name="No", last_name="Email", is_active=True)
 
         with patch("apps.authn.services.email.send_notification_email") as send_mock:
-            unsubscribe_login._send_unsubscribe_confirmation(member)
+            unsubscribe_login._send_unsubscribe_confirmation(member, "event-token")
 
         send_mock.assert_not_called()
 

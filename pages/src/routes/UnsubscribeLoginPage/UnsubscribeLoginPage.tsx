@@ -1,16 +1,25 @@
 import {useEffect, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router';
 import {unsubscribeAutoLogin} from '@/features/auth';
+import {
+  clearAuthCallbackParams,
+  readAuthCallbackParams,
+} from '@/features/auth/api/callbackParams';
 
 export function UnsubscribeLoginPage() {
   const [searchParams] = useSearchParams();
-  const token = useMemo(() => searchParams.get('token'), [searchParams]);
+  const callbackParams = useMemo(
+    () => readAuthCallbackParams('unsubscribe-login', searchParams),
+    [searchParams],
+  );
+  const token = callbackParams.get('token');
   const [error, setError] = useState<string | null>(
     token ? null : 'No unsubscribe token provided.',
   );
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    clearAuthCallbackParams('unsubscribe-login');
     if (!token) return;
 
     let cancelled = false;

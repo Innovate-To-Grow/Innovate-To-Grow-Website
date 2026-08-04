@@ -33,17 +33,22 @@ class BaseCodeVerifySerializer(BaseEmailSerializer):
 
     def validate(self, attrs: dict) -> dict:
         attrs = super().validate(attrs)
+        approved_callback = self.context.get("approved_callback")
         try:
-            challenge = verify_email_code(
+            result = verify_email_code(
                 purpose=self.purpose,
                 target_email=attrs["email"],
                 code=attrs["code"],
+                approved_callback=approved_callback,
             )
         except AuthChallengeInvalid as exc:
             raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from exc
 
-        attrs["challenge"] = challenge
-        attrs["member"] = challenge.member
+        if approved_callback is not None:
+            attrs["approved_result"] = result
+        else:
+            attrs["challenge"] = result
+            attrs["member"] = result.member
         return attrs
 
 

@@ -4,6 +4,7 @@ Change password view for authenticated users.
 
 import logging
 
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -35,6 +36,7 @@ class ChangePasswordView(APIView):
 
         # Set new password
         new_password = serializer.validated_data["_decrypted_new_password"]
+        validate_password(new_password, user=request.user)
         request.user.set_password(new_password)
         request.user.save()
 
@@ -51,7 +53,9 @@ class ChangePasswordView(APIView):
                 new_access = str(fresh.access_token)
                 new_refresh = str(fresh)
             except TokenError:
-                logger.warning("Failed to blacklist refresh token during password change for user %s", request.user.pk)
+                logger.warning(
+                    "Unable to invalidate the prior session after account update for member %s", request.user.pk
+                )
 
         response_data = {"message": "Password changed successfully."}
         if new_access and new_refresh:

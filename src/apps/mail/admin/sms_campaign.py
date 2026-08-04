@@ -1,7 +1,6 @@
 """Broadcast SMS campaign admin."""
 
 import logging
-import threading
 
 from django import forms
 from django.contrib import admin, messages
@@ -352,17 +351,15 @@ class SmsCampaignAdmin(BaseModelAdmin):
                     messages.error(request, "Confirmation text does not match campaign name. Please try again.")
                     return HttpResponseRedirect(reverse("admin:mail_smscampaign_send_confirm", args=[object_id]))
 
-            updated = SmsCampaign.objects.filter(pk=obj.pk, status="draft").update(status="sending")
-            if not updated:
+            try:
+                self._background_send(obj.pk, request.user.pk)
+            except ValueError:
                 messages.warning(request, "This SMS campaign has already been sent.")
                 return HttpResponseRedirect(change_url)
-
-            thread = threading.Thread(
-                target=self._background_send,
-                args=(obj.pk, request.user.pk),
-                daemon=False,
-            )
-            thread.start()
+            except Exception:
+                logging.getLogger(__name__).exception("SMS campaign dispatch failed for %s", obj.pk)
+                messages.error(request, "SMS campaign could not be queued. Check server logs for details.")
+                return HttpResponseRedirect(change_url)
 
             return HttpResponseRedirect(reverse("admin:mail_smscampaign_send_status", args=[object_id]))
 
@@ -411,7 +408,10 @@ class SmsCampaignAdmin(BaseModelAdmin):
                 "name": log.recipient_name,
                 "error": _short_error(log.error_message),
             }
-            for log in SmsRecipientLog.objects.filter(campaign=obj, status="failed").order_by("-updated_at")
+            for log in SmsRecipientLog.objects.filter(
+                campaign=obj,
+                status__in=["failed", "uncertain"],
+            ).order_by("-updated_at")
         ]
         first_sent_at = (
             SmsRecipientLog.objects.filter(campaign=obj, sent_at__isnull=False)
@@ -434,26 +434,13 @@ class SmsCampaignAdmin(BaseModelAdmin):
 
     @staticmethod
     def _background_send(campaign_pk, user_pk):
-        import django
-
-        django.db.connections.close_all()
         from apps.mail.models import SmsCampaign as CampaignModel
-        from apps.mail.services.send_sms_campaign import send_sms_campaign
+        from apps.mail.services.background_jobs import dispatch_sms_campaign
 
         User = get_user_model()
         campaign = CampaignModel.objects.get(pk=campaign_pk)
         user = User.objects.get(pk=user_pk)
-        try:
-            send_sms_campaign(campaign, sent_by=user)
-        except Exception:
-            logging.getLogger(__name__).exception("Background SMS send failed for campaign %s", campaign_pk)
-            campaign.refresh_from_db()
-            if campaign.status in ("draft", "sending"):
-                campaign.status = "failed"
-            campaign.error_message = "SMS campaign send failed. Check server logs for details."
-            campaign.save(update_fields=["status", "error_message"])
-        finally:
-            django.db.connections.close_all()
+        return dispatch_sms_campaign(campaign, sent_by=user)
 
     @display(description="Campaign")
     def name_preview(self, obj):

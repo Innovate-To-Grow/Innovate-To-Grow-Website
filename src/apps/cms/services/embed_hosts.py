@@ -1,10 +1,12 @@
-"""Allowlist service for CMS `embed` block iframe sources.
+"""Allowlist service for CMS ``embed`` block iframe sources.
 
 Hosts come from the admin-managed `CMSEmbedAllowedHost` table. Entries may be
 exact (`docs.google.com`) or subdomain wildcards (`*.youtube.com`). Lookups are
 cached for a short TTL to keep block validation cheap.
 """
 
+import hashlib
+import json
 from urllib.parse import urlparse
 
 from django.core.cache import cache
@@ -49,6 +51,14 @@ def get_allowed_hosts() -> list[str]:
     hosts = list(CMSEmbedAllowedHost.objects.filter(is_active=True).values_list("hostname", flat=True))
     cache.set(CACHE_KEY, hosts, CACHE_TTL)
     return hosts
+
+
+def get_allowed_hosts_snapshot() -> dict[str, object]:
+    """Return the public allowlist and a deterministic content revision."""
+
+    hosts = sorted({host.strip().lower() for host in get_allowed_hosts() if host.strip()})
+    encoded = json.dumps(hosts, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    return {"hosts": hosts, "revision": hashlib.sha256(encoded).hexdigest()}
 
 
 def invalidate_cache() -> None:

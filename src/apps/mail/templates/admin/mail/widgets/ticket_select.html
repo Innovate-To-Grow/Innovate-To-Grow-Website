@@ -1,5 +1,5 @@
 {% include "unfold/widgets/select.html" %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function() {
     const ticketSel = document.getElementById('{{ widget.attrs.id }}');
     if (!ticketSel) return;

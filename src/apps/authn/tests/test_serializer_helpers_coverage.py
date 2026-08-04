@@ -106,6 +106,17 @@ class RegisterSerializerValidationTests(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn("last_name", serializer.errors)
 
+    def test_password_rejects_similarity_to_registration_name(self):
+        serializer = RegisterSerializer(
+            data=self._payload(
+                first_name="CorrectHorseBatteryStaple",
+                password="CorrectHorseBatteryStaple",
+                password_confirm="CorrectHorseBatteryStaple",
+            )
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("password", serializer.errors)
+
     @patch("apps.authn.serializers.register.issue_email_challenge")
     def test_create_reuses_pending_member(self, _mock_issue):
         pending = _member(email="pending@example.com", is_active=False)

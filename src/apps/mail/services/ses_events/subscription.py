@@ -1,8 +1,8 @@
 import logging
-import urllib.request
 from urllib.parse import parse_qs, urlparse
 
 from apps.core.utils.security import SecurityValidationError, validate_aws_sns_https_url
+from apps.mail.services.sns_http import fetch_sns_https
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,7 @@ def handle_subscription_confirmation(envelope: dict) -> None:
         return
 
     try:
-        with urllib.request.urlopen(subscribe_url, timeout=5) as resp:  # noqa: S310
-            resp.read()
+        fetch_sns_https(subscribe_url)
         logger.info("SNS subscription confirmed")
     except Exception:
         logger.warning("Failed to auto-confirm SNS subscription")

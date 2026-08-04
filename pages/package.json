@@ -15,7 +15,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --reporter=verbose",
     "size": "size-limit",
-    "e2e": "playwright test",
+    "e2e": "playwright test --config=playwright.local.config.ts",
+    "e2e:local": "playwright test --config=playwright.local.config.ts",
+    "e2e:live": "playwright test --config=playwright.live.config.ts",
     "e2e:install": "playwright install --with-deps chromium firefox webkit"
   },
   "dependencies": {
@@ -62,7 +64,11 @@
   },
   "size-limit": [
     {
-      "path": "dist/assets/index-*.js",
+      "name": "Initial application code",
+      "path": [
+        "dist/assets/index-*.js",
+        "dist/assets/providers-*.js"
+      ],
       "limit": "220 kB",
       "gzip": true
     },

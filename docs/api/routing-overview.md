@@ -1,6 +1,6 @@
 # Routing Overview
 
-URL organization for the Django backend, defined in `src/apps/core/urls.py` with delegation to app-level routers.
+URL organization for the Django backend, defined in `src/config/urls.py` with delegation to app-level routers.
 
 ## Root URL patterns
 
@@ -21,7 +21,7 @@ URL organization for the Django backend, defined in `src/apps/core/urls.py` with
 | `/analytics/` | `apps.cms.analytics_urls` | Page view tracking |
 | `/event/` | `apps.event.urls` | Event registration and management |
 | `/projects/` | `apps.projects.urls` | Past project archives |
-| `/mail/` | `apps.mail.urls` | Magic login links |
+| `/mail/` | `apps.mail.urls` | Login links, subscription links, and SES delivery events |
 | `/admin-api/` | `apps.cli_admin.urls` | OAuth2 + PKCE generic CRUD for the `i2g-admin` CLI |
 | `/ckeditor5/` | CKEditor 5 | Rich text editor file uploads |
 
@@ -34,12 +34,14 @@ URL organization for the Django backend, defined in `src/apps/core/urls.py` with
 Key groups:
 - Registration and login (`/authn/register/`, `/authn/login/`)
 - Email auth challenges (`/authn/email-auth/request-code/`, `/authn/email-auth/verify-code/`)
+- Passwordless phone auth (`/authn/phone-auth/request-code/`, `/authn/phone-auth/verify-code/`)
 - Password management (`/authn/password-reset/`, `/authn/change-password/`)
+- Authoritative session bootstrap (`/authn/session/`)
 - Profile (`/authn/profile/`)
 - Contact emails and phones (`/authn/contact-emails/`, `/authn/contact-phones/`)
 - Token refresh (`/authn/refresh/`)
-- Auto-login (`/authn/unsubscribe-login/`)
-- Admin (`/authn/admin-invite/`)
+- Auto-login (`/authn/unsubscribe-login/`, `/authn/impersonate-login/`)
+- Admin invitation form (`/authn/invite/{token}/`)
 
 ### Content (`/cms/`, `/news/`, `/analytics/`, `/layout/`)
 
@@ -73,6 +75,8 @@ See [CMS & News](cms-and-news.md) for details.
 ### Mail (`/mail/`)
 
 - `/mail/login-link/` — Token-based auto-login from campaign and ticket emails (legacy alias: `/mail/magic-login/`)
+- `/mail/unsubscribe/{token}/`, `/mail/resubscribe/{token}/` — One-click subscription preference links
+- `/mail/ses/events/` — Signed SES delivery-event webhook
 
 ### Admin API (`/admin-api/`)
 
@@ -101,13 +105,15 @@ The frontend router (`pages/src/app/router.tsx`) maps browser URLs to React comp
 | `/account` | `/authn/profile/`, `/authn/contact-emails/`, `/authn/contact-phones/`, `/event/registration-events/`, `/event/my-tickets/` |
 | `*` (catch-all) | `/cms/pages/{path}/` |
 
+When a persisted auth session exists, frontend startup also calls `/authn/session/` before treating cached profile fields as current.
+
 ## Extension points
 
 When adding a new API endpoint:
 
 1. Create views and serializers in the appropriate app
 2. Add URL patterns in the app's `urls.py`
-3. If it's a new top-level path, register it in `src/apps/core/urls.py`
+3. If it's a new top-level path, register it in `src/config/urls.py`
 4. Apply appropriate permission classes and throttles per-view
 5. Update the frontend feature API module if the frontend will consume it
 

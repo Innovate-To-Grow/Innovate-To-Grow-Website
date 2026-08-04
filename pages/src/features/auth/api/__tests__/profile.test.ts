@@ -3,6 +3,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   patch: vi.fn(),
+  getStoredSession: vi.fn(),
   updateStoredUser: vi.fn(),
 }));
 
@@ -14,6 +15,7 @@ vi.mock('../client', () => ({
 }));
 
 vi.mock('../storage', () => ({
+  getStoredSession: mocks.getStoredSession,
   updateStoredUser: mocks.updateStoredUser,
 }));
 
@@ -22,6 +24,10 @@ import {getAccountEmails, getProfile, updateProfileFields, uploadProfileImage} f
 describe('profile API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getStoredSession.mockReturnValue({
+      generation: 'generation-a',
+      refresh: 'refresh-a',
+    });
   });
 
   describe('getProfile', () => {
@@ -55,8 +61,23 @@ describe('profile API', () => {
       const result = await uploadProfileImage(file);
 
       expect(mocks.patch).toHaveBeenCalledWith('/authn/profile/', expect.any(FormData));
-      expect(mocks.updateStoredUser).toHaveBeenCalled();
+      expect(mocks.updateStoredUser).toHaveBeenCalledWith(
+        expect.any(Function),
+        'generation-a',
+      );
       expect(result.profile_image).toBe('/media/photo.png');
+    });
+
+    it('does not write an image response when no captured session exists', async () => {
+      mocks.getStoredSession.mockReturnValue(null);
+      const file = new File(['img-data'], 'photo.png', {type: 'image/png'});
+      mocks.patch.mockResolvedValue({
+        data: {profile_image: '/media/photo.png'},
+      });
+
+      await uploadProfileImage(file);
+
+      expect(mocks.updateStoredUser).not.toHaveBeenCalled();
     });
   });
 

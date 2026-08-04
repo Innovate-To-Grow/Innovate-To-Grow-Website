@@ -13,7 +13,7 @@ from i2g_admin.errors import CliError
 
 def test_available_formats_includes_builtins_and_stubs():
     names = formatters.available_formats()
-    assert {"json", "table", "text", "yaml", "csv"} <= set(names)
+    assert {"json", "table", "text", "yaml", "csv", "csv-raw"} <= set(names)
 
 
 def test_get_formatter_unknown_raises():
@@ -183,6 +183,28 @@ def test_csv_quotes_values_with_commas():
     rendered = formatters.get_formatter("csv")([{"a": "x,y"}])
     rows = _parse_csv(rendered)
     assert rows[1] == ["x,y"]  # round-trips through csv quoting
+
+
+@pytest.mark.parametrize(
+    "dangerous",
+    [
+        '=HYPERLINK("https://attacker.example")',
+        "+1+1",
+        "-2+3",
+        "@SUM(A1:A2)",
+        "  =1+1",
+        "\t=1+1",
+        "\r=1+1",
+    ],
+)
+def test_csv_neutralizes_spreadsheet_formulas(dangerous):
+    rendered = formatters.get_formatter("csv")([{"value": dangerous}])
+    assert _parse_csv(rendered)[1][0] == f"'{dangerous}"
+
+
+def test_csv_raw_preserves_formula_for_machine_consumers():
+    rendered = formatters.get_formatter("csv-raw")([{"value": "=1+1"}])
+    assert _parse_csv(rendered)[1][0] == "=1+1"
 
 
 def test_register_decorator_adds_entry():

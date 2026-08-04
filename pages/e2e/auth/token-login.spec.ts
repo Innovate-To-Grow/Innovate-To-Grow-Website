@@ -56,6 +56,7 @@ for (const c of cases) {
     await page.goto(`${c.path}?token=bad`, {waitUntil: 'domcontentloaded'});
     await expect(page.getByText(c.invalidText)).toBeVisible();
     await expect(page.getByRole('link', {name: 'Go to Login'})).toBeVisible();
+    expect(new URL(page.url()).searchParams.has('token')).toBe(false);
   });
 
   test(`${c.name}-login with no token shows the guard message`, async ({page}) => {
@@ -63,6 +64,18 @@ for (const c of cases) {
     await expect(page.getByText(c.noTokenText)).toBeVisible();
   });
 }
+
+test('login-link accepts a fragment token and scrubs it before exchange', async ({page}) => {
+  await mockAccountDashboard(page, {email: SUCCESS.user.email});
+  await page.route('**/mail/login-link/', (route) =>
+    route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(SUCCESS)}),
+  );
+  await page.goto('/login-link#token=fragment-secret', {waitUntil: 'domcontentloaded'});
+
+  await expect(page).toHaveURL(/\/account$/);
+  expect(new URL(page.url()).hash).toBe('');
+  await expectSignedInAs(page, SUCCESS.user.email);
+});
 
 test('login-link rejection with a stored session continues to /account', async ({page}) => {
   // First click: token exchange succeeds and persists the session.
@@ -125,6 +138,26 @@ test('email-auth-link verifies the code and signs the member in', {tag: '@core'}
   await page.goto(`/email-auth-link?flow=auth&source=subscribe&email=${encodeURIComponent(email)}&code=123456`, {
     waitUntil: 'domcontentloaded',
   });
+  await expectSignedInAs(page, email);
+});
+
+test('email-auth-link accepts fragment parameters', async ({page}) => {
+  const email = 'fragment-auth@example.com';
+  await mockAccountDashboard(page, {email});
+  await page.route('**/authn/email-auth/verify-code/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(loginResponse({user: {email, member_uuid: 'm-fragment'}})),
+    }),
+  );
+  await page.goto(
+    `/email-auth-link#flow=auth&source=login&email=${encodeURIComponent(email)}&code=123456`,
+    {waitUntil: 'domcontentloaded'},
+  );
+
+  await expect(page).toHaveURL(/\/account$/);
+  expect(new URL(page.url()).hash).toBe('');
   await expectSignedInAs(page, email);
 });
 

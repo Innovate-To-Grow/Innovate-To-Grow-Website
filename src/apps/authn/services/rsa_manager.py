@@ -10,6 +10,8 @@ from datetime import timedelta
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.authn.models import RSAKeypair
@@ -20,6 +22,11 @@ AUTH_KEY_NAME = "auth-encryption"
 # Key rotation interval (1 day)
 KEY_ROTATION_INTERVAL = timedelta(days=1)
 
+# Retired private keys stay decryptable for one client compatibility window,
+# then remain stored (but unusable) for an additional forensic/rollback window.
+KEY_DECRYPTION_GRACE_PERIOD = timedelta(hours=24)
+KEY_PURGE_RETENTION = timedelta(hours=48)
+
 
 class RSADecryptionError(Exception):
     """Raised when RSA decryption fails."""
@@ -27,43 +34,56 @@ class RSADecryptionError(Exception):
     pass
 
 
+@transaction.atomic
 def get_or_create_auth_keypair() -> RSAKeypair:
     """
     Get the active authentication keypair, creating one if it doesn't exist.
     Automatically rotates the key if it's older than KEY_ROTATION_INTERVAL.
-    If duplicate active keypairs exist, keeps the newest and deactivates the rest.
+    A database constraint guarantees at most one active row for this key name.
     """
-    active_keypairs = RSAKeypair.objects.filter(name=AUTH_KEY_NAME, is_active=True).order_by("-created_at")
-    count = active_keypairs.count()
-
-    if count == 0:
-        # No active keypair exists, create one
-        keypair = RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
+    purge_retired_auth_keypairs()
+    keypair = RSAKeypair.objects.select_for_update().filter(name=AUTH_KEY_NAME, is_active=True).first()
+    if keypair is None:
+        # A partial unique constraint arbitrates concurrent first-key creation.
+        # The inner savepoint keeps the outer transaction usable if another
+        # request wins the insert.
+        try:
+            with transaction.atomic():
+                keypair = RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
+        except IntegrityError:
+            keypair = RSAKeypair.objects.select_for_update().get(
+                name=AUTH_KEY_NAME,
+                is_active=True,
+            )
         return keypair
 
-    # Keep the newest keypair, deactivate any duplicates
-    keypair = active_keypairs[0]
-    if count > 1:
-        RSAKeypair.objects.filter(name=AUTH_KEY_NAME, is_active=True).exclude(pk=keypair.pk).update(is_active=False)
-
     # Check if rotation is needed
-    last_rotation = keypair.rotated_at or keypair.created_at
+    last_rotation = keypair.created_at
     if timezone.now() - last_rotation > KEY_ROTATION_INTERVAL:
-        rotate_auth_keypair(keypair)
+        return rotate_auth_keypair(keypair)
 
     return keypair
 
 
 def rotate_auth_keypair(keypair: RSAKeypair | None = None) -> RSAKeypair:
     """
-    Rotate the authentication keypair with new keys.
+    Rotate the authentication keypair into a new row with a new key ID.
     """
     if keypair is None:
         keypair = get_or_create_auth_keypair()
 
-    public_pem, private_pem = RSAKeypair.generate_keypair()
-    keypair.rotate(public_pem, private_pem)
-    return keypair
+    return keypair.rotate()
+
+
+def purge_retired_auth_keypairs(*, now=None) -> int:
+    """Delete retired authentication keys after the 48-hour retention window."""
+    cutoff = (now or timezone.now()) - KEY_PURGE_RETENTION
+    stale = RSAKeypair.objects.filter(
+        name=AUTH_KEY_NAME,
+        is_active=False,
+    ).filter(Q(rotated_at__lte=cutoff) | Q(rotated_at__isnull=True, updated_at__lte=cutoff))
+    deleted, _ = stale.delete()
+    return deleted
 
 
 def get_public_key_pem() -> tuple[str, str]:
@@ -90,12 +110,18 @@ def decrypt_password(encrypted_password_b64: str, key_id: str | None = None) -> 
         RSADecryptionError: If decryption fails
     """
     try:
-        # Get the keypair
+        now = timezone.now()
         if key_id:
-            keypair = RSAKeypair.objects.filter(key_id=key_id).first()
+            keypair = RSAKeypair.objects.filter(
+                key_id=key_id,
+                name=AUTH_KEY_NAME,
+            ).first()
             if not keypair:
-                # Fall back to active keypair
-                keypair = get_or_create_auth_keypair()
+                raise RSADecryptionError("Unknown RSA key identifier.")
+            if not keypair.is_active:
+                retired_at = keypair.rotated_at
+                if retired_at is None or retired_at <= now - KEY_DECRYPTION_GRACE_PERIOD:
+                    raise RSADecryptionError("RSA key identifier has expired.")
         else:
             keypair = get_or_create_auth_keypair()
 

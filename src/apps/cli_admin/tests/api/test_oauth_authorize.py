@@ -5,6 +5,7 @@ from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from django.test import TestCase
 
 from apps.cli_admin.models import CliAuthorizationCode
+from apps.cli_admin.redirect_uri import RedirectUriError
 from apps.cli_admin.tests.helpers import VALID_REDIRECT_URI, challenge_for, make_member, make_staff
 from apps.cli_admin.views.oauth import (
     ADMIN_LOGIN_PATH,
@@ -109,6 +110,17 @@ class OAuthAuthorizeTests(TestCase):
         response = self._get_as_staff(redirect_uri="https://127.0.0.1:54321/callback")
         self.assertEqual(response.status_code, 400)
         self.assertIn(b"http scheme", response.content)
+
+    @mock.patch(
+        "apps.cli_admin.views.oauth.validate_loopback_redirect_uri",
+        side_effect=RedirectUriError("<script>alert(1)</script>"),
+    )
+    def test_redirect_error_message_is_template_escaped(self, _validate):
+        response = self._get_as_staff()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "&lt;script&gt;alert(1)&lt;/script&gt;", status_code=400)
+        self.assertNotContains(response, "<script>alert(1)</script>", status_code=400)
 
     def test_admin_login_redirect_falls_back_to_bare_path(self):
         # Defense-in-depth: ``_redirect_to_admin_login`` builds its login URL from

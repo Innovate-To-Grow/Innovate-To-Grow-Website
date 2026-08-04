@@ -143,6 +143,19 @@ class ContactEmailCrudTests(APITestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_update_rejects_direct_primary_demotion(self, _mock_code, _mock_send):
+        primary = ContactEmail.objects.get(member=self.member, email_type="primary")
+
+        response = self.client.patch(
+            f"/authn/contact-emails/{primary.pk}/",
+            {"email_type": "other"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        primary.refresh_from_db()
+        self.assertEqual(primary.email_type, "primary")
+
     def test_update_ignores_email_address(self, _mock_code, _mock_send):
         create_resp = self.client.post(
             "/authn/contact-emails/",

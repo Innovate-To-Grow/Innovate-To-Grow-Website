@@ -93,5 +93,10 @@ class AcceptInvitationForm(forms.Form):
         if p1 and p2 and p1 != p2:
             self.add_error("password2", "Passwords do not match.")
         if p1:
-            password_validation.validate_password(p1)
+            candidate = Member(
+                first_name=cleaned.get("first_name", ""),
+                last_name=cleaned.get("last_name", ""),
+                organization=cleaned.get("organization", ""),
+            )
+            password_validation.validate_password(p1, user=candidate)
         return cleaned

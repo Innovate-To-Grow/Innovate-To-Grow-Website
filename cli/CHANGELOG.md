@@ -5,6 +5,30 @@ All notable changes to the `i2g-admin` CLI are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `csv-raw` output for explicitly trusted machine consumers.
+
+### Changed
+
+- Default `csv` output neutralizes spreadsheet-formula prefixes.
+- The `apps` command filters results through the signed-in account's
+  `admin_apps` grants; superusers retain full visibility.
+- Typer 0.18.0 and Click 8.3.3 are pinned as the tested callback-compatible
+  pair used by the 0.2 command layout.
+
+### Security
+
+- The CLI no longer imports `.env` from its current working directory and only
+  accepts its two `I2G_ADMIN_*` keys from the package-owned development file.
+- OAuth and API sessions ignore ambient proxy/netrc environment configuration,
+  preventing an untrusted working directory or shell proxy from intercepting
+  bearer-token traffic.
+- Click is upgraded to 8.3.3 to address `PYSEC-2026-2132`; CI also audits with
+  patched pip and setuptools releases instead of suppressing toolchain findings.
+
 ## [0.2.0] - 2026-06-04
 
 This release reshapes the CLI toward AWS-CLI-style ergonomics: named profiles,

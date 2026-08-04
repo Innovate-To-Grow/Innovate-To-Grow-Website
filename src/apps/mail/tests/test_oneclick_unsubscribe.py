@@ -1,10 +1,13 @@
 from unittest.mock import patch
 
 from django.core import signing
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail, Member
+from apps.core.models import BackgroundJob
 from apps.event.tests.helpers import make_member
+from apps.mail.services.subscription_notifications import subscription_confirmation_dedupe_key
 from apps.mail.services.unsubscribe_token import (
     _SALT,
     build_oneclick_unsubscribe_token,
@@ -49,6 +52,7 @@ class OneClickUnsubscribeViewTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("text/html", response["Content-Type"])
+        self.assertContains(response, "csrfmiddlewaretoken")
         self.assertFalse(self._is_subscribed())
 
     def test_get_replay_returns_400(self):
@@ -109,27 +113,41 @@ class OneClickUnsubscribeViewTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         mock_send.assert_not_called()
 
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    @patch("apps.authn.services.email.send_notification_email")
+    def test_queues_confirmation_with_token_derived_dedupe_key(self, mock_send):
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        mock_send.assert_not_called()
+        job = BackgroundJob.objects.get(kind="authn.notification_email")
+        self.assertEqual(
+            job.dedupe_key,
+            subscription_confirmation_dedupe_key("unsubscribe", self.token),
+        )
+        self.assertEqual(job.payload["recipient"], "unsub@example.com")
+
 
 class SubscriptionConfirmationEmailTests(APITestCase):
     """The best-effort confirmation helpers skip members without a primary email."""
 
-    @patch("apps.mail.views.subscriptions.email_api.send_notification_email")
+    @patch("apps.mail.services.subscription_notifications.email_api.send_notification_email")
     def test_unsubscribe_confirmation_skipped_without_primary_email(self, mock_send):
         from apps.mail.views.subscriptions import _send_unsubscribe_confirmation
 
         member = Member.objects.create_user(password="x")  # no ContactEmail
         self.assertEqual(member.get_primary_email(), "")
 
-        _send_unsubscribe_confirmation(member)
+        _send_unsubscribe_confirmation(member, "event-token")
 
         mock_send.assert_not_called()
 
-    @patch("apps.mail.views.subscriptions.email_api.send_notification_email")
+    @patch("apps.mail.services.subscription_notifications.email_api.send_notification_email")
     def test_resubscribe_confirmation_skipped_without_primary_email(self, mock_send):
         from apps.mail.views.subscriptions import _send_resubscribe_confirmation
 
         member = Member.objects.create_user(password="x")  # no ContactEmail
 
-        _send_resubscribe_confirmation(member)
+        _send_resubscribe_confirmation(member, "event-token")
 
         mock_send.assert_not_called()

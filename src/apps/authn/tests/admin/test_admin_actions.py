@@ -17,7 +17,7 @@ from apps.authn.admin.member_sheet_sync import (
     MemberSheetSyncConfigAdmin,
     MemberSheetSyncLogAdmin,
 )
-from apps.authn.admin.members.contact.email import ContactEmailAdmin
+from apps.authn.admin.members.contact.email import ContactEmailAdmin, ContactEmailAdminForm
 from apps.authn.admin.members.contact.phone import ContactPhoneAdmin
 from apps.authn.admin.members.invitation import AdminInvitationAdmin
 from apps.authn.admin.members.member import MemberAdmin
@@ -134,7 +134,7 @@ class MemberAdminActionTests(_AdminTestBase):
         request = _request(self.rf, self.admin_user, path=f"/admin/authn/member/{self.m1.pk}/impersonate/")
         response = self.model_admin.impersonate_view(request, str(self.m1.pk))
         self.assertEqual(response.status_code, 302)
-        self.assertIn("https://frontend.example.com/impersonate-login?token=", response.url)
+        self.assertIn("https://frontend.example.com/impersonate-login#token=", response.url)
 
     def test_export_excel_view(self):
         request = _request(self.rf, self.admin_user)
@@ -254,6 +254,119 @@ class ContactEmailAdminTests(_AdminTestBase):
         self.assertTrue(self.email.subscribe)
         self.assertTrue(any("Toggled subscription" in m for m in self._messages(request)))
 
+    def test_primary_identity_fields_are_readonly(self):
+        readonly = self.model_admin.get_readonly_fields(
+            _request(self.rf, self.admin_user),
+            self.email,
+        )
+        self.assertTrue({"member", "email_address", "email_type"}.issubset(readonly))
+
+    def test_primary_form_rejects_forged_identity_edit(self):
+        form = ContactEmailAdminForm(
+            data={
+                "member": str(self.member.pk),
+                "email_address": "rewritten@example.com",
+                "email_type": "primary",
+                "verified": "",
+                "subscribe": "",
+            },
+            instance=self.email,
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("cannot be edited directly", str(form.non_field_errors()))
+
+    def test_save_model_rejects_primary_demotion(self):
+        self.email.email_type = "secondary"
+
+        with self.assertRaisesMessage(PermissionDenied, "cannot be edited directly"):
+            self.model_admin.save_model(
+                _request(self.rf, self.admin_user),
+                self.email,
+                form=None,
+                change=True,
+            )
+
+        self.email.refresh_from_db()
+        self.assertEqual(self.email.email_type, "primary")
+
+    def test_save_model_rejects_direct_primary_promotion(self):
+        secondary = ContactEmail.objects.create(
+            member=self.member,
+            email_address="secondary@example.com",
+            email_type="secondary",
+            verified=True,
+        )
+        secondary.email_type = "primary"
+
+        with self.assertRaisesMessage(PermissionDenied, "cannot be assigned directly"):
+            self.model_admin.save_model(
+                _request(self.rf, self.admin_user),
+                secondary,
+                form=None,
+                change=True,
+            )
+
+        secondary.refresh_from_db()
+        self.assertEqual(secondary.email_type, "secondary")
+
+    def test_primary_cannot_be_deleted_directly_or_in_bulk(self):
+        request = _request(self.rf, self.admin_user)
+        self.assertFalse(self.model_admin.has_delete_permission(request, self.email))
+
+        with self.assertRaisesMessage(PermissionDenied, "cannot be deleted directly"):
+            self.model_admin.delete_model(request, self.email)
+        with self.assertRaisesMessage(PermissionDenied, "cannot be deleted directly"):
+            self.model_admin.delete_queryset(
+                request,
+                ContactEmail.objects.filter(pk=self.email.pk),
+            )
+
+        self.assertTrue(ContactEmail.objects.filter(pk=self.email.pk).exists())
+
+    def test_make_primary_action_uses_atomic_swap_service(self):
+        secondary = ContactEmail.objects.create(
+            member=self.member,
+            email_address="secondary@example.com",
+            email_type="secondary",
+            verified=True,
+        )
+        request = _request(self.rf, self.admin_user)
+
+        self.model_admin.make_primary(
+            request,
+            ContactEmail.objects.filter(pk=secondary.pk),
+        )
+
+        self.email.refresh_from_db()
+        secondary.refresh_from_db()
+        self.assertEqual(self.email.email_type, "secondary")
+        self.assertEqual(secondary.email_type, "primary")
+        self.assertIn(
+            "secondary@example.com is now the primary email.",
+            self._messages(request),
+        )
+
+    def test_make_primary_action_requires_exactly_one_email(self):
+        secondary = ContactEmail.objects.create(
+            member=self.member,
+            email_address="secondary@example.com",
+            email_type="secondary",
+            verified=True,
+        )
+        request = _request(self.rf, self.admin_user)
+
+        self.model_admin.make_primary(
+            request,
+            ContactEmail.objects.filter(pk__in=(self.email.pk, secondary.pk)),
+        )
+
+        self.email.refresh_from_db()
+        secondary.refresh_from_db()
+        self.assertEqual(self.email.email_type, "primary")
+        self.assertEqual(secondary.email_type, "secondary")
+        self.assertIn("Select exactly one email to make primary.", self._messages(request))
+
 
 class ContactPhoneAdminTests(_AdminTestBase):
     def setUp(self):
@@ -333,6 +446,7 @@ class RSAKeypairAdminTests(_AdminTestBase):
     def test_get_readonly_fields_for_existing(self):
         fields = self.model_admin.get_readonly_fields(None, obj=self.keypair)
         self.assertIn("private_key_pem", fields)
+        self.assertIn("is_active", fields)
 
     def test_get_readonly_fields_for_new(self):
         fields = self.model_admin.get_readonly_fields(None, obj=None)
@@ -353,21 +467,24 @@ class RSAKeypairAdminTests(_AdminTestBase):
         self.assertFalse(self.keypair.is_active)
         self.assertIn("1 keypair(s) deactivated.", self._messages(request))
 
-    def test_activate_keypairs(self):
+    def test_retired_keypairs_cannot_be_reactivated_from_admin(self):
         self.keypair.is_active = False
         self.keypair.save(update_fields=["is_active"])
-        request = _request(self.rf, self.admin_user)
-        self.model_admin.activate_keypairs(request, RSAKeypair.objects.filter(pk=self.keypair.pk))
+
+        self.assertNotIn("activate_keypairs", self.model_admin.actions)
+        self.assertFalse(hasattr(self.model_admin, "activate_keypairs"))
         self.keypair.refresh_from_db()
-        self.assertTrue(self.keypair.is_active)
-        self.assertIn("1 keypair(s) activated.", self._messages(request))
+        self.assertFalse(self.keypair.is_active)
 
     def test_regenerate_keys(self):
         old_pub = self.keypair.public_key_pem
         request = _request(self.rf, self.admin_user)
         self.model_admin.regenerate_keys(request, RSAKeypair.objects.filter(pk=self.keypair.pk))
         self.keypair.refresh_from_db()
-        self.assertNotEqual(self.keypair.public_key_pem, old_pub)
+        replacement = RSAKeypair.objects.get(name=self.keypair.name, is_active=True)
+        self.assertEqual(self.keypair.public_key_pem, old_pub)
+        self.assertFalse(self.keypair.is_active)
+        self.assertNotEqual(replacement.public_key_pem, old_pub)
         self.assertIn("1 keypair(s) regenerated.", self._messages(request))
 
 

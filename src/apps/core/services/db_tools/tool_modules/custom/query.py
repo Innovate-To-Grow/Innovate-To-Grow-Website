@@ -1,6 +1,7 @@
-import importlib
 import json
 from datetime import datetime
+
+from django.apps import apps as django_apps
 
 from ...helpers import MAX_ROWS, _serialize_rows, _truncate
 from .allowlist import ALLOWED_QUERY_FIELDS, MODEL_MAP, SAFE_LOOKUPS
@@ -35,8 +36,8 @@ def run_custom_query(params):
     model_name = params.get("model", "")
     if model_name not in MODEL_MAP:
         return f"Unknown model '{model_name}'. Available: {', '.join(sorted(MODEL_MAP))}"
-    module_path, cls_name = MODEL_MAP[model_name]
-    model_cls = getattr(importlib.import_module(module_path), cls_name)
+    app_label, model_class_name = MODEL_MAP[model_name]
+    model_cls = django_apps.get_model(app_label, model_class_name, require_ready=True)
     qs = model_cls.objects.all()
     filtered = apply_filters(qs, model_name, params.get("filters", {}))
     if isinstance(filtered, str):

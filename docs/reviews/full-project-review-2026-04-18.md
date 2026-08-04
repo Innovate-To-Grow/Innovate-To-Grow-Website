@@ -1,5 +1,10 @@
 # Full Project Code Review — 2026-04-18
 
+> **Historical snapshot — superseded.** Findings and status in this file
+> describe the repository on 2026-04-18 and are not the current handoff state.
+> Refer to the current [architecture](../architecture/index.md) and
+> [deployment](../deployment/index.md) documentation for operations and verification.
+
 **Scope:** Entire Innovate-To-Grow website — Django 5.2 backend (`src/`), React 19 + TypeScript frontend (`pages/`), infrastructure (`aws/`, `.github/`, `Dockerfile`), and dependencies.
 
 **Target revision:** `main` @ `ae118ea` (CMSEmbedWidget landed).

@@ -30,6 +30,8 @@ def invoke_system_intelligence_stream(
 ):
     """Synchronously yield existing System Intelligence event dicts from the agent runtime."""
     chat_config = chat_config or SystemIntelligenceConfig.load()
+    if not chat_config.is_configured:
+        raise SystemIntelligenceAgentError("System Intelligence is not configured. Activate a configuration first.")
     aws_config = get_aws_config(aws_config)
     model_id = model_id or chat_config.default_model_id
     event_queue: queue.Queue = queue.Queue()
@@ -90,6 +92,8 @@ async def invoke_system_intelligence_stream_async(
     """Run one agent invocation and yield normalized event dictionaries."""
     previous_messages, user_message = split_history_and_current_message(conversation_messages)
     chat_config = chat_config or SystemIntelligenceConfig.load()
+    if not chat_config.is_configured:
+        raise SystemIntelligenceAgentError("System Intelligence is not configured. Activate a configuration first.")
     aws_config = get_aws_config(aws_config)
     model_id = model_id or chat_config.default_model_id
     if not model_id:

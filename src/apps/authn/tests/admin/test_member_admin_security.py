@@ -68,7 +68,7 @@ class ImpersonateAuthorizationTests(TestCase):
         self.client.force_login(authn_admin)
         response = self.client.get(self._url(self.regular_target))
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/impersonate-login?token=", response["Location"])
+        self.assertIn("/impersonate-login#token=", response["Location"])
         self.assertTrue(ImpersonationToken.objects.filter(member=self.regular_target).exists())
 
     def test_superuser_can_impersonate_regular_member(self):

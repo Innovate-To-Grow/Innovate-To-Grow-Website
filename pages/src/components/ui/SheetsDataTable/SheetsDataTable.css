@@ -1,0 +1,31 @@
+.sdt-sort-button,
+.sdt-expand-button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.sdt-sort-button {
+  display: block;
+  font-weight: inherit;
+  padding: 0;
+  text-align: inherit;
+  width: 100%;
+}
+
+.sdt-expand-button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+.sdt-sort-button:focus-visible,
+.sdt-expand-button:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}

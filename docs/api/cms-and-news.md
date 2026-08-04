@@ -59,13 +59,24 @@ Fetches a published CMS page by its route path. The route can be multi-segment (
 
 ### `GET /cms/live-preview/{page_id}/`
 
-Returns page data for the admin live preview iframe. Used by the Django admin CMS editor.
+Returns the short-lived cached editor payload to the live-preview iframe.
+Reading an existing cached payload is anonymous. When the cache is empty, only
+a user with CMS app access may fall back to the current database page;
+anonymous cache misses return 404, so draft database content is not exposed.
 
-**Permission:** Staff only
+`POST` to the same endpoint replaces the cached editor payload and requires CMS
+app access.
 
 ### `GET /cms/preview/{token}/`
 
 Fetches a page preview using a time-limited token. Allows non-staff users to preview draft pages via a shared link.
+
+### `GET /cms/embed-hosts/`
+
+Public, cacheable iframe-host policy used by `SafeHtml`. Returns active exact or
+wildcard host patterns plus a `revision`; the same revision is sent as the
+`ETag`, and `If-None-Match` may receive 304. Until this policy has loaded, the
+frontend strips every iframe.
 
 ## Key CMS models
 
@@ -112,6 +123,9 @@ cd src && python manage.py sync_news --settings=config.settings.local
 - `NewsSyncLog` — Tracks sync timestamps and errors
 
 Feed sources are configured in Django admin.
+
+RSS bodies are streamed with a 2 MiB limit and article bodies with a 5 MiB
+limit. Oversized upstream responses fail explicitly and are not parsed.
 
 ## Analytics
 

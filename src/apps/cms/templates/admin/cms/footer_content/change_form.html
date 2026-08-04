@@ -28,10 +28,10 @@
                 <h4 class="section-title">CTA Buttons</h4>
                 <div id="cta-list" class="item-list"></div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="button" class="btn-add" onclick="addCtaButton('external')">+ Add External Link
+                    <button type="button" class="btn-add" data-admin-call="addCtaButton" data-admin-event="click" data-admin-args='["external"]'>+ Add External Link
                     </button>
-                    <button type="button" class="btn-add" onclick="addCtaButton('app')">+ Add App Route</button>
-                    <button type="button" class="btn-add" onclick="addCtaButton('cms')">+ Add CMS Page</button>
+                    <button type="button" class="btn-add" data-admin-call="addCtaButton" data-admin-event="click" data-admin-args='["app"]'>+ Add App Route</button>
+                    <button type="button" class="btn-add" data-admin-call="addCtaButton" data-admin-event="click" data-admin-args='["cms"]'>+ Add CMS Page</button>
                 </div>
 
                 <h4 class="section-title" style="margin-top: 20px;">Contact Info</h4>
@@ -46,14 +46,14 @@
             <div id="section-columns" class="editor-section">
                 <h4 class="section-title">Footer Columns</h4>
                 <div id="columns-list" class="item-list"></div>
-                <button type="button" class="btn-add" onclick="addColumn()">+ Add Column</button>
+                <button type="button" class="btn-add" data-admin-call="addColumn" data-admin-event="click">+ Add Column</button>
             </div>
 
             <!-- Social Links Section -->
             <div id="section-social" class="editor-section">
                 <h4 class="section-title">Social Media Links</h4>
                 <div id="social-list" class="item-list"></div>
-                <button type="button" class="btn-add" onclick="addSocialLink()">+ Add Social Link</button>
+                <button type="button" class="btn-add" data-admin-call="addSocialLink" data-admin-event="click">+ Add Social Link</button>
             </div>
 
             <!-- Footer Links Section -->
@@ -67,21 +67,21 @@
                 <h4 class="section-title">Footer Links (Bottom Bar)</h4>
                 <div id="footer-links-list" class="item-list"></div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button type="button" class="btn-add" onclick="addFooterLink('external')">+ Add External Link
+                    <button type="button" class="btn-add" data-admin-call="addFooterLink" data-admin-event="click" data-admin-args='["external"]'>+ Add External Link
                     </button>
-                    <button type="button" class="btn-add" onclick="addFooterLink('app')">+ Add App Route</button>
-                    <button type="button" class="btn-add" onclick="addFooterLink('cms')">+ Add CMS Page</button>
+                    <button type="button" class="btn-add" data-admin-call="addFooterLink" data-admin-event="click" data-admin-args='["app"]'>+ Add App Route</button>
+                    <button type="button" class="btn-add" data-admin-call="addFooterLink" data-admin-event="click" data-admin-args='["cms"]'>+ Add CMS Page</button>
                 </div>
             </div>
 
             <!-- JSON Toggle -->
             <div class="json-toggle">
-                <button type="button" class="json-toggle-btn" onclick="toggleJsonView()">Show/Hide Raw JSON</button>
+                <button type="button" class="json-toggle-btn" data-admin-call="toggleJsonView" data-admin-event="click">Show/Hide Raw JSON</button>
                 <div id="json-raw-view" class="json-raw-view">
                     <div id="json-error" class="json-error"></div>
                     <textarea id="json-editor" placeholder="Enter JSON here..."></textarea>
                     <div class="json-editor-actions">
-                        <button type="button" class="btn-apply-json" onclick="applyJsonChanges()">Apply JSON Changes
+                        <button type="button" class="btn-apply-json" data-admin-call="applyJsonChanges" data-admin-event="click">Apply JSON Changes
                         </button>
                         <span class="json-editor-hint">Tip: Press Ctrl+Enter to apply</span>
                     </div>
@@ -99,10 +99,13 @@
     <div class="preview-wrapper footer-preview-wrapper">
         <p class="preview-title">Footer Preview</p>
         <div id="footer-preview-error" class="preview-error"></div>
-        <iframe id="footer-preview-iframe" class="preview-iframe footer-preview-iframe"></iframe>
+        <iframe id="footer-preview-iframe"
+                class="preview-iframe footer-preview-iframe"
+                sandbox="allow-same-origin"
+                title="Footer preview"></iframe>
     </div>
 
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
         window.ITG_FONT_AWESOME_CSS = "{{ font_awesome_css|escapejs }}";
         window.APP_ROUTES = {{ app_routes_json|safe }};
         window.CMS_ROUTES = {{ cms_routes_json|safe }};

@@ -43,7 +43,12 @@ Block data is validated by `validate_block_data()` against type-specific JSON sc
 ### Live preview
 
 The admin provides an iframe-based live preview:
-- `GET /cms/live-preview/{page_id}/` — returns page data for the preview iframe (staff only)
+- `GET /cms/live-preview/{page_id}/` — anonymously returns the short-lived
+  editor payload only when it is already in cache; a user with CMS app access
+  may fall back to the current database page when the cache is empty. Anonymous
+  cache misses return 404 and never expose draft database content.
+- `POST /cms/live-preview/{page_id}/` — CMS-app staff only; replaces the
+  short-lived cached editor payload.
 - Preview tokens can be generated for sharing draft previews with non-staff users
 
 ### Frontend rendering

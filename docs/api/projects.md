@@ -22,7 +22,7 @@ The projects system stores historical project records organized by semester. Pro
 |-------|-----------|
 | `Semester` | Term label (e.g., "Fall 2024") |
 | `Project` | `semester`, `class_code`, `team_number`, `team_name`, `project_title`, `organization`, `industry`, `abstract`, `student_names`, `track`, `presentation_order` |
-| `PastProjectShare` | Links a user to a shared project (rate-limited) |
+| `PastProjectShare` | Versioned JSON snapshot curated by a user; public read, owner-only mutation |
 
 **Indexes:** `(semester, class_code)` and `(semester, track, presentation_order)` for efficient querying and ordering.
 
@@ -52,23 +52,52 @@ Single project detail.
 
 ### `POST /projects/past-shares/`
 
-Creates a share record for a project.
+Creates a versioned shared-project snapshot.
 
 **Permission:** Authenticated
 
 **Throttle:** `PastProjectShareThrottle` — 10 requests/hour
 
-### `GET /projects/past-shares/{id}/`
+### `GET /projects/past-shares/mine/`
 
-Retrieves share details.
+Lists snapshots created by the authenticated user.
 
 **Permission:** Authenticated
+
+### `GET /projects/past-shares/{id}/`
+
+Publicly retrieves a shared snapshot. The response always contains its current
+integer `version`.
+
+**Permission:** AllowAny
+
+### `PATCH /projects/past-shares/{id}/`
+
+Owner-only optimistic update. The request must include the `version` returned by
+the latest GET/PATCH. A stale update returns HTTP 409:
+
+```json
+{
+  "code": "stale_snapshot",
+  "detail": "This shared project changed. Refetch it before applying another edit.",
+  "current": {"id": "<uuid>", "version": 4}
+}
+```
+
+The frontend serializes mutations and stops/refetches on this conflict instead
+of merging two whole-document updates.
+
+### `DELETE /projects/past-shares/{id}/`
+
+Owner-only deletion. Non-owners receive 404 so ownership is not disclosed.
 
 ## Data import
 
 Projects are imported via CSV through the Django admin. The import service is at `src/apps/projects/services/`.
 
-CSV columns map to Project model fields. Import is triggered from the Semester admin page.
+CSV columns map to Project model fields. Parsing is side-effect-free; semesters
+and projects are written only inside the non-dry-run transaction. Import is
+triggered from the Semester admin page.
 
 ## Relationship to events
 

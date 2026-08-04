@@ -67,7 +67,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
     document.getElementById('email-body').srcdoc = {{ body_html_json|safe }};
 </script>
 {% endblock %}

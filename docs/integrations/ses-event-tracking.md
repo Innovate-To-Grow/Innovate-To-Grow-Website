@@ -22,10 +22,12 @@ campaign sender (send_raw_email)        SES                AWS SNS
 
 Code entry points:
 
-- Sender tags every send with `ConfigurationSetName`: `src/apps/mail/services/send_campaign.py::_send_via_ses`
-- Webhook: `src/apps/mail/views.py::SesEventWebhookView` mounted at `/mail/ses/events/`
+- Sender tags every send with `ConfigurationSetName`:
+  `src/apps/mail/services/send_campaign/transport.py::_send_via_ses`
+- Webhook: `src/apps/mail/views/ses_webhook.py::SesEventWebhookView` mounted
+  at `/mail/ses/events/`
 - Signature verifier: `src/apps/mail/services/sns_signature.py`
-- Event dispatcher: `src/apps/mail/services/ses_events.py`
+- Event dispatcher: `src/apps/mail/services/ses_events/`
 
 ## AWS setup — one-time per environment
 
@@ -106,6 +108,8 @@ The endpoint also has a DRF throttle at 600/minute per source IP
 
 - Auto-unsubscribing a member's `ContactEmail` after a hard bounce.
 - Backfilling `ses_message_id` for pre-existing rows.
-- Recomputing `EmailCampaign.sent_count` / `failed_count` on late bounces —
-  those counters preserve moment-of-send semantics; per-row `RecipientLog`
-  is the source of truth for deliverability.
+- Automatically retrying an `uncertain` provider call. Operators must
+  reconcile SES evidence before using the explicit retry action.
+
+`RecipientLog` is the source of truth. Campaign status and counts are
+re-aggregated from recipient logs, including late SES terminal events.

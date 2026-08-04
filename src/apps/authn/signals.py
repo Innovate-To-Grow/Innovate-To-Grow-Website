@@ -27,4 +27,11 @@ def _schedule():
 @receiver([post_save, post_delete], sender=ContactPhone)
 # noinspection PyUnusedLocal
 def schedule_member_sync_on_change(sender, **kwargs):
-    transaction.on_commit(_schedule)
+    from apps.core.services.background_jobs import jobs_enabled
+
+    if jobs_enabled():
+        # A direct insert participates in any surrounding transaction, giving
+        # account mutations and their outbox row one commit boundary.
+        _schedule()
+    else:
+        transaction.on_commit(_schedule)

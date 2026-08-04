@@ -1,11 +1,13 @@
 import re
-import xml.etree.ElementTree as ET  # noqa: N817
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 
-from .url_guard import safe_urlopen
+from defusedxml import ElementTree as ET
+
+from .url_guard import read_bounded_response, safe_urlopen
 
 FEED_URL = "https://news.ucmerced.edu/taxonomy/term/221/all/feed"
+MAX_FEED_BYTES = 2 * 1024 * 1024
 _DC_NS = "{http://purl.org/dc/elements/1.1/}"
 
 
@@ -13,11 +15,11 @@ def fetch_feed(url: str = FEED_URL) -> bytes:
     # ``url`` is admin-configurable (NewsFeedSource.feed_url); fetch it through
     # the SSRF guard so it can't reach internal/loopback hosts or file://.
     with safe_urlopen(url, timeout=30, headers={"User-Agent": "ITG-NewsSync/1.0"}) as resp:
-        return resp.read()
+        return read_bounded_response(resp, max_bytes=MAX_FEED_BYTES, label="RSS feed")
 
 
 def parse_feed_items(xml_bytes: bytes) -> list[dict]:
-    root = ET.fromstring(xml_bytes)  # noqa: S314
+    root = ET.fromstring(xml_bytes)
     items = []
     for item_el in root.iter("item"):
         items.append(

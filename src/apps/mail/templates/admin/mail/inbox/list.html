@@ -6,7 +6,7 @@
 
 {% block extrahead %}
     {{ block.super }}
-    <style>
+    <style nonce="{{ request.csp_nonce }}">
         @keyframes i2g-inbox-spin {
             to { transform: rotate(360deg); }
         }
@@ -513,7 +513,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function () {
   'use strict';
 

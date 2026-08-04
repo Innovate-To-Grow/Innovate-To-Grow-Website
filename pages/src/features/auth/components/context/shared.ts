@@ -4,8 +4,12 @@ import type {
   EmailAuthVerifyResponse,
   LoginResponse,
   MessageResponse,
+  PasswordChangeRequestResponse,
+  PhoneAuthRequestResponse,
   PhoneAuthSource,
   RegisterResponse,
+  SmsChallengeResponse,
+  SessionGuard,
   User,
   VerificationTokenResponse,
 } from '@/features/auth/api';
@@ -19,6 +23,7 @@ export const dispatchAuthStateChange = () => {
 export interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
   requiresProfileCompletion: boolean;
   isLoading: boolean;
   error: string | null;
@@ -26,21 +31,21 @@ export interface AuthContextValue {
   register: (email: string, password: string, passwordConfirm: string, firstName: string, lastName: string, organization: string, title?: string) => Promise<RegisterResponse>;
   requestEmailAuthCode: (email: string, source?: EmailAuthSource, event?: string) => Promise<EmailAuthRequestResponse>;
   verifyEmailAuthCode: (email: string, code: string) => Promise<EmailAuthVerifyResponse>;
-  requestPhoneAuthCode: (phoneNumber: string, region?: string, source?: PhoneAuthSource) => Promise<EmailAuthRequestResponse>;
-  verifyPhoneAuthCode: (phoneNumber: string, code: string, region?: string) => Promise<EmailAuthVerifyResponse>;
+  requestPhoneAuthCode: (phoneNumber: string, region?: string, source?: PhoneAuthSource) => Promise<PhoneAuthRequestResponse>;
+  verifyPhoneAuthCode: (phoneNumber: string, code: string, region?: string, challengeId?: string) => Promise<EmailAuthVerifyResponse>;
   requestLoginCode: (email: string) => Promise<MessageResponse>;
   verifyLoginCode: (email: string, code: string) => Promise<LoginResponse>;
   verifyRegistrationCode: (email: string, code: string) => Promise<LoginResponse>;
   resendRegistrationCode: (email: string) => Promise<MessageResponse>;
-  requestPasswordReset: (email: string) => Promise<MessageResponse>;
-  verifyPasswordResetCode: (email: string, code: string) => Promise<VerificationTokenResponse>;
+  requestPasswordReset: (email: string) => Promise<SmsChallengeResponse>;
+  verifyPasswordResetCode: (email: string, code: string, challengeId?: string) => Promise<VerificationTokenResponse>;
   confirmPasswordReset: (email: string, verificationToken: string, newPassword: string, confirmPassword: string) => Promise<MessageResponse>;
-  requestPasswordChangeCode: (email: string) => Promise<MessageResponse>;
-  verifyPasswordChangeCode: (email: string, code: string) => Promise<VerificationTokenResponse>;
+  requestPasswordChangeCode: (email?: string) => Promise<PasswordChangeRequestResponse>;
+  verifyPasswordChangeCode: (email: string, code: string, challengeId?: string) => Promise<VerificationTokenResponse>;
   confirmPasswordChange: (verificationToken: string, newPassword: string, confirmPassword: string) => Promise<MessageResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
-  clearProfileCompletionRequirement: () => void;
+  clearProfileCompletionRequirement: (guard?: SessionGuard) => boolean;
   clearError: () => void;
 }
 
@@ -51,6 +56,7 @@ const notImplemented = async () => {
 export const defaultContextValue: AuthContextValue = {
   user: null,
   isAuthenticated: false,
+  isInitializing: true,
   requiresProfileCompletion: false,
   isLoading: true,
   error: null,
@@ -72,7 +78,7 @@ export const defaultContextValue: AuthContextValue = {
   confirmPasswordChange: notImplemented,
   logout: () => {},
   refreshProfile: async () => {},
-  clearProfileCompletionRequirement: () => {},
+  clearProfileCompletionRequirement: () => false,
   clearError: () => {},
 };
 

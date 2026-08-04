@@ -1,89 +1,197 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
 const authApiPost = vi.fn();
+const authApiGet = vi.fn();
 const clearTokens = vi.fn();
-const getRefreshToken = vi.fn<() => string | null>(() => 'refresh-token');
 const persistAuthSession = vi.fn();
+const updateStoredSessionProfile = vi.fn();
+const isDefinitiveAuthFailure = vi.fn((error: unknown) =>
+  Boolean(
+    error &&
+      typeof error === 'object' &&
+      (error as {definitive?: boolean}).definitive,
+  ),
+);
+
+const baseSession = {
+  version: 1 as const,
+  generation: 'generation-a',
+  access: 'access-token',
+  refresh: 'refresh-token',
+  user: {
+    member_uuid: 'member-a',
+    email: 'old@example.com',
+    is_staff: false,
+  },
+  requires_profile_completion: false,
+};
+
+let storedSession: typeof baseSession | null;
 
 vi.mock('../client', () => ({
-  authApi: {post: authApiPost},
+  authApi: {get: authApiGet, post: authApiPost},
+  isDefinitiveAuthFailure,
 }));
 
 vi.mock('../storage', () => ({
   clearTokens,
-  clearProfileCompletionRequired: vi.fn(),
-  getAccessToken: vi.fn(() => 'access-token'),
-  getRefreshToken,
+  getAccessToken: vi.fn(() => storedSession?.access ?? null),
+  getStoredSession: vi.fn(() => storedSession),
   persistAuthSession,
-  setTokens: vi.fn(),
+  updateStoredSessionProfile,
 }));
 
-describe('logout clears local state before awaiting server', () => {
+describe('auth session lifecycle', () => {
   beforeEach(() => {
     vi.resetModules();
+    authApiGet.mockReset();
     authApiPost.mockReset();
     clearTokens.mockReset();
-    getRefreshToken.mockReset();
     persistAuthSession.mockReset();
-    getRefreshToken.mockReturnValue('refresh-token');
+    updateStoredSessionProfile.mockReset();
+    storedSession = {...baseSession, user: {...baseSession.user}};
+    clearTokens.mockImplementation(() => {
+      storedSession = null;
+      return true;
+    });
+    updateStoredSessionProfile.mockImplementation(
+      (
+        _guard: unknown,
+        user: typeof baseSession.user,
+        requiresProfileCompletion: boolean,
+      ) => {
+        if (!storedSession) return null;
+        storedSession = {
+          ...storedSession,
+          user,
+          requires_profile_completion: requiresProfileCompletion,
+        };
+        return storedSession;
+      },
+    );
   });
 
-  it('clears tokens and dispatches the auth-state event even when the server call is still in flight', async () => {
-    // The server POST never resolves — if logout() waited on it, clearTokens
-    // would never fire and the user would remain effectively logged in.
+  it('clears local state before an unresolved server logout', async () => {
     authApiPost.mockReturnValue(new Promise(() => undefined));
     const eventSpy = vi.fn();
     window.addEventListener('i2g-auth-state-change', eventSpy);
-
     const {logout} = await import('../session');
 
-    // Not awaited — proves local work doesn't depend on the server call.
     void logout();
-
-    // Microtask drain: the synchronous path up to the server POST must have
-    // run, which means clearTokens + event dispatch already happened.
     await Promise.resolve();
 
-    expect(clearTokens).toHaveBeenCalledTimes(1);
+    expect(clearTokens).toHaveBeenCalledWith({
+      generation: 'generation-a',
+      refresh: 'refresh-token',
+    });
     expect(eventSpy).toHaveBeenCalledTimes(1);
-    expect(authApiPost).toHaveBeenCalledWith('/authn/logout/', {refresh: 'refresh-token'});
-
+    expect(authApiPost).toHaveBeenCalledWith('/authn/logout/', {
+      refresh: 'refresh-token',
+    });
     window.removeEventListener('i2g-auth-state-change', eventSpy);
   });
 
-  it('clears tokens before the server POST is dispatched, so listeners read empty storage', async () => {
+  it('clears the guarded record before dispatching the server request', async () => {
     const callOrder: string[] = [];
-    clearTokens.mockImplementation(() => callOrder.push('clearTokens'));
+    clearTokens.mockImplementation(() => {
+      callOrder.push('clearTokens');
+      storedSession = null;
+      return true;
+    });
     authApiPost.mockImplementation(() => {
       callOrder.push('authApi.post');
       return Promise.resolve({data: {}});
     });
-
     const {logout} = await import('../session');
-    await logout();
 
+    await logout();
     expect(callOrder).toEqual(['clearTokens', 'authApi.post']);
   });
 
-  it('does not call the server when there is no refresh token', async () => {
-    getRefreshToken.mockReturnValue(null);
+  it('does not call the server when no session is stored', async () => {
+    storedSession = null;
     const {logout} = await import('../session');
 
     await logout();
-
-    expect(clearTokens).toHaveBeenCalledTimes(1);
+    expect(clearTokens).toHaveBeenCalledWith(undefined);
     expect(authApiPost).not.toHaveBeenCalled();
   });
 
-  it('swallows server errors without leaving local state in a half-cleared shape', async () => {
+  it('swallows server logout errors after local state is cleared', async () => {
     authApiPost.mockRejectedValue(new Error('network down'));
     const {logout} = await import('../session');
 
-    // Must not reject — local logout has already completed.
     await expect(logout()).resolves.toBeUndefined();
     expect(clearTokens).toHaveBeenCalledTimes(1);
-    // Let the rejected promise settle so vitest doesn't warn about an
-    // unhandled rejection.
     await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  it('hydrates authoritative user and completion state from /authn/session/', async () => {
+    authApiGet.mockResolvedValue({
+      data: {
+        user: {
+          member_uuid: 'member-a',
+          email: 'current@example.com',
+          phone: '+12025550123',
+          profile_image: '/media/avatar.png',
+          is_staff: true,
+          first_name: '',
+          last_name: 'Member',
+          organization: 'UC Merced',
+        },
+        requires_profile_completion: true,
+        next_step: 'complete_profile',
+      },
+    });
+    const {bootstrapAuthSession} = await import('../session');
+
+    const result = await bootstrapAuthSession();
+
+    expect(authApiGet).toHaveBeenCalledWith('/authn/session/');
+    expect(updateStoredSessionProfile).toHaveBeenCalledWith(
+      {generation: 'generation-a', refresh: 'refresh-token'},
+      expect.objectContaining({
+        member_uuid: 'member-a',
+        email: 'current@example.com',
+        phone: '+12025550123',
+        profile_image: '/media/avatar.png',
+        is_staff: true,
+      }),
+      true,
+    );
+    expect(result?.user.email).toBe('current@example.com');
+  });
+
+  it('clears the guarded session when the authoritative endpoint rejects it', async () => {
+    authApiGet.mockRejectedValue({
+      response: {status: 401},
+      definitive: true,
+    });
+    const eventSpy = vi.fn();
+    window.addEventListener('i2g-auth-state-change', eventSpy);
+    const {bootstrapAuthSession} = await import('../session');
+
+    await expect(bootstrapAuthSession()).resolves.toBeNull();
+
+    expect(clearTokens).toHaveBeenCalledWith({
+      generation: 'generation-a',
+      refresh: 'refresh-token',
+    });
+    expect(eventSpy).toHaveBeenCalledTimes(1);
+    window.removeEventListener('i2g-auth-state-change', eventSpy);
+  });
+
+  it('preserves an expired session when refresh failed transiently', async () => {
+    const transientRefreshFailure = {response: {status: 401}};
+    authApiGet.mockRejectedValue(transientRefreshFailure);
+    const {bootstrapAuthSession} = await import('../session');
+
+    await expect(bootstrapAuthSession()).resolves.toBeNull();
+
+    expect(isDefinitiveAuthFailure).toHaveBeenCalledWith(
+      transientRefreshFailure,
+    );
+    expect(clearTokens).not.toHaveBeenCalled();
+    expect(storedSession).toEqual(baseSession);
   });
 });

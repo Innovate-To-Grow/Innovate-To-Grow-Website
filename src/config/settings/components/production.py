@@ -6,6 +6,7 @@ come from environment variables -- nothing is hard-coded for production use.
 """
 
 import os
+import tempfile
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -110,11 +111,23 @@ if CORS_ALLOW_CREDENTIALS and CORS_ALLOWED_ORIGINS:
                 "When CORS_ALLOW_CREDENTIALS=True, only specific http(s):// origins are allowed."
             )
 
-# CSP header (report-only mode — promote to enforcing after monitoring)
-try:
-    MIDDLEWARE += ["apps.core.middleware.ContentSecurityPolicyMiddleware"]  # noqa: F405, F821
-except NameError:
-    pass  # MIDDLEWARE not yet defined when this module is imported standalone (e.g., in tests)
+# CSP starts in report-only mode. Promotion is an explicit configuration
+# change after the documented seven-day observation window.
+CSP_REPORT_ONLY = _get_bool_env("CSP_REPORT_ONLY", True)
+CSP_REPORT_RATE_LIMIT = _get_int_env("CSP_REPORT_RATE_LIMIT", 60)
+CSP_REPORT_RATE_WINDOW_SECONDS = _get_int_env("CSP_REPORT_RATE_WINDOW_SECONDS", 60)
+CSP_SCRIPT_SOURCES = (
+    "'self'",
+    "https://cdn.jsdelivr.net",
+)
+CSP_STYLE_SOURCES = ("'self'", "https://fonts.googleapis.com")
+CSP_FONT_SOURCES = ("'self'", "data:", "https://fonts.gstatic.com")
+CSP_IMAGE_SOURCES = ("'self'", "data:", "blob:")
+CSP_CONNECT_SOURCES = (
+    "'self'",
+    "https://fonts.googleapis.com",
+    "https://fonts.gstatic.com",
+)
 
 # AWS S3 storage (static files and media uploads)
 AWS_STORAGE_BUCKET_NAME = _get_required_env("AWS_STORAGE_BUCKET_NAME")
@@ -143,17 +156,17 @@ STORAGES = {
         },
     },
     "staticfiles": {
-        "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+        "BACKEND": "storages.backends.s3.S3ManifestStaticStorage",
         "OPTIONS": {
             "bucket_name": AWS_STORAGE_BUCKET_NAME,
             "region_name": AWS_S3_REGION_NAME,
             "location": "static",
-            # Static assets are release artifacts. They must replace older
-            # files with the same path so non-hashed admin JS/CSS updates go live.
-            "file_overwrite": True,
+            # Content-hashed static files are immutable release artifacts.
+            # Old hashes remain available throughout the rollback window.
+            "file_overwrite": False,
             "querystring_auth": False,
             "default_acl": None,
-            "object_parameters": AWS_S3_OBJECT_PARAMETERS,
+            "object_parameters": {"CacheControl": "public, max-age=31536000, immutable"},
         },
     },
 }
@@ -193,7 +206,10 @@ CACHES = (
     else {
         "default": {
             "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-            "LOCATION": os.environ.get("DJANGO_CACHE_DIR", "/tmp/innovate-to-grow-cache"),
+            "LOCATION": os.environ.get(
+                "DJANGO_CACHE_DIR",
+                os.path.join(tempfile.gettempdir(), "innovate-to-grow-cache"),
+            ),
             "KEY_PREFIX": "i2g",
             "TIMEOUT": 300,
         }

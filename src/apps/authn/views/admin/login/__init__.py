@@ -11,7 +11,6 @@ from apps.authn.services.email_challenges import (
     AuthChallengeDeliveryError,
     AuthChallengeInvalid,
     AuthChallengeThrottled,
-    consume_login_or_registration_challenge,
     issue_email_challenge,
     verify_email_code,
 )
@@ -32,7 +31,6 @@ __all__ = [
     "AuthChallengeThrottled",
     "Member",
     "PURPOSE",
-    "consume_login_or_registration_challenge",
     "issue_email_challenge",
     "verify_email_code",
 ]

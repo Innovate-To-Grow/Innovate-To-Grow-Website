@@ -139,6 +139,7 @@ class ResetVendorTest(TestCase):
 
     def test_reset_mysql_drops_each_table(self):
         connection, cursor = _cursor_mock()
+        connection.ops.quote_name.side_effect = lambda name: f"`{name.replace('`', '``')}`"
         cursor.fetchall.return_value = [("members",), ("events",)]
 
         helpers.reset_mysql(connection)
@@ -207,6 +208,7 @@ class ResetSqliteTest(TestCase):
 
     def test_drop_sqlite_tables_skips_sequence_table(self):
         connection, cursor = _cursor_mock()
+        connection.ops.quote_name.side_effect = lambda name: f'"{name.replace(chr(34), chr(34) * 2)}"'
         cursor.fetchall.return_value = [("members",), ("sqlite_sequence",)]
 
         helpers.drop_sqlite_tables(connection)

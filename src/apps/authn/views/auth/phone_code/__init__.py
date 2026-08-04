@@ -60,26 +60,42 @@ class PhoneAuthVerifyCodeView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        phone_number = serializer.validated_data["phone_number"]
+        phone_number = serializer.validated_data.get("phone_number")
         region = serializer.validated_data["region"]
         code = serializer.validated_data["code"]
+        challenge_id = serializer.validated_data.get("challenge_id")
 
-        national = normalize_to_national(phone_number, region)
-        e164 = national_to_e164(national, region)
+        e164 = None
+        if phone_number:
+            national = normalize_to_national(phone_number, region)
+            e164 = national_to_e164(national, region)
+
+        def complete_auth(challenge):
+            verified_e164 = getattr(challenge, "phone_number", None) or e164
+            if not verified_e164:
+                raise PhoneVerificationInvalid
+            national = normalize_to_national(verified_e164, region)
+            member, flow = resolve_or_create_member_by_phone(national, region)
+            message = "Login successful." if flow == "login" else "Registration successful."
+            return build_auth_success_payload(member, message)
+
         try:
-            check_phone_verification(e164, code)  # consumes the one-time OTP
+            payload = check_phone_verification(
+                e164,
+                code,
+                challenge_id=challenge_id,
+                purpose="phone_auth",
+                context_identifier=region,
+                approved_callback=complete_auth,
+            )
         except PhoneVerificationInvalid:
             return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
         except PhoneVerificationThrottled:
             return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         except PhoneVerificationDeliveryError:
             return Response({"detail": PHONE_VERIFICATION_DELIVERY_FAILED}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-        try:
-            member, flow = resolve_or_create_member_by_phone(phone_number, region)
         except PhoneAccountInactive:
             # A deactivated account must not be revived via phone login; mirror
             # the email flow's generic invalid-code 400 (no enumeration leak).
             return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
-        message = "Login successful." if flow == "login" else "Registration successful."
-        return Response(build_auth_success_payload(member, message), status=status.HTTP_200_OK)
+        return Response(payload, status=status.HTTP_200_OK)

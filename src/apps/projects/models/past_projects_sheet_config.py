@@ -45,6 +45,13 @@ class PastProjectsSheetConfig(ActiveModel, ProjectControlModel):
     class Meta:
         verbose_name = "Project Resource"
         verbose_name_plural = "Project Resources"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=models.Q(is_active=True),
+                name="projects_one_active_sheet",
+            ),
+        ]
 
     def __str__(self):
         return self.name or "Not configured"
@@ -64,7 +71,10 @@ class PastProjectsSheetConfig(ActiveModel, ProjectControlModel):
     @classmethod
     def load(cls):
         """Return the active config, or None if no active config exists."""
-        return cls.objects.filter(is_active=True).first()
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            return None
 
     @property
     def sync_is_due(self) -> bool:

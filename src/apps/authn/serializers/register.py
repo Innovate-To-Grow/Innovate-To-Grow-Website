@@ -7,6 +7,8 @@ from __future__ import annotations
 import re
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from rest_framework import serializers
 
@@ -100,10 +102,17 @@ class RegisterSerializer(serializers.Serializer):
 
     # noinspection PyMethodMayBeStatic
     def validate(self, attrs: dict) -> dict:
+        candidate = Member(
+            first_name=attrs.get("first_name", ""),
+            last_name=attrs.get("last_name", ""),
+            organization=attrs.get("organization", ""),
+            title=attrs.get("title", ""),
+        )
         attrs["_decrypted_password"] = decrypt_password_pair(
             attrs,
             password_key="password",
             confirm_key="password_confirm",
+            user=candidate,
         )
         return attrs
 
@@ -119,6 +128,16 @@ class RegisterSerializer(serializers.Serializer):
         last_name = validated_data.get("last_name", "")
         organization = validated_data.get("organization", "")
         title = validated_data.get("title", "")
+        candidate = Member(
+            first_name=first_name,
+            last_name=last_name,
+            organization=organization or "",
+            title=title or "",
+        )
+        try:
+            validate_password(password, user=candidate)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"password": list(exc.messages)}) from exc
 
         from apps.authn.models import ContactEmail
 

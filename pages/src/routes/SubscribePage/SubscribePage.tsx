@@ -1,8 +1,7 @@
-import {useEffect, useState, type FormEvent} from 'react';
+import {useCallback, useEffect, useRef, useState, type FormEvent} from 'react';
 import {useSearchParams} from 'react-router';
 import {useAuth} from '@/features/auth';
 import {
-  getAccessToken,
   getContactEmails,
   getContactPhones,
   getProfile,
@@ -21,14 +20,7 @@ import {getSubscribeErrorMessage} from './steps/helpers';
 
 type Step = 'email' | 'code' | 'profile' | 'manage';
 type OrganizationType = 'individual' | 'organization';
-
-function hasStoredAccessToken() {
-  try {
-    return Boolean(getAccessToken());
-  } catch {
-    return false;
-  }
-}
+type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 export const SubscribePage = () => {
   const [searchParams] = useSearchParams();
@@ -63,15 +55,26 @@ export const SubscribePage = () => {
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(() => isAuthenticated && shouldStartInProfile);
+  const [profileLoadState, setProfileLoadState] = useState<LoadState>(
+    () => (isAuthenticated && shouldStartInProfile ? 'loading' : 'idle'),
+  );
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [contactEmails, setContactEmails] = useState<ContactEmail[]>([]);
   const [contactPhones, setContactPhones] = useState<ContactPhone[]>([]);
-  const [preferencesLoading, setPreferencesLoading] = useState(false);
+  const [preferencesLoadState, setPreferencesLoadState] =
+    useState<LoadState>(
+      () => (isAuthenticated && !shouldStartInProfile ? 'loading' : 'idle'),
+    );
+  const [preferencesLoadError, setPreferencesLoadError] =
+    useState<string | null>(null);
   const [preferenceSavingId, setPreferenceSavingId] = useState<string | null>(null);
   const [preferenceMessage, setPreferenceMessage] = useState<string | null>(null);
 
-  const applyProfileToForm = (nextProfile: ProfileResponse) => {
+  const profileRequestSequence = useRef(0);
+  const preferencesRequestSequence = useRef(0);
+
+  const applyProfileToForm = useCallback((nextProfile: ProfileResponse) => {
     setFirstName(nextProfile.first_name ?? '');
     setMiddleName(nextProfile.middle_name ?? '');
     setLastName(nextProfile.last_name ?? '');
@@ -82,7 +85,7 @@ export const SubscribePage = () => {
     setOrganizationType(isIndividual ? 'individual' : 'organization');
     setOrganization(isIndividual ? '' : org);
     setTitle(nextProfile.title ?? '');
-  };
+  }, []);
 
   // When auth state changes after verification, advance out of the email/code
   // steps, but do not override an in-progress profile or manage screen.
@@ -92,82 +95,68 @@ export const SubscribePage = () => {
     }
 
     if (step === 'email' || step === 'code') {
-      if (shouldStartInProfile) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- external sync: isAuthenticated flips asynchronously via the i2g-auth-state-change event (not a local handler), so this transition out of email/code must stay in the effect; showing the loader synchronously before the profile fetch is load-bearing for the auth-timing gap.
-        setProfileLoading(true);
-      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- authentication changes outside this component; advancing the wizard is synchronization with that external state.
       setStep(shouldStartInProfile ? 'profile' : 'manage');
     }
   }, [isAuthenticated, shouldStartInProfile, step]);
 
-  // Fetch profile data for the direct profile-link flow so existing account
-  // details are preserved before completion.
-  useEffect(() => {
-    const hasSession = isAuthenticated || hasStoredAccessToken();
-    if (!hasSession || step !== 'profile') {
-      return;
+  const loadProfileForForm = useCallback(async () => {
+    const requestId = ++profileRequestSequence.current;
+    setProfileLoadState('loading');
+    setProfileLoadError(null);
+    try {
+      const nextProfile = await getProfile();
+      if (requestId !== profileRequestSequence.current) return;
+      setProfile(nextProfile);
+      applyProfileToForm(nextProfile);
+      setProfileLoadState('ready');
+    } catch {
+      if (requestId !== profileRequestSequence.current) return;
+      setProfileLoadError('Failed to load your profile.');
+      setProfileLoadState('error');
     }
-
-    let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- external sync: ensures the loader shows before the async getProfile() resolves; this guards the hasStoredAccessToken auth-timing path where the effect (re)runs on a profile-link load and must not flash the form before data arrives.
-    setProfileLoading(true);
-
-    getProfile()
-      .then((nextProfile) => {
-        if (cancelled) {
-          return;
-        }
-        setProfile(nextProfile);
-        applyProfileToForm(nextProfile);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError('Failed to load your profile.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setProfileLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [step, isAuthenticated]);
+  }, [applyProfileToForm]);
 
   useEffect(() => {
-    const hasSession = isAuthenticated || hasStoredAccessToken();
-    if (!hasSession || step !== 'manage') {
-      return;
-    }
-
-    let cancelled = false;
-
-    Promise.all([getProfile(), getContactEmails(), getContactPhones()])
-      .then(([nextProfile, nextContactEmails, nextContactPhones]) => {
-        if (cancelled) {
-          return;
-        }
-        setProfile(nextProfile);
-        setContactEmails(nextContactEmails);
-        setContactPhones(nextContactPhones);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError('Failed to load subscription preferences.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setPreferencesLoading(false);
-        }
-      });
-
+    if (!isAuthenticated || step !== 'profile') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- starting the explicit async load state is synchronization with the authenticated route step.
+    void loadProfileForForm();
     return () => {
-      cancelled = true;
+      profileRequestSequence.current += 1;
     };
-  }, [step, isAuthenticated]);
+  }, [step, isAuthenticated, loadProfileForForm]);
+
+  const loadPreferences = useCallback(async () => {
+    const requestId = ++preferencesRequestSequence.current;
+    setPreferencesLoadState('loading');
+    setPreferencesLoadError(null);
+    try {
+      const [nextProfile, nextContactEmails, nextContactPhones] =
+        await Promise.all([
+          getProfile(),
+          getContactEmails(),
+          getContactPhones(),
+        ]);
+      if (requestId !== preferencesRequestSequence.current) return;
+      setProfile(nextProfile);
+      setContactEmails(nextContactEmails);
+      setContactPhones(nextContactPhones);
+      setPreferencesLoadState('ready');
+    } catch {
+      if (requestId !== preferencesRequestSequence.current) return;
+      setPreferencesLoadError('Failed to load subscription preferences.');
+      setPreferencesLoadState('error');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || step !== 'manage') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- starting the explicit async load state is synchronization with the authenticated route step.
+    void loadPreferences();
+    return () => {
+      preferencesRequestSequence.current += 1;
+    };
+  }, [step, isAuthenticated, loadPreferences]);
 
   const clearPageError = () => {
     setError(null);
@@ -217,10 +206,8 @@ export const SubscribePage = () => {
           ? await verifyPhoneAuthCode(authValue, code, '1-US')
           : await verifyEmailAuthCode(authValue, code);
       if (result.requires_profile_completion) {
-        setProfileLoading(true);
         setStep('profile');
       } else {
-        setPreferencesLoading(true);
         setStep('manage');
       }
     } catch (err: unknown) {
@@ -266,7 +253,6 @@ export const SubscribePage = () => {
         clearProfileCompletionRequirement();
       }
       setProfile(updated);
-      setPreferencesLoading(true);
       setStep('manage');
     } catch (err: unknown) {
       setError(getSubscribeErrorMessage(err));
@@ -366,11 +352,7 @@ export const SubscribePage = () => {
       )}
 
       {step === 'profile' && (
-        profileLoading ? (
-          <div className="subscribe-section" role="status">
-            Loading your profile...
-          </div>
-        ) : (
+        profileLoadState === 'ready' ? (
           <ProfileStep
             firstName={firstName}
             middleName={middleName}
@@ -407,21 +389,54 @@ export const SubscribePage = () => {
             }}
             onSubmit={handleProfileSubmit}
           />
+        ) : profileLoadState === 'error' ? (
+          <div className="subscribe-section" role="alert">
+            <p className="subscribe-hint">{profileLoadError}</p>
+            <button
+              type="button"
+              className="subscribe-submit"
+              onClick={() => void loadProfileForForm()}
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div className="subscribe-section" role="status">
+            Loading your profile...
+          </div>
         )
       )}
 
       {step === 'manage' && (
-        <ManageStep
-          profile={profile}
-          contactEmails={contactEmails}
-          contactPhones={contactPhones}
-          loading={preferencesLoading}
-          savingId={preferenceSavingId}
-          message={preferenceMessage}
-          onPrimaryEmailToggle={handlePrimaryEmailToggle}
-          onContactEmailToggle={handleContactEmailToggle}
-          onContactPhoneToggle={handleContactPhoneToggle}
-        />
+        preferencesLoadState === 'ready' && profile ? (
+          <ManageStep
+            profile={profile}
+            contactEmails={contactEmails}
+            contactPhones={contactPhones}
+            savingId={preferenceSavingId}
+            message={preferenceMessage}
+            onPrimaryEmailToggle={handlePrimaryEmailToggle}
+            onContactEmailToggle={handleContactEmailToggle}
+            onContactPhoneToggle={handleContactPhoneToggle}
+          />
+        ) : preferencesLoadState === 'error' ? (
+          <div className="subscribe-section" role="alert">
+            <p className="subscribe-hint">{preferencesLoadError}</p>
+            <button
+              type="button"
+              className="subscribe-submit"
+              onClick={() => void loadPreferences()}
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div className="subscribe-section" role="status">
+            <p className="subscribe-hint">
+              Loading subscription preferences...
+            </p>
+          </div>
+        )
       )}
     </div>
   );

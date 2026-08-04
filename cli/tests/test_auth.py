@@ -84,6 +84,31 @@ def test_login_exchange_failure_raises():
         )
 
 
+def test_token_exchange_does_not_trust_ambient_proxy_environment(monkeypatch):
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"access_token": "TOK"}
+
+    class Session:
+        trust_env = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def post(self, *_args, **_kwargs):
+            assert self.trust_env is False
+            return Response()
+
+    monkeypatch.setattr(auth.requests, "Session", Session)
+    assert auth._exchange("https://b", "code", "verifier", "http://127.0.0.1/callback") == {"access_token": "TOK"}
+
+
 def test_login_rejects_non_https_base_url():
     with pytest.raises(CliError) as exc:
         auth.login(

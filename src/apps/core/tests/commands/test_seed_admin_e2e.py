@@ -21,6 +21,17 @@ class SeedAdminE2ECommandTests(TestCase):
             with self.assertRaisesMessage(CommandError, "production settings"):
                 call_command("seed_admin_e2e", "--yes")
 
+    def test_refuses_password_rejected_by_django_validators(self):
+        with self.assertRaisesMessage(CommandError, "Refusing weak E2E admin password"):
+            call_command(
+                "seed_admin_e2e",
+                "--yes",
+                email="admin-e2e-test@example.com",
+                password="password",
+                nonstaff_email="nonstaff-e2e-test@example.com",
+                action_email="action-e2e-test@example.com",
+            )
+
     def test_seeds_idempotent_admin_nonstaff_action_contact_and_project_data(self):
         out = io.StringIO()
         options = {

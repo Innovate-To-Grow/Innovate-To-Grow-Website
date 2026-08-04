@@ -38,11 +38,12 @@ def resolve_cli_model(app_label, model_name, *, write, actor=None):
     return model
 
 
-def cli_get_object(model, pk):
+def cli_get_object(model, pk, *, for_update: bool = False):
     """Fetch a row by pk. ``DoesNotExist`` propagates (mapped to 404 by the view);
     a malformed pk becomes an ``ActionRequestError`` (mapped to 400)."""
     try:
-        return model.objects.get(pk=pk)
+        queryset = model.objects.select_for_update() if for_update else model.objects
+        return queryset.get(pk=pk)
     except model.DoesNotExist:
         raise
     except (TypeError, ValueError, ValidationError) as exc:

@@ -2,8 +2,7 @@
 
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse, HttpResponseRedirect
-from django.template.loader import render_to_string
+from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
@@ -59,20 +58,23 @@ def inbox_detail_fragment_view(request, uid):
         msg = inbox_api.fetch_inbox_message(uid, folder=folder)
     except inbox_api.InboxError as exc:
         inbox_api.logger.warning("Inbox message uid=%s could not be loaded: %s", uid, exc)
-        return HttpResponse(
-            f'<div class="p-4 text-sm text-red-600">{inbox_api.INBOX_MESSAGE_ERROR_MESSAGE}</div>',
-            status=200,
+        return TemplateResponse(
+            request,
+            "admin/mail/inbox/_fragment_error.html",
+            {"error_message": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE},
         )
     except Exception:
         inbox_api.logger.exception("Unexpected error fetching message uid=%s.", uid)
-        return HttpResponse(
-            f'<div class="p-4 text-sm text-red-600">{inbox_api.INBOX_MESSAGE_ERROR_MESSAGE}</div>',
-            status=200,
+        return TemplateResponse(
+            request,
+            "admin/mail/inbox/_fragment_error.html",
+            {"error_message": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE},
         )
 
     body_html = message_body_html(msg)
     scam_analysis = inbox_api.assess_email(msg, folder=folder)
-    html = render_to_string(
+    return TemplateResponse(
+        request,
         "admin/mail/inbox/_inbox_preview.html",
         {
             "msg": msg,
@@ -82,6 +84,4 @@ def inbox_detail_fragment_view(request, uid):
             "scam_analysis": scam_analysis,
             "folder": folder,
         },
-        request=request,
     )
-    return HttpResponse(html)

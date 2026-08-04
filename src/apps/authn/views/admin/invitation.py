@@ -3,6 +3,7 @@ View for accepting admin invitations (plain Django, not DRF).
 """
 
 from django.contrib import admin
+from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.db import transaction
 from django.http import HttpResponse
@@ -98,7 +99,9 @@ class AcceptInvitationView(View):
                 is_staff=True,
                 is_active=True,
             )
-            member.set_password(form.cleaned_data["password1"])
+            password = form.cleaned_data["password1"]
+            validate_password(password, user=member)
+            member.set_password(password)
             member.save()
 
             self._attach_invitation_email(member, invitation)

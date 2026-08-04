@@ -5,10 +5,7 @@ import {mintFakeJwt, profileResponse} from './factories';
 // Storage keys mirror pages/src/features/auth/api/storage.ts. Kept as literals
 // here because addInitScript serializes its callback into the browser context
 // and cannot import app modules.
-const ACCESS_TOKEN_KEY = 'i2g_access_token';
-const REFRESH_TOKEN_KEY = 'i2g_refresh_token';
-const USER_KEY = 'i2g_user';
-const PROFILE_COMPLETION_REQUIRED_KEY = 'i2g_profile_completion_required';
+const AUTH_SESSION_KEY = 'i2g_auth_session';
 
 export interface SeedAuthOptions {
   user?: Partial<User>;
@@ -45,25 +42,25 @@ export async function seedAuthenticatedSession(
   const access = mintFakeJwt({exp: opts.accessExp});
 
   await page.addInitScript(
-    ({accessToken, refreshToken, userJson, completion, keys}) => {
-      localStorage.setItem(keys.access, accessToken);
-      localStorage.setItem(keys.refresh, refreshToken);
-      localStorage.setItem(keys.user, userJson);
-      if (completion) {
-        sessionStorage.setItem(keys.completion, 'true');
-      }
+    ({accessToken, refreshToken, userJson, completion, sessionKey}) => {
+      localStorage.setItem(
+        sessionKey,
+        JSON.stringify({
+          version: 1,
+          generation: 'e2e-seeded-generation',
+          access: accessToken,
+          refresh: refreshToken,
+          user: JSON.parse(userJson),
+          requires_profile_completion: completion,
+        }),
+      );
     },
     {
       accessToken: access,
       refreshToken: 'refresh-e2e',
       userJson: JSON.stringify(user),
       completion: Boolean(opts.requiresProfileCompletion),
-      keys: {
-        access: ACCESS_TOKEN_KEY,
-        refresh: REFRESH_TOKEN_KEY,
-        user: USER_KEY,
-        completion: PROFILE_COMPLETION_REQUIRED_KEY,
-      },
+      sessionKey: AUTH_SESSION_KEY,
     },
   );
 
@@ -82,6 +79,21 @@ export async function seedAuthenticatedSession(
   const profileRef = {
     current: profileResponse({email: user.email, member_uuid: user.member_uuid, ...opts.profile}),
   };
+  await page.route('**/authn/session/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {
+          ...profileRef.current,
+          phone: user.phone ?? '',
+          is_staff: Boolean(user.is_staff),
+        },
+        requires_profile_completion: Boolean(opts.requiresProfileCompletion),
+        next_step: opts.requiresProfileCompletion ? 'complete_profile' : 'account',
+      }),
+    }),
+  );
   let patchPayloads: unknown[] = [];
   if (opts.mockProfile !== false) {
     patchPayloads = await mockProfileEndpoint(page, profileRef);
@@ -176,7 +188,19 @@ export async function mockAccountDashboard(
 ): Promise<void> {
   const email = opts.email ?? 'member@example.com';
   const authEmails = email.includes('@') ? [email] : [];
-  await mockProfileEndpoint(page, {current: profileResponse({email})});
+  const profileRef = {current: profileResponse({email})};
+  await mockProfileEndpoint(page, profileRef);
+  await page.route('**/authn/session/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {...profileRef.current, phone: '', is_staff: false},
+        requires_profile_completion: false,
+        next_step: 'account',
+      }),
+    }),
+  );
   await page.route('**/event/my-tickets/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
   );

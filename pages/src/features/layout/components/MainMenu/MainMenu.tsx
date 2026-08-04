@@ -1,3 +1,4 @@
+import {useCallback, useRef} from 'react';
 import { router } from '@/app/router';
 import {MemberMenu} from './parts/MemberMenu';
 import {MenuTree} from './parts/MenuTree';
@@ -23,7 +24,15 @@ export const MainMenu = () => {
     user,
   } = useMainMenuState();
 
-  const toggleMobileMenu = () => setIsMobileOpen((prev) => !prev);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const toggleMobileMenu = useCallback(
+    () => setIsMobileOpen((prev) => !prev),
+    [setIsMobileOpen],
+  );
+  const closeMobileMenu = useCallback(
+    () => setIsMobileOpen(false),
+    [setIsMobileOpen],
+  );
 
   const handleDesktopToggle = (index: number, hasChildren: boolean) => {
     if (!hasChildren || window.innerWidth <= 992) return;
@@ -47,10 +56,12 @@ export const MainMenu = () => {
       <div className="site-header-top">
         <div className="site-header-container site-header-top-inner">
           <button
+            ref={mobileMenuTriggerRef}
             type="button"
             className={`site-header-mobile-toggle ${isMobileOpen ? 'is-active' : ''}`}
             aria-label="Toggle menu"
             aria-controls="mobile-menu"
+            aria-expanded={isMobileOpen}
             onClick={toggleMobileMenu}
           >
             <span className="site-header-mobile-toggle-bar" />
@@ -178,7 +189,8 @@ export const MainMenu = () => {
         isAuthenticated={isAuthenticated}
         user={user}
         openItemIndex={openItemIndex}
-        onClose={toggleMobileMenu}
+        triggerRef={mobileMenuTriggerRef}
+        onClose={closeMobileMenu}
         onDesktopOpen={handleDesktopOpen}
         onDesktopClose={handleDesktopClose}
         onDesktopToggle={handleDesktopToggle}

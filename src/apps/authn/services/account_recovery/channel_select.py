@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from apps.authn.constants import RECOVERY_CHANNEL_UNAVAILABLE
 from apps.authn.services.email.auth_email import get_member_auth_emails, normalize_email
 
 from .recovery import NoRecoveryChannelError
@@ -75,6 +76,4 @@ def select_recovery_channel(member, *, requested_email: str | None = None) -> Re
         e164 = phone.to_e164()
         return RecoveryChannel("sms", e164=e164, masked_destination=mask_phone(e164))
 
-    raise NoRecoveryChannelError(
-        "No verified email or phone is available for password verification. Add and verify a contact method first."
-    )
+    raise NoRecoveryChannelError(RECOVERY_CHANNEL_UNAVAILABLE)

@@ -1,11 +1,22 @@
+import hashlib
 import json
 import logging
+import re
+import secrets
+from urllib.parse import urlsplit
 
+from django.conf import settings
+from django.core.cache import cache
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 logger = logging.getLogger(__name__)
+
+_SENSITIVE_CSP_PATH_SEGMENT = re.compile(
+    r"(?P<prefix>/(?:invite|preview|resubscribe|unsubscribe)/)[^/]+",
+    flags=re.IGNORECASE,
+)
 
 
 class HealthCheckMiddleware:
@@ -66,42 +77,210 @@ class HealthCheckMiddleware:
 
 
 class ContentSecurityPolicyMiddleware:
-    """Add a Content-Security-Policy-Report-Only header to all responses.
+    """Add the configured CSP using the CMS iframe policy as its source of truth."""
 
-    Starts in report-only mode so it doesn't break anything.
-    Promote to enforcing (``Content-Security-Policy``) after monitoring.
-
-    Violations are reported to ``/csp-report/`` — that endpoint logs them so
-    we can tighten the policy (especially ``style-src 'unsafe-inline'``)
-    before promoting to enforcing mode.
-    """
-
-    CSP_HEADER = (
-        "default-src 'self'; "
-        "script-src 'self' https://esm.run https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: https:; "
-        "font-src 'self' data:; "
-        "frame-src 'self' https://www.youtube.com https://*.youtube.com "
-        "https://www.youtube-nocookie.com https://*.youtube-nocookie.com "
-        "https://player.vimeo.com https://*.vimeo.com "
-        "https://docs.google.com https://forms.google.com https://www.google.com "
-        "https://calendly.com https://*.calendly.com "
-        "https://www.figma.com "
-        "https://codesandbox.io https://*.codesandbox.io "
-        "https://www.typeform.com https://form.typeform.com; "
-        "connect-src 'self'; "
-        "report-uri /csp-report/"
+    _HOST_PATTERN = re.compile(
+        r"^(?:\*\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+        r"(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$"
     )
+    _UNFOLD_THEME_STYLE_PATTERN = re.compile(
+        r"<style\b(?P<attrs>[^>]*\bid=[\"']unfold-theme-colors[\"'][^>]*)>",
+        flags=re.IGNORECASE,
+    )
+    _UNFOLD_CHANGELIST_STYLE_PATTERN = re.compile(
+        r"<style\b(?P<attrs>[^>]*)>(?=\s*#changelist table thead th:first-child \{width: inherit\})",
+        flags=re.IGNORECASE,
+    )
+    _NONCE_ATTRIBUTE_PATTERN = re.compile(r"\bnonce\s*=", flags=re.IGNORECASE)
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        # Make the nonce available before template rendering. Source-owned
+        # templates opt in explicitly; the response rewriter below is limited
+        # to two unavoidable styles from the upstream admin theme.
+        request.csp_nonce = secrets.token_urlsafe(24)
         response = self.get_response(request)
-        if "Content-Security-Policy" not in response:
-            response["Content-Security-Policy-Report-Only"] = self.CSP_HEADER
+        if "Content-Security-Policy" in response or "Content-Security-Policy-Report-Only" in response:
+            return response
+
+        report_only = getattr(settings, "CSP_REPORT_ONLY", True)
+        header_name = "Content-Security-Policy-Report-Only" if report_only else "Content-Security-Policy"
+        response[header_name] = self._build_policy(
+            request.csp_nonce,
+            allow_framing=bool(getattr(response, "xframe_options_exempt", False)),
+        )
+        self._nonce_vendor_styles(response, request.csp_nonce)
         return response
+
+    @staticmethod
+    def _configured_sources(setting_name: str, default: tuple[str, ...]) -> list[str]:
+        return [str(source).strip() for source in getattr(settings, setting_name, default) if str(source).strip()]
+
+    @staticmethod
+    def _url_origin(value: object) -> str | None:
+        """Return a CSP origin for an absolute HTTP(S) asset URL."""
+
+        try:
+            parsed = urlsplit(str(value or ""))
+            hostname = parsed.hostname
+            port = parsed.port
+        except (TypeError, ValueError):
+            return None
+        if parsed.scheme not in {"http", "https"} or not hostname:
+            return None
+        rendered_host = f"[{hostname}]" if ":" in hostname else hostname
+        rendered_port = f":{port}" if port is not None else ""
+        return f"{parsed.scheme}://{rendered_host}{rendered_port}"
+
+    def _storage_origins(self) -> list[str]:
+        origins = []
+        for setting_name in ("STATIC_URL", "MEDIA_URL"):
+            origin = self._url_origin(getattr(settings, setting_name, ""))
+            if origin:
+                origins.append(origin)
+        return list(dict.fromkeys(origins))
+
+    def _build_policy(
+        self,
+        nonce: str,
+        *,
+        allow_framing: bool = False,
+    ) -> str:
+        storage_origins = self._storage_origins()
+        script_sources = self._configured_sources(
+            "CSP_SCRIPT_SOURCES",
+            ("'self'", "https://cdn.jsdelivr.net"),
+        )
+        style_sources = self._configured_sources(
+            "CSP_STYLE_SOURCES",
+            ("'self'", "https://fonts.googleapis.com"),
+        )
+        font_sources = self._configured_sources(
+            "CSP_FONT_SOURCES",
+            ("'self'", "data:", "https://fonts.gstatic.com"),
+        )
+        image_sources = self._configured_sources(
+            "CSP_IMAGE_SOURCES",
+            ("'self'", "data:", "blob:"),
+        )
+        connect_sources = self._configured_sources(
+            "CSP_CONNECT_SOURCES",
+            ("'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"),
+        )
+        frame_sources = ["'self'"]
+        frontend_origin = self._url_origin(getattr(settings, "FRONTEND_URL", ""))
+        if frontend_origin:
+            frame_sources.append(frontend_origin)
+            connect_sources.append(frontend_origin)
+        try:
+            from apps.cms.services.embed_hosts import get_allowed_hosts
+
+            for host in get_allowed_hosts():
+                normalized = host.strip().lower()
+                if self._HOST_PATTERN.fullmatch(normalized):
+                    frame_sources.append(f"https://{normalized}")
+        except Exception:
+            # A policy lookup must never take the application down. Failing
+            # closed leaves only same-origin frames until the cache/database
+            # becomes healthy again.
+            logger.exception("Unable to load CMS embed hosts for CSP; using same-origin only")
+
+        nonce_source = f"'nonce-{nonce}'"
+        media_sources = list(dict.fromkeys(["'self'", "blob:", *storage_origins]))
+        directives = [
+            "default-src 'self'",
+            f"script-src {' '.join(dict.fromkeys([*script_sources, *storage_origins, nonce_source]))}",
+            "script-src-attr 'none'",
+            f"style-src {' '.join(dict.fromkeys([*style_sources, *storage_origins, nonce_source]))}",
+            # Django Admin, Unfold, CodeMirror, and the vendored QR scanner
+            # set presentation-only style attributes. Scope the compatibility
+            # exception to attributes; style elements still require a nonce
+            # and script handlers remain completely disabled.
+            "style-src-attr 'unsafe-inline'",
+            f"img-src {' '.join(dict.fromkeys([*image_sources, *storage_origins]))}",
+            f"font-src {' '.join(dict.fromkeys([*font_sources, *storage_origins]))}",
+            f"frame-src {' '.join(dict.fromkeys(frame_sources))}",
+            f"connect-src {' '.join(dict.fromkeys(connect_sources))}",
+            f"media-src {' '.join(media_sources)}",
+            "worker-src 'self' blob:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "report-uri /csp-report/",
+        ]
+        if not allow_framing:
+            directives.insert(-1, "frame-ancestors 'none'")
+        return "; ".join(directives)
+
+    def _nonce_vendor_styles(self, response, nonce: str) -> None:
+        """Attach the response nonce to inline styles from vendor templates.
+
+        Unfold ships dynamic inline theme styles but does not expose a nonce
+        hook. Rewriting style elements keeps those fragments compatible with
+        enforcing CSP. Inline scripts are deliberately excluded and must opt
+        in from a trusted template. Non-HTML, streaming, and encoded responses
+        are left untouched.
+        """
+
+        if getattr(response, "streaming", False):
+            return
+        content_type = response.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type not in {"text/html", "application/xhtml+xml"}:
+            return
+        if response.get("Content-Encoding", "").lower() not in {"", "identity"}:
+            return
+
+        charset = getattr(response, "charset", None) or settings.DEFAULT_CHARSET
+        try:
+            content = response.content.decode(charset)
+        except (AttributeError, LookupError, UnicodeDecodeError):
+            logger.exception("Unable to nonce CSP inline elements")
+            return
+
+        def _add_nonce(match: re.Match) -> str:
+            attrs = match.group("attrs")
+            if self._NONCE_ATTRIBUTE_PATTERN.search(attrs):
+                return match.group(0)
+            return f'<style{attrs} nonce="{nonce}">'
+
+        # Source-owned inline elements opt in from trusted templates with
+        # ``nonce="{{ request.csp_nonce }}"``. Automatically blessing every
+        # rendered tag would turn otherwise-blocked HTML injection into
+        # trusted markup. These two narrowly matched styles are the only
+        # unavoidable inline blocks in Unfold's upstream templates.
+        rewritten = self._UNFOLD_THEME_STYLE_PATTERN.sub(_add_nonce, content)
+        rewritten = self._UNFOLD_CHANGELIST_STYLE_PATTERN.sub(_add_nonce, rewritten)
+        if rewritten == content:
+            return
+        response.content = rewritten.encode(charset)
+        if "Content-Length" in response:
+            response["Content-Length"] = str(len(response.content))
+
+
+def _csp_report_rate_limited(request) -> bool:
+    """Return whether this client exceeded the bounded CSP report window."""
+
+    limit = max(int(getattr(settings, "CSP_REPORT_RATE_LIMIT", 60)), 1)
+    window = max(int(getattr(settings, "CSP_REPORT_RATE_WINDOW_SECONDS", 60)), 1)
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if getattr(settings, "NUM_PROXIES", None) and forwarded_for:
+        parts = [part.strip() for part in forwarded_for.split(",") if part.strip()]
+        ident = parts[-1] if parts else request.META.get("REMOTE_ADDR", "unknown")
+    else:
+        ident = request.META.get("REMOTE_ADDR", "unknown")
+    digest = hashlib.sha256(str(ident).encode("utf-8", errors="replace")).hexdigest()
+    key = f"csp-report-rate:{digest}"
+    try:
+        if cache.add(key, 1, timeout=window):
+            return False
+        return cache.incr(key) > limit
+    except Exception:
+        # Reporting is diagnostic. A cache outage must not affect application
+        # traffic, and downstream log-volume controls remain in place.
+        logger.exception("Unable to apply CSP report rate limit")
+        return False
 
 
 @require_POST
@@ -119,6 +298,16 @@ def csp_report(request):
     bytes on the floor if the payload isn't a real report.
     """
     try:
+        if _csp_report_rate_limited(request):
+            return HttpResponse(status=204)
+
+        try:
+            content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+        except (TypeError, ValueError):
+            content_length = 0
+        if content_length > 4096:
+            return HttpResponse(status=413)
+
         raw = request.body[:4096]
         try:
             payload = json.loads(raw.decode("utf-8", errors="replace"))
@@ -140,7 +329,29 @@ def csp_report(request):
             # ANSI escapes and other control bytes.
             s = str(value) if value is not None else ""
             s = s.replace("\r", " ").replace("\n", " ")
-            return "".join(ch for ch in s if ch.isprintable())[:256]
+            s = "".join(ch for ch in s if ch.isprintable())
+            try:
+                parsed = urlsplit(s)
+                if parsed.scheme in {"http", "https"} and parsed.hostname:
+                    # Reports can include signed or callback URLs. Keep the
+                    # route useful for diagnostics but never log credentials,
+                    # query parameters, or fragments.
+                    host = parsed.hostname
+                    if ":" in host:
+                        host = f"[{host}]"
+                    try:
+                        parsed_port = parsed.port
+                    except ValueError:
+                        parsed_port = None
+                    port = f":{parsed_port}" if parsed_port is not None else ""
+                    path = _SENSITIVE_CSP_PATH_SEGMENT.sub(
+                        r"\g<prefix><redacted>",
+                        parsed.path,
+                    )
+                    s = f"{parsed.scheme}://{host}{port}{path}"
+            except (TypeError, ValueError):
+                pass
+            return s[:256]
 
         directive = _clean(report.get("violated-directive") or report.get("effective-directive"))
         blocked = _clean(report.get("blocked-uri"))

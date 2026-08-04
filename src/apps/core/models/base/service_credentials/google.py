@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
 
 def validate_google_credentials_json(value):
@@ -46,6 +46,13 @@ class GoogleCredentialConfig(models.Model):
     class Meta:
         verbose_name = "Google Credential Config"
         verbose_name_plural = "Google Credential Configs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=models.Q(is_active=True),
+                name="core_one_active_google_config",
+            ),
+        ]
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
@@ -54,21 +61,26 @@ class GoogleCredentialConfig(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_active:
-            GoogleCredentialConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
-        super().save(*args, **kwargs)
+            with transaction.atomic():
+                list(GoogleCredentialConfig.objects.select_for_update().filter(is_active=True).exclude(pk=self.pk))
+                GoogleCredentialConfig.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     @classmethod
     def load(cls):
-        """Load the active config, falling back to the most recently updated one.
+        """Load the active config.
 
-        Returns an unsaved instance with defaults when no rows exist so that
+        Returns an unsaved instance with defaults when no active row exists so that
         callers can safely access properties like ``is_configured`` without
-        guarding against ``None``.
+        guarding against ``None``. Inactive credentials are never used as a
+        fallback.
         """
-        obj = cls.objects.filter(is_active=True).first()
-        if obj is None:
-            obj = cls.objects.order_by("-updated_at").first()
-        return obj if obj is not None else cls()
+        try:
+            return cls.objects.get(is_active=True)
+        except cls.DoesNotExist:
+            return cls()
 
     @property
     def is_configured(self):

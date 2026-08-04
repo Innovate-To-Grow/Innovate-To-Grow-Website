@@ -1,5 +1,5 @@
 import { authApi } from './client';
-import { updateStoredUser } from './storage';
+import {getStoredSession, updateStoredUser} from './storage';
 import type { AccountEmailsResponse, ProfileResponse } from './types';
 
 export const getProfile = async (): Promise<ProfileResponse> => {
@@ -20,13 +20,19 @@ export const updateProfileFields = async (data: {
 };
 
 export const uploadProfileImage = async (file: File): Promise<ProfileResponse> => {
+  const session = getStoredSession();
   const formData = new FormData();
   formData.append('profile_image', file);
   const response = await authApi.patch<ProfileResponse>('/authn/profile/', formData);
-  updateStoredUser((user) => ({
-    ...user,
-    profile_image: response.data.profile_image,
-  }));
+  if (session) {
+    updateStoredUser(
+      (user) => ({
+        ...user,
+        profile_image: response.data.profile_image,
+      }),
+      session.generation,
+    );
+  }
   return response.data;
 };
 

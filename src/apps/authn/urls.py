@@ -41,6 +41,7 @@ from .views import (
     RegisterResendCodeView,
     RegisterVerifyCodeView,
     RegisterView,
+    SessionView,
     SubscribeView,
     UnsubscribeAutoLoginView,
 )
@@ -68,6 +69,8 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(), name="logout"),
     # Token refresh
     path("refresh/", PublicTokenRefreshView.as_view(), name="token-refresh"),
+    # Authenticated frontend session bootstrap
+    path("session/", SessionView.as_view(), name="session"),
     # Password reset
     path("password-reset/request-code/", PasswordResetRequestView.as_view(), name="password-reset-request-code"),
     path("password-reset/verify-code/", PasswordResetVerifyView.as_view(), name="password-reset-verify-code"),
