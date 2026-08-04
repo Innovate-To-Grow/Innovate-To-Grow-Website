@@ -13,6 +13,7 @@ import {
   fetchCMSLivePreview,
   fetchCMSPage,
   fetchCMSPreview,
+  isCMSPageRedirectResponse,
   normalizeCMSRoute,
 } from '@/features/cms/api';
 
@@ -22,16 +23,39 @@ describe('normalizeCMSRoute', () => {
     expect(normalizeCMSRoute('/')).toBe('/');
   });
 
-  it('falls back to root for non-CMS paths and URL-like input', () => {
-    expect(normalizeCMSRoute('https://example.com/about')).toBe('/');
-    expect(normalizeCMSRoute('//example.com/about')).toBe('/');
-    expect(normalizeCMSRoute('/about\\team')).toBe('/');
-    expect(normalizeCMSRoute('/about/team!')).toBe('/');
+  it('preserves case and safe punctuation used by legacy paths', () => {
+    expect(normalizeCMSRoute('/FAQs')).toBe('/FAQs');
+    expect(normalizeCMSRoute('/Archive.v1/~old+page')).toBe('/Archive.v1/~old+page');
+    expect(normalizeCMSRoute('/Archive%2Ev1')).toBe('/Archive.v1');
+  });
+
+  it('rejects unsafe input instead of silently requesting the root page', () => {
+    expect(() => normalizeCMSRoute('https://example.com/about')).toThrow();
+    expect(() => normalizeCMSRoute('//example.com/about')).toThrow();
+    expect(() => normalizeCMSRoute('/about\\team')).toThrow();
+    expect(() => normalizeCMSRoute('/about?preview=true')).toThrow();
+    expect(() => normalizeCMSRoute('/about/%2e%2e/admin')).toThrow();
+  });
+});
+
+describe('isCMSPageRedirectResponse', () => {
+  it('only accepts permanent redirect payloads', () => {
+    expect(isCMSPageRedirectResponse({redirect_to: '/faqs', permanent: true})).toBe(true);
+    expect(isCMSPageRedirectResponse({
+      slug: 'faqs',
+      route: '/faqs',
+      title: 'FAQs',
+      page_css_class: '',
+      page_css: '',
+      meta_description: '',
+      blocks: [],
+    })).toBe(false);
   });
 });
 
 describe('fetchCMSPage', () => {
   beforeEach(() => {
+    getMock.mockReset();
     getMock.mockResolvedValue({data: {route: '/about'}});
   });
 
@@ -41,10 +65,16 @@ describe('fetchCMSPage', () => {
     expect(getMock).toHaveBeenCalledWith('/cms/pages/about/team_leads/?preview=true');
   });
 
-  it('does not pass absolute user input into the API URL', async () => {
-    await fetchCMSPage('https://example.com/about');
+  it('encodes legacy punctuation without changing case or falling back to root', async () => {
+    await fetchCMSPage('/Archive.v1/~old+page');
 
-    expect(getMock).toHaveBeenCalledWith('/cms/pages/');
+    expect(getMock).toHaveBeenCalledWith('/cms/pages/Archive.v1/~old%2Bpage/');
+  });
+
+  it('does not pass absolute user input into the API URL', async () => {
+    await expect(fetchCMSPage('https://example.com/about')).rejects.toThrow();
+
+    expect(getMock).not.toHaveBeenCalled();
   });
 });
 

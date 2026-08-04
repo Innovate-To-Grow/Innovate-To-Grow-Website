@@ -48,6 +48,8 @@ jobs:
             frontend_url: https://i2g.ucmerced.edu
             backend_url: https://api.i2g.ucmerced.edu
             api_base_url: https://api.i2g.ucmerced.edu
+            amplify_backend_proxy_url: https://api.i2g.ucmerced.edu
+            amplify_proxy_admin_paths: "false"
             storage_bucket: itg-static-assets
             ensure_default_admin: "false"
             superuser_first_name: I2G
@@ -63,6 +65,8 @@ jobs:
             frontend_url: https://demo.i2g.ucmerced.edu
             backend_url: https://demo.i2g.ucmerced.edu
             api_base_url: https://demo-api.i2g.ucmerced.edu
+            amplify_backend_proxy_url: https://demo-api.i2g.ucmerced.edu
+            amplify_proxy_admin_paths: "true"
             storage_bucket: itg-demo-static-assets
             ensure_default_admin: "true"
             superuser_first_name: Demo
@@ -215,6 +219,12 @@ jobs:
           CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
           AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
           AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
+          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
+          AMPLIFY_BACKEND_PROXY_URL: ${{ vars.AMPLIFY_BACKEND_PROXY_URL || matrix.amplify_backend_proxy_url }}
+          AMPLIFY_PROXY_ADMIN_PATHS: ${{ vars.AMPLIFY_PROXY_ADMIN_PATHS || matrix.amplify_proxy_admin_paths }}
+          AMPLIFY_CONFIG_REVISION: ${{ github.run_id }}.${{ github.run_attempt }}
+          BACKGROUND_JOBS_ENABLED: ${{ vars.BACKGROUND_JOBS_ENABLED || 'false' }}
+          BACKGROUND_JOB_METRICS_NAMESPACE: ${{ vars.BACKGROUND_JOB_METRICS_NAMESPACE }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
           ECS_TASK_FAMILY: ${{ env.ECS_TASK_FAMILY }}
@@ -286,6 +296,13 @@ jobs:
               "__BACKEND_URL__": backend_url,
               "__AWS_STORAGE_BUCKET_NAME__": env_value("AWS_STORAGE_BUCKET_NAME", "itg-static-assets"),
               "__AWS_S3_REGION_NAME__": env_value("AWS_S3_REGION_NAME", "us-west-2"),
+              "__AWS_REGION__": env_value("AWS_REGION", "us-west-2"),
+              "__AMPLIFY_APP_ID__": env_value("AMPLIFY_APP_ID"),
+              "__AMPLIFY_BACKEND_PROXY_URL__": env_value("AMPLIFY_BACKEND_PROXY_URL"),
+              "__AMPLIFY_PROXY_ADMIN_PATHS__": env_value("AMPLIFY_PROXY_ADMIN_PATHS", "false"),
+              "__AMPLIFY_CONFIG_REVISION__": env_value("AMPLIFY_CONFIG_REVISION"),
+              "__BACKGROUND_JOBS_ENABLED__": env_value("BACKGROUND_JOBS_ENABLED", "false"),
+              "__BACKGROUND_JOB_METRICS_NAMESPACE__": env_value("BACKGROUND_JOB_METRICS_NAMESPACE"),
               "__AWS_LOG_GROUP__": env_value("ECS_LOG_GROUP", "/ecs/itg-backend"),
               "__DJANGO_SUPERUSER_USERNAME__": env_value("DJANGO_SUPERUSER_USERNAME"),
               "__DJANGO_SUPERUSER_EMAIL__": env_value("DJANGO_SUPERUSER_EMAIL"),
@@ -329,20 +346,32 @@ jobs:
           taskdef["executionRoleArn"] = exec_role
           taskdef["taskRoleArn"] = task_role
 
-          container = taskdef["containerDefinitions"][0]
-          container["image"] = os.environ["IMAGE_URI"]
-          taskdef["family"] = mapping["__TASK_FAMILY__"]
-          container.setdefault("logConfiguration", {}).setdefault("options", {})["awslogs-group"] = mapping[
-              "__AWS_LOG_GROUP__"
-          ]
+          containers = {container["name"]: container for container in taskdef.get("containerDefinitions", [])}
+          try:
+              web_container = containers["itg-backend"]
+              worker_container = containers["itg-background-worker"]
+          except KeyError as exc:
+              raise SystemExit(f"Missing required ECS container: {exc.args[0]}") from exc
 
-          for item in container.get("environment", []):
+          taskdef["family"] = mapping["__TASK_FAMILY__"]
+
+          # Render the web container once, then give the worker an exact deep
+          # copy of its environment and secret references. This prevents a
+          # newly-added runtime setting from silently reaching only one
+          # process while still letting each container have its own command,
+          # port, health check, and log stream prefix.
+          web_container["image"] = os.environ["IMAGE_URI"]
+          web_log_options = web_container.setdefault("logConfiguration", {}).setdefault("options", {})
+          web_log_options["awslogs-group"] = mapping["__AWS_LOG_GROUP__"]
+          web_log_options["awslogs-region"] = mapping["__AWS_REGION__"]
+
+          for item in web_container.get("environment", []):
               value = item.get("value", "")
               if value in mapping:
                   item["value"] = mapping[value]
 
           rendered_secrets = []
-          for item in container.get("secrets", []):
+          for item in web_container.get("secrets", []):
               value_from = item.get("valueFrom", "")
               if value_from not in secret_mapping:
                   rendered_secrets.append(item)
@@ -357,16 +386,26 @@ jobs:
               require_secret_ref_arn(value_from.strip("_"), secret_arn)
               item["valueFrom"] = secret_arn
               rendered_secrets.append(item)
-          container["secrets"] = rendered_secrets
+          web_container["secrets"] = rendered_secrets
 
           # Optional DB_ENGINE override; prod defaults to PostgreSQL if unset.
           db_engine = env_value("DB_ENGINE").strip()
           if db_engine:
-              container["environment"].append({"name": "DB_ENGINE", "value": db_engine})
+              web_container["environment"].append({"name": "DB_ENGINE", "value": db_engine})
+
+          from copy import deepcopy
+
+          worker_container["image"] = web_container["image"]
+          worker_container["environment"] = deepcopy(web_container["environment"])
+          worker_container["secrets"] = deepcopy(web_container["secrets"])
+          worker_log_options = worker_container.setdefault("logConfiguration", {}).setdefault("options", {})
+          worker_log_options["awslogs-group"] = mapping["__AWS_LOG_GROUP__"]
+          worker_log_options["awslogs-region"] = mapping["__AWS_REGION__"]
 
           with open(output_path, "w", encoding="utf-8") as f:
               json.dump(taskdef, f, indent=2)
           PY
+          python aws/validate_backend_task_definition.py rendered-task-definition.json --rendered
           echo "task-definition=rendered-task-definition.json" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to ECS

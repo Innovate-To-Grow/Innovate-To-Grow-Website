@@ -64,6 +64,11 @@ class ProcessPageDataTests(TestCase):
         self.assertEqual(result["action"], "update")
         self.assertIsNotNone(existing)
 
+    def test_dry_run_reports_application_route_conflict(self):
+        page_data = {"slug": "route-conflict", "route": "/schedule", "title": "Collision"}
+        result, _, _ = validate_page_data(page_data, self.block_keys, validate_required=True)
+        self.assertTrue(any("application route" in error for error in result["errors"]))
+
     def test_process_records_exception_during_upsert(self):
         # Force replace_page_blocks to raise so the execute branch records the error.
         with patch(

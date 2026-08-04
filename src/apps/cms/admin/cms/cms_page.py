@@ -3,6 +3,7 @@ import logging
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Count
 
 from apps.cms.admin.cms.page_admin.editor import (
@@ -15,19 +16,56 @@ from apps.cms.admin.cms.page_admin.editor import (
 )
 from apps.cms.admin.cms.page_admin.import_export import export_pages_response, render_json_import
 from apps.cms.models import CMSPage
-from apps.cms.models.content.cms.cms_page import validate_cms_route
+from apps.cms.services.page_routes import apply_page_route_change
+from apps.cms.services.route_redirects import page_route_conflicts
 from apps.core.admin import BaseModelAdmin
 
 logger = logging.getLogger(__name__)
 
 
 class CMSPageAdminForm(forms.ModelForm):
+    keep_previous_url_as_redirect = forms.BooleanField(
+        required=False,
+        label="Keep previous URL as a permanent redirect",
+        help_text=(
+            "When this published page's route changes, create an active 301 mapping from the old route and "
+            "retarget existing inbound mappings to the new route."
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["keep_previous_url_as_redirect"].initial = bool(
+            self.instance.pk and self.instance.status == "published" and self.instance.route != "/"
+        )
+
     def clean_route(self):
-        route = validate_cms_route(self.cleaned_data.get("route"))
-        conflict = CMSPage.objects.filter(route=route).exclude(pk=self.instance.pk).first()
-        if conflict:
-            raise forms.ValidationError(f'Route "{route}" is already used by "{conflict.title}".')
+        route, conflicts = page_route_conflicts(
+            self.cleaned_data.get("route"),
+            exclude_page_id=self.instance.pk,
+        )
+        if conflicts:
+            raise forms.ValidationError(conflicts[0].message)
         return route
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not self.instance.pk or not cleaned_data.get("keep_previous_url_as_redirect"):
+            return cleaned_data
+
+        old_route = CMSPage.objects.filter(pk=self.instance.pk).values_list("route", flat=True).first()
+        route_changed = old_route is not None and old_route != cleaned_data.get("route")
+        if route_changed and old_route == "/":
+            self.add_error(
+                "keep_previous_url_as_redirect",
+                "The site root cannot be a redirect source. Uncheck this option to rename the page.",
+            )
+        if route_changed and cleaned_data.get("status") != "published":
+            self.add_error(
+                "keep_previous_url_as_redirect",
+                "The renamed destination must remain published to create an active redirect.",
+            )
+        return cleaned_data
 
     class Meta:
         model = CMSPage
@@ -63,7 +101,18 @@ class CMSPageAdmin(BaseModelAdmin):
     fieldsets = (
         (
             "Page Info",
-            {"fields": ("slug", "route", "title", "meta_description", "page_css_class", "status", "sort_order")},
+            {
+                "fields": (
+                    "slug",
+                    "route",
+                    "keep_previous_url_as_redirect",
+                    "title",
+                    "meta_description",
+                    "page_css_class",
+                    "status",
+                    "sort_order",
+                )
+            },
         ),
         (
             "Page CSS",
@@ -80,6 +129,20 @@ class CMSPageAdmin(BaseModelAdmin):
         qs = super().get_queryset(request)
         return qs.annotate(_block_count=Count("blocks"))
 
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if obj is not None:
+            return fieldsets
+
+        # A new page has no previous public URL to preserve.
+        result = []
+        for title, options in fieldsets:
+            options = options.copy()
+            fields = options.get("fields", ())
+            options["fields"] = tuple(field for field in fields if field != "keep_previous_url_as_redirect")
+            result.append((title, options))
+        return tuple(result)
+
     @admin.display(description="Blocks", ordering="_block_count")
     def block_count(self, obj):
         return getattr(obj, "_block_count", obj.blocks.count())
@@ -89,6 +152,32 @@ class CMSPageAdmin(BaseModelAdmin):
         if obj and obj.status == "published":
             readonly.append("slug")
         return readonly
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None:
+            from apps.cms.models import RouteRedirect
+
+            if RouteRedirect.objects.filter(is_active=True, destination_path=obj.route).exists():
+                return False
+        return super().has_delete_permission(request, obj)
+
+    def get_deleted_objects(self, objs, request):
+        deleted_objects, model_count, perms_needed, protected = super().get_deleted_objects(objs, request)
+        routes = [obj.route for obj in objs]
+        if routes:
+            from apps.cms.models import RouteRedirect
+
+            protected = [
+                *protected,
+                *(
+                    f'Active route redirect "{source}" points to "{destination}".'
+                    for source, destination in RouteRedirect.objects.filter(
+                        is_active=True,
+                        destination_path__in=routes,
+                    ).values_list("source_path", "destination_path")
+                ),
+            ]
+        return deleted_objects, model_count, perms_needed, protected
 
     def get_urls(self):
         from django.urls import path
@@ -129,6 +218,20 @@ class CMSPageAdmin(BaseModelAdmin):
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         save_blocks_from_json(request, form.instance, messages)
+
+    def save_model(self, request, obj, form, change):
+        old_route = None
+        if change and obj.pk:
+            old_route = CMSPage.objects.filter(pk=obj.pk).values_list("route", flat=True).first()
+
+        with transaction.atomic():
+            super().save_model(request, obj, form, change)
+            if old_route and old_route != obj.route:
+                apply_page_route_change(
+                    page=obj,
+                    old_route=old_route,
+                    keep_redirect=bool(form.cleaned_data.get("keep_previous_url_as_redirect")),
+                )
 
     def preview_store_view(self, request):
         # ``admin_view`` only enforces is_staff, so re-check per-app access here:

@@ -33,6 +33,20 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "")
 SES_CONFIGURATION_SET_NAME = os.environ.get("SES_CONFIGURATION_SET_NAME", "")
 SES_SNS_TOPIC_ARN = os.environ.get("SES_SNS_TOPIC_ARN", "")
 
+# Route redirects are reconciled with Amplify through the ECS task role's
+# ambient boto3 credentials.  The app ID is optional so local installations
+# retain the SPA fallback without attempting provider I/O.
+AWS_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_S3_REGION_NAME", "us-west-2")).strip()
+AMPLIFY_APP_ID = os.environ.get("AMPLIFY_APP_ID", "").strip()
+AMPLIFY_BACKEND_PROXY_URL = os.environ.get("AMPLIFY_BACKEND_PROXY_URL", "").strip().rstrip("/")
+AMPLIFY_PROXY_ADMIN_PATHS = os.environ.get("AMPLIFY_PROXY_ADMIN_PATHS", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+AMPLIFY_CONFIG_REVISION = os.environ.get("AMPLIFY_CONFIG_REVISION", "").strip()
+
 # Durable PostgreSQL outbox rollout. Deploy schema + worker with this false,
 # verify the worker heartbeat, then set true on web tasks to begin queueing.
 BACKGROUND_JOBS_ENABLED = os.environ.get("BACKGROUND_JOBS_ENABLED", "false").strip().lower() in {

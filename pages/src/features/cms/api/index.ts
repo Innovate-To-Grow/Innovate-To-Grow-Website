@@ -12,8 +12,14 @@ import type {SectionGroupData} from '@/features/cms/components/blocks/navigation
 import type {ProposalCardsData} from '@/features/cms/components/blocks/showcase/ProposalCardsBlock';
 import type {SponsorYearBlockData} from '@/features/cms/components/blocks/showcase/SponsorYearBlock';
 
-const CMS_ROUTE_SEGMENT_RE = /^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$/;
 const URL_SCHEME_RE = /^[A-Za-z][A-Za-z0-9+.-]*:/;
+
+function hasControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+}
 
 interface CMSBlockBase {
   block_type: string;
@@ -54,29 +60,67 @@ export interface CMSPageResponse {
   expires_at?: string;
 }
 
+export interface CMSPageRedirectResponse {
+  redirect_to: string;
+  permanent: true;
+}
+
+export type CMSPageFetchResponse = CMSPageResponse | CMSPageRedirectResponse;
+
+export function isCMSPageRedirectResponse(
+  response: CMSPageFetchResponse,
+): response is CMSPageRedirectResponse {
+  return (
+    'redirect_to' in response
+    && typeof response.redirect_to === 'string'
+    && response.permanent === true
+  );
+}
+
 export function normalizeCMSRoute(route: string): string {
   const trimmed = route.trim();
-  if (
-    !trimmed ||
-    trimmed === '/' ||
-    URL_SCHEME_RE.test(trimmed) ||
-    trimmed.startsWith('//') ||
-    trimmed.includes('\\')
-  ) {
+  if (!trimmed || trimmed === '/') {
     return '/';
   }
 
-  const segments = trimmed.split('/').filter(Boolean);
-  if (!segments.every((segment) => CMS_ROUTE_SEGMENT_RE.test(segment))) {
-    return '/';
+  if (
+    URL_SCHEME_RE.test(trimmed)
+    || trimmed.startsWith('//')
+    || trimmed.includes('\\')
+    || trimmed.includes('?')
+    || trimmed.includes('#')
+    || hasControlCharacter(trimmed)
+  ) {
+    throw new Error('CMS route must be a safe site-relative pathname.');
   }
+
+  const segments = trimmed.split('/').filter(Boolean).map((segment) => {
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(segment);
+    } catch {
+      throw new Error('CMS route contains invalid percent encoding.');
+    }
+
+    if (
+      decoded === '.'
+      || decoded === '..'
+      || decoded.includes('/')
+      || decoded.includes('\\')
+      || hasControlCharacter(decoded)
+    ) {
+      throw new Error('CMS route contains an unsafe path segment.');
+    }
+    return decoded;
+  });
+
   return segments.length > 0 ? `/${segments.join('/')}` : '/';
 }
 
 export async function fetchCMSPage(
   route: string,
   preview = false,
-): Promise<CMSPageResponse> {
+): Promise<CMSPageFetchResponse> {
   const normalizedRoute = normalizeCMSRoute(route);
   const path = normalizedRoute
     .split('/')
@@ -87,7 +131,7 @@ export async function fetchCMSPage(
   if (preview) params.set('preview', 'true');
   const qs = params.toString();
   const url = `/cms/pages/${path}${path ? '/' : ''}${qs ? `?${qs}` : ''}`;
-  const response = await api.get<CMSPageResponse>(url);
+  const response = await api.get<CMSPageFetchResponse>(url);
   return response.data;
 }
 

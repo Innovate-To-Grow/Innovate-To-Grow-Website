@@ -7,6 +7,7 @@ from .cms import (
     CMSEmbedAllowedHost,
     CMSEmbedWidget,
     CMSPage,
+    RouteRedirect,
     validate_block_data,
 )
 from .layout import FooterContent, Menu, SiteSettings, StyleSheet
@@ -20,6 +21,7 @@ __all__ = [
     "StyleSheet",
     # CMS
     "CMSPage",
+    "RouteRedirect",
     "CMSBlock",
     "CMSEmbedWidget",
     "CMSEmbedAllowedHost",

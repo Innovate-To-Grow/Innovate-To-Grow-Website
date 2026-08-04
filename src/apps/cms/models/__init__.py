@@ -18,6 +18,7 @@ from .content import (
     NewsFeedSource,
     NewsSyncLog,
     PageView,
+    RouteRedirect,
     SiteSettings,
     StyleSheet,
     validate_block_data,
@@ -32,6 +33,7 @@ __all__ = [
     "StyleSheet",
     # CMS
     "CMSPage",
+    "RouteRedirect",
     "CMSBlock",
     "CMSEmbedWidget",
     "CMSEmbedAllowedHost",

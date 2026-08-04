@@ -237,6 +237,64 @@ Fetches articles from all configured `NewsFeedSource` records. Results logged in
 
 For production, this should be run on a schedule (cron or scheduled task).
 
+## Route redirect operations
+
+Create exact legacy-path mappings in **Content Management System → Route Redirects**. Confirm that the destination is already public, save the inactive record, review the conflict result, and then activate it. Do not create redirect records through migrations or fixtures for one-off business URLs.
+
+An active record takes effect in the SPA immediately. The admin separately reports the Amplify edge state:
+
+- **Synced** — the corresponding HTTP 301 rules have been reconciled ahead of the SPA fallback.
+- **Pending** — the database change is live in the SPA but the background worker or Amplify configuration has not completed edge publication.
+- **Failed** — inspect the sanitized error, correct IAM/configuration, and use **Retry edge sync**.
+
+Edge publication requires the durable-job worker to run continuously with the
+same database and environment configuration as the Web service. Production and
+demo run it as the no-port `itg-background-worker` sidecar:
+
+```bash
+python manage.py run_background_worker --settings=config.settings.production
+```
+
+The sidecar overrides the Docker entrypoint and waits for the Web container to
+be healthy, so it does not race the Web startup migration or run Uvicorn. Deploy
+the schema and sidecar first with `BACKGROUND_JOBS_ENABLED=false`, confirm the
+`worker` CloudWatch stream is polling, then set the flag to true and redeploy so
+saved redirects begin queueing reconciliation work. On that enabled startup,
+the worker also queues one immediate full Amplify reconciliation to bootstrap
+or repair the environment's canonical edge rules. If active
+mappings were saved while jobs or Amplify configuration were unavailable,
+select them in Admin and run **Retry edge sync** after enabling the worker.
+
+The backend reconciler is the sole repository-managed `UpdateApp` writer. It
+owns the canonical sitemap, API, optional admin/static/media proxy, CMS 301,
+and final SPA fallback rules while preserving unrelated rules already on the
+app. The frontend deployment publishes the build but does not read or replace
+the Amplify custom-rule list. Backend deploys stamp both Web and worker with the
+numeric `AMPLIFY_CONFIG_REVISION=<run_id>.<run_attempt>` generation; the deploy
+workflow owns this value, so operators should not override it manually.
+
+After deployment, create and verify these initial mappings manually in Admin;
+they are intentionally not included in a migration, fixture, or seed script:
+
+| Source | Destination |
+|--------|-------------|
+| `/I2G-project-sponsor-acknowledgement` | `/sponsor-acknowledgement` |
+| `/I2G-student-agreement` | `/student-agreement` |
+| `/FAQs` | `/faqs` |
+
+For each mapping, confirm the destination returns 200 before activation, then
+verify both source variants (with and without a trailing slash), an original
+query string, and the final browser URL. Once edge status is **Synced**, also
+verify the source response itself is HTTP 301.
+
+Production and demo each require their own `AMPLIFY_APP_ID`. For this feature,
+add only `amplify:GetApp` and `amplify:UpdateApp` to each ECS task role, scoped
+to that environment's matching `arn:aws:amplify:<region>:<account>:apps/<app-id>`
+resource. Route records are disabled rather than deleted so reconciliation can
+identify and remove edge rules it previously owned.
+
+For retirement of `innovatetogrow.ucmerced.edu`, coordinate DNS and TLS with OIT, inventory legacy paths first, then configure an HTTP/HTTPS whole-domain 301 to `https://i2g.ucmerced.edu` that preserves path and query. Test the old host, the same path on the canonical host, and any CMS path remap as separate redirect hops.
+
 ## Event operations
 
 ### Opening and closing registration

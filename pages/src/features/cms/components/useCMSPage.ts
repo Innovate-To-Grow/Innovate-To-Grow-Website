@@ -4,10 +4,12 @@ import {
   fetchCMSLivePreview,
   fetchCMSPage,
   fetchCMSPreview,
+  isCMSPageRedirectResponse,
 } from '@/features/cms/api';
 
 interface UseCMSPageResult {
   page: CMSPageResponse | null;
+  redirectTo: string | null;
   loading: boolean;
   error: string | null;
   isLivePreview: boolean;
@@ -16,6 +18,7 @@ interface UseCMSPageResult {
 interface CMSPageState {
   route: string;
   page: CMSPageResponse | null;
+  redirectTo: string | null;
   error: string | null;
 }
 
@@ -25,6 +28,7 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
   const [state, setState] = useState<CMSPageState>({
     route: '',
     page: null,
+    redirectTo: null,
     error: null,
   });
 
@@ -45,14 +49,32 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
 
     fetcher
       .then((data) => {
-        if (!cancelled) {
-          setState({ route, page: data, error: null });
+        if (cancelled) return;
+
+        if (isCMSPageRedirectResponse(data)) {
+          // Preview requests must never navigate away from the content being
+          // reviewed, even if a malformed/stale backend response contains a
+          // redirect payload.
+          setState({
+            route,
+            page: null,
+            redirectTo: preview || previewToken ? null : data.redirect_to,
+            error: preview || previewToken ? 'error' : null,
+          });
+          return;
         }
+
+        setState({ route, page: data, redirectTo: null, error: null });
       })
       .catch((err) => {
         if (!cancelled) {
           const status = err?.response?.status;
-          setState({ route, page: null, error: status === 404 ? 'not_found' : 'error' });
+          setState({
+            route,
+            page: null,
+            redirectTo: null,
+            error: status === 404 ? 'not_found' : 'error',
+          });
         }
       });
 
@@ -69,7 +91,7 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
       try {
         const data = await fetchCMSLivePreview(livePreviewId);
         if (!cancelled) {
-          setState({ route, page: data, error: null });
+          setState({ route, page: data, redirectTo: null, error: null });
         }
       } catch {
         // Keep showing whatever we already have; don't blank the page on transient errors
@@ -91,11 +113,18 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
   }, [livePreviewId, route]);
 
   if (!livePreviewId && state.route !== route) {
-    return { page: null, loading: true, error: null, isLivePreview: false };
+    return {
+      page: null,
+      redirectTo: null,
+      loading: true,
+      error: null,
+      isLivePreview: false,
+    };
   }
 
   return {
     page: state.page,
+    redirectTo: state.redirectTo,
     loading: false,
     error: state.error,
     isLivePreview: !!livePreviewId,
