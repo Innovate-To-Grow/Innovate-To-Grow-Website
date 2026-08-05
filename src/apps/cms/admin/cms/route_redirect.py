@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import path, reverse
+from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget, UnfoldAdminTextInputWidget
 
 from apps.cms.models import RouteRedirect
 from apps.cms.services.route_redirects import destination_route_choices, redirect_mapping_conflicts
@@ -16,20 +17,21 @@ class RouteRedirectAdminForm(forms.ModelForm):
     destination_path = forms.ChoiceField(
         label="Destination path",
         help_text="Choose a published CMS page or fixed public application route.",
+        widget=UnfoldAdminSelectWidget,
     )
 
     class Meta:
         model = RouteRedirect
         fields = "__all__"
         widgets = {
-            "source_path": forms.TextInput(
+            "source_path": UnfoldAdminTextInputWidget(
                 attrs={
                     "data-role": "route-redirect-source",
                     "autocomplete": "off",
                     "spellcheck": "false",
                 }
             ),
-            "notes": forms.Textarea(attrs={"rows": 4}),
+            "notes": UnfoldAdminTextareaWidget(attrs={"rows": 4}),
         }
 
     def __init__(self, *args, **kwargs):
