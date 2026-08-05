@@ -6,6 +6,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget, UnfoldAdminTextInputWidget
 
 from apps.cms.admin.cms.cms_page import CMSPageAdmin, CMSPageAdminForm
 from apps.cms.admin.cms.route_redirect import RouteRedirectAdmin, RouteRedirectAdminForm
@@ -34,6 +35,21 @@ class RouteRedirectAdminTests(TestCase):
         self.assertIn("/admin-target-page", choices)
         self.assertIn("/schedule", choices)
         self.assertIn("Homepage (/)", choices)
+
+    def test_editable_fields_use_unfold_widgets(self):
+        form = RouteRedirectAdminForm()
+        expected_widgets = {
+            "source_path": UnfoldAdminTextInputWidget,
+            "destination_path": UnfoldAdminSelectWidget,
+            "notes": UnfoldAdminTextareaWidget,
+        }
+
+        for field_name, widget_class in expected_widgets.items():
+            widget = form.fields[field_name].widget
+            with self.subTest(field=field_name):
+                self.assertIsInstance(widget, widget_class)
+                self.assertIn("border-base-200", widget.attrs["class"])
+                self.assertIn("dark:bg-base-900", widget.attrs["class"])
 
     def test_source_is_readonly_after_creation_and_delete_is_disabled(self):
         redirect = RouteRedirect.objects.create(source_path="/legacy-admin", destination_path=self.target.route)
