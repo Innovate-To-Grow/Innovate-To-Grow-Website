@@ -5,6 +5,8 @@ import {
   getContactEmails,
   getContactPhones,
   getProfile,
+  getStoredSession,
+  isCurrentSession,
   updateContactEmail,
   updateContactPhone,
   updateProfileFields,
@@ -239,6 +241,11 @@ export const SubscribePage = () => {
     clearPageError();
     setSaving(true);
     try {
+      const session = getStoredSession();
+      if (!session) {
+        setError('Your session changed. Reload the page and try again.');
+        return;
+      }
       const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
       const titleValue = organizationType === 'organization' ? title.trim() : '';
       const updated = await updateProfileFields({
@@ -249,8 +256,17 @@ export const SubscribePage = () => {
         title: titleValue,
         email_subscribe: true,
       });
+      if (!isCurrentSession({generation: session.generation})) {
+        return;
+      }
       if (hasRequiredNameFields(updated)) {
-        clearProfileCompletionRequirement();
+        if (
+          !clearProfileCompletionRequirement({
+            generation: session.generation,
+          })
+        ) {
+          return;
+        }
       }
       setProfile(updated);
       setStep('manage');

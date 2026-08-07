@@ -6,6 +6,8 @@ import {SubscribePage} from '../SubscribePage';
 
 const mockUseAuth = vi.fn();
 const mockGetProfile = vi.fn();
+const mockGetStoredSession = vi.fn();
+const mockIsCurrentSession = vi.fn();
 const mockUpdateProfileFields = vi.fn();
 const mockGetContactEmails = vi.fn();
 const mockGetContactPhones = vi.fn();
@@ -18,6 +20,8 @@ vi.mock('@/features/auth', async (importOriginal) => {
     ...actual,
     useAuth: () => mockUseAuth(),
     getProfile: (...args: unknown[]) => mockGetProfile(...args),
+    getStoredSession: () => mockGetStoredSession(),
+    isCurrentSession: (...args: unknown[]) => mockIsCurrentSession(...args),
     updateProfileFields: (...args: unknown[]) => mockUpdateProfileFields(...args),
     getContactEmails: (...args: unknown[]) => mockGetContactEmails(...args),
     getContactPhones: (...args: unknown[]) => mockGetContactPhones(...args),
@@ -81,6 +85,8 @@ describe('SubscribePage', () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
     mockGetProfile.mockReset();
+    mockGetStoredSession.mockReset();
+    mockIsCurrentSession.mockReset();
     mockUpdateProfileFields.mockReset();
     mockGetContactEmails.mockReset();
     mockGetContactPhones.mockReset();
@@ -88,12 +94,18 @@ describe('SubscribePage', () => {
     mockUpdateContactPhone.mockReset();
     baseAuth.clearError.mockReset();
     baseAuth.clearProfileCompletionRequirement.mockReset();
+    baseAuth.clearProfileCompletionRequirement.mockReturnValue(true);
     baseAuth.requestEmailAuthCode.mockClear();
     baseAuth.verifyEmailAuthCode.mockClear();
     baseAuth.requestPhoneAuthCode.mockClear();
     baseAuth.verifyPhoneAuthCode.mockClear();
 
     mockGetProfile.mockResolvedValue(profileData);
+    mockGetStoredSession.mockReturnValue({
+      generation: 'generation-a',
+      refresh: 'refresh-a',
+    });
+    mockIsCurrentSession.mockReturnValue(true);
     mockGetContactEmails.mockResolvedValue([]);
     mockGetContactPhones.mockResolvedValue([]);
     mockUseAuth.mockReturnValue({...baseAuth});
@@ -359,6 +371,94 @@ describe('SubscribePage', () => {
     });
 
     expect(await screen.findByText('Manage your email and text message subscription preferences below.')).toBeInTheDocument();
+    expect(baseAuth.clearProfileCompletionRequirement).toHaveBeenCalledWith({
+      generation: 'generation-a',
+    });
+  });
+
+  it('does not apply an in-flight profile save to a replacement account', async () => {
+    const incompleteProfile = {
+      ...profileData,
+      last_name: '',
+      organization: 'Acme Corp',
+    };
+    let resolveSave!: (value: typeof profileData) => void;
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: {member_uuid: 'uuid-1', email: 'member@example.com'},
+      isAuthenticated: true,
+    });
+    mockGetProfile.mockResolvedValue(incompleteProfile);
+    mockUpdateProfileFields.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    baseAuth.clearProfileCompletionRequirement.mockReturnValue(false);
+
+    render(
+      <MemoryRouter initialEntries={['/subscribe?step=profile']}>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    const firstName = await screen.findByLabelText(/first name/i);
+    fireEvent.change(screen.getByLabelText(/last name/i), {
+      target: {value: 'Lovelace'},
+    });
+    fireEvent.submit(firstName.closest('form')!);
+
+    resolveSave({...profileData, organization: 'Acme Corp'});
+
+    await waitFor(() =>
+      expect(baseAuth.clearProfileCompletionRequirement).toHaveBeenCalledWith({
+        generation: 'generation-a',
+      }),
+    );
+    expect(
+      screen.queryByText(
+        'Manage your email and text message subscription preferences below.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
+  });
+
+  it('does not apply an incomplete stale profile response after an account switch', async () => {
+    const incompleteProfile = {
+      ...profileData,
+      last_name: '',
+      organization: 'Acme Corp',
+    };
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: {member_uuid: 'uuid-1', email: 'member@example.com'},
+      isAuthenticated: true,
+    });
+    mockGetProfile.mockResolvedValue(incompleteProfile);
+    mockUpdateProfileFields.mockResolvedValue(incompleteProfile);
+    mockIsCurrentSession.mockReturnValue(false);
+
+    render(
+      <MemoryRouter initialEntries={['/subscribe?step=profile']}>
+        <SubscribePage />
+      </MemoryRouter>,
+    );
+
+    const firstName = await screen.findByLabelText(/first name/i);
+    fireEvent.submit(firstName.closest('form')!);
+
+    await waitFor(() =>
+      expect(mockIsCurrentSession).toHaveBeenCalledWith({
+        generation: 'generation-a',
+      }),
+    );
+    expect(baseAuth.clearProfileCompletionRequirement).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText(
+        'Manage your email and text message subscription preferences below.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
   });
 
   it('toggles subscription in manage step', async () => {
@@ -529,6 +629,8 @@ describe('SubscribePage', () => {
       });
     });
 
-    expect(baseAuth.clearProfileCompletionRequirement).toHaveBeenCalled();
+    expect(baseAuth.clearProfileCompletionRequirement).toHaveBeenCalledWith({
+      generation: 'generation-a',
+    });
   });
 });
