@@ -44,70 +44,112 @@ const haveEqualRows = (
     ),
   );
 
+const normalizeRowIdentityValue = (value: unknown) =>
+  String(value ?? '').trim().toLocaleLowerCase().replace(/\s+/g, ' ');
+
+const projectRowIdentityBase = (row: ProjectGridRow) => {
+  const id = normalizeRowIdentityValue(row.id);
+  if (id) return `id:${id}`;
+
+  // Legacy snapshots may not have a Project UUID. Mirror the backend's
+  // Year-Semester + Class + Team# backfill key so distinct legacy rows never
+  // collapse into the same `undefined` map entry.
+  const legacyKey = [
+    row.semester_label,
+    row.class_code,
+    row.team_number,
+  ].map(normalizeRowIdentityValue);
+  if (legacyKey.every(Boolean)) return `legacy:${legacyKey.join('\u001f')}`;
+
+  // Malformed historical rows can also be missing part of the stable key.
+  // Their full fingerprint still gives each distinct row a deterministic key.
+  return `legacy-fallback:${PROJECT_ROW_FIELDS.map((field) =>
+    normalizeRowIdentityValue(row[field]),
+  ).join('\u001f')}`;
+};
+
+const identifyProjectRows = (rows: ProjectGridRow[]) => {
+  const occurrences = new Map<string, number>();
+  return rows.map((row) => {
+    const base = projectRowIdentityBase(row);
+    const occurrence = occurrences.get(base) ?? 0;
+    occurrences.set(base, occurrence + 1);
+    return {key: `${base}\u001e${occurrence}`, row};
+  });
+};
+
 const rebaseSubmittedRows = (
   currentRows: ProjectGridRow[],
   baselineRows: ProjectGridRow[],
   submittedRows: ProjectGridRow[],
 ) => {
-  const baselineById = new Map(baselineRows.map((row) => [row.id, row]));
-  const submittedById = new Map(submittedRows.map((row) => [row.id, row]));
-  const removedIds = new Set(
-    baselineRows
-      .filter((row) => !submittedById.has(row.id))
-      .map((row) => row.id),
+  const current = identifyProjectRows(currentRows);
+  const baseline = identifyProjectRows(baselineRows);
+  const submitted = identifyProjectRows(submittedRows);
+  const baselineByKey = new Map(baseline.map(({key, row}) => [key, row]));
+  const submittedByKey = new Map(submitted.map(({key, row}) => [key, row]));
+  const removedKeys = new Set(
+    baseline
+      .filter(({key}) => !submittedByKey.has(key))
+      .map(({key}) => key),
   );
-  const changedFieldsById = new Map<
-    ProjectGridRow['id'],
-    Partial<ProjectGridRow>
-  >();
+  const changedFieldsByKey = new Map<string, Partial<ProjectGridRow>>();
 
-  for (const submitted of submittedRows) {
-    const baseline = baselineById.get(submitted.id);
-    if (!baseline) continue;
+  for (const {key, row: submittedRow} of submitted) {
+    const baselineRow = baselineByKey.get(key);
+    if (!baselineRow) continue;
     const changed: Partial<ProjectGridRow> = {};
     for (const field of PROJECT_ROW_FIELDS) {
-      if (submitted[field] !== baseline[field]) {
-        Object.assign(changed, {[field]: submitted[field]});
+      if (submittedRow[field] !== baselineRow[field]) {
+        Object.assign(changed, {[field]: submittedRow[field]});
       }
     }
     if (Object.keys(changed).length > 0) {
-      changedFieldsById.set(submitted.id, changed);
+      changedFieldsByKey.set(key, changed);
     }
   }
 
-  let rebased = currentRows
-    .filter((row) => !removedIds.has(row.id))
-    .map((row) => ({
+  let rebased = current
+    .filter(({key}) => !removedKeys.has(key))
+    .map(({key, row}) => ({
       ...row,
-      ...(changedFieldsById.get(row.id) ?? {}),
+      ...(changedFieldsByKey.get(key) ?? {}),
     }));
-  const currentIds = new Set(rebased.map((row) => row.id));
-  for (const submitted of submittedRows) {
-    if (!baselineById.has(submitted.id) && !currentIds.has(submitted.id)) {
-      rebased.push(submitted);
-      currentIds.add(submitted.id);
+  const currentKeys = new Set(
+    current
+      .filter(({key}) => !removedKeys.has(key))
+      .map(({key}) => key),
+  );
+  for (const {key, row} of submitted) {
+    if (!baselineByKey.has(key) && !currentKeys.has(key)) {
+      rebased.push(row);
+      currentKeys.add(key);
     }
   }
 
-  const baselineSurvivorOrder = baselineRows
-    .filter((row) => submittedById.has(row.id))
-    .map((row) => row.id);
-  const submittedBaselineOrder = submittedRows
-    .filter((row) => baselineById.has(row.id))
-    .map((row) => row.id);
+  const baselineSurvivorOrder = baseline
+    .filter(({key}) => submittedByKey.has(key))
+    .map(({key}) => key);
+  const submittedBaselineOrder = submitted
+    .filter(({key}) => baselineByKey.has(key))
+    .map(({key}) => key);
   if (
     baselineSurvivorOrder.some(
       (id, index) => submittedBaselineOrder[index] !== id,
     )
   ) {
-    const rebasedById = new Map(rebased.map((row) => [row.id, row]));
-    const requestedIds = new Set(submittedBaselineOrder);
+    const rebasedByKey = new Map(
+      identifyProjectRows(rebased).map(({key, row}) => [key, row]),
+    );
+    const requestedKeys = new Set(submittedBaselineOrder);
     rebased = [
-      ...submittedBaselineOrder.flatMap((id) => {
-        const row = rebasedById.get(id);
+      ...submittedBaselineOrder.flatMap((key) => {
+        const row = rebasedByKey.get(key);
         return row ? [row] : [];
       }),
-      ...rebased.filter((row) => !requestedIds.has(row.id)),
+      ...identifyProjectRows(rebased)
+        .filter(({key}) => !requestedKeys.has(key))
+        .map(({row}) => row),
     ];
   }
 
