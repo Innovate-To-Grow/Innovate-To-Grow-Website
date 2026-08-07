@@ -111,6 +111,13 @@ const writeSession = (session: StoredAuthSession) => {
   return stored;
 };
 
+const requireSessionWrite = (session: StoredAuthSession) => {
+  if (!writeSession(session)) {
+    throw new Error('Unable to persist the authentication session.');
+  }
+  return session;
+};
+
 const readCurrentRecord = (): StoredAuthSession | null => {
   const serialized = safeLocalGet(AUTH_SESSION_KEY);
   if (!serialized) return null;
@@ -213,8 +220,7 @@ export const setTokens = (tokens: AuthTokens, user: User): StoredAuthSession => 
     user,
     requires_profile_completion: false,
   };
-  writeSession(session);
-  return session;
+  return requireSessionWrite(session);
 };
 
 export const persistAuthSession = (
@@ -233,8 +239,7 @@ export const persistAuthSession = (
       response.requires_profile_completion,
     ),
   };
-  writeSession(session);
-  return session;
+  return requireSessionWrite(session);
 };
 
 export const updateSessionTokens = (

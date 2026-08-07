@@ -157,6 +157,34 @@ describe('storage', () => {
     expect(mockLocalStorage.getItem('i2g_user')).toBeNull();
   });
 
+  it('rejects a replacement session when the atomic storage write fails', async () => {
+    const {getStoredSession, persistAuthSession} = await import('../storage');
+    const original = persistAuthSession({
+      access: 'original-access',
+      refresh: 'original-refresh',
+      user: mockUser,
+      requires_profile_completion: false,
+    });
+    vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
+      throw new DOMException('Storage is unavailable', 'QuotaExceededError');
+    });
+
+    expect(() =>
+      persistAuthSession({
+        access: 'replacement-access',
+        refresh: 'replacement-refresh',
+        user: {
+          ...mockUser,
+          member_uuid: 'uuid-456',
+          email: 'replacement@example.com',
+        },
+        requires_profile_completion: true,
+      }),
+    ).toThrow('Unable to persist the authentication session.');
+
+    expect(getStoredSession()).toEqual(original);
+  });
+
   it('migrates and removes a complete legacy session', async () => {
     mockLocalStorage.setItem('i2g_access_token', 'legacy-access');
     mockLocalStorage.setItem('i2g_refresh_token', 'legacy-refresh');
