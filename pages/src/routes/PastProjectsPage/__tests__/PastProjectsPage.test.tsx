@@ -139,6 +139,18 @@ vi.mock('@/features/projects', () => ({
         >
           Edit mocked row
         </button>
+        <button
+          type="button"
+          onClick={() =>
+            void onUpdateShare?.(
+              cleanRows.slice(1),
+              title,
+              note ?? '',
+            ).catch(() => undefined)
+          }
+        >
+          Delete first mocked row
+        </button>
       </div>
     );
   },
@@ -356,6 +368,61 @@ describe('PastProjectsPage', () => {
         ],
         version: 5,
       },
+    );
+  });
+
+  it('edits one legacy id-less row without overwriting its siblings', async () => {
+    const legacyFirst: ProjectGridRow = {...sampleRow};
+    const legacySecond: ProjectGridRow = {...addedRow};
+    delete legacyFirst.id;
+    delete legacySecond.id;
+    const initial = shareFixture({rows: [legacyFirst, legacySecond]});
+    sharedState.share = initial;
+    vi.mocked(updatePastProjectShare).mockResolvedValue(
+      shareFixture({
+        rows: [
+          {...legacyFirst, team_name: 'Edited Team Alpha'},
+          legacySecond,
+        ],
+        version: 5,
+      }),
+    );
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', {name: 'Edit mocked row'}));
+
+    await waitFor(() =>
+      expect(updatePastProjectShare).toHaveBeenCalledWith(initial.id, {
+        rows: [
+          {...legacyFirst, team_name: 'Edited Team Alpha'},
+          legacySecond,
+        ],
+        version: 4,
+      }),
+    );
+  });
+
+  it('deletes only the selected legacy id-less row', async () => {
+    const legacyFirst: ProjectGridRow = {...sampleRow};
+    const legacySecond: ProjectGridRow = {...addedRow};
+    delete legacyFirst.id;
+    delete legacySecond.id;
+    const initial = shareFixture({rows: [legacyFirst, legacySecond]});
+    sharedState.share = initial;
+    vi.mocked(updatePastProjectShare).mockResolvedValue(
+      shareFixture({rows: [legacySecond], version: 5}),
+    );
+
+    renderPage();
+    fireEvent.click(
+      screen.getByRole('button', {name: 'Delete first mocked row'}),
+    );
+
+    await waitFor(() =>
+      expect(updatePastProjectShare).toHaveBeenCalledWith(initial.id, {
+        rows: [legacySecond],
+        version: 4,
+      }),
     );
   });
 
