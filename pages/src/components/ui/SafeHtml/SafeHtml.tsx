@@ -26,8 +26,12 @@ const INITIAL_EMBED_HOST_SNAPSHOT: EmbedHostSnapshot = {
   revision: '',
 };
 
+const EMBED_HOST_CACHE_TTL_MS = 60_000;
 let embedHostSnapshot = INITIAL_EMBED_HOST_SNAPSHOT;
-let embedHostRequestStarted = false;
+let embedHostRequestInFlight = false;
+let embedHostLastCheckedAt = 0;
+let embedHostRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let activeEmbedConsumers = 0;
 const embedHostListeners = new Set<() => void>();
 
 const notifyEmbedHostListeners = () => {
@@ -46,9 +50,35 @@ const normalizeHostEntries = (hosts: unknown): string[] => {
   ];
 };
 
-const ensureEmbedHostsLoaded = () => {
-  if (embedHostRequestStarted) return;
-  embedHostRequestStarted = true;
+function clearEmbedHostRefreshTimer() {
+  if (embedHostRefreshTimer !== null) {
+    clearTimeout(embedHostRefreshTimer);
+    embedHostRefreshTimer = null;
+  }
+}
+
+function scheduleEmbedHostRefresh() {
+  clearEmbedHostRefreshTimer();
+  if (!activeEmbedConsumers || embedHostRequestInFlight) return;
+  const elapsed = Date.now() - embedHostLastCheckedAt;
+  embedHostRefreshTimer = setTimeout(
+    ensureEmbedHostsLoaded,
+    Math.max(0, EMBED_HOST_CACHE_TTL_MS - elapsed),
+  );
+}
+
+function ensureEmbedHostsLoaded() {
+  if (embedHostRequestInFlight) return;
+  if (
+    embedHostSnapshot.ready &&
+    Date.now() - embedHostLastCheckedAt < EMBED_HOST_CACHE_TTL_MS
+  ) {
+    scheduleEmbedHostRefresh();
+    return;
+  }
+
+  clearEmbedHostRefreshTimer();
+  embedHostRequestInFlight = true;
   void fetchCMSEmbedHosts()
     .then((response) => {
       embedHostSnapshot = {
@@ -67,8 +97,13 @@ const ensureEmbedHostsLoaded = () => {
         revision: '',
       };
     })
-    .finally(notifyEmbedHostListeners);
-};
+    .finally(() => {
+      embedHostRequestInFlight = false;
+      embedHostLastCheckedAt = Date.now();
+      notifyEmbedHostListeners();
+      scheduleEmbedHostRefresh();
+    });
+}
 
 const subscribeToEmbedHosts = (listener: () => void) => {
   embedHostListeners.add(listener);
@@ -131,7 +166,13 @@ export const SafeHtml = memo(({html, className}: SafeHtmlProps) => {
   const containsIframe = /<iframe(?:\s|>)/i.test(html);
 
   useEffect(() => {
-    if (containsIframe) ensureEmbedHostsLoaded();
+    if (!containsIframe) return;
+    activeEmbedConsumers += 1;
+    ensureEmbedHostsLoaded();
+    return () => {
+      activeEmbedConsumers = Math.max(0, activeEmbedConsumers - 1);
+      if (!activeEmbedConsumers) clearEmbedHostRefreshTimer();
+    };
   }, [containsIframe]);
 
   const sanitizedHtml = useMemo(
@@ -153,3 +194,14 @@ export const SafeHtml = memo(({html, className}: SafeHtmlProps) => {
 
   return <div ref={ref} className={className} />;
 });
+
+// Keep module-level sharing in production while allowing each unit test to
+// exercise initial load, expiry, and recovery independently.
+// eslint-disable-next-line react-refresh/only-export-components
+export const resetSafeHtmlEmbedHostCacheForTests = () => {
+  clearEmbedHostRefreshTimer();
+  embedHostSnapshot = INITIAL_EMBED_HOST_SNAPSHOT;
+  embedHostRequestInFlight = false;
+  embedHostLastCheckedAt = 0;
+  activeEmbedConsumers = 0;
+};
