@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+from django.db import DatabaseError
 from django.test import TestCase
 
 from apps.cms.models import NewsArticle
@@ -11,7 +12,7 @@ from apps.cms.services.news.feed_parser import (
     fetch_feed,
     parse_pub_date,
 )
-from apps.cms.services.news.scraper import MAX_ARTICLE_BYTES, scrape_article
+from apps.cms.services.news.scraper import ARTICLE_REQUEST_HEADERS, MAX_ARTICLE_BYTES, scrape_article
 from apps.cms.services.news.url_guard import OversizedNewsResponseError
 
 SAMPLE_RSS = b"""<?xml version="1.0" encoding="utf-8"?>
@@ -86,9 +87,15 @@ class FeedParserTest(TestCase):
         result = fetch_feed("https://example.com/feed")
 
         self.assertEqual(result, b"<rss></rss>")
-        # The fetch is routed through the SSRF guard with the custom user-agent.
+        # The fetch is routed through the SSRF guard with an identifiable user
+        # agent, contact header, and explicit RSS/XML content negotiation.
         self.assertEqual(mock_open.call_args[0][0], "https://example.com/feed")
-        self.assertEqual(mock_open.call_args[1]["headers"]["User-Agent"], "ITG-NewsSync/1.0")
+        headers = mock_open.call_args[1]["headers"]
+        self.assertIn("InnovateToGrow", headers["User-Agent"])
+        self.assertIn("https://i2g.ucmerced.edu/", headers["User-Agent"])
+        self.assertIn("ucmerced.edu", headers["From"])
+        self.assertIn("application/rss+xml", headers["Accept"])
+        self.assertIn("application/xml", headers["Accept"])
 
     @patch("apps.cms.services.news.feed_parser.safe_urlopen")
     def test_fetch_feed_rejects_oversized_response(self, mock_open):
@@ -131,6 +138,10 @@ class ScraperTest(TestCase):
         self.assertEqual(result["hero_image_url"], "https://news.ucmerced.edu/sites/default/files/hero.jpg")
         self.assertEqual(result["hero_caption"], "Photo by Jane Doe")
         self.assertIn("Full scraped body content", result["body_html"])
+        self.assertEqual(mock_open.call_args.kwargs["headers"], ARTICLE_REQUEST_HEADERS)
+        self.assertIn("InnovateToGrow-NewsSync", ARTICLE_REQUEST_HEADERS["User-Agent"])
+        self.assertEqual(ARTICLE_REQUEST_HEADERS["From"], "i2g@ucmerced.edu")
+        self.assertIn("text/html", ARTICLE_REQUEST_HEADERS["Accept"])
 
     @patch("apps.cms.services.news.scraper.safe_urlopen")
     def test_scrape_article_handles_missing_elements(self, mock_open):
@@ -171,6 +182,9 @@ class SyncNewsTest(TestCase):
         self.assertEqual(result["created"], 2)
         self.assertEqual(result["updated"], 0)
         self.assertEqual(len(result["errors"]), 0)
+        self.assertEqual(len(result["warnings"]), 2)
+        self.assertEqual(result["items_seen"], 2)
+        self.assertEqual(result["scrape_failed"], 2)
         self.assertEqual(NewsArticle.objects.count(), 2)
 
     @patch("apps.cms.services.news.sync.scrape_article", side_effect=Exception("scrape error"))
@@ -181,14 +195,54 @@ class SyncNewsTest(TestCase):
         for article in NewsArticle.objects.all():
             self.assertEqual(article.source, "custom-source")
 
-    @patch("apps.cms.services.news.sync.scrape_article", side_effect=Exception("scrape error"))
+    @patch("apps.cms.services.news.sync.scrape_article")
     @patch("apps.cms.services.news.sync.fetch_feed")
-    def test_sync_updates_existing(self, mock_fetch, mock_scrape):
+    def test_sync_refreshes_page_only_changes_without_rss_changes(self, mock_fetch, mock_scrape):
         mock_fetch.return_value = SAMPLE_RSS
+
+        def initial_scrape(url):
+            slug = url.rsplit("/", 1)[-1]
+            return {"hero_image_url": "", "hero_caption": "", "body_html": f"<p>Initial {slug}</p>"}
+
+        mock_scrape.side_effect = initial_scrape
         sync_news()
+        mock_scrape.reset_mock()
+
+        def refreshed_scrape(url):
+            slug = url.rsplit("/", 1)[-1]
+            body = "Updated article-1" if slug == "article-1" else "Initial article-2"
+            return {"hero_image_url": "", "hero_caption": "", "body_html": f"<p>{body}</p>"}
+
+        mock_scrape.side_effect = refreshed_scrape
+
         result = sync_news()
+
         self.assertEqual(result["created"], 0)
-        self.assertEqual(result["updated"], 2)
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["warnings"], [])
+        self.assertEqual(result["scrape_failed"], 0)
+        self.assertEqual(mock_scrape.call_count, 2)
+        self.assertEqual(NewsArticle.objects.get(source_guid="guid-001").content, "<p>Updated article-1</p>")
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_sync_counts_changed_metadata_once_while_refreshing_all_pages(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = SAMPLE_RSS
+        mock_scrape.return_value = {"hero_image_url": "", "hero_caption": "", "body_html": "<p>Body</p>"}
+        sync_news()
+        mock_scrape.reset_mock()
+        mock_fetch.return_value = SAMPLE_RSS.replace(b"Test Article One", b"Test Article One Updated")
+
+        result = sync_news()
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["warnings"], [])
+        self.assertEqual(mock_scrape.call_count, 2)
+        mock_scrape.assert_any_call("https://example.com/article-1")
+        mock_scrape.assert_any_call("https://example.com/article-2")
+        self.assertEqual(NewsArticle.objects.get(source_guid="guid-001").title, "Test Article One Updated")
 
     @patch("apps.cms.services.news.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("apps.cms.services.news.sync.fetch_feed")
@@ -228,12 +282,142 @@ class SyncNewsTest(TestCase):
         self.assertEqual(article.hero_caption, "A caption")
         self.assertEqual(article.content, "<p>Scraped body</p>")
 
+        mock_scrape.reset_mock()
+        result = sync_news()
+        article.refresh_from_db()
+        self.assertEqual(result["updated"], 0)
+        self.assertEqual(article.content, "<p>Scraped body</p>")
+        self.assertEqual(mock_scrape.call_count, 2)
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_changed_feed_uses_new_rss_fallback_when_rescrape_fails(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = SAMPLE_RSS
+        mock_scrape.return_value = {
+            "hero_image_url": "",
+            "hero_caption": "",
+            "body_html": "<p>Previously scraped body</p>",
+        }
+        sync_news()
+
+        mock_fetch.return_value = SAMPLE_RSS.replace(
+            b"This is the first test article summary text for testing.",
+            b"This is the updated first article summary text for testing.",
+        )
+
+        def rescrape(url):
+            if url.endswith("article-1"):
+                raise Exception("rescrape unavailable")
+            return {"hero_image_url": "", "hero_caption": "", "body_html": "<p>Previously scraped body</p>"}
+
+        mock_scrape.side_effect = rescrape
+
+        result = sync_news()
+
+        article = NewsArticle.objects.get(source_guid="guid-001")
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["scrape_failed"], 1)
+        self.assertEqual(result["errors"], [])
+        self.assertTrue(any("rescrape unavailable" in warning for warning in result["warnings"]))
+        self.assertIn("updated first article summary", article.content)
+        self.assertNotIn("Previously scraped body", article.content)
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_title_only_change_preserves_richer_body_when_rescrape_fails(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = SAMPLE_RSS
+        mock_scrape.return_value = {
+            "hero_image_url": "",
+            "hero_caption": "",
+            "body_html": "<p>Previously scraped body</p>",
+        }
+        sync_news()
+
+        mock_fetch.return_value = SAMPLE_RSS.replace(b"Test Article One", b"Test Article One Updated")
+
+        def rescrape(url):
+            if url.endswith("article-1"):
+                raise Exception("rescrape unavailable")
+            return {"hero_image_url": "", "hero_caption": "", "body_html": "<p>Previously scraped body</p>"}
+
+        mock_scrape.side_effect = rescrape
+
+        result = sync_news()
+
+        article = NewsArticle.objects.get(source_guid="guid-001")
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["scrape_failed"], 1)
+        self.assertEqual(article.title, "Test Article One Updated")
+        self.assertEqual(article.content, "<p>Previously scraped body</p>")
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_legacy_blank_raw_payload_preserves_richer_body_when_rescrape_fails(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = SAMPLE_RSS
+        mock_scrape.return_value = {
+            "hero_image_url": "",
+            "hero_caption": "",
+            "body_html": "<p>Legacy scraped body</p>",
+        }
+        sync_news()
+        article = NewsArticle.objects.get(source_guid="guid-001")
+        article.raw_payload = ""
+        article.save(update_fields=["raw_payload"])
+
+        mock_fetch.return_value = SAMPLE_RSS.replace(b"Test Article One", b"Test Article One Updated")
+
+        def rescrape(url):
+            if url.endswith("article-1"):
+                raise Exception("rescrape unavailable")
+            return {"hero_image_url": "", "hero_caption": "", "body_html": "<p>Legacy scraped body</p>"}
+
+        mock_scrape.side_effect = rescrape
+
+        result = sync_news()
+
+        article.refresh_from_db()
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["scrape_failed"], 1)
+        self.assertEqual(article.content, "<p>Legacy scraped body</p>")
+
     @patch("apps.cms.services.news.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("apps.cms.services.news.sync.fetch_feed", side_effect=Exception("Network error"))
     def test_sync_handles_fetch_error(self, mock_fetch, mock_scrape):
         result = sync_news()
         self.assertEqual(result["created"], 0)
         self.assertGreater(len(result["errors"]), 0)
+        self.assertEqual(result["warnings"], [])
+        self.assertEqual(result["items_seen"], 0)
+        self.assertEqual(result["scrape_failed"], 0)
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_sync_treats_empty_feed_as_fatal_error(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = b"<?xml version='1.0'?><rss><channel><title>Empty</title></channel></rss>"
+
+        result = sync_news()
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["updated"], 0)
+        self.assertTrue(any("no items" in error for error in result["errors"]))
+        self.assertEqual(result["warnings"], [])
+        self.assertEqual(result["items_seen"], 0)
+        self.assertEqual(result["scrape_failed"], 0)
+        mock_scrape.assert_not_called()
+
+    @patch("apps.cms.services.news.sync.cache.delete", side_effect=RuntimeError("cache unavailable"))
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_sync_treats_cache_invalidation_failure_as_warning(self, mock_fetch, mock_scrape, mock_cache_delete):
+        mock_fetch.return_value = SAMPLE_RSS
+        mock_scrape.return_value = {"hero_image_url": "", "hero_caption": "", "body_html": "<p>Body</p>"}
+
+        result = sync_news()
+
+        self.assertEqual(result["created"], 2)
+        self.assertEqual(result["errors"], [])
+        self.assertTrue(any("cache" in warning for warning in result["warnings"]))
+        mock_cache_delete.assert_called_once_with("news:list")
 
 
 RSS_NO_GUID = b"""<?xml version="1.0" encoding="utf-8"?>
@@ -300,7 +484,8 @@ class SyncNewsBranchTest(TestCase):
         mock_fetch.return_value = RSS_NO_GUID
         result = sync_news()
         self.assertEqual(result["created"], 0)
-        self.assertTrue(any("no guid/link" in e for e in result["errors"]))
+        self.assertTrue(any("none were processable" in error for error in result["errors"]))
+        self.assertTrue(any("no guid/link" in warning for warning in result["warnings"]))
         self.assertEqual(NewsArticle.objects.count(), 0)
 
     @patch("apps.cms.services.news.sync.scrape_article", side_effect=Exception("scrape error"))
@@ -309,7 +494,8 @@ class SyncNewsBranchTest(TestCase):
         mock_fetch.return_value = RSS_BAD_DATE
         result = sync_news()
         self.assertEqual(result["created"], 0)
-        self.assertTrue(any("invalid date" in e for e in result["errors"]))
+        self.assertTrue(any("none were processable" in error for error in result["errors"]))
+        self.assertTrue(any("invalid date" in warning for warning in result["warnings"]))
         self.assertEqual(NewsArticle.objects.count(), 0)
 
     @patch("apps.cms.services.news.sync.ET.tostring", side_effect=TypeError("cannot serialize"))
@@ -322,18 +508,50 @@ class SyncNewsBranchTest(TestCase):
         self.assertEqual(result["created"], 1)
         article = NewsArticle.objects.get(source_guid="guid-single")
         self.assertEqual(article.raw_payload, "")
+        self.assertTrue(any("serialize raw XML" in warning for warning in result["warnings"]))
 
     @patch("apps.cms.services.news.sync.scrape_article", side_effect=Exception("scrape error"))
     @patch("apps.cms.services.news.sync.fetch_feed")
     def test_sync_records_item_level_exception(self, mock_fetch, mock_scrape):
         mock_fetch.return_value = RSS_ONE
         with patch(
-            "apps.cms.services.news.sync.NewsArticle.objects.update_or_create",
+            "apps.cms.services.news.sync.NewsArticle.objects.get_or_create",
             side_effect=ValueError("db boom"),
         ):
             result = sync_news()
-        self.assertTrue(any("Error syncing" in e for e in result["errors"]))
+        self.assertTrue(any("none were processable" in error for error in result["errors"]))
+        self.assertTrue(any("Error syncing" in warning for warning in result["warnings"]))
         self.assertEqual(NewsArticle.objects.count(), 0)
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_sync_records_database_error_as_fatal(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = RSS_ONE
+        with patch(
+            "apps.cms.services.news.sync.NewsArticle.objects.get_or_create",
+            side_effect=DatabaseError("database unavailable"),
+        ):
+            result = sync_news()
+
+        self.assertTrue(any("Database error syncing" in error for error in result["errors"]))
+        self.assertEqual(result["warnings"], [])
+        self.assertEqual(NewsArticle.objects.count(), 0)
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_sync_treats_cross_source_guid_collision_as_fatal(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = RSS_ONE
+        mock_scrape.return_value = {"hero_image_url": "", "hero_caption": "", "body_html": "<p>Body</p>"}
+        sync_news(source_key="source-one")
+        mock_scrape.reset_mock()
+
+        result = sync_news(source_key="source-two")
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["updated"], 0)
+        self.assertTrue(any("GUID collision" in error for error in result["errors"]))
+        self.assertEqual(NewsArticle.objects.get(source_guid="guid-single").source, "source-one")
+        mock_scrape.assert_not_called()
 
     @patch("apps.cms.services.news.sync.fetch_feed")
     def test_sync_handles_scrape_worker_exception(self, mock_fetch):
@@ -345,6 +563,43 @@ class SyncNewsBranchTest(TestCase):
         # Article was still created in phase 1.
         self.assertEqual(result["created"], 1)
         self.assertEqual(NewsArticle.objects.count(), 1)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["scrape_failed"], 1)
+        self.assertTrue(any("worker failure" in warning for warning in result["warnings"]))
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_sync_treats_empty_scraped_body_as_warning_and_keeps_rss_fallback(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = RSS_ONE
+        mock_scrape.return_value = {"hero_image_url": "", "hero_caption": "", "body_html": ""}
+
+        result = sync_news()
+
+        article = NewsArticle.objects.get(source_guid="guid-single")
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["scrape_failed"], 1)
+        self.assertTrue(any("no article body" in warning for warning in result["warnings"]))
+        self.assertIn("reasonably long body", article.content)
+
+    @patch("apps.cms.services.news.sync.scrape_article")
+    @patch("apps.cms.services.news.sync.fetch_feed")
+    def test_sync_records_database_error_applying_scraped_content_as_fatal(self, mock_fetch, mock_scrape):
+        mock_fetch.return_value = RSS_ONE
+        mock_scrape.return_value = {
+            "hero_image_url": "https://example.com/hero.jpg",
+            "hero_caption": "Caption",
+            "body_html": "<p>Body</p>",
+        }
+        with patch(
+            "apps.cms.services.news.sync.NewsArticle.objects.get",
+            side_effect=DatabaseError("read failed"),
+        ):
+            result = sync_news()
+
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(result["scrape_failed"], 1)
+        self.assertTrue(any("Database error applying" in error for error in result["errors"]))
+        self.assertEqual(result["warnings"], [])
 
     @patch("apps.cms.services.news.sync.scrape_article")
     @patch("apps.cms.services.news.sync.fetch_feed")
@@ -362,7 +617,11 @@ class SyncNewsBranchTest(TestCase):
     @patch("apps.cms.services.news.sync.fetch_feed")
     def test_sync_handles_article_deleted_before_scrape_update(self, mock_fetch, mock_scrape):
         mock_fetch.return_value = RSS_ONE
-        mock_scrape.return_value = {"hero_image_url": "https://x/h.jpg", "hero_caption": "", "body_html": ""}
+        mock_scrape.return_value = {
+            "hero_image_url": "https://x/h.jpg",
+            "hero_caption": "",
+            "body_html": "<p>Body</p>",
+        }
 
         # The phase-2 lookup misses because the row vanished between phases.
         with patch(
@@ -372,6 +631,8 @@ class SyncNewsBranchTest(TestCase):
             result = sync_news()
 
         self.assertEqual(result["created"], 1)
-        # The DoesNotExist branch was hit; scrape update was silently skipped.
+        # The DoesNotExist branch is reported as a non-fatal enrichment warning.
         article = NewsArticle.objects.get(source_guid="guid-single")
         self.assertEqual(article.hero_image_url, "")
+        self.assertEqual(result["scrape_failed"], 1)
+        self.assertTrue(any("disappeared" in warning for warning in result["warnings"]))

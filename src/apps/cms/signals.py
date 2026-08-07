@@ -124,7 +124,14 @@ def invalidate_cms_block_cache(sender, instance, **kwargs):
 # noinspection PyUnusedLocal
 def invalidate_news_cache(sender, instance, **kwargs):
     """Clear news list cache when a NewsArticle is saved or deleted."""
-    transaction.on_commit(lambda: cache.delete("news:list"))
+
+    def _clear():
+        try:
+            cache.delete("news:list")
+        except Exception:  # noqa: BLE001 - a committed article write must not be reported as failed.
+            logger.exception("Unable to invalidate the news list cache")
+
+    transaction.on_commit(_clear)
 
 
 @receiver(post_save, sender=RouteRedirect)

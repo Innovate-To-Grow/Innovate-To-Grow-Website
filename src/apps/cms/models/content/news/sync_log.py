@@ -27,4 +27,5 @@ class NewsSyncLog(models.Model):
 
     @property
     def has_errors(self):
-        return bool(self.errors_text)
+        diagnostics = [line.strip() for line in self.errors_text.splitlines() if line.strip()]
+        return any(not line.startswith("Warning: ") for line in diagnostics)

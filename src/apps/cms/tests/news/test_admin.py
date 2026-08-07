@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
+from django.contrib.messages import get_messages
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -55,20 +56,39 @@ class NewsFeedSourceAdminTest(TestCase):
         resp = self.client.get(reverse("admin:cms_newsfeedsource_changelist"))
         self.assertEqual(resp.status_code, 200)
 
-    @patch("apps.cms.admin.news.feed_source.sync_news")
+    def test_changelist_shows_last_sync_error_detail(self):
+        self.source.last_sync_errors = "Error: HTTP Error 403: Forbidden (Akamai reference 1.abc)"
+        self.source.save(update_fields=["last_sync_errors"])
+
+        response = self.client.get(reverse("admin:cms_newsfeedsource_changelist"))
+
+        self.assertContains(response, "HTTP Error 403: Forbidden (Akamai reference 1.abc)")
+
+    def test_source_key_is_immutable_after_source_creation(self):
+        model_admin = NewsFeedSourceAdmin(NewsFeedSource, AdminSite())
+        request = RequestFactory().get("/")
+
+        self.assertNotIn("source_key", model_admin.get_readonly_fields(request, obj=None))
+        self.assertIn("source_key", model_admin.get_readonly_fields(request, obj=self.source))
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
     def test_sync_all_feeds(self, mock_sync):
         mock_sync.return_value = {"created": 5, "updated": 2, "errors": []}
         resp = self.client.get(reverse("admin:cms_newsfeedsource_sync_all_feeds"))
         self.assertEqual(resp.status_code, 302)
         mock_sync.assert_called_once_with(feed_url=self.source.feed_url, source_key="ucmerced")
 
-    @patch("apps.cms.admin.news.feed_source.sync_news")
+    @patch("apps.cms.services.news.orchestrator.sync_news")
     def test_sync_all_feeds_with_errors(self, mock_sync):
         mock_sync.return_value = {"created": 0, "updated": 0, "errors": ["bad item"]}
-        resp = self.client.get(reverse("admin:cms_newsfeedsource_sync_all_feeds"))
-        self.assertEqual(resp.status_code, 302)
+        response = self.client.get(reverse("admin:cms_newsfeedsource_sync_all_feeds"))
 
-    @patch("apps.cms.admin.news.feed_source.sync_news")
+        self.assertEqual(response.status_code, 302)
+        stored_messages = list(get_messages(response.wsgi_request))
+        self.assertEqual(stored_messages[0].level_tag, "error")
+        self.assertIn("Details: Error: UC Merced: bad item", str(stored_messages[0]))
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
     def test_sync_this_feed(self, mock_sync):
         mock_sync.return_value = {"created": 3, "updated": 1, "errors": []}
         resp = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
@@ -81,7 +101,7 @@ class NewsFeedSourceAdminTest(TestCase):
         resp = self.client.get(reverse("admin:cms_newsfeedsource_sync_all_feeds"))
         self.assertEqual(resp.status_code, 302)
 
-    @patch("apps.cms.admin.news.feed_source.sync_news")
+    @patch("apps.cms.services.news.orchestrator.sync_news")
     def test_sync_creates_log(self, mock_sync):
         mock_sync.return_value = {"created": 2, "updated": 1, "errors": []}
         self.client.get(reverse("admin:cms_newsfeedsource_sync_all_feeds"))
@@ -91,14 +111,48 @@ class NewsFeedSourceAdminTest(TestCase):
         self.assertEqual(log.articles_created, 2)
         self.assertEqual(log.articles_updated, 1)
         self.assertFalse(log.has_errors)
+        self.source.refresh_from_db()
+        self.assertLessEqual(log.started_at, self.source.last_synced_at)
 
-    @patch("apps.cms.admin.news.feed_source.sync_news")
+    @patch("apps.cms.services.news.orchestrator.sync_news")
     def test_sync_creates_log_with_errors(self, mock_sync):
         mock_sync.return_value = {"created": 0, "updated": 0, "errors": ["fail1", "fail2"]}
         self.client.get(reverse("admin:cms_newsfeedsource_sync_all_feeds"))
         log = NewsSyncLog.objects.first()
         self.assertTrue(log.has_errors)
         self.assertIn("fail1", log.errors_text)
+        self.source.refresh_from_db()
+        self.assertIsNone(self.source.last_synced_at)
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_failed_sync_preserves_last_success_time(self, mock_sync):
+        previous_success = timezone.now() - timedelta(days=1)
+        self.source.last_synced_at = previous_success
+        self.source.save(update_fields=["last_synced_at"])
+        mock_sync.return_value = {"created": 0, "updated": 0, "errors": ["feed unavailable"]}
+
+        self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        self.source.refresh_from_db()
+        self.assertEqual(self.source.last_synced_at, previous_success)
+        self.assertEqual(self.source.last_sync_errors, "Error: feed unavailable")
+        self.assertEqual(NewsSyncLog.objects.count(), 1)
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_fatal_error_with_warning_prefix_is_still_persisted_as_error(self, mock_sync):
+        mock_sync.return_value = {
+            "created": 0,
+            "updated": 0,
+            "errors": ["Warning: misleading upstream text"],
+            "warnings": [],
+        }
+
+        self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        self.source.refresh_from_db()
+        log = NewsSyncLog.objects.get()
+        self.assertEqual(self.source.last_sync_errors, "Error: Warning: misleading upstream text")
+        self.assertTrue(log.has_errors)
 
     def test_article_count_display(self):
         NewsArticle.objects.create(
@@ -119,14 +173,145 @@ class NewsFeedSourceAdminTest(TestCase):
         # No sync log is created for an inactive feed.
         self.assertEqual(NewsSyncLog.objects.count(), 0)
 
-    @patch("apps.cms.admin.news.feed_source.sync_news")
-    def test_sync_this_feed_with_errors_warns(self, mock_sync):
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_sync_this_feed_with_errors_shows_error_details(self, mock_sync):
         mock_sync.return_value = {"created": 0, "updated": 0, "errors": ["broken"]}
-        resp = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
-        self.assertEqual(resp.status_code, 302)
+        response = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        stored_messages = list(get_messages(response.wsgi_request))
+        self.assertEqual(stored_messages[0].level_tag, "error")
+        self.assertIn("Details: Error: UC Merced: broken", str(stored_messages[0]))
         log = NewsSyncLog.objects.get()
         self.assertTrue(log.has_errors)
         self.assertIn("broken", log.errors_text)
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_sync_this_feed_with_warnings_uses_warning_message(self, mock_sync):
+        mock_sync.return_value = {
+            "created": 1,
+            "updated": 0,
+            "errors": [],
+            "warnings": ["Article body used the RSS fallback"],
+        }
+
+        response = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        stored_messages = list(get_messages(response.wsgi_request))
+        self.assertEqual(len(stored_messages), 1)
+        self.assertEqual(stored_messages[0].level_tag, "warning")
+        self.assertIn("1 warning(s)", str(stored_messages[0]))
+        self.assertIn("Details: Warning: UC Merced: Article body used the RSS fallback", str(stored_messages[0]))
+        self.source.refresh_from_db()
+        log = NewsSyncLog.objects.get()
+        self.assertEqual(self.source.last_sync_errors, "Warning: Article body used the RSS fallback")
+        self.assertEqual(log.errors_text, "Warning: Article body used the RSS fallback")
+        self.assertFalse(log.has_errors)
+        self.assertIsNotNone(self.source.last_synced_at)
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_sync_this_feed_separates_error_and_warning_details(self, mock_sync):
+        mock_sync.return_value = {
+            "created": 0,
+            "updated": 0,
+            "errors": ["HTTP Error 403: Forbidden"],
+            "warnings": ["Article body used the RSS fallback"],
+        }
+
+        response = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        stored_messages = list(get_messages(response.wsgi_request))
+        self.assertEqual([message.level_tag for message in stored_messages], ["error", "warning"])
+        self.assertIn("Details: Error: UC Merced: HTTP Error 403: Forbidden", str(stored_messages[0]))
+        self.assertNotIn("RSS fallback", str(stored_messages[0]))
+        self.assertIn(
+            "Details: Warning: UC Merced: Article body used the RSS fallback",
+            str(stored_messages[1]),
+        )
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_sync_error_message_limits_items(self, mock_sync):
+        mock_sync.return_value = {
+            "created": 0,
+            "updated": 0,
+            "errors": [f"failure {index}" for index in range(5)],
+            "warnings": [],
+        }
+
+        response = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        message = str(list(get_messages(response.wsgi_request))[0])
+        self.assertIn("failure 0", message)
+        self.assertIn("failure 2", message)
+        self.assertNotIn("failure 3", message)
+        self.assertIn("+2 more; see Last Sync Status or sync log for full details", message)
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_sync_error_message_truncates_long_detail(self, mock_sync):
+        mock_sync.return_value = {
+            "created": 0,
+            "updated": 0,
+            "errors": ["x" * 3000],
+            "warnings": [],
+        }
+
+        response = self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        message = str(list(get_messages(response.wsgi_request))[0])
+        self.assertLess(len(message), 1350)
+        self.assertIn("truncated; see Last Sync Status or sync log for full details", message)
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_sync_error_detail_is_html_escaped(self, mock_sync):
+        mock_sync.return_value = {
+            "created": 0,
+            "updated": 0,
+            "errors": ["<script>alert(1)</script>"],
+            "warnings": [],
+        }
+
+        response = self.client.get(
+            reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]),
+            follow=True,
+        )
+
+        self.assertNotContains(response, "<script>alert(1)</script>")
+        self.assertContains(response, "&lt;script&gt;alert(1)&lt;/script&gt;")
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_sync_diagnostics_are_single_line_and_warning_stays_nonfatal(self, mock_sync):
+        mock_sync.return_value = {
+            "created": 0,
+            "updated": 0,
+            "errors": [],
+            "warnings": ["article fallback\nupstream detail"],
+        }
+
+        self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        self.source.refresh_from_db()
+        log = NewsSyncLog.objects.get()
+        self.assertEqual(self.source.last_sync_errors, "Warning: article fallback upstream detail")
+        self.assertFalse(log.has_errors)
+
+    @patch("apps.cms.services.news.orchestrator.sync_news")
+    def test_sync_log_uses_attempt_start_time(self, mock_sync):
+        mock_sync.return_value = {"created": 1, "updated": 0, "errors": [], "warnings": []}
+        started_at = timezone.now() - timedelta(seconds=5)
+        completed_at = timezone.now()
+
+        with (
+            patch("apps.cms.services.news.orchestrator.timezone") as mock_timezone,
+            patch("apps.cms.services.news.orchestrator.time.monotonic", side_effect=[10.0, 12.345]),
+        ):
+            mock_timezone.now.side_effect = [started_at, completed_at]
+            self.client.get(reverse("admin:cms_newsfeedsource_sync_this_feed", args=[self.source.pk]))
+
+        log = NewsSyncLog.objects.get()
+        self.source.refresh_from_db()
+        self.assertEqual(log.started_at, started_at)
+        self.assertEqual(log.duration_seconds, 2.35)
+        self.assertEqual(self.source.last_synced_at, completed_at)
 
 
 class NewsFeedSourceAdminDisplayTests(TestCase):
@@ -153,7 +338,58 @@ class NewsFeedSourceAdminDisplayTests(TestCase):
             last_synced_at=timezone.now(),
             last_sync_errors="something failed",
         )
-        self.assertEqual(self.admin.sync_result_badge(source), ("Errors", "warning"))
+        self.assertEqual(self.admin.sync_result_badge(source), ("Error", "danger"))
+
+    def test_sync_result_badge_warnings(self):
+        source = NewsFeedSource(
+            name="D",
+            source_key="d-warning",
+            feed_url="https://x/feed",
+            last_synced_at=timezone.now(),
+            last_sync_errors="Warning: article body used the RSS fallback",
+        )
+        self.assertEqual(self.admin.sync_result_badge(source), ("Warnings", "warning"))
+
+    def test_sync_result_badge_first_attempt_error_is_not_never_synced(self):
+        source = NewsFeedSource(
+            name="D",
+            source_key="d-first-failure",
+            feed_url="https://x/feed",
+            last_synced_at=None,
+            last_sync_errors="HTTP Error 403: Forbidden",
+        )
+        self.assertEqual(self.admin.sync_result_badge(source), ("Error", "danger"))
+
+    def test_sync_diagnostic_preview_normalizes_legacy_error_and_includes_warning(self):
+        source = NewsFeedSource(
+            name="D",
+            source_key="d-preview",
+            feed_url="https://x/feed",
+            last_sync_errors="HTTP Error 403: Forbidden\nWarning: article body used the RSS fallback",
+        )
+
+        self.assertEqual(
+            self.admin.sync_diagnostic_preview(source),
+            "Error: HTTP Error 403: Forbidden | Warning: article body used the RSS fallback",
+        )
+
+    def test_sync_diagnostic_preview_truncates_long_error_detail(self):
+        source = NewsFeedSource(
+            name="D",
+            source_key="d-long-error",
+            feed_url="https://x/feed",
+            last_sync_errors=f"Error: {'x' * 300}",
+        )
+
+        preview = self.admin.sync_diagnostic_preview(source)
+
+        self.assertEqual(len(preview), 240)
+        self.assertTrue(preview.endswith("…"))
+
+    def test_sync_diagnostic_preview_without_diagnostics(self):
+        source = NewsFeedSource(name="D", source_key="d-clean", feed_url="https://x/feed")
+
+        self.assertEqual(self.admin.sync_diagnostic_preview(source), "-")
 
     def test_sync_result_badge_success(self):
         source = NewsFeedSource(
