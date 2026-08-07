@@ -49,9 +49,9 @@ Follow these steps after cloning the repository:
 
 2. **Backend (Django REST Framework)**
    ```bash
-   python3.11 -m venv .venv
+   python -m venv .venv
    source .venv/bin/activate
-   python -m pip install --require-hashes -r src/requirements/local.lock.txt
+   pip install -r src/requirements.txt
    cd src
    python manage.py migrate
    python manage.py createsuperuser   # optional but recommended

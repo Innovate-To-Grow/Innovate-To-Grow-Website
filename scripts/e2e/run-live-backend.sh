@@ -21,7 +21,7 @@ trap cleanup EXIT INT TERM
 
 if [[ ! -x "${python_bin}" ]]; then
   echo "Missing backend virtual environment at ${python_bin}." >&2
-  echo "Create .venv at the repository root and install src/requirements/local.lock.txt first." >&2
+  echo "Create .venv at the repository root and install src/requirements.txt first." >&2
   exit 1
 fi
 
