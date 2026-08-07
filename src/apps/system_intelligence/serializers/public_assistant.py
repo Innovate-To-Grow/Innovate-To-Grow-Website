@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+MAX_PUBLIC_ASSISTANT_HISTORY_ITEMS = 100
+
 
 class PublicAssistantHistoryItemSerializer(serializers.Serializer):
     """A single prior conversation turn."""
@@ -19,7 +21,12 @@ class PublicAssistantChatSerializer(serializers.Serializer):
     # trim_whitespace is disabled so the blank/length checks below own the
     # validation (and report a clear, single error message).
     message = serializers.CharField(allow_blank=True, trim_whitespace=False)
-    history = PublicAssistantHistoryItemSerializer(many=True, required=False, default=list)
+    history = PublicAssistantHistoryItemSerializer(
+        many=True,
+        required=False,
+        default=list,
+        max_length=MAX_PUBLIC_ASSISTANT_HISTORY_ITEMS,
+    )
     # Client-supplied conversation id for audit grouping. Deliberately NOT
     # validated as a UUID here: a garbage id must group as a standalone turn,
     # never reject (400) the chat request.
@@ -56,7 +63,10 @@ class PublicAssistantChatSerializer(serializers.Serializer):
         total_cap = self._max_history_chars
         if total_cap is not None and total_cap > 0:
             total = sum(len(item["content"]) for item in value)
-            while value and total > total_cap:
-                total -= len(value[0]["content"])
-                value = value[1:]
+            first_retained = 0
+            while first_retained < len(value) and total > total_cap:
+                total -= len(value[first_retained]["content"])
+                first_retained += 1
+            if first_retained:
+                value = value[first_retained:]
         return value
