@@ -12,6 +12,7 @@ from apps.authn.models import PhoneVerificationChallenge
 from apps.authn.services.sms.sns_verify import (
     MAX_SENDS_PER_HOUR,
     MAX_VERIFY_ATTEMPTS,
+    VERIFIED_GRANT_TTL_SECONDS,
     PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
@@ -191,6 +192,45 @@ class SnsVerifyServiceTest(TestCase):
                 context_identifier=context,
                 challenge_id=verified.pk,
             )
+
+    def test_verified_grant_gets_fresh_expiry_from_successful_verification(self):
+        member = get_user_model().objects.create_user(password="StrongPass123!")
+        verified_at = timezone.now()
+        challenge = PhoneVerificationChallenge.objects.create(
+            phone_number=self.phone,
+            purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+            member=member,
+            context_identifier="event-registration:event-1",
+            code_hash=make_password("123456"),
+            expires_at=verified_at + timedelta(seconds=1),
+        )
+
+        with patch("apps.authn.services.sms.sns_verify.timezone.now", return_value=verified_at):
+            verified = check_phone_verification(
+                self.phone,
+                "123456",
+                challenge_id=challenge.pk,
+                purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+                member=member,
+                context_identifier="event-registration:event-1",
+                consume=False,
+            )
+
+        expected_expiry = verified_at + timedelta(seconds=VERIFIED_GRANT_TTL_SECONDS)
+        self.assertEqual(verified.expires_at, expected_expiry)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.expires_at, expected_expiry)
+
+        nearly_expired = expected_expiry - timedelta(seconds=1)
+        with patch("apps.authn.services.sms.sns_verify.timezone.now", return_value=nearly_expired):
+            consumed = consume_verified_phone_challenge(
+                phone_number=self.phone,
+                purpose=PhoneVerificationChallenge.Purpose.EVENT_REGISTRATION,
+                member=member,
+                context_identifier="event-registration:event-1",
+                challenge_id=challenge.pk,
+            )
+        self.assertEqual(consumed.status, PhoneVerificationChallenge.Status.CONSUMED)
 
     def test_verified_grant_cannot_cross_contexts(self):
         member = get_user_model().objects.create_user(password="StrongPass123!")
