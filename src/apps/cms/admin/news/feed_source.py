@@ -11,6 +11,61 @@ from apps.cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
 from apps.cms.services.news import sync_feed_sources
 from apps.core.admin import BaseModelAdmin
 
+_DIAGNOSTIC_PREVIEW_MAX_LENGTH = 240
+_MESSAGE_DIAGNOSTIC_MAX_ITEMS = 3
+_MESSAGE_DIAGNOSTIC_MAX_LENGTH = 1200
+_MESSAGE_TRUNCATION_SUFFIX = "… (truncated; see Last Sync Status or sync log for full details)"
+
+
+def _bounded_diagnostic(value, *, max_length, suffix="…"):
+    text = " ".join(str(value).split())
+    if len(text) <= max_length:
+        return text
+    if len(suffix) >= max_length:
+        return suffix[:max_length]
+    return f"{text[: max_length - len(suffix)].rstrip()}{suffix}"
+
+
+def _result_messages(result, key):
+    values = result.get(key) or []
+    if isinstance(values, str):
+        values = [values]
+    return [message for value in values if (message := " ".join(str(value).split()))]
+
+
+def _diagnostic_details(values, *, prefix):
+    entries = [f"{prefix}: {message}" for message in values[:_MESSAGE_DIAGNOSTIC_MAX_ITEMS]]
+    omitted = len(values) - len(entries)
+    if omitted:
+        entries.append(f"… (+{omitted} more; see Last Sync Status or sync log for full details)")
+    return _bounded_diagnostic(
+        f"Details: {' | '.join(entries)}",
+        max_length=_MESSAGE_DIAGNOSTIC_MAX_LENGTH,
+        suffix=_MESSAGE_TRUNCATION_SUFFIX,
+    )
+
+
+def _show_sync_result(request, summary, result):
+    errors = _result_messages(result, "errors")
+    warnings = _result_messages(result, "warnings")
+
+    if errors:
+        messages.error(
+            request,
+            f"{summary} {len(errors)} error(s). {_diagnostic_details(errors, prefix='Error')}",
+        )
+    if warnings:
+        messages.warning(
+            request,
+            f"{summary} {len(warnings)} warning(s). {_diagnostic_details(warnings, prefix='Warning')}",
+        )
+    if not errors and not warnings:
+        messages.success(request, summary)
+
+
+def _stored_diagnostics(value):
+    return [line.strip() for line in str(value or "").splitlines() if line.strip()]
+
 
 class NewsSyncLogInline(TabularInline):
     model = NewsSyncLog
@@ -30,6 +85,7 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
         "status_badge",
         "article_count_display",
         "sync_result_badge",
+        "sync_diagnostic_preview",
         "time_since_sync",
     )
     list_filter = ("is_active",)
@@ -85,13 +141,24 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
     @display(description="Last Sync", label=True)
     def sync_result_badge(self, obj):
         if obj.last_sync_errors:
-            diagnostics = [line.strip() for line in obj.last_sync_errors.splitlines() if line.strip()]
-            if diagnostics and all(line.startswith("Warning: ") for line in diagnostics):
+            diagnostics = _stored_diagnostics(obj.last_sync_errors)
+            errors = [line for line in diagnostics if not line.startswith("Warning: ")]
+            if errors:
+                return "Error", "danger"
+            if diagnostics:
                 return "Warnings", "warning"
-            return "Errors", "warning"
         if not obj.last_synced_at:
             return "Never synced", "info"
         return "Success", "success"
+
+    @display(description="Sync details")
+    def sync_diagnostic_preview(self, obj):
+        diagnostics = _stored_diagnostics(obj.last_sync_errors)
+        if not diagnostics:
+            return "-"
+
+        normalized = [line if line.startswith(("Error: ", "Warning: ")) else f"Error: {line}" for line in diagnostics]
+        return _bounded_diagnostic(" | ".join(normalized), max_length=_DIAGNOSTIC_PREVIEW_MAX_LENGTH)
 
     @display(description="Synced")
     def time_since_sync(self, obj):
@@ -125,18 +192,11 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
 
         result = sync_feed_sources(sources)
 
-        msg = (
+        summary = (
             f"Sync complete: {result['created']} created, {result['updated']} updated "
             f"across {result['feed_count']} feed(s)."
         )
-        if result["errors"]:
-            msg += f" {len(result['errors'])} error(s)."
-        if result["warnings"]:
-            msg += f" {len(result['warnings'])} warning(s)."
-        if result["errors"] or result["warnings"]:
-            messages.warning(request, msg)
-        else:
-            messages.success(request, msg)
+        _show_sync_result(request, summary, result)
         return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_changelist"))
 
     @action(description="Sync this feed", url_path="sync-this-feed", icon="sync")
@@ -148,13 +208,6 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
 
         result = sync_feed_sources([source])
 
-        msg = f"Sync complete for '{source.name}': {result['created']} created, {result['updated']} updated."
-        if result["errors"]:
-            msg += f" {len(result['errors'])} error(s)."
-        if result["warnings"]:
-            msg += f" {len(result['warnings'])} warning(s)."
-        if result["errors"] or result["warnings"]:
-            messages.warning(request, msg)
-        else:
-            messages.success(request, msg)
+        summary = f"Sync complete for '{source.name}': {result['created']} created, {result['updated']} updated."
+        _show_sync_result(request, summary, result)
         return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_change", args=[object_id]))
