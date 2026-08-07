@@ -32,6 +32,7 @@ from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_
 logger = logging.getLogger(__name__)
 
 OTP_TTL_SECONDS = 600
+VERIFIED_GRANT_TTL_SECONDS = 900
 MAX_VERIFY_ATTEMPTS = 5
 MAX_SENDS_PER_HOUR = 10
 DEFAULT_STATUS = "pending"
@@ -362,6 +363,7 @@ def _check_phone_verification(
         update_fields["consumed_at"] = now
     else:
         update_fields["verified_at"] = now
+        update_fields["expires_at"] = now + timedelta(seconds=VERIFIED_GRANT_TTL_SECONDS)
     updated = PhoneVerificationChallenge.objects.filter(
         pk=challenge.pk,
         status__in=VERIFIABLE_STATUSES,
@@ -374,6 +376,7 @@ def _check_phone_verification(
         challenge.consumed_at = now
     else:
         challenge.verified_at = now
+        challenge.expires_at = update_fields["expires_at"]
     return challenge, "approved"
 
 

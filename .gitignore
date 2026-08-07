@@ -76,7 +76,6 @@ db.sqlite3-journal
 *.sqlite3-journal
 *.sqlite
 *.db
-src/itg_e2e
 src/data/
 src/media/
 
@@ -134,8 +133,8 @@ venv.bak/
 # pixi.lock
 .pixi
 
-# pyenv: the repository's root .python-version is intentionally tracked so
-# lock generation, local development, CI, and production share Python 3.11.
+# pyenv
+.python-version
 
 # PEP 582
 __pypackages__/
@@ -182,7 +181,6 @@ pages/dist/
 pages/coverage/
 pages/playwright-report/
 pages/test-results/
-pages/blob-report/
 
 # =====================================
 # IDE / Editors

@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from django.db import OperationalError, connection, transaction
 from django.utils import timezone
+from gspread.exceptions import APIError as GspreadAPIError
 
 from apps.core.models import BackgroundJob
 
@@ -57,11 +58,17 @@ def _is_known_transient(exc: BaseException) -> bool:
         "ThrottlingException",
         "Timeout",
     }
-    return any(
-        isinstance(item, TransientJobError | OperationalError | TimeoutError | ConnectionError)
-        or item.__class__.__name__ in transient_names
-        for item in _exception_chain(exc)
-    )
+    for item in _exception_chain(exc):
+        if (
+            isinstance(item, TransientJobError | OperationalError | TimeoutError | ConnectionError)
+            or item.__class__.__name__ in transient_names
+        ):
+            return True
+        if isinstance(item, GspreadAPIError):
+            status_code = getattr(getattr(item, "response", None), "status_code", None)
+            if status_code in {408, 429} or (isinstance(status_code, int) and 500 <= status_code <= 599):
+                return True
+    return False
 
 
 def claim_jobs(*, batch_size: int = 10) -> list[BackgroundJob]:

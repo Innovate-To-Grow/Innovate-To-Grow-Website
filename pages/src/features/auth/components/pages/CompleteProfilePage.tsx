@@ -40,7 +40,6 @@ export const CompleteProfilePage = () => {
     if (!session) return;
     const guard = {
       generation: session.generation,
-      refresh: session.refresh,
     };
     let active = true;
 
@@ -121,7 +120,6 @@ export const CompleteProfilePage = () => {
       if (!session) return;
       const guard = {
         generation: session.generation,
-        refresh: session.refresh,
       };
       const orgValue = organizationType === 'individual' ? 'Individual' : organization.trim();
       const titleValue = organizationType === 'organization' ? title.trim() : '';

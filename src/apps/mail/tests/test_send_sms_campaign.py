@@ -66,6 +66,19 @@ class SendSmsCampaignTests(TestCase):
         self.assertEqual(campaign.status, "failed")
         self.assertIn("SMS delivery is not configured", campaign.error_message)
 
+    @patch("apps.mail.services.send_sms_campaign.get_sms_recipients", return_value=[])
+    @patch("apps.mail.services.send_sms_campaign.AWSCredentialConfig.load")
+    def test_fallback_campaign_with_no_recipients_is_sent(self, load_config, _recipients):
+        campaign = SmsCampaign.objects.create(message="Hello", audience_type="all_members")
+
+        result = send_sms_campaign(campaign, sent_by=self.sender)
+
+        campaign.refresh_from_db()
+        self.assertEqual(result, {"total": 0, "sent": 0, "failed": 0})
+        self.assertEqual(campaign.status, "sent")
+        self.assertIsNotNone(campaign.sent_at)
+        load_config.assert_not_called()
+
     @patch("apps.mail.services.send_sms_campaign.publish_plain_sms")
     def test_send_sms_campaign_records_partial_failures(self, mock_publish):
         _make_sms_config()
@@ -80,10 +93,26 @@ class SendSmsCampaignTests(TestCase):
 
         campaign.refresh_from_db()
         self.assertEqual(result, {"total": 2, "sent": 1, "failed": 1})
-        self.assertEqual(campaign.status, "sent")
+        self.assertEqual(campaign.status, "partial")
         self.assertEqual(SmsRecipientLog.objects.filter(campaign=campaign, status="sent").count(), 1)
         failed = SmsRecipientLog.objects.get(campaign=campaign, status="failed")
         self.assertEqual(failed.error_message, "boom")
+
+    @patch("apps.mail.services.send_sms_campaign.publish_plain_sms", side_effect=RuntimeError("SNS rejected"))
+    def test_fallback_campaign_with_all_provider_failures_is_failed(self, _publish):
+        _make_sms_config()
+        first = make_member(email="all-failed-first@example.com")
+        second = make_member(email="all-failed-second@example.com")
+        _add_phone(first, "2095551001")
+        _add_phone(second, "2095551002")
+        campaign = SmsCampaign.objects.create(message="Hello", audience_type="all_members")
+
+        result = send_sms_campaign(campaign, sent_by=self.sender)
+
+        campaign.refresh_from_db()
+        self.assertEqual(result, {"total": 2, "sent": 0, "failed": 2})
+        self.assertEqual(campaign.status, "failed")
+        self.assertEqual(SmsRecipientLog.objects.filter(campaign=campaign, status="failed").count(), 2)
 
     @patch("apps.mail.services.send_sms_campaign.publish_plain_sms", return_value="sns-id")
     def test_send_sms_campaign_persists_progress_every_ten_recipients(self, mock_publish):

@@ -23,10 +23,8 @@ Official platform of **Innovate To Grow | University of California, Merced | Sch
 
 ## Prerequisites
 
-- Python 3.11.x (the tracked `.python-version` and hashed dependency locks use
-  this minor line)
-- Node.js 22.22.2 (npm 10+; other supported releases are listed in
-  `pages/package.json`)
+- Python 3.11+
+- Node.js 22.22.2 (npm 10+; other supported releases are listed in `pages/package.json`)
 - SQLite 3.35+ (dev); PostgreSQL for CI and production
 
 ---
@@ -36,8 +34,8 @@ Official platform of **Innovate To Grow | University of California, Merced | Sch
 ### Backend — Django (http://localhost:8000)
 
 ```bash
-python3.11 -m venv .venv && source .venv/bin/activate
-python -m pip install --require-hashes -r src/requirements.txt
+python -m venv .venv && source .venv/bin/activate
+pip install -r src/requirements.txt
 cp src/.env.example src/.env
 
 cd src

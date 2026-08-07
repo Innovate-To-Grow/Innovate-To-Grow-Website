@@ -128,6 +128,18 @@ class ValidationTests(PublicAssistantChatTestBase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_history_item_count_is_bounded_before_child_validation(self):
+        history = [{"role": "user", "content": "x"} for _ in range(101)]
+        with patch(INVOKE_PATH) as mock_invoke:
+            response = self.client.post(
+                self.chat_url,
+                {"message": "hi", "history": history},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        mock_invoke.assert_not_called()
+
     def test_estimated_input_limit_rejects_before_model_call(self):
         self.config.public_assistant_max_estimated_input_tokens = 5
         self.config.save()

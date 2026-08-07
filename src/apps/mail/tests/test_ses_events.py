@@ -142,6 +142,40 @@ class ProcessSnsEnvelopeTests(TestCase):
         process_sns_envelope(env)
         self.assertEqual(self._reload().bounced_at, first_bounced_at)
 
+    def test_aggregate_failure_rolls_back_event_for_safe_sns_retry(self):
+        env = _envelope(
+            "Bounce",
+            {
+                "bounce": {
+                    "bounceType": "Permanent",
+                    "timestamp": "2026-04-22T12:00:00Z",
+                    "bouncedRecipients": [],
+                }
+            },
+            sns_message_id="sns-retry-after-aggregate",
+        )
+
+        with (
+            patch(
+                "apps.mail.services.background_jobs.aggregate_email_campaign",
+                side_effect=RuntimeError("aggregate unavailable"),
+            ),
+            self.assertRaisesMessage(RuntimeError, "aggregate unavailable"),
+        ):
+            process_sns_envelope(env)
+
+        log = self._reload()
+        self.assertEqual(log.status, "sent")
+        self.assertEqual(log.last_sns_message_id, "")
+
+        process_sns_envelope(env)
+
+        log = self._reload()
+        self.campaign.refresh_from_db()
+        self.assertEqual(log.status, "bounced")
+        self.assertEqual(log.last_sns_message_id, "sns-retry-after-aggregate")
+        self.assertEqual(self.campaign.status, "failed")
+
     def test_raises_on_unknown_sns_type(self):
         with self.assertRaises(SesEventError):
             process_sns_envelope({"Type": "SomethingNew"})

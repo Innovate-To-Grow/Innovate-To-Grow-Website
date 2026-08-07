@@ -31,13 +31,7 @@ def normalize_singletons(apps, schema_editor):
         "-pk",
     )
     keep = enabled.first()
-    if keep is None:
-        # Preserve the prior loader's latest-updated fallback once, then the
-        # runtime loader can safely require an explicitly enabled row.
-        keep = MemberSheetSyncConfig.objects.order_by("-updated_at", "-pk").first()
-        if keep is not None:
-            MemberSheetSyncConfig.objects.filter(pk=keep.pk).update(is_enabled=True)
-    else:
+    if keep is not None:
         enabled.exclude(pk=keep.pk).update(is_enabled=False, updated_at=now)
 
 

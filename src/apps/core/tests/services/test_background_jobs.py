@@ -1,3 +1,4 @@
+import json
 import threading
 from datetime import timedelta
 from types import SimpleNamespace
@@ -7,6 +8,8 @@ from unittest.mock import patch
 from django.db import OperationalError, close_old_connections, connection
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
+from gspread.exceptions import APIError as GspreadAPIError
+from requests import Response
 
 from apps.core.models import BackgroundJob, DeliveryRateLimit
 from apps.core.services.aws.provider_outcomes import (
@@ -25,6 +28,21 @@ from apps.core.services.background_jobs import (
     retry_job,
     worker_metrics,
 )
+
+
+def _gspread_api_error(status_code: int) -> GspreadAPIError:
+    response = Response()
+    response.status_code = status_code
+    response._content = json.dumps(  # noqa: SLF001 - build the response gspread expects.
+        {
+            "error": {
+                "code": status_code,
+                "message": "Google Sheets request failed",
+                "status": "UNAVAILABLE",
+            }
+        }
+    ).encode()
+    return GspreadAPIError(response)
 
 
 class BackgroundJobQueueTests(TestCase):
@@ -115,6 +133,38 @@ class BackgroundJobQueueTests(TestCase):
         self.assertGreater(job.available_at, timezone.now())
         self.assertEqual(job.last_error, "temporary")
 
+    @patch("apps.core.services.background_jobs.worker.get_handler")
+    def test_transient_gspread_http_statuses_retry(self, get_handler):
+        for status_code in (408, 429, 500, 503, 599):
+            with self.subTest(status_code=status_code):
+                get_handler.return_value = lambda _job, status=status_code: (_ for _ in ()).throw(
+                    _gspread_api_error(status)
+                )
+                job, _created = enqueue_job(
+                    kind="test.sheet",
+                    dedupe_key=f"gspread-{status_code}",
+                    payload={},
+                )
+
+                self.assertFalse(process_claimed_job(claim_jobs(batch_size=1)[0]))
+
+                job.refresh_from_db()
+                self.assertEqual(job.status, BackgroundJob.Status.RETRY)
+
+    @patch("apps.core.services.background_jobs.worker.get_handler")
+    def test_permanent_gspread_http_status_fails(self, get_handler):
+        get_handler.return_value = lambda _job: (_ for _ in ()).throw(_gspread_api_error(400))
+        job, _created = enqueue_job(
+            kind="test.sheet",
+            dedupe_key="gspread-400",
+            payload={},
+        )
+
+        self.assertFalse(process_claimed_job(claim_jobs()[0]))
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, BackgroundJob.Status.FAILED)
+
     @patch(
         "apps.core.services.background_jobs.worker.notify_job_state",
         side_effect=RuntimeError("mirror unavailable"),
@@ -152,6 +202,33 @@ class BackgroundJobQueueTests(TestCase):
         self.assertTrue(retry_job(job))
         job.refresh_from_db()
         self.assertEqual(job.status, BackgroundJob.Status.RETRY)
+
+    @patch(
+        "apps.core.services.background_jobs.registry.notify_job_state",
+        side_effect=OperationalError("domain mirror unavailable"),
+    )
+    def test_manual_retry_rolls_back_if_domain_mirror_fails(self, _notify):
+        job, _created = enqueue_job(
+            kind="test.delivery",
+            dedupe_key="atomic-manual-retry",
+            payload={},
+        )
+        completed_at = timezone.now()
+        BackgroundJob.objects.filter(pk=job.pk).update(
+            status=BackgroundJob.Status.UNCERTAIN,
+            completed_at=completed_at,
+            last_error="Review delivery",
+        )
+        job.refresh_from_db()
+
+        with self.assertRaisesMessage(OperationalError, "domain mirror unavailable"):
+            retry_job(job)
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, BackgroundJob.Status.UNCERTAIN)
+        self.assertEqual(job.completed_at, completed_at)
+        self.assertEqual(job.last_error, "Review delivery")
+        self.assertEqual(claim_jobs(), [])
 
     @patch("apps.core.services.background_jobs.worker.get_handler")
     def test_definitive_transient_provider_rejection_retries_after_call_started(self, get_handler):
@@ -225,28 +302,61 @@ class BackgroundJobQueueTests(TestCase):
         self.assertEqual(safe.status, BackgroundJob.Status.RETRY)
         self.assertEqual(delivery.status, BackgroundJob.Status.UNCERTAIN)
 
-    @patch(
-        "apps.core.services.background_jobs.recovery.notify_job_state",
-        side_effect=OperationalError("mirror database unavailable"),
-    )
-    def test_recovery_mirror_failure_does_not_rollback_job_state(self, _notify):
+    def test_stale_recovery_fails_job_at_max_attempts(self):
         stale_at = timezone.now() - timedelta(hours=1)
         job, _created = enqueue_job(
             kind="test.safe",
-            dedupe_key="recovery-mirror",
+            dedupe_key="exhausted-stale-job",
+            payload={},
+            max_attempts=1,
+        )
+        claimed = claim_jobs()[0]
+        BackgroundJob.objects.filter(pk=claimed.pk).update(claimed_at=stale_at)
+
+        result = recover_stale_jobs(stale_after=timedelta(minutes=10))
+
+        job.refresh_from_db()
+        self.assertEqual(result, {"completed": 0, "retried": 0, "failed": 1, "uncertain": 0})
+        self.assertEqual(job.status, BackgroundJob.Status.FAILED)
+        self.assertIsNotNone(job.completed_at)
+        self.assertIn("Maximum attempts", job.last_error)
+        self.assertEqual(claim_jobs(), [])
+
+    def test_recovery_mirror_failure_rolls_back_one_job_without_blocking_next(self):
+        stale_at = timezone.now() - timedelta(hours=1)
+        broken, _created = enqueue_job(
+            kind="test.safe",
+            dedupe_key="broken-recovery-mirror",
             payload={},
         )
-        BackgroundJob.objects.filter(pk=job.pk).update(
+        healthy, _created = enqueue_job(
+            kind="test.safe",
+            dedupe_key="healthy-recovery-mirror",
+            payload={},
+        )
+        BackgroundJob.objects.filter(pk__in=[broken.pk, healthy.pk]).update(
             status=BackgroundJob.Status.PROCESSING,
             claimed_at=stale_at,
             claim_token=BackgroundJob.new_claim_token(),
         )
 
-        result = recover_stale_jobs(stale_after=timedelta(minutes=10))
+        def mirror(job):
+            if job.pk == broken.pk:
+                raise OperationalError("mirror database unavailable")
 
-        job.refresh_from_db()
-        self.assertEqual(result["retried"], 1)
-        self.assertEqual(job.status, BackgroundJob.Status.RETRY)
+        with patch(
+            "apps.core.services.background_jobs.recovery.notify_job_state",
+            side_effect=mirror,
+        ):
+            result = recover_stale_jobs(stale_after=timedelta(minutes=10))
+
+        broken.refresh_from_db()
+        healthy.refresh_from_db()
+        self.assertEqual(result, {"completed": 0, "retried": 1, "failed": 0, "uncertain": 0})
+        self.assertEqual(broken.status, BackgroundJob.Status.PROCESSING)
+        self.assertIsNotNone(broken.claim_token)
+        self.assertEqual(healthy.status, BackgroundJob.Status.RETRY)
+        self.assertIsNone(healthy.claim_token)
 
     def test_metrics_report_queue_and_terminal_counts(self):
         enqueue_job(kind="test.echo", dedupe_key="pending", payload={})

@@ -156,17 +156,17 @@ STORAGES = {
         },
     },
     "staticfiles": {
-        "BACKEND": "storages.backends.s3.S3ManifestStaticStorage",
+        "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
         "OPTIONS": {
             "bucket_name": AWS_STORAGE_BUCKET_NAME,
             "region_name": AWS_S3_REGION_NAME,
             "location": "static",
-            # Content-hashed static files are immutable release artifacts.
-            # Old hashes remain available throughout the rollback window.
-            "file_overwrite": False,
+            # Static assets are release artifacts. They must replace older
+            # files with the same path so non-hashed admin JS/CSS updates go live.
+            "file_overwrite": True,
             "querystring_auth": False,
             "default_acl": None,
-            "object_parameters": {"CacheControl": "public, max-age=31536000, immutable"},
+            "object_parameters": AWS_S3_OBJECT_PARAMETERS,
         },
     },
 }

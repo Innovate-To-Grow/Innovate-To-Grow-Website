@@ -169,6 +169,9 @@ class CampaignStatusViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Status")
+        self.assertContains(response, "data.status === 'queued' || data.status === 'sending'")
+        self.assertContains(response, "Campaign Partially Sent")
+        self.assertContains(response, "Campaign Failed")
 
     def test_status_json_returns_progress_and_logs(self):
         campaign = EmailCampaign.objects.create(

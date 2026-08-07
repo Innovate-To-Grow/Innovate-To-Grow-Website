@@ -84,19 +84,32 @@ class Command(BaseCommand):
                 finally:
                     next_key_purge_at = now_monotonic + key_purge_seconds
 
+            processed_jobs = 0
             try:
                 recover_stale_jobs(stale_after=timedelta(minutes=max(1, options["stale_minutes"])))
-                jobs = claim_jobs(batch_size=batch_size)
             except Exception:  # noqa: BLE001 - one maintenance failure must not terminate the worker.
                 logger.exception("Background worker maintenance/claim cycle failed")
-                jobs = []
-            for job in jobs:
-                try:
-                    process_claimed_job(job)
-                except Exception:  # noqa: BLE001 - final per-job containment boundary.
-                    logger.exception("Unhandled background job boundary failure for %s", job.pk)
-                if stopping:
-                    break
+            else:
+                # Claim immediately before execution instead of reserving a whole
+                # batch. If a shutdown signal arrives while one job is running,
+                # later jobs remain pending and do not consume an attempt merely
+                # because this worker is stopping.
+                for _index in range(batch_size):
+                    if stopping:
+                        break
+                    try:
+                        jobs = claim_jobs(batch_size=1)
+                    except Exception:  # noqa: BLE001 - retry the claim on the next cycle.
+                        logger.exception("Background worker maintenance/claim cycle failed")
+                        break
+                    if not jobs:
+                        break
+                    job = jobs[0]
+                    processed_jobs += 1
+                    try:
+                        process_claimed_job(job)
+                    except Exception:  # noqa: BLE001 - final per-job containment boundary.
+                        logger.exception("Unhandled background job boundary failure for %s", job.pk)
 
             try:
                 metrics = worker_metrics()
@@ -107,5 +120,5 @@ class Command(BaseCommand):
 
             if options["once"]:
                 return
-            if not jobs:
+            if not processed_jobs:
                 time.sleep(poll_seconds)

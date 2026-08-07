@@ -5,6 +5,7 @@ from django.utils import timezone
 from apps.authn.services.sms import publish_plain_sms
 from apps.core.models import AWSCredentialConfig
 from apps.mail.models import SmsRecipientLog
+from apps.mail.services.campaign_state import campaign_state
 from apps.mail.services.personalize import personalize
 from apps.mail.services.sms_audience import get_sms_recipients
 
@@ -14,6 +15,8 @@ logger = logging.getLogger(__name__)
 def send_sms_campaign(campaign, sent_by):
     recipients = get_sms_recipients(campaign)
     _mark_campaign_sending(campaign, sent_by, len(recipients))
+    if not recipients:
+        return _finalize_campaign(campaign)
 
     config = AWSCredentialConfig.load()
     if not config.sns_configured:
@@ -24,7 +27,15 @@ def send_sms_campaign(campaign, sent_by):
         if (campaign.sent_count + campaign.failed_count) % 10 == 0:
             campaign.save(update_fields=["sent_count", "failed_count"])
 
-    campaign.status = "sent" if campaign.failed_count < campaign.total_recipients else "failed"
+    return _finalize_campaign(campaign)
+
+
+def _finalize_campaign(campaign):
+    campaign.status = campaign_state(
+        total=campaign.total_recipients,
+        sent=campaign.sent_count,
+        failed=campaign.failed_count,
+    )
     campaign.sent_at = timezone.now()
     campaign.save(update_fields=["status", "sent_count", "failed_count", "sent_at"])
     return {

@@ -112,7 +112,6 @@ describe('CompleteProfilePage', () => {
 
     expect(clearProfileCompletionRequirement).toHaveBeenCalledWith({
       generation: 'generation-a',
-      refresh: 'refresh-a',
     });
     expect(mockNavigate).toHaveBeenCalledWith('/event-registration', {replace: true});
   });
@@ -150,7 +149,6 @@ describe('CompleteProfilePage', () => {
     await waitFor(() => {
       expect(clearProfileCompletionRequirement).toHaveBeenCalledWith({
         generation: 'generation-a',
-        refresh: 'refresh-a',
       });
     });
     expect(mockNavigate).not.toHaveBeenCalled();
@@ -215,5 +213,43 @@ describe('CompleteProfilePage', () => {
       expect(screen.getByLabelText('Last Name')).toHaveValue('Hopper');
     });
     expect(screen.queryByDisplayValue('Ada')).not.toBeInTheDocument();
+  });
+
+  it('accepts a same-generation profile response after refresh-token rotation', async () => {
+    let resolveProfile!: (value: object) => void;
+    let currentRefresh = 'refresh-a';
+    mockGetProfile.mockReturnValue(
+      new Promise((resolve) => {
+        resolveProfile = resolve;
+      }),
+    );
+    mockIsCurrentSession.mockImplementation(
+      (guard: {generation: string; refresh?: string}) =>
+        guard.generation === 'generation-a' &&
+        (guard.refresh === undefined || guard.refresh === currentRefresh),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(mockGetProfile).toHaveBeenCalledTimes(1));
+
+    currentRefresh = 'refresh-b';
+    resolveProfile({
+      first_name: 'Ada',
+      middle_name: '',
+      last_name: 'Lovelace',
+      organization: 'Analytical Engines',
+      title: '',
+    });
+
+    expect(await screen.findByDisplayValue('Ada')).toBeInTheDocument();
+    expect(mockIsCurrentSession).toHaveBeenCalledWith({
+      generation: 'generation-a',
+    });
   });
 });

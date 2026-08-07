@@ -56,15 +56,12 @@ class ProductionCacheSettingsTests(SimpleTestCase):
             with self.assertRaisesMessage(ImproperlyConfigured, "DJANGO_SECRET_KEY must be set in production."):
                 reload_prod_settings()
 
-    def test_prod_staticfiles_are_content_hashed_and_immutable(self):
+    def test_prod_staticfiles_overwrite_release_assets(self):
         with patch.dict("os.environ", PROD_ENV, clear=True):
             prod_settings = reload_prod_settings()
 
         self.assertFalse(prod_settings.STORAGES["default"]["OPTIONS"]["file_overwrite"])
-        staticfiles = prod_settings.STORAGES["staticfiles"]
-        self.assertEqual(staticfiles["BACKEND"], "storages.backends.s3.S3ManifestStaticStorage")
-        self.assertFalse(staticfiles["OPTIONS"]["file_overwrite"])
-        self.assertIn("immutable", staticfiles["OPTIONS"]["object_parameters"]["CacheControl"])
+        self.assertTrue(prod_settings.STORAGES["staticfiles"]["OPTIONS"]["file_overwrite"])
 
     def test_prod_installs_csp_middleware_after_base_initialization(self):
         with patch.dict("os.environ", PROD_ENV, clear=True):

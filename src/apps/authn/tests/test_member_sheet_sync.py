@@ -227,15 +227,83 @@ class ScheduleMemberSyncTests(TestCase):
         )
 
     @override_settings(BACKGROUND_JOBS_ENABLED=False)
-    @patch("apps.authn.services.member_sheet_sync.scheduler._flush_pending_sync")
-    def test_rollout_fallback_runs_synchronously(self, flush):
+    @patch("apps.authn.services.member_sheet_sync.scheduler._schedule_in_process_sync")
+    def test_rollout_fallback_schedules_nonblocking_debounce(self, schedule):
         _enable_config()
 
         from apps.authn.services.member_sheet_sync import schedule_member_sync
 
         schedule_member_sync()
 
+        schedule.assert_called_once_with(delay=15)
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=False)
+    @patch("apps.authn.services.member_sheet_sync.scheduler.threading.Timer")
+    def test_rollout_timer_start_failure_is_logged_and_suppressed(self, timer_class):
+        from apps.authn.services.member_sheet_sync import scheduler
+
+        _enable_config()
+        scheduler._sync_timer = None
+        timer_class.return_value.start.side_effect = RuntimeError("can't start new thread")
+
+        with self.assertLogs(scheduler.logger, level="ERROR"):
+            scheduler.schedule_member_sync()
+
+        self.assertIsNone(scheduler._sync_timer)
+
+    @patch("apps.authn.services.member_sheet_sync.scheduler.threading.Timer")
+    def test_rollout_timer_replaces_and_cancels_previous_debounce(self, timer_class):
+        from apps.authn.services.member_sheet_sync import scheduler
+
+        previous = MagicMock()
+        scheduler._sync_timer = previous
+        self.addCleanup(setattr, scheduler, "_sync_timer", None)
+
+        scheduler._schedule_in_process_sync(delay=3)
+
+        timer = timer_class.return_value
+        previous.cancel.assert_called_once_with()
+        timer_class.assert_called_once_with(3, scheduler._run_in_process_sync)
+        self.assertIs(scheduler._sync_timer, timer)
+        self.assertTrue(timer.daemon)
+        timer.start.assert_called_once_with()
+
+    def test_stale_rollout_timer_cannot_clear_or_run_newer_debounce(self):
+        from apps.authn.services.member_sheet_sync import scheduler
+
+        stale_timer = MagicMock()
+        current_timer = MagicMock()
+        scheduler._sync_timer = current_timer
+        self.addCleanup(setattr, scheduler, "_sync_timer", None)
+
+        with (
+            patch.object(scheduler.threading, "current_thread", return_value=stale_timer),
+            patch.object(scheduler, "_flush_pending_sync") as flush,
+            patch.object(scheduler, "close_old_connections") as close_connections,
+        ):
+            scheduler._run_in_process_sync()
+
+        self.assertIs(scheduler._sync_timer, current_timer)
+        flush.assert_not_called()
+        close_connections.assert_not_called()
+
+    def test_current_rollout_timer_clears_cache_and_refreshes_connections(self):
+        from apps.authn.services.member_sheet_sync import scheduler
+
+        current_timer = MagicMock()
+        scheduler._sync_timer = current_timer
+        self.addCleanup(setattr, scheduler, "_sync_timer", None)
+
+        with (
+            patch.object(scheduler.threading, "current_thread", return_value=current_timer),
+            patch.object(scheduler, "_flush_pending_sync") as flush,
+            patch.object(scheduler, "close_old_connections") as close_connections,
+        ):
+            scheduler._run_in_process_sync()
+
+        self.assertIsNone(scheduler._sync_timer)
         flush.assert_called_once_with()
+        self.assertEqual(close_connections.call_count, 2)
 
 
 class FormulaInjectionTests(TestCase):
@@ -288,7 +356,7 @@ class SingletonEnforcementTests(TestCase):
         enabled.refresh_from_db()
         self.assertTrue(enabled.is_enabled)
 
-    def test_migration_promotes_legacy_latest_fallback(self):
+    def test_migration_preserves_all_disabled_configs(self):
         older = MemberSheetSyncConfig.objects.create(is_enabled=False, google_sheet_id="sheet-a")
         newer = MemberSheetSyncConfig.objects.create(is_enabled=False, google_sheet_id="sheet-b")
         now = timezone.now()
@@ -301,7 +369,7 @@ class SingletonEnforcementTests(TestCase):
         older.refresh_from_db()
         newer.refresh_from_db()
         self.assertFalse(older.is_enabled)
-        self.assertTrue(newer.is_enabled)
+        self.assertFalse(newer.is_enabled)
 
 
 @override_settings(BACKGROUND_JOBS_ENABLED=True)

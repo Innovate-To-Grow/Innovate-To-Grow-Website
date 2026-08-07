@@ -35,8 +35,8 @@ def handle_notification(envelope: dict[str, Any]) -> None:
                 continue
             handler(log, ses_event, sns_message_id)
             campaign_ids.add(log.campaign_id)
-    if campaign_ids:
-        from apps.mail.services.background_jobs import aggregate_email_campaign
+        if campaign_ids:
+            from apps.mail.services.background_jobs import aggregate_email_campaign
 
-        for campaign_id in campaign_ids:
-            aggregate_email_campaign(campaign_id)
+            for campaign_id in campaign_ids:
+                aggregate_email_campaign(campaign_id)

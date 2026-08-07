@@ -390,6 +390,95 @@ class AppendBranchTest(TestCase):
             can_retry_after_claim=True,
         )
 
+    @override_settings(BACKGROUND_JOBS_ENABLED=False)
+    @patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync")
+    def test_schedule_sync_defers_nonblocking_fallback_until_commit(self, schedule):
+        from apps.event.services.registration_sheet_sync.append import schedule_registration_sync
+
+        self.event.registration_sheet_id = "sheet-id"
+        self.event.save(update_fields=["registration_sheet_id", "updated_at"])
+
+        with self.captureOnCommitCallbacks(execute=True):
+            schedule_registration_sync(self.event)
+
+        schedule.assert_called_once_with(str(self.event.pk))
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=False)
+    @patch("apps.event.services.registration_sheet_sync.append.threading.Timer")
+    def test_rollout_timer_start_failure_is_logged_and_suppressed(self, timer_class):
+        from apps.event.services.registration_sheet_sync import append
+
+        event_id = str(self.event.pk)
+        append._sync_timers.pop(event_id, None)
+        timer_class.return_value.start.side_effect = RuntimeError("can't start new thread")
+
+        with self.assertLogs(append.logger, level="ERROR"):
+            append._schedule_in_process_sync(event_id)
+
+        self.assertNotIn(event_id, append._sync_timers)
+
+    @patch("apps.event.services.registration_sheet_sync.append.threading.Timer")
+    def test_rollout_timer_replaces_and_cancels_previous_debounce(self, timer_class):
+        from apps.event.services import registration_sheet_sync as sync_api
+        from apps.event.services.registration_sheet_sync import append
+
+        event_id = str(self.event.pk)
+        previous = MagicMock()
+        append._sync_timers[event_id] = previous
+        self.addCleanup(append._sync_timers.pop, event_id, None)
+
+        append._schedule_in_process_sync(event_id)
+
+        timer = timer_class.return_value
+        previous.cancel.assert_called_once_with()
+        timer_class.assert_called_once_with(
+            sync_api.DEBOUNCE_SECONDS,
+            append._run_in_process_sync,
+            args=[event_id],
+        )
+        self.assertIs(append._sync_timers[event_id], timer)
+        self.assertTrue(timer.daemon)
+        timer.start.assert_called_once_with()
+
+    def test_stale_rollout_timer_cannot_clear_or_run_newer_debounce(self):
+        from apps.event.services.registration_sheet_sync import append
+
+        event_id = str(self.event.pk)
+        stale_timer = MagicMock()
+        current_timer = MagicMock()
+        append._sync_timers[event_id] = current_timer
+        self.addCleanup(append._sync_timers.pop, event_id, None)
+
+        with (
+            patch.object(append.threading, "current_thread", return_value=stale_timer),
+            patch.object(append, "_flush_pending_sync") as flush,
+        ):
+            append._run_in_process_sync(event_id)
+
+        self.assertIs(append._sync_timers[event_id], current_timer)
+        flush.assert_not_called()
+
+    def test_current_rollout_timer_clears_cache_before_flush(self):
+        from apps.event.services.registration_sheet_sync import append
+
+        event_id = str(self.event.pk)
+        current_timer = MagicMock()
+        append._sync_timers[event_id] = current_timer
+        self.addCleanup(append._sync_timers.pop, event_id, None)
+
+        def assert_cache_cleared(flushed_event_id):
+            self.assertEqual(flushed_event_id, event_id)
+            self.assertNotIn(event_id, append._sync_timers)
+
+        with (
+            patch.object(append.threading, "current_thread", return_value=current_timer),
+            patch.object(append, "_flush_pending_sync", side_effect=assert_cache_cleared) as flush,
+        ):
+            append._run_in_process_sync(event_id)
+
+        flush.assert_called_once_with(event_id)
+        self.assertNotIn(event_id, append._sync_timers)
+
     @patch("apps.event.services.registration_sheet_sync.GoogleCredentialConfig.load")
     def test_flush_unconfigured_credentials_records_failure(self, mock_load):
         mock_load.return_value = MagicMock(is_configured=False)

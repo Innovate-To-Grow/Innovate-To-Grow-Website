@@ -279,21 +279,30 @@
         updateFailedSection(data.failed_logs || []);
         updateCampaignError(data.error_message || '');
 
-        if (data.status !== 'sending') {
-            clearInterval(polling);
-            var icon = document.getElementById('status-icon');
-            var text = document.getElementById('status-text');
-            if (data.status === 'sent') {
-                icon.textContent = 'check_circle';
-                icon.className = 'material-symbols-outlined !text-[20px] text-green-500';
-                text.textContent = 'Campaign Sent';
-                text.className = 'text-sm font-semibold text-green-600 dark:text-green-400';
-            } else {
-                icon.textContent = 'error';
-                icon.className = 'material-symbols-outlined !text-[20px] text-red-500';
-                text.textContent = 'Campaign Failed';
-                text.className = 'text-sm font-semibold text-red-600 dark:text-red-400';
-            }
+        var icon = document.getElementById('status-icon');
+        var text = document.getElementById('status-text');
+        if (data.status === 'queued' || data.status === 'sending') {
+            icon.textContent = data.status === 'queued' ? 'schedule' : 'sync';
+            text.textContent = data.status === 'queued' ? 'Campaign Queued' : 'Sending...';
+            return;
+        }
+
+        clearInterval(polling);
+        if (data.status === 'sent') {
+            icon.textContent = 'check_circle';
+            icon.className = 'material-symbols-outlined !text-[20px] text-green-500';
+            text.textContent = 'Campaign Sent';
+            text.className = 'text-sm font-semibold text-green-600 dark:text-green-400';
+        } else if (data.status === 'partial') {
+            icon.textContent = 'warning';
+            icon.className = 'material-symbols-outlined !text-[20px] text-yellow-500';
+            text.textContent = 'Campaign Partially Sent';
+            text.className = 'text-sm font-semibold text-yellow-600 dark:text-yellow-400';
+        } else {
+            icon.textContent = 'error';
+            icon.className = 'material-symbols-outlined !text-[20px] text-red-500';
+            text.textContent = 'Campaign Failed';
+            text.className = 'text-sm font-semibold text-red-600 dark:text-red-400';
         }
     }
 

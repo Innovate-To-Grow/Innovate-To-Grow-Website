@@ -16,6 +16,12 @@ from apps.mail.services.unsubscribe_token import (
 
 class OneClickUnsubscribeViewTests(APITestCase):
     def setUp(self):
+        task_patcher = patch(
+            "apps.mail.services.subscription_notifications.start_in_process_task",
+            side_effect=lambda target, *args, **_kwargs: target(*args),
+        )
+        self.start_task = task_patcher.start()
+        self.addCleanup(task_patcher.stop)
         self.member = make_member(email="unsub@example.com")
         # Set primary email as subscribed so we can test unsubscribe
         self.primary_email = ContactEmail.objects.get(member=self.member, email_type="primary")
@@ -98,6 +104,8 @@ class OneClickUnsubscribeViewTests(APITestCase):
     def test_sends_confirmation_email(self, mock_send):
         self.client.post(self.url)
 
+        self.start_task.assert_called_once()
+        self.assertTrue(self.start_task.call_args.kwargs["best_effort_start"])
         mock_send.assert_called_once()
         call_kwargs = mock_send.call_args[1]
         self.assertEqual(call_kwargs["recipient"], "unsub@example.com")
@@ -107,10 +115,12 @@ class OneClickUnsubscribeViewTests(APITestCase):
     def test_replay_post_does_not_resend_email(self, mock_send):
         """Second POST is rejected (token consumed), so no confirmation email is sent."""
         self.client.post(self.url)
+        self.start_task.reset_mock()
         mock_send.reset_mock()
 
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, 400)
+        self.start_task.assert_not_called()
         mock_send.assert_not_called()
 
     @override_settings(BACKGROUND_JOBS_ENABLED=True)
