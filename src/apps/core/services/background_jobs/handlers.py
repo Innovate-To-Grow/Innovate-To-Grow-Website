@@ -77,6 +77,7 @@ def sync_registration_sheet_job(job) -> None:
 
 
 def send_ticket_email_job(job) -> None:
+    from apps.core.models import BackgroundJob
     from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
     from apps.core.services.background_jobs import JobClaimLost
     from apps.event.models import EventRegistration
@@ -90,10 +91,20 @@ def send_ticket_email_job(job) -> None:
         if not job.begin_provider_call():
             raise JobClaimLost("Background job claim was lost before SES invocation.")
 
+    def fence_token_mutation():
+        owns_claim = BackgroundJob.objects.select_for_update().filter(
+            pk=job.pk,
+            status=BackgroundJob.Status.PROCESSING,
+            claim_token=job.claim_token,
+        )
+        if not owns_claim.exists():
+            raise JobClaimLost("Background job claim was lost before login-link issuance.")
+
     _wait_for_ses_slot()
     try:
         send_ticket_email(
             registration,
+            before_token_mutation=fence_token_mutation,
             before_provider_call=begin_provider_call,
             raise_provider_errors=True,
         )
