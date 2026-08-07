@@ -78,6 +78,11 @@ db.sqlite3-journal
 *.db
 src/data/
 src/media/
+# collectstatic destinations (STATIC_ROOT): local/CI writes src/static, the
+# production settings write src/staticfiles. Source files live in
+# src/apps/core/static and src/assets.
+src/static/
+src/staticfiles/
 
 # =====================================
 # Flask / Scrapy / Sphinx

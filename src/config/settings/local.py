@@ -47,9 +47,10 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
 ]
 
-# Include frontend public assets so admin can serve preview styles locally
+# Append frontend public assets so admin can serve preview styles locally. Extend
+# the base list rather than replacing it, so the vendor directory stays included.
 STATICFILES_DIRS = [
-    BASE_DIR / "apps" / "core" / "static",  # noqa: F405
+    *STATICFILES_DIRS,  # noqa: F405
     BASE_DIR.parent / "pages" / "public" / "static",  # noqa: F405
 ]
 

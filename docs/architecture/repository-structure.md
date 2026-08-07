@@ -12,8 +12,11 @@
 │   │   ├── event/          # Registration, ticketing, schedule, check-in
 │   │   ├── projects/       # Past projects, semesters, sharing
 │   │   ├── mail/           # Campaigns, recipient logs, login links
-│   │   └── sponsors/       # Sponsor management
+│   │   ├── system_intelligence/  # Admin AI assistant (agents, actions, exports)
+│   │   ├── cli_admin/      # OAuth2 + PKCE CRUD API for the i2g-admin CLI
+│   │   └── common/         # Opt-in shared building blocks (not wired in globally)
 │   ├── config/             # Django settings, URLs, ASGI/WSGI
+│   ├── assets/             # Pinned third-party static libs (vendor/), app-agnostic
 │   ├── manage.py           # Django management entry point
 │   ├── requirements/       # Inputs plus hashed local/production locks
 │   ├── requirements.txt    # Hash-checked local/CI convenience include
@@ -53,7 +56,32 @@ src/apps/<app>/
 └── apps.py             # App configuration
 ```
 
-Not every app has all directories. Smaller apps like `sponsors/` use flat files instead of packages.
+Not every app has all directories — `system_intelligence/` has no public REST surface, and
+`common/` is a small flat-file app. A directory is used only where there is more than one
+module to hold; single-module concerns stay as plain `.py` files (for example
+`apps/core/middleware.py`, `apps/cms/cms_urls.py`).
+
+### A note on `apps/core`
+
+`core` holds the framework primitives every other app builds on — `ProjectControlModel`,
+the model mixins, `BaseModelAdmin`, `access.py`, middleware, and the service-credential
+singletons — but it has also accumulated three larger subsystems that are only *used* by
+other apps rather than being framework-level concerns:
+
+| Subsystem | Path | Importing apps |
+|---|---|---|
+| Bedrock LLM client | `core/services/bedrock/` | `mail`, `projects`, `system_intelligence` |
+| ORM sandbox / AI tools | `core/services/db_tools/` | `cli_admin`, `system_intelligence` |
+| Durable job queue | `core/services/background_jobs/` | `authn`, `cms`, `event`, `mail` |
+| AWS credentials + SNS SMS | `core/services/aws/` | `authn`, `event`, `mail` |
+
+`src/apps/core/services/__init__.py` carries the same table as a module docstring, so the map
+is visible from an editor without opening the docs.
+
+Splitting these into their own apps would be a clearer layering, but it requires new Django
+app labels. That is deferred: `apps/core/access.py` and `Member.admin_apps` store app labels
+**in the database** (a `JSONField` per admin user), so a new label needs a data migration to
+backfill existing admins' grants or they silently lose access.
 
 ## Frontend source layout
 
