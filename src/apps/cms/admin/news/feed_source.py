@@ -1,17 +1,14 @@
-import time
-
 from django.contrib import admin, messages
 from django.db.models import Count, OuterRef, Subquery
 from django.http import HttpResponseRedirect
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.timesince import timesince
 from unfold.admin import TabularInline
 from unfold.decorators import action, display
 
 from apps.cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
-from apps.cms.services.news import sync_news
+from apps.cms.services.news import sync_feed_sources
 from apps.core.admin import BaseModelAdmin
 
 
@@ -71,6 +68,14 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
         ),
     )
 
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        if obj is not None:
+            # NewsArticle stores this stable identifier rather than a foreign key.
+            # Renaming it after creation would orphan the existing source mapping.
+            fields.append("source_key")
+        return tuple(fields)
+
     @display(description="Status", label=True)
     def status_badge(self, obj):
         if obj.is_active:
@@ -79,10 +84,13 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
 
     @display(description="Last Sync", label=True)
     def sync_result_badge(self, obj):
+        if obj.last_sync_errors:
+            diagnostics = [line.strip() for line in obj.last_sync_errors.splitlines() if line.strip()]
+            if diagnostics and all(line.startswith("Warning: ") for line in diagnostics):
+                return "Warnings", "warning"
+            return "Errors", "warning"
         if not obj.last_synced_at:
             return "Never synced", "info"
-        if obj.last_sync_errors:
-            return "Errors", "warning"
         return "Success", "success"
 
     @display(description="Synced")
@@ -115,11 +123,17 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
             messages.warning(request, "No active feed sources found.")
             return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_changelist"))
 
-        total_created, total_updated, total_errors = self._sync_sources(sources)
+        result = sync_feed_sources(sources)
 
-        msg = f"Sync complete: {total_created} created, {total_updated} updated across {sources.count()} feed(s)."
-        if total_errors:
-            msg += f" {len(total_errors)} error(s)."
+        msg = (
+            f"Sync complete: {result['created']} created, {result['updated']} updated "
+            f"across {result['feed_count']} feed(s)."
+        )
+        if result["errors"]:
+            msg += f" {len(result['errors'])} error(s)."
+        if result["warnings"]:
+            msg += f" {len(result['warnings'])} warning(s)."
+        if result["errors"] or result["warnings"]:
             messages.warning(request, msg)
         else:
             messages.success(request, msg)
@@ -132,51 +146,15 @@ class NewsFeedSourceAdmin(BaseModelAdmin):
             messages.warning(request, f"Feed '{source.name}' is not active.")
             return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_change", args=[object_id]))
 
-        total_created, total_updated, total_errors = self._sync_sources([source])
+        result = sync_feed_sources([source])
 
-        msg = f"Sync complete for '{source.name}': {total_created} created, {total_updated} updated."
-        if total_errors:
-            msg += f" {len(total_errors)} error(s)."
+        msg = f"Sync complete for '{source.name}': {result['created']} created, {result['updated']} updated."
+        if result["errors"]:
+            msg += f" {len(result['errors'])} error(s)."
+        if result["warnings"]:
+            msg += f" {len(result['warnings'])} warning(s)."
+        if result["errors"] or result["warnings"]:
             messages.warning(request, msg)
         else:
             messages.success(request, msg)
         return HttpResponseRedirect(reverse("admin:cms_newsfeedsource_change", args=[object_id]))
-
-    @staticmethod
-    def _sync_sources(sources):
-        total_created = 0
-        total_updated = 0
-        total_errors = []
-
-        for source in sources:
-            start = time.monotonic()
-            result = sync_news(feed_url=source.feed_url, source_key=source.source_key)
-            duration = time.monotonic() - start
-
-            total_created += result["created"]
-            total_updated += result["updated"]
-            total_errors.extend(result["errors"])
-
-            source.last_synced_at = timezone.now()
-            source.last_sync_created = result["created"]
-            source.last_sync_updated = result["updated"]
-            source.last_sync_errors = "\n".join(result["errors"]) if result["errors"] else ""
-            source.save(
-                update_fields=[
-                    "last_synced_at",
-                    "last_sync_created",
-                    "last_sync_updated",
-                    "last_sync_errors",
-                ]
-            )
-
-            NewsSyncLog.objects.create(
-                feed_source=source,
-                started_at=source.last_synced_at,
-                duration_seconds=round(duration, 2),
-                articles_created=result["created"],
-                articles_updated=result["updated"],
-                errors_text="\n".join(result["errors"]) if result["errors"] else "",
-            )
-
-        return total_created, total_updated, total_errors

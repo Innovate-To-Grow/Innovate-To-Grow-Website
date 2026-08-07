@@ -1,5 +1,7 @@
 """Extended signal tests: block changes, route changes, news cache, soft-delete signals."""
 
+from unittest.mock import patch
+
 from django.core.cache import cache
 from django.test import TestCase
 
@@ -92,3 +94,18 @@ class NewsArticleCacheInvalidationTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             article.delete()
         self.assertIsNone(cache.get("news:list"))
+
+    @patch("apps.cms.signals.cache.delete", side_effect=RuntimeError("cache unavailable"))
+    def test_cache_failure_does_not_escape_after_article_commit(self, mock_delete):
+        from django.utils import timezone
+
+        with self.captureOnCommitCallbacks(execute=True):
+            article = NewsArticle.objects.create(
+                source_guid="cache-failure",
+                title="Cache Failure",
+                source_url="https://example.com",
+                published_at=timezone.now(),
+            )
+
+        self.assertTrue(NewsArticle.objects.filter(pk=article.pk).exists())
+        mock_delete.assert_called_once_with("news:list")

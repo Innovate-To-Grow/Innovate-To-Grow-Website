@@ -118,6 +118,14 @@ class NewsSyncLogModelTest(TestCase):
         )
         self.assertFalse(log.has_errors)
 
+    def test_has_errors_false_for_warning_only_log(self):
+        log = NewsSyncLog.objects.create(
+            feed_source=self.source,
+            started_at=timezone.now(),
+            errors_text="Warning: article body used the RSS fallback",
+        )
+        self.assertFalse(log.has_errors)
+
     def test_str(self):
         now = timezone.now()
         log = NewsSyncLog.objects.create(
