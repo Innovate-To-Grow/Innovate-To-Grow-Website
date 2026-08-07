@@ -97,14 +97,56 @@ class EventRegistrationCreateViewTest(TestCase):
         self.assertFalse(EventRegistration.objects.filter(member=self.member, event=self.event).exists())
         self.assertFalse(BackgroundJob.objects.filter(kind__startswith="event.").exists())
 
+    @patch(
+        "apps.event.views.registration.create_support.notifications.start_in_process_task",
+        side_effect=lambda target, *args, **_kwargs: target(*args),
+    )
     @patch("apps.event.services.ticket_mail.send_ticket_email", side_effect=Exception("SMTP error"))
-    def test_ticket_email_failure_logs_stack_trace_and_still_registers(self, _mock_send):
+    def test_ticket_email_failure_logs_stack_trace_and_still_registers(self, _mock_send, start_task):
         with patch("apps.event.views.registration.logger.warning") as warning:
             with self.captureOnCommitCallbacks(execute=True):
                 response = self._post()
 
         self.assertEqual(response.status_code, 201)
+        start_task.assert_called_once()
+        self.assertTrue(start_task.call_args.kwargs["best_effort_start"])
         warning.assert_called_once_with("Failed to send initial ticket email", exc_info=True)
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=False)
+    @patch("apps.core.services.in_process.threading.Thread")
+    def test_ticket_thread_start_failure_does_not_break_committed_registration(self, thread_class):
+        thread_class.return_value.start.side_effect = RuntimeError("can't start new thread")
+
+        with self.assertLogs("apps.core.services.in_process", level="ERROR"):
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self._post()
+
+        self.assertEqual(response.status_code, 201)
+        registration = EventRegistration.objects.get(member=self.member, event=self.event)
+        self.assertIn("could not be started", registration.ticket_email_error)
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=False)
+    def test_sheet_callback_failure_does_not_skip_ticket_start(self):
+        self.event.registration_sheet_id = "sheet-id"
+        self.event.save(update_fields=["registration_sheet_id", "updated_at"])
+
+        with (
+            patch(
+                "apps.event.services.registration_sheet_sync.append._schedule_in_process_sync",
+                side_effect=RuntimeError("can't start sync"),
+            ) as schedule_sync,
+            patch(
+                "apps.event.views.registration.create_support.notifications.start_in_process_task",
+                return_value=MagicMock(),
+            ) as start_task,
+            self.assertLogs("django.test", level="ERROR"),
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            response = self._post()
+
+        self.assertEqual(response.status_code, 201)
+        schedule_sync.assert_called_once_with(str(self.event.pk))
+        start_task.assert_called_once()
 
     def test_response_contains_registration_payload(self):
         response = self._post()

@@ -34,4 +34,4 @@ def schedule_member_sync_on_change(sender, **kwargs):
         # account mutations and their outbox row one commit boundary.
         _schedule()
     else:
-        transaction.on_commit(_schedule)
+        transaction.on_commit(_schedule, robust=True)

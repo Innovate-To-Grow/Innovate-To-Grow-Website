@@ -7,6 +7,7 @@ from django.conf import settings
 
 from apps.authn.services import email as email_api
 from apps.core.services.background_jobs import enqueue_notification_email, jobs_enabled
+from apps.core.services.in_process import start_in_process_task
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ def subscription_confirmation_dedupe_key(action: str, event_token: str) -> str:
 
 
 def send_subscription_confirmation(*, member, action: str, event_token: str) -> None:
-    """Queue a confirmation, with synchronous delivery only before outbox rollout."""
+    """Queue a confirmation, with a non-blocking fallback before outbox rollout."""
     primary_email = member.get_primary_email()
     if not primary_email:
         return
@@ -57,6 +58,15 @@ def send_subscription_confirmation(*, member, action: str, event_token: str) -> 
             logger.exception("Failed to enqueue subscription confirmation")
         return
 
+    start_in_process_task(
+        _send_subscription_notification,
+        notification,
+        name=f"subscription-confirmation-{action}",
+        best_effort_start=True,
+    )
+
+
+def _send_subscription_notification(notification: dict) -> None:
     try:
         email_api.send_notification_email(**notification)
     except Exception:

@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from django.db import close_old_connections, transaction
 from django.utils import timezone
@@ -15,6 +16,8 @@ from .sheets import (
 )
 
 logger = logging.getLogger(__name__)
+_sync_timers: dict[str, threading.Timer] = {}
+_sync_lock = threading.Lock()
 
 
 def schedule_registration_sync(event: Event, *, trigger_id=None) -> None:
@@ -37,8 +40,41 @@ def schedule_registration_sync(event: Event, *, trigger_id=None) -> None:
         )
         return
 
-    # Expand-first rollout fallback must see only committed state.
-    transaction.on_commit(lambda: _flush_pending_sync(event_id))
+    # The pre-outbox fallback remains non-blocking and starts only after the
+    # registration commits, so the timer's connection can see the new row.
+    transaction.on_commit(lambda: _schedule_in_process_sync(event_id), robust=True)
+
+
+def _schedule_in_process_sync(event_id: str) -> None:
+    import apps.event.services.registration_sheet_sync as sync_api
+
+    with _sync_lock:
+        existing = _sync_timers.pop(event_id, None)
+        if existing is not None:
+            existing.cancel()
+        timer = None
+        try:
+            timer = threading.Timer(
+                sync_api.DEBOUNCE_SECONDS,
+                _run_in_process_sync,
+                args=[event_id],
+            )
+            timer.daemon = True
+            _sync_timers[event_id] = timer
+            timer.start()
+        except Exception:  # noqa: BLE001 - a best-effort timer must not break the caller.
+            if _sync_timers.get(event_id) is timer:
+                _sync_timers.pop(event_id, None)
+            logger.exception("Unable to start the registration sheet sync timer for event %s", event_id)
+
+
+def _run_in_process_sync(event_id: str) -> None:
+    with _sync_lock:
+        if _sync_timers.get(event_id) is not threading.current_thread():
+            # A newer debounce timer replaced this one while it was waking up.
+            return
+        _sync_timers.pop(event_id, None)
+    _flush_pending_sync(event_id)
 
 
 def _flush_pending_sync(event_id: str, *, raise_errors: bool = False) -> None:
