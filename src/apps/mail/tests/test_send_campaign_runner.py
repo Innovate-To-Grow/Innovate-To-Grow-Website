@@ -59,6 +59,22 @@ class SendCampaignFlowTests(TestCase):
 
     @patch("apps.mail.services.send_campaign.runner._send_via_ses")
     @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    def test_fallback_campaign_with_mixed_results_is_partial(self, mock_client, mock_send):
+        mock_client.return_value = MagicMock()
+        mock_send.side_effect = [
+            SesSendResult(message_id="SES-001"),
+            SesSendResult(error="SES rejected recipient"),
+            SesSendResult(message_id="SES-003"),
+        ]
+
+        result = send_campaign(self.campaign, self.sender)
+
+        self.campaign.refresh_from_db()
+        self.assertEqual(result, {"total": 3, "sent": 2, "failed": 1})
+        self.assertEqual(self.campaign.status, "partial")
+
+    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
+    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
     def test_total_recipients_set_on_campaign(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
@@ -167,6 +183,19 @@ class SendCampaignErrorTests(TestCase):
             member_email_scope="primary",
             status="draft",
         )
+
+    @patch("apps.mail.services.send_campaign.runner.get_recipients", return_value=[])
+    @patch("apps.mail.services.send_campaign.runner.EmailServiceConfig.load")
+    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    def test_fallback_campaign_with_no_recipients_is_sent(self, get_ses_client, load_config, _recipients):
+        result = send_campaign(self.campaign, self.sender)
+
+        self.campaign.refresh_from_db()
+        self.assertEqual(result, {"total": 0, "sent": 0, "failed": 0})
+        self.assertEqual(self.campaign.status, "sent")
+        self.assertIsNotNone(self.campaign.sent_at)
+        load_config.assert_not_called()
+        get_ses_client.assert_not_called()
 
     def test_missing_delivery_config_fails_campaign(self):
         with self.assertRaises(RuntimeError):

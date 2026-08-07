@@ -1,3 +1,5 @@
+import logging
+
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from django.db import OperationalError, transaction
@@ -22,8 +24,10 @@ from apps.core.services.background_jobs import (
     jobs_enabled,
     wait_for_delivery_slot,
 )
+from apps.core.services.in_process import start_in_process_task
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipientLog
 from apps.mail.services.audience import get_recipients
+from apps.mail.services.campaign_state import campaign_state
 from apps.mail.services.personalize import personalize
 from apps.mail.services.preview import render_email_html
 from apps.mail.services.send_campaign.runner import (
@@ -39,6 +43,8 @@ from apps.mail.services.send_campaign.transport import (
 )
 from apps.mail.services.sms_audience import get_sms_recipients
 
+logger = logging.getLogger(__name__)
+
 _EMAIL_SUCCESS_STATUSES = {"sent", "delivered"}
 _EMAIL_PROVIDER_TERMINAL_STATUSES = {
     *_EMAIL_SUCCESS_STATUSES,
@@ -50,18 +56,114 @@ _EMAIL_PROVIDER_TERMINAL_STATUSES = {
 
 def dispatch_email_campaign(campaign: EmailCampaign, *, sent_by):
     if not jobs_enabled():
-        from apps.mail.services.send_campaign import send_campaign
-
-        return send_campaign(campaign, sent_by=sent_by)
+        return _start_in_process_email_campaign(campaign, sent_by=sent_by)
     return queue_email_campaign(campaign, sent_by=sent_by)
 
 
 def dispatch_sms_campaign(campaign: SmsCampaign, *, sent_by):
     if not jobs_enabled():
-        from apps.mail.services.send_sms_campaign import send_sms_campaign
-
-        return send_sms_campaign(campaign, sent_by=sent_by)
+        return _start_in_process_sms_campaign(campaign, sent_by=sent_by)
     return queue_sms_campaign(campaign, sent_by=sent_by)
+
+
+def _start_in_process_email_campaign(campaign: EmailCampaign, *, sent_by) -> dict[str, int]:
+    """Preserve the legacy non-blocking send path until a worker is deployed."""
+
+    updated = EmailCampaign.objects.filter(pk=campaign.pk, status="draft").update(
+        status="sending",
+        sent_by_id=sent_by.pk,
+        sent_count=0,
+        failed_count=0,
+        error_message="",
+        sent_at=None,
+        updated_at=timezone.now(),
+    )
+    if not updated:
+        raise ValueError("Campaign is no longer in draft state.")
+    try:
+        start_in_process_task(
+            _run_in_process_email_campaign,
+            campaign.pk,
+            sent_by.pk,
+            name=f"email-campaign-{campaign.pk}",
+            daemon=False,
+        )
+    except Exception:
+        EmailCampaign.objects.filter(pk=campaign.pk, status="sending").update(
+            status="failed",
+            error_message="Campaign send could not be started. Check server logs for details.",
+            updated_at=timezone.now(),
+        )
+        raise
+    return {"total": 0, "sent": 0, "failed": 0}
+
+
+def _run_in_process_email_campaign(campaign_id, sent_by_id) -> None:
+    from django.contrib.auth import get_user_model
+
+    from apps.mail.services.send_campaign import send_campaign
+
+    try:
+        campaign = EmailCampaign.objects.get(pk=campaign_id)
+        sent_by = get_user_model().objects.get(pk=sent_by_id)
+        send_campaign(campaign, sent_by=sent_by)
+    except Exception:
+        logger.exception("Background send failed for email campaign %s", campaign_id)
+        EmailCampaign.objects.filter(pk=campaign_id, status__in=["draft", "sending"]).update(
+            status="failed",
+            error_message="Campaign send failed. Check server logs for details.",
+            updated_at=timezone.now(),
+        )
+        raise
+
+
+def _start_in_process_sms_campaign(campaign: SmsCampaign, *, sent_by) -> dict[str, int]:
+    updated = SmsCampaign.objects.filter(pk=campaign.pk, status="draft").update(
+        status="sending",
+        sent_by_id=sent_by.pk,
+        sent_count=0,
+        failed_count=0,
+        error_message="",
+        sent_at=None,
+        updated_at=timezone.now(),
+    )
+    if not updated:
+        raise ValueError("SMS campaign is no longer in draft state.")
+    try:
+        start_in_process_task(
+            _run_in_process_sms_campaign,
+            campaign.pk,
+            sent_by.pk,
+            name=f"sms-campaign-{campaign.pk}",
+            daemon=False,
+        )
+    except Exception:
+        SmsCampaign.objects.filter(pk=campaign.pk, status="sending").update(
+            status="failed",
+            error_message="SMS campaign send could not be started. Check server logs for details.",
+            updated_at=timezone.now(),
+        )
+        raise
+    return {"total": 0, "sent": 0, "failed": 0}
+
+
+def _run_in_process_sms_campaign(campaign_id, sent_by_id) -> None:
+    from django.contrib.auth import get_user_model
+
+    from apps.mail.services.send_sms_campaign import send_sms_campaign
+
+    try:
+        campaign = SmsCampaign.objects.get(pk=campaign_id)
+        sent_by = get_user_model().objects.get(pk=sent_by_id)
+        send_sms_campaign(campaign, sent_by=sent_by)
+    except Exception:
+        logger.exception("Background send failed for SMS campaign %s", campaign_id)
+        SmsCampaign.objects.filter(pk=campaign_id, status__in=["draft", "sending"]).update(
+            status="failed",
+            error_message="SMS campaign send failed. Check server logs for details.",
+            updated_at=timezone.now(),
+        )
+        raise
 
 
 def queue_email_campaign(campaign: EmailCampaign, *, sent_by) -> dict[str, int]:
@@ -169,37 +271,61 @@ def queue_sms_campaign(campaign: SmsCampaign, *, sent_by) -> dict[str, int]:
 
 
 def _mark_email_processing(log: RecipientLog, job) -> bool:
-    return bool(
-        RecipientLog.objects.filter(
-            pk=log.pk,
-            status__in=["pending", "retry", "processing"],
-        ).update(
-            status="processing",
-            attempts=job.attempts,
-            available_at=job.available_at,
-            claim_token=job.claim_token,
-            claimed_at=job.claimed_at,
-            error_message="",
-            updated_at=timezone.now(),
+    with transaction.atomic():
+        owns_claim = (
+            BackgroundJob.objects.select_for_update()
+            .filter(
+                pk=job.pk,
+                status=BackgroundJob.Status.PROCESSING,
+                claim_token=job.claim_token,
+            )
+            .exists()
         )
-    )
+        if not owns_claim:
+            return False
+        return bool(
+            RecipientLog.objects.filter(
+                pk=log.pk,
+                status__in=["pending", "retry", "processing"],
+            ).update(
+                status="processing",
+                attempts=job.attempts,
+                available_at=job.available_at,
+                claim_token=job.claim_token,
+                claimed_at=job.claimed_at,
+                error_message="",
+                updated_at=timezone.now(),
+            )
+        )
 
 
 def _mark_sms_processing(log: SmsRecipientLog, job) -> bool:
-    return bool(
-        SmsRecipientLog.objects.filter(
-            pk=log.pk,
-            status__in=["pending", "retry", "processing"],
-        ).update(
-            status="processing",
-            attempts=job.attempts,
-            available_at=job.available_at,
-            claim_token=job.claim_token,
-            claimed_at=job.claimed_at,
-            error_message="",
-            updated_at=timezone.now(),
+    with transaction.atomic():
+        owns_claim = (
+            BackgroundJob.objects.select_for_update()
+            .filter(
+                pk=job.pk,
+                status=BackgroundJob.Status.PROCESSING,
+                claim_token=job.claim_token,
+            )
+            .exists()
         )
-    )
+        if not owns_claim:
+            return False
+        return bool(
+            SmsRecipientLog.objects.filter(
+                pk=log.pk,
+                status__in=["pending", "retry", "processing"],
+            ).update(
+                status="processing",
+                attempts=job.attempts,
+                available_at=job.available_at,
+                claim_token=job.claim_token,
+                claimed_at=job.claimed_at,
+                error_message="",
+                updated_at=timezone.now(),
+            )
+        )
 
 
 def _job_error_for_ses_result(result):
@@ -323,7 +449,7 @@ def send_email_recipient_job(job) -> None:
         )
         if result.error:
             raise _job_error_for_ses_result(result)
-        RecipientLog.objects.filter(
+        updated = RecipientLog.objects.filter(
             pk=log.pk,
             status="processing",
             claim_token=job.claim_token,
@@ -338,6 +464,10 @@ def send_email_recipient_job(job) -> None:
             uncertain_at=None,
             updated_at=timezone.now(),
         )
+        if not updated:
+            raise UncertainJobError(
+                "SES accepted the delivery, but the recipient-log claim was lost before it could be recorded."
+            )
     except JobClaimLost:
         raise
     except Exception as exc:
@@ -398,7 +528,7 @@ def send_sms_recipient_job(job) -> None:
             message=message,
             before_provider_call=begin_provider_call,
         )
-        SmsRecipientLog.objects.filter(
+        updated = SmsRecipientLog.objects.filter(
             pk=log.pk,
             status="processing",
             claim_token=job.claim_token,
@@ -413,6 +543,10 @@ def send_sms_recipient_job(job) -> None:
             uncertain_at=None,
             updated_at=timezone.now(),
         )
+        if not updated:
+            raise UncertainJobError(
+                "SNS accepted the delivery, but the recipient-log claim was lost before it could be recorded."
+            )
     except JobClaimLost:
         raise
     except Exception as exc:
@@ -437,56 +571,74 @@ def send_sms_recipient_job(job) -> None:
     aggregate_sms_campaign(log.campaign_id)
 
 
-def _campaign_state(*, total: int, sent: int, failed: int, active: int) -> str:
-    if active:
-        return "queued" if active == total and sent == 0 and failed == 0 else "sending"
-    if total == 0 or sent == total:
-        return "sent"
-    if sent:
-        return "partial"
-    return "failed"
-
-
 def aggregate_email_campaign(campaign_id) -> None:
-    statuses = {
-        row["status"]: row["count"]
-        for row in RecipientLog.objects.filter(campaign_id=campaign_id).values("status").annotate(count=Count("id"))
-    }
-    total = sum(statuses.values())
-    sent = sum(statuses.get(status, 0) for status in ("sent", "delivered"))
-    failed = sum(statuses.get(status, 0) for status in ("failed", "bounced", "complained", "rejected", "uncertain"))
-    active = sum(statuses.get(status, 0) for status in ("pending", "processing", "retry"))
-    state = _campaign_state(total=total, sent=sent, failed=failed, active=active)
-    EmailCampaign.objects.filter(pk=campaign_id).update(
-        status=state,
-        total_recipients=total,
-        sent_count=sent,
-        failed_count=failed,
-        sent_at=timezone.now() if not active else None,
-        error_message="One or more deliveries need review." if failed else "",
-        updated_at=timezone.now(),
-    )
+    with transaction.atomic():
+        campaign = EmailCampaign.objects.select_for_update().filter(pk=campaign_id).first()
+        if campaign is None:
+            return
+        statuses = {
+            row["status"]: row["count"]
+            for row in RecipientLog.objects.filter(campaign_id=campaign_id).values("status").annotate(count=Count("id"))
+        }
+        total = sum(statuses.values())
+        sent = sum(statuses.get(status, 0) for status in ("sent", "delivered"))
+        failed = sum(statuses.get(status, 0) for status in ("failed", "bounced", "complained", "rejected", "uncertain"))
+        active = sum(statuses.get(status, 0) for status in ("pending", "processing", "retry"))
+        state = campaign_state(total=total, sent=sent, failed=failed, active=active)
+        campaign.status = state
+        campaign.total_recipients = total
+        campaign.sent_count = sent
+        campaign.failed_count = failed
+        if campaign.sent_at is None and not active:
+            campaign.sent_at = timezone.now()
+        campaign.error_message = "One or more deliveries need review." if failed else ""
+        campaign.save(
+            update_fields=[
+                "status",
+                "total_recipients",
+                "sent_count",
+                "failed_count",
+                "sent_at",
+                "error_message",
+                "updated_at",
+            ]
+        )
 
 
 def aggregate_sms_campaign(campaign_id) -> None:
-    statuses = {
-        row["status"]: row["count"]
-        for row in SmsRecipientLog.objects.filter(campaign_id=campaign_id).values("status").annotate(count=Count("id"))
-    }
-    total = sum(statuses.values())
-    sent = statuses.get("sent", 0)
-    failed = statuses.get("failed", 0) + statuses.get("uncertain", 0)
-    active = sum(statuses.get(status, 0) for status in ("pending", "processing", "retry"))
-    state = _campaign_state(total=total, sent=sent, failed=failed, active=active)
-    SmsCampaign.objects.filter(pk=campaign_id).update(
-        status=state,
-        total_recipients=total,
-        sent_count=sent,
-        failed_count=failed,
-        sent_at=timezone.now() if not active else None,
-        error_message="One or more deliveries need review." if failed else "",
-        updated_at=timezone.now(),
-    )
+    with transaction.atomic():
+        campaign = SmsCampaign.objects.select_for_update().filter(pk=campaign_id).first()
+        if campaign is None:
+            return
+        statuses = {
+            row["status"]: row["count"]
+            for row in SmsRecipientLog.objects.filter(campaign_id=campaign_id)
+            .values("status")
+            .annotate(count=Count("id"))
+        }
+        total = sum(statuses.values())
+        sent = statuses.get("sent", 0)
+        failed = statuses.get("failed", 0) + statuses.get("uncertain", 0)
+        active = sum(statuses.get(status, 0) for status in ("pending", "processing", "retry"))
+        state = campaign_state(total=total, sent=sent, failed=failed, active=active)
+        campaign.status = state
+        campaign.total_recipients = total
+        campaign.sent_count = sent
+        campaign.failed_count = failed
+        if campaign.sent_at is None and not active:
+            campaign.sent_at = timezone.now()
+        campaign.error_message = "One or more deliveries need review." if failed else ""
+        campaign.save(
+            update_fields=[
+                "status",
+                "total_recipients",
+                "sent_count",
+                "failed_count",
+                "sent_at",
+                "error_message",
+                "updated_at",
+            ]
+        )
 
 
 def prepare_delivery_log_retry(job) -> None:
@@ -501,11 +653,11 @@ def resolve_stale_delivery_job(job) -> str | None:
     if not log_id:
         return None
     if job.kind == "mail.email_recipient":
-        status = RecipientLog.objects.filter(pk=log_id).values_list("status", flat=True).first()
+        status = RecipientLog.objects.select_for_update().filter(pk=log_id).values_list("status", flat=True).first()
         if status in {"sent", "delivered"}:
             return BackgroundJob.Status.SUCCEEDED
     elif job.kind == "mail.sms_recipient":
-        status = SmsRecipientLog.objects.filter(pk=log_id).values_list("status", flat=True).first()
+        status = SmsRecipientLog.objects.select_for_update().filter(pk=log_id).values_list("status", flat=True).first()
         if status == "sent":
             return BackgroundJob.Status.SUCCEEDED
     else:
@@ -540,30 +692,53 @@ def sync_delivery_job_state(job) -> None:
             "Provider call outcome is uncertain; review before retrying.",
         ),
     }
+    succeeded = job.status == BackgroundJob.Status.SUCCEEDED
     mapped = state_map.get(job.status)
-    if mapped is None:
+    if mapped is None and not succeeded:
         return
-    status, error = mapped
-    update_values = {
-        "status": status,
-        "available_at": job.available_at,
-        "claim_token": None,
-        "claimed_at": None,
-        "uncertain_at": now if status == "uncertain" else None,
-        "error_message": error,
-        "updated_at": now,
-    }
-    if job.kind == "mail.email_recipient":
-        log = RecipientLog.objects.filter(pk=log_id).first()
-        if log is None:
+    with transaction.atomic():
+        current_job = BackgroundJob.objects.select_for_update().filter(pk=job.pk).first()
+        if current_job is None or current_job.status != job.status or current_job.claim_token != job.claim_token:
+            # ``job`` is an out-of-date retry/recovery snapshot. A newer worker
+            # owns the row, so this mirror must not clear its recipient-log claim.
             return
-        RecipientLog.objects.filter(pk=log.pk).exclude(status__in=_EMAIL_PROVIDER_TERMINAL_STATUSES).update(
-            **update_values
-        )
-        aggregate_email_campaign(log.campaign_id)
-    elif job.kind == "mail.sms_recipient":
-        log = SmsRecipientLog.objects.filter(pk=log_id).first()
-        if log is None:
-            return
-        SmsRecipientLog.objects.filter(pk=log.pk).exclude(status="sent").update(**update_values)
-        aggregate_sms_campaign(log.campaign_id)
+        if job.kind == "mail.email_recipient":
+            log = RecipientLog.objects.filter(pk=log_id).first()
+            if log is None:
+                return
+            if succeeded:
+                aggregate_email_campaign(log.campaign_id)
+                return
+            status, error = mapped
+            update_values = {
+                "status": status,
+                "available_at": job.available_at,
+                "claim_token": None,
+                "claimed_at": None,
+                "uncertain_at": now if status == "uncertain" else None,
+                "error_message": error,
+                "updated_at": now,
+            }
+            RecipientLog.objects.filter(pk=log.pk).exclude(status__in=_EMAIL_PROVIDER_TERMINAL_STATUSES).update(
+                **update_values
+            )
+            aggregate_email_campaign(log.campaign_id)
+        elif job.kind == "mail.sms_recipient":
+            log = SmsRecipientLog.objects.filter(pk=log_id).first()
+            if log is None:
+                return
+            if succeeded:
+                aggregate_sms_campaign(log.campaign_id)
+                return
+            status, error = mapped
+            update_values = {
+                "status": status,
+                "available_at": job.available_at,
+                "claim_token": None,
+                "claimed_at": None,
+                "uncertain_at": now if status == "uncertain" else None,
+                "error_message": error,
+                "updated_at": now,
+            }
+            SmsRecipientLog.objects.filter(pk=log.pk).exclude(status="sent").update(**update_values)
+            aggregate_sms_campaign(log.campaign_id)

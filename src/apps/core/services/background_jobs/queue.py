@@ -67,25 +67,44 @@ def enqueue_notification_email(
 def retry_job(job: BackgroundJob) -> bool:
     """Explicitly requeue a terminal job, including uncertain deliveries."""
     now = timezone.now()
-    updated = BackgroundJob.objects.filter(
-        pk=job.pk,
-        status__in=[
-            BackgroundJob.Status.FAILED,
-            BackgroundJob.Status.UNCERTAIN,
-        ],
-    ).update(
-        status=BackgroundJob.Status.RETRY,
-        available_at=now,
-        claim_token=None,
-        claimed_at=None,
-        provider_call_started_at=None,
-        completed_at=None,
-        last_error="",
-        updated_at=now,
-    )
-    if updated:
+    with transaction.atomic():
+        current = (
+            BackgroundJob.objects.select_for_update()
+            .filter(
+                pk=job.pk,
+                status__in=[
+                    BackgroundJob.Status.FAILED,
+                    BackgroundJob.Status.UNCERTAIN,
+                ],
+            )
+            .first()
+        )
+        if current is None:
+            return False
+        current.status = BackgroundJob.Status.RETRY
+        current.available_at = now
+        current.claim_token = None
+        current.claimed_at = None
+        current.provider_call_started_at = None
+        current.completed_at = None
+        current.last_error = ""
+        current.updated_at = now
+        current.save(
+            update_fields=[
+                "status",
+                "available_at",
+                "claim_token",
+                "claimed_at",
+                "provider_call_started_at",
+                "completed_at",
+                "last_error",
+                "updated_at",
+            ]
+        )
         from .registry import notify_job_state
 
+        # Keep the durable transition and any domain mirror in one transaction.
+        # Other workers cannot observe RETRY until the recipient log is ready.
+        notify_job_state(current)
         job.refresh_from_db()
-        notify_job_state(job)
-    return bool(updated)
+    return True
