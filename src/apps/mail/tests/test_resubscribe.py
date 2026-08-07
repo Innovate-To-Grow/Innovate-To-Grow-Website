@@ -9,6 +9,12 @@ from apps.mail.services.unsubscribe_token import build_resubscribe_token
 
 class ResubscribeViewTests(APITestCase):
     def setUp(self):
+        task_patcher = patch(
+            "apps.mail.services.subscription_notifications.start_in_process_task",
+            side_effect=lambda target, *args, **_kwargs: target(*args),
+        )
+        self.start_task = task_patcher.start()
+        self.addCleanup(task_patcher.stop)
         self.member = make_member(email="resub@example.com")
         self.primary_email = ContactEmail.objects.get(member=self.member, email_type="primary")
         self.primary_email.subscribe = False
@@ -39,6 +45,8 @@ class ResubscribeViewTests(APITestCase):
     @patch("apps.authn.services.email.send_notification_email")
     def test_sends_confirmation_email(self, mock_send):
         self.client.post(self.url)
+        self.start_task.assert_called_once()
+        self.assertTrue(self.start_task.call_args.kwargs["best_effort_start"])
         mock_send.assert_called_once()
         call_kwargs = mock_send.call_args[1]
         self.assertEqual(call_kwargs["recipient"], "resub@example.com")

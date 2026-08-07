@@ -1,14 +1,17 @@
 import logging
+import threading
 import uuid
 from datetime import timedelta
 
-from django.db import transaction
+from django.db import close_old_connections, transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
 MEMBER_SHEET_JOB_KIND = "authn.member_sheet_sync"
 DEBOUNCE_SECONDS = 15
+_sync_timer: threading.Timer | None = None
+_sync_lock = threading.Lock()
 
 
 def schedule_member_sync() -> None:
@@ -23,9 +26,7 @@ def schedule_member_sync() -> None:
     if jobs_enabled():
         _enqueue_durable_sync(immediate=False)
     else:
-        # Expand-first rollout fallback. This is intentionally synchronous so
-        # work cannot disappear when a web process exits.
-        _flush_pending_sync()
+        _schedule_in_process_sync(delay=DEBOUNCE_SECONDS)
 
 
 def schedule_immediate_sync() -> None:
@@ -34,7 +35,41 @@ def schedule_immediate_sync() -> None:
     if jobs_enabled():
         _enqueue_durable_sync(immediate=True)
     else:
+        _schedule_in_process_sync(delay=0)
+
+
+def _schedule_in_process_sync(*, delay: float) -> None:
+    """Use the pre-outbox debounce timer without blocking the request thread."""
+
+    global _sync_timer
+    with _sync_lock:
+        if _sync_timer is not None:
+            _sync_timer.cancel()
+        _sync_timer = None
+        timer = None
+        try:
+            timer = threading.Timer(delay, _run_in_process_sync)
+            timer.daemon = True
+            _sync_timer = timer
+            timer.start()
+        except Exception:  # noqa: BLE001 - a best-effort timer must not break the caller.
+            if _sync_timer is timer:
+                _sync_timer = None
+            logger.exception("Unable to start the member sheet sync timer")
+
+
+def _run_in_process_sync() -> None:
+    global _sync_timer
+    with _sync_lock:
+        if _sync_timer is not threading.current_thread():
+            # A newer debounce timer replaced this one while it was waking up.
+            return
+        _sync_timer = None
+    close_old_connections()
+    try:
         _flush_pending_sync()
+    finally:
+        close_old_connections()
 
 
 def _enqueue_durable_sync(*, immediate: bool):

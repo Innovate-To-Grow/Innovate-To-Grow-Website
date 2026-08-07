@@ -183,13 +183,19 @@ class ContactEmailServiceTests(TestCase):
             make_contact_email_primary(member=self.member, contact_email_id=uuid.uuid4())
 
     @override_settings(FRONTEND_URL="https://example.com", BACKGROUND_JOBS_ENABLED=False)
+    @patch(
+        "apps.authn.services.contacts.contact_emails.start_in_process_task",
+        side_effect=lambda target, *args, **_kwargs: target(*args),
+    )
     @patch("apps.authn.services.email.send_email.send_notification_email")
-    def test_notify_email_owner_logs_on_failure(self, mock_send):
+    def test_notify_email_owner_logs_on_failure(self, mock_send, start_task):
         from apps.authn.services.contacts import contact_emails as svc
 
         mock_send.side_effect = RuntimeError("smtp down")
         svc._notify_email_owner_in_background("owner@example.com")
         mock_send.assert_called_once()
+        start_task.assert_called_once()
+        self.assertTrue(start_task.call_args.kwargs["best_effort_start"])
 
     @override_settings(FRONTEND_URL="https://example.com", BACKGROUND_JOBS_ENABLED=True)
     @patch("apps.core.services.background_jobs.enqueue_notification_email")

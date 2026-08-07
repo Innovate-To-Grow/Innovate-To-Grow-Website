@@ -20,6 +20,7 @@ from apps.authn.services.email_challenges import (
     issue_email_challenge,
     verify_email_code,
 )
+from apps.core.services.in_process import start_in_process_task
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ def _member_has_secondary(member, exclude_pk=None):
 
 
 def _notify_email_owner_in_background(email: str):
-    """Queue an owner notification, or send synchronously when jobs are disabled."""
+    """Queue an owner notification, or use the legacy in-process fallback."""
     frontend_url = getattr(settings, "FRONTEND_URL", "").rstrip("/")
     account_url = f"{frontend_url}/account" if frontend_url else ""
     notification = {
@@ -56,12 +57,21 @@ def _notify_email_owner_in_background(email: str):
             logger.exception("Failed to enqueue email claim notification to %s", email)
         return
 
+    start_in_process_task(
+        _send_email_owner_notification,
+        notification,
+        name="email-owner-security-notice",
+        best_effort_start=True,
+    )
+
+
+def _send_email_owner_notification(notification: dict) -> None:
     try:
         from apps.authn.services.email.send_email import send_notification_email
 
         send_notification_email(**notification)
     except Exception:
-        logger.exception("Failed to send email claim notification to %s", email)
+        logger.exception("Failed to send email claim notification")
 
 
 def create_contact_email(*, member, email_address: str, email_type: str = "secondary", subscribe: bool = True):
