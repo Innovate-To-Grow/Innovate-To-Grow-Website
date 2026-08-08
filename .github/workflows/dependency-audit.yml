@@ -1,0 +1,99 @@
+name: Dependency Audit
+
+# Scheduled dependency audit, kept OUT of ci.yml on purpose.
+#
+# `npm audit` and `pip-audit` compare a committed lockfile against a live
+# advisory database, so their result changes over time with no code change. CI
+# only runs on push/pull_request, so a newly published advisory stays invisible
+# until the next merge — and then turns main red on an unrelated commit.
+#
+# This cannot be solved by adding `schedule:` to ci.yml: deploy-production.yml
+# triggers on `workflow_run` for workflows named "CI" completing on main, so a
+# cron-triggered CI run would fire a production deployment. Hence a separate
+# workflow with a distinct name.
+on:
+  schedule:
+    # Mondays 04:00 UTC, an hour after the CodeQL scan.
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "22.22.2"
+
+jobs:
+  frontend-audit:
+    name: Frontend npm Audit (scheduled)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (moderate and above)
+        run: npm audit --audit-level=moderate
+
+  backend-audit:
+    name: Python Security Audit (scheduled)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+
+      - name: Install pip-audit
+        run: pip install "pip-audit[cyclonedx]==2.7.3"
+
+      # Keep the --ignore-vuln list in sync with the `python-security-audit` job
+      # in ci.yml; these are the same accepted advisories.
+      - name: Audit Python dependencies
+        run: |
+          set -o pipefail
+          pip-audit \
+            --requirement requirements.txt \
+            --progress-spinner off \
+            --format columns \
+            --ignore-vuln GHSA-mf9w-mj56-hr94 \
+            --ignore-vuln GHSA-p998-jp59-783m \
+            --ignore-vuln GHSA-hcc4-c3v8-rx92 \
+            --ignore-vuln GHSA-m5qp-6w8w-w647 \
+            --ignore-vuln GHSA-3wq7-rqq7-wx6j \
+            --ignore-vuln GHSA-mwh4-6h8g-pg8w \
+            --ignore-vuln GHSA-966j-vmvw-g2g9 \
+            --ignore-vuln GHSA-63hf-3vf5-4wqf \
+            --ignore-vuln GHSA-c427-h43c-vf67 \
+            --ignore-vuln GHSA-w2fm-2cpv-w7v5 \
+            --ignore-vuln GHSA-2vrm-gr82-f7m5 \
+            --ignore-vuln PYSEC-2025-183 \
+            --ignore-vuln PYSEC-2026-161 \
+            | tee "$GITHUB_STEP_SUMMARY"
