@@ -792,8 +792,15 @@ jobs:
     name: Frontend npm Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [preflight, changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    # Deliberately NOT gated on `changes`. `npm audit` compares the committed
+    # lockfile against a live advisory database, so its result is a function of
+    # time, not of the diff — the same commit can pass today and fail tomorrow
+    # with no code change. Gating it on `frontend` meant a backend-only PR
+    # skipped it and then turned main red on merge (blocking the deploy chain,
+    # which fires on CI succeeding on main), pinning the failure on an unrelated
+    # commit. Runs on every CI invocation instead. Same reasoning as
+    # `secrets-scan`, which is likewise ungated.
+    needs: preflight
     defaults:
       run:
         working-directory: pages
@@ -943,8 +950,10 @@ jobs:
     name: Python Security Audit
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [preflight, changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    # Ungated for the same reason as `frontend-security-audit` above: pip-audit
+    # resolves the committed requirements lock against a live advisory feed, so a
+    # frontend-only PR that skipped it could still turn main red on merge.
+    needs: preflight
     defaults:
       run:
         working-directory: src
