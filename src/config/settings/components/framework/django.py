@@ -103,7 +103,15 @@ AUTH_PASSWORD_VALIDATORS = [
 # ---------------------------------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"
-STATICFILES_DIRS = [BASE_DIR / "apps" / "core" / "static"]
+# apps/core/static holds first-party admin CSS/JS; assets/vendor holds pinned
+# third-party libraries (CodeMirror, Font Awesome, ...) used by the cms and mail
+# admin templates. Vendor files live outside any app because no single app owns
+# them. Both are collected under STATIC_URL, so `{% static "vendor/..." %}`
+# template references are unaffected by which directory a file sits in.
+STATICFILES_DIRS = [
+    BASE_DIR / "apps" / "core" / "static",
+    BASE_DIR / "assets",
+]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 

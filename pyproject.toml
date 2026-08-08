@@ -54,18 +54,17 @@ known-first-party = [
     "apps",
     "config",
     "common",
-    # Legacy top-level names, kept first-party during the apps/ migration so
-    # imports stay in one block while apps are moved incrementally.
+    # Legacy top-level names that still appear in landed migration files, which
+    # must stay byte-stable (see src/config/settings/_legacy_imports.py). Kept
+    # first-party so those imports sort into one block. This list matches
+    # _LEGACY_ROOTS exactly — do not add names that were never real packages.
     "core",
     "system_intelligence",
     "authn",
     "cms",
     "event",
-    "news",
     "projects",
     "mail",
-    "sheets",
-    "sponsors",
 ]
 
 [tool.ruff.format]
