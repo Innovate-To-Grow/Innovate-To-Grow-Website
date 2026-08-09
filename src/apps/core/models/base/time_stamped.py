@@ -1,5 +1,5 @@
 """
-Shared abstract base models.
+Shared abstract base model for timestamp fields.
 
 NOTE: Most domain models in this project inherit from
 ``apps.core.models.ProjectControlModel``, which provides a UUID primary key plus

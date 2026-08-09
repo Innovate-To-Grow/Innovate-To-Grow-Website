@@ -6,15 +6,14 @@
 .
 ├── src/                    # Django backend (all Python code)
 │   ├── apps/               # Django apps
-│   │   ├── core/           # Framework, settings models, middleware, durable jobs
+│   │   ├── core/           # Framework, shared building blocks, middleware, durable jobs
 │   │   ├── authn/          # Authentication, Member, contacts, invitations
 │   │   ├── cms/            # CMS pages, news, analytics, menus, footer
 │   │   ├── event/          # Registration, ticketing, schedule, check-in
 │   │   ├── projects/       # Past projects, semesters, sharing
 │   │   ├── mail/           # Campaigns, recipient logs, login links
 │   │   ├── system_intelligence/  # Admin AI assistant (agents, actions, exports)
-│   │   ├── cli_admin/      # OAuth2 + PKCE CRUD API for the i2g-admin CLI
-│   │   └── common/         # Opt-in shared building blocks (not wired in globally)
+│   │   └── cli_admin/      # OAuth2 + PKCE CRUD API for the i2g-admin CLI
 │   ├── config/             # Django settings, URLs, ASGI/WSGI
 │   ├── assets/             # Pinned third-party static libs (vendor/), app-agnostic
 │   ├── manage.py           # Django management entry point
@@ -56,17 +55,16 @@ src/apps/<app>/
 └── apps.py             # App configuration
 ```
 
-Not every app has all directories — `system_intelligence/` has no public REST surface, and
-`common/` is a small flat-file app. A directory is used only where there is more than one
-module to hold; single-module concerns stay as plain `.py` files (for example
-`apps/core/middleware.py`, `apps/cms/cms_urls.py`).
+Not every app has all directories — `system_intelligence/` has no public REST surface. A
+directory is used only where there is more than one module to hold; single-module concerns
+stay as plain `.py` files (for example `apps/core/middleware.py`, `apps/cms/cms_urls.py`).
 
 ### A note on `apps/core`
 
 `core` holds the framework primitives every other app builds on — `ProjectControlModel`,
-the model mixins, `BaseModelAdmin`, `access.py`, middleware, and the service-credential
-singletons — but it has also accumulated three larger subsystems that are only *used* by
-other apps rather than being framework-level concerns:
+the model mixins, reusable DRF utilities, `BaseModelAdmin`, `access.py`, middleware, and
+the service-credential singletons — but it has also accumulated three larger subsystems
+that are only *used* by other apps rather than being framework-level concerns:
 
 | Subsystem | Path | Importing apps |
 |---|---|---|

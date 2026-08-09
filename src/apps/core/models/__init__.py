@@ -8,6 +8,7 @@ from .base import (
     GoogleCredentialConfig,
     ProjectControlModel,
     SiteMaintenanceControl,
+    TimeStampedModel,
 )
 from .delivery_rate_limit import DeliveryRateLimit
 from .managers import ProjectControlManager, ProjectControlQuerySet
@@ -27,4 +28,5 @@ __all__ = [
     "ProjectControlModel",
     "ProjectControlQuerySet",
     "SiteMaintenanceControl",
+    "TimeStampedModel",
 ]
