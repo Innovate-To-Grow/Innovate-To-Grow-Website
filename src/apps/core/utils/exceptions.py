@@ -4,7 +4,7 @@ Custom DRF exception handler.
 Opt-in building block. It is NOT wired into ``REST_FRAMEWORK["EXCEPTION_HANDLER"]``
 because doing so would change error-response shapes across every endpoint. To
 enable it globally, set ``EXCEPTION_HANDLER`` to
-``"apps.common.exceptions.exception_handler"`` in settings.
+``"apps.core.utils.exceptions.exception_handler"`` in settings.
 
 It delegates to DRF's default handler and, when that produces a response,
 normalizes the body to a consistent envelope while preserving the original

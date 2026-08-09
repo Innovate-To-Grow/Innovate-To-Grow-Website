@@ -10,7 +10,7 @@ from rest_framework import serializers
 class TimeStampedModelSerializer(serializers.ModelSerializer):
     """ModelSerializer that exposes ``created_at`` / ``updated_at`` as read-only.
 
-    Pair with ``apps.common.models.TimeStampedModel``. Subclasses set their own
+    Pair with ``apps.core.models.TimeStampedModel``. Subclasses set their own
     ``Meta.model`` / ``Meta.fields``; the timestamp fields below are merged in
     as read-only when listed in ``fields``.
     """
