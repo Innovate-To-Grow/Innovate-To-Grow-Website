@@ -1,4 +1,4 @@
-"""Tests for the shared apps.common building blocks."""
+"""Tests for the shared apps.core building blocks."""
 
 from unittest.mock import Mock
 
@@ -6,11 +6,11 @@ from django.test import SimpleTestCase
 from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated, ValidationError
 
-from apps.common.exceptions import exception_handler
-from apps.common.models import TimeStampedModel
-from apps.common.pagination import DefaultPageNumberPagination
-from apps.common.permissions import IsOwnerOrReadOnly
-from apps.common.serializers import TimeStampedModelSerializer
+from apps.core.models import TimeStampedModel
+from apps.core.utils.exceptions import exception_handler
+from apps.core.utils.pagination import DefaultPageNumberPagination
+from apps.core.utils.permissions import IsOwnerOrReadOnly
+from apps.core.utils.serializers import TimeStampedModelSerializer
 
 
 class TimeStampedModelTests(SimpleTestCase):

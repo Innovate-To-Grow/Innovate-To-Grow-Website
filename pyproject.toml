@@ -53,7 +53,6 @@ known-first-party = [
     # New layout: business apps live under `apps`, project config under `config`.
     "apps",
     "config",
-    "common",
     # Legacy top-level names that still appear in landed migration files, which
     # must stay byte-stable (see src/config/settings/_legacy_imports.py). Kept
     # first-party so those imports sort into one block. This list matches

@@ -15,7 +15,6 @@ from typing import Iterable
 ALL_APPS = [
     "authn",
     "core",
-    "common",
     "system_intelligence",
     "cms",
     "event",
@@ -57,7 +56,6 @@ def _is_shared_backend_file(path: str) -> bool:
             "src/config/",
             "src/requirements/",
             "src/apps/core/",
-            "src/apps/common/",
         )
     )
 

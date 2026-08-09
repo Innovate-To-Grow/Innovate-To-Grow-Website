@@ -5,6 +5,7 @@ from .service_credentials import (
     GmailAccessAccount,
     GoogleCredentialConfig,
 )
+from .time_stamped import TimeStampedModel
 from .web import SiteMaintenanceControl
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "GoogleCredentialConfig",
     "ProjectControlModel",
     "SiteMaintenanceControl",
+    "TimeStampedModel",
 ]
