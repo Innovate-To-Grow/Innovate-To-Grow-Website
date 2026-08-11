@@ -10,7 +10,7 @@ from apps.event.tests.helpers import make_event, make_superuser, make_ticket
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.admin.campaign.forms import EmailCampaignForm
 from apps.mail.models import EmailCampaign
-from apps.mail.services.preview import HTML_MARKER
+from apps.mail.services.campaign.preview import HTML_MARKER
 
 
 class EmailCampaignFormTests(TestCase):

@@ -7,8 +7,8 @@ from rest_framework.test import APITestCase
 from apps.authn.models import ContactEmail, Member
 from apps.core.models import BackgroundJob
 from apps.event.tests.helpers import make_member
-from apps.mail.services.subscription_notifications import subscription_confirmation_dedupe_key
-from apps.mail.services.unsubscribe_token import (
+from apps.mail.services.tokens.notifications import subscription_confirmation_dedupe_key
+from apps.mail.services.tokens.unsubscribe import (
     _SALT,
     build_oneclick_unsubscribe_token,
 )
@@ -17,7 +17,7 @@ from apps.mail.services.unsubscribe_token import (
 class OneClickUnsubscribeViewTests(APITestCase):
     def setUp(self):
         task_patcher = patch(
-            "apps.mail.services.subscription_notifications.start_in_process_task",
+            "apps.mail.services.tokens.notifications.start_in_process_task",
             side_effect=lambda target, *args, **_kwargs: target(*args),
         )
         self.start_task = task_patcher.start()
@@ -141,7 +141,7 @@ class OneClickUnsubscribeViewTests(APITestCase):
 class SubscriptionConfirmationEmailTests(APITestCase):
     """The best-effort confirmation helpers skip members without a primary email."""
 
-    @patch("apps.mail.services.subscription_notifications.email_api.send_notification_email")
+    @patch("apps.mail.services.tokens.notifications.email_api.send_notification_email")
     def test_unsubscribe_confirmation_skipped_without_primary_email(self, mock_send):
         from apps.mail.views.subscriptions import _send_unsubscribe_confirmation
 
@@ -152,7 +152,7 @@ class SubscriptionConfirmationEmailTests(APITestCase):
 
         mock_send.assert_not_called()
 
-    @patch("apps.mail.services.subscription_notifications.email_api.send_notification_email")
+    @patch("apps.mail.services.tokens.notifications.email_api.send_notification_email")
     def test_resubscribe_confirmation_skipped_without_primary_email(self, mock_send):
         from apps.mail.views.subscriptions import _send_resubscribe_confirmation
 

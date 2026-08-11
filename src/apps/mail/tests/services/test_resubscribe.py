@@ -4,13 +4,13 @@ from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail
 from apps.event.tests.helpers import make_member
-from apps.mail.services.unsubscribe_token import build_resubscribe_token
+from apps.mail.services.tokens.unsubscribe import build_resubscribe_token
 
 
 class ResubscribeViewTests(APITestCase):
     def setUp(self):
         task_patcher = patch(
-            "apps.mail.services.subscription_notifications.start_in_process_task",
+            "apps.mail.services.tokens.notifications.start_in_process_task",
             side_effect=lambda target, *args, **_kwargs: target(*args),
         )
         self.start_task = task_patcher.start()

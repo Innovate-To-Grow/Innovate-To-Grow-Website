@@ -157,7 +157,7 @@ class ProcessSnsEnvelopeTests(TestCase):
 
         with (
             patch(
-                "apps.mail.services.background_jobs.aggregate_email_campaign",
+                "apps.mail.services.campaign.dispatch.aggregate_email_campaign",
                 side_effect=RuntimeError("aggregate unavailable"),
             ),
             self.assertRaisesMessage(RuntimeError, "aggregate unavailable"),

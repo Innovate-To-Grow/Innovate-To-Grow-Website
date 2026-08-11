@@ -4,7 +4,7 @@ from apps.authn.models import ContactPhone
 from apps.event.models import CheckIn, CheckInRecord
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 from apps.mail.models import SmsCampaign
-from apps.mail.services.sms_audience import (
+from apps.mail.services.sms.audience import (
     get_sms_recipients,
     manual_sms_recipients_from_body,
     recipients_for_sms_audience,
@@ -226,7 +226,7 @@ class SmsAudienceEventResolverTests(TestCase):
         self.assertIn("+12095553003", phones)
 
     def test_members_dedup_skips_duplicate_phone(self):
-        from apps.mail.services.sms_audience import members_to_sms_recipients
+        from apps.mail.services.sms.audience import members_to_sms_recipients
 
         # The same member appearing twice exercises the "phone already seen" dedup.
         recipients = members_to_sms_recipients([self.member, self.member], phone_policy="verified_opt_in")

@@ -18,7 +18,7 @@ from apps.core.services.background_jobs import (
 )
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipientLog
-from apps.mail.services.background_jobs import (
+from apps.mail.services.campaign.dispatch import (
     _mark_email_processing,
     _mark_sms_processing,
     _run_in_process_email_campaign,
@@ -33,7 +33,7 @@ from apps.mail.services.background_jobs import (
     resolve_stale_delivery_job,
     sync_delivery_job_state,
 )
-from apps.mail.services.campaign_state import campaign_state
+from apps.mail.services.campaign.state import campaign_state
 from apps.mail.services.send_campaign import SesSendResult
 from apps.mail.services.send_campaign.transport import (
     SES_OUTCOME_PERMANENT,
@@ -71,7 +71,7 @@ class InProcessCampaignDispatchTests(TestCase):
     def setUp(self):
         self.sender = make_superuser()
 
-    @patch("apps.mail.services.background_jobs.start_in_process_task")
+    @patch("apps.mail.services.campaign.dispatch.start_in_process_task")
     def test_email_dispatch_returns_without_provider_io(self, start_task):
         campaign = EmailCampaign.objects.create(
             name="Legacy email",
@@ -96,7 +96,7 @@ class InProcessCampaignDispatchTests(TestCase):
             daemon=False,
         )
 
-    @patch("apps.mail.services.background_jobs.start_in_process_task")
+    @patch("apps.mail.services.campaign.dispatch.start_in_process_task")
     def test_sms_dispatch_returns_without_provider_io(self, start_task):
         campaign = SmsCampaign.objects.create(
             name="Legacy SMS",
@@ -121,7 +121,7 @@ class InProcessCampaignDispatchTests(TestCase):
         )
 
     @patch(
-        "apps.mail.services.background_jobs.start_in_process_task",
+        "apps.mail.services.campaign.dispatch.start_in_process_task",
         side_effect=RuntimeError("can't start new thread"),
     )
     def test_email_start_failure_is_persisted_and_propagated(self, _start_task):
@@ -141,7 +141,7 @@ class InProcessCampaignDispatchTests(TestCase):
         self.assertIn("could not be started", campaign.error_message)
 
     @patch(
-        "apps.mail.services.background_jobs.start_in_process_task",
+        "apps.mail.services.campaign.dispatch.start_in_process_task",
         side_effect=RuntimeError("can't start new thread"),
     )
     def test_sms_start_failure_is_persisted_and_propagated(self, _start_task):
@@ -229,14 +229,14 @@ class DurableCampaignQueueTests(TestCase):
         queue_sms_campaign(campaign, sent_by=self.sender)
         return campaign, SmsRecipientLog.objects.get(campaign=campaign)
 
-    @patch("apps.mail.services.background_jobs._unsubscribe_url_for", return_value="")
-    @patch("apps.mail.services.background_jobs._recipient_context", return_value={})
+    @patch("apps.mail.services.campaign.dispatch._unsubscribe_url_for", return_value="")
+    @patch("apps.mail.services.campaign.dispatch._recipient_context", return_value={})
     @patch(
-        "apps.mail.services.background_jobs._send_via_ses",
+        "apps.mail.services.campaign.dispatch._send_via_ses",
         return_value=SesSendResult(message_id="ses-123"),
     )
-    @patch("apps.mail.services.background_jobs._get_ses_client", return_value=Mock())
-    @patch("apps.mail.services.background_jobs.EmailServiceConfig.load")
+    @patch("apps.mail.services.campaign.dispatch._get_ses_client", return_value=Mock())
+    @patch("apps.mail.services.campaign.dispatch.EmailServiceConfig.load")
     def test_successful_provider_result_completes_job_log_and_campaign(
         self,
         load_config,
@@ -263,11 +263,11 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(campaign.status, "sent")
         self.assertEqual(campaign.sent_count, 1)
 
-    @patch("apps.mail.services.background_jobs._unsubscribe_url_for", return_value="")
-    @patch("apps.mail.services.background_jobs._recipient_context", return_value={})
-    @patch("apps.mail.services.background_jobs._send_via_ses")
-    @patch("apps.mail.services.background_jobs._get_ses_client", return_value=Mock())
-    @patch("apps.mail.services.background_jobs.EmailServiceConfig.load")
+    @patch("apps.mail.services.campaign.dispatch._unsubscribe_url_for", return_value="")
+    @patch("apps.mail.services.campaign.dispatch._recipient_context", return_value={})
+    @patch("apps.mail.services.campaign.dispatch._send_via_ses")
+    @patch("apps.mail.services.campaign.dispatch._get_ses_client", return_value=Mock())
+    @patch("apps.mail.services.campaign.dispatch.EmailServiceConfig.load")
     def test_ses_acceptance_with_lost_recipient_claim_is_uncertain(
         self,
         load_config,
@@ -299,15 +299,15 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(log.ses_message_id, "")
         self.assertEqual(campaign.status, "failed")
 
-    @patch("apps.mail.services.background_jobs.wait_for_delivery_slot")
-    @patch("apps.mail.services.background_jobs._unsubscribe_url_for", return_value="")
-    @patch("apps.mail.services.background_jobs._recipient_context", return_value={})
+    @patch("apps.mail.services.campaign.dispatch.wait_for_delivery_slot")
+    @patch("apps.mail.services.campaign.dispatch._unsubscribe_url_for", return_value="")
+    @patch("apps.mail.services.campaign.dispatch._recipient_context", return_value={})
     @patch(
-        "apps.mail.services.background_jobs._send_via_ses",
+        "apps.mail.services.campaign.dispatch._send_via_ses",
         return_value=SesSendResult(message_id="ses-rate"),
     )
-    @patch("apps.mail.services.background_jobs._get_ses_client", return_value=Mock())
-    @patch("apps.mail.services.background_jobs.EmailServiceConfig.load")
+    @patch("apps.mail.services.campaign.dispatch._get_ses_client", return_value=Mock())
+    @patch("apps.mail.services.campaign.dispatch.EmailServiceConfig.load")
     def test_worker_reserves_shared_configured_ses_rate(
         self,
         load_config,
@@ -329,10 +329,10 @@ class DurableCampaignQueueTests(TestCase):
         wait_for_slot.assert_called_once_with("ses", 7.0)
 
     @patch(
-        "apps.mail.services.background_jobs._get_ses_client",
+        "apps.mail.services.campaign.dispatch._get_ses_client",
         side_effect=OperationalError("database temporarily unavailable"),
     )
-    @patch("apps.mail.services.background_jobs.EmailServiceConfig.load", return_value=Mock())
+    @patch("apps.mail.services.campaign.dispatch.EmailServiceConfig.load", return_value=Mock())
     def test_transient_failure_before_provider_sets_log_to_retry(
         self,
         _load_config,
@@ -351,14 +351,14 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(campaign.status, "queued")
         self.assertGreater(job.available_at, timezone.now())
 
-    @patch("apps.mail.services.background_jobs._unsubscribe_url_for", return_value="")
-    @patch("apps.mail.services.background_jobs._recipient_context", return_value={})
+    @patch("apps.mail.services.campaign.dispatch._unsubscribe_url_for", return_value="")
+    @patch("apps.mail.services.campaign.dispatch._recipient_context", return_value={})
     @patch(
-        "apps.mail.services.background_jobs._send_via_ses",
+        "apps.mail.services.campaign.dispatch._send_via_ses",
         return_value=SesSendResult(error="timeout"),
     )
-    @patch("apps.mail.services.background_jobs._get_ses_client", return_value=Mock())
-    @patch("apps.mail.services.background_jobs.EmailServiceConfig.load")
+    @patch("apps.mail.services.campaign.dispatch._get_ses_client", return_value=Mock())
+    @patch("apps.mail.services.campaign.dispatch.EmailServiceConfig.load")
     def test_unknown_provider_outcome_is_quarantined_without_auto_retry(
         self,
         load_config,
@@ -384,17 +384,17 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(campaign.status, "failed")
         self.assertIsNotNone(log.uncertain_at)
 
-    @patch("apps.mail.services.background_jobs._unsubscribe_url_for", return_value="")
-    @patch("apps.mail.services.background_jobs._recipient_context", return_value={})
+    @patch("apps.mail.services.campaign.dispatch._unsubscribe_url_for", return_value="")
+    @patch("apps.mail.services.campaign.dispatch._recipient_context", return_value={})
     @patch(
-        "apps.mail.services.background_jobs._send_via_ses",
+        "apps.mail.services.campaign.dispatch._send_via_ses",
         return_value=SesSendResult(
             error="SES temporarily rejected the request.",
             outcome=SES_OUTCOME_TRANSIENT,
         ),
     )
-    @patch("apps.mail.services.background_jobs._get_ses_client", return_value=Mock())
-    @patch("apps.mail.services.background_jobs.EmailServiceConfig.load")
+    @patch("apps.mail.services.campaign.dispatch._get_ses_client", return_value=Mock())
+    @patch("apps.mail.services.campaign.dispatch.EmailServiceConfig.load")
     def test_definitive_ses_throttle_retries_safely(
         self,
         load_config,
@@ -420,17 +420,17 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(log.status, "retry")
         self.assertEqual(campaign.status, "queued")
 
-    @patch("apps.mail.services.background_jobs._unsubscribe_url_for", return_value="")
-    @patch("apps.mail.services.background_jobs._recipient_context", return_value={})
+    @patch("apps.mail.services.campaign.dispatch._unsubscribe_url_for", return_value="")
+    @patch("apps.mail.services.campaign.dispatch._recipient_context", return_value={})
     @patch(
-        "apps.mail.services.background_jobs._send_via_ses",
+        "apps.mail.services.campaign.dispatch._send_via_ses",
         return_value=SesSendResult(
             error="SES rejected the request.",
             outcome=SES_OUTCOME_PERMANENT,
         ),
     )
-    @patch("apps.mail.services.background_jobs._get_ses_client", return_value=Mock())
-    @patch("apps.mail.services.background_jobs.EmailServiceConfig.load")
+    @patch("apps.mail.services.campaign.dispatch._get_ses_client", return_value=Mock())
+    @patch("apps.mail.services.campaign.dispatch.EmailServiceConfig.load")
     def test_definitive_ses_rejection_fails_without_uncertain_state(
         self,
         load_config,
@@ -457,11 +457,11 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(campaign.status, "failed")
 
     @patch(
-        "apps.mail.services.background_jobs._send_via_sms",
+        "apps.mail.services.campaign.dispatch._send_via_sms",
         side_effect=_provider_failure(PhoneVerificationThrottled("slow down")),
     )
     @patch(
-        "apps.mail.services.background_jobs.AWSCredentialConfig.load",
+        "apps.mail.services.campaign.dispatch.AWSCredentialConfig.load",
         return_value=Mock(sns_configured=True),
     )
     def test_definitive_sms_throttle_retries_safely(self, _config, _publish):
@@ -478,11 +478,11 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(campaign.status, "queued")
 
     @patch(
-        "apps.mail.services.background_jobs._send_via_sms",
+        "apps.mail.services.campaign.dispatch._send_via_sms",
         side_effect=_provider_failure(PhoneVerificationInvalid("invalid phone")),
     )
     @patch(
-        "apps.mail.services.background_jobs.AWSCredentialConfig.load",
+        "apps.mail.services.campaign.dispatch.AWSCredentialConfig.load",
         return_value=Mock(sns_configured=True),
     )
     def test_definitive_sms_validation_failure_is_permanent(self, _config, _publish):
@@ -499,11 +499,11 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(campaign.status, "failed")
 
     @patch(
-        "apps.mail.services.background_jobs._send_via_sms",
+        "apps.mail.services.campaign.dispatch._send_via_sms",
         side_effect=_provider_failure(ReadTimeoutError(endpoint_url="https://sms-voice.us-west-2.amazonaws.com")),
     )
     @patch(
-        "apps.mail.services.background_jobs.AWSCredentialConfig.load",
+        "apps.mail.services.campaign.dispatch.AWSCredentialConfig.load",
         return_value=Mock(sns_configured=True),
     )
     def test_sms_lost_response_is_uncertain(self, _config, _send):
@@ -519,9 +519,9 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(log.status, "uncertain")
         self.assertEqual(campaign.status, "failed")
 
-    @patch("apps.mail.services.background_jobs._send_via_sms")
+    @patch("apps.mail.services.campaign.dispatch._send_via_sms")
     @patch(
-        "apps.mail.services.background_jobs.AWSCredentialConfig.load",
+        "apps.mail.services.campaign.dispatch.AWSCredentialConfig.load",
         return_value=Mock(sns_configured=True),
     )
     def test_sns_acceptance_with_lost_recipient_claim_is_uncertain(self, _config, send):
@@ -545,8 +545,8 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(log.sns_message_id, "")
         self.assertEqual(campaign.status, "failed")
 
-    @patch("apps.mail.services.background_jobs.boto3.client")
-    @patch("apps.mail.services.background_jobs.resolve_aws_credentials")
+    @patch("apps.mail.services.campaign.dispatch.boto3.client")
+    @patch("apps.mail.services.campaign.dispatch.resolve_aws_credentials")
     def test_sms_transport_disables_sdk_retries_and_marks_provider_boundary(
         self,
         resolve_credentials,
@@ -619,7 +619,7 @@ class DurableCampaignQueueTests(TestCase):
         )
 
         with patch(
-            "apps.mail.services.background_jobs.aggregate_email_campaign",
+            "apps.mail.services.campaign.dispatch.aggregate_email_campaign",
             side_effect=OperationalError("aggregate unavailable"),
         ):
             result = recover_stale_jobs(stale_after=timedelta(minutes=10))
@@ -685,7 +685,7 @@ class DurableCampaignQueueTests(TestCase):
         self.assertEqual(log.status, "bounced")
         self.assertEqual(campaign.status, "failed")
 
-    @patch("apps.mail.services.background_jobs._send_via_ses")
+    @patch("apps.mail.services.campaign.dispatch._send_via_ses")
     def test_terminal_email_recipient_is_not_sent_again(self, send):
         campaign, log = self._queued_email()
         RecipientLog.objects.filter(pk=log.pk).update(
@@ -753,7 +753,7 @@ class DurableCampaignQueueTests(TestCase):
 
         with (
             patch(
-                "apps.mail.services.background_jobs.aggregate_email_campaign",
+                "apps.mail.services.campaign.dispatch.aggregate_email_campaign",
                 side_effect=OperationalError("aggregate unavailable"),
             ),
             self.assertRaisesMessage(OperationalError, "aggregate unavailable"),
@@ -1006,7 +1006,7 @@ class DeliveryRecoveryInterleavingTests(TransactionTestCase):
                 close_old_connections()
 
         with patch(
-            "apps.mail.services.background_jobs.aggregate_email_campaign",
+            "apps.mail.services.campaign.dispatch.aggregate_email_campaign",
             side_effect=blocking_aggregate,
         ):
             retry_thread = threading.Thread(target=retry)

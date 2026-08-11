@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from apps.mail.services.personalize import personalize
+from apps.mail.services.campaign.personalize import personalize
 
 
 class PersonalizeTest(TestCase):

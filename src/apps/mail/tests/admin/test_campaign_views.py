@@ -13,8 +13,8 @@ from apps.event.tests.helpers import make_superuser
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.admin.campaign.inlines import AudienceTypeFilter, RecipientLogInline
 from apps.mail.models import EmailCampaign, RecipientLog
+from apps.mail.services.campaign.preview import HTML_MARKER
 from apps.mail.services.gmail_import import GmailImportError
-from apps.mail.services.preview import HTML_MARKER
 
 
 def _make_email_config():
@@ -74,7 +74,7 @@ class CampaignSendViewTests(TestCase):
 
 
 class CampaignBackgroundSendTests(TestCase):
-    @patch("apps.mail.services.background_jobs.dispatch_email_campaign")
+    @patch("apps.mail.services.campaign.dispatch.dispatch_email_campaign")
     def test_background_send_dispatches_through_durable_service(self, mock_dispatch):
         admin_user = make_superuser()
         campaign = EmailCampaign.objects.create(subject="BG", body="x", status="sending")
@@ -86,7 +86,7 @@ class CampaignBackgroundSendTests(TestCase):
         self.assertEqual(mock_dispatch.call_args.kwargs["sent_by"].pk, admin_user.pk)
 
     @patch(
-        "apps.mail.services.background_jobs.dispatch_email_campaign",
+        "apps.mail.services.campaign.dispatch.dispatch_email_campaign",
         side_effect=RuntimeError("boom"),
     )
     def test_background_send_propagates_dispatch_error_to_admin_boundary(self, _mock_dispatch):

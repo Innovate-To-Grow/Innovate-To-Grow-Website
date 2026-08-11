@@ -483,7 +483,7 @@ class SmsCampaignStatusViewTests(TestCase):
 
 
 class SmsBackgroundSendTests(TestCase):
-    @patch("apps.mail.services.background_jobs.dispatch_sms_campaign")
+    @patch("apps.mail.services.campaign.dispatch.dispatch_sms_campaign")
     def test_background_send_invokes_durable_dispatch(self, mock_dispatch):
         admin_user = make_superuser()
         campaign = SmsCampaign.objects.create(name="BG SMS", message="Hi", status="sending")
@@ -496,7 +496,7 @@ class SmsBackgroundSendTests(TestCase):
         self.assertEqual(mock_dispatch.call_args.kwargs["sent_by"].pk, admin_user.pk)
 
     @patch(
-        "apps.mail.services.background_jobs.dispatch_sms_campaign",
+        "apps.mail.services.campaign.dispatch.dispatch_sms_campaign",
         side_effect=RuntimeError("boom"),
     )
     def test_background_send_propagates_dispatch_error(self, _mock_dispatch):

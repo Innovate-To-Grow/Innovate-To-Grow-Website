@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 from apps.mail.models import EmailCampaign, LoginLinkToken
-from apps.mail.services.login_links import issue_login_link, revoke_login_links
+from apps.mail.services.tokens.login_links import issue_login_link, revoke_login_links
 from apps.mail.utils.redirects import DEFAULT_LOGIN_REDIRECT_PATH
 
 

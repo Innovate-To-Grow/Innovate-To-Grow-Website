@@ -8,6 +8,7 @@ from django.test import TestCase
 
 from apps.core.models import GmailAccessAccount
 from apps.mail.models import EmailCampaign
+from apps.mail.services.campaign.preview import HTML_MARKER, render_preview
 from apps.mail.services.gmail_import import (
     DEFAULT_GMAIL_FOLDER,
     DEFAULT_GMAIL_MAILBOX,
@@ -17,7 +18,6 @@ from apps.mail.services.gmail_import import (
     list_recent_sent_messages,
     resolve_gmail_mailbox,
 )
-from apps.mail.services.preview import HTML_MARKER, render_preview
 
 
 class _FakeMailbox:

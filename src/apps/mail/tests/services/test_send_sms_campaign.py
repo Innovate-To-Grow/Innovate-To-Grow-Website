@@ -6,7 +6,7 @@ from apps.authn.models import ContactPhone
 from apps.core.models import AWSCredentialConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsCampaign, SmsRecipientLog
-from apps.mail.services.send_sms_campaign import send_sms_campaign
+from apps.mail.services.sms.sender import send_sms_campaign
 
 
 def _make_sms_config():
@@ -36,7 +36,7 @@ class SendSmsCampaignTests(TestCase):
         AWSCredentialConfig.objects.all().delete()
         self.sender = make_member(email="sender@example.com", first_name="Sender", last_name="User")
 
-    @patch("apps.mail.services.send_sms_campaign.publish_plain_sms", return_value="sns-msg-1")
+    @patch("apps.mail.services.sms.sender.publish_plain_sms", return_value="sns-msg-1")
     def test_send_sms_campaign_records_successful_recipient_log(self, mock_publish):
         _make_sms_config()
         member = make_member(email="recipient@example.com", first_name="Ada", last_name="Lovelace")
@@ -66,8 +66,8 @@ class SendSmsCampaignTests(TestCase):
         self.assertEqual(campaign.status, "failed")
         self.assertIn("SMS delivery is not configured", campaign.error_message)
 
-    @patch("apps.mail.services.send_sms_campaign.get_sms_recipients", return_value=[])
-    @patch("apps.mail.services.send_sms_campaign.AWSCredentialConfig.load")
+    @patch("apps.mail.services.sms.sender.get_sms_recipients", return_value=[])
+    @patch("apps.mail.services.sms.sender.AWSCredentialConfig.load")
     def test_fallback_campaign_with_no_recipients_is_sent(self, load_config, _recipients):
         campaign = SmsCampaign.objects.create(message="Hello", audience_type="all_members")
 
@@ -79,7 +79,7 @@ class SendSmsCampaignTests(TestCase):
         self.assertIsNotNone(campaign.sent_at)
         load_config.assert_not_called()
 
-    @patch("apps.mail.services.send_sms_campaign.publish_plain_sms")
+    @patch("apps.mail.services.sms.sender.publish_plain_sms")
     def test_send_sms_campaign_records_partial_failures(self, mock_publish):
         _make_sms_config()
         first = make_member(email="first@example.com")
@@ -98,7 +98,7 @@ class SendSmsCampaignTests(TestCase):
         failed = SmsRecipientLog.objects.get(campaign=campaign, status="failed")
         self.assertEqual(failed.error_message, "boom")
 
-    @patch("apps.mail.services.send_sms_campaign.publish_plain_sms", side_effect=RuntimeError("SNS rejected"))
+    @patch("apps.mail.services.sms.sender.publish_plain_sms", side_effect=RuntimeError("SNS rejected"))
     def test_fallback_campaign_with_all_provider_failures_is_failed(self, _publish):
         _make_sms_config()
         first = make_member(email="all-failed-first@example.com")
@@ -114,7 +114,7 @@ class SendSmsCampaignTests(TestCase):
         self.assertEqual(campaign.status, "failed")
         self.assertEqual(SmsRecipientLog.objects.filter(campaign=campaign, status="failed").count(), 2)
 
-    @patch("apps.mail.services.send_sms_campaign.publish_plain_sms", return_value="sns-id")
+    @patch("apps.mail.services.sms.sender.publish_plain_sms", return_value="sns-id")
     def test_send_sms_campaign_persists_progress_every_ten_recipients(self, mock_publish):
         _make_sms_config()
         # 10 manual phones trigger the (sent+failed) % 10 == 0 periodic save.

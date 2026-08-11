@@ -16,7 +16,7 @@ from cryptography.x509.oid import NameOID
 from django.test import TestCase
 
 from apps.mail.services import sns_signature
-from apps.mail.services.sns_signature import SnsVerificationError, verify_sns_message
+from apps.mail.services.sns.signature import SnsVerificationError, verify_sns_message
 
 
 def _make_self_signed_cert() -> tuple[bytes, rsa.RSAPrivateKey]:
@@ -37,7 +37,7 @@ def _make_self_signed_cert() -> tuple[bytes, rsa.RSAPrivateKey]:
 
 def _sign_envelope(envelope: dict, key: rsa.RSAPrivateKey, algo=hashes.SHA256()) -> dict:
     """Sign an envelope in the same canonical form the verifier expects."""
-    from apps.mail.services.sns_signature import _canonical_string
+    from apps.mail.services.sns.signature import _canonical_string
 
     canonical = _canonical_string(envelope)
     signature = key.sign(canonical, padding.PKCS1v15(), algo)
@@ -142,7 +142,7 @@ class VerifySnsMessageTests(TestCase):
         envelope = _sign_envelope(_base_notification(), self.key)
         sns_signature._CERT_CACHE.clear()
         sns_signature._CERT_CACHE["https://sns.us-west-2.amazonaws.com/cert.pem"] = self.pem
-        with patch("apps.mail.services.sns_signature.fetch_sns_https") as mock_fetch:
+        with patch("apps.mail.services.sns.signature.fetch_sns_https") as mock_fetch:
             verify_sns_message(envelope)
             verify_sns_message(envelope)
             mock_fetch.assert_not_called()
@@ -151,7 +151,7 @@ class VerifySnsMessageTests(TestCase):
         # Cert is cached via setUp, so _fetch_cert succeeds and we reach b64decode.
         envelope = _base_notification()
         envelope["Signature"] = "!!!not base64!!!"
-        with patch("apps.mail.services.sns_signature.base64.b64decode", side_effect=ValueError("bad")):
+        with patch("apps.mail.services.sns.signature.base64.b64decode", side_effect=ValueError("bad")):
             with self.assertRaisesMessage(SnsVerificationError, "invalid Signature encoding"):
                 verify_sns_message(envelope)
 
@@ -210,7 +210,7 @@ class FetchCertTests(TestCase):
     def test_fetch_downloads_and_caches_pem(self):
         cert_url = "https://sns.us-west-2.amazonaws.com/cert.pem"
 
-        with patch("apps.mail.services.sns_signature.fetch_sns_https", return_value=b"PEM-BYTES") as mock_fetch:
+        with patch("apps.mail.services.sns.signature.fetch_sns_https", return_value=b"PEM-BYTES") as mock_fetch:
             pem = sns_signature._fetch_cert(cert_url)
 
         self.assertEqual(pem, b"PEM-BYTES")
@@ -222,7 +222,7 @@ class FetchCertTests(TestCase):
         for i in range(sns_signature._CERT_CACHE_MAX):
             sns_signature._CERT_CACHE[f"https://sns.amazonaws.com/{i}.pem"] = b"old"
 
-        with patch("apps.mail.services.sns_signature.fetch_sns_https", return_value=b"NEW-PEM"):
+        with patch("apps.mail.services.sns.signature.fetch_sns_https", return_value=b"NEW-PEM"):
             pem = sns_signature._fetch_cert(cert_url)
 
         self.assertEqual(pem, b"NEW-PEM")

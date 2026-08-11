@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from apps.cms.models import CMSPage
 from apps.event.tests.helpers import make_event, make_member
 from apps.mail.services.audience.converters import members_to_recipients
-from apps.mail.services.unsubscribe_token import (
+from apps.mail.services.tokens.unsubscribe import (
     build_oneclick_unsubscribe_url,
     build_resubscribe_token,
     get_member_from_resubscribe_token,

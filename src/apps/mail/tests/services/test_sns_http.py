@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase
 
 from apps.core.utils.security import SecurityValidationError
-from apps.mail.services.sns_http import SnsHttpError, fetch_sns_https
+from apps.mail.services.sns.http import SnsHttpError, fetch_sns_https
 
 
 class FetchSnsHttpsTests(SimpleTestCase):
@@ -18,7 +18,7 @@ class FetchSnsHttpsTests(SimpleTestCase):
         response.read.return_value = payload
         return connection
 
-    @patch("apps.mail.services.sns_http.HTTPSConnection")
+    @patch("apps.mail.services.sns.http.HTTPSConnection")
     def test_fetches_validated_host_without_redirect_or_proxy_support(self, connection_class):
         connection = self._connection(payload=b"certificate")
         connection_class.return_value = connection
@@ -46,14 +46,14 @@ class FetchSnsHttpsTests(SimpleTestCase):
         connection.getresponse.return_value.read.assert_called_once_with(33)
         connection.close.assert_called_once()
 
-    @patch("apps.mail.services.sns_http.HTTPSConnection")
+    @patch("apps.mail.services.sns.http.HTTPSConnection")
     def test_rejects_disallowed_url_before_opening_connection(self, connection_class):
         with self.assertRaises(SecurityValidationError):
             fetch_sns_https("file:///etc/passwd")
 
         connection_class.assert_not_called()
 
-    @patch("apps.mail.services.sns_http.HTTPSConnection")
+    @patch("apps.mail.services.sns.http.HTTPSConnection")
     def test_rejects_redirect_response(self, connection_class):
         connection_class.return_value = self._connection(status=302)
 
@@ -62,7 +62,7 @@ class FetchSnsHttpsTests(SimpleTestCase):
 
         connection_class.return_value.close.assert_called_once()
 
-    @patch("apps.mail.services.sns_http.HTTPSConnection")
+    @patch("apps.mail.services.sns.http.HTTPSConnection")
     def test_rejects_oversized_response(self, connection_class):
         connection_class.return_value = self._connection(payload=b"12345")
 

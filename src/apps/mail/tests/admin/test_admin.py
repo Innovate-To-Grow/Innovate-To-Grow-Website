@@ -12,12 +12,12 @@ from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.models import EmailCampaign
 from apps.mail.services import GMAIL_FOLDER_DISPLAY
-from apps.mail.services.delivery_dashboard import (
+from apps.mail.services.campaign.dashboard import (
     PUBLIC_ERROR_MESSAGES,
     fetch_ses_cloudwatch_metrics,
     fetch_suppressed_destinations,
 )
-from apps.mail.services.preview import HTML_MARKER
+from apps.mail.services.campaign.preview import HTML_MARKER
 
 
 class MailSettingsAdminTest(TestCase):
@@ -423,7 +423,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
             ]
         }
 
-        with patch("apps.mail.services.delivery_dashboard._cloudwatch_client", return_value=client):
+        with patch("apps.mail.services.campaign.dashboard._cloudwatch_client", return_value=client):
             payload = fetch_ses_cloudwatch_metrics(days=183, now=now)
 
         self.assertTrue(payload["metrics"]["available"])
@@ -472,7 +472,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
             },
         ]
 
-        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+        with patch("apps.mail.services.campaign.dashboard._sesv2_client", return_value=client):
             rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
 
         self.assertTrue(meta["available"])
@@ -513,7 +513,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
             ]
         }
 
-        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+        with patch("apps.mail.services.campaign.dashboard._sesv2_client", return_value=client):
             rows, meta = fetch_suppressed_destinations(days=183, limit=1, now=now)
 
         self.assertEqual([row["email"] for row in rows], ["bounce@example.com"])
@@ -536,7 +536,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
             "ListSuppressedDestinations",
         )
 
-        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+        with patch("apps.mail.services.campaign.dashboard._sesv2_client", return_value=client):
             rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
 
         self.assertEqual(rows, [])
@@ -555,7 +555,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
         now = datetime(2026, 6, 8, 12, 0, tzinfo=UTC)
         client.list_suppressed_destinations.side_effect = RuntimeError("secret-internal-path /srv/app/creds")
 
-        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+        with patch("apps.mail.services.campaign.dashboard._sesv2_client", return_value=client):
             rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
 
         self.assertEqual(rows, [])
@@ -573,7 +573,7 @@ class MailDeliveryDashboardAwsServiceTest(TestCase):
             "ListSuppressedDestinations",
         )
 
-        with patch("apps.mail.services.delivery_dashboard._sesv2_client", return_value=client):
+        with patch("apps.mail.services.campaign.dashboard._sesv2_client", return_value=client):
             rows, meta = fetch_suppressed_destinations(days=183, limit=50, now=now)
 
         self.assertEqual(rows, [])
