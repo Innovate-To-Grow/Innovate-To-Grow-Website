@@ -1,1 +1,0 @@
-export { LegacyLoginLinkRedirect } from './LegacyLoginLinkRedirect';
