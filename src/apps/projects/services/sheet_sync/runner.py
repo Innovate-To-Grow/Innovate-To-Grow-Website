@@ -6,7 +6,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.projects.models import PastProjectsSheetConfig, PastProjectSyncLog, Project
-from apps.projects.services.hooks import resolve_project_row
+from apps.projects.services.sheet_sync.hooks import resolve_project_row
 from apps.projects.signals import _clear_project_caches
 
 from .shared import PastProjectSyncStats, SheetSyncError
