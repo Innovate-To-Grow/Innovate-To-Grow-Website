@@ -100,7 +100,7 @@ class MemberChangeFormFieldTests(TestCase):
         self.assertIn("admin_apps", form.errors)
 
 
-@override_settings(ROOT_URLCONF="config.urls", ADMIN_REQUIRE_CONFIRMATION=False)
+@override_settings(ROOT_URLCONF="config.routing.urls", ADMIN_REQUIRE_CONFIRMATION=False)
 class MemberAdminChangePageTests(TestCase):
     """Exercise the real admin change page through the test client.
 

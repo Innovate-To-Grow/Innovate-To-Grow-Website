@@ -8,8 +8,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from apps.authn.models import Member
-from apps.core.admin.base import BaseModelAdmin, ReadOnlyModelAdmin
-from apps.core.admin.log_entry import LogEntryAdmin
+from apps.core.admin.common.base import BaseModelAdmin, ReadOnlyModelAdmin
+from apps.core.admin.registrations.log_entry import LogEntryAdmin
 from apps.event.tests.helpers import make_superuser
 
 
@@ -69,7 +69,7 @@ class ReadOnlyModelAdminTest(TestCase):
         # Force the parent chain to return a dict that includes delete_selected so
         # the `del actions["delete_selected"]` branch executes.
         with patch(
-            "apps.core.admin.base.BaseModelAdmin.get_actions",
+            "apps.core.admin.common.base.BaseModelAdmin.get_actions",
             return_value={"delete_selected": ("f", "delete_selected", "Delete"), "export_data": ("g", "x", "y")},
         ):
             actions = self.admin.get_actions(request)

@@ -6,7 +6,7 @@ from unfold.admin import ModelAdmin
 
 from apps.core.utils.access import user_can_access_app
 
-from .mixins import ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin
+from ..mixins import ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin
 
 
 class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin, ModelAdmin):

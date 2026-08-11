@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget
 
-from apps.core.admin.base import BaseModelAdmin
+from apps.core.admin.common.base import BaseModelAdmin
 from apps.system_intelligence.models import SystemIntelligenceActionRequest, SystemIntelligenceConfig
 
 logger = logging.getLogger(__name__)

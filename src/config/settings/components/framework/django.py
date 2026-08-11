@@ -64,9 +64,9 @@ MIDDLEWARE = [
 # ---------------------------------------------------------------------------
 # URL / WSGI
 # ---------------------------------------------------------------------------
-ROOT_URLCONF = "config.urls"
-WSGI_APPLICATION = "config.wsgi.application"
-ASGI_APPLICATION = "config.asgi.application"
+ROOT_URLCONF = "config.routing.urls"
+WSGI_APPLICATION = "config.deploy.wsgi.application"
+ASGI_APPLICATION = "config.deploy.asgi.application"
 
 # ---------------------------------------------------------------------------
 # Templates

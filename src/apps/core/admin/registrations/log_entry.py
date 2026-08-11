@@ -8,7 +8,7 @@ review recent admin actions (adds, changes, deletes) from a single page.
 from django.contrib import admin
 from django.contrib.admin.models import LogEntry
 
-from apps.core.admin.base import ReadOnlyModelAdmin
+from ..common.base import ReadOnlyModelAdmin
 
 
 class LogEntryAdmin(ReadOnlyModelAdmin):

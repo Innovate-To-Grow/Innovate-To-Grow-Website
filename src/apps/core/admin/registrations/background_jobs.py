@@ -4,7 +4,7 @@ from unfold.decorators import action
 from apps.core.models import BackgroundJob
 from apps.core.services.background_jobs import retry_job
 
-from .base import ReadOnlyModelAdmin
+from ..common.base import ReadOnlyModelAdmin
 
 
 @admin.register(BackgroundJob)

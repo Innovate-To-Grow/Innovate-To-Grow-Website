@@ -4,8 +4,9 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from unfold.widgets import UnfoldAdminPasswordWidget
 
-from apps.core.admin.base import BaseModelAdmin
 from apps.core.models import SiteMaintenanceControl
+
+from ..common.base import BaseModelAdmin
 
 
 class MaterialOutlinedPasswordWidget(UnfoldAdminPasswordWidget):
@@ -38,7 +39,7 @@ class SiteMaintenanceControlAdminForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         if cleaned_data.get("clear_bypass_password"):
-            cleaned_data["bypass_password"] = ""
+            cleaned_data["bypass_password"] = ""  # nosec B105
         elif not cleaned_data.get("bypass_password") and self.instance.pk:
             cleaned_data["bypass_password"] = self.instance.bypass_password
         return cleaned_data

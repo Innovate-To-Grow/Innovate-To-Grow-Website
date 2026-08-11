@@ -26,7 +26,7 @@ def _signed_cookie_value(value):
     return signing.get_cookie_signer(salt=LAST_ADMIN_LOGIN_COOKIE_NAME).sign(value)
 
 
-@override_settings(ROOT_URLCONF="config.urls")
+@override_settings(ROOT_URLCONF="config.routing.urls")
 class AdminLoginHelpersTest(TestCase):
     def setUp(self):
         cache.clear()
@@ -62,7 +62,7 @@ class AdminLoginHelpersTest(TestCase):
         self.assertIsNone(get_last_admin_login_member(request))
 
 
-@override_settings(ROOT_URLCONF="config.urls")
+@override_settings(ROOT_URLCONF="config.routing.urls")
 class AdminRememberedPasswordTest(TestCase):
     def setUp(self):
         cache.clear()
@@ -124,7 +124,7 @@ class AdminRememberedPasswordTest(TestCase):
         self.assertContains(resp, "Too many login attempts")
 
 
-@override_settings(ROOT_URLCONF="config.urls")
+@override_settings(ROOT_URLCONF="config.routing.urls")
 class AdminRememberedCodeTest(TestCase):
     def setUp(self):
         cache.clear()
@@ -178,7 +178,7 @@ class AdminRememberedCodeTest(TestCase):
         self.assertContains(resp, "Failed to send verification code")
 
 
-@override_settings(ROOT_URLCONF="config.urls")
+@override_settings(ROOT_URLCONF="config.routing.urls")
 class AdminCodeStepNoStateTest(TestCase):
     def setUp(self):
         cache.clear()

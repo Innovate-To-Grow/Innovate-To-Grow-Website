@@ -7,9 +7,9 @@ from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
-from apps.core.admin.base import BaseModelAdmin
 from apps.core.models import AWSCredentialConfig
 
+from ..common.base import BaseModelAdmin
 from .test_send_mixin import TestSendViewsMixin
 
 
