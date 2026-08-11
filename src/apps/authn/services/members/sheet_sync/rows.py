@@ -1,6 +1,6 @@
 # Re-exported from the shared util so existing imports of these names keep
 # working while the neutralization logic lives in one place.
-from apps.core.services.sheets_safety import FORMULA_TRIGGERS, safe_sheet_value
+from apps.core.services.helpers.sheets_safety import FORMULA_TRIGGERS, safe_sheet_value
 
 __all__ = ["FORMULA_TRIGGERS", "safe_sheet_value", "build_header", "build_row"]
 

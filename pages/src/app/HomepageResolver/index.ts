@@ -1,0 +1,1 @@
+export { HomepageResolver } from './HomepageResolver';

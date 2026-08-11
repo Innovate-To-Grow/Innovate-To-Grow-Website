@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from apps.core.services.in_process import start_in_process_task
+from apps.core.services.helpers.in_process import start_in_process_task
 from apps.event.services.registration_sheet_sync import schedule_registration_sync
 
 INITIAL_TICKET_START_ERROR = "Ticket email could not be started. Check server logs for details."

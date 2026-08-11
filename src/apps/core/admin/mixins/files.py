@@ -6,7 +6,7 @@ from io import BytesIO
 
 from django.http import HttpResponse
 
-from apps.core.services.sheets_safety import safe_sheet_value
+from apps.core.services.helpers.sheets_safety import safe_sheet_value
 
 
 def generate_excel_response(admin_obj, request, queryset, columns):

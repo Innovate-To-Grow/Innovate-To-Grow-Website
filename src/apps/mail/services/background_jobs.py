@@ -24,7 +24,7 @@ from apps.core.services.background_jobs import (
     jobs_enabled,
     wait_for_delivery_slot,
 )
-from apps.core.services.in_process import start_in_process_task
+from apps.core.services.helpers.in_process import start_in_process_task
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipientLog
 from apps.mail.services.audience import get_recipients
 from apps.mail.services.campaign_state import campaign_state

@@ -113,11 +113,11 @@ class EventRegistrationCreateViewTest(TestCase):
         warning.assert_called_once_with("Failed to send initial ticket email", exc_info=True)
 
     @override_settings(BACKGROUND_JOBS_ENABLED=False)
-    @patch("apps.core.services.in_process.threading.Thread")
+    @patch("apps.core.services.helpers.in_process.threading.Thread")
     def test_ticket_thread_start_failure_does_not_break_committed_registration(self, thread_class):
         thread_class.return_value.start.side_effect = RuntimeError("can't start new thread")
 
-        with self.assertLogs("apps.core.services.in_process", level="ERROR"):
+        with self.assertLogs("apps.core.services.helpers.in_process", level="ERROR"):
             with self.captureOnCommitCallbacks(execute=True):
                 response = self._post()
 

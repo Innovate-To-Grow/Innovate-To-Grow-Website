@@ -20,7 +20,7 @@ from apps.authn.services.email.challenges import (
     issue_email_challenge,
     verify_email_code,
 )
-from apps.core.services.in_process import start_in_process_task
+from apps.core.services.helpers.in_process import start_in_process_task
 
 logger = logging.getLogger(__name__)
 

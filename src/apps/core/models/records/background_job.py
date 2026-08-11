@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 from django.utils import timezone
 
-from .base import ProjectControlModel
+from ..base import ProjectControlModel
 
 
 class BackgroundJob(ProjectControlModel):

@@ -7,7 +7,7 @@ from django.conf import settings
 
 from apps.authn.services import email as email_api
 from apps.core.services.background_jobs import enqueue_notification_email, jobs_enabled
-from apps.core.services.in_process import start_in_process_task
+from apps.core.services.helpers.in_process import start_in_process_task
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from apps.core.services.sheets_safety import safe_sheet_value
+from apps.core.services.helpers.sheets_safety import safe_sheet_value
 from apps.event.models import CheckIn, CheckInRecord, EventRegistration
 
 HEADERS = (
