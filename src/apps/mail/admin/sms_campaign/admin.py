@@ -21,8 +21,8 @@ from apps.mail.admin.campaign.views.status import _short_error
 from apps.mail.admin.campaign.widgets import TicketSelectWidget
 from apps.mail.models import SmsCampaign, SmsRecipientLog
 from apps.mail.models.sms_campaign import SMS_AUDIENCE_CHOICES, SMS_EXCLUDE_AUDIENCE_CHOICES
-from apps.mail.services.personalize import personalize
-from apps.mail.services.sms_audience import get_sms_recipients
+from apps.mail.services.campaign.personalize import personalize
+from apps.mail.services.sms.audience import get_sms_recipients
 
 
 class SmsCampaignForm(forms.ModelForm):
@@ -435,7 +435,7 @@ class SmsCampaignAdmin(BaseModelAdmin):
     @staticmethod
     def _background_send(campaign_pk, user_pk):
         from apps.mail.models import SmsCampaign as CampaignModel
-        from apps.mail.services.background_jobs import dispatch_sms_campaign
+        from apps.mail.services.campaign.dispatch import dispatch_sms_campaign
 
         User = get_user_model()
         campaign = CampaignModel.objects.get(pk=campaign_pk)

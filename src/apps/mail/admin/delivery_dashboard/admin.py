@@ -7,7 +7,7 @@ from django.template.response import TemplateResponse
 from django.urls import path
 
 from apps.core.utils.access import user_can_access_app
-from apps.mail.services.delivery_dashboard import get_delivery_dashboard_data
+from apps.mail.services.campaign.dashboard import get_delivery_dashboard_data
 
 DEFAULT_DELIVERY_DASHBOARD_DAYS = 183
 DELIVERY_DASHBOARD_WINDOWS = {

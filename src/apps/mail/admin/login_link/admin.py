@@ -5,8 +5,8 @@ from unfold.decorators import display
 
 from apps.core.admin import ReadOnlyModelAdmin
 
-from ..models import LoginLinkToken
-from ..services.login_links import revoke_login_links
+from ...models import LoginLinkToken
+from ...services.tokens.login_links import revoke_login_links
 
 
 @admin.register(LoginLinkToken)
