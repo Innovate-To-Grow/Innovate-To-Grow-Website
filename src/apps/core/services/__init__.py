@@ -21,7 +21,7 @@ Subsystem               What it is                                          Impo
 Extracting ``background_jobs``, ``bedrock`` and ``db_tools`` into their own apps
 would be a cleaner layering, but it needs new Django app labels — and app labels
 are stored **in the database** (``Member.admin_apps``, read by
-``apps.core.access``), so it requires a data migration. See
+``apps.core.utils.access``), so it requires a data migration. See
 ``docs/architecture/repository-structure.md`` for the deferred plan.
 
 Structure limits are enforced by

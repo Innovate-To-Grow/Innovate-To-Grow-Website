@@ -2,7 +2,7 @@
 
 Every custom URL in ``apps.system_intelligence.admin.urls`` is wrapped with
 ``admin.site.admin_view``, which only enforces ``is_staff``/``is_active`` — Django
-never runs the per-app model (``apps.core.access.user_can_access_app``) for a
+never runs the per-app model (``apps.core.utils.access.user_can_access_app``) for a
 standalone admin view. Without an explicit guard, a staff member whose
 ``Member.admin_apps`` lacks ``system_intelligence`` could still read these views
 and trigger privileged actions. Each view now re-checks the per-app model at

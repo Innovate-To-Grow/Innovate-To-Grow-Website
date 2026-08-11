@@ -3,7 +3,7 @@
 The event app re-enables delete on two ReadOnlyModelAdmin subclasses
 (sync log + check-in record) and add/delete on the registration admin. Each
 override must be scoped to the ``event`` app grant (see
-apps.core.access.user_can_access_app), not a bare ``is_staff``/``True`` bypass:
+apps.core.utils.access.user_can_access_app), not a bare ``is_staff``/``True`` bypass:
 event-granted staff are allowed, other-app staff are denied, superusers bypass.
 """
 

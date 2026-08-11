@@ -18,7 +18,7 @@ from apps.cms.services.route_redirects import (
     normalize_and_validate_cms_page_route,
     normalize_and_validate_legacy_source,
 )
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class HasCMSAppAccess(BasePermission):
     """Allow only members with admin access to the cms app.
 
     Mirrors the per-app gate used everywhere else (see
-    apps.core.access.user_can_access_app): superusers (I2G Master) and staff whose
+    apps.core.utils.access.user_can_access_app): superusers (I2G Master) and staff whose
     ``admin_apps`` includes "cms" are granted; everyone else is denied.
     """
 

@@ -3,9 +3,9 @@ from collections import Counter
 from django.apps import apps
 from rest_framework.response import Response
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
-from ..throttles import CliReadThrottle
+from ..auth.throttles import CliReadThrottle
 from .base import AdminAPIView
 from .models import _is_cli_denied
 

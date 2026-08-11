@@ -7,8 +7,8 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 import apps.mail.admin.inbox as inbox_api
-from apps.core.access import user_can_access_app
 from apps.core.models import EmailServiceConfig
+from apps.core.utils.access import user_can_access_app
 
 from .helpers import build_original_from, build_reply_references, build_reply_subject
 

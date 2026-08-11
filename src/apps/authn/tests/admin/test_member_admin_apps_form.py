@@ -2,7 +2,7 @@
 
 The foundation replaced the per-model ``user_permissions`` widget with a
 multi-select of registered admin app labels backed by ``Member.admin_apps``
-(see apps.authn.admin.members.forms.MemberChangeForm and apps.core.access).
+(see apps.authn.admin.members.forms.MemberChangeForm and apps.core.utils.access).
 These tests assert the change form renders the new control, exposes the
 registered app labels as choices, persists a submitted selection, and no
 longer exposes ``user_permissions``.

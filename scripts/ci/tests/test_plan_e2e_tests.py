@@ -37,9 +37,9 @@ class PlanE2ETests(unittest.TestCase):
     def test_directly_changed_nested_spec_still_runs(self):
         # Specs live in feature subdirectories; the direct-change regex must
         # match nested paths too.
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/projects/past-share.spec.ts"])
+        plan = plan_e2e_tests("pull_request", ["pages/e2e/projects/past-builder.spec.ts"])
 
-        self.assertIn("e2e/projects/past-share.spec.ts", plan.specs)
+        self.assertIn("e2e/projects/past-builder.spec.ts", plan.specs)
 
     def test_project_paths_run_projects_spec(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/features/projects/api/client.ts"])

@@ -8,7 +8,7 @@ layout.
 
 from django.templatetags.static import static
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 
 def _can(app_label):
@@ -119,12 +119,10 @@ UNFOLD = {
         {
             "models": [
                 "projects.pastprojectssheetconfig",
-                "projects.pastprojectshare",
                 "projects.pastprojectsynclog",
             ],
             "items": [
                 {"title": "Project Resources", "link": "/admin/projects/pastprojectssheetconfig/"},
-                {"title": "Shared Links", "link": "/admin/projects/pastprojectshare/"},
                 {"title": "Project Resource Sync Logs", "link": "/admin/projects/pastprojectsynclog/"},
             ],
         },

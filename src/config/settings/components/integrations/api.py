@@ -36,7 +36,6 @@ REST_FRAMEWORK = {
         # email_code_request throttle is anon-only and a no-op once authenticated,
         # so it cannot stop bombing an attacker-supplied address).
         "email_code_user_request": "5/minute",
-        "past_project_share": "10/minute",
         "past_project_ai_search": "10/minute",
         "contact_email_create": "5/hour",
         "ses_events": "600/minute",

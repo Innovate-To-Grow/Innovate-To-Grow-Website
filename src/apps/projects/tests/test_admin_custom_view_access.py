@@ -1,7 +1,7 @@
 """Per-app access gating for the projects app's custom admin views.
 
 ``admin_site.admin_view`` only enforces is_staff/is_active — Django never runs the
-per-app permission model (apps.core.access.user_can_access_app) for these standalone
+per-app permission model (apps.core.utils.access.user_can_access_app) for these standalone
 URLs. Each custom view therefore re-checks ``has_change_permission`` at entry. These
 tests exercise the real URLs through the test client: a staff member without the
 ``projects`` grant gets HTTP 403 (Django renders PermissionDenied as a 403 response),

@@ -14,8 +14,8 @@ from unfold.admin import TabularInline
 from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget
 
-from apps.core.access import user_can_access_app
 from apps.core.admin import BaseModelAdmin, ReadOnlyModelAdmin
+from apps.core.utils.access import user_can_access_app
 from apps.event.models import Ticket
 from apps.mail.admin.campaign.views.status import _short_error
 from apps.mail.admin.campaign.widgets import TicketSelectWidget

@@ -84,7 +84,7 @@ class MemberAdminInlineVisibilityTest(TestCase):
 
     def test_staff_user_with_authn_access_sees_inlines(self):
         """A non-superuser staff member granted the ``authn`` app sees the inlines —
-        per-app access, not per-model Django permissions (apps.core.access)."""
+        per-app access, not per-model Django permissions (apps.core.utils.access)."""
         self.client.force_login(self.staff_user)
         resp = self.client.get(self._change_url())
         self._assert_inlines_visible(resp)

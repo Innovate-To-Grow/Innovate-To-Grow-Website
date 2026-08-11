@@ -2,7 +2,7 @@
 
 Custom admin URLs registered through ``admin_view(...)`` are gated only by
 is_staff/is_active — Django does NOT run the per-app permission model for them.
-The per-app model lives in ``apps.core.access.user_can_access_app`` and the
+The per-app model lives in ``apps.core.utils.access.user_can_access_app`` and the
 ``BaseModelAdmin`` permission methods. Without an explicit re-check, a staff
 member whose ``Member.admin_apps`` lacks the ``mail`` app could still hit these
 URLs and read data or trigger privileged sends.

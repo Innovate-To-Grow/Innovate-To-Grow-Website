@@ -1,6 +1,6 @@
 """Per-Django-app admin access gating for the projects app.
 
-These exercise the shared predicate (apps.core.access.user_can_access_app) through
+These exercise the shared predicate (apps.core.utils.access.user_can_access_app) through
 the real Django admin via the test client: a staff member granted the ``projects``
 app may reach the projects changelists but not another app's, a superuser reaches
 everything, and a grant-less staff member is locked out.

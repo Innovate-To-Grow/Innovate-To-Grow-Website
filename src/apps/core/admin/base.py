@@ -4,7 +4,7 @@ Base admin classes for consistent admin interface across the project.
 
 from unfold.admin import ModelAdmin
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 from .mixins import ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin
 
@@ -18,7 +18,7 @@ class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin,
     - Common readonly fields for ProjectControlModel
     - Timestamp readonly fields
     - Standard list display configuration
-    - Per-Django-app access control (see apps.core.access.user_can_access_app):
+    - Per-Django-app access control (see apps.core.utils.access.user_can_access_app):
       a staff member may manage this model only if their ``admin_apps`` includes
       this model's app label; superusers (I2G Master) are always granted.
     """

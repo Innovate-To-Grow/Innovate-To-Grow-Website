@@ -1,7 +1,7 @@
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
 
-from .models import CliAccessToken
+from ..models import CliAccessToken
 
 
 class CliTokenAuthentication(BaseAuthentication):

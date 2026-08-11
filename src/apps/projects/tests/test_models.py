@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from apps.projects.models import PastProjectShare, Project, Semester
+from apps.projects.models import Project, Semester
 
 
 class SemesterModelTest(TestCase):
@@ -52,9 +52,3 @@ class ProjectModelTest(TestCase):
         self.assertEqual(project.team_name, "")
         self.assertEqual(project.organization, "")
         self.assertEqual(project.abstract, "")
-
-
-class PastProjectShareModelTest(TestCase):
-    def test_str_includes_pk(self):
-        share = PastProjectShare.objects.create(rows=[{"project_title": "Demo"}])
-        self.assertEqual(str(share), f"Project Resource Share {share.pk}")

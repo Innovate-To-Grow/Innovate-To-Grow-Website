@@ -8,14 +8,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AlterModelOptions(
-            name="pastprojectshare",
-            options={
-                "ordering": ["-created_at"],
-                "verbose_name": "Project Resource Share",
-                "verbose_name_plural": "Project Resource Shares",
-            },
-        ),
-        migrations.AlterModelOptions(
             name="pastprojectssheetconfig",
             options={
                 "verbose_name": "Project Resource",

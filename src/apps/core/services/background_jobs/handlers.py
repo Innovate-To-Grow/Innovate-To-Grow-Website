@@ -28,8 +28,8 @@ def _provider_job_error(exc):
 
 def sync_member_sheet_job(job) -> None:
     """Run one full member sync and collapse older queued snapshots."""
-    from apps.authn.services.member_sheet_sync import _flush_pending_sync
-    from apps.authn.services.member_sheet_sync.scheduler import MEMBER_SHEET_JOB_KIND
+    from apps.authn.services.members.sheet_sync import _flush_pending_sync
+    from apps.authn.services.members.sheet_sync.scheduler import MEMBER_SHEET_JOB_KIND
     from apps.core.models import BackgroundJob
 
     # Changes committed after this job was claimed create a distinct follow-up

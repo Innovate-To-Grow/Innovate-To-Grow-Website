@@ -56,7 +56,7 @@ Creates a versioned shared-project snapshot.
 
 **Permission:** Authenticated
 
-**Throttle:** `PastProjectShareThrottle` — 10 requests/hour
+**Throttle:** `PastProjectShareRateThrottle` — 10 requests/minute
 
 ### `GET /projects/past-shares/mine/`
 
@@ -74,7 +74,10 @@ integer `version`.
 ### `PATCH /projects/past-shares/{id}/`
 
 Owner-only optimistic update. The request must include the `version` returned by
-the latest GET/PATCH. A stale update returns HTTP 409:
+the latest GET/PATCH. A stale update returns HTTP 409. This abbreviated example
+shows the envelope; `current` is the complete share representation (`id`, `name`,
+`rows`, `note`, `details_text`, `version`, `share_url`, `can_edit`, and
+`created_at`), not a summary:
 
 ```json
 {

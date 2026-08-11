@@ -4,8 +4,8 @@ from urllib.parse import parse_qs, urlparse
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from django.test import TestCase
 
+from apps.cli_admin.auth.redirect_uri import RedirectUriError
 from apps.cli_admin.models import CliAuthorizationCode
-from apps.cli_admin.redirect_uri import RedirectUriError
 from apps.cli_admin.tests.helpers import VALID_REDIRECT_URI, challenge_for, make_member, make_staff
 from apps.cli_admin.views.oauth import (
     ADMIN_LOGIN_PATH,

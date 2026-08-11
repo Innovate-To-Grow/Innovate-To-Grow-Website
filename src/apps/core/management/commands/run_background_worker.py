@@ -6,7 +6,7 @@ import time
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from apps.authn.services.rsa_manager import purge_retired_auth_keypairs
+from apps.authn.services.security.rsa_manager import purge_retired_auth_keypairs
 from apps.core.services.background_jobs import (
     claim_jobs,
     process_claimed_job,

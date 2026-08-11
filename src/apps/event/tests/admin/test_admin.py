@@ -503,7 +503,7 @@ class EventAdminTest(TestCase):
 
     def test_change_page_shows_inlines_for_staff_with_event_app_access(self):
         """Inlines match Event admin access (the ``event`` app grant), not per-model
-        Django permissions — see apps.core.access.user_can_access_app."""
+        Django permissions — see apps.core.utils.access.user_can_access_app."""
         editor = Member.objects.create_user(
             password="testpass123", is_staff=True, is_superuser=False, admin_apps=["event"]
         )

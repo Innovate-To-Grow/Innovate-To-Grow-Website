@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
-from apps.cli_admin.pkce import verify_pkce_s256
-from apps.cli_admin.redirect_uri import RedirectUriError, validate_loopback_redirect_uri
+from apps.cli_admin.auth.pkce import verify_pkce_s256
+from apps.cli_admin.auth.redirect_uri import RedirectUriError, validate_loopback_redirect_uri
 
 
 class PkceTests(SimpleTestCase):

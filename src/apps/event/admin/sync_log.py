@@ -1,8 +1,8 @@
 from django.contrib import admin
 from unfold.decorators import display
 
-from apps.core.access import user_can_access_app
 from apps.core.admin import ReadOnlyModelAdmin
+from apps.core.utils.access import user_can_access_app
 
 from ..models import RegistrationSheetSyncLog
 

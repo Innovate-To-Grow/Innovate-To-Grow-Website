@@ -2,7 +2,7 @@
 
 Custom admin URLs registered via ``self.admin_site.admin_view(...)`` are gated by
 Django only on ``is_staff``/``is_active`` — the per-app access model
-(``apps.core.access.user_can_access_app`` via ``BaseModelAdmin`` permission hooks)
+(``apps.core.utils.access.user_can_access_app`` via ``BaseModelAdmin`` permission hooks)
 is NOT run for them. Each of these views therefore re-checks event-app access at
 entry and raises ``PermissionDenied`` (rendered as HTTP 403 by the test client).
 

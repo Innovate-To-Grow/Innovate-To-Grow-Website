@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 IP_GEO_CACHE_PREFIX = "ip_geo:"
 IP_GEO_CACHE_TTL = 86400

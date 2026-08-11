@@ -3,7 +3,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.template.response import TemplateResponse
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.services.usage_stats import get_dashboard_context
 
 

@@ -132,5 +132,5 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 100000
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "authn.Member"
 AUTHENTICATION_BACKENDS = [
-    "apps.authn.backends.EmailAuthBackend",
+    "apps.authn.security.backends.EmailAuthBackend",
 ]

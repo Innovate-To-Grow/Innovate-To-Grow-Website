@@ -16,10 +16,10 @@ from apps.core.services.db_tools.safe_orm import (
     validate_selected_fields,
 )
 
+from ..auth.throttles import CliReadThrottle, CliWriteThrottle
 from ..services.audit import write_audit
 from ..services.crud import cli_create, cli_delete, cli_update
 from ..services.resolve import cli_get_object, resolve_cli_model
-from ..throttles import CliReadThrottle, CliWriteThrottle
 from .base import AdminAPIView
 from .helpers import client_ip
 

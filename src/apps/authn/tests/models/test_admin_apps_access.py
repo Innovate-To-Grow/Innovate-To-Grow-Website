@@ -2,7 +2,7 @@
 
 Covers ``Member.admin_apps`` (the JSONField grant list) and
 ``Member.can_access_app()`` (the thin wrapper around
-``apps.core.access.user_can_access_app``).
+``apps.core.utils.access.user_can_access_app``).
 """
 
 from django.contrib.auth import get_user_model

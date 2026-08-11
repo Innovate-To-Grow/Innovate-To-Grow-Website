@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory, TestCase
 
-from apps.cli_admin.permissions import IsActiveStaff
+from apps.cli_admin.auth.permissions import IsActiveStaff
 from apps.event.tests.helpers import make_member
 
 

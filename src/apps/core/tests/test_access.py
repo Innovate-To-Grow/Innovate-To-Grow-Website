@@ -1,10 +1,10 @@
-"""Tests for the per-app admin access predicate (apps.core.access)."""
+"""Tests for the per-app admin access predicate (apps.core.utils.access)."""
 
 from types import SimpleNamespace
 
 from django.test import TestCase
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 
 def _user(**kwargs):

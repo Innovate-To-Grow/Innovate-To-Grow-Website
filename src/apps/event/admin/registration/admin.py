@@ -4,8 +4,8 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import path, reverse
 
-from apps.core.access import user_can_access_app
 from apps.core.admin import BaseModelAdmin
+from apps.core.utils.access import user_can_access_app
 
 from ...models import EventRegistration, Ticket
 from .config import (
