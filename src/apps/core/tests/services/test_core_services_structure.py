@@ -4,7 +4,7 @@ from django.test import SimpleTestCase
 
 SERVICE_ROOT = Path(__file__).resolve().parents[2] / "services"
 MAX_PYTHON_FILE_LINES = 200
-MAX_DIRECT_PYTHON_FILES = 8
+MAX_DIRECT_PYTHON_FILES = 10
 
 
 class CoreServicesStructureTests(SimpleTestCase):

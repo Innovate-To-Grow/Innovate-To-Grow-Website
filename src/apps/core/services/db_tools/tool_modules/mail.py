@@ -2,7 +2,7 @@ import json
 
 from django.db.models import Count
 
-from ..helpers import _serialize_rows
+from .helpers import _serialize_rows
 
 
 def search_email_campaigns(params):

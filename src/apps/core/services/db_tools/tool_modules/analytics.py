@@ -2,7 +2,7 @@ import json
 
 from django.db.models import Count
 
-from ..helpers import _truncate
+from .helpers import _truncate
 
 
 def get_page_views(params):

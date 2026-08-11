@@ -14,7 +14,7 @@ from apps.core.services.bedrock.models.catalog import (
     is_available_bedrock_model_id,
     normalize_bedrock_model_id,
 )
-from apps.core.services.bedrock.models.helpers import (
+from apps.core.services.bedrock.models.discovery import (
     fetch_foundation_models,
     profile_base_model_ids,
     provider_from_id,
@@ -38,7 +38,7 @@ class FetchFoundationModelsTest(SimpleTestCase):
     def test_swallows_aws_failure(self):
         mgmt = MagicMock()
         mgmt.list_foundation_models.side_effect = RuntimeError("boom")
-        with patch("apps.core.services.bedrock.models.helpers.logger.warning") as warn:
+        with patch("apps.core.services.bedrock.models.discovery.logger.warning") as warn:
             result = fetch_foundation_models(mgmt)
         self.assertEqual(result, {})
         warn.assert_called_once_with("list_foundation_models failed")

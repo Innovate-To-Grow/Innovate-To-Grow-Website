@@ -2,8 +2,8 @@ import logging
 
 from django.core.cache import cache
 
-from ..clients import get_management_client
-from .helpers import fetch_foundation_models, profile_base_model_ids, provider_from_id
+from ..clients._aws import get_management_client
+from .discovery import fetch_foundation_models, profile_base_model_ids, provider_from_id
 
 logger = logging.getLogger(__name__)
 

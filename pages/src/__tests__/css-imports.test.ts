@@ -2,7 +2,7 @@ import {describe, it, expect} from 'vitest';
 
 describe('CSS imports resolve', () => {
   it('main entry CSS resolves', async () => {
-    await expect(import('../index.css')).resolves.toBeDefined();
+    await expect(import('@/index.css')).resolves.toBeDefined();
   });
 
   const componentsWithCSS = [
