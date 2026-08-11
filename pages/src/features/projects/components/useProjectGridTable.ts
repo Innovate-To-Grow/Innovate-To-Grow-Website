@@ -21,6 +21,8 @@ interface UseProjectGridTableOptions {
   defaultSortField: ProjectGridColumnKey;
   defaultSortDirection?: ProjectGridSortDirection;
   initialSearch?: string;
+  /** Seed every expandable row open on mount (used by the shared, read-only view). */
+  expandAllByDefault?: boolean;
 }
 
 export function useProjectGridTable({
@@ -30,6 +32,7 @@ export function useProjectGridTable({
   defaultSortField,
   defaultSortDirection = 'asc',
   initialSearch = '',
+  expandAllByDefault = false,
 }: UseProjectGridTableOptions) {
   const [pageSize, setPageSizeState] = useState(() => Math.max(1, initialPageSize));
   const [search, setSearch] = useState(initialSearch);
@@ -107,6 +110,22 @@ export function useProjectGridTable({
 
   const allDetailsExpanded =
     expandableKeys.length > 0 && expandableKeys.every((rowKey) => expandedKeys.has(rowKey));
+
+  useEffect(() => {
+    if (!expandAllByDefault) {
+      return;
+    }
+    // Seed every expandable row open. Adding an already-present key is a no-op, so a
+    // user can still collapse rows afterward without this re-expanding them. The
+    // functional updater merges into prior expand state derived from rows/props, so it
+    // cannot be replaced by a render-time derivation without dropping user toggles.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- merges seed-open keys into existing expand state; not derivable in render without losing user toggles
+    setExpandedKeys((current) => {
+      const next = new Set(current);
+      expandableKeys.forEach((rowKey) => next.add(rowKey));
+      return next;
+    });
+  }, [expandAllByDefault, expandableKeys]);
 
   useEffect(() => {
     const rowKeys = new Set(rows.map((row) => row.__key));

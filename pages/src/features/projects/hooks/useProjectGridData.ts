@@ -1,8 +1,10 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   fetchAllPastProjects,
+  fetchPastProjectShare,
   scheduleProjectToGridRow,
   toProjectGridRow,
+  type PastProjectShare,
   type ProjectGridRow,
 } from '@/features/projects/api';
 import {fetchCurrentSchedule} from '@/features/events/api';
@@ -14,9 +16,21 @@ interface ProjectGridDataResult {
   refetch: () => void;
 }
 
+interface PastProjectShareResult {
+  share: PastProjectShare | null;
+  loading: boolean;
+  error: string | null;
+}
+
 interface ProjectGridRowsState {
   requestKey: symbol | null;
   rows: ProjectGridRow[];
+  error: string | null;
+}
+
+interface PastProjectShareState {
+  requestKey: symbol | null;
+  share: PastProjectShare | null;
   error: string | null;
 }
 
@@ -131,5 +145,55 @@ export function usePastProjectGridData(enabled: boolean = true): ProjectGridData
     loading: !hasResolved && !hasEverResolved,
     error: hasResolved ? state.error : null,
     refetch,
+  };
+}
+
+export function usePastProjectShareData(shareId: string | undefined): PastProjectShareResult {
+  const requestKey = useMemo(() => (shareId ? Symbol(shareId) : null), [shareId]);
+  const [state, setState] = useState<PastProjectShareState>({
+    requestKey: null,
+    share: null,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (!requestKey || !shareId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    fetchPastProjectShare(shareId)
+      .then((result) => {
+        if (cancelled) return;
+        setState({
+          requestKey,
+          share: result,
+          error: null,
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setState({
+          requestKey,
+          share: null,
+          error: err instanceof Error ? err.message : 'Failed to load shared past projects',
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestKey, shareId]);
+
+  if (!requestKey) {
+    return {share: null, loading: false, error: null};
+  }
+
+  const hasResolved = state.requestKey === requestKey;
+  return {
+    share: hasResolved ? state.share : null,
+    loading: !hasResolved,
+    error: hasResolved ? state.error : null,
   };
 }
