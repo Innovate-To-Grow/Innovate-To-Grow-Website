@@ -9,8 +9,8 @@ from apps.core.admin import BaseModelAdmin
 from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from ...models import Event, Question, Ticket
-from ...services.copy_template import EventCopyTemplate, build_event_copy_template
-from ...services.date_ranges import format_event_date_range
+from ...services.template.copy import EventCopyTemplate, build_event_copy_template
+from ...services.ticket.date_ranges import format_event_date_range
 
 COPY_TEMPLATE_ATTR = "_event_admin_copy_template"
 COPY_INLINE_INITIAL_ATTR = "_event_admin_copy_inline_initial"

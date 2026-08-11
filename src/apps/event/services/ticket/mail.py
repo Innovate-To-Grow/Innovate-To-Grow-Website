@@ -24,9 +24,9 @@ from apps.core.services.aws.provider_outcomes import (
     classify_aws_send_failure,
 )
 from apps.event.models import EventRegistration
-from apps.event.services.date_ranges import format_event_date_range
 from apps.event.services.ticket.assets import generate_ticket_barcode_png_bytes
 from apps.event.services.ticket.calendar import build_google_calendar_url, generate_ics
+from apps.event.services.ticket.date_ranges import format_event_date_range
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ def _issue_ticket_login_link(registration: EventRegistration) -> str:
     Resending a ticket email revokes the previous link so only the most recent
     email's link works — same semantics as the old per-registration token slot.
     """
-    from apps.mail.services.login_links import create_login_link, revoke_login_links
+    from apps.mail.services.tokens.login_links import create_login_link, revoke_login_links
 
     if not registration.member_id:
         return ""
@@ -128,7 +128,7 @@ def _issue_ticket_login_link(registration: EventRegistration) -> str:
 
 def _prepare_ticket_login_link(registration: EventRegistration):
     """Issue a provisional link without invalidating the last delivered link."""
-    from apps.mail.services.login_links import create_login_link
+    from apps.mail.services.tokens.login_links import create_login_link
 
     if not registration.member_id:
         return "", None
@@ -237,7 +237,7 @@ def send_ticket_email(
         else:
             raise RuntimeError("Ticket email delivery via AWS SES failed or is not configured.")
 
-        from apps.mail.services.login_links import revoke_login_links
+        from apps.mail.services.tokens.login_links import revoke_login_links
 
         with transaction.atomic():
             if issued_login_link is not None:

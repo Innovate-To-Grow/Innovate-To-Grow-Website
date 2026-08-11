@@ -443,7 +443,7 @@ class TicketLoginLinkIssuanceTest(TestCase):
 
         with (
             patch(
-                "apps.mail.services.login_links.create_login_link",
+                "apps.mail.services.tokens.login_links.create_login_link",
                 side_effect=RuntimeError("token creation failed"),
             ),
             self.assertRaises(RuntimeError),

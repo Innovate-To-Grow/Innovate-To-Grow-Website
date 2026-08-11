@@ -1,11 +1,4 @@
 from .checkin import build_checkin_export
-from .copy_template import (
-    EventCopyTemplate,
-    QuestionCopySnapshot,
-    TicketCopySnapshot,
-    build_event_copy_template,
-)
-from .date_ranges import format_event_date_range
 from .registration import (
     sync_name_to_account,
     sync_phone_to_account,
@@ -17,8 +10,15 @@ from .schedule_sync import (
     fetch_schedule_sheet_records,
     sync_schedule,
 )
+from .template import (
+    EventCopyTemplate,
+    QuestionCopySnapshot,
+    TicketCopySnapshot,
+    build_event_copy_template,
+)
 from .ticket import (
     build_ticket_access_token,
+    format_event_date_range,
     generate_ticket_barcode_data_url,
     get_registration_from_access_token,
     send_ticket_email,
