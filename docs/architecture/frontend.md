@@ -144,7 +144,7 @@ The auth-specific client tags each request with the session generation and acces
 
 The frontend uses plain CSS with a design token system.
 
-### Token system (`src/assets/styles/shared/tokens.css`)
+### Token system (`src/assets/tokens.css`)
 
 CSS custom properties define the design vocabulary:
 - **Colors**: `--itg-color-primary` (#0f2d52), accent-gold, error, success, etc.
@@ -154,7 +154,7 @@ CSS custom properties define the design vocabulary:
 
 ### CSS organization
 
-- `src/assets/styles/shared/` — Global: tokens, layout, responsive, utilities, rich-content
+- `src/assets/` — Global: tokens, layout, responsive, utilities, rich-content
 - `src/index.css` — Imports shared styles, sets up body and app-layout
 - Component-scoped `.css` files alongside each component
 

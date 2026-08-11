@@ -91,7 +91,7 @@ def _is_global_path(path: str) -> bool:
     return path.startswith(
         (
             "pages/src/app/",
-            "pages/src/assets/styles/shared/",
+            "pages/src/assets/",
             "pages/src/components/ui/",
             "pages/src/hooks/",
             "pages/src/lib/",
