@@ -5,8 +5,8 @@ from apps.authn.models import ContactPhone
 from apps.authn.services.contacts.contact_phones import normalize_to_national
 from apps.event.models import Event, EventRegistration, Question, Ticket
 from apps.event.serializers import build_registration_payload
-from apps.event.services.sync_registration_email import sync_secondary_email_to_account
-from apps.event.services.sync_registration_to_account import sync_name_to_account, sync_phone_to_account
+from apps.event.services.registration.sync_account import sync_name_to_account, sync_phone_to_account
+from apps.event.services.registration.sync_email import sync_secondary_email_to_account
 
 from .notifications import send_initial_ticket_email
 

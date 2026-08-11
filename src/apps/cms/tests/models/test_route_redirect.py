@@ -133,7 +133,7 @@ class RouteRedirectModelTests(TestCase):
             is_active=True,
         )
         with patch(
-            "apps.cms.services.route_redirects.PUBLIC_APP_ROUTES",
+            "apps.cms.services.routing.route_redirects.PUBLIC_APP_ROUTES",
             [{"url": "/legacy-recovery", "title": "New App Route"}],
         ):
             redirect.is_active = False
@@ -160,7 +160,7 @@ class RouteRedirectModelTests(TestCase):
         )
 
         with patch(
-            "apps.cms.services.route_redirects.PUBLIC_APP_ROUTES",
+            "apps.cms.services.routing.route_redirects.PUBLIC_APP_ROUTES",
             [{"url": "/legacy-maintenance", "title": "New App Route"}],
         ):
             redirect.destination_path = other_target.route

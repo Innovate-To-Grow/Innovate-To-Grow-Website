@@ -24,11 +24,9 @@ from apps.core.services.aws.provider_outcomes import (
     classify_aws_send_failure,
 )
 from apps.event.models import EventRegistration
-from apps.event.services.calendar import build_google_calendar_url, generate_ics
 from apps.event.services.date_ranges import format_event_date_range
-from apps.event.services.ticket_assets import (
-    generate_ticket_barcode_png_bytes,
-)
+from apps.event.services.ticket.assets import generate_ticket_barcode_png_bytes
+from apps.event.services.ticket.calendar import build_google_calendar_url, generate_ics
 
 logger = logging.getLogger(__name__)
 

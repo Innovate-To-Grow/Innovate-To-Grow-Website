@@ -980,7 +980,7 @@ class EventRegistrationAdminTest(TestCase):
         self.assertContains(response, "Send Ticket Emails to All Registrants")
         self.assertContains(response, "You are about to send ticket emails to 1 registrant")
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_send_all_ticket_emails_posts_all_registrations(self, mock_send):
         event = make_event()
         ticket = make_ticket(event)
@@ -998,7 +998,7 @@ class EventRegistrationAdminTest(TestCase):
             {registration_one.pk, registration_two.pk},
         )
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_send_all_ticket_emails_empty_queryset_does_not_send(self, mock_send):
         response = self.client.post(reverse("admin:event_eventregistration_send_all_ticket_emails"))
 
@@ -1202,7 +1202,7 @@ class EventRegistrationAdminTest(TestCase):
         self.assertEqual(registration.ticket, current_ticket)
         mock_sync.assert_not_called()
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     @patch("apps.event.services.registration_sheet_sync.schedule_registration_sync")
     def test_admin_change_send_ticket_button_saves_ticket_and_sends_email(self, mock_sync, mock_send):
         event = make_event()

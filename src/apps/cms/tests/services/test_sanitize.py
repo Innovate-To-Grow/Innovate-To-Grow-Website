@@ -2,7 +2,7 @@ from django.test import SimpleTestCase, TestCase
 from django.utils.html import conditional_escape
 
 from apps.cms.models import CMSEmbedAllowedHost
-from apps.cms.services import embed_hosts
+from apps.cms.services.sanitization import embed_hosts
 from apps.cms.services.sanitization.sanitize import (
     _iframe_attr_filter,
     sanitize_html,

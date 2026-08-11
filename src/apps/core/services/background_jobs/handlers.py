@@ -81,7 +81,7 @@ def send_ticket_email_job(job) -> None:
     from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
     from apps.core.services.background_jobs import JobClaimLost
     from apps.event.models import EventRegistration
-    from apps.event.services.ticket_mail import send_ticket_email
+    from apps.event.services.ticket.mail import send_ticket_email
 
     registration = EventRegistration.objects.select_related("event", "ticket", "member").get(
         pk=job.payload["registration_id"]

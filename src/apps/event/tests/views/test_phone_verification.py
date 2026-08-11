@@ -53,7 +53,7 @@ class PhoneVerificationViewsTest(TestCase):
         self.assertEqual(response.data["detail"], "Verification service is unavailable. Please try again later.")
         warning.assert_called_once_with("Phone verification failed", exc_info=True)
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_verified_phone_proof_is_consumed_by_registration(self, _mock_ticket_email):
         ticket = Ticket.objects.create(event=self.event, name="GA")
         challenge = PhoneVerificationChallenge.objects.create(
@@ -142,7 +142,7 @@ class PhoneVerificationViewsTest(TestCase):
             second_response.data["detail"], "Please verify your phone number before completing registration."
         )
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_legacy_phone_only_grant_is_bound_and_consumed_at_registration(
         self,
         _mock_ticket_email,
@@ -230,7 +230,7 @@ class PhoneValidationTest(TestCase):
             context_identifier=f"event-registration:{self.event.pk}",
         )
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_registration_rejects_invalid_phone(self, _mock_email):
         self.event.verify_phone = False
         self.event.save(update_fields=["verify_phone", "updated_at"])

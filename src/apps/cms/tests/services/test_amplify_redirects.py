@@ -8,7 +8,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from apps.cms.models import CMSPage, RouteRedirect
-from apps.cms.services import amplify_redirects as amplify_redirect_service
+from apps.cms.services.amplify import amplify_redirects as amplify_redirect_service
 from apps.cms.services.amplify.amplify_redirects import (
     AMPLIFY_CONFIGURATION_PAYLOAD_KEY,
     AMPLIFY_REDIRECT_JOB_KIND,
@@ -347,7 +347,7 @@ class AmplifyReconcileTests(TestCase):
 
     @override_settings(AMPLIFY_APP_ID="")
     def test_reconcile_requires_app_id_without_creating_a_client(self):
-        with patch("apps.cms.services.amplify_redirects.boto3.client") as client:
+        with patch("apps.cms.services.amplify.amplify_redirects.boto3.client") as client:
             with self.assertRaisesMessage(
                 AmplifyRedirectConfigurationError,
                 "AMPLIFY_APP_ID is not configured",
@@ -502,7 +502,7 @@ class AmplifyRedirectJobTests(TestCase):
             datetime.fromisoformat(first_requested_at),
         )
 
-    @patch("apps.cms.services.amplify_redirects.reconcile_amplify_redirects")
+    @patch("apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects")
     def test_successful_job_marks_redirect_synced(self, reconcile):
         job = schedule_amplify_redirect_sync(immediate=True)
         queued_configuration = job.payload[AMPLIFY_CONFIGURATION_PAYLOAD_KEY]
@@ -542,7 +542,7 @@ class AmplifyRedirectJobTests(TestCase):
                 AMPLIFY_BACKEND_PROXY_URL="https://old-api.example",
                 AMPLIFY_PROXY_ADMIN_PATHS=False,
             ),
-            patch("apps.cms.services.amplify_redirects.reconcile_amplify_redirects") as reconcile,
+            patch("apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects") as reconcile,
         ):
             self.assertTrue(process_claimed_job(claim_jobs(batch_size=1)[0]))
 
@@ -558,7 +558,7 @@ class AmplifyRedirectJobTests(TestCase):
             newer = schedule_amplify_redirect_sync(immediate=True)
             newer_configuration = newer.payload[AMPLIFY_CONFIGURATION_PAYLOAD_KEY]
 
-        with patch("apps.cms.services.amplify_redirects.reconcile_amplify_redirects"):
+        with patch("apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects"):
             self.assertTrue(process_claimed_job(claim_jobs(batch_size=1)[0]))
 
         with override_settings(
@@ -576,7 +576,7 @@ class AmplifyRedirectJobTests(TestCase):
         )
 
     @patch(
-        "apps.cms.services.amplify_redirects.reconcile_amplify_redirects",
+        "apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects",
         side_effect=_client_error("ThrottlingException", 429),
     )
     def test_transient_amplify_failure_is_retried_and_visible(self, _reconcile):
@@ -592,7 +592,7 @@ class AmplifyRedirectJobTests(TestCase):
         self.assertNotIn("provider detail", self.redirect.edge_sync_error)
 
     @patch(
-        "apps.cms.services.amplify_redirects.reconcile_amplify_redirects",
+        "apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects",
         side_effect=_client_error("AccessDeniedException", 403),
     )
     def test_permanent_amplify_failure_is_marked_failed(self, _reconcile):
@@ -617,7 +617,7 @@ class AmplifyRedirectJobTests(TestCase):
             edge_sync_status=RouteRedirect.EdgeSyncStatus.PENDING,
         )
 
-        with patch("apps.cms.services.amplify_redirects.reconcile_amplify_redirects"):
+        with patch("apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects"):
             self.assertTrue(process_claimed_job(claimed))
 
         self.redirect.refresh_from_db()
@@ -638,7 +638,7 @@ class AmplifyRedirectJobTests(TestCase):
             available_at=timezone.now(),
         )
 
-        with patch("apps.cms.services.amplify_redirects.reconcile_amplify_redirects") as reconcile:
+        with patch("apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects") as reconcile:
             self.assertTrue(process_claimed_job(claimed))
 
         older.refresh_from_db()
@@ -658,7 +658,7 @@ class AmplifyRedirectJobTests(TestCase):
         (newer_claim,) = claim_jobs(batch_size=1)
         self.assertEqual(newer_claim.pk, newer.pk)
 
-        with patch("apps.cms.services.amplify_redirects.reconcile_amplify_redirects") as reconcile:
+        with patch("apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects") as reconcile:
             self.assertTrue(process_claimed_job(newer_claim))
             self.assertTrue(process_claimed_job(older_claim))
 
@@ -681,7 +681,7 @@ class AmplifyRedirectJobTests(TestCase):
             available_at=timezone.now(),
         )
 
-        with patch("apps.cms.services.amplify_redirects.reconcile_amplify_redirects"):
+        with patch("apps.cms.services.amplify.amplify_redirects.reconcile_amplify_redirects"):
             self.assertTrue(process_claimed_job(claimed))
 
         same_timestamp.refresh_from_db()
@@ -714,7 +714,7 @@ class AmplifyRedirectJobTests(TestCase):
         self.assertEqual(redirect.edge_sync_status, RouteRedirect.EdgeSyncStatus.PENDING)
         self.assertFalse(BackgroundJob.objects.filter(kind=AMPLIFY_REDIRECT_JOB_KIND).exists())
 
-    @patch("apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync")
+    @patch("apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync")
     def test_inactive_notes_and_destination_edits_do_not_schedule(self, schedule):
         other_target = CMSPage.objects.create(
             slug="other-job-target",
@@ -735,7 +735,7 @@ class AmplifyRedirectJobTests(TestCase):
 
         schedule.assert_not_called()
 
-    @patch("apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync")
+    @patch("apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync")
     def test_managed_inactive_edit_reschedules_pending_cleanup(self, schedule):
         redirect = RouteRedirect.objects.create(
             source_path="/managed-inactive-edit",
@@ -756,7 +756,7 @@ class AmplifyRedirectJobTests(TestCase):
         self.assertEqual(redirect.edge_sync_status, RouteRedirect.EdgeSyncStatus.PENDING)
         schedule.assert_called_once_with(redirect_ids=(redirect.pk,))
 
-    @patch("apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync")
+    @patch("apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync")
     def test_deactivation_schedules_followup_even_before_ownership_is_confirmed(self, schedule):
         redirect = RouteRedirect.objects.create(
             source_path="/in-flight-deactivation",

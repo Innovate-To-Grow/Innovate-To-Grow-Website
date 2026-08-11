@@ -88,7 +88,7 @@ class EventCustomViewPerAppAccessTest(TestCase):
         self.assertEqual(self.client.get(url).status_code, 403)
         self.assertEqual(self.client.post(url, {}).status_code, 403)
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_send_all_ticket_emails_allowed_for_event_staff(self, _mock_send):
         self.client.force_login(self.event_staff)
         resp = self.client.get(reverse("admin:event_eventregistration_send_all_ticket_emails"))

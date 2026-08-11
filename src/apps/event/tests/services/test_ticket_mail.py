@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.event.models import EventRegistration, Ticket
-from apps.event.services.ticket_mail import (
+from apps.event.services.ticket.mail import (
     _issue_ticket_login_link,
     _send_via_ses,
     send_ticket_email,
@@ -36,9 +36,9 @@ class SendTicketEmailTest(TestCase):
         self.ticket = Ticket.objects.create(event=self.event, name="GA")
         self.registration = EventRegistration.objects.create(member=self.member, event=self.event, ticket=self.ticket)
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_sends_via_ses(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
         mock_resolve.return_value = _aws_creds()
@@ -62,8 +62,8 @@ class SendTicketEmailTest(TestCase):
         self.assertIsNotNone(self.registration.ticket_email_sent_at)
         self.assertEqual(self.registration.ticket_email_error, "")
 
-    @patch("apps.event.services.ticket_mail._send_via_ses", return_value=False)
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail._send_via_ses", return_value=False)
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_records_error_when_ses_is_not_configured(self, mock_load_config, mock_ses):
         mock_load_config.return_value = _mock_config(ses_configured=False)
 
@@ -74,8 +74,8 @@ class SendTicketEmailTest(TestCase):
         self.assertIsNone(self.registration.ticket_email_sent_at)
         self.assertIn("AWS SES", self.registration.ticket_email_error)
 
-    @patch("apps.event.services.ticket_mail._send_via_ses")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail._send_via_ses")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_unconfigured_resend_keeps_previous_login_link(self, mock_load_config, mock_ses):
         mock_load_config.return_value = _mock_config(ses_configured=False)
         _issue_ticket_login_link(self.registration)
@@ -89,8 +89,8 @@ class SendTicketEmailTest(TestCase):
         self.assertEqual(self.registration.login_tokens.count(), 1)
         mock_ses.assert_not_called()
 
-    @patch("apps.event.services.ticket_mail._send_via_ses", return_value=False)
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail._send_via_ses", return_value=False)
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_records_error_on_ses_failure(self, mock_load_config, mock_ses):
         mock_load_config.return_value = _mock_config(ses_configured=True)
 
@@ -101,8 +101,8 @@ class SendTicketEmailTest(TestCase):
         self.assertIsNone(self.registration.ticket_email_sent_at)
         self.assertIn("AWS SES", self.registration.ticket_email_error)
 
-    @patch("apps.event.services.ticket_mail._send_via_ses", return_value=False)
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail._send_via_ses", return_value=False)
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_failed_resend_keeps_previous_login_link(self, mock_load_config, _mock_ses):
         mock_load_config.return_value = _mock_config(ses_configured=True)
         _issue_ticket_login_link(self.registration)
@@ -118,8 +118,8 @@ class SendTicketEmailTest(TestCase):
             [previous.pk],
         )
 
-    @patch("apps.event.services.ticket_mail._send_via_ses")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail._send_via_ses")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_lost_claim_before_token_mutation_keeps_previous_link(self, mock_load_config, mock_ses):
         from apps.core.services.background_jobs import JobClaimLost
 
@@ -140,8 +140,8 @@ class SendTicketEmailTest(TestCase):
         self.assertEqual(self.registration.ticket_email_error, "")
         mock_ses.assert_not_called()
 
-    @patch("apps.event.services.ticket_mail._send_via_ses")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail._send_via_ses")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_lost_claim_at_provider_boundary_discards_only_provisional_link(
         self,
         mock_load_config,
@@ -176,9 +176,9 @@ class SendTicketEmailTest(TestCase):
         )
         self.assertEqual(self.registration.ticket_email_error, newer_worker_error)
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_definitive_provider_rejection_discards_provisional_but_keeps_previous_link(
         self,
         mock_load_config,
@@ -210,7 +210,7 @@ class SendTicketEmailTest(TestCase):
         )
 
     @patch("apps.core.services.background_jobs.handlers._wait_for_ses_slot")
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_ticket_job_fences_login_link_mutation_with_current_claim(self, mock_send, _wait_for_slot):
         from django.db import transaction
 
@@ -241,9 +241,9 @@ class SendTicketEmailTest(TestCase):
 
         mock_send.assert_called_once()
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_sends_to_secondary_email(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
         mock_resolve.return_value = _aws_creds()
@@ -258,8 +258,8 @@ class SendTicketEmailTest(TestCase):
         raw_data = mock_client.send_raw_email.call_args[1]["RawMessage"]["Data"]
         self.assertIn("secondary@example.com", raw_data)
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_send_via_ses_returns_false_on_credentials_error(self, mock_load_config, mock_resolve):
         from apps.core.services.aws.credentials import AwsCredentialsError
 
@@ -273,9 +273,9 @@ class SendTicketEmailTest(TestCase):
         self.assertIsNone(self.registration.ticket_email_sent_at)
         self.assertIn("AWS SES", self.registration.ticket_email_error)
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_send_via_ses_returns_false_on_client_error(self, mock_load_config, mock_boto3, mock_resolve):
         from botocore.exceptions import ClientError
 
@@ -295,8 +295,8 @@ class SendTicketEmailTest(TestCase):
         self.assertIsNone(self.registration.ticket_email_sent_at)
         self.assertIn("AWS SES", self.registration.ticket_email_error)
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
     def test_worker_mode_classifies_lost_response_as_uncertain(self, mock_boto3, mock_resolve):
         from botocore.exceptions import ReadTimeoutError
 
@@ -320,9 +320,9 @@ class SendTicketEmailTest(TestCase):
 
         self.assertEqual(raised.exception.outcome, PROVIDER_OUTCOME_UNCERTAIN)
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_uncertain_resend_keeps_previous_and_provisional_links(
         self,
         mock_load_config,
@@ -349,9 +349,9 @@ class SendTicketEmailTest(TestCase):
             2,
         )
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_clears_previous_error_on_success(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
         mock_resolve.return_value = _aws_creds()
@@ -366,9 +366,9 @@ class SendTicketEmailTest(TestCase):
         self.assertEqual(self.registration.ticket_email_error, "")
         self.assertIsNotNone(self.registration.ticket_email_sent_at)
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_cross_year_range_is_in_email_and_calendar_links(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
         mock_resolve.return_value = _aws_creds()
@@ -461,9 +461,9 @@ class TicketLoginLinkIssuanceTest(TestCase):
         unsaved = EventRegistration(member=None, event=self.event, ticket=self.ticket)
         self.assertEqual(_issue_ticket_login_link(unsaved), "")
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_send_ticket_email_embeds_login_link(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
         mock_resolve.return_value = _aws_creds()
@@ -481,9 +481,9 @@ class TicketLoginLinkIssuanceTest(TestCase):
         )
         self.assertIn(f"/login-link#token={token.token}", html)
 
-    @patch("apps.event.services.ticket_mail.resolve_aws_credentials")
-    @patch("apps.event.services.ticket_mail.boto3")
-    @patch("apps.event.services.ticket_mail._load_config")
+    @patch("apps.event.services.ticket.mail.resolve_aws_credentials")
+    @patch("apps.event.services.ticket.mail.boto3")
+    @patch("apps.event.services.ticket.mail._load_config")
     def test_successful_resend_revokes_previous_login_link(self, mock_load_config, mock_boto3, mock_resolve):
         mock_load_config.return_value = _mock_config(ses_configured=True)
         mock_resolve.return_value = _aws_creds()

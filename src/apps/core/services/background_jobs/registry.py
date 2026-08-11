@@ -11,7 +11,7 @@ def _mail_handlers():
 
 
 def _cms_handlers():
-    from apps.cms.services import amplify_redirects
+    from apps.cms.services.amplify import amplify_redirects
 
     return amplify_redirects
 

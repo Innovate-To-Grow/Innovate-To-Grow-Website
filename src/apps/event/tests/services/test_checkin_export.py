@@ -4,7 +4,7 @@ from django.test import TestCase
 from openpyxl import load_workbook
 
 from apps.event.models import CheckIn, CheckInRecord
-from apps.event.services.checkin_export import _scanned_by, build_checkin_export
+from apps.event.services.checkin.export import _scanned_by, build_checkin_export
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 
 
