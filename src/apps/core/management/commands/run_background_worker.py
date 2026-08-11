@@ -29,7 +29,7 @@ def schedule_startup_reconciliation() -> bool:
     try:
         # Local import keeps the generic queue reusable without making the core
         # app import CMS models during Django startup.
-        from apps.cms.services.amplify_redirects import schedule_amplify_redirect_sync
+        from apps.cms.services.amplify.amplify_redirects import schedule_amplify_redirect_sync
 
         job = schedule_amplify_redirect_sync(immediate=True)
     except Exception:  # noqa: BLE001 - startup scheduling must not stop delivery.

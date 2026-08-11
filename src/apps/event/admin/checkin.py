@@ -114,7 +114,7 @@ class CheckInAdmin(BaseModelAdmin):
             },
             "change_url": reverse("admin:event_checkin_change", args=[check_in.pk]),
         }
-        return TemplateResponse(request, "admin/event/checkin_scanner.html", context)
+        return TemplateResponse(request, "admin/event/checkin/scanner.html", context)
 
     def export_view(self, request, object_id):
         # ``admin_view`` only enforces is_staff; re-check per-app access so a

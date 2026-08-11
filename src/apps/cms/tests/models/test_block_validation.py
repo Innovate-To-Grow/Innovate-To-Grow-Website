@@ -8,7 +8,7 @@ from django.test import TestCase
 
 from apps.cms.models import CMSBlock, CMSEmbedAllowedHost, CMSEmbedWidget, CMSPage
 from apps.cms.models.content.cms.block_types import BLOCK_SCHEMAS, BLOCK_TYPE_KEYS, validate_block_data
-from apps.cms.services.embed_hosts import invalidate_cache as invalidate_embed_host_cache
+from apps.cms.services.sanitization.embed_hosts import invalidate_cache as invalidate_embed_host_cache
 
 
 class ValidateBlockDataTests(TestCase):

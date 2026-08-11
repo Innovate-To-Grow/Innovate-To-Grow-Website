@@ -2,7 +2,7 @@
 
 from django.core.exceptions import ValidationError
 
-from apps.cms.services.sanitize import validate_safe_url
+from apps.cms.services.sanitization.sanitize import validate_safe_url
 
 from .choices import BLOCK_SCHEMAS
 from .embed import normalize_embed_widget_block_data, validate_embed_block, validate_embed_widget_block

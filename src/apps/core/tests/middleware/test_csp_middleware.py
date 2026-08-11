@@ -15,7 +15,7 @@ from django.http import HttpResponse
 from django.test import Client, RequestFactory, TestCase, override_settings
 
 from apps.cms.models import CMSEmbedAllowedHost
-from apps.cms.services.embed_hosts import invalidate_cache
+from apps.cms.services.sanitization.embed_hosts import invalidate_cache
 from apps.core.middleware import ContentSecurityPolicyMiddleware, csp_report
 
 

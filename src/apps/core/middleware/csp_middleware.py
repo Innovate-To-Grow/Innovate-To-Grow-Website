@@ -107,7 +107,7 @@ class ContentSecurityPolicyMiddleware:
             frame_sources.append(frontend_origin)
             connect_sources.append(frontend_origin)
         try:
-            from apps.cms.services.embed_hosts import get_allowed_hosts
+            from apps.cms.services.sanitization.embed_hosts import get_allowed_hosts
 
             for host in get_allowed_hosts():
                 normalized = host.strip().lower()

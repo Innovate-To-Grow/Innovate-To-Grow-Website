@@ -12,12 +12,12 @@ from rest_framework.views import APIView
 
 from apps.cms.models import CMSPage, RouteRedirect
 from apps.cms.serializers.cms import CMSPageSerializer
-from apps.cms.services.embed_hosts import CACHE_TTL as EMBED_HOST_CACHE_TTL
-from apps.cms.services.embed_hosts import get_allowed_hosts_snapshot
-from apps.cms.services.route_redirects import (
+from apps.cms.services.routing.route_redirects import (
     normalize_and_validate_cms_page_route,
     normalize_and_validate_legacy_source,
 )
+from apps.cms.services.sanitization.embed_hosts import CACHE_TTL as EMBED_HOST_CACHE_TTL
+from apps.cms.services.sanitization.embed_hosts import get_allowed_hosts_snapshot
 from apps.core.utils.access import user_can_access_app
 
 logger = logging.getLogger(__name__)

@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from apps.cms.models import CMSPage, RouteRedirect
-from apps.cms.services.route_redirects import redirect_mapping_conflicts
+from apps.cms.services.routing.route_redirects import redirect_mapping_conflicts
 
 
 class RouteRedirectModelTests(TestCase):

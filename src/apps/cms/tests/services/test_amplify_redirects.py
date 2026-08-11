@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from apps.cms.models import CMSPage, RouteRedirect
 from apps.cms.services import amplify_redirects as amplify_redirect_service
-from apps.cms.services.amplify_redirects import (
+from apps.cms.services.amplify.amplify_redirects import (
     AMPLIFY_CONFIGURATION_PAYLOAD_KEY,
     AMPLIFY_REDIRECT_JOB_KIND,
     AmplifyRedirectConfigurationError,

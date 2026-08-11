@@ -3,8 +3,8 @@
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase, TestCase
 
-from apps.cms.embed_sections import effective_hidden_sections, normalize_hidden_sections
 from apps.cms.models import CMSEmbedWidget, CMSPage
+from apps.cms.services.embed_sections import effective_hidden_sections, normalize_hidden_sections
 
 
 class NormalizeHiddenSectionsTests(SimpleTestCase):

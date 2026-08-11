@@ -6,7 +6,7 @@ from django.db import models
 
 from apps.core.models import ProjectControlModel
 
-from ....embed_sections import effective_hidden_sections, normalize_hidden_sections
+from ....services.embed_sections import effective_hidden_sections, normalize_hidden_sections
 from .cms_page import CMSPage
 
 EMBED_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
