@@ -34,6 +34,7 @@ const lazyRoute = (element: ReactElement): ReactElement => (
 const LoginPage = React.lazy(() => import('@/features/auth/components/pages/LoginPage').then(m => ({default: m.LoginPage})));
 const RegisterPage = React.lazy(() => import('@/features/auth/components/pages/RegisterPage').then(m => ({default: m.RegisterPage})));
 const AccountPage = React.lazy(() => import('@/features/auth/components/pages/AccountPage').then(m => ({default: m.AccountPage})));
+const PastProjectCurationSharedLinksPage = React.lazy(() => import('@/features/auth/components/pages/PastProjectCurationSharedLinksPage').then(m => ({default: m.PastProjectCurationSharedLinksPage})));
 const CompleteProfilePage = React.lazy(() => import('@/features/auth/components/pages/CompleteProfilePage').then(m => ({default: m.CompleteProfilePage})));
 const ForgotPasswordPage = React.lazy(() => import('@/features/auth/components/pages/ForgotPasswordPage').then(m => ({default: m.ForgotPasswordPage})));
 const VerifyEmailPage = React.lazy(() => import('@/features/auth/components/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
@@ -81,6 +82,7 @@ export const router = createBrowserRouter([
             {path: 'presenting-teams', element: lazyRoute(<PresentingTeamsPage/>)},
             {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>)},
             {path: 'past-projects/project/:id', element: lazyRoute(<ProjectDetailPage/>)},
+            {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>)},
             {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
 
             // event pages (plain CMS routes like /event, /past-events are served
@@ -116,6 +118,7 @@ export const router = createBrowserRouter([
 
             // Account management
             {path: 'account', element: lazyRoute(<AccountPage/>)},
+            {path: 'account/past-project-curation-shared-links', element: lazyRoute(<PastProjectCurationSharedLinksPage/>)},
 
             // Catch-all CMS route
             {path: '*', element: <CMSPageComponent/>},

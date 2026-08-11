@@ -200,7 +200,7 @@ intentionally fails closed.
 - If no active row exists, requesting `/authn/public-key/` creates one. The equivalent controlled recovery command is:
 
   ```bash
-  python manage.py shell -c "from apps.authn.services.rsa_manager import get_or_create_auth_keypair; key = get_or_create_auth_keypair(); print({'key_id': str(key.key_id), 'created': key.created_at.isoformat()})"
+  python manage.py shell -c "from apps.authn.services.security.rsa_manager import get_or_create_auth_keypair; key = get_or_create_auth_keypair(); print({'key_id': str(key.key_id), 'created': key.created_at.isoformat()})"
   ```
 
 - If private-key decryption began failing after `DJANGO_SECRET_KEY` changed,

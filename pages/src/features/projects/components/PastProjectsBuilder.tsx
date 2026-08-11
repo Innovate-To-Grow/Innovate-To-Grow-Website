@@ -6,7 +6,7 @@ import {PastProjectsAIStatus} from './builder/PastProjectsAIStatus';
 import {PastProjectsAISearchForm} from './builder/PastProjectsAISearchForm';
 import {PastProjectsActionBar} from './builder/PastProjectsActionBar';
 import {PastProjectsDialog} from './builder/PastProjectsDialog';
-import {MergedResultsTable} from './MergedResultsTable';
+import {MergedResultsTable, type PastProjectShareCreationResult} from './MergedResultsTable';
 import {SearchTableCard} from './SearchTableCard';
 import {
   createProjectGridFingerprint,
@@ -20,10 +20,12 @@ const INITIAL_SEARCH_TABLE: SearchTableState = {id: 'search-table-1', type: 'sta
 
 const AI_SEARCH_LIMIT = 10;
 
-// The merged results live in component state, while AI search can send a signed-out visitor through
-// a full-page login round-trip. Persist the rows in sessionStorage so a reload within the same tab
-// does not wipe the in-progress curation. sessionStorage (not localStorage) keeps the draft scoped
-// to the tab session so it does not leak into a later, unrelated visit.
+// The merged results live in component state, but creating a share requires signing in, and the
+// login button navigates away with a full-page reload (window.location) — which would wipe an
+// in-progress merge. Persist the merged rows in sessionStorage so they survive the login
+// round-trip (and any reload) within the tab; they are restored on mount and dropped once a share
+// is successfully created. sessionStorage (not localStorage) keeps the draft scoped to the tab
+// session, so it does not leak into a later, unrelated visit.
 const MERGED_ROWS_STORAGE_KEY = 'past-projects:builder:merged-rows';
 
 const readPersistedMergedRows = (): ProjectGridRow[] => {
@@ -73,6 +75,11 @@ interface PastProjectsBuilderProps {
   loading: boolean;
   rows: ProjectGridRow[];
   onRefreshRows?: () => void;
+  onCreateShare: (
+    rows: ProjectGridRow[],
+    name: string,
+    note: string,
+  ) => Promise<PastProjectShareCreationResult>;
 }
 
 interface SearchTableState {
@@ -91,6 +98,7 @@ export const PastProjectsBuilder = ({
   loading,
   rows,
   onRefreshRows,
+  onCreateShare,
 }: PastProjectsBuilderProps) => {
   const {isAuthenticated} = useAuth();
   const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
@@ -129,6 +137,18 @@ export const PastProjectsBuilder = ({
     }
     wasAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated]);
+
+  // Wrap the parent's share creator so a *successful* share drops the persisted draft — the share
+  // now owns this snapshot, and returning to the builder should start clean. A failed attempt keeps
+  // the draft so the user does not lose their merged rows.
+  const handleCreateShare = useCallback(
+    async (shareRows: ProjectGridRow[], name: string, note: string) => {
+      const result = await onCreateShare(shareRows, name, note);
+      clearPersistedMergedRows();
+      return result;
+    },
+    [onCreateShare],
+  );
 
   const handleAddSearchTable = () => {
     tableSequence.current += 1;
@@ -334,6 +354,7 @@ export const PastProjectsBuilder = ({
       {mergedRows.length > 0 || mergedRowsUndo ? (
         <MergedResultsTable
           rows={mergedRows}
+          onCreateShare={handleCreateShare}
           onDeleteRow={handleDeleteMergedRow}
           onDeleteRows={handleDeleteMergedRows}
           canUndoRows={Boolean(mergedRowsUndo)}

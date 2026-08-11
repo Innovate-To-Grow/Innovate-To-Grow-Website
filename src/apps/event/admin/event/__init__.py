@@ -1,3 +1,3 @@
-from .admin import EventAdmin
+from .admin import EventAdmin, EventAdminForm, QuestionInline, TicketInline
 
-__all__ = ["EventAdmin"]
+__all__ = ["EventAdmin", "EventAdminForm", "QuestionInline", "TicketInline"]

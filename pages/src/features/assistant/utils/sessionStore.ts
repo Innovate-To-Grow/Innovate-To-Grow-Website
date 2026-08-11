@@ -1,4 +1,4 @@
-import type {DisplayMessage} from './components/types';
+import type {DisplayMessage} from '../components/types';
 
 /** sessionStorage key holding the conversation's opaque session id. */
 const SESSION_KEY = 'itg-assistant-session';

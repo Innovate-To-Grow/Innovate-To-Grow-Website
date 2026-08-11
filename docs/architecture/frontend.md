@@ -115,7 +115,7 @@ Each feature under `pages/src/features/` is a vertical slice (`api/`, `component
 
 ## Shared modules
 
-### API client (`lib/api-client.ts`)
+### API client (`lib/api/api-client.ts`)
 
 - Plain Axios instance with `/api` base URL for public requests.
 - Does not attach credentials or refresh tokens.
@@ -134,7 +134,7 @@ The auth-specific client tags each request with the session generation and acces
 | `profile.ts` | Profile read/update, image upload |
 | `session.ts` | Authoritative `/authn/session/` bootstrap, guarded logout, and auto-login helpers |
 
-### Crypto (`lib/crypto.ts`)
+### Crypto (`lib/security/crypto.ts`)
 
 - Fetches RSA public key from `/authn/public-key/` (cached 5 minutes)
 - Encrypts passwords with Web Crypto API (RSA-OAEP) before sending to backend

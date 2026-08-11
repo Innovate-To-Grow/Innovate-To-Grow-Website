@@ -104,6 +104,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
             project_resources_tab["models"],
             [
                 "projects.pastprojectssheetconfig",
+                "projects.pastprojectshare",
                 "projects.pastprojectsynclog",
             ],
         )
@@ -111,6 +112,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
             project_resources_tab["items"],
             [
                 {"title": "Project Resources", "link": "/admin/projects/pastprojectssheetconfig/"},
+                {"title": "Shared Links", "link": "/admin/projects/pastprojectshare/"},
                 {"title": "Project Resource Sync Logs", "link": "/admin/projects/pastprojectsynclog/"},
             ],
         )

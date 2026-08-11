@@ -579,7 +579,7 @@ class EventAdminTest(TestCase):
         response = self.client.get("/admin/event/event/?registration_open__exact=1")
         self.assertEqual(response.status_code, 200)
 
-    @patch("apps.event.admin.current_project.sync_schedule")
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
     def test_pull_schedule_action_triggers_sync(self, mock_sync):
         from apps.event.models import CurrentProjectSchedule
 

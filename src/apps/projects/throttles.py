@@ -12,6 +12,11 @@ class _DynamicProjectUserRateThrottle(UserRateThrottle):
         return settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"][self.scope]
 
 
+class PastProjectShareRateThrottle(_DynamicProjectUserRateThrottle):
+    # Creating a share requires authentication, so throttle per-user (not per-anon-IP).
+    scope = "past_project_share"
+
+
 class PastProjectAISearchRateThrottle(_DynamicProjectUserRateThrottle):
     # AI search requires authentication, so throttle per-user.
     scope = "past_project_ai_search"

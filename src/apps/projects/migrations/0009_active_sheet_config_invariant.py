@@ -14,7 +14,7 @@ def normalize_active_config(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("projects", "0007_project_resource_admin_names"),
+        ("projects", "0008_pastprojectshare_version"),
     ]
 
     operations = [

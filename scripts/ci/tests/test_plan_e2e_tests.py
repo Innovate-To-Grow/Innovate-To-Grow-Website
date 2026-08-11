@@ -60,14 +60,21 @@ class PlanE2ETests(unittest.TestCase):
 
         self.assertEqual(plan.specs, ["e2e/events/"])
 
-    def test_mobile_paths_add_pixel7_and_mobile_spec(self):
+    def test_global_mobile_path_runs_full_suite_on_chromium_and_pixel7(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/components/MobileMenu.tsx"])
 
         self.assertEqual(plan.projects, ["chromium", "pixel7"])
-        self.assertIn("e2e/mobile.spec.ts", plan.specs)
+        self.assertEqual(plan.specs, [])
+        self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
+
+    def test_direct_mobile_spec_runs_mobile_spec_with_desktop_companion(self):
+        plan = plan_e2e_tests("pull_request", ["pages/e2e/mobile.spec.ts"])
+
+        self.assertEqual(plan.projects, ["chromium", "pixel7"])
+        self.assertEqual(plan.specs, ["e2e/mobile.spec.ts"])
         by_project = {leg.project: leg.spec_args for leg in plan.matrix}
         self.assertEqual(by_project["chromium"], "e2e/smoke.live.spec.ts")
-        self.assertIn("e2e/mobile.spec.ts", by_project["pixel7"])
+        self.assertEqual(by_project["pixel7"], "e2e/mobile.spec.ts")
 
     def test_global_config_change_runs_full_chromium(self):
         plan = plan_e2e_tests("pull_request", ["pages/playwright.config.ts"])
@@ -75,6 +82,51 @@ class PlanE2ETests(unittest.TestCase):
         self.assertEqual(plan.projects, ["chromium"])
         self.assertEqual(plan.specs, [])
         self.assertEqual(plan.matrix[0].spec_args, "")
+
+    def test_moved_global_asset_and_component_paths_run_full_chromium(self):
+        for changed_file in (
+            "pages/src/assets/tokens.css",
+            "pages/src/components/SafeHtml/SafeHtml.tsx",
+        ):
+            with self.subTest(changed_file=changed_file):
+                plan = plan_e2e_tests("pull_request", [changed_file])
+                self.assertEqual(plan.projects, ["chromium"])
+                self.assertEqual(plan.specs, [])
+                self.assertEqual(plan.matrix[0].spec_args, "")
+
+    def test_global_path_takes_precedence_over_category_paths(self):
+        plan = plan_e2e_tests(
+            "pull_request",
+            [
+                "pages/src/assets/tokens.css",
+                "pages/src/features/auth/components/Login.tsx",
+            ],
+        )
+
+        self.assertEqual(plan.specs, [])
+        self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
+
+    def test_unknown_source_path_falls_back_to_full_chromium(self):
+        plan = plan_e2e_tests("pull_request", ["pages/src/unknown/NewFeature.tsx"])
+
+        self.assertEqual(plan.projects, ["chromium"])
+        self.assertEqual(plan.specs, [])
+        self.assertEqual(plan.matrix[0].spec_args, "")
+
+    def test_multiple_categories_are_ordered_deterministically(self):
+        plan = plan_e2e_tests(
+            "pull_request",
+            [
+                "pages/src/features/events/api/client.ts",
+                "pages/src/features/auth/components/Login.tsx",
+                "pages/src/features/projects/api/client.ts",
+            ],
+        )
+
+        self.assertEqual(
+            plan.specs,
+            ["e2e/auth/", "e2e/account/", "e2e/events/subscribe.spec.ts", "e2e/projects/", "e2e/events/"],
+        )
 
     def test_e2e_helper_change_adds_webkit_leg_on_pr(self):
         plan = plan_e2e_tests("pull_request", ["pages/e2e/helpers/auth.ts"])

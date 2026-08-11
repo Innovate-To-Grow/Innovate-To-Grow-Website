@@ -7,7 +7,7 @@ from django.core.management.base import CommandError
 from django.db import IntegrityError
 from django.test import TestCase
 
-from apps.authn.management.ensure_default_admin import Command
+from apps.authn.management.commands.ensure_default_admin import Command
 from apps.authn.models import ContactEmail
 
 

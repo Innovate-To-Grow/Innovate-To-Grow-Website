@@ -51,6 +51,7 @@ test('AI search unavailable state shows message', async ({page}) => {
 });
 
 test('"Sign in required" dialog shown for unauthenticated AI search', async ({page}) => {
+  await page.addInitScript(() => window.sessionStorage.clear());
   await mockPastProjects(page, pastProjectRows());
   const {queries} = await mockAiSearch(page, {status: 401});
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});

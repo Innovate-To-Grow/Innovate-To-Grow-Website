@@ -11,7 +11,7 @@ from django.test import RequestFactory, TestCase
 
 from apps.event.admin.checkin import CheckInRecordAdmin
 from apps.event.admin.registration import EventRegistrationAdmin
-from apps.event.admin.sync_log import RegistrationSheetSyncLogAdmin
+from apps.event.admin.registration.sync_log import RegistrationSheetSyncLogAdmin
 from apps.event.models import CheckInRecord, EventRegistration, RegistrationSheetSyncLog
 from apps.event.tests.helpers import make_admin, make_superuser
 

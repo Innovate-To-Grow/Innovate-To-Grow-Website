@@ -2,9 +2,10 @@
 
 0004 seeds stylesheets via ``update_or_create(name=...)`` and only runs once, so
 edits to ``data/stylesheets.json`` do not reach already-migrated databases. This
-migration re-applies the two affected entries so the current account and project
-styles land on existing environments too. It is idempotent and scoped to those
-two stylesheet names.
+migration re-applies the two entries touched by the share-management feature (the
+account "my shared links" styles in ``auth`` and the share-name input style in
+``page-projects``) so they land on existing environments too. Idempotent and
+scoped to those two stylesheet names.
 """
 
 import json

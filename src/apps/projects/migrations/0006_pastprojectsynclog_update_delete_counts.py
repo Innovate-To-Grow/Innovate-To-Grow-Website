@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("projects", "0002_pastprojectssheetconfig_project_source_and_more"),
+        ("projects", "0005_pastprojectshare_details_text"),
     ]
 
     operations = [

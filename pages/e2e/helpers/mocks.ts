@@ -13,6 +13,7 @@ import type {EventRegistrationOptions, EventRegistrationSummary, Registration} f
 import type {NewsArticle, PaginatedResponse} from '../../src/features/news/api';
 import type {
   PastProjectAISearchResponse,
+  PastProjectShare,
   ProjectDetail,
   ProjectTableRow,
 } from '../../src/features/projects/api';
@@ -236,6 +237,33 @@ export async function mockSchedule(page: Page, payload: EventSchedulePayload): P
 
 export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Promise<void> {
   await page.route('**/projects/past-all/', (route) => route.fulfill(json(rows)));
+}
+
+export async function mockPastProjectShare(page: Page, share: PastProjectShare): Promise<void> {
+  let current = {...share};
+  await page.route(/\/projects\/past-shares\/[^/]+\/?(\?.*)?$/, (route) => {
+    const method = route.request().method();
+    if (method === 'PATCH' || method === 'PUT') {
+      const body = (route.request().postDataJSON() ?? {}) as Partial<PastProjectShare>;
+      if (body.version !== current.version) {
+        route.fulfill(
+          json(
+            {
+              code: 'stale_snapshot',
+              detail: 'This shared project changed.',
+              current,
+            },
+            409,
+          ),
+        );
+        return;
+      }
+      current = {...current, ...body, version: current.version + 1};
+      route.fulfill(json(current));
+      return;
+    }
+    route.fulfill(json(current));
+  });
 }
 
 export async function mockProjectDetail(
