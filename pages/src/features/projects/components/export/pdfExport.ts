@@ -7,8 +7,6 @@ import {
   type ProjectGridRow,
   type ProjectRowsExportContext,
 } from './exportTypes';
-import {parseRichTextRuns, type StyledRun} from './exportRichText';
-import {drawRunLine, wrapRunsToLines} from './pdfRichText';
 import {loadI2gLogoAsset} from './logoAsset';
 
 const LABEL_RGB: [number, number, number] = [15, 45, 82];
@@ -77,15 +75,6 @@ export const exportProjectRowsPdf = async (
       pdf.addPage();
       drawPageHeader();
       cursorY = headerBottomY + 8;
-    }
-  };
-
-  // Draw the share note's styled runs (bold/italic/underline/highlight), wrapped to the page width.
-  const addRichText = (runs: StyledRun[], fontSize: number, lineHeight: number) => {
-    for (const line of wrapRunsToLines(pdf, runs, contentWidth, fontSize)) {
-      ensureSpace(lineHeight);
-      drawRunLine(pdf, line, margin, cursorY, fontSize);
-      cursorY += lineHeight;
     }
   };
 
@@ -164,13 +153,6 @@ export const exportProjectRowsPdf = async (
   };
 
   drawPageHeader();
-
-  const noteRuns = parseRichTextRuns(exportContext.note);
-  if (noteRuns.length) {
-    addSectionHeading('Note');
-    addRichText(noteRuns, 9, 4.7);
-    cursorY += 5;
-  }
 
   addSectionHeading('Projects');
   rows.forEach((row, index) => drawProjectBlock(row, index));

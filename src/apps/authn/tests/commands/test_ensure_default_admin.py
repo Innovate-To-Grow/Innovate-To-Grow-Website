@@ -7,27 +7,27 @@ from django.core.management.base import CommandError
 from django.db import IntegrityError
 from django.test import TestCase
 
-from apps.authn.management.commands.ensure_default_admin import Command
+from apps.authn.management.ensure_default_admin import Command
 from apps.authn.models import ContactEmail
 
 
 class EnsureDefaultAdminCommandTests(TestCase):
     def test_requires_explicit_confirmation(self):
         with self.assertRaisesMessage(CommandError, "without --yes"):
-            call_command("ensure_default_admin", email="demo-admin@example.com")
+            call_command(Command(), email="demo-admin@example.com")
 
     def test_requires_password_env(self):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaisesMessage(CommandError, "DJANGO_SUPERUSER_PASSWORD must be set"):
-                call_command("ensure_default_admin", "--yes", email="demo-admin@example.com")
+                call_command(Command(), yes=True, email="demo-admin@example.com")
 
     def test_creates_default_admin_once_and_leaves_it_unchanged(self):
         out = io.StringIO()
 
         with patch.dict("os.environ", {"DJANGO_SUPERUSER_PASSWORD": "safe-demo-password"}):
             call_command(
-                "ensure_default_admin",
-                "--yes",
+                Command(),
+                yes=True,
                 email="demo-admin@example.com",
                 first_name="Demo",
                 last_name="Admin",
@@ -36,8 +36,8 @@ class EnsureDefaultAdminCommandTests(TestCase):
 
         with patch.dict("os.environ", {"DJANGO_SUPERUSER_PASSWORD": "replacement-password"}):
             call_command(
-                "ensure_default_admin",
-                "--yes",
+                Command(),
+                yes=True,
                 email="demo-admin@example.com",
                 first_name="Replacement",
                 last_name="Name",
@@ -82,8 +82,8 @@ class EnsureDefaultAdminCommandTests(TestCase):
         with patch.dict("os.environ", {"DJANGO_SUPERUSER_PASSWORD": "new-password"}):
             with self.assertRaisesMessage(CommandError, "not an active staff superuser"):
                 call_command(
-                    "ensure_default_admin",
-                    "--yes",
+                    Command(),
+                    yes=True,
                     email="existing@example.com",
                     first_name="Default",
                     last_name="Admin",
@@ -113,8 +113,8 @@ class EnsureDefaultAdminCommandTests(TestCase):
 
         with patch.dict("os.environ", {"DJANGO_SUPERUSER_PASSWORD": "safe-demo-password"}):
             call_command(
-                "ensure_default_admin",
-                "--yes",
+                Command(),
+                yes=True,
                 email="subscribed@example.com",
                 first_name="Default",
                 last_name="Admin",
@@ -158,8 +158,8 @@ class EnsureDefaultAdminCommandTests(TestCase):
             patch.dict("os.environ", {"DJANGO_SUPERUSER_PASSWORD": "loser-password"}),
         ):
             call_command(
-                "ensure_default_admin",
-                "--yes",
+                Command(),
+                yes=True,
                 email="race@example.com",
                 stdout=out,
             )
@@ -196,8 +196,8 @@ class EnsureDefaultAdminCommandTests(TestCase):
             self.assertRaisesMessage(CommandError, "not an active staff superuser"),
         ):
             call_command(
-                "ensure_default_admin",
-                "--yes",
+                Command(),
+                yes=True,
                 email="race@example.com",
                 stdout=io.StringIO(),
             )
@@ -218,8 +218,8 @@ class EnsureDefaultAdminCommandTests(TestCase):
             self.assertRaisesMessage(IntegrityError, "unrelated constraint"),
         ):
             call_command(
-                "ensure_default_admin",
-                "--yes",
+                Command(),
+                yes=True,
                 email="new@example.com",
                 stdout=io.StringIO(),
             )
@@ -246,8 +246,8 @@ class EnsureDefaultAdminCommandTests(TestCase):
 
         with patch.dict("os.environ", {}, clear=True):
             call_command(
-                "ensure_default_admin",
-                "--yes",
+                Command(),
+                yes=True,
                 email="existing-admin@example.com",
                 stdout=io.StringIO(),
             )
@@ -276,8 +276,8 @@ class EnsureDefaultAdminCommandTests(TestCase):
         with patch.dict("os.environ", {}, clear=True):
             with self.assertRaisesMessage(CommandError, "contact is not verified"):
                 call_command(
-                    "ensure_default_admin",
-                    "--yes",
+                    Command(),
+                    yes=True,
                     email="unverified-admin@example.com",
                     stdout=io.StringIO(),
                 )

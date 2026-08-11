@@ -16,10 +16,6 @@ describe('CSS imports resolve', () => {
     ['HealthCheckProvider', () => import('@/app/MaintenanceMode/HealthCheckProvider')],
     ['Projects components', () => import('@/features/projects/components')],
     ['AccountPage', () => import('@/features/auth/components/pages/AccountPage')],
-    [
-      'PastProjectCurationSharedLinksPage',
-      () => import('@/features/auth/components/pages/PastProjectCurationSharedLinksPage'),
-    ],
     ['EventRegistrationPage', () => import('@/routes/EventRegistrationPage')],
   ] as const;
 

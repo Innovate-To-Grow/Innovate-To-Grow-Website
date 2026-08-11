@@ -61,7 +61,7 @@ describe('createProjectRowsWordBlob', () => {
   it('creates a real docx package with the project columns and branding', async () => {
     const blob = createProjectRowsWordBlob(
       [row],
-      {title: 'Shared Results', note: 'Owner note & review instructions'},
+      {title: 'Saved Merged Results'},
       logo,
     );
 
@@ -74,8 +74,7 @@ describe('createProjectRowsWordBlob', () => {
     expect(packageText).toContain('[Content_Types].xml');
     expect(packageText).toContain('word/document.xml');
     expect(packageText).toContain('word/media/i2g-logo.png');
-    expect(packageText).toContain('Shared Results');
-    expect(packageText).toContain('Owner note &amp; review instructions');
+    expect(packageText).toContain('Saved Merged Results');
     expect(packageText).toContain('Rotary Joint Testing System');
     expect(packageText).toContain('Student Names');
     expect(packageText).toContain('A detailed abstract with &lt;special&gt; characters &amp; project context.');
@@ -97,7 +96,7 @@ describe('createProjectRowsWordBlob', () => {
 describe('buildProjectsWorksheet', () => {
   it('builds a branded worksheet with the project rows and embedded logo', () => {
     const workbook = new ExcelJS.Workbook();
-    buildProjectsWorksheet(workbook, [row], {title: 'Excel Title', note: 'Owner note'}, logo);
+    buildProjectsWorksheet(workbook, [row], {title: 'Excel Title'}, logo);
 
     const worksheet = workbook.getWorksheet('Projects');
     expect(worksheet).toBeDefined();
@@ -119,7 +118,6 @@ describe('buildProjectsWorksheet', () => {
       }),
     );
     const joined = cellText.join('|');
-    expect(joined).toContain('Note'); // the Note section row
     expect(joined).toContain('Projects');
     expect(joined).toContain('Student Names');
     expect(joined).toContain('Rotary Joint Testing System');
@@ -196,12 +194,11 @@ describe('exportProjectRowsPdf', () => {
   it('draws the header, sections, and a per-project block with project fields', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: false})); // logo load fails -> null
 
-    await exportProjectRowsPdf([row], 'past-projects', {title: 'PDF Title', note: 'Owner note'});
+    await exportProjectRowsPdf([row], 'past-projects', {title: 'PDF Title'});
 
     const drawnText = pdfTextCalls.join('|');
     expect(drawnText).toContain('PDF Title');
     expect(drawnText).toContain('Innovate to Grow Past Projects');
-    expect(drawnText).toContain('Note');
     expect(drawnText).toContain('Projects');
     // Per-project block: title bar + field labels.
     expect(drawnText).toContain('Project 1: Rotary Joint Testing System');

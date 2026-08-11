@@ -65,9 +65,9 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
   is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
 });
 
-// `id` is deliberately excluded from the fingerprint (the row's dedup identity): an AI-search
-// result carries a real id while an already-shared row may not, so including it would break dedup.
-// id still rides on the row (via the spread) for the per-project Individual Link.
+// `id` is deliberately excluded from the content fingerprint so equivalent rows from archive and
+// AI search sources still deduplicate when one source lacks an id. The id remains on the row for
+// the per-project Individual Link.
 export const createProjectGridFingerprint = (row: ProjectGridRow) =>
   JSON.stringify([
     formatSemesterLabel(row.semester_label),

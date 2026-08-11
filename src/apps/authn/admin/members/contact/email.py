@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
 from apps.authn.services.contacts.contact_emails import make_contact_email_primary
-from apps.authn.services.email_challenges import AuthChallengeInvalid
+from apps.authn.services.email.challenges import AuthChallengeInvalid
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactEmail, Member

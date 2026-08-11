@@ -10,12 +10,12 @@ from django.db import IntegrityError, transaction
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.services.account_recovery.recovery import (
+from apps.authn.services.account.recovery import (
     LastRecoveryContactError,
     count_verified_recovery_contacts,
 )
 from apps.authn.services.email.auth_email import normalize_email, registration_email_conflicts
-from apps.authn.services.email_challenges import (
+from apps.authn.services.email.challenges import (
     AuthChallengeInvalid,
     issue_email_challenge,
     verify_email_code,

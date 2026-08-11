@@ -8,7 +8,7 @@ from django.test import TestCase
 from apps.authn.models import ContactPhone
 from apps.authn.services.contacts.contact_phones import create_contact_phone
 from apps.authn.services.contacts.phone_auth import PhoneAccountInactive, resolve_or_create_member_by_phone
-from apps.authn.services.email_challenges import AuthChallengeInvalid
+from apps.authn.services.email.challenges import AuthChallengeInvalid
 
 Member = get_user_model()
 

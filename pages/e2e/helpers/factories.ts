@@ -17,10 +17,7 @@ import type {
 import type {NewsArticle, PaginatedResponse} from '../../src/features/news/api';
 import type {
   PastProjectAISearchResponse,
-  PastProjectShare,
-  PastProjectShareSummary,
   ProjectDetail,
-  ProjectGridRow,
   ProjectTableRow,
 } from '../../src/features/projects/api';
 import type {CMSEmbedResponse, CMSPageResponse} from '../../src/features/cms/api';
@@ -350,52 +347,6 @@ export function cmsEmbedResponse(overrides: Partial<CMSEmbedResponse> = {}): CMS
     ],
     page_css_class: '',
     page_css: ':root {}',
-    ...overrides,
-  };
-}
-
-// -- past project shares -------------------------------------------------
-
-export function pastProjectShare(overrides: Partial<PastProjectShare> = {}): PastProjectShare {
-  const rows: ProjectGridRow[] = pastProjectRows().map((r) => ({
-    id: r.id,
-    semester_label: r.semester_label,
-    class_code: r.class_code,
-    team_number: r.team_number,
-    team_name: r.team_name,
-    project_title: r.project_title,
-    organization: r.organization,
-    industry: r.industry,
-    abstract: r.abstract,
-    student_names: r.student_names,
-    is_presenting: r.is_presenting ? 'Yes' : 'No',
-  }));
-
-  return {
-    id: 'share-e2e-1',
-    name: 'Curated E2E Projects',
-    rows,
-    note: '<p>Check out these projects!</p>',
-    details_text: '',
-    version: 1,
-    share_url: '/past-projects/share-e2e-1',
-    can_edit: false,
-    created_at: '2026-07-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
-export function pastProjectShareSummary(
-  overrides: Partial<PastProjectShareSummary> = {},
-): PastProjectShareSummary {
-  return {
-    id: 'share-e2e-1',
-    name: 'Curated E2E Projects',
-    note: '<p>Check out these projects!</p>',
-    version: 1,
-    share_url: '/past-projects/share-e2e-1',
-    row_count: 2,
-    created_at: '2026-07-01T00:00:00Z',
     ...overrides,
   };
 }

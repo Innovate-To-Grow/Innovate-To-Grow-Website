@@ -35,7 +35,6 @@ export const PastProjectsActionBar = ({
           <button
             type="button"
             className={`itg-btn itg-btn-primary past-projects-ai-table-button${aiSearchLoginRequired ? ' is-login-required' : ''}`}
-            aria-disabled={aiSearchLoginRequired || undefined}
             onClick={onAddAISearchTable}
             disabled={loading || Boolean(error) || aiSearchDisabled}
           >

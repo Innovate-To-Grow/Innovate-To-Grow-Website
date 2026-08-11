@@ -15,8 +15,7 @@ async function stubAccountSideEffects(page: import('@playwright/test').Page) {
   // Phone-only account: no primary email yet.
   await mockProfileEndpoint(page, {current: profileResponse({email: '', primary_email_id: null, email_verified: false})});
   // Keep the just-logged-in session alive on /account. The mocked login mints a
-  // fake access token, so any un-mocked authenticated side request (e.g. the
-  // shell's /projects/past-shares/mine/) 401s against the real CI backend and
+  // fake access token, so any un-mocked authenticated side request can 401 against the real CI backend and
   // trips the api-client refresh->logout cascade, bouncing the user to /login
   // before the SMS code message can render. Make refresh succeed to defeat it.
   await page.route('**/authn/refresh/', (route) =>

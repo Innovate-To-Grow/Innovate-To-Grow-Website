@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import CommandError, call_command
 from django.test import TestCase
 
+from apps.authn.management.createsuperuser import Command
 from apps.authn.models import ContactEmail
 
 Member = get_user_model()
@@ -17,22 +18,22 @@ class CreateSuperuserCommandTests(TestCase):
             "--email, --password, --first-name, and --last-name are required in non-interactive mode.",
         ):
             call_command(
-                "createsuperuser",
-                "--noinput",
-                "--email=admin@example.com",
-                "--password=StrongPass123!",
+                Command(),
+                interactive=False,
+                email="admin@example.com",
+                password="StrongPass123!",
             )
 
     def test_noninteractive_creates_superuser_with_names(self):
         stdout = StringIO()
 
         call_command(
-            "createsuperuser",
-            "--noinput",
-            "--email=admin@example.com",
-            "--password=StrongPass123!",
-            "--first-name=Admin",
-            "--last-name=User",
+            Command(),
+            interactive=False,
+            email="admin@example.com",
+            password="StrongPass123!",
+            first_name="Admin",
+            last_name="User",
             stdout=stdout,
         )
 
@@ -48,12 +49,12 @@ class CreateSuperuserInteractiveTests(TestCase):
         ContactEmail.objects.create(member=member, email_address="dup@example.com", email_type="primary", verified=True)
         with self.assertRaisesMessage(CommandError, "A contact email with address 'dup@example.com' already exists."):
             call_command(
-                "createsuperuser",
-                "--noinput",
-                "--email=dup@example.com",
-                "--password=StrongPass123!",
-                "--first-name=Admin",
-                "--last-name=User",
+                Command(),
+                interactive=False,
+                email="dup@example.com",
+                password="StrongPass123!",
+                first_name="Admin",
+                last_name="User",
             )
 
     @patch("getpass.getpass")
@@ -64,7 +65,7 @@ class CreateSuperuserInteractiveTests(TestCase):
         mock_getpass.side_effect = ["StrongPass123!", "StrongPass123!"]
         stdout = StringIO()
 
-        call_command("createsuperuser", stdout=stdout)
+        call_command(Command(), stdout=stdout)
 
         member = ContactEmail.objects.get(email_address="new-admin@example.com").member
         self.assertTrue(member.is_superuser)
@@ -85,7 +86,7 @@ class CreateSuperuserInteractiveTests(TestCase):
         mock_getpass.side_effect = ["StrongPass123!", "StrongPass123!"]
         stderr = StringIO()
 
-        call_command("createsuperuser", stderr=stderr)
+        call_command(Command(), stderr=stderr)
 
         self.assertTrue(ContactEmail.objects.filter(email_address="ok@example.com").exists())
         err = stderr.getvalue()
@@ -101,7 +102,7 @@ class CreateSuperuserInteractiveTests(TestCase):
         mock_getpass.side_effect = ["pass-a", "pass-b", "StrongPass123!", "StrongPass123!"]
         stderr = StringIO()
 
-        call_command("createsuperuser", stderr=stderr)
+        call_command(Command(), stderr=stderr)
 
         self.assertTrue(ContactEmail.objects.filter(email_address="mismatch@example.com").exists())
         err = stderr.getvalue()

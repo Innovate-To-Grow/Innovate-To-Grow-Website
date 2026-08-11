@@ -2,14 +2,22 @@
 Authn serializers export.
 """
 
-from .change_password import ChangePasswordSerializer
-from .contact_emails import (
+from .account.change_password import ChangePasswordSerializer
+from .account.profile import ProfileSerializer
+from .auth.login import LoginSerializer
+from .auth.phone_code import (
+    UnifiedPhoneAuthRequestSerializer,
+    UnifiedPhoneAuthVerifySerializer,
+)
+from .auth.register import RegisterSerializer
+from .auth.subscribe import SubscribeSerializer
+from .contacts.emails import (
     ContactEmailCreateSerializer,
     ContactEmailSerializer,
     ContactEmailUpdateSerializer,
     ContactEmailVerifyCodeSerializer,
 )
-from .contact_phones import (
+from .contacts.phones import (
     ContactPhoneCreateSerializer,
     ContactPhoneSerializer,
     ContactPhoneUpdateSerializer,
@@ -33,14 +41,6 @@ from .email_code import (
     UnifiedEmailAuthRequestSerializer,
     UnifiedEmailAuthVerifySerializer,
 )
-from .login import LoginSerializer
-from .phone_code import (
-    UnifiedPhoneAuthRequestSerializer,
-    UnifiedPhoneAuthVerifySerializer,
-)
-from .profile import ProfileSerializer
-from .register import RegisterSerializer
-from .subscribe import SubscribeSerializer
 
 __all__ = [
     "AccountEmailsSerializer",

@@ -10,6 +10,7 @@ from apps.authn.constants import (
     VERIFICATION_INVALID,
     VERIFICATION_THROTTLED,
 )
+from apps.authn.security.throttles import EmailCodeVerifyThrottle, PhoneAuthCodeRequestThrottle
 from apps.authn.serializers import (
     UnifiedPhoneAuthRequestSerializer,
     UnifiedPhoneAuthVerifySerializer,
@@ -23,7 +24,6 @@ from apps.authn.services import (
 )
 from apps.authn.services.contacts.contact_phones import national_to_e164, normalize_to_national
 from apps.authn.services.sms import check_phone_verification
-from apps.authn.throttles import EmailCodeVerifyThrottle, PhoneAuthCodeRequestThrottle
 
 from ..helpers import build_auth_success_payload
 

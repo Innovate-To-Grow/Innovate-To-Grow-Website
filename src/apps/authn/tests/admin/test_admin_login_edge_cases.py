@@ -9,7 +9,7 @@ from django.test import RequestFactory, TestCase, override_settings
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.services.email_challenges import AuthChallengeDeliveryError, AuthChallengeThrottled
+from apps.authn.services.email.challenges import AuthChallengeDeliveryError, AuthChallengeThrottled
 from apps.authn.views.admin.login_helpers import (
     LAST_ADMIN_LOGIN_COOKIE_NAME,
     get_admin_login_member,

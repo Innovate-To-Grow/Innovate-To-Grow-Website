@@ -1,4 +1,4 @@
-"""Tests for email_challenges verify/queries internals and the challenge model."""
+"""Tests for email.challenges verify/queries internals and the challenge model."""
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
@@ -13,14 +13,14 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.services.email_challenges import (
+from apps.authn.services.email.challenges import (
     AuthChallengeInvalid,
     consume_verification_token,
     mark_challenge_verified,
     verify_email_code,
     verify_email_code_and_mint_token,
 )
-from apps.authn.services.email_challenges.queries import assert_within_limit, get_latest_pending
+from apps.authn.services.email.challenges.queries import assert_within_limit, get_latest_pending
 
 Member = get_user_model()
 PURPOSE = EmailAuthChallenge.Purpose.LOGIN
@@ -183,7 +183,7 @@ class QueriesTests(TestCase):
     def test_assert_within_limit_resend_cooldown(self):
         # A fresh pending challenge with last_sent_at == now triggers the cooldown branch.
         _make_challenge(self.member, last_sent_at=timezone.now())
-        from apps.authn.services.email_challenges import AuthChallengeThrottled
+        from apps.authn.services.email.challenges import AuthChallengeThrottled
 
         with self.assertRaises(AuthChallengeThrottled):
             assert_within_limit(

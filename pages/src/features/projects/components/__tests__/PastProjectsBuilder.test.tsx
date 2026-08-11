@@ -83,7 +83,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('merges ONLY the checked rows, not the whole table', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     // No saved results yet.
     expect(getMergedSection()).toBeNull();
@@ -105,7 +105,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('disables Save Selected until a row is selected and never merges everything by default', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     const mergeButton = screen.getByRole('button', {name: /save selected/i});
     expect(mergeButton).toBeDisabled();
@@ -116,7 +116,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('does not toggle selection from desktop row body clicks', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     const mergeButton = screen.getByRole('button', {name: /save selected/i});
     fireEvent.click(screen.getAllByText('Bravo Project')[0]);
@@ -134,7 +134,6 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
         loading={false}
         error={null}
         onRefreshRows={onRefreshRows}
-        onCreateShare={vi.fn()}
       />,
     );
 
@@ -163,7 +162,6 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
         loading={false}
         error={null}
         onRefreshRows={onRefreshRows}
-        onCreateShare={vi.fn()}
       />,
     );
 
@@ -194,7 +192,6 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
         loading={false}
         error={null}
         onRefreshRows={onRefreshRows}
-        onCreateShare={vi.fn()}
       />,
     );
 
@@ -214,7 +211,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('omits the search table number until there are multiple tables', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     expect(screen.queryByRole('heading', {level: 3, name: 'Search Table 1'})).toBeNull();
@@ -236,7 +233,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('does not number the only standard Search Table when an AI Search Table is also open', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
 
@@ -259,7 +256,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       usage: {inputTokens: 10, outputTokens: 2, totalTokens: 12},
     });
 
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
     expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
@@ -295,7 +292,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       }),
     );
 
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
     fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
@@ -336,12 +333,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   it('does not call AI search when the visitor is signed out', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
 
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     const addAIButton = screen.getByRole('button', {name: /\+ ai search table/i});
     expect(screen.queryByText('Sign in to use AI search.')).toBeNull();
     expect(addAIButton).toBeEnabled();
-    expect(addAIButton).toHaveAttribute('aria-disabled', 'true');
     expect(addAIButton).toHaveClass('is-login-required');
     fireEvent.click(addAIButton);
 
@@ -360,7 +356,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       usage: {},
     });
 
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
     fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
@@ -376,7 +372,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('allows only one AI Search Table at a time', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     const addAIButton = screen.getByRole('button', {name: /\+ ai search table/i});
     expect(addAIButton).toBeEnabled();
@@ -388,8 +384,8 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(screen.getAllByRole('heading', {level: 3, name: /ai search table/i})).toHaveLength(1);
   });
 
-  // The login button reloads the page (window.location), so the merged results must survive a
-  // full reload via sessionStorage — otherwise signing in to share wipes the user's work.
+  // The AI login button reloads the page, so merged results must survive the round-trip via
+  // sessionStorage instead of wiping the user's work.
   const MERGED_ROWS_STORAGE_KEY = 'past-projects:builder:merged-rows';
 
   it('restores merged results persisted before a login reload', () => {
@@ -398,7 +394,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       JSON.stringify([makeRow({team_number: 'T09', project_title: 'Persisted Project'})]),
     );
 
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     const merged = getMergedSection();
     expect(merged).not.toBeNull();
@@ -406,7 +402,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('persists merged results to sessionStorage so a login reload can restore them', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
@@ -420,7 +416,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('can reset merged results and undo the reset', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
@@ -441,38 +437,6 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(screen.getByText('Merged results restored.')).toBeInTheDocument();
   });
 
-  it('clears the persisted draft once a share is created successfully', async () => {
-    const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
-
-    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
-
-    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'My picks'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
-
-    await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull());
-  });
-
-  it('keeps the persisted draft when share creation fails', async () => {
-    // The whole point of persistence is to not lose the user's merged rows; a failed share
-    // (network error, 4xx/5xx) must leave the draft intact so they can retry.
-    const onCreateShare = vi.fn().mockRejectedValue(new Error('boom'));
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
-
-    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
-
-    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'My picks'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
-
-    await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
-    // Draft retained after the rejection — the clear runs only after a successful await.
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
-  });
 
   it('drops the persisted draft when the user logs out in the same tab', () => {
     // sessionStorage survives a tab session, so without this a second user signing in on a shared
@@ -484,12 +448,12 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     );
 
     const {rerender} = render(
-      <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
+      <PastProjectsBuilder rows={ROWS} loading={false} error={null} />,
     );
     expect(getMergedSection()).not.toBeNull();
 
     mockUseAuth.mockReturnValue({isAuthenticated: false});
-    rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} />);
 
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
     expect(getMergedSection()).toBeNull();

@@ -1,9 +1,5 @@
 import { api } from '@/lib/api-client';
-import {
-  authApi,
-  getAccessToken,
-  isDefinitiveAuthFailure,
-} from '@/features/auth';
+import {authApi} from '@/features/auth';
 import {formatSemesterLabel} from '@/lib/semester';
 import type { PaginatedResponse } from '@/types/api';
 import type { ScheduleProjectRow } from '@/features/events/api';
@@ -78,28 +74,6 @@ export interface SemesterWithFullProjects {
   season: number;
   label: string;
   projects: ProjectTableRow[];
-}
-
-export interface PastProjectShare {
-  id: string;
-  name: string;
-  rows: ProjectGridRow[];
-  note: string;
-  details_text: string;
-  version: number;
-  share_url: string;
-  can_edit: boolean;
-  created_at: string;
-}
-
-export interface PastProjectShareSummary {
-  id: string;
-  name: string;
-  note: string;
-  version: number;
-  share_url: string;
-  row_count: number;
-  created_at: string;
 }
 
 export interface PastProjectAISearchResponse {
@@ -177,53 +151,4 @@ export const searchPastProjectsWithAI = async (
 export const fetchProjectDetail = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
   const response = await api.get<ProjectDetail>(`/projects/${id}/`, {signal});
   return response.data;
-};
-
-export const createPastProjectShare = async (
-  rows: ProjectGridRow[],
-  name: string,
-  note: string,
-): Promise<PastProjectShare> => {
-  // The client no longer sends a combined details_text field; the shared snapshot is the rows.
-  const response = await authApi.post<PastProjectShare>('/projects/past-shares/', {
-    rows,
-    name,
-    note,
-  });
-  return response.data;
-};
-
-export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
-  if (getAccessToken()) {
-    try {
-      const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${id}/`);
-      return response.data;
-    } catch (err) {
-      const status = (err as {response?: {status?: number}}).response?.status;
-      if (status !== 401 || !isDefinitiveAuthFailure(err)) {
-        throw err;
-      }
-    }
-  }
-
-  const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
-  return response.data;
-};
-
-export const updatePastProjectShare = async (
-  id: string,
-  payload: Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>> &
-    Pick<PastProjectShare, 'version'>,
-): Promise<PastProjectShare> => {
-  const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
-  return response.data;
-};
-
-export const listMyShares = async (): Promise<PastProjectShareSummary[]> => {
-  const response = await authApi.get<PastProjectShareSummary[]>('/projects/past-shares/mine/');
-  return response.data;
-};
-
-export const deleteShare = async (id: string): Promise<void> => {
-  await authApi.delete(`/projects/past-shares/${id}/`);
 };

@@ -7,7 +7,7 @@ from apps.authn.forms.admin_login import (
     AdminRememberedPasswordForm,
 )
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.services.email_challenges import (
+from apps.authn.services.email.challenges import (
     AuthChallengeDeliveryError,
     AuthChallengeInvalid,
     AuthChallengeThrottled,

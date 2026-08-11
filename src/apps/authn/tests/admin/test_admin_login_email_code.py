@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.services.email_challenges import (
+from apps.authn.services.email.challenges import (
     AuthChallengeDeliveryError,
     AuthChallengeInvalid,
     AuthChallengeThrottled,

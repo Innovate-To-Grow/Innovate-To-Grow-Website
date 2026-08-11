@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
-from apps.authn.services.import_members import import_members_from_excel
+from apps.authn.services.members.import_ import import_members_from_excel
 
 try:
     from openpyxl import Workbook
@@ -89,7 +89,7 @@ class ImportMembersExcelTests(TestCase):
     # ── File-level guards ────────────────────────────────
 
     def test_openpyxl_missing_returns_error(self):
-        with patch("apps.authn.services.import_members.excel.load_workbook", None):
+        with patch("apps.authn.services.members.import_.excel.load_workbook", None):
             result = import_members_from_excel(BytesIO(b""))
         self.assertFalse(result.success)
         self.assertIn("openpyxl library not installed. Please run: pip install openpyxl", result.errors)
@@ -186,7 +186,7 @@ class ImportMembersExcelTests(TestCase):
     def test_exception_during_create_sets_failure(self):
         workbook = self._build_workbook([["boom@example.com", "Ada", "Lovelace", "Acme"]])
         with patch(
-            "apps.authn.services.import_members.excel.Member.objects.bulk_create",
+            "apps.authn.services.members.import_.excel.Member.objects.bulk_create",
             side_effect=RuntimeError("db blew up"),
         ):
             result = import_members_from_excel(workbook)
@@ -284,7 +284,7 @@ class ImportMembersExcelTests(TestCase):
         )
         workbook = self._build_workbook([["errrow@example.com", "New", "Name", "Org"]])
 
-        from apps.authn.services.import_members import operations
+        from apps.authn.services.members.import_ import operations
 
         with patch.object(operations, "update_single_member", side_effect=RuntimeError("update boom")):
             result = import_members_from_excel(workbook, update_existing=True)

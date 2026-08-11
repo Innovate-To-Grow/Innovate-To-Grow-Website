@@ -2,12 +2,12 @@
 Authn app services.
 """
 
-from .account import delete_member_account
-from .account_recovery import (
+from .account import (
     LastRecoveryContactError,
     NoRecoveryChannelError,
     RecoveryChannel,
     count_verified_recovery_contacts,
+    delete_member_account,
     mask_email,
     mask_phone,
     request_sms_password_code,
@@ -32,7 +32,6 @@ from .contacts.phone_auth import (
     request_phone_auth,
     resolve_or_create_member_by_phone,
 )
-from .create_member import CreateMemberService
 from .email.auth_email import (
     ResolvedAuthEmail,
     ResolvedLoginIdentifier,
@@ -44,7 +43,7 @@ from .email.auth_email import (
     resolve_auth_email,
     resolve_login_identifier,
 )
-from .email_challenges import (
+from .email.challenges import (
     AuthChallengeDeliveryError,
     AuthChallengeError,
     AuthChallengeInvalid,
@@ -57,12 +56,13 @@ from .email_challenges import (
     verify_email_code_and_mint_token,
     verify_email_code_for_purposes,
 )
-from .import_members import (
+from .members.create import CreateMemberService
+from .members.import_ import (
     ImportResult,
     generate_template_excel,
     import_members_from_excel,
 )
-from .rsa_manager import (
+from .security import (
     RSADecryptionError,
     decrypt_password,
     get_or_create_auth_keypair,

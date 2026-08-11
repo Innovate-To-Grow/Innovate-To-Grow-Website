@@ -10,7 +10,7 @@ from django.db import migrations
 
 def encrypt_existing_keys(apps, schema_editor):
     """Encrypt all plaintext private keys in the RSAKeypair table."""
-    from authn.services.key_encryption import encrypt_pem, is_encrypted
+    from authn.services.security.key_encryption import encrypt_pem, is_encrypted
 
     RSAKeypair = apps.get_model("authn", "RSAKeypair")
     for keypair in RSAKeypair.objects.all():

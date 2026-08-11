@@ -5,10 +5,7 @@ import {ProfileSection} from './account/ProfileSection';
 import {TicketsSection} from './account/TicketsSection';
 import {useAccountDashboard} from './account/useAccountDashboard';
 import {EmailCenter} from '../sections/EmailCenter';
-import {MySharedLinksSection} from '../sections/MySharedLinksSection';
 import {PhoneCenter} from '../sections/PhoneCenter';
-
-import './account/accountSharedLinks.css';
 
 export const AccountPage = () => {
     const account = useAccountDashboard();
@@ -73,7 +70,6 @@ export const AccountPage = () => {
                 <div className="account-column account-column--secondary">
                     {account.profile ? <EmailCenter profile={account.profile} onProfileUpdate={account.setProfile}/> : null}
                     {account.profile ? <PhoneCenter/> : null}
-                    <MySharedLinksSection/>
                     <DetailsSection displayEmail={account.displayEmail} dateJoined={account.profile?.date_joined}/>
                     <PasswordSection
                         passwordCodeRequested={account.passwordCodeRequested}

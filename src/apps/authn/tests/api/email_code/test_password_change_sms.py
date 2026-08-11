@@ -37,8 +37,8 @@ RESET_VERIFY_URL = "/authn/password-reset/verify-code/"
 NEW_PASSWORD = "SmsCreatedPass123!"
 
 
-@patch("apps.authn.services.account_recovery.sms_password._check_phone_verification")
-@patch("apps.authn.services.account_recovery.sms_password.start_phone_verification")
+@patch("apps.authn.services.account.sms_password._check_phone_verification")
+@patch("apps.authn.services.account.sms_password.start_phone_verification")
 class PhoneOnlyPasswordCreateViaSmsTests(APITestCase):
     """A phone-only account (verified phone, no email, unusable password)."""
 
@@ -249,7 +249,7 @@ class SmsPasswordAtomicityTests(APITestCase):
 
 
 @patch("apps.authn.services.email.send_email.send_verification_email")
-@patch("apps.authn.services.email_challenges._random_code", return_value="654321")
+@patch("apps.authn.services.email.challenges._random_code", return_value="654321")
 class PasswordChannelSelectionTests(APITestCase):
     """The change-password flow prefers a verified email over SMS when one exists."""
 

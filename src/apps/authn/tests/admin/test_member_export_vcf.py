@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from apps.authn.models import ContactEmail, ContactPhone
-from apps.authn.services.export_members_vcf import CRLF, MAX_LINE_OCTETS, _fold
+from apps.authn.services.members.export_vcf import CRLF, MAX_LINE_OCTETS, _fold
 
 Member = get_user_model()
 

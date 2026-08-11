@@ -1,15 +1,12 @@
 // /past-projects builder mode: multi-search-table workflow with AI search,
-// merge/remove/undo/reset, share creation. Covers authenticated + unauthenticated
+// merge/remove/undo/reset. Covers authenticated + unauthenticated
 // paths.
 import {test, expect} from '../fixtures';
 import {
   aiSearchResponse,
   mockAiSearch,
-  mockPastProjectShareCreate,
-  mockPastProjectSharesList,
   mockPastProjects,
   pastProjectRows,
-  pastProjectShare,
   seedAuthenticatedSession,
 } from '../helpers';
 
@@ -26,59 +23,40 @@ test('AI search form submits query and shows results', async ({page}) => {
     response: aiSearchResponse({results: [pastProjectRows()[0]], query: 'irrigation'}),
   });
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
-  // Find the AI search input and submit a query.
-  const searchInput = page.locator('.ai-search-input');
-  if (await searchInput.isVisible()) {
-    await searchInput.fill('irrigation');
-    await page.locator('.ai-search-form button[type="submit"]').click();
-    await expect.poll(() => queries.length).toBeGreaterThan(0);
-    expect((queries[0] as Record<string, unknown>).query).toBe('irrigation');
-  }
+  await page.getByRole('button', {name: '+ AI Search Table'}).click();
+  const aiSearchForm = page.locator('.past-projects-ai-search');
+  await aiSearchForm.getByPlaceholder('Ask AI to find relevant past projects...').fill('irrigation');
+  await aiSearchForm.getByRole('button', {name: 'Search'}).click();
+
+  await expect.poll(() => queries.length).toBe(1);
+  expect((queries[0] as Record<string, unknown>).query).toBe('irrigation');
+  await expect(page.getByRole('heading', {name: 'AI Search Table: irrigation'})).toBeVisible();
+  await expect(page.getByText(pastProjectRows()[0].project_title).first()).toBeVisible();
 });
 
 test('AI search unavailable state shows message', async ({page}) => {
   await seedAuthenticatedSession(page);
   await mockPastProjects(page, pastProjectRows());
-  await mockAiSearch(page, {response: aiSearchResponse({available: false, message: 'AI search is unavailable.', query: '', results: []})});
+  const {queries} = await mockAiSearch(page, {
+    response: aiSearchResponse({available: false, message: 'AI search is unavailable.', query: '', results: []}),
+  });
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
-  const searchInput = page.locator('.ai-search-input');
-  if (await searchInput.isVisible()) {
-    await searchInput.fill('test');
-    await page.locator('.ai-search-form button[type="submit"]').click();
-  }
+  await page.getByRole('button', {name: '+ AI Search Table'}).click();
+  const aiSearchForm = page.locator('.past-projects-ai-search');
+  await aiSearchForm.getByPlaceholder('Ask AI to find relevant past projects...').fill('test');
+  await aiSearchForm.getByRole('button', {name: 'Search'}).click();
+
+  await expect.poll(() => queries.length).toBe(1);
+  await expect(page.getByRole('alert')).toContainText('AI search is unavailable.');
 });
 
 test('"Sign in required" dialog shown for unauthenticated AI search', async ({page}) => {
   await mockPastProjects(page, pastProjectRows());
-  await mockAiSearch(page, {status: 401});
+  const {queries} = await mockAiSearch(page, {status: 401});
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
-  // The sign-in dialog should appear when an unauthenticated user tries AI search.
-  const searchInput = page.locator('.ai-search-input');
-  if (await searchInput.isVisible()) {
-    await searchInput.fill('test');
-    await page.locator('.ai-search-form button[type="submit"]').click();
-  }
-});
+  await page.getByRole('button', {name: '+ AI Search Table'}).click();
 
-test('create share with name and note', async ({page}) => {
-  await seedAuthenticatedSession(page);
-  await mockPastProjects(page, pastProjectRows());
-  await mockAiSearch(page);
-  await mockPastProjectShareCreate(page, {
-    response: pastProjectShare({name: 'My Curated List', can_edit: true}),
-  });
-
-  await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
-  // The builder has a merge/share workflow; the create share UI is inside
-  // the merged results table.
-  await expect(page.getByRole('heading', {name: 'Past Projects'})).toBeVisible();
-});
-
-test('shared links page lists user shares', async ({page}) => {
-  await seedAuthenticatedSession(page);
-  await mockPastProjectSharesList(page, [
-    {id: 'share-1', name: 'Curated List', note: '<p>Notes</p>', version: 1, share_url: '/past-projects/share-1', row_count: 3, created_at: '2026-07-01T00:00:00Z'},
-  ]);
-  await page.goto('/account/past-project-curation-shared-links', {waitUntil: 'domcontentloaded'});
-  await expect(page.locator('.account-shared-links-page')).toContainText('Curated List');
+  await expect(page.getByRole('dialog', {name: 'Sign in required'})).toBeVisible();
+  await expect(page.getByText('You need to sign in before using AI search.')).toBeVisible();
+  expect(queries).toHaveLength(0);
 });

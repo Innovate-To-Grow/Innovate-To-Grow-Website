@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.authn.models import RSAKeypair
-from apps.authn.services.rsa_manager import (
+from apps.authn.services.security.rsa_manager import (
     KEY_DECRYPTION_GRACE_PERIOD,
     KEY_PURGE_RETENTION,
     RSADecryptionError,
