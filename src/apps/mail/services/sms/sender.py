@@ -5,9 +5,9 @@ from django.utils import timezone
 from apps.authn.services.sms import publish_plain_sms
 from apps.core.models import AWSCredentialConfig
 from apps.mail.models import SmsRecipientLog
-from apps.mail.services.campaign_state import campaign_state
-from apps.mail.services.personalize import personalize
-from apps.mail.services.sms_audience import get_sms_recipients
+from apps.mail.services.campaign.personalize import personalize
+from apps.mail.services.campaign.state import campaign_state
+from apps.mail.services.sms.audience import get_sms_recipients
 
 logger = logging.getLogger(__name__)
 

@@ -16,7 +16,7 @@ from apps.authn.services.account.unsubscribe import (
     UnsubscribeLoginTokenInvalid,
     get_member_from_unsubscribe_token,
 )
-from apps.mail.services.subscription_notifications import send_subscription_confirmation
+from apps.mail.services.tokens.notifications import send_subscription_confirmation
 
 logger = logging.getLogger(__name__)
 

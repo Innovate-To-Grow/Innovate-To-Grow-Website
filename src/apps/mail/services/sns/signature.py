@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.x509 import load_pem_x509_certificate
 
 from apps.core.utils.security import SecurityValidationError, validate_aws_sns_https_url
-from apps.mail.services.sns_http import SnsHttpError, fetch_sns_https
+from apps.mail.services.sns.http import SnsHttpError, fetch_sns_https
 
 logger = logging.getLogger(__name__)
 

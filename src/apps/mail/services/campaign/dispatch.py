@@ -27,9 +27,9 @@ from apps.core.services.background_jobs import (
 from apps.core.services.helpers.in_process import start_in_process_task
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipientLog
 from apps.mail.services.audience import get_recipients
-from apps.mail.services.campaign_state import campaign_state
-from apps.mail.services.personalize import personalize
-from apps.mail.services.preview import render_email_html
+from apps.mail.services.campaign.personalize import personalize
+from apps.mail.services.campaign.preview import render_email_html
+from apps.mail.services.campaign.state import campaign_state
 from apps.mail.services.send_campaign.runner import (
     _recipient_context,
     _unsubscribe_url_for,
@@ -41,7 +41,7 @@ from apps.mail.services.send_campaign.transport import (
     _get_ses_client,
     _send_via_ses,
 )
-from apps.mail.services.sms_audience import get_sms_recipients
+from apps.mail.services.sms.audience import get_sms_recipients
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ def _start_in_process_sms_campaign(campaign: SmsCampaign, *, sent_by) -> dict[st
 def _run_in_process_sms_campaign(campaign_id, sent_by_id) -> None:
     from django.contrib.auth import get_user_model
 
-    from apps.mail.services.send_sms_campaign import send_sms_campaign
+    from apps.mail.services.sms.sender import send_sms_campaign
 
     try:
         campaign = SmsCampaign.objects.get(pk=campaign_id)

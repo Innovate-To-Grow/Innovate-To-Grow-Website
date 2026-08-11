@@ -129,7 +129,7 @@ class MailSettingsAdminTest(TestCase):
         self.assertContains(response, "Send Test SMS")
         self.assertContains(response, "AWS End User Messaging")
 
-    @patch("apps.mail.admin.settings._send_test_email")
+    @patch("apps.mail.admin.settings.admin._send_test_email")
     def test_test_email_post_uses_active_mail_config(self, mock_send_test_email):
         mock_send_test_email.return_value = "AWS SES"
 
@@ -141,7 +141,7 @@ class MailSettingsAdminTest(TestCase):
         self.assertEqual(mock_send_test_email.call_args.kwargs["config"].pk, self.config.pk)
         self.assertEqual(mock_send_test_email.call_args.kwargs["recipient"], "ops@example.com")
 
-    @patch("apps.mail.admin.settings._send_test_sms")
+    @patch("apps.mail.admin.settings.admin._send_test_sms")
     def test_test_sms_post_uses_notification_delivery_config(self, mock_send_test_sms):
         mock_send_test_sms.return_value = "message (ID: sns-1)"
 
@@ -159,7 +159,7 @@ class MailSettingsAdminTest(TestCase):
 
         self.assertContains(response, "Please provide a recipient email address")
 
-    @patch("apps.mail.admin.settings._send_test_email", side_effect=RuntimeError("SES boom"))
+    @patch("apps.mail.admin.settings.admin._send_test_email", side_effect=RuntimeError("SES boom"))
     def test_test_email_post_reports_send_failure(self, mock_send):
         response = self.client.post(
             reverse("admin:mail_settings_test_email"), {"recipient": "ops@example.com"}, follow=True
@@ -174,7 +174,7 @@ class MailSettingsAdminTest(TestCase):
 
         self.assertContains(response, "Please provide a phone number")
 
-    @patch("apps.mail.admin.settings._send_test_sms", side_effect=RuntimeError("SNS boom"))
+    @patch("apps.mail.admin.settings.admin._send_test_sms", side_effect=RuntimeError("SNS boom"))
     def test_test_sms_post_reports_send_failure(self, mock_send):
         response = self.client.post(
             reverse("admin:mail_settings_test_sms"),
@@ -296,7 +296,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
             ],
         }
 
-    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
     def test_delivery_dashboard_renders_aws_metrics_and_problem_recipients(self, mock_dashboard_data):
         mock_dashboard_data.return_value = self._aws_dashboard_payload()
 
@@ -332,7 +332,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertContains(response, "/admin/mail/delivery-dashboard/data/")
         mock_dashboard_data.assert_called_once_with(days=183)
 
-    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
     def test_delivery_dashboard_renders_selected_window(self, mock_dashboard_data):
         mock_dashboard_data.return_value = self._aws_dashboard_payload(window_days=365)
 
@@ -342,7 +342,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertContains(response, '<option value="365" selected>Last 12 months</option>', html=True)
         mock_dashboard_data.assert_called_once_with(days=365)
 
-    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
     def test_delivery_dashboard_data_returns_aws_payload(self, mock_dashboard_data):
         mock_dashboard_data.return_value = self._aws_dashboard_payload()
 
@@ -373,7 +373,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertIn("Complained", status_labels)
         mock_dashboard_data.assert_called_once_with(days=183)
 
-    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
     def test_delivery_dashboard_data_accepts_allowed_window(self, mock_dashboard_data):
         mock_dashboard_data.side_effect = lambda *, days=183: self._aws_dashboard_payload(window_days=days)
 
@@ -383,7 +383,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.json()["window_days"], 90)
         mock_dashboard_data.assert_called_once_with(days=90)
 
-    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
     def test_delivery_dashboard_data_rejects_unlisted_window(self, mock_dashboard_data):
         mock_dashboard_data.side_effect = lambda *, days=183: self._aws_dashboard_payload(window_days=days)
 

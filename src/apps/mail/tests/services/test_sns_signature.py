@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.x509.oid import NameOID
 from django.test import TestCase
 
-from apps.mail.services import sns_signature
+from apps.mail.services.sns import signature as sns_signature
 from apps.mail.services.sns.signature import SnsVerificationError, verify_sns_message
 
 

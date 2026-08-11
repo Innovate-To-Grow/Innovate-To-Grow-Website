@@ -5,7 +5,7 @@ def _core_handlers():
 
 
 def _mail_handlers():
-    from apps.mail.services import background_jobs
+    from apps.mail.services.campaign import dispatch as background_jobs
 
     return background_jobs
 

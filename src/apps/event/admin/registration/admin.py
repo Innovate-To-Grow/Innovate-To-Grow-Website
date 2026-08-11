@@ -67,7 +67,7 @@ class EventRegistrationAdmin(
         from django.contrib import messages
 
         from apps.mail.models import LoginLinkToken
-        from apps.mail.services.login_links import revoke_login_links
+        from apps.mail.services.tokens.login_links import revoke_login_links
 
         revoked = revoke_login_links(LoginLinkToken.objects.filter(registration__in=queryset))
         self.message_user(request, f"Revoked {revoked} login link(s).", messages.SUCCESS)

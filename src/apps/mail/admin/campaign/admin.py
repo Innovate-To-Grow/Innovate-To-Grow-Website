@@ -54,7 +54,7 @@ class EmailCampaignAdmin(
 
     @admin.action(description="Revoke login links (invalidate emailed sign-in links)")
     def revoke_login_links_action(self, request, queryset):
-        from apps.mail.services.login_links import revoke_login_links
+        from apps.mail.services.tokens.login_links import revoke_login_links
 
         revoked = revoke_login_links(LoginLinkToken.objects.filter(campaign__in=queryset))
         self.message_user(request, f"Revoked {revoked} login link(s).", messages.SUCCESS)
