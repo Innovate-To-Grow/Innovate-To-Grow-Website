@@ -119,10 +119,12 @@ UNFOLD = {
         {
             "models": [
                 "projects.pastprojectssheetconfig",
+                "projects.pastprojectshare",
                 "projects.pastprojectsynclog",
             ],
             "items": [
                 {"title": "Project Resources", "link": "/admin/projects/pastprojectssheetconfig/"},
+                {"title": "Shared Links", "link": "/admin/projects/pastprojectshare/"},
                 {"title": "Project Resource Sync Logs", "link": "/admin/projects/pastprojectsynclog/"},
             ],
         },
