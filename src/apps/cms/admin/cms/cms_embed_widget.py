@@ -9,7 +9,7 @@ from unfold.widgets import UnfoldAdminSelectWidget
 from apps.cms.admin.cms.page_admin.editor import _safe_json
 from apps.cms.app_routes import EMBEDDABLE_APP_ROUTES
 from apps.cms.models import CMSBlock, CMSEmbedWidget, CMSPage
-from apps.cms.services.embed_sections import (
+from apps.cms.services.embed.embed_sections import (
     hidden_section_choices,
     hidden_section_presets_payload,
     normalize_hidden_sections,

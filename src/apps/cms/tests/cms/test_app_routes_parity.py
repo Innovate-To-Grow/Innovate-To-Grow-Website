@@ -18,7 +18,7 @@ from apps.cms.app_routes import (
     PUBLIC_APP_ROUTE_PATTERNS,
     PUBLIC_APP_ROUTES,
 )
-from apps.cms.services.embed_sections import ROUTE_HIDDEN_SECTION_PRESETS
+from apps.cms.services.embed.embed_sections import ROUTE_HIDDEN_SECTION_PRESETS
 
 EMBED_REGISTRY_PATH = (
     Path(settings.BASE_DIR).parent / "pages" / "src" / "features" / "cms" / "components" / "embedAppRoutes.ts"
