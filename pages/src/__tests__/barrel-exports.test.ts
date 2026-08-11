@@ -61,8 +61,8 @@ describe('Component barrel exports', () => {
     expect(mod.ScheduleGrid).toBeDefined();
   });
 
-  it('@/components/ui/SheetsDataTable exports resolve', async () => {
-    const mod = await import('@/components/ui/SheetsDataTable');
+  it('@/components/SheetsDataTable exports resolve', async () => {
+    const mod = await import('@/components/SheetsDataTable');
     expect(mod.SheetsDataTable).toBeDefined();
   });
 });

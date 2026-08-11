@@ -154,6 +154,7 @@ CSS custom properties define the design vocabulary:
 
 ### CSS organization
 
+- `src/components/` — Shared presentational components (SafeHtml, SheetsDataTable)
 - `src/assets/` — Global: tokens, layout, responsive, utilities, rich-content
 - `src/index.css` — Imports shared styles, sets up body and app-layout
 - Component-scoped `.css` files alongside each component

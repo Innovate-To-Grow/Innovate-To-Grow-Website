@@ -92,7 +92,7 @@ def _is_global_path(path: str) -> bool:
         (
             "pages/src/app/",
             "pages/src/assets/",
-            "pages/src/components/ui/",
+            "pages/src/components/",
             "pages/src/hooks/",
             "pages/src/lib/",
             "pages/src/types/",

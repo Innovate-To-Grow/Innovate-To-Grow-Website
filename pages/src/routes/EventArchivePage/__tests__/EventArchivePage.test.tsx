@@ -16,7 +16,7 @@ vi.mock('@/features/events/components/ScheduleGrid', () => ({
   ),
 }));
 
-vi.mock('@/components/ui/SheetsDataTable', () => ({
+vi.mock('@/components/SheetsDataTable', () => ({
   SheetsDataTable: ({rows}: {rows: Array<Record<string, string>>}) => (
     <div data-testid="table-rows">{rows.map((row) => row['Year-Semester']).join('|')}</div>
   ),

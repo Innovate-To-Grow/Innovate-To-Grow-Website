@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
 import { fetchNewsDetail, type NewsArticle } from '@/features/news';
-import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
-import { safeHref } from '@/lib/safeHref';
+import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
+import { safeHref } from '@/lib/security';
 
 export const NewsDetailPage = () => {
   const { id } = useParams<{ id: string }>();
