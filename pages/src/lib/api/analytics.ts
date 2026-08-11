@@ -1,4 +1,4 @@
-import { api } from '@/lib/api-client';
+import { api } from './api-client';
 
 interface PageViewPayload {
   path: string;

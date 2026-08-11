@@ -1,5 +1,5 @@
 import type {ProjectGridRow, ProjectTableRow} from '@/features/projects/api';
-import {formatSemesterLabel} from '@/lib/semester';
+import {formatSemesterLabel} from '@/lib/format';
 
 export type {ProjectGridRow} from '@/features/projects/api';
 

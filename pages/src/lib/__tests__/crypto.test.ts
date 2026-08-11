@@ -4,11 +4,11 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
 }));
 
-vi.mock('@/lib/api-client', () => ({
+vi.mock('@/lib/api', () => ({
   api: {get: mocks.get},
 }));
 
-import {clearKeyCache, fetchPublicKey} from '../crypto';
+import {clearKeyCache, fetchPublicKey} from '../security/crypto';
 
 const FAKE_PEM = '-----BEGIN PUBLIC KEY-----\nMIIBfake\n-----END PUBLIC KEY-----';
 

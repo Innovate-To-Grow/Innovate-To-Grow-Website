@@ -1,4 +1,4 @@
-import { safeHref } from '@/lib/safeHref';
+import { safeHref } from '@/lib/security';
 
 export interface SponsorYearSponsor {
   name: string;

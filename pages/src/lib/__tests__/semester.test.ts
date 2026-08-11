@@ -1,5 +1,5 @@
 import {describe, it, expect} from 'vitest';
-import {formatSemesterLabel} from '../semester';
+import {formatSemesterLabel} from '../format/semester';
 
 describe('formatSemesterLabel', () => {
   it('strips the -1 suffix from spring labels', () => {

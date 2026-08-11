@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {safeHref} from '../safeHref';
+import {safeHref} from '../security/safeHref';
 
 describe('safeHref', () => {
   it('blocks javascript: URLs', () => {

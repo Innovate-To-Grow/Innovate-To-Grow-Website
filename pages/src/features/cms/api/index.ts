@@ -1,4 +1,4 @@
-import { api } from '@/lib/api-client';
+import { api } from '@/lib/api';
 import type {ContactInfoData} from '@/features/cms/components/blocks/content/ContactInfoBlock';
 import type {EmbedData} from '@/features/cms/components/blocks/content/EmbedBlock';
 import type {EmbedWidgetData} from '@/features/cms/components/blocks/content/EmbedWidgetBlock';

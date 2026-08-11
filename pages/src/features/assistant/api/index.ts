@@ -1,6 +1,6 @@
 import {isAxiosError} from 'axios';
 
-import {api} from '@/lib/api-client';
+import {api} from '@/lib/api';
 
 /** A single turn in the chat transcript exchanged with the backend. */
 export interface AssistantChatMessage {

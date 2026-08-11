@@ -19,7 +19,7 @@ const mockIsDefinitiveAuthFailure = vi.hoisted(() =>
   ),
 );
 
-vi.mock('@/lib/api-client', () => ({api: apiMock}));
+vi.mock('@/lib/api', () => ({api: apiMock}));
 vi.mock('@/features/auth', () => ({
   authApi: authApiMock,
   getStoredSession: mockGetStoredSession,

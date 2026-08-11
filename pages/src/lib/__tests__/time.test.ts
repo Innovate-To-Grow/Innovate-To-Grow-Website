@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {addMinutes} from '../time';
+import {addMinutes} from '../format/time';
 
 describe('addMinutes', () => {
   it('adds minutes within the same hour', () => {

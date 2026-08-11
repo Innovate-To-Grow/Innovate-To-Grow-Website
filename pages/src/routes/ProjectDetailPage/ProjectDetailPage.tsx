@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useParams, Link } from 'react-router';
 import { fetchProjectDetail, type ProjectDetail } from '@/features/projects/api';
-import { formatSemesterLabel } from '@/lib/semester';
+import { formatSemesterLabel } from '@/lib/format';
 
 export const ProjectDetailPage = () => {
   const { id } = useParams<{ id: string }>();
