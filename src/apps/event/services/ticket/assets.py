@@ -11,7 +11,7 @@ from pdf417gen import encode, render_image
 
 from apps.event.models import EventRegistration
 
-_TICKET_TOKEN_SALT = "event-ticket-access"
+_TICKET_TOKEN_SALT = "event-ticket-access"  # nosec B105 — signing salt, not a password
 _TICKET_ACCESS_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 
 
