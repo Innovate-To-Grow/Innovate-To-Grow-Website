@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {shouldMountWidget} from '../shouldMountWidget';
+import {shouldMountWidget} from '../utils/shouldMountWidget';
 
 describe('shouldMountWidget', () => {
   it('returns false for the block-preview route', () => {

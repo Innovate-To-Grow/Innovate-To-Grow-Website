@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import type * as SessionStore from '../sessionStore';
+import type * as SessionStore from '../utils/sessionStore';
 
 const SESSION_KEY = 'itg-assistant-session';
 const TRANSCRIPT_KEY = 'itg-assistant-transcript';
@@ -18,7 +18,7 @@ describe('sessionStore', () => {
     // jsdom may lack crypto.randomUUID; provide a deterministic stub.
     vi.stubGlobal('crypto', {randomUUID: () => `uuid-${++uuidCounter}`});
     vi.resetModules();
-    store = await import('../sessionStore');
+    store = await import('../utils/sessionStore');
   });
 
   afterEach(() => {
