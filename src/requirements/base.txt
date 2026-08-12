@@ -26,7 +26,7 @@ gspread>=6.2.1
 
 # AI Runtime
 openai-agents[litellm]>=0.7.0,<1.0
-litellm>=1.83.13,<2.0
+litellm>=1.95.0,<2.0
 
 # Email
 imap-tools>=1.13.0
