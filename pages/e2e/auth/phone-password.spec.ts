@@ -26,6 +26,7 @@ async function stubAccountSideEffects(page: import('@playwright/test').Page) {
   await page.route('**/event/registration-options/**', (route) => route.fulfill(json({detail: 'none'}, 404)));
   await page.route('**/authn/account-emails/', (route) => route.fulfill(json({emails: []})));
   await page.route('**/authn/contact-emails/', (route) => route.fulfill(json([])));
+  await page.route('**/projects/past-shares/mine/', (route) => route.fulfill(json([])));
   await page.route('**/authn/contact-phones/', (route) =>
     route.fulfill(json([{id: 'p-1', phone_number: PHONE, region: '1-US', region_display: 'United States', subscribe: false, verified: true, created_at: '2026-01-01T00:00:00Z'}])),
   );
@@ -103,6 +104,7 @@ test('account with a verified phone can remove its primary email', {tag: '@core'
   await page.route('**/event/registration-options/**', (route) => route.fulfill(json({detail: 'none'}, 404)));
   await page.route('**/authn/account-emails/', (route) => route.fulfill(json({emails: ['primary@example.com']})));
   await page.route('**/authn/contact-emails/', (route) => route.fulfill(json([]))); // list excludes the primary
+  await page.route('**/projects/past-shares/mine/', (route) => route.fulfill(json([])));
   await page.route('**/authn/contact-phones/', (route) =>
     route.fulfill(json([{id: 'p-1', phone_number: PHONE, region: '1-US', region_display: 'United States', subscribe: false, verified: true, created_at: '2026-01-01T00:00:00Z'}])),
   );
