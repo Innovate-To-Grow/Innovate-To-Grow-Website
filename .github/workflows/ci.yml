@@ -623,21 +623,10 @@ jobs:
             --cov-branch \
             --cov-report=term-missing \
             --cov-report=json:coverage-cli.json \
-            --cov-fail-under="${CLI_COVERAGE_LINES}"
-          uv run python - <<'PY'
-          import json
-          import os
-          import sys
-
-          with open("coverage-cli.json", encoding="utf-8") as fh:
-              totals = json.load(fh)["totals"]
-          branches = totals["num_branches"]
-          branch_percent = 100 * totals["covered_branches"] / branches if branches else 100.0
-          floor = float(os.environ["CLI_COVERAGE_BRANCHES"])
-          print(f"CLI branch coverage: {branch_percent:.2f}% (floor {floor:.2f}%)")
-          if branch_percent < floor:
-              sys.exit(1)
-          PY
+            --cov-fail-under=0
+          uv run python ../scripts/ci/check_coverage_totals.py coverage-cli.json \
+            --line-floor "${CLI_COVERAGE_LINES}" \
+            --branch-floor "${CLI_COVERAGE_BRANCHES}"
 
       - name: Upload CLI coverage
         if: ${{ always() }}
