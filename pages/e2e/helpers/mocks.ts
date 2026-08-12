@@ -239,14 +239,32 @@ export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Pro
   await page.route('**/projects/past-all/', (route) => route.fulfill(json(rows)));
 }
 
-export async function mockPastProjectShare(page: Page, share: PastProjectShare): Promise<void> {
+export interface PastProjectShareMockController {
+  patchPayloads: Partial<PastProjectShare>[];
+  deleted: boolean;
+  getCurrent: () => PastProjectShare;
+  replaceCurrent: (share: PastProjectShare) => void;
+}
+
+export async function mockPastProjectShare(
+  page: Page,
+  share: PastProjectShare,
+): Promise<PastProjectShareMockController> {
   let current = {...share};
-  await page.route(/\/projects\/past-shares\/[^/]+\/?(\?.*)?$/, (route) => {
+  const patchPayloads: Partial<PastProjectShare>[] = [];
+  let deleted = false;
+
+  await page.route(/\/projects\/past-shares\/[^/]+\/?(\?.*)?$/, async (route) => {
     const method = route.request().method();
+    if (deleted) {
+      await route.fulfill(json({detail: 'Not found.'}, 404));
+      return;
+    }
     if (method === 'PATCH' || method === 'PUT') {
       const body = (route.request().postDataJSON() ?? {}) as Partial<PastProjectShare>;
+      patchPayloads.push(body);
       if (body.version !== current.version) {
-        route.fulfill(
+        await route.fulfill(
           json(
             {
               code: 'stale_snapshot',
@@ -259,11 +277,27 @@ export async function mockPastProjectShare(page: Page, share: PastProjectShare):
         return;
       }
       current = {...current, ...body, version: current.version + 1};
-      route.fulfill(json(current));
+      await route.fulfill(json(current));
       return;
     }
-    route.fulfill(json(current));
+    if (method === 'DELETE') {
+      deleted = true;
+      await route.fulfill({status: 204});
+      return;
+    }
+    await route.fulfill(json(current));
   });
+
+  return {
+    patchPayloads,
+    get deleted() {
+      return deleted;
+    },
+    getCurrent: () => ({...current}),
+    replaceCurrent: (nextShare) => {
+      current = {...nextShare};
+    },
+  };
 }
 
 export async function mockProjectDetail(

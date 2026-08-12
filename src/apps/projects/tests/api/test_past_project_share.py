@@ -1,14 +1,19 @@
+from unittest.mock import patch
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.projects.models import PastProjectShare, Project, Semester
 from apps.projects.serializers.past_project_share import (
+    DETAILS_TEXT_MAX_LENGTH,
     NOTE_MAX_LENGTH,
     PastProjectShareListSerializer,
     PastProjectShareSerializer,
+    StalePastProjectShareSnapshot,
 )
 
 Member = get_user_model()
@@ -211,6 +216,18 @@ class PastProjectShareAPIViewTests(TestCase):
         share.refresh_from_db()
         self.assertNotIn("<script", share.details_text)
 
+    def test_details_text_at_cap_is_accepted(self):
+        details_text = "x" * DETAILS_TEXT_MAX_LENGTH
+
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(details_text=details_text),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(response.data["details_text"]), DETAILS_TEXT_MAX_LENGTH)
+
     def test_details_text_over_cap_is_rejected(self):
         response = self.client.post(
             "/projects/past-shares/",
@@ -233,6 +250,18 @@ class PastProjectShareAPIViewTests(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertGreater(len(response.data["details_text"]), 100_000)
+
+    def test_note_at_cap_is_accepted(self):
+        note = "x" * NOTE_MAX_LENGTH
+
+        response = self.client.post(
+            "/projects/past-shares/",
+            sample_payload(note=note),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(response.data["note"]), NOTE_MAX_LENGTH)
 
     def test_note_length_validation(self):
         response = self.client.post(
@@ -353,6 +382,14 @@ class PastProjectShareAPIViewTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("rows", response.data)
+
+    def test_create_share_accepts_exactly_1000_rows(self):
+        rows = [sample_row(team_number=f"T{i:03d}") for i in range(1000)]
+
+        response = self.client.post("/projects/past-shares/", sample_payload(rows=rows), format="json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(response.data["rows"]), 1000)
 
     def test_create_share_rejects_more_than_1000_rows(self):
         rows = [sample_row(team_number=f"T{i:03d}") for i in range(1001)]
@@ -708,6 +745,8 @@ class PastProjectShareAPIViewTests(TestCase):
             format="json",
         )
         self.assertEqual(first.status_code, 200)
+        current = self.client.get(f"/projects/past-shares/{share.pk}/")
+        self.assertEqual(current.status_code, 200)
 
         stale = self.client.patch(
             f"/projects/past-shares/{share.pk}/",
@@ -717,8 +756,24 @@ class PastProjectShareAPIViewTests(TestCase):
 
         self.assertEqual(stale.status_code, 409)
         self.assertEqual(stale.data["code"], "stale_snapshot")
-        self.assertEqual(stale.data["current"]["note"], "First edit")
-        self.assertEqual(stale.data["current"]["version"], 2)
+        self.assertEqual(stale.data["current"], current.data)
+
+    @patch("apps.projects.serializers.past_project_share.PastProjectShareSerializer.update")
+    def test_patch_stale_snapshot_deleted_during_update_returns_404(self, mock_update):
+        share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
+
+        def delete_then_raise(*_args, **_kwargs):
+            share.delete()
+            raise StalePastProjectShareSnapshot
+
+        mock_update.side_effect = delete_then_raise
+        response = self.client.patch(
+            f"/projects/past-shares/{share.pk}/",
+            {"note": "Stale edit", "version": share.version},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_patch_other_users_share_returns_404(self):
         other = Member.objects.create_user(password="OtherPass123!", is_active=True)
@@ -757,3 +812,38 @@ class PastProjectShareAPIViewTests(TestCase):
 
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 429)
+
+    @override_settings(
+        REST_FRAMEWORK={
+            **settings.REST_FRAMEWORK,
+            "DEFAULT_THROTTLE_RATES": {
+                **settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"],
+                "past_project_share": "1/minute",
+            },
+        }
+    )
+    def test_create_share_throttle_is_isolated_per_user(self):
+        other = Member.objects.create_user(password="OtherPass123!", is_active=True)
+        other_client = APIClient()
+        other_client.force_authenticate(user=other)
+
+        first = self.client.post("/projects/past-shares/", sample_payload(), format="json")
+        other_first = other_client.post("/projects/past-shares/", sample_payload(), format="json")
+        second = self.client.post(
+            "/projects/past-shares/", sample_payload(rows=[sample_row(team_number="T02")]), format="json"
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(other_first.status_code, 201)
+        self.assertEqual(second.status_code, 429)
+
+    def test_create_share_accepts_real_jwt_access_token(self):
+        client = APIClient()
+        access_token = RefreshToken.for_user(self.member).access_token
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+
+        response = client.post("/projects/past-shares/", sample_payload(), format="json")
+
+        self.assertEqual(response.status_code, 201)
+        share = PastProjectShare.objects.get(pk=response.data["id"])
+        self.assertEqual(share.created_by, self.member)

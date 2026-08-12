@@ -7,67 +7,85 @@ const mockListMyShares = vi.fn();
 const mockDeleteShare = vi.fn();
 
 vi.mock('@/features/projects/api', () => ({
-  listMyShares: () => mockListMyShares(),
-  deleteShare: (id: string) => mockDeleteShare(id),
+    listMyShares: () => mockListMyShares(),
+    deleteShare: (id: string) => mockDeleteShare(id),
 }));
 
 const share = (overrides = {}) => ({
-  id: 'share-1',
-  name: 'Spring finalists',
-  note: '',
-  version: 1,
-  share_url: 'https://example.test/past-projects/share-1',
-  row_count: 3,
-  created_at: '2026-06-05T00:00:00Z',
-  ...overrides,
+    id: 'share-1',
+    name: 'Spring finalists',
+    note: '',
+    version: 1,
+    share_url: 'https://example.test/past-projects/share-1',
+    row_count: 3,
+    created_at: '2026-06-05T00:00:00Z',
+    ...overrides,
 });
 
 describe('MySharedLinksSection', () => {
-  beforeEach(() => {
-    mockListMyShares.mockReset();
-    mockDeleteShare.mockReset();
-  });
+    beforeEach(() => {
+        mockListMyShares.mockReset();
+        mockDeleteShare.mockReset();
+    });
 
-  afterEach(() => {
-    cleanup();
-  });
+    afterEach(() => {
+        cleanup();
+    });
 
-  it('renders the list with open + delete only when the user has shares', async () => {
-    mockListMyShares.mockResolvedValue([share()]);
-    render(<MySharedLinksSection />);
+    it('renders the list with open + delete only when the user has shares', async () => {
+        mockListMyShares.mockResolvedValue([share()]);
+        render(<MySharedLinksSection/>);
 
-    expect(await screen.findByRole('heading', {level: 2, name: 'Past Project Curation Shared Links'})).toBeInTheDocument();
-    expect(await screen.findByText('Spring finalists')).toBeInTheDocument();
-    const openLink = screen.getByRole('link', {name: /open/i});
-    expect(openLink).toHaveAttribute('href', '/past-projects/share-1');
-    expect(openLink).toHaveClass('account-outline-btn');
-    expect(screen.getByRole('link', {name: /view full page/i})).toHaveAttribute(
-      'href',
-      '/account/past-project-curation-shared-links',
-    );
-    expect(screen.queryByRole('button', {name: /copy link/i})).toBeNull();
-    expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
-  });
+        expect(await screen.findByRole('heading', {
+            level: 2,
+            name: 'Past Project Curation Shared Links'
+        })).toBeInTheDocument();
+        expect(await screen.findByText('Spring finalists')).toBeInTheDocument();
+        const openLink = screen.getByRole('link', {name: /open/i});
+        expect(openLink).toHaveAttribute('href', '/past-projects/share-1');
+        expect(openLink).toHaveClass('account-outline-btn');
+        expect(screen.getByRole('link', {name: /view full page/i})).toHaveAttribute(
+            'href',
+            '/account/past-project-curation-shared-links',
+        );
+        expect(screen.queryByRole('button', {name: /copy link/i})).toBeNull();
+        expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
+    });
 
-  it('deletes a share after confirmation and removes it from the list', async () => {
-    mockListMyShares.mockResolvedValue([share()]);
-    mockDeleteShare.mockResolvedValue(undefined);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('deletes a share after confirmation and removes it from the list', async () => {
+        mockListMyShares.mockResolvedValue([share()]);
+        mockDeleteShare.mockResolvedValue(undefined);
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    render(<MySharedLinksSection />);
-    await screen.findByText('Spring finalists');
+        render(<MySharedLinksSection/>);
+        await screen.findByText('Spring finalists');
 
-    fireEvent.click(screen.getByRole('button', {name: /delete/i}));
+        fireEvent.click(screen.getByRole('button', {name: /delete/i}));
 
-    await waitFor(() => expect(mockDeleteShare).toHaveBeenCalledWith('share-1'));
-    await waitFor(() => expect(screen.queryByText('Spring finalists')).toBeNull());
-    confirmSpy.mockRestore();
-  });
+        await waitFor(() => expect(mockDeleteShare).toHaveBeenCalledWith('share-1'));
+        await waitFor(() => expect(screen.queryByText('Spring finalists')).toBeNull());
+        confirmSpy.mockRestore();
+    });
 
-  it('renders nothing when the user has no shares', async () => {
-    mockListMyShares.mockResolvedValue([]);
-    const {container} = render(<MySharedLinksSection />);
+    it('keeps the compact section visible and surfaces a failed deletion', async () => {
+        mockListMyShares.mockResolvedValue([share()]);
+        mockDeleteShare.mockRejectedValue({response: {status: 503, data: {detail: 'Try again later'}}});
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    await waitFor(() => expect(container).toBeEmptyDOMElement());
-  });
+        render(<MySharedLinksSection/>);
+        await screen.findByText('Spring finalists');
+        fireEvent.click(screen.getByRole('button', {name: /delete/i}));
+
+        expect(await screen.findByText('Try again later')).toBeInTheDocument();
+        expect(screen.getByText('Spring finalists')).toBeInTheDocument();
+        expect(screen.getByRole('heading', {name: 'Past Project Curation Shared Links'})).toBeInTheDocument();
+    });
+
+    it('renders nothing when the user has no shares', async () => {
+        mockListMyShares.mockResolvedValue([]);
+        const {container} = render(<MySharedLinksSection/>);
+
+        await waitFor(() => expect(container).toBeEmptyDOMElement());
+    });
+
 });
