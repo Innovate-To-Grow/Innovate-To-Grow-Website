@@ -1226,11 +1226,24 @@ jobs:
           trap cleanup EXIT
 
           docker network create "$network"
+          postgres_image="public.ecr.aws/docker/library/postgres:16"
+          for attempt in {1..5}; do
+            if docker pull "$postgres_image"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Failed to pull $postgres_image after $attempt attempts." >&2
+              exit 1
+            fi
+            delay=$((attempt * 10))
+            echo "PostgreSQL image pull attempt $attempt failed; retrying in ${delay}s." >&2
+            sleep "$delay"
+          done
           docker run -d --name "$postgres" --network "$network" \
             -e POSTGRES_DB=itg_ci \
             -e POSTGRES_USER=itg_ci_user \
             -e POSTGRES_PASSWORD=itg_ci_pass \
-            public.ecr.aws/docker/library/postgres:16
+            "$postgres_image"
 
           for _ in {1..30}; do
             if docker exec "$postgres" pg_isready -U itg_ci_user -d itg_ci >/dev/null 2>&1; then
@@ -1310,7 +1323,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Trivy SARIF to GitHub Security tab
-        if: ${{ github.event_name == 'push' && !cancelled() }}
+        if: ${{ github.event_name == 'push' && steps.trivy-sarif.outcome == 'success' }}
         uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: trivy-results.sarif
@@ -1321,7 +1334,7 @@ jobs:
       # skipping this avoids a second full image scan. The cached DB above keeps
       # this fast when it does run.
       - name: Trivy human-readable table
-        if: ${{ failure() }}
+        if: ${{ steps.trivy-sarif.outcome == 'failure' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
