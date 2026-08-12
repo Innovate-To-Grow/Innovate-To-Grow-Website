@@ -5,6 +5,7 @@ on:
     branches: [main, master]
     paths:
       - "src/**"
+      - "cli/**"
       - "pages/**"
       - "aws/**"
       - "scripts/**"
@@ -21,6 +22,7 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - "cli/**"
       - "pages/**"
       - "aws/**"
       - "scripts/**"
@@ -54,8 +56,9 @@ env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "22.22.2"
   DJANGO_SETTINGS_MODULE: config.settings.test
-  BACKEND_COVERAGE_FAIL_UNDER: "40"
   COVERAGE_VERSION: "7.6.10"
+  CLI_COVERAGE_LINES: "99"
+  CLI_COVERAGE_BRANCHES: "98"
 
 jobs:
   preflight:
@@ -120,6 +123,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      cli: ${{ steps.filter.outputs.cli }}
       archive: ${{ steps.filter.outputs.archive }}
     steps:
       - name: Checkout code
@@ -144,6 +148,7 @@ jobs:
             {
               echo "backend=true"
               echo "frontend=true"
+              echo "cli=true"
               echo "archive=true"
             } >> "$GITHUB_OUTPUT"
             exit 0
@@ -156,14 +161,15 @@ jobs:
             {
               echo "backend=true"
               echo "frontend=true"
+              echo "cli=true"
               echo "archive=false"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "Changed files:"
           git diff --name-only "$BASE_SHA...$HEAD_SHA" | tee "$RUNNER_TEMP/changed-files.txt"
-          # Conservative: err toward running. A .github/** change maps to both
-          # backend and frontend so any workflow edit runs the full suite.
+           # Conservative: err toward running. A .github/** change maps to all
+           # four areas so any workflow edit validates every path-specific job.
           python scripts/ci/plan_changed_areas.py \
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
@@ -445,12 +451,16 @@ jobs:
 
       - name: Run Django tests and enforce per-app coverage
         run: |
-          .venv/bin/coverage run \
+          .venv/bin/coverage run --branch \
             --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test "apps.${{ matrix.app }}"
           .venv/bin/coverage xml -o "coverage-${{ matrix.app }}.xml"
           .venv/bin/coverage json --pretty-print -o "coverage-${{ matrix.app }}.json"
+          .venv/bin/python ../scripts/ci/check_backend_coverage.py \
+            "coverage-${{ matrix.app }}.json" \
+            ../scripts/ci/backend_coverage_floors.json \
+            --app "${{ matrix.app }}"
           .venv/bin/python - <<'PY'
           import json
           import os
@@ -471,7 +481,7 @@ jobs:
                       f"{totals['percent_covered_display']}% |\n"
                   )
           PY
-          .venv/bin/coverage report -m --fail-under="${BACKEND_COVERAGE_FAIL_UNDER}"
+          .venv/bin/coverage report -m
         env:
           APP_UNDER_TEST: ${{ matrix.app }}
 
@@ -581,6 +591,82 @@ jobs:
             src/coverage-cli-admin-safe-orm.xml
             src/coverage-cli-admin-safe-orm.json
           if-no-files-found: warn
+
+  cli-coverage:
+    name: CLI Test and Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.cli == 'true' }}
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        run: python -m pip install "uv==0.9.26"
+
+      - name: Install locked CLI test dependencies
+        run: uv sync --frozen --extra test
+
+      - name: Run CLI tests with branch coverage
+        run: |
+          uv run pytest \
+            --cov=i2g_admin \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=json:coverage-cli.json \
+            --cov-fail-under=0
+          uv run python ../scripts/ci/check_coverage_totals.py coverage-cli.json \
+            --line-floor "${CLI_COVERAGE_LINES}" \
+            --branch-floor "${CLI_COVERAGE_BRANCHES}"
+
+      - name: Upload CLI coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-coverage
+          path: cli/coverage-cli.json
+          if-no-files-found: warn
+
+  cli-required-result:
+    name: CLI Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - cli-coverage
+      - changes
+    if: ${{ always() }}
+    steps:
+      - name: Summarize CLI checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("CLI checks passed or were not required for this run.")
+          PY
 
   frontend-lint:
     name: Frontend ESLint
@@ -778,6 +864,69 @@ jobs:
       - name: Enforce bundle budgets
         run: npm run size
 
+  frontend-chromium-smoke:
+    name: Required Chromium Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - frontend-build
+      - changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    defaults:
+      run:
+        working-directory: pages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: pages/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Download CI frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist-ci
+          path: pages/dist
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start frontend preview
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > ../frontend-required-smoke.log 2>&1 &
+          for _ in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat ../frontend-required-smoke.log
+          exit 1
+
+      - name: Run required Chromium smoke suite
+        env:
+          CI: "true"
+          PW_PROJECT: required-chromium-smoke
+        run: npx playwright test e2e/required-smoke.spec.ts --project=chromium --workers=1 --retries=0
+
+      - name: Upload required smoke diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: required-chromium-smoke-diagnostics
+          path: |
+            frontend-required-smoke.log
+            pages/test-results
+            pages/blob-report
+          if-no-files-found: warn
+
   frontend-security-audit:
     name: Frontend npm Audit
     runs-on: ubuntu-latest
@@ -860,6 +1009,7 @@ jobs:
       - frontend-unit-coverage
       - frontend-build
       - frontend-bundle-size
+      - frontend-chromium-smoke
       - frontend-security-audit
       - frontend-supply-chain-report
       - changes
@@ -1059,6 +1209,73 @@ jobs:
           tags: itg-backend-ci:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Smoke-test backend Docker runtime
+        env:
+          IMAGE: itg-backend-ci:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          network="itg-backend-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          postgres="itg-postgres-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          backend="itg-backend-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker logs "$backend" > backend-docker-smoke.log 2>&1 || true
+            docker rm -f "$backend" "$postgres" >/dev/null 2>&1 || true
+            docker network rm "$network" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker network create "$network"
+          docker run -d --name "$postgres" --network "$network" \
+            -e POSTGRES_DB=itg_ci \
+            -e POSTGRES_USER=itg_ci_user \
+            -e POSTGRES_PASSWORD=itg_ci_pass \
+            public.ecr.aws/docker/library/postgres:16
+
+          for _ in {1..30}; do
+            if docker exec "$postgres" pg_isready -U itg_ci_user -d itg_ci >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          docker exec "$postgres" pg_isready -U itg_ci_user -d itg_ci
+
+          docker run -d --name "$backend" --network "$network" -p 127.0.0.1:8000:8000 \
+            -e DJANGO_SETTINGS_MODULE=config.settings.test \
+            -e DB_NAME=itg_ci \
+            -e DB_USER=itg_ci_user \
+            -e DB_PASSWORD=itg_ci_pass \
+            -e DB_HOST="$postgres" \
+            -e DB_PORT=5432 \
+            -e WEB_CONCURRENCY=1 \
+            "$IMAGE"
+
+          ready=false
+          for _ in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8000/livez/ >/dev/null \
+              && curl --fail --silent http://127.0.0.1:8000/readyz/ >/dev/null; then
+              ready=true
+              break
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' "$backend")" != "true" ]; then
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != "true" ]; then
+            docker logs "$backend"
+            exit 1
+          fi
+          curl --fail --show-error http://127.0.0.1:8000/livez/
+          curl --fail --show-error http://127.0.0.1:8000/readyz/
+
+      - name: Upload backend runtime smoke logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-docker-smoke-logs
+          path: backend-docker-smoke.log
+          if-no-files-found: warn
 
       # Persist Trivy's vulnerability DB across runs so the scan below doesn't
       # re-pull it from the registry on every CI run. Both Trivy steps point at
@@ -1710,7 +1927,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run the static-site smoke suite
-        run: pytest
+        run: python -m pytest tests
 
   archive-required-result:
     name: Archive Required Result
@@ -1757,6 +1974,7 @@ jobs:
       - supply-chain-result
       - deploy-artifact-result
       - archive-required-result
+      - cli-required-result
     if: ${{ always() }}
     steps:
       - name: Summarize required jobs

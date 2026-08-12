@@ -1,0 +1,12 @@
+{
+  "apps": {
+    "authn": {"line": 96, "branch": 40},
+    "core": {"line": 94, "branch": 40},
+    "system_intelligence": {"line": 94, "branch": 40},
+    "cms": {"line": 95, "branch": 40},
+    "event": {"line": 96, "branch": 40},
+    "projects": {"line": 94, "branch": 40},
+    "mail": {"line": 95, "branch": 40},
+    "cli_admin": {"line": 99, "branch": 40}
+  }
+}

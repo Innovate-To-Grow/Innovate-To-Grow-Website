@@ -35,6 +35,7 @@ where = ["src"]
 [tool.coverage.run]
 source = ["i2g_admin"]
 omit = ["*/tests/*"]
+branch = true
 
 [tool.coverage.report]
 exclude_lines = [
