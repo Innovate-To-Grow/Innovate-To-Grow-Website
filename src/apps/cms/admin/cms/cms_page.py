@@ -16,8 +16,8 @@ from apps.cms.admin.cms.page_admin.editor import (
 )
 from apps.cms.admin.cms.page_admin.import_export import export_pages_response, render_json_import
 from apps.cms.models import CMSPage
-from apps.cms.services.page_routes import apply_page_route_change
-from apps.cms.services.route_redirects import page_route_conflicts
+from apps.cms.services.routing.page_routes import apply_page_route_change
+from apps.cms.services.routing.route_redirects import page_route_conflicts
 from apps.core.admin import BaseModelAdmin
 
 logger = logging.getLogger(__name__)

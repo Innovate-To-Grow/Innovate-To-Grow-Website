@@ -1,4 +1,4 @@
-from ..preview import HTML_MARKER
+from ..campaign.preview import HTML_MARKER
 from .messages import redact_login_link_urls
 
 

@@ -6,7 +6,7 @@ from io import BytesIO
 from django.test import TestCase
 from django.utils import timezone
 
-from apps.authn.services.import_members.parsing import (
+from apps.authn.services.members.import_.parsing import (
     clean_phone,
     generate_random_password,
     normalize_header,
@@ -14,7 +14,7 @@ from apps.authn.services.import_members.parsing import (
     parse_date,
     parse_row,
 )
-from apps.authn.services.import_members.template import generate_template_excel
+from apps.authn.services.members.import_.template import generate_template_excel
 
 try:
     from openpyxl import load_workbook

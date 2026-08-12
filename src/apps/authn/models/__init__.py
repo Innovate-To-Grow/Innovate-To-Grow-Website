@@ -5,8 +5,7 @@ Aggregates commonly used models so callers can import from `authn.models`.
 """
 
 from .contact import ContactEmail, ContactPhone
-from .member_sheet_sync_config import MemberSheetSyncConfig
-from .member_sheet_sync_log import MemberSheetSyncLog
+from .member_sheet_sync import MemberSheetSyncConfig, MemberSheetSyncLog
 from .members import AdminInvitation, Member
 from .security import EmailAuthChallenge, ImpersonationToken, PhoneVerificationChallenge, RSAKeypair
 

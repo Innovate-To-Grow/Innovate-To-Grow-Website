@@ -35,7 +35,7 @@ class TicketEmailAdminMixin:
         self._send_ticket_email_batch(request, queryset)
 
     def _send_ticket_email_registration(self, request, registration, *, show_success=True):
-        from apps.event.services.ticket_mail import send_ticket_email
+        from apps.event.services.ticket.mail import send_ticket_email
 
         try:
             send_ticket_email(registration)

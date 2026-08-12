@@ -69,7 +69,7 @@ Rate limits are applied per-view, not globally. Active throttle classes:
 | `PhoneCodeRequestThrottle` | 5/min | Authenticated contact-phone/password-change SMS requests |
 | `EmailCodeUserRequestThrottle` | 5/min | Authenticated email verification requests |
 | `ContactEmailCreateThrottle` | 5/hour | Contact email creation |
-| `PastProjectShareThrottle` | 10/min | Project sharing |
+| `PastProjectShareRateThrottle` | 10/min | Project sharing |
 
 ### Base URL
 

@@ -1,6 +1,6 @@
 from rest_framework.response import Response
 
-from ..throttles import CliReadThrottle
+from ..auth.throttles import CliReadThrottle
 from .base import AdminAPIView
 
 

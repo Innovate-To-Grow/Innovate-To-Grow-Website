@@ -35,7 +35,7 @@ class RSAKeypair(ProjectControlModel):
     @property
     def decrypted_private_key_pem(self) -> str:
         """Return the plaintext private key PEM, decrypting if stored encrypted."""
-        from apps.authn.services.key_encryption import decrypt_pem
+        from apps.authn.services.security.key_encryption import decrypt_pem
 
         return decrypt_pem(self.private_key_pem)
 
@@ -80,7 +80,7 @@ class RSAKeypair(ProjectControlModel):
         """
         Auto-generate keys if not provided, and encrypt the private key at rest.
         """
-        from apps.authn.services.key_encryption import encrypt_pem, is_encrypted
+        from apps.authn.services.security.key_encryption import encrypt_pem, is_encrypted
 
         if not self.public_key_pem or not self.private_key_pem:
             self.public_key_pem, self.private_key_pem = self.generate_keypair()

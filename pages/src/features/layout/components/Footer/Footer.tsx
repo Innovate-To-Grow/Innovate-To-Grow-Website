@@ -3,8 +3,8 @@ import {
   type FooterLink,
   type FooterSocialLink,
 } from '@/features/layout/api';
-import { safeHref } from '@/lib/safeHref';
-import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
+import { safeHref } from '@/lib/security';
+import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
 import { useFooter } from '../LayoutProvider/context';
 
 const buttonColor = (style?: FooterCTAButton['style']) => (style === 'gold' ? 'gold' : 'blue');

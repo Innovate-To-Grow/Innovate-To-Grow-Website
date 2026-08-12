@@ -15,7 +15,7 @@ from django.http import HttpResponse
 from django.test import Client, RequestFactory, TestCase, override_settings
 
 from apps.cms.models import CMSEmbedAllowedHost
-from apps.cms.services.embed_hosts import invalidate_cache
+from apps.cms.services.sanitization.embed_hosts import invalidate_cache
 from apps.core.middleware import ContentSecurityPolicyMiddleware, csp_report
 
 
@@ -321,7 +321,7 @@ class CSPReportEndpointTests(TestCase):
                 }
             }
         )
-        with patch("apps.core.middleware.logger.warning") as warn:
+        with patch("apps.core.middleware.csp_report.logger.warning") as warn:
             response = self._post(body)
         self.assertEqual(response.status_code, 204)
         warn.assert_called_once()
@@ -344,7 +344,7 @@ class CSPReportEndpointTests(TestCase):
             }
         )
 
-        with patch("apps.core.middleware.logger.warning") as warn:
+        with patch("apps.core.middleware.csp_report.logger.warning") as warn:
             response = self._post(body)
 
         self.assertEqual(response.status_code, 204)
@@ -354,27 +354,27 @@ class CSPReportEndpointTests(TestCase):
 
     def test_falls_back_to_effective_directive(self):
         body = json.dumps({"csp-report": {"effective-directive": "img-src"}})
-        with patch("apps.core.middleware.logger.warning") as warn:
+        with patch("apps.core.middleware.csp_report.logger.warning") as warn:
             response = self._post(body)
         self.assertEqual(response.status_code, 204)
         self.assertIn("img-src", warn.call_args.args)
 
     def test_unparseable_body_returns_204_and_warns(self):
-        with patch("apps.core.middleware.logger.warning") as warn:
+        with patch("apps.core.middleware.csp_report.logger.warning") as warn:
             response = self._post(b"\xff\xfe not json", content_type="application/json")
         self.assertEqual(response.status_code, 204)
         self.assertIn("unparseable body", warn.call_args.args[0])
 
     def test_missing_csp_report_object_returns_204(self):
         body = json.dumps({"something-else": True})
-        with patch("apps.core.middleware.logger.warning") as warn:
+        with patch("apps.core.middleware.csp_report.logger.warning") as warn:
             response = self._post(body)
         self.assertEqual(response.status_code, 204)
         self.assertIn("missing 'csp-report' object", warn.call_args.args[0])
 
     def test_non_dict_payload_returns_204(self):
         body = json.dumps(["not", "a", "dict"])
-        with patch("apps.core.middleware.logger.warning") as warn:
+        with patch("apps.core.middleware.csp_report.logger.warning") as warn:
             response = self._post(body)
         self.assertEqual(response.status_code, 204)
         self.assertIn("missing 'csp-report' object", warn.call_args.args[0])
@@ -383,8 +383,8 @@ class CSPReportEndpointTests(TestCase):
         # Force an exception after parsing by making .get raise via a bad object.
         request = self.factory.post("/csp-report/", data="{}", content_type="application/json")
         with (
-            patch("apps.core.middleware.json.loads", side_effect=RuntimeError("boom")),
-            patch("apps.core.middleware.logger.exception") as exc_log,
+            patch("apps.core.middleware.csp_report.json.loads", side_effect=RuntimeError("boom")),
+            patch("apps.core.middleware.csp_report.logger.exception") as exc_log,
         ):
             response = csp_report(request)
         self.assertEqual(response.status_code, 204)
@@ -399,7 +399,7 @@ class CSPReportEndpointTests(TestCase):
     @override_settings(CSP_REPORT_RATE_LIMIT=1, CSP_REPORT_RATE_WINDOW_SECONDS=60)
     def test_reports_are_rate_limited_without_logging_attacker_content(self):
         body = json.dumps({"csp-report": {"effective-directive": "img-src"}})
-        with patch("apps.core.middleware.logger.warning") as warn:
+        with patch("apps.core.middleware.csp_report.logger.warning") as warn:
             first = self._post(body)
             second = self._post(body)
 

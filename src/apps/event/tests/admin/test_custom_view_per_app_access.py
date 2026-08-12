@@ -2,7 +2,7 @@
 
 Custom admin URLs registered via ``self.admin_site.admin_view(...)`` are gated by
 Django only on ``is_staff``/``is_active`` — the per-app access model
-(``apps.core.access.user_can_access_app`` via ``BaseModelAdmin`` permission hooks)
+(``apps.core.utils.access.user_can_access_app`` via ``BaseModelAdmin`` permission hooks)
 is NOT run for them. Each of these views therefore re-checks event-app access at
 entry and raises ``PermissionDenied`` (rendered as HTTP 403 by the test client).
 
@@ -59,7 +59,7 @@ class EventCustomViewPerAppAccessTest(TestCase):
         self.assertEqual(self.client.post(url).status_code, 403)
         self.assertEqual(self.client.get(url).status_code, 403)
 
-    @patch("apps.event.admin.current_project.sync_schedule")
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
     def test_pull_view_allowed_for_event_staff(self, _mock_sync):
         self.client.force_login(self.event_staff)
         resp = self.client.post(reverse("admin:event_currentprojectschedule_pull"))
@@ -88,7 +88,7 @@ class EventCustomViewPerAppAccessTest(TestCase):
         self.assertEqual(self.client.get(url).status_code, 403)
         self.assertEqual(self.client.post(url, {}).status_code, 403)
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_send_all_ticket_emails_allowed_for_event_staff(self, _mock_send):
         self.client.force_login(self.event_staff)
         resp = self.client.get(reverse("admin:event_eventregistration_send_all_ticket_emails"))

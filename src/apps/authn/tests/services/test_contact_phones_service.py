@@ -15,7 +15,7 @@ from apps.authn.services.contacts.contact_phones import (
     request_phone_verification,
     verify_phone_code,
 )
-from apps.authn.services.email_challenges import AuthChallengeInvalid
+from apps.authn.services.email.challenges import AuthChallengeInvalid
 
 Member = get_user_model()
 

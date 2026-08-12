@@ -8,8 +8,8 @@ from rest_framework.views import APIView
 
 from apps.core.services.db_tools.safe_orm import ActionRequestError
 
-from ..authentication import CliTokenAuthentication
-from ..permissions import IsActiveStaff
+from ..auth.authentication import CliTokenAuthentication
+from ..auth.permissions import IsActiveStaff
 from ..services.crud import StaleSnapshotError
 from ..services.resolve import CliAppAccessDenied
 

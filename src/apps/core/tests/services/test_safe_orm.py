@@ -170,7 +170,7 @@ class RecordsTests(TestCase):
 
     def test_check_model_permission(self):
         # Non-staff and staff-without-the-app are denied; superuser and staff granted
-        # the model's app ("projects") are allowed. See apps.core.access.user_can_access_app.
+        # the model's app ("projects") are allowed. See apps.core.utils.access.user_can_access_app.
         with self.assertRaises(PermissionDenied):
             check_model_permission(make_member(email="np@example.com"), Semester, "change")
         with self.assertRaises(PermissionDenied):

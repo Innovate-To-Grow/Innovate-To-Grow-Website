@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.core.models import ProjectControlModel
 
-from ..constants import AUTH_CODE_TTL
+from ..auth.constants import AUTH_CODE_TTL
 
 
 def default_auth_code_expiry():

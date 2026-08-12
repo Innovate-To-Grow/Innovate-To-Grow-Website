@@ -2,7 +2,7 @@ import datetime
 
 from django.test import TestCase
 
-from apps.event.services.calendar import build_google_calendar_url, generate_ics
+from apps.event.services.ticket.calendar import build_google_calendar_url, generate_ics
 
 
 class GenerateIcsTest(TestCase):

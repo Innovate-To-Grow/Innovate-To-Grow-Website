@@ -14,7 +14,7 @@ from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from apps.mail.services.ses_events import SesEventError, process_sns_envelope
-from apps.mail.services.sns_signature import SnsVerificationError, verify_sns_message
+from apps.mail.services.sns.signature import SnsVerificationError, verify_sns_message
 
 logger = logging.getLogger(__name__)
 

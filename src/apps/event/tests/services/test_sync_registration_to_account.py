@@ -4,7 +4,7 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from apps.authn.models import ContactPhone
-from apps.event.services.sync_registration_to_account import sync_name_to_account, sync_phone_to_account
+from apps.event.services.registration.sync_account import sync_name_to_account, sync_phone_to_account
 from apps.event.tests.helpers import make_member
 
 
@@ -90,7 +90,7 @@ class SyncPhoneToAccountTest(TestCase):
         self.assertEqual(ContactPhone.objects.filter(member=self.member).count(), 0)
         self.assertEqual(ContactPhone.objects.get(phone_number="2095551234").member, other)
 
-    @patch("apps.event.services.sync_registration_to_account.ContactPhone.objects.create")
+    @patch("apps.event.services.registration.sync_account.ContactPhone.objects.create")
     def test_integrity_error_swallowed(self, mock_create):
         mock_create.side_effect = IntegrityError("duplicate")
         sync_phone_to_account(self.member, "+12095559999")

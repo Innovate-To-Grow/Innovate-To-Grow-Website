@@ -14,14 +14,13 @@ Subsystem               What it is                                          Impo
 ``background_jobs/``    Durable outbox: queue, worker, retry, rate limit     ``authn``, ``cms``, ``event``, ``mail``
 ``bedrock/``            Amazon Bedrock LLM client (converse + streaming)     ``mail``, ``projects``, ``system_intelligence``
 ``db_tools/``           Read-only ORM sandbox exposed as AI assistant tools  ``cli_admin``, ``system_intelligence``
-``in_process.py``       Non-blocking fallback for deployments with no worker ``authn``, ``event``, ``mail``
-``sheets_safety.py``    Spreadsheet/CSV formula-injection neutralization     ``authn``, ``event``, ``system_intelligence``
+``helpers/``            In-process task runner + sheet formula safety       ``authn``, ``event``, ``mail``, ``system_intelligence``
 ======================  ==================================================  ==================================================
 
 Extracting ``background_jobs``, ``bedrock`` and ``db_tools`` into their own apps
 would be a cleaner layering, but it needs new Django app labels — and app labels
 are stored **in the database** (``Member.admin_apps``, read by
-``apps.core.access``), so it requires a data migration. See
+``apps.core.utils.access``), so it requires a data migration. See
 ``docs/architecture/repository-structure.md`` for the deferred plan.
 
 Structure limits are enforced by

@@ -2,7 +2,7 @@ import {useState, useCallback, useMemo} from 'react';
 import {useParams, Link} from 'react-router';
 import {usePastProjectsData} from '@/features/projects/hooks/usePastProjectsData';
 import {ScheduleGrid} from '@/features/events/components/ScheduleGrid';
-import {SheetsDataTable} from '@/components/ui/SheetsDataTable';
+import {SheetsDataTable} from '@/components/SheetsDataTable';
 import {EVENT_CONFIGS} from './eventConfigs';
 
 export const EventArchivePage = () => {

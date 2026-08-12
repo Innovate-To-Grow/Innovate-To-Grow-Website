@@ -157,7 +157,7 @@ class RunBackgroundWorkerStartupTests(SimpleTestCase):
     @override_settings(BACKGROUND_JOBS_ENABLED=False, AMPLIFY_APP_ID="app-123")
     def test_startup_reconciliation_respects_background_jobs_rollout_flag(self):
         with patch(
-            "apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync",
+            "apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync",
         ) as schedule:
             self.assertFalse(run_background_worker.schedule_startup_reconciliation())
 
@@ -166,7 +166,7 @@ class RunBackgroundWorkerStartupTests(SimpleTestCase):
     @override_settings(BACKGROUND_JOBS_ENABLED=True, AMPLIFY_APP_ID="")
     def test_startup_reconciliation_requires_amplify_app(self):
         with patch(
-            "apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync",
+            "apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync",
         ) as schedule:
             self.assertFalse(run_background_worker.schedule_startup_reconciliation())
 
@@ -175,7 +175,7 @@ class RunBackgroundWorkerStartupTests(SimpleTestCase):
     @override_settings(BACKGROUND_JOBS_ENABLED=True, AMPLIFY_APP_ID="app-123")
     def test_startup_reconciliation_is_immediate(self):
         with patch(
-            "apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync",
+            "apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync",
             return_value=SimpleNamespace(pk=1),
         ) as schedule:
             with self.assertLogs(run_background_worker.logger, level="INFO"):
@@ -186,7 +186,7 @@ class RunBackgroundWorkerStartupTests(SimpleTestCase):
     @override_settings(BACKGROUND_JOBS_ENABLED=True, AMPLIFY_APP_ID="app-123")
     def test_startup_reconciliation_failure_does_not_stop_worker(self):
         with patch(
-            "apps.cms.services.amplify_redirects.schedule_amplify_redirect_sync",
+            "apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync",
             side_effect=RuntimeError("provider unavailable"),
         ):
             with self.assertLogs(run_background_worker.logger, level="ERROR"):

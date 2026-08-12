@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.authn.services.member_sheet_sync import MemberSyncError, sync_members_to_sheet
+from apps.authn.services.members.sheet_sync import MemberSyncError, sync_members_to_sheet
 
 
 class Command(BaseCommand):

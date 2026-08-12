@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.core.models import ProjectControlModel
 
-from ..constants import ACCESS_TOKEN_TTL
+from ..auth.constants import ACCESS_TOKEN_TTL
 
 # Record last_used_at at most this often to avoid a DB write on every request.
 LAST_USED_THROTTLE_SECONDS = 300

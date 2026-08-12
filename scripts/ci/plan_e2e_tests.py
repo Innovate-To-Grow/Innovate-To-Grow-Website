@@ -8,10 +8,9 @@ import json
 import re
 import shlex
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
-
 
 FULL_PROJECTS = [
     "chromium",
@@ -91,8 +90,8 @@ def _is_global_path(path: str) -> bool:
     return path.startswith(
         (
             "pages/src/app/",
-            "pages/src/assets/styles/shared/",
-            "pages/src/components/ui/",
+            "pages/src/assets/",
+            "pages/src/components/",
             "pages/src/hooks/",
             "pages/src/lib/",
             "pages/src/types/",

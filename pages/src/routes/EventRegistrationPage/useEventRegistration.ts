@@ -12,7 +12,7 @@ import {
   type EventRegistrationSummary,
   type Registration,
 } from '@/features/events/api';
-import {maxPhoneDigits, validatePhoneDigits} from '@/lib/phoneRegions';
+import {maxPhoneDigits, validatePhoneDigits} from '@/lib/format';
 import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
 import {buildCompleteProfilePath} from '@/features/auth/api/redirects';
 import {identifyLoginInput} from '@/features/auth/components/sections/internal/identifyLoginInput';

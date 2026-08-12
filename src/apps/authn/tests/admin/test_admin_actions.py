@@ -13,15 +13,11 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase, override_settings
 
-from apps.authn.admin.member_sheet_sync import (
-    MemberSheetSyncConfigAdmin,
-    MemberSheetSyncLogAdmin,
-)
 from apps.authn.admin.members.contact.email import ContactEmailAdmin, ContactEmailAdminForm
 from apps.authn.admin.members.contact.phone import ContactPhoneAdmin
 from apps.authn.admin.members.invitation import AdminInvitationAdmin
 from apps.authn.admin.members.member import MemberAdmin
-from apps.authn.admin.security.security import RSAKeypairAdmin
+from apps.authn.admin.security import RSAKeypairAdmin
 from apps.authn.models import (
     AdminInvitation,
     ContactEmail,
@@ -29,6 +25,10 @@ from apps.authn.models import (
     MemberSheetSyncConfig,
     MemberSheetSyncLog,
     RSAKeypair,
+)
+from apps.authn.services.members.sheet_sync.admin import (
+    MemberSheetSyncConfigAdmin,
+    MemberSheetSyncLogAdmin,
 )
 
 Member = get_user_model()
@@ -103,14 +103,14 @@ class MemberAdminActionTests(_AdminTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response["Content-Type"].startswith("text/vcard"))
 
-    @patch("apps.authn.services.member_sheet_sync.sync_members_to_sheet", return_value=7)
+    @patch("apps.authn.services.members.sheet_sync.sync_members_to_sheet", return_value=7)
     def test_sync_all_members_to_sheet_success(self, mock_sync):
         request = _request(self.rf, self.admin_user)
         self.model_admin.sync_all_members_to_sheet(request, Member.objects.all())
         self.assertIn("Synced 7 members to Google Sheet.", self._messages(request))
 
     @patch(
-        "apps.authn.services.member_sheet_sync.sync_members_to_sheet",
+        "apps.authn.services.members.sheet_sync.sync_members_to_sheet",
         side_effect=RuntimeError("sheets down"),
     )
     def test_sync_all_members_to_sheet_failure(self, mock_sync):
@@ -150,7 +150,7 @@ class MemberAdminActionTests(_AdminTestBase):
     def test_download_template_view_import_error(self):
         request = _request(self.rf, self.admin_user)
         with patch(
-            "apps.authn.services.import_members.generate_template_excel",
+            "apps.authn.services.members.import_.generate_template_excel",
             side_effect=ImportError("openpyxl missing"),
         ):
             response = self.model_admin.download_template_view(request)

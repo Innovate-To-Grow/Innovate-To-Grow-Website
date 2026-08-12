@@ -5,13 +5,13 @@ def _core_handlers():
 
 
 def _mail_handlers():
-    from apps.mail.services import background_jobs
+    from apps.mail.services.campaign import dispatch as background_jobs
 
     return background_jobs
 
 
 def _cms_handlers():
-    from apps.cms.services import amplify_redirects
+    from apps.cms.services.amplify import amplify_redirects
 
     return amplify_redirects
 

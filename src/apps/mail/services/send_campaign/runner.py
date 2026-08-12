@@ -5,13 +5,13 @@ from django.utils import timezone
 
 from apps.core.models import EmailServiceConfig
 from apps.mail.models import RecipientLog
-from apps.mail.services.campaign_state import campaign_state
-from apps.mail.services.login_links import issue_login_link
+from apps.mail.services.campaign.state import campaign_state
+from apps.mail.services.tokens.login_links import issue_login_link
 
 from ..audience import get_recipients
-from ..personalize import personalize
-from ..preview import render_email_html
-from ..unsubscribe_token import build_oneclick_unsubscribe_url
+from ..campaign.personalize import personalize
+from ..campaign.preview import render_email_html
+from ..tokens.unsubscribe import build_oneclick_unsubscribe_url
 from .transport import SesSendResult, _get_configuration_set_name, _get_ses_client, _send_via_ses
 
 logger = logging.getLogger(__name__)

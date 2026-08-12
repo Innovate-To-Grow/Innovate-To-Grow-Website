@@ -40,7 +40,7 @@ def make_superuser(email="admin@example.com"):
 def make_admin(*, apps, email="appadmin@example.com", **kwargs):
     """Create an app-scoped staff member (is_staff=True, not a superuser) granted ``apps``.
 
-    Use for testing per-app admin/CLI access (see apps.core.access.user_can_access_app).
+    Use for testing per-app admin/CLI access (see apps.core.utils.access.user_can_access_app).
     ``apps`` is a list of app labels, e.g. ["cms", "event"].
     """
     kwargs.setdefault("is_staff", True)

@@ -9,7 +9,7 @@ from django.urls import path, reverse
 from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget, UnfoldAdminTextInputWidget
 
 from apps.cms.models import RouteRedirect
-from apps.cms.services.route_redirects import destination_route_choices, redirect_mapping_conflicts
+from apps.cms.services.routing.route_redirects import destination_route_choices, redirect_mapping_conflicts
 from apps.core.admin import BaseModelAdmin
 
 
@@ -202,7 +202,7 @@ class RouteRedirectAdmin(BaseModelAdmin):
             edge_sync_error="",
         )
 
-        from apps.cms.services.amplify_redirects import schedule_amplify_redirect_sync
+        from apps.cms.services.amplify.amplify_redirects import schedule_amplify_redirect_sync
 
         job = schedule_amplify_redirect_sync(immediate=True, redirect_ids=redirect_ids)
         if job is None:

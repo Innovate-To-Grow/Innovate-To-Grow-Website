@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from apps.core.services.in_process import start_in_process_task
+from apps.core.services.helpers.in_process import start_in_process_task
 from apps.event.services.registration_sheet_sync import schedule_registration_sync
 
 INITIAL_TICKET_START_ERROR = "Ticket email could not be started. Check server logs for details."
@@ -56,7 +56,7 @@ def _start_ticket_email_in_process(registration_id) -> None:
 def _send_ticket_email_in_process(registration_id) -> None:
     import apps.event.views.registration as registration_api
     from apps.event.models import EventRegistration
-    from apps.event.services.ticket_mail import send_ticket_email
+    from apps.event.services.ticket.mail import send_ticket_email
 
     try:
         registration = EventRegistration.objects.select_related("event", "ticket", "member").get(pk=registration_id)

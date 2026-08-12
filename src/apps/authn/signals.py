@@ -17,7 +17,7 @@ from .models import ContactEmail, ContactPhone, Member
 
 
 def _schedule():
-    from .services.member_sheet_sync import schedule_member_sync
+    from .services.members.sheet_sync import schedule_member_sync
 
     schedule_member_sync()
 

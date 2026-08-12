@@ -5,7 +5,6 @@ from django.db import DataError
 from rest_framework import status
 from rest_framework.response import Response
 
-from apps.core.services.db_tools.helpers import MAX_ROWS
 from apps.core.services.db_tools.safe_orm import (
     ActionRequestError,
     field_output_name,
@@ -15,11 +14,12 @@ from apps.core.services.db_tools.safe_orm import (
     validate_query_key,
     validate_selected_fields,
 )
+from apps.core.services.db_tools.tool_modules.helpers import MAX_ROWS
 
+from ..auth.throttles import CliReadThrottle, CliWriteThrottle
 from ..services.audit import write_audit
 from ..services.crud import cli_create, cli_delete, cli_update
 from ..services.resolve import cli_get_object, resolve_cli_model
-from ..throttles import CliReadThrottle, CliWriteThrottle
 from .base import AdminAPIView
 from .helpers import client_ip
 

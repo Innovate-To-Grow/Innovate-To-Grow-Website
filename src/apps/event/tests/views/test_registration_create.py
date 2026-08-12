@@ -101,7 +101,7 @@ class EventRegistrationCreateViewTest(TestCase):
         "apps.event.views.registration.create_support.notifications.start_in_process_task",
         side_effect=lambda target, *args, **_kwargs: target(*args),
     )
-    @patch("apps.event.services.ticket_mail.send_ticket_email", side_effect=Exception("SMTP error"))
+    @patch("apps.event.services.ticket.mail.send_ticket_email", side_effect=Exception("SMTP error"))
     def test_ticket_email_failure_logs_stack_trace_and_still_registers(self, _mock_send, start_task):
         with patch("apps.event.views.registration.logger.warning") as warning:
             with self.captureOnCommitCallbacks(execute=True):
@@ -113,11 +113,11 @@ class EventRegistrationCreateViewTest(TestCase):
         warning.assert_called_once_with("Failed to send initial ticket email", exc_info=True)
 
     @override_settings(BACKGROUND_JOBS_ENABLED=False)
-    @patch("apps.core.services.in_process.threading.Thread")
+    @patch("apps.core.services.helpers.in_process.threading.Thread")
     def test_ticket_thread_start_failure_does_not_break_committed_registration(self, thread_class):
         thread_class.return_value.start.side_effect = RuntimeError("can't start new thread")
 
-        with self.assertLogs("apps.core.services.in_process", level="ERROR"):
+        with self.assertLogs("apps.core.services.helpers.in_process", level="ERROR"):
             with self.captureOnCommitCallbacks(execute=True):
                 response = self._post()
 
@@ -352,7 +352,7 @@ class EventRegistrationCreateViewTest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "Please verify your phone number before completing registration.")
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_account_verified_phone_accepted_without_sms_session_cache(self, _mock_ticket_email):
         """Pre-filled verified phone from profile must work without re-running SMS for this session."""
         self.event.collect_phone = True

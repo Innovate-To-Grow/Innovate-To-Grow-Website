@@ -124,7 +124,7 @@ The current security/configuration rollout must preserve these app-local depende
 | `authn` | `0015` → `0016` → `0017_auth_security_invariants` |
 | `core` | `0027_backgroundjob` → `0028_active_config_invariants` → `0029_deliveryratelimit` |
 | `event` | `0009_registration_sheet_sync_audit` → `0010_active_schedule_invariant` |
-| `projects` | `0008_pastprojectshare_version` → `0009_active_sheet_config_invariant` |
+| `projects` | `0007_project_resource_admin_names` → `0009_active_sheet_config_invariant` |
 | `system_intelligence` | `0005_active_config_invariant` → `0006_public_assistant_input_limits` |
 
 Inspect the graph and plan first:
@@ -200,7 +200,7 @@ intentionally fails closed.
 - If no active row exists, requesting `/authn/public-key/` creates one. The equivalent controlled recovery command is:
 
   ```bash
-  python manage.py shell -c "from apps.authn.services.rsa_manager import get_or_create_auth_keypair; key = get_or_create_auth_keypair(); print({'key_id': str(key.key_id), 'created': key.created_at.isoformat()})"
+  python manage.py shell -c "from apps.authn.services.security.rsa_manager import get_or_create_auth_keypair; key = get_or_create_auth_keypair(); print({'key_id': str(key.key_id), 'created': key.created_at.isoformat()})"
   ```
 
 - If private-key decryption began failing after `DJANGO_SECRET_KEY` changed,

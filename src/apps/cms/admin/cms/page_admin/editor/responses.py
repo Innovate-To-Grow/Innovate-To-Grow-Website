@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.utils import timezone
 
-from apps.cms.services.route_redirects import normalize_and_validate_cms_page_route, page_route_conflicts
+from apps.cms.services.routing.route_redirects import normalize_and_validate_cms_page_route, page_route_conflicts
 
 # Compatibility hook retained for tests and callers that patch the editor's
 # route validator.  The implementation now delegates to the shared domain

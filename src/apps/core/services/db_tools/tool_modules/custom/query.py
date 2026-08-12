@@ -3,7 +3,7 @@ from datetime import datetime
 
 from django.apps import apps as django_apps
 
-from ...helpers import MAX_ROWS, _serialize_rows, _truncate
+from ..helpers import MAX_ROWS, _serialize_rows, _truncate
 from .allowlist import ALLOWED_QUERY_FIELDS, MODEL_MAP, SAFE_LOOKUPS
 
 

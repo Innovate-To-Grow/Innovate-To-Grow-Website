@@ -18,7 +18,7 @@ def admin_app_choices():
 
     Computed lazily (call at form ``__init__`` time, not import time) so the admin
     registry is fully populated. This is the menu of apps a member's ``admin_apps``
-    grant can draw from — see apps.core.access.user_can_access_app.
+    grant can draw from — see apps.core.utils.access.user_can_access_app.
     """
     labels = sorted({model._meta.app_label for model in admin.site._registry})
     choices = []

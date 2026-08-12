@@ -86,7 +86,6 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertNotIn("Past Projects", project_items_by_title)
         self.assertNotIn("Past Projects Sheet", project_items_by_title)
         self.assertNotIn("Semesters", project_items_by_title)
-        self.assertNotIn("Shared Links", project_items_by_title)
 
     def test_project_pages_are_grouped_under_project_tabs(self):
         tabs = settings.UNFOLD["TABS"]
@@ -378,10 +377,10 @@ class AdminIndexNavigationTest(TestCase):
         sidebar_html = html.split('<div id="main"', maxsplit=1)[0]
         self.assertNotIn("Semesters", sidebar_html)
 
-    def test_project_resources_and_shared_links_render_as_admin_tabs(self):
+    def test_project_resource_models_render_as_admin_tabs(self):
         for url, active_href in (
             (reverse("admin:projects_pastprojectssheetconfig_changelist"), "/admin/projects/pastprojectssheetconfig/"),
-            (reverse("admin:projects_pastprojectshare_changelist"), "/admin/projects/pastprojectshare/"),
+            (reverse("admin:projects_pastprojectsynclog_changelist"), "/admin/projects/pastprojectsynclog/"),
         ):
             with self.subTest(url=url):
                 response = self.client.get(url)
@@ -389,14 +388,8 @@ class AdminIndexNavigationTest(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'id="tabs-items"')
                 self.assertContains(response, 'href="/admin/projects/pastprojectssheetconfig/"')
-                self.assertContains(response, 'href="/admin/projects/pastprojectshare/"')
                 self.assertContains(response, 'href="/admin/projects/pastprojectsynclog/"')
                 self.assertContains(response, f'href="{active_href}" class="active"')
-
-        response = self.client.get(reverse("admin:projects_pastprojectshare_changelist"))
-        html = response.content.decode()
-        sidebar_html = html.split('<div id="main"', maxsplit=1)[0]
-        self.assertNotIn("Shared Links", sidebar_html)
 
     def test_system_intelligence_model_pages_render_as_admin_tabs(self):
         for url, active_href in (

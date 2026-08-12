@@ -2,7 +2,7 @@ import {describe, it, expect} from 'vitest';
 
 describe('CSS imports resolve', () => {
   it('main entry CSS resolves', async () => {
-    await expect(import('../index.css')).resolves.toBeDefined();
+    await expect(import('@/index.css')).resolves.toBeDefined();
   });
 
   const componentsWithCSS = [
@@ -11,15 +11,11 @@ describe('CSS imports resolve', () => {
     ['Layout/Footer', () => import('@/features/layout/components/Footer/Footer')],
     ['CMS/CMSPageComponent', () => import('@/features/cms/components/CMSPageComponent')],
     ['ScheduleGrid', () => import('@/features/events/components/ScheduleGrid/ScheduleGrid')],
-    ['SheetsDataTable', () => import('@/components/ui/SheetsDataTable/SheetsDataTable')],
+    ['SheetsDataTable', () => import('@/components/SheetsDataTable/SheetsDataTable')],
     ['MaintenanceMode', () => import('@/app/MaintenanceMode/MaintenanceMode')],
     ['HealthCheckProvider', () => import('@/app/MaintenanceMode/HealthCheckProvider')],
     ['Projects components', () => import('@/features/projects/components')],
     ['AccountPage', () => import('@/features/auth/components/pages/AccountPage')],
-    [
-      'PastProjectCurationSharedLinksPage',
-      () => import('@/features/auth/components/pages/PastProjectCurationSharedLinksPage'),
-    ],
     ['EventRegistrationPage', () => import('@/routes/EventRegistrationPage')],
   ] as const;
 

@@ -1,20 +1,20 @@
-"""Tests for bedrock converse / streaming / stream_helpers / prepare / clients."""
+"""Tests for bedrock converse / streaming / stream_parser / prepare / clients."""
 
 from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 from django.test import SimpleTestCase, TestCase
 
-from apps.core.services.bedrock.converse import collect_tool_results, invoke_bedrock
+from apps.core.services.bedrock.clients.prepare import build_kwargs, prepare
 from apps.core.services.bedrock.exceptions import BedrockError
-from apps.core.services.bedrock.prepare import build_kwargs, prepare
-from apps.core.services.bedrock.stream_helpers import (
+from apps.core.services.bedrock.invoke.converse import collect_tool_results, invoke_bedrock
+from apps.core.services.bedrock.invoke.stream_parser import (
     process_stream_response,
     start_content_block,
     stop_content_block,
     stream_tool_results,
 )
-from apps.core.services.bedrock.streaming import invoke_bedrock_stream
+from apps.core.services.bedrock.invoke.streaming import invoke_bedrock_stream
 
 
 def _client_error():
@@ -36,7 +36,7 @@ class BuildKwargsTest(SimpleTestCase):
     def test_includes_system_and_tools(self):
         cfg = FakeChatConfig()
         with patch(
-            "apps.core.services.bedrock.prepare.get_tool_definitions",
+            "apps.core.services.bedrock.clients.prepare.get_tool_definitions",
             return_value=[{"toolSpec": {"name": "x"}}],
         ):
             kwargs = build_kwargs(cfg, "model-1")
@@ -48,7 +48,7 @@ class BuildKwargsTest(SimpleTestCase):
     def test_omits_system_and_tools_when_empty(self):
         cfg = FakeChatConfig()
         cfg.system_prompt = ""
-        with patch("apps.core.services.bedrock.prepare.get_tool_definitions", return_value=[]):
+        with patch("apps.core.services.bedrock.clients.prepare.get_tool_definitions", return_value=[]):
             kwargs = build_kwargs(cfg, "model-1")
         self.assertNotIn("system", kwargs)
         self.assertNotIn("toolConfig", kwargs)
@@ -66,11 +66,11 @@ class PrepareTest(SimpleTestCase):
         loaded = FakeChatConfig()
         with (
             patch(
-                "apps.core.services.bedrock.prepare.SystemIntelligenceConfig.load",
+                "apps.core.services.bedrock.clients.prepare.SystemIntelligenceConfig.load",
                 return_value=loaded,
             ),
-            patch("apps.core.services.bedrock.prepare.get_client", return_value="CLIENT"),
-            patch("apps.core.services.bedrock.prepare.get_tool_definitions", return_value=[]),
+            patch("apps.core.services.bedrock.clients.prepare.get_client", return_value="CLIENT"),
+            patch("apps.core.services.bedrock.clients.prepare.get_tool_definitions", return_value=[]),
         ):
             client, messages, kwargs = prepare(
                 [{"role": "user", "content": "hello"}],
@@ -103,7 +103,7 @@ class ClientsTest(TestCase):
         loaded = MagicMock()
         loaded.is_configured = True
         with patch(
-            "apps.core.services.bedrock.clients.AWSCredentialConfig.load",
+            "apps.core.services.bedrock.clients._aws.AWSCredentialConfig.load",
             return_value=loaded,
         ):
             self.assertIs(get_aws_config(None), loaded)
@@ -116,7 +116,7 @@ class ClientsTest(TestCase):
         cfg.region = "us-west-2"
         cfg.access_key_id = "AKIA"
         cfg.secret_access_key = "sek"
-        with patch("apps.core.services.bedrock.clients.boto3.client", return_value="RT") as boto:
+        with patch("apps.core.services.bedrock.clients._aws.boto3.client", return_value="RT") as boto:
             self.assertEqual(get_client(cfg), "RT")
         boto.assert_called_once_with(
             "bedrock-runtime",
@@ -133,7 +133,7 @@ class ClientsTest(TestCase):
         cfg.region = "eu-west-1"
         cfg.access_key_id = "AKIA"
         cfg.secret_access_key = "sek"
-        with patch("apps.core.services.bedrock.clients.boto3.client", return_value="MGMT") as boto:
+        with patch("apps.core.services.bedrock.clients._aws.boto3.client", return_value="MGMT") as boto:
             self.assertEqual(get_management_client(cfg), "MGMT")
         boto.assert_called_once_with(
             "bedrock",
@@ -150,7 +150,7 @@ class ClientsTest(TestCase):
         cfg.region = "us-west-2"
         cfg.access_key_id = "AKIA"
         cfg.secret_access_key = "sek"
-        with patch("apps.core.services.bedrock.clients.boto3.client", return_value="CW") as boto:
+        with patch("apps.core.services.bedrock.clients._aws.boto3.client", return_value="CW") as boto:
             self.assertEqual(get_cloudwatch_client(cfg), "CW")
         # Never Cost Explorer ("ce") -- CloudWatch reads only.
         boto.assert_called_once_with(
@@ -167,7 +167,7 @@ class ClientsTest(TestCase):
 class InvokeBedrockTest(SimpleTestCase):
     def _prep(self, client):
         return patch(
-            "apps.core.services.bedrock.converse.prepare",
+            "apps.core.services.bedrock.invoke.converse.prepare",
             return_value=(client, [], {"modelId": "m"}),
         )
 
@@ -195,7 +195,7 @@ class InvokeBedrockTest(SimpleTestCase):
         ]
         with (
             self._prep(client),
-            patch("apps.core.services.bedrock.converse.execute_tool", return_value="RESULT"),
+            patch("apps.core.services.bedrock.invoke.converse.execute_tool", return_value="RESULT"),
         ):
             result = invoke_bedrock([{"role": "user", "content": "hey"}])
         self.assertEqual(result["text"], "done")
@@ -226,7 +226,7 @@ class InvokeBedrockTest(SimpleTestCase):
         client.converse.return_value = {"output": {"message": tool_msg}, "stopReason": "tool_use"}
         with (
             self._prep(client),
-            patch("apps.core.services.bedrock.converse.execute_tool", return_value="R"),
+            patch("apps.core.services.bedrock.invoke.converse.execute_tool", return_value="R"),
         ):
             result = invoke_bedrock([{"role": "user", "content": "x"}])
         self.assertIn("unable to complete the request", result["text"])
@@ -240,14 +240,14 @@ class InvokeBedrockTest(SimpleTestCase):
                 {"toolUse": {"toolUseId": "t1", "name": "n", "input": {"a": 1}}},
             ]
         }
-        with patch("apps.core.services.bedrock.converse.execute_tool", return_value="X" * 300):
+        with patch("apps.core.services.bedrock.invoke.converse.execute_tool", return_value="X" * 300):
             results = collect_tool_results(output_message, log)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["toolResult"]["toolUseId"], "t1")
         self.assertEqual(len(log[0]["result_preview"]), 200)  # truncated to 200
 
 
-# ---------- stream_helpers ----------
+# ---------- stream_parser ----------
 
 
 class StreamHelpersTest(SimpleTestCase):
@@ -334,7 +334,7 @@ class StreamHelpersTest(SimpleTestCase):
             {"toolUse": {"toolUseId": "t1", "name": "do_it", "input": {"k": "v"}}},
         ]
         with patch(
-            "apps.core.services.bedrock.stream_helpers.execute_tool",
+            "apps.core.services.bedrock.invoke.stream_parser.execute_tool",
             return_value="Z" * 250,
         ):
             outputs = list(stream_tool_results(blocks, round_num=2))
@@ -361,7 +361,7 @@ class StreamHelpersTest(SimpleTestCase):
 class InvokeBedrockStreamTest(SimpleTestCase):
     def test_prepare_error_yields_error_event(self):
         with patch(
-            "apps.core.services.bedrock.streaming.prepare",
+            "apps.core.services.bedrock.invoke.streaming.prepare",
             side_effect=BedrockError("nope"),
         ):
             events = list(invoke_bedrock_stream([{"role": "user", "content": "x"}]))
@@ -371,7 +371,7 @@ class InvokeBedrockStreamTest(SimpleTestCase):
         client = MagicMock()
         client.converse_stream.side_effect = _client_error()
         with patch(
-            "apps.core.services.bedrock.streaming.prepare",
+            "apps.core.services.bedrock.invoke.streaming.prepare",
             return_value=(client, [], {}),
         ):
             events = list(invoke_bedrock_stream([{"role": "user", "content": "x"}]))
@@ -382,7 +382,7 @@ class InvokeBedrockStreamTest(SimpleTestCase):
         client = MagicMock()
         client.converse_stream.side_effect = RuntimeError("boom")
         with patch(
-            "apps.core.services.bedrock.streaming.prepare",
+            "apps.core.services.bedrock.invoke.streaming.prepare",
             return_value=(client, [], {}),
         ):
             events = list(invoke_bedrock_stream([{"role": "user", "content": "x"}]))
@@ -403,8 +403,8 @@ class InvokeBedrockStreamTest(SimpleTestCase):
             return outcome
 
         with (
-            patch("apps.core.services.bedrock.streaming.prepare", return_value=(client, [], {})),
-            patch("apps.core.services.bedrock.streaming.process_stream_response", side_effect=fake_process),
+            patch("apps.core.services.bedrock.invoke.streaming.prepare", return_value=(client, [], {})),
+            patch("apps.core.services.bedrock.invoke.streaming.process_stream_response", side_effect=fake_process),
         ):
             events = list(invoke_bedrock_stream([{"role": "user", "content": "x"}]))
         types = [e["type"] for e in events]
@@ -432,13 +432,13 @@ class InvokeBedrockStreamTest(SimpleTestCase):
             return next(outcomes)
 
         with (
-            patch("apps.core.services.bedrock.streaming.prepare", return_value=(client, [], {})),
+            patch("apps.core.services.bedrock.invoke.streaming.prepare", return_value=(client, [], {})),
             patch(
-                "apps.core.services.bedrock.streaming.process_stream_response",
+                "apps.core.services.bedrock.invoke.streaming.process_stream_response",
                 side_effect=fake_process_gen,
             ),
             patch(
-                "apps.core.services.bedrock.streaming.stream_tool_results",
+                "apps.core.services.bedrock.invoke.streaming.stream_tool_results",
                 return_value=[({"type": "tool_call", "name": "n"}, {"toolResult": {}})],
             ),
         ):
@@ -462,13 +462,13 @@ class InvokeBedrockStreamTest(SimpleTestCase):
             return outcome_tool
 
         with (
-            patch("apps.core.services.bedrock.streaming.prepare", return_value=(client, [], {})),
+            patch("apps.core.services.bedrock.invoke.streaming.prepare", return_value=(client, [], {})),
             patch(
-                "apps.core.services.bedrock.streaming.process_stream_response",
+                "apps.core.services.bedrock.invoke.streaming.process_stream_response",
                 side_effect=fake_process_gen,
             ),
             patch(
-                "apps.core.services.bedrock.streaming.stream_tool_results",
+                "apps.core.services.bedrock.invoke.streaming.stream_tool_results",
                 return_value=[],
             ),
         ):

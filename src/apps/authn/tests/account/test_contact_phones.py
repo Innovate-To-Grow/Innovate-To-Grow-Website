@@ -9,7 +9,7 @@ from apps.authn.services import (
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
 )
-from apps.authn.services.email_challenges import AuthChallengeInvalid
+from apps.authn.services.email.challenges import AuthChallengeInvalid
 
 Member = get_user_model()
 

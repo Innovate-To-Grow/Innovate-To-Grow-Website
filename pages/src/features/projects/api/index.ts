@@ -1,10 +1,10 @@
-import { api } from '@/lib/api-client';
+import { api } from '@/lib/api';
 import {
   authApi,
   getAccessToken,
   isDefinitiveAuthFailure,
 } from '@/features/auth';
-import {formatSemesterLabel} from '@/lib/semester';
+import {formatSemesterLabel} from '@/lib/format';
 import type { PaginatedResponse } from '@/types/api';
 import type { ScheduleProjectRow } from '@/features/events/api';
 

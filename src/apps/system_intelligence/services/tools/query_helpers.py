@@ -2,7 +2,7 @@ from typing import Any
 
 from django.db.models import QuerySet
 
-from apps.core.services.db_tools.helpers import MAX_ROWS
+from apps.core.services.db_tools.tool_modules.helpers import MAX_ROWS
 from apps.system_intelligence.services.actions.exceptions import ActionRequestError
 from apps.system_intelligence.services.actions.utils import json_safe
 

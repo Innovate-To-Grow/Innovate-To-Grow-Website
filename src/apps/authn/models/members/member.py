@@ -1,8 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from apps.core.access import user_can_access_app
 from apps.core.models import ProjectControlModel
+from apps.core.utils.access import user_can_access_app
 
 from .manager import MemberManager
 
@@ -17,7 +17,7 @@ class Member(AbstractUser, ProjectControlModel):
 
     # Per-Django-app admin access. A staff member may manage every model in any app
     # listed here (e.g. ["cms", "event"]). Superusers (I2G Master) ignore this list.
-    # See apps.core.access.user_can_access_app — the single enforcement predicate.
+    # See apps.core.utils.access.user_can_access_app — the single enforcement predicate.
     admin_apps = models.JSONField(
         default=list,
         blank=True,

@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from apps.cms.models import CMSPage, RouteRedirect
-from apps.cms.services.route_redirects import redirect_mapping_conflicts
+from apps.cms.services.routing.route_redirects import redirect_mapping_conflicts
 
 
 class RouteRedirectModelTests(TestCase):
@@ -133,7 +133,7 @@ class RouteRedirectModelTests(TestCase):
             is_active=True,
         )
         with patch(
-            "apps.cms.services.route_redirects.PUBLIC_APP_ROUTES",
+            "apps.cms.services.routing.route_redirects.PUBLIC_APP_ROUTES",
             [{"url": "/legacy-recovery", "title": "New App Route"}],
         ):
             redirect.is_active = False
@@ -160,7 +160,7 @@ class RouteRedirectModelTests(TestCase):
         )
 
         with patch(
-            "apps.cms.services.route_redirects.PUBLIC_APP_ROUTES",
+            "apps.cms.services.routing.route_redirects.PUBLIC_APP_ROUTES",
             [{"url": "/legacy-maintenance", "title": "New App Route"}],
         ):
             redirect.destination_path = other_target.route
