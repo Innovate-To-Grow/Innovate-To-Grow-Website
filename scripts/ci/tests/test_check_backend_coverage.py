@@ -63,6 +63,18 @@ class CheckCoverageTests(unittest.TestCase):
         ]
         self.assertEqual(check_coverage(data, {"projects": (90, 75)}), [])
 
+    def test_accepts_coverage_null_for_files_without_branches(self):
+        data = report()
+        data["files"]["src/apps/projects/no_branches.py"] = {
+            "summary": {
+                "covered_lines": 2,
+                "num_statements": 2,
+                "covered_branches": None,
+                "num_branches": 0,
+            }
+        }
+        self.assertEqual(check_coverage(data, {"projects": (80, 75)}), [])
+
     def test_does_not_match_app_name_prefix(self):
         self.assertIn("no coverage files found", check_coverage(report(app="projects_extra"), {"projects": (0, 0)})[0])
 
@@ -121,9 +133,7 @@ class MainTests(unittest.TestCase):
         self.assertEqual(stderr, "")
 
     def test_rejects_unknown_selected_app(self):
-        code, _, stderr = self.run_main(
-            report(), {"apps": {"projects": {"line": 80, "branch": 75}}}, "--app", "cms"
-        )
+        code, _, stderr = self.run_main(report(), {"apps": {"projects": {"line": 80, "branch": 75}}}, "--app", "cms")
         self.assertEqual(code, 2)
         self.assertIn("is not configured", stderr)
 

@@ -61,6 +61,8 @@ def parse_floors(config: dict[str, Any]) -> dict[str, tuple[float, float]]:
 
 def _count(summary: dict[str, Any], key: str, filename: str) -> int:
     value = summary.get(key)
+    if value is None and key == "covered_branches" and summary.get("num_branches") == 0:
+        return 0
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise ConfigurationError(f"coverage summary for {filename!r} has invalid {key!r}")
     return value

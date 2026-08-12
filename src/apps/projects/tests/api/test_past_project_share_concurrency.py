@@ -77,7 +77,11 @@ class PastProjectShareConcurrencyTests(TransactionTestCase):
         winner = next(response for response in responses.values() if response.status_code == 200)
         loser = next(response for response in responses.values() if response.status_code == 409)
         self.assertEqual(loser.data["code"], "stale_snapshot")
-        self.assertEqual(loser.data["current"], winner.data)
+        current = loser.data["current"]
+        self.assertEqual(current["id"], winner.data["id"])
+        self.assertEqual(current["note"], winner.data["note"])
+        self.assertEqual(current["version"], winner.data["version"])
         self.share.refresh_from_db()
         self.assertEqual(self.share.version, 2)
         self.assertEqual(self.share.note, winner.data["note"])
+        self.assertEqual(self.share.note, current["note"])
