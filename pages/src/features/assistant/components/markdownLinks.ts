@@ -1,4 +1,4 @@
-import {safeHref} from '@/lib/safeHref';
+import {safeHref} from '@/lib/security';
 
 /**
  * True when `href` survives the shared {@link safeHref} scheme allowlist

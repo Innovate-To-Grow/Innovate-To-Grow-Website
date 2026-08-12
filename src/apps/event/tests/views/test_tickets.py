@@ -84,7 +84,7 @@ class ResendTicketEmailViewTest(TestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 401)
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_resend_sends_email_successfully(self, mock_send):
         self.client.force_authenticate(self.member)
         url = f"/event/my-tickets/{self.registration.pk}/resend-email/"
@@ -106,7 +106,7 @@ class ResendTicketEmailViewTest(TestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 404)
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email", side_effect=Exception("SMTP error"))
+    @patch("apps.event.services.ticket.mail.send_ticket_email", side_effect=Exception("SMTP error"))
     def test_resend_email_failure_returns_503(self, mock_send):
         self.client.force_authenticate(self.member)
         url = f"/event/my-tickets/{self.registration.pk}/resend-email/"

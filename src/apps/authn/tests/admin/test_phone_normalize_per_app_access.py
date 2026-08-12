@@ -4,7 +4,7 @@ The two custom admin URLs on ``ContactPhoneAdmin``
 (``_normalize_preview_view`` and ``_normalize_apply_view``) are registered via
 ``self.admin_site.admin_view(...)``, which Django gates only on
 ``is_staff``/``is_active`` — the per-app access model
-(``apps.core.access.user_can_access_app`` via ``BaseModelAdmin``) is NOT run.
+(``apps.core.utils.access.user_can_access_app`` via ``BaseModelAdmin``) is NOT run.
 
 The preview view exposes member phone PII and the apply view mutates phone
 records, so both re-check authn-app access at entry and raise ``PermissionDenied``

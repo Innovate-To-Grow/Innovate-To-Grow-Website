@@ -72,6 +72,7 @@ export const sanitizePastProjectsDetailHtml = (html: string) =>
   DOMPurify.sanitize(convertHighlightStylesToMark(html), {
     ALLOWED_TAGS: RICH_DETAIL_ALLOWED_TAGS,
     ALLOWED_ATTR: RICH_DETAIL_ALLOWED_ATTR,
+    ALLOW_DATA_ATTR: false,
   });
 
 export const plainTextToPastProjectsDetailHtml = (value: string) =>

@@ -1,7 +1,6 @@
 from django.contrib import admin
 
-from apps.core.admin import BaseModelAdmin
-from apps.core.admin.utils import format_json
+from apps.core.admin import BaseModelAdmin, format_json
 
 from ..models import PastProjectShare
 

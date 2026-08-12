@@ -9,7 +9,6 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from apps.authn.constants import RECOVERY_CHANNEL_UNAVAILABLE, VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
-from apps.authn.serializers.helpers import decrypt_password_pair
 from apps.authn.services import (
     AuthChallengeInvalid,
     NoRecoveryChannelError,
@@ -28,6 +27,7 @@ from apps.authn.services import (
     verify_sms_password_code_and_mint,
 )
 
+from ..helpers import decrypt_password_pair
 from .base import PURPOSE, BaseCodeVerifySerializer
 
 logger = logging.getLogger(__name__)

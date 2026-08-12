@@ -17,6 +17,11 @@ from apps.authn.constants import (
     VERIFICATION_INVALID,
 )
 from apps.authn.models import ContactEmail
+from apps.authn.security.throttles import (
+    ContactEmailCreateThrottle,
+    EmailCodeUserRequestThrottle,
+    EmailCodeVerifyThrottle,
+)
 from apps.authn.serializers import (
     ContactEmailCreateSerializer,
     ContactEmailSerializer,
@@ -32,7 +37,6 @@ from apps.authn.services import (
     resend_contact_email_verification,
     verify_contact_email_code,
 )
-from apps.authn.throttles import ContactEmailCreateThrottle, EmailCodeUserRequestThrottle, EmailCodeVerifyThrottle
 
 from ..helpers import challenge_error_response
 

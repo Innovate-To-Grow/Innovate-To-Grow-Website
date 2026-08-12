@@ -21,7 +21,7 @@ Member = get_user_model()
 
 
 @patch("apps.authn.services.email.send_email.send_verification_email")
-@patch("apps.authn.services.email_challenges._random_code", return_value="654321")
+@patch("apps.authn.services.email.challenges._random_code", return_value="654321")
 class ChangePasswordCodeViewEdgeTests(APITestCase):
     def setUp(self):
         cache.clear()
@@ -92,7 +92,7 @@ class ChangePasswordCodeViewEdgeTests(APITestCase):
 
 
 @patch("apps.authn.services.email.send_email.send_verification_email")
-@patch("apps.authn.services.email_challenges._random_code", return_value="654321")
+@patch("apps.authn.services.email.challenges._random_code", return_value="654321")
 class DeleteAccountCodeViewEdgeTests(APITestCase):
     def setUp(self):
         cache.clear()

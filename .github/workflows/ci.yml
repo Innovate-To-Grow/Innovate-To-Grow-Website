@@ -160,23 +160,13 @@ jobs:
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           echo "Changed files:"
-          echo "$files"
-          match() { echo "$files" | grep -qE "$1"; }
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" | tee "$RUNNER_TEMP/changed-files.txt"
           # Conservative: err toward running. A .github/** change maps to both
           # backend and frontend so any workflow edit runs the full suite.
-          backend=false
-          frontend=false
-          archive=false
-          if match '^(src/|aws/|scripts/|pyproject\.toml|\.pre-commit-config\.yaml|\.bandit-baseline\.json|\.github/)'; then backend=true; fi
-          if match '^(pages/|\.github/)'; then frontend=true; fi
-          if match '^archive/'; then archive=true; fi
-          {
-            echo "backend=$backend"
-            echo "frontend=$frontend"
-            echo "archive=$archive"
-          } >> "$GITHUB_OUTPUT"
+          python scripts/ci/plan_changed_areas.py \
+            --event-name "$EVENT_NAME" \
+            --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
 
   lint:
     name: Python Code Style Check

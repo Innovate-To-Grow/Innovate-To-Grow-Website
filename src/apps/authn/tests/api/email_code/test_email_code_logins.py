@@ -11,7 +11,7 @@ Member = get_user_model()
 
 
 @patch("apps.authn.services.email.send_email.send_verification_email")
-@patch("apps.authn.services.email_challenges._random_code", return_value="654321")
+@patch("apps.authn.services.email.challenges._random_code", return_value="654321")
 class EmailCodeAuthLoginTests(APITestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):

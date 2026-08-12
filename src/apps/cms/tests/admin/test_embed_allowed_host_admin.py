@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from apps.authn.models import ContactEmail
 from apps.cms.models import CMSEmbedAllowedHost
-from apps.cms.services.embed_hosts import get_allowed_hosts, invalidate_cache
+from apps.cms.services.sanitization.embed_hosts import get_allowed_hosts, invalidate_cache
 
 Member = get_user_model()
 

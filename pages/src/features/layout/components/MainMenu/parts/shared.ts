@@ -1,5 +1,5 @@
 import {type MenuItem} from '@/features/layout/api';
-import {safeHref} from '@/lib/safeHref';
+import {safeHref} from '@/lib/security';
 
 export const buildHref = (item: MenuItem) => safeHref(item.url);
 

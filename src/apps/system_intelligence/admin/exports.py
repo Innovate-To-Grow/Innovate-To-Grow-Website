@@ -1,7 +1,7 @@
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, JsonResponse
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import SystemIntelligenceExport
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

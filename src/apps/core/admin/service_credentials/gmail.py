@@ -6,8 +6,9 @@ from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
-from apps.core.admin.base import BaseModelAdmin
 from apps.core.models import GmailAccessAccount
+
+from ..common.base import BaseModelAdmin
 
 
 class GmailAccessAccountForm(forms.ModelForm):

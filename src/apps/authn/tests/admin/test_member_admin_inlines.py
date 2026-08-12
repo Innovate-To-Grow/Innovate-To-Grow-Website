@@ -15,7 +15,7 @@ from apps.authn.models import ContactEmail, ContactPhone
 Member = get_user_model()
 
 
-@override_settings(ROOT_URLCONF="config.urls")
+@override_settings(ROOT_URLCONF="config.routing.urls")
 class MemberAdminInlineVisibilityTest(TestCase):
     """Inline sections must render for any staff member granted the ``authn`` app
     (not only superusers), and must be hidden from staff without that grant."""
@@ -84,7 +84,7 @@ class MemberAdminInlineVisibilityTest(TestCase):
 
     def test_staff_user_with_authn_access_sees_inlines(self):
         """A non-superuser staff member granted the ``authn`` app sees the inlines —
-        per-app access, not per-model Django permissions (apps.core.access)."""
+        per-app access, not per-model Django permissions (apps.core.utils.access)."""
         self.client.force_login(self.staff_user)
         resp = self.client.get(self._change_url())
         self._assert_inlines_visible(resp)
@@ -108,7 +108,7 @@ class MemberAdminInlineVisibilityTest(TestCase):
         self.assertEqual(resp.status_code, 403)
 
 
-@override_settings(ROOT_URLCONF="config.urls", ADMIN_REQUIRE_CONFIRMATION=False)
+@override_settings(ROOT_URLCONF="config.routing.urls", ADMIN_REQUIRE_CONFIRMATION=False)
 class MemberAdminInlineUUIDSubmitTest(TestCase):
     """Submitting inline forms with UUID PKs must not break on 'None' values.
 

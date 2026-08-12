@@ -91,7 +91,7 @@ class HealthCheckMiddlewareTest(TestCase):
         """If the DB probe succeeds but loading maintenance config fails, return ok."""
         with (
             patch.object(SiteMaintenanceControl, "load", side_effect=DatabaseError("config table gone")),
-            patch("apps.core.middleware.logger.exception") as exc_log,
+            patch("apps.core.middleware.health.logger.exception") as exc_log,
         ):
             response = self.client.get(self.HEALTH_URL)
 

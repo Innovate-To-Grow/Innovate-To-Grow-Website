@@ -1,6 +1,6 @@
 import {useMemo} from 'react';
-import type {SheetRow, TrackInfo} from '@/components/ui/SheetsDataTable';
-import {addMinutes} from '@/lib/time';
+import type {SheetRow, TrackInfo} from '@/components/SheetsDataTable';
+import {addMinutes} from '@/lib/format';
 
 export interface ClassConfig {
   /** Class code, e.g. "CAP", "CEE", "CSE" */

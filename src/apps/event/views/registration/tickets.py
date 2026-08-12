@@ -36,7 +36,7 @@ class ResendTicketEmailView(APIView):
             )
 
         try:
-            from apps.event.services.ticket_mail import send_ticket_email
+            from apps.event.services.ticket.mail import send_ticket_email
 
             send_ticket_email(registration)
         except Exception:

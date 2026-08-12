@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from apps.cms.models import CMSEmbedAllowedHost
-from apps.cms.services.embed_hosts import invalidate_cache
+from apps.cms.services.sanitization.embed_hosts import invalidate_cache
 from apps.core.admin import BaseModelAdmin
 
 

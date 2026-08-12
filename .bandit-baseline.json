@@ -392,7 +392,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/models/member_sheet_sync_config.py": {
+    "./apps/authn/models/member_sheet_sync/config.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -405,7 +405,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/models/member_sheet_sync_log.py": {
+    "./apps/authn/models/member_sheet_sync/log.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -467,32 +467,6 @@
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
       "loc": 80,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "./apps/authn/models/schol/__init__.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 2,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "./apps/authn/models/schol/sso.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 13,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -834,7 +808,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/create_member/__init__.py": {
+    "./apps/authn/services/members/create.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -938,7 +912,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/email_challenges/__init__.py": {
+    "./apps/authn/services/email/challenges/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -951,7 +925,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/email_challenges/issue.py": {
+    "./apps/authn/services/email/challenges/issue.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -964,7 +938,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/email_challenges/queries.py": {
+    "./apps/authn/services/email/challenges/queries.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -977,7 +951,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/email_challenges/verify.py": {
+    "./apps/authn/services/email/challenges/verify.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -990,7 +964,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/export_members.py": {
+    "./apps/authn/services/members/export_excel.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1003,7 +977,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/export_members_vcf.py": {
+    "./apps/authn/services/members/export_vcf.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1016,7 +990,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/import_members/__init__.py": {
+    "./apps/authn/services/members/import_/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1029,7 +1003,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/import_members/excel.py": {
+    "./apps/authn/services/members/import_/excel.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1042,7 +1016,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/import_members/operations.py": {
+    "./apps/authn/services/members/import_/operations.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1055,7 +1029,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/import_members/parsing.py": {
+    "./apps/authn/services/members/import_/parsing.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1068,7 +1042,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/import_members/template.py": {
+    "./apps/authn/services/members/import_/template.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1081,7 +1055,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/import_members/types.py": {
+    "./apps/authn/services/members/import_/types.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1094,7 +1068,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/key_encryption.py": {
+    "./apps/authn/services/security/key_encryption.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1107,7 +1081,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/member_sheet_sync/__init__.py": {
+    "./apps/authn/services/members/sheet_sync/__init__.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1120,7 +1094,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/member_sheet_sync/logs.py": {
+    "./apps/authn/services/members/sheet_sync/logs.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1133,7 +1107,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/member_sheet_sync/rows.py": {
+    "./apps/authn/services/members/sheet_sync/rows.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1146,7 +1120,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/member_sheet_sync/scheduler.py": {
+    "./apps/authn/services/members/sheet_sync/scheduler.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1159,7 +1133,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/member_sheet_sync/sheets.py": {
+    "./apps/authn/services/members/sheet_sync/sheets.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1172,7 +1146,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/member_sheet_sync/sync.py": {
+    "./apps/authn/services/members/sheet_sync/sync.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1185,7 +1159,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/rsa_manager.py": {
+    "./apps/authn/services/security/rsa_manager.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -1224,7 +1198,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/authn/services/unsubscribe_token.py": {
+    "./apps/authn/services/account/unsubscribe.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -6125,19 +6099,6 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/projects/serializers/past_project_share.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 32,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
     "./apps/projects/serializers/project.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
@@ -6278,19 +6239,6 @@
       "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
       "loc": 27,
-      "nosec": 0,
-      "skipped_tests": 0
-    },
-    "./apps/projects/views/past_project_share.py": {
-      "CONFIDENCE.HIGH": 0,
-      "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 0,
-      "CONFIDENCE.UNDEFINED": 0,
-      "SEVERITY.HIGH": 0,
-      "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 0,
-      "SEVERITY.UNDEFINED": 0,
-      "loc": 14,
       "nosec": 0,
       "skipped_tests": 0
     },
@@ -7866,6 +7814,123 @@
       "loc": 30168,
       "nosec": 0,
       "skipped_tests": 0
+    },
+    "./apps/authn/serializers/auth/register.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 1,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 1,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 148,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./apps/authn/serializers/auth/subscribe.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 23,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./apps/authn/serializers/account/change_password.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 41,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./apps/authn/serializers/account/profile.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 97,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./apps/authn/security/backends.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 20,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./apps/authn/security/throttles.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 16,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./apps/authn/services/members/sheet_sync/admin.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 41,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./apps/authn/admin/members/helpers.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 95,
+      "nosec": 0,
+      "skipped_tests": 0
+    },
+    "./apps/authn/admin/security.py": {
+      "CONFIDENCE.HIGH": 0,
+      "CONFIDENCE.LOW": 0,
+      "CONFIDENCE.MEDIUM": 0,
+      "CONFIDENCE.UNDEFINED": 0,
+      "SEVERITY.HIGH": 0,
+      "SEVERITY.LOW": 0,
+      "SEVERITY.MEDIUM": 0,
+      "SEVERITY.UNDEFINED": 0,
+      "loc": 56,
+      "nosec": 0,
+      "skipped_tests": 0
     }
   },
   "results": [
@@ -7913,7 +7978,7 @@
       "code": "102     def validate(self, attrs: dict) -> dict:\n103         attrs[\"_decrypted_password\"] = decrypt_password_pair(\n104             attrs,\n105             password_key=\"password\",\n106             confirm_key=\"password_confirm\",\n107         )\n108         return attrs\n",
       "col_offset": 39,
       "end_col_offset": 9,
-      "filename": "./apps/authn/serializers/register.py",
+      "filename": "./apps/authn/serializers/auth/register.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
@@ -7921,7 +7986,7 @@
       },
       "issue_severity": "LOW",
       "issue_text": "Possible hardcoded password: 'password'",
-      "line_number": 103,
+      "line_number": 112,
       "line_range": [
         103,
         104,

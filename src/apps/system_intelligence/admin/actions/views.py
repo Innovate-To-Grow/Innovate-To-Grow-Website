@@ -6,7 +6,7 @@ from django.template.response import TemplateResponse
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 import apps.system_intelligence.admin.actions as actions_api
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
 from .lookup import _changed_preview_blocks, _cms_preview_page, _get_user_action_request

@@ -54,10 +54,7 @@ PUBLIC_APP_ROUTES = [
     {"url": "/verify-phone", "title": "Verify Phone"},
     {"url": "/complete-profile", "title": "Complete Profile"},
     {"url": "/account", "title": "Account"},
-    {
-        "url": "/account/past-project-curation-shared-links",
-        "title": "Past Project Curation Shared Links",
-    },
+    {"url": "/account/past-project-curation-shared-links", "title": "Shared Project Curations"},
 ]
 
 # React-router dynamic patterns.  ``:name`` represents one non-empty path

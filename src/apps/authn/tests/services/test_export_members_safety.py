@@ -12,7 +12,7 @@ from django.test import TestCase
 from openpyxl import load_workbook
 
 from apps.authn.models import Member
-from apps.authn.services.export_members import export_members_to_excel
+from apps.authn.services.members.export_excel import export_members_to_excel
 
 
 class ExportMembersFormulaSafetyTest(TestCase):

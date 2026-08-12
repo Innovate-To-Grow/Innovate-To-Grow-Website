@@ -1,6 +1,6 @@
 /* ==========================================================================
    Public AI assistant chat widget — floating launcher + chat panel.
-   Uses --itg-* design tokens (see assets/styles/shared/tokens.css).
+   Uses --itg-* design tokens (see assets/tokens.css).
    ========================================================================== */
 
 .itg-assistant {

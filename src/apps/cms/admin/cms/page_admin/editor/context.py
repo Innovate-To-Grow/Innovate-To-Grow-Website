@@ -4,7 +4,6 @@ from django.conf import settings as django_settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 
-from apps.cms.embed_sections import hidden_section_presets_payload
 from apps.cms.models import (
     BLOCK_SCHEMAS,
     BLOCK_TYPE_CHOICES,
@@ -13,6 +12,7 @@ from apps.cms.models import (
 )
 from apps.cms.models.content.cms.block_types import DEFAULT_SANDBOX
 from apps.cms.models.media import ALLOWED_ASSET_EXTENSIONS, IMAGE_ASSET_EXTENSIONS, MAX_ASSET_UPLOAD_BYTES
+from apps.cms.services.embed.embed_sections import hidden_section_presets_payload
 
 from .json_utils import _safe_json
 

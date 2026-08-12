@@ -115,7 +115,7 @@ Each feature under `pages/src/features/` is a vertical slice (`api/`, `component
 
 ## Shared modules
 
-### API client (`lib/api-client.ts`)
+### API client (`lib/api/api-client.ts`)
 
 - Plain Axios instance with `/api` base URL for public requests.
 - Does not attach credentials or refresh tokens.
@@ -134,7 +134,7 @@ The auth-specific client tags each request with the session generation and acces
 | `profile.ts` | Profile read/update, image upload |
 | `session.ts` | Authoritative `/authn/session/` bootstrap, guarded logout, and auto-login helpers |
 
-### Crypto (`lib/crypto.ts`)
+### Crypto (`lib/security/crypto.ts`)
 
 - Fetches RSA public key from `/authn/public-key/` (cached 5 minutes)
 - Encrypts passwords with Web Crypto API (RSA-OAEP) before sending to backend
@@ -144,7 +144,7 @@ The auth-specific client tags each request with the session generation and acces
 
 The frontend uses plain CSS with a design token system.
 
-### Token system (`src/assets/styles/shared/tokens.css`)
+### Token system (`src/assets/tokens.css`)
 
 CSS custom properties define the design vocabulary:
 - **Colors**: `--itg-color-primary` (#0f2d52), accent-gold, error, success, etc.
@@ -154,7 +154,8 @@ CSS custom properties define the design vocabulary:
 
 ### CSS organization
 
-- `src/assets/styles/shared/` — Global: tokens, layout, responsive, utilities, rich-content
+- `src/components/` — Shared presentational components (SafeHtml, SheetsDataTable)
+- `src/assets/` — Global: tokens, layout, responsive, utilities, rich-content
 - `src/index.css` — Imports shared styles, sets up body and app-layout
 - Component-scoped `.css` files alongside each component
 

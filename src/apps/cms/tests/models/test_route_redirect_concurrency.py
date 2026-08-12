@@ -9,7 +9,7 @@ from django.db import close_old_connections, connection, connections, transactio
 from django.test import TransactionTestCase, override_settings
 
 from apps.cms.models import CMSPage, RouteRedirect
-from apps.cms.services import route_write_locks
+from apps.cms.services.routing import route_write_locks
 
 
 @skipUnless(connection.vendor == "postgresql", "requires PostgreSQL row/advisory lock semantics")

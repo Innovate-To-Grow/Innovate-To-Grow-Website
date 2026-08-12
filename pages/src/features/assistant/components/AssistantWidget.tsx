@@ -8,7 +8,7 @@ import {
   type AssistantConfig,
 } from '@/features/assistant/api';
 
-import {clearConversation, getSessionId, loadTranscript, saveTranscript} from '../sessionStore';
+import {clearConversation, getSessionId, loadTranscript, saveTranscript} from '../utils/sessionStore';
 import {MessageInput} from './MessageInput';
 import {MessageList} from './MessageList';
 import type {DisplayMessage} from './types';

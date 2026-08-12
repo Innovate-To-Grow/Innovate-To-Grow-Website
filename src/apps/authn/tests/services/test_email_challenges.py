@@ -1,4 +1,4 @@
-"""Tests for authn.services.email_challenges."""
+"""Tests for authn.services.email.challenges."""
 
 from datetime import timedelta
 from unittest.mock import patch
@@ -8,7 +8,7 @@ from django.test import TransactionTestCase
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.services.email_challenges import (
+from apps.authn.services.email.challenges import (
     MAX_CHALLENGES_PER_HOUR,
     AuthChallengeDeliveryError,
     AuthChallengeThrottled,
@@ -32,7 +32,7 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
             verified=True,
         )
 
-    @patch("apps.authn.services.email_challenges._random_code", return_value="123456")
+    @patch("apps.authn.services.email.challenges._random_code", return_value="123456")
     @patch("apps.authn.services.email.send_email.send_verification_email", side_effect=RuntimeError("boom"))
     def test_failed_delivery_deletes_challenge(self, _mock_send, _mock_code):
         """When email delivery fails the challenge record should be deleted."""
@@ -41,7 +41,7 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
 
         self.assertFalse(EmailAuthChallenge.objects.filter(member=self.member, purpose=PURPOSE).exists())
 
-    @patch("apps.authn.services.email_challenges._random_code", return_value="654321")
+    @patch("apps.authn.services.email.challenges._random_code", return_value="654321")
     @patch("apps.authn.services.email.send_email.send_verification_email")
     def test_retry_after_failed_delivery_succeeds(self, mock_send, _mock_code):
         """After a delivery failure the user can immediately retry without being throttled."""
@@ -55,7 +55,7 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
         challenge = issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
         self.assertEqual(challenge.status, EmailAuthChallenge.Status.PENDING)
 
-    @patch("apps.authn.services.email_challenges._random_code", return_value="111111")
+    @patch("apps.authn.services.email.challenges._random_code", return_value="111111")
     @patch("apps.authn.services.email.send_email.send_verification_email")
     def test_failed_deliveries_dont_exhaust_hourly_limit(self, mock_send, _mock_code):
         """Deleted challenges (from failed sends) must not count toward MAX_CHALLENGES_PER_HOUR."""
@@ -77,8 +77,8 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
         challenge = issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
         self.assertEqual(challenge.status, EmailAuthChallenge.Status.PENDING)
 
-    @patch("apps.authn.services.email_challenges.RESEND_COOLDOWN", timedelta(seconds=0))
-    @patch("apps.authn.services.email_challenges._random_code", return_value="222222")
+    @patch("apps.authn.services.email.challenges.RESEND_COOLDOWN", timedelta(seconds=0))
+    @patch("apps.authn.services.email.challenges._random_code", return_value="222222")
     @patch("apps.authn.services.email.send_email.send_verification_email")
     def test_hourly_limit_still_enforced_for_successful_sends(self, mock_send, _mock_code):
         """Successful sends should still be counted toward the hourly limit."""

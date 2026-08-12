@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from apps.event.models import Ticket
-from apps.event.services.ticket_assets import (
+from apps.event.services.ticket.assets import (
     build_backend_absolute_url,
     build_frontend_absolute_url,
     build_ticket_access_token,
@@ -179,8 +179,8 @@ class GetEventDatetimeTest(TestCase):
         # Force is_naive to report False so the aware-return branch runs; assert
         # make_aware is NOT called and the naive value is returned verbatim.
         with (
-            patch("apps.event.services.ticket_assets.timezone.is_naive", return_value=False),
-            patch("apps.event.services.ticket_assets.timezone.make_aware") as mock_make_aware,
+            patch("apps.event.services.ticket.assets.timezone.is_naive", return_value=False),
+            patch("apps.event.services.ticket.assets.timezone.make_aware") as mock_make_aware,
         ):
             result = get_event_datetime(event)
         mock_make_aware.assert_not_called()

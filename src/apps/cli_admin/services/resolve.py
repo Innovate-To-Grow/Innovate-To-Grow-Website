@@ -1,9 +1,9 @@
 from django.core.exceptions import ValidationError
 
-from apps.core.access import user_can_access_app
 from apps.core.services.db_tools.safe_orm import ActionRequestError, resolve_model
+from apps.core.utils.access import user_can_access_app
 
-from ..constants import CLI_EXTRA_DENIED_APP_LABELS, CLI_EXTRA_DENIED_MODEL_LABELS
+from ..auth.constants import CLI_EXTRA_DENIED_APP_LABELS, CLI_EXTRA_DENIED_MODEL_LABELS
 
 
 class CliAppAccessDenied(ActionRequestError):

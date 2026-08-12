@@ -25,7 +25,7 @@ from apps.cms.models import (
     SiteSettings,
     StyleSheet,
 )
-from apps.core.services.db_tools.helpers import MAX_ROWS
+from apps.core.services.db_tools.tool_modules.helpers import MAX_ROWS
 from apps.event.models import CurrentProject, CurrentProjectSchedule
 from apps.event.tests.helpers import (
     make_event,

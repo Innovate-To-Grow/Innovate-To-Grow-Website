@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail, ContactPhone
-from apps.authn.services.import_members.operations import update_single_member
+from apps.authn.services.members.import_.operations import update_single_member
 
 Member = get_user_model()
 

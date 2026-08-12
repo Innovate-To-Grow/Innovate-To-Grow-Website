@@ -7,13 +7,13 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.authn.models import ContactEmail, ContactPhone, MemberSheetSyncConfig
-from apps.authn.services.member_sheet_sync.rows import build_row
-from apps.authn.services.member_sheet_sync.scheduler import (
+from apps.authn.services.members.sheet_sync.rows import build_row
+from apps.authn.services.members.sheet_sync.scheduler import (
     _flush_pending_sync,
     schedule_immediate_sync,
     schedule_member_sync,
 )
-from apps.authn.services.member_sheet_sync.sheets import MemberSyncError, _get_worksheet
+from apps.authn.services.members.sheet_sync.sheets import MemberSyncError, _get_worksheet
 from apps.core.models import BackgroundJob
 
 Member = get_user_model()
@@ -36,7 +36,7 @@ class GetWorksheetTests(TestCase):
             is_enabled=True, google_sheet_id=kw.pop("google_sheet_id", "sheet-id"), **kw
         )
 
-    @patch("apps.authn.services.member_sheet_sync.GoogleCredentialConfig.load")
+    @patch("apps.authn.services.members.sheet_sync.GoogleCredentialConfig.load")
     def test_raises_when_credentials_not_configured(self, mock_load):
         cred = MagicMock()
         cred.is_configured = False
@@ -45,7 +45,7 @@ class GetWorksheetTests(TestCase):
             _get_worksheet(self._config())
 
     @patch("gspread.service_account_from_dict")
-    @patch("apps.authn.services.member_sheet_sync.GoogleCredentialConfig.load")
+    @patch("apps.authn.services.members.sheet_sync.GoogleCredentialConfig.load")
     def test_returns_sheet1_when_no_gid(self, mock_load, mock_gspread):
         cred = MagicMock()
         cred.is_configured = True
@@ -61,7 +61,7 @@ class GetWorksheetTests(TestCase):
         self.assertEqual(result, sheet1)
 
     @patch("gspread.service_account_from_dict")
-    @patch("apps.authn.services.member_sheet_sync.GoogleCredentialConfig.load")
+    @patch("apps.authn.services.members.sheet_sync.GoogleCredentialConfig.load")
     def test_finds_worksheet_by_gid(self, mock_load, mock_gspread):
         cred = MagicMock()
         cred.is_configured = True
@@ -78,7 +78,7 @@ class GetWorksheetTests(TestCase):
         self.assertEqual(result, ws)
 
     @patch("gspread.service_account_from_dict")
-    @patch("apps.authn.services.member_sheet_sync.GoogleCredentialConfig.load")
+    @patch("apps.authn.services.members.sheet_sync.GoogleCredentialConfig.load")
     def test_raises_when_gid_not_found(self, mock_load, mock_gspread):
         cred = MagicMock()
         cred.is_configured = True
@@ -97,10 +97,10 @@ class SyncMembersErrorTests(TestCase):
     def setUp(self):
         MemberSheetSyncConfig.objects.create(is_enabled=True, auto_sync_enabled=True, google_sheet_id="sheet-id")
 
-    @patch("apps.authn.services.member_sheet_sync._get_worksheet")
+    @patch("apps.authn.services.members.sheet_sync._get_worksheet")
     def test_member_sync_error_is_reraised_and_logged(self, mock_get_ws):
         from apps.authn.models import MemberSheetSyncLog
-        from apps.authn.services.member_sheet_sync import sync_members_to_sheet
+        from apps.authn.services.members.sheet_sync import sync_members_to_sheet
 
         mock_get_ws.side_effect = MemberSyncError("worksheet missing")
         with self.assertRaises(MemberSyncError):
@@ -141,13 +141,13 @@ class SchedulerTests(TestCase):
         first.refresh_from_db()
         self.assertGreater(first.available_at, timezone.now())
 
-    @patch("apps.authn.services.member_sheet_sync.sync_members_to_sheet")
+    @patch("apps.authn.services.members.sheet_sync.sync_members_to_sheet")
     def test_flush_pending_sync_runs_sync(self, mock_sync):
         _flush_pending_sync()
         mock_sync.assert_called_once()
 
     @patch(
-        "apps.authn.services.member_sheet_sync.sync_members_to_sheet",
+        "apps.authn.services.members.sheet_sync.sync_members_to_sheet",
         side_effect=RuntimeError("sheets down"),
     )
     def test_flush_pending_sync_swallows_errors(self, mock_sync):

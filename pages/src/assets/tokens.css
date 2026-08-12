@@ -1,0 +1,23 @@
+/* ==========================================================================
+   Fallback design tokens — used before the layout API responds.
+   Full tokens are managed in Django Admin (SiteSettings → Design Tokens)
+   and injected at runtime by LayoutProvider.
+   ========================================================================== */
+
+:root {
+  --itg-color-primary: #0f2d52;
+  --itg-color-text: #444;
+  --itg-color-text-dark: #333;
+  --itg-color-text-secondary: #666;
+  --itg-color-bg-page: #f9f9f9;
+  --itg-color-white: #fff;
+  --itg-color-border: #e0e0e0;
+  --itg-font-size-body: 1rem;
+  --itg-font-size-h1: 2rem;
+  --itg-page-max-width: 1200px;
+  --itg-page-padding: 2rem 1rem;
+  --itg-page-padding-mobile: 1rem;
+  --itg-radius-card: 8px;
+  --itg-radius-button: 4px;
+  --itg-transition-fast: 0.2s;
+}

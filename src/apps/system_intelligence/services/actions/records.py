@@ -4,7 +4,7 @@ from typing import Any
 from django.apps import apps
 from django.core.serializers.json import DjangoJSONEncoder
 
-from apps.core.services.db_tools.helpers import MAX_ROWS, _truncate
+from apps.core.services.db_tools.tool_modules.helpers import MAX_ROWS, _truncate
 
 from .exceptions import ActionRequestError
 from .orm import (

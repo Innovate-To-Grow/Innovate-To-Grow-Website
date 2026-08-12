@@ -11,11 +11,12 @@ Organized into modules by functionality:
 from django.contrib import admin
 from django.contrib.auth.models import Group
 
-from .member_sheet_sync import MemberSheetSyncConfigAdmin, MemberSheetSyncLogAdmin
+from apps.authn.services.members.sheet_sync.admin import MemberSheetSyncConfigAdmin, MemberSheetSyncLogAdmin
+
 from .members.contact import ContactEmailAdmin, ContactPhoneAdmin
 from .members.invitation import AdminInvitationAdmin
 from .members.member import MemberAdmin
-from .security.security import RSAKeypairAdmin
+from .security import RSAKeypairAdmin
 
 admin.site.unregister(Group)
 

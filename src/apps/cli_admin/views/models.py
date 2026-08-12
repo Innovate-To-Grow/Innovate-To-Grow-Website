@@ -1,12 +1,12 @@
 from django.apps import apps
 from rest_framework.response import Response
 
-from apps.core.access import user_can_access_app
 from apps.core.services.db_tools.safe_orm import is_model_denied, safe_model_fields
+from apps.core.utils.access import user_can_access_app
 
+from ..auth.throttles import CliReadThrottle
 from ..services.resolve import is_cli_denied, resolve_cli_model
 from ..services.schema import field_schema_verbose
-from ..throttles import CliReadThrottle
 from .base import AdminAPIView
 
 

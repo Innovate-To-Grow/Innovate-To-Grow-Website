@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.authn.throttles import LoginRateThrottle
+from apps.authn.security.throttles import LoginRateThrottle
 from apps.authn.views.helpers import build_auth_success_payload
 from apps.mail.models import LoginLinkToken
 

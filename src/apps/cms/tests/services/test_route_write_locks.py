@@ -8,7 +8,7 @@ from uuid import uuid4
 from django.test import SimpleTestCase, TestCase
 
 from apps.cms.models import CMSPage
-from apps.cms.services import route_write_locks
+from apps.cms.services.routing import route_write_locks
 
 
 class RouteLockNameTests(SimpleTestCase):

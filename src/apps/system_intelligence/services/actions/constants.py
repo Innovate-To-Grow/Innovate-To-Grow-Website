@@ -2,7 +2,6 @@
 the shared safe-ORM layer and re-exported here so the old import paths keep working.
 """
 
-from apps.core.services.db_tools.helpers import MAX_ROWS
 from apps.core.services.db_tools.safe_orm.constants import (
     DENIED_FIELD_NAMES,
     DENIED_MODEL_LABELS,
@@ -12,6 +11,7 @@ from apps.core.services.db_tools.safe_orm.constants import (
     SAFE_LOOKUPS,
     SENSITIVE_FIELD_RE,
 )
+from apps.core.services.db_tools.tool_modules.helpers import MAX_ROWS
 
 PREVIEW_TTL_SECONDS = 600
 COMPARISON_MAX_BLOCKS = 8

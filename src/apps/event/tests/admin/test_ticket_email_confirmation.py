@@ -55,7 +55,7 @@ class TicketEmailTypedConfirmationTest(TestCase):
 
         self.assertContains(response, "Confirmation text does not match event name")
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_empty_event_name_does_not_accept_empty_confirmation(self, mock_send):
         event = make_event(name="")
         ticket = make_ticket(event)
@@ -71,7 +71,7 @@ class TicketEmailTypedConfirmationTest(TestCase):
         self.assertContains(response, "Confirmation text does not match event name")
         mock_send.assert_not_called()
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_correct_confirmation_text_sends_emails(self, mock_send):
         event = make_event(name="Exact Match Event")
         ticket = make_ticket(event)
@@ -86,7 +86,7 @@ class TicketEmailTypedConfirmationTest(TestCase):
         self.assertRedirects(response, reverse("admin:event_eventregistration_changelist"))
         mock_send.assert_called_once()
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     @patch("apps.authn.services.email.send_email.senders.send_notification_email")
     def test_send_all_ticket_emails_does_not_notify_staff(self, mock_notify, mock_send):
         from apps.authn.models import ContactEmail, Member
@@ -110,7 +110,7 @@ class TicketEmailTypedConfirmationTest(TestCase):
         mock_send.assert_called_once()
         mock_notify.assert_not_called()
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_empty_registrations_does_not_require_confirmation(self, mock_send):
         response = self.client.post(
             reverse("admin:event_eventregistration_send_all_ticket_emails"),

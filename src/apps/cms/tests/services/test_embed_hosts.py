@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from apps.cms.models import CMSEmbedAllowedHost
-from apps.cms.services.embed_hosts import (
+from apps.cms.services.sanitization.embed_hosts import (
     InvalidEmbedURL,
     get_allowed_hosts,
     invalidate_cache,
