@@ -1,4 +1,4 @@
-from ..helpers import _serialize_rows
+from .helpers import _serialize_rows
 
 
 def search_cms_pages(params):

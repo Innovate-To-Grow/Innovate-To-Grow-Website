@@ -24,7 +24,7 @@ from .models import (
     SiteSettings,
     StyleSheet,
 )
-from .services.embed_hosts import invalidate_cache as invalidate_embed_host_cache
+from .services.sanitization.embed_hosts import invalidate_cache as invalidate_embed_host_cache
 from .views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
 
 logger = logging.getLogger(__name__)
@@ -151,7 +151,7 @@ def schedule_route_redirect_edge_sync(sender, instance, **kwargs):
     source_path = instance.source_path
 
     def _schedule():
-        from .services.amplify_redirects import schedule_amplify_redirect_sync
+        from .services.amplify.amplify_redirects import schedule_amplify_redirect_sync
 
         try:
             cache.delete(f"cms:page:{source_path}")

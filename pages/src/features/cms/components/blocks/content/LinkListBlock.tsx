@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { safeHref } from '@/lib/safeHref';
+import { safeHref } from '@/lib/security';
 
 export interface LinkItem {
   label: string;

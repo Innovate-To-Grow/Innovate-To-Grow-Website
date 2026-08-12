@@ -1,7 +1,7 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 from .exceptions import ActionRequestError
 from .json import json_safe

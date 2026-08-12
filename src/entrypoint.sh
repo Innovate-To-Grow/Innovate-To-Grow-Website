@@ -39,7 +39,7 @@ fi
 echo "Starting Uvicorn..."
 # Uvicorn's concurrency cap provides backpressure; hard per-request termination
 # remains an ALB/deployment timeout concern.
-exec uvicorn config.asgi:application \
+exec uvicorn config.deploy.asgi:application \
   --host 0.0.0.0 \
   --port 8000 \
   --workers "${WEB_CONCURRENCY:-2}" \

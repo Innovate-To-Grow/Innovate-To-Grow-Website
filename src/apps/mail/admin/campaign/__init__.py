@@ -1,6 +1,7 @@
 """Email campaign admin package with patch-compatible service aliases."""
 
 from apps.mail.services.audience import get_recipients
+from apps.mail.services.campaign.preview import render_preview
 from apps.mail.services.gmail_import import (
     GMAIL_FOLDER_DISPLAY,
     GmailImportError,
@@ -8,7 +9,6 @@ from apps.mail.services.gmail_import import (
     list_recent_sent_messages,
     resolve_gmail_mailbox,
 )
-from apps.mail.services.preview import render_preview
 
 from .admin import EmailCampaignAdmin
 from .forms import EmailCampaignForm

@@ -9,6 +9,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.constants import VERIFICATION_LINK_INVALID
+from apps.authn.security.throttles import (
+    EmailCodeUserRequestThrottle,
+    EmailCodeVerifyThrottle,
+    PhoneCodeRequestThrottle,
+)
 from apps.authn.serializers import (
     AccountEmailsSerializer,
     ChangePasswordCodeConfirmSerializer,
@@ -19,7 +24,6 @@ from apps.authn.serializers import (
     DeleteAccountCodeVerifySerializer,
 )
 from apps.authn.services import AuthChallengeInvalid
-from apps.authn.throttles import EmailCodeUserRequestThrottle, EmailCodeVerifyThrottle, PhoneCodeRequestThrottle
 
 from ..helpers import challenge_error_response
 

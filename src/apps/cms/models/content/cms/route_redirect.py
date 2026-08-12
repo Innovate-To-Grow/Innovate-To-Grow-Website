@@ -76,7 +76,7 @@ class RouteRedirect(ProjectControlModel):
 
     def clean(self):
         super().clean()
-        from apps.cms.services.route_redirects import (
+        from apps.cms.services.routing.route_redirects import (
             normalize_and_validate_legacy_source,
             normalize_and_validate_route,
             redirect_mapping_conflicts,
@@ -123,11 +123,11 @@ class RouteRedirect(ProjectControlModel):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        from apps.cms.services.route_redirects import (
+        from apps.cms.services.routing.route_redirects import (
             normalize_and_validate_legacy_source,
             normalize_and_validate_route,
         )
-        from apps.cms.services.route_write_locks import lock_route_redirect_write
+        from apps.cms.services.routing.route_write_locks import lock_route_redirect_write
 
         self.source_path = normalize_and_validate_legacy_source(self.source_path)
         self.destination_path = normalize_and_validate_route(self.destination_path)

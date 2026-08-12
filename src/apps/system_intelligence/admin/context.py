@@ -3,7 +3,7 @@ from django.core.exceptions import PermissionDenied
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import SystemIntelligenceConfig
 
 UUID_PLACEHOLDER = "00000000-0000-0000-0000-000000000000"

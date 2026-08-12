@@ -2,7 +2,7 @@
 
 from django.test import TestCase
 
-from apps.core.admin.utils import (
+from apps.core.admin.common.utils import (
     admin_url,
     format_duration,
     format_file_size,

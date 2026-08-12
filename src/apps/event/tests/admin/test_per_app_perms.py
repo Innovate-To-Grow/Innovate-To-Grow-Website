@@ -3,7 +3,7 @@
 The event app re-enables delete on two ReadOnlyModelAdmin subclasses
 (sync log + check-in record) and add/delete on the registration admin. Each
 override must be scoped to the ``event`` app grant (see
-apps.core.access.user_can_access_app), not a bare ``is_staff``/``True`` bypass:
+apps.core.utils.access.user_can_access_app), not a bare ``is_staff``/``True`` bypass:
 event-granted staff are allowed, other-app staff are denied, superusers bypass.
 """
 
@@ -11,7 +11,7 @@ from django.test import RequestFactory, TestCase
 
 from apps.event.admin.checkin import CheckInRecordAdmin
 from apps.event.admin.registration import EventRegistrationAdmin
-from apps.event.admin.sync_log import RegistrationSheetSyncLogAdmin
+from apps.event.admin.registration.sync_log import RegistrationSheetSyncLogAdmin
 from apps.event.models import CheckInRecord, EventRegistration, RegistrationSheetSyncLog
 from apps.event.tests.helpers import make_admin, make_superuser
 

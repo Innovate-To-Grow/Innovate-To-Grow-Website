@@ -2,7 +2,7 @@ import json
 
 from django.db.models import Count, Q
 
-from ..helpers import _serialize_rows, _truncate
+from .helpers import _serialize_rows, _truncate
 
 
 def search_events(params):

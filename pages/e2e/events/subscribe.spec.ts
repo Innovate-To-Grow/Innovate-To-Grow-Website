@@ -5,7 +5,6 @@ import {test, expect} from '../fixtures';
 import {
   mockEmailAuthFlow,
   mockMyTickets,
-  mockPastProjectSharesList,
   mockPhoneAuthFlow,
   mockProfileEndpoint,
   mintFakeJwt,
@@ -119,7 +118,6 @@ test('subscribe with existing authenticated session skips auth step', async ({pa
     profile: {first_name: 'Ada', last_name: 'Lovelace', organization: 'Acme Corp'},
   });
   await mockMyTickets(page, []);
-  await mockPastProjectSharesList(page, []);
 
   await page.goto('/subscribe', {waitUntil: 'domcontentloaded'});
   // Should skip directly to the management step since the user is already authenticated.

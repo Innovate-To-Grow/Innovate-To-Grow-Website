@@ -4,7 +4,7 @@ from django.db import transaction
 from django.forms.models import BaseInlineFormSet, InlineForeignKeyField
 from unfold.admin import TabularInline
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 from ...models import ContactEmail, ContactPhone, Member
 
@@ -82,7 +82,7 @@ class StaffPermissionInlineMixin:
     """Grant inline permissions per-app, matching BaseModelAdmin.
 
     These inlines belong to the Member admin, so access is gated on the ``authn`` app
-    grant (see apps.core.access.user_can_access_app) rather than bare ``is_staff``.
+    grant (see apps.core.utils.access.user_can_access_app) rather than bare ``is_staff``.
     """
 
     def _has_app_access(self, request):

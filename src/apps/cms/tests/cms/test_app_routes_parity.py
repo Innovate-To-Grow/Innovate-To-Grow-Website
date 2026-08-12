@@ -18,7 +18,7 @@ from apps.cms.app_routes import (
     PUBLIC_APP_ROUTE_PATTERNS,
     PUBLIC_APP_ROUTES,
 )
-from apps.cms.embed_sections import ROUTE_HIDDEN_SECTION_PRESETS
+from apps.cms.services.embed.embed_sections import ROUTE_HIDDEN_SECTION_PRESETS
 
 EMBED_REGISTRY_PATH = (
     Path(settings.BASE_DIR).parent / "pages" / "src" / "features" / "cms" / "components" / "embedAppRoutes.ts"
@@ -38,7 +38,9 @@ def _frontend_embed_routes() -> set[str]:
 
 class AppRoutesParityTests(SimpleTestCase):
     def test_public_route_conflict_registry_matches_frontend_router(self):
-        source = (Path(settings.BASE_DIR).parent / "pages" / "src" / "app" / "router.tsx").read_text(encoding="utf-8")
+        source = (Path(settings.BASE_DIR).parent / "pages" / "src" / "app" / "router" / "router.tsx").read_text(
+            encoding="utf-8"
+        )
         frontend_routes = {
             value if value.startswith("/") else f"/{value}"
             for value in _ROUTER_PATH_RE.findall(source)

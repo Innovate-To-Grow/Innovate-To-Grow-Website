@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
-from apps.core.services.db_tools.tools import TOOL_REGISTRY
+from apps.core.services.db_tools.tool_modules import TOOL_REGISTRY
 from apps.system_intelligence.services import tools as system_intelligence_tools
 
 

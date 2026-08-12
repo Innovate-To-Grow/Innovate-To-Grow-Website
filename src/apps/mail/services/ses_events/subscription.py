@@ -2,7 +2,7 @@ import logging
 from urllib.parse import parse_qs, urlparse
 
 from apps.core.utils.security import SecurityValidationError, validate_aws_sns_https_url
-from apps.mail.services.sns_http import fetch_sns_https
+from apps.mail.services.sns.http import fetch_sns_https
 
 logger = logging.getLogger(__name__)
 

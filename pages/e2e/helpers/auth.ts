@@ -123,6 +123,9 @@ export async function seedAuthenticatedSession(
     await page.route('**/authn/contact-phones/', (route) =>
       route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
     );
+    await page.route('**/projects/past-shares/mine/', (route) =>
+      route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
+    );
   }
 
   return {user, profileRef, patchPayloads};
@@ -226,6 +229,9 @@ export async function mockAccountDashboard(
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
   );
   await page.route('**/authn/contact-phones/', (route) =>
+    route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
+  );
+  await page.route('**/projects/past-shares/mine/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
   );
 }

@@ -86,7 +86,7 @@ class ChallengeErrorResponseTests(APITestCase):
 
 
 @patch("apps.authn.services.email.send_email.send_verification_email")
-@patch("apps.authn.services.email_challenges._random_code", return_value="654321")
+@patch("apps.authn.services.email.challenges._random_code", return_value="654321")
 class PublicEmailCodeViewEdgeTests(APITestCase):
     def setUp(self):
         cache.clear()
@@ -249,7 +249,7 @@ class PublicEmailCodeViewEdgeTests(APITestCase):
 
 
 @patch("apps.authn.services.email.send_email.send_verification_email")
-@patch("apps.authn.services.email_challenges._random_code", return_value="654321")
+@patch("apps.authn.services.email.challenges._random_code", return_value="654321")
 class RegisterViewEdgeTests(APITestCase):
     def setUp(self):
         cache.clear()

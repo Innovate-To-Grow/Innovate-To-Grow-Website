@@ -2,7 +2,7 @@ from django.apps import apps as django_apps
 
 from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff
 from apps.cli_admin.views.models import _is_cli_denied
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 
 class AppListEndpointTests(CliApiTestCase):

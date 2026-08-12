@@ -15,7 +15,7 @@ Application Load Balancer.
 - Entry command: Uvicorn
 
 ```
-uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --limit-concurrency 20
+uvicorn config.deploy.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --limit-concurrency 20
 ```
 
 ### Build

@@ -1,4 +1,4 @@
-from apps.core.services.sheets_safety import safe_sheet_value
+from apps.core.services.helpers.sheets_safety import safe_sheet_value
 from apps.event.models import Event, EventRegistration
 
 REGISTRATION_ID_COLUMN = "Registration ID"

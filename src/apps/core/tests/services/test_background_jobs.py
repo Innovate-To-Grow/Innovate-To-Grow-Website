@@ -408,7 +408,7 @@ class BackgroundJobQueueTests(TestCase):
             current_time + timedelta(milliseconds=100),
         )
 
-    @patch("apps.authn.services.member_sheet_sync._flush_pending_sync")
+    @patch("apps.authn.services.members.sheet_sync._flush_pending_sync")
     def test_member_sheet_handler_cancels_only_pre_claim_duplicates(self, flush):
         from apps.core.services.background_jobs.handlers import sync_member_sheet_job
 

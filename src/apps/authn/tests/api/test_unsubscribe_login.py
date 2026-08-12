@@ -9,7 +9,7 @@ from rest_framework.test import APITestCase
 
 from apps.authn.constants import UNSUBSCRIBE_LOGIN_INVALID
 from apps.authn.models import ContactEmail
-from apps.authn.services.unsubscribe_token import build_unsubscribe_login_token
+from apps.authn.services.account.unsubscribe import build_unsubscribe_login_token
 
 Member = get_user_model()
 

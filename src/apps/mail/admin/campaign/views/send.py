@@ -72,7 +72,7 @@ class CampaignSendMixin:
     def _background_send(campaign_pk, user_pk):
         """Materialize recipient jobs (or synchronously dispatch during rollout)."""
         from apps.mail.models import EmailCampaign as CampaignModel
-        from apps.mail.services.background_jobs import dispatch_email_campaign
+        from apps.mail.services.campaign.dispatch import dispatch_email_campaign
 
         User = get_user_model()
         campaign = CampaignModel.objects.get(pk=campaign_pk)

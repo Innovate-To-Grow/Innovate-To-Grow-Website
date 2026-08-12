@@ -3,7 +3,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from apps.authn.services.create_member import CreateMemberService
+from apps.authn.services.members.create import CreateMemberService
 
 Member = get_user_model()
 

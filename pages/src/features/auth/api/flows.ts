@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { clearKeyCache, encryptPasswordWithCurrentKey } from '@/lib/crypto';
+import { clearKeyCache, encryptPasswordWithCurrentKey } from '@/lib/security';
 import { authApi } from './client';
 import {persistAuthSession} from './storage';
 import type {

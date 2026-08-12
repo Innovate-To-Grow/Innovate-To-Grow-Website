@@ -1,8 +1,8 @@
 from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, TestCase
 
-from apps.event.admin.schedule_sync_log import ScheduleSyncLogAdmin
-from apps.event.admin.sync_log import RegistrationSheetSyncLogAdmin
+from apps.event.admin.registration.sync_log import RegistrationSheetSyncLogAdmin
+from apps.event.admin.schedule.sync_log import ScheduleSyncLogAdmin
 from apps.event.models import RegistrationSheetSyncLog, ScheduleSyncLog
 from apps.event.tests.helpers import make_member, make_superuser
 

@@ -1,5 +1,5 @@
 // /account deep features: EmailCenter, PhoneCenter, PasswordSection,
-// DeleteAccountSection, TicketsSection, and MySharedLinksSection.
+// DeleteAccountSection and TicketsSection.
 import {test, expect} from '../fixtures';
 import {
   contactEmail,
@@ -10,7 +10,6 @@ import {
   mockContactPhonesCRUD,
   mockMyTickets,
   mockPasswordChangeFlow,
-  mockPastProjectSharesList,
   myTicket,
   seedAuthenticatedSession,
 } from '../helpers';
@@ -128,15 +127,4 @@ test('TicketsSection: renders tickets from API', async ({page}) => {
   ]);
   await page.goto('/account', {waitUntil: 'domcontentloaded'});
   await expect(page.locator('.account-page')).toContainText('ITG-E2E-001');
-});
-
-// -- MySharedLinksSection --------------------------------------------------
-
-test('MySharedLinksSection: renders shared links', async ({page}) => {
-  await seedAuthenticatedSession(page);
-  await mockPastProjectSharesList(page, [
-    {id: 'share-1', name: 'My Curated Projects', note: '', version: 1, share_url: '/past-projects/share-1', row_count: 2, created_at: '2026-07-01T00:00:00Z'},
-  ]);
-  await page.goto('/account', {waitUntil: 'domcontentloaded'});
-  await expect(page.locator('.account-page')).toContainText('My Curated Projects');
 });

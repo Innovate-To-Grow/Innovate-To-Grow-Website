@@ -19,7 +19,7 @@ from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
-from apps.core.services.sheets_safety import safe_sheet_value
+from apps.core.services.helpers.sheets_safety import safe_sheet_value
 from apps.system_intelligence.models import SystemIntelligenceExport
 from apps.system_intelligence.services.actions.context import current_conversation, current_user_id
 from apps.system_intelligence.services.actions.exceptions import ActionRequestError

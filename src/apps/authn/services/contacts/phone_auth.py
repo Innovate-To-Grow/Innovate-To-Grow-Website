@@ -24,7 +24,7 @@ from apps.authn.services.contacts.contact_phones import (
     national_to_e164,
     normalize_to_national,
 )
-from apps.authn.services.email_challenges import AuthChallengeInvalid
+from apps.authn.services.email.challenges import AuthChallengeInvalid
 
 
 class PhoneAccountInactive(Exception):

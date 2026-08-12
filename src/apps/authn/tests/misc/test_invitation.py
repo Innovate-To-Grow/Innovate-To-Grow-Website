@@ -100,7 +100,7 @@ class AcceptInvitationViewTests(TestCase):
         self.assertTrue(member.is_staff)
         self.assertTrue(member.is_active)
         # No app grant is handed out at acceptance time; the I2G Master grants
-        # apps later via the Member admin (see apps.core.access).
+        # apps later via the Member admin (see apps.core.utils.access).
         self.assertEqual(member.admin_apps, [])
 
     def test_post_existing_member_upgrades_to_staff(self):

@@ -1,6 +1,6 @@
 from django.db.models import Q
 
-from ..helpers import _serialize_rows
+from .helpers import _serialize_rows
 
 
 def search_members(params):

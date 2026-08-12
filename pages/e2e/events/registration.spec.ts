@@ -143,6 +143,9 @@ test('account dashboard shows an existing registration and another open event', 
   await page.route('**/authn/contact-phones/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
   );
+  await page.route('**/projects/past-shares/mine/', (route) =>
+    route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
+  );
 
   await page.goto('/account', {waitUntil: 'domcontentloaded'});
 

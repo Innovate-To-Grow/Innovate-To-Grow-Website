@@ -3,8 +3,8 @@ import json
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse, StreamingHttpResponse
 
-from apps.core.access import user_can_access_app
 from apps.core.models import AWSCredentialConfig
+from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import (
     ChatConversation,
     ChatMessage,

@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.services.email_challenges import (
+from apps.authn.services.email.challenges import (
     AuthChallengeDeliveryError,
     AuthChallengeInvalid,
     AuthChallengeThrottled,
@@ -56,7 +56,7 @@ def _last_admin_cookie_value(member):
     return response.cookies[LAST_ADMIN_LOGIN_COOKIE_NAME].value
 
 
-@override_settings(ROOT_URLCONF="config.urls")
+@override_settings(ROOT_URLCONF="config.routing.urls")
 class AdminLoginViewTest(TestCase):
     # noinspection PyPep8Naming
     def setUp(self):

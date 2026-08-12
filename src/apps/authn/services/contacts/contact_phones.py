@@ -8,11 +8,11 @@ from django.db import IntegrityError, transaction
 
 from apps.authn.models import ContactPhone, Member
 from apps.authn.models.contact.phone_regions import PHONE_REGION_CHOICES
-from apps.authn.services.account_recovery.recovery import (
+from apps.authn.services.account.recovery import (
     LastRecoveryContactError,
     count_verified_recovery_contacts,
 )
-from apps.authn.services.email_challenges import AuthChallengeInvalid
+from apps.authn.services.email.challenges import AuthChallengeInvalid
 
 # Country-code prefixes sorted longest-first so "852" matches before "8".
 # For codes like "1-US" / "1-CA" the dial prefix is just "1".

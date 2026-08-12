@@ -14,12 +14,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..constants import ACCESS_TOKEN_TTL, CLI_CLIENT_ID, PKCE_METHOD
+from ..auth.constants import ACCESS_TOKEN_TTL, CLI_CLIENT_ID, PKCE_METHOD
+from ..auth.pkce import verify_pkce_s256
+from ..auth.redirect_uri import RedirectUriError, validate_loopback_redirect_uri
+from ..auth.serializers import TokenExchangeSerializer
+from ..auth.throttles import CliOAuthThrottle
 from ..models import CliAccessToken, CliAuthorizationCode
-from ..pkce import verify_pkce_s256
-from ..redirect_uri import RedirectUriError, validate_loopback_redirect_uri
-from ..serializers import TokenExchangeSerializer
-from ..throttles import CliOAuthThrottle
 from .helpers import client_ip
 
 ADMIN_LOGIN_PATH = "/admin/login/"

@@ -118,7 +118,7 @@ class CMSPage(ProjectControlModel):
 
     def clean(self):
         super().clean()
-        from apps.cms.services.route_redirects import page_route_conflicts
+        from apps.cms.services.routing.route_redirects import page_route_conflicts
 
         self.route, conflicts = page_route_conflicts(self.route, exclude_page_id=self.pk)
         if conflicts:
@@ -182,14 +182,14 @@ class CMSPage(ProjectControlModel):
         route_will_save = update_fields is None or "route" in update_fields
         self.route = normalize_cms_route(self.route)
 
-        from apps.cms.services.route_write_locks import lock_cms_page_write
+        from apps.cms.services.routing.route_write_locks import lock_cms_page_write
 
         with lock_cms_page_write(
             self,
             candidate_route=self.route if route_will_save else None,
         ) as snapshot:
             if getattr(self, "_route_ownership_validated", False):
-                from apps.cms.services.route_redirects import page_route_conflicts
+                from apps.cms.services.routing.route_redirects import page_route_conflicts
 
                 self.route, conflicts = page_route_conflicts(self.route, exclude_page_id=self.pk)
                 if conflicts:
@@ -203,12 +203,12 @@ class CMSPage(ProjectControlModel):
                 self.published_at = timezone.now()
             super().save(*args, **kwargs)
             if route_will_save and snapshot.persisted_route and snapshot.persisted_route != self.route:
-                from apps.cms.services.page_routes import apply_page_route_change
+                from apps.cms.services.routing.page_routes import apply_page_route_change
 
                 apply_page_route_change(page=self, old_route=snapshot.persisted_route, keep_redirect=False)
 
     def delete(self, *args, **kwargs):
-        from apps.cms.services.route_write_locks import lock_cms_page_write
+        from apps.cms.services.routing.route_write_locks import lock_cms_page_write
 
         with lock_cms_page_write(self, candidate_route=self.route) as snapshot:
             redirect = self._active_destination_redirect(snapshot.persisted_route)

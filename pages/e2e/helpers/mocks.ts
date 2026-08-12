@@ -14,7 +14,6 @@ import type {NewsArticle, PaginatedResponse} from '../../src/features/news/api';
 import type {
   PastProjectAISearchResponse,
   PastProjectShare,
-  PastProjectShareSummary,
   ProjectDetail,
   ProjectTableRow,
 } from '../../src/features/projects/api';
@@ -240,16 +239,32 @@ export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Pro
   await page.route('**/projects/past-all/', (route) => route.fulfill(json(rows)));
 }
 
-export async function mockPastProjectShare(page: Page, share: PastProjectShare): Promise<void> {
-  // Covers GET (view) and PATCH/PUT (owner edit): the update echoes the merged share back.
-  // RegExp (not a glob) so it matches the trailing-slash detail URL `.../past-shares/<id>/`.
+export interface PastProjectShareMockController {
+  patchPayloads: Partial<PastProjectShare>[];
+  deleted: boolean;
+  getCurrent: () => PastProjectShare;
+  replaceCurrent: (share: PastProjectShare) => void;
+}
+
+export async function mockPastProjectShare(
+  page: Page,
+  share: PastProjectShare,
+): Promise<PastProjectShareMockController> {
   let current = {...share};
-  await page.route(/\/projects\/past-shares\/[^/]+\/?(\?.*)?$/, (route) => {
+  const patchPayloads: Partial<PastProjectShare>[] = [];
+  let deleted = false;
+
+  await page.route(/\/projects\/past-shares\/[^/]+\/?(\?.*)?$/, async (route) => {
     const method = route.request().method();
+    if (deleted) {
+      await route.fulfill(json({detail: 'Not found.'}, 404));
+      return;
+    }
     if (method === 'PATCH' || method === 'PUT') {
       const body = (route.request().postDataJSON() ?? {}) as Partial<PastProjectShare>;
+      patchPayloads.push(body);
       if (body.version !== current.version) {
-        route.fulfill(
+        await route.fulfill(
           json(
             {
               code: 'stale_snapshot',
@@ -261,16 +276,28 @@ export async function mockPastProjectShare(page: Page, share: PastProjectShare):
         );
         return;
       }
-      current = {
-        ...current,
-        ...body,
-        version: current.version + 1,
-      };
-      route.fulfill(json(current));
+      current = {...current, ...body, version: current.version + 1};
+      await route.fulfill(json(current));
       return;
     }
-    route.fulfill(json(current));
+    if (method === 'DELETE') {
+      deleted = true;
+      await route.fulfill({status: 204});
+      return;
+    }
+    await route.fulfill(json(current));
   });
+
+  return {
+    patchPayloads,
+    get deleted() {
+      return deleted;
+    },
+    getCurrent: () => ({...current}),
+    replaceCurrent: (nextShare) => {
+      current = {...nextShare};
+    },
+  };
 }
 
 export async function mockProjectDetail(
@@ -402,67 +429,6 @@ export async function mockAiSearch(
   });
 
   return {queries};
-}
-
-// -- past project shares CRUD ------------------------------------------------
-
-export interface PastProjectShareCreateMockResult {
-  created: unknown[];
-}
-
-export async function mockPastProjectShareCreate(
-  page: Page,
-  opts: {response?: PastProjectShare} = {},
-): Promise<PastProjectShareCreateMockResult> {
-  const created: unknown[] = [];
-
-  await page.route('**/projects/past-shares/', async (route) => {
-    if (route.request().method() !== 'POST') {
-      await route.fallback();
-      return;
-    }
-    created.push(route.request().postDataJSON());
-    await route.fulfill(
-      json(
-        opts.response ?? {
-          id: 'share-new',
-          name: 'New Share',
-          rows: [],
-          note: '',
-          details_text: '',
-          version: 1,
-          share_url: '/past-projects/share-new',
-          can_edit: true,
-          created_at: new Date().toISOString(),
-        },
-        201,
-      ),
-    );
-  });
-
-  return {created};
-}
-
-export async function mockPastProjectSharesList(
-  page: Page,
-  shares: PastProjectShareSummary[] = [],
-): Promise<void> {
-  await page.route('**/projects/past-shares/mine/', (route) =>
-    route.fulfill(json(shares)),
-  );
-}
-
-export async function mockPastProjectShareDelete(
-  page: Page,
-  id: string,
-): Promise<void> {
-  await page.route(`**/projects/past-shares/${id}/`, async (route) => {
-    if (route.request().method() === 'DELETE') {
-      await route.fulfill({status: 204});
-      return;
-    }
-    await route.fulfill(json({detail: 'Not found.'}, 404));
-  });
 }
 
 // -- account emails ----------------------------------------------------------

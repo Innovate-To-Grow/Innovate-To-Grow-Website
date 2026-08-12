@@ -20,8 +20,7 @@ from apps.core.admin import BaseModelAdmin
 
 from ...models import ImpersonationToken, Member
 from .forms import MemberChangeForm, MemberCreationForm
-from .inlines import ContactEmailInline, ContactPhoneInline
-from .member_helpers import (
+from .helpers import (
     activate_members,
     deactivate_members,
     download_template_view,
@@ -34,6 +33,7 @@ from .member_helpers import (
     import_excel_view,
     normalize_inline_uuid_none_values,
 )
+from .inlines import ContactEmailInline, ContactPhoneInline
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     @admin.action(description="Sync ALL members to Google Sheet")
     def sync_all_members_to_sheet(self, request, queryset):
         try:
-            from apps.authn.services.member_sheet_sync import sync_members_to_sheet
+            from apps.authn.services.members.sheet_sync import sync_members_to_sheet
 
             rows = sync_members_to_sheet(sync_type="full")
             self.message_user(request, f"Synced {rows} members to Google Sheet.")

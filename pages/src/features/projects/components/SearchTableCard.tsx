@@ -27,7 +27,7 @@ interface SearchTableCardProps {
   onRemove: (tableId: string) => void;
   onRefresh?: (tableId: string) => void;
   /**
-   * Push this table's checked rows into the shared/merged results. May be async; resolve to `false`
+   * Push this table's checked rows into the merged results. May be async; resolve to `false`
    * to signal failure so the selection is kept (otherwise the selection is cleared on success).
    */
   onMergeSelected: (rows: ProjectGridRow[]) => void | boolean | Promise<void | boolean>;
@@ -108,8 +108,8 @@ export function SearchTableCard({
       return;
     }
 
-    // Clear the selection only once the merge resolves successfully — a failed async add (shared
-    // mode) keeps the checkboxes so the user can retry without re-selecting every row.
+    // Clear the selection only once the merge resolves successfully. A failed async operation keeps
+    // the checkboxes so the user can retry without re-selecting every row.
     const result = await onMergeSelected(table.selectedRows.map(stripProjectGridItem));
     if (result !== false) {
       table.clearSelection();

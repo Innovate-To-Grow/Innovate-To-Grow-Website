@@ -1,4 +1,4 @@
-import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
+import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
 
 export interface ProposalCard {
   type: string;

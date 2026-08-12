@@ -8,6 +8,12 @@ from django.db import IntegrityError
 from django.test import TestCase, override_settings
 
 from apps.authn.models import ContactEmail
+from apps.authn.services.account.unsubscribe import (
+    UnsubscribeLoginTokenAlreadyUsed,
+    UnsubscribeLoginTokenInvalid,
+    build_unsubscribe_login_token,
+    get_member_from_unsubscribe_token,
+)
 from apps.authn.services.contacts.contact_emails import (
     _member_has_secondary,
     create_contact_email,
@@ -16,21 +22,15 @@ from apps.authn.services.contacts.contact_emails import (
     resend_contact_email_verification,
     verify_contact_email_code,
 )
-from apps.authn.services.create_member import CreateMemberService
 from apps.authn.services.email.auth_email import (
     claim_unclaimed_contact_email,
     get_pending_registration_member,
     get_unclaimed_contact_email,
     resolve_auth_email,
 )
-from apps.authn.services.email_challenges import AuthChallengeInvalid
-from apps.authn.services.key_encryption import decrypt_pem, encrypt_pem, is_encrypted
-from apps.authn.services.unsubscribe_token import (
-    UnsubscribeLoginTokenAlreadyUsed,
-    UnsubscribeLoginTokenInvalid,
-    build_unsubscribe_login_token,
-    get_member_from_unsubscribe_token,
-)
+from apps.authn.services.email.challenges import AuthChallengeInvalid
+from apps.authn.services.members.create import CreateMemberService
+from apps.authn.services.security.key_encryption import decrypt_pem, encrypt_pem, is_encrypted
 
 Member = get_user_model()
 
@@ -50,7 +50,7 @@ def _member(email="primary@example.com", **kwargs):
 class CreateMemberErrorPathTests(TestCase):
     def test_integrity_error_path(self):
         with patch(
-            "apps.authn.services.create_member.Member.objects.create_user",
+            "apps.authn.services.members.create.Member.objects.create_user",
             side_effect=IntegrityError("dup key"),
         ):
             result = CreateMemberService.create_member(password="StrongPass123!", first_name="A", last_name="B")
@@ -59,7 +59,7 @@ class CreateMemberErrorPathTests(TestCase):
 
     def test_validation_error_path(self):
         with patch(
-            "apps.authn.services.create_member.Member.objects.create_user",
+            "apps.authn.services.members.create.Member.objects.create_user",
             side_effect=ValidationError("bad"),
         ):
             result = CreateMemberService.create_member(password="StrongPass123!", first_name="A", last_name="B")
@@ -68,7 +68,7 @@ class CreateMemberErrorPathTests(TestCase):
 
     def test_unexpected_error_path(self):
         with patch(
-            "apps.authn.services.create_member.Member.objects.create_user",
+            "apps.authn.services.members.create.Member.objects.create_user",
             side_effect=RuntimeError("boom"),
         ):
             result = CreateMemberService.create_member(password="StrongPass123!", first_name="A", last_name="B")

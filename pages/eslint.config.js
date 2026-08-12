@@ -24,7 +24,7 @@ export default defineConfig([
     // Route configuration module: defines lazy-loaded route components inline
     // alongside the (non-component) `router` export. It is not a fast-refresh
     // target, so react-refresh's only-export-components rule does not apply.
-    files: ['src/app/router.tsx'],
+    files: ['src/app/router/router.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },

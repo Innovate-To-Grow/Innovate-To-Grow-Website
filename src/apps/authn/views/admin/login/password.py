@@ -82,7 +82,7 @@ class PasswordLoginMixin:
 
 def _finish_password_login(request, member, log_message):
     clear_password_rate_limit(request)
-    auth.login(request, member, backend="apps.authn.backends.EmailAuthBackend")
+    auth.login(request, member, backend="apps.authn.security.backends.EmailAuthBackend")
     clear_admin_login_session(request)
     logger.info(log_message, member.get_primary_email())
     response = redirect(safe_admin_next(request))

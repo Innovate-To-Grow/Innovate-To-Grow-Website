@@ -1,5 +1,5 @@
 import type { ElementType } from 'react';
-import {SafeHtml} from '@/components/ui/SafeHtml/SafeHtml';
+import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
 
 export interface RichTextData {
   heading?: string;

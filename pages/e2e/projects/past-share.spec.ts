@@ -87,6 +87,52 @@ test.describe('past projects shared page', () => {
     await expect(editor).toContainText('Hello world');
   });
 
+  test('owner save persists through reload with the next snapshot version', async ({page}) => {
+    await mockPastProjects(page, pastProjectRows());
+    const shareMock = await mockPastProjectShare(page, shareFixture({can_edit: true}));
+    await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
+
+    await page.getByRole('button', {name: /edit curation note/i}).first().click();
+    await noteEditor(page).fill('Persisted owner note');
+    await page.getByRole('button', {name: /save curation note/i}).first().click();
+
+    await expect(page.getByText('Note updated.')).toBeVisible();
+    await expect.poll(() => shareMock.patchPayloads.length).toBe(1);
+    expect(shareMock.patchPayloads[0]).toMatchObject({note: 'Persisted owner note', version: 1});
+    expect(shareMock.getCurrent()).toMatchObject({note: 'Persisted owner note', version: 2});
+
+    await page.reload({waitUntil: 'domcontentloaded'});
+    await expect(page.getByText('Persisted owner note').first()).toBeVisible();
+  });
+
+  test('stale owner save reloads authoritative state before the next edit', async ({page}) => {
+    await mockPastProjects(page, pastProjectRows());
+    const shareMock = await mockPastProjectShare(page, shareFixture({can_edit: true}));
+    await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
+
+    const editNoteButton = page.getByRole('button', {name: /edit curation note/i}).first();
+    await expect(editNoteButton).toBeVisible();
+    shareMock.replaceCurrent(
+      shareFixture({can_edit: true, note: 'External owner note', version: 2}),
+    );
+    await editNoteButton.click();
+    await noteEditor(page).fill('Stale local note');
+    await page.getByRole('button', {name: /save curation note/i}).first().click();
+
+    await expect(page.getByRole('alert')).toContainText('latest version was reloaded');
+    await expect(page.getByText('External owner note').first()).toBeVisible();
+    expect(shareMock.patchPayloads[0]).toMatchObject({note: 'Stale local note', version: 1});
+
+    await page.getByRole('button', {name: /edit curation note/i}).first().click();
+    await noteEditor(page).fill('Resolved owner note');
+    await page.getByRole('button', {name: /save curation note/i}).first().click();
+
+    await expect(page.getByText('Note updated.')).toBeVisible();
+    await expect.poll(() => shareMock.patchPayloads.length).toBe(2);
+    expect(shareMock.patchPayloads[1]).toMatchObject({note: 'Resolved owner note', version: 2});
+    expect(shareMock.getCurrent()).toMatchObject({note: 'Resolved owner note', version: 3});
+  });
+
   test('owner can toggle a note highlight on and back off without re-selecting', async ({page}) => {
     await mockPastProjects(page, pastProjectRows());
     await mockPastProjectShare(page, shareFixture({can_edit: true}));

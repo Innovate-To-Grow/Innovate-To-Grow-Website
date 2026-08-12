@@ -7,8 +7,8 @@ from django.template.response import TemplateResponse
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
-from apps.mail.services.subscription_notifications import send_subscription_confirmation
-from apps.mail.services.unsubscribe_token import (
+from apps.mail.services.tokens.notifications import send_subscription_confirmation
+from apps.mail.services.tokens.unsubscribe import (
     build_resubscribe_token,
     get_member_from_oneclick_token,
     get_member_from_resubscribe_token,

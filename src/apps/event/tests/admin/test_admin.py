@@ -503,7 +503,7 @@ class EventAdminTest(TestCase):
 
     def test_change_page_shows_inlines_for_staff_with_event_app_access(self):
         """Inlines match Event admin access (the ``event`` app grant), not per-model
-        Django permissions — see apps.core.access.user_can_access_app."""
+        Django permissions — see apps.core.utils.access.user_can_access_app."""
         editor = Member.objects.create_user(
             password="testpass123", is_staff=True, is_superuser=False, admin_apps=["event"]
         )
@@ -579,7 +579,7 @@ class EventAdminTest(TestCase):
         response = self.client.get("/admin/event/event/?registration_open__exact=1")
         self.assertEqual(response.status_code, 200)
 
-    @patch("apps.event.admin.current_project.sync_schedule")
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
     def test_pull_schedule_action_triggers_sync(self, mock_sync):
         from apps.event.models import CurrentProjectSchedule
 
@@ -980,7 +980,7 @@ class EventRegistrationAdminTest(TestCase):
         self.assertContains(response, "Send Ticket Emails to All Registrants")
         self.assertContains(response, "You are about to send ticket emails to 1 registrant")
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_send_all_ticket_emails_posts_all_registrations(self, mock_send):
         event = make_event()
         ticket = make_ticket(event)
@@ -998,7 +998,7 @@ class EventRegistrationAdminTest(TestCase):
             {registration_one.pk, registration_two.pk},
         )
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_send_all_ticket_emails_empty_queryset_does_not_send(self, mock_send):
         response = self.client.post(reverse("admin:event_eventregistration_send_all_ticket_emails"))
 
@@ -1202,7 +1202,7 @@ class EventRegistrationAdminTest(TestCase):
         self.assertEqual(registration.ticket, current_ticket)
         mock_sync.assert_not_called()
 
-    @patch("apps.event.services.ticket_mail.send_ticket_email")
+    @patch("apps.event.services.ticket.mail.send_ticket_email")
     @patch("apps.event.services.registration_sheet_sync.schedule_registration_sync")
     def test_admin_change_send_ticket_button_saves_ticket_and_sends_email(self, mock_sync, mock_send):
         event = make_event()

@@ -48,7 +48,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = list(response.wsgi_request._messages)
         self.assertTrue(any("No configuration found" in str(m) for m in messages))
 
-    @patch("apps.event.admin.current_project.sync_schedule")
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
     def test_pull_view_success_reports_stats(self, mock_sync):
         config = CurrentProjectSchedule.objects.create(name="Demo Day")
         mock_sync.return_value = ScheduleSyncStats(
@@ -65,7 +65,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("2 sections" in m and "3 tracks" in m and "4 slots" in m for m in messages))
 
-    @patch("apps.event.admin.current_project.sync_schedule", side_effect=ScheduleSyncError("kaboom"))
+    @patch("apps.event.admin.current_project.admin.sync_schedule", side_effect=ScheduleSyncError("kaboom"))
     def test_pull_view_failure_shows_error(self, mock_sync):
         CurrentProjectSchedule.objects.create(name="Demo Day")
 

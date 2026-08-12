@@ -4,7 +4,7 @@ import {useSearchParams} from 'react-router';
 import {ProjectGridTable, PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '@/features/projects';
 import {useCurrentEventSchedule} from '@/features/events/hooks/useCurrentEventSchedule';
 import {scheduleProjectToGridRow} from '@/features/projects/api';
-import {addMinutes} from '@/lib/time';
+import {addMinutes} from '@/lib/format';
 
 const SECTION_ORDER = ['CAP', 'CEE', 'ENGSL', 'CSE'] as const;
 const GRAND_AWARD_LABELS: Record<string, string> = {

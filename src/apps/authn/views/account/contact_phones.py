@@ -16,6 +16,7 @@ from apps.authn.constants import (
     VERIFICATION_THROTTLED,
 )
 from apps.authn.models import ContactPhone
+from apps.authn.security.throttles import EmailCodeVerifyThrottle, PhoneCodeRequestThrottle
 from apps.authn.serializers import (
     ContactPhoneCreateSerializer,
     ContactPhoneSerializer,
@@ -32,8 +33,7 @@ from apps.authn.services import (
     request_phone_verification,
     verify_phone_code,
 )
-from apps.authn.services.email_challenges import AuthChallengeInvalid
-from apps.authn.throttles import EmailCodeVerifyThrottle, PhoneCodeRequestThrottle
+from apps.authn.services.email.challenges import AuthChallengeInvalid
 
 
 class ContactPhoneListCreateView(APIView):

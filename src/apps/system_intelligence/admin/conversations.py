@@ -3,7 +3,7 @@ import json
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import ChatConversation
 from apps.system_intelligence.services import actions as system_intelligence_actions
 

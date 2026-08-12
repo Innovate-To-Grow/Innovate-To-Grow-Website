@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.cms.models import NewsArticle
-from apps.cms.services.sanitize import sanitize_html
+from apps.cms.services.sanitization.sanitize import sanitize_html
 
 
 class NewsArticleSerializer(serializers.ModelSerializer):

@@ -139,7 +139,7 @@ class EmailCodeLoginMixin:
                 error="You do not have access to the admin panel.",
             )
 
-        auth.login(request, member, backend="apps.authn.backends.EmailAuthBackend")
+        auth.login(request, member, backend="apps.authn.security.backends.EmailAuthBackend")
         clear_admin_login_session(request)
         logger.info("Admin login via email code: %s", member.get_primary_email())
         response = redirect(safe_admin_next(request))

@@ -254,6 +254,9 @@ Thumbs.db
 .agent/
 .agents/
 
+# Interviewer-only challenge reference implementations
+/archive/challenge/
+
 # =====================================
 # AWS Keys
 # =====================================

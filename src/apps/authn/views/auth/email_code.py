@@ -7,6 +7,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.models.security import EmailAuthChallenge
+from apps.authn.security.throttles import (
+    EmailCodeRequestThrottle,
+    EmailCodeVerifyThrottle,
+    PhoneAuthCodeRequestThrottle,
+)
 from apps.authn.serializers import (
     LoginCodeRequestSerializer,
     LoginCodeVerifySerializer,
@@ -19,11 +24,6 @@ from apps.authn.serializers import (
     UnifiedEmailAuthVerifySerializer,
 )
 from apps.authn.services import AuthChallengeInvalid
-from apps.authn.throttles import (
-    EmailCodeRequestThrottle,
-    EmailCodeVerifyThrottle,
-    PhoneAuthCodeRequestThrottle,
-)
 
 from ..helpers import build_auth_success_payload
 from .email_code_helpers import auth_challenge_response, request_code_response

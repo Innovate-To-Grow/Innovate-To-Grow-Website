@@ -8,7 +8,7 @@ layout.
 
 from django.templatetags.static import static
 
-from apps.core.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app
 
 
 def _can(app_label):
