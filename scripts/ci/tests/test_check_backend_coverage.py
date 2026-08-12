@@ -86,7 +86,7 @@ class CheckCoverageTests(unittest.TestCase):
 
 
 class MainTests(unittest.TestCase):
-    def run_main(self, coverage, floors):
+    def run_main(self, coverage, floors, *args):
         with tempfile.TemporaryDirectory() as directory:
             coverage_path = Path(directory) / "coverage.json"
             floors_path = Path(directory) / "floors.json"
@@ -94,7 +94,7 @@ class MainTests(unittest.TestCase):
             floors_path.write_text(json.dumps(floors), encoding="utf-8")
             stdout, stderr = StringIO(), StringIO()
             with redirect_stdout(stdout), redirect_stderr(stderr):
-                code = main([str(coverage_path), str(floors_path)])
+                code = main([str(coverage_path), str(floors_path), *args])
             return code, stdout.getvalue(), stderr.getvalue()
 
     def test_success(self):
@@ -108,6 +108,24 @@ class MainTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("line 80.00%", stderr)
         self.assertIn("branch 75.00%", stderr)
+
+    def test_selects_one_matrix_app(self):
+        code, stdout, stderr = self.run_main(
+            report(),
+            {"apps": {"projects": {"line": 80, "branch": 75}, "cms": {"line": 100, "branch": 100}}},
+            "--app",
+            "projects",
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("passed for 1 app", stdout)
+        self.assertEqual(stderr, "")
+
+    def test_rejects_unknown_selected_app(self):
+        code, _, stderr = self.run_main(
+            report(), {"apps": {"projects": {"line": 80, "branch": 75}}}, "--app", "cms"
+        )
+        self.assertEqual(code, 2)
+        self.assertIn("is not configured", stderr)
 
     def test_malformed_json_and_missing_file_return_configuration_error(self):
         with tempfile.TemporaryDirectory() as directory:

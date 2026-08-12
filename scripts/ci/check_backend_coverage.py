@@ -112,10 +112,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("coverage_json", type=Path)
     parser.add_argument("floors_json", type=Path)
+    parser.add_argument("--app", help="Check only one configured app (for matrix jobs).")
     args = parser.parse_args(argv)
     try:
         report = load_json(args.coverage_json, "coverage")
         floors = parse_floors(load_json(args.floors_json, "floor configuration"))
+        if args.app:
+            if args.app not in floors:
+                raise ConfigurationError(f"app {args.app!r} is not configured")
+            floors = {args.app: floors[args.app]}
         failures = check_coverage(report, floors)
     except ConfigurationError as exc:
         print(f"backend coverage check error: {exc}", file=sys.stderr)

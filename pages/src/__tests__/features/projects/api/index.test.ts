@@ -97,7 +97,7 @@ describe('past project share API', () => {
   it.each([
     [{response: {status: 401}}, 'transient refresh failure'],
     [{response: {status: 403}, definitive: true}, 'non-401 failure'],
-  ])('does not fall back publicly after a %s', async (error) => {
+  ])('does not fall back publicly after a %s', async (...[error]) => {
     authApiMock.get.mockRejectedValue(error);
 
     await expect(fetchPastProjectShare('share-1')).rejects.toBe(error);

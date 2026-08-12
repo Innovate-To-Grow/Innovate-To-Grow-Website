@@ -14,6 +14,7 @@ from pathlib import Path
 class ChangedAreasPlan:
     backend: bool
     frontend: bool
+    cli: bool
     archive: bool
 
     def github_outputs(self) -> str:
@@ -21,6 +22,7 @@ class ChangedAreasPlan:
             [
                 f"backend={str(self.backend).lower()}",
                 f"frontend={str(self.frontend).lower()}",
+                f"cli={str(self.cli).lower()}",
                 f"archive={str(self.archive).lower()}",
             ]
         )
@@ -49,12 +51,15 @@ def plan_changed_areas(event_name: str, changed_files: Iterable[str]) -> Changed
     files = _normalize_files(changed_files)
 
     if event_name != "pull_request":
-        return ChangedAreasPlan(backend=True, frontend=True, archive=True)
+        return ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True)
+
+    github_changed = any(path.startswith(".github/") for path in files)
 
     return ChangedAreasPlan(
         backend=any(_is_backend_path(path) for path in files),
-        frontend=any(path.startswith(("pages/", ".github/")) for path in files),
-        archive=any(path.startswith("archive/") for path in files),
+        frontend=github_changed or any(path.startswith("pages/") for path in files),
+        cli=github_changed or any(path.startswith("cli/") for path in files),
+        archive=github_changed or any(path.startswith("archive/") for path in files),
     )
 
 

@@ -98,9 +98,9 @@ skips = [
 
 # Coverage.py configuration (read via `coverage[toml]`). CI runs
 # `coverage run --source="apps.<app>"` per app, so these settings shape what
-# counts toward coverage for every app.
+# counts toward coverage for every app, including independent branch floors.
 [tool.coverage.run]
-branch = false
+branch = true
 omit = [
     # Migrations are byte-for-byte managed by Django and forbidden to edit;
     # their RunPython data-migration code is not meaningfully unit-testable.
