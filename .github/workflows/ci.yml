@@ -451,7 +451,7 @@ jobs:
 
       - name: Run Django tests and enforce per-app coverage
         run: |
-          .venv/bin/coverage run \
+          .venv/bin/coverage run --branch \
             --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test "apps.${{ matrix.app }}"

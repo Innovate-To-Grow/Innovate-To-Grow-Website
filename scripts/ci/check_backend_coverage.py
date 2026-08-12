@@ -59,16 +59,35 @@ def parse_floors(config: dict[str, Any]) -> dict[str, tuple[float, float]]:
     return parsed
 
 
+def _counts(summary: dict[str, Any], filename: str) -> dict[str, int]:
+    counts = {}
+    for key in ("covered_lines", "num_statements"):
+        counts[key] = _count(summary, key, filename)
+
+    covered_branches = summary.get("covered_branches")
+    num_branches = summary.get("num_branches")
+    if covered_branches is None and num_branches is None:
+        counts["covered_branches"] = 0
+        counts["num_branches"] = 0
+    elif covered_branches is None or num_branches is None:
+        raise ConfigurationError(f"coverage summary for {filename!r} has inconsistent branch counts")
+    else:
+        counts["covered_branches"] = _count(summary, "covered_branches", filename)
+        counts["num_branches"] = _count(summary, "num_branches", filename)
+    return counts
+
+
 def _count(summary: dict[str, Any], key: str, filename: str) -> int:
     value = summary.get(key)
-    if value is None and key == "covered_branches" and summary.get("num_branches") == 0:
-        return 0
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise ConfigurationError(f"coverage summary for {filename!r} has invalid {key!r}")
     return value
 
 
 def check_coverage(report: dict[str, Any], floors: dict[str, tuple[float, float]]) -> list[str]:
+    meta = report.get("meta")
+    if not isinstance(meta, dict) or meta.get("branch_coverage") is not True:
+        raise ConfigurationError("coverage report must be collected with branch coverage enabled")
     files = report.get("files")
     if not isinstance(files, dict):
         raise ConfigurationError("coverage report must contain a 'files' object")
@@ -87,8 +106,9 @@ def check_coverage(report: dict[str, Any], floors: dict[str, tuple[float, float]
         for filename, data in matched:
             if not isinstance(data, dict) or not isinstance(data.get("summary"), dict):
                 raise ConfigurationError(f"coverage entry for {filename!r} must contain a summary object")
+            counts = _counts(data["summary"], filename)
             for key in totals:
-                totals[key] += _count(data["summary"], key, filename)
+                totals[key] += counts[key]
         statements = totals["num_statements"]
         branches = totals["num_branches"]
         if statements == 0:

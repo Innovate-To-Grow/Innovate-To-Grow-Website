@@ -10,6 +10,7 @@ from scripts.ci.check_backend_coverage import ConfigurationError, check_coverage
 
 def report(*, lines=(8, 10), branches=(3, 4), app="projects"):
     return {
+        "meta": {"branch_coverage": True},
         "files": {
             f"src/apps/{app}/one.py": {
                 "summary": {
@@ -19,7 +20,7 @@ def report(*, lines=(8, 10), branches=(3, 4), app="projects"):
                     "num_branches": branches[1],
                 }
             }
-        }
+        },
     }
 
 
@@ -63,27 +64,61 @@ class CheckCoverageTests(unittest.TestCase):
         ]
         self.assertEqual(check_coverage(data, {"projects": (90, 75)}), [])
 
-    def test_accepts_coverage_null_for_files_without_branches(self):
-        data = report()
-        data["files"]["src/apps/projects/no_branches.py"] = {
-            "summary": {
-                "covered_lines": 2,
-                "num_statements": 2,
-                "covered_branches": None,
-                "num_branches": 0,
-            }
-        }
-        self.assertEqual(check_coverage(data, {"projects": (80, 75)}), [])
+    def test_accepts_coverage_omitting_counts_for_files_without_branches(self):
+        for branch_counts in ({}, {"covered_branches": None, "num_branches": None}):
+            with self.subTest(branch_counts=branch_counts):
+                data = report()
+                data["files"]["src/apps/projects/no_branches.py"] = {
+                    "summary": {
+                        "covered_lines": 2,
+                        "num_statements": 2,
+                        **branch_counts,
+                    }
+                }
+                self.assertEqual(check_coverage(data, {"projects": (80, 75)}), [])
+
+    def test_rejects_inconsistent_missing_branch_counts(self):
+        for branch_counts in (
+            {"covered_branches": 0},
+            {"num_branches": 0},
+            {"covered_branches": None, "num_branches": 0},
+            {"covered_branches": 0, "num_branches": None},
+        ):
+            with self.subTest(branch_counts=branch_counts):
+                data = report()
+                data["files"]["src/apps/projects/no_branches.py"] = {
+                    "summary": {
+                        "covered_lines": 2,
+                        "num_statements": 2,
+                        **branch_counts,
+                    }
+                }
+                with self.assertRaisesRegex(ConfigurationError, "inconsistent branch counts"):
+                    check_coverage(data, {"projects": (80, 75)})
 
     def test_does_not_match_app_name_prefix(self):
         self.assertIn("no coverage files found", check_coverage(report(app="projects_extra"), {"projects": (0, 0)})[0])
 
     def test_reports_missing_app_and_zero_denominators(self):
-        self.assertIn("no coverage files found", check_coverage({"files": {}}, {"core": (90, 90)})[0])
+        self.assertIn(
+            "no coverage files found",
+            check_coverage({"meta": {"branch_coverage": True}, "files": {}}, {"core": (90, 90)})[0],
+        )
         failures = check_coverage(report(lines=(0, 0), branches=(0, 0)), {"projects": (0, 0)})
         self.assertEqual(len(failures), 2)
         self.assertIn("no executable lines", failures[0])
         self.assertIn("zero branches", failures[1])
+
+    def test_rejects_report_without_branch_collection(self):
+        for meta in ({}, {"branch_coverage": False}, None):
+            with self.subTest(meta=meta):
+                data = report()
+                if meta is None:
+                    data.pop("meta")
+                else:
+                    data["meta"] = meta
+                with self.assertRaisesRegex(ConfigurationError, "branch coverage enabled"):
+                    check_coverage(data, {"projects": (0, 0)})
 
     def test_rejects_malformed_report_and_counts(self):
         invalid = [{}, {"files": []}, {"files": {"src/apps/core/a.py": {}}}]
