@@ -27,6 +27,63 @@ export interface SeededSession {
   patchPayloads: unknown[];
 }
 
+interface AuthoritativeSessionState {
+  user: User;
+  profile: ProfileResponse;
+  requiresProfileCompletion: boolean;
+}
+
+const authoritativeSessions = new WeakMap<Page, AuthoritativeSessionState>();
+const sessionRoutes = new WeakSet<Page>();
+
+export async function mockAuthoritativeSession(
+  page: Page,
+  user: User,
+  profile: ProfileResponse,
+  requiresProfileCompletion: boolean,
+): Promise<void> {
+  authoritativeSessions.set(page, {user, profile, requiresProfileCompletion});
+  if (sessionRoutes.has(page)) return;
+
+  sessionRoutes.add(page);
+  await page.route('**/authn/session/', (route) => {
+    const session = authoritativeSessions.get(page);
+    if (!session) {
+      return route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({detail: 'Authentication credentials were not provided.'}),
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {
+          ...session.profile,
+          phone: session.user.phone ?? '',
+          is_staff: Boolean(session.user.is_staff),
+        },
+        requires_profile_completion: session.requiresProfileCompletion,
+        next_step: session.requiresProfileCompletion ? 'complete_profile' : 'account',
+      }),
+    });
+  });
+}
+
+function updateAuthoritativeProfile(page: Page, profile: ProfileResponse): void {
+  const session = authoritativeSessions.get(page);
+  if (!session) return;
+  session.profile = profile;
+  if (
+    profile.first_name.trim() &&
+    profile.last_name.trim() &&
+    profile.organization.trim()
+  ) {
+    session.requiresProfileCompletion = false;
+  }
+}
+
 /**
  * Seed an authenticated session into storage BEFORE navigation via
  * `addInitScript`, so all three React roots render logged-in on first paint
@@ -79,20 +136,11 @@ export async function seedAuthenticatedSession(
   const profileRef = {
     current: profileResponse({email: user.email, member_uuid: user.member_uuid, ...opts.profile}),
   };
-  await page.route('**/authn/session/', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user: {
-          ...profileRef.current,
-          phone: user.phone ?? '',
-          is_staff: Boolean(user.is_staff),
-        },
-        requires_profile_completion: Boolean(opts.requiresProfileCompletion),
-        next_step: opts.requiresProfileCompletion ? 'complete_profile' : 'account',
-      }),
-    }),
+  await mockAuthoritativeSession(
+    page,
+    user,
+    profileRef.current,
+    Boolean(opts.requiresProfileCompletion),
   );
   let patchPayloads: unknown[] = [];
   if (opts.mockProfile !== false) {
@@ -160,6 +208,7 @@ export async function mockProfileEndpoint(
       }
       patchPayloads.push(payload);
       profileRef.current = {...profileRef.current, ...(payload as Partial<ProfileResponse>)};
+      updateAuthoritativeProfile(page, profileRef.current);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -193,16 +242,11 @@ export async function mockAccountDashboard(
   const authEmails = email.includes('@') ? [email] : [];
   const profileRef = {current: profileResponse({email})};
   await mockProfileEndpoint(page, profileRef);
-  await page.route('**/authn/session/', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user: {...profileRef.current, phone: '', is_staff: false},
-        requires_profile_completion: false,
-        next_step: 'account',
-      }),
-    }),
+  await mockAuthoritativeSession(
+    page,
+    {member_uuid: profileRef.current.member_uuid, email},
+    profileRef.current,
+    false,
   );
   await page.route('**/event/my-tickets/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),

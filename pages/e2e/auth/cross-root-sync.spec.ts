@@ -7,9 +7,8 @@ import {
   expectSignedInAs,
   expectSignedOut,
   loginResponse,
+  mockAccountDashboard,
   mockEmailAuthFlow,
-  mockProfileEndpoint,
-  profileResponse,
   seedAuthenticatedSession,
 } from '../helpers';
 
@@ -66,18 +65,7 @@ test('login in #root flips #menu-root to the member email', {tag: '@core'}, asyn
   await mockEmailAuthFlow(page, {
     verifyResponse: loginResponse({user: {email, member_uuid: 'm-sync'}}),
   });
-  // After login the app lands on /account — stub its mount side-effects so the
-  // navigation target doesn't hang on un-mocked network.
-  await mockProfileEndpoint(page, {current: profileResponse({email})});
-  await page.route('**/event/my-tickets/', (route) =>
-    route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
-  );
-  await page.route('**/event/registration-events/', (route) =>
-    route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
-  );
-  await page.route('**/event/registration-options/**', (route) =>
-    route.fulfill({status: 404, contentType: 'application/json', body: JSON.stringify({detail: 'none'})}),
-  );
+  await mockAccountDashboard(page, {email});
 
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await expectSignedOut(page);
