@@ -2,11 +2,13 @@ import {act, renderHook, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const fetchCMSLivePreview = vi.hoisted(() => vi.fn());
+const fetchCMSHomepage = vi.hoisted(() => vi.fn());
 const fetchCMSPage = vi.hoisted(() => vi.fn());
 const fetchCMSPreview = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/cms/api', () => ({
   fetchCMSLivePreview,
+  fetchCMSHomepage,
   fetchCMSPage,
   fetchCMSPreview,
   isCMSPageRedirectResponse: (value: {redirect_to?: unknown; permanent?: unknown}) => (
@@ -25,6 +27,7 @@ describe('useCMSPage live polling', () => {
       '/about?cms_live_preview=preview-1',
     );
     fetchCMSLivePreview.mockReset();
+    fetchCMSHomepage.mockReset();
     fetchCMSPage.mockReset();
     fetchCMSPreview.mockReset();
   });
@@ -75,6 +78,7 @@ describe('useCMSPage redirects', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/old');
     fetchCMSLivePreview.mockReset();
+    fetchCMSHomepage.mockReset();
     fetchCMSPage.mockReset();
     fetchCMSPreview.mockReset();
   });
@@ -124,5 +128,16 @@ describe('useCMSPage redirects', () => {
     expect(fetchCMSPreview).toHaveBeenCalledWith('opaque-token');
     expect(fetchCMSPage).not.toHaveBeenCalled();
     expect(result.current.redirectTo).toBeNull();
+  });
+
+  it('starts the homepage request directly without a normal CMS page fetch', async () => {
+    window.history.replaceState({}, '', '/');
+    fetchCMSHomepage.mockResolvedValue({route: '/', blocks: []});
+
+    const {result} = renderHook(() => useCMSPage('/'));
+
+    expect(fetchCMSHomepage).toHaveBeenCalledWith(expect.any(AbortSignal));
+    expect(fetchCMSPage).not.toHaveBeenCalled();
+    await waitFor(() => expect(result.current.loading).toBe(false));
   });
 });

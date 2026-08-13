@@ -2,7 +2,15 @@
 // password through SMS verification from the account page; and an account with a
 // verified phone can remove its primary email (the verified phone keeps it safe).
 import {test, expect} from '../fixtures';
-import {loginResponse, mintFakeJwt, mockProfileEndpoint, mockPublicKey, profileResponse, seedAuthenticatedSession} from '../helpers';
+import {
+  loginResponse,
+  mintFakeJwt,
+  mockAuthoritativeSession,
+  mockProfileEndpoint,
+  mockPublicKey,
+  profileResponse,
+  seedAuthenticatedSession,
+} from '../helpers';
 
 const PHONE = '2025550123';
 const PHONE_E164 = '+12025550123';
@@ -13,7 +21,19 @@ function json(body: unknown, status = 200) {
 
 async function stubAccountSideEffects(page: import('@playwright/test').Page) {
   // Phone-only account: no primary email yet.
-  await mockProfileEndpoint(page, {current: profileResponse({email: '', primary_email_id: null, email_verified: false})});
+  const profile = profileResponse({
+    email: '',
+    member_uuid: 'm-phone',
+    primary_email_id: null,
+    email_verified: false,
+  });
+  await mockProfileEndpoint(page, {current: profile});
+  await mockAuthoritativeSession(
+    page,
+    {member_uuid: 'm-phone', email: '', phone: PHONE_E164},
+    profile,
+    false,
+  );
   // Keep the just-logged-in session alive on /account. The mocked login mints a
   // fake access token, so any un-mocked authenticated side request can 401 against the real CI backend and
   // trips the api-client refresh->logout cascade, bouncing the user to /login

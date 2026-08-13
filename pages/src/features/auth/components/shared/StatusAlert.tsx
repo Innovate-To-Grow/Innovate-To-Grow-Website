@@ -1,4 +1,5 @@
 import type {CSSProperties} from 'react';
+import {Icon} from '@/components/Icon/Icon';
 
 interface StatusAlertProps {
   tone: 'error' | 'success' | 'info';
@@ -14,7 +15,7 @@ const ICON_BY_TONE = {
 
 export const StatusAlert = ({tone, message, style}: StatusAlertProps) => (
   <div className={`auth-alert ${tone}`} role={tone === 'error' ? 'alert' : 'status'} style={style}>
-    <i className={`fa ${ICON_BY_TONE[tone]} auth-alert-icon`} aria-hidden />
+    <Icon name={ICON_BY_TONE[tone]} className="auth-alert-icon" />
     <span>{message}</span>
   </div>
 );

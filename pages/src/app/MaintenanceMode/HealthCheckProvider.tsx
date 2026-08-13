@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -28,7 +29,7 @@ export const HealthCheckProvider = ({
   pollingInterval = 10000,
   initialDelay = 0,
 }: HealthCheckProviderProps) => {
-  const [isHealthy, setIsHealthy] = useState(true);
+  const [status, setStatus] = useState<'healthy' | 'maintenance' | 'degraded'>('healthy');
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [maintenance, setMaintenance] = useState(false);
@@ -36,18 +37,15 @@ export const HealthCheckProvider = ({
   const [isBypassed, setIsBypassed] = useState(
     () => sessionStorage.getItem(BYPASS_KEY) === 'true'
   );
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   const performHealthCheck = useCallback(async () => {
     const result = await checkHealth();
-
-    // If we transition from unhealthy to healthy, reload the page.
-    // This ensures all independent React roots (MainMenu, Footer)
-    // and the main app state are properly re-initialized.
-    if (hasInitialized && !isHealthy && result.isHealthy) {
-      sessionStorage.removeItem(BYPASS_KEY);
-      window.location.reload();
-      return result;
-    }
+    if (!mountedRef.current) return result;
 
     // If maintenance mode was turned off while bypassed, clear bypass
     if (result.isHealthy && isBypassed) {
@@ -55,12 +53,15 @@ export const HealthCheckProvider = ({
       sessionStorage.removeItem(BYPASS_KEY);
     }
 
-    setIsHealthy(result.isHealthy);
+    setStatus(
+      result.status ??
+        (result.maintenance ? 'maintenance' : result.isHealthy ? 'healthy' : 'degraded'),
+    );
     setMaintenance(result.maintenance);
     setMaintenanceMessage(result.maintenanceMessage);
     setIsLoading(false);
     return result;
-  }, [isHealthy, hasInitialized, isBypassed]);
+  }, [isBypassed]);
 
   // Initial health check
   useEffect(() => {
@@ -72,18 +73,19 @@ export const HealthCheckProvider = ({
     return () => clearTimeout(timeoutId);
   }, [performHealthCheck, initialDelay]);
 
-  // Polling when service is down (and not bypassed)
+  // Recursively schedule checks after each request completes so slow requests
+  // can never overlap.
   useEffect(() => {
     if (!hasInitialized) return;
-    if (isHealthy) return;
+    if (status === 'healthy') return;
     if (isBypassed) return;
 
-    const intervalId = setInterval(async () => {
+    const timeoutId = setTimeout(async () => {
       await performHealthCheck();
     }, pollingInterval);
 
-    return () => clearInterval(intervalId);
-  }, [isHealthy, hasInitialized, isBypassed, pollingInterval, performHealthCheck]);
+    return () => clearTimeout(timeoutId);
+  }, [status, hasInitialized, isBypassed, pollingInterval, performHealthCheck]);
 
   const checkNow = useCallback(async () => {
     setIsLoading(true);
@@ -101,7 +103,8 @@ export const HealthCheckProvider = ({
   }, []);
 
   const contextValue: HealthCheckContextType = {
-    isHealthy,
+    status,
+    isHealthy: status === 'healthy',
     isLoading,
     maintenance,
     maintenanceMessage,
@@ -111,7 +114,7 @@ export const HealthCheckProvider = ({
   // Render optimistically: show children while checking, only block on confirmed failure.
   // Before initialization completes or when healthy, render children normally.
   // Only show maintenance screen when the health check has completed and returned unhealthy.
-  if (hasInitialized && !isHealthy && !isBypassed && !IS_LIVE_PREVIEW) {
+  if (hasInitialized && status === 'maintenance' && !isBypassed && !IS_LIVE_PREVIEW) {
     return (
       <HealthCheckContext.Provider value={contextValue}>
         <MaintenanceMode
@@ -125,6 +128,11 @@ export const HealthCheckProvider = ({
 
   return (
     <HealthCheckContext.Provider value={contextValue}>
+      {hasInitialized && status === 'degraded' && (
+        <div className="service-degraded-banner" role="status">
+          Some live features are temporarily unavailable. You can continue browsing this page.
+        </div>
+      )}
       {children}
     </HealthCheckContext.Provider>
   );

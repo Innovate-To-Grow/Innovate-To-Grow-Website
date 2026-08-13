@@ -57,7 +57,7 @@ const LoginLinkPage = React.lazy(() => import('@/routes/LoginLinkPage').then(m =
 const EmailAuthLinkPage = React.lazy(() => import('@/routes/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
 const ImpersonateLoginPage = React.lazy(() => import('@/routes/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
-export const router = createBrowserRouter([
+export const createAppRouter = () => createBrowserRouter([
     // Block preview route — rendered in iframe for admin live preview, no menu/footer
     {path: '/_block-preview', element: <BlockPreviewPage/>},
     // Public embed widget — rendered in third-party iframe, no menu/footer

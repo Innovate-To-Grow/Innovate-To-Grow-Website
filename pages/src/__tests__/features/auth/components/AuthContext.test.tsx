@@ -3,6 +3,7 @@ import {
   cleanup,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -50,6 +51,9 @@ const session = {
   requires_profile_completion: true,
 };
 
+const verifiedSession = {status: 'verified' as const, session};
+const anonymousSession = {status: 'anonymous' as const, session: null};
+
 function AuthState() {
   const auth = useAuth();
   return (
@@ -58,6 +62,9 @@ function AuthState() {
       <span data-testid="profile-required">
         {String(auth.requiresProfileCompletion)}
       </span>
+      <span data-testid="initializing">{String(auth.isInitializing)}</span>
+      <span data-testid="unverified">{String(auth.unverified)}</span>
+      <span data-testid="authenticated">{String(auth.isAuthenticated)}</span>
     </div>
   );
 }
@@ -65,7 +72,7 @@ function AuthState() {
 describe('AuthProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authApi.bootstrapAuthSession.mockResolvedValue(null);
+    authApi.bootstrapAuthSession.mockResolvedValue(anonymousSession);
     authApi.getStoredSession.mockReturnValue(null);
     authApi.isAuthenticated.mockReturnValue(false);
   });
@@ -75,13 +82,15 @@ describe('AuthProvider', () => {
     vi.restoreAllMocks();
   });
 
-  it('hides children until bootstrap and applies the stored session', async () => {
-    let resolveBootstrap: (value: typeof session) => void = () => undefined;
+  it('renders children from the guarded stored session while bootstrap verifies it', async () => {
+    let resolveBootstrap: (value: typeof verifiedSession) => void = () =>
+      undefined;
     authApi.bootstrapAuthSession.mockReturnValue(
       new Promise((resolve) => {
         resolveBootstrap = resolve;
       }),
     );
+    authApi.getStoredSession.mockReturnValue(session);
 
     render(
       <AuthProvider>
@@ -89,18 +98,23 @@ describe('AuthProvider', () => {
       </AuthProvider>,
     );
 
-    expect(screen.queryByTestId('email')).not.toBeInTheDocument();
-    await act(async () => resolveBootstrap(session));
+    expect(screen.getByTestId('email')).toHaveTextContent('member@example.com');
+    expect(screen.getByTestId('initializing')).toHaveTextContent('true');
+    expect(screen.getByTestId('unverified')).toHaveTextContent('true');
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+    await act(async () => resolveBootstrap(verifiedSession));
 
     expect(screen.getByTestId('email')).toHaveTextContent('member@example.com');
     expect(screen.getByTestId('profile-required')).toHaveTextContent('true');
+    expect(screen.getByTestId('initializing')).toHaveTextContent('false');
+    expect(screen.getByTestId('unverified')).toHaveTextContent('false');
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
   });
 
   it.each(['i2g-auth-state-change', 'storage'])(
     'synchronizes an authenticated session on %s',
     async (eventName) => {
-      authApi.getStoredSession.mockReturnValue(session);
-      authApi.isAuthenticated.mockReturnValue(true);
+      authApi.getStoredSession.mockReturnValue(null);
       render(
         <AuthProvider>
           <AuthState />
@@ -108,15 +122,21 @@ describe('AuthProvider', () => {
       );
       await screen.findByText('anonymous');
 
+      authApi.getStoredSession.mockReturnValue(session);
+      authApi.bootstrapAuthSession.mockResolvedValue(verifiedSession);
       act(() => window.dispatchEvent(new Event(eventName)));
 
-      expect(screen.getByTestId('email')).toHaveTextContent('member@example.com');
-      expect(authApi.bootstrapAuthSession).toHaveBeenCalledOnce();
+      await waitFor(() =>
+        expect(screen.getByTestId('email')).toHaveTextContent(
+          'member@example.com',
+        ),
+      );
+      expect(authApi.bootstrapAuthSession).toHaveBeenCalledTimes(2);
     },
   );
 
   it('clears local state when another root logs out', async () => {
-    authApi.bootstrapAuthSession.mockResolvedValueOnce(session);
+    authApi.bootstrapAuthSession.mockResolvedValueOnce(verifiedSession);
     const {unmount} = render(
       <AuthProvider>
         <AuthState />
@@ -134,11 +154,12 @@ describe('AuthProvider', () => {
 
   it('ignores an in-flight synchronization after unmount and removes listeners', async () => {
     const removeSpy = vi.spyOn(window, 'removeEventListener');
-    let resolveSync: (value: typeof session) => void = () => undefined;
+    let resolveSync: (value: typeof verifiedSession) => void = () =>
+      undefined;
     authApi.getStoredSession.mockReturnValue(session);
     authApi.isAuthenticated.mockReturnValue(false);
     authApi.bootstrapAuthSession
-      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(anonymousSession)
       .mockReturnValueOnce(
         new Promise((resolve) => {
           resolveSync = resolve;
@@ -153,7 +174,7 @@ describe('AuthProvider', () => {
 
     act(() => window.dispatchEvent(new Event('storage')));
     unmount();
-    await act(async () => resolveSync(session));
+    await act(async () => resolveSync(verifiedSession));
 
     expect(removeSpy).toHaveBeenCalledWith(
       'i2g-auth-state-change',
@@ -163,7 +184,8 @@ describe('AuthProvider', () => {
   });
 
   it('does not apply bootstrap completion after unmount', async () => {
-    let resolveBootstrap: (value: typeof session) => void = () => undefined;
+    let resolveBootstrap: (value: typeof verifiedSession) => void = () =>
+      undefined;
     authApi.bootstrapAuthSession.mockReturnValue(
       new Promise((resolve) => {
         resolveBootstrap = resolve;
@@ -176,7 +198,7 @@ describe('AuthProvider', () => {
     );
 
     unmount();
-    await act(async () => resolveBootstrap(session));
+    await act(async () => resolveBootstrap(verifiedSession));
 
     expect(screen.queryByTestId('email')).toBeNull();
   });

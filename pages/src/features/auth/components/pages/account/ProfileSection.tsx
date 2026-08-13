@@ -1,5 +1,6 @@
 import type {ChangeEvent, FormEvent} from 'react';
 import {StatusAlert} from '../../shared/StatusAlert';
+import {Icon} from '@/components/Icon/Icon';
 
 type OrganizationType = 'individual' | 'organization';
 
@@ -76,7 +77,7 @@ export const ProfileSection = ({
 
         <label htmlFor="profile-image-upload" className="profile-image-upload-btn" aria-label="Upload photo">
           {imageUploading ? (
-            <i className="fa fa-spinner fa-spin" aria-hidden />
+            <span className="auth-spinner" aria-hidden />
           ) : (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" role="img">
               <title>Upload photo</title>
@@ -101,7 +102,7 @@ export const ProfileSection = ({
 
     {profileError ? (
       <div className="auth-alert error account-profile-error">
-        <i className="fa fa-exclamation-circle auth-alert-icon" aria-hidden />
+        <Icon name="exclamation-circle" className="auth-alert-icon" />
         <span className="account-profile-error-text">{profileError}</span>
         <button
           type="button"

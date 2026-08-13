@@ -1,5 +1,5 @@
 import {expect, type Page} from '@playwright/test';
-import type {ProfileResponse, User} from '../../src/features/auth/api/types';
+import type {LoginResponse, ProfileResponse, User} from '../../src/features/auth/api/types';
 import {mintFakeJwt, profileResponse} from './factories';
 
 // Storage keys mirror pages/src/features/auth/api/storage.ts. Kept as literals
@@ -25,6 +25,98 @@ export interface SeededSession {
   user: User;
   profileRef: {current: ProfileResponse};
   patchPayloads: unknown[];
+}
+
+interface AuthoritativeSessionState {
+  user: User;
+  profile: ProfileResponse;
+  requiresProfileCompletion: boolean;
+}
+
+const authoritativeSessions = new WeakMap<Page, AuthoritativeSessionState>();
+const sessionRoutes = new WeakSet<Page>();
+const refreshRoutes = new WeakSet<Page>();
+
+async function mockSuccessfulRefresh(page: Page): Promise<void> {
+  if (refreshRoutes.has(page)) return;
+
+  refreshRoutes.add(page);
+  await page.route('**/authn/refresh/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({access: mintFakeJwt(), refresh: 'refresh-e2e'}),
+    }),
+  );
+}
+
+export async function mockAuthoritativeSession(
+  page: Page,
+  user: User,
+  profile: ProfileResponse,
+  requiresProfileCompletion: boolean,
+): Promise<void> {
+  authoritativeSessions.set(page, {user, profile, requiresProfileCompletion});
+  if (sessionRoutes.has(page)) return;
+
+  sessionRoutes.add(page);
+  await page.route('**/authn/session/', (route) => {
+    const session = authoritativeSessions.get(page);
+    if (!session) {
+      return route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({detail: 'Authentication credentials were not provided.'}),
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {
+          ...session.profile,
+          phone: session.user.phone ?? '',
+          is_staff: Boolean(session.user.is_staff),
+        },
+        requires_profile_completion: session.requiresProfileCompletion,
+        next_step: session.requiresProfileCompletion ? 'complete_profile' : 'account',
+      }),
+    });
+  });
+}
+
+/**
+ * Keep the authoritative session endpoint aligned with a successful mocked
+ * login response. Call this again when the login request resolves so a setup
+ * helper installed later cannot replace the newly authenticated identity.
+ */
+export async function mockAuthenticatedLogin(page: Page, response: LoginResponse): Promise<void> {
+  const profile = profileResponse({
+    member_uuid: response.user.member_uuid,
+    email: response.user.email,
+    is_staff: Boolean(response.user.is_staff),
+    profile_image: response.user.profile_image,
+  });
+  await mockAuthoritativeSession(
+    page,
+    response.user,
+    profile,
+    Boolean(response.requires_profile_completion),
+  );
+  await mockSuccessfulRefresh(page);
+}
+
+function updateAuthoritativeProfile(page: Page, profile: ProfileResponse): void {
+  const session = authoritativeSessions.get(page);
+  if (!session) return;
+  session.profile = profile;
+  if (
+    profile.first_name.trim() &&
+    profile.last_name.trim() &&
+    profile.organization.trim()
+  ) {
+    session.requiresProfileCompletion = false;
+  }
 }
 
 /**
@@ -68,31 +160,16 @@ export async function seedAuthenticatedSession(
   // the api-client refresh→logout cascade (client.ts) and unmount guarded
   // pages mid-test. Make refresh succeed so a seeded session is never logged
   // out by an un-mocked request.
-  await page.route('**/authn/refresh/', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({access: mintFakeJwt(), refresh: 'refresh-e2e'}),
-    }),
-  );
+  await mockSuccessfulRefresh(page);
 
   const profileRef = {
     current: profileResponse({email: user.email, member_uuid: user.member_uuid, ...opts.profile}),
   };
-  await page.route('**/authn/session/', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user: {
-          ...profileRef.current,
-          phone: user.phone ?? '',
-          is_staff: Boolean(user.is_staff),
-        },
-        requires_profile_completion: Boolean(opts.requiresProfileCompletion),
-        next_step: opts.requiresProfileCompletion ? 'complete_profile' : 'account',
-      }),
-    }),
+  await mockAuthoritativeSession(
+    page,
+    user,
+    profileRef.current,
+    Boolean(opts.requiresProfileCompletion),
   );
   let patchPayloads: unknown[] = [];
   if (opts.mockProfile !== false) {
@@ -160,6 +237,7 @@ export async function mockProfileEndpoint(
       }
       patchPayloads.push(payload);
       profileRef.current = {...profileRef.current, ...(payload as Partial<ProfileResponse>)};
+      updateAuthoritativeProfile(page, profileRef.current);
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -193,16 +271,11 @@ export async function mockAccountDashboard(
   const authEmails = email.includes('@') ? [email] : [];
   const profileRef = {current: profileResponse({email})};
   await mockProfileEndpoint(page, profileRef);
-  await page.route('**/authn/session/', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        user: {...profileRef.current, phone: '', is_staff: false},
-        requires_profile_completion: false,
-        next_step: 'account',
-      }),
-    }),
+  await mockAuthoritativeSession(
+    page,
+    {member_uuid: profileRef.current.member_uuid, email},
+    profileRef.current,
+    false,
   );
   await page.route('**/event/my-tickets/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: '[]'}),
@@ -215,13 +288,7 @@ export async function mockAccountDashboard(
   );
   // Keep a seeded session alive on /account: an un-mocked 401 here would trip
   // the refresh->logout cascade and sign the member back out.
-  await page.route('**/authn/refresh/', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({access: mintFakeJwt(), refresh: 'refresh-e2e'}),
-    }),
-  );
+  await mockSuccessfulRefresh(page);
   await page.route('**/authn/account-emails/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({emails: authEmails})}),
   );

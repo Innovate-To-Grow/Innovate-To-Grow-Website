@@ -4,6 +4,7 @@
 import {test, expect} from '../fixtures';
 import {
   mockEmailAuthFlow,
+  mockAuthoritativeSession,
   mockMyTickets,
   mockPhoneAuthFlow,
   mockProfileEndpoint,
@@ -27,6 +28,12 @@ test('newsletter email-code flow completes profile and manages subscription', {t
     },
   });
   const patchPayloads = await mockProfileEndpoint(page, profileRef);
+  await mockAuthoritativeSession(
+    page,
+    {member_uuid: profileRef.current.member_uuid, email},
+    profileRef.current,
+    true,
+  );
   const contactEmails = [{
     id: 'contact-email-e2e-1',
     email_address: 'secondary@example.com',

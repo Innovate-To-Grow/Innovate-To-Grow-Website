@@ -1,32 +1,10 @@
-const ISOLATED_ROUTE_PREFIX = '/_embed/';
-const FONT_AWESOME_STYLESHEET_ID = 'i2g-font-awesome-stylesheet';
-const FONT_AWESOME_STYLESHEET_HREF =
-  '/static/vendor/font-awesome/4.7.0/css/font-awesome.min.css';
+import {isIsolatedRoute} from '@/lib/isolatedRoute';
+
 const USERWAY_SCRIPT_ID = 'i2g-userway-loader';
 const SITEIMPROVE_SCRIPT_ID = 'i2g-siteimprove-loader';
 
-/**
- * Load the first-party Font Awesome stylesheet without blocking the HTML
- * parser. Keeping this in the Vite bundle avoids an inline-script CSP
- * exception while preserving the previous preload-then-stylesheet behavior.
- */
-export function loadFontAwesomeStylesheet(): void {
-  if (document.getElementById(FONT_AWESOME_STYLESHEET_ID)) return;
-
-  const link = document.createElement('link');
-  link.id = FONT_AWESOME_STYLESHEET_ID;
-  link.rel = 'preload';
-  link.as = 'style';
-  link.href = FONT_AWESOME_STYLESHEET_HREF;
-  link.onload = () => {
-    link.onload = null;
-    link.rel = 'stylesheet';
-  };
-  document.head.appendChild(link);
-}
-
-export function markIsolatedIframeRoute(pathname = window.location.pathname): void {
-  if (pathname === '/_block-preview' || pathname.startsWith(ISOLATED_ROUTE_PREFIX)) {
+export function markIsolatedIframeRoute(pathname = window.location.pathname, search = window.location.search): void {
+  if (isIsolatedRoute(pathname, search)) {
     document.documentElement.dataset.blockPreview = '';
   }
 }
@@ -48,16 +26,27 @@ function appendScript(
   (document.body || document.head).appendChild(script);
 }
 
-export function loadThirdPartyScripts(pathname = window.location.pathname): void {
-  if (pathname === '/_block-preview' || pathname.startsWith(ISOLATED_ROUTE_PREFIX)) {
-    return;
-  }
+export function loadThirdPartyScripts(pathname = window.location.pathname, search = window.location.search): void {
+  if (isIsolatedRoute(pathname, search)) return;
 
   appendScript(USERWAY_SCRIPT_ID, 'https://cdn.userway.org/widget.js', {
     'data-account': '6Uvgvyrrph',
   });
-  appendScript(
-    SITEIMPROVE_SCRIPT_ID,
-    'https://siteimproveanalytics.com/js/siteanalyze_8343.js',
-  );
+
+  const loadSiteImprove = () => {
+    if (isIsolatedRoute(window.location.pathname, window.location.search)) return;
+    appendScript(
+      SITEIMPROVE_SCRIPT_ID,
+      'https://siteimproveanalytics.com/js/siteanalyze_8343.js',
+    );
+  };
+  const schedule = () => {
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(loadSiteImprove, {timeout: 3000});
+    } else {
+      globalThis.setTimeout(loadSiteImprove, 1500);
+    }
+  };
+  if (document.readyState === 'complete') schedule();
+  else window.addEventListener('load', schedule, {once: true});
 }

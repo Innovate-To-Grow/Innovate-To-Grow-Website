@@ -1,229 +1,282 @@
-import { api } from '@/lib/api';
+import {api} from '@/lib/api';
 import {
-  authApi,
-  getAccessToken,
-  isDefinitiveAuthFailure,
+    authApi,
+    getAccessToken,
+    isDefinitiveAuthFailure,
 } from '@/features/auth';
 import {formatSemesterLabel} from '@/lib/format';
-import type { PaginatedResponse } from '@/types/api';
-import type { ScheduleProjectRow } from '@/features/events/api';
+import type {PaginatedResponse} from '@/types/api';
+import type {ScheduleProjectRow} from '@/features/events/api';
 
-export type { PaginatedResponse } from '@/types/api';
+export type {PaginatedResponse} from '@/types/api';
 
 export interface ProjectSummary {
-  id: string;
-  project_title: string;
-  team_name: string;
-  organization: string;
-  industry: string;
-  class_code: string;
+    id: string;
+    project_title: string;
+    team_name: string;
+    organization: string;
+    industry: string;
+    class_code: string;
 }
 
 export interface ProjectTableRow {
-  id: string;
-  semester_label: string;
-  class_code: string;
-  team_number: string;
-  team_name: string;
-  project_title: string;
-  organization: string;
-  industry: string;
-  abstract: string;
-  student_names: string;
-  is_presenting?: boolean;
-  track: number | null;
-  presentation_order: number | null;
+    id: string;
+    semester_label: string;
+    class_code: string;
+    team_number: string;
+    team_name: string;
+    project_title: string;
+    organization: string;
+    industry: string;
+    abstract: string;
+    student_names: string;
+    is_presenting?: boolean;
+    track: number | null;
+    presentation_order: number | null;
+}
+
+export interface CompactPastProjectRow {
+    id: string;
+    semester_label: string;
+    class_code: string;
+    team_number: string;
+    team_name: string;
+    project_title: string;
+    organization: string;
+    industry: string;
+    track: number | null;
+    presentation_order: number | null;
+}
+
+export interface PastProjectArchiveQuery {
+    page?: number;
+    page_size?: number;
+    search?: string;
+    year?: number;
+    season?: 1 | 2;
+    semester?: string;
 }
 
 export interface ProjectGridRow {
-  id?: string;
-  semester_label: string;
-  class_code: string;
-  team_number: string;
-  team_name: string;
-  project_title: string;
-  organization: string;
-  industry: string;
-  abstract: string;
-  student_names: string;
-  is_presenting: string;
+    id?: string;
+    semester_label: string;
+    class_code: string;
+    team_number: string;
+    team_name: string;
+    project_title: string;
+    organization: string;
+    industry: string;
+    abstract: string;
+    student_names: string;
+    is_presenting: string;
 }
 
 export interface ProjectDetail {
-  id: string;
-  project_title: string;
-  team_name: string;
-  team_number: string;
-  organization: string;
-  industry: string;
-  abstract: string;
-  student_names: string;
-  class_code: string;
-  track: number | null;
-  presentation_order: number | null;
-  semester_label: string;
+    id: string;
+    project_title: string;
+    team_name: string;
+    team_number: string;
+    organization: string;
+    industry: string;
+    abstract: string;
+    student_names: string;
+    class_code: string;
+    track: number | null;
+    presentation_order: number | null;
+    semester_label: string;
 }
 
 export interface SemesterWithProjects {
-  id: string;
-  year: number;
-  season: number;
-  label: string;
-  projects: ProjectSummary[];
+    id: string;
+    year: number;
+    season: number;
+    label: string;
+    projects: ProjectSummary[];
 }
 
 export interface SemesterWithFullProjects {
-  id: string;
-  year: number;
-  season: number;
-  label: string;
-  projects: ProjectTableRow[];
+    id: string;
+    year: number;
+    season: number;
+    label: string;
+    projects: ProjectTableRow[];
 }
 
 export interface PastProjectShare {
-  id: string;
-  name: string;
-  rows: ProjectGridRow[];
-  note: string;
-  details_text: string;
-  version: number;
-  share_url: string;
-  can_edit: boolean;
-  created_at: string;
+    id: string;
+    name: string;
+    rows: ProjectGridRow[];
+    note: string;
+    details_text: string;
+    version: number;
+    share_url: string;
+    can_edit: boolean;
+    created_at: string;
 }
 
 export interface PastProjectShareSummary {
-  id: string;
-  name: string;
-  note: string;
-  version: number;
-  share_url: string;
-  row_count: number;
-  created_at: string;
+    id: string;
+    name: string;
+    note: string;
+    version: number;
+    share_url: string;
+    row_count: number;
+    created_at: string;
 }
 
 export interface PastProjectAISearchResponse {
-  available: boolean;
-  message?: string;
-  query: string;
-  results: ProjectTableRow[];
-  usage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-    totalTokens?: number;
-  };
+    available: boolean;
+    message?: string;
+    query: string;
+    results: ProjectTableRow[];
+    usage?: {
+        inputTokens?: number;
+        outputTokens?: number;
+        totalTokens?: number;
+    };
 }
 
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
-  id: project.id,
-  semester_label: formatSemesterLabel(project.semester_label),
-  class_code: project.class_code,
-  team_number: project.team_number,
-  team_name: project.team_name,
-  project_title: project.project_title,
-  organization: project.organization,
-  industry: project.industry,
-  abstract: project.abstract,
-  student_names: project.student_names,
-  is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
+    id: project.id,
+    semester_label: formatSemesterLabel(project.semester_label),
+    class_code: project.class_code,
+    team_number: project.team_number,
+    team_name: project.team_name,
+    project_title: project.project_title,
+    organization: project.organization,
+    industry: project.industry,
+    abstract: project.abstract,
+    student_names: project.student_names,
+    is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
 });
 
 export const scheduleProjectToGridRow = (row: ScheduleProjectRow): ProjectGridRow => ({
-  semester_label: formatSemesterLabel(row.year_semester),
-  class_code: row.class_code,
-  team_number: row.team_number,
-  team_name: row.team_name,
-  project_title: row.project_title,
-  organization: row.organization,
-  industry: row.industry,
-  abstract: row.abstract,
-  student_names: row.student_names,
-  is_presenting: row.is_presenting ? 'Yes' : 'No',
+    semester_label: formatSemesterLabel(row.year_semester),
+    class_code: row.class_code,
+    team_number: row.team_number,
+    team_name: row.team_name,
+    project_title: row.project_title,
+    organization: row.organization,
+    industry: row.industry,
+    abstract: row.abstract,
+    student_names: row.student_names,
+    is_presenting: row.is_presenting ? 'Yes' : 'No',
 });
 
 export const fetchCurrentProjects = async (): Promise<SemesterWithProjects> => {
-  const response = await api.get<SemesterWithProjects>('/event/projects/');
-  return response.data;
+    const response = await api.get<SemesterWithProjects>('/event/projects/');
+    return response.data;
 };
 
 export const fetchCurrentProjectsFull = async (): Promise<SemesterWithFullProjects> => {
-  const response = await api.get<SemesterWithFullProjects>('/event/projects/');
-  return response.data;
+    const response = await api.get<SemesterWithFullProjects>('/event/projects/');
+    return response.data;
 };
 
-export const fetchAllPastProjects = async (): Promise<ProjectTableRow[]> => {
-  const response = await api.get<ProjectTableRow[]>('/projects/past-all/');
-  return response.data;
+export const fetchPastProjectArchive = async (
+    query: PastProjectArchiveQuery = {},
+    signal?: AbortSignal,
+): Promise<PaginatedResponse<CompactPastProjectRow>> => {
+    const response = await api.get<PaginatedResponse<CompactPastProjectRow>>('/projects/archive/', {
+        params: query,
+        signal,
+    });
+    return response.data;
 };
+
+export const compactProjectToGridRow = (project: CompactPastProjectRow): ProjectGridRow => ({
+    id: project.id,
+    semester_label: formatSemesterLabel(project.semester_label),
+    class_code: project.class_code,
+    team_number: project.team_number,
+    team_name: project.team_name,
+    project_title: project.project_title,
+    organization: project.organization,
+    industry: project.industry,
+    abstract: '',
+    student_names: '',
+    is_presenting: '',
+});
 
 export const fetchPastProjects = async (
-  page = 1,
-  pageSize = 5
+    page = 1,
+    pageSize = 5
 ): Promise<PaginatedResponse<SemesterWithProjects>> => {
-  const response = await api.get<PaginatedResponse<SemesterWithProjects>>(
-    `/projects/past/?page=${page}&page_size=${pageSize}`
-  );
-  return response.data;
+    const response = await api.get<PaginatedResponse<SemesterWithProjects>>(
+        `/projects/past/?page=${page}&page_size=${pageSize}`
+    );
+    return response.data;
 };
 
 export const searchPastProjectsWithAI = async (
-  query: string,
-  limit = 10,
+    query: string,
+    limit = 10,
 ): Promise<PastProjectAISearchResponse> => {
-  const response = await authApi.post<PastProjectAISearchResponse>('/projects/past-ai-search/', {query, limit});
-  return response.data;
+    const response = await authApi.post<PastProjectAISearchResponse>('/projects/past-ai-search/', {query, limit});
+    return response.data;
 };
 
 export const fetchProjectDetail = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
-  const response = await api.get<ProjectDetail>(`/projects/${id}/`, {signal});
-  return response.data;
+    const response = await api.get<ProjectDetail>(`/projects/${id}/`, {signal});
+    return response.data;
 };
 
+export const hydrateProjectGridRows = async (
+    rows: ProjectGridRow[],
+    signal?: AbortSignal,
+): Promise<ProjectGridRow[]> =>
+    Promise.all(
+        rows.map(async (row) => {
+            if (!row.id || row.abstract || row.student_names) return row;
+            return toProjectGridRow(await fetchProjectDetail(row.id, signal));
+        }),
+    );
+
 export const createPastProjectShare = async (
-  rows: ProjectGridRow[],
-  name: string,
-  note: string,
+    rows: ProjectGridRow[],
+    name: string,
+    note: string,
 ): Promise<PastProjectShare> => {
-  // The client no longer sends a combined details_text field; the shared snapshot is the rows.
-  const response = await authApi.post<PastProjectShare>('/projects/past-shares/', {
-    rows,
-    name,
-    note,
-  });
-  return response.data;
+    // The client no longer sends a combined details_text field; the shared snapshot is the rows.
+    const response = await authApi.post<PastProjectShare>('/projects/past-shares/', {
+        rows,
+        name,
+        note,
+    });
+    return response.data;
 };
 
 export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
-  if (getAccessToken()) {
-    try {
-      const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${id}/`);
-      return response.data;
-    } catch (err) {
-      const status = (err as {response?: {status?: number}}).response?.status;
-      if (status !== 401 || !isDefinitiveAuthFailure(err)) {
-        throw err;
-      }
+    if (getAccessToken()) {
+        try {
+            const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${id}/`);
+            return response.data;
+        } catch (err) {
+            const status = (err as { response?: { status?: number } }).response?.status;
+            if (status !== 401 || !isDefinitiveAuthFailure(err)) {
+                throw err;
+            }
+        }
     }
-  }
 
-  const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
-  return response.data;
+    const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
+    return response.data;
 };
 
 export const updatePastProjectShare = async (
-  id: string,
-  payload: Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>> &
-    Pick<PastProjectShare, 'version'>,
+    id: string,
+    payload: Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>> &
+        Pick<PastProjectShare, 'version'>,
 ): Promise<PastProjectShare> => {
-  const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
-  return response.data;
+    const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
+    return response.data;
 };
 
 export const listMyShares = async (): Promise<PastProjectShareSummary[]> => {
-  const response = await authApi.get<PastProjectShareSummary[]>('/projects/past-shares/mine/');
-  return response.data;
+    const response = await authApi.get<PastProjectShareSummary[]>('/projects/past-shares/mine/');
+    return response.data;
 };
 
 export const deleteShare = async (id: string): Promise<void> => {
-  await authApi.delete(`/projects/past-shares/${id}/`);
+    await authApi.delete(`/projects/past-shares/${id}/`);
 };

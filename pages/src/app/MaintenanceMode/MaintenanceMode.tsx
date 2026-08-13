@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import {Icon} from '@/components/Icon/Icon';
 
 interface MaintenanceModeProps {
   message?: string;
@@ -46,14 +47,14 @@ export const MaintenanceMode = ({ message, maintenance, onBypass }: MaintenanceM
                     className="maintenance-ucm-logo"
                   />
                   <div className="maintenance-gear">
-                    <i className="fa fa-cog" aria-hidden="true"></i>
+                    <Icon name="cog" />
                   </div>
               </div>
             </div>
 
             <div className="maintenance-alert">
               <div className="maintenance-alert-icon">
-                <i className="fa fa-exclamation-triangle" aria-hidden="true"></i>
+                <Icon name="exclamation-triangle" />
               </div>
               <div className="maintenance-alert-content">
                 <h3>Service Unavailable</h3>

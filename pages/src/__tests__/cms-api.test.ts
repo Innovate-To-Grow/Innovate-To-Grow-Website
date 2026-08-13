@@ -11,6 +11,7 @@ vi.mock('@/lib/api', () => ({
 
 import {
   fetchCMSLivePreview,
+  fetchCMSHomepage,
   fetchCMSPage,
   fetchCMSPreview,
   isCMSPageRedirectResponse,
@@ -62,19 +63,38 @@ describe('fetchCMSPage', () => {
   it('uses encoded local API paths', async () => {
     await fetchCMSPage('/about/team_leads', true);
 
-    expect(getMock).toHaveBeenCalledWith('/cms/pages/about/team_leads/?preview=true');
+    expect(getMock).toHaveBeenCalledWith('/cms/pages/about/team_leads/?preview=true', {signal: undefined});
   });
 
   it('encodes legacy punctuation without changing case or falling back to root', async () => {
     await fetchCMSPage('/Archive.v1/~old+page');
 
-    expect(getMock).toHaveBeenCalledWith('/cms/pages/Archive.v1/~old%2Bpage/');
+    expect(getMock).toHaveBeenCalledWith('/cms/pages/Archive.v1/~old%2Bpage/', {signal: undefined});
   });
 
   it('does not pass absolute user input into the API URL', async () => {
     await expect(fetchCMSPage('https://example.com/about')).rejects.toThrow();
 
     expect(getMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('fetchCMSHomepage', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+  });
+
+  it('deduplicates concurrent homepage requests', async () => {
+    let resolve!: (value: {data: {route: string}}) => void;
+    getMock.mockReturnValue(new Promise((next) => { resolve = next; }));
+
+    const first = fetchCMSHomepage();
+    const second = fetchCMSHomepage();
+
+    expect(getMock).toHaveBeenCalledTimes(1);
+    expect(getMock).toHaveBeenCalledWith('/cms/homepage/', expect.objectContaining({signal: expect.any(AbortSignal)}));
+    resolve({data: {route: '/'}});
+    await expect(Promise.all([first, second])).resolves.toEqual([{route: '/'}, {route: '/'}]);
   });
 });
 

@@ -1,3 +1,4 @@
+import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
 import { Navigate, useSearchParams } from 'react-router';
 import { buildCompleteProfilePath, getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
 import { useAuth } from '../AuthContext';
@@ -21,7 +22,7 @@ export const LoginPage = () => {
     <div className="auth-page">
       <div className="auth-page-card">
         <div className="auth-page-header">
-          <img src="/assets/images/i2glogo.png" alt="I2G" className="auth-page-logo" />
+          <ResponsiveBrandImage brand="i2g" alt="I2G" className="auth-page-logo" sizes="160px" />
           <h1 className="auth-page-title">Welcome to I2G</h1>
           <p className="auth-page-subtitle">Enter your email or phone number to sign in or create your account</p>
         </div>

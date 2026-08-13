@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.utils.http_cache import public_json_response
 from apps.event.models import CurrentProjectSchedule, EventScheduleSection, EventScheduleTrack
 from apps.event.serializers import build_schedule_payload
 
@@ -37,7 +38,7 @@ class CurrentEventScheduleView(APIView):
         if not config.schedule_sections.exists():
             return Response({"detail": "No schedule available."}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response(build_schedule_payload(config))
+        return public_json_response(request, build_schedule_payload(config))
 
     def _get_config(self, schedule_id):
         if not schedule_id:

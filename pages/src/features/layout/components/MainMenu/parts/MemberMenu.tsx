@@ -1,5 +1,6 @@
 import {type User} from '@/features/auth/api/types';
 import {formatE164ForDisplay} from '@/features/auth/components/sections/internal/phoneInput';
+import {Icon} from '@/components/Icon/Icon';
 
 interface MemberMenuProps {
   user: User | null;
@@ -40,10 +41,10 @@ export const MemberMenu = ({
           {user?.profile_image ? (
             <img src={user.profile_image} alt="" className="member-avatar" />
           ) : (
-            <i className="fa fa-user-circle" />
+            <Icon name="user-circle" />
           )}
           <span className="member-name">{user?.email || formatE164ForDisplay(user?.phone ?? '') || 'Member'}</span>
-          <i className="fa fa-angle-down member-arrow" />
+          <Icon name="angle-down" className="member-arrow" />
         </button>
         {isOpen && (
           <div className="member-dropdown">
@@ -52,11 +53,11 @@ export const MemberMenu = ({
               className="member-dropdown-item member-dropdown-item-account"
               onClick={onAccountClick}
             >
-              <i className="fa fa-cog" />
+              <Icon name="cog" />
               <span>Account</span>
             </button>
             <button type="button" className="member-dropdown-item logout" onClick={onLogoutClick}>
-              <i className="fa fa-sign-out" />
+              <Icon name="sign-out" />
               <span>Sign Out</span>
             </button>
           </div>
@@ -64,7 +65,7 @@ export const MemberMenu = ({
       </>
     ) : (
       <button type="button" className="member-button" onClick={onLoginClick}>
-        <i className="fa fa-user" />
+        <Icon name="user" />
         <span>Sign In</span>
       </button>
     )}

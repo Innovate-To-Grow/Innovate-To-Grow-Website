@@ -2,6 +2,8 @@ import {useEffect, useRef, type RefObject} from 'react';
 import {type MenuItem} from '@/features/layout/api';
 import {type User} from '@/features/auth/api/types';
 import {formatE164ForDisplay} from '@/features/auth/components/sections/internal/phoneInput';
+import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
+import {Icon} from '@/components/Icon/Icon';
 import {type LayoutLoadState} from '../../LayoutProvider/context';
 import {MenuTree} from './MenuTree';
 import {MENU_BAR_SKELETON_WIDTHS_PX} from './shared';
@@ -126,12 +128,11 @@ export const MobileMenuPanel = ({
       >
         <div className="header-mobile-top">
           <a href="/" className="header-mobile-brand">
-            <img
-              src="/assets/images/i2glogo.png"
+            <ResponsiveBrandImage
+              brand="i2g"
               alt="I2G"
               className="header-mobile-logo"
-              width={2038}
-              height={2039}
+              sizes="64px"
             />
             <span>Innovate To Grow</span>
           </a>
@@ -141,7 +142,7 @@ export const MobileMenuPanel = ({
             aria-label="Close menu"
             onClick={onClose}
           >
-            <i className="fa fa-times" />
+            <Icon name="times" />
           </button>
         </div>
 
@@ -187,7 +188,7 @@ export const MobileMenuPanel = ({
                     className="header-mobile-member-avatar"
                   />
                 ) : (
-                  <i className="fa fa-user-circle" />
+                  <Icon name="user-circle" />
                 )}
                 <span>
                   {user?.email ||
@@ -218,7 +219,7 @@ export const MobileMenuPanel = ({
               className="header-mobile-action primary"
               onClick={onLoginClick}
             >
-              <i className="fa fa-user" />
+              <Icon name="user" />
               Sign In / Sign Up
             </button>
           )}
@@ -257,12 +258,7 @@ export const MobileMenuPanel = ({
             target="_blank"
             rel="noopener noreferrer"
           >
-            <img
-              src="/assets/images/ucmlogo.png"
-              alt="UC Merced"
-              width={230}
-              height={57}
-            />
+            <ResponsiveBrandImage brand="ucm" sizes="230px" />
           </a>
         </div>
       </div>

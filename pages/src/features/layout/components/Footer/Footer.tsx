@@ -5,6 +5,7 @@ import {
 } from '@/features/layout/api';
 import { safeHref } from '@/lib/security';
 import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
+import {Icon} from '@/components/Icon/Icon';
 import { useFooter } from '../LayoutProvider/context';
 
 const buttonColor = (style?: FooterCTAButton['style']) => (style === 'gold' ? 'gold' : 'blue');
@@ -25,7 +26,7 @@ const SocialIcon = ({ link }: { link: FooterSocialLink }) => (
       rel={link.rel || undefined}
       aria-label={link.aria_label || undefined}
     >
-      <i className={link.icon_class} />
+      <Icon name={link.icon_class} className="footer-social-icon" />
     </a>
   </li>
 );

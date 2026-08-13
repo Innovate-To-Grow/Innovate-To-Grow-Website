@@ -2,14 +2,6 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-const layoutState = vi.hoisted(() => ({
-  homepage_route: '/',
-  state: 'ready',
-}));
-
-vi.mock('@/features/layout/components/LayoutProvider/context', () => ({
-  useLayout: () => layoutState,
-}));
 vi.mock('@/features/cms', () => ({
   CMSPageComponent: ({routeOverride}: {routeOverride?: string}) => (
     <div data-testid="cms-route">{routeOverride}</div>
@@ -30,25 +22,7 @@ function LocationState() {
 
 describe('router helpers', () => {
   afterEach(cleanup);
-  it('waits for layout settings before resolving the homepage', () => {
-    layoutState.state = 'loading';
-    const {container} = render(<HomepageResolver />);
-
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it('resolves the configured homepage CMS route', () => {
-    layoutState.state = 'ready';
-    layoutState.homepage_route = '/welcome';
-
-    render(<HomepageResolver />);
-
-    expect(screen.getByTestId('cms-route')).toHaveTextContent('/welcome');
-  });
-
-  it('falls back to the root CMS route when no homepage is configured', () => {
-    layoutState.state = 'ready';
-    layoutState.homepage_route = '';
+  it('resolves the homepage immediately without waiting for layout', () => {
 
     render(<HomepageResolver />);
 

@@ -1,12 +1,16 @@
 import {useCallback, useRef} from 'react';
-import { router } from '@/app/router';
+import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
 import {MemberMenu} from './parts/MemberMenu';
 import {MenuTree} from './parts/MenuTree';
 import {MobileMenuPanel} from './parts/MobileMenuPanel';
 import {MENU_BAR_SKELETON_WIDTHS_PX} from './parts/shared';
 import {useMainMenuState} from './useMainMenuState';
 
-export const MainMenu = () => {
+interface MainMenuProps {
+  navigate?: (to: string) => void;
+}
+
+export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMenuProps) => {
   const {
     currentDate,
     isAuthenticated,
@@ -76,16 +80,14 @@ export const MainMenu = () => {
             rel="noopener noreferrer"
             aria-label="UC Merced"
           >
-            <img src="/assets/images/ucmlogo.png" alt="UC Merced" width={230} height={57} />
+            <ResponsiveBrandImage brand="ucm" sizes="230px" />
           </a>
 
           <a className="site-header-top-logo" href="/" aria-label="Innovate To Grow">
-            <img
+            <ResponsiveBrandImage
+              brand="fullname"
               className="site-header-top-logo-full"
-              src="/assets/images/I2G-fullname-low.png"
-              alt="Innovate To Grow"
-              width={2084}
-              height={750}
+              sizes="(max-width: 992px) 70vw, 480px"
             />
           </a>
 
@@ -107,7 +109,7 @@ export const MainMenu = () => {
         <div className="site-header-container site-header-bottom-inner">
           <div className="site-header-bottom-left">
             <a className="site-header-badge" href="/" aria-label="Home">
-              <img src="/assets/images/i2glogo.png" alt="Innovate To Grow" width={2038} height={2039} />
+              <ResponsiveBrandImage brand="i2g" sizes="96px" />
             </a>
 
             <nav
@@ -171,9 +173,9 @@ export const MainMenu = () => {
             onToggle={() => setIsMemberDropdownOpen((prev) => !prev)}
             onAccountClick={() => {
               setIsMemberDropdownOpen(false);
-              router.navigate('/account');
+              navigate('/account');
             }}
-            onLoginClick={() => router.navigate('/login')}
+            onLoginClick={() => navigate('/login')}
             onLogoutClick={() => {
               setIsMemberDropdownOpen(false);
               logout();
@@ -196,11 +198,11 @@ export const MainMenu = () => {
         onDesktopToggle={handleDesktopToggle}
         onAccountClick={() => {
           setIsMobileOpen(false);
-          router.navigate('/account');
+          navigate('/account');
         }}
         onLoginClick={() => {
           setIsMobileOpen(false);
-          router.navigate('/login');
+          navigate('/login');
         }}
         onLogoutClick={() => {
           setIsMobileOpen(false);

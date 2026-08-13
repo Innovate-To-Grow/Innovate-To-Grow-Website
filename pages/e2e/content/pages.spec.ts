@@ -49,9 +49,7 @@ test('CMS page with multiple block types', async ({page}) => {
 
 test('CMS page with empty blocks array still mounts', async ({page}) => {
   // Use the homepage route with empty blocks — the page should still mount.
-  await page.route(/\/cms\/pages\/$/, (route) =>
-    route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify(cmsPageResponse({blocks: []}))}),
-  );
+  await mockCmsPage(page, '', cmsPageResponse({blocks: []}));
   await page.goto('/', {waitUntil: 'networkidle'});
   // With zero blocks the container renders empty (zero height), so assert it
   // mounted in the DOM rather than that it is visible.

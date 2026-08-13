@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../AuthContext';
 import { getPostAuthPath } from '@/features/auth/api/redirects';
+import {Icon} from '@/components/Icon/Icon';
 import { identifyLoginInput } from '../sections/internal/identifyLoginInput';
 import { LoginIdentifierMode } from './LoginIdentifierMode';
 import { LoginPasswordMode } from './LoginPasswordMode';
@@ -126,7 +127,7 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
       {infoMessage && (
         <div className="auth-alert-wrapper">
           <div className="auth-alert info" role="status">
-            <i className="fa fa-info-circle auth-alert-icon" aria-hidden />
+            <Icon name="info-circle" className="auth-alert-icon" />
             <span>{infoMessage}</span>
           </div>
         </div>
@@ -135,7 +136,7 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
       {(validationError || error) && (
         <div className="auth-alert-wrapper">
           <div className="auth-alert error" role="alert">
-            <i className="fa fa-exclamation-circle auth-alert-icon" aria-hidden />
+            <Icon name="exclamation-circle" className="auth-alert-icon" />
             <span>{validationError ?? error}</span>
           </div>
         </div>

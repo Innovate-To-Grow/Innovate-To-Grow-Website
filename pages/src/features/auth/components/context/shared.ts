@@ -24,6 +24,7 @@ export interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
+  unverified: boolean;
   requiresProfileCompletion: boolean;
   isLoading: boolean;
   error: string | null;
@@ -57,6 +58,7 @@ export const defaultContextValue: AuthContextValue = {
   user: null,
   isAuthenticated: false,
   isInitializing: true,
+  unverified: false,
   requiresProfileCompletion: false,
   isLoading: true,
   error: null,

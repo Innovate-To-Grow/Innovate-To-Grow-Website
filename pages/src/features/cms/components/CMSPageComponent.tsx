@@ -25,7 +25,7 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   const preview = searchParams.has('cms_preview');
   const hasPreviewToken = searchParams.has('cms_preview_token');
 
-  const { page, redirectTo, loading, error, isLivePreview } = useCMSPage(route, preview);
+  const { page, redirectTo, loading, error, isLivePreview, retry } = useCMSPage(route, preview);
   const [showPreviewModal, setShowPreviewModal] = useState(isLivePreview);
   const [redirectFailure, setRedirectFailure] = useState<{
     key: string;
@@ -120,7 +120,16 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   }, [page?.page_css]);
 
   if (loading) {
-    return <div className="cms-page-loading" />;
+    return (
+      <div className="cms-page-shell cms-page-loading" aria-busy="true">
+        <div role="status" aria-label="Loading page content" className="cms-page-status">
+          <span className="cms-page-status-text">Loading page content</span>
+        </div>
+        <div className="cms-page-skeleton cms-page-skeleton-hero" aria-hidden="true" />
+        <div className="cms-page-skeleton" aria-hidden="true" />
+        <div className="cms-page-skeleton" aria-hidden="true" />
+      </div>
+    );
   }
 
   if (!isLivePreview && currentRedirectFailure === 'not_found') {
@@ -145,8 +154,9 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
 
   if (!isLivePreview && error) {
     return (
-      <div className="cms-page-error">
+      <div className="cms-page-error" role="alert">
         <p>Something went wrong loading this page.</p>
+        <button type="button" onClick={retry}>Try again</button>
       </div>
     );
   }
@@ -183,7 +193,12 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
         </div>
       )}
       <div className={page?.page_css_class || 'cms-page'}>
-        {page && <BlockRenderer blocks={page.blocks} />}
+        {page && (
+          <BlockRenderer
+            blocks={page.blocks}
+            prioritizeFirstImage={route === '/' || route === '/home'}
+          />
+        )}
       </div>
     </>
   );

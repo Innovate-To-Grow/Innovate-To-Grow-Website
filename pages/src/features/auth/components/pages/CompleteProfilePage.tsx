@@ -1,3 +1,5 @@
+import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
+import {Icon} from '@/components/Icon/Icon';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../AuthContext';
@@ -143,7 +145,7 @@ export const CompleteProfilePage = () => {
     <div className="auth-page">
       <div className="auth-page-card wide">
         <div className="auth-page-header">
-          <img src="/assets/images/i2glogo.png" alt="I2G" className="auth-page-logo" />
+          <ResponsiveBrandImage brand="i2g" alt="I2G" className="auth-page-logo" sizes="160px" />
           <h1 className="auth-page-title">Complete Your Profile</h1>
           <p className="auth-page-subtitle">Add your name and organization before continuing to your account.</p>
         </div>
@@ -151,7 +153,7 @@ export const CompleteProfilePage = () => {
         {error && (
           <div className="auth-alert-wrapper">
             <div className="auth-alert error" role="alert">
-              <i className="fa fa-exclamation-circle auth-alert-icon" aria-hidden />
+              <Icon name="exclamation-circle" className="auth-alert-icon" />
               <span>{error}</span>
             </div>
           </div>
@@ -160,7 +162,7 @@ export const CompleteProfilePage = () => {
         {isBootstrapping ? (
           <div className="auth-alert-wrapper">
             <div className="auth-alert info" role="status">
-              <i className="fa fa-info-circle auth-alert-icon" aria-hidden />
+              <Icon name="info-circle" className="auth-alert-icon" />
               <span>Loading your profile...</span>
             </div>
           </div>

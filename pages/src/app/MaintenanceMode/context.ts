@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 
 export interface HealthCheckContextType {
+  status: 'healthy' | 'maintenance' | 'degraded';
   isHealthy: boolean;
   isLoading: boolean;
   maintenance: boolean;
@@ -9,6 +10,7 @@ export interface HealthCheckContextType {
 }
 
 export const HealthCheckContext = createContext<HealthCheckContextType>({
+  status: 'healthy',
   isHealthy: true,
   isLoading: true,
   maintenance: false,

@@ -24,7 +24,7 @@ import {
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
 
 export const useAccountDashboard = () => {
-  const {isAuthenticated, logout, user, requiresProfileCompletion} = useAuth();
+  const {isAuthenticated, isInitializing, logout, user, requiresProfileCompletion} = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -63,12 +63,13 @@ export const useAccountDashboard = () => {
   const [resendingId, setResendingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isInitializing) return;
     if (!isAuthenticated) {
       navigate('/login', {replace: true});
       return;
     }
     if (requiresProfileCompletion) navigate('/complete-profile', {replace: true});
-  }, [isAuthenticated, navigate, requiresProfileCompletion]);
+  }, [isAuthenticated, isInitializing, navigate, requiresProfileCompletion]);
 
   const applyProfile = useCallback((data: ProfileResponse) => {
     setProfile(data);
@@ -366,7 +367,7 @@ export const useAccountDashboard = () => {
   };
 
   return {
-    canRender: isAuthenticated && !requiresProfileCompletion,
+    canRender: !isInitializing && isAuthenticated && !requiresProfileCompletion,
     displayEmail: firstEmailAddress(profile?.email, user?.email),
     imageError,
     imageUploading,

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   type CMSPageResponse,
   fetchCMSLivePreview,
+  fetchCMSHomepage,
   fetchCMSPage,
   fetchCMSPreview,
   isCMSPageRedirectResponse,
@@ -13,6 +14,7 @@ interface UseCMSPageResult {
   loading: boolean;
   error: string | null;
   isLivePreview: boolean;
+  retry: () => void;
 }
 
 interface CMSPageState {
@@ -31,6 +33,7 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
     redirectTo: null,
     error: null,
   });
+  const [requestVersion, setRequestVersion] = useState(0);
 
   const params = new URLSearchParams(window.location.search);
   const previewToken = params.get('cms_preview_token');
@@ -42,10 +45,13 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
     if (livePreviewId) return;
 
     let cancelled = false;
+    const controller = new AbortController();
 
     const fetcher = previewToken
       ? fetchCMSPreview(previewToken)
-      : fetchCMSPage(route, preview);
+      : route === '/' && !preview
+        ? fetchCMSHomepage(controller.signal)
+        : fetchCMSPage(route, preview, controller.signal);
 
     fetcher
       .then((data) => {
@@ -78,8 +84,11 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
         }
       });
 
-    return () => { cancelled = true; };
-  }, [route, preview, previewToken, livePreviewId]);
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [route, preview, previewToken, livePreviewId, requestVersion]);
 
   // Live preview: initial fetch + polling
   useEffect(() => {
@@ -119,6 +128,7 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
       loading: true,
       error: null,
       isLivePreview: false,
+      retry: () => setRequestVersion((value) => value + 1),
     };
   }
 
@@ -128,5 +138,6 @@ export function useCMSPage(route: string, preview = false): UseCMSPageResult {
     loading: false,
     error: state.error,
     isLivePreview: !!livePreviewId,
+    retry: () => setRequestVersion((value) => value + 1),
   };
 }
