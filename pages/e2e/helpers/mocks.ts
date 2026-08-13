@@ -319,10 +319,12 @@ export async function mockCmsPage(
   slug: string,
   response: CMSPageResponse,
 ): Promise<void> {
-  // Empty slug = homepage, whose URL is …/cms/pages/ with no trailing segment.
-  // Use a regex so it does not also match …/cms/pages/about/.
+  // The homepage uses its dedicated published-only endpoint; catch-all CMS
+  // routes continue to use the route-specific pages endpoint.
   if (!slug) {
-    await page.route(/\/cms\/pages\/$/, (route) => route.fulfill(json(response)));
+    await page.route('**/cms/homepage/', (route) =>
+      route.fulfill(json(response)),
+    );
     return;
   }
   await page.route(`**/cms/pages/${slug}/`, (route) => route.fulfill(json(response)));
