@@ -17,11 +17,13 @@ vi.mock('@/lib/api', () => api);
 import {HealthCheckProvider} from '@/app/MaintenanceMode/HealthCheckProvider';
 
 const healthy = {
+  status: 'healthy',
   isHealthy: true,
   maintenance: false,
   maintenanceMessage: '',
 };
 const unhealthy = {
+  status: 'maintenance',
   isHealthy: false,
   maintenance: true,
   maintenanceMessage: 'Scheduled database maintenance',
@@ -125,9 +127,9 @@ describe('HealthCheckProvider', () => {
     expect(sessionStorage.getItem('maintenance-bypass')).toBeNull();
   });
 
-  it('polls while unhealthy and clears the interval on unmount', async () => {
+  it('polls while unhealthy and clears the timeout on unmount', async () => {
     api.checkHealth.mockResolvedValue(unhealthy);
-    const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
     const {unmount} = render(
       <HealthCheckProvider pollingInterval={5000}>
         <div>application content</div>
@@ -144,7 +146,51 @@ describe('HealthCheckProvider', () => {
     );
 
     unmount();
-    expect(clearIntervalSpy).toHaveBeenCalled();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  it.each(['timeout', 'offline'])('keeps content visible for a %s failure', async () => {
+    api.checkHealth.mockResolvedValue({
+      status: 'degraded',
+      isHealthy: false,
+      maintenance: false,
+      maintenanceMessage: '',
+    });
+    render(
+      <HealthCheckProvider>
+        <div>application content</div>
+      </HealthCheckProvider>,
+    );
+
+    await runInitialCheck();
+
+    expect(screen.getByText('application content')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('temporarily unavailable');
+    expect(screen.queryByText('Service Unavailable')).not.toBeInTheDocument();
+  });
+
+  it('recovers without reloading the page', async () => {
+    api.checkHealth
+      .mockResolvedValueOnce({
+        status: 'degraded',
+        isHealthy: false,
+        maintenance: false,
+        maintenanceMessage: '',
+      })
+      .mockResolvedValueOnce(healthy);
+    render(
+      <HealthCheckProvider pollingInterval={5000}>
+        <div>application content</div>
+      </HealthCheckProvider>,
+    );
+    await runInitialCheck();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByText('application content')).toBeInTheDocument();
   });
 
   it('cleans up a delayed initial check before it runs', () => {

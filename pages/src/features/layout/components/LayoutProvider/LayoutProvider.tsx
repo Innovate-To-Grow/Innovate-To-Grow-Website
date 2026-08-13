@@ -97,7 +97,6 @@ export const LayoutProvider = ({ children }: LayoutProviderProps) => {
     state,
     menus: layoutData?.menus ?? [],
     footer: layoutData?.footer ?? null,
-    homepage_route: layoutData?.homepage_route,
     error,
   }), [state, layoutData, error]);
 

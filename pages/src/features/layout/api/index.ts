@@ -69,27 +69,15 @@ export interface Menu {
   updated_at: string;
 }
 
-export interface DesignTokens {
-  colors: Record<string, string>;
-  typography: Record<string, string>;
-  typography_mobile: Record<string, string>;
-  layout: Record<string, string>;
-  borders: Record<string, string>;
-  effects: Record<string, string>;
-}
-
 export interface LayoutData {
   menus: Menu[];
   footer: FooterContentResponse | null;
-  homepage_route?: string;
-  design_tokens?: DesignTokens;
-  stylesheets?: string;
 }
 
 /** Bump when cached JSON shape is incompatible. */
-export const LAYOUT_CACHE_VERSION = 2;
+export const LAYOUT_CACHE_VERSION = 3;
 
-const LAYOUT_CACHE_STORAGE_KEY = 'itg-layout-v2';
+const LAYOUT_CACHE_STORAGE_KEY = 'itg-layout-v3';
 
 interface StoredLayoutPayload {
   v: number;
@@ -99,7 +87,7 @@ interface StoredLayoutPayload {
 function isLayoutDataShape(value: unknown): value is LayoutData {
   if (!value || typeof value !== 'object') return false;
   const o = value as Record<string, unknown>;
-  return Array.isArray(o.menus);
+  return Array.isArray(o.menus) && ('footer' in o);
 }
 
 export function readLayoutCache(): LayoutData | null {
@@ -126,7 +114,10 @@ export function writeLayoutCache(data: LayoutData): void {
     return;
   }
   try {
-    const payload: StoredLayoutPayload = { v: LAYOUT_CACHE_VERSION, data };
+    const payload: StoredLayoutPayload = {
+      v: LAYOUT_CACHE_VERSION,
+      data: {menus: data.menus, footer: data.footer},
+    };
     window.sessionStorage.setItem(LAYOUT_CACHE_STORAGE_KEY, JSON.stringify(payload));
   } catch {
     // QuotaExceededError or private mode — ignore
@@ -140,7 +131,7 @@ export const fetchLayoutData = async (): Promise<LayoutData> => {
   if (!layoutFetchInFlight) {
     layoutFetchInFlight = api
       .get<LayoutData>('/layout/')
-      .then((response) => response.data)
+      .then((response) => ({menus: response.data.menus, footer: response.data.footer}))
       .finally(() => {
         layoutFetchInFlight = null;
       });

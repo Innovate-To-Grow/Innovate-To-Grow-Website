@@ -175,8 +175,13 @@ const normalizeSessionUser = (
 
 interface BootstrapInFlight {
   generation: string;
-  promise: Promise<StoredAuthSession | null>;
+  promise: Promise<BootstrapAuthResult>;
 }
+
+export type BootstrapAuthResult =
+  | {status: 'verified'; session: StoredAuthSession}
+  | {status: 'anonymous'; session: null}
+  | {status: 'unverified'; session: StoredAuthSession};
 
 let bootstrapInFlight: BootstrapInFlight | null = null;
 
@@ -190,19 +195,21 @@ const dispatchAuthStateChange = () => {
  * refreshes an expired access token before retrying this request.
  */
 export const bootstrapAuthSession =
-  async (): Promise<StoredAuthSession | null> => {
+  async (): Promise<BootstrapAuthResult> => {
     const snapshot = getStoredSession();
-    if (!snapshot) return null;
+    if (!snapshot) return {status: 'anonymous', session: null};
     if (bootstrapInFlight?.generation === snapshot.generation) {
       return bootstrapInFlight.promise;
     }
 
-    const promise: Promise<StoredAuthSession | null> = authApi
+    const promise: Promise<BootstrapAuthResult> = authApi
       .get<SessionPayload>('/authn/session/')
-      .then((response) => {
+      .then<BootstrapAuthResult>((response) => {
         const current = getStoredSession();
         if (!current || current.generation !== snapshot.generation) {
-          return current;
+          return current
+            ? {status: 'unverified', session: current}
+            : {status: 'anonymous', session: null};
         }
         if (response.data.authenticated === false) {
           if (
@@ -213,7 +220,7 @@ export const bootstrapAuthSession =
           ) {
             dispatchAuthStateChange();
           }
-          return null;
+          return {status: 'anonymous', session: null};
         }
 
         const normalized = normalizeSessionUser(
@@ -221,17 +228,22 @@ export const bootstrapAuthSession =
           current.user,
           current.requires_profile_completion,
         );
-        if (!normalized) return current;
-        return updateStoredSessionProfile(
+        if (!normalized) return {status: 'verified', session: current};
+        const session = updateStoredSessionProfile(
           {generation: current.generation, refresh: current.refresh},
           normalized.user,
           normalized.requiresProfileCompletion,
         );
+        return session
+          ? {status: 'verified', session}
+          : {status: 'anonymous', session: null};
       })
-      .catch((error: unknown) => {
+      .catch((error: unknown): BootstrapAuthResult => {
         const current = getStoredSession();
         if (!current || current.generation !== snapshot.generation) {
-          return current;
+          return current
+            ? {status: 'unverified', session: current}
+            : {status: 'anonymous', session: null};
         }
         if (
           isDefinitiveAuthFailure(error) &&
@@ -241,12 +253,11 @@ export const bootstrapAuthSession =
           })
         ) {
           dispatchAuthStateChange();
-          return null;
+          return {status: 'anonymous', session: null};
         }
-        // The interceptor clears a generation when refresh is rejected. For a
-        // transient session-endpoint failure, retain only a locally valid access
-        // session so an outage does not unnecessarily sign the member out.
-        return isAuthenticated() ? current : null;
+        // A transient failure preserves display identity, but never establishes
+        // authoritative authentication for protected client behavior.
+        return {status: 'unverified', session: current};
       })
       .finally(() => {
         if (bootstrapInFlight?.generation === snapshot.generation) {

@@ -2,7 +2,8 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.cms.models import CMSBlock, CMSPage
+from apps.cms.models import CMSBlock, CMSPage, SiteSettings
+from apps.cms.serializers import CMSPageSerializer
 
 
 class CMSPageAPITest(TestCase):
@@ -116,6 +117,68 @@ class CMSPageAPITest(TestCase):
         cached = cache.get("cms:page:/cached")
         self.assertIsNotNone(cached)
         self.assertEqual(cached["slug"], "cached")
+
+    def test_published_page_etag_returns_304(self):
+        CMSPage.objects.create(slug="etag", route="/etag", title="ETag", status="published")
+        first = self.client.get("/cms/pages/etag/")
+
+        second = self.client.get("/cms/pages/etag/", HTTP_IF_NONE_MATCH=first["ETag"])
+
+        self.assertEqual(second.status_code, 304)
+
+
+class CMSHomepageAPITest(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+
+    def test_returns_selected_published_page_with_serializer_parity(self):
+        page = CMSPage.objects.create(slug="home", route="/welcome", title="Welcome", status="published")
+        CMSBlock.objects.create(page=page, block_type="rich_text", sort_order=0, data={"body_html": "<p>Hi</p>"})
+        settings = SiteSettings.load()
+        settings.homepage_page = page
+        settings.save()
+
+        response = self.client.get("/cms/homepage/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), CMSPageSerializer(page).data)
+
+    def test_draft_selection_falls_back_to_published_root(self):
+        draft = CMSPage.objects.create(slug="draft-home", route="/draft-home", title="Draft", status="draft")
+        root = CMSPage.objects.create(slug="root", route="/", title="Root", status="published")
+        settings = SiteSettings.load()
+        settings.homepage_page = draft
+        settings.save()
+
+        response = self.client.get("/cms/homepage/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["slug"], root.slug)
+
+    def test_page_and_block_changes_invalidate_cached_homepage(self):
+        page = CMSPage.objects.create(slug="home-cache", route="/home-cache", title="Before", status="published")
+        settings = SiteSettings.load()
+        settings.homepage_page = page
+        with self.captureOnCommitCallbacks(execute=True):
+            settings.save()
+        self.client.get("/cms/homepage/")
+
+        page.title = "After"
+        with self.captureOnCommitCallbacks(execute=True):
+            page.save()
+        self.assertEqual(self.client.get("/cms/homepage/").json()["title"], "After")
+
+        with self.captureOnCommitCallbacks(execute=True):
+            CMSBlock.objects.create(page=page, block_type="rich_text", sort_order=0, data={"body_html": "<p>New</p>"})
+        self.assertEqual(len(self.client.get("/cms/homepage/").json()["blocks"]), 1)
+
+    def test_preview_response_has_no_public_cache_headers(self):
+        page = CMSPage.objects.create(slug="private", route="/private", title="Private", status="draft")
+        response = self.client.get("/cms/pages/private/?preview=true")
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("ETag", response)
+        self.assertNotIn("public", response.get("Cache-Control", ""))
 
     def test_sponsor_year_block_is_returned(self):
         page = CMSPage.objects.create(

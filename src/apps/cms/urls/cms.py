@@ -1,12 +1,13 @@
 from django.urls import path
 
-from apps.cms.views.cms import CMSEmbedHostsView, CMSLivePreviewView, CMSPageView, CMSPreviewFetchView
+from apps.cms.views.cms import CMSEmbedHostsView, CMSHomepageView, CMSLivePreviewView, CMSPageView, CMSPreviewFetchView
 from apps.cms.views.layout import EmbedBlockView
 
 urlpatterns = [
     path("embed-hosts/", CMSEmbedHostsView.as_view(), name="cms-embed-hosts"),
     path("live-preview/<uuid:page_id>/", CMSLivePreviewView.as_view(), name="cms-live-preview"),
     path("preview/<str:token>/", CMSPreviewFetchView.as_view(), name="cms-preview-fetch"),
+    path("homepage/", CMSHomepageView.as_view(), name="cms-homepage"),
     path("pages/", CMSPageView.as_view(), {"route_path": ""}, name="cms-page-root"),
     path("pages/<path:route_path>/", CMSPageView.as_view(), name="cms-page"),
     path("embed/<slug:embed_slug>/", EmbedBlockView.as_view(), name="cms-embed-block"),

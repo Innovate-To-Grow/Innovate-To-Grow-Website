@@ -14,8 +14,8 @@ import {useMySharedLinks} from '../sections/internal/useMySharedLinks';
 import './account/accountSharedLinks.css';
 
 export const PastProjectCurationSharedLinksPage = () => {
-  const {isAuthenticated, requiresProfileCompletion} = useAuth();
-  const canLoadShares = isAuthenticated && !requiresProfileCompletion;
+  const {isAuthenticated, isInitializing, requiresProfileCompletion} = useAuth();
+  const canLoadShares = !isInitializing && isAuthenticated && !requiresProfileCompletion;
   const {shares, loading, error, successMessage, handleDelete} = useMySharedLinks(canLoadShares, true);
   const [query, setQuery] = useState('');
 
@@ -24,6 +24,8 @@ export const PastProjectCurationSharedLinksPage = () => {
     if (!normalizedQuery) return shares;
     return shares.filter((share) => getSharedLinkSearchText(share).includes(normalizedQuery));
   }, [normalizedQuery, shares]);
+
+  if (isInitializing) return null;
 
   if (!isAuthenticated) {
     return <Navigate to={buildLoginPath(PAST_PROJECT_CURATION_SHARED_LINKS_PATH)} replace />;

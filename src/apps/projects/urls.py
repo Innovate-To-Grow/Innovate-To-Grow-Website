@@ -3,6 +3,7 @@ from django.views.generic import RedirectView
 
 from .views import (
     AllPastProjectsAPIView,
+    CompactPastProjectsAPIView,
     PastProjectAISearchAPIView,
     PastProjectsAPIView,
     PastProjectShareCreateAPIView,
@@ -17,6 +18,7 @@ urlpatterns = [
     path("current/", RedirectView.as_view(url="/event/projects/", permanent=True), name="projects-current-redirect"),
     path("past/", PastProjectsAPIView.as_view(), name="projects-past"),
     path("past-all/", AllPastProjectsAPIView.as_view(), name="projects-past-all"),
+    path("archive/", CompactPastProjectsAPIView.as_view(), name="projects-archive"),
     path("past-ai-search/", PastProjectAISearchAPIView.as_view(), name="projects-past-ai-search"),
     path("past-shares/", PastProjectShareCreateAPIView.as_view(), name="projects-past-share-create"),
     path("past-shares/mine/", PastProjectShareMineAPIView.as_view(), name="projects-past-share-mine"),

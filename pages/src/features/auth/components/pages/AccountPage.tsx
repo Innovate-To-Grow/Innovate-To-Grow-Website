@@ -5,6 +5,7 @@ import {ProfileSection} from './account/ProfileSection';
 import {TicketsSection} from './account/TicketsSection';
 import {useAccountDashboard} from './account/useAccountDashboard';
 import {EmailCenter} from '../sections/EmailCenter';
+import {Icon} from '@/components/Icon/Icon';
 import {MySharedLinksSection} from '../sections/MySharedLinksSection';
 import {PhoneCenter} from '../sections/PhoneCenter';
 
@@ -97,7 +98,7 @@ export const AccountPage = () => {
                             className="profile-logout"
                             onClick={account.logout}
                         >
-                            <i className="fa fa-sign-out" aria-hidden/>
+                            <Icon name="sign-out" />
                             Sign Out
                         </button>
                     </div>

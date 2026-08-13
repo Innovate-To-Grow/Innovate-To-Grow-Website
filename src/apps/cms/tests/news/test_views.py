@@ -62,6 +62,15 @@ class NewsListAPIViewTest(TestCase):
         self.assertNotIn("raw_payload", article)
         self.assertNotIn("source_guid", article)
 
+    def test_list_supports_public_conditional_get(self):
+        first = self.client.get("/news/?page_size=1")
+
+        self.assertEqual(first["Cache-Control"], "public, max-age=60, stale-while-revalidate=300")
+        unchanged = self.client.get("/news/?page_size=1", HTTP_IF_NONE_MATCH=first["ETag"])
+        self.assertEqual(unchanged.status_code, 304)
+        self.assertEqual(unchanged.content, b"")
+        self.assertEqual(unchanged["ETag"], first["ETag"])
+
 
 class NewsDetailAPIViewTest(TestCase):
     def setUp(self):
@@ -108,3 +117,14 @@ class NewsDetailAPIViewTest(TestCase):
 
         resp = self.client.get(f"/news/{uuid.uuid4()}/")
         self.assertEqual(resp.status_code, 404)
+
+    def test_detail_supports_public_conditional_get(self):
+        first = self.client.get(f"/news/{self.article.id}/")
+
+        self.assertEqual(first["Cache-Control"], "public, max-age=60, stale-while-revalidate=300")
+        unchanged = self.client.get(
+            f"/news/{self.article.id}/",
+            HTTP_IF_NONE_MATCH=f'"other", W/{first["ETag"]}',
+        )
+        self.assertEqual(unchanged.status_code, 304)
+        self.assertEqual(unchanged.content, b"")

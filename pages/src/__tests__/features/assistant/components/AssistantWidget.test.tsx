@@ -38,8 +38,8 @@ const okResult = (reply: string): AssistantChatResult => ({
 
 async function renderAndOpen() {
   render(<AssistantWidget />);
-  await waitFor(() => expect(mocks.fetchAssistantConfig).toHaveBeenCalled());
   fireEvent.click(screen.getByRole('button', {name: /open chat assistant/i}));
+  await waitFor(() => expect(mocks.fetchAssistantConfig).toHaveBeenCalled());
 }
 
 function typeMessage(text: string) {
@@ -189,8 +189,8 @@ describe('AssistantWidget', () => {
     mocks.fetchAssistantConfig.mockResolvedValue({...DEFAULT_CONFIG, enabled: false});
 
     render(<AssistantWidget />);
-    await waitFor(() => expect(mocks.fetchAssistantConfig).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', {name: /open chat assistant/i}));
+    await waitFor(() => expect(mocks.fetchAssistantConfig).toHaveBeenCalled());
 
     expect(screen.getByText('Assistant is offline.')).toBeInTheDocument();
     expect(screen.getByLabelText('Message')).toBeDisabled();
@@ -235,8 +235,8 @@ describe('AssistantWidget', () => {
     mocks.fetchAssistantConfig.mockRejectedValue(new Error('network'));
 
     render(<AssistantWidget />);
-    await waitFor(() => expect(mocks.fetchAssistantConfig).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', {name: /open chat assistant/i}));
+    await waitFor(() => expect(mocks.fetchAssistantConfig).toHaveBeenCalled());
 
     // The default config (DEFAULT_ASSISTANT_CONFIG) welcome message still renders.
     expect(screen.getByText('Welcome! Ask me anything.')).toBeInTheDocument();

@@ -1,4 +1,4 @@
-import {act, cleanup, render, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const fetchCMSEmbedHosts = vi.hoisted(() => vi.fn());
@@ -56,12 +56,8 @@ describe('SafeHtml iframe allowlist', () => {
       revision: 'hosts-v1',
     });
 
-    await waitFor(() =>
-      expect(container.querySelector('iframe')).not.toBeNull(),
-    );
-    expect(container.querySelector('iframe')?.getAttribute('src')).toContain(
-      'youtube.com/embed/',
-    );
+    await waitFor(() => expect(container.querySelector('button')).not.toBeNull());
+    expect(container.querySelector('iframe')).toBeNull();
     expect(fetchCMSEmbedHosts).toHaveBeenCalledTimes(1);
   });
 
@@ -76,7 +72,7 @@ describe('SafeHtml iframe allowlist', () => {
       />,
     );
     await waitFor(() =>
-      expect(container.querySelectorAll('iframe')).toHaveLength(3),
+      expect(container.querySelectorAll('iframe, button.safe-html-youtube-facade')).toHaveLength(3),
     );
 
     const wildcardOnly = render(
@@ -120,7 +116,7 @@ describe('SafeHtml iframe allowlist', () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(container.querySelector('iframe')).not.toBeNull();
+    expect(container.querySelector('.safe-html-youtube-facade')).not.toBeNull();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
@@ -151,6 +147,35 @@ describe('SafeHtml iframe allowlist', () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
     expect(fetchCMSEmbedHosts).toHaveBeenCalledTimes(2);
-    expect(container.querySelector('iframe')).not.toBeNull();
+    expect(container.querySelector('.safe-html-youtube-facade')).not.toBeNull();
+  });
+
+  it('activates exactly one YouTube iframe and preserves permissions', async () => {
+    const {container} = render(
+      <SafeHtml html={'<iframe src="https://www.youtube.com/embed/abc" title="Demo" allow="autoplay" allowfullscreen></iframe>'} />,
+    );
+    await waitFor(() => expect(container.querySelector('.safe-html-youtube-facade')).not.toBeNull());
+    const button = container.querySelector<HTMLButtonElement>('.safe-html-youtube-facade');
+    expect(container.querySelector('iframe')).toBeNull();
+    fireEvent.click(button!);
+    expect(container.querySelectorAll('iframe')).toHaveLength(1);
+    const iframe = container.querySelector('iframe')!;
+    expect(iframe.src).toBe('https://www.youtube.com/embed/abc');
+    expect(iframe.title).toBe('Demo');
+    expect(iframe.getAttribute('allow')).toBe('autoplay');
+    expect(iframe.hasAttribute('allowfullscreen')).toBe(true);
+  });
+
+  it.each(['Enter', ' '])('supports %s keyboard activation', async (key) => {
+    const {container} = render(<SafeHtml html={'<iframe src="https://youtube.com/embed/abc"></iframe>'} />);
+    await waitFor(() => expect(container.querySelector('.safe-html-youtube-facade')).not.toBeNull());
+    fireEvent.keyDown(container.querySelector('.safe-html-youtube-facade')!, {key});
+    expect(container.querySelectorAll('iframe')).toHaveLength(1);
+  });
+
+  it('marks other allowed iframes lazy', async () => {
+    const {container} = render(<SafeHtml html={'<iframe src="https://player.vimeo.com/video/1234"></iframe>'} />);
+    await waitFor(() => expect(container.querySelector('iframe')).not.toBeNull());
+    expect(container.querySelector('iframe')).toHaveAttribute('loading', 'lazy');
   });
 });

@@ -11,6 +11,7 @@ import type {NavigationGridData} from '@/features/cms/components/blocks/navigati
 import type {SectionGroupData} from '@/features/cms/components/blocks/navigation/SectionGroupBlock';
 import type {ProposalCardsData} from '@/features/cms/components/blocks/showcase/ProposalCardsBlock';
 import type {SponsorYearBlockData} from '@/features/cms/components/blocks/showcase/SponsorYearBlock';
+import type {AxiosRequestConfig} from 'axios';
 
 const URL_SCHEME_RE = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 
@@ -67,6 +68,49 @@ export interface CMSPageRedirectResponse {
 
 export type CMSPageFetchResponse = CMSPageResponse | CMSPageRedirectResponse;
 
+const RETRYABLE_GET_STATUSES = new Set([408, 429, 502, 503, 504]);
+const MAX_RETRY_DELAY_MS = 2000;
+
+function retryDelay(error: unknown): number | null {
+  const candidate = error as {
+    code?: string;
+    response?: {status?: number; headers?: Record<string, string | undefined>};
+  };
+  if (candidate.code === 'ERR_CANCELED') return null;
+  const status = candidate.response?.status;
+  if (status !== undefined && !RETRYABLE_GET_STATUSES.has(status)) return null;
+
+  const retryAfter = candidate.response?.headers?.['retry-after'];
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1000, MAX_RETRY_DELAY_MS);
+    }
+    const dateDelay = Date.parse(retryAfter) - Date.now();
+    if (Number.isFinite(dateDelay) && dateDelay >= 0) {
+      return Math.min(dateDelay, MAX_RETRY_DELAY_MS);
+    }
+  }
+  return 150 + Math.floor(Math.random() * 151);
+}
+
+async function getWithOneRetry<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  try {
+    return (await api.get<T>(url, config)).data;
+  } catch (error) {
+    const delay = retryDelay(error);
+    if (delay === null || config?.signal?.aborted) throw error;
+    await new Promise<void>((resolve, reject) => {
+      const timeout = window.setTimeout(resolve, delay);
+      config?.signal?.addEventListener?.('abort', () => {
+        window.clearTimeout(timeout);
+        reject(new DOMException('The request was aborted.', 'AbortError'));
+      }, {once: true});
+    });
+    return (await api.get<T>(url, config)).data;
+  }
+}
+
 export function isCMSPageRedirectResponse(
   response: CMSPageFetchResponse,
 ): response is CMSPageRedirectResponse {
@@ -120,6 +164,7 @@ export function normalizeCMSRoute(route: string): string {
 export async function fetchCMSPage(
   route: string,
   preview = false,
+  signal?: AbortSignal,
 ): Promise<CMSPageFetchResponse> {
   const normalizedRoute = normalizeCMSRoute(route);
   const path = normalizedRoute
@@ -131,8 +176,52 @@ export async function fetchCMSPage(
   if (preview) params.set('preview', 'true');
   const qs = params.toString();
   const url = `/cms/pages/${path}${path ? '/' : ''}${qs ? `?${qs}` : ''}`;
-  const response = await api.get<CMSPageFetchResponse>(url);
-  return response.data;
+  return getWithOneRetry<CMSPageFetchResponse>(url, {signal});
+}
+
+let homepageRequest: {
+  controller: AbortController;
+  promise: Promise<CMSPageFetchResponse>;
+  consumers: number;
+} | null = null;
+
+export function fetchCMSHomepage(signal?: AbortSignal): Promise<CMSPageFetchResponse> {
+  if (!homepageRequest) {
+    const controller = new AbortController();
+    const request = {
+      controller,
+      consumers: 0,
+      promise: getWithOneRetry<CMSPageFetchResponse>('/cms/homepage/', {signal: controller.signal})
+      .finally(() => {
+        if (homepageRequest === request) homepageRequest = null;
+      }),
+    };
+    homepageRequest = request;
+  }
+
+  const request = homepageRequest;
+  request.consumers += 1;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    request.consumers -= 1;
+    queueMicrotask(() => {
+      if (request.consumers === 0 && homepageRequest === request) {
+        request.controller.abort();
+      }
+    });
+  };
+
+  if (signal?.aborted) {
+    release();
+    return Promise.reject(new DOMException('The request was aborted.', 'AbortError'));
+  }
+  signal?.addEventListener('abort', release, {once: true});
+  return request.promise.finally(() => {
+    signal?.removeEventListener('abort', release);
+    release();
+  });
 }
 
 export async function fetchCMSPreview(

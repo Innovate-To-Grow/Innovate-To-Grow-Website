@@ -27,6 +27,8 @@ from .models import (
 from .services.sanitization.embed_hosts import invalidate_cache as invalidate_embed_host_cache
 from .views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
 
+HOMEPAGE_CACHE_KEY = "cms:homepage"
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,7 +51,13 @@ def invalidate_embed_host_policy(sender, instance, **kwargs):
 # noinspection PyUnusedLocal
 def invalidate_layout_cache(sender, instance, **kwargs):
     """Clear layout caches when Menu, FooterContent, or SiteSettings change."""
-    transaction.on_commit(_clear_layout_caches)
+
+    def _clear():
+        _clear_layout_caches()
+        if sender is SiteSettings:
+            cache.delete(HOMEPAGE_CACHE_KEY)
+
+    transaction.on_commit(_clear)
 
 
 @receiver([post_save, post_delete], sender=StyleSheet)
@@ -95,6 +103,7 @@ def invalidate_cms_page_cache(sender, instance, **kwargs):
 
     def _clear():
         cache.delete(f"cms:page:{route}")
+        cache.delete(HOMEPAGE_CACHE_KEY)
         if old_route and old_route != route:
             cache.delete(f"cms:page:{old_route}")
         _clear_layout_caches()
@@ -111,6 +120,7 @@ def invalidate_cms_block_cache(sender, instance, **kwargs):
         return
 
     def _clear():
+        cache.delete(HOMEPAGE_CACHE_KEY)
         try:
             page = CMSPage.objects.get(pk=page_id)
             cache.delete(f"cms:page:{page.route}")

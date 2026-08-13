@@ -36,6 +36,12 @@ class CurrentEventScheduleViewTest(TestCase):
         self.assertEqual(response.data["sections"][0]["tracks"][0]["track_number"], 1)
         self.assertEqual(response.data["sections"][0]["tracks"][0]["slots"][0]["team_number"], "CAP-101")
         self.assertEqual(response.data["projects"][0]["team_number"], "CAP-101")
+        self.assertEqual(response["Cache-Control"], "public, max-age=60, stale-while-revalidate=300")
+
+        unchanged = self.client.get("/event/schedule/", HTTP_IF_NONE_MATCH="*")
+        self.assertEqual(unchanged.status_code, 304)
+        self.assertEqual(unchanged.content, b"")
+        self.assertEqual(unchanged["ETag"], response["ETag"])
 
     def test_schedule_id_query_selects_non_active_schedule(self):
         active = CurrentProjectSchedule.objects.create(name="Active Demo Day")

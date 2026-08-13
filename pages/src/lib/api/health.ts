@@ -10,6 +10,7 @@ export interface HealthCheckResponse {
 }
 
 export interface HealthStatus {
+  status: 'healthy' | 'maintenance' | 'degraded';
   isHealthy: boolean;
   maintenance: boolean;
   maintenanceMessage: string;
@@ -20,9 +21,11 @@ export const checkHealth = async (): Promise<HealthStatus> => {
     const response = await api.get<HealthCheckResponse>('/health/', {
       timeout: 5000, // 5 second timeout
     });
+    const maintenance = response.data.maintenance === true;
     return {
-      isHealthy: response.data.status === 'ok',
-      maintenance: response.data.maintenance ?? false,
+      status: maintenance ? 'maintenance' : response.data.status === 'ok' ? 'healthy' : 'degraded',
+      isHealthy: !maintenance && response.data.status === 'ok',
+      maintenance,
       maintenanceMessage: response.data.maintenance_message ?? '',
     };
   } catch (error) {
@@ -31,13 +34,19 @@ export const checkHealth = async (): Promise<HealthStatus> => {
       const resp = (error as { response?: { data?: HealthCheckResponse } }).response;
       if (resp?.data?.maintenance) {
         return {
+          status: 'maintenance',
           isHealthy: false,
           maintenance: true,
           maintenanceMessage: resp.data.maintenance_message ?? '',
         };
       }
     }
-    return { isHealthy: false, maintenance: false, maintenanceMessage: '' };
+    return {
+      status: 'degraded',
+      isHealthy: false,
+      maintenance: false,
+      maintenanceMessage: '',
+    };
   }
 };
 

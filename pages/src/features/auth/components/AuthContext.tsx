@@ -11,7 +11,6 @@ import {
 import {
   bootstrapAuthSession,
   getStoredSession,
-  isAuthenticated as checkIsAuthenticated,
   type StoredAuthSession,
   type User,
 } from '@/features/auth/api';
@@ -29,10 +28,12 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({children}: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [initialSession] = useState<StoredAuthSession | null>(() => getStoredSession());
+  const [user, setUser] = useState<User | null>(initialSession?.user ?? null);
   const [requiresProfileCompletion, setRequiresProfileCompletion] =
-    useState(false);
+    useState(initialSession?.requires_profile_completion ?? false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [unverified, setUnverified] = useState(Boolean(initialSession));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const initializationCompleteRef = useRef(false);
@@ -46,9 +47,10 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
 
   useEffect(() => {
     let cancelled = false;
-    void bootstrapAuthSession().then((session) => {
+    void bootstrapAuthSession().then((result) => {
       if (cancelled) return;
-      applySession(session);
+      applySession(result.session);
+      setUnverified(result.status === 'unverified');
       initializationCompleteRef.current = true;
       setIsInitializing(false);
     });
@@ -66,16 +68,16 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
       const stored = getStoredSession();
       if (!stored) {
         applySession(null);
+        setUnverified(false);
         if (initializationCompleteRef.current) setIsInitializing(false);
         return;
       }
-      if (checkIsAuthenticated()) {
-        applySession(stored);
-        if (initializationCompleteRef.current) setIsInitializing(false);
-        return;
-      }
-      void bootstrapAuthSession().then((session) => {
-        if (sequence === syncSequence) applySession(session);
+      setUnverified(true);
+      void bootstrapAuthSession().then((result) => {
+        if (sequence === syncSequence) {
+          applySession(result.session);
+          setUnverified(result.status === 'unverified');
+        }
       });
     };
 
@@ -125,8 +127,11 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
   const value: AuthContextValue = useMemo(
     () => ({
       user,
-      isAuthenticated: !!user,
+      // Persisted identity may render optimistically, but protected decisions stay
+      // anonymous until the session endpoint has verified this generation.
+      isAuthenticated: !!user && !unverified,
       isInitializing,
+      unverified,
       requiresProfileCompletion,
       isLoading,
       error,
@@ -153,6 +158,7 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
     }),
     [
       user,
+      unverified,
       isInitializing,
       requiresProfileCompletion,
       isLoading,
@@ -182,7 +188,7 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {isInitializing ? null : children}
+      {children}
     </AuthContext.Provider>
   );
 };

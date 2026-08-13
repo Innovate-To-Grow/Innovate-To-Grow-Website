@@ -17,6 +17,7 @@ type BlockComponentMap = {
   [Type in CMSKnownBlockType]: (props: {
     data: Extract<CMSKnownBlock, {block_type: Type}>['data'];
     previewMode?: boolean;
+    priority?: boolean;
   }) => ReactNode;
 };
 
@@ -43,7 +44,7 @@ function isPresentBlock(block: CMSBlock | null | undefined): block is CMSBlock {
   return Boolean(block);
 }
 
-function renderKnownBlock(block: CMSKnownBlock, previewMode: boolean) {
+function renderKnownBlock(block: CMSKnownBlock, previewMode: boolean, priority: boolean) {
   const key = `${block.block_type}-${block.sort_order}`;
 
   switch (block.block_type) {
@@ -69,7 +70,7 @@ function renderKnownBlock(block: CMSKnownBlock, previewMode: boolean) {
     }
     case 'image_text': {
       const Component = BLOCK_COMPONENTS.image_text;
-      return <Component key={key} data={block.data} />;
+      return <Component key={key} data={block.data} priority={priority} />;
     }
     case 'section_group': {
       const Component = BLOCK_COMPONENTS.section_group;
@@ -103,14 +104,18 @@ function renderKnownBlock(block: CMSKnownBlock, previewMode: boolean) {
 }
 
 export const BlockRenderer = memo(
-  ({ blocks, previewMode = false }: { blocks: Array<CMSBlock | null | undefined>; previewMode?: boolean }) => (
+  ({blocks, previewMode = false, prioritizeFirstImage = false}: {
+    blocks: Array<CMSBlock | null | undefined>;
+    previewMode?: boolean;
+    prioritizeFirstImage?: boolean;
+  }) => (
     <>
-      {blocks.filter(isPresentBlock).map((block) => {
+      {blocks.filter(isPresentBlock).map((block, index) => {
         if (!isKnownBlock(block)) {
           console.warn(`Unknown CMS block type: ${block.block_type}`);
           return null;
         }
-        return renderKnownBlock(block, previewMode);
+        return renderKnownBlock(block, previewMode, prioritizeFirstImage && index === 0 && block.block_type === 'image_text');
       })}
     </>
   ),

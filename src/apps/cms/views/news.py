@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 
 from apps.cms.models import NewsArticle
 from apps.cms.serializers import NewsArticleDetailSerializer, NewsArticleSerializer
+from apps.core.utils.http_cache import public_json_response
 
 
 class NewsPageNumberPagination(PageNumberPagination):
@@ -18,9 +19,17 @@ class NewsListAPIView(ListAPIView):
     queryset = NewsArticle.objects.all()
     pagination_class = NewsPageNumberPagination
 
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        return public_json_response(request, response.data)
+
 
 class NewsDetailAPIView(RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = NewsArticleDetailSerializer
     queryset = NewsArticle.objects.all()
     lookup_field = "pk"
+
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        return public_json_response(request, response.data)

@@ -7,6 +7,7 @@ import {
   type AssistantChatMessage,
   type AssistantConfig,
 } from '@/features/assistant/api';
+import {isIsolatedRoute} from '@/lib/isolatedRoute';
 
 import {clearConversation, getSessionId, loadTranscript, saveTranscript} from '../utils/sessionStore';
 import {MessageInput} from './MessageInput';
@@ -103,6 +104,7 @@ const ChatIcon = () => (
 export function AssistantWidget() {
   const [open, setOpen] = useState(false);
   const [config, setConfig] = useState<AssistantConfig>(DEFAULT_ASSISTANT_CONFIG);
+  const configStartedRef = useRef(false);
   const [state, dispatch] = useReducer(chatReducer, undefined, initState);
   const [lastAttempt, setLastAttempt] = useState<string | null>(null);
   // Opaque per-conversation id; minted/restored on mount and rotated on reset.
@@ -119,16 +121,37 @@ export function AssistantWidget() {
 
   // Fetch config once; fall back to hardcoded defaults if the request fails.
   useEffect(() => {
+    if (isIsolatedRoute()) return;
     let cancelled = false;
-    fetchAssistantConfig()
-      .then((cfg) => {
-        if (!cancelled) setConfig(cfg);
-      })
-      .catch(() => {
-        /* keep DEFAULT_ASSISTANT_CONFIG */
-      });
+    function cleanupInteractionListeners() {
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown', start);
+      window.removeEventListener('i2g-assistant-interaction', start);
+    }
+    function start() {
+      if (configStartedRef.current || cancelled || isIsolatedRoute()) return;
+      configStartedRef.current = true;
+      cleanupInteractionListeners();
+      void fetchAssistantConfig()
+        .then((cfg) => {
+          if (!cancelled) setConfig(cfg);
+        })
+        .catch(() => {
+          /* keep DEFAULT_ASSISTANT_CONFIG */
+        });
+    }
+    window.addEventListener('pointerdown', start, {once: true, passive: true});
+    window.addEventListener('keydown', start, {once: true});
+    window.addEventListener('i2g-assistant-interaction', start, {once: true});
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(start, {timeout: 3000})
+      : undefined;
+    const timerId = idleId === undefined ? window.setTimeout(start, 2000) : undefined;
     return () => {
       cancelled = true;
+      cleanupInteractionListeners();
+      if (idleId !== undefined) window.cancelIdleCallback(idleId);
+      if (timerId !== undefined) window.clearTimeout(timerId);
     };
   }, []);
 
@@ -185,6 +208,11 @@ export function AssistantWidget() {
     generationRef.current += 1;
     dispatch({type: 'reset'});
     setLastAttempt(null);
+  }, []);
+
+  const handleOpen = useCallback(() => {
+    window.dispatchEvent(new Event('i2g-assistant-interaction'));
+    setOpen((prev) => !prev);
   }, []);
 
   const showStarters = state.messages.length === 0 && config.starter_questions.length > 0;
@@ -250,7 +278,7 @@ export function AssistantWidget() {
         className="itg-assistant__launcher"
         aria-label="Open chat assistant"
         aria-expanded={open}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={handleOpen}
       >
         <ChatIcon />
       </button>

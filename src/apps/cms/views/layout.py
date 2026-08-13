@@ -8,6 +8,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.utils.http_cache import public_json_response
+
 from ..models import CMSBlock, CMSEmbedWidget, FooterContent, Menu, SiteSettings, StyleSheet
 from ..serializers import (
     CMSBlockSerializer,
@@ -52,7 +54,7 @@ def _design_tokens_to_css(tokens):
 
 
 class LayoutAPIView(APIView):
-    """Unified endpoint for layout data (menus, footer, design tokens, stylesheets) with caching."""
+    """Unified endpoint for menu and footer data with caching."""
 
     permission_classes = [AllowAny]
 
@@ -60,7 +62,7 @@ class LayoutAPIView(APIView):
     def get(self, request, *args, **kwargs):
         cached_data = cache.get(LAYOUT_CACHE_KEY)
         if cached_data is not None:
-            return Response(cached_data)
+            return public_json_response(request, cached_data)
 
         menus = Menu.objects.filter(is_active=True).order_by("display_name")
         menu_serializer = MenuSerializer(menus, many=True)
@@ -71,23 +73,14 @@ class LayoutAPIView(APIView):
             footer_serializer = FooterContentSerializer(footer)
             footer_data = footer_serializer.data
 
-        settings = SiteSettings.load()
-
-        # Concatenate all active stylesheets in sort_order
-        sheets = StyleSheet.objects.filter(is_active=True).values_list("css", flat=True)
-        stylesheets_css = "\n".join(css for css in sheets if css)
-
         data = {
             "menus": menu_serializer.data,
             "footer": footer_data,
-            "homepage_route": settings.get_homepage_route(),
-            "design_tokens": settings.design_tokens,
-            "stylesheets": stylesheets_css,
         }
 
         cache.set(LAYOUT_CACHE_KEY, data, timeout=LAYOUT_CACHE_TIMEOUT)
 
-        return Response(data)
+        return public_json_response(request, data)
 
 
 class LayoutStylesheetView(View):

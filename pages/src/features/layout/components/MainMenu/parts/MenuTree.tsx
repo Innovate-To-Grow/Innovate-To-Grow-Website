@@ -1,5 +1,6 @@
 import {type FocusEvent, type KeyboardEvent, type ReactElement} from 'react';
 import {type MenuItem} from '@/features/layout/api';
+import {Icon} from '@/components/Icon/Icon';
 import {buildHref} from './shared';
 
 interface MenuTreeProps {
@@ -79,9 +80,9 @@ const renderItems = (
                 onClick={() => (hasChildren ? onDesktopToggle(index, hasChildren) : undefined)}
                 onKeyDown={(event) => handleTopLevelKeyDown(event, index, hasChildren)}
               >
-                {item.icon && <i className={`fa ${item.icon}`} />}
+                {item.icon && <Icon name={item.icon} className="menu-icon" />}
                 <span>{item.title}</span>
-                {hasChildren && <i className="fa fa-angle-down menu-bar-arrow" />}
+                {hasChildren && <Icon name="angle-down" className="menu-bar-arrow" />}
               </a>
 
               {hasChildren && (
@@ -111,9 +112,9 @@ const renderItems = (
               target={isExternal && item.open_in_new_tab ? '_blank' : undefined}
               rel={isExternal && item.open_in_new_tab ? 'noopener noreferrer' : undefined}
             >
-              {item.icon && <i className={`fa ${item.icon}`} />}
+              {item.icon && <Icon name={item.icon} className="menu-icon" />}
               <span>{item.title}</span>
-              {hasChildren && <i className="fa fa-angle-right menu-dropdown-arrow" />}
+              {hasChildren && <Icon name="angle-right" className="menu-dropdown-arrow" />}
             </a>
             {hasChildren && (
               <div className="menu-dropdown-nested">

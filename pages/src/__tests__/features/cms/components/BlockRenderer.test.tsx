@@ -116,4 +116,22 @@ describe('BlockRenderer', () => {
     const {container} = render(<BlockRenderer blocks={blocks} />);
     expect(container.querySelectorAll('iframe')).toHaveLength(1);
   });
+
+  it('prioritizes only the first homepage image block', () => {
+    const blocks: CMSBlock[] = [
+      {block_type: 'image_text', sort_order: 0, data: {image_url: '/assets/images/home_img.jpg', body_html: ''}},
+      {block_type: 'image_text', sort_order: 1, data: {image_url: '/other.jpg', body_html: ''}},
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} prioritizeFirstImage />);
+    const images = container.querySelectorAll('img');
+    expect(images[0]).toHaveAttribute('loading', 'eager');
+    expect(images[0]).toHaveAttribute('fetchpriority', 'high');
+    expect(images[0]).toHaveAttribute('decoding', 'async');
+    expect(images[0]).toHaveAttribute('width', '1600');
+    expect(images[0]).toHaveAttribute('height', '500');
+    expect(images[0]).toHaveAttribute('srcset');
+    expect(images[1]).toHaveAttribute('loading', 'lazy');
+    expect(images[1]).toHaveAttribute('decoding', 'async');
+    expect(images[1]).not.toHaveAttribute('fetchpriority');
+  });
 });

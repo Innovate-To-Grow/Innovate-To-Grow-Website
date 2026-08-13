@@ -7,7 +7,6 @@ export interface LayoutContextValue {
   state: LayoutLoadState;
   menus: Menu[];
   footer: FooterContentResponse | null;
-  homepage_route?: string;
   error: string | null;
 }
 

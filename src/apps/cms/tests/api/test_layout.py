@@ -34,6 +34,19 @@ class LayoutMenuFilteringTests(TestCase):
         resp = self.client.get("/layout/")
         self.assertEqual(resp.json()["menus"], [])
 
+    def test_response_contains_only_menus_and_footer(self):
+        resp = self.client.get("/layout/")
+        self.assertEqual(set(resp.json()), {"menus", "footer"})
+
+    def test_etag_supports_weak_and_comma_separated_if_none_match(self):
+        first = self.client.get("/layout/")
+        etag = first["ETag"]
+
+        second = self.client.get("/layout/", HTTP_IF_NONE_MATCH=f'"other", W/{etag}')
+
+        self.assertEqual(second.status_code, 304)
+        self.assertIn("public", second["Cache-Control"])
+
     def test_multiple_active_menus(self):
         for i in range(3):
             Menu.objects.create(name=f"menu-{i}", display_name=f"Menu {i}")

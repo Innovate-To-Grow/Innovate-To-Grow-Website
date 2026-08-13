@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
-import { router } from '@/app/router';
+import { createAppRouter } from '@/app/router';
 import { Footer, MainMenu, LayoutProvider } from '@/features/layout';
 import { HealthCheckProvider } from '@/app/MaintenanceMode';
 import { AuthProvider } from '@/features/auth';
@@ -29,6 +29,7 @@ function injectIsolatedHiddenSections(searchParams: URLSearchParams) {
 }
 
 export function mountApp() {
+  const router = createAppRouter();
   const _path = window.location.pathname;
   const _searchParams = new URLSearchParams(window.location.search);
   const _isolatedFlag = _searchParams.has('_isolated');
@@ -57,7 +58,7 @@ export function mountApp() {
 
   // Skip menu and footer for isolated iframe routes (admin preview + public embed widget)
   // Mount MainMenu to #menu-root with AuthProvider and LayoutProvider
-  // No BrowserRouter needed — MainMenu uses router.navigate() directly, not <Link> or router hooks
+  // No BrowserRouter needed — navigation is delegated to the app router.
   const menuRoot = document.getElementById('menu-root');
   if (menuRoot && !isBlockPreview) {
     createRoot(menuRoot).render(
@@ -65,7 +66,7 @@ export function mountApp() {
         <ErrorBoundary>
           <AuthProvider>
             <LayoutProvider>
-              <MainMenu />
+              <MainMenu navigate={(to: string) => void router.navigate(to)} />
             </LayoutProvider>
           </AuthProvider>
         </ErrorBoundary>

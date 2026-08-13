@@ -1,3 +1,5 @@
+import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
+import {Icon} from '@/components/Icon/Icon';
 import type {FormEvent} from 'react';
 import {CodeInput} from '../../forms/CodeInput';
 import type {VerifyFlow} from './shared';
@@ -50,7 +52,7 @@ export const VerifyEmailView = ({
   <div className="auth-page">
     <div className="auth-page-card">
       <div className="auth-page-header">
-        <img src="/assets/images/i2glogo.png" alt="I2G" className="auth-page-logo" />
+        <ResponsiveBrandImage brand="i2g" alt="I2G" className="auth-page-logo" sizes="160px" />
         <h1 className="auth-page-title">{title}</h1>
         <p className="auth-page-subtitle">{subtitle}</p>
       </div>
@@ -63,7 +65,7 @@ export const VerifyEmailView = ({
       {localMessage ? (
         <div className="auth-alert-wrapper">
           <div className="auth-alert info" role="status">
-            <i className="fa fa-info-circle auth-alert-icon" aria-hidden />
+            <Icon name="info-circle" className="auth-alert-icon" />
             <span>{localMessage}</span>
           </div>
         </div>
@@ -72,7 +74,7 @@ export const VerifyEmailView = ({
       {localSuccess ? (
         <div className="auth-alert-wrapper">
           <div className="auth-alert success" role="status">
-            <i className="fa fa-check-circle auth-alert-icon" aria-hidden />
+            <Icon name="check-circle" className="auth-alert-icon" />
             <span>{localSuccess}</span>
           </div>
         </div>
@@ -81,7 +83,7 @@ export const VerifyEmailView = ({
       {error ? (
         <div className="auth-alert-wrapper">
           <div className="auth-alert error" role="alert">
-            <i className="fa fa-exclamation-circle auth-alert-icon" aria-hidden />
+            <Icon name="exclamation-circle" className="auth-alert-icon" />
             <span>{error}</span>
           </div>
         </div>

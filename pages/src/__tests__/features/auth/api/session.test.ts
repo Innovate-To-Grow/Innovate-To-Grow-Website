@@ -159,7 +159,10 @@ describe('auth session lifecycle', () => {
       }),
       true,
     );
-    expect(result?.user.email).toBe('current@example.com');
+    expect(result).toMatchObject({
+      status: 'verified',
+      session: {user: {email: 'current@example.com'}},
+    });
   });
 
   it('clears the guarded session when the authoritative endpoint rejects it', async () => {
@@ -171,7 +174,10 @@ describe('auth session lifecycle', () => {
     window.addEventListener('i2g-auth-state-change', eventSpy);
     const {bootstrapAuthSession} = await import('@/features/auth/api/session');
 
-    await expect(bootstrapAuthSession()).resolves.toBeNull();
+    await expect(bootstrapAuthSession()).resolves.toEqual({
+      status: 'anonymous',
+      session: null,
+    });
 
     expect(clearTokens).toHaveBeenCalledWith({
       generation: 'generation-a',
@@ -186,7 +192,10 @@ describe('auth session lifecycle', () => {
     authApiGet.mockRejectedValue(transientRefreshFailure);
     const {bootstrapAuthSession} = await import('@/features/auth/api/session');
 
-    await expect(bootstrapAuthSession()).resolves.toBeNull();
+    await expect(bootstrapAuthSession()).resolves.toEqual({
+      status: 'unverified',
+      session: baseSession,
+    });
 
     expect(isDefinitiveAuthFailure).toHaveBeenCalledWith(
       transientRefreshFailure,

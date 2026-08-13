@@ -10,7 +10,7 @@ from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.cms.models import CMSPage, RouteRedirect
+from apps.cms.models import CMSPage, RouteRedirect, SiteSettings
 from apps.cms.serializers.cms import CMSPageSerializer
 from apps.cms.services.routing.route_redirects import (
     normalize_and_validate_cms_page_route,
@@ -19,10 +19,13 @@ from apps.cms.services.routing.route_redirects import (
 from apps.cms.services.sanitization.embed_hosts import CACHE_TTL as EMBED_HOST_CACHE_TTL
 from apps.cms.services.sanitization.embed_hosts import get_allowed_hosts_snapshot
 from apps.core.utils.access import user_can_access_app
+from apps.core.utils.http_cache import public_json_response
 
 logger = logging.getLogger(__name__)
 
 _LIVE_PREVIEW_TTL = 600  # 10 minutes
+HOMEPAGE_CACHE_KEY = "cms:homepage"
+CMS_PAGE_CACHE_TIMEOUT = 300
 
 
 class CMSEmbedHostsView(APIView):
@@ -148,7 +151,7 @@ class CMSPageView(APIView):
             if legacy_route is not None:
                 cached = cache.get(f"cms:page:{legacy_route}")
                 if cached is not None:
-                    return Response(cached)
+                    return public_json_response(request, cached)
 
                 redirect = (
                     RouteRedirect.objects.filter(source_path=legacy_route, is_active=True)
@@ -157,8 +160,8 @@ class CMSPageView(APIView):
                 )
                 if redirect is not None:
                     data = {"redirect_to": redirect.destination_path, "permanent": True}
-                    cache.set(f"cms:page:{legacy_route}", data, timeout=300)
-                    return Response(data)
+                    cache.set(f"cms:page:{legacy_route}", data, timeout=CMS_PAGE_CACHE_TIMEOUT)
+                    return public_json_response(request, data)
 
         try:
             route = normalize_and_validate_cms_page_route(raw_route)
@@ -178,6 +181,33 @@ class CMSPageView(APIView):
         data = CMSPageSerializer(page).data
 
         if not is_preview:
-            cache.set(f"cms:page:{route}", data, timeout=300)
+            cache.set(f"cms:page:{route}", data, timeout=CMS_PAGE_CACHE_TIMEOUT)
+            return public_json_response(request, data)
 
         return Response(data)
+
+
+class CMSHomepageView(APIView):
+    """Serve the selected published homepage, falling back to the published root page."""
+
+    permission_classes = [AllowAny]
+
+    # noinspection PyMethodMayBeStatic
+    def get(self, request):
+        cached = cache.get(HOMEPAGE_CACHE_KEY)
+        if cached is not None:
+            return public_json_response(request, cached)
+
+        settings = SiteSettings.load()
+        pages = CMSPage.objects.prefetch_related("blocks").filter(status="published")
+        page = None
+        if settings.homepage_page_id:
+            page = pages.filter(pk=settings.homepage_page_id).first()
+        if page is None:
+            page = pages.filter(route="/").first()
+        if page is None:
+            return Response({"detail": "Page not found."}, status=404)
+
+        data = CMSPageSerializer(page).data
+        cache.set(HOMEPAGE_CACHE_KEY, data, timeout=CMS_PAGE_CACHE_TIMEOUT)
+        return public_json_response(request, data)

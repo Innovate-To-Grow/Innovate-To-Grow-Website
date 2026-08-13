@@ -1,4 +1,4 @@
-import {cleanup, render, screen, waitFor} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -76,18 +76,39 @@ describe('CMSPageComponent redirects and errors', () => {
   });
 
   it('shows a load error for non-404 API failures', () => {
+    const retry = vi.fn();
     useCMSPage.mockReturnValue({
       page: null,
       redirectTo: null,
       loading: false,
       error: 'error',
       isLivePreview: false,
+      retry,
     });
 
     renderPage();
 
     expect(screen.getByText('Something went wrong loading this page.')).toBeInTheDocument();
     expect(screen.queryByTestId('not-found')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it('renders an accessible loading shell with reserved content space', () => {
+    useCMSPage.mockReturnValue({
+      page: null,
+      redirectTo: null,
+      loading: true,
+      error: null,
+      isLivePreview: false,
+      retry: vi.fn(),
+    });
+
+    const {container} = renderPage();
+
+    expect(screen.getByRole('status', {name: 'Loading page content'})).toBeInTheDocument();
+    expect(container.querySelector('.cms-page-shell')).toHaveAttribute('aria-busy', 'true');
+    expect(container.querySelectorAll('.cms-page-skeleton')).toHaveLength(3);
   });
 
   it('shows NotFound for a missing CMS route', () => {
