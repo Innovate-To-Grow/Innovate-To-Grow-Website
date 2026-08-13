@@ -31,6 +31,7 @@ import {
   registrationEvent,
   registrationOptions,
 } from './factories';
+import {mockAuthenticatedLogin} from './auth';
 
 function json(body: unknown, status = 200) {
   return {status, contentType: 'application/json', body: JSON.stringify(body)};
@@ -47,6 +48,12 @@ export async function mockEmailAuthFlow(
 ): Promise<EmailAuthMockResult> {
   const requestPayloads: unknown[] = [];
   const verifyPayloads: unknown[] = [];
+  const verifyResponse = opts.verifyResponse ?? loginResponse();
+  const verifyStatus = opts.verifyStatus ?? 200;
+
+  if (verifyStatus < 400) {
+    await mockAuthenticatedLogin(page, verifyResponse);
+  }
 
   await page.route('**/authn/email-auth/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());
@@ -55,12 +62,13 @@ export async function mockEmailAuthFlow(
 
   await page.route('**/authn/email-auth/verify-code/', async (route) => {
     verifyPayloads.push(route.request().postDataJSON());
-    const status = opts.verifyStatus ?? 200;
+    const status = verifyStatus;
     if (status >= 400) {
       await route.fulfill(json({detail: 'Invalid or expired code.'}, status));
       return;
     }
-    await route.fulfill(json(opts.verifyResponse ?? loginResponse()));
+    await mockAuthenticatedLogin(page, verifyResponse);
+    await route.fulfill(json(verifyResponse));
   });
 
   return {requestPayloads, verifyPayloads};
@@ -81,6 +89,12 @@ export async function mockPhoneAuthFlow(
   const requestPayloads: unknown[] = [];
   const verifyPayloads: unknown[] = [];
   const challengeId = 'a9a1d853-9687-4199-9f25-d93509e408aa';
+  const verifyResponse = opts.verifyResponse ?? loginResponse();
+  const verifyStatus = opts.verifyStatus ?? 200;
+
+  if (verifyStatus < 400) {
+    await mockAuthenticatedLogin(page, verifyResponse);
+  }
 
   await page.route('**/authn/phone-auth/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());
@@ -94,12 +108,13 @@ export async function mockPhoneAuthFlow(
 
   await page.route('**/authn/phone-auth/verify-code/', async (route) => {
     verifyPayloads.push(route.request().postDataJSON());
-    const status = opts.verifyStatus ?? 200;
+    const status = verifyStatus;
     if (status >= 400) {
       await route.fulfill(json({detail: 'Verification code is invalid or has expired.'}, status));
       return;
     }
-    await route.fulfill(json(opts.verifyResponse ?? loginResponse()));
+    await mockAuthenticatedLogin(page, verifyResponse);
+    await route.fulfill(json(verifyResponse));
   });
 
   return {requestPayloads, verifyPayloads};
@@ -699,6 +714,12 @@ export async function mockPasswordLogin(
   } = {},
 ): Promise<PasswordLoginMockResult> {
   const loginPayloads: unknown[] = [];
+  const response = opts.response ?? loginResponse();
+  const status = opts.status ?? 200;
+
+  if (status < 400) {
+    await mockAuthenticatedLogin(page, response);
+  }
 
   await page.route('**/authn/login/', async (route) => {
     if (route.request().method() !== 'POST') {
@@ -706,12 +727,12 @@ export async function mockPasswordLogin(
       return;
     }
     loginPayloads.push(route.request().postDataJSON());
-    const status = opts.status ?? 200;
     if (status >= 400) {
       await route.fulfill(json({detail: 'Invalid credentials.'}, status));
       return;
     }
-    await route.fulfill(json(opts.response ?? loginResponse()));
+    await mockAuthenticatedLogin(page, response);
+    await route.fulfill(json(response));
   });
 
   return {loginPayloads};

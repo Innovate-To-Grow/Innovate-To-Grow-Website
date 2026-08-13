@@ -1,5 +1,5 @@
 import {expect, type Page} from '@playwright/test';
-import type {ProfileResponse, User} from '../../src/features/auth/api/types';
+import type {LoginResponse, ProfileResponse, User} from '../../src/features/auth/api/types';
 import {mintFakeJwt, profileResponse} from './factories';
 
 // Storage keys mirror pages/src/features/auth/api/storage.ts. Kept as literals
@@ -35,6 +35,20 @@ interface AuthoritativeSessionState {
 
 const authoritativeSessions = new WeakMap<Page, AuthoritativeSessionState>();
 const sessionRoutes = new WeakSet<Page>();
+const refreshRoutes = new WeakSet<Page>();
+
+async function mockSuccessfulRefresh(page: Page): Promise<void> {
+  if (refreshRoutes.has(page)) return;
+
+  refreshRoutes.add(page);
+  await page.route('**/authn/refresh/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({access: mintFakeJwt(), refresh: 'refresh-e2e'}),
+    }),
+  );
+}
 
 export async function mockAuthoritativeSession(
   page: Page,
@@ -69,6 +83,27 @@ export async function mockAuthoritativeSession(
       }),
     });
   });
+}
+
+/**
+ * Keep the authoritative session endpoint aligned with a successful mocked
+ * login response. Call this again when the login request resolves so a setup
+ * helper installed later cannot replace the newly authenticated identity.
+ */
+export async function mockAuthenticatedLogin(page: Page, response: LoginResponse): Promise<void> {
+  const profile = profileResponse({
+    member_uuid: response.user.member_uuid,
+    email: response.user.email,
+    is_staff: Boolean(response.user.is_staff),
+    profile_image: response.user.profile_image,
+  });
+  await mockAuthoritativeSession(
+    page,
+    response.user,
+    profile,
+    Boolean(response.requires_profile_completion),
+  );
+  await mockSuccessfulRefresh(page);
 }
 
 function updateAuthoritativeProfile(page: Page, profile: ProfileResponse): void {
@@ -125,13 +160,7 @@ export async function seedAuthenticatedSession(
   // the api-client refresh→logout cascade (client.ts) and unmount guarded
   // pages mid-test. Make refresh succeed so a seeded session is never logged
   // out by an un-mocked request.
-  await page.route('**/authn/refresh/', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({access: mintFakeJwt(), refresh: 'refresh-e2e'}),
-    }),
-  );
+  await mockSuccessfulRefresh(page);
 
   const profileRef = {
     current: profileResponse({email: user.email, member_uuid: user.member_uuid, ...opts.profile}),
@@ -259,13 +288,7 @@ export async function mockAccountDashboard(
   );
   // Keep a seeded session alive on /account: an un-mocked 401 here would trip
   // the refresh->logout cascade and sign the member back out.
-  await page.route('**/authn/refresh/', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({access: mintFakeJwt(), refresh: 'refresh-e2e'}),
-    }),
-  );
+  await mockSuccessfulRefresh(page);
   await page.route('**/authn/account-emails/', (route) =>
     route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({emails: authEmails})}),
   );
