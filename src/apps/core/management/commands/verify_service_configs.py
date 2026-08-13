@@ -53,11 +53,12 @@ class Command(BaseCommand):
             )
 
         email = EmailServiceConfig.load()
-        email_ok = bool(email.pk) and aws_ok
+        email_ok = email.ses_configured
         self._report("EmailServiceConfig", email, email_ok, required=True)
         if not email_ok:
             failures.append(
-                "EmailServiceConfig is not configured (needs an active EmailServiceConfig and AWS Credentials for SES)."
+                "EmailServiceConfig is not configured (needs an active EmailServiceConfig with a From address "
+                "and AWS Credentials for SES)."
             )
 
         sms_ok = bool(aws.pk) and aws.sns_configured

@@ -35,10 +35,11 @@ class VerifyServiceConfigsCommandTest(TestCase):
         call_command("verify_service_configs", *args, stdout=out, stderr=err)
         return out.getvalue(), err.getvalue()
 
-    def _create_email(self):
+    def _create_email(self, *, ses_from_email: str = "i2g@g.ucmerced.edu"):
         return EmailServiceConfig.objects.create(
             name="Production",
             is_active=True,
+            ses_from_email=ses_from_email,
         )
 
     def _create_aws(self, *, sms_from_number: str = ""):
@@ -60,6 +61,13 @@ class VerifyServiceConfigsCommandTest(TestCase):
         self._create_aws()
         out, _ = self._run("--strict")
         self.assertIn("Service config verification passed.", out)
+
+    def test_fails_strict_when_email_from_address_missing(self):
+        self._create_email(ses_from_email="")
+        self._create_aws()
+
+        with self.assertRaises(CommandError):
+            self._run("--strict")
 
     def test_warns_when_optional_configs_missing(self):
         self._create_email()
