@@ -21,7 +21,7 @@ class RecipientLogAdmin(ReadOnlyModelAdmin):
         "last_event_at",
     )
     list_filter = ("status", "bounce_type", "provider", "campaign")
-    search_fields = ("email_address", "recipient_name", "ses_message_id")
+    search_fields = ("email_address", "recipient_name", "provider_message_id")
     list_select_related = ("campaign",)
     ordering = ("-updated_at",)
 
@@ -38,7 +38,7 @@ class RecipientLogAdmin(ReadOnlyModelAdmin):
             "SES tracking",
             {
                 "fields": (
-                    "ses_message_id",
+                    "provider_message_id",
                     "delivered_at",
                     "bounced_at",
                     "complained_at",

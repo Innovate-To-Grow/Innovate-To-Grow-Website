@@ -2,13 +2,13 @@ from django.db import transaction
 from django.utils import timezone
 
 
-def _wait_for_ses_slot() -> None:
+def _wait_for_email_slot() -> None:
     from apps.core.models import EmailServiceConfig
 
     from .rate_limit import configured_ses_rate, wait_for_delivery_slot
 
     config = EmailServiceConfig.load()
-    wait_for_delivery_slot("ses", configured_ses_rate(config))
+    wait_for_delivery_slot(config.provider, configured_ses_rate(config))
 
 
 def _provider_job_error(exc):
@@ -57,7 +57,7 @@ def send_notification_email_job(job) -> None:
         if not job.begin_provider_call():
             raise JobClaimLost("Background job claim was lost before SES invocation.")
 
-    _wait_for_ses_slot()
+    _wait_for_email_slot()
     try:
         sent = send_notification_email(
             **job.payload,
@@ -100,7 +100,7 @@ def send_ticket_email_job(job) -> None:
         if not owns_claim.exists():
             raise JobClaimLost("Background job claim was lost before login-link issuance.")
 
-    _wait_for_ses_slot()
+    _wait_for_email_slot()
     try:
         send_ticket_email(
             registration,

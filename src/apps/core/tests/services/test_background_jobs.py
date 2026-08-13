@@ -439,7 +439,7 @@ class BackgroundJobQueueTests(TestCase):
         self.assertEqual(newer.status, BackgroundJob.Status.PENDING)
         flush.assert_called_once_with(raise_errors=True)
 
-    @patch("apps.core.services.background_jobs.handlers._wait_for_ses_slot")
+    @patch("apps.core.services.background_jobs.handlers._wait_for_email_slot")
     @patch(
         "apps.authn.services.email.send_email.send_notification_email",
         side_effect=ProviderDeliveryError(

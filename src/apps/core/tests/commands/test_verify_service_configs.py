@@ -8,6 +8,7 @@ from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
     GoogleCredentialConfig,
+    SMTPProviderConfig,
 )
 
 VALID_GOOGLE_JSON = {
@@ -24,6 +25,7 @@ class VerifyServiceConfigsCommandTest(TestCase):
         EmailServiceConfig.objects.all().delete()
         GoogleCredentialConfig.objects.all().delete()
         AWSCredentialConfig.objects.all().delete()
+        SMTPProviderConfig.objects.all().delete()
         # Default: no origination number auto-detected from AWS (no live calls in tests).
         patcher = patch("apps.core.services.aws.sms.origination_number_available", return_value=False)
         self.mock_origination_available = patcher.start()
@@ -35,11 +37,23 @@ class VerifyServiceConfigsCommandTest(TestCase):
         call_command("verify_service_configs", *args, stdout=out, stderr=err)
         return out.getvalue(), err.getvalue()
 
-    def _create_email(self, *, ses_from_email: str = "i2g@g.ucmerced.edu"):
+    def _create_email(self, *, from_email: str = "i2g@g.ucmerced.edu", provider: str = "ses"):
         return EmailServiceConfig.objects.create(
             name="Production",
             is_active=True,
-            ses_from_email=ses_from_email,
+            provider=provider,
+            from_email=from_email,
+        )
+
+    def _create_smtp(self):
+        return SMTPProviderConfig.objects.create(
+            name="SMTP",
+            is_active=True,
+            host="smtp.example.com",
+            port=587,
+            username="mailer",
+            password="secret",
+            use_tls=True,
         )
 
     def _create_aws(self, *, sms_from_number: str = ""):
@@ -63,11 +77,54 @@ class VerifyServiceConfigsCommandTest(TestCase):
         self.assertIn("Service config verification passed.", out)
 
     def test_fails_strict_when_email_from_address_missing(self):
-        self._create_email(ses_from_email="")
+        self._create_email(from_email="")
         self._create_aws()
 
         with self.assertRaises(CommandError):
             self._run("--strict")
+
+    def test_fails_strict_when_email_from_address_has_invalid_syntax(self):
+        self._create_email(from_email="not-an-email")
+        self._create_aws()
+
+        with self.assertRaises(CommandError):
+            self._run("--strict")
+
+    def test_smtp_provider_does_not_require_aws(self):
+        self._create_email(provider="smtp")
+        self._create_smtp()
+
+        out, _ = self._run("--strict")
+
+        self.assertIn("Service config verification passed.", out)
+
+    def test_unsupported_provider_fails_even_when_smtp_is_configured(self):
+        email = self._create_email(provider="ses")
+        EmailServiceConfig.objects.filter(pk=email.pk).update(provider="unsupported")
+        self._create_smtp()
+
+        with self.assertRaises(CommandError):
+            self._run("--strict")
+
+    def test_smtp_provider_requires_valid_smtp_config(self):
+        self._create_email(provider="smtp")
+
+        with self.assertRaises(CommandError):
+            self._run("--strict")
+
+    def test_require_aws_is_independent_of_smtp_email_selection(self):
+        self._create_email(provider="smtp")
+        self._create_smtp()
+
+        with self.assertRaises(CommandError):
+            self._run("--strict", "--require-aws")
+
+    def test_require_sms_is_independent_of_smtp_email_selection(self):
+        self._create_email(provider="smtp")
+        self._create_smtp()
+
+        with self.assertRaises(CommandError):
+            self._run("--strict", "--require-sms")
 
     def test_warns_when_optional_configs_missing(self):
         self._create_email()
@@ -129,6 +186,6 @@ class VerifyServiceConfigsCommandTest(TestCase):
         # a failure is recorded, but without --strict the command returns cleanly.
         self._create_email()
         out, _ = self._run()
-        self.assertIn("FAIL: EmailServiceConfig is not configured", out)
+        self.assertIn("FAIL: EmailServiceConfig selects SES", out)
         # The success line is NOT printed because we returned early at the failures branch.
         self.assertNotIn("Service config verification passed.", out)

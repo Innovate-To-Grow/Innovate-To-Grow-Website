@@ -7,7 +7,7 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from apps.cms.models import CMSPage
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig, GmailAccessAccount
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig, GmailAccessAccount, SMTPProviderConfig
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.models import EmailCampaign
@@ -27,9 +27,10 @@ class MailSettingsAdminTest(TestCase):
         self.config = EmailServiceConfig.objects.create(
             name="Production Mail",
             is_active=True,
-            ses_from_email="admin@example.com",
-            ses_from_name="I2G Admin",
-            ses_max_send_rate=12,
+            provider="ses",
+            from_email="admin@example.com",
+            from_name="I2G Admin",
+            max_send_rate=12,
         )
         self.aws_config = AWSCredentialConfig.objects.create(
             name="Primary AWS",
@@ -39,6 +40,15 @@ class MailSettingsAdminTest(TestCase):
             default_region="us-west-2",
             sms_from_number="+12065550000",
             sms_message_template="Your I2G code is {code}.",
+        )
+        self.smtp_config = SMTPProviderConfig.objects.create(
+            name="Backup SMTP",
+            is_active=True,
+            host="smtp.example.com",
+            port=587,
+            username="mailer",
+            password="existing-secret",
+            use_tls=True,
         )
 
     def test_settings_page_shows_notification_delivery_config(self):
@@ -79,6 +89,8 @@ class MailSettingsAdminTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="email-name"')
         self.assertContains(response, 'name="aws-access_key_id"')
+        self.assertContains(response, 'name="smtp-host"')
+        self.assertNotContains(response, "existing-secret")
         self.assertContains(response, "Save Notification Delivery")
         self.assertContains(response, 'href="/admin/mail/settings/"')
         # Origination number is auto-detected from AWS, not hand-edited here.
@@ -90,15 +102,24 @@ class MailSettingsAdminTest(TestCase):
             {
                 "email-name": "Updated Mail",
                 "email-is_active": "on",
-                "email-ses_from_name": "Updated Sender",
-                "email-ses_from_email": "updated@example.com",
-                "email-ses_max_send_rate": "8",
+                "email-provider": "smtp",
+                "email-from_name": "Updated Sender",
+                "email-from_email": "updated@example.com",
+                "email-max_send_rate": "8",
                 "aws-name": "Updated AWS",
                 "aws-is_active": "on",
                 "aws-access_key_id": "updated-key",
                 "aws-secret_access_key": "updated-secret",
                 "aws-default_region": "us-east-1",
                 "aws-sms_message_template": "Code: {code}",
+                "smtp-name": "Updated SMTP",
+                "smtp-is_active": "on",
+                "smtp-host": "mail.example.com",
+                "smtp-port": "587",
+                "smtp-username": "mailer",
+                "smtp-password": "",
+                "smtp-use_tls": "on",
+                "smtp-timeout": "30",
             },
         )
 
@@ -107,8 +128,11 @@ class MailSettingsAdminTest(TestCase):
         self.config.refresh_from_db()
         self.aws_config.refresh_from_db()
         self.assertEqual(self.config.name, "Updated Mail")
-        self.assertEqual(self.config.ses_from_email, "updated@example.com")
-        self.assertEqual(self.config.ses_max_send_rate, 8)
+        self.smtp_config.refresh_from_db()
+        self.assertEqual(self.config.provider, "smtp")
+        self.assertEqual(self.config.from_email, "updated@example.com")
+        self.assertEqual(self.config.max_send_rate, 8)
+        self.assertEqual(self.smtp_config.password, "existing-secret")
         self.assertEqual(self.aws_config.name, "Updated AWS")
         self.assertEqual(self.aws_config.default_region, "us-east-1")
         self.assertEqual(self.aws_config.sms_message_template, "Code: {code}")
@@ -192,9 +216,9 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.email_config = EmailServiceConfig.objects.create(
             name="Production Mail",
             is_active=True,
-            ses_from_email="admin@example.com",
-            ses_from_name="I2G Admin",
-            ses_max_send_rate=12,
+            from_email="admin@example.com",
+            from_name="I2G Admin",
+            max_send_rate=12,
         )
         self.aws_config = AWSCredentialConfig.objects.create(
             name="Primary AWS",
@@ -612,8 +636,8 @@ class EmailCampaignAdminImportTest(TestCase):
         self.email_config = EmailServiceConfig.objects.create(
             name="Primary SES",
             is_active=True,
-            ses_from_email="campaigns@ucmerced.edu",
-            ses_from_name="Innovate to Grow",
+            from_email="campaigns@ucmerced.edu",
+            from_name="Innovate to Grow",
         )
 
     def test_changelist_shows_loaded_gmail_import_account_and_mailboxes(self):

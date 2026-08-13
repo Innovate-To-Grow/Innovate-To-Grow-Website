@@ -5,12 +5,15 @@ Run before removing process env vars to confirm that runtime services
 services share a single AWSCredentialConfig.
 """
 
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
+from django.core.validators import validate_email
 
 from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
     GoogleCredentialConfig,
+    SMTPProviderConfig,
 )
 
 
@@ -44,22 +47,43 @@ class Command(BaseCommand):
         failures: list[str] = []
         warnings: list[str] = []
 
+        email = EmailServiceConfig.load()
         aws = AWSCredentialConfig.load()
         aws_ok = bool(aws.pk) and aws.is_configured
-        self._report("AWSCredentialConfig", aws, aws_ok, required=options["require_aws"])
+        aws_required = options["require_aws"] or email.provider == "ses"
+        self._report("AWSCredentialConfig", aws, aws_ok, required=aws_required)
         if not aws_ok:
-            (failures if options["require_aws"] else warnings).append(
+            (failures if aws_required else warnings).append(
                 "AWSCredentialConfig is not configured (SES, SNS, and Bedrock all depend on it)."
             )
 
-        email = EmailServiceConfig.load()
-        email_ok = email.ses_configured
+        sender_ok = self._valid_email(email.from_email)
+        smtp = SMTPProviderConfig.load()
+        smtp_ok = bool(smtp.pk) and smtp.is_configured
+        if email.provider == "ses":
+            provider_ok = aws_ok
+        elif email.provider == "smtp":
+            provider_ok = smtp_ok
+        else:
+            provider_ok = False
+        email_ok = bool(email.pk) and email.is_active and sender_ok and provider_ok
         self._report("EmailServiceConfig", email, email_ok, required=True)
         if not email_ok:
-            failures.append(
-                "EmailServiceConfig is not configured (needs an active EmailServiceConfig with a From address "
-                "and AWS Credentials for SES)."
-            )
+            if not sender_ok:
+                failures.append("EmailServiceConfig From address is empty or invalid.")
+            elif email.provider == "smtp":
+                failures.append("EmailServiceConfig selects SMTP, but SMTPProviderConfig is not configured.")
+            elif email.provider == "ses":
+                failures.append(
+                    "EmailServiceConfig selects SES, but its active sender or AWS Credentials are not configured."
+                )
+            else:
+                failures.append(f"EmailServiceConfig selects unsupported provider {email.provider!r}.")
+
+        smtp_required = email.provider == "smtp"
+        self._report("SMTPProviderConfig", smtp, smtp_ok, required=smtp_required)
+        if not smtp_ok:
+            (failures if smtp_required else warnings).append("SMTPProviderConfig is not configured.")
 
         sms_ok = bool(aws.pk) and aws.sns_configured
         self._report("AWS SNS SMS", aws, sms_ok, required=options["require_sms"])
@@ -96,3 +120,13 @@ class Command(BaseCommand):
 
         marker = self.style.ERROR("MISSING") if required else self.style.WARNING("missing")
         self.stdout.write(f"{label}: {marker}")
+
+    @staticmethod
+    def _valid_email(value: str) -> bool:
+        if not value:
+            return False
+        try:
+            validate_email(value)
+        except ValidationError:
+            return False
+        return True
