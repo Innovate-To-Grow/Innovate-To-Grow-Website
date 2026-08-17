@@ -1,8 +1,8 @@
 # Django Backend Dependencies — base (shared across all environments)
 
 # Core Framework
-Django>=5.2.16,<5.3
-djangorestframework==3.17.1
+Django>=5.2.17,<5.3
+djangorestframework==3.18.0
 djangorestframework-simplejwt>=5.5.1
 
 # Environment Variables
