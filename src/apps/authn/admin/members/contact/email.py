@@ -9,6 +9,7 @@ from apps.authn.services.email.challenges import AuthChallengeInvalid
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactEmail, Member
+from .guards import PrivilegedOwnerAdminMixin
 
 PRIMARY_EMAIL_EDIT_ERROR = _(
     "The current primary email's owner, address, and type cannot be edited directly. "
@@ -44,7 +45,8 @@ class ContactEmailAdminForm(forms.ModelForm):
             return cleaned_data
 
         current = ContactEmail.objects.filter(pk=self.instance.pk).first()
-        if current is None:
+        if current is None or current.member_id is None:
+            # An unowned row has no sign-in address to protect; let an admin adopt or fix it.
             return cleaned_data
 
         requested_member = cleaned_data.get("member", current.member)
@@ -65,7 +67,7 @@ class ContactEmailAdminForm(forms.ModelForm):
 
 
 @admin.register(ContactEmail)
-class ContactEmailAdmin(BaseModelAdmin):
+class ContactEmailAdmin(PrivilegedOwnerAdminMixin, BaseModelAdmin):
     """Admin for ContactEmail model."""
 
     form = ContactEmailAdminForm
@@ -92,16 +94,28 @@ class ContactEmailAdmin(BaseModelAdmin):
     )
     actions = ["make_primary", "mark_verified", "mark_unverified", "toggle_subscribe"]
 
+    @staticmethod
+    def _is_owned_primary(obj) -> bool:
+        """Whether ``obj`` is a primary email that actually belongs to a member.
+
+        The protections below exist to keep a member's sign-in address stable, so they must not apply
+        to an *unowned* row. ``member`` is nullable and ``email_type`` defaults to "primary", so a row
+        saved with no owner became permanently unusable: every identity field frozen, delete refused,
+        and ``make_primary`` bailing out because there is no member — while it kept squatting on a
+        globally unique address.
+        """
+        return obj is not None and obj.member_id is not None and obj.email_type == "primary"
+
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
-        if obj is not None and obj.email_type == "primary":
+        if self._is_owned_primary(obj):
             for field in ("member", "email_address", "email_type"):
                 if field not in readonly:
                     readonly.append(field)
         return readonly
 
     def has_delete_permission(self, request, obj=None):
-        if obj is not None and obj.email_type == "primary":
+        if self._is_owned_primary(obj):
             return False
         return super().has_delete_permission(request, obj)
 
@@ -119,6 +133,8 @@ class ContactEmailAdmin(BaseModelAdmin):
             if current.member_id is not None:
                 Member.objects.select_for_update().get(pk=current.member_id)
             current = ContactEmail.objects.select_for_update().get(pk=obj.pk)
+            if current.member_id is None:
+                return super().save_model(request, obj, form, change)
             if current.email_type == "primary" and _primary_identity_changed(current, obj):
                 raise PermissionDenied(PRIMARY_EMAIL_EDIT_ERROR)
             if current.email_type != "primary" and obj.email_type == "primary":
@@ -133,7 +149,7 @@ class ContactEmailAdmin(BaseModelAdmin):
             if current.member_id is not None:
                 Member.objects.select_for_update().get(pk=current.member_id)
             current = ContactEmail.objects.select_for_update().get(pk=obj.pk)
-            if current.email_type == "primary":
+            if current.member_id is not None and current.email_type == "primary":
                 raise PermissionDenied(PRIMARY_EMAIL_DELETE_ERROR)
             super().delete_model(request, current)
 
@@ -155,7 +171,7 @@ class ContactEmailAdmin(BaseModelAdmin):
             )
             list(Member.objects.select_for_update().filter(pk__in=member_ids).order_by("pk"))
             locked = ContactEmail.objects.select_for_update().filter(pk__in=selected_ids)
-            if locked.filter(email_type="primary").exists():
+            if locked.filter(email_type="primary", member__isnull=False).exists():
                 raise PermissionDenied(PRIMARY_EMAIL_DELETE_ERROR)
             super().delete_queryset(request, locked)
 
@@ -193,22 +209,37 @@ class ContactEmailAdmin(BaseModelAdmin):
             level=messages.SUCCESS,
         )
 
+    def _report_skipped(self, request, skipped):
+        if skipped:
+            self.message_user(
+                request,
+                f"{skipped} email(s) on staff or superuser accounts skipped — only an I2G Master may change those.",
+                level=messages.WARNING,
+            )
+
     @admin.action(description="Mark selected emails as verified")
     def mark_verified(self, request, queryset):
-        updated = queryset.update(verified=True)
+        # ``queryset.update`` bypasses save_model, so the owner guard has to be applied here too:
+        # marking an email on a staff account verified turns it into an admin-login factor.
+        allowed, skipped = self.manageable(request, queryset)
+        updated = allowed.update(verified=True)
         self.message_user(request, f"{updated} email(s) marked as verified.")
+        self._report_skipped(request, skipped)
 
     @admin.action(description="Mark selected emails as unverified")
     def mark_unverified(self, request, queryset):
-        updated = queryset.update(verified=False)
+        allowed, skipped = self.manageable(request, queryset)
+        updated = allowed.update(verified=False)
         self.message_user(request, f"{updated} email(s) marked as unverified.")
+        self._report_skipped(request, skipped)
 
     @admin.action(description="Toggle subscription status")
     def toggle_subscribe(self, request, queryset):
-        for email in queryset:
+        allowed, skipped = self.manageable(request, queryset)
+        count = 0
+        for email in allowed:
             email.subscribe = not email.subscribe
             email.save()
-        self.message_user(
-            request,
-            f"Toggled subscription for {queryset.count()} email(s).",
-        )
+            count += 1
+        self.message_user(request, f"Toggled subscription for {count} email(s).")
+        self._report_skipped(request, skipped)

@@ -16,6 +16,15 @@ logger = logging.getLogger(__name__)
 
 @admin.register(AdminInvitation)
 class AdminInvitationAdmin(BaseModelAdmin):
+    """Superuser-only: accepting an invitation grants ``is_staff``.
+
+    ``BaseModelAdmin`` gates on the ``authn`` app grant alone, so any admin with it could mint an
+    invitation, read the token straight off the readonly "Details" fieldset, and accept it themselves —
+    self-granting staff access. Granting staff is documented as an I2G Master responsibility
+    (see MemberAdmin.superuser_only_fields), so restrict writes to superusers. View access stays with
+    the app grant so support staff can still see invitation status.
+    """
+
     list_display = ["email", "role", "status_badge", "invited_by", "created_at", "expires_at"]
     list_filter = ["status", "role"]
     search_fields = ["email"]
@@ -31,6 +40,15 @@ class AdminInvitationAdmin(BaseModelAdmin):
     ]
     actions = ["resend_invitations", "cancel_invitations"]
 
+    def has_add_permission(self, request):
+        return bool(request.user.is_superuser) and super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return bool(request.user.is_superuser) and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return bool(request.user.is_superuser) and super().has_delete_permission(request, obj)
+
     # noinspection PyUnusedLocal
     def get_fieldsets(self, request, obj=None):
         if obj is None:
@@ -45,9 +63,12 @@ class AdminInvitationAdmin(BaseModelAdmin):
 
     # noinspection PyUnusedLocal
     def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
         if obj is not None:
-            return self.readonly_fields + ["email", "role", "message"]
-        return self.readonly_fields
+            for field in ("email", "role", "message"):
+                if field not in readonly:
+                    readonly.append(field)
+        return readonly
 
     @admin.display(description="Status")
     def status_badge(self, obj):

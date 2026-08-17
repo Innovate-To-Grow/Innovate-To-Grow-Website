@@ -9,6 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactPhone
+from .guards import PrivilegedOwnerAdminMixin
 from .normalization import (
     apply_phone_changes,
     build_normalization_message,
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 @admin.register(ContactPhone)
-class ContactPhoneAdmin(BaseModelAdmin):
+class ContactPhoneAdmin(PrivilegedOwnerAdminMixin, BaseModelAdmin):
     """Admin for ContactPhone model."""
 
     change_list_template = "admin/authn/contactphone/change_list.html"
@@ -52,15 +53,29 @@ class ContactPhoneAdmin(BaseModelAdmin):
     def get_formatted_number(self, obj):
         return obj.get_formatted_number()
 
+    def _report_skipped(self, request, skipped):
+        if skipped:
+            self.message_user(
+                request,
+                f"{skipped} phone(s) on staff or superuser accounts skipped — only an I2G Master may change those.",
+                level=messages.WARNING,
+            )
+
     @admin.action(description="Mark selected phones as verified")
     def mark_verified(self, request, queryset):
-        updated = queryset.update(verified=True)
+        # ``queryset.update`` bypasses save_model, so re-apply the owner guard: a verified phone on a
+        # staff account is an SMS recovery factor for it.
+        allowed, skipped = self.manageable(request, queryset)
+        updated = allowed.update(verified=True)
         self.message_user(request, f"{updated} phone(s) marked as verified.")
+        self._report_skipped(request, skipped)
 
     @admin.action(description="Mark selected phones as unverified")
     def mark_unverified(self, request, queryset):
-        updated = queryset.update(verified=False)
+        allowed, skipped = self.manageable(request, queryset)
+        updated = allowed.update(verified=False)
         self.message_user(request, f"{updated} phone(s) marked as unverified.")
+        self._report_skipped(request, skipped)
 
     @admin.action(description="Normalize ALL phone numbers (preview first)")
     def normalize_all_phones(self, request, queryset):
@@ -116,12 +131,11 @@ class ContactPhoneAdmin(BaseModelAdmin):
                 phone_changes,
                 registration_changes,
             )
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 - report anything, then bail out cleanly
             logger.exception("Failed to apply phone normalization")
-            messages.error(
-                request,
-                "Failed to apply phone normalization. See logs for details.",
-            )
+            # Include the reason: a swallowed IntegrityError from the unique phone_number index left
+            # admins with an unactionable "see logs" message and zero rows fixed.
+            messages.error(request, f"Failed to apply phone normalization: {exc}")
             return redirect(reverse("admin:authn_contactphone_normalize_preview"))
 
         messages.success(

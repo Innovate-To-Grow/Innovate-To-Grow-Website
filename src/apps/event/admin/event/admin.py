@@ -265,6 +265,11 @@ class EventAdmin(BaseModelAdmin):
                 kwargs["initial"] = initial_by_model[inline.model]
         return kwargs
 
+    # This admin already renders its own, richer per-inline rows below, so skip the generic
+    # inline summary ConfirmOnSaveMixin adds by default — otherwise every ticket and question is
+    # listed twice on the confirmation page.
+    include_inlines_in_confirmation_diff = False
+
     def get_confirmation_diff(self, request, obj, form, formsets, action_type):
         diff = super().get_confirmation_diff(request, obj, form, formsets, action_type)
         if action_type != "add":

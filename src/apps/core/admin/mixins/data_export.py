@@ -7,10 +7,13 @@ from datetime import date, datetime
 from django.contrib import admin
 from django.template.response import TemplateResponse
 
+from apps.core.services.db_tools.safe_orm.constants import SENSITIVE_FIELD_RE
+
 from .files import generate_excel_response, generate_json_response
 
 EXPORT_CONFIRM_PARAM = "export_confirm"
 EXPORT_FORMATS = [("xlsx", "Excel (.xlsx)"), ("json", "JSON (.json)")]
+MAX_EXPORT_CELL_CHARS = 32_000
 
 
 class DataExportMixin:
@@ -22,6 +25,11 @@ class DataExportMixin:
     export_fields = None
     export_filename = None
     actions_no_confirmation = ["export_data"]
+    # Extra field names to keep out of the default (no ``export_fields``) column list, on top of the
+    # project-wide sensitive-name denylist.
+    export_exclude_fields = ()
+    # Opt out only when a matching column is genuinely required (see get_export_fields).
+    export_allow_sensitive_fields = ()
 
     @property
     def excel_export_fields(self):
@@ -50,7 +58,22 @@ class DataExportMixin:
                 except Exception:
                     fields.append((name, name.replace("_", " ").title()))
             return fields
-        return [(f.name, f.verbose_name.title()) for f in self.model._meta.fields]
+        # No explicit allowlist: fall back to every concrete field, minus anything whose name looks
+        # sensitive. Without this the default Member export offered — and previewed inline on the
+        # column-picker page — every member's password hash alongside is_superuser and the base64
+        # profile image. SENSITIVE_FIELD_RE is the same denylist the CLI / AI data path already uses.
+        return [
+            (f.name, f.verbose_name.title())
+            for f in self.model._meta.fields
+            if not self._is_excluded_export_field(f.name)
+        ]
+
+    def _is_excluded_export_field(self, name) -> bool:
+        if name in self.export_allow_sensitive_fields:
+            return False
+        if name in self.export_exclude_fields:
+            return True
+        return bool(SENSITIVE_FIELD_RE.search(name))
 
     def get_export_value(self, obj, field_name):
         """Serialise a single field value for export."""
@@ -69,6 +92,10 @@ class DataExportMixin:
             return json.dumps(value, ensure_ascii=False, default=str)
         if hasattr(value, "pk"):
             return str(value)
+        if isinstance(value, str) and len(value) > MAX_EXPORT_CELL_CHARS:
+            # Excel rejects a cell longer than 32,767 characters, so an un-truncated base64 blob made
+            # the produced workbook unopenable.
+            return value[:MAX_EXPORT_CELL_CHARS] + "…"
         return value
 
     def get_excel_export_fields(self):

@@ -9,6 +9,8 @@ from django.core.cache import cache
 from django.shortcuts import render
 from django.utils.http import url_has_allowed_host_and_scheme
 
+from apps.core.utils.client_ip import client_ip
+
 _SESSION_STEP = "admin_login_step"
 _SESSION_EMAIL = "admin_login_email"
 _SESSION_MEMBER_ID = "admin_login_member_id"
@@ -173,5 +175,10 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
 
 
 def _password_rate_key(request):
-    client_address = request.META.get("REMOTE_ADDR", "unknown")
-    return "".join((_RATE_LIMIT_PREFIX, client_address))
+    # REMOTE_ADDR is the ALB for every production request, so keying on it gave the whole admin team
+    # ONE shared counter: ten wrong passwords from anyone locked everybody out of password login, and
+    # no attacker was ever isolated. Resolve the real client through NUM_PROXIES, and include the
+    # submitted email so one client cannot starve the others either.
+    client_address = client_ip(request) or "unknown"
+    account = (request.POST.get("email") or "").strip().lower()
+    return "".join((_RATE_LIMIT_PREFIX, client_address, ":", account))

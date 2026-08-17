@@ -3,6 +3,7 @@ from django.test import TestCase
 
 from apps.authn.admin.members.forms import MemberChangeForm, MemberCreationForm
 from apps.authn.models import Member
+from apps.authn.tests.helpers import PNG_1PX, PNG_1PX_DATA_URI, png_upload
 
 
 class MemberCreationFormPasswordTest(TestCase):
@@ -72,7 +73,13 @@ class MemberChangeFormProfileImageTest(TestCase):
             "groups": [],
             "user_permissions": [],
             "last_login": "",
-            "date_joined": member.date_joined.isoformat(),
+            # date_joined has a callable model default, so Django sets show_hidden_initial and
+            # compares against the "initial-date_joined" hidden input a rendered form submits — not
+            # against the instance. Send both, truncated to whole seconds like the widget renders
+            # them (DateTimeInput.supports_microseconds is False), otherwise date_joined shows up in
+            # changed_data on every save and masks what these tests assert.
+            "date_joined": member.date_joined.replace(microsecond=0).isoformat(),
+            "initial-date_joined": member.date_joined.replace(microsecond=0).isoformat(),
         }
         data.update(overrides)
         return data
@@ -101,14 +108,93 @@ class MemberChangeFormProfileImageTest(TestCase):
 
     def test_uploaded_profile_image_replaces_existing_image(self):
         member = self._member()
-        upload = SimpleUploadedFile("avatar.png", b"new-image", content_type="image/png")
 
         form = MemberChangeForm(
             data=self._form_data(member),
-            files={"profile_image": upload},
+            files={"profile_image": png_upload()},
             instance=member,
         )
 
         self.assertTrue(form.is_valid(), form.errors)
         saved = form.save()
-        self.assertEqual(saved.profile_image, "data:image/png;base64,bmV3LWltYWdl")
+        self.assertEqual(saved.profile_image, PNG_1PX_DATA_URI)
+
+    def test_oversized_upload_is_rejected(self):
+        member = self._member()
+        oversized = SimpleUploadedFile("big.png", PNG_1PX + b"\x00" * (5 * 1024 * 1024), content_type="image/png")
+
+        form = MemberChangeForm(data=self._form_data(member), files={"profile_image": oversized}, instance=member)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("5 MB", str(form.errors["profile_image"]))
+        member.refresh_from_db()
+        self.assertEqual(member.profile_image, "data:image/png;base64,old-image")
+
+    def test_non_image_upload_is_rejected(self):
+        """The admin used to trust the client's Content-Type and store whatever was uploaded."""
+        member = self._member()
+        disguised = SimpleUploadedFile("evil.png", b"<html>not an image</html>", content_type="image/png")
+
+        form = MemberChangeForm(data=self._form_data(member), files={"profile_image": disguised}, instance=member)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("does not match", str(form.errors["profile_image"]))
+
+    def test_upload_content_type_is_taken_from_the_signature_not_the_client(self):
+        member = self._member()
+        lying = SimpleUploadedFile("avatar.jpg", PNG_1PX, content_type="image/jpeg")
+
+        form = MemberChangeForm(data=self._form_data(member), files={"profile_image": lying}, instance=member)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertTrue(form.save().profile_image.startswith("data:image/png;base64,"))
+
+    # --- changed_data: profile_image must not look dirty when it was never touched -------------
+
+    def test_unchanged_profile_image_is_not_in_changed_data(self):
+        member = self._member()
+
+        form = MemberChangeForm(data=self._form_data(member, first_name="Updated"), files={}, instance=member)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.changed_data, ["first_name"])
+
+    def test_no_edits_at_all_yields_empty_changed_data(self):
+        member = self._member()
+
+        form = MemberChangeForm(data=self._form_data(member), files={}, instance=member)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.changed_data, [])
+
+    def test_uploaded_profile_image_is_in_changed_data(self):
+        member = self._member()
+
+        form = MemberChangeForm(data=self._form_data(member), files={"profile_image": png_upload()}, instance=member)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.changed_data, ["profile_image"])
+
+    def test_clearing_an_existing_image_is_a_change(self):
+        member = self._member()
+        clear_name = MemberChangeForm().fields["profile_image"].widget.clear_checkbox_name("profile_image")
+
+        form = MemberChangeForm(data=self._form_data(member, **{clear_name: "on"}), files={}, instance=member)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.changed_data, ["profile_image"])
+        self.assertEqual(form.save().profile_image, "")
+
+    def test_large_stored_image_round_trips_without_being_marked_changed(self):
+        member = Member.objects.create_user(
+            first_name="Big",
+            last_name="Avatar",
+            password="StrongPass123!",
+            profile_image="data:image/png;base64," + ("A" * 2_000_000),
+        )
+
+        form = MemberChangeForm(data=self._form_data(member, title="Dean"), files={}, instance=member)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.changed_data, ["title"])
+        self.assertEqual(len(form.save().profile_image), len("data:image/png;base64,") + 2_000_000)

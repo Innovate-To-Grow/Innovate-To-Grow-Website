@@ -17,7 +17,9 @@ from .confirm_on_save_utils import (
     compute_add_diff,
     compute_change_diff,
     compute_delete_diff,
+    compute_formsets_diff,
     deserialize_post_data,
+    extract_sensitive_post_data,
     serialize_post_data,
 )
 
@@ -25,6 +27,17 @@ SESSION_KEY_PREFIX = "_admin_pending_change"
 SESSION_ACTION_KEY_PREFIX = "_admin_pending_action"
 CACHE_FILE_PREFIX = "admin_confirm_file_"
 CACHE_FILE_TTL = 600
+CACHE_SECRET_SUFFIX = "__secret_post"  # nosec B105 — cache-key suffix, not a password
+EXPIRED_UPLOAD_ERROR = "The uploaded file is no longer available — please re-upload it and save again."
+EXPIRED_PENDING_ERROR = "This confirmation expired before it was submitted. Please make your change again."
+
+
+def _rewind(uploaded_file):
+    """Best-effort seek to the start of an upload that an earlier reader may have consumed."""
+    try:
+        uploaded_file.seek(0)
+    except (AttributeError, OSError, ValueError):
+        pass
 
 
 class ConfirmOnSaveMixin:
@@ -41,8 +54,10 @@ class ConfirmOnSaveMixin:
         return reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist")
 
     def _invalid_confirmation_token_response(self, request, session_key):
+        # Do NOT discard the pending state here. There is one slot per model, so a second submission
+        # (another tab, or an autosave tick) replaces it; destroying the replacement on a stale tab's
+        # token mismatch threw away the edits the admin was actually about to confirm.
         messages.error(request, "Invalid confirmation token. Please start over.")
-        self._discard_pending_confirmation(request, session_key)
         return HttpResponseRedirect(self._changelist_url())
 
     @staticmethod
@@ -51,6 +66,9 @@ class ConfirmOnSaveMixin:
         pending = request.session.pop(session_key, None)
         if not isinstance(pending, dict):
             return
+        secret_key = pending.get("secret_key")
+        if secret_key:
+            cache.delete(secret_key)
         file_keys = pending.get("file_keys", {})
         if not isinstance(file_keys, dict):
             return
@@ -60,16 +78,21 @@ class ConfirmOnSaveMixin:
     def get_confirmation_word(self, obj=None):
         return self.opts.verbose_name
 
-    def get_confirmation_diff(self, request, obj, form, formsets, action_type):
-        """Return the serializable diff shown before saving an admin form.
+    # Fold inline changes into the diff. Without this an edit that touched only inlines produced an
+    # empty diff, so the ``if not diff`` short-circuit below committed it with no confirmation at all —
+    # and when the main form *did* change, the admin typed the confirmation word to approve a diff that
+    # listed none of the inline rows they had actually added or deleted.
+    include_inlines_in_confirmation_diff = True
 
-        Subclasses may use the already-validated inline ``formsets`` to add
-        related-object details. The default intentionally preserves the
-        existing main-form-only confirmation output.
-        """
+    def get_confirmation_diff(self, request, obj, form, formsets, action_type):
+        """Return the serializable diff shown before saving an admin form."""
         if action_type == "add":
-            return compute_add_diff(form)
-        return compute_change_diff(self.model, obj.pk, form)
+            diff = compute_add_diff(form)
+        else:
+            diff = compute_change_diff(self.model, obj.pk, form)
+        if self.include_inlines_in_confirmation_diff:
+            diff = diff + compute_formsets_diff(formsets)
+        return diff
 
     def get_urls(self):
         custom = [
@@ -103,9 +126,6 @@ class ConfirmOnSaveMixin:
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         if request.method != "POST" or self._should_skip_confirmation(request):
             return super().changeform_view(request, object_id, form_url, extra_context)
-
-        if "_confirmed_save" in request.POST:
-            return self._execute_confirmed_save(request, object_id, form_url, extra_context)
 
         # A new submission supersedes any abandoned confirmation for this
         # model. Clear it before validation so an invalid replacement cannot
@@ -160,16 +180,31 @@ class ConfirmOnSaveMixin:
         file_keys = {}
         for field_name, uploaded_file in request.FILES.items():
             cache_key = f"{CACHE_FILE_PREFIX}{token}_{field_name}"
+            # ``form.is_valid()`` above has already read these streams (a widget may read them more
+            # than once), so rewind before copying — otherwise the cached payload is empty and the
+            # confirmed save writes a zero-byte file over the stored one.
+            _rewind(uploaded_file)
+            content = uploaded_file.read()
+            _rewind(uploaded_file)
             cache.set(
                 cache_key,
                 {
                     "name": uploaded_file.name,
-                    "content": uploaded_file.read(),
+                    "content": content,
                     "content_type": uploaded_file.content_type,
                 },
                 CACHE_FILE_TTL,
             )
             file_keys[field_name] = cache_key
+
+        # Passwords and similar secrets are held in the cache (short TTL, deleted on use) instead of
+        # the session: sessions are DB-backed here with an 8-hour lifetime, so a plaintext password in
+        # ``post_data`` sat at rest in ``django_session`` long after the admin abandoned the page.
+        secret_post = extract_sensitive_post_data(request.POST)
+        secret_key = ""  # nosec B105 — cache key for the pending secrets, not a password
+        if secret_post:
+            secret_key = f"{CACHE_FILE_PREFIX}{token}{CACHE_SECRET_SUFFIX}"
+            cache.set(secret_key, secret_post, CACHE_FILE_TTL)
 
         request.session[self._session_key()] = {
             "token": token,
@@ -179,6 +214,7 @@ class ConfirmOnSaveMixin:
             "form_url": form_url,
             "post_data": serialize_post_data(request.POST),
             "file_keys": file_keys,
+            "secret_key": secret_key,
             "diff": diff,
         }
 
@@ -188,9 +224,6 @@ class ConfirmOnSaveMixin:
     def delete_view(self, request, object_id, extra_context=None):
         if request.method != "POST" or self._should_skip_confirmation(request):
             return super().delete_view(request, object_id, extra_context)
-
-        if "_confirmed_delete" in request.POST:
-            return self._execute_confirmed_delete(request, object_id, extra_context)
 
         self._discard_pending_confirmation(request, self._session_key())
 
@@ -274,27 +307,60 @@ class ConfirmOnSaveMixin:
             )
         return self._changelist_url()
 
+    def _replay_path(self, pending):
+        """The URL the replayed request should appear to target.
+
+        Django's ``response_change`` branches on ``request.path`` for ``_continue``, so replaying with
+        the confirm URL still set sent the admin back to ``/confirm-change/`` — where the pending entry
+        had just been popped, producing "No pending change found" and a bounce to the changelist even
+        though the save succeeded.
+        """
+        if pending["action"] == "add":
+            return reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_add")
+        return reverse(
+            f"admin:{self.opts.app_label}_{self.opts.model_name}_change",
+            args=[pending["object_id"]],
+        )
+
     def _do_confirmed_save(self, request, pending):
         from django.utils.datastructures import MultiValueDict
 
         post_data = deserialize_post_data(pending["post_data"])
-        post_data["_confirmed_save"] = ["1"]
+        secret_key = pending.get("secret_key")
+        if secret_key:
+            secrets = cache.get(secret_key)
+            if not secrets:
+                messages.error(request, EXPIRED_PENDING_ERROR)
+                self._discard_pending_confirmation(request, self._session_key())
+                return HttpResponseRedirect(self._get_cancel_url(pending))
+            for key, values in secrets.items():
+                post_data.setlist(key, values)
+            cache.delete(secret_key)
 
         original_post = request.POST
         original_files = request._files if hasattr(request, "_files") else request.FILES
+        original_path = request.path
+        original_path_info = request.path_info
         request.POST = post_data
 
         files = MultiValueDict()
         for field_name, cache_key in pending.get("file_keys", {}).items():
             file_data = cache.get(cache_key)
-            if file_data:
-                files[field_name] = SimpleUploadedFile(
-                    name=file_data["name"],
-                    content=file_data["content"],
-                    content_type=file_data["content_type"],
-                )
-                cache.delete(cache_key)
+            if not file_data:
+                # The payload lives in the default cache, which falls back to a per-container file
+                # cache when REDIS_URL is unset — so a task hop, a deploy, or sitting on the confirm
+                # page past CACHE_FILE_TTL loses it. Fail loudly instead of saving a form with no file.
+                messages.error(request, EXPIRED_UPLOAD_ERROR)
+                self._discard_pending_confirmation(request, self._session_key())
+                return HttpResponseRedirect(self._get_cancel_url(pending))
+            files[field_name] = SimpleUploadedFile(
+                name=file_data["name"],
+                content=file_data["content"],
+                content_type=file_data["content_type"],
+            )
+            cache.delete(cache_key)
         request._files = files
+        request.path = request.path_info = self._replay_path(pending)
 
         try:
             response = super().changeform_view(
@@ -306,6 +372,8 @@ class ConfirmOnSaveMixin:
         finally:
             request.POST = original_post
             request._files = original_files
+            request.path = original_path
+            request.path_info = original_path_info
 
         if isinstance(response, HttpResponseRedirect):
             request.session.pop(self._session_key(), None)
@@ -313,7 +381,6 @@ class ConfirmOnSaveMixin:
 
     def _do_confirmed_delete(self, request, pending):
         post_data = deserialize_post_data(pending["post_data"])
-        post_data["_confirmed_delete"] = ["1"]
 
         original_post = request.POST
         request.POST = post_data
@@ -326,18 +393,6 @@ class ConfirmOnSaveMixin:
         if isinstance(response, HttpResponseRedirect):
             request.session.pop(self._session_key(), None)
         return response
-
-    def _execute_confirmed_save(self, request, object_id, form_url, extra_context):
-        post = request.POST.copy()
-        del post["_confirmed_save"]
-        request.POST = post
-        return super().changeform_view(request, object_id, form_url, extra_context)
-
-    def _execute_confirmed_delete(self, request, object_id, extra_context):
-        post = request.POST.copy()
-        del post["_confirmed_delete"]
-        request.POST = post
-        return super().delete_view(request, object_id, extra_context)
 
     # --- Bulk action confirmation ---
 
