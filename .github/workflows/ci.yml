@@ -37,10 +37,10 @@ on:
       # should not trigger the deploy-*.yml chain (which fires on CI completing
       # on main).
       - ".claude/**"
-      # Archived legacy static site. An archive-only PR triggers the workflow,
-      # but the `changes` job below routes it to just the `archive-tests` job
-      # (the backend/frontend pipeline is skipped). Also in the push paths above
-      # so an archive-only merge to main runs CI and triggers deploy-archive.yml.
+      # Archived legacy static site. An archive-only PR now runs the FULL suite,
+      # exactly like the archive-only merge to main will (PR/push parity — see
+      # scripts/ci/plan_changed_areas.py). Still in the push paths above so an
+      # archive-only merge to main runs CI and triggers deploy-archive.yml.
       - "archive/**"
 
 permissions:
@@ -153,23 +153,25 @@ jobs:
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Pull requests are scoped by diff to keep PR CI fast. Fall back to the
-          # full deployable suite (skipping the archive) if no usable base exists.
+          # A pull request runs the SAME areas the eventual push to main runs,
+          # so a green PR check cannot become a red main run for the same tree
+          # (see scripts/ci/plan_changed_areas.py). Fall back to the full suite
+          # if no usable base exists.
           if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
             || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            echo "No usable PR base SHA; running the full deployable suite."
+            echo "No usable PR base SHA; running the full suite."
             {
               echo "backend=true"
               echo "frontend=true"
               echo "cli=true"
-              echo "archive=false"
+              echo "archive=true"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "Changed files:"
           git diff --name-only "$BASE_SHA...$HEAD_SHA" | tee "$RUNNER_TEMP/changed-files.txt"
-           # Conservative: err toward running. A .github/** change maps to all
-           # four areas so any workflow edit validates every path-specific job.
+          # All-or-nothing: any path a push to main would validate runs the full
+          # suite; a PR touching only PR-only paths (.claude/**) runs none.
           python scripts/ci/plan_changed_areas.py \
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
@@ -356,30 +358,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
+      # PR/push parity: plan_django_tests.py returns every app suite for every
+      # event, so there is no diff to compute (and no need for the full-history
+      # clone this step used to require). The empty file keeps the CLI contract.
       - name: Capture changed files
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          if [ "${EVENT_NAME}" != "pull_request" ]; then
-            : > changed-files.txt
-            exit 0
-          fi
-          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
-            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            : > changed-files.txt
-            exit 0
-          fi
-          git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt
-          echo "Changed backend files considered for Django tests:"
-          cat changed-files.txt
+        run: ': > changed-files.txt'
 
-      - name: Select changed Django apps
+      - name: Select all Django apps
         id: plan
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -806,6 +792,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+
+      # frontend-prod-build (push-only) hard-fails without this variable, so
+      # surface it pre-merge too: warn on a PR (forks have no access to repo
+      # vars/secrets), hard-fail on a push where the prod build will run.
+      - name: Check production frontend configuration is present
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+        run: |
+          if [ -n "$VITE_API_BASE_URL" ]; then
+            echo "VITE_API_BASE_URL is configured."
+          elif [ "$EVENT_NAME" = "push" ]; then
+            echo "::error::VITE_API_BASE_URL is required for the production frontend build."
+            exit 1
+          else
+            echo "::warning::VITE_API_BASE_URL is empty; the push-to-main production build will fail."
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -1322,8 +1325,13 @@ jobs:
           path: trivy-results.sarif
           if-no-files-found: warn
 
+      # Push-only (no PR-side equivalent), so a code-scanning API hiccup must not
+      # be able to fail backend-docker-build -> backend-required-result ->
+      # CI Result with zero pre-merge signal. The findings are already archived
+      # as the trivy-sarif artifact in the step above.
       - name: Upload Trivy SARIF to GitHub Security tab
         if: ${{ github.event_name == 'push' && steps.trivy-sarif.outcome == 'success' }}
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: trivy-results.sarif
@@ -1390,6 +1398,10 @@ jobs:
     needs:
       - backend-required-result
       - changes
+    # The one job with no PR-side equivalent: it needs secrets.AWS_ACCESS_KEY_ID
+    # and pushes `itg-backend:<sha>` to ECR for deploy-backend.yml to pull. Its
+    # pre-merge proxy is `backend-docker-build`, which builds the same
+    # `context: src` with the same buildx action on every PR.
     if: >-
       github.event_name == 'push' &&
       (github.ref_name == 'main' || github.ref_name == 'master') &&
@@ -1582,28 +1594,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
+      # PR/push parity: plan_e2e_tests.py returns the full device matrix with no
+      # spec filter for every event, so there is no diff to compute (and no need
+      # for the full-history clone this step used to require). PRs used to run
+      # chromium-only with a diff-derived spec subset, which is what hid the
+      # iphone14 + ipad failure until after the merge (run 32107167026).
       - name: Capture changed files
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          if [ "${EVENT_NAME}" != "pull_request" ]; then
-            : > changed-files.txt
-            exit 0
-          fi
-          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
-            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            : > changed-files.txt
-            exit 0
-          fi
-          git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt
-          echo "Changed frontend files considered for E2E:"
-          cat changed-files.txt
+        run: ': > changed-files.txt'
 
       - name: Select browser/device/spec coverage
         id: plan
@@ -1619,9 +1617,14 @@ jobs:
     name: E2E (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     strategy:
+      # Never fail fast: one red device must not cancel the other nine, so every
+      # leg produces its own `E2E (<project>)` check run and blob report. Per-
+      # device detail lives in those checks and in the merged report from
+      # `e2e-report`; `e2e-required-result` only rolls the matrix up into a
+      # pass/fail gate (`needs` is keyed by job id, so it sees a single `e2e`
+      # entry, never the individual legs).
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.e2e-plan.outputs.matrix) }}
@@ -1891,29 +1894,41 @@ jobs:
             pages/test-results
           if-no-files-found: warn
 
-  e2e-informational-result:
-    name: E2E Informational Result
+  # Gates `CI Result`. Depends on `e2e` directly rather than on `e2e-report`, so
+  # a flaky blob-report download/merge (that job is `continue-on-error`) can
+  # never block a merge — only a genuinely failing device leg can.
+  e2e-required-result:
+    name: E2E Required Result
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
-      - e2e-report
+      - e2e-plan
+      - e2e
       - changes
     if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
-    continue-on-error: true
     steps:
-      - name: Summarize E2E informational checks
+      - name: Summarize E2E checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: |
           python - <<'PY'
           import json
           import os
+          import sys
 
           needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          for name, data in needs.items():
-              if name != "changes":
-                  print(f"{name}: {data['result']}")
-          print("E2E remains informational and does not block CI Result.")
+          # Path-filtered jobs report "skipped"; that is a pass, not a failure.
+          ok = {"success", "skipped"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All E2E legs passed.")
           PY
 
   archive-tests:
@@ -1983,6 +1998,7 @@ jobs:
       - changes
       - backend-required-result
       - frontend-required
+      - e2e-required-result
       - security-required-result
       - supply-chain-result
       - deploy-artifact-result

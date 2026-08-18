@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -21,42 +20,6 @@ ALL_APPS = [
     "mail",
     "cli_admin",
 ]
-
-APP_LOCAL_RE = re.compile(
-    r"^src/apps/"
-    r"(?P<app>authn|system_intelligence|cms|event|projects|mail|cli_admin)/"
-)
-
-
-def _normalize_files(files: Iterable[str]) -> list[str]:
-    normalized = []
-    for file_name in files:
-        clean = file_name.strip()
-        if clean:
-            normalized.append(clean)
-    return normalized
-
-
-def _is_shared_backend_file(path: str) -> bool:
-    if path.startswith((".github/", "aws/", "scripts/")):
-        return True
-    if path in {
-        "pyproject.toml",
-        ".pre-commit-config.yaml",
-        ".bandit-baseline.json",
-        "src/Dockerfile",
-        "src/entrypoint.sh",
-        "src/manage.py",
-        "src/requirements.txt",
-    }:
-        return True
-    return path.startswith(
-        (
-            "src/config/",
-            "src/requirements/",
-            "src/apps/core/",
-        )
-    )
 
 
 @dataclass(frozen=True)
@@ -74,28 +37,16 @@ class DjangoPlan:
 
 
 def plan_django_tests(event_name: str, changed_files: Iterable[str]) -> DjangoPlan:
-    files = _normalize_files(changed_files)
+    """Run every app suite plus the cli_admin/safe_orm coverage gate, always.
 
-    if event_name != "pull_request":
-        return DjangoPlan(ALL_APPS.copy(), True)
-
-    if not files:
-        return DjangoPlan(ALL_APPS.copy(), True)
-
-    if any(_is_shared_backend_file(path) for path in files):
-        return DjangoPlan(ALL_APPS.copy(), True)
-
-    changed_apps = {
-        match.group("app")
-        for path in files
-        if (match := APP_LOCAL_RE.match(path)) is not None
-    }
-
-    if not changed_apps:
-        return DjangoPlan(ALL_APPS.copy(), True)
-
-    apps = [app for app in ALL_APPS if app in changed_apps]
-    return DjangoPlan(apps, "cli_admin" in changed_apps)
+    PR-only app scoping meant a PR confined to one app never ran the other seven
+    suites and set `cli_admin_coverage=false`, so the 100%-coverage gate on
+    apps.cli_admin + the shared safe_orm service (`CLI Admin Coverage`) was
+    skipped on the PR and enforced for the first time on main. `event_name` /
+    `changed_files` are accepted and ignored so the CLI and the ci.yml call site
+    stay unchanged.
+    """
+    return DjangoPlan(ALL_APPS.copy(), True)
 
 
 def _read_changed_files(path: str | None, positional_files: list[str]) -> list[str]:
