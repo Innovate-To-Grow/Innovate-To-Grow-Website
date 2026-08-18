@@ -9,6 +9,7 @@ from django.urls import reverse
 from openpyxl import load_workbook
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
+from apps.authn.tests.helpers import scrape_admin_form
 from apps.event.admin.registration import EventRegistrationAdmin
 from apps.event.models import CheckIn, CheckInRecord, Event, EventRegistration, Question, Ticket
 from apps.event.services import ScheduleSyncStats, build_event_copy_template
@@ -481,6 +482,40 @@ class EventAdminTest(TestCase):
             if item["field"] in {"tickets", "questions"}
         }
         self.assertEqual(child_diff, {"Ticket types": "None", "Questions": "None"})
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_inline_only_change_to_existing_event_shows_confirmation(self):
+        """EventAdmin renders richer inline rows only for adds; on a change the generic inline
+        rows are the only inline coverage. An inline-only edit must still produce a diff —
+        otherwise the mixin's no-diff short-circuit saved it with no confirmation at all."""
+        event = make_event(name="Inline Change Event")
+        change_url = f"/admin/event/event/{event.pk}/change/"
+        data = scrape_admin_form(
+            self.client,
+            change_url,
+            {
+                "tickets-TOTAL_FORMS": "1",
+                "tickets-0-name": "Late Bird",
+                "tickets-0-order": "1",
+            },
+        )
+
+        response = self.client.post(change_url, data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("confirm-change", response.url)
+        pending = self.client.session["_admin_pending_change_event_event"]
+        self.assertIn("tickets-add", [row["field"] for row in pending["diff"]])
+        self.assertEqual(event.tickets.count(), 0)
+
+        confirmed = self.client.post(
+            response.url,
+            {"token": pending["token"], "confirmation_word": "event"},
+        )
+
+        self.assertEqual(confirmed.status_code, 302)
+        self.assertEqual(event.tickets.count(), 1)
+        self.assertEqual(event.tickets.get().name, "Late Bird")
 
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
     def test_invalid_children_stay_on_add_form_without_pending_confirmation_or_event(self):

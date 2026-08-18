@@ -52,12 +52,66 @@ class UpdateSingleMemberTests(TestCase):
             is_active=True,
             is_staff=True,
         )
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+        update_single_member(
+            self.member,
+            parsed,
+            claimed_contact_emails=set(),
+            claimed_phones=set(),
+            allow_privilege_fields=True,
+        )
         self.member.refresh_from_db()
         self.assertEqual(self.member.middle_name, "Quincy")
         self.assertEqual(self.member.title, "Engineer")
         self.assertEqual(self.member.organization, "Acme")
         self.assertTrue(self.member.is_staff)
+
+    def test_is_staff_is_ignored_without_the_privilege_flag(self):
+        """The Staff column is an I2G Master field; the export/re-import round trip must not grant it."""
+        parsed = _parsed(is_staff=True)
+
+        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+
+        self.member.refresh_from_db()
+        self.assertFalse(self.member.is_staff)
+
+    def test_absent_flag_columns_preserve_the_stored_values(self):
+        """A sheet without the verified/subscribed columns must not de-verify the primary email."""
+        self.primary.verified = True
+        self.primary.subscribe = True
+        self.primary.save(update_fields=["verified", "subscribe"])
+        parsed = _parsed(primary_verified=None, primary_subscribed=None)
+
+        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+
+        self.primary.refresh_from_db()
+        self.assertTrue(self.primary.verified)
+        self.assertTrue(self.primary.subscribe)
+
+    def test_absent_phone_column_does_not_delete_stored_phones(self):
+        ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US")
+        parsed = _parsed(phone_number=None)  # no has_phone_column key at all
+
+        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+
+        self.assertEqual(self.member.contact_phones.count(), 1)
+
+    def test_blank_cell_in_a_present_phone_column_clears_the_phone(self):
+        ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US")
+        parsed = _parsed(phone_number=None, has_phone_column=True)
+
+        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+
+        self.assertEqual(self.member.contact_phones.count(), 0)
+
+    def test_absent_secondary_column_does_not_delete_secondary_emails(self):
+        ContactEmail.objects.create(
+            member=self.member, email_address="second@example.com", email_type="secondary", verified=True
+        )
+        parsed = _parsed(secondary_email=None)
+
+        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+
+        self.assertEqual(self.member.contact_emails.filter(email_type="secondary").count(), 1)
 
     def test_primary_email_updated_when_not_claimed(self):
         # Empty claimed set -> takes the "update existing primary contact" branch (lines 63-68).

@@ -6,6 +6,7 @@ from unfold.admin import TabularInline
 from unfold.decorators import display
 
 from apps.core.admin import BaseModelAdmin
+from apps.core.admin.mixins.confirm_on_save_utils import compute_formsets_diff
 from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from ...models import Event, Question, Ticket
@@ -265,10 +266,17 @@ class EventAdmin(BaseModelAdmin):
                 kwargs["initial"] = initial_by_model[inline.model]
         return kwargs
 
+    # The add confirmation renders its own, richer per-inline rows below, so skip the generic
+    # inline summary ConfirmOnSaveMixin would add — otherwise every ticket and question is listed
+    # twice. Change confirmations re-add the generic rows in get_confirmation_diff: they are the
+    # only inline coverage there, and an inline-only edit must still produce a non-empty diff or
+    # the mixin's no-diff short-circuit saves it with no confirmation at all.
+    include_inlines_in_confirmation_diff = False
+
     def get_confirmation_diff(self, request, obj, form, formsets, action_type):
         diff = super().get_confirmation_diff(request, obj, form, formsets, action_type)
         if action_type != "add":
-            return diff
+            return diff + compute_formsets_diff(formsets)
 
         formsets_by_model = {formset.model: formset for formset in formsets}
         ticket_rows = self._active_inline_rows(formsets_by_model.get(Ticket))
