@@ -736,7 +736,7 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      - name: Summarize frontend coverage
+      - name: Write frontend unit test coverage summary
         if: ${{ always() }}
         run: |
           if [ ! -f coverage/coverage-summary.json ]; then
@@ -757,13 +757,13 @@ jobs:
           const target = process.env.GITHUB_STEP_SUMMARY;
           if (target) {
             const body = [
-              '## Frontend coverage',
+              '## Frontend Unit Test Coverage',
               '',
-              '| Metric | Covered | Total | Percent |',
-              '|---|---:|---:|---:|',
+              '| Metric | Covered | Total | Coverage |',
+              '|:---|---:|---:|---:|',
               ...rows.map(([name, metric]) => `| ${name} | ${metric.covered} | ${metric.total} | ${metric.pct}% |`),
               '',
-              'Vitest enforces the thresholds defined in `pages/vitest.config.ts`.',
+              'Vitest enforces the coverage thresholds configured in `pages/vitest.config.ts`.',
               '',
             ].join('\n');
             fs.appendFileSync(target, body);
@@ -1828,7 +1828,7 @@ jobs:
           fi
           npx playwright merge-reports --reporter html,github,junit ./all-blob-reports
 
-      - name: Write per-project job summary
+      - name: Write end-to-end test summary
         if: ${{ always() }}
         working-directory: pages
         run: |
@@ -1852,9 +1852,9 @@ jobs:
           summary = os.environ.get('GITHUB_STEP_SUMMARY')
           if summary:
               with open(summary, 'a') as fh:
-                  fh.write('## Playwright E2E\n\n')
-                  fh.write('| Total | Passed | Failed | Skipped | Duration |\n')
-                  fh.write('|---|---|---|---|---|\n')
+                  fh.write('## Playwright End-to-End Test Results\n\n')
+                  fh.write('| Total Tests | Passed | Failed | Skipped | Duration |\n')
+                  fh.write('|---:|---:|---:|---:|---:|\n')
                   fh.write(f'| {total} | {passed} | {fail + err} | {skip} | {dur:.1f}s |\n')
           PY
 
@@ -1864,6 +1864,9 @@ jobs:
         with:
           report_paths: pages/results.xml
           detailed_summary: true
+          # This action uses status emoji in its generated job summary. Keep its
+          # annotations, but use the controlled professional summary above.
+          job_summary: false
           include_passed: false
           fail_on_failure: false
 
