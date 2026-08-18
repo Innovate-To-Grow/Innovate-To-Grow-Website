@@ -177,7 +177,11 @@ class ContactEmailAdmin(PrivilegedOwnerAdminMixin, BaseModelAdmin):
 
     @admin.action(description="Make selected email primary")
     def make_primary(self, request, queryset):
-        if queryset.count() != 1:
+        # Apply the owner guard like the sibling actions: the primary address is where a member's
+        # admin login codes are sent, so swapping it is a write on the owner, not just the row.
+        allowed, skipped = self.manageable(request, queryset)
+        self._report_skipped(request, skipped)
+        if allowed.count() != 1:
             self.message_user(
                 request,
                 "Select exactly one email to make primary.",
@@ -185,7 +189,7 @@ class ContactEmailAdmin(PrivilegedOwnerAdminMixin, BaseModelAdmin):
             )
             return
 
-        contact_email = queryset.select_related("member").first()
+        contact_email = allowed.select_related("member").first()
         if contact_email is None or contact_email.member is None:
             self.message_user(
                 request,

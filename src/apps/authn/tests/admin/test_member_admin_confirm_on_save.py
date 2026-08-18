@@ -19,6 +19,7 @@ from django.urls import reverse
 
 from apps.authn.models import ContactEmail
 from apps.authn.tests.helpers import PNG_1PX_DATA_URI, png_upload, scrape_admin_form
+from apps.core.admin.mixins.confirm_on_save import EXPIRED_UPLOAD_ERROR
 
 Member = get_user_model()
 
@@ -122,20 +123,35 @@ class MemberConfirmOnSaveTest(TestCase):
         self.assertEqual(self.target.profile_image, PNG_1PX_DATA_URI)
 
     def test_expired_upload_is_reported_instead_of_saving_without_the_file(self):
-        """The payload lives in a per-container cache in production; a miss must not save silently."""
-        self.target.profile_image = ""
-        self.target.save(update_fields=["profile_image"])
+        """The payload lives in a per-container cache in production; a miss must not save silently.
+
+        The member keeps the existing image from setUp so the two outcomes are distinguishable:
+        a silent save without the upload would clobber (or ignore) it with no error, while the
+        loud failure preserves it and reports EXPIRED_UPLOAD_ERROR.
+        """
         data = self._post_data()
         self.client.post(self._change_url(), data | {"profile_image": png_upload()})
         pending = self.client.session[SESSION_KEY]
         cache.delete(pending["file_keys"]["profile_image"])
 
-        response = self.client.post(self._confirm_url(), {"confirmation_word": "user", "token": pending["token"]})
+        response = self.client.post(
+            self._confirm_url(), {"confirmation_word": "user", "token": pending["token"]}, follow=True
+        )
 
-        self.assertEqual(response.status_code, 302)
+        self.assertContains(response, EXPIRED_UPLOAD_ERROR)
         self.target.refresh_from_db()
-        self.assertEqual(self.target.profile_image, "")
+        self.assertEqual(self.target.profile_image, PNG_1PX_DATA_URI)
         self.assertNotIn(SESSION_KEY, self.client.session)
+
+    def test_plain_change_stores_no_secrets_and_keeps_the_csrf_token(self):
+        """``csrfmiddlewaretoken`` contains "token"; treating it as sensitive pushed EVERY
+        confirmation's payload into the short-TTL secrets cache, so a plain text edit expired
+        with EXPIRED_PENDING_ERROR once CACHE_FILE_TTL elapsed."""
+        self.client.post(self._change_url(), self._post_data({"title": "Dean"}))
+
+        pending = self.client.session[SESSION_KEY]
+        self.assertEqual(pending["secret_key"], "")
+        self.assertIn("csrfmiddlewaretoken", pending["post_data"])
 
     # --- autosave -------------------------------------------------------------------------------
 

@@ -3,6 +3,7 @@ Test helpers for creating members with ContactEmail records.
 """
 
 import base64
+import binascii
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -15,6 +16,23 @@ PNG_1PX = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="
 )
 PNG_1PX_DATA_URI = f"data:image/png;base64,{base64.b64encode(PNG_1PX).decode()}"
+
+
+def _craft_png_bomb() -> bytes:
+    """``PNG_1PX`` with the IHDR declaring 50000x5000 px; the file stays 70 bytes.
+
+    Pillow refuses it with ``DecompressionBombError`` when opening. The IHDR CRC (bytes 29-33,
+    over the ``IHDR`` tag plus its 13 data bytes) is recomputed or Pillow rejects the chunk as
+    corrupt before ever checking the dimensions.
+    """
+    bomb = bytearray(PNG_1PX)
+    bomb[16:20] = (50000).to_bytes(4, "big")
+    bomb[20:24] = (5000).to_bytes(4, "big")
+    bomb[29:33] = (binascii.crc32(bytes(bomb[12:29])) & 0xFFFFFFFF).to_bytes(4, "big")
+    return bytes(bomb)
+
+
+PNG_BOMB = _craft_png_bomb()
 
 
 def png_upload(name="avatar.png"):

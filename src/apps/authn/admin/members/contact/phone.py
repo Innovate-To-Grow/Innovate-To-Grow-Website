@@ -77,6 +77,29 @@ class ContactPhoneAdmin(PrivilegedOwnerAdminMixin, BaseModelAdmin):
         self.message_user(request, f"{updated} phone(s) marked as unverified.")
         self._report_skipped(request, skipped)
 
+    def _drop_unmanageable_phone_changes(self, request, phone_changes):
+        """Remove changes targeting rows owned by members the requester may not manage.
+
+        ``apply_phone_changes`` rewrites and deletes rows across *all* owners, so the per-app
+        change grant checked in the view is not enough on its own — apply the same owner guard the
+        bulk actions get via ``manageable``, and report what was skipped.
+        """
+        owners = {
+            str(phone.pk): phone.member
+            for phone in ContactPhone.objects.select_related("member").filter(
+                pk__in=[change["pk"] for change in phone_changes]
+            )
+        }
+        allowed = []
+        skipped = 0
+        for change in phone_changes:
+            if not self._can_manage(request, owners.get(change["pk"])):
+                skipped += 1
+                continue
+            allowed.append(change)
+        self._report_skipped(request, skipped)
+        return allowed
+
     @admin.action(description="Normalize ALL phone numbers (preview first)")
     def normalize_all_phones(self, request, queryset):
         return redirect(reverse("admin:authn_contactphone_normalize_preview"))
@@ -126,6 +149,8 @@ class ContactPhoneAdmin(PrivilegedOwnerAdminMixin, BaseModelAdmin):
             return redirect(reverse("admin:authn_contactphone_normalize_preview"))
 
         phone_changes, registration_changes = compute_phone_changes()
+        if not request.user.is_superuser:
+            phone_changes = self._drop_unmanageable_phone_changes(request, phone_changes)
         try:
             updated_phones, deleted_duplicates, updated_regs = apply_phone_changes(
                 phone_changes,

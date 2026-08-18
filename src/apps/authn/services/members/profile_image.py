@@ -46,6 +46,7 @@ MAX_DIMENSION = 512
 OVERSIZE_ERROR = "Profile image must be 5 MB or smaller."
 CONTENT_TYPE_ERROR = "Profile image must be a JPEG, PNG, GIF, or WebP file."
 SIGNATURE_ERROR = "File content does not match an allowed image type (JPEG, PNG, GIF, WebP)."
+DIMENSIONS_ERROR = "Profile image dimensions are too large."
 
 
 class ProfileImageError(ValueError):
@@ -139,7 +140,12 @@ def _downscale(raw: bytes, mime: str, max_dimension: int) -> bytes:
     """Return ``raw`` resized so neither side exceeds ``max_dimension``.
 
     Falls back to the original bytes when Pillow cannot handle the image — validation has already
-    confirmed the signature, so a decode failure should not block the save.
+    confirmed the signature, so a decode failure should not block the save. A decompression bomb
+    is rejected instead: the declared dimensions are the attack, so the original bytes must not
+    be stored either. Pillow raises ``DecompressionBombError`` past twice ``MAX_IMAGE_PIXELS`` and
+    emits ``DecompressionBombWarning`` past the limit itself; both subclass ``Exception`` directly
+    (not ``OSError``/``ValueError``), and the warning surfaces as an exception wherever warnings
+    are promoted to errors.
     """
     try:
         from PIL import Image
@@ -163,6 +169,8 @@ def _downscale(raw: bytes, mime: str, max_dimension: int) -> bytes:
             buffer = io.BytesIO()
             image.save(buffer, format=pillow_format)
             return buffer.getvalue()
+    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+        raise ProfileImageError(DIMENSIONS_ERROR) from exc
     except (OSError, ValueError):
         logger.warning("Could not downscale profile image (%s); storing the original.", mime)
         return raw

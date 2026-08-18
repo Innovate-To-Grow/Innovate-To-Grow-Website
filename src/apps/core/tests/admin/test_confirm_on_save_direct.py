@@ -408,16 +408,28 @@ class ResponseActionBranchesTest(TestCase):
         request = self.factory.post("/admin/", data=qd)
         return _wire_request(request)
 
-    def test_confirmed_action_marker_defers_to_super(self):
-        request = self._request({"_confirmed_action": "1"})
-        sentinel = object()
-        with patch(
-            "django.contrib.admin.options.ModelAdmin.response_action",
-            return_value=sentinel,
-        ) as super_action:
-            result = self.admin.response_action(request, Semester.objects.all())
-        self.assertIs(result, sentinel)
-        super_action.assert_called_once()
+    def test_confirmed_action_marker_in_the_post_body_cannot_bypass_confirmation(self):
+        """``_confirmed_action`` used to route straight to the real action, skipping the typed
+        word and the session token — reachable by anyone able to add a form field."""
+        semester = Semester.objects.create(year=2025, season=1, is_published=False)
+        request = self._request(
+            {
+                "_confirmed_action": "1",
+                "action": ["publish_selected"],
+                "index": "0",
+                "select_across": "0",
+                helpers.ACTION_CHECKBOX_NAME: [str(semester.pk)],
+            }
+        )
+
+        with patch("django.contrib.admin.options.ModelAdmin.response_action") as super_action:
+            response = self.admin.response_action(request, Semester.objects.all())
+
+        super_action.assert_not_called()
+        self.assertIsInstance(response, HttpResponseRedirect)
+        self.assertIn("confirm-action", response.url)
+        semester.refresh_from_db()
+        self.assertFalse(semester.is_published)
 
     def test_non_integer_index_defaults_and_defers(self):
         # Bad index -> action_index 0, but no "action" list -> IndexError -> super().

@@ -20,9 +20,17 @@ SENSITIVE_FIELD_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Names that match the regex but are not secrets worth protecting. ``csrfmiddlewaretoken`` is in
+# every admin POST and already lives in the session and cookies; treating it as sensitive pushed
+# EVERY confirmation's payload into the short-TTL secrets cache, so a plain text edit expired with
+# EXPIRED_PENDING_ERROR once CACHE_FILE_TTL elapsed.
+SENSITIVE_FIELD_EXEMPTIONS = frozenset({"csrfmiddlewaretoken"})
+
 
 def is_sensitive_field(name, form=None) -> bool:
     """Whether a field's value must be masked in a confirmation diff or stored payload."""
+    if name in SENSITIVE_FIELD_EXEMPTIONS:
+        return False
     if name and SENSITIVE_FIELD_RE.search(str(name)):
         return True
     if form is not None:

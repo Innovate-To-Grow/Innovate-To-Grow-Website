@@ -49,15 +49,20 @@ class AdminInvitationAdmin(BaseModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return bool(request.user.is_superuser) and super().has_delete_permission(request, obj)
 
-    # noinspection PyUnusedLocal
     def get_fieldsets(self, request, obj=None):
         if obj is None:
             return [
                 (None, {"fields": ("email", "role", "message")}),
             ]
+        # The token is a bearer credential — accepting the invitation exchanges it for an is_staff
+        # account — so it renders only for superusers. View access itself stays: non-superusers
+        # still see the rest of the page.
+        detail_fields = ("invited_by", "accepted_by", "expires_at", "accepted_at")
+        if getattr(request, "user", None) is not None and request.user.is_superuser:
+            detail_fields = ("token", *detail_fields)
         return [
             (None, {"fields": ("email", "role", "status", "message")}),
-            ("Details", {"fields": ("token", "invited_by", "accepted_by", "expires_at", "accepted_at")}),
+            ("Details", {"fields": detail_fields}),
             ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
         ]
 

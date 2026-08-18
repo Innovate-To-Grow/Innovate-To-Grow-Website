@@ -400,9 +400,6 @@ class ConfirmOnSaveMixin:
         if self._should_skip_confirmation(request):
             return super().response_action(request, queryset)
 
-        if "_confirmed_action" in request.POST:
-            return super().response_action(request, queryset)
-
         try:
             action_index = int(request.POST.get("index", 0))
         except ValueError:

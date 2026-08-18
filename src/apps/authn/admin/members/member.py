@@ -267,6 +267,22 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
             raise PermissionDenied("Only an I2G Master may change a privileged account's password.")
         return super().user_change_password(request, id, form_url=form_url)
 
+    def has_delete_permission(self, request, obj=None):
+        # Deleting a privileged account is itself a privileged operation — same scope as
+        # ``protected_target_fields``. The object-level check covers the delete view (and hides its
+        # button); the bulk path is backstopped in ``delete_queryset`` below.
+        if obj is not None and not self.can_manage_target(request, obj):
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        # ``delete_selected`` is gated only by the object-independent ``has_delete_permission``,
+        # so re-apply the per-object guard before anything is removed.
+        for member in queryset:
+            if not self.can_manage_target(request, member):
+                raise PermissionDenied("Only an I2G Master may delete a staff or superuser account.")
+        return super().delete_queryset(request, queryset)
+
     # Editable on an ordinary member, but not on a staff/superuser account unless the actor is an
     # I2G Master — deactivating or renaming a privileged account is itself a privileged operation.
     protected_target_fields = ("is_active",)

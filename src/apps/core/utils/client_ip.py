@@ -14,15 +14,18 @@ def client_ip(request) -> str | None:
     """Return the originating client IP, honouring ``NUM_PROXIES`` trusted hops.
 
     ``X-Forwarded-For`` is appended to by each proxy, so with ``NUM_PROXIES = N`` the rightmost N
-    entries are proxies and the Nth-from-right entry is the real client. Without ``NUM_PROXIES``
-    (dev / tests) fall back to the leftmost entry, then to ``REMOTE_ADDR``.
+    entries are proxies and the Nth-from-right entry is the real client. ``NUM_PROXIES = 0`` trusts
+    no XFF entry and uses ``REMOTE_ADDR`` (DRF semantics). Without ``NUM_PROXIES`` (dev / tests)
+    fall back to the leftmost entry, then to ``REMOTE_ADDR``.
     """
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
     if forwarded:
         parts = [part.strip() for part in forwarded.split(",") if part.strip()]
         if parts:
             num_proxies = getattr(settings, "NUM_PROXIES", None)
-            if num_proxies:
+            if num_proxies is not None:
+                if num_proxies == 0:
+                    return request.META.get("REMOTE_ADDR")
                 index = max(0, len(parts) - num_proxies)
                 return parts[index]
             return parts[0]
