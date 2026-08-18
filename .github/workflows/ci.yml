@@ -1620,6 +1620,15 @@ jobs:
     name: E2E (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # The image already contains the browsers and Linux packages required by
+    # this Playwright version. Keeping E2E off the runner's live APT path avoids
+    # correlated mirror stalls across the ten parallel matrix legs.
+    container:
+      image: "mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e"
+      options: --user 1001 --ipc=host
+    defaults:
+      run:
+        shell: bash
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     strategy:
       # Never fail fast: one red device must not cancel the other nine, so every
@@ -1646,8 +1655,6 @@ jobs:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
           POSTGRES_PASSWORD: itg_ci_pass
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
           --health-interval 10s
@@ -1657,7 +1664,8 @@ jobs:
       DB_NAME: itg_ci
       DB_USER: itg_ci_user
       DB_PASSWORD: itg_ci_pass
-      DB_HOST: 127.0.0.1
+      # Service containers share a Docker network with the E2E job container.
+      DB_HOST: postgres
       DB_PORT: 5432
       VITE_API_BASE_URL: http://127.0.0.1:8000
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
@@ -1678,7 +1686,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          # Do not restore a host-runner venv inside the job container: scripts
+          # and interpreter links can contain environment-specific paths.
+          key: backend-venv-pw-v1.62.1-noble-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -1704,36 +1714,6 @@ jobs:
         with:
           name: frontend-dist-ci
           path: pages/dist
-
-      # Key the browser cache on the resolved Playwright version so a version
-      # bump invalidates it automatically.
-      - name: Resolve Playwright version
-        id: playwright-version
-        working-directory: pages
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          # The -cfw suffix (chromium+firefox+webkit) busts any older cache that
-          # only held chromium, which would otherwise hit and skip installing
-          # firefox/webkit, breaking those legs.
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-cfw
-
-      # On a cache hit the browser binaries are restored, but the OS-level
-      # dependencies (apt packages) are not — install just those. On a miss,
-      # do the full download + deps install.
-      - name: Install Playwright browsers (cache miss)
-        if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' }}
-        working-directory: pages
-        run: npm run e2e:install
-
-      - name: Install Playwright system dependencies (cache hit)
-        if: ${{ steps.playwright-cache.outputs.cache-hit == 'true' }}
-        working-directory: pages
-        run: npx playwright install-deps chromium firefox webkit
 
       - name: Prepare backend database
         working-directory: src
