@@ -47,20 +47,50 @@ def _is_backend_path(path: str) -> bool:
     }
 
 
+def _is_ci_relevant_path(path: str) -> bool:
+    """True when `path` is an area a push to main validates.
+
+    Mirrors `on.push.paths` in .github/workflows/ci.yml. `.github/` is matched a
+    little more broadly than that list (which names only `.github/dependabot.yml`
+    and `.github/workflows/**`); erring toward running is the safe direction.
+    """
+    return _is_backend_path(path) or path.startswith(("pages/", "cli/", "archive/"))
+
+
+FULL_SUITE = ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True)
+NO_SUITE = ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False)
+
+
 def plan_changed_areas(event_name: str, changed_files: Iterable[str]) -> ChangedAreasPlan:
+    """Return the areas CI must validate.
+
+    PR/push parity: a pull request runs the SAME areas a push to main runs
+    whenever it touches any path in `on.push.paths`, so a green PR check cannot
+    become a red main run for the same tree. Branch protection sets
+    `strict: true` and `pull_request` checks out `refs/pull/N/merge`, so the PR
+    already tests the merge-result tree; before this rule it additionally ran a
+    diff-scoped SUBSET of the jobs, which is what let backend-only PR #433 merge
+    without ever running the E2E matrix. The post-merge run 32107167026 then
+    failed the iphone14 + ipad legs (though it still reported `CI Result` green,
+    because `e2e` was `continue-on-error` at the time — see `e2e-required-result`
+    in ci.yml for the other half of the fix).
+
+    PRs that touch only PR-only paths still run nothing: `.claude/**` is in
+    `on.pull_request.paths` but deliberately NOT in `on.push.paths`, so merging
+    one starts no CI run and there is nothing to diverge from. `ci-result` is
+    `if: always()`, so the required `CI Result` check is still reported.
+    """
     files = _normalize_files(changed_files)
 
     if event_name != "pull_request":
-        return ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True)
+        # A push to main/master always validates every area: it is the run the
+        # deploy-*.yml chain consumes, and `backend-image-publish` must run so
+        # deploy-backend.yml can pull `itg-backend:<sha>`.
+        return FULL_SUITE
 
-    github_changed = any(path.startswith(".github/") for path in files)
-
-    return ChangedAreasPlan(
-        backend=any(_is_backend_path(path) for path in files),
-        frontend=github_changed or any(path.startswith("pages/") for path in files),
-        cli=github_changed or any(path.startswith("cli/") for path in files),
-        archive=github_changed or any(path.startswith("archive/") for path in files),
-    )
+    if any(_is_ci_relevant_path(path) for path in files):
+        return FULL_SUITE
+    return NO_SUITE
 
 
 def _read_changed_files(path: str | None, positional_files: list[str]) -> list[str]:

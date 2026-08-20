@@ -145,7 +145,8 @@ class ConfirmActionTest(TestCase):
 
         self.assertContains(response, "No pending action found")
 
-    def test_invalid_token_clears_pending_action(self):
+    def test_invalid_token_rejects_the_action_but_keeps_the_pending_action(self):
+        """Same as the change path: a wrong token refuses this submission without destroying state."""
         semester = _make_semester()
         self._action_post("publish_selected", [semester.pk])
 
@@ -157,7 +158,7 @@ class ConfirmActionTest(TestCase):
         )
 
         self.assertContains(response, "Invalid confirmation token")
-        self.assertNotIn(ACTION_SESSION_KEY, self.client.session)
+        self.assertIn(ACTION_SESSION_KEY, self.client.session)
         semester.refresh_from_db()
         self.assertFalse(semester.is_published)
 

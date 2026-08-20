@@ -4,7 +4,7 @@ from django.db import transaction
 from django.forms.models import BaseInlineFormSet, InlineForeignKeyField
 from unfold.admin import TabularInline
 
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_can_access_app, user_can_manage_member
 
 from ...models import ContactEmail, ContactPhone, Member
 
@@ -18,6 +18,9 @@ PRIMARY_EMAIL_INLINE_DELETE_ERROR = (
 PRIMARY_EMAIL_INLINE_PROMOTION_ERROR = (
     "A primary email cannot be assigned directly. "
     "Use the 'Make selected email primary' action in the Contact Emails admin."
+)
+PRIMARY_EMAIL_INLINE_UNVERIFIED_ERROR = (
+    "A member's first primary email must be marked verified. An unverified primary email cannot be used to sign in."
 )
 
 
@@ -83,22 +86,33 @@ class StaffPermissionInlineMixin:
 
     These inlines belong to the Member admin, so access is gated on the ``authn`` app
     grant (see apps.core.utils.access.user_can_access_app) rather than bare ``is_staff``.
+
+    ``obj`` here is the *parent* Member, so it also carries the privileged-account check: a verified
+    contact row is a working sign-in factor for its owner, so only an I2G Master (or the account
+    holder) may add or change contacts on a staff/superuser account.
     """
 
     def _has_app_access(self, request):
         return user_can_access_app(request.user, self.model._meta.app_label)
 
+    def _may_write(self, request, obj):
+        if not self._has_app_access(request):
+            return False
+        if obj is None:
+            return True  # Add view: there is no target account to protect yet.
+        return user_can_manage_member(request.user, obj)
+
     def has_view_permission(self, request, obj=None):
         return self._has_app_access(request)
 
     def has_add_permission(self, request, obj=None):
-        return self._has_app_access(request)
+        return self._may_write(request, obj)
 
     def has_change_permission(self, request, obj=None):
-        return self._has_app_access(request)
+        return self._may_write(request, obj)
 
     def has_delete_permission(self, request, obj=None):
-        return self._has_app_access(request)
+        return self._may_write(request, obj)
 
 
 class UUIDInlineMixin:
@@ -144,11 +158,27 @@ class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInl
                 form.instance.pk for form in self_fs.forms if form.instance.pk
             )
 
+            member_has_primary = (
+                self_fs.instance.pk
+                and ContactEmail.objects.filter(member=self_fs.instance, email_type="primary").exists()
+            )
+
             for form in self_fs.forms:
                 if not hasattr(form, "cleaned_data"):
                     continue
                 persisted = persisted_emails.get(form.instance.pk)
                 if persisted is None:
+                    # A brand-new row. ProjectControlModel gives every unsaved instance a UUID, so
+                    # "no persisted row" — not "no pk" — is what identifies one. email_type defaults
+                    # to "primary", so without this a new row silently became the member's primary
+                    # while unverified, a state make_contact_email_primary explicitly refuses.
+                    if form.cleaned_data.get("DELETE", False):
+                        continue
+                    if form.cleaned_data.get("email_type") == "primary":
+                        if member_has_primary:
+                            raise ValidationError(PRIMARY_EMAIL_INLINE_PROMOTION_ERROR)
+                        if not form.cleaned_data.get("verified", False):
+                            raise ValidationError(PRIMARY_EMAIL_INLINE_UNVERIFIED_ERROR)
                     continue
 
                 delete_requested = form.cleaned_data.get("DELETE", False)
@@ -169,7 +199,11 @@ class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInl
             primary_count = sum(
                 1
                 for form in self_fs.forms
-                if not form.cleaned_data.get("DELETE", False) and form.cleaned_data.get("email_type") == "primary"
+                # A form whose own validation failed has no cleaned_data; the loop above already
+                # guards for it, so guard here too rather than raising AttributeError.
+                if hasattr(form, "cleaned_data")
+                and not form.cleaned_data.get("DELETE", False)
+                and form.cleaned_data.get("email_type") == "primary"
             )
             if primary_count > 1:
                 raise ValidationError("A member may only have one primary email.")

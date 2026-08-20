@@ -28,47 +28,6 @@ body .sr-only {
   border: 0;
 }
 
-.safe-html-youtube-facade {
-  position: relative;
-  display: block;
-  width: 100%;
-  min-height: 12rem;
-  aspect-ratio: 16 / 9;
-  padding: 0;
-  border: 0;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  background: #e5e7eb;
-}
-
-.safe-html-youtube-facade:focus-visible {
-  outline: 3px solid var(--itg-color-focus, #005ea8);
-  outline-offset: 3px;
-}
-
-.safe-html-youtube-play {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  width: 4rem;
-  height: 2.75rem;
-  border-radius: 0.75rem;
-  background: #374151;
-  transform: translate(-50%, -50%);
-}
-
-.safe-html-youtube-play::after {
-  position: absolute;
-  top: 50%;
-  left: 53%;
-  width: 0;
-  height: 0;
-  border-top: 0.65rem solid transparent;
-  border-bottom: 0.65rem solid transparent;
-  border-left: 1rem solid #fff;
-  content: '';
-  transform: translate(-50%, -50%);
-}
-
 #root, .main-content, .mc-content {
   min-height: calc(100vh - 300px);
   display: flex;

@@ -1,166 +1,55 @@
 import json
+import re
 import unittest
+from pathlib import Path
 
 from scripts.ci.plan_e2e_tests import FULL_PROJECTS, plan_e2e_tests
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+
 
 class PlanE2ETests(unittest.TestCase):
-    def test_main_push_runs_full_project_matrix(self):
-        plan = plan_e2e_tests("push", ["pages/src/features/auth/components/Login.tsx"])
-
-        self.assertEqual(plan.projects, FULL_PROJECTS)
-        self.assertEqual(plan.specs, [])
-        self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
-
     def test_full_matrix_includes_current_flagship_devices(self):
         plan = plan_e2e_tests("push", ["pages/src/features/auth/components/Login.tsx"])
 
         for device in ("iphone-17-pro-max", "galaxy-s26-ultra", "galaxy-tab-s9"):
             self.assertIn(device, plan.projects)
 
-    def test_auth_paths_run_auth_account_subscribe_profile_specs(self):
-        plan = plan_e2e_tests("pull_request", ["pages/src/features/auth/components/Login.tsx"])
+    def test_every_event_runs_the_full_project_matrix(self):
+        # PR/push parity: a device-specific failure must not be able to hide
+        # until after the merge (run 32107167026, iphone14 + ipad).
+        for event_name in ("push", "pull_request", "workflow_dispatch"):
+            for changed_files in (
+                [],
+                ["pages/src/features/auth/components/Login.tsx"],
+                ["src/apps/authn/models.py"],
+                ["pages/e2e/mobile.spec.ts"],
+            ):
+                with self.subTest(event_name=event_name, changed_files=changed_files):
+                    plan = plan_e2e_tests(event_name, changed_files)
+                    self.assertEqual(plan.projects, FULL_PROJECTS)
+                    self.assertEqual(plan.specs, [])
+                    self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
 
-        self.assertEqual(plan.projects, ["chromium"])
-        self.assertIn("e2e/auth/", plan.specs)
-        self.assertIn("e2e/account/", plan.specs)
-        self.assertIn("e2e/events/subscribe.spec.ts", plan.specs)
+    def test_full_projects_match_playwright_config(self):
+        # FULL_PROJECTS is the single source of the CI device matrix; drift from
+        # pages/playwright.config.ts silently drops or invents a leg.
+        config = (REPOSITORY_ROOT / "pages" / "playwright.config.ts").read_text(encoding="utf-8")
+        declared = re.findall(r"\{name: '([^']+)'", config)
 
-    def test_directly_changed_spec_without_category_still_runs(self):
-        # A spec belonging to no category list must still run when edited
-        # directly — otherwise _ordered_specs would silently drop it.
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/assistant.spec.ts"])
+        self.assertEqual(sorted(declared), sorted(FULL_PROJECTS))
 
-        self.assertIn("e2e/assistant.spec.ts", plan.specs)
-        self.assertEqual(plan.matrix[0].spec_args, "e2e/assistant.spec.ts")
-
-    def test_directly_changed_nested_spec_still_runs(self):
-        # Specs live in feature subdirectories; the direct-change regex must
-        # match nested paths too.
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/projects/past-builder.spec.ts"])
-
-        self.assertIn("e2e/projects/past-builder.spec.ts", plan.specs)
-
-    def test_project_paths_run_projects_spec(self):
-        plan = plan_e2e_tests("pull_request", ["pages/src/features/projects/api/client.ts"])
-
-        self.assertEqual(plan.specs, ["e2e/projects/"])
-        self.assertEqual(plan.matrix[0].spec_args, "e2e/projects/")
-
-    def test_cms_news_content_layout_paths_run_content_specs(self):
-        plan = plan_e2e_tests("pull_request", ["pages/src/features/cms/components/RichText.tsx"])
-
-        self.assertIn("e2e/content/", plan.specs)
-        self.assertIn("e2e/events/schedule.spec.ts", plan.specs)
-        self.assertIn("e2e/smoke.live.spec.ts", plan.specs)
-        self.assertIn("e2e/auth/cross-root-sync.spec.ts", plan.specs)
-
-    def test_event_paths_run_event_specs(self):
-        plan = plan_e2e_tests("pull_request", ["pages/src/routes/EventRegistrationPage/index.tsx"])
-
-        self.assertEqual(plan.specs, ["e2e/events/"])
-
-    def test_global_mobile_path_runs_full_suite_on_chromium_and_pixel7(self):
-        plan = plan_e2e_tests("pull_request", ["pages/src/components/MobileMenu.tsx"])
-
-        self.assertEqual(plan.projects, ["chromium", "pixel7"])
-        self.assertEqual(plan.specs, [])
-        self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
-
-    def test_direct_mobile_spec_runs_mobile_spec_with_desktop_companion(self):
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/mobile.spec.ts"])
-
-        self.assertEqual(plan.projects, ["chromium", "pixel7"])
-        self.assertEqual(plan.specs, ["e2e/mobile.spec.ts"])
-        by_project = {leg.project: leg.spec_args for leg in plan.matrix}
-        self.assertEqual(by_project["chromium"], "e2e/smoke.live.spec.ts")
-        self.assertEqual(by_project["pixel7"], "e2e/mobile.spec.ts")
-
-    def test_global_config_change_runs_full_chromium(self):
-        plan = plan_e2e_tests("pull_request", ["pages/playwright.config.ts"])
-
-        self.assertEqual(plan.projects, ["chromium"])
-        self.assertEqual(plan.specs, [])
-        self.assertEqual(plan.matrix[0].spec_args, "")
-
-    def test_moved_global_asset_and_component_paths_run_full_chromium(self):
-        for changed_file in (
-            "pages/src/assets/tokens.css",
-            "pages/src/components/SafeHtml/SafeHtml.tsx",
-        ):
-            with self.subTest(changed_file=changed_file):
-                plan = plan_e2e_tests("pull_request", [changed_file])
-                self.assertEqual(plan.projects, ["chromium"])
-                self.assertEqual(plan.specs, [])
-                self.assertEqual(plan.matrix[0].spec_args, "")
-
-    def test_global_path_takes_precedence_over_category_paths(self):
-        plan = plan_e2e_tests(
-            "pull_request",
-            [
-                "pages/src/assets/tokens.css",
-                "pages/src/features/auth/components/Login.tsx",
-            ],
-        )
-
-        self.assertEqual(plan.specs, [])
-        self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
-
-    def test_unknown_source_path_falls_back_to_full_chromium(self):
-        plan = plan_e2e_tests("pull_request", ["pages/src/unknown/NewFeature.tsx"])
-
-        self.assertEqual(plan.projects, ["chromium"])
-        self.assertEqual(plan.specs, [])
-        self.assertEqual(plan.matrix[0].spec_args, "")
-
-    def test_multiple_categories_are_ordered_deterministically(self):
-        plan = plan_e2e_tests(
-            "pull_request",
-            [
-                "pages/src/features/events/api/client.ts",
-                "pages/src/features/auth/components/Login.tsx",
-                "pages/src/features/projects/api/client.ts",
-            ],
-        )
-
-        self.assertEqual(
-            plan.specs,
-            ["e2e/auth/", "e2e/account/", "e2e/events/subscribe.spec.ts", "e2e/projects/", "e2e/events/"],
-        )
-
-    def test_e2e_helper_change_adds_webkit_leg_on_pr(self):
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/helpers/auth.ts"])
-
-        self.assertIn("chromium", plan.projects)
-        self.assertIn("webkit", plan.projects)
-        # A harness change is global, so each leg runs the full suite.
-        self.assertEqual(plan.specs, [])
-        self.assertTrue(all(leg.spec_args == "" for leg in plan.matrix))
-
-    def test_e2e_fixtures_change_adds_webkit_leg_on_pr(self):
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/fixtures.ts"])
-
-        self.assertIn("webkit", plan.projects)
-
-    def test_non_harness_change_does_not_add_webkit_on_pr(self):
-        plan = plan_e2e_tests("pull_request", ["pages/src/features/auth/components/Login.tsx"])
-
-        self.assertNotIn("webkit", plan.projects)
-
-    def test_harness_and_mobile_change_adds_both_webkit_and_pixel7(self):
-        plan = plan_e2e_tests("pull_request", ["pages/e2e/helpers/mobile-menu.ts"])
-
-        self.assertIn("webkit", plan.projects)
-        self.assertIn("pixel7", plan.projects)
-
-    def test_github_outputs_include_matrix_json(self):
+    def test_github_outputs_include_full_matrix_json(self):
         plan = plan_e2e_tests("pull_request", ["pages/src/features/projects/api/client.ts"])
         outputs = dict(line.split("=", 1) for line in plan.github_outputs().splitlines())
 
-        self.assertEqual(json.loads(outputs["projects"]), ["chromium"])
-        self.assertEqual(json.loads(outputs["specs"]), ["e2e/projects/"])
-        self.assertEqual(outputs["spec_args"], "e2e/projects/")
-        self.assertEqual(json.loads(outputs["matrix"]), [{"project": "chromium", "spec_args": "e2e/projects/"}])
+        self.assertEqual(json.loads(outputs["projects"]), FULL_PROJECTS)
+        self.assertEqual(json.loads(outputs["specs"]), [])
+        self.assertEqual(outputs["spec_args"], "")
+        self.assertEqual(
+            json.loads(outputs["matrix"]),
+            [{"project": project, "spec_args": ""} for project in FULL_PROJECTS],
+        )
 
 
 if __name__ == "__main__":

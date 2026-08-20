@@ -46,15 +46,35 @@ class AcceptInvitationViewTests(TestCase):
         response = self.client.get(f"/authn/invite/{invitation.token}/")
         self.assertEqual(response.status_code, 400)
 
-    def test_get_existing_verified_member_upgrades_and_shows_registered(self):
-        invitation = self._create_invitation(email="existing@example.com")
+    def _existing_verified_member(self, email="existing@example.com"):
         member = Member.objects.create_user(
             password="StrongPass123!", first_name="Ex", last_name="Member", is_staff=False, is_active=True
         )
-        ContactEmail.objects.create(
-            member=member, email_address="existing@example.com", email_type="primary", verified=True
-        )
+        ContactEmail.objects.create(member=member, email_address=email, email_type="primary", verified=True)
+        return member
+
+    def test_get_existing_verified_member_only_offers_the_upgrade(self):
+        """A GET must not grant staff: the link is emailed, so gateway scanners and browser
+        prefetches follow it, and the request carries no CSRF protection."""
+        invitation = self._create_invitation(email="existing@example.com")
+        member = self._existing_verified_member()
+
         response = self.client.get(f"/authn/invite/{invitation.token}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "existing@example.com")
+        self.assertContains(response, "Grant admin access")
+        member.refresh_from_db()
+        self.assertFalse(member.is_staff)
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, AdminInvitation.Status.PENDING)
+
+    def test_post_existing_verified_member_upgrades_and_shows_registered(self):
+        invitation = self._create_invitation(email="existing@example.com")
+        member = self._existing_verified_member()
+
+        response = self.client.post(f"/authn/invite/{invitation.token}/")
+
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "existing@example.com")
         member.refresh_from_db()
@@ -183,7 +203,12 @@ class AcceptInvitationViewTests(TestCase):
         self.assertFalse(contact.subscribe)
         self.assertTrue(contact.member.is_staff)
 
-    def test_post_reclaims_unverified_contact_email_from_other_member(self):
+    def test_post_refuses_to_steal_a_contact_email_owned_by_another_member(self):
+        """Moving a ContactEmail between accounts is an account-takeover primitive.
+
+        The address is a sign-in factor, so re-pointing an existing row at the invitee handed them
+        the other member's recovery address. Refuse and report it instead.
+        """
         other = Member.objects.create_user(password="StrongPass123!", is_active=True, is_staff=False)
         ContactEmail.objects.create(
             member=other,
@@ -205,13 +230,15 @@ class AcceptInvitationViewTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "already belongs to another member")
         other.refresh_from_db()
         self.assertFalse(other.is_staff)
         contact = ContactEmail.objects.get(email_address="invite@example.com")
-        self.assertNotEqual(contact.member_id, other.id)
-        self.assertTrue(contact.member.is_staff)
-        self.assertEqual(contact.email_type, "primary")
-        self.assertTrue(contact.verified)
+        self.assertEqual(contact.member_id, other.id)
+        self.assertEqual(contact.email_type, "secondary")
+        self.assertFalse(contact.verified)
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, AdminInvitation.Status.PENDING)
 
     def test_invitation_marked_accepted_after_success(self):
         invitation = self._create_invitation()

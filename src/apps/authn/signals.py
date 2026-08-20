@@ -9,11 +9,15 @@ sees only committed state.
 these receivers are safe to leave registered unconditionally.
 """
 
+import logging
+
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .models import ContactEmail, ContactPhone, Member
+
+logger = logging.getLogger(__name__)
 
 
 def _schedule():
@@ -32,6 +36,16 @@ def schedule_member_sync_on_change(sender, **kwargs):
     if jobs_enabled():
         # A direct insert participates in any surrounding transaction, giving
         # account mutations and their outbox row one commit boundary.
-        _schedule()
-    else:
-        transaction.on_commit(_schedule, robust=True)
+        #
+        # The savepoint matters: this runs from post_save inside the admin's transaction, and
+        # ``_enqueue_durable_sync`` takes ``select_for_update`` on the pending BackgroundJob row. A
+        # lock timeout or DB error here used to propagate out and roll back the whole member save, so
+        # a sheet-sync hiccup failed an unrelated admin edit. Roll back only the enqueue and fall
+        # through to the deferred path instead.
+        try:
+            with transaction.atomic():
+                _schedule()
+            return
+        except Exception:
+            logger.exception("Could not enqueue the member sheet sync inline; deferring to commit")
+    transaction.on_commit(_schedule, robust=True)

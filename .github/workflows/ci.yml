@@ -37,10 +37,10 @@ on:
       # should not trigger the deploy-*.yml chain (which fires on CI completing
       # on main).
       - ".claude/**"
-      # Archived legacy static site. An archive-only PR triggers the workflow,
-      # but the `changes` job below routes it to just the `archive-tests` job
-      # (the backend/frontend pipeline is skipped). Also in the push paths above
-      # so an archive-only merge to main runs CI and triggers deploy-archive.yml.
+      # Archived legacy static site. An archive-only PR now runs the FULL suite,
+      # exactly like the archive-only merge to main will (PR/push parity — see
+      # scripts/ci/plan_changed_areas.py). Still in the push paths above so an
+      # archive-only merge to main runs CI and triggers deploy-archive.yml.
       - "archive/**"
 
 permissions:
@@ -75,6 +75,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -153,23 +154,25 @@ jobs:
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Pull requests are scoped by diff to keep PR CI fast. Fall back to the
-          # full deployable suite (skipping the archive) if no usable base exists.
+          # A pull request runs the SAME areas the eventual push to main runs,
+          # so a green PR check cannot become a red main run for the same tree
+          # (see scripts/ci/plan_changed_areas.py). Fall back to the full suite
+          # if no usable base exists.
           if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
             || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            echo "No usable PR base SHA; running the full deployable suite."
+            echo "No usable PR base SHA; running the full suite."
             {
               echo "backend=true"
               echo "frontend=true"
               echo "cli=true"
-              echo "archive=false"
+              echo "archive=true"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "Changed files:"
           git diff --name-only "$BASE_SHA...$HEAD_SHA" | tee "$RUNNER_TEMP/changed-files.txt"
-           # Conservative: err toward running. A .github/** change maps to all
-           # four areas so any workflow edit validates every path-specific job.
+          # All-or-nothing: any path a push to main would validate runs the full
+          # suite; a PR touching only PR-only paths (.claude/**) runs none.
           python scripts/ci/plan_changed_areas.py \
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
@@ -263,6 +266,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -272,10 +276,26 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+
+      - name: Validate cached virtualenv
+        id: backend-venv-check
+        run: |
+          # A cached venv hard-codes the interpreter it was built against. If
+          # that interpreter is gone (a hosted-runner Python patch bump) or the
+          # archive is partial, every `.venv/bin/...` call dies with exit 127
+          # instead of falling back to a reinstall. Probe it, and discard it
+          # when it is not usable so the install step below rebuilds it.
+          if .venv/bin/python -c "" 2>/dev/null; then
+            echo "usable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            rm -rf .venv
+            echo "usable=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install dependencies
-        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
@@ -317,6 +337,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -326,10 +347,26 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+
+      - name: Validate cached virtualenv
+        id: backend-venv-check
+        run: |
+          # A cached venv hard-codes the interpreter it was built against. If
+          # that interpreter is gone (a hosted-runner Python patch bump) or the
+          # archive is partial, every `.venv/bin/...` call dies with exit 127
+          # instead of falling back to a reinstall. Probe it, and discard it
+          # when it is not usable so the install step below rebuilds it.
+          if .venv/bin/python -c "" 2>/dev/null; then
+            echo "usable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            rm -rf .venv
+            echo "usable=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install dependencies
-        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
@@ -356,30 +393,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
+      # PR/push parity: plan_django_tests.py returns every app suite for every
+      # event, so there is no diff to compute (and no need for the full-history
+      # clone this step used to require). The empty file keeps the CLI contract.
       - name: Capture changed files
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          if [ "${EVENT_NAME}" != "pull_request" ]; then
-            : > changed-files.txt
-            exit 0
-          fi
-          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
-            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            : > changed-files.txt
-            exit 0
-          fi
-          git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt
-          echo "Changed backend files considered for Django tests:"
-          cat changed-files.txt
+        run: ': > changed-files.txt'
 
-      - name: Select changed Django apps
+      - name: Select all Django apps
         id: plan
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -431,6 +452,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -440,10 +462,26 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+
+      - name: Validate cached virtualenv
+        id: backend-venv-check
+        run: |
+          # A cached venv hard-codes the interpreter it was built against. If
+          # that interpreter is gone (a hosted-runner Python patch bump) or the
+          # archive is partial, every `.venv/bin/...` call dies with exit 127
+          # instead of falling back to a reinstall. Probe it, and discard it
+          # when it is not usable so the install step below rebuilds it.
+          if .venv/bin/python -c "" 2>/dev/null; then
+            echo "usable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            rm -rf .venv
+            echo "usable=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install dependencies
-        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
@@ -536,6 +574,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -545,10 +584,26 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+
+      - name: Validate cached virtualenv
+        id: backend-venv-check
+        run: |
+          # A cached venv hard-codes the interpreter it was built against. If
+          # that interpreter is gone (a hosted-runner Python patch bump) or the
+          # archive is partial, every `.venv/bin/...` call dies with exit 127
+          # instead of falling back to a reinstall. Probe it, and discard it
+          # when it is not usable so the install step below rebuilds it.
+          if .venv/bin/python -c "" 2>/dev/null; then
+            echo "usable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            rm -rf .venv
+            echo "usable=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install dependencies
-        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
@@ -606,6 +661,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -750,7 +806,7 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      - name: Summarize frontend coverage
+      - name: Write frontend unit test coverage summary
         if: ${{ always() }}
         run: |
           if [ ! -f coverage/coverage-summary.json ]; then
@@ -771,13 +827,13 @@ jobs:
           const target = process.env.GITHUB_STEP_SUMMARY;
           if (target) {
             const body = [
-              '## Frontend coverage',
+              '## Frontend Unit Test Coverage',
               '',
-              '| Metric | Covered | Total | Percent |',
-              '|---|---:|---:|---:|',
+              '| Metric | Covered | Total | Coverage |',
+              '|:---|---:|---:|---:|',
               ...rows.map(([name, metric]) => `| ${name} | ${metric.covered} | ${metric.total} | ${metric.pct}% |`),
               '',
-              'Vitest enforces the thresholds defined in `pages/vitest.config.ts`.',
+              'Vitest enforces the coverage thresholds configured in `pages/vitest.config.ts`.',
               '',
             ].join('\n');
             fs.appendFileSync(target, body);
@@ -806,6 +862,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+
+      # frontend-prod-build (push-only) hard-fails without this variable, so
+      # surface it pre-merge too: warn on a PR (forks have no access to repo
+      # vars/secrets), hard-fail on a push where the prod build will run.
+      - name: Check production frontend configuration is present
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+        run: |
+          if [ -n "$VITE_API_BASE_URL" ]; then
+            echo "VITE_API_BASE_URL is configured."
+          elif [ "$EVENT_NAME" = "push" ]; then
+            echo "::error::VITE_API_BASE_URL is required for the production frontend build."
+            exit 1
+          else
+            echo "::warning::VITE_API_BASE_URL is empty; the push-to-main production build will fail."
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -867,13 +940,19 @@ jobs:
   frontend-chromium-smoke:
     name: Required Chromium Smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    # Keep the browser and its OS dependencies out of the runner's live APT
+    # path. The image version must stay aligned with pages/package-lock.json.
+    container:
+      image: "mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e"
+      options: --user 1001
     needs:
       - frontend-build
       - changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
       run:
+        shell: bash
         working-directory: pages
     steps:
       - name: Checkout code
@@ -894,9 +973,6 @@ jobs:
         with:
           name: frontend-dist-ci
           path: pages/dist
-
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
 
       - name: Start frontend preview
         run: |
@@ -1102,6 +1178,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -1144,6 +1221,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -1322,8 +1400,13 @@ jobs:
           path: trivy-results.sarif
           if-no-files-found: warn
 
+      # Push-only (no PR-side equivalent), so a code-scanning API hiccup must not
+      # be able to fail backend-docker-build -> backend-required-result ->
+      # CI Result with zero pre-merge signal. The findings are already archived
+      # as the trivy-sarif artifact in the step above.
       - name: Upload Trivy SARIF to GitHub Security tab
         if: ${{ github.event_name == 'push' && steps.trivy-sarif.outcome == 'success' }}
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
         with:
           sarif_file: trivy-results.sarif
@@ -1390,6 +1473,10 @@ jobs:
     needs:
       - backend-required-result
       - changes
+    # The one job with no PR-side equivalent: it needs secrets.AWS_ACCESS_KEY_ID
+    # and pushes `itg-backend:<sha>` to ECR for deploy-backend.yml to pull. Its
+    # pre-merge proxy is `backend-docker-build`, which builds the same
+    # `context: src` with the same buildx action on every PR.
     if: >-
       github.event_name == 'push' &&
       (github.ref_name == 'main' || github.ref_name == 'master') &&
@@ -1507,6 +1594,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -1582,28 +1670,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
+      # PR/push parity: plan_e2e_tests.py returns the full device matrix with no
+      # spec filter for every event, so there is no diff to compute (and no need
+      # for the full-history clone this step used to require). PRs used to run
+      # chromium-only with a diff-derived spec subset, which is what hid the
+      # iphone14 + ipad failure until after the merge (run 32107167026).
       - name: Capture changed files
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          if [ "${EVENT_NAME}" != "pull_request" ]; then
-            : > changed-files.txt
-            exit 0
-          fi
-          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
-            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            : > changed-files.txt
-            exit 0
-          fi
-          git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed-files.txt
-          echo "Changed frontend files considered for E2E:"
-          cat changed-files.txt
+        run: ': > changed-files.txt'
 
       - name: Select browser/device/spec coverage
         id: plan
@@ -1619,9 +1693,23 @@ jobs:
     name: E2E (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
+    # The image already contains the browsers and Linux packages required by
+    # this Playwright version. Keeping E2E off the runner's live APT path avoids
+    # correlated mirror stalls across the ten parallel matrix legs.
+    container:
+      image: "mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e"
+      options: --user 1001 --ipc=host
+    defaults:
+      run:
+        shell: bash
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     strategy:
+      # Never fail fast: one red device must not cancel the other nine, so every
+      # leg produces its own `E2E (<project>)` check run and blob report. Per-
+      # device detail lives in those checks and in the merged report from
+      # `e2e-report`; `e2e-required-result` only rolls the matrix up into a
+      # pass/fail gate (`needs` is keyed by job id, so it sees a single `e2e`
+      # entry, never the individual legs).
       fail-fast: false
       matrix:
         include: ${{ fromJson(needs.e2e-plan.outputs.matrix) }}
@@ -1640,8 +1728,6 @@ jobs:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
           POSTGRES_PASSWORD: itg_ci_pass
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
           --health-interval 10s
@@ -1651,7 +1737,8 @@ jobs:
       DB_NAME: itg_ci
       DB_USER: itg_ci_user
       DB_PASSWORD: itg_ci_pass
-      DB_HOST: 127.0.0.1
+      # Service containers share a Docker network with the E2E job container.
+      DB_HOST: postgres
       DB_PORT: 5432
       VITE_API_BASE_URL: http://127.0.0.1:8000
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
@@ -1663,6 +1750,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -1672,7 +1760,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          # Do not restore a host-runner venv inside the job container: scripts
+          # and interpreter links can contain environment-specific paths.
+          key: backend-venv-pw-v1.62.1-noble-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -1681,8 +1771,25 @@ jobs:
           cache: npm
           cache-dependency-path: pages/package-lock.json
 
+      - name: Validate cached virtualenv
+        id: backend-venv-check
+        working-directory: src
+        run: |
+          # A cached venv hard-codes the interpreter it was built against. If
+          # that interpreter is gone (a hosted-runner Python patch bump) or the
+          # archive is partial, every `.venv/bin/...` call dies with exit 127
+          # instead of falling back to a reinstall. Probe it, and discard it
+          # when it is not usable so the install step below rebuilds it.
+          if .venv/bin/python -c "" 2>/dev/null; then
+            echo "usable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            rm -rf .venv
+            echo "usable=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install backend dependencies
-        if: ${{ steps.backend-venv-cache.outputs.cache-hit != 'true' }}
+        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
         working-directory: src
         run: |
           python -m venv .venv
@@ -1698,36 +1805,6 @@ jobs:
         with:
           name: frontend-dist-ci
           path: pages/dist
-
-      # Key the browser cache on the resolved Playwright version so a version
-      # bump invalidates it automatically.
-      - name: Resolve Playwright version
-        id: playwright-version
-        working-directory: pages
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          # The -cfw suffix (chromium+firefox+webkit) busts any older cache that
-          # only held chromium, which would otherwise hit and skip installing
-          # firefox/webkit, breaking those legs.
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-cfw
-
-      # On a cache hit the browser binaries are restored, but the OS-level
-      # dependencies (apt packages) are not — install just those. On a miss,
-      # do the full download + deps install.
-      - name: Install Playwright browsers (cache miss)
-        if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' }}
-        working-directory: pages
-        run: npm run e2e:install
-
-      - name: Install Playwright system dependencies (cache hit)
-        if: ${{ steps.playwright-cache.outputs.cache-hit == 'true' }}
-        working-directory: pages
-        run: npx playwright install-deps chromium firefox webkit
 
       - name: Prepare backend database
         working-directory: src
@@ -1842,7 +1919,7 @@ jobs:
           fi
           npx playwright merge-reports --reporter html,github,junit ./all-blob-reports
 
-      - name: Write per-project job summary
+      - name: Write end-to-end test summary
         if: ${{ always() }}
         working-directory: pages
         run: |
@@ -1866,9 +1943,9 @@ jobs:
           summary = os.environ.get('GITHUB_STEP_SUMMARY')
           if summary:
               with open(summary, 'a') as fh:
-                  fh.write('## Playwright E2E\n\n')
-                  fh.write('| Total | Passed | Failed | Skipped | Duration |\n')
-                  fh.write('|---|---|---|---|---|\n')
+                  fh.write('## Playwright End-to-End Test Results\n\n')
+                  fh.write('| Total Tests | Passed | Failed | Skipped | Duration |\n')
+                  fh.write('|---:|---:|---:|---:|---:|\n')
                   fh.write(f'| {total} | {passed} | {fail + err} | {skip} | {dur:.1f}s |\n')
           PY
 
@@ -1878,6 +1955,9 @@ jobs:
         with:
           report_paths: pages/results.xml
           detailed_summary: true
+          # This action uses status emoji in its generated job summary. Keep its
+          # annotations, but use the controlled professional summary above.
+          job_summary: false
           include_passed: false
           fail_on_failure: false
 
@@ -1891,29 +1971,48 @@ jobs:
             pages/test-results
           if-no-files-found: warn
 
-  e2e-informational-result:
-    name: E2E Informational Result
+  # Gates `CI Result`. Depends on `e2e` directly rather than on `e2e-report`, so
+  # a flaky blob-report download/merge (that job is `continue-on-error`) can
+  # never block a merge — only a genuinely failing device leg can.
+  e2e-required-result:
+    name: E2E Required Result
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
-      - e2e-report
+      - e2e-plan
+      - e2e
       - changes
     if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
-    continue-on-error: true
     steps:
-      - name: Summarize E2E informational checks
+      - name: Summarize E2E checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: |
           python - <<'PY'
           import json
           import os
+          import sys
 
           needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          for name, data in needs.items():
-              if name != "changes":
-                  print(f"{name}: {data['result']}")
-          print("E2E remains informational and does not block CI Result.")
+          # This job only runs when `changes.frontend == 'true'`, and both
+          # `e2e-plan` and `e2e` gate on exactly that same condition. So neither
+          # can be legitimately path-filtered here: a "skipped" result means an
+          # upstream job (frontend-required, secrets-scan) failed and cascaded,
+          # and the device matrix never ran. Reporting that as a pass is how a
+          # required check goes green with zero E2E coverage behind it, so
+          # "skipped" is a FAILURE for this gate specifically.
+          ok = {"success"}
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] not in ok
+          }
+          if failed:
+              for name, result in failed.items():
+                  detail = " (upstream failure cascaded; E2E never ran)" if result == "skipped" else ""
+                  print(f"{name}: {result}{detail}")
+              sys.exit(1)
+          print("All E2E legs passed.")
           PY
 
   archive-tests:
@@ -1930,6 +2029,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -1983,6 +2083,7 @@ jobs:
       - changes
       - backend-required-result
       - frontend-required
+      - e2e-required-result
       - security-required-result
       - supply-chain-result
       - deploy-artifact-result

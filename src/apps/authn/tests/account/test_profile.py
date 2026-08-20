@@ -8,6 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail
+from apps.authn.tests.helpers import PNG_BOMB
 
 Member = get_user_model()
 
@@ -162,6 +163,14 @@ class ProfileUpdateTests(APITestCase):
         response = self.client.patch("/authn/profile/", {"profile_image": upload}, format="multipart")
         self.assertEqual(response.status_code, 400)
         self.assertIn("does not match", response.data["detail"])
+
+    def test_patch_profile_image_decompression_bomb(self):
+        # A 70-byte PNG whose IHDR declares 50000x5000 px: Pillow raises DecompressionBombError
+        # when opening it, and the view must answer 400, not 500.
+        upload = SimpleUploadedFile("bomb.png", PNG_BOMB, content_type="image/png")
+        response = self.client.patch("/authn/profile/", {"profile_image": upload}, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("dimensions", response.data["detail"])
 
     def test_patch_invalid_json_field_returns_400(self):
         response = self.client.patch("/authn/profile/", {"first_name": ""}, format="json")
