@@ -23,28 +23,57 @@ class Base64ImageWidgetTests(SimpleTestCase):
         return Base64ImageWidget()
 
     def test_value_from_datadict_clear_checkbox_returns_empty(self):
-        """forms.py:37 — clear checkbox checked, no upload -> returns empty string."""
+        """forms.py — clear checkbox checked, no upload -> returns empty string."""
         widget = self._widget()
         name = "profile_image"
         clear_name = widget.clear_checkbox_name(name)
         result = widget.value_from_datadict({clear_name: "on"}, {}, name)
         self.assertEqual(result, "")
 
-    def test_render_shows_preview_for_existing_base64(self):
-        """forms.py:53-63 — long base64 value renders an <img> preview."""
+    def test_value_from_datadict_returns_upload_without_reading_it(self):
+        """The widget must not consume the stream: ConfirmOnSaveMixin caches request.FILES later."""
+        from apps.authn.tests.helpers import PNG_1PX, png_upload
+
         widget = self._widget()
-        value = "data:image/png;base64," + ("A" * 60)
+        upload = png_upload()
+        result = widget.value_from_datadict({}, {"profile_image": upload}, "profile_image")
+        self.assertIs(result, upload)
+        self.assertEqual(upload.read(), PNG_1PX)
+
+    def test_value_from_datadict_returns_none_when_untouched(self):
+        widget = self._widget()
+        self.assertIsNone(widget.value_from_datadict({}, {}, "profile_image"))
+
+    def test_render_never_inlines_the_stored_base64(self):
+        """Regression: inlining the value made the change page grow with the stored image."""
+        widget = self._widget()
+        widget.preview_url = "/admin/authn/member/abc/profile-image/"
+        value = "data:image/png;base64," + ("A" * 5000)
+
         html = widget.render("profile_image", value)
-        self.assertIn("<img", html)
-        self.assertIn(value, html)
+
+        self.assertNotIn("base64", html)
+        self.assertNotIn("A" * 60, html)
+        self.assertIn('src="/admin/authn/member/abc/profile-image/"', html)
         self.assertIn("Current image", html)
 
-    def test_render_prepends_data_uri_for_bare_base64(self):
-        """forms.py:53 — value without data: prefix gets a data:image/png prefix."""
+    def test_render_offers_a_reachable_remove_checkbox(self):
+        """The stock ClearableFileInput template gates this on value.url, which a str never has."""
         widget = self._widget()
-        value = "B" * 60  # >50 chars, no "data:" prefix
-        html = widget.render("profile_image", value)
-        self.assertIn(f"data:image/png;base64,{value}", html)
+        widget.preview_url = "/admin/authn/member/abc/profile-image/"
+
+        html = widget.render("profile_image", "data:image/png;base64,AAAA")
+
+        self.assertIn('name="profile_image-clear"', html)
+
+    def test_render_without_a_stored_image_shows_only_the_file_input(self):
+        widget = self._widget()
+
+        html = widget.render("profile_image", "")
+
+        self.assertNotIn("<img", html)
+        self.assertNotIn('name="profile_image-clear"', html)
+        self.assertIn('type="file"', html)
 
 
 class MemberCreationFormPasswordIncompleteTests(TestCase):

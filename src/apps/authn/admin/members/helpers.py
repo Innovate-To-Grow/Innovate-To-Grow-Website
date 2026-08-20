@@ -40,14 +40,40 @@ def normalize_inline_uuid_none_values(request):
             post_data._mutable = original_mutable
 
 
+def _drop_protected_members(admin_obj, request, queryset):
+    """Exclude members the requester may not manage, and report how many were skipped.
+
+    ``is_active`` is not in ``superuser_only_fields``, so without this a non-superuser staffer could
+    deactivate the I2G Master and lock them out of the admin entirely.
+    """
+    protected = [member.pk for member in queryset if not admin_obj.can_manage_target(request, member)]
+    if not protected:
+        return queryset, 0
+    return queryset.exclude(pk__in=protected), len(protected)
+
+
 def activate_members(admin_obj, request, queryset):
-    updated = queryset.update(is_active=True)
+    allowed, skipped = _drop_protected_members(admin_obj, request, queryset)
+    updated = allowed.update(is_active=True)
     admin_obj.message_user(request, f"{updated} member(s) activated.")
+    if skipped:
+        admin_obj.message_user(
+            request,
+            f"{skipped} privileged account(s) skipped — only an I2G Master may change those.",
+            level="warning",
+        )
 
 
 def deactivate_members(admin_obj, request, queryset):
-    updated = queryset.update(is_active=False)
+    allowed, skipped = _drop_protected_members(admin_obj, request, queryset)
+    updated = allowed.update(is_active=False)
     admin_obj.message_user(request, f"{updated} member(s) deactivated.")
+    if skipped:
+        admin_obj.message_user(
+            request,
+            f"{skipped} privileged account(s) skipped — only an I2G Master may change those.",
+            level="warning",
+        )
 
 
 def build_excel_response(content, filename):
@@ -108,8 +134,18 @@ def import_excel_view(admin_obj, request):
             default_password=form.cleaned_data.get("set_password") or None,
             update_existing=update_existing,
             update_member_allowed=(
-                (lambda member: admin_obj.has_change_permission(request, member)) if update_existing else None
+                (
+                    lambda member: (
+                        admin_obj.has_change_permission(request, member)
+                        and admin_obj.can_manage_target(request, member)
+                    )
+                )
+                if update_existing
+                else None
             ),
+            # The export writes a Staff column, so an unrestricted round trip would let any
+            # authn-app admin grant themselves staff or revoke the I2G Master's.
+            allow_privilege_fields=getattr(getattr(request, "user", None), "is_superuser", False),
         )
         context["result"] = result
         if result.success:

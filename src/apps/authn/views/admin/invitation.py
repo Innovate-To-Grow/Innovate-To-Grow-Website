@@ -16,6 +16,11 @@ from apps.authn.models.members.admin_invitation import AdminInvitation
 
 _INVITATION_RATE_LIMIT = 10  # max attempts per token per hour
 
+
+class InvitationEmailConflict(Exception):
+    """The invited address is already owned by a different member."""
+
+
 Member = None  # resolved lazily
 
 
@@ -47,11 +52,19 @@ class AcceptInvitationView(View):
 
         existing = self._get_verified_member(invitation)
         if existing:
-            self._upgrade_member(existing, invitation)
+            # Render a page that POSTs the upgrade; do NOT grant staff here. This used to run
+            # _upgrade_member on the GET, so a mail-gateway link scanner or a browser prefetch
+            # silently granted is_staff + is_active and burned the invitation — a privileged write on
+            # an unauthenticated, CSRF-exempt request.
             return render(
                 request,
                 "authn/invitation/already_registered.html",
-                {"email": invitation.email, **_get_unfold_context(request)},
+                {
+                    "email": invitation.email,
+                    "invitation": invitation,
+                    "needs_confirmation": True,
+                    **_get_unfold_context(request),
+                },
             )
 
         form = AcceptInvitationForm(initial={"email": invitation.email})
@@ -74,6 +87,7 @@ class AcceptInvitationView(View):
 
         existing = self._get_verified_member(invitation)
         if existing:
+            # The GET only offers the button; the privilege grant happens here, behind CSRF.
             self._upgrade_member(existing, invitation)
             return render(
                 request,
@@ -89,6 +103,23 @@ class AcceptInvitationView(View):
                 {"form": form, "invitation": invitation, **_get_unfold_context(request)},
             )
 
+        try:
+            self._create_member(form, invitation)
+        except InvitationEmailConflict as exc:
+            form.add_error("email", str(exc))
+            return render(
+                request,
+                "authn/invitation/accept.html",
+                {"form": form, "invitation": invitation, **_get_unfold_context(request)},
+            )
+
+        return render(
+            request,
+            "authn/invitation/success.html",
+            {"member": self._created_member, **_get_unfold_context(request)},
+        )
+
+    def _create_member(self, form, invitation):
         with transaction.atomic():
             # noinspection PyPep8Naming
             MemberModel = _get_member_model()
@@ -106,12 +137,7 @@ class AcceptInvitationView(View):
 
             self._attach_invitation_email(member, invitation)
             invitation.mark_accepted(member)
-
-        return render(
-            request,
-            "authn/invitation/success.html",
-            {"member": member, **_get_unfold_context(request)},
-        )
+        self._created_member = member
 
     # noinspection PyMethodMayBeStatic
     def _get_invitation(self, token):
@@ -152,6 +178,14 @@ class AcceptInvitationView(View):
                 subscribe=True,
             )
             return
+
+        if contact.member_id is not None and contact.member_id != member.pk:
+            # Re-pointing a ContactEmail that another member already owns is an account-takeover
+            # primitive (it moves a sign-in address between accounts) — the same thing the CLI
+            # denylist exists to prevent. Refuse instead.
+            raise InvitationEmailConflict(
+                "That email address already belongs to another member. Ask an I2G Master to resolve it."
+            )
 
         contact.member = member
         contact.email_type = "primary"

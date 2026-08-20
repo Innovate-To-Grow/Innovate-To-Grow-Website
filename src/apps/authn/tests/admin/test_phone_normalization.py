@@ -93,10 +93,16 @@ class RegistrationPhoneChangesTests(TestCase):
         )
 
     def test_registration_phone_normalized(self):
+        """A US national number must gain the +1 country code, not a bare "+".
+
+        Prefixing "+" alone produced "+2095551234", which E164_RE accepts and the SMS sender dials
+        as +20 (Egypt) — a silent mass rewrite to the wrong country. Note
+        test_registration_already_clean_skipped treats "+12095551234" as the canonical form.
+        """
         self._registration("(209) 555-1234")
         changes = _build_registration_phone_changes()
         self.assertEqual(len(changes), 1)
-        self.assertEqual(changes[0]["new_phone"], "+2095551234")
+        self.assertEqual(changes[0]["new_phone"], "+12095551234")
         self.assertEqual(changes[0]["attendee"], "Jane Doe")
 
     def test_registration_already_clean_skipped(self):
@@ -110,7 +116,7 @@ class RegistrationPhoneChangesTests(TestCase):
         updated, deleted, regs = apply_phone_changes([], reg_changes)
         self.assertEqual(regs, 1)
         reg.refresh_from_db()
-        self.assertEqual(reg.attendee_phone, "+2095559999")
+        self.assertEqual(reg.attendee_phone, "+12095559999")
 
     def test_attendee_name_falls_back_to_dash(self):
         # An (unsaved) registration with blank names -> "-" (the model's save() would
