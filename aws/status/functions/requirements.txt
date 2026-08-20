@@ -1,0 +1,3 @@
+# Lambda Python runtimes provide boto3/botocore. dnspython supplies a resolver
+# with an explicit lifetime; socket.getaddrinfo has no portable timeout.
+dnspython==2.8.0

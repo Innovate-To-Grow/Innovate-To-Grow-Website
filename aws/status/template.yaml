@@ -1,0 +1,796 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: I2G public status site and monitoring services in us-west-2.
+
+Parameters:
+  CertificateArn:
+    Type: String
+    AllowedPattern: ^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[a-fA-F0-9-]+$
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+  StatusDomainName:
+    Type: String
+    Default: status.i2g.ucmerced.edu
+    AllowedPattern: ^[a-z0-9.-]+$
+  ReleaseSha:
+    Type: String
+    Default: unknown
+    MaxLength: 64
+    AllowedPattern: ^[A-Za-z0-9._-]+$
+  BackendTaskRoleName:
+    Type: String
+    MinLength: 1
+    MaxLength: 64
+    AllowedPattern: ^[A-Za-z0-9_+=,.@-]+$
+  EcsClusterName:
+    Type: String
+    Default: itg-backend-cluster
+    AllowedPattern: ^[A-Za-z0-9_-]{1,255}$
+  ProductionEcsService:
+    Type: String
+    Default: itg-backend-service
+    AllowedPattern: ^[A-Za-z0-9_-]{1,255}$
+  DemoEcsService:
+    Type: String
+    Default: itg-backend-demo-service
+    AllowedPattern: ^[A-Za-z0-9_-]{1,255}$
+  ArchiveEcsService:
+    Type: String
+    Default: itg-archive-service
+    AllowedPattern: ^[A-Za-z0-9_-]{1,255}$
+  ProductionTargetGroupArn:
+    Type: String
+    AllowedPattern: ^arn:aws:elasticloadbalancing:us-west-2:[0-9]{12}:targetgroup/[A-Za-z0-9-]{1,32}/[A-Fa-f0-9]{16}$
+  DemoTargetGroupArn:
+    Type: String
+    AllowedPattern: ^arn:aws:elasticloadbalancing:us-west-2:[0-9]{12}:targetgroup/[A-Za-z0-9-]{1,32}/[A-Fa-f0-9]{16}$
+  ArchiveTargetGroupArn:
+    Type: String
+    AllowedPattern: ^arn:aws:elasticloadbalancing:us-west-2:[0-9]{12}:targetgroup/[A-Za-z0-9-]{1,32}/[A-Fa-f0-9]{16}$
+  RdsInstanceId:
+    Type: String
+    Default: i2g-prod-postgres-west2
+    AllowedPattern: ^[A-Za-z][A-Za-z0-9-]{0,62}$
+  ProductionAssetsBucket:
+    Type: String
+    Default: itg-static-assets
+    AllowedPattern: ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$
+  DemoAssetsBucket:
+    Type: String
+    Default: itg-demo-static-assets
+    AllowedPattern: ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$
+  ProductionAmplifyAppId:
+    Type: String
+    AllowedPattern: ^[A-Za-z0-9]{1,32}$
+  DemoAmplifyAppId:
+    Type: String
+    AllowedPattern: ^[A-Za-z0-9]{1,32}$
+  ProductionAmplifyBranch:
+    Type: String
+    Default: main
+    AllowedPattern: ^[A-Za-z0-9._/-]{1,255}$
+  DemoAmplifyBranch:
+    Type: String
+    Default: main
+    AllowedPattern: ^[A-Za-z0-9._/-]{1,255}$
+
+Rules:
+  StatusServiceRegion:
+    Assertions:
+      - Assert: !Equals [!Ref AWS::Region, us-west-2]
+        AssertDescription: The status service stack must be deployed in us-west-2.
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures:
+      - arm64
+    MemorySize: 256
+    Timeout: 15
+    Tracing: Active
+    Environment:
+      Variables:
+        STATUS_TABLE_NAME: !Ref StatusTable
+
+Resources:
+  StatusTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: Application
+          Value: i2g-status
+
+  SchedulerDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  ProbeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: status_service.handlers.probe_handler
+      Timeout: 60
+      ReservedConcurrentExecutions: 1
+      Policies:
+        - Statement:
+            - Sid: StatusTableReadWrite
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:TransactWriteItems
+              Resource: !GetAtt StatusTable.Arn
+            - Sid: StatusTableQuery
+              Effect: Allow
+              Action: dynamodb:Query
+              Resource:
+                - !GetAtt StatusTable.Arn
+                - !Sub ${StatusTable.Arn}/index/GSI1
+            - Sid: ExistingEcsRuntimeRead
+              Effect: Allow
+              Action:
+                - ecs:DescribeServices
+                - ecs:ListTasks
+                - ecs:DescribeTasks
+              Resource: "*"
+              Condition:
+                ArnEquals:
+                  ecs:cluster: !Sub arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${EcsClusterName}
+            - Sid: ExistingTaskDefinitionRead
+              Effect: Allow
+              Action: ecs:DescribeTaskDefinition
+              Resource: "*"
+            - Sid: ExistingTargetHealthRead
+              Effect: Allow
+              Action: elasticloadbalancing:DescribeTargetHealth
+              Resource:
+                - !Ref ProductionTargetGroupArn
+                - !Ref DemoTargetGroupArn
+                - !Ref ArchiveTargetGroupArn
+            - Sid: ExistingDatabaseRead
+              Effect: Allow
+              Action: rds:DescribeDBInstances
+              Resource: !Sub arn:${AWS::Partition}:rds:${AWS::Region}:${AWS::AccountId}:db:${RdsInstanceId}
+            - Sid: ExistingAssetsRead
+              Effect: Allow
+              Action: s3:ListBucket
+              Resource:
+                - !Sub arn:${AWS::Partition}:s3:::${ProductionAssetsBucket}
+                - !Sub arn:${AWS::Partition}:s3:::${DemoAssetsBucket}
+            - Sid: ExistingAmplifyRead
+              Effect: Allow
+              Action:
+                - amplify:GetBranch
+                - amplify:ListJobs
+              Resource:
+                - !Sub arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${ProductionAmplifyAppId}/branches/${ProductionAmplifyBranch}
+                - !Sub arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${DemoAmplifyAppId}/branches/${DemoAmplifyBranch}
+            - Sid: StatusAlarmRead
+              Effect: Allow
+              Action: cloudwatch:DescribeAlarms
+              Resource: !Sub arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${AWS::StackName}-*
+            - Sid: StatusMetricWrite
+              Effect: Allow
+              Action: cloudwatch:PutMetricData
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  cloudwatch:namespace: I2G/Status
+            - Sid: StatusStackRead
+              Effect: Allow
+              Action:
+                - cloudformation:DescribeStacks
+                - cloudformation:ListStackResources
+              Resource: !Ref AWS::StackId
+      Environment:
+        Variables:
+          RELEASE_SHA: !Ref ReleaseSha
+          STATUS_STACK_NAME: !Ref AWS::StackName
+          ECS_CLUSTER_NAME: !Ref EcsClusterName
+          PRODUCTION_ECS_SERVICE: !Ref ProductionEcsService
+          DEMO_ECS_SERVICE: !Ref DemoEcsService
+          ARCHIVE_ECS_SERVICE: !Ref ArchiveEcsService
+          PRODUCTION_TARGET_GROUP_ARN: !Ref ProductionTargetGroupArn
+          DEMO_TARGET_GROUP_ARN: !Ref DemoTargetGroupArn
+          ARCHIVE_TARGET_GROUP_ARN: !Ref ArchiveTargetGroupArn
+          RDS_INSTANCE_ID: !Ref RdsInstanceId
+          PRODUCTION_ASSETS_BUCKET: !Ref ProductionAssetsBucket
+          DEMO_ASSETS_BUCKET: !Ref DemoAssetsBucket
+          PRODUCTION_AMPLIFY_APP_ID: !Ref ProductionAmplifyAppId
+          DEMO_AMPLIFY_APP_ID: !Ref DemoAmplifyAppId
+          PRODUCTION_AMPLIFY_BRANCH: !Ref ProductionAmplifyBranch
+          DEMO_AMPLIFY_BRANCH: !Ref DemoAmplifyBranch
+          STATUS_ALARM_PREFIX: !Sub ${AWS::StackName}-
+      Events:
+        FiveMinuteSchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(5 minutes)
+            FlexibleTimeWindow:
+              Mode: "OFF"
+            Input: '{"time":"<aws.scheduler.scheduled-time>"}'
+            RetryPolicy:
+              MaximumEventAgeInSeconds: 900
+              MaximumRetryAttempts: 2
+            DeadLetterConfig:
+              Arn: !GetAtt SchedulerDlq.Arn
+
+  PublicReadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: status_service.handlers.public_read_handler
+      Policies:
+        - Statement:
+            - Sid: PublicProjectionGet
+              Effect: Allow
+              Action: dynamodb:GetItem
+              Resource: !GetAtt StatusTable.Arn
+              Condition:
+                ForAllValues:StringLike:
+                  dynamodb:LeadingKeys:
+                    - PUBLIC
+                    - COMPONENT#*
+                    - INCIDENT#*
+            - Sid: PublicProjectionTableQuery
+              Effect: Allow
+              Action: dynamodb:Query
+              Resource: !GetAtt StatusTable.Arn
+              Condition:
+                ForAllValues:StringLike:
+                  dynamodb:LeadingKeys:
+                    - COMPONENT#*
+                    - INCIDENT#*
+            - Sid: PublicProjectionIncidentIndexQuery
+              Effect: Allow
+              Action: dynamodb:Query
+              Resource:
+                - !Sub ${StatusTable.Arn}/index/GSI1
+              Condition:
+                ForAllValues:StringEquals:
+                  dynamodb:LeadingKeys:
+                    - INCIDENTS
+
+  InternalReadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: status_service.handlers.internal_read_handler
+      Policies:
+        - Statement:
+            - Sid: InternalSnapshotRead
+              Effect: Allow
+              Action: dynamodb:GetItem
+              Resource: !GetAtt StatusTable.Arn
+              Condition:
+                ForAllValues:StringEquals:
+                  dynamodb:LeadingKeys:
+                    - INTERNAL
+
+  StatusHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub ${AWS::StackName}-api
+      ProtocolType: HTTP
+      DisableExecuteApiEndpoint: false
+
+  StatusApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref StatusHttpApi
+      StageName: prod
+      AutoDeploy: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt StatusApiAccessLogGroup.Arn
+        Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","responseLatency":"$context.responseLatency","integrationStatus":"$context.integration.status"}'
+      DefaultRouteSettings:
+        DetailedMetricsEnabled: true
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+
+  PublicReadIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref StatusHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt PublicReadFunction.Arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 10000
+
+  PublicReadRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref StatusHttpApi
+      RouteKey: GET /api/status
+      AuthorizationType: NONE
+      Target: !Sub integrations/${PublicReadIntegration}
+
+  PublicReadPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PublicReadFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StatusHttpApi}/*/GET/api/status
+
+  InternalReadIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref StatusHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt InternalReadFunction.Arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 10000
+
+  InternalReadRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref StatusHttpApi
+      RouteKey: GET /internal/status
+      AuthorizationType: AWS_IAM
+      Target: !Sub integrations/${InternalReadIntegration}
+
+  InternalReadPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref InternalReadFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StatusHttpApi}/*/GET/internal/status
+
+  BackendInternalStatusInvokePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-backend-internal-read
+      Roles:
+        - !Ref BackendTaskRoleName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: InvokeInternalStatusOnly
+            Effect: Allow
+            Action: execute-api:Invoke
+            Resource: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StatusHttpApi}/prod/GET/internal/status
+
+  StatusSiteBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: RemoveOldNoncurrentVersions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+          - Id: RemoveRetiredHashedAssets
+            Status: Enabled
+            Prefix: assets/
+            TagFilters:
+              - Key: status-retire
+                Value: "true"
+            ExpirationInDays: 30
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+
+  StatusOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${AWS::StackName}-s3-oac
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  StatusNoCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub ${AWS::StackName}-html-no-cache
+        DefaultTTL: 0
+        MaxTTL: 0
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  StatusAssetsCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub ${AWS::StackName}-assets-cache
+        DefaultTTL: 31536000
+        MaxTTL: 31536000
+        MinTTL: 31536000
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  StatusApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub ${AWS::StackName}-api-cache
+        DefaultTTL: 60
+        MaxTTL: 960
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  StatusSecurityHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub ${AWS::StackName}-security-headers
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+            Override: true
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: no-referrer
+            Override: true
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 63072000
+            IncludeSubdomains: true
+            Preload: true
+            Override: true
+          XSSProtection:
+            ModeBlock: true
+            Protection: true
+            Override: true
+
+  StatusDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Ref StatusDomainName
+        Comment: I2G independently hosted public status site
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: status-site
+            DomainName: !GetAtt StatusSiteBucket.RegionalDomainName
+            OriginAccessControlId: !Ref StatusOriginAccessControl
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+          - Id: status-api
+            DomainName: !Sub ${StatusHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+            OriginPath: /prod
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          CachePolicyId: !Ref StatusNoCachePolicy
+          Compress: true
+          ResponseHeadersPolicyId: !Ref StatusSecurityHeaders
+          TargetOriginId: status-site
+          ViewerProtocolPolicy: redirect-to-https
+        CacheBehaviors:
+          - PathPattern: assets/*
+            AllowedMethods:
+              - GET
+              - HEAD
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: !Ref StatusAssetsCachePolicy
+            Compress: true
+            ResponseHeadersPolicyId: !Ref StatusSecurityHeaders
+            TargetOriginId: status-site
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: api/status
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+            CachedMethods:
+              - GET
+              - HEAD
+            CachePolicyId: !Ref StatusApiCachePolicy
+            Compress: true
+            ResponseHeadersPolicyId: !Ref StatusSecurityHeaders
+            TargetOriginId: status-api
+            ViewerProtocolPolicy: redirect-to-https
+        Restrictions:
+          GeoRestriction:
+            RestrictionType: none
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+
+  StatusSiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StatusSiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${StatusSiteBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${StatusDistribution}
+
+  StatusDnsA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref StatusDomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt StatusDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+  StatusDnsAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref StatusDomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt StatusDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+        EvaluateTargetHealth: false
+
+  ProbeLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ProbeFunction}
+      RetentionInDays: 30
+
+  PublicReadLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${PublicReadFunction}
+      RetentionInDays: 30
+
+  InternalReadLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${InternalReadFunction}
+      RetentionInDays: 30
+
+  StatusApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-access
+      RetentionInDays: 30
+
+  ProbeFunctionErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-ProbeFunctionErrors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ProbeFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  ProbeMissingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-ProbeMissing
+      Namespace: I2G/Status
+      MetricName: ProbeSuccess
+      Statistic: Sum
+      Period: 900
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+
+  PublicApiErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-PublicApi5xx
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref StatusHttpApi
+        - Name: Stage
+          Value: prod
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  DynamoThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-DynamoThrottles
+      Namespace: AWS/DynamoDB
+      MetricName: ThrottledRequests
+      Dimensions:
+        - Name: TableName
+          Value: !Ref StatusTable
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  SchedulerDlqAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-SchedulerDlqMessages
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt SchedulerDlq.QueueName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  StatusDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${AWS::StackName}-operations
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "region": "${AWS::Region}",
+                "title": "Status probe",
+                "view": "timeSeries",
+                "metrics": [
+                  ["I2G/Status", "ProbeSuccess"],
+                  ["AWS/Lambda", "Errors", "FunctionName", "${ProbeFunction}"]
+                ]
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "region": "${AWS::Region}",
+                "title": "Status API and data store",
+                "view": "timeSeries",
+                "metrics": [
+                  ["AWS/ApiGateway", "5xx", "ApiId", "${StatusHttpApi}", "Stage", "prod"],
+                  ["AWS/DynamoDB", "ThrottledRequests", "TableName", "${StatusTable}"]
+                ]
+              }
+            }
+          ]
+        }
+
+Outputs:
+  SiteBucketName:
+    Value: !Ref StatusSiteBucket
+  DistributionId:
+    Value: !Ref StatusDistribution
+  PublicUrl:
+    Value: !Sub https://${StatusDomainName}
+  PublicApiUrl:
+    Value: !Sub https://${StatusDomainName}/api/status
+  InternalApiUrl:
+    Value: !Sub https://${StatusHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod/internal/status
+  ProbeFunctionName:
+    Value: !Ref ProbeFunction

@@ -7,6 +7,7 @@ on:
       - "src/**"
       - "cli/**"
       - "pages/**"
+      - "status/**"
       - "aws/**"
       - "scripts/**"
       - ".github/dependabot.yml"
@@ -24,6 +25,7 @@ on:
       - "src/**"
       - "cli/**"
       - "pages/**"
+      - "status/**"
       - "aws/**"
       - "scripts/**"
       - ".github/dependabot.yml"
@@ -54,6 +56,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  STATUS_PYTHON_VERSION: "3.13"
   NODE_VERSION: "22.22.2"
   DJANGO_SETTINGS_MODULE: config.settings.test
   COVERAGE_VERSION: "7.6.10"
@@ -126,6 +129,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       cli: ${{ steps.filter.outputs.cli }}
       archive: ${{ steps.filter.outputs.archive }}
+      status: ${{ steps.filter.outputs.status }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -151,6 +155,7 @@ jobs:
               echo "frontend=true"
               echo "cli=true"
               echo "archive=true"
+              echo "status=true"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -166,6 +171,7 @@ jobs:
               echo "frontend=true"
               echo "cli=true"
               echo "archive=true"
+              echo "status=true"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -1162,6 +1168,239 @@ jobs:
           path: pages/dist
           if-no-files-found: error
 
+  status-frontend:
+    name: Status Frontend Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.status == 'true' }}
+    defaults:
+      run:
+        working-directory: status
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: status/package-lock.json
+
+      - name: Install locked status frontend dependencies
+        run: npm ci
+
+      - name: Run status frontend lint
+        run: npm run lint
+
+      - name: Run status frontend typecheck
+        run: npm run typecheck
+
+      - name: Validate TypeScript against shared status contract fixtures
+        run: npm run test -- --run src/contract.test.ts
+
+      - name: Run status frontend tests with coverage
+        run: npm run test:coverage
+
+      - name: Build the self-contained production status site
+        run: npm run build
+
+      - name: Upload status production assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: status-dist-production
+          path: status/dist
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload status frontend coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: status-frontend-coverage
+          path: |
+            status/coverage/lcov.info
+            status/coverage/coverage-summary.json
+          if-no-files-found: warn
+
+  status-browser:
+    name: Status Browser and Accessibility Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: "mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e"
+      options: --user 1001
+    needs: [status-frontend, changes]
+    if: ${{ needs.changes.outputs.status == 'true' }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: status
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: status/package-lock.json
+
+      - name: Install locked status frontend dependencies
+        run: npm ci
+
+      - name: Download the exact status build under test
+        uses: actions/download-artifact@v8
+        with:
+          name: status-dist-production
+          path: status/dist
+
+      - name: Start status preview
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > ../status-preview.log 2>&1 &
+          for _ in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat ../status-preview.log
+          exit 1
+
+      - name: Run Playwright page and axe accessibility tests
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+        run: npx playwright test --workers=1 --retries=0
+
+      - name: Upload status browser diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: status-browser-diagnostics
+          path: |
+            status-preview.log
+            status/playwright-report
+            status/test-results
+          if-no-files-found: warn
+
+  status-lambda:
+    name: Status Lambda and Contract Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.status == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Lambda Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.STATUS_PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            aws/status/functions/requirements.txt
+            aws/status/requirements-dev.txt
+
+      - name: Install locked status Lambda test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            -r aws/status/functions/requirements.txt \
+            -r aws/status/requirements-dev.txt \
+            "ruff==0.15.22"
+
+      - name: Lint and format-check status Lambda code
+        run: |
+          python -m ruff check aws/status/functions aws/status/tests
+          python -m ruff format --check aws/status/functions aws/status/tests
+
+      - name: Run probe, aggregation, state machine, idempotency, and API tests
+        env:
+          PYTHONPATH: aws/status/functions
+        run: python -m pytest aws/status/tests
+
+      - name: Validate Python projection against shared status contract fixtures
+        env:
+          PYTHONPATH: aws/status/functions
+        run: python -m pytest aws/status/tests/test_*contract*.py
+
+  status-infrastructure:
+    name: Status Infrastructure Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [preflight, changes]
+    if: ${{ needs.changes.outputs.status == 'true' }}
+    env:
+      AWS_DEFAULT_REGION: us-west-2
+      AWS_REGION: us-west-2
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.STATUS_PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install CloudFormation lint tools
+        run: python -m pip install "cfn-lint==1.55.1" "PyYAML==6.0.2"
+
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          version: 1.165.0
+
+      - name: Build the status SAM application
+        run: sam build --template-file aws/status/template.yaml --build-dir .aws-sam/status-ci
+
+      - name: Validate the status SAM template
+        run: sam validate --lint --template-file aws/status/template.yaml --region us-west-2
+
+      - name: Lint both regional CloudFormation templates
+        run: cfn-lint aws/status/certificate-template.yaml aws/status/template.yaml
+
+      - name: Assert status infrastructure security invariants
+        run: python scripts/ci/validate_status_infrastructure.py
+
+  status-required-result:
+    name: Status Required Result
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - status-frontend
+      - status-browser
+      - status-lambda
+      - status-infrastructure
+      - changes
+    if: ${{ always() && needs.changes.outputs.status == 'true' }}
+    steps:
+      - name: Summarize status checks
+        env:
+          NEEDS_CONTEXT: ${{ toJson(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_CONTEXT"])
+          failed = {
+              name: data["result"]
+              for name, data in needs.items()
+              if name != "changes" and data["result"] != "success"
+          }
+          if failed:
+              for name, result in failed.items():
+                  print(f"{name}: {result}")
+              sys.exit(1)
+          print("All independent status-site checks passed.")
+          PY
+
   python-security-audit:
     name: Python Security Audit
     runs-on: ubuntu-latest
@@ -2089,6 +2328,7 @@ jobs:
       - deploy-artifact-result
       - archive-required-result
       - cli-required-result
+      - status-required-result
     if: ${{ always() }}
     steps:
       - name: Summarize required jobs

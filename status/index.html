@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#002856" />
+    <meta
+      name="description"
+      content="Current availability and incident history for Innovate to Grow services."
+    />
+    <link rel="icon" href="/src/assets/brand-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>System Status | Innovate to Grow</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#status-root">Skip to system status</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <div class="brand" aria-label="Innovate to Grow">
+          <img src="/src/assets/brand-mark.svg" width="48" height="48" alt="" />
+          <div>
+            <p class="brand-name">Innovate to Grow</p>
+            <p class="brand-subtitle">UC Merced · System Status</p>
+          </div>
+        </div>
+        <span class="independent-label">Independent status service</span>
+      </div>
+    </header>
+    <main id="status-root" class="page" aria-busy="true">
+      <section class="panel loading-panel" aria-labelledby="loading-title">
+        <span class="loading-mark" aria-hidden="true"></span>
+        <div>
+          <h1 id="loading-title">Checking system status</h1>
+          <p>Loading the latest verified service information…</p>
+        </div>
+      </section>
+    </main>
+    <p id="status-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
+    <noscript>
+      <div class="noscript-message" role="alert">
+        JavaScript is required to retrieve live status data. Please enable it and reload this page.
+      </div>
+    </noscript>
+    <footer class="site-footer">
+      <p>Innovate to Grow · University of California, Merced</p>
+      <p>Status times are shown in Pacific Time.</p>
+    </footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

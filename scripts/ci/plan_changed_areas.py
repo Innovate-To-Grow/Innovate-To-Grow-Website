@@ -16,6 +16,7 @@ class ChangedAreasPlan:
     frontend: bool
     cli: bool
     archive: bool
+    status: bool
 
     def github_outputs(self) -> str:
         return "\n".join(
@@ -24,6 +25,7 @@ class ChangedAreasPlan:
                 f"frontend={str(self.frontend).lower()}",
                 f"cli={str(self.cli).lower()}",
                 f"archive={str(self.archive).lower()}",
+                f"status={str(self.status).lower()}",
             ]
         )
 
@@ -54,11 +56,11 @@ def _is_ci_relevant_path(path: str) -> bool:
     little more broadly than that list (which names only `.github/dependabot.yml`
     and `.github/workflows/**`); erring toward running is the safe direction.
     """
-    return _is_backend_path(path) or path.startswith(("pages/", "cli/", "archive/"))
+    return _is_backend_path(path) or path.startswith(("pages/", "cli/", "archive/", "status/"))
 
 
-FULL_SUITE = ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True)
-NO_SUITE = ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False)
+FULL_SUITE = ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True, status=True)
+NO_SUITE = ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False, status=False)
 
 
 def plan_changed_areas(event_name: str, changed_files: Iterable[str]) -> ChangedAreasPlan:

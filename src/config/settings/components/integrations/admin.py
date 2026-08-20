@@ -32,6 +32,10 @@ def _is_mail_delivery_operations(request):
     )
 
 
+def _is_infrastructure_status(request):
+    return request.path.startswith("/admin/status/infrastructure/")
+
+
 UNFOLD = {
     "SITE_TITLE": "I2G Admin",
     "SITE_HEADER": "Innovate To Grow",
@@ -309,6 +313,12 @@ UNFOLD = {
                         "title": "Service Credentials",
                         "link": "/admin/core/awscredentialconfig/",
                         "permission": _can("core"),
+                    },
+                    {
+                        "title": "Infrastructure Status",
+                        "link": "/admin/status/infrastructure/",
+                        "permission": _can("core"),
+                        "active": _is_infrastructure_status,
                     },
                     {"title": "Admin Log", "link": "/admin/admin/logentry/", "permission": _can("admin")},
                 ],
