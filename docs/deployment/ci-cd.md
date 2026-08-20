@@ -8,6 +8,7 @@ GitHub Actions pipelines for linting, testing, building, and deploying.
 |------|---------|---------|
 | `.github/workflows/lint.yml` | Code style checks | Push and PR |
 | `.github/workflows/ci.yml` | Full test and build pipeline | Push and PR |
+| `.github/workflows/dependabot-claude-fix.yml` | Bounded Claude repair loop for failed Dependabot PRs | Failed PR CI completion |
 | `.github/workflows/deploy-production.yml` | Unified production approval and deployment orchestration | CI success on main, or manual on main |
 | `.github/workflows/deploy-backend.yml` | Backend deployment to ECS | Reusable workflow call |
 | `.github/workflows/deploy-frontend.yml` | Frontend deployment to Amplify | Reusable workflow call |
@@ -174,6 +175,84 @@ their existing GitHub Environments.
 - All workflow runs visible at the repository's Actions tab
 - Deploy smoke tests catch basic runtime issues (readiness, CORS)
 - CloudWatch logs capture runtime errors after deployment
+
+## Dependabot CI auto-repair
+
+`dependabot-claude-fix.yml` listens for a failed `CI` workflow on a Dependabot
+pull request. It gives the failed logs and the original dependency diff to a
+pinned Claude Code CLI in non-interactive (`--safe-mode -p`) mode. If Claude
+makes a validated, bounded patch, a separate runner commits it to the same
+Dependabot branch. That push starts the normal `CI` workflow again; a successful
+run ends the loop, and a failed run can start the next attempt.
+
+The workflow never merges a pull request. Branch protection, required checks,
+review, and the normal merge process remain unchanged.
+
+### Required GitHub App configuration
+
+Create a dedicated GitHub App, install it only on this repository, and grant it
+**Repository permissions > Contents: Read and write**. Do not grant Workflows,
+Actions, Administration, Secrets, or deployment permissions. Configure these
+repository values:
+
+| Kind | Name | Purpose |
+|------|------|---------|
+| Actions secret | `ANTHROPIC_API_KEY` | Claude API authentication and billing |
+| Actions secret | `DEPENDABOT_FIX_APP_PRIVATE_KEY` | Private key for the dedicated repair App |
+| Actions variable | `DEPENDABOT_FIX_APP_ID` | Numeric GitHub App ID |
+| Actions variable | `DEPENDABOT_FIX_APP_SLUG` | App slug without the `[bot]` suffix |
+
+The workflow requests a repository-scoped, short-lived installation token with
+only `contents: write`, then GitHub revokes it at job completion. Do not use the
+workflow's built-in `GITHUB_TOKEN`: resulting runs may be suppressed or require
+manual approval, which would break the unattended repair loop.
+
+The two secrets belong in normal repository **Actions secrets**, not Dependabot
+secrets. The follow-up `workflow_run` loads its instructions from the default
+branch and can read normal Actions secrets, while the original Dependabot PR CI
+continues to run without them. If a repository ruleset restricts updates to
+`dependabot/**`, allow the dedicated repair App to make fast-forward updates to
+those branches.
+
+### Safety boundaries
+
+- Only open, non-draft PRs authored by `dependabot[bot]`, on a same-repository
+  `dependabot/*` branch with the `dependencies` label, are eligible.
+- The failed CI actor must be Dependabot or the configured repair App. Every
+  prior commit must also have an exact-SHA `CI` run initiated by its claimed
+  Dependabot or repair-App identity.
+- The required `CI Result` job must have failed, the PR must include the exact
+  failed SHA, and the branch must already contain the current default branch.
+- Any human or unknown commit disables automatic repair for that PR.
+- Claude has file read/search/edit tools only: no shell, network, GitHub token,
+  commit, push, project/user hooks, plugins, MCP servers, or repository
+  instructions.
+- The Anthropic key is absent from Claude's environment. A read-only credential
+  helper supplies it, both Read and Edit access to that directory are denied,
+  and the directory is removed immediately afterward.
+- Claude may edit only existing production source under `src/apps`, `pages/src`,
+  `cli/src`, and selected `archive/page` paths. For a Dependabot npm lock update,
+  it may also increase up to three existing `devDependencies` that are required,
+  non-optional peers of the Dependabot target in `pages/package.json`, using only
+  the minimum required version; it cannot add/remove packages, change the target,
+  or edit the lockfile itself. A secret-free trusted step regenerates the lock in
+  a digest-pinned container that can see only those two npm files—not the checkout
+  or credentials. It disables lifecycle scripts, verifies every package is an
+  integrity-pinned npm-registry tarball, preserves target entries, then reinstalls
+  the screened lock read-only in a second pristine container before accepting it.
+- `.github`, tests, snapshots, migrations, other manifests/lockfiles,
+  CI/deployment/security config, and all other original Dependabot files remain
+  protected. New/deleted/binary files, symlinks, renames, oversized patches,
+  and mode changes are rejected.
+- The repair and push happen on separate runners. The push runner verifies the
+  patch digest, re-checks the live PR and base SHA, and uses an exact
+  `force-with-lease` expectation so any concurrent head change makes it fail.
+- Each PR gets at most three reserved repair attempts, persisted as bot comments
+  even if the branch is rebased. Each Claude attempt has a USD 5 API budget plus
+  a 30-minute job timeout. A no-op consumes the attempt but does not push.
+
+When a failed Dependabot branch is behind `main`, update or rebase the branch
+first. Its fresh CI result will automatically be reconsidered.
 
 ## Adding to the pipeline
 
