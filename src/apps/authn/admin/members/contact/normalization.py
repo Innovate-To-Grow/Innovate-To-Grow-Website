@@ -6,7 +6,11 @@ from apps.event.models import EventRegistration
 
 from ....models import ContactPhone
 from ....models.contact.phone_regions import PHONE_REGION_CHOICES
-from ....services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
+from ....services.contacts.contact_phones import (
+    infer_region_from_e164,
+    national_to_e164,
+    normalize_to_national,
+)
 
 
 def compute_phone_changes():
@@ -26,10 +30,18 @@ def apply_phone_changes(phone_changes, registration_changes) -> tuple[int, int, 
     updated_registrations = 0
 
     with transaction.atomic():
+        # Delete the duplicates FIRST. ContactPhone.phone_number is globally unique, and the changes
+        # are ordered by created_at, so updating the older row to its normalized value while a newer
+        # row still holds that exact value raised IntegrityError — the blanket except in
+        # ContactPhoneAdmin._normalize_apply_view then swallowed it and the whole run rolled back, so
+        # the tool could never fix anything.
         for change in phone_changes:
             if change["is_duplicate"]:
                 ContactPhone.objects.filter(pk=change["pk"]).delete()
                 deleted_duplicates += 1
+
+        for change in phone_changes:
+            if change["is_duplicate"]:
                 continue
             if change["changed"]:
                 ContactPhone.objects.filter(pk=change["pk"]).update(
@@ -98,7 +110,16 @@ def _build_registration_phone_changes():
         "ticket_code",
     ):
         digits = re.sub(r"\D", "", registration.attendee_phone.strip())
-        new_phone = f"+{digits}" if digits else ""
+        if not digits:
+            continue
+        # Prefixing a bare "+" turned a national number into a *foreign* E.164 number: an
+        # admin-entered "2095551234" became "+2095551234", which E164_RE accepts and the SMS sender
+        # then dials as +20 (Egypt). Resolve the region first, exactly like the ContactPhone path.
+        region = infer_region_from_e164(registration.attendee_phone)
+        national = normalize_to_national(registration.attendee_phone, region)
+        if not national:
+            continue
+        new_phone = national_to_e164(national, region)
         if new_phone == registration.attendee_phone:
             continue
         changes.append(

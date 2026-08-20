@@ -114,7 +114,13 @@ class ConfirmOnSaveAddTest(TestCase):
         self.assertContains(response, "Please type")
         self.assertFalse(CMSEmbedAllowedHost.objects.filter(hostname="wrong-word.com").exists())
 
-    def test_invalid_token_clears_pending_change(self):
+    def test_invalid_token_rejects_the_save_but_keeps_the_pending_change(self):
+        """A stale tab's wrong token must not destroy the pending change it did not match.
+
+        There is one pending slot per model, so a second submission (another tab, or an autosave
+        tick) replaces it — discarding on mismatch threw away the edits the admin was about to
+        confirm, in addition to refusing this one.
+        """
         url = reverse("admin:cms_cmsembedallowedhost_add")
         self.client.post(url, {"hostname": "bad-token.com", "is_active": True})
 
@@ -127,7 +133,11 @@ class ConfirmOnSaveAddTest(TestCase):
 
         self.assertContains(response, "Invalid confirmation token")
         self.assertFalse(CMSEmbedAllowedHost.objects.filter(hostname="bad-token.com").exists())
-        self.assertNotIn(CHANGE_SESSION_KEY, self.client.session)
+        self.assertIn(CHANGE_SESSION_KEY, self.client.session)
+
+        # ...and the real token still works, so nothing was lost.
+        self.client.post(confirm_url, _confirm_change_data(self.client, "cms embed allowed host"))
+        self.assertTrue(CMSEmbedAllowedHost.objects.filter(hostname="bad-token.com").exists())
 
     def test_correct_confirmation_word_saves_object(self):
         url = reverse("admin:cms_cmsembedallowedhost_add")
