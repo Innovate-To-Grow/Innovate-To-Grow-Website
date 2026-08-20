@@ -4,6 +4,14 @@ from .create import CreateMemberService
 from .export_excel import export_members_to_excel
 from .export_vcf import export_members_to_vcard
 from .import_ import ImportResult, generate_template_excel, import_members_from_excel
+from .profile_image import (
+    MAX_UPLOAD_BYTES,
+    ProfileImageError,
+    build_profile_image_data_uri,
+    encode_profile_image,
+    split_data_uri,
+    validate_profile_image,
+)
 from .sheet_sync import (
     DEBOUNCE_SECONDS,
     GoogleCredentialConfig,
@@ -37,4 +45,11 @@ __all__ = [
     "generate_template_excel",
     "ImportResult",
     "import_members_from_excel",
+    # Profile image
+    "build_profile_image_data_uri",
+    "encode_profile_image",
+    "MAX_UPLOAD_BYTES",
+    "ProfileImageError",
+    "split_data_uri",
+    "validate_profile_image",
 ]

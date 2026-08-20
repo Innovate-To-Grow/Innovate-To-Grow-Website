@@ -12,6 +12,19 @@ from apps.authn.services.contacts.contact_phones import infer_region_from_e164, 
 
 from .types import ImportResult
 
+# Model defaults, used when a brand-new contact row is created and the sheet supplies no flag.
+_EMAIL_DEFAULTS = {"verified": False, "subscribe": True}
+_PHONE_DEFAULTS = {"verified": False, "subscribe": False}
+
+STAFF_COLUMN_IGNORED = "Staff column ignored (only an I2G Master may change staff status)"
+
+
+def _flag(parsed_value, current, default):
+    """Apply the sheet's flag, or keep what is stored when the sheet does not supply one."""
+    if parsed_value is not None:
+        return parsed_value
+    return default if current is None else current
+
 
 def bulk_update_members(
     rows: list[dict],
@@ -19,6 +32,7 @@ def bulk_update_members(
     claimed_contact_emails: set[str],
     claimed_phones: set[str],
     update_member_allowed: Callable[[object], bool] | None = None,
+    allow_privilege_fields: bool = False,
 ):
     emails = [row["primary_email"] for row in rows]
     contacts = (
@@ -32,6 +46,9 @@ def bulk_update_members(
         member = member_map.get(parsed["primary_email"].lower())
         if not member:
             result.skipped_count += 1
+            # Say why: the address may exist only as a secondary or unowned ContactEmail, which is
+            # indistinguishable from a typo without a message.
+            result.errors.append(f"Row {parsed['row']}: no member has {parsed['primary_email']} as their primary email")
             continue
         if update_member_allowed is not None and not update_member_allowed(member):
             result.skipped_count += 1
@@ -39,14 +56,28 @@ def bulk_update_members(
             continue
         try:
             with transaction.atomic():
-                update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
+                update_single_member(
+                    member,
+                    parsed,
+                    claimed_contact_emails,
+                    claimed_phones,
+                    allow_privilege_fields=allow_privilege_fields,
+                )
             result.updated_count += 1
+            if parsed["is_staff"] is not None and not allow_privilege_fields:
+                result.errors.append(f"Row {parsed['row']}: {STAFF_COLUMN_IGNORED}")
         except Exception as exc:  # noqa: BLE001
             result.skipped_count += 1
             result.errors.append(f"Row {parsed['row']}: {exc}")
 
 
-def update_single_member(member, parsed, claimed_contact_emails, claimed_phones):
+def update_single_member(
+    member,
+    parsed,
+    claimed_contact_emails,
+    claimed_phones,
+    allow_privilege_fields: bool = False,
+):
     if parsed["first_name"]:
         member.first_name = parsed["first_name"]
     if parsed["last_name"]:
@@ -59,7 +90,10 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
         member.organization = parsed["organization"]
     if parsed["is_active"] is not None:
         member.is_active = parsed["is_active"]
-    if parsed["is_staff"] is not None:
+    # ``is_staff`` is an I2G Master responsibility (see MemberAdmin.superuser_only_fields). The
+    # export writes a Staff column, so without this gate the export -> edit -> re-import round trip
+    # was a way for any authn-app admin to mint staff accounts or lock the superuser out.
+    if parsed["is_staff"] is not None and allow_privilege_fields:
         member.is_staff = parsed["is_staff"]
     member.save()
 
@@ -69,8 +103,8 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
     if email_key not in claimed_contact_emails:
         existing = ContactEmail.objects.filter(member=member, email_address__iexact=primary_email).first()
         if existing:
-            existing.verified = parsed["primary_verified"]
-            existing.subscribe = parsed["primary_subscribed"]
+            existing.verified = _flag(parsed["primary_verified"], existing.verified, _EMAIL_DEFAULTS["verified"])
+            existing.subscribe = _flag(parsed["primary_subscribed"], existing.subscribe, _EMAIL_DEFAULTS["subscribe"])
             existing.email_type = "primary"
             existing.save(update_fields=["verified", "subscribe", "email_type", "updated_at"])
         else:
@@ -78,16 +112,17 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
                 member=member,
                 email_address=primary_email,
                 email_type="primary",
-                verified=parsed["primary_verified"],
-                subscribe=parsed["primary_subscribed"],
+                verified=_flag(parsed["primary_verified"], None, _EMAIL_DEFAULTS["verified"]),
+                subscribe=_flag(parsed["primary_subscribed"], None, _EMAIL_DEFAULTS["subscribe"]),
             )
         claimed_contact_emails.add(email_key)
     else:
-        ContactEmail.objects.filter(member=member, email_address__iexact=primary_email).update(
-            email_type="primary",
-            verified=parsed["primary_verified"],
-            subscribe=parsed["primary_subscribed"],
-        )
+        current = ContactEmail.objects.filter(member=member, email_address__iexact=primary_email).first()
+        if current is not None:
+            current.email_type = "primary"
+            current.verified = _flag(parsed["primary_verified"], current.verified, _EMAIL_DEFAULTS["verified"])
+            current.subscribe = _flag(parsed["primary_subscribed"], current.subscribe, _EMAIL_DEFAULTS["subscribe"])
+            current.save(update_fields=["email_type", "verified", "subscribe", "updated_at"])
 
     if parsed["secondary_email"]:
         secondary_key = parsed["secondary_email"].lower()
@@ -100,19 +135,25 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
             ).first()
             if existing_sec:
                 existing_sec.email_type = "secondary"
-                existing_sec.verified = parsed["secondary_verified"]
-                existing_sec.subscribe = parsed["secondary_subscribed"]
+                existing_sec.verified = _flag(
+                    parsed["secondary_verified"], existing_sec.verified, _EMAIL_DEFAULTS["verified"]
+                )
+                existing_sec.subscribe = _flag(
+                    parsed["secondary_subscribed"], existing_sec.subscribe, _EMAIL_DEFAULTS["subscribe"]
+                )
                 existing_sec.save(update_fields=["email_type", "verified", "subscribe", "updated_at"])
             else:
                 ContactEmail.objects.create(
                     member=member,
                     email_address=parsed["secondary_email"],
                     email_type="secondary",
-                    verified=parsed["secondary_verified"],
-                    subscribe=parsed["secondary_subscribed"],
+                    verified=_flag(parsed["secondary_verified"], None, _EMAIL_DEFAULTS["verified"]),
+                    subscribe=_flag(parsed["secondary_subscribed"], None, _EMAIL_DEFAULTS["subscribe"]),
                 )
             claimed_contact_emails.add(secondary_key)
-    else:
+    elif parsed.get("has_secondary_email_column"):
+        # Blank cell in a column the sheet does have = "remove it". A sheet without the column at all
+        # must not delete anything; deletes here are hard and unrecoverable.
         member.contact_emails.filter(email_type="secondary").delete()
 
     if parsed["phone_number"]:
@@ -123,17 +164,21 @@ def update_single_member(member, parsed, claimed_contact_emails, claimed_phones)
             if existing_phone:
                 existing_phone.phone_number = national
                 existing_phone.region = region
-                existing_phone.subscribe = parsed["phone_subscribed"]
-                existing_phone.verified = parsed["phone_verified"]
+                existing_phone.subscribe = _flag(
+                    parsed["phone_subscribed"], existing_phone.subscribe, _PHONE_DEFAULTS["subscribe"]
+                )
+                existing_phone.verified = _flag(
+                    parsed["phone_verified"], existing_phone.verified, _PHONE_DEFAULTS["verified"]
+                )
                 existing_phone.save()
             else:
                 ContactPhone.objects.create(
                     member=member,
                     phone_number=national,
                     region=region,
-                    subscribe=parsed["phone_subscribed"],
-                    verified=parsed["phone_verified"],
+                    subscribe=_flag(parsed["phone_subscribed"], None, _PHONE_DEFAULTS["subscribe"]),
+                    verified=_flag(parsed["phone_verified"], None, _PHONE_DEFAULTS["verified"]),
                 )
             claimed_phones.add(national)
-    else:
+    elif parsed.get("has_phone_column"):
         member.contact_phones.all().delete()

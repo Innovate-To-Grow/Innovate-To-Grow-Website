@@ -7,10 +7,12 @@ from django.apps import apps as django_apps
 from django.contrib import admin
 from django.contrib.auth.forms import SetPasswordMixin
 from django.core.exceptions import ValidationError
+from django.urls import NoReverseMatch, reverse
 from django.utils.translation import gettext_lazy as _
 from unfold.forms import UserChangeForm, UserCreationForm
 
 from ...models import Member
+from ...services.members.profile_image import ALLOWED_CONTENT_TYPES, ProfileImageError, encode_profile_image
 
 
 def admin_app_choices():
@@ -32,8 +34,16 @@ def admin_app_choices():
 
 
 class Base64ImageWidget(forms.ClearableFileInput):
-    """File upload widget that stores the image as a base64-encoded string in a TextField."""
+    """File upload widget for the base64 ``data:`` URI stored in ``Member.profile_image``.
 
+    The preview is rendered from ``preview_url`` (an admin view that streams the decoded bytes), never
+    by inlining the stored string. Inlining it put the whole value — up to ~6.8 MB — into one
+    ``<img src>`` in the middle of the "Personal Info" fieldset, so on a slow or truncated response
+    everything after it (the remaining fieldsets, both contact inlines and the only Save button) never
+    arrived and the page looked read-only. The rendered markup is now a constant size for every member.
+    """
+
+    template_name = "admin/authn/member/widgets/base64_image.html"
     # i2g-admin-file-input: see admin/css/file-input.css (WebKit file button styling).
     _file_classes = "i2g-admin-file-input block w-full text-sm text-font-default-light dark:text-font-default-dark"
 
@@ -42,45 +52,74 @@ class Base64ImageWidget(forms.ClearableFileInput):
         if attrs:
             defaults.update(attrs)
         super().__init__(attrs=defaults)
+        # Set per bound form by MemberChangeForm.__init__; the widget is deep-copied with the field,
+        # so this stays request-scoped.
+        self.preview_url = ""
 
     def value_from_datadict(self, data, files, name):
+        """Return the upload, ``""`` to clear, or ``None`` for "keep the current image".
+
+        The upload object is returned as-is rather than base64-encoded here: encoding needs to raise
+        ``ValidationError`` (see ``Base64ImageField.to_python``), and reading the stream in a widget
+        breaks any later reader. ``ConfirmOnSaveMixin`` caches ``request.FILES`` *after* the form has
+        validated, so a widget that consumed the stream made it cache zero bytes and the confirmed
+        save then overwrote the member's real image with an empty ``data:`` URI.
+        """
         upload = files.get(name)
         if upload:
-            import base64
-
-            content_type = getattr(upload, "content_type", "image/png") or "image/png"
-            b64 = base64.b64encode(upload.read()).decode("utf-8")
-            return f"data:{content_type};base64,{b64}"
-        # Check if the clear checkbox was checked
-        checkbox_name = self.clear_checkbox_name(name)
-        if checkbox_name in data:
+            return upload
+        if self.clear_checkbox_name(name) in data:
             return ""
         return None  # No change
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def format_value(self, value):
-        # Return None so the default ClearableFileInput doesn't try to treat
-        # the base64 string as a FieldFile object.
+        # Never let the stored base64 string reach the template context.
         return None
 
-    def render(self, name, value, attrs=None, renderer=None):
-        from django.utils.html import format_html
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        has_image = bool(value) and isinstance(value, str)
+        context["widget"].update(
+            {
+                "value": None,
+                "is_initial": has_image,
+                "preview_url": self.preview_url if has_image else "",
+            }
+        )
+        return context
 
-        widget_html = super().render(name, None, attrs, renderer)
-        # If there's existing base64 data, show a thumbnail preview above the upload control
-        if value and isinstance(value, str) and len(value) > 50:
-            src = value if value.startswith("data:") else f"data:image/png;base64,{value}"
-            preview = format_html(
-                '<div class="mb-3 flex items-center gap-4">'
-                '<img src="{}" alt="Profile preview"'
-                ' class="rounded-default border border-base-200 dark:border-base-700 object-cover"'
-                ' style="width:80px;height:80px" />'
-                '<span class="text-xs text-font-subtle-light dark:text-font-subtle-dark">Current image</span>'
-                "</div>",
-                src,
-            )
-            return format_html("{}{}", preview, widget_html)
-        return widget_html
+
+class Base64ImageField(forms.CharField):
+    """Form field for the base64 ``data:`` URI stored in ``Member.profile_image``.
+
+    ``profile_image`` is a ``TextField``, so ``fields = "__all__"`` would give it a plain ``CharField``
+    whose ``has_changed`` coerces the widget's "no change" ``None`` to ``""`` — making
+    ``"data:image/png;base64,…" != ""`` true on every save. Every member save therefore logged
+    "Changed Profile Image" and produced a phantom confirm-on-save diff row. ``FileField.has_changed``
+    has the rule this needs (``data is not None``); mirror it here, and do the validation/encoding in
+    ``to_python`` where a ``ValidationError`` can reach the user.
+    """
+
+    widget = Base64ImageWidget
+
+    def to_python(self, value):
+        if value is None or value == "":
+            return value
+        if hasattr(value, "read"):
+            try:
+                return encode_profile_image(value)
+            except ProfileImageError as exc:
+                raise ValidationError(str(exc), code="invalid_image") from exc
+        # Already-encoded string (programmatic use and existing tests).
+        return super().to_python(value)
+
+    def has_changed(self, initial, data):
+        if data is None:
+            return False  # No file chosen and the clear checkbox was not ticked.
+        if data == "":
+            return bool(initial)  # Clearing only changes anything if there was an image.
+        return True  # A file was chosen.
 
 
 class MemberCreationForm(UserCreationForm):
@@ -145,12 +184,18 @@ class MemberChangeForm(UserChangeForm):
         help_text=_("Apps this member may manage. Superusers (I2G Master) ignore this list."),
     )
 
+    # Declared explicitly (rather than via ``Meta.widgets``) so the field class — and therefore
+    # ``has_changed`` and the upload validation — applies. See Base64ImageField.
+    profile_image = Base64ImageField(
+        required=False,
+        label=_("Profile Image"),
+        help_text=_("JPEG, PNG, GIF or WebP, 5 MB maximum. Larger images are scaled down to 512px."),
+        widget=Base64ImageWidget(attrs={"accept": ",".join(ALLOWED_CONTENT_TYPES)}),
+    )
+
     class Meta(UserChangeForm.Meta):
         model = Member
         fields = "__all__"
-        widgets = {
-            "profile_image": Base64ImageWidget(attrs={"accept": "image/png,image/jpeg"}),
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -159,13 +204,21 @@ class MemberChangeForm(UserChangeForm):
         # choices when the field is actually editable on this form.
         if "admin_apps" in self.fields:
             self.fields["admin_apps"].choices = admin_app_choices()
+        if "profile_image" in self.fields and self.instance.pk and self.instance.profile_image:
+            # The widget renders an <img> pointing here instead of inlining the stored base64.
+            try:
+                self.fields["profile_image"].widget.preview_url = reverse(
+                    "admin:authn_member_profile_image", args=[self.instance.pk]
+                )
+            except NoReverseMatch:  # pragma: no cover - admin always mounted in this project
+                self.fields["profile_image"].widget.preview_url = ""
 
     def clean_profile_image(self):
+        """Keep the stored image unless the admin uploaded a new one or ticked "remove"."""
         value = self.cleaned_data.get("profile_image")
-        clear_name = self.fields["profile_image"].widget.clear_checkbox_name(self.add_prefix("profile_image"))
-        if clear_name in self.data:
+        if value == "":
             return ""
-        if value in (None, "") and self.instance.pk:
+        if value is None and self.instance.pk:
             return self.instance.profile_image
         return value
 
