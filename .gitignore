@@ -209,6 +209,9 @@ pages/test-results/
 # Tools & Misc
 # =====================================
 
+# Codex local configuration
+/.codex/
+
 # Cursor AI
 .cursorignore
 .cursorindexingignore

@@ -130,6 +130,18 @@ def clean_phone(value) -> str | None:
     return f"+{digits_only}"
 
 
+def optional_flag(row_data: dict, key: str) -> bool | None:
+    """Return the boolean in ``key``, or None when the sheet does not supply one.
+
+    ``parse_boolean(None)`` is ``False``, so reading these columns unconditionally turned "this sheet
+    has no Primary Verified column" into "set verified=False" — which de-verified the primary email of
+    every matched member and locked them out of every login path. Only ``is_active``/``is_staff`` got
+    this guard originally; every flag needs it.
+    """
+    value = row_data.get(key)
+    return parse_boolean(value) if value is not None else None
+
+
 def parse_row(row_num: int, row_data: dict) -> dict:
     primary_email = str(row_data.get("primary_email", "")).strip() if row_data.get("primary_email") else None
     secondary_email = str(row_data.get("secondary_email", "")).strip() if row_data.get("secondary_email") else None
@@ -141,15 +153,20 @@ def parse_row(row_num: int, row_data: dict) -> dict:
         "middle_name": str(row_data.get("middle_name", "")).strip() if row_data.get("middle_name") else "",
         "title": str(row_data.get("title", "")).strip() if row_data.get("title") else "",
         "organization": str(row_data.get("organization", "")).strip() if row_data.get("organization") else "",
-        "is_active": parse_boolean(row_data.get("is_active")) if row_data.get("is_active") is not None else None,
-        "is_staff": parse_boolean(row_data.get("is_staff")) if row_data.get("is_staff") is not None else None,
+        "is_active": optional_flag(row_data, "is_active"),
+        "is_staff": optional_flag(row_data, "is_staff"),
         "date_joined": parse_date(row_data.get("when_started")),
-        "primary_verified": parse_boolean(row_data.get("primary_verified")),
-        "primary_subscribed": parse_boolean(row_data.get("primary_subscribed")),
+        "primary_verified": optional_flag(row_data, "primary_verified"),
+        "primary_subscribed": optional_flag(row_data, "primary_subscribed"),
         "secondary_email": secondary_email,
-        "secondary_verified": parse_boolean(row_data.get("secondary_verified")),
-        "secondary_subscribed": parse_boolean(row_data.get("secondary_subscribed")),
+        "secondary_verified": optional_flag(row_data, "secondary_verified"),
+        "secondary_subscribed": optional_flag(row_data, "secondary_subscribed"),
         "phone_number": clean_phone(row_data.get("phone_number")),
-        "phone_subscribed": parse_boolean(row_data.get("phone_subscribed")),
-        "phone_verified": parse_boolean(row_data.get("phone_verified")),
+        "phone_subscribed": optional_flag(row_data, "phone_subscribed"),
+        "phone_verified": optional_flag(row_data, "phone_verified"),
+        # Header presence, not cell content: a column that is present but blank still means "clear
+        # this", while a column the sheet omits entirely must leave the stored records alone. Without
+        # the distinction a partial-update sheet hard-deleted every phone and secondary email.
+        "has_secondary_email_column": "secondary_email" in row_data,
+        "has_phone_column": "phone_number" in row_data,
     }

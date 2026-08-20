@@ -151,65 +151,17 @@ const stripDisallowedIframes = (
   return template.innerHTML;
 };
 
-const isYouTubeEmbed = (url: URL) => {
-  const hostname = url.hostname.toLowerCase();
-  return (
-    (hostname === "youtube.com" ||
-      hostname.endsWith(".youtube.com") ||
-      hostname === "youtube-nocookie.com" ||
-      hostname.endsWith(".youtube-nocookie.com")) &&
-    url.pathname.startsWith("/embed/")
-  );
-};
-
 const prepareAllowedIframes = (sanitizedHtml: string) => {
   const template = document.createElement("template");
   template.innerHTML = sanitizedHtml;
   for (const iframe of template.content.querySelectorAll("iframe")) {
-    const src = iframe.getAttribute("src");
-    if (!src) continue;
-    const url = new URL(src);
-    if (!isYouTubeEmbed(url)) {
-      iframe.setAttribute("loading", "lazy");
-      continue;
-    }
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "safe-html-youtube-facade";
-    button.setAttribute("data-embed-src", src);
-    button.setAttribute(
-      "aria-label",
-      `Play ${iframe.title || "YouTube video"}`,
-    );
-    for (const attribute of ["allow", "allowfullscreen", "title"]) {
-      const value = iframe.getAttribute(attribute);
-      if (value !== null) button.setAttribute(`data-embed-${attribute}`, value);
-    }
-    const play = document.createElement("span");
-    play.className = "safe-html-youtube-play";
-    play.setAttribute("aria-hidden", "true");
-    button.append(play);
-    iframe.replaceWith(button);
+    // Keep the original element in the DOM so CMS rules such as
+    // `.video-container iframe` apply before the embed loads. Replacing the
+    // element with a button breaks responsive wrappers that reserve their
+    // aspect ratio with padding and absolutely position the iframe.
+    iframe.setAttribute("loading", "lazy");
   }
   return template.innerHTML;
-};
-
-const activateYouTubeFacade = (button: HTMLButtonElement) => {
-  const src = button.dataset.embedSrc;
-  if (!src) return;
-  const iframe = document.createElement("iframe");
-  iframe.src = src;
-  iframe.loading = "lazy";
-  const preservedAttributes = {
-    allow: button.dataset.embedAllow,
-    allowfullscreen: button.dataset.embedAllowfullscreen,
-    title: button.dataset.embedTitle,
-  };
-  for (const [attribute, value] of Object.entries(preservedAttributes)) {
-    if (value !== undefined) iframe.setAttribute(attribute, value);
-  }
-  button.replaceWith(iframe);
 };
 
 interface SafeHtmlProps {
@@ -238,9 +190,9 @@ export const SafeHtml = memo(({html, className}: SafeHtmlProps) => {
 
   const sanitizedHtml = useMemo(() => {
     const allowedHtml = stripDisallowedIframes(
-        DOMPurify.sanitize(html, SANITIZE_OPTIONS),
-        embedHosts.ready ? embedHosts.hosts : [],
-  );
+      DOMPurify.sanitize(html, SANITIZE_OPTIONS),
+      embedHosts.ready ? embedHosts.hosts : [],
+    );
     return prepareAllowedIframes(allowedHtml);
   }, [embedHosts, html]);
 
@@ -251,37 +203,6 @@ export const SafeHtml = memo(({html, className}: SafeHtmlProps) => {
       ref.current.innerHTML = sanitizedHtml;
     }
   }, [sanitizedHtml]);
-
-  useEffect(() => {
-    const container = ref.current;
-    if (!container) return;
-    const activate = (target: EventTarget | null) => {
-      const button =
-        target instanceof Element
-          ? target.closest<HTMLButtonElement>("button.safe-html-youtube-facade")
-          : null;
-      if (button && container.contains(button)) activateYouTubeFacade(button);
-    };
-    const handleClick = (event: MouseEvent) => activate(event.target);
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const button =
-        event.target instanceof Element
-          ? event.target.closest<HTMLButtonElement>(
-              "button.safe-html-youtube-facade",
-            )
-          : null;
-      if (!button || !container.contains(button)) return;
-      event.preventDefault();
-      activateYouTubeFacade(button);
-    };
-    container.addEventListener("click", handleClick);
-    container.addEventListener("keydown", handleKeyDown);
-    return () => {
-      container.removeEventListener("click", handleClick);
-      container.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   return <div ref={ref} className={className} />;
 });

@@ -18,7 +18,15 @@
     function shouldSkipField(field) {
         if (!field || field.dataset.i2gMdSkip === "1") return true;
         if (field.closest("[data-i2g-md-skip]")) return true;
-        if (field.closest(".i2g-md-field--enhanced")) return true;
+        // Never touch the hidden inline-formset template. Unfold clones it and then re-writes the
+        // row's innerHTML to substitute the form index, which preserves attributes but drops the
+        // md-* elements' non-reflecting Lit properties and every listener — leaving a new row whose
+        // native input is hidden (opacity:0; pointer-events:none) and whose Material control is
+        // decorative, so anything typed into an added Contact Email/Phone row was silently discarded.
+        if (field.closest(".empty-form")) return true;
+        // Keyed off the native field, not the wrapper class: a cloned row carries the wrapper's
+        // "--enhanced" class as an attribute but has no live wiring, so it must be re-enhanced.
+        if (field.dataset.i2gMdWired === "1") return true;
         if (field.classList.contains("select2-hidden-accessible")) return true;
         if (field.classList.contains("admin-autocomplete")) return true;
         if (field.classList.contains("vForeignKeyRawIdAdminField")) return true;
@@ -37,7 +45,21 @@
 
     function ensureWrapper(field) {
         if (field.parentElement && field.parentElement.matches("[data-i2g-md-field]")) {
-            return field.parentElement;
+            var existing = field.parentElement;
+            // "--enhanced" on a field that is not wired means this wrapper arrived via
+            // cloneNode/innerHTML (an added inline row): it carries the markup but none of the
+            // wiring, so drop the dead md-* elements and let this pass build live ones. A wrapper
+            // without the class is pre-rendered markup (admin/material_password_widget.html) and is
+            // left intact so its template attributes survive.
+            if (existing.classList.contains("i2g-md-field--enhanced")) {
+                existing.classList.remove("i2g-md-field--enhanced", "i2g-md-toggle");
+                existing
+                    .querySelectorAll(".i2g-md-field__component, .i2g-md-toggle__component")
+                    .forEach(function (stale) {
+                        stale.remove();
+                    });
+            }
+            return existing;
         }
 
         var wrapper = document.createElement("span");
@@ -50,6 +72,7 @@
 
     function hideNativeField(field) {
         field.classList.add("i2g-md-field__native");
+        field.dataset.i2gMdWired = "1";
         field.tabIndex = -1;
         if (field.required) {
             field.dataset.i2gMdRequired = "1";
@@ -114,7 +137,6 @@
         var wrapper = ensureWrapper(nativeField);
         var materialField = document.createElement("md-outlined-select");
         materialField.className = "i2g-md-field__component";
-        materialField.value = nativeField.value || "";
         materialField.disabled = nativeField.disabled;
         materialField.required = nativeField.required;
         materialField.label = getFieldLabel(nativeField);
@@ -132,8 +154,22 @@
             materialField.appendChild(materialOption);
         });
 
+        // Assign .value only once the options exist and the element is connected — md-outlined-select
+        // resolves a value against its own options, so setting it on an empty, detached element left
+        // the control reporting "" and the submit handler then wrote that back over the native
+        // <select>, blanking email_type / region.
+        wrapper.appendChild(materialField);
+        materialField.value = nativeField.value || "";
+
         function syncToNative() {
-            nativeField.value = materialField.value || "";
+            var next = materialField.value || "";
+            // Only copy a value the native <select> actually offers; otherwise a Material control
+            // that failed to upgrade would set selectedIndex = -1 and submit an empty value.
+            var offered = Array.from(nativeField.options).some(function (option) {
+                return option.value === next;
+            });
+            if (!offered) return;
+            nativeField.value = next;
             dispatchNativeEvent(nativeField, "change");
         }
 
@@ -142,7 +178,6 @@
             materialField.value = nativeField.value || "";
         });
         syncFormSubmit(nativeField, syncToNative);
-        wrapper.appendChild(materialField);
         hideNativeField(nativeField);
         wrapper.classList.add("i2g-md-field--enhanced");
     }
@@ -216,12 +251,33 @@
         }
     }
 
+    function enhanceFieldSafely(field) {
+        // Isolate failures: without this, one throwing field aborted the whole forEach and left the
+        // fields already processed hidden behind a Material control while later fields stayed raw.
+        try {
+            enhanceField(field);
+        } catch (error) {
+            if (window.console && console.warn) {
+                console.warn("i2g admin: could not enhance field", field && field.name, error);
+            }
+        }
+    }
+
     function enhanceAllFields() {
-        document.querySelectorAll("#main input, #main textarea, #main select").forEach(enhanceField);
+        document.querySelectorAll("#main input, #main textarea, #main select").forEach(enhanceFieldSafely);
         document.querySelectorAll("[data-i2g-md-field]").forEach(function (wrapper) {
             var field = wrapper.querySelector("input, textarea, select");
-            if (field) enhanceField(field);
+            if (field) enhanceFieldSafely(field);
         });
+    }
+
+    function watchForNewRows() {
+        // Unfold emits formsetGroup:added when "Add another" clones an inline row, and htmx settles
+        // paginated inline swaps. Both replace markup without any wiring, so re-run enhancement;
+        // shouldSkipField's data-i2g-md-wired check keeps it idempotent for untouched fields.
+        document.addEventListener("formsetGroup:added", enhanceAllFields);
+        document.addEventListener("formset:added", enhanceAllFields);
+        document.body.addEventListener("htmx:afterSettle", enhanceAllFields);
     }
 
     function loadMaterialWeb() {
@@ -236,9 +292,16 @@
                     customElements.whenDefined("md-radio"),
                 ]);
             })
-            .then(enhanceAllFields)
-            .catch(function () {
-                // Keep native Django/Unfold controls visible as a safe fallback.
+            .then(function () {
+                enhanceAllFields();
+                watchForNewRows();
+            })
+            .catch(function (error) {
+                // Keep native Django/Unfold controls visible as a safe fallback, but say so — a
+                // silent catch made a blocked or slow CDN indistinguishable from a working page.
+                if (window.console && console.warn) {
+                    console.warn("i2g admin: Material Web components unavailable; using native controls.", error);
+                }
             });
     }
 

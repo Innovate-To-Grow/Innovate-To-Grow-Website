@@ -3,14 +3,20 @@
 {% block object-tools-items %}
     {{ block.super }}
     {% if show_impersonate and original %}
+        {# POST, not a link: minting an impersonation token is a state change and must be CSRF-checked. #}
         <li class="border border-base-200 select-none max-lg:-mt-px max-lg:first:rounded-t-default max-lg:last:rounded-b-default min-lg:-ml-px min-lg:first:rounded-l-default min-lg:last:rounded-r-default hover:text-primary-600 dark:border-base-700 dark:hover:text-primary-500">
-            <a href="{% url 'admin:authn_member_impersonate' original.pk %}"
-               target="_blank"
-               title="Login as this member on the frontend"
-               class="cursor-pointer flex grow items-center gap-2 px-3 py-2 text-left whitespace-nowrap">
-                <span class="material-symbols-outlined">login</span>
-                Login as Member
-            </a>
+            <form method="post"
+                  action="{% url 'admin:authn_member_impersonate' original.pk %}"
+                  target="_blank"
+                  class="contents">
+                {% csrf_token %}
+                <button type="submit"
+                        title="Login as this member on the frontend"
+                        class="cursor-pointer flex grow items-center gap-2 px-3 py-2 text-left whitespace-nowrap">
+                    <span class="material-symbols-outlined">login</span>
+                    Login as Member
+                </button>
+            </form>
         </li>
     {% endif %}
 {% endblock %}

@@ -14,9 +14,37 @@ from apps.core.admin.mixins.confirm_on_save_utils import (
     compute_change_diff,
     compute_delete_diff,
     deserialize_post_data,
+    extract_sensitive_post_data,
     format_field_value,
+    is_sensitive_field,
     serialize_post_data,
 )
+
+
+class SensitiveFieldTest(TestCase):
+    """``csrfmiddlewaretoken`` matches the ``token`` branch of SENSITIVE_FIELD_RE, but it is in
+    every admin POST and already lives in the session — treating it as sensitive pushed every
+    confirmation's payload into the short-TTL secrets cache, so even plain text edits expired."""
+
+    def test_csrf_token_is_not_sensitive(self):
+        self.assertFalse(is_sensitive_field("csrfmiddlewaretoken"))
+
+    def test_serialize_post_data_keeps_csrf_token(self):
+        qd = QueryDict(mutable=True)
+        qd["csrfmiddlewaretoken"] = "csrf-value"
+        qd["name"] = "Hello"
+
+        self.assertEqual(
+            serialize_post_data(qd),
+            {"csrfmiddlewaretoken": ["csrf-value"], "name": ["Hello"]},
+        )
+
+    def test_extract_sensitive_post_data_ignores_csrf_token(self):
+        qd = QueryDict(mutable=True)
+        qd["csrfmiddlewaretoken"] = "csrf-value"
+        qd["password"] = "hunter2"
+
+        self.assertEqual(extract_sensitive_post_data(qd), {"password": ["hunter2"]})
 
 
 class SerializePostDataTest(TestCase):

@@ -61,6 +61,45 @@ Uses SQLite (dev settings) for fast test execution.
 - `npm run build` (TypeScript compilation + Vite build)
 - Validates the production build succeeds
 
+### Stage 7: End-to-end (Playwright)
+
+- Runs all 10 projects declared in `pages/playwright.config.ts` (3 desktop
+  engines + 7 mobile/tablet devices), each as its own matrix leg
+- Gates `CI Result` through the `E2E Required Result` aggregator, so a failing
+  device leg blocks the merge and stops the deploy chain
+- `E2E Report` (the merged HTML/JUnit report) stays `continue-on-error`: a flaky
+  artifact download must not be able to block a merge
+
+## PR / main parity
+
+**A pull request runs the same job set as the push to main that follows it.**
+`scripts/ci/plan_changed_areas.py` returns the full suite for any PR touching a
+path listed in `on.push.paths`; `scripts/ci/plan_e2e_tests.py` and
+`scripts/ci/plan_django_tests.py` return the full device matrix and all eight app
+suites for every event. A green PR check therefore implies a green main run for
+the same tree.
+
+Only two jobs are legitimately push-only, because they publish deploy artifacts
+and need repository credentials:
+
+| Job | Pre-merge proxy |
+|-----|-----------------|
+| `Backend Image Publish` (pushes `itg-backend:<sha>` to ECR) | `Backend Docker Build and Scan` builds the same `context: src` on every PR |
+| `Frontend Production Build Artifact` | `Frontend CI Build Artifact`, plus a warn-on-PR / fail-on-push `VITE_API_BASE_URL` presence check |
+
+CI used to scope PR jobs by diff. PR #433 was backend-only, so the whole E2E
+matrix was skipped on the PR and ran for the first time after the merge, where
+the `iphone14` and `ipad` legs failed (run 32107167026). That run still reported
+`CI Result` green and triggered `Deploy Production`, because `e2e` was
+`continue-on-error: true` and the old `e2e-informational-result` was not in
+`ci-result`'s needs.
+
+Closing that hole took both halves: PRs now run the same matrix, **and** a
+failing leg fails `CI Result` through `E2E Required Result`. Reverting either
+half reopens it. Don't reintroduce diff-scoping —
+`test_pull_request_and_push_agree_whenever_ci_runs` in
+`scripts/ci/tests/test_plan_changed_areas.py` guards the parity half.
+
 ## Deploy pipelines
 
 `Deploy Production` is the only automatic production entry point. After a

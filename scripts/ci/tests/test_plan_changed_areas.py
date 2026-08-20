@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.ci.plan_changed_areas import ChangedAreasPlan, plan_changed_areas
+from scripts.ci.plan_changed_areas import FULL_SUITE, NO_SUITE, ChangedAreasPlan, plan_changed_areas
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 PLANNER = REPOSITORY_ROOT / "scripts" / "ci" / "plan_changed_areas.py"
@@ -19,31 +19,41 @@ class PlanChangedAreasTests(unittest.TestCase):
                 plan = plan_changed_areas(event_name, ["docs/architecture.md"])
                 self.assertEqual(plan, ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True))
 
-    def test_pull_request_scopes_each_area(self) -> None:
-        cases = {
-            "src/apps/authn/models.py": ChangedAreasPlan(True, False, False, False),
-            "pages/src/App.tsx": ChangedAreasPlan(False, True, False, False),
-            "cli/src/i2g_admin/app.py": ChangedAreasPlan(False, False, True, False),
-            "archive/page/app.py": ChangedAreasPlan(False, False, False, True),
-            "docs/architecture.md": ChangedAreasPlan(False, False, False, False),
-        }
-        for changed_file, expected in cases.items():
-            with self.subTest(changed_file=changed_file):
-                self.assertEqual(plan_changed_areas("pull_request", [changed_file]), expected)
-
-    def test_backend_shared_paths_preserve_existing_semantics(self) -> None:
-        changed_files = [
+    def test_pull_request_touching_any_ci_area_runs_the_full_suite(self) -> None:
+        for changed_file in (
+            "src/apps/authn/models.py",
+            "pages/src/App.tsx",
+            "cli/src/i2g_admin/app.py",
+            "archive/page/app.py",
             "aws/task-definition.json",
             "scripts/ci/validate_tool_versions.py",
+            ".github/workflows/ci.yml",
             "pyproject.toml",
             ".pre-commit-config.yaml",
             ".bandit-baseline.json",
-        ]
-        for changed_file in changed_files:
+        ):
             with self.subTest(changed_file=changed_file):
+                self.assertEqual(plan_changed_areas("pull_request", [changed_file]), FULL_SUITE)
+
+    def test_pr_only_paths_run_nothing(self) -> None:
+        for changed_file in (".claude/settings.json", "docs/architecture.md", "README.md", "uv.lock"):
+            with self.subTest(changed_file=changed_file):
+                self.assertEqual(plan_changed_areas("pull_request", [changed_file]), NO_SUITE)
+
+    def test_pull_request_and_push_agree_whenever_ci_runs(self) -> None:
+        # The parity invariant: if merging this diff would start a CI run, the PR
+        # must have run the same job set. Regression guard for the green-PR /
+        # red-main class of failure (run 32107167026).
+        for changed_files in (
+            ["src/apps/authn/views/account/profile.py"],
+            ["pages/src/App.tsx"],
+            ["archive/page/app.py"],
+            ["cli/pyproject.toml"],
+        ):
+            with self.subTest(changed_files=changed_files):
                 self.assertEqual(
-                    plan_changed_areas("pull_request", [changed_file]),
-                    ChangedAreasPlan(backend=True, frontend=False, cli=False, archive=False),
+                    plan_changed_areas("pull_request", changed_files),
+                    plan_changed_areas("push", changed_files),
                 )
 
     def test_github_change_runs_all_four_areas(self) -> None:
