@@ -1,13 +1,114 @@
+import asyncio
 import json
+from io import BytesIO
 from unittest.mock import patch
 
+from asgiref.sync import async_to_sync
+from django.core.handlers.asgi import ASGIRequest
 from django.urls import reverse
 
+from apps.system_intelligence.admin.stream import _STREAM_HEARTBEAT, _with_heartbeats, build_stream_response
 from apps.system_intelligence.models import ChatMessage, SystemIntelligenceActionRequest
 from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
 
 
 class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
+    def test_async_stream_sends_heartbeats_and_cancels_the_provider(self):
+        async def consume():
+            release_second_frame = asyncio.Event()
+            provider_closed = asyncio.Event()
+
+            async def source():
+                try:
+                    yield "event: start\ndata: {}\n\n"
+                    await release_second_frame.wait()
+                    yield "event: done\ndata: {}\n\n"
+                finally:
+                    provider_closed.set()
+
+            stream = _with_heartbeats(source(), heartbeat_seconds=0.01)
+            self.assertEqual(await anext(stream), "event: start\ndata: {}\n\n")
+            self.assertIs(await anext(stream), _STREAM_HEARTBEAT)
+            await stream.aclose()
+            await asyncio.wait_for(provider_closed.wait(), timeout=0.1)
+
+        async_to_sync(consume)()
+
+    def test_async_stream_does_not_mask_a_provider_timeout_as_a_heartbeat(self):
+        async def consume():
+            async def source():
+                raise TimeoutError("provider timed out")
+                yield  # pragma: no cover - makes this an async generator
+
+            stream = _with_heartbeats(source(), heartbeat_seconds=0.01)
+            with self.assertRaisesRegex(TimeoutError, "provider timed out"):
+                await anext(stream)
+
+        async_to_sync(consume)()
+
+    def test_asgi_request_receives_an_async_streaming_response(self):
+        request = ASGIRequest(
+            {
+                "type": "http",
+                "http_version": "1.1",
+                "method": "POST",
+                "path": "/admin/system-intelligence/send/",
+                "raw_path": b"/admin/system-intelligence/send/",
+                "query_string": b"",
+                "headers": [],
+                "server": ("testserver", 80),
+                "client": ("127.0.0.1", 50000),
+                "scheme": "http",
+            },
+            BytesIO(),
+        )
+        request.user = self.admin_user
+
+        response = build_stream_response(request, self.conversation)
+
+        self.assertTrue(response.is_async)
+
+    def test_asgi_response_streams_native_agent_events_and_persists_the_assistant(self):
+        ChatMessage.objects.create(conversation=self.conversation, role="user", content="Hello")
+        request = ASGIRequest(
+            {
+                "type": "http",
+                "http_version": "1.1",
+                "method": "POST",
+                "path": "/admin/system-intelligence/send/",
+                "raw_path": b"/admin/system-intelligence/send/",
+                "query_string": b"",
+                "headers": [],
+                "server": ("testserver", 80),
+                "client": ("127.0.0.1", 50000),
+                "scheme": "http",
+            },
+            BytesIO(),
+        )
+        request.user = self.admin_user
+
+        async def fake_stream(*_args, **_kwargs):
+            yield {"type": "text", "chunk": "Hello from ASGI"}
+            yield {"type": "usage", "inputTokens": 2, "outputTokens": 3, "totalTokens": 5}
+
+        async def consume(response):
+            chunks = [chunk async for chunk in response.streaming_content]
+            return b"".join(chunks).decode()
+
+        with patch(
+            "apps.system_intelligence.admin.stream._async_stream_callable",
+            return_value=fake_stream,
+        ) as stream_callable:
+            body = async_to_sync(consume)(build_stream_response(request, self.conversation))
+
+        self.assertIn('event: start\ndata: {"model_id":', body)
+        self.assertIn('event: text\ndata: {"chunk": "Hello from ASGI"}', body)
+        self.assertIn("event: done", body)
+        stream_callable.assert_called_once_with()
+        assistant = ChatMessage.objects.get(conversation=self.conversation, role="assistant")
+        self.assertEqual(assistant.content, "Hello from ASGI")
+        self.assertEqual(assistant.token_usage["totalTokens"], 5)
+
     def test_send_stream_preserves_sse_protocol_and_persists_assistant_metadata(self):
         stream_events = [
             {"type": "text", "chunk": "Hello"},

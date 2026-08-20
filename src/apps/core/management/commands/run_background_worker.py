@@ -14,6 +14,7 @@ from apps.core.services.background_jobs import (
     recover_stale_jobs,
     worker_metrics,
 )
+from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,14 @@ class Command(BaseCommand):
                         logger.info("Purged retired RSA keypair rows")
                 except Exception:  # noqa: BLE001 - maintenance must not stop delivery.
                     logger.exception("Retired RSA key purge failed")
+                try:
+                    purged_budget_count = purge_expired_public_assistant_budgets()
+                    if purged_budget_count:
+                        # Do not log counts or IP-derived identifiers. Operators
+                        # only need confirmation that maintenance is active.
+                        logger.info("Purged expired public assistant budget rows")
+                except Exception:  # noqa: BLE001 - maintenance must not stop delivery.
+                    logger.exception("Public assistant budget purge failed")
                 finally:
                     next_key_purge_at = now_monotonic + key_purge_seconds
 

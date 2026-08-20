@@ -11,6 +11,7 @@ from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import (
     AssistantConversationLog,
     AssistantMessageLog,
+    PublicAssistantTokenBudget,
     SystemIntelligenceConfig,
 )
 from apps.system_intelligence.services.public_assistant import budget
@@ -220,7 +221,7 @@ class BudgetTests(PublicAssistantChatTestBase):
         after = budget.tokens_used(ip_hash)
         self.assertEqual(after - before, MOCK_RESULT["usage"]["totalTokens"])
 
-    @override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False)
+    @override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="redis://configured")
     @patch(
         "apps.system_intelligence.services.public_assistant.budget._shared_redis_client",
         side_effect=budget.BudgetBackendUnavailable("redis down"),
@@ -231,6 +232,17 @@ class BudgetTests(PublicAssistantChatTestBase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.data["code"], "budget_unavailable")
         mock_invoke.assert_not_called()
+
+    @override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="")
+    def test_missing_redis_uses_the_shared_database_budget(self):
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
+            response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["available"])
+        mock_invoke.assert_called_once()
+        state = PublicAssistantTokenBudget.objects.get()
+        self.assertEqual(state.tokens_used, MOCK_RESULT["usage"]["totalTokens"])
 
 
 class InvocationErrorTests(PublicAssistantChatTestBase):

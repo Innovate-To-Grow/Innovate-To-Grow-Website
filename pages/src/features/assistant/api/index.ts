@@ -82,6 +82,19 @@ export function isBudgetError(error: unknown): boolean {
   return isAxiosError(error) && error.response?.status === 429;
 }
 
+/** Return only the public-safe message fields emitted by the assistant API. */
+function assistantApiErrorMessage(error: unknown): string | null {
+  if (!isAxiosError(error)) return null;
+  const data: unknown = error.response?.data;
+  if (!data || typeof data !== 'object') return null;
+  const body = data as Record<string, unknown>;
+  for (const key of ['detail', 'message']) {
+    const value = body[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 /**
  * Send a chat message and classify the outcome into a discriminated union.
  *
@@ -111,6 +124,6 @@ export async function sendAssistantMessage(
     if (isBudgetError(error)) {
       return {status: 'budget', message: BUDGET_ERROR_MESSAGE};
     }
-    return {status: 'error', message: GENERIC_ERROR_MESSAGE};
+    return {status: 'error', message: assistantApiErrorMessage(error) ?? GENERIC_ERROR_MESSAGE};
   }
 }
