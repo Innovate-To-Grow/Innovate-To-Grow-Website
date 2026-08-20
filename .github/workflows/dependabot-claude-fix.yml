@@ -879,7 +879,8 @@ jobs:
           # checkout in a digest-pinned, least-privilege container. Any such
           # process can reach only this two-file directory, which is validated
           # again before its lockfile is accepted.
-          # shellcheck disable=SC2016 -- the single-quoted script expands inside the container.
+          # The single-quoted script expands only inside the container.
+          # shellcheck disable=SC2016
           if ! timeout --signal=KILL 12m docker run --rm \
               --name "$container_name" \
               --pull always \
@@ -1134,7 +1135,8 @@ jobs:
           # tmpfs; no output from this container is ever accepted as a patch.
           chmod 755 "$sandbox"
           chmod 444 "$sandbox/package.json" "$sandbox/package-lock.json"
-          # shellcheck disable=SC2016 -- the single-quoted script expands inside the container.
+          # The single-quoted script expands only inside the container.
+          # shellcheck disable=SC2016
           if ! timeout --signal=KILL 12m docker run --rm \
               --name "$verify_container_name" \
               --pull always \
