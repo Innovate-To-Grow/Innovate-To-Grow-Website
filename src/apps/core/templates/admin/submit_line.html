@@ -27,7 +27,11 @@
 
                 {% if not is_popup %}
                     <div class="admin-autosave-control border border-base-200 cursor-pointer flex font-medium gap-2 items-center justify-center px-3 py-2 rounded-default transition-all w-full hover:bg-base-50 lg:flex lg:w-auto dark:border-base-700 dark:hover:text-base-200 dark:hover:bg-base-900">
-                        <label class="admin-autosave-toggle inline-flex items-center gap-2 cursor-pointer select-none">
+                        {# data-i2g-md-skip: the hand-rolled switch relies on the checkbox being the
+                           immediate previous sibling of .admin-autosave-switch, which the Material
+                           Web enhancer's wrapper <span> would break. #}
+                        <label class="admin-autosave-toggle inline-flex items-center gap-2 cursor-pointer select-none"
+                               data-i2g-md-skip>
                             <input type="checkbox" id="admin-autosave-toggle" class="admin-autosave-checkbox sr-only">
                             <span class="admin-autosave-switch"><span class="admin-autosave-knob"></span></span>
                             <span class="admin-autosave-label">{% translate "Auto Save" %}</span>

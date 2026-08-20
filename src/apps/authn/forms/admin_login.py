@@ -25,6 +25,10 @@ class AdminEmailForm(forms.Form):
                 member__is_staff=True,
                 member__is_active=True,
                 verified=True,
+                # Only the primary address may receive an admin login code. Any verified
+                # ContactEmail used to work, so attaching a secondary verified row to a privileged
+                # member — which the ContactEmail admin allows — handed the attacker that account.
+                email_type="primary",
             )
             .first()
         )

@@ -40,6 +40,10 @@
 
             var fd = new FormData(form);
             fd.append('_continue', '1');
+            // ConfirmOnSaveMixin._should_skip_confirmation looks for this marker so an autosave
+            // bypasses the type-to-confirm interstitial. Without it every autosave was redirected to
+            // the confirmation page and nothing was ever written.
+            fd.append('_autosave', '1');
             fetch(form.action || window.location.href, {
                 method: 'POST',
                 body: fd,
@@ -47,6 +51,13 @@
                 headers: {'X-Requested-With': 'XMLHttpRequest'}
             }).then(function (res) {
                 if (!res.ok) return setStatus('{% translate "Save failed" %}', 'error');
+                // A 200 is not proof of a save: Django re-renders the bound form on validation
+                // errors, and a confirmation redirect also lands on a 200. Only a redirect away from
+                // the confirmation flow means the row was actually written.
+                if (/\/confirm-(change|action)\//.test(res.url || '')) {
+                    return setStatus('{% translate "Not saved - confirmation required" %}', 'error');
+                }
+                if (!res.redirected) return setStatus('{% translate "Not saved - check the form" %}', 'error');
                 lastSavedState = getFormState();
                 setStatus('{% translate "Saved at" %} ' + new Date().toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'}), 'saved');
                 var currentPath = window.location.pathname + window.location.search;

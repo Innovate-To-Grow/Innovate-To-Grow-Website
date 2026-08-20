@@ -16,7 +16,7 @@ except ImportError:  # pragma: no cover - guarded at runtime
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
 
-from .operations import bulk_update_members
+from .operations import _EMAIL_DEFAULTS, _PHONE_DEFAULTS, _flag, bulk_update_members
 from .parsing import generate_random_password, normalize_header, parse_row
 from .types import ImportResult
 
@@ -28,6 +28,7 @@ def import_members_from_excel(
     default_password: str | None = None,
     update_existing: bool = False,
     update_member_allowed: Callable[[Member], bool] | None = None,
+    allow_privilege_fields: bool = False,
 ) -> ImportResult:
     """Import members from an Excel file using bulk inserts when possible."""
     if load_workbook is None:
@@ -111,11 +112,22 @@ def import_members_from_excel(
                 is_active=parsed["is_active"] if parsed["is_active"] is not None else True,
                 date_joined=parsed["date_joined"] or now,
             )
+            # The exists-check above consults ``existing_emails`` (primary addresses), but
+            # ``_append_contact_records`` guards on ``claimed_contact_emails``, which also holds
+            # secondaries claimed earlier in this same file. When those disagree the member was
+            # created with NO ContactEmail at all and could never authenticate, yet was reported as
+            # created — so require that the primary row was actually claimed.
+            if not _append_contact_records(
+                member, parsed, emails_to_create, phones_to_create, claimed_contact_emails, claimed_phones
+            ):
+                result.skipped_count += 1
+                result.errors.append(
+                    f"Row {parsed['row']}: {parsed['primary_email']} is already used by another row "
+                    "or record in this import"
+                )
+                continue
             members_to_create.append(member)
             existing_emails.add(email_key)
-            _append_contact_records(
-                member, parsed, emails_to_create, phones_to_create, claimed_contact_emails, claimed_phones
-            )
             result.created_count += 1
 
         with transaction.atomic():
@@ -139,24 +151,33 @@ def import_members_from_excel(
         # Rebuild claimed sets from actual DB state after successful create
         claimed_contact_emails = {e.lower() for e in ContactEmail.objects.values_list("email_address", flat=True)}
         claimed_phones = set(ContactPhone.objects.values_list("phone_number", flat=True))
-        bulk_update_members(rows_to_update, result, claimed_contact_emails, claimed_phones, update_member_allowed)
+        bulk_update_members(
+            rows_to_update,
+            result,
+            claimed_contact_emails,
+            claimed_phones,
+            update_member_allowed,
+            allow_privilege_fields=allow_privilege_fields,
+        )
 
     return result
 
 
 def _append_contact_records(member, parsed, emails_to_create, phones_to_create, claimed_contact_emails, claimed_phones):
+    """Queue the row's contact records. Returns False if its primary email was already claimed."""
     email_key = parsed["primary_email"].lower()
-    if email_key not in claimed_contact_emails:
-        emails_to_create.append(
-            ContactEmail(
-                member=member,
-                email_address=parsed["primary_email"],
-                email_type="primary",
-                verified=parsed["primary_verified"],
-                subscribe=parsed["primary_subscribed"],
-            )
+    if email_key in claimed_contact_emails:
+        return False
+    emails_to_create.append(
+        ContactEmail(
+            member=member,
+            email_address=parsed["primary_email"],
+            email_type="primary",
+            verified=_flag(parsed["primary_verified"], None, _EMAIL_DEFAULTS["verified"]),
+            subscribe=_flag(parsed["primary_subscribed"], None, _EMAIL_DEFAULTS["subscribe"]),
         )
-        claimed_contact_emails.add(email_key)
+    )
+    claimed_contact_emails.add(email_key)
 
     if parsed["secondary_email"]:
         secondary_key = parsed["secondary_email"].lower()
@@ -166,8 +187,8 @@ def _append_contact_records(member, parsed, emails_to_create, phones_to_create, 
                     member=member,
                     email_address=parsed["secondary_email"],
                     email_type="secondary",
-                    verified=parsed["secondary_verified"],
-                    subscribe=parsed["secondary_subscribed"],
+                    verified=_flag(parsed["secondary_verified"], None, _EMAIL_DEFAULTS["verified"]),
+                    subscribe=_flag(parsed["secondary_subscribed"], None, _EMAIL_DEFAULTS["subscribe"]),
                 )
             )
             claimed_contact_emails.add(secondary_key)
@@ -181,8 +202,9 @@ def _append_contact_records(member, parsed, emails_to_create, phones_to_create, 
                     member=member,
                     phone_number=national,
                     region=region,
-                    subscribe=parsed["phone_subscribed"],
-                    verified=parsed["phone_verified"],
+                    subscribe=_flag(parsed["phone_subscribed"], None, _PHONE_DEFAULTS["subscribe"]),
+                    verified=_flag(parsed["phone_verified"], None, _PHONE_DEFAULTS["verified"]),
                 )
             )
             claimed_phones.add(national)
+    return True

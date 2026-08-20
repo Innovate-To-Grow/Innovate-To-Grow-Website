@@ -11,14 +11,18 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, redirect
+from django.http import Http404, HttpResponse
+from django.shortcuts import redirect
 from django.urls import path
+from django.utils.http import unquote
 from django.utils.translation import gettext_lazy as _
 from unfold.forms import AdminPasswordChangeForm
 
 from apps.core.admin import BaseModelAdmin
+from apps.core.utils.access import user_can_manage_member
 
 from ...models import ImpersonationToken, Member
+from ...services.members.profile_image import ALLOWED_CONTENT_TYPES, ProfileImageError, split_data_uri
 from .forms import MemberChangeForm, MemberCreationForm
 from .helpers import (
     activate_members,
@@ -42,9 +46,16 @@ logger = logging.getLogger(__name__)
 class MemberAdmin(BaseModelAdmin, UserAdmin):
     """Custom admin for Member with profile, contact, import, and export tooling."""
 
+    # URL names whose views only render list rows, and so never need the multi-megabyte
+    # base64 ``profile_image`` (or the password hash) that a bare SELECT would pull for every row.
+    list_shaped_url_names = frozenset({"authn_member_changelist", "autocomplete"})
+
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.prefetch_related("contact_emails", "contact_phones")
+        qs = super().get_queryset(request).prefetch_related("contact_emails", "contact_phones")
+        match = getattr(request, "resolver_match", None)
+        if match is not None and match.url_name in self.list_shaped_url_names:
+            qs = qs.defer("profile_image", "password")
+        return qs
 
     form = MemberChangeForm
     add_form = MemberCreationForm
@@ -104,6 +115,20 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         "sync_all_members_to_sheet",
     ]
     actions_no_confirmation = ["export_members_to_excel", "export_members_to_vcard", "sync_all_members_to_sheet"]
+    # Explicit allowlist for the generic "Export selected data" action. Without it the default is
+    # every concrete column, which for Member meant offering (and previewing on screen) the base64
+    # profile image, ``is_superuser``, the ``admin_apps`` grant list and the vestigial AbstractUser
+    # ``email``. Mirrors the curated columns in services/members/export_excel.py.
+    export_fields = (
+        "id",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "organization",
+        "title",
+        "is_active",
+        "date_joined",
+    )
 
     @admin.display(description="Primary Email")
     def get_primary_email_display(self, obj):
@@ -157,8 +182,40 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
                 self.admin_site.admin_view(self.impersonate_view),
                 name="authn_member_impersonate",
             ),
+            path(
+                "<path:object_id>/profile-image/",
+                self.admin_site.admin_view(self.profile_image_view),
+                name="authn_member_profile_image",
+            ),
         ]
         return custom_urls + super().get_urls()
+
+    def profile_image_view(self, request, object_id):
+        """Stream a member's stored profile image so the change form never inlines it.
+
+        ``profile_image`` holds a base64 ``data:`` URI in a TextField; rendering it inside an
+        ``<img src>`` made the change page grow with the image and truncate mid-form. Like every other
+        custom admin URL here, ``admin_site.admin_view`` only enforces ``is_staff``, so re-check
+        per-app access.
+        """
+        if not self.has_view_permission(request):
+            raise PermissionDenied("You do not have permission to view members.")
+        member = self.get_object(request, unquote(str(object_id)))
+        if member is None or not member.profile_image:
+            raise Http404("This member has no profile image.")
+        try:
+            raw, mime = split_data_uri(member.profile_image)
+        except ProfileImageError as exc:
+            raise Http404("Stored profile image could not be decoded.") from exc
+
+        response = HttpResponse(raw, content_type=mime)
+        if mime not in ALLOWED_CONTENT_TYPES:
+            # Legacy rows could hold any client-supplied type; never let one render inline.
+            response["Content-Type"] = "application/octet-stream"
+            response["Content-Disposition"] = f'attachment; filename="profile-{member.pk}"'
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
     def impersonate_view(self, request, object_id):
         # ``admin_site.admin_view`` only enforces is_staff, so this custom URL must
@@ -169,7 +226,15 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         # staff/superuser account would be a privilege-escalation vector.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to impersonate members.")
-        member = get_object_or_404(Member, pk=object_id)
+        # POST-only: minting a token is a state change, and on GET Django performs no CSRF check,
+        # so a cross-site navigation could make an admin issue (and burn) impersonation credentials.
+        if request.method != "POST":
+            raise PermissionDenied("Impersonation must be started with a POST request.")
+        # ``self.get_object`` swallows the ValidationError a non-UUID <path:object_id> would raise;
+        # ``get_object_or_404`` only translates DoesNotExist and so returned a 500 instead of a 404.
+        member = self.get_object(request, unquote(str(object_id)))
+        if member is None:
+            raise Http404("No member matches the given query.")
         if member.is_staff or member.is_superuser:
             raise PermissionDenied("Staff and superuser accounts cannot be impersonated.")
         token = ImpersonationToken.generate_token()
@@ -185,12 +250,53 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     # this is enforced server-side, not just hidden in the rendered form.
     superuser_only_fields = ("is_staff", "admin_apps")
 
+    @staticmethod
+    def can_manage_target(request, target) -> bool:
+        """Whether ``request.user`` may act on the privileged parts of ``target``'s account."""
+        return user_can_manage_member(request.user, target)
+
+    def user_change_password(self, request, id, form_url=""):  # noqa: A002 - UserAdmin's signature
+        """Refuse password resets on privileged accounts unless the actor is a superuser.
+
+        ``UserAdmin``'s inherited ``<id>/password/`` route is gated only by ``has_change_permission``,
+        which here is the object-independent authn-app predicate — so any staffer with that grant could
+        set the superuser's password and log in as them, defeating ``superuser_only_fields``.
+        """
+        target = self.get_object(request, unquote(str(id)))
+        if not self.can_manage_target(request, target):
+            raise PermissionDenied("Only an I2G Master may change a privileged account's password.")
+        return super().user_change_password(request, id, form_url=form_url)
+
+    def has_delete_permission(self, request, obj=None):
+        # Deleting a privileged account is itself a privileged operation — same scope as
+        # ``protected_target_fields``. The object-level check covers the delete view (and hides its
+        # button); the bulk path is backstopped in ``delete_queryset`` below.
+        if obj is not None and not self.can_manage_target(request, obj):
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        # ``delete_selected`` is gated only by the object-independent ``has_delete_permission``,
+        # so re-apply the per-object guard before anything is removed.
+        for member in queryset:
+            if not self.can_manage_target(request, member):
+                raise PermissionDenied("Only an I2G Master may delete a staff or superuser account.")
+        return super().delete_queryset(request, queryset)
+
+    # Editable on an ordinary member, but not on a staff/superuser account unless the actor is an
+    # I2G Master — deactivating or renaming a privileged account is itself a privileged operation.
+    protected_target_fields = ("is_active",)
+
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
         if not request.user.is_superuser:
             for field in self.superuser_only_fields:
                 if field not in readonly:
                     readonly.append(field)
+            if obj is not None and not self.can_manage_target(request, obj):
+                for field in self.protected_target_fields:
+                    if field not in readonly:
+                        readonly.append(field)
         return readonly
 
     def get_search_results(self, request, queryset, search_term):
