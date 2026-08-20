@@ -164,6 +164,22 @@
   padding-inline: 0;
 }
 
+.si-message-assistant.is-streaming .si-message-body::after {
+  content: "Thinking\2026";
+  color: var(--md-sys-color-on-surface-variant, #5f6368);
+  animation: si-thinking-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes si-thinking-pulse {
+  from {
+    opacity: 0.45;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 .si-tool-call,
 .si-action-card {
   max-width: 920px;

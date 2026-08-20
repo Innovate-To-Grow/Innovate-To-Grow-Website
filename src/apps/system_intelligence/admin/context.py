@@ -42,5 +42,6 @@ def _chat_config():
             "fullPreview": reverse("admin:system_intelligence_action_full_preview", args=[UUID_PLACEHOLDER]),
             "exportDownload": reverse("admin:system_intelligence_export_download", args=[UUID_PLACEHOLDER]),
         },
+        "streamTimeoutMs": 180_000,
         "uuidPlaceholder": UUID_PLACEHOLDER,
     }

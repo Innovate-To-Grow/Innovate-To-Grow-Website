@@ -91,6 +91,14 @@
     app.state.streaming = streaming;
     app.els.send.disabled = streaming;
     app.els.input.disabled = streaming;
+    app.els.plan.disabled = streaming;
+    document
+      .querySelectorAll(
+        "[data-si-command], [data-si-new-chat], [data-si-rename], [data-si-conversations] button",
+      )
+      .forEach((node) => {
+        node.disabled = streaming;
+      });
   };
 
   app.button = function (className, text, handler) {

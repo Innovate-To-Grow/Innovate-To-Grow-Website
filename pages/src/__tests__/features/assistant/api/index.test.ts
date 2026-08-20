@@ -12,12 +12,12 @@ vi.mock('@/lib/api', () => ({
 
 import {fetchAssistantConfig, isBudgetError, sendAssistantMessage} from '@/features/assistant/api/index';
 
-function axiosErrorWithStatus(status: number): AxiosError {
+function axiosErrorWithStatus(status: number, data: unknown = {}): AxiosError {
   const error = new AxiosError('boom');
   error.response = {
     status,
     statusText: '',
-    data: {},
+    data,
     headers: {},
     config: {headers: new AxiosHeaders()},
   };
@@ -73,15 +73,34 @@ describe('assistant api', () => {
     });
 
     it('returns a budget result on HTTP 429', async () => {
-      mocks.post.mockRejectedValue(axiosErrorWithStatus(429));
+      mocks.post.mockRejectedValue(
+        axiosErrorWithStatus(429, {detail: 'This detail must not replace the standard budget message.'}),
+      );
       const result = await sendAssistantMessage('ping', [], 'sess-1');
-      expect(result.status).toBe('budget');
+      expect(result).toEqual({
+        status: 'budget',
+        message: "You've reached the message limit for now, please try again later.",
+      });
     });
 
-    it('returns a generic error result on other failures', async () => {
+    it('preserves a public-safe backend detail for retryable failures', async () => {
+      mocks.post.mockRejectedValue(
+        axiosErrorWithStatus(503, {
+          detail: 'The assistant is temporarily unavailable. Please try again in a moment.',
+          code: 'budget_unavailable',
+        }),
+      );
+      const result = await sendAssistantMessage('ping', [], 'sess-1');
+      expect(result).toEqual({
+        status: 'error',
+        message: 'The assistant is temporarily unavailable. Please try again in a moment.',
+      });
+    });
+
+    it('returns a generic error result when the backend body has no safe message', async () => {
       mocks.post.mockRejectedValue(axiosErrorWithStatus(502));
       const result = await sendAssistantMessage('ping', [], 'sess-1');
-      expect(result.status).toBe('error');
+      expect(result).toEqual({status: 'error', message: 'Something went wrong. Please try again.'});
     });
 
     it('returns a generic error result on a non-axios failure', async () => {
