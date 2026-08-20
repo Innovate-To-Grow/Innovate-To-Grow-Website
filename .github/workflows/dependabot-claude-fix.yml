@@ -56,7 +56,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          RUN_ACTOR: ${{ github.event.workflow_run.actor.login }}
+          SOURCE_RUN_ACTOR: ${{ github.event.workflow_run.actor.login }}
           FIXER_APP_ID: ${{ vars.DEPENDABOT_FIX_APP_ID }}
           FIXER_APP_SLUG: ${{ vars.DEPENDABOT_FIX_APP_SLUG }}
         run: |
@@ -78,7 +78,7 @@ jobs:
           [[ "$FIXER_APP_SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
             || skip "Set the DEPENDABOT_FIX_APP_SLUG repository variable to the dedicated GitHub App slug."
           fixer_login="${FIXER_APP_SLUG}[bot]"
-          [[ "$RUN_ACTOR" == "dependabot[bot]" || "$RUN_ACTOR" == "$fixer_login" ]] \
+          [[ "$SOURCE_RUN_ACTOR" == "dependabot[bot]" || "$SOURCE_RUN_ACTOR" == "$fixer_login" ]] \
             || skip "The failed CI run was not initiated by Dependabot or the dedicated repair App."
 
           pr_number="$({
@@ -251,25 +251,45 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   configuration:
-    name: Validate repair credentials exist
+    name: Validate repair configuration
     needs: gate
     if: ${{ needs.gate.outputs.eligible == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
+    outputs:
+      bedrock_account_id: ${{ steps.values.outputs.bedrock_account_id }}
     steps:
-      - name: Check required Actions secrets
+      - name: Check required repository values
+        id: values
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           APP_PRIVATE_KEY: ${{ secrets.DEPENDABOT_FIX_APP_PRIVATE_KEY }}
+          BEDROCK_ROLE_ARN: ${{ vars.DEPENDABOT_FIX_BEDROCK_ROLE_ARN }}
+          BEDROCK_REGION: ${{ vars.DEPENDABOT_FIX_BEDROCK_REGION }}
+          BEDROCK_MODEL_ID: ${{ vars.DEPENDABOT_FIX_BEDROCK_MODEL_ID }}
         run: |
           set -euo pipefail
-          [[ -n "$ANTHROPIC_API_KEY" ]] || {
-            echo "::error::Configure the ANTHROPIC_API_KEY Actions secret."
-            exit 1
-          }
           [[ -n "$APP_PRIVATE_KEY" ]] || {
             echo "::error::Configure the DEPENDABOT_FIX_APP_PRIVATE_KEY Actions secret."
+            exit 1
+          }
+          if [[ "$BEDROCK_ROLE_ARN" =~ ^arn:aws:iam::([0-9]{12}):role/[A-Za-z0-9+=,.@_/-]+$ ]]; then
+            echo "bedrock_account_id=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Configure DEPENDABOT_FIX_BEDROCK_ROLE_ARN as a dedicated AWS IAM role ARN."
+            exit 1
+          fi
+          [[ "$BEDROCK_REGION" =~ ^(af|ap|ca|eu|il|me|mx|sa|us)-[a-z0-9-]+-[0-9]+$ ]] || {
+            echo "::error::Configure DEPENDABOT_FIX_BEDROCK_REGION as an AWS region such as us-west-2."
+            exit 1
+          }
+          fixed_model_id='^(global|us|eu|apac|au|jp)\.anthropic\.claude-[A-Za-z0-9._:-]*[0-9][A-Za-z0-9._:-]*$'
+          fixed_base_id='^anthropic\.claude-[A-Za-z0-9._:-]*[0-9][A-Za-z0-9._:-]*$'
+          fixed_profile_arn='^arn:aws:bedrock:[a-z0-9-]+:[0-9]{12}:application-inference-profile/[A-Za-z0-9._:-]+$'
+          [[ "$BEDROCK_MODEL_ID" =~ $fixed_model_id \
+            || "$BEDROCK_MODEL_ID" =~ $fixed_base_id \
+            || "$BEDROCK_MODEL_ID" =~ $fixed_profile_arn ]] || {
+            echo "::error::Configure DEPENDABOT_FIX_BEDROCK_MODEL_ID as a fixed Bedrock Claude model/profile ID or application inference profile ARN; moving aliases are rejected."
             exit 1
           }
 
@@ -297,13 +317,14 @@ jobs:
 
   repair:
     name: Create Claude repair patch
-    needs: [gate, reserve]
+    needs: [gate, configuration, reserve]
     if: ${{ needs.gate.outputs.eligible == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       actions: read
       contents: read
+      id-token: write
       pull-requests: read
     outputs:
       has_patch: ${{ steps.patch.outputs.has_patch }}
@@ -412,34 +433,23 @@ jobs:
           (context / "original-dependabot.diff").write_bytes(b"\n".join(patches))
           PY
 
-      # Create this only after checkout, tool installation, and log collection
-      # so no package or PR-controlled process ever shares a filesystem with
-      # the API key. Claude receives the value through apiKeyHelper, not env.
-      - name: Prepare isolated Anthropic API credential
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Create trusted settings only after checkout, tool installation, and log
+      # collection. Safe mode ignores project/user instructions and hooks; this
+      # explicit file narrows the built-in file tools to production paths.
+      - name: Prepare isolated Claude safety settings
         run: |
           set -euo pipefail
-          if [[ -z "$ANTHROPIC_API_KEY" ]]; then
-            echo "::error::Configure the ANTHROPIC_API_KEY Actions secret before enabling automatic repair."
-            exit 1
-          fi
-
-          auth_dir="$RUNNER_TEMP/claude-auth"
-          key_path="$auth_dir/anthropic.key"
-          helper_path="$auth_dir/api-key-helper.sh"
-          settings_path="$auth_dir/settings.json"
-          mkdir -p "$auth_dir"
-          chmod 700 "$auth_dir"
+          settings_dir="$RUNNER_TEMP/claude-settings"
+          settings_path="$settings_dir/settings.json"
+          mkdir -p "$settings_dir"
+          chmod 700 "$settings_dir"
           umask 077
-          printf '%s' "$ANTHROPIC_API_KEY" > "$key_path"
-          printf "#!/bin/sh\nexec /bin/cat -- '%s'\n" "$key_path" > "$helper_path"
-          chmod 700 "$helper_path"
 
           SETTINGS_PATH="$settings_path" \
-          HELPER_PATH="$helper_path" \
-          AUTH_DIR="$auth_dir" \
+          SETTINGS_DIR="$settings_dir" \
           CONTEXT_DIR="$RUNNER_TEMP/claude-ci-context" \
+          CONFIG_DIR="$RUNNER_TEMP/claude-config" \
+          RUNNER_COMMAND_DIR="$RUNNER_TEMP/_runner_file_commands" \
           WORKSPACE="$GITHUB_WORKSPACE" \
           python - <<'PY'
           import json
@@ -450,8 +460,10 @@ jobs:
               absolute = str(path).lstrip("/")
               return f"{tool}(//{absolute}{suffix})"
 
-          auth_dir = Path(os.environ["AUTH_DIR"])
+          settings_dir = Path(os.environ["SETTINGS_DIR"])
           context_dir = Path(os.environ["CONTEXT_DIR"])
+          config_dir = Path(os.environ["CONFIG_DIR"])
+          runner_command_dir = Path(os.environ["RUNNER_COMMAND_DIR"])
           workspace = Path(os.environ["WORKSPACE"])
           editable_roots = (
               workspace / "src" / "apps",
@@ -461,12 +473,10 @@ jobs:
               workspace / "archive" / "page" / "static",
           )
           settings = {
-              "apiKeyHelper": os.environ["HELPER_PATH"],
               "permissions": {
                   "allow": [
-                      "Read",
-                      "Glob",
-                      "Grep",
+                      absolute_rule("Read", workspace, "/**"),
+                      absolute_rule("Read", context_dir, "/**"),
                       absolute_rule("Edit", workspace / "archive" / "page" / "app.py"),
                       absolute_rule("Edit", workspace / "pages" / "package.json"),
                       *(absolute_rule("Edit", root, "/**") for root in editable_roots),
@@ -479,8 +489,12 @@ jobs:
                       "NotebookEdit",
                       "Agent",
                       "mcp__*",
-                      absolute_rule("Read", auth_dir, "/**"),
-                      absolute_rule("Edit", auth_dir, "/**"),
+                      absolute_rule("Read", settings_dir, "/**"),
+                      absolute_rule("Edit", settings_dir, "/**"),
+                      absolute_rule("Read", config_dir, "/**"),
+                      absolute_rule("Edit", config_dir, "/**"),
+                      absolute_rule("Read", runner_command_dir, "/**"),
+                      absolute_rule("Edit", runner_command_dir, "/**"),
                       absolute_rule("Edit", context_dir, "/**"),
                       absolute_rule("Edit", workspace / ".git", "/**"),
                       absolute_rule("Edit", workspace / ".github", "/**"),
@@ -503,19 +517,56 @@ jobs:
           Path(os.environ["SETTINGS_PATH"]).write_text(json.dumps(settings), encoding="utf-8")
           PY
 
-          chmod 400 "$key_path" "$settings_path"
-          chmod 500 "$helper_path"
-          chmod 500 "$auth_dir"
+          chmod 400 "$settings_path"
+          chmod 500 "$settings_dir"
+
+      # OIDC avoids long-lived AWS keys. Output credentials are deliberately
+      # not exported to the job: only the Claude step below receives them.
+      - name: Assume short-lived AWS Bedrock role
+        id: bedrock
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.DEPENDABOT_FIX_BEDROCK_ROLE_ARN }}
+          aws-region: ${{ vars.DEPENDABOT_FIX_BEDROCK_REGION }}
+          audience: sts.amazonaws.com
+          role-session-name: dependabot-claude-${{ github.run_id }}
+          role-duration-seconds: 1800
+          allowed-account-ids: ${{ needs.configuration.outputs.bedrock_account_id }}
+          mask-aws-account-id: true
+          unset-current-credentials: true
+          output-env-credentials: false
+          output-credentials: true
+          action-timeout-s: 120
 
       - name: Run Claude Code in safe file-only mode
         env:
+          CLAUDE_CODE_USE_BEDROCK: "1"
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+          DISABLE_UPDATES: "1"
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-config
           CONTEXT_DIR: ${{ runner.temp }}/claude-ci-context
-          SETTINGS_PATH: ${{ runner.temp }}/claude-auth/settings.json
+          SETTINGS_PATH: ${{ runner.temp }}/claude-settings/settings.json
+          ANTHROPIC_MODEL: ${{ vars.DEPENDABOT_FIX_BEDROCK_MODEL_ID }}
+          AWS_REGION: ${{ vars.DEPENDABOT_FIX_BEDROCK_REGION }}
+          AWS_DEFAULT_REGION: ${{ vars.DEPENDABOT_FIX_BEDROCK_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ steps.bedrock.outputs.aws-access-key-id }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.bedrock.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.bedrock.outputs.aws-session-token }}
+          AWS_EC2_METADATA_DISABLED: "true"
           PR_NUMBER: ${{ needs.gate.outputs.pr_number }}
           ATTEMPT: ${{ needs.gate.outputs.attempt }}
         run: |
           set -uo pipefail
+
+          # id-token:write is job-scoped. The AWS action has already exchanged
+          # GitHub OIDC for this step's short-lived STS credentials, so prevent
+          # Claude from inheriting either token-minting or Actions runtime auth.
+          unset \
+            ACTIONS_ID_TOKEN_REQUEST_URL \
+            ACTIONS_ID_TOKEN_REQUEST_TOKEN \
+            ACTIONS_RUNTIME_TOKEN \
+            ACTIONS_CACHE_URL \
+            ACTIONS_RESULTS_URL
 
           read -r -d '' PROMPT <<EOF || true
           You are repairing failed CI for verified same-repository Dependabot PR #${PR_NUMBER}.
@@ -567,7 +618,7 @@ jobs:
             --add-dir "$CONTEXT_DIR" \
             --settings "$SETTINGS_PATH" \
             --setting-sources "" \
-            --model sonnet \
+            --model "$ANTHROPIC_MODEL" \
             --effort high \
             --permission-mode dontAsk \
             --tools "Read,Glob,Grep,Edit" \
@@ -587,14 +638,14 @@ jobs:
             exit "$claude_status"
           fi
 
-      - name: Remove Anthropic credential helper
+      - name: Remove Claude safety settings
         if: ${{ always() }}
         run: |
-          auth_dir="$RUNNER_TEMP/claude-auth"
-          if [[ -d "$auth_dir" ]]; then
-            chmod 700 "$auth_dir"
-            chmod 600 "$auth_dir"/* 2>/dev/null || true
-            rm -rf -- "$auth_dir"
+          settings_dir="$RUNNER_TEMP/claude-settings"
+          if [[ -d "$settings_dir" ]]; then
+            chmod 700 "$settings_dir"
+            chmod 600 "$settings_dir"/* 2>/dev/null || true
+            rm -rf -- "$settings_dir"
           fi
 
       # Claude may propose only a companion version bump in package.json. This
@@ -828,6 +879,7 @@ jobs:
           # checkout in a digest-pinned, least-privilege container. Any such
           # process can reach only this two-file directory, which is validated
           # again before its lockfile is accepted.
+          # shellcheck disable=SC2016 -- the single-quoted script expands inside the container.
           if ! timeout --signal=KILL 12m docker run --rm \
               --name "$container_name" \
               --pull always \
@@ -1082,6 +1134,7 @@ jobs:
           # tmpfs; no output from this container is ever accepted as a patch.
           chmod 755 "$sandbox"
           chmod 444 "$sandbox/package.json" "$sandbox/package-lock.json"
+          # shellcheck disable=SC2016 -- the single-quoted script expands inside the container.
           if ! timeout --signal=KILL 12m docker run --rm \
               --name "$verify_container_name" \
               --pull always \

@@ -188,7 +188,7 @@ run ends the loop, and a failed run can start the next attempt.
 The workflow never merges a pull request. Branch protection, required checks,
 review, and the normal merge process remain unchanged.
 
-### Required GitHub App configuration
+### Required GitHub App and AWS Bedrock configuration
 
 Create a dedicated GitHub App, install it only on this repository, and grant it
 **Repository permissions > Contents: Read and write**. Do not grant Workflows,
@@ -197,22 +197,54 @@ repository values:
 
 | Kind | Name | Purpose |
 |------|------|---------|
-| Actions secret | `ANTHROPIC_API_KEY` | Claude API authentication and billing |
 | Actions secret | `DEPENDABOT_FIX_APP_PRIVATE_KEY` | Private key for the dedicated repair App |
 | Actions variable | `DEPENDABOT_FIX_APP_ID` | Numeric GitHub App ID |
 | Actions variable | `DEPENDABOT_FIX_APP_SLUG` | App slug without the `[bot]` suffix |
+| Actions variable | `DEPENDABOT_FIX_BEDROCK_ROLE_ARN` | Dedicated IAM role assumed through GitHub OIDC |
+| Actions variable | `DEPENDABOT_FIX_BEDROCK_REGION` | AWS region used for Bedrock requests |
+| Actions variable | `DEPENDABOT_FIX_BEDROCK_MODEL_ID` | Fixed Bedrock Claude model/profile ID or application inference profile ARN |
 
 The workflow requests a repository-scoped, short-lived installation token with
 only `contents: write`, then GitHub revokes it at job completion. Do not use the
 workflow's built-in `GITHUB_TOKEN`: resulting runs may be suppressed or require
 manual approval, which would break the unattended repair loop.
 
-The two secrets belong in normal repository **Actions secrets**, not Dependabot
-secrets. The follow-up `workflow_run` loads its instructions from the default
-branch and can read normal Actions secrets, while the original Dependabot PR CI
-continues to run without them. If a repository ruleset restricts updates to
+The App private key belongs in normal repository **Actions secrets**, not
+Dependabot secrets. The follow-up `workflow_run` loads its instructions from the
+default branch and can read the App secret, while the original Dependabot PR CI
+continues to run without it. If a repository ruleset restricts updates to
 `dependabot/**`, allow the dedicated repair App to make fast-forward updates to
 those branches.
+
+Claude runs through Amazon Bedrock; do not configure an Anthropic API key or
+reuse the repository's long-lived deployment access keys. Add GitHub's OIDC
+provider (`https://token.actions.githubusercontent.com`) to AWS and create a
+dedicated role whose trust policy uses `StringEquals` to require all of:
+
+- audience `sts.amazonaws.com`
+- subject `repo:Innovate-To-Grow/Innovate-To-Grow-Website:ref:refs/heads/main`
+- immutable repository ID `1121423757`
+- ref `refs/heads/main`
+- workflow name `Dependabot Claude CI Fix`
+
+The corresponding condition keys are
+`token.actions.githubusercontent.com:aud`, `:sub`, `:repository_id`, `:ref`,
+and `:workflow`. If the repository is opted into GitHub's immutable subject
+format, inspect its issued claim and replace the subject above with the exact
+ID-qualified value. The additional repository-ID and workflow conditions are
+required: trusting only the repository/branch subject would let any workflow on
+`main` assume the Bedrock role.
+
+Grant that role only `bedrock:InvokeModel` and
+`bedrock:InvokeModelWithResponseStream` for the approved inference profile/model
+and its required foundation-model resources. Add `bedrock:GetInferenceProfile`
+for that exact profile ARN only if profile resolution requires it. Do not grant
+`bedrock:ListInferenceProfiles`, AWS Marketplace subscription, S3, Secrets
+Manager, IAM, deployment, or role-chaining permissions. Enable the selected
+model/profile in Bedrock before activating the workflow. Prefer a fixed
+application inference profile ARN for cost attribution and change control. The
+workflow rejects moving aliases such as `sonnet`, derives the expected AWS
+account from the role ARN, and verifies the assumed account before Claude runs.
 
 ### Safety boundaries
 
@@ -226,10 +258,16 @@ those branches.
 - Any human or unknown commit disables automatic repair for that PR.
 - Claude has file read/search/edit tools only: no shell, network, GitHub token,
   commit, push, project/user hooks, plugins, MCP servers, or repository
-  instructions.
-- The Anthropic key is absent from Claude's environment. A read-only credential
-  helper supplies it, both Read and Edit access to that directory are denied,
-  and the directory is removed immediately afterward.
+  instructions. Read/search access is restricted to the checkout and the
+  bounded diagnostic directory, while edit access is narrowed further to the
+  approved production paths.
+- The repair job can mint an AWS OIDC token, but the assumed role is dedicated
+  to Bedrock and lasts 30 minutes. The AWS action does not export credentials to
+  the job; its short-lived outputs are mapped only into the Claude step. Before
+  Claude starts, the shell removes the GitHub OIDC request and Actions runtime
+  tokens from its environment. Claude cannot read runner command files, its
+  configuration/safety-settings directories, or process metadata, and later
+  npm, patch-validation, artifact, and push steps never receive AWS credentials.
 - Claude may edit only existing production source under `src/apps`, `pages/src`,
   `cli/src`, and selected `archive/page` paths. For a Dependabot npm lock update,
   it may also increase up to three existing `devDependencies` that are required,
@@ -248,8 +286,10 @@ those branches.
   patch digest, re-checks the live PR and base SHA, and uses an exact
   `force-with-lease` expectation so any concurrent head change makes it fail.
 - Each PR gets at most three reserved repair attempts, persisted as bot comments
-  even if the branch is rebased. Each Claude attempt has a USD 5 API budget plus
-  a 30-minute job timeout. A no-op consumes the attempt but does not push.
+  even if the branch is rebased. Each Claude attempt has a USD 5 estimated
+  client-side CLI budget cap plus a 30-minute job timeout; this is not an AWS
+  Billing hard limit. Bedrock usage is billed to the configured AWS account. A
+  no-op consumes the attempt but does not push.
 
 When a failed Dependabot branch is behind `main`, update or rebase the branch
 first. Its fresh CI result will automatically be reconsidered.

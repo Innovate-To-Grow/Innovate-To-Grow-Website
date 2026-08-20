@@ -54,7 +54,7 @@ class DependabotClaudeFixWorkflowTests(unittest.TestCase):
         self.assertEqual(self.jobs["gate"]["permissions"], {**read_only, "issues": "read"})
         self.assertEqual(self.jobs["configuration"]["permissions"], {})
         self.assertEqual(self.jobs["reserve"]["permissions"], {"issues": "write"})
-        self.assertEqual(self.jobs["repair"]["permissions"], read_only)
+        self.assertEqual(self.jobs["repair"]["permissions"], {**read_only, "id-token": "write"})
         self.assertEqual(self.jobs["push"]["permissions"], read_only)
 
     def test_gate_revalidates_identity_freshness_and_required_ci(self) -> None:
@@ -65,8 +65,8 @@ class DependabotClaudeFixWorkflowTests(unittest.TestCase):
             'head_sha" == "$RUN_HEAD_SHA',
             'has_dependency_label" == "true',
             'ci_result" == "failure',
-            'RUN_ACTOR" == "dependabot[bot]',
-            'RUN_ACTOR" == "$fixer_login',
+            'SOURCE_RUN_ACTOR" == "dependabot[bot]',
+            'SOURCE_RUN_ACTOR" == "$fixer_login',
             'changes_github_automation" == "false',
             "behind_by == 0",
             "unexpected_commits == 0",
@@ -80,13 +80,52 @@ class DependabotClaudeFixWorkflowTests(unittest.TestCase):
             with self.subTest(guard=required_guard):
                 self.assertIn(required_guard, gate_script)
 
-    def test_claude_gets_no_shell_or_push_credential(self) -> None:
+    def test_claude_uses_bedrock_oidc_without_shell_or_push_credential(self) -> None:
         repair = self.jobs["repair"]
         steps = repair["steps"]
         step_names = [step["name"] for step in steps]
-        credential_index = step_names.index("Prepare isolated Anthropic API credential")
-        self.assertLess(step_names.index("Install pinned Claude Code"), credential_index)
-        self.assertLess(step_names.index("Collect failure context"), credential_index)
+        settings_index = step_names.index("Prepare isolated Claude safety settings")
+        bedrock_index = step_names.index("Assume short-lived AWS Bedrock role")
+        claude_index = step_names.index("Run Claude Code in safe file-only mode")
+        self.assertLess(step_names.index("Install pinned Claude Code"), settings_index)
+        self.assertLess(step_names.index("Collect failure context"), settings_index)
+        self.assertLess(settings_index, bedrock_index)
+        self.assertLess(bedrock_index, claude_index)
+
+        configuration = named_step(self.jobs["configuration"], "Check required repository values")
+        self.assertNotIn("ANTHROPIC_API_KEY", str(configuration))
+        self.assertEqual(
+            configuration["env"]["BEDROCK_ROLE_ARN"],
+            "${{ vars.DEPENDABOT_FIX_BEDROCK_ROLE_ARN }}",
+        )
+        self.assertEqual(
+            configuration["env"]["BEDROCK_REGION"],
+            "${{ vars.DEPENDABOT_FIX_BEDROCK_REGION }}",
+        )
+        self.assertEqual(
+            configuration["env"]["BEDROCK_MODEL_ID"],
+            "${{ vars.DEPENDABOT_FIX_BEDROCK_MODEL_ID }}",
+        )
+        self.assertIn("moving aliases are rejected", configuration["run"])
+        self.assertIn("bedrock_account_id=${BASH_REMATCH[1]}", configuration["run"])
+
+        bedrock = named_step(repair, "Assume short-lived AWS Bedrock role")
+        self.assertEqual(
+            bedrock["uses"],
+            "aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c",
+        )
+        self.assertEqual(
+            bedrock["with"]["role-to-assume"],
+            "${{ vars.DEPENDABOT_FIX_BEDROCK_ROLE_ARN }}",
+        )
+        self.assertEqual(bedrock["with"]["aws-region"], "${{ vars.DEPENDABOT_FIX_BEDROCK_REGION }}")
+        self.assertEqual(
+            bedrock["with"]["allowed-account-ids"],
+            "${{ needs.configuration.outputs.bedrock_account_id }}",
+        )
+        self.assertFalse(bedrock["with"]["output-env-credentials"])
+        self.assertTrue(bedrock["with"]["output-credentials"])
+        self.assertTrue(bedrock["with"]["unset-current-credentials"])
 
         claude = named_step(repair, "Run Claude Code in safe file-only mode")
         script = claude["run"]
@@ -97,22 +136,54 @@ class DependabotClaudeFixWorkflowTests(unittest.TestCase):
         self.assertIn('--disallowed-tools "Bash,WebFetch,WebSearch,Write,NotebookEdit,Agent,mcp__*"', script)
         self.assertIn("--permission-mode dontAsk", script)
         self.assertIn("--no-session-persistence", script)
+        self.assertIn('--model "$ANTHROPIC_MODEL"', script)
+        self.assertIn("unset \\\n  ACTIONS_ID_TOKEN_REQUEST_URL", script)
+        self.assertIn("ACTIONS_ID_TOKEN_REQUEST_TOKEN", script)
+        self.assertIn("ACTIONS_RUNTIME_TOKEN", script)
         self.assertNotIn("dangerously-skip-permissions", script)
         self.assertNotIn("ANTHROPIC_API_KEY", claude.get("env", {}))
+        self.assertEqual(claude["env"]["CLAUDE_CODE_USE_BEDROCK"], "1")
+        self.assertEqual(claude["env"]["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"], "1")
+        self.assertEqual(claude["env"]["DISABLE_UPDATES"], "1")
+        self.assertEqual(
+            claude["env"]["ANTHROPIC_MODEL"],
+            "${{ vars.DEPENDABOT_FIX_BEDROCK_MODEL_ID }}",
+        )
+        self.assertEqual(claude["env"]["AWS_REGION"], "${{ vars.DEPENDABOT_FIX_BEDROCK_REGION }}")
+        self.assertEqual(claude["env"]["AWS_ACCESS_KEY_ID"], "${{ steps.bedrock.outputs.aws-access-key-id }}")
+        self.assertEqual(
+            claude["env"]["AWS_SECRET_ACCESS_KEY"],
+            "${{ steps.bedrock.outputs.aws-secret-access-key }}",
+        )
+        self.assertEqual(claude["env"]["AWS_SESSION_TOKEN"], "${{ steps.bedrock.outputs.aws-session-token }}")
         self.assertNotIn("DEPENDABOT_FIX_TOKEN", str(repair))
 
-        credential = named_step(repair, "Prepare isolated Anthropic API credential")
-        self.assertEqual(credential["env"]["ANTHROPIC_API_KEY"], "${{ secrets.ANTHROPIC_API_KEY }}")
-        self.assertIn('"apiKeyHelper"', credential["run"])
-        self.assertIn('"Read(//proc/**)"', credential["run"])
-        self.assertIn('absolute_rule("Edit", auth_dir, "/**")', credential["run"])
-        self.assertIn('absolute_rule("Edit", workspace / ".github", "/**")', credential["run"])
-        self.assertIn('workspace / "pages" / "package.json"', credential["run"])
-        self.assertIn('chmod 400 "$key_path" "$settings_path"', credential["run"])
-        self.assertIn('chmod 500 "$auth_dir"', credential["run"])
+        settings = named_step(repair, "Prepare isolated Claude safety settings")
+        self.assertNotIn("apiKeyHelper", settings["run"])
+        self.assertNotIn('"allow": [\n            "Read",', settings["run"])
+        self.assertNotIn('\n            "Glob",', settings["run"])
+        self.assertNotIn('\n            "Grep",', settings["run"])
+        self.assertIn('absolute_rule("Read", workspace, "/**")', settings["run"])
+        self.assertIn('absolute_rule("Read", context_dir, "/**")', settings["run"])
+        self.assertIn('"Read(//proc/**)"', settings["run"])
+        self.assertIn('absolute_rule("Edit", settings_dir, "/**")', settings["run"])
+        self.assertIn('absolute_rule("Read", config_dir, "/**")', settings["run"])
+        self.assertIn('absolute_rule("Read", runner_command_dir, "/**")', settings["run"])
+        self.assertIn('absolute_rule("Edit", workspace / ".github", "/**")', settings["run"])
+        self.assertIn('workspace / "pages" / "package.json"', settings["run"])
+        self.assertIn('chmod 400 "$settings_path"', settings["run"])
+        self.assertIn('chmod 500 "$settings_dir"', settings["run"])
 
-        cleanup = named_step(repair, "Remove Anthropic credential helper")["run"]
-        self.assertIn('rm -rf -- "$auth_dir"', cleanup)
+        cleanup = named_step(repair, "Remove Claude safety settings")["run"]
+        self.assertIn('rm -rf -- "$settings_dir"', cleanup)
+
+        output_markers = ("aws-access-key-id", "aws-secret-access-key", "aws-session-token")
+        for step in steps:
+            if step.get("name") == "Run Claude Code in safe file-only mode":
+                continue
+            with self.subTest(step=step.get("name")):
+                for marker in output_markers:
+                    self.assertNotIn(f"steps.bedrock.outputs.{marker}", str(step.get("env", {})))
 
         npm = named_step(repair, "Validate npm companion changes and refresh lockfile")["run"]
         for npm_guard in (
@@ -228,7 +299,7 @@ class DependabotClaudeFixWorkflowTests(unittest.TestCase):
     def test_all_third_party_actions_are_pinned_to_full_commit_shas(self) -> None:
         action_pattern = re.compile(r"^[^@]+@[0-9a-f]{40}$")
         actions = [str(step["uses"]) for job in self.jobs.values() for step in job["steps"] if "uses" in step]
-        self.assertGreaterEqual(len(actions), 5)
+        self.assertGreaterEqual(len(actions), 6)
         for action in actions:
             with self.subTest(action=action):
                 self.assertRegex(action, action_pattern)
