@@ -17,7 +17,10 @@ class PlanChangedAreasTests(unittest.TestCase):
         for event_name in ("push", "workflow_dispatch", "schedule"):
             with self.subTest(event_name=event_name):
                 plan = plan_changed_areas(event_name, ["docs/architecture.md"])
-                self.assertEqual(plan, ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True))
+                self.assertEqual(
+                    plan,
+                    ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True, status=True),
+                )
 
     def test_pull_request_touching_any_ci_area_runs_the_full_suite(self) -> None:
         for changed_file in (
@@ -25,6 +28,8 @@ class PlanChangedAreasTests(unittest.TestCase):
             "pages/src/App.tsx",
             "cli/src/i2g_admin/app.py",
             "archive/page/app.py",
+            "status/src/main.ts",
+            "aws/status/template.yaml",
             "aws/task-definition.json",
             "scripts/ci/validate_tool_versions.py",
             ".github/workflows/ci.yml",
@@ -59,7 +64,10 @@ class PlanChangedAreasTests(unittest.TestCase):
     def test_github_change_runs_all_four_areas(self) -> None:
         plan = plan_changed_areas("pull_request", [".github/workflows/ci.yml"])
 
-        self.assertEqual(plan, ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True))
+        self.assertEqual(
+            plan,
+            ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True, status=True),
+        )
 
     def test_multiple_areas_are_combined(self) -> None:
         plan = plan_changed_areas(
@@ -67,12 +75,18 @@ class PlanChangedAreasTests(unittest.TestCase):
             ["src/apps/authn/models.py", "pages/src/App.tsx", "cli/pyproject.toml", "archive/page/app.py"],
         )
 
-        self.assertEqual(plan, ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True))
+        self.assertEqual(
+            plan,
+            ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True, status=True),
+        )
 
     def test_empty_and_whitespace_paths_are_ignored(self) -> None:
         plan = plan_changed_areas("pull_request", ["", "  ", "\n"])
 
-        self.assertEqual(plan, ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False))
+        self.assertEqual(
+            plan,
+            ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False, status=False),
+        )
 
     def test_near_miss_paths_do_not_match(self) -> None:
         plan = plan_changed_areas(
@@ -80,12 +94,21 @@ class PlanChangedAreasTests(unittest.TestCase):
             ["src-notes/file.md", "pages.md", "archive.txt", "github/workflows/ci.yml"],
         )
 
-        self.assertEqual(plan, ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False))
+        self.assertEqual(
+            plan,
+            ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False, status=False),
+        )
 
     def test_github_outputs_use_lowercase_booleans(self) -> None:
-        outputs = ChangedAreasPlan(backend=True, frontend=False, cli=True, archive=True).github_outputs()
+        outputs = ChangedAreasPlan(
+            backend=True,
+            frontend=False,
+            cli=True,
+            archive=True,
+            status=False,
+        ).github_outputs()
 
-        self.assertEqual(outputs, "backend=true\nfrontend=false\ncli=true\narchive=true")
+        self.assertEqual(outputs, "backend=true\nfrontend=false\ncli=true\narchive=true\nstatus=false")
 
     def test_cli_reads_40000_paths_without_pipe_or_argument_limits(self) -> None:
         paths = [f"docs/generated/{index}.md" for index in range(39_997)]
@@ -108,7 +131,10 @@ class PlanChangedAreasTests(unittest.TestCase):
                 text=True,
             )
 
-        self.assertEqual(result.stdout.strip(), "backend=true\nfrontend=true\ncli=true\narchive=true")
+        self.assertEqual(
+            result.stdout.strip(),
+            "backend=true\nfrontend=true\ncli=true\narchive=true\nstatus=true",
+        )
 
 
 if __name__ == "__main__":

@@ -76,6 +76,18 @@
           "value": "__BACKEND_URL__"
         },
         {
+          "name": "STATUS_PUBLIC_URL",
+          "value": "__STATUS_PUBLIC_URL__"
+        },
+        {
+          "name": "STATUS_INTERNAL_API_URL",
+          "value": "__STATUS_INTERNAL_API_URL__"
+        },
+        {
+          "name": "STATUS_API_REGION",
+          "value": "__STATUS_API_REGION__"
+        },
+        {
           "name": "AWS_STORAGE_BUCKET_NAME",
           "value": "__AWS_STORAGE_BUCKET_NAME__"
         },

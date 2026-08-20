@@ -1,0 +1,11 @@
+version = 0.1
+
+[default.global.parameters]
+region = "us-west-2"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
