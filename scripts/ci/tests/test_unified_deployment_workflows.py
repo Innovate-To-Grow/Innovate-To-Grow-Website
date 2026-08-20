@@ -261,6 +261,10 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
         upload = named_step(frontend, "Upload status production assets")
         self.assertEqual(upload["with"]["name"], "status-dist-production")
         infrastructure = ci["jobs"]["status-infrastructure"]
+        lint_install = named_step(infrastructure, "Install CloudFormation lint tools")["run"]
+        self.assertIn('"cfn-lint==1.55.1"', lint_install)
+        self.assertIn('"PyYAML==6.0.3"', lint_install)
+        self.assertNotIn('"PyYAML==6.0.2"', lint_install)
         self.assertIn("sam build", named_step(infrastructure, "Build the status SAM application")["run"])
         self.assertIn("--lint", named_step(infrastructure, "Validate the status SAM template")["run"])
         self.assertIn("cfn-lint", named_step(infrastructure, "Lint both regional CloudFormation templates")["run"])

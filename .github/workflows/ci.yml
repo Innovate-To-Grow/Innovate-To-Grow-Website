@@ -1348,7 +1348,7 @@ jobs:
           cache: pip
 
       - name: Install CloudFormation lint tools
-        run: python -m pip install "cfn-lint==1.55.1" "PyYAML==6.0.2"
+        run: python -m pip install "cfn-lint==1.55.1" "PyYAML==6.0.3"
 
       - name: Set up AWS SAM CLI
         uses: aws-actions/setup-sam@v2
