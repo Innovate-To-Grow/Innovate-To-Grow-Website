@@ -15,14 +15,25 @@ from .types import IncidentMutation, StateTransition
 
 
 class StatusRepository:
-    def __init__(self, table_name: str, *, table: Any | None = None):
+    def __init__(
+        self,
+        table_name: str,
+        *,
+        table: Any | None = None,
+        transaction_client: Any | None = None,
+    ):
         if table is None:
             import boto3
 
             table = boto3.resource("dynamodb").Table(table_name)
+            transaction_client = transaction_client or boto3.client("dynamodb")
         self.table = table
         self.table_name = table_name
-        self.client = table.meta.client
+        # The resource-owned client automatically serializes native document
+        # values. Transactions below are already serialized explicitly, so
+        # production must use an independent low-level client to avoid wrapping
+        # numbers as maps (which makes DynamoDB ADD expressions invalid).
+        self.client = transaction_client or table.meta.client
         self._serializer = TypeSerializer()
 
     def begin_run(self, slot: str, generated_at: str) -> bool:

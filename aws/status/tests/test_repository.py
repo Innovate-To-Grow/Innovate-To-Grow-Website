@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import boto3
 from botocore.exceptions import ClientError
 from status_service.repository import StatusRepository
 from status_service.types import IncidentMutation, StateTransition
@@ -63,9 +64,41 @@ def test_sample_rollup_and_current_are_one_transaction_with_ordering_condition()
     assert "ADD scheduledCount" in daily["UpdateExpression"]
     assert daily["ExpressionAttributeNames"]["#availability"] == "unavailableCount"
     assert daily["ExpressionAttributeNames"]["#status"] == "statusDegradedCount"
+    assert daily["ExpressionAttributeValues"][":one"] == {"N": "1"}
+    assert actions[0]["Put"]["Item"]["PK"] == {"S": "COMPONENT#production-api"}
     current = actions[2]["Put"]
     assert current["ConditionExpression"] == "attribute_not_exists(PK) OR checkedAt < :checkedAt"
     assert ":zero" not in daily["ExpressionAttributeValues"]
+
+
+def test_default_repository_uses_an_independent_low_level_transaction_client(monkeypatch):
+    resource_client = Client()
+    transaction_client = Client()
+    table = Table(resource_client)
+
+    class Resource:
+        def Table(self, table_name):  # noqa: N802
+            assert table_name == "status-table"
+            return table
+
+    monkeypatch.setattr(boto3, "resource", lambda service: Resource())
+    monkeypatch.setattr(boto3, "client", lambda service: transaction_client)
+
+    repository = StatusRepository("status-table")
+    assert repository.save_transition(transition()) is True
+    assert resource_client.calls == []
+    assert len(transaction_client.calls) == 1
+    daily = transaction_client.calls[0]["TransactItems"][1]["Update"]
+    assert daily["ExpressionAttributeValues"][":one"] == {"N": "1"}
+
+
+def test_injected_table_does_not_create_a_real_transaction_client(monkeypatch):
+    client = Client()
+    monkeypatch.setattr(boto3, "client", lambda service: (_ for _ in ()).throw(AssertionError(service)))
+
+    repository = StatusRepository("status-table", table=Table(client))
+    assert repository.save_transition(transition()) is True
+    assert len(client.calls) == 1
 
 
 def test_duplicate_sample_and_late_older_current_are_safe_noops():
