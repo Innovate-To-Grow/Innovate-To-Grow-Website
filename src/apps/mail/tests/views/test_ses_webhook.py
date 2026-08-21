@@ -46,7 +46,7 @@ class SesEventWebhookViewTests(TestCase):
             email_address="target@example.com",
             status="sent",
             provider="ses",
-            ses_message_id=SES_MSG_ID,
+            provider_message_id=SES_MSG_ID,
         )
 
     @patch("apps.mail.views.ses_webhook.verify_sns_message")

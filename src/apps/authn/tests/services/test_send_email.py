@@ -22,67 +22,62 @@ def _fake_config(**overrides):
     """Return a mock EmailServiceConfig with sensible defaults."""
     defaults = {
         "ses_configured": False,
+        "delivery_configured": False,
+        "provider": "ses",
         "ses_from_email": "test@example.com",
         "ses_from_name": "Test",
         "source_address": "Test <test@example.com>",
     }
     defaults.update(overrides)
+    if "ses_configured" in overrides and "delivery_configured" not in overrides:
+        defaults["delivery_configured"] = overrides["ses_configured"]
     config = MagicMock(**defaults)
     return config
 
 
 class SendViaSesTests(TestCase):
-    """Tests for the SES sending path."""
+    """Tests for the central email facade adapter."""
 
     def test_returns_false_when_not_configured(self):
         config = _fake_config(ses_configured=False)
         result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
         self.assertFalse(result)
 
-    @patch("apps.authn.services.email.send_email.transport.resolve_aws_credentials")
-    @patch("apps.authn.services.email.send_email.boto3")
-    def test_returns_true_on_success(self, mock_boto3, mock_resolve):
-        from apps.core.services.aws.credentials import AwsCredentials
-
-        mock_resolve.return_value = AwsCredentials(access_key_id="k", secret_access_key="s", region="us-west-2")
-        config = _fake_config(ses_configured=True)
-        result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
+    @patch("apps.authn.services.email.send_email.transport.deliver_email")
+    def test_returns_true_on_success(self, mock_deliver):
+        config = _fake_config(ses_configured=True, delivery_configured=True)
+        callback = MagicMock()
+        result = _send_via_ses(
+            config=config,
+            recipient="a@b.com",
+            subject="Hi",
+            html_body="<p>Hi</p>",
+            before_provider_call=callback,
+        )
         self.assertTrue(result)
-        mock_boto3.client.return_value.send_email.assert_called_once()
-        self.assertEqual(
-            mock_boto3.client.call_args.kwargs["config"].retries["total_max_attempts"],
-            1,
-        )
+        callback_arg = mock_deliver.call_args.kwargs["before_provider_call"]
+        callback_arg()
+        callback.assert_called_once_with()
+        message = mock_deliver.call_args.args[0]
+        self.assertEqual(message.to, ("a@b.com",))
+        self.assertEqual(message.subject, "Hi")
+        self.assertEqual(message.html_body, "<p>Hi</p>")
+        self.assertIs(mock_deliver.call_args.kwargs["config"], config)
 
-    @patch("apps.authn.services.email.send_email.transport.resolve_aws_credentials")
-    @patch("apps.authn.services.email.send_email.boto3")
-    def test_returns_false_on_client_error(self, mock_boto3, mock_resolve):
-        from botocore.exceptions import ClientError
+    @patch("apps.authn.services.email.send_email.transport.deliver_email")
+    def test_returns_false_on_delivery_error(self, mock_deliver):
+        from apps.core.services.email import PermanentEmailDeliveryError
 
-        from apps.core.services.aws.credentials import AwsCredentials
-
-        mock_resolve.return_value = AwsCredentials(access_key_id="k", secret_access_key="s", region="us-west-2")
-        mock_boto3.client.return_value.send_email.side_effect = ClientError(
-            {"Error": {"Code": "MessageRejected", "Message": "boom"}}, "SendEmail"
-        )
+        mock_deliver.side_effect = PermanentEmailDeliveryError("rejected")
         config = _fake_config(ses_configured=True)
-        result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
-        self.assertFalse(result)
+        self.assertFalse(_send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>"))
 
-    @patch("apps.authn.services.email.send_email.transport.resolve_aws_credentials")
-    @patch("apps.authn.services.email.send_email.boto3")
-    def test_worker_mode_raises_sanitized_transient_error(self, mock_boto3, mock_resolve):
-        from botocore.exceptions import ClientError
+    @patch("apps.authn.services.email.send_email.transport.deliver_email")
+    def test_worker_mode_preserves_normalized_outcome(self, mock_deliver):
+        from apps.core.services.email import TransientEmailDeliveryError
 
-        from apps.core.services.aws.credentials import AwsCredentials
-
-        mock_resolve.return_value = AwsCredentials(access_key_id="k", secret_access_key="s", region="us-west-2")
-        mock_boto3.client.return_value.send_email.side_effect = ClientError(
-            {"Error": {"Code": "ThrottlingException", "Message": "secret detail"}},
-            "SendEmail",
-        )
+        mock_deliver.side_effect = TransientEmailDeliveryError("temporary failure")
         config = _fake_config(ses_configured=True)
-
         with self.assertRaises(ProviderDeliveryError) as raised:
             _send_via_ses(
                 config=config,
@@ -91,9 +86,7 @@ class SendViaSesTests(TestCase):
                 html_body="<p>Hi</p>",
                 raise_provider_errors=True,
             )
-
         self.assertEqual(raised.exception.outcome, PROVIDER_OUTCOME_TRANSIENT)
-        self.assertNotIn("secret detail", str(raised.exception))
 
 
 class SendVerificationEmailTests(TestCase):
@@ -219,17 +212,6 @@ class SendNotificationEmailTests(TestCase):
             context={"account_url": ""},
         )
         mock_ses.assert_called_once()
-
-
-class SendViaSesCredentialErrorTests(TestCase):
-    @patch("apps.authn.services.email.send_email.transport.resolve_aws_credentials")
-    def test_returns_false_when_credentials_missing(self, mock_resolve):
-        from apps.core.services.aws.credentials import AwsCredentialsError
-
-        mock_resolve.side_effect = AwsCredentialsError("no creds")
-        config = _fake_config(ses_configured=True)
-        result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
-        self.assertFalse(result)
 
 
 class SendAdminInvitationEmailTests(TestCase):

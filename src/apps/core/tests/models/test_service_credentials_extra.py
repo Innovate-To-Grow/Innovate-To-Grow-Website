@@ -8,6 +8,7 @@ from apps.core.models import (
     EmailServiceConfig,
     GmailAccessAccount,
     GoogleCredentialConfig,
+    SMTPProviderConfig,
 )
 from apps.core.models.base.service_credentials.google import validate_google_credentials_json
 
@@ -59,14 +60,14 @@ class EmailConfigTest(TestCase):
     def test_load_does_not_fall_back_to_inactive_sender(self):
         EmailServiceConfig.objects.create(
             name="Inactive",
-            ses_from_email="stale@example.com",
+            from_email="stale@example.com",
             is_active=False,
         )
 
         loaded = EmailServiceConfig.load()
 
         self.assertIsNone(loaded.pk)
-        self.assertNotEqual(loaded.ses_from_email, "stale@example.com")
+        self.assertNotEqual(loaded.from_email, "stale@example.com")
 
     def test_str_configured_and_unconfigured(self):
         AWSCredentialConfig.objects.create(name="AWS", is_active=True, access_key_id="K", secret_access_key="S")
@@ -79,11 +80,11 @@ class EmailConfigTest(TestCase):
         self.assertIn("not configured", str(config))
 
     def test_source_address_with_name(self):
-        config = EmailServiceConfig(ses_from_name="I2G", ses_from_email="x@y.com")
+        config = EmailServiceConfig(from_name="I2G", from_email="x@y.com")
         self.assertEqual(config.source_address, "I2G <x@y.com>")
 
     def test_source_address_without_name(self):
-        config = EmailServiceConfig(ses_from_name="", ses_from_email="x@y.com")
+        config = EmailServiceConfig(from_name="", from_email="x@y.com")
         self.assertEqual(config.source_address, "x@y.com")
 
     def test_ses_configured_reads_aws(self):
@@ -94,6 +95,25 @@ class EmailConfigTest(TestCase):
     def test_ses_configured_fails_closed_without_active_sender(self):
         AWSCredentialConfig.objects.create(name="AWS", is_active=True, access_key_id="K", secret_access_key="S")
         self.assertFalse(EmailServiceConfig(name="P").ses_configured)
+
+    def test_activation_validation_requires_selected_provider(self):
+        smtp_config = EmailServiceConfig(
+            name="SMTP",
+            is_active=True,
+            provider=EmailServiceConfig.Provider.SMTP,
+            from_email="sender@example.com",
+        )
+        with self.assertRaises(ValidationError):
+            smtp_config.validate_activation()
+
+        ses_config = EmailServiceConfig(
+            name="SES",
+            is_active=True,
+            provider=EmailServiceConfig.Provider.SES,
+            from_email="sender@example.com",
+        )
+        with self.assertRaises(ValidationError):
+            ses_config.validate_activation()
 
 
 class GmailConfigTest(TestCase):
@@ -144,3 +164,43 @@ class GoogleConfigTest(TestCase):
     def test_is_configured(self):
         self.assertTrue(GoogleCredentialConfig(credentials_json=VALID_GOOGLE_JSON).is_configured)
         self.assertFalse(GoogleCredentialConfig(credentials_json={}).is_configured)
+
+
+class SMTPProviderConfigTest(TestCase):
+    def test_load_does_not_fall_back_to_inactive_config(self):
+        SMTPProviderConfig.objects.create(name="Inactive", host="smtp.example.com")
+
+        loaded = SMTPProviderConfig.load()
+
+        self.assertTrue(loaded._state.adding)
+        self.assertFalse(loaded.is_configured)
+
+    def test_activation_deactivates_existing_config(self):
+        first = SMTPProviderConfig.objects.create(name="First", host="one.example.com", is_active=True)
+        second = SMTPProviderConfig.objects.create(name="Second", host="two.example.com", is_active=True)
+
+        first.refresh_from_db()
+        self.assertFalse(first.is_active)
+        self.assertEqual(SMTPProviderConfig.load(), second)
+
+    def test_rejects_tls_and_ssl_together(self):
+        config = SMTPProviderConfig(host="smtp.example.com", use_tls=True, use_ssl=True)
+
+        with self.assertRaises(ValidationError):
+            config.save()
+
+    def test_rejects_partial_credentials(self):
+        config = SMTPProviderConfig(host="smtp.example.com", username="user")
+
+        with self.assertRaises(ValidationError):
+            config.save()
+
+    def test_str_never_contains_credentials(self):
+        config = SMTPProviderConfig(
+            name="Mail", host="smtp.example.com", username="secret-user", password="secret-password"
+        )
+
+        rendered = str(config)
+        self.assertIn("smtp.example.com:587", rendered)
+        self.assertNotIn("secret-user", rendered)
+        self.assertNotIn("secret-password", rendered)

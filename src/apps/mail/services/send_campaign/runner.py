@@ -28,7 +28,7 @@ def send_campaign(campaign, sent_by):
     if ses_client is None:
         _fail_campaign_for_missing_delivery_config(campaign, recipients)
 
-    send_timing = SendTiming(config.ses_max_send_rate or 0)
+    send_timing = SendTiming(config.max_send_rate or 0)
     configuration_set = _get_configuration_set_name(config)
     if ses_client is not None and not configuration_set:
         logger.warning(
@@ -110,7 +110,7 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
                 "member_id": recipient["member_id"],
                 "recipient_name": recipient["full_name"],
                 "status": "failed",
-                "provider": _configured_provider(ses_client),
+                "provider": _configured_provider(config),
                 "error_message": str(exc),
             },
         )
@@ -133,10 +133,10 @@ def _send_with_configured_provider(
     return SesSendResult(provider="", error="Email delivery is not configured.")
 
 
-def _configured_provider(ses_client):
-    if ses_client is not None:
-        return "ses"
-    return ""
+def _configured_provider(config):
+    if config is None:
+        return ""
+    return getattr(config, "provider", "")
 
 
 def _record_send_result(campaign, log, result):
@@ -145,7 +145,7 @@ def _record_send_result(campaign, log, result):
         provider=result.provider,
         error_message=result.error,
         sent_at=None if result.error else timezone.now(),
-        ses_message_id=result.message_id if result.provider == "ses" else "",
+        provider_message_id=result.message_id,
     )
     if updated == 0:
         log.refresh_from_db()

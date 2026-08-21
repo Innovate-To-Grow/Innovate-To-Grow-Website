@@ -2,14 +2,15 @@
 
 from django import forms
 from django.contrib import admin, messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
 from apps.core.admin.service_credentials.helpers import _normalize_phone_number, _send_test_email, _send_test_sms
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SMTPProviderConfig
 from apps.core.utils.access import user_can_access_app
 
 
@@ -19,9 +20,10 @@ class EmailDeliveryForm(forms.ModelForm):
         fields = (
             "name",
             "is_active",
-            "ses_from_name",
-            "ses_from_email",
-            "ses_max_send_rate",
+            "provider",
+            "from_name",
+            "from_email",
+            "max_send_rate",
         )
 
     def __init__(self, *args, **kwargs):
@@ -47,6 +49,22 @@ class AwsDeliveryForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _apply_admin_widget_classes(self)
+
+
+class SMTPDeliveryForm(forms.ModelForm):
+    class Meta:
+        model = SMTPProviderConfig
+        fields = ("name", "is_active", "host", "port", "username", "password", "use_tls", "use_ssl", "timeout")
+        widgets = {"password": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=False)}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["password"].required = False
+        self.fields["password"].help_text = "Leave blank to keep the existing password."
+        _apply_admin_widget_classes(self)
+
+    def clean_password(self):
+        return self.cleaned_data["password"] or self.instance.password
 
 
 def _apply_admin_widget_classes(form):
@@ -92,7 +110,8 @@ def mail_settings_view(request):
         clear_origination_number_cache()
     email_config = EmailServiceConfig.load()
     aws_config = AWSCredentialConfig.load()
-    context = _notification_delivery_context(request, email_config, aws_config)
+    smtp_config = SMTPProviderConfig.load()
+    context = _notification_delivery_context(request, email_config, aws_config, smtp_config)
     context["edit_url"] = reverse("admin:mail_settings_edit")
     return TemplateResponse(request, "admin/mail/settings.html", context)
 
@@ -101,29 +120,62 @@ def mail_settings_edit_view(request):
     _require_mail_access(request)
     email_config = EmailServiceConfig.load()
     aws_config = AWSCredentialConfig.load()
+    smtp_config = SMTPProviderConfig.load()
     if request.method == "POST":
+        selected_provider = request.POST.get("email-provider", email_config.provider)
         email_form = EmailDeliveryForm(request.POST, instance=email_config, prefix="email")
         aws_form = AwsDeliveryForm(request.POST, instance=aws_config, prefix="aws")
-        if email_form.is_valid() and aws_form.is_valid():
-            email_form.save()
-            aws_form.save()
-            messages.success(request, "Notification delivery settings saved.")
-            return HttpResponseRedirect(reverse("admin:mail_settings"))
+        smtp_form = SMTPDeliveryForm(request.POST, instance=smtp_config, prefix="smtp")
+        if selected_provider != EmailServiceConfig.Provider.SMTP and smtp_config._state.adding:
+            for name in ("host", "port", "timeout"):
+                smtp_form.fields[name].required = False
+        if email_form.is_valid() and aws_form.is_valid() and smtp_form.is_valid():
+            try:
+                with transaction.atomic():
+                    aws_form.save()
+                    if smtp_form.cleaned_data.get("host") or not smtp_config._state.adding:
+                        smtp_form.save()
+                    email_form.instance.validate_activation()
+                    email_form.save()
+            except ValidationError as exc:
+                for field, errors in exc.message_dict.items():
+                    target = field if field in email_form.fields else None
+                    for error in errors:
+                        email_form.add_error(target, error)
+            else:
+                messages.success(request, "Notification delivery settings saved.")
+                return HttpResponseRedirect(reverse("admin:mail_settings"))
     else:
         email_form = EmailDeliveryForm(instance=email_config, prefix="email")
         aws_form = AwsDeliveryForm(instance=aws_config, prefix="aws")
+        smtp_form = SMTPDeliveryForm(instance=smtp_config, prefix="smtp")
 
-    context = _notification_delivery_context(request, email_config, aws_config)
+    context = _notification_delivery_context(request, email_config, aws_config, smtp_config)
     context.update(
         {
             "email_form": email_form,
             "aws_form": aws_form,
+            "smtp_form": smtp_form,
             "aws_fields": [
                 aws_form[name] for name in ("name", "is_active", "access_key_id", "secret_access_key", "default_region")
             ],
             "sender_fields": [
                 email_form[name]
-                for name in ("name", "is_active", "ses_from_name", "ses_from_email", "ses_max_send_rate")
+                for name in ("name", "is_active", "provider", "from_name", "from_email", "max_send_rate")
+            ],
+            "smtp_fields": [
+                smtp_form[name]
+                for name in (
+                    "name",
+                    "is_active",
+                    "host",
+                    "port",
+                    "username",
+                    "password",
+                    "use_tls",
+                    "use_ssl",
+                    "timeout",
+                )
             ],
             "sms_fields": [aws_form[name] for name in ("sms_message_template",)],
         }
@@ -131,14 +183,15 @@ def mail_settings_edit_view(request):
     return TemplateResponse(request, "admin/mail/settings_edit.html", context)
 
 
-def _notification_delivery_context(request, email_config, aws_config):
-    email_provider, email_provider_color = _email_provider_state(aws_config)
+def _notification_delivery_context(request, email_config, aws_config, smtp_config):
+    email_provider, email_provider_color = _email_provider_state(email_config, aws_config, smtp_config)
     sms_provider, sms_provider_color = _sms_provider_state(aws_config)
     return {
         **admin.site.each_context(request),
         "title": "Notification Delivery",
         "config": email_config,
         "aws_config": aws_config,
+        "smtp_config": smtp_config,
         "email_status": "Active" if email_config.is_active else "Inactive",
         "aws_status": "Active" if aws_config.is_active else "Inactive",
         "masked_access_key": _mask_key(aws_config.access_key_id),
@@ -184,7 +237,7 @@ def mail_settings_test_email_view(request):
         "input_label": "Recipient email address",
         "input_type": "email",
         "input_placeholder": "admin@example.com",
-        "input_help": f"A test email will be sent from {config.source_address} through AWS SES.",
+        "input_help": f"A test email will be sent from {config.source_address} through {config.get_provider_display()}.",
         "submit_label": "Send Test Email",
         "cancel_url": settings_url,
     }
@@ -225,7 +278,11 @@ def mail_settings_test_sms_view(request):
     return TemplateResponse(request, "admin/core/test_send_form.html", context)
 
 
-def _email_provider_state(aws_config):
+def _email_provider_state(email_config, aws_config, smtp_config):
+    if email_config.provider == "smtp":
+        if smtp_config.is_configured:
+            return f"SMTP ({smtp_config.host}:{smtp_config.port})", "success"
+        return "SMTP not configured", "warning"
     if aws_config.ses_configured:
         return f"Amazon Simple Email Service ({aws_config.region})", "success"
     return "Amazon Simple Email Service not configured", "warning"

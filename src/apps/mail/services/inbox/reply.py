@@ -1,9 +1,7 @@
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from apps.core.models import EmailServiceConfig
-from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
 
 logger = logging.getLogger(__name__)
 REPLY_SEND_FAILURE_MESSAGE = "Failed to send reply. Please check server logs for details."
@@ -65,7 +63,7 @@ def send_reply(
         references=references,
     )
 
-    if not config.ses_configured:
+    if not config.delivery_configured:
         return REPLY_DELIVERY_NOT_CONFIGURED
 
     return _send_reply_via_ses(config=config, to_email=to_email, cc_list=cc_list, message=message)
@@ -73,25 +71,9 @@ def send_reply(
 
 def _send_reply_via_ses(*, config, to_email, cc_list, message) -> str:
     try:
-        import boto3
-
-        creds = resolve_aws_credentials("ses")
-        client = boto3.client(
-            "ses",
-            region_name=creds.region,
-            aws_access_key_id=creds.access_key_id,
-            aws_secret_access_key=creds.secret_access_key,
-        )
-        client.send_raw_email(
-            Source=config.source_address,
-            Destinations=[to_email] + cc_list,
-            RawMessage={"Data": message.as_string()},
-        )
+        deliver_email(message, config=config)
         return ""
-    except AwsCredentialsError:
-        logger.warning("Reply send skipped: AWS credentials are not configured")
-        return "AWS IAM is not configured. Cannot send reply."
-    except Exception:
+    except EmailDeliveryError:
         logger.exception("Failed to send reply to %s.", to_email)
         return REPLY_SEND_FAILURE_MESSAGE
 
@@ -106,15 +88,10 @@ def _build_reply_message(
     in_reply_to: str,
     references: str,
 ):
-    message = MIMEMultipart("alternative")
-    message["Subject"] = subject
-    message["From"] = config.source_address
-    message["To"] = to_email
-    if cc_list:
-        message["Cc"] = ", ".join(cc_list)
+    del config
+    headers = {}
     if in_reply_to:
-        message["In-Reply-To"] = in_reply_to
+        headers["In-Reply-To"] = in_reply_to
     if references:
-        message["References"] = references
-    message.attach(MIMEText(html, "html", "utf-8"))
-    return message
+        headers["References"] = references
+    return EmailMessage(subject=subject, to=(to_email,), cc=tuple(cc_list), html_body=html, headers=headers)

@@ -1,10 +1,3 @@
-import logging
-
-from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
-
-logger = logging.getLogger(__name__)
-
-
 def _normalize_phone_number(country_code, recipient):
     """Build an E.164 number, stripping a leading '+' the admin may have pasted."""
     recipient = recipient.lstrip("+").strip()
@@ -14,7 +7,9 @@ def _normalize_phone_number(country_code, recipient):
 
 
 def _send_test_email(*, config, recipient):
-    """Send a test email using the given EmailServiceConfig. Returns provider name."""
+    """Send through the central email facade and return its selected provider."""
+    from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
+
     subject = "Test Email — Innovate to Grow Admin"
     html_body = (
         "<h2>Test Email</h2>"
@@ -22,34 +17,11 @@ def _send_test_email(*, config, recipient):
         "<p>Your email service configuration is working correctly.</p>"
     )
 
-    if not config.ses_configured:
-        raise RuntimeError("Email delivery is not configured. Configure AWS SES in Notification Delivery.")
-
     try:
-        import boto3
-
-        creds = resolve_aws_credentials("ses")
-        client = boto3.client(
-            "ses",
-            region_name=creds.region,
-            aws_access_key_id=creds.access_key_id,
-            aws_secret_access_key=creds.secret_access_key,
-        )
-        client.send_email(
-            Destination={"ToAddresses": [recipient]},
-            Message={
-                "Body": {"Html": {"Charset": "UTF-8", "Data": html_body}},
-                "Subject": {"Charset": "UTF-8", "Data": subject},
-            },
-            Source=config.source_address,
-        )
-        return "AWS SES"
-    except AwsCredentialsError as exc:
-        logger.warning("SES test send skipped: AWS credentials are not configured")
-        raise RuntimeError("AWS credentials are not configured.") from exc
-    except Exception as exc:
-        logger.exception("SES test send failed for %s", recipient)
-        raise RuntimeError("AWS SES test send failed. Check server logs for details.") from exc
+        deliver_email(EmailMessage(subject=subject, to=(recipient,), html_body=html_body), config=config)
+    except EmailDeliveryError as exc:
+        raise RuntimeError(str(exc)) from exc
+    return config.get_provider_display()
 
 
 def _send_test_sms(*, phone_number):

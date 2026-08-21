@@ -7,6 +7,7 @@ from .base import (
     GoogleCredentialConfig,
     ProjectControlModel,
     SiteMaintenanceControl,
+    SMTPProviderConfig,
     TimeStampedModel,
 )
 from .managers import ProjectControlManager, ProjectControlQuerySet
@@ -26,6 +27,7 @@ __all__ = [
     "ProjectControlManager",
     "ProjectControlModel",
     "ProjectControlQuerySet",
+    "SMTPProviderConfig",
     "SiteMaintenanceControl",
     "TimeStampedModel",
 ]

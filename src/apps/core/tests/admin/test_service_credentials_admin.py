@@ -113,3 +113,29 @@ class AWSCredentialConfigAdminTests(TestCase):
         self.assertNotContains(response, 'name="sms_message_template"')
         self.assertNotContains(response, "SMS Origination Number")
         self.assertNotContains(response, "SMS OTP Message Template")
+
+
+class SMTPProviderConfigFormTest(TestCase):
+    def test_existing_password_is_not_rendered_and_blank_preserves_it(self):
+        from apps.core.admin.service_credentials.smtp import SMTPProviderConfigForm
+        from apps.core.models import SMTPProviderConfig
+
+        config = SMTPProviderConfig.objects.create(
+            name="SMTP", host="smtp.example.com", username="user", password="stored-secret"
+        )
+        form = SMTPProviderConfigForm(
+            data={
+                "name": "SMTP",
+                "host": "smtp.example.com",
+                "port": 587,
+                "use_tls": True,
+                "timeout": 30,
+                "username": "user",
+                "password": "",
+            },
+            instance=config,
+        )
+
+        self.assertNotIn("stored-secret", str(SMTPProviderConfigForm(instance=config)["password"]))
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.save().password, "stored-secret")

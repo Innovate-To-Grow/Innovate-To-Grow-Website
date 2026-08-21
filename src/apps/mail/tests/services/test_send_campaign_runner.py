@@ -25,9 +25,9 @@ class SendCampaignFlowTests(TestCase):
         self.aws = _make_active_aws()
         self.config = EmailServiceConfig.objects.create(
             is_active=True,
-            ses_from_email="noreply@example.com",
-            ses_from_name="Test",
-            ses_max_send_rate=0,
+            from_email="noreply@example.com",
+            from_name="Test",
+            max_send_rate=0,
         )
         self.m1 = make_member(email="alice@example.com", first_name="Alice", last_name="Smith")
         self.m2 = make_member(email="bob@example.com", first_name="Bob", last_name="Jones")
@@ -103,12 +103,12 @@ class SendCampaignFlowTests(TestCase):
 
     @patch("apps.mail.services.send_campaign.runner._send_via_ses")
     @patch("apps.mail.services.send_campaign.runner._get_ses_client")
-    def test_recipient_log_records_ses_message_id(self, mock_client, mock_send):
+    def test_recipient_log_records_provider_message_id(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-ABC-123")
         send_campaign(self.campaign, self.sender)
         log = RecipientLog.objects.filter(campaign=self.campaign).first()
-        self.assertEqual(log.ses_message_id, "SES-ABC-123")
+        self.assertEqual(log.provider_message_id, "SES-ABC-123")
         self.assertEqual(log.status, "sent")
 
 
@@ -117,9 +117,9 @@ class SendCampaignMagicLoginTests(TestCase):
         self.aws = _make_active_aws()
         self.config = EmailServiceConfig.objects.create(
             is_active=True,
-            ses_from_email="noreply@example.com",
-            ses_from_name="Test",
-            ses_max_send_rate=0,
+            from_email="noreply@example.com",
+            from_name="Test",
+            max_send_rate=0,
         )
         self.m1 = make_member(email="member@example.com", first_name="Member", last_name="One")
         self.sender = make_member(email="sender@example.com", first_name="Sender", last_name="S")
@@ -214,7 +214,7 @@ class SendCampaignErrorTests(TestCase):
         _make_active_aws()
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_max_send_rate=0,
+            max_send_rate=0,
         )
         mock_client.return_value = None
         with self.assertRaises(RuntimeError):
@@ -225,9 +225,9 @@ class SendCampaignErrorTests(TestCase):
     def test_email_config_without_aws_fails_without_fallback(self):
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_from_email="noreply@example.com",
-            ses_from_name="Test",
-            ses_max_send_rate=0,
+            from_email="noreply@example.com",
+            from_name="Test",
+            max_send_rate=0,
         )
         with self.assertRaises(RuntimeError):
             send_campaign(self.campaign, self.sender)
@@ -245,9 +245,9 @@ class SendCampaignErrorTests(TestCase):
         _make_active_aws()
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_from_email="noreply@example.com",
-            ses_from_name="Test",
-            ses_max_send_rate=0,
+            from_email="noreply@example.com",
+            from_name="Test",
+            max_send_rate=0,
         )
         mock_client.return_value = MagicMock()
         mock_send_ses.return_value = SesSendResult(error="SES throttled")
@@ -260,7 +260,7 @@ class SendCampaignErrorTests(TestCase):
         self.assertGreater(logs.count(), 0)
         self.assertEqual(logs.exclude(provider="ses").count(), 0)
         self.assertEqual(logs.exclude(status="failed").count(), 0)
-        self.assertEqual(logs.exclude(ses_message_id="").count(), 0)
+        self.assertEqual(logs.exclude(provider_message_id="").count(), 0)
 
     @patch("apps.mail.services.send_campaign.runner._send_via_ses")
     @patch("apps.mail.services.send_campaign.runner._get_ses_client")
@@ -268,7 +268,7 @@ class SendCampaignErrorTests(TestCase):
         _make_active_aws()
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_max_send_rate=0,
+            max_send_rate=0,
         )
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(error="SES throttled")
@@ -283,7 +283,7 @@ class SendCampaignErrorTests(TestCase):
         _make_active_aws()
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_max_send_rate=0,
+            max_send_rate=0,
         )
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="OK-1")
@@ -298,9 +298,9 @@ class SendOneRecipientHelperTests(TestCase):
     def setUp(self):
         self.config = EmailServiceConfig.objects.create(
             is_active=True,
-            ses_from_email="noreply@example.com",
-            ses_from_name="Test",
-            ses_max_send_rate=0,
+            from_email="noreply@example.com",
+            from_name="Test",
+            max_send_rate=0,
         )
         self.campaign = EmailCampaign.objects.create(
             subject="Hi",
@@ -331,7 +331,7 @@ class SendOneRecipientHelperTests(TestCase):
         from apps.mail.services.send_campaign.runner import _configured_provider
 
         self.assertEqual(_configured_provider(None), "")
-        self.assertEqual(_configured_provider(object()), "ses")
+        self.assertEqual(_configured_provider(self.config), "ses")
 
     @patch("apps.mail.services.send_campaign.runner.personalize", side_effect=RuntimeError("boom"))
     def test_send_one_recipient_records_failure_on_exception(self, mock_personalize):
@@ -392,9 +392,9 @@ class SendCampaignPeriodicSaveTests(TestCase):
         _make_active_aws()
         EmailServiceConfig.objects.create(
             is_active=True,
-            ses_from_email="noreply@example.com",
-            ses_from_name="Test",
-            ses_max_send_rate=0,
+            from_email="noreply@example.com",
+            from_name="Test",
+            max_send_rate=0,
         )
         sender = make_member(email="sender@example.com", first_name="S", last_name="S")
         # 11 manual recipients ensures the (sent+failed) % 10 == 0 branch fires.
