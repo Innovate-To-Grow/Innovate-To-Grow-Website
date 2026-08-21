@@ -53,6 +53,13 @@ const historyDate = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 })
 
+const incidentDate = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Los_Angeles',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
+
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className?: string,
@@ -85,10 +92,19 @@ function statusBadge(status: StatusValue, override?: string): HTMLElement {
   return badge
 }
 
+function formatIncidentDate(timestamp: string): string {
+  const value = new Date(timestamp)
+  return Number.isFinite(value.getTime()) ? incidentDate.format(value) : 'Unknown date'
+}
+
 function metric(label: string, value: string, detail: string): HTMLElement {
-  const card = element('div', 'metric-card')
-  card.append(element('p', 'metric-label', label), element('p', 'metric-value', value), element('p', 'metric-detail', detail))
-  return card
+  const item = element('div', 'summary-stat')
+  item.append(
+    element('dt', 'metric-label', label),
+    element('dd', 'metric-value', value),
+    element('dd', 'metric-detail', detail),
+  )
+  return item
 }
 
 function renderOverview(snapshot: StatusSnapshotV1, source: SnapshotSource, onRefresh: () => void): HTMLElement {
@@ -135,14 +151,24 @@ function renderOverview(snapshot: StatusSnapshotV1, source: SnapshotSource, onRe
   return section
 }
 
-function renderSummary(snapshot: StatusSnapshotV1): HTMLElement {
+function renderSummary(snapshot: StatusSnapshotV1, source: SnapshotSource): HTMLElement {
   const availability = snapshot.summary.availability24h
   const section = element('section', 'summary-section')
+  section.dataset.source = source
   section.setAttribute('aria-labelledby', 'summary-heading')
-  const heading = element('h2', 'section-title', 'Past 24 hours')
+  const intro = element('div', 'summary-heading-row')
+  const heading = element(
+    'h2',
+    'section-title',
+    source === 'live' ? 'Past 24 hours' : 'Last known 24-hour summary',
+  )
   heading.id = 'summary-heading'
-  section.append(heading)
-  const metrics = element('div', 'metric-grid')
+  intro.append(
+    heading,
+    element('p', 'section-kicker', 'Measured by independent five-minute checks'),
+  )
+  section.append(intro)
+  const metrics = element('dl', 'summary-grid')
   metrics.append(
     metric(
       'Availability',
@@ -178,23 +204,62 @@ function historyDescription(day: HistoryDay): string {
 function renderHistory(component: StatusComponent): HTMLElement {
   const container = element('div', 'history')
   const headingRow = element('div', 'history-heading')
-  headingRow.append(element('span', undefined, '90-day history'), element('span', 'history-caption', 'Oldest → newest'))
+  headingRow.append(
+    element('span', undefined, 'Uptime over the past 90 days'),
+    element('span', 'history-caption', 'Daily checks'),
+  )
   container.append(headingRow)
+
+  const keyboardHelp = element(
+    'p',
+    'visually-hidden',
+    'Use Left and Right Arrow, Home, or End to review daily status checks.',
+  )
+  keyboardHelp.id = `history-help-${component.id}`
+  container.append(keyboardHelp)
 
   const bars = element('ol', 'history-bars')
   bars.setAttribute('aria-label', `${component.name} daily status for the past 90 days`)
-  for (const day of component.history) {
+  const barElements: HTMLElement[] = []
+  for (const [index, day] of component.history.entries()) {
     const listItem = element('li')
     const bar = element('span', 'history-bar')
     bar.dataset.status = day.status
-    bar.tabIndex = 0
+    bar.tabIndex = index === component.history.length - 1 ? 0 : -1
     bar.setAttribute('role', 'img')
     bar.setAttribute('aria-label', historyDescription(day))
+    bar.setAttribute('aria-describedby', keyboardHelp.id)
+    bar.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight Home End')
     bar.title = historyDescription(day)
+    barElements.push(bar)
     listItem.append(bar)
     bars.append(listItem)
   }
+  for (const [index, bar] of barElements.entries()) {
+    bar.addEventListener('focus', () => {
+      for (const item of barElements) item.tabIndex = item === bar ? 0 : -1
+    })
+    bar.addEventListener('keydown', (event) => {
+      let targetIndex: number | null = null
+      if (event.key === 'ArrowLeft') targetIndex = Math.max(0, index - 1)
+      if (event.key === 'ArrowRight') targetIndex = Math.min(barElements.length - 1, index + 1)
+      if (event.key === 'Home') targetIndex = 0
+      if (event.key === 'End') targetIndex = barElements.length - 1
+      if (targetIndex === null) return
+      event.preventDefault()
+      if (targetIndex === index) return
+      barElements[targetIndex]?.focus()
+    })
+  }
   container.append(bars)
+
+  const axis = element('div', 'history-axis')
+  axis.append(
+    element('span', undefined, '90 days ago'),
+    element('strong', undefined, `${formatPercent(component.uptime.days90)} uptime`),
+    element('span', undefined, 'Today'),
+  )
+  container.append(axis)
 
   const details = element('details', 'history-details')
   details.append(element('summary', undefined, 'View accessible daily history table'))
@@ -258,7 +323,7 @@ function renderComponent(component: StatusComponent, source: SnapshotSource): HT
   article.dataset.status = source === 'live' ? component.status : 'unknown'
   const header = element('div', 'component-header')
   const titleBlock = element('div')
-  const title = element('h3', undefined, component.name)
+  const title = element('h4', undefined, component.name)
   titleBlock.append(title, element('p', 'component-checked', `Checked ${formatTimestamp(component.checkedAt)}`))
   const badge = statusBadge(
     component.status,
@@ -285,7 +350,16 @@ function renderComponents(snapshot: StatusSnapshotV1, source: SnapshotSource): H
   const titleWrap = element('div')
   const heading = element('h2', 'section-title', 'Services')
   heading.id = 'components-heading'
-  titleWrap.append(heading, element('p', 'section-description', 'Availability is measured by independent five-minute checks.'))
+  titleWrap.append(
+    heading,
+    element(
+      'p',
+      'section-description',
+      source === 'live'
+        ? 'Current health and 90-day uptime for every monitored service.'
+        : 'Last known health and 90-day uptime for every monitored service.',
+    ),
+  )
   intro.append(titleWrap, renderLegend())
   section.append(intro)
   for (const group of ['production', 'demo', 'archive'] as const) {
@@ -294,7 +368,7 @@ function renderComponents(snapshot: StatusSnapshotV1, source: SnapshotSource): H
     const groupId = `group-${group}`
     groupHeading.id = groupId
     groupSection.setAttribute('aria-labelledby', groupId)
-    const cards = element('div', 'component-grid')
+    const cards = element('div', 'component-list')
     for (const component of snapshot.components.filter((item) => item.group === group)) {
       cards.append(renderComponent(component, source))
     }
@@ -304,18 +378,32 @@ function renderComponents(snapshot: StatusSnapshotV1, source: SnapshotSource): H
   return section
 }
 
-function incidentCard(incident: StatusIncident, components: StatusComponent[]): HTMLElement {
+function incidentCard(
+  incident: StatusIncident,
+  components: StatusComponent[],
+  headingLevel: 'h3' | 'h4',
+  isLastKnown = false,
+): HTMLElement {
   const article = element('article', 'incident-card')
   article.dataset.state = incident.state
+  article.dataset.impact = incident.impact
+  article.dataset.source = isLastKnown ? 'last-known' : 'live'
   const header = element('div', 'incident-header')
   const titleWrap = element('div')
+  const incidentState = incident.kind === 'maintenance' ? 'Maintenance' : stateLabels[incident.state]
   const eyebrow = element(
     'p',
     'incident-eyebrow',
-    incident.kind === 'maintenance' ? 'Maintenance' : stateLabels[incident.state],
+    isLastKnown ? `Last known · ${incidentState}` : incidentState,
   )
-  titleWrap.append(eyebrow, element('h3', undefined, incident.title))
-  header.append(titleWrap, statusBadge(incident.impact))
+  titleWrap.append(eyebrow, element(headingLevel, undefined, incident.title))
+  header.append(
+    titleWrap,
+    statusBadge(
+      incident.impact,
+      isLastKnown ? `Last known: ${statusLabels[incident.impact]}` : undefined,
+    ),
+  )
   const affectedNames = incident.affectedComponentIds.map(
     (id) => components.find((component) => component.id === id)?.name ?? id,
   )
@@ -338,27 +426,69 @@ function incidentCard(incident: StatusIncident, components: StatusComponent[]): 
   return article
 }
 
-function renderIncidents(snapshot: StatusSnapshotV1): HTMLElement {
+function sortIncidents(incidents: StatusIncident[]): StatusIncident[] {
+  return [...incidents].sort((left, right) => Date.parse(right.startedAt) - Date.parse(left.startedAt))
+}
+
+function renderActiveIncidents(snapshot: StatusSnapshotV1, source: SnapshotSource): HTMLElement | null {
+  const active = sortIncidents(snapshot.incidents.filter(({state}) => state !== 'resolved'))
+  if (active.length === 0) return null
+
+  const section = element('section', 'active-incidents-section')
+  section.dataset.source = source
+  section.setAttribute('aria-labelledby', 'active-incidents-heading')
+  const heading = element(
+    'h2',
+    'section-title',
+    source === 'live' ? 'Active incidents' : 'Last known active incidents',
+  )
+  heading.id = 'active-incidents-heading'
+  section.append(heading)
+  const list = element('div', 'active-incident-list')
+  for (const incident of active) {
+    list.append(incidentCard(incident, snapshot.components, 'h3', source !== 'live'))
+  }
+  section.append(list)
+  return section
+}
+
+function renderIncidentHistory(snapshot: StatusSnapshotV1): HTMLElement {
   const section = element('section', 'incidents-section')
   section.setAttribute('aria-labelledby', 'incidents-heading')
-  const heading = element('h2', 'section-title', 'Incident history')
+  const heading = element('h2', 'section-title', 'Past incidents')
   heading.id = 'incidents-heading'
-  section.append(heading, element('p', 'section-description', 'Automatic incidents recorded during the past 90 days.'))
+  section.append(
+    heading,
+    element('p', 'section-description', 'Resolved incidents recorded during the past 90 days.'),
+  )
 
-  const ordered = [...snapshot.incidents].sort((left, right) => {
-    if (left.state === 'resolved' && right.state !== 'resolved') return 1
-    if (left.state !== 'resolved' && right.state === 'resolved') return -1
-    return Date.parse(right.startedAt) - Date.parse(left.startedAt)
-  })
-  if (ordered.length === 0) {
+  const resolved = sortIncidents(snapshot.incidents.filter(({state}) => state === 'resolved'))
+  if (resolved.length === 0) {
     const empty = element('div', 'empty-incidents')
-    empty.append(element('span', 'empty-check', '✓'), element('p', undefined, 'No incidents have been recorded in the past 90 days.'))
+    empty.append(
+      element('span', 'empty-check', '✓'),
+      element('p', undefined, 'No incidents have been recorded in the past 90 days.'),
+    )
     section.append(empty)
     return section
   }
-  const list = element('div', 'incident-list')
-  for (const incident of ordered) list.append(incidentCard(incident, snapshot.components))
-  section.append(list)
+
+  const groups = new Map<string, StatusIncident[]>()
+  for (const incident of resolved) {
+    const date = formatIncidentDate(incident.startedAt)
+    groups.set(date, [...(groups.get(date) ?? []), incident])
+  }
+  const history = element('div', 'incident-history')
+  for (const [date, incidents] of groups) {
+    const day = element('section', 'incident-day')
+    const dayHeading = element('h3', 'incident-date', date)
+    day.append(dayHeading)
+    const list = element('div', 'incident-list')
+    for (const incident of incidents) list.append(incidentCard(incident, snapshot.components, 'h4'))
+    day.append(list)
+    history.append(day)
+  }
+  section.append(history)
   return section
 }
 
@@ -368,12 +498,15 @@ export function renderSnapshot(
   source: SnapshotSource,
   onRefresh: () => void,
 ): void {
-  root.replaceChildren(
-    renderOverview(snapshot, source, onRefresh),
-    renderSummary(snapshot),
+  const sections = [renderOverview(snapshot, source, onRefresh)]
+  const activeIncidents = renderActiveIncidents(snapshot, source)
+  if (activeIncidents) sections.push(activeIncidents)
+  sections.push(
+    renderSummary(snapshot, source),
     renderComponents(snapshot, source),
-    renderIncidents(snapshot),
+    renderIncidentHistory(snapshot),
   )
+  root.replaceChildren(...sections)
   root.setAttribute('aria-busy', 'false')
 }
 
