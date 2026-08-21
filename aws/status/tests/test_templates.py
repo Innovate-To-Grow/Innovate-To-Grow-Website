@@ -107,6 +107,16 @@ def test_asset_retirement_is_tag_gated_and_api_cache_keeps_stale_fallback():
     assert cache["MaxTTL"] >= 960
 
 
+def test_disabled_html_cache_does_not_vary_on_compression_headers():
+    resources = load("template.yaml")["Resources"]
+    cache = resources["StatusNoCachePolicy"]["Properties"]["CachePolicyConfig"]
+
+    assert cache["MinTTL"] == cache["DefaultTTL"] == cache["MaxTTL"] == 0
+    parameters = cache["ParametersInCacheKeyAndForwardedToOrigin"]
+    assert parameters["EnableAcceptEncodingBrotli"] is False
+    assert parameters["EnableAcceptEncodingGzip"] is False
+
+
 def test_public_and_internal_dynamodb_read_permissions_are_partition_isolated():
     resources = load("template.yaml")["Resources"]
     public_statements = resources["PublicReadFunction"]["Properties"]["Policies"][0]["Statement"]
