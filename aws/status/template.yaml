@@ -179,10 +179,10 @@ Resources:
             - Sid: ExistingTargetHealthRead
               Effect: Allow
               Action: elasticloadbalancing:DescribeTargetHealth
-              Resource:
-                - !Ref ProductionTargetGroupArn
-                - !Ref DemoTargetGroupArn
-                - !Ref ArchiveTargetGroupArn
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  aws:RequestedRegion: !Ref AWS::Region
             - Sid: ExistingDatabaseRead
               Effect: Allow
               Action: rds:DescribeDBInstances
@@ -195,16 +195,26 @@ Resources:
                 - !Sub arn:${AWS::Partition}:s3:::${DemoAssetsBucket}
             - Sid: ExistingAmplifyRead
               Effect: Allow
-              Action:
-                - amplify:GetBranch
-                - amplify:ListJobs
+              Action: amplify:GetBranch
               Resource:
                 - !Sub arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${ProductionAmplifyAppId}/branches/${ProductionAmplifyBranch}
                 - !Sub arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${DemoAmplifyAppId}/branches/${DemoAmplifyBranch}
+            - Sid: ExistingAmplifyJobList
+              Effect: Allow
+              Action: amplify:ListJobs
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  aws:RequestedRegion: !Ref AWS::Region
             - Sid: StatusAlarmRead
               Effect: Allow
               Action: cloudwatch:DescribeAlarms
-              Resource: !Sub arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${AWS::StackName}-*
+              Resource:
+                - !Sub arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${AWS::StackName}-ProbeFunctionErrors
+                - !Sub arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${AWS::StackName}-ProbeMissing
+                - !Sub arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${AWS::StackName}-PublicApi5xx
+                - !Sub arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${AWS::StackName}-DynamoThrottles
+                - !Sub arn:${AWS::Partition}:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${AWS::StackName}-SchedulerDlqMessages
             - Sid: StatusMetricWrite
               Effect: Allow
               Action: cloudwatch:PutMetricData

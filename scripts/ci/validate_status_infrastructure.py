@@ -282,7 +282,10 @@ def validate_observability_and_iam(template: dict[str, Any]) -> None:
         "all status log groups must retain logs for 30 days",
     )
 
-    functions = [item for item in resources.values() if item.get("Type") == "AWS::Serverless::Function"]
+    function_resources = {
+        logical_id: item for logical_id, item in resources.items() if item.get("Type") == "AWS::Serverless::Function"
+    }
+    functions = list(function_resources.values())
     require(len(functions) == 3, "status stack must have exactly three Lambda functions")
 
     monitoring_environment = {
@@ -363,32 +366,103 @@ def validate_observability_and_iam(template: dict[str, Any]) -> None:
         "the internal Lambda must read only the internal snapshot partition",
     )
 
-    probe_statements = resource(template, "ProbeFunction", "AWS::Serverless::Function")["Properties"]["Policies"][0][
-        "Statement"
-    ]
-    alarm_read = next(statement for statement in probe_statements if statement.get("Sid") == "StatusAlarmRead")
+    probe_statements = {
+        statement["Sid"]: statement
+        for statement in resource(template, "ProbeFunction", "AWS::Serverless::Function")["Properties"]["Policies"][0][
+            "Statement"
+        ]
+    }
+    requested_region_condition = {"StringEquals": {"aws:RequestedRegion": {"!Ref": "AWS::Region"}}}
+    for sid, action in (
+        ("ExistingTargetHealthRead", "elasticloadbalancing:DescribeTargetHealth"),
+        ("ExistingAmplifyJobList", "amplify:ListJobs"),
+    ):
+        statement = probe_statements[sid]
+        require(values(statement.get("Action", [])) == {action}, f"{sid} must grant only {action}")
+        require(statement.get("Resource") == "*", f"{sid} must use the service-required wildcard resource")
+        require(
+            statement.get("Condition") == requested_region_condition,
+            f"{sid} must be limited to the deployment region",
+        )
+
+    amplify_branch_read = probe_statements["ExistingAmplifyRead"]
     require(
-        str(alarm_read.get("Resource", {}).get("!Sub", "")).endswith("alarm:${AWS::StackName}-*"),
-        "DescribeAlarms must be limited to this status stack's alarm-name prefix",
+        values(amplify_branch_read.get("Action", [])) == {"amplify:GetBranch"},
+        "Amplify branch access must grant only GetBranch",
+    )
+    expected_branch_resources = {
+        "arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${ProductionAmplifyAppId}/branches/${ProductionAmplifyBranch}",
+        "arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${DemoAmplifyAppId}/branches/${DemoAmplifyBranch}",
+    }
+    branch_resources = amplify_branch_read.get("Resource", [])
+    require(
+        isinstance(branch_resources, list)
+        and len(branch_resources) == len(expected_branch_resources)
+        and all(isinstance(item, dict) and set(item) == {"!Sub"} for item in branch_resources),
+        "Amplify GetBranch resources must be canonical !Sub ARN entries only",
+    )
+    actual_branch_resources = {str(item.get("!Sub", "")) for item in branch_resources if isinstance(item, dict)}
+    require(
+        actual_branch_resources == expected_branch_resources,
+        "Amplify GetBranch must be limited to the two configured branches",
     )
 
-    for function in functions:
+    alarm_read = probe_statements["StatusAlarmRead"]
+    require(
+        values(alarm_read.get("Action", [])) == {"cloudwatch:DescribeAlarms"},
+        "the alarm statement must grant only DescribeAlarms",
+    )
+    alarm_names = {str(alarm.get("Properties", {}).get("AlarmName", {}).get("!Sub", "")) for alarm in alarms}
+    expected_alarm_resources = {
+        f"arn:${{AWS::Partition}}:cloudwatch:${{AWS::Region}}:${{AWS::AccountId}}:alarm:{name}" for name in alarm_names
+    }
+    alarm_resources = alarm_read.get("Resource", [])
+    require(
+        isinstance(alarm_resources, list)
+        and len(alarm_resources) == len(expected_alarm_resources)
+        and all(isinstance(item, dict) and set(item) == {"!Sub"} for item in alarm_resources),
+        "DescribeAlarms resources must be canonical !Sub ARN entries only",
+    )
+    actual_alarm_resources = {str(item.get("!Sub", "")) for item in alarm_resources if isinstance(item, dict)}
+    require(
+        len(alarm_names) == 5 and actual_alarm_resources == expected_alarm_resources,
+        "DescribeAlarms must be limited to the five exact status-stack alarms",
+    )
+
+    allowed_wildcard_resources = {
+        ("ProbeFunction", "ExistingEcsRuntimeRead"): {
+            "ecs:DescribeServices",
+            "ecs:ListTasks",
+            "ecs:DescribeTasks",
+        },
+        ("ProbeFunction", "ExistingTaskDefinitionRead"): {"ecs:DescribeTaskDefinition"},
+        ("ProbeFunction", "ExistingTargetHealthRead"): {"elasticloadbalancing:DescribeTargetHealth"},
+        ("ProbeFunction", "ExistingAmplifyJobList"): {"amplify:ListJobs"},
+        ("ProbeFunction", "StatusMetricWrite"): {"cloudwatch:PutMetricData"},
+    }
+    observed_wildcard_resources: set[tuple[str, str]] = set()
+    for logical_id, function in function_resources.items():
         for policy in function.get("Properties", {}).get("Policies", []):
             for statement in policy.get("Statement", []):
                 actions = values(statement.get("Action", []))
                 require("*" not in actions, "status Lambda policies must not grant wildcard actions")
-                if statement.get("Resource") == "*":
+                resource_value = statement.get("Resource")
+                require(
+                    not (isinstance(resource_value, list) and "*" in resource_value),
+                    f"{logical_id}/{statement.get('Sid', '')} must not mix wildcard and scoped resources",
+                )
+                uses_wildcard_resource = resource_value == "*"
+                if uses_wildcard_resource:
+                    key = (logical_id, str(statement.get("Sid", "")))
                     require(
-                        actions
-                        <= {
-                            "ecs:DescribeServices",
-                            "ecs:ListTasks",
-                            "ecs:DescribeTasks",
-                            "ecs:DescribeTaskDefinition",
-                            "cloudwatch:PutMetricData",
-                        },
-                        f"unexpected wildcard-resource status permissions: {sorted(actions)}",
+                        key in allowed_wildcard_resources and actions == allowed_wildcard_resources[key],
+                        f"unexpected wildcard-resource status permissions in {key}: {sorted(actions)}",
                     )
+                    observed_wildcard_resources.add(key)
+    require(
+        observed_wildcard_resources == set(allowed_wildcard_resources),
+        "status wildcard-resource statements must match the reviewed allowlist exactly",
+    )
 
 
 def validate_outputs(template: dict[str, Any]) -> None:

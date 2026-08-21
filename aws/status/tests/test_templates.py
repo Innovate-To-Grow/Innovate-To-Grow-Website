@@ -131,11 +131,48 @@ def test_public_and_internal_dynamodb_read_permissions_are_partition_isolated():
     assert internal_statement["Condition"]["ForAllValues:StringEquals"]["dynamodb:LeadingKeys"] == ["INTERNAL"]
 
 
-def test_alarm_read_is_limited_to_this_stack_alarm_prefix():
+def test_runtime_wildcards_are_isolated_and_region_limited():
     resources = load("template.yaml")["Resources"]
     statements = resources["ProbeFunction"]["Properties"]["Policies"][0]["Statement"]
-    alarm_read = next(statement for statement in statements if statement["Sid"] == "StatusAlarmRead")
+    by_sid = {statement["Sid"]: statement for statement in statements}
 
-    assert alarm_read["Resource"] != "*"
-    assert "alarm:" in alarm_read["Resource"]
-    assert "StackName" in alarm_read["Resource"]
+    assert by_sid["ExistingTargetHealthRead"] == {
+        "Sid": "ExistingTargetHealthRead",
+        "Effect": "Allow",
+        "Action": "elasticloadbalancing:DescribeTargetHealth",
+        "Resource": "*",
+        "Condition": {"StringEquals": {"aws:RequestedRegion": "AWS::Region"}},
+    }
+    assert by_sid["ExistingAmplifyJobList"] == {
+        "Sid": "ExistingAmplifyJobList",
+        "Effect": "Allow",
+        "Action": "amplify:ListJobs",
+        "Resource": "*",
+        "Condition": {"StringEquals": {"aws:RequestedRegion": "AWS::Region"}},
+    }
+
+
+def test_amplify_branch_and_alarm_reads_use_exact_resources():
+    resources = load("template.yaml")["Resources"]
+    statements = resources["ProbeFunction"]["Properties"]["Policies"][0]["Statement"]
+    by_sid = {statement["Sid"]: statement for statement in statements}
+
+    amplify_read = by_sid["ExistingAmplifyRead"]
+    assert amplify_read["Action"] == "amplify:GetBranch"
+    assert amplify_read["Resource"] == [
+        "arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${ProductionAmplifyAppId}/branches/${ProductionAmplifyBranch}",
+        "arn:${AWS::Partition}:amplify:${AWS::Region}:${AWS::AccountId}:apps/${DemoAmplifyAppId}/branches/${DemoAmplifyBranch}",
+    ]
+
+    alarm_read = by_sid["StatusAlarmRead"]
+    assert alarm_read["Action"] == "cloudwatch:DescribeAlarms"
+    assert alarm_read["Resource"] == [
+        f"arn:${{AWS::Partition}}:cloudwatch:${{AWS::Region}}:${{AWS::AccountId}}:alarm:${{AWS::StackName}}-{suffix}"
+        for suffix in (
+            "ProbeFunctionErrors",
+            "ProbeMissing",
+            "PublicApi5xx",
+            "DynamoThrottles",
+            "SchedulerDlqMessages",
+        )
+    ]

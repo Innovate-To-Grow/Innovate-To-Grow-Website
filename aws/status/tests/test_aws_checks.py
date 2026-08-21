@@ -105,3 +105,36 @@ def test_failed_amplify_deployment_is_a_public_degraded_signal(settings_factory)
 
     assert result.state == "degraded"
     assert result.affects_public is True
+
+
+def test_alarm_summary_queries_only_the_five_stack_alarms(settings_factory):
+    captured = {}
+
+    class CloudWatch:
+        def describe_alarms(self, **kwargs):
+            captured.update(kwargs)
+            return {
+                "MetricAlarms": [
+                    {"AlarmName": "i2g-status-PublicApi5xx", "StateValue": "OK"},
+                    {"AlarmName": "i2g-status-ProbeFunctionErrors", "StateValue": "ALARM"},
+                ]
+            }
+
+    checks = AwsRuntimeChecks(settings_factory(), client_factory=lambda _name: CloudWatch())
+
+    result = checks.alarm_summary()
+
+    assert captured == {
+        "AlarmNames": [
+            "i2g-status-ProbeFunctionErrors",
+            "i2g-status-ProbeMissing",
+            "i2g-status-PublicApi5xx",
+            "i2g-status-DynamoThrottles",
+            "i2g-status-SchedulerDlqMessages",
+        ],
+        "AlarmTypes": ["MetricAlarm"],
+    }
+    assert [alarm["name"] for alarm in result["alarms"]] == [
+        "i2g-status-ProbeFunctionErrors",
+        "i2g-status-PublicApi5xx",
+    ]
