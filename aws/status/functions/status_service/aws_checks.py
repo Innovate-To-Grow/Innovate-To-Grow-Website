@@ -9,6 +9,14 @@ from typing import Any
 from .settings import Settings
 from .types import CheckResult
 
+_STATUS_ALARM_SUFFIXES = (
+    "ProbeFunctionErrors",
+    "ProbeMissing",
+    "PublicApi5xx",
+    "DynamoThrottles",
+    "SchedulerDlqMessages",
+)
+
 
 def _revision(task_definition_arn: str | None) -> str | None:
     if not task_definition_arn:
@@ -125,8 +133,8 @@ class AwsRuntimeChecks:
 
         try:
             response = self._client("cloudwatch").describe_alarms(
-                AlarmNamePrefix=self.settings.alarm_prefix,
-                MaxRecords=100,
+                AlarmNames=[f"{self.settings.alarm_prefix}{suffix}" for suffix in _STATUS_ALARM_SUFFIXES],
+                AlarmTypes=["MetricAlarm"],
             )
             alarms = [
                 {
@@ -137,7 +145,7 @@ class AwsRuntimeChecks:
                     "metric": str(alarm.get("MetricName", ""))[:128],
                     "reason": str(alarm.get("StateReason", ""))[:500],
                 }
-                for alarm in response.get("MetricAlarms", [])
+                for alarm in sorted(response.get("MetricAlarms", []), key=lambda item: str(item.get("AlarmName", "")))
             ]
             return {"state": "ok", "alarms": alarms}
         except Exception:
