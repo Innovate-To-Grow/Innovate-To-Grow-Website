@@ -149,6 +149,29 @@ summary,
   text-transform: uppercase;
 }
 
+.header-affiliation {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.28rem;
+}
+
+.uc-merced-logo-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.42rem 0.65rem;
+  border-radius: 0.3rem;
+  background: var(--navy);
+}
+
+.uc-merced-logo {
+  display: block;
+  width: auto;
+  height: 28px;
+}
+
 .independent-label {
   color: var(--muted);
   font-size: 0.76rem;
@@ -938,6 +961,9 @@ tbody th {
 
   .header-inner {
     min-height: 76px;
+    flex-wrap: wrap;
+    padding-block: 0.75rem;
+    gap: 0.65rem 1rem;
   }
 
   .brand img {
@@ -951,6 +977,20 @@ tbody th {
 
   .brand-subtitle {
     font-size: 0.61rem;
+  }
+
+  .header-affiliation {
+    width: calc(100% - 36px - 0.8rem);
+    align-items: flex-start;
+    margin-left: calc(36px + 0.8rem);
+  }
+
+  .uc-merced-logo-frame {
+    padding: 0.36rem 0.55rem;
+  }
+
+  .uc-merced-logo {
+    height: 25px;
   }
 
   .independent-label {
@@ -1025,6 +1065,11 @@ tbody th {
 }
 
 @media (max-width: 340px) {
+  .header-affiliation {
+    width: 100%;
+    margin-left: 0;
+  }
+
   .brand-subtitle {
     letter-spacing: 0.04em;
   }
