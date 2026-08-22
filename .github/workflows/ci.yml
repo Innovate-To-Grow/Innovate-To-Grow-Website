@@ -1191,6 +1191,9 @@ jobs:
       - name: Install locked status frontend dependencies
         run: npm ci
 
+      - name: Check status npm licenses
+        run: python3 ../scripts/ci/check_npm_licenses.py --package-lock package-lock.json --output /tmp/status-npm-license-report.json
+
       - name: Run status frontend lint
         run: npm run lint
 

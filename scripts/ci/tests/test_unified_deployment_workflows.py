@@ -258,6 +258,9 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
                 self.assertIn("needs.changes.outputs.status", serialized)
 
         frontend = ci["jobs"]["status-frontend"]
+        license_check = named_step(frontend, "Check status npm licenses")["run"]
+        self.assertIn("check_npm_licenses.py", license_check)
+        self.assertIn("--package-lock package-lock.json", license_check)
         upload = named_step(frontend, "Upload status production assets")
         self.assertEqual(upload["with"]["name"], "status-dist-production")
         infrastructure = ci["jobs"]["status-infrastructure"]

@@ -68,6 +68,27 @@ test('shows the complete public status and passes automated accessibility checks
   expect(results.violations).toEqual([])
 })
 
+test('loads the self-hosted Inter variable typeface across the page', async ({page}) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', {name: 'All systems operational'})).toBeVisible()
+
+  const typography = await page.evaluate(async () => {
+    await document.fonts.ready
+    const heading = document.querySelector('h1')
+    return {
+      bodyFamily: getComputedStyle(document.body).fontFamily,
+      headingFamily: heading ? getComputedStyle(heading).fontFamily : '',
+      loadedInterFace: [...document.fonts].some(
+        (face) => face.family === 'Inter Variable' && face.status === 'loaded',
+      ),
+    }
+  })
+
+  expect(typography.bodyFamily).toContain('Inter Variable')
+  expect(typography.headingFamily).toContain('Inter Variable')
+  expect(typography.loadedInterFace).toBe(true)
+})
+
 test('keeps active incident headings in order and passes accessibility checks', async ({page}) => {
   const base = statusFixture('degraded')
   const fixture = {
