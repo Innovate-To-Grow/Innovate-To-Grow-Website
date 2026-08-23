@@ -60,12 +60,49 @@ test.beforeEach(async ({page}) => {
 test('shows the complete public status and passes automated accessibility checks', async ({page}) => {
   await page.goto('/')
   await expect(page.getByRole('heading', {name: 'All systems operational'})).toBeVisible()
+  const campusLogo = page.getByRole('img', {name: 'UC Merced'})
+  await expect(campusLogo).toBeVisible()
+  const logoState = await campusLogo.evaluate((image: HTMLImageElement) => ({
+    complete: image.complete,
+    naturalWidth: image.naturalWidth,
+    naturalHeight: image.naturalHeight,
+    localSource:
+      image.currentSrc.startsWith('data:image/') ||
+      new URL(image.currentSrc).origin === window.location.origin,
+  }))
+  expect(logoState).toMatchObject({
+    complete: true,
+    naturalWidth: 230,
+    naturalHeight: 57,
+    localSource: true,
+  })
   await expect(page.locator('.component-card')).toHaveCount(5)
   await expect(page.locator('.history-bar')).toHaveCount(450)
   await expect(page.getByText('No incidents have been recorded in the past 90 days.')).toBeVisible()
 
   const results = await new AxeBuilder({page}).analyze()
   expect(results.violations).toEqual([])
+})
+
+test('loads the self-hosted Inter variable typeface across the page', async ({page}) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', {name: 'All systems operational'})).toBeVisible()
+
+  const typography = await page.evaluate(async () => {
+    await document.fonts.ready
+    const heading = document.querySelector('h1')
+    return {
+      bodyFamily: getComputedStyle(document.body).fontFamily,
+      headingFamily: heading ? getComputedStyle(heading).fontFamily : '',
+      loadedInterFace: [...document.fonts].some(
+        (face) => face.family === 'Inter Variable' && face.status === 'loaded',
+      ),
+    }
+  })
+
+  expect(typography.bodyFamily).toContain('Inter Variable')
+  expect(typography.headingFamily).toContain('Inter Variable')
+  expect(typography.loadedInterFace).toBe(true)
 })
 
 test('keeps active incident headings in order and passes accessibility checks', async ({page}) => {
@@ -169,6 +206,15 @@ test('reflows at a 320px viewport without dropping any history day', async ({pag
   await page.setViewportSize({width: 320, height: 800})
   await page.goto('/')
   await expect(page.locator('.history-bar')).toHaveCount(450)
+  const campusLogo = page.getByRole('img', {name: 'UC Merced'})
+  await expect(campusLogo).toBeInViewport()
+  const [brandBox, affiliationBox] = await Promise.all([
+    page.locator('.brand').boundingBox(),
+    page.locator('.header-affiliation').boundingBox(),
+  ])
+  expect(brandBox).not.toBeNull()
+  expect(affiliationBox).not.toBeNull()
+  expect(affiliationBox!.y).toBeGreaterThanOrEqual(brandBox!.y + brandBox!.height - 1)
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   expect(overflow).toBeLessThanOrEqual(1)
 })
@@ -179,6 +225,7 @@ test('keeps an explanatory shell when JavaScript is unavailable', async ({browse
   await page.goto(baseURL ?? 'http://127.0.0.1:4173')
 
   await expect(page.getByRole('heading', {name: 'Checking system status'})).toBeVisible()
+  await expect(page.getByRole('img', {name: 'UC Merced'})).toBeVisible()
   await expect(page.getByRole('alert')).toContainText('JavaScript is required to retrieve live status data')
   await context.close()
 })
