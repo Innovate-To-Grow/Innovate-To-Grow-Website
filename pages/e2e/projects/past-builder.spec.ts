@@ -1,7 +1,7 @@
 // /past-projects builder mode: multi-search-table workflow with AI search,
 // merge/remove/undo/reset. Covers authenticated + unauthenticated
 // paths.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {
   aiSearchResponse,
   mockAiSearch,

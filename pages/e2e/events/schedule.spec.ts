@@ -1,6 +1,6 @@
 // /schedule: full interactive event schedule with winners, expo, presentation
 // tracks (desktop table + mobile cards), and embedded project grid search.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {mockSchedule, schedulePayload} from '../helpers';
 
 test('renders event name, date, location, and description', {tag: '@core'}, async ({page}) => {

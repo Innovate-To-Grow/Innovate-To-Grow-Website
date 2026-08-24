@@ -1,7 +1,7 @@
 // /subscribe end-to-end: email-code → inline profile completion → subscription
 // management → unsubscribe. Migrated from the original auth-flows.spec.ts and
 // rebuilt on the shared fixtures + factories.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {
   mockEmailAuthFlow,
   mockAuthoritativeSession,

@@ -1,6 +1,6 @@
 // Email-code login journey + the verify-email route guards. Password login is
 // intentionally not exercised here (RSA-OAEP fixture, duplicate of vitest).
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {
   loginResponse,
   mockEmailAuthFlow,

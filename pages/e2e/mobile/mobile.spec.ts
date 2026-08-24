@@ -1,8 +1,8 @@
 // Mobile-only responsive behavior. These run on the mobile/tablet projects
 // (grep /@mobile-only/) and use touch taps. The off-canvas drawer is
 // MobileMenuPanel (#mobile-menu); the hamburger lives in #menu-root.
-import {test, expect} from './fixtures';
-import {expectSignedOut, seedAuthenticatedSession} from './helpers';
+import {test, expect} from '../helpers/fixtures';
+import {expectSignedOut, seedAuthenticatedSession} from '../helpers';
 
 test('mobile menu drawer opens and shows the sign-in CTA', {tag: '@mobile-only'}, async ({page}) => {
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
