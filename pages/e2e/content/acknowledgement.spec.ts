@@ -1,5 +1,5 @@
 // /acknowledgement: CMS-backed partners & sponsors page.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {cmsAcknowledgementPage, mockCmsPage} from '../helpers';
 
 test('acknowledgement page renders from the CMS payload', {tag: '@core'}, async ({page}) => {

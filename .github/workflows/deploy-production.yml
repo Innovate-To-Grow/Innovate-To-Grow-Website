@@ -141,28 +141,16 @@ jobs:
             echo
             printf -- '%s\n' "- Commit: \`$DEPLOY_SHA\`"
             printf -- '%s\n' "- Verified CI run: \`$CI_RUN_ID\`"
-            echo "- Targets: status, backend prod/demo, frontend prod/demo, archive prod"
+            echo "- Targets: backend prod/demo, frontend prod/demo, archive prod"
           } >> "$GITHUB_STEP_SUMMARY"
-
-  deploy-status:
-    name: Deploy independent status site
-    needs: approve
-    uses: ./.github/workflows/deploy-status.yml
-    with:
-      deploy_sha: ${{ needs.approve.outputs.deploy_sha }}
-      build_assets: false
-      artifact_run_id: ${{ needs.approve.outputs.ci_run_id }}
-    secrets: inherit
 
   deploy-backend:
     name: Deploy backend targets
-    needs: [approve, deploy-status]
+    needs: approve
     uses: ./.github/workflows/deploy-backend.yml
     with:
       deploy_sha: ${{ needs.approve.outputs.deploy_sha }}
       build_image: false
-      status_public_url: ${{ needs.deploy-status.outputs.public_url }}
-      status_internal_api_url: ${{ needs.deploy-status.outputs.internal_api_url }}
     secrets: inherit
 
   deploy-frontend:

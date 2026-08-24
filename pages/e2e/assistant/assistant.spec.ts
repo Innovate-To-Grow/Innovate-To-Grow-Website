@@ -1,12 +1,12 @@
 // #chatbot-root: AI assistant floating chat widget. Independent React root with
 // launcher, chat panel, message sending, starter questions, and error states.
-import {test, expect} from './fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {
   assistantChatSuccess,
   assistantConfig,
   mockAssistantChat,
   mockAssistantConfig,
-} from './helpers';
+} from '../helpers';
 
 test('widget launcher button is visible on page load', async ({page}) => {
   await mockAssistantConfig(page, assistantConfig());

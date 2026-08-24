@@ -1,6 +1,6 @@
 // /account deep features: EmailCenter, PhoneCenter, PasswordSection,
 // DeleteAccountSection and TicketsSection.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {
   contactEmail,
   contactPhone,

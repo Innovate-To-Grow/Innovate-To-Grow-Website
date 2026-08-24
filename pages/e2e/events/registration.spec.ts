@@ -1,6 +1,6 @@
 // Event registration: the unauthenticated email step, a full completion to the
 // ticket confirmation, and the already-registered short-circuit.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {
   loginResponse,
   mockEmailAuthFlow,

@@ -6,7 +6,7 @@
 // own edit). Desktop engines only (untagged → no @mobile).
 import type {PastProjectShare} from '../src/features/projects/api';
 import {mockPastProjects, mockPastProjectShare, pastProjectRows} from '../helpers';
-import {expect, test} from '../fixtures';
+import {expect, test} from '../helpers/fixtures';
 
 const SHARE_ID = 'share-e2e-1';
 

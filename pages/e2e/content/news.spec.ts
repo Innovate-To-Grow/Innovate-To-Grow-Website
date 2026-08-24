@@ -1,5 +1,5 @@
 // News list (pagination, empty) + article detail (content, source link, 404).
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {mockNews, newsArticle, newsList} from '../helpers';
 
 test('news list renders article cards', {tag: '@core'}, async ({page}) => {
