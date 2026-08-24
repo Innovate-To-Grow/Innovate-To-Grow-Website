@@ -1,1 +1,0 @@
-{"description":"Percentages may use at most two decimal places.","base":"../valid/status-v1-operational.json","mutations":[{"op":"replace","path":"/summary/availability24h/percent","value":99.999}],"expectedIssue":"must use no more than two decimal places"}

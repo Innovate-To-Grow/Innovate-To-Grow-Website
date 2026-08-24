@@ -26,8 +26,6 @@ load_dotenv(BASE_DIR / ".env")
 # ---------------------------------------------------------------------------
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "")
-STATUS_PUBLIC_URL = os.environ.get("STATUS_PUBLIC_URL", "").strip().rstrip("/")
-STATUS_INTERNAL_API_URL = os.environ.get("STATUS_INTERNAL_API_URL", "").strip()
 
 # ---------------------------------------------------------------------------
 # AWS SES optional features (env-only; SES credentials live in EmailServiceConfig)
@@ -39,7 +37,6 @@ SES_SNS_TOPIC_ARN = os.environ.get("SES_SNS_TOPIC_ARN", "")
 # ambient boto3 credentials.  The app ID is optional so local installations
 # retain the SPA fallback without attempting provider I/O.
 AWS_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_S3_REGION_NAME", "us-west-2")).strip()
-STATUS_API_REGION = os.environ.get("STATUS_API_REGION", AWS_REGION).strip() or AWS_REGION
 AMPLIFY_APP_ID = os.environ.get("AMPLIFY_APP_ID", "").strip()
 AMPLIFY_BACKEND_PROXY_URL = os.environ.get("AMPLIFY_BACKEND_PROXY_URL", "").strip().rstrip("/")
 AMPLIFY_PROXY_ADMIN_PATHS = os.environ.get("AMPLIFY_PROXY_ADMIN_PATHS", "false").strip().lower() in {
