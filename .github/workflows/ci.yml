@@ -990,7 +990,7 @@ jobs:
         env:
           CI: "true"
           PW_PROJECT: required-chromium-smoke
-        run: npx playwright test e2e/required-smoke.spec.ts --project=chromium --workers=1 --retries=0
+        run: npx playwright test e2e/smoke/required-smoke.spec.ts --project=chromium --workers=1 --retries=0
 
       - name: Upload required smoke diagnostics
         if: ${{ always() }}

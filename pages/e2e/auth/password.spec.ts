@@ -1,5 +1,5 @@
 // /login password mode: email + encrypted-password login via /authn/login/.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {
   mockAccountDashboard,
   mockPasswordLogin,

@@ -3,7 +3,7 @@
 // so every mocked test gets `mockHealthyAppShell` applied automatically (no
 // per-test boilerplate). The live smoke spec uses `@playwright/test` directly.
 import {test as base, expect} from '@playwright/test';
-import {mockHealthyAppShell} from './helpers/shell';
+import {mockHealthyAppShell} from './shell';
 
 export const test = base.extend({
   page: async ({page}, use) => {
