@@ -1,0 +1,1 @@
+{"description":"Public responses must reject internal infrastructure details.","base":"../valid/status-v1-operational.json","mutations":[{"op":"add","path":"/internalError","value":"database host unavailable"}],"expectedIssue":"unexpected property internalError"}

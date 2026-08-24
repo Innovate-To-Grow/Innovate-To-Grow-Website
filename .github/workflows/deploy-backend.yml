@@ -12,6 +12,16 @@ on:
         required: false
         type: boolean
         default: false
+      status_public_url:
+        description: Public status page URL emitted by the approved status deployment.
+        required: false
+        type: string
+        default: ""
+      status_internal_api_url:
+        description: IAM-protected status API URL emitted by the approved status deployment.
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -213,6 +223,9 @@ jobs:
           ENSURE_DEFAULT_ADMIN: ${{ vars.ENSURE_DEFAULT_ADMIN || matrix.ensure_default_admin }}
           FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
           BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
+          STATUS_PUBLIC_URL: ${{ inputs.status_public_url || vars.STATUS_PUBLIC_URL }}
+          STATUS_INTERNAL_API_URL: ${{ inputs.status_internal_api_url || vars.STATUS_INTERNAL_API_URL }}
+          STATUS_API_REGION: ${{ vars.STATUS_API_REGION || 'us-west-2' }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL || matrix.api_base_url }}
           DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
           CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
@@ -294,6 +307,9 @@ jobs:
               "__CORS_ALLOWED_ORIGINS__": cors_origins,
               "__FRONTEND_URL__": frontend_url,
               "__BACKEND_URL__": backend_url,
+              "__STATUS_PUBLIC_URL__": env_value("STATUS_PUBLIC_URL"),
+              "__STATUS_INTERNAL_API_URL__": env_value("STATUS_INTERNAL_API_URL"),
+              "__STATUS_API_REGION__": env_value("STATUS_API_REGION", "us-west-2"),
               "__AWS_STORAGE_BUCKET_NAME__": env_value("AWS_STORAGE_BUCKET_NAME", "itg-static-assets"),
               "__AWS_S3_REGION_NAME__": env_value("AWS_S3_REGION_NAME", "us-west-2"),
               "__AWS_REGION__": env_value("AWS_REGION", "us-west-2"),

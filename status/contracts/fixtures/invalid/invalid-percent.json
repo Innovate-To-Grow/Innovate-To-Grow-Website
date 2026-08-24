@@ -1,0 +1,1 @@
+{"description":"Percentages must remain within the inclusive 0 through 100 range.","base":"../valid/status-v1-operational.json","mutations":[{"op":"replace","path":"/summary/availability24h/percent","value":100.01}],"expectedIssue":"must be null or a number from 0 through 100"}

@@ -1,0 +1,1009 @@
+name: Deploy Independent Status Site
+
+on:
+  workflow_call:
+    inputs:
+      deploy_sha:
+        description: Full commit SHA approved by the unified production workflow.
+        required: true
+        type: string
+      build_assets:
+        description: Build assets from the approved SHA instead of promoting its CI artifact.
+        required: false
+        type: boolean
+        default: false
+      artifact_run_id:
+        description: Successful CI run containing status-dist-production when build_assets is false.
+        required: false
+        type: string
+        default: ""
+      status_domain_name:
+        description: Canonical public status hostname; an empty value uses the protected environment variable.
+        required: false
+        type: string
+        default: ""
+      hosted_zone_id:
+        description: Route53 hosted-zone ID; an empty value uses the protected environment variable.
+        required: false
+        type: string
+        default: ""
+      backend_task_role_name:
+        description: Existing ECS task role granted the exact internal status invoke permission.
+        required: false
+        type: string
+        default: ""
+      ecs_cluster_name:
+        description: Existing ECS cluster to inspect.
+        required: false
+        type: string
+        default: ""
+      production_ecs_service:
+        description: Existing production backend ECS service.
+        required: false
+        type: string
+        default: ""
+      demo_ecs_service:
+        description: Existing demo backend ECS service.
+        required: false
+        type: string
+        default: ""
+      archive_ecs_service:
+        description: Existing archive ECS service.
+        required: false
+        type: string
+        default: ""
+      production_target_group_arn:
+        description: Production ALB target-group ARN.
+        required: false
+        type: string
+        default: ""
+      demo_target_group_arn:
+        description: Demo ALB target-group ARN.
+        required: false
+        type: string
+        default: ""
+      archive_target_group_arn:
+        description: Archive ALB target-group ARN.
+        required: false
+        type: string
+        default: ""
+      rds_instance_id:
+        description: Existing RDS DB instance identifier.
+        required: false
+        type: string
+        default: ""
+      production_assets_bucket:
+        description: Existing production static-assets bucket.
+        required: false
+        type: string
+        default: ""
+      demo_assets_bucket:
+        description: Existing demo static-assets bucket.
+        required: false
+        type: string
+        default: ""
+      production_amplify_app_id:
+        description: Existing production Amplify application ID.
+        required: false
+        type: string
+        default: ""
+      demo_amplify_app_id:
+        description: Existing demo Amplify application ID.
+        required: false
+        type: string
+        default: ""
+      production_amplify_branch:
+        description: Existing production Amplify branch.
+        required: false
+        type: string
+        default: ""
+      demo_amplify_branch:
+        description: Existing demo Amplify branch.
+        required: false
+        type: string
+        default: ""
+    outputs:
+      public_url:
+        description: Canonical public status URL.
+        value: ${{ jobs.deploy.outputs.public_url }}
+      internal_api_url:
+        description: IAM-protected internal status API URL.
+        value: ${{ jobs.deploy.outputs.internal_api_url }}
+      distribution_id:
+        description: CloudFront distribution ID serving the status site.
+        value: ${{ jobs.deploy.outputs.distribution_id }}
+      release_sha:
+        description: Exact approved commit deployed by this workflow.
+        value: ${{ jobs.deploy.outputs.release_sha }}
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: deploy-status-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Status to us-west-2
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment:
+      name: AWS Status - Prod
+      url: ${{ format('https://{0}', inputs.status_domain_name || vars.STATUS_DOMAIN_NAME || 'status.i2g.ucmerced.edu') }}
+    outputs:
+      public_url: ${{ steps.stack-outputs.outputs.public_url }}
+      internal_api_url: ${{ steps.stack-outputs.outputs.internal_api_url }}
+      distribution_id: ${{ steps.stack-outputs.outputs.distribution_id }}
+      release_sha: ${{ inputs.deploy_sha }}
+    env:
+      STATUS_EAST_REGION: us-east-1
+      STATUS_REGION: us-west-2
+      STATUS_CERTIFICATE_STACK: ${{ vars.STATUS_CERTIFICATE_STACK || 'itg-status-certificate' }}
+      STATUS_STACK: ${{ vars.STATUS_STACK || 'itg-status' }}
+      STATUS_DOMAIN_NAME: ${{ inputs.status_domain_name || vars.STATUS_DOMAIN_NAME || 'status.i2g.ucmerced.edu' }}
+      STATUS_HOSTED_ZONE_ID: ${{ inputs.hosted_zone_id || vars.STATUS_HOSTED_ZONE_ID }}
+      STATUS_BACKEND_TASK_ROLE_NAME: ${{ inputs.backend_task_role_name || vars.STATUS_BACKEND_TASK_ROLE_NAME }}
+      STATUS_ECS_CLUSTER_NAME: ${{ inputs.ecs_cluster_name || vars.STATUS_ECS_CLUSTER_NAME || 'itg-backend-cluster' }}
+      STATUS_PRODUCTION_ECS_SERVICE: ${{ inputs.production_ecs_service || vars.STATUS_PRODUCTION_ECS_SERVICE || 'itg-backend-service' }}
+      STATUS_DEMO_ECS_SERVICE: ${{ inputs.demo_ecs_service || vars.STATUS_DEMO_ECS_SERVICE || 'itg-backend-demo-service' }}
+      STATUS_ARCHIVE_ECS_SERVICE: ${{ inputs.archive_ecs_service || vars.STATUS_ARCHIVE_ECS_SERVICE || 'itg-archive-service' }}
+      STATUS_PRODUCTION_TARGET_GROUP_ARN: ${{ inputs.production_target_group_arn || vars.STATUS_PRODUCTION_TARGET_GROUP_ARN }}
+      STATUS_DEMO_TARGET_GROUP_ARN: ${{ inputs.demo_target_group_arn || vars.STATUS_DEMO_TARGET_GROUP_ARN }}
+      STATUS_ARCHIVE_TARGET_GROUP_ARN: ${{ inputs.archive_target_group_arn || vars.STATUS_ARCHIVE_TARGET_GROUP_ARN }}
+      STATUS_RDS_INSTANCE_ID: ${{ inputs.rds_instance_id || vars.STATUS_RDS_INSTANCE_ID || 'i2g-prod-postgres-west2' }}
+      STATUS_PRODUCTION_ASSETS_BUCKET: ${{ inputs.production_assets_bucket || vars.STATUS_PRODUCTION_ASSETS_BUCKET || 'itg-static-assets' }}
+      STATUS_DEMO_ASSETS_BUCKET: ${{ inputs.demo_assets_bucket || vars.STATUS_DEMO_ASSETS_BUCKET || 'itg-demo-static-assets' }}
+      STATUS_PRODUCTION_AMPLIFY_APP_ID: ${{ inputs.production_amplify_app_id || vars.STATUS_PROD_AMPLIFY_APP_ID }}
+      STATUS_DEMO_AMPLIFY_APP_ID: ${{ inputs.demo_amplify_app_id || vars.STATUS_DEMO_AMPLIFY_APP_ID }}
+      STATUS_PRODUCTION_AMPLIFY_BRANCH: ${{ inputs.production_amplify_branch || vars.STATUS_PRODUCTION_AMPLIFY_BRANCH || 'main' }}
+      STATUS_DEMO_AMPLIFY_BRANCH: ${{ inputs.demo_amplify_branch || vars.STATUS_DEMO_AMPLIFY_BRANCH || 'main' }}
+
+    steps:
+      - name: Checkout the approved commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.deploy_sha }}
+          fetch-depth: 1
+
+      - name: Verify the exact approved commit and artifact source
+        env:
+          DEPLOY_SHA: ${{ inputs.deploy_sha }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          BUILD_ASSETS: ${{ inputs.build_assets }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::deploy_sha must be a full 40-character commit SHA."
+            exit 1
+          fi
+          checked_out_sha="$(git rev-parse HEAD)"
+          if [ "$checked_out_sha" != "$DEPLOY_SHA" ]; then
+            echo "::error::Checked out $checked_out_sha instead of approved SHA $DEPLOY_SHA."
+            exit 1
+          fi
+          if [ "$BUILD_ASSETS" = "false" ]; then
+            if [[ ! "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]]; then
+              echo "::error::artifact_run_id is required when build_assets is false."
+              exit 1
+            fi
+            artifact_run="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${ARTIFACT_RUN_ID}")"
+            artifact_sha="$(jq -r .head_sha <<<"$artifact_run")"
+            if [ "$artifact_sha" != "$DEPLOY_SHA" ]; then
+              echo "::error::CI artifact belongs to $artifact_sha, not approved SHA $DEPLOY_SHA."
+              exit 1
+            fi
+            artifact_conclusion="$(jq -r .conclusion <<<"$artifact_run")"
+            artifact_path="$(jq -r .path <<<"$artifact_run")"
+            artifact_event="$(jq -r .event <<<"$artifact_run")"
+            artifact_branch="$(jq -r .head_branch <<<"$artifact_run")"
+            if [ "$artifact_conclusion" != "success" ] \
+              || [ "$artifact_path" != ".github/workflows/ci.yml" ] \
+              || [ "$artifact_event" != "push" ] \
+              || [ "$artifact_branch" != "main" ]; then
+              echo "::error::Artifact must come from a successful main push run of .github/workflows/ci.yml."
+              exit 1
+            fi
+          fi
+
+      - name: Validate required status deployment configuration
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            STATUS_HOSTED_ZONE_ID \
+            STATUS_BACKEND_TASK_ROLE_NAME \
+            STATUS_PRODUCTION_TARGET_GROUP_ARN \
+            STATUS_DEMO_TARGET_GROUP_ARN \
+            STATUS_ARCHIVE_TARGET_GROUP_ARN \
+            STATUS_PRODUCTION_AMPLIFY_APP_ID \
+            STATUS_DEMO_AMPLIFY_APP_ID; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required status configuration: ${missing[*]}"
+            exit 1
+          fi
+          if [[ ! "$STATUS_DOMAIN_NAME" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "::error::STATUS_DOMAIN_NAME is not a valid DNS hostname."
+            exit 1
+          fi
+          for name in \
+            STATUS_PRODUCTION_TARGET_GROUP_ARN \
+            STATUS_DEMO_TARGET_GROUP_ARN \
+            STATUS_ARCHIVE_TARGET_GROUP_ARN; do
+            if [[ ! "${!name}" =~ ^arn:aws:elasticloadbalancing:us-west-2:[0-9]{12}:targetgroup/[A-Za-z0-9-]{1,32}/[A-Fa-f0-9]{16}$ ]]; then
+              echo "::error::$name must be one exact us-west-2 target-group ARN."
+              exit 1
+            fi
+          done
+
+          for name in \
+            STATUS_BACKEND_TASK_ROLE_NAME \
+            STATUS_ECS_CLUSTER_NAME \
+            STATUS_PRODUCTION_ECS_SERVICE \
+            STATUS_DEMO_ECS_SERVICE \
+            STATUS_ARCHIVE_ECS_SERVICE \
+            STATUS_RDS_INSTANCE_ID \
+            STATUS_PRODUCTION_ASSETS_BUCKET \
+            STATUS_DEMO_ASSETS_BUCKET \
+            STATUS_PRODUCTION_AMPLIFY_APP_ID \
+            STATUS_DEMO_AMPLIFY_APP_ID \
+            STATUS_PRODUCTION_AMPLIFY_BRANCH \
+            STATUS_DEMO_AMPLIFY_BRANCH; do
+            if [[ "${!name}" =~ [*?\[\]] ]]; then
+              echo "::error::$name must identify one exact AWS resource and cannot contain wildcard characters."
+              exit 1
+            fi
+          done
+
+      - name: Set up Node.js
+        if: ${{ inputs.build_assets }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22.22.2"
+          cache: npm
+          cache-dependency-path: status/package-lock.json
+
+      - name: Build status assets from the approved commit
+        if: ${{ inputs.build_assets }}
+        working-directory: status
+        run: |
+          npm ci
+          npm run build
+
+      - name: Download the approved CI status artifact
+        if: ${{ !inputs.build_assets }}
+        uses: actions/download-artifact@v8
+        with:
+          name: status-dist-production
+          path: status/dist
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.artifact_run_id }}
+
+      - name: Verify status asset manifest
+        run: |
+          set -euo pipefail
+          test -s status/dist/index.html
+          test -d status/dist/assets
+          test -n "$(find status/dist/assets -type f -print -quit)"
+          node status/scripts/check-dist.mjs
+
+      - name: Set up deployment Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: aws/status/requirements-dev.txt
+
+      - name: Install deployment validation dependencies
+        run: python -m pip install -r aws/status/requirements-dev.txt
+
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          version: 1.165.0
+
+      - name: Configure AWS credentials for the certificate region
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy or update the CloudFront certificate stack
+        run: |
+          set -euo pipefail
+          aws cloudformation deploy \
+            --region "$STATUS_EAST_REGION" \
+            --stack-name "$STATUS_CERTIFICATE_STACK" \
+            --template-file aws/status/certificate-template.yaml \
+            --parameter-overrides \
+              "HostedZoneId=$STATUS_HOSTED_ZONE_ID" \
+              "StatusDomainName=$STATUS_DOMAIN_NAME" \
+            --no-fail-on-empty-changeset
+
+      - name: Read and verify the issued CloudFront certificate
+        id: certificate
+        run: |
+          set -euo pipefail
+          certificate_arn="$(aws cloudformation describe-stacks \
+            --region "$STATUS_EAST_REGION" \
+            --stack-name "$STATUS_CERTIFICATE_STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='CertificateArn'].OutputValue | [0]" \
+            --output text)"
+          if [[ ! "$certificate_arn" =~ ^arn:aws[a-zA-Z-]*:acm:us-east-1: ]]; then
+            echo "::error::Certificate stack did not emit a us-east-1 ACM certificate ARN."
+            exit 1
+          fi
+          certificate_status="$(aws acm describe-certificate \
+            --region "$STATUS_EAST_REGION" \
+            --certificate-arn "$certificate_arn" \
+            --query Certificate.Status \
+            --output text)"
+          if [ "$certificate_status" != "ISSUED" ]; then
+            echo "::error::Status certificate is $certificate_status rather than ISSUED."
+            exit 1
+          fi
+          echo "certificate_arn=$certificate_arn" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials for the status region
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Build and deploy the us-west-2 status stack
+        env:
+          CERTIFICATE_ARN: ${{ steps.certificate.outputs.certificate_arn }}
+          RELEASE_SHA: ${{ inputs.deploy_sha }}
+        run: |
+          set -euo pipefail
+          sam build \
+            --template-file aws/status/template.yaml \
+            --build-dir .aws-sam/status-production
+          sam deploy \
+            --region "$STATUS_REGION" \
+            --stack-name "$STATUS_STACK" \
+            --template-file .aws-sam/status-production/template.yaml \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              "CertificateArn=$CERTIFICATE_ARN" \
+              "HostedZoneId=$STATUS_HOSTED_ZONE_ID" \
+              "StatusDomainName=$STATUS_DOMAIN_NAME" \
+              "ReleaseSha=$RELEASE_SHA" \
+              "BackendTaskRoleName=$STATUS_BACKEND_TASK_ROLE_NAME" \
+              "EcsClusterName=$STATUS_ECS_CLUSTER_NAME" \
+              "ProductionEcsService=$STATUS_PRODUCTION_ECS_SERVICE" \
+              "DemoEcsService=$STATUS_DEMO_ECS_SERVICE" \
+              "ArchiveEcsService=$STATUS_ARCHIVE_ECS_SERVICE" \
+              "ProductionTargetGroupArn=$STATUS_PRODUCTION_TARGET_GROUP_ARN" \
+              "DemoTargetGroupArn=$STATUS_DEMO_TARGET_GROUP_ARN" \
+              "ArchiveTargetGroupArn=$STATUS_ARCHIVE_TARGET_GROUP_ARN" \
+              "RdsInstanceId=$STATUS_RDS_INSTANCE_ID" \
+              "ProductionAssetsBucket=$STATUS_PRODUCTION_ASSETS_BUCKET" \
+              "DemoAssetsBucket=$STATUS_DEMO_ASSETS_BUCKET" \
+              "ProductionAmplifyAppId=$STATUS_PRODUCTION_AMPLIFY_APP_ID" \
+              "DemoAmplifyAppId=$STATUS_DEMO_AMPLIFY_APP_ID" \
+              "ProductionAmplifyBranch=$STATUS_PRODUCTION_AMPLIFY_BRANCH" \
+              "DemoAmplifyBranch=$STATUS_DEMO_AMPLIFY_BRANCH"
+
+      - name: Read deployed status stack outputs
+        id: stack-outputs
+        env:
+          RELEASE_SHA: ${{ inputs.deploy_sha }}
+        run: |
+          set -euo pipefail
+          stack_output() {
+            aws cloudformation describe-stacks \
+              --region "$STATUS_REGION" \
+              --stack-name "$STATUS_STACK" \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue | [0]" \
+              --output text
+          }
+
+          site_bucket="$(stack_output SiteBucketName)"
+          distribution_id="$(stack_output DistributionId)"
+          public_url="$(stack_output PublicUrl)"
+          public_api_url="$(stack_output PublicApiUrl)"
+          internal_api_url="$(stack_output InternalApiUrl)"
+          probe_function_name="$(stack_output ProbeFunctionName)"
+
+          for value in "$site_bucket" "$distribution_id" "$public_url" "$public_api_url" "$internal_api_url" "$probe_function_name"; do
+            if [ -z "$value" ] || [ "$value" = "None" ]; then
+              echo "::error::The status stack is missing a required output."
+              exit 1
+            fi
+          done
+          if [ "$public_url" != "https://$STATUS_DOMAIN_NAME" ]; then
+            echo "::error::PublicUrl does not match the canonical status domain."
+            exit 1
+          fi
+          if [ "$public_api_url" != "$public_url/api/status" ]; then
+            echo "::error::PublicApiUrl is not the same-origin CloudFront API route."
+            exit 1
+          fi
+          if [[ "$internal_api_url" != https://*.execute-api.us-west-2.amazonaws.com/prod/internal/status ]]; then
+            echo "::error::InternalApiUrl is not the expected us-west-2 IAM route."
+            exit 1
+          fi
+
+          {
+            echo "site_bucket=$site_bucket"
+            echo "distribution_id=$distribution_id"
+            echo "public_url=$public_url"
+            echo "public_api_url=$public_api_url"
+            echo "internal_api_url=$internal_api_url"
+            echo "probe_function_name=$probe_function_name"
+            echo "release_sha=$RELEASE_SHA"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the CloudFront distribution with a bounded poll
+        env:
+          DISTRIBUTION_ID: ${{ steps.stack-outputs.outputs.distribution_id }}
+        run: |
+          set -euo pipefail
+          deployed=false
+          for attempt in $(seq 1 120); do
+            distribution_status="$(aws cloudfront get-distribution \
+              --id "$DISTRIBUTION_ID" \
+              --query Distribution.Status \
+              --output text)"
+            echo "CloudFront status ($attempt/120): $distribution_status"
+            if [ "$distribution_status" = "Deployed" ]; then
+              deployed=true
+              break
+            fi
+            sleep 10
+          done
+          if [ "$deployed" != "true" ]; then
+            echo "::error::CloudFront did not reach Deployed within 20 minutes."
+            exit 1
+          fi
+
+      - name: Record the current index version
+        id: previous-index
+        env:
+          SITE_BUCKET: ${{ steps.stack-outputs.outputs.site_bucket }}
+        run: |
+          set -euo pipefail
+          previous_version="$(aws s3api head-object \
+            --region "$STATUS_REGION" \
+            --bucket "$SITE_BUCKET" \
+            --key index.html \
+            --query VersionId \
+            --output text 2>/dev/null || true)"
+          if [ -z "$previous_version" ] || [ "$previous_version" = "None" ]; then
+            previous_version=""
+            echo "No previous index.html version exists; this is an initial publish."
+          else
+            echo "Recorded the previous versioned index.html."
+          fi
+          echo "version_id=$previous_version" >> "$GITHUB_OUTPUT"
+
+      - name: Publish immutable assets before index.html
+        id: publish-assets
+        continue-on-error: true
+        env:
+          SITE_BUCKET: ${{ steps.stack-outputs.outputs.site_bucket }}
+        run: |
+          set -euo pipefail
+          aws s3 cp status/dist/assets "s3://$SITE_BUCKET/assets" \
+            --region "$STATUS_REGION" \
+            --recursive \
+            --cache-control "public,max-age=31536000,immutable"
+
+          while IFS= read -r -d '' file; do
+            key="${file#status/dist/}"
+            aws s3 cp "$file" "s3://$SITE_BUCKET/$key" \
+              --region "$STATUS_REGION" \
+              --cache-control "public,max-age=3600"
+          done < <(find status/dist -type f ! -path 'status/dist/assets/*' ! -name index.html -print0)
+
+          aws s3 cp status/dist/index.html "s3://$SITE_BUCKET/index.html" \
+            --region "$STATUS_REGION" \
+            --content-type "text/html; charset=utf-8" \
+            --cache-control "no-cache, no-store, must-revalidate"
+          echo "index_published=true" >> "$GITHUB_OUTPUT"
+
+          new_version="$(aws s3api head-object \
+            --region "$STATUS_REGION" \
+            --bucket "$SITE_BUCKET" \
+            --key index.html \
+            --query VersionId \
+            --output text)"
+          if [ -z "$new_version" ] || [ "$new_version" = "None" ]; then
+            echo "::error::The versioned site bucket did not return a new index VersionId."
+            exit 1
+          fi
+          echo "new_version_id=$new_version" >> "$GITHUB_OUTPUT"
+
+      - name: Initialize the first status snapshot
+        id: probe
+        if: ${{ steps.publish-assets.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          PROBE_FUNCTION_NAME: ${{ steps.stack-outputs.outputs.probe_function_name }}
+        run: |
+          set -euo pipefail
+          aws lambda invoke \
+            --region "$STATUS_REGION" \
+            --function-name "$PROBE_FUNCTION_NAME" \
+            --cli-binary-format raw-in-base64-out \
+            --payload '{}' \
+            /tmp/status-probe-response.json \
+            >/tmp/status-probe-metadata.json
+          if jq -e 'has("FunctionError")' /tmp/status-probe-metadata.json >/dev/null; then
+            echo "::error::The initialization probe returned a Lambda FunctionError."
+            jq '{StatusCode, FunctionError}' /tmp/status-probe-metadata.json
+            exit 1
+          fi
+          if ! jq -e '.status == "complete" or .status == "duplicate"' /tmp/status-probe-response.json >/dev/null; then
+            echo "::error::The initialization probe did not report complete or duplicate."
+            jq '{status, slot}' /tmp/status-probe-response.json
+            exit 1
+          fi
+
+      - name: Invalidate the newly published shell and API snapshot
+        id: publish-invalidation
+        if: ${{ steps.probe.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          DISTRIBUTION_ID: ${{ steps.stack-outputs.outputs.distribution_id }}
+        run: |
+          set -euo pipefail
+          invalidation_id="$(aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --paths / /index.html /api/status \
+            --query Invalidation.Id \
+            --output text)"
+          completed=false
+          for attempt in $(seq 1 60); do
+            invalidation_status="$(aws cloudfront get-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --id "$invalidation_id" \
+              --query Invalidation.Status \
+              --output text)"
+            echo "Publish invalidation ($attempt/60): $invalidation_status"
+            if [ "$invalidation_status" = "Completed" ]; then
+              completed=true
+              break
+            fi
+            sleep 10
+          done
+          if [ "$completed" != "true" ]; then
+            echo "::error::CloudFront publish invalidation did not complete within 10 minutes."
+            exit 1
+          fi
+
+      - name: Smoke check the deployed status service
+        id: smoke
+        if: ${{ steps.publish-invalidation.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          DISTRIBUTION_ID: ${{ steps.stack-outputs.outputs.distribution_id }}
+          INTERNAL_API_URL: ${{ steps.stack-outputs.outputs.internal_api_url }}
+          PUBLIC_API_URL: ${{ steps.stack-outputs.outputs.public_api_url }}
+          PUBLIC_URL: ${{ steps.stack-outputs.outputs.public_url }}
+          RELEASE_SHA: ${{ steps.stack-outputs.outputs.release_sha }}
+          SITE_BUCKET: ${{ steps.stack-outputs.outputs.site_bucket }}
+        run: |
+          set -euo pipefail
+
+          bucket_region="$(aws s3api get-bucket-location \
+            --bucket "$SITE_BUCKET" \
+            --query 'LocationConstraint' \
+            --output text)"
+          if [ "$bucket_region" != "us-west-2" ]; then
+            echo "::error::Status site bucket is in $bucket_region rather than us-west-2."
+            exit 1
+          fi
+
+          record_types="$(aws route53 list-resource-record-sets \
+            --hosted-zone-id "$STATUS_HOSTED_ZONE_ID" \
+            --query "ResourceRecordSets[?Name=='${STATUS_DOMAIN_NAME}.'].Type" \
+            --output text)"
+          if ! grep -qw A <<<"$record_types" || ! grep -qw AAAA <<<"$record_types"; then
+            echo "::error::The canonical status hostname does not have both Route53 A and AAAA records."
+            exit 1
+          fi
+
+          direct_code="$(curl --silent --show-error --output /dev/null \
+            --write-out '%{http_code}' \
+            --max-time 15 \
+            "https://${SITE_BUCKET}.s3.us-west-2.amazonaws.com/index.html")"
+          if [ "$direct_code" != "403" ]; then
+            echo "::error::Direct S3 access returned $direct_code rather than 403."
+            exit 1
+          fi
+
+          public_ready=false
+          for attempt in $(seq 1 30); do
+            echo "Public DNS/TLS/API smoke attempt $attempt/30"
+            rm -f /tmp/status-public-body.json /tmp/status-public-headers.txt
+            public_code="$(curl --silent --show-error \
+              --output /tmp/status-public-body.json \
+              --dump-header /tmp/status-public-headers.txt \
+              --write-out '%{http_code}' \
+              --connect-timeout 5 \
+              --max-time 15 \
+              "$PUBLIC_API_URL" || true)"
+            if [ "$public_code" = "200" ] && python - <<'PY'
+          import json
+          from datetime import UTC, datetime, timedelta
+          from pathlib import Path
+
+          from jsonschema import Draft202012Validator
+
+          payload = json.loads(Path("/tmp/status-public-body.json").read_text(encoding="utf-8"))
+          schema = json.loads(Path("status/contracts/status-v1.schema.json").read_text(encoding="utf-8"))
+          Draft202012Validator(schema).validate(payload)
+          expected = {
+              "production-website",
+              "production-api",
+              "demo-website",
+              "demo-api",
+              "project-archive",
+          }
+          actual = {component["id"] for component in payload["components"]}
+          if actual != expected:
+              raise SystemExit(f"unexpected component IDs: {sorted(actual)}")
+          generated_at = datetime.fromisoformat(payload["generatedAt"].replace("Z", "+00:00"))
+          if generated_at < datetime.now(UTC) - timedelta(minutes=10):
+              raise SystemExit("initial snapshot is older than ten minutes")
+          if payload["stale"] is not False:
+              raise SystemExit("initial snapshot is stale")
+          PY
+            then
+              public_ready=true
+              break
+            fi
+            sleep 10
+          done
+          if [ "$public_ready" != "true" ]; then
+            echo "::error::Public DNS, TLS, or status API did not become ready within five minutes."
+            test ! -f /tmp/status-public-body.json || head -c 1000 /tmp/status-public-body.json
+            exit 1
+          fi
+
+          if ! grep -Eqi '^cache-control:.*max-age=60([^0-9]|$)' /tmp/status-public-headers.txt; then
+            echo "::error::Public status API is missing its 60-second cache policy."
+            cat /tmp/status-public-headers.txt
+            exit 1
+          fi
+          if ! grep -Eqi '^cache-control:.*stale-if-error=900([^0-9]|$)' /tmp/status-public-headers.txt; then
+            echo "::error::Public status API is missing its 15-minute error fallback policy."
+            cat /tmp/status-public-headers.txt
+            exit 1
+          fi
+
+          curl --fail --silent --show-error \
+            --connect-timeout 5 \
+            --max-time 15 \
+            "$PUBLIC_URL/" >/tmp/status-index.html
+          PUBLIC_URL="$PUBLIC_URL" python - <<'PY'
+          import os
+          import re
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import urljoin, urlparse
+          from urllib.request import urlopen
+
+          class AssetParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.assets = []
+
+              def handle_starttag(self, tag, attrs):
+                  values = dict(attrs)
+                  if tag == "script" and values.get("src"):
+                      self.assets.append(values["src"])
+                  if tag == "link" and values.get("href"):
+                      self.assets.append(values["href"])
+
+          public_url = os.environ["PUBLIC_URL"]
+          index = Path("/tmp/status-index.html").read_text(encoding="utf-8")
+          parser = AssetParser()
+          parser.feed(index)
+          sources = [index]
+          expected_host = urlparse(public_url).netloc
+          for asset in parser.assets:
+              asset_url = urljoin(f"{public_url}/", asset)
+              if urlparse(asset_url).netloc != expected_host:
+                  raise SystemExit(f"third-party asset found: {asset_url}")
+              with urlopen(asset_url, timeout=15) as response:
+                  sources.append(response.read().decode("utf-8"))
+          combined = (
+              "\n".join(sources)
+              .replace("http://www.w3.org/2000/svg", "")
+              .replace("http://www.w3.org/1999/xlink", "")
+          )
+          forbidden = {
+              "main-site layout API": r"/api/layout",
+              "monitored-domain request": r"(?:api|demo-api|archive)\.i2g\.ucmerced\.edu",
+              "remote font or third-party script": r"https?://",
+              "protocol-relative remote resource": (
+                  r'''(?:["'`]\s*//[A-Za-z0-9]|'''
+                  r'''\b(?:src|href|xlink:href)\s*=\s*//[A-Za-z0-9]|'''
+                  r'''url\s*\(\s*//[A-Za-z0-9])'''
+              ),
+          }
+          for label, pattern in forbidden.items():
+              if re.search(pattern, combined, re.IGNORECASE):
+                  raise SystemExit(f"deployed status assets contain {label}")
+          PY
+
+          unsigned_code="$(curl --silent --show-error \
+            --output /tmp/status-internal-unsigned.json \
+            --write-out '%{http_code}' \
+            --connect-timeout 5 \
+            --max-time 15 \
+            "$INTERNAL_API_URL")"
+          if [ "$unsigned_code" != "403" ]; then
+            echo "::error::Unsigned internal status request returned $unsigned_code rather than 403."
+            exit 1
+          fi
+
+          internal_ready=false
+          # A manual initialization may be an idempotent duplicate when the
+          # Scheduler already committed the current five-minute slot with the
+          # prior release. Allow one complete subsequent slot (plus Lambda
+          # execution time) to publish the newly deployed release SHA.
+          for attempt in $(seq 1 42); do
+            echo "Signed internal release smoke attempt $attempt/42"
+            if INTERNAL_API_URL="$INTERNAL_API_URL" RELEASE_SHA="$RELEASE_SHA" STATUS_REGION="$STATUS_REGION" python - <<'PY'
+          import json
+          import os
+          from urllib.request import Request, urlopen
+
+          import boto3
+          from botocore.auth import SigV4Auth
+          from botocore.awsrequest import AWSRequest
+
+          region = os.environ["STATUS_REGION"]
+          url = os.environ["INTERNAL_API_URL"]
+          credentials = boto3.Session(region_name=region).get_credentials()
+          if credentials is None:
+              raise SystemExit("deployment credentials are unavailable for signed smoke check")
+          request = AWSRequest(method="GET", url=url)
+          SigV4Auth(credentials.get_frozen_credentials(), "execute-api", region).add_auth(request)
+          signed = Request(url, method="GET", headers=dict(request.headers.items()))
+          with urlopen(signed, timeout=15) as response:
+              if response.status != 200:
+                  raise SystemExit(f"signed internal endpoint returned {response.status}")
+              payload = json.loads(response.read())
+          if payload.get("schemaVersion") != 1 or not isinstance(payload.get("partial"), bool):
+              raise SystemExit("signed internal endpoint returned an invalid projection")
+          if payload.get("stack", {}).get("version") != os.environ["RELEASE_SHA"]:
+              raise SystemExit("signed internal endpoint still reports the prior release")
+          PY
+            then
+              internal_ready=true
+              break
+            fi
+            sleep 10
+          done
+          if [ "$internal_ready" != "true" ]; then
+            echo "::error::Signed internal status did not report the deployed SHA within seven minutes."
+            exit 1
+          fi
+
+      - name: Restore the previous index after a post-publish failure
+        if: >-
+          ${{ always() &&
+              steps.publish-assets.outputs.index_published == 'true' &&
+              (steps.publish-assets.outcome == 'failure' ||
+               steps.probe.outcome == 'failure' ||
+               steps.publish-invalidation.outcome == 'failure' ||
+               steps.smoke.outcome == 'failure') }}
+        env:
+          DISTRIBUTION_ID: ${{ steps.stack-outputs.outputs.distribution_id }}
+          NEW_INDEX_VERSION: ${{ steps.publish-assets.outputs.new_version_id }}
+          PREVIOUS_INDEX_VERSION: ${{ steps.previous-index.outputs.version_id }}
+          SITE_BUCKET: ${{ steps.stack-outputs.outputs.site_bucket }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PREVIOUS_INDEX_VERSION" ]; then
+            aws s3api get-object \
+              --region "$STATUS_REGION" \
+              --bucket "$SITE_BUCKET" \
+              --key index.html \
+              --version-id "$PREVIOUS_INDEX_VERSION" \
+              /tmp/status-previous-index.html >/dev/null
+            aws s3 cp /tmp/status-previous-index.html "s3://$SITE_BUCKET/index.html" \
+              --region "$STATUS_REGION" \
+              --content-type "text/html; charset=utf-8" \
+              --cache-control "no-cache, no-store, must-revalidate"
+            echo "Restored the previous versioned index.html."
+          else
+            if [ -z "$NEW_INDEX_VERSION" ]; then
+              NEW_INDEX_VERSION="$(aws s3api head-object \
+                --region "$STATUS_REGION" \
+                --bucket "$SITE_BUCKET" \
+                --key index.html \
+                --query VersionId \
+                --output text)"
+            fi
+            aws s3api delete-object \
+              --region "$STATUS_REGION" \
+              --bucket "$SITE_BUCKET" \
+              --key index.html \
+              --version-id "$NEW_INDEX_VERSION" >/dev/null
+            echo "Initial publish had no previous index; removed only the failed index version."
+          fi
+
+          rollback_invalidation="$(aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --paths / /index.html \
+            --query Invalidation.Id \
+            --output text)"
+          completed=false
+          for attempt in $(seq 1 60); do
+            status="$(aws cloudfront get-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --id "$rollback_invalidation" \
+              --query Invalidation.Status \
+              --output text)"
+            echo "Rollback invalidation ($attempt/60): $status"
+            if [ "$status" = "Completed" ]; then
+              completed=true
+              break
+            fi
+            sleep 10
+          done
+          if [ "$completed" != "true" ]; then
+            echo "::error::Rollback invalidation did not complete within 10 minutes."
+            exit 1
+          fi
+
+      - name: Fail the release after post-publish validation
+        if: >-
+          ${{ always() &&
+              (steps.publish-assets.outcome == 'failure' ||
+               steps.probe.outcome == 'failure' ||
+               steps.publish-invalidation.outcome == 'failure' ||
+               steps.smoke.outcome == 'failure') }}
+        run: |
+          echo "::error::Status post-publish validation failed; index.html rollback was attempted when needed."
+          exit 1
+
+      - name: Mark unreferenced hashed assets for delayed retirement
+        id: retire-assets
+        if: ${{ steps.smoke.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          PREVIOUS_INDEX_VERSION: ${{ steps.previous-index.outputs.version_id }}
+          SITE_BUCKET: ${{ steps.stack-outputs.outputs.site_bucket }}
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import os
+          import re
+          from pathlib import Path, PurePosixPath
+          from urllib.parse import urlencode, urljoin, urlparse
+
+          import boto3
+
+          bucket = os.environ["SITE_BUCKET"]
+          previous_version = os.environ.get("PREVIOUS_INDEX_VERSION", "")
+          s3 = boto3.client("s3", region_name="us-west-2")
+          protected = {
+              path.relative_to("status/dist").as_posix()
+              for path in Path("status/dist/assets").rglob("*")
+              if path.is_file()
+          }
+
+          absolute_asset = re.compile(r"(?<![A-Za-z0-9_-])/?(assets/[A-Za-z0-9][A-Za-z0-9._/-]*)")
+          relative_asset = re.compile(r"[\"'](\.?\.?/[A-Za-z0-9][^\"'#? ]*)[\"']")
+          text_suffixes = {".css", ".html", ".js", ".json", ".map", ".svg", ".txt"}
+
+          def discover(source: bytes, parent: str = "index.html") -> set[str]:
+              text = source.decode("utf-8", errors="ignore")
+              found = {match.group(1) for match in absolute_asset.finditer(text)}
+              parent_url = f"https://status.invalid/{parent}"
+              for match in relative_asset.finditer(text):
+                  resolved = urlparse(urljoin(parent_url, match.group(1))).path.lstrip("/")
+                  if resolved.startswith("assets/"):
+                      found.add(resolved)
+              return {key for key in found if ".." not in PurePosixPath(key).parts}
+
+          if previous_version:
+              previous_index = s3.get_object(
+                  Bucket=bucket,
+                  Key="index.html",
+                  VersionId=previous_version,
+              )["Body"].read()
+              pending = list(discover(previous_index))
+              while pending:
+                  key = pending.pop()
+                  if key in protected:
+                      continue
+                  protected.add(key)
+                  if PurePosixPath(key).suffix.lower() not in text_suffixes:
+                      continue
+                  try:
+                      body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
+                  except s3.exceptions.NoSuchKey:
+                      continue
+                  pending.extend(discover(body, parent=key) - protected)
+
+          paginator = s3.get_paginator("list_objects_v2")
+          current_keys = []
+          for page in paginator.paginate(Bucket=bucket, Prefix="assets/"):
+              current_keys.extend(item["Key"] for item in page.get("Contents", []))
+
+          protected_count = retired_count = 0
+          for key in current_keys:
+              tagging_response = s3.get_object_tagging(Bucket=bucket, Key=key)
+              existing = tagging_response.get("TagSet", [])
+              without_retirement = [tag for tag in existing if tag.get("Key") != "status-retire"]
+              if key in protected:
+                  protected_count += 1
+                  if len(without_retirement) != len(existing):
+                      if without_retirement:
+                          s3.put_object_tagging(
+                              Bucket=bucket,
+                              Key=key,
+                              Tagging={"TagSet": without_retirement},
+                          )
+                      else:
+                          s3.delete_object_tagging(Bucket=bucket, Key=key)
+                  continue
+
+              retired_count += 1
+              retirement_tag = {"Key": "status-retire", "Value": "true"}
+              desired = [*without_retirement, retirement_tag]
+              already_retired = any(
+                  tag.get("Key") == "status-retire" and tag.get("Value") == "true"
+                  for tag in existing
+              )
+              if already_retired:
+                  continue
+
+              # S3 lifecycle age is based on object creation, not tag time. A
+              # self-copy gives a newly retired object a fresh 30-day window;
+              # already-retired objects are deliberately not recopied/reset.
+              copy_source = {"Bucket": bucket, "Key": key}
+              version_id = tagging_response.get("VersionId")
+              if version_id:
+                  copy_source["VersionId"] = version_id
+              s3.copy_object(
+                  Bucket=bucket,
+                  Key=key,
+                  CopySource=copy_source,
+                  MetadataDirective="COPY",
+                  TaggingDirective="REPLACE",
+                  Tagging=urlencode({tag["Key"]: tag["Value"] for tag in desired}),
+              )
+
+          print(f"Protected {protected_count} current/rollback assets; marked {retired_count} for delayed retirement.")
+          PY
+
+      - name: Report deferred asset-retirement warning
+        if: ${{ always() && steps.smoke.outcome == 'success' && steps.retire-assets.outcome == 'failure' }}
+        run: echo "::warning::Status deploy is healthy, but best-effort old asset retirement did not finish."
+
+      - name: Write status deployment summary
+        if: ${{ success() }}
+        env:
+          DISTRIBUTION_ID: ${{ steps.stack-outputs.outputs.distribution_id }}
+          PUBLIC_URL: ${{ steps.stack-outputs.outputs.public_url }}
+          RELEASE_SHA: ${{ steps.stack-outputs.outputs.release_sha }}
+        run: |
+          {
+            echo "## Status deployment"
+            echo
+            echo "- Target: Status (us-west-2; certificate only in us-east-1)"
+            printf -- '%s\n' "- Commit: \`$RELEASE_SHA\`"
+            echo "- Public URL: $PUBLIC_URL"
+            printf -- '%s\n' "- CloudFront distribution: \`$DISTRIBUTION_ID\`"
+          } >> "$GITHUB_STEP_SUMMARY"

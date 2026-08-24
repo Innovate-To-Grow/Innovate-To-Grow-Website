@@ -10,6 +10,7 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 - [Frontend Deployment](frontend.md) — Vite build and AWS Amplify
 - [CI/CD](ci-cd.md) — GitHub Actions pipelines
 - [Production Deployment Approval](production.md) — One protected approval gate for all production targets
+- [Independent Status Site](status.md) — Public availability history, monitoring stack, CI/CD, and rollback
 
 ## Who this is for
 

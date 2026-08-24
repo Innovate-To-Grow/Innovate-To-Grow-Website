@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://status.i2g.ucmerced.edu/contracts/status-v1.schema.json",
+  "title": "Innovate to Grow public status snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "nextCheckAt", "stale", "overallStatus", "summary", "components", "incidents"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "nextCheckAt": {"type": "string", "format": "date-time"},
+    "stale": {"type": "boolean"},
+    "overallStatus": {"$ref": "#/$defs/status"},
+    "summary": {"$ref": "#/$defs/summary"},
+    "components": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"$ref": "#/$defs/component"}
+    },
+    "incidents": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/incident"}
+    }
+  },
+  "$defs": {
+    "status": {
+      "enum": ["operational", "degraded", "partial_outage", "major_outage", "maintenance", "unknown"]
+    },
+    "percentage": {
+      "description": "A percentage rounded to no more than two decimal places, or null when no denominator exists.",
+      "anyOf": [
+        {"type": "number", "minimum": 0, "maximum": 100},
+        {"type": "null"}
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message", "availability24h", "activeIncidentCount", "incidents24h"],
+      "properties": {
+        "message": {"type": "string", "maxLength": 240},
+        "availability24h": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["percent", "availableChecks", "eligibleChecks", "scheduledChecks", "maintenanceChecks", "monitoringCoveragePercent"],
+          "properties": {
+            "percent": {"$ref": "#/$defs/percentage"},
+            "availableChecks": {"type": "integer", "minimum": 0},
+            "eligibleChecks": {"type": "integer", "minimum": 0},
+            "scheduledChecks": {"type": "integer", "minimum": 0},
+            "maintenanceChecks": {"type": "integer", "minimum": 0},
+            "monitoringCoveragePercent": {"$ref": "#/$defs/percentage"}
+          }
+        },
+        "activeIncidentCount": {"type": "integer", "minimum": 0},
+        "incidents24h": {"type": "integer", "minimum": 0}
+      }
+    },
+    "historyDay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "status", "uptimePercent", "coveragePercent", "sampleCount", "maintenanceSampleCount"],
+      "properties": {
+        "date": {"type": "string", "format": "date"},
+        "status": {"$ref": "#/$defs/status"},
+        "uptimePercent": {"$ref": "#/$defs/percentage"},
+        "coveragePercent": {"$ref": "#/$defs/percentage"},
+        "sampleCount": {"type": "integer", "minimum": 0},
+        "maintenanceSampleCount": {"type": "integer", "minimum": 0}
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "group", "status", "checkedAt", "uptime", "history"],
+      "properties": {
+        "id": {"enum": ["production-website", "production-api", "demo-website", "demo-api", "project-archive"]},
+        "name": {"type": "string", "minLength": 1, "maxLength": 80},
+        "group": {"enum": ["production", "demo", "archive"]},
+        "status": {"$ref": "#/$defs/status"},
+        "checkedAt": {"type": "string", "format": "date-time"},
+        "uptime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hours24", "days90"],
+          "properties": {
+            "hours24": {"$ref": "#/$defs/percentage"},
+            "days90": {"$ref": "#/$defs/percentage"}
+          }
+        },
+        "history": {
+          "type": "array",
+          "minItems": 90,
+          "maxItems": 90,
+          "items": {"$ref": "#/$defs/historyDay"}
+        }
+      }
+    },
+    "incidentUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "state", "message"],
+      "properties": {
+        "timestamp": {"type": "string", "format": "date-time"},
+        "state": {"enum": ["investigating", "monitoring", "resolved"]},
+        "message": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "incident": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "state", "impact", "title", "startedAt", "resolvedAt", "affectedComponentIds", "updates"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 100},
+        "kind": {"enum": ["incident", "maintenance"]},
+        "state": {"enum": ["investigating", "monitoring", "resolved"]},
+        "impact": {"$ref": "#/$defs/status"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 160},
+        "startedAt": {"type": "string", "format": "date-time"},
+        "resolvedAt": {
+          "anyOf": [
+            {"type": "string", "format": "date-time"},
+            {"type": "null"}
+          ]
+        },
+        "affectedComponentIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["production-website", "production-api", "demo-website", "demo-api", "project-archive"]}
+        },
+        "updates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/incidentUpdate"}
+        }
+      }
+    }
+  }
+}
