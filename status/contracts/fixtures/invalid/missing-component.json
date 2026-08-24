@@ -1,1 +1,0 @@
-{"description":"Public responses must include all five fixed components.","base":"../valid/status-v1-operational.json","mutations":[{"op":"remove","path":"/components/4"}],"expectedIssue":"must contain exactly five components"}

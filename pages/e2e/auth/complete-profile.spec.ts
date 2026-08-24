@@ -1,6 +1,6 @@
 // /complete-profile is guarded inside the component (needs auth + the
 // profile-completion flag). Seeding installs the session before navigation.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {seedAuthenticatedSession} from '../helpers';
 
 test('completes the profile and lands on the account dashboard', {tag: '@core'}, async ({page}) => {

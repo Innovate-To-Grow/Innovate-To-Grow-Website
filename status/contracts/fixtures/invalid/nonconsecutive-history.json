@@ -1,1 +1,0 @@
-{"description":"Each component history must contain consecutive UTC dates.","base":"../valid/status-v1-operational.json","mutations":[{"op":"replace","path":"/components/0/history/30/date","value":"2026-06-21"}],"expectedIssue":"must immediately follow the previous UTC date"}

@@ -1,7 +1,7 @@
 // Token login entry points POST a token, persist sessions where appropriate,
 // and render success/error states. Unsubscribe tokens intentionally do not sign
 // the member in.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {
   expectSignedInAs,
   loginResponse,

@@ -23,7 +23,7 @@ class PlanE2ETests(unittest.TestCase):
                 [],
                 ["pages/src/features/auth/components/Login.tsx"],
                 ["src/apps/authn/models.py"],
-                ["pages/e2e/mobile.spec.ts"],
+                ["pages/e2e/mobile/mobile.spec.ts"],
             ):
                 with self.subTest(event_name=event_name, changed_files=changed_files):
                     plan = plan_e2e_tests(event_name, changed_files)

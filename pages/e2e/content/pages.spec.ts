@@ -1,7 +1,7 @@
 // / (homepage) and catch-all `*`: CMS-powered pages via HomepageResolver and
 // CMSPageComponent. Asserts on heading elements rendered from block content
 // rather than the (document.title-only) page title.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {cmsPageResponse, mockCmsPage} from '../helpers';
 
 test('homepage renders CMS blocks via HomepageResolver', {tag: '@core'}, async ({page}) => {
