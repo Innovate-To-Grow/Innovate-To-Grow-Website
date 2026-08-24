@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
-  <title id="title">Innovate to Grow</title>
-  <rect width="64" height="64" rx="14" fill="#002856"/>
-  <path d="M17 43V21h7v22zm12 0V21h9.2c7.6 0 12.8 4.1 12.8 11s-5.2 11-12.8 11zm7-6h2.2c3.7 0 5.8-1.6 5.8-5s-2.1-5-5.8-5H36z" fill="#fff"/>
-  <path d="M14 15h36" stroke="#ffbf3f" stroke-width="5" stroke-linecap="round"/>
-</svg>

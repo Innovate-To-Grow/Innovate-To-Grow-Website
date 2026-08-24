@@ -19,7 +19,7 @@ class PlanChangedAreasTests(unittest.TestCase):
                 plan = plan_changed_areas(event_name, ["docs/architecture.md"])
                 self.assertEqual(
                     plan,
-                    ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True, status=True),
+                    ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True),
                 )
 
     def test_pull_request_touching_any_ci_area_runs_the_full_suite(self) -> None:
@@ -28,8 +28,6 @@ class PlanChangedAreasTests(unittest.TestCase):
             "pages/src/App.tsx",
             "cli/src/i2g_admin/app.py",
             "archive/page/app.py",
-            "status/src/main.ts",
-            "aws/status/template.yaml",
             "aws/task-definition.json",
             "scripts/ci/validate_tool_versions.py",
             ".github/workflows/ci.yml",
@@ -66,7 +64,7 @@ class PlanChangedAreasTests(unittest.TestCase):
 
         self.assertEqual(
             plan,
-            ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True, status=True),
+            ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True),
         )
 
     def test_multiple_areas_are_combined(self) -> None:
@@ -77,7 +75,7 @@ class PlanChangedAreasTests(unittest.TestCase):
 
         self.assertEqual(
             plan,
-            ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True, status=True),
+            ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=True),
         )
 
     def test_empty_and_whitespace_paths_are_ignored(self) -> None:
@@ -85,7 +83,7 @@ class PlanChangedAreasTests(unittest.TestCase):
 
         self.assertEqual(
             plan,
-            ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False, status=False),
+            ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False),
         )
 
     def test_near_miss_paths_do_not_match(self) -> None:
@@ -96,7 +94,7 @@ class PlanChangedAreasTests(unittest.TestCase):
 
         self.assertEqual(
             plan,
-            ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False, status=False),
+            ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False),
         )
 
     def test_github_outputs_use_lowercase_booleans(self) -> None:
@@ -105,10 +103,9 @@ class PlanChangedAreasTests(unittest.TestCase):
             frontend=False,
             cli=True,
             archive=True,
-            status=False,
         ).github_outputs()
 
-        self.assertEqual(outputs, "backend=true\nfrontend=false\ncli=true\narchive=true\nstatus=false")
+        self.assertEqual(outputs, "backend=true\nfrontend=false\ncli=true\narchive=true")
 
     def test_cli_reads_40000_paths_without_pipe_or_argument_limits(self) -> None:
         paths = [f"docs/generated/{index}.md" for index in range(39_997)]
@@ -133,7 +130,7 @@ class PlanChangedAreasTests(unittest.TestCase):
 
         self.assertEqual(
             result.stdout.strip(),
-            "backend=true\nfrontend=true\ncli=true\narchive=true\nstatus=true",
+            "backend=true\nfrontend=true\ncli=true\narchive=true",
         )
 
 

@@ -12,7 +12,6 @@ GitHub Actions pipelines for linting, testing, building, and deploying.
 | `.github/workflows/deploy-backend.yml` | Backend deployment to ECS | Reusable workflow call |
 | `.github/workflows/deploy-frontend.yml` | Frontend deployment to Amplify | Reusable workflow call |
 | `.github/workflows/deploy-archive.yml` | Archive deployment to ECS | Reusable workflow call |
-| `.github/workflows/deploy-status.yml` | Independent status site and monitoring stack | Reusable workflow call |
 
 ## CI pipeline (`ci.yml`)
 
@@ -159,18 +158,6 @@ frontend workflow only publishes the build and never replaces the rule list.
 
 The archive workflow checks out the approved commit, builds and publishes its
 container image, deploys the ECS service, and runs HTTPS smoke checks.
-
-### Status (`deploy-status.yml`)
-
-The status workflow deploys the Route53-validated CloudFront certificate in
-`us-east-1`, then the private S3, CloudFront, API, monitoring, history, logs,
-alarms, and dashboard stack in `us-west-2`. Automatic releases promote the
-exact successful CI artifact. Hashed assets are uploaded before `index.html`;
-if any post-publish validation fails, the versioned prior index is restored and
-CloudFront is invalidated. Public schema/cache, DNS/TLS, private S3, unsigned
-internal denial, and signed internal access are all smoke-tested with bounded
-polling. See [Status site deployment](status.md) for required environment
-variables and recovery details.
 
 All component workflows use credentials and target-specific configuration from
 their existing GitHub Environments.
