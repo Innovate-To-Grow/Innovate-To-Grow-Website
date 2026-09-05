@@ -142,4 +142,37 @@ describe('EmailCenter', () => {
     expect(screen.getByText('primary@example.com')).toBeInTheDocument();
     expect(screen.getByText(/verified recovery method/i)).toBeInTheDocument();
   });
+
+  it('opens the add-email form and closes it on cancel', async () => {
+    render(<EmailCenter profile={baseProfile({email: 'primary@example.com'})} onProfileUpdate={vi.fn()} />);
+    await screen.findByText('primary@example.com');
+
+    fireEvent.click(screen.getByRole('button', {name: 'Add Email'}));
+
+    expect(await screen.findByRole('button', {name: 'Add & Send Verification'})).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', {name: 'Cancel'}));
+
+    expect(screen.queryByRole('button', {name: 'Add & Send Verification'})).not.toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Add Email'})).toBeInTheDocument();
+  });
+
+  it('opens inline verification for an unverified contact and cancels it', async () => {
+    mocks.getContactEmails.mockResolvedValue([contactEmail({verified: false})]);
+    mocks.requestContactEmailVerification.mockResolvedValue({message: 'sent'});
+
+    render(<EmailCenter profile={baseProfile({email: 'primary@example.com'})} onProfileUpdate={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('button', {name: 'Verify'}));
+
+    await waitFor(() => {
+      expect(mocks.requestContactEmailVerification).toHaveBeenCalledWith('e-1');
+    });
+    expect(await screen.findByLabelText('6-digit verification code')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', {name: 'Cancel'}));
+
+    expect(screen.queryByLabelText('6-digit verification code')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Verify'})).toBeInTheDocument();
+  });
 });

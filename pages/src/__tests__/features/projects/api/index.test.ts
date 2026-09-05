@@ -28,11 +28,23 @@ vi.mock('@/features/auth', () => ({
 }));
 
 import {
+  compactProjectToGridRow,
   createPastProjectShare,
   deleteShare,
+  fetchCurrentProjects,
+  fetchCurrentProjectsFull,
+  fetchPastProjectArchive,
+  fetchPastProjects,
   fetchPastProjectShare,
+  fetchProjectDetail,
+  hydrateProjectGridRows,
   listMyShares,
+  scheduleProjectToGridRow,
+  searchPastProjectsWithAI,
+  toProjectGridRow,
   updatePastProjectShare,
+  type ProjectGridRow,
+  type ProjectTableRow,
 } from '@/features/projects/api';
 
 const rows = [
@@ -158,4 +170,205 @@ describe('past project share API', () => {
       '/projects/past-shares/share-1/',
     );
   });
+});
+
+const makeTableRow = (overrides: Partial<ProjectTableRow> = {}): ProjectTableRow => ({
+  id: 'project-1',
+  semester_label: '2025-1 Spring',
+  class_code: 'CAP',
+  team_number: '101',
+  team_name: 'Team A',
+  project_title: 'Project A',
+  organization: 'Org A',
+  industry: 'Energy',
+  abstract: 'An abstract',
+  student_names: 'Alex',
+  track: null,
+  presentation_order: null,
+  ...overrides,
+});
+
+describe('project grid row mappers', () => {
+  it('maps a table row to a grid row and formats the semester label', () => {
+    expect(toProjectGridRow(makeTableRow({is_presenting: undefined}))).toMatchObject({
+      id: 'project-1',
+      semester_label: '2025 Spring',
+      is_presenting: '',
+    });
+    expect(toProjectGridRow(makeTableRow({is_presenting: true})).is_presenting).toBe('Yes');
+    expect(toProjectGridRow(makeTableRow({is_presenting: false})).is_presenting).toBe('No');
+  });
+
+  it('maps a schedule row without an id and normalizes is_presenting', () => {
+    const scheduleRow = {
+      id: 'schedule-1',
+      track: 1,
+      order: 2,
+      year_semester: '2025-1 Spring',
+      class_code: 'CAP',
+      team_number: '101',
+      team_name: 'Team A',
+      project_title: 'Project A',
+      organization: 'Org A',
+      industry: 'Energy',
+      abstract: 'An abstract',
+      student_names: 'Alex',
+      is_presenting: true,
+      tooltip: '',
+    };
+    expect(scheduleProjectToGridRow(scheduleRow)).toMatchObject({
+      semester_label: '2025 Spring',
+      is_presenting: 'Yes',
+    });
+    expect(scheduleProjectToGridRow(scheduleRow)).not.toHaveProperty('id');
+    expect(scheduleProjectToGridRow({...scheduleRow, is_presenting: false}).is_presenting).toBe('No');
+  });
+
+  it('maps a compact archive row with empty detail fields', () => {
+    expect(
+      compactProjectToGridRow({
+        id: 'project-1',
+        semester_label: '2025-1 Spring',
+        class_code: 'CAP',
+        team_number: '101',
+        team_name: 'Team A',
+        project_title: 'Project A',
+        organization: 'Org A',
+        industry: 'Energy',
+        track: null,
+        presentation_order: null,
+      }),
+    ).toEqual({
+      id: 'project-1',
+      semester_label: '2025 Spring',
+      class_code: 'CAP',
+      team_number: '101',
+      team_name: 'Team A',
+      project_title: 'Project A',
+      organization: 'Org A',
+      industry: 'Energy',
+      abstract: '',
+      student_names: '',
+      is_presenting: '',
+    });
+  });
+});
+
+describe('project archive and detail fetch helpers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('fetches current projects through the public endpoint', async () => {
+    apiMock.get.mockResolvedValue({data: {id: 'sem-1', projects: []}});
+    await expect(fetchCurrentProjects()).resolves.toEqual({id: 'sem-1', projects: []});
+    expect(apiMock.get).toHaveBeenCalledWith('/event/projects/');
+  });
+
+  it('fetches full current projects through the public endpoint', async () => {
+    apiMock.get.mockResolvedValue({data: {id: 'sem-1', projects: []}});
+    await expect(fetchCurrentProjectsFull()).resolves.toEqual({id: 'sem-1', projects: []});
+    expect(apiMock.get).toHaveBeenCalledWith('/event/projects/');
+  });
+
+  it('passes archive query params and the abort signal through', async () => {
+    const signal = new AbortController().signal;
+    apiMock.get.mockResolvedValue({data: {results: []}});
+
+    await expect(
+      fetchPastProjectArchive({page: 2, page_size: 50, year: 2025, season: 1}, signal),
+    ).resolves.toEqual({results: []});
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/archive/', {
+      params: {page: 2, page_size: 50, year: 2025, season: 1},
+      signal,
+    });
+  });
+
+  it('uses empty defaults for the archive query', async () => {
+    apiMock.get.mockResolvedValue({data: {results: []}});
+    await fetchPastProjectArchive();
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/archive/', {
+      params: {},
+      signal: undefined,
+    });
+  });
+
+  it('fetches the legacy past projects endpoint with page query params', async () => {
+    apiMock.get.mockResolvedValue({data: {results: []}});
+    await expect(fetchPastProjects(3, 25)).resolves.toEqual({results: []});
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/past/?page=3&page_size=25');
+  });
+
+  it('searches past projects with AI via the auth client and default limit', async () => {
+    authApiMock.post.mockResolvedValue({data: {available: true, query: 'solar', results: []}});
+    await expect(searchPastProjectsWithAI('solar')).resolves.toEqual({
+      available: true,
+      query: 'solar',
+      results: [],
+    });
+    expect(authApiMock.post).toHaveBeenCalledWith('/projects/past-ai-search/', {
+      query: 'solar',
+      limit: 10,
+    });
+  });
+
+  it('searches past projects with AI with a custom limit', async () => {
+    authApiMock.post.mockResolvedValue({data: {available: true, query: 'solar', results: []}});
+    await searchPastProjectsWithAI('solar', 25);
+    expect(authApiMock.post).toHaveBeenCalledWith('/projects/past-ai-search/', {
+      query: 'solar',
+      limit: 25,
+    });
+  });
+
+  it('fetches a single project detail with an optional abort signal', async () => {
+    const signal = new AbortController().signal;
+    apiMock.get.mockResolvedValue({data: {id: 'project-1'}});
+    await expect(fetchProjectDetail('project-1', signal)).resolves.toEqual({id: 'project-1'});
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/project-1/', {signal});
+  });
+
+  it('hydrates only the rows that need it and leaves the rest untouched', async () => {
+    const alreadyHydrated: ProjectGridRow = {
+      id: 'project-2',
+      semester_label: '2025 Spring',
+      class_code: 'CAP',
+      team_number: '102',
+      team_name: 'Team B',
+      project_title: 'Project B',
+      organization: 'Org B',
+      industry: 'Water',
+      abstract: 'Already present',
+      student_names: 'Sam',
+      is_presenting: '',
+    };
+    const noId: ProjectGridRow = {...alreadyHydrated, id: undefined, abstract: '', student_names: ''};
+    apiMock.get.mockResolvedValue({data: makeTableRow({id: 'project-1', project_title: 'Fetched'})});
+
+    const result = await hydrateProjectGridRows([
+      {id: 'project-1', ...makeGridRowBase(), abstract: '', student_names: ''},
+      alreadyHydrated,
+      noId,
+    ]);
+
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/project-1/', expect.objectContaining({}));
+    expect(result).toHaveLength(3);
+    expect(result[0].project_title).toBe('Fetched');
+    expect(result[1]).toEqual(alreadyHydrated);
+    expect(result[2]).toEqual(noId);
+  });
+});
+
+const makeGridRowBase = (): Omit<ProjectGridRow, 'id'> => ({
+  semester_label: '2025 Spring',
+  class_code: 'CAP',
+  team_number: '101',
+  team_name: 'Team A',
+  project_title: 'Project A',
+  organization: 'Org A',
+  industry: 'Energy',
+  abstract: '',
+  student_names: '',
+  is_presenting: '',
 });
