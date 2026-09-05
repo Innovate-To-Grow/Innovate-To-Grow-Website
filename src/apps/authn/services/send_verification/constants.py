@@ -40,8 +40,9 @@ OP_PHONE_AUTH_REQUEST_CODE = "phone_auth.request_code"
 OP_LOGIN_REQUEST_CODE = "login.request_code"
 OP_REGISTER = "register"
 OP_REGISTER_RESEND_CODE = "register.resend_code"
-OP_PASSWORD_RESET_REQUEST_CODE = "password_reset.request_code"
-OP_CHANGE_PASSWORD_REQUEST_CODE = "change_password.request_code"
+# Public protocol operation names; neither value is a credential.
+OP_PASSWORD_RESET_REQUEST_CODE = "password_reset.request_code"  # nosec B105
+OP_CHANGE_PASSWORD_REQUEST_CODE = "change_password.request_code"  # nosec B105
 OP_DELETE_ACCOUNT_REQUEST_CODE = "delete_account.request_code"
 OP_CONTACT_EMAIL_CREATE = "contact_email.create"
 OP_CONTACT_EMAIL_REQUEST_VERIFICATION = "contact_email.request_verification"

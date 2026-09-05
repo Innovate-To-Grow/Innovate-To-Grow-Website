@@ -40,9 +40,10 @@ ADMIN_REQUIRE_CONFIRMATION = os.environ.get("ADMIN_REQUIRE_CONFIRMATION", "false
 
 # Enforce send verification in CI. Existing send tests attach a solved proof via
 # the test client helper. Dedicated tests cover missing/forged proofs.
+# Deterministic fixture keys belong only to this isolated test settings module.
 SEND_VERIFICATION_MODE = "enforce"
-SEND_VERIFICATION_HMAC_SECRET = "test-send-verification-hmac-secret"
-SEND_VERIFICATION_HMAC_KEY_SECRET = "test-send-verification-hmac-key-secret"
+SEND_VERIFICATION_HMAC_SECRET = "test-send-verification-hmac-secret"  # nosec B105
+SEND_VERIFICATION_HMAC_KEY_SECRET = "test-send-verification-hmac-key-secret"  # nosec B105
 SEND_VERIFICATION_COST = 10
 SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = 0
 SEND_VERIFICATION_SMS_DAILY_LIMIT = 1000

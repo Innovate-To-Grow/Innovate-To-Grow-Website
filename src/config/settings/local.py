@@ -78,8 +78,8 @@ CACHES = {
 # Self-hosted send verification: enforce locally so missing proofs fail in dev.
 # HMAC values are development-only; production secrets live in Site Settings.
 SEND_VERIFICATION_MODE = "enforce"
-SEND_VERIFICATION_HMAC_SECRET = "local-send-verification-hmac-secret"
-SEND_VERIFICATION_HMAC_KEY_SECRET = "local-send-verification-hmac-key-secret"
+SEND_VERIFICATION_HMAC_SECRET = "local-send-verification-hmac-secret"  # nosec B105
+SEND_VERIFICATION_HMAC_KEY_SECRET = "local-send-verification-hmac-key-secret"  # nosec B105
 SEND_VERIFICATION_COST = 500
 SEND_VERIFICATION_SMS_DAILY_LIMIT = 1000
 if "test" in sys.argv:
