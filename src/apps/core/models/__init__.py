@@ -6,6 +6,7 @@ from .base import (
     GmailAccessAccount,
     GoogleCredentialConfig,
     ProjectControlModel,
+    SendVerificationConfig,
     SiteMaintenanceControl,
     TimeStampedModel,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "ProjectControlManager",
     "ProjectControlModel",
     "ProjectControlQuerySet",
+    "SendVerificationConfig",
     "SiteMaintenanceControl",
     "TimeStampedModel",
 ]

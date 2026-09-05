@@ -36,6 +36,13 @@ class AuthChallengeThrottled(AuthChallengeError):
 class AuthChallengeDeliveryError(AuthChallengeError):
     """Raised when the SES send fails."""
 
+    def __init__(
+        self, message: str = "Failed to send verification email.", *, outcome: str = "uncertain", challenge_id: str = ""
+    ):
+        super().__init__(message)
+        self.outcome = outcome
+        self.challenge_id = challenge_id
+
 
 def _random_code() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"

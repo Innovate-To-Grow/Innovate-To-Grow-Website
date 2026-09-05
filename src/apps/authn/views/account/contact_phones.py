@@ -11,7 +11,6 @@ from apps.authn.constants import (
     CONTACT_PHONE_ADD_FAILED,
     CONTACT_PHONE_SEND_FAILED,
     LAST_RECOVERY_CONTACT_DELETE_FAILED,
-    PHONE_VERIFICATION_DELIVERY_FAILED,
     VERIFICATION_INVALID,
     VERIFICATION_THROTTLED,
 )
@@ -25,7 +24,6 @@ from apps.authn.serializers import (
 )
 from apps.authn.services import (
     LastRecoveryContactError,
-    PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
     create_contact_phone,
@@ -33,7 +31,14 @@ from apps.authn.services import (
     request_phone_verification,
     verify_phone_code,
 )
+from apps.authn.services.contacts.contact_phones import national_to_e164
 from apps.authn.services.email.challenges import AuthChallengeInvalid
+from apps.authn.services.send_verification import (
+    OP_CONTACT_PHONE_REQUEST_VERIFICATION,
+    fingerprint_payload,
+    guarded_send,
+)
+from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
 
 
 class ContactPhoneListCreateView(APIView):
@@ -104,16 +109,27 @@ class ContactPhoneRequestVerificationView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):
-        try:
-            result = request_phone_verification(member=request.user, contact_phone_id=pk)
-        except AuthChallengeInvalid:
+        contact = ContactPhone.objects.filter(pk=pk, member=request.user).first()
+        if contact is None:
             return Response({"detail": CONTACT_PHONE_SEND_FAILED}, status=status.HTTP_400_BAD_REQUEST)
-        except PhoneVerificationThrottled:
-            return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-        except PhoneVerificationDeliveryError:
-            return Response({"detail": PHONE_VERIFICATION_DELIVERY_FAILED}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        e164 = national_to_e164(contact.phone_number, contact.region)
 
-        return Response(result, status=status.HTTP_202_ACCEPTED)
+        def perform():
+            try:
+                result = request_phone_verification(member=request.user, contact_phone_id=pk)
+            except AuthChallengeInvalid:
+                return {"detail": CONTACT_PHONE_SEND_FAILED}, status.HTTP_400_BAD_REQUEST
+            return result, status.HTTP_202_ACCEPTED
+
+        return guarded_send(
+            request,
+            operation=OP_CONTACT_PHONE_REQUEST_VERIFICATION,
+            destination_kind=KIND_PHONE,
+            destination_normalized=e164,
+            fingerprint=fingerprint_payload({"contact_id": str(pk)}),
+            channel=SMS_CHANNEL,
+            perform=perform,
+        )
 
 
 class ContactPhoneVerifyCodeView(APIView):

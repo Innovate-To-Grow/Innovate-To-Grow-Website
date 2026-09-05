@@ -67,6 +67,8 @@ def issue_email_challenge(
 ) -> EmailAuthChallenge:
     import apps.authn.services.email.challenges as api
     from apps.authn.services.email.send_email import send_verification_email
+    from apps.authn.services.send_verification.outcomes import record_otp_challenge
+    from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_UNCERTAIN
 
     challenge, plain_code = create_challenge_record(
         member=member,
@@ -75,6 +77,7 @@ def issue_email_challenge(
     )
 
     try:
+        record_otp_challenge(str(challenge.pk))
         send_verification_email(
             recipient=challenge.target_email,
             code=plain_code,
@@ -85,8 +88,14 @@ def issue_email_challenge(
         )
     except Exception as exc:
         logger.exception("Failed to send verification email")
-        with transaction.atomic():
-            EmailAuthChallenge.objects.filter(pk=challenge.pk).delete()
-        raise api.AuthChallengeDeliveryError("Failed to send verification email.") from exc
+        outcome = getattr(exc, "outcome", PROVIDER_OUTCOME_UNCERTAIN)
+        if outcome != PROVIDER_OUTCOME_UNCERTAIN:
+            with transaction.atomic():
+                EmailAuthChallenge.objects.filter(pk=challenge.pk).delete()
+        raise api.AuthChallengeDeliveryError(
+            "Failed to send verification email.",
+            outcome=outcome,
+            challenge_id=str(challenge.pk),
+        ) from exc
 
     return challenge

@@ -79,7 +79,7 @@ class PhoneOnlyPasswordCreateViaSmsTests(APITestCase):
         )
 
     def test_password_change_sms_delivery_failure_is_not_reported_as_sent(self, mock_start, _mock_check):
-        mock_start.side_effect = PhoneVerificationDeliveryError("provider unavailable")
+        mock_start.side_effect = PhoneVerificationDeliveryError("provider rejected", outcome="permanent")
 
         response = self.client.post(REQUEST_URL, {}, format="json")
 
@@ -97,7 +97,11 @@ class PhoneOnlyPasswordCreateViaSmsTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 202)
-        self.assertEqual(response.data["challenge_id"], challenge_id)
+        from apps.authn.models import SendVerificationRequest
+
+        record = SendVerificationRequest.objects.get(request_id=response.data["challenge_id"])
+        self.assertEqual(record.otp_challenge_id, challenge_id)
+        self.assertEqual(response.data["status"], "submitted")
         mock_start.assert_called_once_with(
             "+12095551234",
             purpose=EmailAuthChallenge.Purpose.PASSWORD_RESET,

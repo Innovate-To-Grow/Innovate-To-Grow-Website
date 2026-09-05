@@ -35,6 +35,11 @@ imap-tools>=1.13.0
 # in CVE fixes to the Rust bindings.
 cryptography>=50.0.0
 
+# Self-hosted ALTCHA proof-of-work (open-source widget protocol, PoW v2).
+# Pin 2.1.0+: 2.1.0 patches the PoW v2 keyPrefix fallback verification issue
+# (altcha.org security advisory, 2026-07-30). Do not mix with widget v1/v2.
+altcha==2.1.0
+
 # HTML Parsing
 beautifulsoup4>=4.15.0
 defusedxml>=0.7.1,<1.0

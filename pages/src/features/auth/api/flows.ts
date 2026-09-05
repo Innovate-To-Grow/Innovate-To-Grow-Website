@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { clearKeyCache, encryptPasswordWithCurrentKey } from '@/lib/security';
+import { withVerifiedSend } from '@/features/auth/verification';
 import { authApi } from './client';
 import {persistAuthSession} from './storage';
 import type {
@@ -50,17 +51,25 @@ export const register = async (
   try {
     const { encryptedPassword, keyId } = await encryptPasswordWithCurrentKey(password);
     const { encryptedPassword: encryptedConfirm } = await encryptPasswordWithCurrentKey(passwordConfirm);
-    const response = await authApi.post<RegisterResponse>('/authn/register/', {
-      email,
-      password: encryptedPassword,
-      password_confirm: encryptedConfirm,
-      key_id: keyId,
-      first_name: firstName,
-      last_name: lastName,
-      organization,
-      title,
+    return withVerifiedSend({
+      operation: 'register',
+      destinationKind: 'email',
+      destination: email,
+      execute: async (verification) => {
+        const response = await authApi.post<RegisterResponse>('/authn/register/', {
+          email,
+          password: encryptedPassword,
+          password_confirm: encryptedConfirm,
+          key_id: keyId,
+          first_name: firstName,
+          last_name: lastName,
+          organization,
+          title,
+          ...verification,
+        });
+        return response.data;
+      },
     });
-    return response.data;
   } catch (error) {
     if (isEncryptionFailure(error)) {
       clearKeyCache();
@@ -88,8 +97,18 @@ export const login = async (email: string, password: string): Promise<LoginRespo
 };
 
 export const requestLoginCode = async (email: string): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>('/authn/login/request-code/', { email });
-  return response.data;
+  return withVerifiedSend({
+    operation: 'login.request_code',
+    destinationKind: 'email',
+    destination: email,
+    execute: async (verification) => {
+      const response = await authApi.post<MessageResponse>('/authn/login/request-code/', {
+        email,
+        ...verification,
+      });
+      return response.data;
+    },
+  });
 };
 
 export const requestEmailAuthCode = async (
@@ -97,12 +116,21 @@ export const requestEmailAuthCode = async (
   source: EmailAuthSource = 'login',
   event?: string,
 ): Promise<EmailAuthRequestResponse> => {
-  const response = await authApi.post<EmailAuthRequestResponse>('/authn/email-auth/request-code/', {
-    email,
-    source,
-    ...(event ? {event} : {}),
+  return withVerifiedSend({
+    operation: 'email_auth.request_code',
+    destinationKind: 'email',
+    destination: email,
+    extraChallenge: event ? {event} : undefined,
+    execute: async (verification) => {
+      const response = await authApi.post<EmailAuthRequestResponse>('/authn/email-auth/request-code/', {
+        email,
+        source,
+        ...(event ? {event} : {}),
+        ...verification,
+      });
+      return response.data;
+    },
   });
-  return response.data;
 };
 
 export const verifyLoginCode = async (email: string, code: string): Promise<LoginResponse> => {
@@ -122,16 +150,27 @@ export const requestPhoneAuthCode = async (
   region: string = '1-US',
   source: PhoneAuthSource = 'login',
 ): Promise<PhoneAuthRequestResponse> => {
-  const response = await authApi.post<PhoneAuthRequestResponse>('/authn/phone-auth/request-code/', {
-    phone_number: phoneNumber,
-    region,
-    source,
+  const response = await withVerifiedSend({
+    operation: 'phone_auth.request_code',
+    destinationKind: 'phone',
+    destination: phoneNumber,
+    extraChallenge: {region, phone_number: phoneNumber},
+    execute: async (verification) => {
+      return (
+        await authApi.post<PhoneAuthRequestResponse>('/authn/phone-auth/request-code/', {
+          phone_number: phoneNumber,
+          region,
+          source,
+          ...verification,
+        })
+      ).data;
+    },
   });
   rememberSmsChallenge(
     phoneAuthChallengeScope(phoneNumber, region),
-    response.data.challenge_id,
+    response.challenge_id,
   );
-  return response.data;
+  return response;
 };
 
 export const verifyPhoneAuthCode = async (
@@ -161,25 +200,45 @@ export const verifyRegistrationCode = async (email: string, code: string): Promi
 };
 
 export const resendRegistrationCode = async (email: string): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>('/authn/register/resend-code/', { email });
-  return response.data;
+  return withVerifiedSend({
+    operation: 'register.resend_code',
+    destinationKind: 'email',
+    destination: email,
+    execute: async (verification) => {
+      const response = await authApi.post<MessageResponse>('/authn/register/resend-code/', {
+        email,
+        ...verification,
+      });
+      return response.data;
+    },
+  });
 };
 
 export const requestPasswordReset = async (
   email: string,
 ): Promise<SmsChallengeResponse> => {
-  const response = await authApi.post<SmsChallengeResponse>(
-    '/authn/password-reset/request-code/',
-    {email},
-  );
+  const response = await withVerifiedSend({
+    operation: 'password_reset.request_code',
+    destinationKind: email.includes('@') ? 'email' : 'phone',
+    destination: email,
+    extraChallenge: {identifier: email},
+    execute: async (verification) => {
+      return (
+        await authApi.post<SmsChallengeResponse>('/authn/password-reset/request-code/', {
+          email,
+          ...verification,
+        })
+      ).data;
+    },
+  });
   // The public endpoint deliberately has the same response shape for email,
   // phone, and unknown identifiers. Persist any opaque challenge returned; the
   // email verifier safely ignores it, while SMS verification requires it.
   rememberSmsChallenge(
     passwordResetChallengeScope(email),
-    response.data.challenge_id,
+    response.challenge_id,
   );
-  return response.data;
+  return response;
 };
 
 export const verifyPasswordResetCode = async (
@@ -222,15 +281,25 @@ export const confirmPasswordReset = async (
 export const requestPasswordChangeCode = async (email?: string): Promise<PasswordChangeRequestResponse> => {
   // Omit `email` entirely for phone-only accounts; the backend then selects the
   // verification channel (verified email, else SMS) and reports it in the response.
-  const response = await authApi.post<PasswordChangeRequestResponse>(
-    '/authn/change-password/request-code/',
-    email ? { email } : {},
-  );
+  const response = await withVerifiedSend({
+    operation: 'change_password.request_code',
+    destinationKind: 'email',
+    destination: email || 'account',
+    extraChallenge: email ? {email} : undefined,
+    execute: async (verification) => {
+      return (
+        await authApi.post<PasswordChangeRequestResponse>(
+          '/authn/change-password/request-code/',
+          email ? {email, ...verification} : {...verification},
+        )
+      ).data;
+    },
+  });
   rememberSmsChallenge(
     passwordChangeChallengeScope(email),
-    response.data.channel === 'sms' ? response.data.challenge_id : undefined,
+    response.channel === 'sms' ? response.challenge_id : undefined,
   );
-  return response.data;
+  return response;
 };
 
 export const verifyPasswordChangeCode = async (
@@ -269,8 +338,17 @@ export const confirmPasswordChange = async (
 };
 
 export const requestAccountDeletionCode = async (): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>('/authn/delete-account/request-code/', {});
-  return response.data;
+  return withVerifiedSend({
+    operation: 'delete_account.request_code',
+    destinationKind: 'email',
+    destination: 'account',
+    execute: async (verification) => {
+      const response = await authApi.post<MessageResponse>('/authn/delete-account/request-code/', {
+        ...verification,
+      });
+      return response.data;
+    },
+  });
 };
 
 export const verifyAccountDeletionCode = async (code: string): Promise<VerificationTokenResponse> => {

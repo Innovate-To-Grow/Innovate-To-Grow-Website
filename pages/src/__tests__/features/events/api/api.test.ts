@@ -214,11 +214,11 @@ describe('event API', () => {
     expect(authApiMock.post).toHaveBeenNthCalledWith(
       3,
       '/event/send-phone-code/',
-      {
+      expect.objectContaining({
         phone: '2025550123',
         region: '1-US',
         event_slug: 'fall-showcase',
-      },
+      }),
     );
     expect(authApiMock.post).toHaveBeenNthCalledWith(
       4,

@@ -37,3 +37,19 @@ ADMIN_REQUIRE_CONFIRMATION = os.environ.get("ADMIN_REQUIRE_CONFIRMATION", "false
     "true",
     "yes",
 }
+
+# Enforce send verification in CI. Existing send tests attach a solved proof via
+# the test client helper. Dedicated tests cover missing/forged proofs.
+SEND_VERIFICATION_MODE = "enforce"
+SEND_VERIFICATION_HMAC_SECRET = "test-send-verification-hmac-secret"
+SEND_VERIFICATION_HMAC_KEY_SECRET = "test-send-verification-hmac-key-secret"
+SEND_VERIFICATION_COST = 10
+SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = 0
+SEND_VERIFICATION_SMS_DAILY_LIMIT = 1000
+SEND_VERIFICATION_TEST_AUTOSOLVE = True
+SEND_VERIFICATION_CHALLENGE_CACHE_LIMIT = 10_000
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
+    **REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"],  # noqa: F405
+    "send_verification_challenge": "10000/minute",
+    "send_verification_status": "10000/minute",
+}

@@ -60,39 +60,52 @@ class SendPhoneCodeView(APIView):
             return Response({"detail": phone_error}, status=status.HTTP_400_BAD_REQUEST)
 
         phone = registration_api._normalize_phone(phone, region)
-        try:
-            from apps.authn.services.sms import (
-                PhoneVerificationDeliveryError,
-                PhoneVerificationInvalid,
-                start_phone_verification,
+        from apps.authn.services.send_verification import OP_EVENT_SEND_PHONE_CODE, fingerprint_payload, guarded_send
+        from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
+        from apps.authn.services.send_verification.outcomes import SendOutcome, failure_status
+        from apps.authn.services.sms import (
+            PhoneVerificationDeliveryError,
+            PhoneVerificationInvalid,
+            start_phone_verification,
+        )
+
+        def perform():
+            try:
+                challenge = start_phone_verification(
+                    phone,
+                    purpose="event_registration",
+                    member=request.user,
+                    context_identifier=verification_context,
+                )
+            except PhoneVerificationInvalid:
+                return (
+                    {"detail": "Invalid phone number."},
+                    status.HTTP_400_BAD_REQUEST,
+                )
+            except PhoneVerificationDeliveryError as exc:
+                return SendOutcome(
+                    {"detail": "Failed to send verification code. Please try again later."},
+                    status.HTTP_503_SERVICE_UNAVAILABLE,
+                    failure_status(exc),
+                    str(exc.challenge_id or ""),
+                )
+            return (
+                {
+                    "detail": "Verification code sent.",
+                    "phone": phone,
+                    "challenge_id": challenge["challenge_id"],
+                },
+                status.HTTP_200_OK,
             )
 
-            challenge = start_phone_verification(
-                phone,
-                purpose="event_registration",
-                member=request.user,
-                context_identifier=verification_context,
-            )
-        except PhoneVerificationInvalid:
-            return Response(
-                {"detail": "Invalid phone number."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except PhoneVerificationDeliveryError:
-            return _sms_unavailable_response()
-        except Exception:
-            registration_api.logger.warning(
-                "Failed to send phone verification SMS",
-                exc_info=True,
-            )
-            return _sms_unavailable_response()
-
-        return Response(
-            {
-                "detail": "Verification code sent.",
-                "phone": phone,
-                "challenge_id": challenge["challenge_id"],
-            }
+        return guarded_send(
+            request,
+            operation=OP_EVENT_SEND_PHONE_CODE,
+            destination_kind=KIND_PHONE,
+            destination_normalized=phone,
+            fingerprint=fingerprint_payload({"phone": phone, "event": verification_context}),
+            channel=SMS_CHANNEL,
+            perform=perform,
         )
 
 

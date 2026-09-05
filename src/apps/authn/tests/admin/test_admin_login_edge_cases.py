@@ -171,7 +171,7 @@ class AdminRememberedCodeTest(TestCase):
         self._set_remembered_cookie()
         with patch(
             "apps.authn.views.admin.login.issue_email_challenge",
-            side_effect=AuthChallengeDeliveryError("nope"),
+            side_effect=AuthChallengeDeliveryError("nope", outcome="permanent"),
         ):
             resp = self.client.post(LOGIN_URL, {"action": "remembered_code"})
         self.assertEqual(resp.status_code, 200)

@@ -13,6 +13,7 @@ import type {
   User,
   VerificationTokenResponse,
 } from '@/features/auth/api';
+import {VerificationFlowError} from '@/features/auth/verification/errors';
 
 export const AUTH_STATE_CHANGE_EVENT = 'i2g-auth-state-change';
 
@@ -94,6 +95,7 @@ export function isSafeMessage(value: string): boolean {
 }
 
 export function getAuthErrorMessage(err: unknown): string {
+  if (err instanceof VerificationFlowError && isSafeMessage(err.message)) return err.message;
   if (typeof err !== 'object' || err === null) {
     return 'An unexpected error occurred. Please try again.';
   }
@@ -101,8 +103,13 @@ export function getAuthErrorMessage(err: unknown): string {
   if (!axiosError.response?.data) {
     return 'An unexpected error occurred. Please try again.';
   }
+  const data = axiosError.response.data;
+  if (typeof data.detail === 'string' && isSafeMessage(data.detail)) {
+    return data.detail;
+  }
   const messages: string[] = [];
-  for (const value of Object.values(axiosError.response.data)) {
+  for (const [key, value] of Object.entries(data)) {
+    if (['code', 'retry_after', 'request_id', 'challenge_id'].includes(key)) continue;
     if (Array.isArray(value)) {
       for (const item of value) {
         if (typeof item === 'string' && isSafeMessage(item)) messages.push(item);

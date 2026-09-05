@@ -50,11 +50,14 @@ from .auth.phone_code import (
 )
 from .auth.public_key import PublicKeyView
 from .auth.register import RegisterView
+from .auth.send_verification import SendVerificationChallengeView, SendVerificationRequestStatusView
 from .auth.session import SessionView
 from .auth.token import PublicTokenRefreshView
 
 __all__ = [
     "RegisterView",
+    "SendVerificationChallengeView",
+    "SendVerificationRequestStatusView",
     "SessionView",
     "RegisterVerifyCodeView",
     "RegisterResendCodeView",

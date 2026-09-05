@@ -18,6 +18,76 @@ The auth system is built on `rest_framework_simplejwt` with custom extensions fo
 | Throttles | `src/apps/authn/throttles.py` |
 | Mail views | `src/apps/mail/views/` |
 
+## Send verification (ALTCHA)
+
+User-triggered verification-code sends require a self-hosted ALTCHA proof of
+work. Proof of work does not prove the caller is human; destination quotas and
+SMS budget controls are part of the same gate.
+
+**`POST /authn/send-verification/challenge/`**
+
+Request (never put the destination in a query string):
+
+```json
+{
+  "operation": "email_auth.request_code",
+  "email": "user@example.com"
+}
+```
+
+Response (`200`, `Cache-Control: no-store`):
+
+```json
+{
+  "challenge_id": "<uuid>",
+  "expires_at": "<iso8601>",
+  "algorithm": "PBKDF2/SHA-256",
+  "cost": 5000,
+  "challenge": {"parameters": {}, "signature": "..."}
+}
+```
+
+**`GET /authn/send-verification/requests/<request_id>/`** returns the caller's
+recorded send state after an ambiguous network result. Other users' ids are not
+enumerable.
+
+Public authentication requests bind to the browser session even if a Bearer
+token is present. Account/event operations require the same authenticated
+member for challenge, send, and status lookup. Admin uses the CSRF-protected
+`POST /admin/send-verification/challenge/` route with its existing session and
+remembered-account cookie; the public challenge route rejects admin operations.
+
+Protected send bodies also accept:
+
+```json
+{
+  "verification_challenge_id": "<uuid>",
+  "verification_payload": "<base64>",
+  "send_request_id": "<uuid>"
+}
+```
+
+The same `send_request_id` may only be reused with the same principal, operation,
+channel, normalized destination, and validated business inputs. A mismatch is
+`409 send_request_conflict`. For password reset, send input uses `identifier`
+then legacy `email`; an additional `destination` cannot override either.
+
+An uncertain ordinary send returns `409` with `code: "send_unknown"`,
+`request_id`, and an optional OTP `challenge_id`. Query the original request on
+this response or a network error; do not automatically resend. Status responses
+contain `request_id`, `status`, `http_status`, `code`, `result`, and
+`challenge_id`. States are `pending`, `sending`, `provider_accepted`,
+`definitely_failed`, and `unknown`. Acceptance does not mean delivery.
+
+Password reset preserves account-enumeration protection: business outcomes
+share a neutral `202` response and opaque challenge identifier. Its public
+status is `submitted`, not a delivery-success claim; actual delivery outcomes
+remain internal. Proof/authentication failures and site-wide sending limits
+still reject the request before the protected business action.
+
+See [Send verification](../deployment/send-verification.md) for operations,
+error codes, quotas, and cutover.
+
 ## Registration
 
 ### `POST /authn/register/`
@@ -309,9 +379,11 @@ error and confirm returns `"Verification token is invalid or has expired."`, so 
 account existence. The public request endpoint
 applies a per-IP SMS throttle when the identifier is a phone number.
 
-The request response always includes an opaque `challenge_id` so its shape is enumeration-safe. It
-is the real durable SMS challenge ID only for an eligible phone account; email and unknown identifiers
-receive an unrelated decoy UUID. Echo `challenge_id` to `verify-code` when the identifier is a phone:
+The request response always includes an opaque `challenge_id`: the stable protected-send request
+UUID for every outcome. It does not change while dispatch is in progress. Phone verification resolves
+it internally to the matching reset OTP, checking operation and destination before code validation.
+Legacy direct SMS challenge IDs remain accepted. Echo `challenge_id` to `verify-code` when the
+identifier is a phone:
 
 ```json
 {

@@ -1,3 +1,4 @@
+import { withVerifiedSend } from '@/features/auth/verification';
 import { authApi } from './client';
 import type {
   ContactEmail,
@@ -39,12 +40,25 @@ export const deleteContactPhone = async (id: string): Promise<void> => {
 };
 
 export const requestContactPhoneVerification = async (id: string): Promise<SmsChallengeResponse> => {
-  const response = await authApi.post<SmsChallengeResponse>(`/authn/contact-phones/${id}/request-verification/`);
+  const response = await withVerifiedSend({
+    operation: 'contact_phone.request_verification',
+    destinationKind: 'phone',
+    destination: id,
+    extraChallenge: {contact_id: id},
+    execute: async (verification) => {
+      return (
+        await authApi.post<SmsChallengeResponse>(
+          `/authn/contact-phones/${id}/request-verification/`,
+          verification,
+        )
+      ).data;
+    },
+  });
   rememberSmsChallenge(
     contactPhoneChallengeScope(id),
-    response.data.challenge_id,
+    response.challenge_id,
   );
-  return response.data;
+  return response;
 };
 
 export const verifyContactPhoneCode = async (
@@ -75,8 +89,19 @@ export const createContactEmail = async (data: {
   email_type?: 'secondary' | 'other';
   subscribe?: boolean;
 }): Promise<ContactEmail> => {
-  const response = await authApi.post<ContactEmail>('/authn/contact-emails/', data);
-  return response.data;
+  return withVerifiedSend({
+    operation: 'contact_email.create',
+    destinationKind: 'email',
+    destination: data.email_address,
+    extraChallenge: {email_address: data.email_address},
+    execute: async (verification) => {
+      const response = await authApi.post<ContactEmail>('/authn/contact-emails/', {
+        ...data,
+        ...verification,
+      });
+      return response.data;
+    },
+  });
 };
 
 export const updateContactEmail = async (
@@ -92,8 +117,19 @@ export const deleteContactEmail = async (id: string): Promise<void> => {
 };
 
 export const requestContactEmailVerification = async (id: string): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>(`/authn/contact-emails/${id}/request-verification/`);
-  return response.data;
+  return withVerifiedSend({
+    operation: 'contact_email.request_verification',
+    destinationKind: 'email',
+    destination: id,
+    extraChallenge: {contact_id: id},
+    execute: async (verification) => {
+      const response = await authApi.post<MessageResponse>(
+        `/authn/contact-emails/${id}/request-verification/`,
+        verification,
+      );
+      return response.data;
+    },
+  });
 };
 
 export const verifyContactEmailCode = async (id: string, code: string): Promise<ContactEmail> => {
