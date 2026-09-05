@@ -128,4 +128,79 @@ describe('LoginForm unified email/phone field', () => {
 
     expect((screen.getByLabelText('Email or Phone') as HTMLInputElement).value).toBe('ada@example.com');
   });
+
+  it('routes a phone entry to the phone-code step', async () => {
+    renderForm();
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: '2025550123'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
+
+    await waitFor(() => {
+      expect(authValue.requestPhoneAuthCode).toHaveBeenCalledWith('2025550123', '1-US', 'login');
+    });
+    expect(authValue.requestEmailAuthCode).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/verify-phone?phone=2025550123');
+  });
+
+  it('shows a validation error for an invalid identifier submit', () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: 'not-an-identifier'}});
+    const form = screen.getByLabelText('Email or phone number').closest('form')!;
+    fireEvent.submit(form);
+
+    expect(screen.getByText('Please enter a valid email address or 10-digit US phone number.')).toBeInTheDocument();
+  });
+
+  it('shows a validation error for an empty password-mode identifier', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
+    const form = screen.getByLabelText('Email or Phone').closest('form')!;
+    fireEvent.submit(form);
+
+    expect(screen.getByText('Please enter your email or phone number.')).toBeInTheDocument();
+  });
+
+  it('shows a validation error for an invalid password-mode identifier', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'not-an-identifier'}});
+    fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'hunter2!'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
+
+    expect(screen.getByText('Please enter a valid email address or 10-digit US phone number.')).toBeInTheDocument();
+  });
+
+  it('shows a validation error for an empty password', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'ada@example.com'}});
+    const form = screen.getByLabelText('Email or Phone').closest('form')!;
+    fireEvent.submit(form);
+
+    expect(screen.getByText('Please enter your password.')).toBeInTheDocument();
+  });
+
+  it('switches back to the identifier mode', () => {
+    renderForm();
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Sign in with a verification code'}));
+
+    expect(screen.getByLabelText('Email or phone number')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Email or Phone')).not.toBeInTheDocument();
+  });
+
+  it('shows the context error when no validation error is present', () => {
+    mockUseAuth.mockReturnValue({
+      login: vi.fn(),
+      requestEmailAuthCode: vi.fn().mockResolvedValue({message: 'Code sent.'}),
+      requestPhoneAuthCode: vi.fn().mockResolvedValue({message: 'Code sent.'}),
+      error: 'Invalid credentials.',
+      isLoading: false,
+      clearError: vi.fn(),
+    });
+    renderForm();
+
+    expect(screen.getByText('Invalid credentials.')).toBeInTheDocument();
+  });
 });

@@ -621,4 +621,338 @@ describe('MergedResultsTable', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} sharedMode note="See below" />);
     expect(within(desktopTable(container)).getByText(/A detailed project abstract\./)).toBeInTheDocument();
   });
+
+  it('exports PDF through the pdf exporter with the export context', async () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector(
+      '.project-grid-toolbar-cluster[aria-label="Export"]',
+    ) as HTMLElement;
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
+
+    await waitFor(() => expect(exportMocks.exportProjectRowsPdf).toHaveBeenCalledTimes(1));
+    const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsPdf.mock.calls[0];
+    expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
+    expect(fileBaseName).toBe('past-projects');
+    expect(context).toMatchObject({title: 'Saved Merged Results'});
+  });
+
+  it('exports Microsoft Word through the word exporter', async () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector(
+      '.project-grid-toolbar-cluster[aria-label="Export"]',
+    ) as HTMLElement;
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Microsoft Word'}));
+
+    await waitFor(() => expect(exportMocks.exportProjectRowsWord).toHaveBeenCalledTimes(1));
+    const [rowsArg, fileBaseName] = exportMocks.exportProjectRowsWord.mock.calls[0];
+    expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
+    expect(fileBaseName).toBe('past-projects');
+  });
+
+  it('blocks creating a share with more than 1000 projects', async () => {
+    const onCreateShare = vi.fn();
+    const manyRows = Array.from({length: 1001}, (_, index) => ({
+      ...baseRow,
+      team_number: `T${index}`,
+      project_title: `Project ${index}`,
+    }));
+
+    render(<MergedResultsTable rows={createProjectGridItems(manyRows, 'test')} onCreateShare={onCreateShare} />);
+
+    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+
+    expect(await screen.findByText(/at most 1000 projects/i)).toBeInTheDocument();
+    expect(onCreateShare).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a specific DRF validation message when share creation fails', async () => {
+    const onCreateShare = vi.fn().mockRejectedValue({
+      response: {data: {name: ['Name is too long.']}},
+    });
+
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
+
+    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+
+    expect(await screen.findByText('Name is too long.')).toBeInTheDocument();
+  });
+
+  it('re-includes an excluded field when the checkbox is toggled again', async () => {
+    render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', {name: 'Project insert settings'}));
+    const individualLinkCheckbox = screen.getByRole('checkbox', {name: 'Individual Link'});
+    fireEvent.click(individualLinkCheckbox);
+    fireEvent.click(individualLinkCheckbox);
+    fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
+
+    const noteEditor = screen.getByRole('textbox', {name: /add a curation note/i});
+    await waitFor(() => expect(noteEditor.textContent).toContain('Individual Link'));
+  });
+
+  it('inserts projects into the shared note while editing', async () => {
+    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
+    render(
+      <MergedResultsTable
+        rows={makeItems([rowWithId])}
+        sharedMode
+        editable
+        title="Shared"
+        note=""
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /edit curation note/i}));
+    const noteEditor = screen.getByRole('textbox', {name: 'Curation note'});
+    // Clicking the insert button moves focus in a real browser; mirror that so the
+    // editor's focus guard does not suppress the inserted value rewrite.
+    const insertButton = screen.getByRole('button', {name: 'Insert projects into note'});
+    insertButton.focus();
+    fireEvent.click(insertButton);
+
+    await waitFor(() => expect(noteEditor.textContent).toContain('Project 1'));
+  });
+
+  it('copies the share URL via document.execCommand when no async clipboard exists', async () => {
+    Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', {value: execCommand, configurable: true, writable: true});
+    try {
+      render(<MergedResultsTable rows={makeItems()} sharedMode />);
+
+      fireEvent.click(screen.getByLabelText('Shareable URL'));
+
+      expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();
+      expect(execCommand).toHaveBeenCalledWith('copy');
+    } finally {
+      Object.defineProperty(document, 'execCommand', {value: undefined, configurable: true, writable: true});
+    }
+  });
+
+  it('surfaces a failure message when a shared update is rejected', async () => {
+    const onUpdateShare = vi.fn().mockRejectedValue(new Error('boom'));
+
+    render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Original"
+        note="Note"
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
+    fireEvent.change(screen.getByLabelText('Shared page name'), {target: {value: 'New Name'}});
+    fireEvent.click(screen.getByRole('button', {name: /save name/i}));
+
+    expect(
+      await screen.findByText('Unable to update this shared page. Please try again.'),
+    ).toBeInTheDocument();
+  });
+
+  it('closes the title editor without saving when the name is unchanged', () => {
+    const onUpdateShare = vi.fn();
+
+    render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Original"
+        note=""
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
+    expect(screen.getByLabelText('Shared page name')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {name: /save name/i}));
+
+    expect(screen.queryByLabelText('Shared page name')).toBeNull();
+    expect(onUpdateShare).not.toHaveBeenCalled();
+  });
+
+  it('closes the note editor without saving when the note is unchanged', () => {
+    const onUpdateShare = vi.fn();
+
+    render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Shared"
+        note="Same note"
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /edit curation note/i}));
+    fireEvent.click(screen.getByRole('button', {name: /save curation note/i}));
+
+    expect(onUpdateShare).not.toHaveBeenCalled();
+  });
+
+  it('refuses to remove the final project from a shared page', async () => {
+    const onUpdateShare = vi.fn();
+
+    render(
+      <MergedResultsTable
+        rows={makeItems([baseRow])}
+        sharedMode
+        editable
+        title="Shared"
+        note=""
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
+
+    expect(await screen.findByText('A shared page needs at least one project.')).toBeInTheDocument();
+    expect(onUpdateShare).not.toHaveBeenCalled();
+  });
+
+  it('saves a shared title with the Enter key', async () => {
+    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Original"
+        note=""
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
+    fireEvent.change(screen.getByLabelText('Shared page name'), {target: {value: 'Renamed'}});
+    fireEvent.keyDown(screen.getByLabelText('Shared page name'), {key: 'Enter'});
+
+    await waitFor(() => expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Renamed', ''));
+  });
+
+  it('copies the share URL when the input is focused', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
+    try {
+      render(<MergedResultsTable rows={makeItems()} sharedMode />);
+
+      fireEvent.focus(screen.getByLabelText('Shareable URL'));
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
+      expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
+    }
+  });
+
+  it('clears the selection when select-all is toggled while everything visible is selected', () => {
+    const {container} = render(
+      <MergedResultsTable
+        rows={makeItems([baseRow])}
+        onCreateShare={vi.fn()}
+        onDeleteRow={vi.fn()}
+        onDeleteRows={vi.fn()}
+        onUndoRows={vi.fn()}
+        onResetRows={vi.fn()}
+      />,
+    );
+
+    const selectAll = within(desktopTable(container)).getByLabelText('Select all rows') as HTMLInputElement;
+    fireEvent.click(selectAll);
+    expect(selectAll).toBeChecked();
+
+    fireEvent.click(selectAll);
+    expect(selectAll).not.toBeChecked();
+  });
+
+  it('cancels the reset merged results confirmation without resetting', () => {
+    const onResetRows = vi.fn();
+
+    render(
+      <MergedResultsTable
+        rows={makeItems()}
+        onCreateShare={vi.fn()}
+        onDeleteRow={vi.fn()}
+        onDeleteRows={vi.fn()}
+        onUndoRows={vi.fn()}
+        onResetRows={onResetRows}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /reset merged results/i}));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: /cancel/i}));
+
+    expect(onResetRows).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes the inline note editor when the note prop changes externally', async () => {
+    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
+    const {rerender} = render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Shared"
+        note="first"
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /edit curation note/i}));
+    expect(screen.getByRole('textbox', {name: 'Curation note'})).toHaveAttribute('aria-readonly', 'false');
+
+    rerender(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Shared"
+        note="second"
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', {name: 'Curation note'})).toHaveAttribute('aria-readonly', 'true'),
+    );
+  });
+
+  it('closes the inline title editor when the title prop changes externally', () => {
+    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
+    const {rerender} = render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="First"
+        note=""
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
+    expect(screen.getByLabelText('Shared page name')).toBeInTheDocument();
+
+    rerender(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        editable
+        title="Second"
+        note=""
+        onUpdateShare={onUpdateShare}
+      />,
+    );
+
+    expect(screen.queryByLabelText('Shared page name')).toBeNull();
+  });
 });
