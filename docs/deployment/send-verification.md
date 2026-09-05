@@ -233,8 +233,9 @@ destinations.
   related event SMS/phone views, and service-configuration commands. This includes
   actual contention tests using separate connections and barriers that force
   both initial request lookups to miss.
-- Frontend: **149 distinct targeted Vitest tests passed** across API,
-  verification, auth-context, and form suites.
+- After integration with current main, **1645 Vitest tests passed** across 143
+  files. Coverage is 95.85% statements, 87.50% branches, 96.23% functions, and
+  96.76% lines, meeting the unchanged repository thresholds.
 - Chromium: **30 browser tests passed**, including seven real-widget/recovery
   tests and 23 existing login, phone, reset, and subscription journeys. The
   admin static-origin test serves the vendored UMD asset without CORS headers;
@@ -243,6 +244,14 @@ destinations.
   remembered-cookie context, operation isolation, and static-storage URLs.
 - Python Ruff, scoped frontend ESLint, TypeScript/production build, migration
   consistency, and whitespace checks passed.
+
+Current-main integration also exercised 1087 PostgreSQL backend tests including
+the provider-neutral email suites. Two legacy rejection fixtures needed the
+provider error type used by SES/SMTP; after aligning them, all 20 tests in the
+affected email API module passed on rerun. Six new transport regressions verify
+SES/SMTP single dispatch, OTP retention after ambiguous outcomes, and confirmed
+SMTP acceptance followed by a failed QUIT. The independent email and send-policy
+migration branches are joined by a new merge migration.
 
 All delivery providers were mocked. These results do not constitute production
 deployment, live SMS/email delivery validation, or production budget calibration.

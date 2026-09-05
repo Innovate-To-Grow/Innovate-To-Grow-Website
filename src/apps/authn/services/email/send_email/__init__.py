@@ -1,12 +1,4 @@
-"""Patch-compatible email sending namespace.
-
-The concrete implementation is split across sibling modules, but tests and
-some callers patch this package directly (for example
-``authn.services.email.send_email.boto3``). Keep those hub attributes imported
-here even when they are not part of the public star-import surface.
-"""
-
-import boto3
+"""Patch-compatible authentication email sending namespace."""
 
 from .actions import render_email_body as _render_email_body
 from .senders import (

@@ -94,7 +94,7 @@ Audience resolution is handled by `src/apps/mail/services/audience.py`.
 1. Resolve the audience and materialize one recipient log plus one durable job
    per recipient
 2. Personalize the body for each recipient
-3. Send via AWS SES only with explicitly active email/AWS configuration
+3. Resolve the single globally active provider (AWS SES or SMTP) and submit through the shared provider-neutral service
 4. Persist processing, retry, failed, and uncertain-delivery state per
    recipient
 5. Aggregate campaign state/counts from the recipient logs
@@ -102,6 +102,11 @@ Audience resolution is handled by `src/apps/mail/services/audience.py`.
 Provider calls whose outcome cannot be determined are marked `uncertain` and
 are never resent automatically. Reconcile provider evidence before using the
 explicit admin retry action.
+
+Switching providers is global and does not configure failover. SES campaign
+delivery, bounce, and complaint events remain available only for messages sent
+through SES. SMTP campaigns record submission acceptance as `sent`; no later
+delivery status is inferred without an SMTP feedback integration.
 
 ### Login link tokens
 

@@ -29,6 +29,7 @@ from .service_credentials import (  # noqa: F401 - register admin
     GmailAccessAccountAdmin,
     GoogleCredentialConfigAdmin,
     SendVerificationConfigAdmin,
+    SMTPProviderConfigAdmin,
 )
 
 __all__ = [

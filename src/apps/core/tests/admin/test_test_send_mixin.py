@@ -1,6 +1,6 @@
 """Tests for TestSendViewsMixin and its helper functions (all network mocked)."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
@@ -14,7 +14,8 @@ from apps.core.admin.service_credentials.helpers import (
     _send_test_sms,
 )
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
-from apps.core.services.aws.credentials import AwsCredentials, AwsCredentialsError
+from apps.core.services.aws.credentials import AwsCredentialsError
+from apps.core.services.email import PermanentEmailDeliveryError
 from apps.event.tests.helpers import make_superuser
 
 
@@ -52,49 +53,47 @@ class NormalizePhoneTest(TestCase):
 class SendTestEmailHelperTest(TestCase):
     def test_not_configured_raises(self):
         config = EmailServiceConfig(name="C")
-        with patch.object(type(config), "ses_configured", property(lambda self: False)):
-            with self.assertRaises(RuntimeError) as cm:
-                _send_test_email(config=config, recipient="x@example.com")
+        with (
+            patch(
+                "apps.core.services.email.deliver_email",
+                side_effect=PermanentEmailDeliveryError("Email delivery is not configured."),
+            ),
+            self.assertRaises(RuntimeError) as cm,
+        ):
+            _send_test_email(config=config, recipient="x@example.com")
         self.assertIn("Email delivery is not configured", str(cm.exception))
 
-    def test_success_returns_provider(self):
-        config = EmailServiceConfig(name="C", ses_from_email="from@x.com", ses_from_name="I2G")
-        creds = AwsCredentials(access_key_id="K", secret_access_key="S", region="us-west-2")
-        client = MagicMock()
-        with (
-            patch.object(type(config), "ses_configured", property(lambda self: True)),
-            patch("apps.core.admin.service_credentials.helpers.resolve_aws_credentials", return_value=creds),
-            patch("boto3.client", return_value=client),
-        ):
-            provider = _send_test_email(config=config, recipient="to@example.com")
-        self.assertEqual(provider, "AWS SES")
-        client.send_email.assert_called_once()
+    @patch("apps.core.services.email.deliver_email")
+    def test_success_returns_provider(self, deliver_email):
+        config = EmailServiceConfig(name="C", from_email="from@x.com", from_name="I2G")
 
-    def test_credentials_error_raises_runtime(self):
+        provider = _send_test_email(config=config, recipient="to@example.com")
+
+        self.assertEqual(provider, "AWS SES")
+        deliver_email.assert_called_once()
+
+    @patch(
+        "apps.core.services.email.deliver_email",
+        side_effect=PermanentEmailDeliveryError("AWS credentials are not configured"),
+    )
+    def test_credentials_error_raises_runtime(self, _deliver_email):
         config = EmailServiceConfig(name="C")
-        with (
-            patch.object(type(config), "ses_configured", property(lambda self: True)),
-            patch(
-                "apps.core.admin.service_credentials.helpers.resolve_aws_credentials",
-                side_effect=AwsCredentialsError("none"),
-            ),
-        ):
-            with self.assertRaises(RuntimeError) as cm:
-                _send_test_email(config=config, recipient="to@example.com")
+
+        with self.assertRaises(RuntimeError) as cm:
+            _send_test_email(config=config, recipient="to@example.com")
+
         self.assertIn("AWS credentials are not configured", str(cm.exception))
 
-    def test_send_failure_raises_runtime(self):
-        config = EmailServiceConfig(name="C", ses_from_email="from@x.com")
-        creds = AwsCredentials(access_key_id="K", secret_access_key="S", region="us-west-2")
-        client = MagicMock()
-        client.send_email.side_effect = RuntimeError("boom")
-        with (
-            patch.object(type(config), "ses_configured", property(lambda self: True)),
-            patch("apps.core.admin.service_credentials.helpers.resolve_aws_credentials", return_value=creds),
-            patch("boto3.client", return_value=client),
-        ):
-            with self.assertRaises(RuntimeError) as cm:
-                _send_test_email(config=config, recipient="to@example.com")
+    @patch(
+        "apps.core.services.email.deliver_email",
+        side_effect=PermanentEmailDeliveryError("AWS SES test send failed: boom"),
+    )
+    def test_send_failure_raises_runtime(self, _deliver_email):
+        config = EmailServiceConfig(name="C", from_email="from@x.com")
+
+        with self.assertRaises(RuntimeError) as cm:
+            _send_test_email(config=config, recipient="to@example.com")
+
         self.assertIn("AWS SES test send failed", str(cm.exception))
 
 

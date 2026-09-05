@@ -8,6 +8,7 @@ from .base import (
     ProjectControlModel,
     SendVerificationConfig,
     SiteMaintenanceControl,
+    SMTPProviderConfig,
     TimeStampedModel,
 )
 from .managers import ProjectControlManager, ProjectControlQuerySet
@@ -28,6 +29,7 @@ __all__ = [
     "ProjectControlModel",
     "ProjectControlQuerySet",
     "SendVerificationConfig",
+    "SMTPProviderConfig",
     "SiteMaintenanceControl",
     "TimeStampedModel",
 ]

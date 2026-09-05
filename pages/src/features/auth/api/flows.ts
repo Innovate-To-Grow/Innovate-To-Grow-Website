@@ -51,7 +51,7 @@ export const register = async (
   try {
     const { encryptedPassword, keyId } = await encryptPasswordWithCurrentKey(password);
     const { encryptedPassword: encryptedConfirm } = await encryptPasswordWithCurrentKey(passwordConfirm);
-    return withVerifiedSend({
+    return await withVerifiedSend({
       operation: 'register',
       destinationKind: 'email',
       destination: email,

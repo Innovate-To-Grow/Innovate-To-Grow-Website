@@ -31,7 +31,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("EmailServiceConfig already exists — skipping."))
             return
 
-        EmailServiceConfig.objects.create(name="Production", is_active=True)
+        EmailServiceConfig.objects.create(name="Production", is_active=True, provider="ses")
         self.stdout.write(
             self.style.SUCCESS(
                 "Created skeleton active EmailServiceConfig 'Production'. "

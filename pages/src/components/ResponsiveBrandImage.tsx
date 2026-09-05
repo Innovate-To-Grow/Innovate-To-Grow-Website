@@ -1,30 +1,23 @@
 import type {ImgHTMLAttributes} from 'react';
 
-import i2gFullname480 from '@/assets/images/i2g-fullname-480.webp';
-import i2gFullname960 from '@/assets/images/i2g-fullname-960.webp';
-import i2gLogo256 from '@/assets/images/i2glogo-256.webp';
-import i2gLogo512 from '@/assets/images/i2glogo-512.webp';
-import ucmLogo115 from '@/assets/images/ucmlogo-115.webp';
-import ucmLogo230 from '@/assets/images/ucmlogo-230.webp';
-
 const BRAND_IMAGES = {
     i2g: {
-        src: i2gLogo512,
-        srcSet: `${i2gLogo256} 256w, ${i2gLogo512} 512w`,
+        src: '/assets/images/i2glogo-512.webp',
+        srcSet: '/assets/images/i2glogo-256.webp 256w, /assets/images/i2glogo-512.webp 512w',
         width: 512,
         height: 512,
         alt: 'Innovate To Grow',
     },
     fullname: {
-        src: i2gFullname960,
-        srcSet: `${i2gFullname480} 480w, ${i2gFullname960} 960w`,
+        src: '/assets/images/i2g-fullname-960.webp',
+        srcSet: '/assets/images/i2g-fullname-480.webp 480w, /assets/images/i2g-fullname-960.webp 960w',
         width: 960,
         height: 345,
         alt: 'Innovate To Grow',
     },
     ucm: {
-        src: ucmLogo230,
-        srcSet: `${ucmLogo115} 115w, ${ucmLogo230} 230w`,
+        src: '/assets/images/ucmlogo-230.webp',
+        srcSet: '/assets/images/ucmlogo-115.webp 115w, /assets/images/ucmlogo-230.webp 230w',
         width: 230,
         height: 57,
         alt: 'UC Merced',

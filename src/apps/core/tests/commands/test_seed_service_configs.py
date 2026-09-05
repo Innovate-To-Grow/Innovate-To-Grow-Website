@@ -20,6 +20,7 @@ class SeedServiceConfigsTest(TestCase):
         output = self._run()
         config = EmailServiceConfig.objects.get(name="Production")
         self.assertTrue(config.is_active)
+        self.assertEqual(config.provider, "ses")
         self.assertIn("Created skeleton active EmailServiceConfig 'Production'.", output)
         send_config = SendVerificationConfig.objects.get(name="Production")
         self.assertTrue(send_config.is_active)

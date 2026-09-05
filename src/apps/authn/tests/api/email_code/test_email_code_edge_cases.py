@@ -24,6 +24,7 @@ from apps.authn.services import (
     NoRecoveryChannelError,
 )
 from apps.authn.views.helpers import challenge_error_response
+from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
 
 Member = get_user_model()
 PURPOSE_LOGIN = EmailAuthChallenge.Purpose.LOGIN
@@ -190,7 +191,7 @@ class PublicEmailCodeViewEdgeTests(APITestCase):
     # ── request_code_response delivery failure (helpers) ──
 
     def test_login_request_code_delivery_error_returns_503(self, _c, mock_send):
-        mock_send.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
+        mock_send.side_effect = ProviderDeliveryError("ses rejected", outcome="permanent")
         resp = self.client.post(
             "/authn/login/request-code/",
             {"email": "active@example.com"},
@@ -259,7 +260,7 @@ class RegisterViewEdgeTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
 
     def test_register_save_delivery_error_returns_503(self, _c, mock_send):
-        mock_send.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
+        mock_send.side_effect = ProviderDeliveryError("ses rejected", outcome="permanent")
         resp = self.client.post(
             "/authn/register/",
             {
