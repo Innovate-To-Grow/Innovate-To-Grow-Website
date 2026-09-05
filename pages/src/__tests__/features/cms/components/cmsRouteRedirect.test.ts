@@ -89,4 +89,126 @@ describe('performCMSRouteRedirect', () => {
     ).toBe('redirected');
     expect(laterLocation.replace).toHaveBeenCalledWith('/new');
   });
+
+  it('rejects a destination with invalid percent encoding', () => {
+    const location = makeLocation('/old');
+
+    expect(
+      performCMSRouteRedirect('/target/%zz', location, sessionStorage, 100),
+    ).toBe('invalid');
+    expect(location.replace).not.toHaveBeenCalled();
+  });
+
+  it('redirects without the cross-load loop guard when storage is unavailable', () => {
+    const location = makeLocation('/old');
+
+    expect(performCMSRouteRedirect('/new', location, null, 100)).toBe('redirected');
+    expect(location.replace).toHaveBeenCalledWith('/new');
+  });
+
+  it('returns invalid without touching storage when the destination is unsafe', () => {
+    const location = makeLocation('/old');
+
+    expect(
+      performCMSRouteRedirect('https://evil.example/phish', location, null, 100),
+    ).toBe('invalid');
+    expect(location.replace).not.toHaveBeenCalled();
+  });
+
+  it('redirects away from the root path', () => {
+    const location = makeLocation('/');
+
+    expect(performCMSRouteRedirect('/new', location, sessionStorage, 100)).toBe('redirected');
+    expect(location.replace).toHaveBeenCalledWith('/new');
+  });
+
+  it('ignores a corrupt redirect chain in storage', () => {
+    sessionStorage.setItem('i2g:cms-route-redirect-chain', '{not json');
+    const location = makeLocation('/old');
+
+    expect(performCMSRouteRedirect('/new', location, sessionStorage, 100)).toBe('redirected');
+    expect(location.replace).toHaveBeenCalledWith('/new');
+  });
+
+  it('ignores a stale redirect chain that belongs to another URL', () => {
+    sessionStorage.setItem(
+      'i2g:cms-route-redirect-chain',
+      JSON.stringify({
+        expectedHref: '/other',
+        visitedPaths: ['/elsewhere'],
+        updatedAt: 100,
+      }),
+    );
+    const location = makeLocation('/old');
+
+    expect(performCMSRouteRedirect('/new', location, sessionStorage, 100)).toBe('redirected');
+    expect(location.replace).toHaveBeenCalledWith('/new');
+  });
+
+  it('ignores a redirect chain that exceeds the maximum age', () => {
+    sessionStorage.setItem(
+      'i2g:cms-route-redirect-chain',
+      JSON.stringify({
+        expectedHref: '/old',
+        visitedPaths: ['/old'],
+        updatedAt: 0,
+      }),
+    );
+    const location = makeLocation('/old');
+
+    expect(
+      performCMSRouteRedirect('/new', location, sessionStorage, Date.now() + 60_000),
+    ).toBe('redirected');
+    expect(location.replace).toHaveBeenCalledWith('/new');
+  });
+
+  it('detects a redirect chain that reaches the maximum length', () => {
+    const visitedPaths = Array.from({length: 15}, (_, index) => `/step-${index}`);
+    sessionStorage.setItem(
+      'i2g:cms-route-redirect-chain',
+      JSON.stringify({
+        expectedHref: '/step-14',
+        visitedPaths,
+        updatedAt: 100,
+      }),
+    );
+    const location = makeLocation('/step-14');
+
+    expect(performCMSRouteRedirect('/new', location, sessionStorage, 100)).toBe(
+      'redirect_loop',
+    );
+    expect(location.replace).not.toHaveBeenCalled();
+  });
+
+  it('clears the chain and rethrows when location.replace fails', () => {
+    const location = makeLocation('/old');
+    location.replace.mockImplementation(() => {
+      throw new Error('navigation blocked');
+    });
+
+    expect(() => performCMSRouteRedirect('/new', location, sessionStorage, 100)).toThrow(
+      'navigation blocked',
+    );
+    expect(sessionStorage.getItem('i2g:cms-route-redirect-chain')).toBeNull();
+  });
+
+  it('clears the chain without crashing when sessionStorage access throws', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, 'sessionStorage');
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      get: () => {
+        throw new Error('storage disabled');
+      },
+    });
+
+    try {
+      expect(() => clearCMSRouteRedirectChain()).not.toThrow();
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(window, 'sessionStorage', descriptor);
+      } else {
+        delete (window as {sessionStorage?: Storage}).sessionStorage;
+      }
+    }
+  });
 });

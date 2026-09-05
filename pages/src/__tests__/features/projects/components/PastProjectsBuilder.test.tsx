@@ -7,6 +7,8 @@ import type {ProjectTableRow} from '@/features/projects/api';
 
 const mockUseAuth = vi.fn();
 const mockSearchPastProjectsWithAI = vi.fn();
+const mockBuildLoginPath = vi.fn();
+const mockHydrateProjectGridRows = vi.fn();
 
 vi.mock('@/features/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/auth')>();
@@ -16,11 +18,20 @@ vi.mock('@/features/auth', async (importOriginal) => {
   };
 });
 
+vi.mock('@/features/auth/api/redirects', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/auth/api/redirects')>();
+  return {
+    ...actual,
+    buildLoginPath: (...args: unknown[]) => mockBuildLoginPath(...args),
+  };
+});
+
 vi.mock('@/features/projects/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/projects/api')>();
   return {
     ...actual,
     searchPastProjectsWithAI: (...args: unknown[]) => mockSearchPastProjectsWithAI(...args),
+    hydrateProjectGridRows: (...args: unknown[]) => mockHydrateProjectGridRows(...args),
   };
 });
 
@@ -70,6 +81,8 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     mockUseAuth.mockReset();
     mockUseAuth.mockReturnValue({isAuthenticated: true});
     mockSearchPastProjectsWithAI.mockReset();
+    mockBuildLoginPath.mockReset();
+    mockHydrateProjectGridRows.mockReset();
     // The builder persists merged rows to sessionStorage; clear it so drafts don't leak between tests.
     sessionStorage.clear();
     vi.spyOn(window, 'confirm').mockImplementation(() => {
@@ -493,5 +506,145 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
 
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
     expect(getMergedSection()).toBeNull();
+  });
+
+  it('shows a no-results message when AI search finds nothing', async () => {
+    mockSearchPastProjectsWithAI.mockResolvedValue({
+      available: true,
+      query: 'solar',
+      results: [],
+      usage: {},
+    });
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
+    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+      target: {value: 'solar'},
+    });
+    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
+
+    expect(await screen.findByText('AI search did not find matching past projects.')).toBeInTheDocument();
+  });
+
+  it('shows the API detail when an AI search rejects', async () => {
+    mockSearchPastProjectsWithAI.mockRejectedValue({response: {data: {detail: 'AI backend down.'}}});
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
+    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+      target: {value: 'solar'},
+    });
+    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
+
+    expect(await screen.findByText('AI backend down.')).toBeInTheDocument();
+  });
+
+  it('shows the message field when an AI search rejects without a detail', async () => {
+    mockSearchPastProjectsWithAI.mockRejectedValue({response: {data: {message: 'Try later.'}}});
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
+    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+      target: {value: 'solar'},
+    });
+    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
+
+    expect(await screen.findByText('Try later.')).toBeInTheDocument();
+  });
+
+  it('ignores malformed persisted merged rows', () => {
+    sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, '{not valid json');
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(getMergedSection()).toBeNull();
+  });
+
+  it('hydrates id-only rows before merging them', async () => {
+    mockHydrateProjectGridRows.mockResolvedValue([
+      makeRow({id: 'p-9', team_number: 'T09', project_title: 'Hydrated Project'}),
+    ]);
+    const rowsWithId = [makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'})];
+
+    render(<PastProjectsBuilder rows={rowsWithId} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+
+    await waitFor(() => expect(mockHydrateProjectGridRows).toHaveBeenCalled());
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Hydrated Project').length).toBeGreaterThan(0);
+  });
+
+  it('skips merging a project already in the saved results', async () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Bravo Project').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+
+    expect(await screen.findByText('Those rows are already in your saved results.')).toBeInTheDocument();
+  });
+
+  it('removes multiple selected merged rows at once', async () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getAllByLabelText('Select Charlie Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+
+    const merged = getMergedSection() as HTMLElement;
+    expect(within(merged).getAllByText('Alpha Project').length).toBeGreaterThan(0);
+    expect(within(merged).getAllByText('Charlie Project').length).toBeGreaterThan(0);
+
+    fireEvent.click(within(merged).getAllByLabelText('Select Alpha Project')[0]);
+    fireEvent.click(within(merged).getAllByLabelText('Select Charlie Project')[0]);
+    fireEvent.click(within(merged).getByRole('button', {name: /remove selected/i}));
+
+    expect(await screen.findByText('2 projects removed from merged results.')).toBeInTheDocument();
+    expect(within(getMergedSection() as HTMLElement).queryByText('Alpha Project')).toBeNull();
+  });
+
+  it('ignores a rows change when no refresh was requested', () => {
+    const onRefreshRows = vi.fn();
+    const {rerender} = render(
+      <PastProjectsBuilder
+        rows={ROWS}
+        loading={false}
+        error={null}
+        onRefreshRows={onRefreshRows}
+        onCreateShare={vi.fn()}
+      />,
+    );
+
+    rerender(
+      <PastProjectsBuilder
+        rows={[...ROWS, makeRow({team_number: 'T04', team_name: 'Team Delta', project_title: 'Delta Project'})]}
+        loading={false}
+        error={null}
+        onRefreshRows={onRefreshRows}
+        onCreateShare={vi.fn()}
+      />,
+    );
+
+    expect(onRefreshRows).not.toHaveBeenCalled();
+    expect(screen.queryByText('Delta Project')).toBeNull();
+  });
+
+  it('navigates to login when the sign-in dialog is confirmed', () => {
+    mockUseAuth.mockReturnValue({isAuthenticated: false});
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: /sign in/i}));
+
+    expect(mockBuildLoginPath).toHaveBeenCalled();
   });
 });
