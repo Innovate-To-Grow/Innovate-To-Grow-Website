@@ -69,7 +69,7 @@ class SMTPProvider:
             if 400 <= exc.smtp_code < 500:
                 raise TransientEmailDeliveryError("SMTP temporarily rejected the message.") from exc
             raise PermanentEmailDeliveryError("SMTP rejected the message.") from exc
-        except (smtplib.SMTPServerDisconnected, TimeoutError, ConnectionError, OSError) as exc:
+        except smtplib.SMTPServerDisconnected as exc:
             error = UncertainEmailDeliveryError if submitted else TransientEmailDeliveryError
             detail = (
                 "SMTP connection was lost after message submission began."
@@ -86,6 +86,14 @@ class SMTPProvider:
             raise error(
                 "SMTP request outcome could not be confirmed." if submitted else "SMTP request failed."
             ) from exc
+        except (TimeoutError, ConnectionError, OSError) as exc:
+            error = UncertainEmailDeliveryError if submitted else TransientEmailDeliveryError
+            detail = (
+                "SMTP connection was lost after message submission began."
+                if submitted
+                else "SMTP server could not be reached."
+            )
+            raise error(detail) from exc
 
         if refused:
             raise UncertainEmailDeliveryError("SMTP accepted the message for only some recipients.")
