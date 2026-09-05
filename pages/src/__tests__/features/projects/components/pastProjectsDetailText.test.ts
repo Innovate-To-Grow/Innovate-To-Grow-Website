@@ -4,7 +4,9 @@ import {
     appendPastProjectsNoteInsertHtml,
     buildPastProjectsNoteInsertHtml,
     copyPastProjectsDetailToClipboard,
+    normalizePastProjectsDetailHtml,
     pastProjectsDetailHtmlToPlainText,
+    plainTextToPastProjectsDetailHtml,
     sanitizePastProjectsDetailHtml,
     stripPastProjectsDetailMarkup,
 } from '@/features/projects/components/pastProjectsDetailText';
@@ -50,6 +52,33 @@ describe('sanitizePastProjectsDetailHtml', () => {
             '<div data-past-project-note-curation="project-summary" data-past-project-key="safe">ok</div>',
         );
     });
+
+    it('converts span background styles into mark highlights', () => {
+        expect(sanitizePastProjectsDetailHtml('<span style="background:red">marked</span>')).toBe(
+            '<mark>marked</mark>',
+        );
+    });
+
+    it('converts font bgcolor attributes into mark highlights', () => {
+        expect(sanitizePastProjectsDetailHtml('<font bgcolor="red">marked</font>')).toBe('<mark>marked</mark>');
+    });
+});
+
+describe('plainTextToPastProjectsDetailHtml', () => {
+    it('escapes html entities and turns newlines into breaks', () => {
+        expect(plainTextToPastProjectsDetailHtml('a&b<c>\nnext')).toBe('a&amp;b&lt;c&gt;<br>next');
+        expect(plainTextToPastProjectsDetailHtml('line1\r\nline2')).toBe('line1<br>line2');
+    });
+});
+
+describe('normalizePastProjectsDetailHtml', () => {
+    it('sanitizes input that already has markup', () => {
+        expect(normalizePastProjectsDetailHtml('<strong onclick="x">bold</strong>')).toBe('<strong>bold</strong>');
+    });
+
+    it('escapes plain text that has no markup', () => {
+        expect(normalizePastProjectsDetailHtml('a < b')).toBe('a &lt; b');
+    });
 });
 
 describe('stripPastProjectsDetailMarkup', () => {
@@ -92,6 +121,10 @@ describe('pastProjectsDetailHtmlToPlainText', () => {
         expect(text).toBe('ok');
         expect(text).not.toContain('<');
     });
+
+    it('turns br tags into newlines', () => {
+        expect(pastProjectsDetailHtmlToPlainText('a<br>b')).toBe('a\nb');
+    });
 });
 
 describe('buildPastProjectsNoteInsertHtml', () => {
@@ -101,6 +134,21 @@ describe('buildPastProjectsNoteInsertHtml', () => {
         expect(countProjectBlocks(html)).toBe(2);
         expect(html).toContain('Solar Cart');
         expect(html).toContain('Wind Turbine');
+    });
+
+    it('returns an empty string when every field is excluded', () => {
+        const allFields = ['project_label', 'semester_label', 'class_team', 'team_name', 'project_title', 'individual_link', 'organization', 'industry', 'students', 'abstract'] as const;
+        const html = buildPastProjectsNoteInsertHtml([makeRow()], {excludedFields: allFields});
+        expect(html).toBe('');
+    });
+
+    it('emits an individual link only for rows with an id', () => {
+        const withId = buildPastProjectsNoteInsertHtml([makeRow({id: 'project-9'})]);
+        expect(withId).toContain('Individual Link');
+        expect(withId).toContain('/past-projects/project/project-9');
+
+        const withoutId = buildPastProjectsNoteInsertHtml([makeRow({id: ''})]);
+        expect(withoutId).not.toContain('Individual Link');
     });
 
 });
@@ -134,6 +182,13 @@ describe('appendPastProjectsNoteInsertHtml', () => {
         expect(countProjectBlocks(second)).toBe(2);
         expect(second).toContain('HAND-EDITED NOTE');
         expect(second).toContain('Wind Turbine');
+    });
+
+    it('leaves the note untouched when every field is excluded', () => {
+        const allFields = ['project_label', 'semester_label', 'class_team', 'team_name', 'project_title', 'individual_link', 'organization', 'industry', 'students', 'abstract'] as const;
+        const existing = '<div>My intro note</div>';
+        const html = appendPastProjectsNoteInsertHtml(existing, [makeRow()], {excludedFields: allFields});
+        expect(html).toBe(existing);
     });
 });
 
@@ -182,6 +237,25 @@ describe('copyPastProjectsDetailToClipboard', () => {
         await copyPastProjectsDetailToClipboard('<strong>Plain fallback</strong>');
 
         expect(writeText).toHaveBeenCalledWith('Plain fallback');
+    });
+
+    it('falls back to a hidden textarea and execCommand when no clipboard API exists', async () => {
+        vi.stubGlobal('ClipboardItem', undefined);
+        Object.defineProperty(navigator, 'clipboard', {configurable: true, value: undefined});
+        const execCommand = vi.fn().mockReturnValue(true);
+        Object.defineProperty(document, 'execCommand', {configurable: true, value: execCommand, writable: true});
+        const appendSpy = vi.spyOn(document.body, 'appendChild');
+        const removeSpy = vi.spyOn(HTMLTextAreaElement.prototype, 'remove');
+
+        try {
+            await copyPastProjectsDetailToClipboard('<strong>Plain</strong>');
+
+            expect(execCommand).toHaveBeenCalledWith('copy');
+            expect(appendSpy).toHaveBeenCalled();
+            expect(removeSpy).toHaveBeenCalled();
+        } finally {
+            Object.defineProperty(document, 'execCommand', {configurable: true, value: undefined, writable: true});
+        }
     });
 
 });

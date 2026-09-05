@@ -28,14 +28,19 @@ vi.mock('axios', () => ({
 }));
 
 import {
+  confirmAccountDeletion,
+  confirmPasswordChange,
   confirmPasswordReset,
   login,
   register,
+  requestAccountDeletionCode,
   requestEmailAuthCode,
   requestLoginCode,
   requestPasswordChangeCode,
   requestPasswordReset,
+  resendRegistrationCode,
   subscribe,
+  verifyAccountDeletionCode,
   verifyEmailAuthCode,
   verifyLoginCode,
   verifyPasswordChangeCode,
@@ -304,6 +309,86 @@ describe('auth flows', () => {
         '/authn/change-password/verify-code/',
         {code: '123456'},
       );
+    });
+  });
+
+  describe('resendRegistrationCode', () => {
+    it('posts email to the resend endpoint', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'resent'}});
+      const result = await resendRegistrationCode('a@b.com');
+      expect(mocks.post).toHaveBeenCalledWith('/authn/register/resend-code/', {email: 'a@b.com'});
+      expect(result).toEqual({message: 'resent'});
+    });
+  });
+
+  describe('confirmPasswordChange', () => {
+    it('encrypts the new password and posts to the confirm endpoint', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'done'}});
+
+      await confirmPasswordChange('token-123', 'newpw', 'newpw');
+
+      expect(mocks.encrypt).toHaveBeenCalledTimes(2);
+      expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/confirm/', {
+        verification_token: 'token-123',
+        new_password: 'enc-pw',
+        new_password_confirm: 'enc-pw',
+        key_id: 'key-1',
+      });
+    });
+  });
+
+  describe('account deletion', () => {
+    it('requests a deletion code', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'sent'}});
+      const result = await requestAccountDeletionCode();
+      expect(mocks.post).toHaveBeenCalledWith('/authn/delete-account/request-code/', {});
+      expect(result).toEqual({message: 'sent'});
+    });
+
+    it('verifies a deletion code', async () => {
+      mocks.post.mockResolvedValue({data: {verification_token: 'del-token'}});
+      const result = await verifyAccountDeletionCode('123456');
+      expect(mocks.post).toHaveBeenCalledWith('/authn/delete-account/verify-code/', {code: '123456'});
+      expect(result).toEqual({verification_token: 'del-token'});
+    });
+
+    it('confirms account deletion', async () => {
+      mocks.post.mockResolvedValue({data: {message: 'deleted'}});
+      const result = await confirmAccountDeletion('del-token');
+      expect(mocks.post).toHaveBeenCalledWith('/authn/delete-account/confirm/', {verification_token: 'del-token'});
+      expect(result).toEqual({message: 'deleted'});
+    });
+  });
+
+  describe('encryption failure detection', () => {
+    it('clears the key cache for a non-axios error', async () => {
+      mocks.post.mockRejectedValue(new Error('crypto failure'));
+
+      await expect(login('a@b.com', 'pw')).rejects.toBeDefined();
+      expect(mocks.clearKeyCache).toHaveBeenCalled();
+    });
+
+    it('does not clear the key cache for a falsy rejection', async () => {
+      mocks.post.mockRejectedValue(null);
+
+      await expect(login('a@b.com', 'pw')).rejects.toBeNull();
+      expect(mocks.clearKeyCache).not.toHaveBeenCalled();
+    });
+
+    it('clears the key cache for an axios error with an object payload mentioning the key', async () => {
+      const axiosError = {isAxiosError: true, response: {data: {key_id: 'stale-key'}}};
+      mocks.post.mockRejectedValue(axiosError);
+
+      await expect(register('a@b.com', 'pw', 'pw', 'F', 'L', 'O')).rejects.toBeDefined();
+      expect(mocks.clearKeyCache).toHaveBeenCalled();
+    });
+
+    it('does not clear the key cache for an axios error without matching content', async () => {
+      const axiosError = {isAxiosError: true, response: {}};
+      mocks.post.mockRejectedValue(axiosError);
+
+      await expect(register('a@b.com', 'pw', 'pw', 'F', 'L', 'O')).rejects.toBeDefined();
+      expect(mocks.clearKeyCache).not.toHaveBeenCalled();
     });
   });
 });

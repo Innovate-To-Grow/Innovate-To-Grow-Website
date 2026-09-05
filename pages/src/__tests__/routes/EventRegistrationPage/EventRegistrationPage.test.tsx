@@ -595,4 +595,79 @@ describe('EventRegistrationPage', () => {
 
     await screen.findByRole('heading', {name: 'Spring Showcase'});
   });
+
+  it('returns to the email step from the code step', async () => {
+    render(
+      <MemoryRouter initialEntries={['/event-registration']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByLabelText('Email or Phone');
+    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'ada@example.com'}});
+    fireEvent.submit(screen.getByRole('button', {name: 'Continue'}).closest('form')!);
+    await screen.findByLabelText('Verification Code');
+
+    fireEvent.click(screen.getByRole('button', {name: 'Use a different email or phone'}));
+
+    expect(screen.getByLabelText('Email or Phone')).toBeInTheDocument();
+  });
+
+  it('switches org type and records a form answer', async () => {
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      requiresProfileCompletion: false,
+      requestEmailAuthCode,
+      verifyEmailAuthCode,
+      requestPhoneAuthCode,
+      verifyPhoneAuthCode,
+    });
+    mockFetchRegistrationEvents.mockResolvedValue([
+      {
+        id: 'event-fall',
+        name: 'Fall Showcase',
+        slug: 'fall-showcase',
+        date: '2026-10-01',
+        location: 'Conference Center',
+        description: 'Fall event',
+        registration: null,
+      },
+    ]);
+    mockFetchRegistrationOptions.mockResolvedValue({
+      id: 'event-fall',
+      name: 'Fall Showcase',
+      slug: 'fall-showcase',
+      date: '2026-10-01',
+      location: 'Conference Center',
+      description: 'Fall event',
+      allow_secondary_email: false,
+      collect_phone: false,
+      verify_phone: false,
+      tickets: [{id: 'ticket-fall', name: 'General Admission'}],
+      questions: [{id: 'q1', text: 'Dietary restrictions?', is_required: false, order: 0}],
+      registration: null,
+      member_emails: ['ada@example.com'],
+      member_profile: {first_name: 'Ada', middle_name: '', last_name: 'Lovelace', organization: 'Acme', title: 'Engineer'},
+      member_phone: null,
+      phone_regions: [{code: '1-US', label: 'United States'}],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/event-registration?event=fall-showcase']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('heading', {name: 'Fall Showcase'});
+    fireEvent.click(screen.getByRole('button', {name: 'Individual'}));
+
+    expect(screen.queryByPlaceholderText('Company or organization name')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Dietary restrictions?'), {target: {value: 'None'}});
+    expect(screen.getByLabelText('Dietary restrictions?')).toHaveValue('None');
+  });
 });
