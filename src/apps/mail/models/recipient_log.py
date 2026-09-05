@@ -50,7 +50,7 @@ class RecipientLog(ProjectControlModel):
     uncertain_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     # SES async event tracking
-    ses_message_id = models.CharField(max_length=256, blank=True, default="", db_index=True)
+    provider_message_id = models.CharField(max_length=256, blank=True, default="", db_index=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
     bounced_at = models.DateTimeField(null=True, blank=True)
     complained_at = models.DateTimeField(null=True, blank=True)

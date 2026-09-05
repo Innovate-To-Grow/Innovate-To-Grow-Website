@@ -420,8 +420,8 @@ def send_email_recipient_job(job) -> None:
         raise PermanentJobError("Recipient log is no longer eligible for delivery.")
     try:
         config = EmailServiceConfig.load()
-        ses_client = _get_ses_client(config)
-        if ses_client is None:
+        provider_config = _get_ses_client(config)
+        if provider_config is None:
             raise RuntimeError("Email delivery is not configured.")
         recipient = {
             "member_id": log.member_id,
@@ -435,17 +435,21 @@ def send_email_recipient_job(job) -> None:
         body_html = personalize(log.campaign.body, context)
         unsubscribe_url = _unsubscribe_url_for(log.campaign, recipient)
         wrapped_html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
-        wait_for_delivery_slot("ses", configured_ses_rate(config))
-        if not job.begin_provider_call():
-            raise JobClaimLost("Background job claim was lost before SES invocation.")
+        wait_for_delivery_slot(config.provider, configured_ses_rate(config))
+
+        def begin_provider_call():
+            if not job.begin_provider_call():
+                raise JobClaimLost("Background job claim was lost before email provider invocation.")
+
         result = _send_via_ses(
-            ses_client=ses_client,
+            ses_client=provider_config,
             source=config.source_address,
             recipient=log.email_address,
             subject=subject,
             html_body=wrapped_html,
             unsubscribe_url=unsubscribe_url,
             configuration_set=_get_configuration_set_name(config),
+            before_provider_call=begin_provider_call,
         )
         if result.error:
             raise _job_error_for_ses_result(result)
@@ -458,7 +462,7 @@ def send_email_recipient_job(job) -> None:
             provider=result.provider,
             error_message="",
             sent_at=timezone.now(),
-            ses_message_id=result.message_id,
+            provider_message_id=result.message_id,
             claim_token=None,
             claimed_at=None,
             uncertain_at=None,
@@ -466,7 +470,7 @@ def send_email_recipient_job(job) -> None:
         )
         if not updated:
             raise UncertainJobError(
-                "SES accepted the delivery, but the recipient-log claim was lost before it could be recorded."
+                "The email provider accepted delivery, but the recipient-log claim was lost before it could be recorded."
             )
     except JobClaimLost:
         raise
@@ -477,7 +481,7 @@ def send_email_recipient_job(job) -> None:
             else (
                 _classify_pre_provider_error(exc)
                 if job.provider_call_started_at is None
-                else UncertainJobError("SES request outcome could not be confirmed.")
+                else UncertainJobError("Email provider request outcome could not be confirmed.")
             )
         )
         log_status, error_message, uncertain_at = _delivery_failure_values(classified)
