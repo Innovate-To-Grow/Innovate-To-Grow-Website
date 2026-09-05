@@ -23,7 +23,7 @@ class ContactEmailViewEdgeTests(APITestCase):
 
     @patch("apps.authn.views.account.contact_emails.create_contact_email")
     def test_create_delivery_error_returns_503(self, mock_create):
-        mock_create.side_effect = AuthChallengeDeliveryError("ses down")
+        mock_create.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         resp = self.client.post(
             "/authn/contact-emails/",
             {"email_address": "new@example.com", "email_type": "secondary"},
@@ -56,7 +56,7 @@ class ContactEmailViewEdgeTests(APITestCase):
 
     @patch("apps.authn.views.account.contact_emails.resend_contact_email_verification")
     def test_request_verification_delivery_error_returns_503(self, mock_resend):
-        mock_resend.side_effect = AuthChallengeDeliveryError("ses down")
+        mock_resend.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         unverified = ContactEmail.objects.create(
             member=self.member, email_address="unv@example.com", email_type="secondary", verified=False
         )
@@ -96,7 +96,7 @@ class ContactEmailViewEdgeTests(APITestCase):
 
     @patch("apps.authn.views.account.contact_emails.verify_contact_email_code")
     def test_verify_code_delivery_error_returns_503(self, mock_verify):
-        mock_verify.side_effect = AuthChallengeDeliveryError("ses down")
+        mock_verify.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         contact = ContactEmail.objects.create(
             member=self.member, email_address="vc3@example.com", email_type="secondary", verified=False
         )
@@ -126,7 +126,7 @@ class ContactEmailViewEdgeTests(APITestCase):
 
     @patch("apps.authn.views.account.contact_emails.make_contact_email_primary")
     def test_make_primary_delivery_error_returns_503(self, mock_make):
-        mock_make.side_effect = AuthChallengeDeliveryError("ses down")
+        mock_make.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         contact = ContactEmail.objects.create(
             member=self.member, email_address="mp2@example.com", email_type="secondary", verified=True
         )
@@ -162,7 +162,7 @@ class AccountEmailCodeViewEdgeTests(APITestCase):
 
     @patch("apps.authn.serializers.email_code.passwords.ChangePasswordCodeRequestSerializer.save")
     def test_change_password_request_delivery_error_returns_503(self, mock_save):
-        mock_save.side_effect = AuthChallengeDeliveryError("ses down")
+        mock_save.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         resp = self.client.post(
             "/authn/change-password/request-code/",
             {"email": "user@example.com"},
@@ -198,7 +198,7 @@ class AccountEmailCodeViewEdgeTests(APITestCase):
 
     @patch("apps.authn.serializers.email_code.passwords.DeleteAccountCodeRequestSerializer.save")
     def test_delete_account_request_delivery_error_returns_503(self, mock_save):
-        mock_save.side_effect = AuthChallengeDeliveryError("ses down")
+        mock_save.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         resp = self.client.post("/authn/delete-account/request-code/", {}, format="json")
         self.assertEqual(resp.status_code, 503)
 

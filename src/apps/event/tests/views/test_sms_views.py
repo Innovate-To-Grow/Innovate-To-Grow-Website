@@ -46,7 +46,7 @@ class SendPhoneCodeViewTest(TestCase):
 
     @patch(
         "apps.authn.services.sms.start_phone_verification",
-        side_effect=PhoneVerificationDeliveryError("sns down"),
+        side_effect=PhoneVerificationDeliveryError("sns rejected", outcome="permanent"),
     )
     def test_delivery_error_returns_503(self, _mock_start):
         response = self.client.post(

@@ -127,9 +127,8 @@ class PasswordCodeEdgeTests(TestCase):
     def test_delete_account_request_no_primary_email(self):
         bare = Member.objects.create_user(password="StrongPass123!", is_active=True)
         serializer = DeleteAccountCodeRequestSerializer(data={}, context=self._ctx(bare))
-        serializer.is_valid()
-        with self.assertRaises(serializers.ValidationError):
-            serializer.save()
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("detail", serializer.errors)
 
     def test_delete_account_verify_no_primary_email(self):
         bare = Member.objects.create_user(password="StrongPass123!", is_active=True)

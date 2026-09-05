@@ -24,7 +24,13 @@ _LAST_ADMIN_LOGIN_COOKIE_PATH = "/admin/"
 
 
 def clear_admin_login_session(request):
-    for key in (_SESSION_STEP, _SESSION_EMAIL, _SESSION_MEMBER_ID, _SESSION_HIDE_EMAIL):
+    for key in (
+        _SESSION_STEP,
+        _SESSION_EMAIL,
+        _SESSION_MEMBER_ID,
+        _SESSION_HIDE_EMAIL,
+        "admin_send_unresolved_request_id",
+    ):
         request.session.pop(key, None)
 
 
@@ -140,7 +146,43 @@ def set_last_admin_login_cookie(response, member):
     return response
 
 
+def get_unresolved_admin_send(request):
+    request_id = request.session.get("admin_send_unresolved_request_id")
+    if not request_id:
+        return None
+    from apps.authn.models import SendVerificationRequest
+    from apps.authn.services.send_verification.exceptions import SendVerificationError
+    from apps.authn.services.send_verification.guard import lookup_request
+
+    try:
+        record = lookup_request(request, uuid.UUID(str(request_id)))
+    except (ValueError, SendVerificationError):
+        request.session.pop("admin_send_unresolved_request_id", None)
+        return None
+    if record.status in {
+        SendVerificationRequest.Status.PROVIDER_ACCEPTED,
+        SendVerificationRequest.Status.DEFINITELY_FAILED,
+    }:
+        request.session.pop("admin_send_unresolved_request_id", None)
+        return None
+    return record
+
+
 def render_admin_login(request, *, form, step: str, email: str = "", **extra):
+    from apps.authn.services.send_verification.constants import OP_ADMIN_LOGIN_REQUEST_CODE
+    from apps.authn.services.send_verification.principal import principal_from_request
+
+    unresolved = get_unresolved_admin_send(request)
+    if unresolved is not None:
+        if step != "code":
+            from apps.authn.views.admin.login import AdminCodeForm
+
+            form = AdminCodeForm()
+        step = "code"
+        email = request.session.get(_SESSION_EMAIL, email)
+        extra["message"] = "The previous send request is still unresolved. You can enter a code if it arrives."
+        extra["send_verification_unresolved_request_id"] = str(unresolved.request_id)
+        extra["send_verification_unresolved_challenge_id"] = unresolved.otp_challenge_id
     next_param = request.GET.get("next", "")
     next_qs = f"&next={next_param}" if next_param else ""
     use_different_account = request.GET.get("different") == "1"
@@ -165,6 +207,7 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
             "email": email,
             "hide_email": hide_email,
             "code_recipient_name": code_recipient_name,
+            "send_verification_session_key": principal_from_request(request, operation=OP_ADMIN_LOGIN_REQUEST_CODE)[1],
             "last_admin_user": (
                 get_last_admin_login_summary(request) if step != "code" and not use_different_account else None
             ),

@@ -36,21 +36,31 @@ class SMTPProvider:
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         mime = build_mime_message(message, from_email=self.from_email, from_name=self.from_name)
         submitted = False
+        accepted_result = None
         try:
-            smtp_class = smtplib.SMTP_SSL if self.use_ssl else smtplib.SMTP
-            with smtp_class(self.host, self.port, timeout=self.timeout) as client:
-                if self.use_tls:
-                    client.starttls(context=ssl.create_default_context())
-                if self.username:
-                    client.login(self.username, self.password)
-                if before_provider_call is not None:
-                    before_provider_call()
-                submitted = True
-                refused = client.send_message(
-                    mime,
-                    from_addr=self.from_email,
-                    to_addrs=list(message.envelope_recipients),
-                )
+            try:
+                smtp_class = smtplib.SMTP_SSL if self.use_ssl else smtplib.SMTP
+                with smtp_class(self.host, self.port, timeout=self.timeout) as client:
+                    if self.use_tls:
+                        client.starttls(context=ssl.create_default_context())
+                    if self.username:
+                        client.login(self.username, self.password)
+                    if before_provider_call is not None:
+                        before_provider_call()
+                    submitted = True
+                    refused = client.send_message(
+                        mime,
+                        from_addr=self.from_email,
+                        to_addrs=list(message.envelope_recipients),
+                    )
+                    if not refused:
+                        accepted_result = DeliveryResult(provider=self.name, message_id=str(mime["Message-ID"]))
+            except (smtplib.SMTPException, OSError):
+                # send_message returned confirmed acceptance. A failed QUIT
+                # must not invalidate that result or authorize another send.
+                if accepted_result is not None:
+                    return accepted_result
+                raise
         except smtplib.SMTPRecipientsRefused as exc:
             codes = [response[0] for response in exc.recipients.values()]
             error = (

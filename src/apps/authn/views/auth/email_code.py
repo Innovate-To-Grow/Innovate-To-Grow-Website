@@ -24,9 +24,16 @@ from apps.authn.serializers import (
     UnifiedEmailAuthVerifySerializer,
 )
 from apps.authn.services import AuthChallengeInvalid
+from apps.authn.services.send_verification import (
+    OP_EMAIL_AUTH_REQUEST_CODE,
+    OP_LOGIN_REQUEST_CODE,
+    OP_PASSWORD_RESET_REQUEST_CODE,
+    OP_REGISTER_RESEND_CODE,
+)
+from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL, KIND_PHONE, SMS_CHANNEL
 
 from ..helpers import build_auth_success_payload
-from .email_code_helpers import auth_challenge_response, request_code_response
+from .email_code_helpers import auth_challenge_response, protected_save
 
 Member = get_user_model()
 
@@ -38,7 +45,19 @@ class LoginCodeRequestView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        return request_code_response(request, LoginCodeRequestSerializer)
+        serializer = LoginCodeRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        email = serializer.validated_data["email"]
+        return protected_save(
+            request,
+            serializer,
+            operation=OP_LOGIN_REQUEST_CODE,
+            destination_kind=KIND_EMAIL,
+            destination=email,
+            fingerprint={"email": email},
+            channel=EMAIL_CHANNEL,
+        )
 
 
 class EmailAuthRequestCodeView(APIView):
@@ -48,7 +67,23 @@ class EmailAuthRequestCodeView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        return request_code_response(request, UnifiedEmailAuthRequestSerializer)
+        serializer = UnifiedEmailAuthRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        email = serializer.validated_data["email"]
+        return protected_save(
+            request,
+            serializer,
+            operation=OP_EMAIL_AUTH_REQUEST_CODE,
+            destination_kind=KIND_EMAIL,
+            destination=email,
+            fingerprint={
+                "email": email,
+                "source": serializer.validated_data.get("source", "login"),
+                "event": serializer.validated_data.get("event", ""),
+            },
+            channel=EMAIL_CHANNEL,
+        )
 
 
 class LoginCodeVerifyView(APIView):
@@ -118,7 +153,19 @@ class RegisterResendCodeView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        return request_code_response(request, RegisterResendCodeSerializer)
+        serializer = RegisterResendCodeSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        email = serializer.validated_data["email"]
+        return protected_save(
+            request,
+            serializer,
+            operation=OP_REGISTER_RESEND_CODE,
+            destination_kind=KIND_EMAIL,
+            destination=email,
+            fingerprint={"email": email},
+            channel=EMAIL_CHANNEL,
+        )
 
 
 class PasswordResetRequestView(APIView):
@@ -138,7 +185,21 @@ class PasswordResetRequestView(APIView):
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        return request_code_response(request, PasswordResetRequestSerializer)
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        destination_kind = serializer.validated_data["destination_kind"]
+        destination = serializer.validated_data["destination_normalized"]
+        channel = SMS_CHANNEL if destination_kind == KIND_PHONE else EMAIL_CHANNEL
+        return protected_save(
+            request,
+            serializer,
+            operation=OP_PASSWORD_RESET_REQUEST_CODE,
+            destination_kind=destination_kind,
+            destination=destination,
+            fingerprint={"identifier": destination, "kind": destination_kind},
+            channel=channel,
+        )
 
 
 class PasswordResetVerifyView(APIView):

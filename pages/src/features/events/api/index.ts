@@ -292,11 +292,20 @@ export async function sendPhoneCode(
   region: string,
   eventSlug: string,
 ): Promise<{detail: string; phone: string; challenge_id: string}> {
-  const response = await authApi.post<{detail: string; phone: string; challenge_id: string}>(
-    '/event/send-phone-code/',
-    {phone, region, event_slug: eventSlug},
-  );
-  return response.data;
+  const {withVerifiedSend} = await import('@/features/auth/verification');
+  return withVerifiedSend({
+    operation: 'event.send_phone_code',
+    destinationKind: 'phone',
+    destination: phone,
+    extraChallenge: {phone, region, event_slug: eventSlug},
+    execute: async (verification) => {
+      const response = await authApi.post<{detail: string; phone: string; challenge_id: string}>(
+        '/event/send-phone-code/',
+        {phone, region, event_slug: eventSlug, ...verification},
+      );
+      return response.data;
+    },
+  });
 }
 
 export async function verifyPhoneCode(

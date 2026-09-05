@@ -23,6 +23,7 @@ from django.urls import include, path
 from django.views.static import serve as static_serve
 
 from apps.authn.views.admin.login import AdminLoginView
+from apps.authn.views.admin.send_verification import AdminSendVerificationChallengeView
 from apps.cms.views import LayoutAPIView, LayoutStylesheetView
 from apps.core.middleware import csp_report
 from apps.core.views import MaintenanceBypassView, robots_txt, root_index, sitemap_xml
@@ -41,6 +42,11 @@ urlpatterns = [
     path("sitemap.xml", sitemap_xml, name="sitemap-xml"),
     # custom admin login (before admin.site.urls to override default)
     path("admin/login/", AdminLoginView.as_view(), name="admin-login"),
+    path(
+        "admin/send-verification/challenge/",
+        AdminSendVerificationChallengeView.as_view(),
+        name="admin-send-verification-challenge",
+    ),
     # admin site
     path("admin/", admin.site.urls),
     # maintenance bypass

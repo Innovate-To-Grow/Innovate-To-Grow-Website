@@ -66,11 +66,13 @@ UNFOLD = {
                 "core.awscredentialconfig",
                 "core.gmailaccessaccount",
                 "core.googlecredentialconfig",
+                "core.sendverificationconfig",
             ],
             "items": [
                 {"title": "AWS Credentials", "link": "/admin/core/awscredentialconfig/"},
                 {"title": "Gmail Access Account", "link": "/admin/core/gmailaccessaccount/"},
                 {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
+                {"title": "Send Verification", "link": "/admin/core/sendverificationconfig/"},
             ],
         },
         {
@@ -308,6 +310,11 @@ UNFOLD = {
                     {
                         "title": "Service Credentials",
                         "link": "/admin/core/awscredentialconfig/",
+                        "permission": _can("core"),
+                    },
+                    {
+                        "title": "Send Verification",
+                        "link": "/admin/core/sendverificationconfig/",
                         "permission": _can("core"),
                     },
                     {"title": "Admin Log", "link": "/admin/admin/logentry/", "permission": _can("admin")},

@@ -22,7 +22,7 @@ test('phone-code login: unified field routes /login → verify-phone → /accoun
   await page.getByRole('button', {name: 'Continue', exact: true}).click();
 
   await expect(page).toHaveURL(/\/verify-phone\?phone=2025550123/);
-  expect(requestPayloads).toEqual([{phone_number: PHONE_INPUT, region: '1-US', source: 'login'}]);
+  expect(requestPayloads).toEqual([expect.objectContaining({phone_number: PHONE_INPUT, region: '1-US', source: 'login'})]);
 
   await page.getByLabel('6-digit verification code').fill('654321');
   await page.getByRole('button', {name: 'Verify', exact: true}).click();
@@ -88,7 +88,7 @@ test('verify-phone resend re-requests an SMS code', async ({page}) => {
   await page.getByRole('button', {name: 'Resend code'}).last().click();
 
   await expect.poll(() => requestPayloads.length).toBeGreaterThan(0);
-  expect(requestPayloads.at(-1)).toEqual({phone_number: PHONE_INPUT, region: '1-US', source: 'login'});
+  expect(requestPayloads.at(-1)).toEqual(expect.objectContaining({phone_number: PHONE_INPUT, region: '1-US', source: 'login'}));
 });
 
 test('verify-phone with an invalid phone param redirects to /login', async ({page}) => {
