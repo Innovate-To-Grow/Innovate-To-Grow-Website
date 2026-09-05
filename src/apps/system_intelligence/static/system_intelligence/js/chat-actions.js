@@ -1,5 +1,17 @@
 (function () {
   const app = window.SystemIntelligenceChat;
+  const streamTimeoutMs = Math.max(1_000, Number(app.config.streamTimeoutMs) || 180_000);
+  const timeoutMessage = "The assistant took too long to respond. Please try again.";
+
+  app.setAssistantStreaming = function (assistant, streaming) {
+    assistant.article.classList.toggle("is-streaming", streaming);
+    assistant.article.setAttribute("aria-busy", String(streaming));
+  };
+
+  app.renderAssistantError = function (assistant, message) {
+    app.setAssistantStreaming(assistant, false);
+    app.renderRichText(assistant.body, message);
+  };
 
   app.loadConversations = async function (selectId) {
     const payload = await app.fetchJson(app.urls.conversations);
@@ -34,24 +46,36 @@
 
   app.sendMessage = async function (text) {
     if (!text || app.state.streaming) return;
-    const conversationId = await app.ensureConversation();
-    app.showAlert("");
-    app.appendMessage("user", text);
-    const assistant = app.appendMessage("assistant", "");
     app.setStreaming(true);
-    app.setStatus("Thinking");
+    let assistant = null;
+    let timeoutId = null;
+    let streamCompleted = false;
     try {
+      const conversationId = await app.ensureConversation();
+      app.setStreaming(true);
+      app.showAlert("");
+      app.appendMessage("user", text);
+      assistant = app.appendMessage("assistant", "");
+      app.setAssistantStreaming(assistant, true);
+      app.setStatus("Thinking");
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), streamTimeoutMs);
       const response = await fetch(app.urlFor("send", conversationId), {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json", "X-CSRFToken": app.csrfToken() },
         body: JSON.stringify({ message: text }),
+        signal: controller.signal,
       });
       await app.readStream(response, assistant);
+      streamCompleted = true;
       await app.loadConversations(conversationId);
     } catch (error) {
-      app.showAlert(error.message);
+      const message = error.name === "AbortError" ? timeoutMessage : error.message;
+      if (assistant && !streamCompleted) app.renderAssistantError(assistant, message);
+      app.showAlert(streamCompleted ? `The response completed, but the conversation could not refresh. ${message}` : message);
     } finally {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
       app.setStreaming(false);
       app.setStatus(app.state.mode === "plan" ? "Plan mode" : "Ready");
       app.els.input.focus();
@@ -59,27 +83,52 @@
   };
 
   app.runCommand = async function (command, args) {
-    const conversationId = await app.ensureConversation();
-    app.showAlert("");
-    const response = await fetch(app.urlFor("command", conversationId), {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json", "X-CSRFToken": app.csrfToken() },
-      body: JSON.stringify({ command, args: args || "" }),
-    });
-    if ((response.headers.get("content-type") || "").includes("text/event-stream")) {
-      const assistant = app.appendMessage("assistant", "");
+    if (app.state.streaming) throw new Error("Wait for the current assistant response to finish.");
+    app.setStreaming(true);
+    let timeoutId = null;
+    let assistant = null;
+    let streamCompleted = false;
+    try {
+      const conversationId = await app.ensureConversation();
       app.setStreaming(true);
-      await app.readStream(response, assistant);
+      app.showAlert("");
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), streamTimeoutMs);
+      const response = await fetch(app.urlFor("command", conversationId), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": app.csrfToken() },
+        body: JSON.stringify({ command, args: args || "" }),
+        signal: controller.signal,
+      });
+      if ((response.headers.get("content-type") || "").includes("text/event-stream")) {
+        assistant = app.appendMessage("assistant", "");
+        app.setAssistantStreaming(assistant, true);
+        app.setStreaming(true);
+        await app.readStream(response, assistant);
+        streamCompleted = true;
+        await app.selectConversation(conversationId);
+        return;
+      }
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Command failed.");
+      if (payload.mode) app.setMode(payload.mode);
+      if (payload.title) app.els.title.textContent = payload.title;
+      app.setStatus(payload.message || "Done");
+    } catch (error) {
+      const normalized = error.name === "AbortError" ? new Error(timeoutMessage) : error;
+      if (assistant && !streamCompleted) app.renderAssistantError(assistant, normalized.message);
+      if (streamCompleted) {
+        throw new Error(`The response completed, but the conversation could not refresh. ${normalized.message}`);
+      }
+      throw normalized;
+    } finally {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
       app.setStreaming(false);
-      await app.selectConversation(conversationId);
-      return;
+      if (assistant) {
+        app.setStatus(app.state.mode === "plan" ? "Plan mode" : "Ready");
+      }
     }
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "Command failed.");
-    if (payload.mode) app.setMode(payload.mode);
-    if (payload.title) app.els.title.textContent = payload.title;
-    app.setStatus(payload.message || "Done");
   };
 
   app.renameConversation = async function (conversation) {
@@ -110,26 +159,55 @@
       const payload = await response.json().catch(() => ({}));
       throw new Error(payload.error || "Stream failed.");
     }
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("text/event-stream")) {
+      if (response.redirected && response.url.includes("/admin/login")) {
+        throw new Error("Your admin session expired. Refresh the page and sign in again.");
+      }
+      throw new Error("The server did not start an assistant response stream.");
+    }
+    if (!response.body) throw new Error("The assistant response stream is unavailable.");
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let streamError = "";
+    let completed = false;
+
+    const dispatch = function (eventText) {
+      const result = app.handleStreamEvent(eventText, assistant);
+      if (!result) return;
+      if (result.error) streamError = result.error;
+      if (result.done) completed = true;
+    };
+
     while (true) {
       const { value, done } = await reader.read();
-      if (done) break;
+      if (done) {
+        buffer += decoder.decode();
+        break;
+      }
       buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split("\n\n");
+      const events = buffer.split(/\r?\n\r?\n/);
       buffer = events.pop();
-      events.forEach((eventText) => app.handleStreamEvent(eventText, assistant));
+      events.forEach(dispatch);
     }
-    if (buffer.trim()) app.handleStreamEvent(buffer, assistant);
+    if (buffer.trim()) dispatch(buffer);
+    if (streamError) throw new Error(streamError);
+    if (!completed) throw new Error("The assistant response ended before it was complete. Please retry.");
   };
 
   app.handleStreamEvent = function (eventText, assistant) {
-    const lines = eventText.split("\n");
-    const event = (lines.find((line) => line.startsWith("event: ")) || "event: message").slice(7);
-    const data = lines.filter((line) => line.startsWith("data: ")).map((line) => line.slice(6)).join("\n");
+    const lines = eventText.replace(/\r\n?/g, "\n").split("\n");
+    const eventLine = lines.find((line) => line.startsWith("event:"));
+    const event = eventLine ? eventLine.slice(6).trimStart() : "message";
+    const dataLines = lines.filter((line) => line.startsWith("data:"));
+    if (!dataLines.length) return null;
+    const data = dataLines.map((line) => line.slice(5).replace(/^ /, "")).join("\n");
     const payload = data ? JSON.parse(data) : {};
-    if (event === "text") {
+    if (event === "start") {
+      app.setStatus("Thinking");
+    } else if (event === "text") {
+      assistant.article.classList.remove("is-streaming");
       assistant.text += payload.chunk || "";
       app.renderRichText(assistant.body, assistant.text);
     } else if (event === "tool_call") {
@@ -141,14 +219,19 @@
     } else if (event === "usage") {
       app.setStatus(`Tokens: ${payload.totalTokens || 0}`);
     } else if (event === "error") {
-      app.renderRichText(assistant.body, payload.error || "The assistant could not complete this turn.");
-      app.showAlert(payload.error || "The assistant could not complete this turn.");
+      const message = payload.error || "The assistant could not complete this turn.";
+      app.renderAssistantError(assistant, message);
+      app.showAlert(message);
+      app.scrollMessages();
+      return { event, error: message, done: false };
     } else if (event === "done") {
+      app.setAssistantStreaming(assistant, false);
       if (payload.title) app.els.title.textContent = payload.title;
       (payload.action_requests || []).forEach((action) => {
         if (!document.querySelector(`[data-action-id="${action.id}"]`)) app.els.messages.append(app.renderActionCard(action));
       });
     }
     app.scrollMessages();
+    return { event, error: "", done: event === "done" };
   };
 })();

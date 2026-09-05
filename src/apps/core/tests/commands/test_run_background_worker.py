@@ -11,7 +11,7 @@ from apps.core.services.background_jobs import enqueue_job
 
 
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
-    def _run_once(self, *, purged_row_count=0, batch_size=10):
+    def _run_once(self, *, purged_row_count=0, purged_budget_count=0, batch_size=10):
         command = run_background_worker.Command(stdout=StringIO())
         with (
             patch.object(
@@ -19,6 +19,11 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
                 "purge_retired_auth_keypairs",
                 return_value=purged_row_count,
             ) as purge,
+            patch.object(
+                run_background_worker,
+                "purge_expired_public_assistant_budgets",
+                return_value=purged_budget_count,
+            ) as budget_purge,
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
         ):
             command.handle(
@@ -28,7 +33,7 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
                 stale_minutes=10,
                 key_purge_seconds=3600,
             )
-        return purge
+        return purge, budget_purge
 
     @patch.object(run_background_worker, "publish_worker_metrics")
     @patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1})
@@ -42,11 +47,33 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
         _publish,
     ):
         with self.assertLogs(run_background_worker.logger, level="INFO") as logs:
-            purge = self._run_once(purged_row_count=2)
+            purge, budget_purge = self._run_once(purged_row_count=2)
 
         purge.assert_called_once_with()
+        budget_purge.assert_called_once_with()
         self.assertEqual(
             logs.output, ["INFO:apps.core.management.commands.run_background_worker:Purged retired RSA keypair rows"]
+        )
+
+    @patch.object(run_background_worker, "publish_worker_metrics")
+    @patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1})
+    @patch.object(run_background_worker, "claim_jobs", return_value=[])
+    @patch.object(run_background_worker, "recover_stale_jobs")
+    def test_worker_purges_expired_public_assistant_budgets(
+        self,
+        _recover,
+        _claim,
+        _metrics,
+        _publish,
+    ):
+        with self.assertLogs(run_background_worker.logger, level="INFO") as logs:
+            purge, budget_purge = self._run_once(purged_budget_count=2)
+
+        purge.assert_called_once_with()
+        budget_purge.assert_called_once_with()
+        self.assertEqual(
+            logs.output,
+            ["INFO:apps.core.management.commands.run_background_worker:Purged expired public assistant budget rows"],
         )
 
     @patch.object(run_background_worker, "publish_worker_metrics")
@@ -209,6 +236,7 @@ class RunBackgroundWorkerShutdownTests(TestCase):
         with (
             patch.object(run_background_worker.signal, "signal", side_effect=install_handler),
             patch.object(run_background_worker, "purge_retired_auth_keypairs", return_value=0),
+            patch.object(run_background_worker, "purge_expired_public_assistant_budgets", return_value=0),
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
             patch.object(run_background_worker, "recover_stale_jobs"),
             patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1}),

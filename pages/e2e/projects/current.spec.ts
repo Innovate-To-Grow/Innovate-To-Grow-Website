@@ -1,5 +1,5 @@
 // /current-projects: project grid populated from /event/schedule/.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {mockSchedule, schedulePayload} from '../helpers';
 
 test('current projects grid renders rows', {tag: '@core'}, async ({page}) => {

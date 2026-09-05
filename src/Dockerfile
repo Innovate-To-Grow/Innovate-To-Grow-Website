@@ -11,13 +11,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /build
 
-# Build-time dependencies. apt package versions pinned (DL3008) against the
-# current python:3.11-slim (Debian trixie/deb13). Refresh with
-# `apt-cache policy <pkg>` inside the base image when the upstream point
-# release bumps.
+# Build-time dependencies, pinned to a major version to satisfy DL3008.
+#
+# Deliberately NOT pinned to an exact patch: Debian keeps only the newest build of
+# a package in the archive, so an exact pin like `libpq-dev=17.10-0+deb13u1` stops
+# resolving the moment trixie ships a point release — and it fails hard, because
+# libpq-dev depends on `libpq5 (= <same exact version>)`. That broke every image
+# build when libpq5 moved to 17.11-0+deb13u1. A major-version pin still fixes the
+# ABI we build against while tracking security updates within the release.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential=12.12 \
-        libpq-dev=17.10-0+deb13u1 \
+        build-essential=12.* \
+        libpq-dev=17.* \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the dependency manifests together so their nested `-r` includes resolve.
@@ -39,9 +43,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Runtime libs only. libpq5 is the runtime sibling of libpq-dev used by
-# psycopg2. Version pinned (DL3008); refresh alongside libpq-dev above.
+# psycopg2. Major-version pinned for the same reason as libpq-dev above — the two
+# stages run their own `apt-get update`, so exact pins can also disagree if Debian
+# publishes between the two layers.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpq5=17.10-0+deb13u1 \
+        libpq5=17.* \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system app \
     && useradd --system --gid app --home /app --shell /usr/sbin/nologin app

@@ -1,7 +1,7 @@
 // / (homepage) and catch-all `*`: CMS-powered pages via HomepageResolver and
 // CMSPageComponent. Asserts on heading elements rendered from block content
 // rather than the (document.title-only) page title.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {cmsPageResponse, mockCmsPage} from '../helpers';
 
 test('homepage renders CMS blocks via HomepageResolver', {tag: '@core'}, async ({page}) => {
@@ -14,6 +14,49 @@ test('homepage renders CMS blocks via HomepageResolver', {tag: '@core'}, async (
   await page.goto('/', {waitUntil: 'networkidle'});
   await expect(page.locator('.cms-page')).toBeVisible();
   await expect(page.locator('h2')).toContainText('Welcome to ITG');
+});
+
+test('homepage YouTube embeds load without changing responsive wrapper geometry', {tag: '@core'}, async ({page}) => {
+  await page.route('**/cms/embed-hosts/', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({hosts: ['www.youtube.com'], revision: 'e2e'}),
+  }));
+  await page.route('https://www.youtube.com/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'text/html',
+    body: '<!doctype html><title>Mock YouTube player</title>',
+  }));
+  await mockCmsPage(page, '', cmsPageResponse({
+    route: '/',
+    slug: '',
+    title: 'Innovate to Grow',
+    page_css: [
+      '.video-column { width: min(100%, 320px); }',
+      '.video-shell { position: relative; width: 100%; padding-top: 56.25%; }',
+      '.video-shell iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }',
+    ].join('\n'),
+    blocks: [{
+      block_type: 'rich_text',
+      sort_order: 0,
+      data: {
+        body_html: '<div class="video-column"><div class="video-shell"><iframe src="https://www.youtube.com/embed/demo" title="Demo"></iframe></div></div>',
+      },
+    }],
+  }));
+
+  await page.goto('/', {waitUntil: 'networkidle'});
+
+  const wrapper = page.locator('.video-shell');
+  const iframe = wrapper.locator('iframe');
+  await expect(iframe).toBeVisible();
+  await expect(iframe).toHaveAttribute('loading', 'lazy');
+  const wrapperBox = await wrapper.boundingBox();
+  const iframeBox = await iframe.boundingBox();
+  expect(wrapperBox).not.toBeNull();
+  expect(iframeBox).not.toBeNull();
+  expect(iframeBox!.width).toBeCloseTo(wrapperBox!.width, 1);
+  expect(iframeBox!.height).toBeCloseTo(wrapperBox!.height, 1);
 });
 
 test('catch-all CMS page renders for unknown route', async ({page}) => {

@@ -31,10 +31,18 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
         self.assertEqual(triggers["workflow_run"]["workflows"], ["CI"])
         self.assertEqual(triggers["workflow_run"]["branches"], ["main"])
 
+        resolver = production["jobs"]["resolve-ci-release"]
+        self.assertIn("workflow_run.conclusion == 'success'", resolver["if"])
+        self.assertNotIn("environment", resolver)
         approval = production["jobs"]["approve"]
         self.assertEqual(approval["environment"]["name"], "Production Deployments")
-        self.assertIn("workflow_run.conclusion == 'success'", approval["if"])
-        self.assertIn("github.ref == 'refs/heads/main'", approval["if"])
+        self.assertEqual(approval["needs"], "resolve-ci-release")
+        self.assertEqual(
+            set(approval["outputs"]),
+            {"deploy_sha", "ci_run_id"},
+        )
+        environment_jobs = [name for name, job in production["jobs"].items() if "environment" in job]
+        self.assertEqual(environment_jobs, ["approve"])
         self.assertFalse(production["concurrency"]["cancel-in-progress"])
 
     def test_every_component_waits_for_the_same_approval_and_sha(self) -> None:
@@ -48,17 +56,45 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
         for job_name, workflow_path in expected.items():
             with self.subTest(job=job_name):
                 job = production["jobs"][job_name]
-                self.assertEqual(job["needs"], "approve")
+                needs = job["needs"] if isinstance(job["needs"], list) else [job["needs"]]
+                self.assertIn("approve", needs)
                 self.assertEqual(job["uses"], workflow_path)
-                deploy_sha = job["with"]["deploy_sha"]
-                self.assertIn("github.event.workflow_run.head_sha", deploy_sha)
-                self.assertIn("github.sha", deploy_sha)
+                self.assertEqual(
+                    job["with"]["deploy_sha"],
+                    "${{ needs.approve.outputs.deploy_sha }}",
+                )
                 self.assertEqual(job["secrets"], "inherit")
 
         backend = production["jobs"]["deploy-backend"]
-        self.assertIn(
-            "github.event_name == 'workflow_dispatch'",
-            backend["with"]["build_image"],
+        self.assertFalse(backend["with"]["build_image"])
+        self.assertEqual(backend["needs"], "approve")
+        self.assertEqual(set(backend["with"]), {"deploy_sha", "build_image"})
+
+    def test_manual_production_release_requires_successful_ci_for_current_main_sha(self) -> None:
+        production = load_workflow("deploy-production.yml")
+        resolver = production["jobs"]["resolve-ci-release"]
+        step = named_step(resolver, "Resolve and verify the successful main CI run")
+        script = step["run"]
+
+        self.assertIn('"$EVENT_REF" != "refs/heads/main"', script)
+        self.assertIn("git/ref/heads/main", script)
+        self.assertIn('"$deploy_sha" != "$main_sha"', script)
+        self.assertIn("actions/workflows/ci.yml/runs", script)
+        self.assertIn('head_sha="$deploy_sha"', script)
+        self.assertIn('.head_branch == "main"', script)
+        self.assertIn('.event == "push"', script)
+        self.assertIn('.status == "completed"', script)
+        self.assertIn('.conclusion == "success"', script)
+        self.assertIn(".path == $path", script)
+        self.assertIn("head_repository.full_name", script)
+        self.assertIn("actions/runs/${ci_run_id}", script)
+        self.assertEqual(
+            resolver["outputs"]["deploy_sha"],
+            "${{ steps.release.outputs.deploy_sha }}",
+        )
+        self.assertEqual(
+            resolver["outputs"]["ci_run_id"],
+            "${{ steps.release.outputs.ci_run_id }}",
         )
 
     def test_component_workflows_are_reusable_and_keep_target_environments(self) -> None:

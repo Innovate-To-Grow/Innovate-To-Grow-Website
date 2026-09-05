@@ -209,6 +209,9 @@ pages/test-results/
 # Tools & Misc
 # =====================================
 
+# Codex local configuration
+/.codex/
+
 # Cursor AI
 .cursorignore
 .cursorindexingignore
@@ -281,3 +284,6 @@ GEMINI.md
 service_account.json
 # Archived legacy-site secret (subtree import — never track this key)
 archive/page/service_account.json
+
+# AWS SAM build output
+/.aws-sam/

@@ -73,16 +73,17 @@ class ChangeformObjectMissingTest(TestCase):
         self.factory = RequestFactory()
         self.admin = _host_admin()
 
-    def test_confirmed_save_key_routes_to_executor(self):
+    def test_confirmed_save_marker_in_the_post_body_cannot_bypass_confirmation(self):
+        """``_confirmed_save`` used to route straight to the real save, skipping the diff, the typed
+        word and the session token — reachable by anyone able to add a form field."""
         request = _wire_request(self.factory.post("/admin/", {"_confirmed_save": "1", "hostname": "z.com"}))
-        pending = {"token": "keep-this-token", "file_keys": {}}
-        request.session[self.admin._session_key()] = pending
-        sentinel = object()
-        with patch.object(self.admin, "_execute_confirmed_save", return_value=sentinel) as exec_save:
-            result = self.admin.changeform_view(request, object_id=None)
-        self.assertIs(result, sentinel)
-        exec_save.assert_called_once()
-        self.assertEqual(request.session[self.admin._session_key()], pending)
+
+        with patch("django.contrib.admin.options.ModelAdmin.changeform_view") as super_view:
+            response = self.admin.changeform_view(request, object_id=None)
+
+        super_view.assert_not_called()
+        self.assertIsInstance(response, HttpResponseRedirect)
+        self.assertIn("confirm-change", response.url)
 
     def test_save_as_new_checks_add_permission_before_constructing_formsets(self):
         request = _wire_request(
@@ -261,7 +262,7 @@ class FileUploadCachingTest(TestCase):
             patch.object(admin_obj, "get_form", return_value=lambda *a, **k: fake_form),
             patch(
                 "apps.core.admin.mixins.confirm_on_save.compute_add_diff",
-                return_value={"title": {"old": "", "new": "My Asset"}},
+                return_value=[{"field": "title", "label": "Title", "new_value": "My Asset"}],
             ),
             patch(
                 "apps.core.admin.mixins.confirm_on_save.serialize_post_data",
@@ -363,13 +364,15 @@ class DeleteViewBranchesTest(TestCase):
         self.assertIs(result, sentinel)
         super_del.assert_called_once()
 
-    def test_confirmed_delete_key_routes_to_executor(self):
+    def test_confirmed_delete_marker_in_the_post_body_cannot_bypass_confirmation(self):
         request = _wire_request(self.factory.post("/admin/", {"_confirmed_delete": "1", "post": "yes"}))
-        sentinel = object()
-        with patch.object(self.admin, "_execute_confirmed_delete", return_value=sentinel) as exec_del:
-            result = self.admin.delete_view(request, str(self.host.pk))
-        self.assertIs(result, sentinel)
-        exec_del.assert_called_once()
+
+        with patch("django.contrib.admin.options.ModelAdmin.delete_view") as super_view:
+            response = self.admin.delete_view(request, str(self.host.pk))
+
+        super_view.assert_not_called()
+        self.assertIsInstance(response, HttpResponseRedirect)
+        self.assertIn("confirm-change", response.url)
 
     def test_missing_object_defers_to_super(self):
         request = _wire_request(self.factory.post("/admin/", {"post": "yes"}))
@@ -387,37 +390,6 @@ class DeleteViewBranchesTest(TestCase):
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
-class ExecuteConfirmedTest(TestCase):
-    def setUp(self):
-        self.factory = RequestFactory()
-        self.admin = _host_admin()
-
-    def test_execute_confirmed_save_strips_marker(self):
-        request = _wire_request(self.factory.post("/admin/", {"_confirmed_save": "1", "hostname": "y.com"}))
-        captured = {}
-
-        def capture(req, object_id, form_url, extra):
-            captured["post"] = req.POST
-            return "OK"
-
-        with patch("django.contrib.admin.options.ModelAdmin.changeform_view", side_effect=capture):
-            self.admin._execute_confirmed_save(request, None, "", None)
-        self.assertNotIn("_confirmed_save", captured["post"])
-        self.assertIn("hostname", captured["post"])
-
-    def test_execute_confirmed_delete_strips_marker(self):
-        request = _wire_request(self.factory.post("/admin/", {"_confirmed_delete": "1", "post": "yes"}))
-        captured = {}
-
-        def capture(req, object_id, extra):
-            captured["post"] = req.POST
-            return "OK"
-
-        with patch("django.contrib.admin.options.ModelAdmin.delete_view", side_effect=capture):
-            self.admin._execute_confirmed_delete(request, "id", None)
-        self.assertNotIn("_confirmed_delete", captured["post"])
-
-
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
 class ResponseActionBranchesTest(TestCase):
     """Cover the short-circuit branches inside response_action."""
@@ -436,16 +408,28 @@ class ResponseActionBranchesTest(TestCase):
         request = self.factory.post("/admin/", data=qd)
         return _wire_request(request)
 
-    def test_confirmed_action_marker_defers_to_super(self):
-        request = self._request({"_confirmed_action": "1"})
-        sentinel = object()
-        with patch(
-            "django.contrib.admin.options.ModelAdmin.response_action",
-            return_value=sentinel,
-        ) as super_action:
-            result = self.admin.response_action(request, Semester.objects.all())
-        self.assertIs(result, sentinel)
-        super_action.assert_called_once()
+    def test_confirmed_action_marker_in_the_post_body_cannot_bypass_confirmation(self):
+        """``_confirmed_action`` used to route straight to the real action, skipping the typed
+        word and the session token — reachable by anyone able to add a form field."""
+        semester = Semester.objects.create(year=2025, season=1, is_published=False)
+        request = self._request(
+            {
+                "_confirmed_action": "1",
+                "action": ["publish_selected"],
+                "index": "0",
+                "select_across": "0",
+                helpers.ACTION_CHECKBOX_NAME: [str(semester.pk)],
+            }
+        )
+
+        with patch("django.contrib.admin.options.ModelAdmin.response_action") as super_action:
+            response = self.admin.response_action(request, Semester.objects.all())
+
+        super_action.assert_not_called()
+        self.assertIsInstance(response, HttpResponseRedirect)
+        self.assertIn("confirm-action", response.url)
+        semester.refresh_from_db()
+        self.assertFalse(semester.is_published)
 
     def test_non_integer_index_defaults_and_defers(self):
         # Bad index -> action_index 0, but no "action" list -> IndexError -> super().

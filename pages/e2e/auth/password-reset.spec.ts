@@ -1,7 +1,7 @@
 // Forgot-password journey, driven all the way through the encrypted confirm
 // step. `mockPublicKey` serves a real RSA key so the browser's Web Crypto can
 // encrypt; the confirm mock asserts the request body shape, not the plaintext.
-import {test, expect} from '../fixtures';
+import {test, expect} from '../helpers/fixtures';
 import {mockPasswordResetFlow, mockPublicKey} from '../helpers';
 
 test('request → verify → set new password → /login', {tag: '@core'}, async ({page}) => {

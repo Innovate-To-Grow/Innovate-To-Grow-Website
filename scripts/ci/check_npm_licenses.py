@@ -25,6 +25,7 @@ ALLOWED_LICENSES = {
     "MIT-0",
     "MIT/X11",
     "MPL-2.0",
+    "OFL-1.1",
     "Python-2.0",
     "Unlicense",
 }

@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import {test, expect} from './fixtures';
-import {cmsPageResponse, mockCmsPage, mockSchedule, schedulePayload} from './helpers';
+import {test, expect} from '../helpers/fixtures';
+import {cmsPageResponse, mockCmsPage, mockSchedule, schedulePayload} from '../helpers';
 
 test.describe('required smoke', {tag: '@required-smoke'}, () => {
   test.beforeEach(({page}, testInfo) => {

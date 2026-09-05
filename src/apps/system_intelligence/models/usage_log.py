@@ -1,8 +1,60 @@
+import uuid
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
 from apps.core.models.base.control import ProjectControlModel
+
+
+class PublicAssistantTokenBudget(models.Model):
+    """Shared per-IP token counter used when Redis is not configured.
+
+    The row is locked only for the short reserve/reconcile update, so every
+    web worker and ECS task observes one atomic budget without holding a
+    database transaction open during the model call.
+    """
+
+    ip_hash = models.CharField(
+        max_length=64,
+        primary_key=True,
+        help_text="Salted SHA-256 hash of the visitor IP (never the raw IP).",
+    )
+    window_id = models.PositiveBigIntegerField(default=0)
+    tokens_used = models.PositiveBigIntegerField(default=0)
+    window_expires_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        verbose_name = "Public Assistant Token Budget"
+        verbose_name_plural = "Public Assistant Token Budgets"
+
+    def __str__(self):
+        return f"Public assistant budget {self.ip_hash[:12]}..."
+
+
+class PublicAssistantTokenReservation(models.Model):
+    """One-time database reservation charged against a budget window.
+
+    Keeping a durable reservation id makes reconcile/release idempotent across
+    retries and across web workers, matching the one-time key used by Redis.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    budget = models.ForeignKey(
+        PublicAssistantTokenBudget,
+        on_delete=models.CASCADE,
+        related_name="reservations",
+    )
+    window_id = models.PositiveBigIntegerField()
+    reserved_tokens = models.PositiveBigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Public Assistant Token Reservation"
+        verbose_name_plural = "Public Assistant Token Reservations"
+
+    def __str__(self):
+        return f"Public assistant reservation {self.pk}"
 
 
 class AssistantConversationLog(ProjectControlModel):

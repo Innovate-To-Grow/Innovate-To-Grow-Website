@@ -1,0 +1,40 @@
+{% load i18n %}
+{% comment %}
+Widget template for Member.profile_image (apps.authn.admin.members.forms.Base64ImageWidget).
+
+The preview is an <img> pointing at admin:authn_member_profile_image, never the stored base64
+data URI — inlining the value made the change page grow with the stored image and truncate.
+The stock clearable_file_input.html cannot be used: it gates the clear checkbox on
+`widget.value.url`, which a plain string never has, so a profile image could not be removed at all.
+{% endcomment %}
+{% if widget.is_initial %}
+    <div class="mb-3 flex items-center gap-4">
+        {% if widget.preview_url %}
+            <img src="{{ widget.preview_url }}"
+                 alt="{% translate 'Current profile image' %}"
+                 width="80"
+                 height="80"
+                 loading="lazy"
+                 decoding="async"
+                 class="rounded-default border border-base-200 dark:border-base-700 object-cover"
+                 style="width:80px;height:80px" />
+        {% endif %}
+        <span class="text-xs text-font-subtle-light dark:text-font-subtle-dark">
+            {% translate "Current image" %}
+        </span>
+    </div>
+
+    {% if not widget.required %}
+        <label class="flex items-center gap-2 mb-3 text-sm text-font-default-light dark:text-font-default-dark">
+            <input type="checkbox"
+                   name="{{ widget.checkbox_name }}"
+                   id="{{ widget.checkbox_id }}"
+                   {% if widget.attrs.disabled %}disabled{% endif %}>
+            {% translate "Remove the current image" %}
+        </label>
+    {% endif %}
+{% endif %}
+
+<input type="{{ widget.type }}"
+       name="{{ widget.name }}"
+       {% include "django/forms/widgets/attrs.html" %}>

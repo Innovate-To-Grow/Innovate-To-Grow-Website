@@ -1,11 +1,16 @@
 """Unit tests for the per-IP token budget helpers."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
+from threading import Barrier, Event
 from unittest.mock import Mock, patch
 
 from django.core.cache import cache
-from django.test import RequestFactory, TestCase, override_settings
+from django.db import close_old_connections, transaction
+from django.test import RequestFactory, TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
+from django.utils import timezone
 
+from apps.system_intelligence.models import PublicAssistantTokenBudget, PublicAssistantTokenReservation
 from apps.system_intelligence.services.public_assistant import budget
 
 
@@ -201,7 +206,230 @@ class BudgetCounterTests(TestCase):
         self.assertEqual(budget.tokens_used(self.ip_hash), 60)
 
 
-@override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False)
+@override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="")
+class DatabaseBudgetFallbackTests(TestCase):
+    def setUp(self):
+        self.ip_hash = budget.hash_ip("203.0.113.20")
+
+    @patch.object(budget, "_shared_redis_client")
+    def test_reservation_reconcile_and_release_use_the_shared_database(self, redis_connection):
+        reservation = budget.reserve_budget(
+            self.ip_hash,
+            estimated_input_tokens=100,
+            maximum_output_tokens=50,
+            limit=1000,
+            window_seconds=3600,
+        )
+
+        self.assertIsNotNone(reservation)
+        self.assertTrue(reservation.database)
+        self.assertIsNotNone(reservation.database_reservation_id)
+        redis_connection.assert_not_called()
+        self.assertEqual(budget.tokens_used(self.ip_hash), 150)
+
+        budget.reconcile_budget(reservation, 80)
+        self.assertEqual(budget.tokens_used(self.ip_hash), 80)
+
+        second = budget.reserve_budget(
+            self.ip_hash,
+            estimated_input_tokens=40,
+            maximum_output_tokens=10,
+            limit=1000,
+            window_seconds=3600,
+        )
+        self.assertEqual(budget.tokens_used(self.ip_hash), 130)
+        budget.release_budget(second)
+        self.assertEqual(budget.tokens_used(self.ip_hash), 80)
+        self.assertFalse(PublicAssistantTokenReservation.objects.exists())
+
+    def test_database_settlement_is_idempotent(self):
+        first = budget.reserve_budget(
+            self.ip_hash,
+            estimated_input_tokens=60,
+            maximum_output_tokens=0,
+            limit=1000,
+            window_seconds=3600,
+        )
+        second = budget.reserve_budget(
+            self.ip_hash,
+            estimated_input_tokens=30,
+            maximum_output_tokens=0,
+            limit=1000,
+            window_seconds=3600,
+        )
+
+        budget.reconcile_budget(first, 20)
+        self.assertEqual(budget.tokens_used(self.ip_hash), 50)
+
+        budget.reconcile_budget(first, 0)
+        budget.release_budget(first)
+        self.assertEqual(budget.tokens_used(self.ip_hash), 50)
+        self.assertEqual(PublicAssistantTokenReservation.objects.count(), 1)
+
+        budget.release_budget(second)
+        self.assertEqual(budget.tokens_used(self.ip_hash), 20)
+        self.assertFalse(PublicAssistantTokenReservation.objects.exists())
+
+    def test_impossible_first_reservation_does_not_anchor_a_window(self):
+        reservation = budget.reserve_budget(
+            self.ip_hash,
+            estimated_input_tokens=101,
+            maximum_output_tokens=0,
+            limit=100,
+            window_seconds=3600,
+        )
+
+        self.assertIsNone(reservation)
+        self.assertFalse(PublicAssistantTokenBudget.objects.filter(pk=self.ip_hash).exists())
+        self.assertFalse(PublicAssistantTokenReservation.objects.exists())
+
+    def test_database_reservation_enforces_the_limit_atomically(self):
+        budget.record_usage(self.ip_hash, 80, 3600)
+
+        reservation = budget.reserve_budget(
+            self.ip_hash,
+            estimated_input_tokens=21,
+            maximum_output_tokens=0,
+            limit=100,
+            window_seconds=3600,
+        )
+
+        self.assertIsNone(reservation)
+        self.assertEqual(budget.tokens_used(self.ip_hash), 80)
+
+    def test_late_reconcile_does_not_mutate_a_new_database_window(self):
+        reservation = budget.reserve_budget(
+            self.ip_hash,
+            estimated_input_tokens=100,
+            maximum_output_tokens=50,
+            limit=1000,
+            window_seconds=3600,
+        )
+        state = PublicAssistantTokenBudget.objects.get(pk=self.ip_hash)
+        state.window_id = budget._new_window_id()
+        state.tokens_used = 40
+        state.window_expires_at = timezone.now() + timedelta(hours=1)
+        state.save()
+
+        budget.reconcile_budget(reservation, 80)
+
+        self.assertEqual(budget.tokens_used(self.ip_hash), 40)
+        self.assertFalse(PublicAssistantTokenReservation.objects.exists())
+
+    def test_expired_database_counter_starts_a_fresh_window(self):
+        PublicAssistantTokenBudget.objects.create(
+            ip_hash=self.ip_hash,
+            window_id=budget._new_window_id(),
+            tokens_used=999,
+            window_expires_at=timezone.now() - timedelta(seconds=1),
+        )
+
+        reservation = budget.reserve_budget(
+            self.ip_hash,
+            estimated_input_tokens=25,
+            maximum_output_tokens=0,
+            limit=100,
+            window_seconds=3600,
+        )
+
+        self.assertIsNotNone(reservation)
+        self.assertEqual(budget.tokens_used(self.ip_hash), 25)
+
+    def test_cleanup_deletes_only_expired_budget_rows(self):
+        expired_hash = budget.hash_ip("203.0.113.21")
+        expired = PublicAssistantTokenBudget.objects.create(
+            ip_hash=expired_hash,
+            window_id=budget._new_window_id(),
+            tokens_used=25,
+            window_expires_at=timezone.now() - timedelta(seconds=1),
+        )
+        PublicAssistantTokenReservation.objects.create(
+            budget=expired,
+            window_id=expired.window_id,
+            reserved_tokens=25,
+        )
+        budget.record_usage(self.ip_hash, 10, 3600)
+
+        self.assertEqual(budget.purge_expired_public_assistant_budgets(), 1)
+
+        self.assertFalse(PublicAssistantTokenBudget.objects.filter(pk=expired_hash).exists())
+        self.assertTrue(PublicAssistantTokenBudget.objects.filter(pk=self.ip_hash).exists())
+        self.assertFalse(PublicAssistantTokenReservation.objects.exists())
+
+
+@override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="")
+class DatabaseBudgetConcurrencyTests(TransactionTestCase):
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_first_reservations_from_separate_connections_do_not_overspend(self):
+        ip_hash = budget.hash_ip("203.0.113.22")
+        ready = Barrier(2)
+
+        def reserve(_index):
+            close_old_connections()
+            try:
+                ready.wait(timeout=5)
+                return (
+                    budget.reserve_budget(
+                        ip_hash,
+                        estimated_input_tokens=60,
+                        maximum_output_tokens=0,
+                        limit=100,
+                        window_seconds=3600,
+                    )
+                    is not None
+                )
+            finally:
+                close_old_connections()
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            accepted = list(executor.map(reserve, range(2)))
+
+        self.assertEqual(sum(accepted), 1)
+        self.assertEqual(budget.tokens_used(ip_hash), 60)
+        self.assertEqual(PublicAssistantTokenReservation.objects.count(), 1)
+
+    @skipUnlessDBFeature("has_select_for_update", "has_select_for_update_skip_locked")
+    def test_cleanup_skips_a_budget_being_reactivated(self):
+        ip_hash = budget.hash_ip("203.0.113.23")
+        PublicAssistantTokenBudget.objects.create(
+            ip_hash=ip_hash,
+            window_id=budget._new_window_id(),
+            tokens_used=25,
+            window_expires_at=timezone.now() - timedelta(seconds=1),
+        )
+        locked = Event()
+        release_lock = Event()
+
+        def reactivate():
+            close_old_connections()
+            try:
+                with transaction.atomic():
+                    state = PublicAssistantTokenBudget.objects.select_for_update().get(pk=ip_hash)
+                    state.window_id = budget._new_window_id()
+                    state.tokens_used = 60
+                    state.window_expires_at = timezone.now() + timedelta(hours=1)
+                    state.save()
+                    locked.set()
+                    if not release_lock.wait(timeout=5):
+                        raise TimeoutError("test did not release the budget row lock")
+            finally:
+                close_old_connections()
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(reactivate)
+            self.assertTrue(locked.wait(timeout=5))
+            try:
+                self.assertEqual(budget.purge_expired_public_assistant_budgets(), 0)
+            finally:
+                release_lock.set()
+            future.result(timeout=5)
+
+        state = PublicAssistantTokenBudget.objects.get(pk=ip_hash)
+        self.assertEqual(state.tokens_used, 60)
+        self.assertGreater(state.window_expires_at, timezone.now())
+
+
+@override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="redis://configured")
 class RedisReservationScriptTests(TestCase):
     @patch.object(budget, "_shared_redis_client")
     def test_reservation_uses_remaining_budget_window_ttl(self, redis_connection):

@@ -2,7 +2,6 @@
 Profile view for user information management.
 """
 
-import base64
 import logging
 
 from rest_framework import status
@@ -11,21 +10,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.serializers import ProfileSerializer
+from apps.authn.services.members.profile_image import ProfileImageError, detect_image_mime, encode_profile_image
 
 logger = logging.getLogger(__name__)
 
-# Magic-byte signatures for allowed image formats
-_ALLOWED_SIGNATURES = {
-    b"\x89PNG": "png",
-    b"\xff\xd8\xff": "jpeg",
-    b"GIF8": "gif",
-    b"RIFF": "webp",
-}
-
 
 def _validate_image_bytes(data: bytes) -> bool:
-    """Validate that file content starts with a known image magic-byte signature."""
-    return any(data.startswith(sig) for sig in _ALLOWED_SIGNATURES)
+    """Validate that file content starts with a known image magic-byte signature.
+
+    Kept as a thin alias over the shared helper; existing tests import it from here.
+    """
+    return detect_image_mime(data) is not None
 
 
 class ProfileView(APIView):
@@ -58,32 +53,12 @@ class ProfileView(APIView):
 
         # Handle multipart form (profile image upload)
         if request.FILES.get("profile_image"):
-            file = request.FILES["profile_image"]
-
-            _MAX_SIZE = 5 * 1024 * 1024  # 5 MB
-            _ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
-
-            if file.size > _MAX_SIZE:
-                return Response(
-                    {"detail": "Profile image must be 5 MB or smaller."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            file_content_type = getattr(file, "content_type", "") or ""
-            if file_content_type not in _ALLOWED_TYPES:
-                return Response(
-                    {"detail": "Profile image must be a JPEG, PNG, GIF, or WebP file."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            content = file.read()
-            if not _validate_image_bytes(content[:32]):
-                return Response(
-                    {"detail": "File content does not match an allowed image type (JPEG, PNG, GIF, WebP)."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            b64 = base64.b64encode(content).decode("utf-8")
-            user.profile_image = f"data:{file_content_type};base64,{b64}"
+            try:
+                # Shared with the Django admin change form so both paths enforce the same size cap,
+                # content-type allow-list and magic-byte check, and both downscale before storing.
+                user.profile_image = encode_profile_image(request.FILES["profile_image"])
+            except ProfileImageError as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
             user.save(update_fields=["profile_image", "updated_at"])
             serializer = ProfileSerializer(instance=user)
             return Response(serializer.data, status=status.HTTP_200_OK)

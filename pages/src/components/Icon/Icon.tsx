@@ -1,5 +1,7 @@
 import type {SVGProps} from 'react';
 
+import {SOCIAL_BRAND_ICONS} from './socialBrandIcons';
+
 const PATHS: Record<string, string> = {
   'angle-down': 'm6 9 6 6 6-6',
   'angle-right': 'm9 6 6 6-6 6',
@@ -21,21 +23,28 @@ function normalizeName(name: string): string {
 }
 
 export function Icon({name, className, ...props}: SVGProps<SVGSVGElement> & {name: string}) {
-  const path = PATHS[normalizeName(name)] ?? 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20';
+  const normalizedName = normalizeName(name);
+  const brandIcon = SOCIAL_BRAND_ICONS[normalizedName];
+  const path = brandIcon?.path ?? PATHS[normalizedName] ?? 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20';
+  // CMS-managed layout styles still use .fa for icon sizing and spacing.
+  const classes = className ? `fa ${className}` : 'fa';
+
   return (
     <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
+      viewBox={brandIcon?.viewBox ?? '0 0 24 24'}
+      width="1em"
+      height="1em"
+      fill={brandIcon ? 'currentColor' : 'none'}
+      stroke={brandIcon ? 'none' : 'currentColor'}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
+      className={classes}
       aria-hidden="true"
       focusable="false"
       {...props}
     >
-      <path d={path} />
+      <path d={path} transform={brandIcon?.transform} />
     </svg>
   );
 }

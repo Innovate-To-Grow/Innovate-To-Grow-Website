@@ -16,26 +16,131 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  approve:
-    name: Approve all production deployments
+  resolve-ci-release:
+    name: Verify successful main CI release
     if: >-
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success') ||
-      (github.event_name == 'workflow_dispatch' &&
-       github.ref == 'refs/heads/main')
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      deploy_sha: ${{ steps.release.outputs.deploy_sha }}
+      ci_run_id: ${{ steps.release.outputs.ci_run_id }}
+    steps:
+      - name: Resolve and verify the successful main CI run
+        id: release
+        env:
+          CI_WORKFLOW_PATH: .github/workflows/ci.yml
+          CURRENT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            ci_run_id="$EVENT_RUN_ID"
+            deploy_sha="$EVENT_RUN_SHA"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$EVENT_REF" != "refs/heads/main" ]; then
+              echo "::error::Manual production deployments must be dispatched from main."
+              exit 1
+            fi
+            deploy_sha="$CURRENT_SHA"
+            main_sha="$(gh api "/repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq .object.sha)"
+            if [ "$deploy_sha" != "$main_sha" ]; then
+              echo "::error::Manual deployment SHA is not the current main commit."
+              exit 1
+            fi
+
+            runs="$(gh api --method GET \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+              -f branch=main \
+              -f event=push \
+              -f status=success \
+              -f head_sha="$deploy_sha" \
+              -f per_page=100)"
+            ci_run_id="$(jq -r \
+              --arg path "$CI_WORKFLOW_PATH" \
+              --arg repository "$GITHUB_REPOSITORY" \
+              --arg sha "$deploy_sha" \
+              '[.workflow_runs[] | select(
+                .head_sha == $sha and
+                .head_branch == "main" and
+                .event == "push" and
+                .status == "completed" and
+                .conclusion == "success" and
+                .path == $path and
+                .head_repository.full_name == $repository
+              )] | sort_by(.run_number) | reverse | .[0].id // empty' \
+              <<<"$runs")"
+            if [ -z "$ci_run_id" ]; then
+              echo "::error::Current main SHA has no successful CI push run to promote."
+              exit 1
+            fi
+          else
+            echo "::error::Unsupported production deployment trigger."
+            exit 1
+          fi
+
+          if [[ ! "$deploy_sha" =~ ^[0-9a-f]{40}$ ]] || [[ ! "$ci_run_id" =~ ^[0-9]+$ ]]; then
+            echo "::error::Resolved CI release identifiers are invalid."
+            exit 1
+          fi
+
+          ci_run="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}")"
+          verified="$(jq -r \
+            --arg path "$CI_WORKFLOW_PATH" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg sha "$deploy_sha" \
+            '(.head_sha == $sha and
+              .head_branch == "main" and
+              .event == "push" and
+              .status == "completed" and
+              .conclusion == "success" and
+              .path == $path and
+              .head_repository.full_name == $repository)' \
+            <<<"$ci_run")"
+          if [ "$verified" != "true" ]; then
+            echo "::error::Resolved run is not a successful main push of .github/workflows/ci.yml."
+            exit 1
+          fi
+
+          {
+            echo "deploy_sha=$deploy_sha"
+            echo "ci_run_id=$ci_run_id"
+          } >> "$GITHUB_OUTPUT"
+
+  approve:
+    name: Approve all production deployments
+    needs: resolve-ci-release
+    if: ${{ needs.resolve-ci-release.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment:
       name: Production Deployments
+    outputs:
+      deploy_sha: ${{ steps.approved.outputs.deploy_sha }}
+      ci_run_id: ${{ steps.approved.outputs.ci_run_id }}
     steps:
       - name: Record unified approval
+        id: approved
         env:
-          DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          CI_RUN_ID: ${{ needs.resolve-ci-release.outputs.ci_run_id }}
+          DEPLOY_SHA: ${{ needs.resolve-ci-release.outputs.deploy_sha }}
         run: |
+          {
+            echo "deploy_sha=$DEPLOY_SHA"
+            echo "ci_run_id=$CI_RUN_ID"
+          } >> "$GITHUB_OUTPUT"
           {
             echo "## Approved production deployment"
             echo
             printf -- '%s\n' "- Commit: \`$DEPLOY_SHA\`"
+            printf -- '%s\n' "- Verified CI run: \`$CI_RUN_ID\`"
             echo "- Targets: backend prod/demo, frontend prod/demo, archive prod"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -44,8 +149,8 @@ jobs:
     needs: approve
     uses: ./.github/workflows/deploy-backend.yml
     with:
-      deploy_sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
-      build_image: ${{ github.event_name == 'workflow_dispatch' }}
+      deploy_sha: ${{ needs.approve.outputs.deploy_sha }}
+      build_image: false
     secrets: inherit
 
   deploy-frontend:
@@ -53,7 +158,7 @@ jobs:
     needs: approve
     uses: ./.github/workflows/deploy-frontend.yml
     with:
-      deploy_sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      deploy_sha: ${{ needs.approve.outputs.deploy_sha }}
     secrets: inherit
 
   deploy-archive:
@@ -61,5 +166,5 @@ jobs:
     needs: approve
     uses: ./.github/workflows/deploy-archive.yml
     with:
-      deploy_sha: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      deploy_sha: ${{ needs.approve.outputs.deploy_sha }}
     secrets: inherit
