@@ -225,8 +225,8 @@ class InboxReplySendSettingsTest(TestCase):
         EmailServiceConfig.objects.create(
             name="Mail",
             is_active=True,
-            ses_from_email="reply@example.com",
-            ses_from_name="I2G",
+            from_email="reply@example.com",
+            from_name="I2G",
         )
 
     def test_reply_requires_ses_when_aws_is_not_configured(self):

@@ -461,7 +461,7 @@ def _aws_meta(metric_payload: dict, recipient_details: dict) -> dict:
         "aws_config": aws_config.name,
         "region": aws_config.region,
         "source_address": email_config.source_address,
-        "send_rate": email_config.ses_max_send_rate,
+        "send_rate": email_config.max_send_rate,
         "iam_key": f"...{aws_config.access_key_id[-4:]}" if aws_config.access_key_id else "Not configured",
         "metrics_available": metric_payload["metrics"]["available"],
         "metrics_reason": metric_payload["metrics"]["reason"],
