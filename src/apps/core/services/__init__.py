@@ -14,6 +14,7 @@ Subsystem               What it is                                          Impo
 ``background_jobs/``    Durable outbox: queue, worker, retry, rate limit     ``authn``, ``cms``, ``event``, ``mail``
 ``bedrock/``            Amazon Bedrock LLM client (converse + streaming)     ``mail``, ``projects``, ``system_intelligence``
 ``db_tools/``           Read-only ORM sandbox exposed as AI assistant tools  ``cli_admin``, ``system_intelligence``
+``email/``              Provider-neutral MIME + SES/SMTP email delivery      ``authn``, ``event``, ``mail``
 ``helpers/``            In-process task runner + sheet formula safety       ``authn``, ``event``, ``mail``, ``system_intelligence``
 ======================  ==================================================  ==================================================
 

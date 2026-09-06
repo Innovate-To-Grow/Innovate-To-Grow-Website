@@ -1,72 +1,48 @@
-"""Unit tests for the SES sender in mail.services.send_campaign.
+"""Compatibility coverage for the campaign delivery adapter."""
 
-Focuses on the behaviors changed for async event tracking: capturing the
-MessageId returned by boto3, passing ConfigurationSetName through to SES
-only when set, and the structured SesSendResult return type.
-"""
-
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
+from apps.core.services.email import DeliveryResult, UncertainEmailDeliveryError
 from apps.mail.services.send_campaign import SesSendResult, _send_via_ses
 
 
 class SendViaSesTests(TestCase):
-    def _client(self, message_id="SES-123"):
-        client = MagicMock()
-        client.send_raw_email.return_value = {"MessageId": message_id, "ResponseMetadata": {}}
-        return client
+    def _send(self, *, result=None, side_effect=None, configuration_set=""):
+        config = MagicMock(provider="ses")
+        with patch("apps.mail.services.send_campaign.transport.deliver_email") as deliver:
+            deliver.return_value = result or DeliveryResult(provider="ses", message_id="SES-123")
+            deliver.side_effect = side_effect
+            send_result = _send_via_ses(
+                ses_client=config,
+                source="I2G <i2g@example.com>",
+                recipient="target@example.com",
+                subject="Hi",
+                html_body="<p>Hi</p>",
+                configuration_set=configuration_set,
+            )
+        return send_result, deliver
 
     def test_returns_message_id_on_success(self):
-        client = self._client("SES-ABC")
-        result = _send_via_ses(
-            ses_client=client,
-            source="I2G <i2g@example.com>",
-            recipient="target@example.com",
-            subject="Hi",
-            html_body="<p>Hi</p>",
-        )
+        result, _ = self._send(result=DeliveryResult(provider="ses", message_id="SES-ABC"))
+
         self.assertIsInstance(result, SesSendResult)
         self.assertEqual(result.message_id, "SES-ABC")
         self.assertEqual(result.error, "")
 
-    def test_configuration_set_is_passed_when_provided(self):
-        client = self._client()
-        _send_via_ses(
-            ses_client=client,
-            source="src",
-            recipient="r@example.com",
-            subject="S",
-            html_body="B",
-            configuration_set="i2g-production",
-        )
-        kwargs = client.send_raw_email.call_args.kwargs
-        self.assertEqual(kwargs["ConfigurationSetName"], "i2g-production")
+    def test_configuration_set_is_forwarded(self):
+        _, deliver = self._send(configuration_set="i2g-production")
 
-    def test_configuration_set_kwarg_is_omitted_when_empty(self):
-        """SES rejects an empty-string ConfigurationSetName — must not send the kwarg at all."""
-        client = self._client()
-        _send_via_ses(
-            ses_client=client,
-            source="src",
-            recipient="r@example.com",
-            subject="S",
-            html_body="B",
-            configuration_set="",
-        )
-        kwargs = client.send_raw_email.call_args.kwargs
-        self.assertNotIn("ConfigurationSetName", kwargs)
+        self.assertEqual(deliver.call_args.kwargs["configuration_set"], "i2g-production")
+
+    def test_empty_configuration_set_is_forwarded_safely(self):
+        _, deliver = self._send(configuration_set="")
+
+        self.assertEqual(deliver.call_args.kwargs["configuration_set"], "")
 
     def test_exception_is_caught_and_returned_as_error(self):
-        client = MagicMock()
-        client.send_raw_email.side_effect = RuntimeError("boom")
-        result = _send_via_ses(
-            ses_client=client,
-            source="src",
-            recipient="r@example.com",
-            subject="S",
-            html_body="B",
-        )
+        result, _ = self._send(side_effect=UncertainEmailDeliveryError("outcome could not be confirmed"))
+
         self.assertEqual(result.message_id, "")
         self.assertIn("could not be confirmed", result.error)

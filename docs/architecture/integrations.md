@@ -32,22 +32,31 @@ A single IAM access key and AWS region power SES, SMS (End User Messaging), and 
 | `default_region` | Shared AWS region for SES, SMS, and Bedrock |
 | `sms_from_number` | SMS origination number for OTP SMS (optional override; auto-detected from End User Messaging when blank) |
 
-## AWS SES (Email)
+## Email delivery (AWS SES or SMTP)
 
-Primary email delivery service in production.
+The application has one globally active email provider at a time. Administrators
+select AWS SES or SMTP under **Mail → Notification Delivery**; authentication,
+tickets, campaigns, inbox replies, and test messages all use that selection.
+There is no per-message routing or automatic failover.
 
 | Concern | Implementation |
 |---------|---------------|
 | Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — active sender identity and campaign send rate |
 | AWS credentials | Shared `AWSCredentialConfig` IAM key + `default_region` |
+| SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
+| Provider layer | `src/apps/core/services/email/` |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
 | Ticket confirmation | `src/apps/event/services/ticket_mail.py` |
 
-Application auth, ticket, and campaign delivery uses AWS SES only when both
-the email sender and AWS credential rows are explicitly active and configured;
-it fails closed otherwise. Transactional/campaign work is materialized as
-`BackgroundJob` rows when durable jobs are enabled.
+Delivery fails closed unless the selected provider and sender are structurally
+configured. A failed or uncertain request is never retried through the other
+provider. Jobs resolve the active provider when execution begins, so queued work
+that has not started follows the current global selection.
+
+SES Configuration Set and SNS delivery-event tracking remain SES-specific.
+SMTP records successful submission acceptance only; it does not claim delivered,
+bounced, or complained status without a future SMTP feedback integration.
 
 ## AWS End User Messaging (SMS)
 

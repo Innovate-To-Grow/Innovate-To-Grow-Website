@@ -29,7 +29,7 @@ def handle_notification(envelope: dict[str, Any]) -> None:
     handler = EVENT_HANDLERS.get(event_type, unknown)
     campaign_ids = set()
     with transaction.atomic():
-        logs = list(RecipientLog.objects.select_for_update().filter(ses_message_id=ses_message_id))
+        logs = list(RecipientLog.objects.select_for_update().filter(provider="ses", provider_message_id=ses_message_id))
         for log in logs:
             if log.last_sns_message_id and log.last_sns_message_id == sns_message_id:
                 continue
