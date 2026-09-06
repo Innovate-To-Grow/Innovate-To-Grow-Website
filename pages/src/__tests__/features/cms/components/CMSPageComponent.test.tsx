@@ -162,4 +162,206 @@ describe('CMSPageComponent redirects and errors', () => {
     await Promise.resolve();
     expect(performCMSRouteRedirect).not.toHaveBeenCalled();
   });
+
+  it('shows NotFound when no page, error, or redirect is present', () => {
+    useCMSPage.mockReturnValue({
+      page: null,
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: false,
+    });
+
+    renderPage('/missing');
+
+    expect(screen.getByTestId('not-found')).toBeInTheDocument();
+  });
+
+  it('shows an error without a retry button when a redirect throws', async () => {
+    performCMSRouteRedirect.mockImplementation(() => {
+      throw new Error('boom');
+    });
+    useCMSPage.mockReturnValue({
+      page: null,
+      redirectTo: '/new',
+      loading: false,
+      error: null,
+      isLivePreview: false,
+    });
+
+    renderPage('/old');
+
+    expect(await screen.findByText('Something went wrong loading this page.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+  });
+
+  it('injects per-page CSS and clears it on unmount', () => {
+    useCMSPage.mockReturnValue({
+      page: {
+        slug: 'styled',
+        route: '/styled',
+        title: 'Styled page',
+        page_css_class: 'custom-page',
+        page_css: 'body { color: red; }',
+        meta_description: '',
+        blocks: [],
+      },
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: false,
+    });
+
+    const {unmount, container} = renderPage('/styled');
+
+    expect(container.querySelector('.custom-page')).not.toBeNull();
+    const style = document.getElementById('itg-page-css');
+    expect(style).not.toBeNull();
+    expect(style?.textContent).toBe('body { color: red; }');
+
+    unmount();
+    expect(document.getElementById('itg-page-css')?.textContent).toBe('');
+  });
+
+  it('reuses the existing style element for subsequent pages', () => {
+    const base = {
+      slug: 'styled',
+      route: '/styled',
+      title: 'Styled page',
+      page_css_class: 'custom-page',
+      meta_description: '',
+      blocks: [],
+    };
+    useCMSPage.mockReturnValue({
+      page: {...base, page_css: 'a{}'},
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: false,
+    });
+
+    const first = renderPage('/styled');
+    first.unmount();
+
+    useCMSPage.mockReturnValue({
+      page: {...base, page_css: 'b{}'},
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: false,
+    });
+    renderPage('/styled');
+
+    const style = document.getElementById('itg-page-css');
+    expect(style?.textContent).toBe('b{}');
+    expect(document.querySelectorAll('#itg-page-css')).toHaveLength(1);
+  });
+
+  it('shows the live preview modal with expiry and a title suffix', () => {
+    useCMSPage.mockReturnValue({
+      page: {
+        slug: 'live',
+        route: '/live',
+        title: 'Draft page',
+        page_css_class: '',
+        page_css: '',
+        meta_description: '',
+        blocks: [],
+        expires_at: '2026-08-24T23:00:00Z',
+      },
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: true,
+    });
+
+    renderPage('/live');
+
+    expect(
+      screen.getByText(
+        'Previewing This Page With Content Management System with Admin Permission',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Expires at/)).toBeInTheDocument();
+    expect(document.title).toContain('Draft page [Live Preview] | Innovate to Grow');
+  });
+
+  it('shows the CMS preview badge after dismissing the modal', () => {
+    useCMSPage.mockReturnValue({
+      page: {
+        slug: 'live',
+        route: '/live',
+        title: 'Draft page',
+        page_css_class: '',
+        page_css: '',
+        meta_description: '',
+        blocks: [],
+        expires_at: '2026-08-24T23:00:00Z',
+      },
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: true,
+    });
+
+    renderPage('/live');
+
+    fireEvent.click(screen.getByRole('button', {name: 'OK'}));
+
+    expect(screen.getByText('CMS Preview')).toBeInTheDocument();
+    expect(screen.getByText(/Expires/)).toBeInTheDocument();
+  });
+
+  it('dismisses the modal when the overlay backdrop is clicked', () => {
+    useCMSPage.mockReturnValue({
+      page: {
+        slug: 'live',
+        route: '/live',
+        title: 'Draft page',
+        page_css_class: '',
+        page_css: '',
+        meta_description: '',
+        blocks: [],
+      },
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: true,
+    });
+
+    const {container} = renderPage('/live');
+
+    fireEvent.click(container.querySelector('.cms-live-preview-overlay')!);
+
+    expect(screen.getByText('CMS Preview')).toBeInTheDocument();
+  });
+
+  it('re-opens the modal when the badge is clicked', () => {
+    useCMSPage.mockReturnValue({
+      page: {
+        slug: 'live',
+        route: '/live',
+        title: 'Draft page',
+        page_css_class: '',
+        page_css: '',
+        meta_description: '',
+        blocks: [],
+      },
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: true,
+    });
+
+    renderPage('/live');
+
+    fireEvent.click(screen.getByRole('button', {name: 'OK'}));
+    fireEvent.click(screen.getByText('CMS Preview'));
+
+    expect(
+      screen.getByText(
+        'Previewing This Page With Content Management System with Admin Permission',
+      ),
+    ).toBeInTheDocument();
+  });
 });

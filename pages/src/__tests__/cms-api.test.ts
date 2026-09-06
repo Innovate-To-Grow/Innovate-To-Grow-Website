@@ -10,6 +10,8 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import {
+  fetchCMSEmbed,
+  fetchCMSEmbedHosts,
   fetchCMSLivePreview,
   fetchCMSHomepage,
   fetchCMSPage,
@@ -24,6 +26,11 @@ describe('normalizeCMSRoute', () => {
     expect(normalizeCMSRoute('/')).toBe('/');
   });
 
+  it('normalizes empty and whitespace-only input to the root path', () => {
+    expect(normalizeCMSRoute('')).toBe('/');
+    expect(normalizeCMSRoute('   ')).toBe('/');
+  });
+
   it('preserves case and safe punctuation used by legacy paths', () => {
     expect(normalizeCMSRoute('/FAQs')).toBe('/FAQs');
     expect(normalizeCMSRoute('/Archive.v1/~old+page')).toBe('/Archive.v1/~old+page');
@@ -36,6 +43,24 @@ describe('normalizeCMSRoute', () => {
     expect(() => normalizeCMSRoute('/about\\team')).toThrow();
     expect(() => normalizeCMSRoute('/about?preview=true')).toThrow();
     expect(() => normalizeCMSRoute('/about/%2e%2e/admin')).toThrow();
+  });
+
+  it('rejects routes containing C0 or DEL control characters', () => {
+    expect(() => normalizeCMSRoute('/about\u001fteams')).toThrow();
+    expect(() => normalizeCMSRoute('/about\u007f')).toThrow();
+  });
+
+  it('rejects invalid percent encoding in a path segment', () => {
+    expect(() => normalizeCMSRoute('/about/%zz')).toThrow(
+      'CMS route contains invalid percent encoding.',
+    );
+  });
+
+  it('rejects unsafe decoded path segments', () => {
+    expect(() => normalizeCMSRoute('/about/.')).toThrow();
+    expect(() => normalizeCMSRoute('/about/%2F')).toThrow();
+    expect(() => normalizeCMSRoute('/about/%5C')).toThrow();
+    expect(() => normalizeCMSRoute('/about/%00')).toThrow();
   });
 });
 
@@ -77,6 +102,107 @@ describe('fetchCMSPage', () => {
 
     expect(getMock).not.toHaveBeenCalled();
   });
+
+  it('builds the collection URL when the normalized route is the root', async () => {
+    await fetchCMSPage('/');
+
+    expect(getMock).toHaveBeenCalledWith('/cms/pages/', {signal: undefined});
+  });
+
+  it('does not retry a canceled request', async () => {
+    getMock.mockRejectedValue({code: 'ERR_CANCELED'});
+
+    await expect(fetchCMSPage('/about')).rejects.toEqual({code: 'ERR_CANCELED'});
+    expect(getMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry a non-retryable HTTP status', async () => {
+    getMock.mockRejectedValue({response: {status: 404}});
+
+    await expect(fetchCMSPage('/about')).rejects.toEqual({response: {status: 404}});
+    expect(getMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a retryable status once and returns the eventual response', async () => {
+    getMock
+      .mockRejectedValueOnce({response: {status: 503, headers: {'retry-after': '0'}}})
+      .mockResolvedValueOnce({data: {route: '/about'}});
+
+    await expect(fetchCMSPage('/about')).resolves.toEqual({route: '/about'});
+    expect(getMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('applies a jittered backoff when no retry-after header is present', async () => {
+    getMock
+      .mockRejectedValueOnce({response: {status: 502}})
+      .mockResolvedValueOnce({data: {route: '/about'}});
+
+    await expect(fetchCMSPage('/about')).resolves.toEqual({route: '/about'});
+    expect(getMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('honors an HTTP-date retry-after header', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    try {
+      getMock
+        .mockRejectedValueOnce({
+          response: {
+            status: 503,
+            headers: {'retry-after': 'Thu, 01 Jan 2026 00:00:02 GMT'},
+          },
+        })
+        .mockResolvedValueOnce({data: {route: '/about'}});
+
+      const pending = fetchCMSPage('/about');
+      await vi.advanceTimersByTimeAsync(2000);
+
+      await expect(pending).resolves.toEqual({route: '/about'});
+      expect(getMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to jittered backoff for an unparseable retry-after header', async () => {
+    getMock
+      .mockRejectedValueOnce({
+        response: {status: 503, headers: {'retry-after': 'garbage'}},
+      })
+      .mockResolvedValueOnce({data: {route: '/about'}});
+
+    await expect(fetchCMSPage('/about')).resolves.toEqual({route: '/about'});
+    expect(getMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back to jittered backoff for an expired retry-after date', async () => {
+    getMock
+      .mockRejectedValueOnce({
+        response: {
+          status: 503,
+          headers: {'retry-after': 'Thu, 01 Jan 2020 00:00:00 GMT'},
+        },
+      })
+      .mockResolvedValueOnce({data: {route: '/about'}});
+
+    await expect(fetchCMSPage('/about')).resolves.toEqual({route: '/about'});
+    expect(getMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('aborts a pending retry when the signal fires during backoff', async () => {
+    getMock.mockRejectedValueOnce({
+      response: {status: 503, headers: {'retry-after': '10'}},
+    });
+    const controller = new AbortController();
+    const pending = fetchCMSPage('/about', false, controller.signal);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    controller.abort();
+
+    await expect(pending).rejects.toThrow('The request was aborted.');
+    expect(getMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('fetchCMSHomepage', () => {
@@ -95,6 +221,31 @@ describe('fetchCMSHomepage', () => {
     expect(getMock).toHaveBeenCalledWith('/cms/homepage/', expect.objectContaining({signal: expect.any(AbortSignal)}));
     resolve({data: {route: '/'}});
     await expect(Promise.all([first, second])).resolves.toEqual([{route: '/'}, {route: '/'}]);
+  });
+
+  it('rejects immediately when the consumer signal is already aborted', async () => {
+    getMock.mockResolvedValue({data: {route: '/'}});
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(fetchCMSHomepage(controller.signal)).rejects.toThrow('The request was aborted.');
+    expect(getMock).toHaveBeenCalledTimes(1);
+    // Let the shared homepage request settle so it clears before the next test.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  it('guards against double release when the signal aborts before resolution', async () => {
+    let resolve!: (value: {data: {route: string}}) => void;
+    getMock.mockReturnValue(new Promise((next) => { resolve = next; }));
+
+    const controller = new AbortController();
+    const pending = fetchCMSHomepage(controller.signal);
+    controller.abort();
+    resolve({data: {route: '/'}});
+
+    await expect(pending).resolves.toEqual({route: '/'});
   });
 });
 
@@ -133,5 +284,38 @@ describe('fetchCMSLivePreview', () => {
     await fetchCMSLivePreview('../preview/evil');
 
     expect(getMock).toHaveBeenCalledWith('/cms/live-preview/..%2Fpreview%2Fevil/');
+  });
+});
+
+describe('fetchCMSEmbedHosts', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+    getMock.mockResolvedValue({data: {hosts: ['a.example'], revision: '1'}});
+  });
+
+  it('requests the embed hosts allowlist', async () => {
+    await fetchCMSEmbedHosts();
+
+    expect(getMock).toHaveBeenCalledWith('/cms/embed-hosts/');
+  });
+
+  it('returns the parsed response body', async () => {
+    await expect(fetchCMSEmbedHosts()).resolves.toEqual({
+      hosts: ['a.example'],
+      revision: '1',
+    });
+  });
+});
+
+describe('fetchCMSEmbed', () => {
+  beforeEach(() => {
+    getMock.mockReset();
+    getMock.mockResolvedValue({data: {blocks: []}});
+  });
+
+  it('requests an embed by slug', async () => {
+    await fetchCMSEmbed('schedule');
+
+    expect(getMock).toHaveBeenCalledWith('/cms/embed/schedule/');
   });
 });

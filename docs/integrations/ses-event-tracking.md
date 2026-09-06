@@ -1,5 +1,9 @@
 # AWS SES Event Tracking (Bounces, Complaints, Deliveries)
 
+This integration applies only while AWS SES is the globally selected email
+provider. SMTP submissions do not produce SES events, and the webhook ignores
+recipient records sent through another provider.
+
 This doc is an operator runbook. It covers the AWS-side configuration required
 for `RecipientLog` to reflect the real delivery outcome of campaign emails.
 Without it, `send_raw_email` returning 200 only proves SES *accepted* the
@@ -107,7 +111,7 @@ The endpoint also has a DRF throttle at 600/minute per source IP
 ## What this does NOT do (out of scope for now)
 
 - Auto-unsubscribing a member's `ContactEmail` after a hard bounce.
-- Backfilling `ses_message_id` for pre-existing rows.
+- Backfilling `provider_message_id` for pre-existing rows.
 - Automatically retrying an `uncertain` provider call. Operators must
   reconcile SES evidence before using the explicit retry action.
 

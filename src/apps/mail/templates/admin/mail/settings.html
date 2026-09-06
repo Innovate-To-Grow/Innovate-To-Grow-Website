@@ -10,7 +10,7 @@
 <div class="mb-6 rounded-default border border-base-200 bg-white px-5 py-5 shadow-sm dark:border-base-700 dark:bg-base-800">
     <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div class="min-w-0">
-            <div class="mb-1 text-xs font-medium uppercase text-base-400">Amazon delivery status</div>
+            <div class="mb-1 text-xs font-medium uppercase text-base-400">Delivery provider status</div>
             <h3 class="text-base font-semibold text-font-important-light dark:text-font-important-dark">Notification Delivery</h3>
             <div class="mt-4 flex flex-wrap items-center gap-2">
                 {% if email_provider_color == "success" %}
@@ -100,19 +100,19 @@
             <div>
                 <dt class="text-xs font-medium uppercase text-base-400">From Name</dt>
                 <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
-                    {{ config.ses_from_name|default:"Not configured" }}
+                    {{ config.from_name|default:"Not configured" }}
                 </dd>
             </div>
             <div>
                 <dt class="text-xs font-medium uppercase text-base-400">From Email</dt>
                 <dd class="mt-1 break-all text-sm font-medium text-font-default-light dark:text-font-default-dark">
-                    {{ config.ses_from_email|default:"Not configured" }}
+                    {{ config.from_email|default:"Not configured" }}
                 </dd>
             </div>
             <div>
                 <dt class="text-xs font-medium uppercase text-base-400">Campaign Send Rate</dt>
                 <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
-                    {{ config.ses_max_send_rate }} emails/sec
+                    {{ config.max_send_rate }} emails/sec
                 </dd>
             </div>
         </dl>

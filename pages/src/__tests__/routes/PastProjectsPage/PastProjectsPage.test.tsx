@@ -151,6 +151,54 @@ vi.mock('@/features/projects', () => ({
                 >
                     Delete first mocked row
                 </button>
+                <button
+                    type="button"
+                    onClick={() =>
+                        void onUpdateShare?.(
+                            cleanRows,
+                            'Renamed share',
+                            note ?? '',
+                        ).catch(() => undefined)
+                    }
+                >
+                    Rename mocked share
+                </button>
+                <button
+                    type="button"
+                    onClick={() =>
+                        void onUpdateShare?.(
+                            cleanRows,
+                            title,
+                            note ?? '',
+                        ).catch(() => undefined)
+                    }
+                >
+                    No-op update
+                </button>
+                <button
+                    type="button"
+                    onClick={() =>
+                        void onUpdateShare?.(
+                            [...cleanRows, addedRow],
+                            title,
+                            note ?? '',
+                        ).catch(() => undefined)
+                    }
+                >
+                    Edit with added row
+                </button>
+                <button
+                    type="button"
+                    onClick={() =>
+                        void onUpdateShare?.(
+                            [...cleanRows].reverse(),
+                            title,
+                            note ?? '',
+                        ).catch(() => undefined)
+                    }
+                >
+                    Reverse mocked rows
+                </button>
             </div>
         );
     },
@@ -514,6 +562,123 @@ describe('PastProjectsPage', () => {
 
         await waitFor(() => expect(fetchPastProjectShare).toHaveBeenCalledWith(initial.id));
         expect(updatePastProjectShare).toHaveBeenCalledTimes(1);
+    });
+
+    it('edits a malformed legacy row using its full-fingerprint fallback key', async () => {
+        const malformed: ProjectGridRow = {...sampleRow, semester_label: '', team_number: ''};
+        delete malformed.id;
+        const initial = shareFixture({rows: [malformed]});
+        sharedState.share = initial;
+        vi.mocked(updatePastProjectShare).mockResolvedValue(
+            shareFixture({rows: [{...malformed, team_name: 'Edited Team Alpha'}], version: 5}),
+        );
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'Edit mocked row'}));
+
+        await waitFor(() =>
+            expect(updatePastProjectShare).toHaveBeenCalledWith(initial.id, {
+                rows: [{...malformed, team_name: 'Edited Team Alpha'}],
+                version: 4,
+            }),
+        );
+    });
+
+    it('rebases a submitted row addition into the current share', async () => {
+        const initial = shareFixture();
+        sharedState.share = initial;
+        vi.mocked(updatePastProjectShare).mockResolvedValue(
+            shareFixture({rows: [sampleRow, addedRow], version: 5}),
+        );
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'Edit with added row'}));
+
+        await waitFor(() =>
+            expect(updatePastProjectShare).toHaveBeenCalledWith(initial.id, {
+                rows: [sampleRow, addedRow],
+                version: 4,
+            }),
+        );
+    });
+
+    it('reorders survivor rows when the submitted order changes', async () => {
+        const initial = shareFixture({rows: [sampleRow, addedRow]});
+        sharedState.share = initial;
+        vi.mocked(updatePastProjectShare).mockResolvedValue(
+            shareFixture({rows: [addedRow, sampleRow], version: 5}),
+        );
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'Reverse mocked rows'}));
+
+        await waitFor(() =>
+            expect(updatePastProjectShare).toHaveBeenCalledWith(initial.id, {
+                rows: [addedRow, sampleRow],
+                version: 4,
+            }),
+        );
+    });
+
+    it('rethrows non-conflict mutation errors without showing a conflict', async () => {
+        const initial = shareFixture();
+        sharedState.share = initial;
+        vi.mocked(updatePastProjectShare)
+            .mockRejectedValueOnce('boom')
+            .mockRejectedValueOnce(new Error('network down'));
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'Update mocked note'}));
+        await waitFor(() => expect(updatePastProjectShare).toHaveBeenCalledTimes(1));
+
+        fireEvent.click(screen.getByRole('button', {name: 'Update mocked note'}));
+        await waitFor(() => expect(updatePastProjectShare).toHaveBeenCalledTimes(2));
+
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('skips the network call when a submitted patch is empty', async () => {
+        const initial = shareFixture();
+        sharedState.share = initial;
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'No-op update'}));
+
+        await act(async () => {});
+        expect(updatePastProjectShare).not.toHaveBeenCalled();
+    });
+
+    it('renames a shared page', async () => {
+        const initial = shareFixture();
+        sharedState.share = initial;
+        vi.mocked(updatePastProjectShare).mockResolvedValue(
+            shareFixture({name: 'Renamed share', version: 5}),
+        );
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'Rename mocked share'}));
+
+        await waitFor(() =>
+            expect(updatePastProjectShare).toHaveBeenCalledWith(initial.id, {
+                name: 'Renamed share',
+                version: 4,
+            }),
+        );
+    });
+
+    it('resets overrides and mutation state when switching to a different share', async () => {
+        sharedState.share = shareFixture({note: 'first'});
+        const {rerender} = renderPage();
+        expect(await screen.findByTestId('share-note')).toHaveTextContent('first');
+
+        sharedState.share = shareFixture({id: 'share-def', note: 'second'});
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage />
+            </MemoryRouter>,
+        );
+
+        expect(await screen.findByTestId('share-note')).toHaveTextContent('second');
     });
 
 });

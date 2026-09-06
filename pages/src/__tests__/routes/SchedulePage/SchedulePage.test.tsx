@@ -1,8 +1,8 @@
-import {render} from '@testing-library/react';
-import {MemoryRouter} from 'react-router';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {act, cleanup, fireEvent, render, screen} from '@testing-library/react';
+import {MemoryRouter, useLocation} from 'react-router';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import type {EventSchedulePayload, ScheduleSlot} from '@/features/events/api';
+import type {EventSchedulePayload, ScheduleProjectRow, ScheduleSlot} from '@/features/events/api';
 import {SchedulePage} from '@/routes/SchedulePage/SchedulePage';
 
 const useCurrentEventScheduleMock = vi.fn();
@@ -110,6 +110,26 @@ function schedulePayload(): EventSchedulePayload {
   };
 }
 
+function projectRow(overrides: Partial<ScheduleProjectRow> = {}): ScheduleProjectRow {
+  return {
+    id: 'project-1',
+    track: 1,
+    order: 1,
+    year_semester: '2026 Spring',
+    class_code: 'CSE',
+    team_number: 'CSE-101',
+    team_name: 'Team Alpha',
+    project_title: 'Smart Grid',
+    organization: 'Acme',
+    industry: 'Energy',
+    abstract: 'A smart grid project.',
+    student_names: 'Alice, Bob',
+    is_presenting: true,
+    tooltip: '',
+    ...overrides,
+  };
+}
+
 describe('SchedulePage', () => {
   beforeEach(() => {
     useCurrentEventScheduleMock.mockReset();
@@ -118,6 +138,13 @@ describe('SchedulePage', () => {
       writable: true,
       value: 1024,
     });
+    // jsdom does not implement scrollIntoView or matchMedia.
+    Element.prototype.scrollIntoView = vi.fn();
+    delete (window as {matchMedia?: unknown}).matchMedia;
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('renders full missing presentation rows as Break while leaving partial missing cells blank', () => {
@@ -203,5 +230,304 @@ describe('SchedulePage', () => {
     );
 
     expect(useCurrentEventScheduleMock).toHaveBeenCalledWith('schedule-query');
+  });
+
+  it('renders the loading state', () => {
+    useCurrentEventScheduleMock.mockReturnValue({data: null, loading: true, error: null});
+
+    render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Loading schedule...')).toBeInTheDocument();
+  });
+
+  it('renders the error state and its unavailable fallback', () => {
+    useCurrentEventScheduleMock.mockReturnValue({data: null, loading: false, error: 'Backend unavailable'});
+
+    render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Backend unavailable')).toBeInTheDocument();
+  });
+
+  it('falls back to the unavailable message when there is neither data nor error', () => {
+    useCurrentEventScheduleMock.mockReturnValue({data: null, loading: false, error: null});
+
+    render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Event schedule is unavailable.')).toBeInTheDocument();
+  });
+
+  it('switches to the mobile grid when the media query fires', () => {
+    const listeners = new Map<string, (event: {matches: boolean}) => void>();
+    const mql = {
+      matches: false,
+      addEventListener: vi.fn((event: string, callback: (e: {matches: boolean}) => void) => {
+        listeners.set(event, callback);
+      }),
+      removeEventListener: vi.fn(),
+    };
+    (window as unknown as {matchMedia: unknown}).matchMedia = vi.fn().mockReturnValue(mql);
+
+    useCurrentEventScheduleMock.mockReturnValue({
+      data: schedulePayload(),
+      loading: false,
+      error: null,
+    });
+
+    const {container} = render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(container.querySelector('.schedule-presentation-table')).toBeInTheDocument();
+    expect(container.querySelector('.schedule-page-mobile-grid')).not.toBeInTheDocument();
+
+    act(() => {
+      listeners.get('change')?.({matches: true});
+    });
+
+    expect(container.querySelector('.schedule-page-mobile-grid')).toBeInTheDocument();
+    expect(container.querySelector('.schedule-presentation-table')).not.toBeInTheDocument();
+  });
+
+  it('sorts sections by known order, then display order, breaking ties by display order', () => {
+    const payload = schedulePayload();
+    const baseSection = payload.sections[0];
+    payload.sections = [
+      {...baseSection, id: 's-zzz', code: 'ZZZ', label: 'Unknown', display_order: 0},
+      {...baseSection, id: 's-cap-a', code: 'CAP', label: 'Cap A', display_order: 5},
+      {...baseSection, id: 's-cap-b', code: 'CAP', label: 'Cap B', display_order: 3},
+    ];
+
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    const {container} = render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    const headings = container.querySelectorAll('.schedule-presentation-heading');
+    expect([...headings].map((heading) => heading.textContent)).toEqual([
+      'Cap B (CAP)',
+      'Cap A (CAP)',
+      'Unknown (ZZZ)',
+    ]);
+  });
+
+  it('renders winners and grand-winner awards', () => {
+    const payload = schedulePayload();
+    payload.show_winners = true;
+    payload.grand_winners = [
+      {section: 'CAP', winner: 'Grand Winner A'},
+      {section: 'XYZ', winner: 'Grand Winner B'},
+    ];
+    payload.sections = [
+      {
+        ...payload.sections[0],
+        id: 's-cap',
+        code: 'CAP',
+        label: 'Capstone',
+        tracks: [
+          {
+            ...payload.sections[0].tracks[0],
+            id: 'track-winner',
+            track_number: 1,
+            topic: 'AI',
+            winner: 'Team Alpha',
+            slots: [slot(1, 'CAP-101')],
+          },
+        ],
+      },
+    ];
+
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Winners!')).toBeInTheDocument();
+    expect(screen.getByText('F3 Innovate Engineering Award:')).toBeInTheDocument();
+    expect(screen.getByText('F3 Innovate Award:')).toBeInTheDocument();
+    expect(screen.getByText('Grand Winner A')).toBeInTheDocument();
+    expect(screen.getByText('Grand Winner B')).toBeInTheDocument();
+    expect(screen.getByText('Team Alpha')).toBeInTheDocument();
+  });
+
+  it('renders expo and awards agenda items', () => {
+    const payload = schedulePayload();
+    payload.expo = {
+      title: 'Expo',
+      location: 'Hall A',
+      items: [{id: 'expo-1', time: '10:00', title: 'Booths', location: 'Hall A'}],
+    };
+    payload.awards = {
+      title: 'Awards',
+      location: 'Main Stage',
+      items: [{id: 'award-1', time: '11:00', title: 'Ceremony', location: 'Main Stage'}],
+    };
+
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Hall A')).toBeInTheDocument();
+    expect(screen.getByText('Booths')).toBeInTheDocument();
+    expect(screen.getByText('Main Stage')).toBeInTheDocument();
+    expect(screen.getByText('Ceremony')).toBeInTheDocument();
+  });
+
+  it('sets the team search param when a team link is clicked', () => {
+    useCurrentEventScheduleMock.mockReturnValue({
+      data: schedulePayload(),
+      loading: false,
+      error: null,
+    });
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="location-probe">{location.search}</div>;
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/schedule']}>
+        <SchedulePage />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: 'CSE-101'}));
+
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('value=CSE-101');
+    expect(screen.getByPlaceholderText('Search projects...')).toHaveValue('CSE-101');
+  });
+
+  it('filters the projects grid down to presenting projects', () => {
+    const payload = schedulePayload();
+    payload.projects = [
+      projectRow({id: 'project-1', team_number: 'CSE-101', project_title: 'Smart Grid'}),
+      projectRow({id: 'project-2', team_number: 'CSE-102', project_title: 'Hidden Project', is_presenting: false}),
+    ];
+
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText('Smart Grid').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('Hidden Project')).not.toBeInTheDocument();
+  });
+
+  it('selects a team from the mobile schedule cards', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 500,
+    });
+    useCurrentEventScheduleMock.mockReturnValue({
+      data: schedulePayload(),
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', {name: 'CSE-101'})[0]);
+
+    expect(screen.getByPlaceholderText('Search projects...')).toHaveValue('CSE-101');
+  });
+
+  it('clears the team search param when a slot has no team identifier', () => {
+    const payload = schedulePayload();
+    const baseTrack = payload.sections[0].tracks[0];
+    payload.sections = [
+      {
+        ...payload.sections[0],
+        tracks: [
+          {
+            ...baseTrack,
+            slots: [{...slot(1, 'CSE-101'), team_number: '', display_text: ''}],
+          },
+        ],
+      },
+    ];
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="location-probe">{location.search}</div>;
+    };
+
+    const {container} = render(
+      <MemoryRouter initialEntries={['/schedule?value=CSE-101']}>
+        <SchedulePage />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(container.querySelector('.schedule-presentation-team')!);
+
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('');
+  });
+
+  it('renders TBD placeholders and slot organizations', () => {
+    const payload = schedulePayload();
+    const [trackOne, trackTwo] = payload.sections[0].tracks;
+    payload.sections = [
+      {
+        ...payload.sections[0],
+        tracks: [
+          {
+            ...trackOne,
+            room: '',
+            topic: 'AI',
+            slots: [{...slot(1, 'CSE-101'), organization: 'Acme Corp'}],
+          },
+          {
+            ...trackTwo,
+            room: 'Room 102',
+            topic: '',
+            slots: [slot(1, 'CSE-201')],
+          },
+        ],
+      },
+    ];
+
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByText('TBD').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Acme Corp')).toBeInTheDocument();
   });
 });
