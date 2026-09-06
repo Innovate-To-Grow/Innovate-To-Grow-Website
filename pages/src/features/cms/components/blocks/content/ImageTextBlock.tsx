@@ -1,10 +1,4 @@
 import { SafeHtml } from "@/components/SafeHtml/SafeHtml";
-import engineering640 from "@/assets/images/engineering-capstone-640.webp";
-import engineering1280 from "@/assets/images/engineering-capstone-1280.webp";
-import home800 from "@/assets/images/home-img-800.webp";
-import home1600 from "@/assets/images/home-img-1600.webp";
-import software640 from "@/assets/images/software-engineering-capstone-640.webp";
-import software1280 from "@/assets/images/software-engineering-capstone-1280.webp";
 
 export interface ImageTextData {
   heading?: string;
@@ -19,20 +13,20 @@ const LOCAL_IMAGES: Record<
   { src: string; srcSet: string; width: number; height: number }
 > = {
   "/assets/images/home_img.jpg": {
-    src: home1600,
-    srcSet: `${home800} 800w, ${home1600} 1600w`,
+    src: "/assets/images/home-img-1600.webp",
+    srcSet: "/assets/images/home-img-800.webp 800w, /assets/images/home-img-1600.webp 1600w",
     width: 1600,
     height: 500,
   },
   "/assets/about/engineering_capstone.webp": {
-    src: engineering1280,
-    srcSet: `${engineering640} 640w, ${engineering1280} 1280w`,
+    src: "/assets/images/engineering-capstone-1280.webp",
+    srcSet: "/assets/images/engineering-capstone-640.webp 640w, /assets/images/engineering-capstone-1280.webp 1280w",
     width: 1280,
     height: 854,
   },
   "/assets/about/software_engineering_capstone.webp": {
-    src: software1280,
-    srcSet: `${software640} 640w, ${software1280} 1280w`,
+    src: "/assets/images/software-engineering-capstone-1280.webp",
+    srcSet: "/assets/images/software-engineering-capstone-640.webp 640w, /assets/images/software-engineering-capstone-1280.webp 1280w",
     width: 1280,
     height: 854,
   },

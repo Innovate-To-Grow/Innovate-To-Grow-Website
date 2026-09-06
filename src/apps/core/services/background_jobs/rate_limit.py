@@ -9,9 +9,9 @@ from apps.core.models import DeliveryRateLimit
 
 
 def configured_ses_rate(config) -> float:
-    """Return a finite non-negative SES rate from a service configuration."""
+    """Return the configured finite non-negative email delivery rate."""
     try:
-        rate = float(config.ses_max_send_rate or 0)
+        rate = float(config.max_send_rate or 0)
     except (AttributeError, TypeError, ValueError):
         return 0.0
     return rate if isfinite(rate) and rate > 0 else 0.0

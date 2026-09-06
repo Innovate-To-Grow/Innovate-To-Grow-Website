@@ -252,4 +252,165 @@ describe('CompleteProfilePage', () => {
       generation: 'generation-a',
     });
   });
+
+  it('redirects to /login when unauthenticated', async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      requiresProfileCompletion: true,
+      clearProfileCompletionRequirement,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+          <Route path="/login" element={<div>login-route</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('login-route')).toBeInTheDocument();
+    expect(mockGetProfile).not.toHaveBeenCalled();
+  });
+
+  it('redirects to /account when profile completion is no longer required', async () => {
+    mockUseAuth.mockReturnValue({
+      user: {member_uuid: 'member-a', email: 'a@example.com'},
+      isAuthenticated: true,
+      requiresProfileCompletion: false,
+      clearProfileCompletionRequirement,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+          <Route path="/account" element={<div>account-route</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('account-route')).toBeInTheDocument();
+    expect(mockGetProfile).not.toHaveBeenCalled();
+  });
+
+  it('reports an error when a profile load fails', async () => {
+    mockGetProfile.mockRejectedValue({response: {data: {detail: 'Load failed'}}});
+
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Load failed')).toBeInTheDocument();
+    expect(await screen.findByLabelText('First Name')).toBeInTheDocument();
+  });
+
+  it('rejects a submit without a first name', async () => {
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText('First Name');
+
+    fireEvent.change(screen.getByLabelText('Last Name'), {target: {value: 'Lovelace'}});
+    fireEvent.submit(screen.getByRole('button', {name: 'Continue to Account'}).closest('form')!);
+
+    expect(await screen.findByText('First name is required.')).toBeInTheDocument();
+    expect(mockUpdateProfileFields).not.toHaveBeenCalled();
+  });
+
+  it('rejects a submit without a last name', async () => {
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText('First Name');
+
+    fireEvent.change(screen.getByLabelText('First Name'), {target: {value: 'Ada'}});
+    fireEvent.submit(screen.getByRole('button', {name: 'Continue to Account'}).closest('form')!);
+
+    expect(await screen.findByText('Last name is required.')).toBeInTheDocument();
+    expect(mockUpdateProfileFields).not.toHaveBeenCalled();
+  });
+
+  it('rejects a submit without an organization name', async () => {
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText('First Name');
+
+    fireEvent.change(screen.getByLabelText('First Name'), {target: {value: 'Ada'}});
+    fireEvent.change(screen.getByLabelText('Last Name'), {target: {value: 'Lovelace'}});
+    fireEvent.submit(screen.getByRole('button', {name: 'Continue to Account'}).closest('form')!);
+
+    expect(await screen.findByText('Organization name is required.')).toBeInTheDocument();
+    expect(mockUpdateProfileFields).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a save failure', async () => {
+    mockUpdateProfileFields.mockRejectedValue({response: {data: {detail: 'Save failed'}}});
+
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText('First Name');
+
+    fireEvent.change(screen.getByLabelText('First Name'), {target: {value: 'Ada'}});
+    fireEvent.change(screen.getByLabelText('Last Name'), {target: {value: 'Lovelace'}});
+    fireEvent.change(screen.getByPlaceholderText('Company or organization name'), {
+      target: {value: 'Acme Corp'},
+    });
+    fireEvent.submit(screen.getByRole('button', {name: 'Continue to Account'}).closest('form')!);
+
+    expect(await screen.findByText('Save failed')).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('switches to individual and submits the literal Individual organization', async () => {
+    render(
+      <MemoryRouter initialEntries={['/complete-profile']}>
+        <Routes>
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText('First Name');
+
+    fireEvent.click(screen.getByRole('button', {name: 'Individual'}));
+    expect(screen.queryByPlaceholderText('Company or organization name')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('First Name'), {target: {value: 'Ada'}});
+    fireEvent.change(screen.getByLabelText('Last Name'), {target: {value: 'Lovelace'}});
+    fireEvent.submit(screen.getByRole('button', {name: 'Continue to Account'}).closest('form')!);
+
+    await waitFor(() => {
+      expect(mockUpdateProfileFields).toHaveBeenCalledWith({
+        first_name: 'Ada',
+        middle_name: '',
+        last_name: 'Lovelace',
+        organization: 'Individual',
+        title: '',
+      });
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('/account', {replace: true});
+  });
 });

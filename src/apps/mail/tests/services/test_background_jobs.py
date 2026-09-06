@@ -259,7 +259,7 @@ class DurableCampaignQueueTests(TestCase):
         campaign.refresh_from_db()
         self.assertEqual(job.status, BackgroundJob.Status.SUCCEEDED)
         self.assertEqual(log.status, "sent")
-        self.assertEqual(log.ses_message_id, "ses-123")
+        self.assertEqual(log.provider_message_id, "ses-123")
         self.assertEqual(campaign.status, "sent")
         self.assertEqual(campaign.sent_count, 1)
 
@@ -296,7 +296,7 @@ class DurableCampaignQueueTests(TestCase):
         campaign.refresh_from_db()
         self.assertEqual(job.status, BackgroundJob.Status.UNCERTAIN)
         self.assertEqual(log.status, "uncertain")
-        self.assertEqual(log.ses_message_id, "")
+        self.assertEqual(log.provider_message_id, "")
         self.assertEqual(campaign.status, "failed")
 
     @patch("apps.mail.services.campaign.dispatch.wait_for_delivery_slot")
@@ -319,8 +319,9 @@ class DurableCampaignQueueTests(TestCase):
     ):
         load_config.return_value = Mock(
             source_address="Sender <sender@example.com>",
+            provider="ses",
             ses_configuration_set_name="",
-            ses_max_send_rate=7,
+            max_send_rate=7,
         )
         self._queued_email()
 
@@ -585,7 +586,7 @@ class DurableCampaignQueueTests(TestCase):
         RecipientLog.objects.filter(pk=log.pk).update(
             status="sent",
             sent_at=stale_at,
-            ses_message_id="known-provider-id",
+            provider_message_id="known-provider-id",
         )
         BackgroundJob.objects.filter(pk=job.pk).update(
             claimed_at=stale_at,
@@ -611,7 +612,7 @@ class DurableCampaignQueueTests(TestCase):
         RecipientLog.objects.filter(pk=log.pk).update(
             status="sent",
             sent_at=stale_at,
-            ses_message_id="known-provider-id",
+            provider_message_id="known-provider-id",
         )
         BackgroundJob.objects.filter(pk=job.pk).update(
             claimed_at=stale_at,
@@ -1088,7 +1089,7 @@ class DeliveryRecoveryInterleavingTests(TransactionTestCase):
                     ).update(
                         status="sent",
                         sent_at=timezone.now(),
-                        ses_message_id="late-provider-result",
+                        provider_message_id="late-provider-result",
                     )
                 )
             except Exception as exc:  # noqa: BLE001 - surfaced below.
@@ -1122,5 +1123,5 @@ class DeliveryRecoveryInterleavingTests(TransactionTestCase):
         campaign.refresh_from_db()
         self.assertEqual(job.status, BackgroundJob.Status.UNCERTAIN)
         self.assertEqual(log.status, "uncertain")
-        self.assertEqual(log.ses_message_id, "")
+        self.assertEqual(log.provider_message_id, "")
         self.assertEqual(campaign.status, "failed")

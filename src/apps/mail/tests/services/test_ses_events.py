@@ -36,7 +36,7 @@ class ProcessSnsEnvelopeTests(TestCase):
             email_address="target@example.com",
             status="sent",
             provider="ses",
-            ses_message_id=SES_MSG_ID,
+            provider_message_id=SES_MSG_ID,
         )
 
     def _reload(self):
@@ -184,7 +184,7 @@ class ProcessSnsEnvelopeTests(TestCase):
         with self.assertRaises(SesEventError):
             process_sns_envelope({"Type": "Notification", "MessageId": "x", "Message": "not json"})
 
-    def test_notification_without_ses_message_id_is_skipped(self):
+    def test_notification_without_provider_message_id_is_skipped(self):
         body = {"eventType": "Bounce", "mail": {}, "bounce": {}}
         env = {"Type": "Notification", "MessageId": "sns-z", "Message": json.dumps(body)}
 

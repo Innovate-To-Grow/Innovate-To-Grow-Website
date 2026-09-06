@@ -6,23 +6,14 @@ Uses AWS SES through the shared Notification Delivery configuration.
 """
 
 import logging
-from email.mime.image import MIMEImage
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from urllib.parse import quote
 
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
 from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
-from apps.core.services.aws.provider_outcomes import (
-    NO_PROVIDER_RETRIES,
-    ProviderDeliveryError,
-    classify_aws_send_failure,
-)
+from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES, ProviderDeliveryError
+from apps.core.services.email import EmailAttachment, EmailDeliveryError, EmailMessage, deliver_email
 from apps.event.models import EventRegistration
 from apps.event.services.ticket.assets import generate_ticket_barcode_png_bytes
 from apps.event.services.ticket.calendar import build_google_calendar_url, generate_ics
@@ -38,29 +29,23 @@ def _load_config():
 
 
 def _build_mime_message(*, subject, from_address, recipients, html_body, barcode_bytes, ics_data):
-    """Build a multipart/mixed MIME message with an inline barcode and .ics attachment."""
-    msg = MIMEMultipart("mixed")
-    msg["Subject"] = subject
-    msg["From"] = from_address
-    msg["To"] = ", ".join(recipients)
-
-    # Inline content (HTML + barcode image)
-    related = MIMEMultipart("related")
-    related.attach(MIMEText(html_body, "html", "utf-8"))
-
-    barcode_image = MIMEImage(barcode_bytes, "png")
-    barcode_image.add_header("Content-ID", "<ticket-barcode>")
-    barcode_image.add_header("Content-Disposition", "inline", filename="ticket-barcode.png")
-    related.attach(barcode_image)
-
-    msg.attach(related)
-
-    # .ics calendar attachment
-    ics_attachment = MIMEText(ics_data, "calendar", "utf-8")
-    ics_attachment.add_header("Content-Disposition", "attachment", filename="event.ics")
-    msg.attach(ics_attachment)
-
-    return msg
+    """Build the provider-neutral ticket message with PDF417 and ICS attachments."""
+    del from_address  # The active provider owns the configured sender address.
+    return EmailMessage(
+        subject=subject,
+        to=tuple(recipients),
+        html_body=html_body,
+        attachments=(
+            EmailAttachment(
+                "ticket-barcode.png",
+                barcode_bytes,
+                "image/png",
+                disposition="inline",
+                content_id="ticket-barcode",
+            ),
+            EmailAttachment("event.ics", ics_data.encode("utf-8"), "text/calendar"),
+        ),
+    )
 
 
 def _send_via_ses(
@@ -70,30 +55,21 @@ def _send_via_ses(
     before_provider_call=None,
     raise_provider_errors: bool = False,
 ) -> bool:
-    """Attempt to send via AWS SES send_raw_email. Returns True on success."""
-    if not config.ses_configured:
+    """Attempt delivery through the central email facade. Returns True on success."""
+    if not config.delivery_configured:
         return False
     try:
-        creds = resolve_aws_credentials("ses")
-        client = boto3.client(
-            "ses",
-            region_name=creds.region,
-            aws_access_key_id=creds.access_key_id,
-            aws_secret_access_key=creds.secret_access_key,
-            config=NO_PROVIDER_RETRIES,
+        deliver_email(
+            mime_message,
+            config=config,
+            before_provider_call=before_provider_call,
+            retry_config=NO_PROVIDER_RETRIES,
         )
-        if before_provider_call is not None:
-            before_provider_call()
-        client.send_raw_email(RawMessage={"Data": mime_message.as_string()})
         return True
-    except AwsCredentialsError:
-        logger.warning("SES send skipped: AWS credentials are not configured")
-        return False
-    except (BotoCoreError, ClientError) as exc:
-        logger.exception("SES send_raw_email failed")
+    except EmailDeliveryError as exc:
+        logger.exception("Ticket email delivery failed")
         if raise_provider_errors:
-            outcome, message = classify_aws_send_failure(exc, provider="SES")
-            raise ProviderDeliveryError(message, outcome=outcome) from exc
+            raise ProviderDeliveryError(str(exc), outcome=exc.outcome) from exc
         return False
 
 
@@ -159,8 +135,8 @@ def send_ticket_email(
     provider_boundary_entered = False
     try:
         config = _load_config()
-        if not config.ses_configured:
-            raise RuntimeError("Ticket email delivery via AWS SES failed or is not configured.")
+        if not config.delivery_configured:
+            raise RuntimeError("Ticket email delivery provider failed or is not configured.")
 
         # The callback locks and verifies a durable-job claim. Keeping it in the
         # same transaction as token creation prevents recovery from replacing
@@ -233,9 +209,9 @@ def send_ticket_email(
         }
         if _send_via_ses(**send_kwargs):
             provider_accepted = True
-            logger.info("Ticket email sent via SES for registration %s", registration.pk)
+            logger.info("Ticket email accepted for registration %s", registration.pk)
         else:
-            raise RuntimeError("Ticket email delivery via AWS SES failed or is not configured.")
+            raise RuntimeError("Ticket email delivery provider failed or is not configured.")
 
         from apps.mail.services.tokens.login_links import revoke_login_links
 
@@ -261,7 +237,7 @@ def send_ticket_email(
             provider_boundary_entered and not definitive_provider_error and not isinstance(exc, JobClaimLost)
         )
         reported_exc = (
-            RuntimeError("Ticket email delivery via AWS SES failed.")
+            RuntimeError("Ticket email delivery provider failed.")
             if isinstance(exc, ProviderDeliveryError) and not raise_provider_errors
             else exc
         )

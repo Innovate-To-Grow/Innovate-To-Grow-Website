@@ -38,8 +38,8 @@ def _make_delivery_configs():
     return EmailServiceConfig.objects.create(
         name="SES",
         is_active=True,
-        ses_from_email="test@ucmerced.edu",
-        ses_from_name="Test",
+        from_email="test@ucmerced.edu",
+        from_name="Test",
     )
 
 

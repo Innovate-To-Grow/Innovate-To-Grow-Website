@@ -10,7 +10,7 @@ from django.db.utils import OperationalError
 from django.test import TestCase
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, GmailAccessAccount
-from apps.core.services.aws.credentials import AwsCredentialsError
+from apps.core.services.email import PermanentEmailDeliveryError
 from apps.mail.services.inbox.connection import (
     INBOX_LIST_CACHE_KEY,
     InboxError,
@@ -407,9 +407,9 @@ class ReplyRenderTests(TestCase):
             references="<a@example.com> <b@example.com>",
         )
 
-        self.assertEqual(message["In-Reply-To"], "<orig@example.com>")
-        self.assertEqual(message["References"], "<a@example.com> <b@example.com>")
-        self.assertEqual(message["Cc"], "cc@example.com")
+        self.assertEqual(message.headers["In-Reply-To"], "<orig@example.com>")
+        self.assertEqual(message.headers["References"], "<a@example.com> <b@example.com>")
+        self.assertEqual(message.cc, ("cc@example.com",))
 
 
 class SendReplyTests(TestCase):
@@ -417,8 +417,8 @@ class SendReplyTests(TestCase):
         self.email_config = EmailServiceConfig.objects.create(
             name="Mail",
             is_active=True,
-            ses_from_email="reply@example.com",
-            ses_from_name="I2G",
+            from_email="reply@example.com",
+            from_name="I2G",
         )
 
     def test_send_reply_returns_empty_on_success(self):
@@ -429,7 +429,7 @@ class SendReplyTests(TestCase):
             secret_access_key="SECRET",
             default_region="us-west-2",
         )
-        with patch("boto3.client") as mock_client:
+        with patch("apps.mail.services.inbox.reply.deliver_email") as mock_deliver:
             error = send_reply(
                 to_email="alice@example.com",
                 subject="Re: Hi",
@@ -438,9 +438,9 @@ class SendReplyTests(TestCase):
             )
 
         self.assertEqual(error, "")
-        mock_client.return_value.send_raw_email.assert_called_once()
-        call_kwargs = mock_client.return_value.send_raw_email.call_args.kwargs
-        self.assertEqual(call_kwargs["Destinations"], ["alice@example.com", "cc@example.com"])
+        mock_deliver.assert_called_once()
+        message = mock_deliver.call_args.args[0]
+        self.assertEqual(message.envelope_recipients, ("alice@example.com", "cc@example.com"))
 
     def test_send_reply_returns_message_when_aws_credentials_missing(self):
         AWSCredentialConfig.objects.create(
@@ -450,13 +450,10 @@ class SendReplyTests(TestCase):
             secret_access_key="SECRET",
             default_region="us-west-2",
         )
-        with patch(
-            "apps.mail.services.inbox.reply.resolve_aws_credentials",
-            side_effect=AwsCredentialsError("missing"),
-        ):
+        with patch("apps.mail.services.inbox.reply.deliver_email", side_effect=PermanentEmailDeliveryError("missing")):
             error = send_reply(to_email="alice@example.com", subject="Re: Hi", reply_body="Hi")
 
-        self.assertEqual(error, "AWS IAM is not configured. Cannot send reply.")
+        self.assertEqual(error, REPLY_SEND_FAILURE_MESSAGE)
 
     def test_send_reply_returns_failure_message_on_unexpected_error(self):
         AWSCredentialConfig.objects.create(
@@ -466,8 +463,10 @@ class SendReplyTests(TestCase):
             secret_access_key="SECRET",
             default_region="us-west-2",
         )
-        with patch("boto3.client") as mock_client:
-            mock_client.return_value.send_raw_email.side_effect = RuntimeError("SES down")
+        with patch(
+            "apps.mail.services.inbox.reply.deliver_email",
+            side_effect=PermanentEmailDeliveryError("provider down"),
+        ):
             error = send_reply(to_email="alice@example.com", subject="Re: Hi", reply_body="Hi")
 
         self.assertEqual(error, REPLY_SEND_FAILURE_MESSAGE)

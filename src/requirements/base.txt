@@ -33,7 +33,7 @@ imap-tools>=1.13.0
 
 # Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
 # in CVE fixes to the Rust bindings.
-cryptography>=49.0.0
+cryptography>=50.0.0
 
 # HTML Parsing
 beautifulsoup4>=4.15.0
