@@ -1,4 +1,5 @@
 import {readFile} from 'node:fs/promises';
+import {createServer} from 'node:http';
 import {createChallenge, pbkdf2, verifySolution, type Challenge, type Payload} from 'altcha/lib';
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
@@ -79,46 +80,70 @@ test('HTTP unknown survives reload and checks status without sending a second co
 });
 
 for (const action of ['request_code', 'remembered_code', 'resend']) {
-  test(`admin ${action} uses the configured asset and cookie-scoped route with the real widget`, async ({page, baseURL}) => {
+  test(`admin ${action} uses the configured asset and cookie-scoped route with the real widget`, async ({page}) => {
     const challenge = await challengeFixture();
     const wrapper = await readFile(new URL('../../../src/apps/core/static/admin/js/send-verification.js', import.meta.url), 'utf8');
     const widget = await readFile(new URL('../../../src/assets/vendor/altcha/altcha.umd.js', import.meta.url), 'utf8');
-    const origin = new URL(baseURL ?? 'http://127.0.0.1:4173').origin;
-    await page.context().addCookies([{name: 'i2g_last_admin_member', value: 'signed-test-cookie', domain: new URL(origin).hostname, path: '/admin/'}]);
     let assetLoads = 0;
     await page.route('https://static.example.test/altcha.js', (route) => {
       assetLoads++;
       if (action === 'request_code' && assetLoads === 1) return route.abort('failed');
-      return route.fulfill({contentType: 'text/javascript', body: widget});
+      return route.fulfill({contentType: 'text/javascript; charset=utf-8', body: widget});
     });
-    await page.route('**/admin-wrapper.js', (route) => route.fulfill({contentType: 'text/javascript', body: wrapper}));
-    let challengeCalls = 0;
-    await page.route('**/admin/send-verification/challenge/', async (route) => {
-      challengeCalls++;
-      expect(route.request().postDataJSON().operation).toBe(`admin.login.${action}`);
-      expect(await route.request().headerValue('cookie')).toContain('i2g_last_admin_member=signed-test-cookie');
-      expect(await route.request().headerValue('x-csrftoken')).toBe('csrf-test-token');
-      await route.fulfill({json: {challenge_id: challengeId, challenge}});
-    });
+    const challengeRequests: {body: {operation: string}; cookie?: string; csrf?: string | string[]}[] = [];
     let submitted: URLSearchParams | null = null;
-    await page.route('**/admin/login/', async (route) => {
-      if (route.request().method() === 'POST') {
-        submitted = new URLSearchParams(route.request().postData() ?? '');
-        await route.fulfill({contentType: 'text/html', body: '<p>Code sent</p>'});
-        return;
+    // Observe cookies at the HTTP receiver. WebKit's route interception runs
+    // before its cookie jar adds the Cookie header to the outgoing request.
+    const server = createServer(async (request, response) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(Buffer.from(chunk));
+      const body = Buffer.concat(chunks).toString();
+      if (request.url === '/admin-wrapper.js') {
+        response.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+        response.end(wrapper);
+      } else if (request.url === '/admin/send-verification/challenge/') {
+        challengeRequests.push({body: JSON.parse(body), cookie: request.headers.cookie, csrf: request.headers['x-csrftoken']});
+        response.setHeader('Content-Type', 'application/json');
+        response.end(JSON.stringify({challenge_id: challengeId, challenge}));
+      } else if (request.url === '/admin/login/') {
+        response.setHeader('Content-Type', 'text/html; charset=utf-8');
+        if (request.method === 'POST') {
+          submitted = new URLSearchParams(body);
+          response.end('<!DOCTYPE html><meta charset="utf-8"><p>Code sent</p>');
+        } else {
+          response.setHeader('Set-Cookie', 'i2g_last_admin_member=signed-test-cookie; Path=/admin/; HttpOnly; SameSite=Lax');
+          response.end(`<!DOCTYPE html><meta charset="utf-8"><script src="/admin-wrapper.js" data-session-key="browser-test-session" data-challenge-url="/admin/send-verification/challenge/" data-altcha-url="https://static.example.test/altcha.js"></script><div class="login-box"><form method="post"><input name="csrfmiddlewaretoken" value="csrf-test-token" type="hidden"><input name="action" value="${action}" type="hidden">${action === 'request_code' ? '<input name="email" value="admin@example.com">' : ''}<button type="submit">Send code</button></form></div>`);
+        }
+      } else {
+        response.writeHead(404).end();
       }
-      await route.fulfill({contentType: 'text/html', body: `<script src="/admin-wrapper.js" data-session-key="browser-test-session" data-challenge-url="/admin/send-verification/challenge/" data-altcha-url="https://static.example.test/altcha.js"></script><div class="login-box"><form method="post"><input name="csrfmiddlewaretoken" value="csrf-test-token" type="hidden"><input name="action" value="${action}" type="hidden">${action === 'request_code' ? '<input name="email" value="admin@example.com">' : ''}<button type="submit">Send code</button></form></div>`});
     });
-    await page.goto(`${origin}/admin/login/`);
-    await page.getByRole('button', {name: 'Send code'}).click();
-    if (action === 'request_code') {
-      await expect(page.locator('.send-verification-status')).toContainText('Unable to load verification assets');
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Admin fixture did not listen on a TCP port');
+    const origin = `http://127.0.0.1:${address.port}`;
+    try {
+      await page.goto(`${origin}/admin/login/`);
       await page.getByRole('button', {name: 'Send code'}).click();
+      if (action === 'request_code') {
+        await expect(page.locator('.send-verification-status')).toContainText('Unable to load verification assets');
+        await page.getByRole('button', {name: 'Send code'}).click();
+      }
+      await expect(page.getByText('Code sent', {exact: true})).toBeVisible();
+      expect(challengeRequests).toHaveLength(action === 'request_code' ? 2 : 1);
+      for (const request of challengeRequests) {
+        expect(request.body.operation).toBe(`admin.login.${action}`);
+        expect(request.cookie).toContain('i2g_last_admin_member=signed-test-cookie');
+        expect(request.csrf).toBe('csrf-test-token');
+      }
+      expect(submitted).not.toBeNull();
+      await assertProof(submitted!.get('verification_payload')!, challenge);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+        server.closeAllConnections();
+      });
     }
-    await expect(page.getByText('Code sent', {exact: true})).toBeVisible();
-    expect(challengeCalls).toBe(action === 'request_code' ? 2 : 1);
-    expect(submitted).not.toBeNull();
-    await assertProof(submitted!.get('verification_payload')!, challenge);
   });
 }
 
@@ -130,8 +155,8 @@ test('admin retains the request across a lost native response and blocks a dupli
   const statusPath = '/authn/send-verification/requests/00000000-0000-0000-0000-000000000000/';
   let challenges = 0;
   let sends = 0;
-  await page.route('**/admin-wrapper.js', (route) => route.fulfill({contentType: 'text/javascript', body: wrapper}));
-  await page.route('https://static.example.test/altcha.js', (route) => route.fulfill({contentType: 'text/javascript', body: widget}));
+  await page.route('**/admin-wrapper.js', (route) => route.fulfill({contentType: 'text/javascript; charset=utf-8', body: wrapper}));
+  await page.route('https://static.example.test/altcha.js', (route) => route.fulfill({contentType: 'text/javascript; charset=utf-8', body: widget}));
   await page.route('**/admin/send-verification/challenge/', (route) => {
     challenges++;
     return route.fulfill({json: {challenge_id: challengeId, challenge}});
@@ -142,7 +167,7 @@ test('admin retains the request across a lost native response and blocks a dupli
       sends++;
       return route.abort('failed');
     }
-    return route.fulfill({contentType: 'text/html', body: `<script src="/admin-wrapper.js" data-session-key="lost-response-session" data-status-url="${statusPath}" data-challenge-url="/admin/send-verification/challenge/" data-altcha-url="https://static.example.test/altcha.js"></script><div class="login-box"><form method="post"><input name="csrfmiddlewaretoken" value="csrf-test-token" type="hidden"><input name="email" value="admin@example.com"><button type="submit">Send code</button></form></div>`});
+    return route.fulfill({contentType: 'text/html; charset=utf-8', body: `<!DOCTYPE html><meta charset="utf-8"><script src="/admin-wrapper.js" data-session-key="lost-response-session" data-status-url="${statusPath}" data-challenge-url="/admin/send-verification/challenge/" data-altcha-url="https://static.example.test/altcha.js"></script><div class="login-box"><form method="post"><input name="csrfmiddlewaretoken" value="csrf-test-token" type="hidden"><input name="email" value="admin@example.com"><button type="submit">Send code</button></form></div>`});
   });
   await page.goto(`${origin}/admin/login/`);
   await page.getByRole('button', {name: 'Send code'}).click();

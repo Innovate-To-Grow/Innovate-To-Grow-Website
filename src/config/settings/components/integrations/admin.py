@@ -312,11 +312,6 @@ UNFOLD = {
                         "link": "/admin/core/awscredentialconfig/",
                         "permission": _can("core"),
                     },
-                    {
-                        "title": "Send Verification",
-                        "link": "/admin/core/sendverificationconfig/",
-                        "permission": _can("core"),
-                    },
                     {"title": "Admin Log", "link": "/admin/admin/logentry/", "permission": _can("admin")},
                 ],
             },

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from collections.abc import Mapping
 from functools import wraps
 
 from django.conf import settings
@@ -113,7 +114,7 @@ def mint_send_verification(client: APIClient, operation: str, data: dict | None 
 def _merge(data, extra):
     if data is None:
         return extra
-    if hasattr(data, "copy") and not isinstance(data, dict):
+    if hasattr(data, "copy"):
         merged = data.copy()
         merged.update(extra)
         return merged
@@ -135,7 +136,11 @@ def _maybe_attach(self, original, path, data, kwargs):
     path_str = str(path)
     if path_str.rstrip("/").endswith("/send-verification/challenge"):
         return None
-    payload = data if isinstance(data, dict) else dict(data or {})
+    # Only augment structured send payloads. Raw JSON, bytes, lists and malformed
+    # bodies must reach the original client unchanged, including on other routes.
+    if data is not None and not isinstance(data, Mapping):
+        return None
+    payload = {key: data[key] for key in data} if data is not None else {}
     if payload.get(FIELD_CHALLENGE_ID):
         return None
     operation = _operation_for(path_str, payload)
