@@ -1,6 +1,6 @@
 import logging
 
-from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES, ProviderDeliveryError
+from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES
 from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
 
 logger = logging.getLogger(__name__)
@@ -31,8 +31,10 @@ def _send_via_ses(
             retry_config=NO_PROVIDER_RETRIES,
         )
         return True
-    except EmailDeliveryError as exc:
+    except EmailDeliveryError:
         logger.exception("Email delivery failed")
         if raise_provider_errors:
-            raise ProviderDeliveryError(str(exc), outcome=exc.outcome) from exc
+            # Neutral SES/SMTP errors already preserve ProviderDeliveryError's
+            # outcome contract; retain the concrete classification and cause.
+            raise
         return False

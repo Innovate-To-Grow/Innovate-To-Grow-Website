@@ -72,7 +72,10 @@ describe('contacts API', () => {
         data: {message: 'sent', challenge_id: challengeId},
       });
       const result = await requestContactPhoneVerification('phone-id');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/contact-phones/phone-id/request-verification/');
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/contact-phones/phone-id/request-verification/',
+        expect.objectContaining({verification_challenge_id: expect.any(String)}),
+      );
       expect(result.message).toBe('sent');
       expect(result.challenge_id).toBe(challengeId);
     });
@@ -117,7 +120,7 @@ describe('contacts API', () => {
       const email = {email_address: 'new@test.com', email_type: 'secondary' as const};
       mocks.post.mockResolvedValue({data: {id: '3', ...email}});
       const result = await createContactEmail(email);
-      expect(mocks.post).toHaveBeenCalledWith('/authn/contact-emails/', email);
+      expect(mocks.post).toHaveBeenCalledWith('/authn/contact-emails/', expect.objectContaining(email));
       expect(result.id).toBe('3');
     });
 
@@ -136,7 +139,10 @@ describe('contacts API', () => {
     it('requestContactEmailVerification posts', async () => {
       mocks.post.mockResolvedValue({data: {message: 'sent'}});
       await requestContactEmailVerification('e1');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/contact-emails/e1/request-verification/');
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/contact-emails/e1/request-verification/',
+        expect.objectContaining({verification_challenge_id: expect.any(String)}),
+      );
     });
 
     it('verifyContactEmailCode posts code', async () => {

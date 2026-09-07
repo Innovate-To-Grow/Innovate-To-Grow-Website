@@ -251,6 +251,8 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertNotIn("SMS Config", item_titles)
         self.assertIn("Google Credentials", item_titles)
         self.assertIn("AWS Credentials", item_titles)
+        self.assertIn("core.sendverificationconfig", service_config_tab["models"])
+        self.assertIn("Send Verification", item_titles)
 
     def test_mail_settings_route_is_registered_under_mail_app(self):
         self.assertEqual(reverse("admin:mail_delivery_dashboard"), "/admin/mail/delivery-dashboard/")

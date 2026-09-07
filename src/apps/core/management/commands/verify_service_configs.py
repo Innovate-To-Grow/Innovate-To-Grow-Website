@@ -13,6 +13,7 @@ from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
     GoogleCredentialConfig,
+    SendVerificationConfig,
     SMTPProviderConfig,
 )
 
@@ -98,6 +99,12 @@ class Command(BaseCommand):
         self._report("GoogleCredentialConfig", google, google_ok, required=options["require_google"])
         if not google_ok:
             (failures if options["require_google"] else warnings).append("GoogleCredentialConfig is not configured.")
+
+        send_verification = SendVerificationConfig.load()
+        send_ok = bool(send_verification.pk) and send_verification.is_configured
+        self._report("SendVerificationConfig", send_verification, send_ok, required=False)
+        if not send_ok:
+            warnings.append("SendVerificationConfig HMAC secret is not configured. Enforce mode will fail closed.")
 
         for warning in warnings:
             self.stdout.write(self.style.WARNING(f"WARN: {warning}"))

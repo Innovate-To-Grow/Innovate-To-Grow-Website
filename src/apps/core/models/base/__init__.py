@@ -4,6 +4,7 @@ from .service_credentials import (
     EmailServiceConfig,
     GmailAccessAccount,
     GoogleCredentialConfig,
+    SendVerificationConfig,
     SMTPProviderConfig,
 )
 from .time_stamped import TimeStampedModel
@@ -14,6 +15,7 @@ __all__ = [
     "EmailServiceConfig",
     "GmailAccessAccount",
     "GoogleCredentialConfig",
+    "SendVerificationConfig",
     "SMTPProviderConfig",
     "ProjectControlModel",
     "SiteMaintenanceControl",

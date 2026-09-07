@@ -54,6 +54,18 @@ class PhoneAuthCodeRequestThrottle(AnonRateThrottle):
     scope = "phone_auth_code_request"
 
 
+class SendVerificationChallengeThrottle(AnonRateThrottle):
+    """Per-IP cap on ALTCHA challenge issuance."""
+
+    scope = "send_verification_challenge"
+
+
+class SendVerificationStatusThrottle(AnonRateThrottle):
+    """Per-IP cap on send-request status lookups."""
+
+    scope = "send_verification_status"
+
+
 class EmailCodeUserRequestThrottle(UserRateThrottle):
     """Per-authenticated-user cap on email verification-code sends.
 

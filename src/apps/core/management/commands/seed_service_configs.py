@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 from apps.authn.models import ContactEmail
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SendVerificationConfig
 
 Member = get_user_model()
 
@@ -23,6 +23,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self._seed_email()
         self._seed_aws()
+        self._seed_send_verification()
         self._seed_staff_contact_emails()
 
     def _seed_email(self):
@@ -57,6 +58,18 @@ class Command(BaseCommand):
             default_region=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"),
         )
         self.stdout.write(self.style.SUCCESS("Created active AWSCredentialConfig 'Production'."))
+
+    def _seed_send_verification(self):
+        if SendVerificationConfig.objects.exists():
+            self.stdout.write(self.style.WARNING("SendVerificationConfig already exists — skipping."))
+            return
+        SendVerificationConfig.objects.create(name="Production", is_active=True, mode="observe")
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Created skeleton active SendVerificationConfig 'Production'. "
+                "Fill in HMAC secrets in Django admin before enforcing."
+            )
+        )
 
     def _seed_staff_contact_emails(self):
         """Ensure every staff member has a verified primary ContactEmail so admin login works."""

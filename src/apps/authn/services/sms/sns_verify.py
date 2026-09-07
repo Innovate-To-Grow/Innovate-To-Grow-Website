@@ -28,6 +28,12 @@ from django.utils import timezone
 
 from apps.authn.models import PhoneVerificationChallenge
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
+from apps.core.services.aws.provider_outcomes import (
+    NO_PROVIDER_RETRIES,
+    PROVIDER_OUTCOME_PERMANENT,
+    PROVIDER_OUTCOME_UNCERTAIN,
+    classify_aws_send_failure,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +70,17 @@ class PhoneVerificationInvalid(PhoneVerificationError):
 class PhoneVerificationDeliveryError(PhoneVerificationError):
     """Failed to send SMS."""
 
+    def __init__(
+        self,
+        message: str = "Failed to send verification SMS.",
+        *,
+        outcome: str = PROVIDER_OUTCOME_UNCERTAIN,
+        challenge_id: str = "",
+    ):
+        super().__init__(message)
+        self.outcome = outcome
+        self.challenge_id = challenge_id
+
 
 def _load_aws_config():
     from apps.core.models import AWSCredentialConfig
@@ -79,7 +96,7 @@ def _assert_configured():
     """Ensure AWS SMS settings are ready."""
     aws = _load_aws_config()
     if not aws.sns_configured:
-        raise PhoneVerificationDeliveryError("SMS is not configured.")
+        raise PhoneVerificationDeliveryError("SMS is not configured.", outcome=PROVIDER_OUTCOME_PERMANENT)
     return aws
 
 
@@ -87,20 +104,24 @@ def _get_smsvoice_client():
     try:
         creds = resolve_aws_credentials("sns")
     except AwsCredentialsError as exc:
-        raise PhoneVerificationDeliveryError("AWS credentials are not configured.") from exc
+        raise PhoneVerificationDeliveryError(
+            "AWS credentials are not configured.",
+            outcome=PROVIDER_OUTCOME_PERMANENT,
+        ) from exc
 
     return boto3.client(
         "pinpoint-sms-voice-v2",
         region_name=creds.region,
         aws_access_key_id=creds.access_key_id,
         aws_secret_access_key=creds.secret_access_key,
+        config=NO_PROVIDER_RETRIES,
     )
 
 
 def _publish_sms(*, phone_number: str, message: str, aws_config) -> str:
     origination_identity = aws_config.resolved_sms_from_number()
     if not origination_identity:
-        raise PhoneVerificationDeliveryError("SMS is not configured.")
+        raise PhoneVerificationDeliveryError("SMS is not configured.", outcome=PROVIDER_OUTCOME_PERMANENT)
 
     client = _get_smsvoice_client()
     try:
@@ -119,10 +140,12 @@ def _publish_sms(*, phone_number: str, message: str, aws_config) -> str:
             raise PhoneVerificationInvalid("Invalid phone number.") from exc
         # ConflictException / ResourceNotFoundException / AccessDeniedException point at the
         # origination identity or account state, not a bad recipient — surface as delivery errors.
-        raise PhoneVerificationDeliveryError("Failed to send verification SMS.") from exc
+        outcome, message = classify_aws_send_failure(exc, provider="SMS")
+        raise PhoneVerificationDeliveryError(message, outcome=outcome) from exc
     except BotoCoreError as exc:
         logger.warning("send_text_message failed", exc_info=True)
-        raise PhoneVerificationDeliveryError("Failed to send verification SMS.") from exc
+        outcome, message = classify_aws_send_failure(exc, provider="SMS")
+        raise PhoneVerificationDeliveryError(message, outcome=outcome) from exc
 
     return response.get("MessageId", "")
 
@@ -231,17 +254,30 @@ def start_phone_verification(
             message = aws_config.render_sms_otp_message(code)
         except ValueError as exc:
             _mark_challenge_delivery_failed(challenge.pk)
-            raise PhoneVerificationDeliveryError("SMS message template is invalid.") from exc
+            raise PhoneVerificationDeliveryError(
+                "SMS message template is invalid.",
+                outcome=PROVIDER_OUTCOME_PERMANENT,
+                challenge_id=str(challenge.pk),
+            ) from exc
 
         try:
+            from apps.authn.services.send_verification.outcomes import record_otp_challenge
+
+            record_otp_challenge(str(challenge.pk))
             message_id = _publish_sms(
                 phone_number=phone_number,
                 message=message,
                 aws_config=aws_config,
             )
-        except Exception:
-            # Preserve send_reserved_at even if marking the final state fails.
-            _mark_challenge_delivery_failed(challenge.pk)
+        except Exception as exc:
+            # An uncertain provider call may have delivered this OTP. Keep it
+            # verifiable and retain both durable reservations.
+            if isinstance(exc, PhoneVerificationInvalid | PhoneVerificationThrottled) or (
+                getattr(exc, "outcome", PROVIDER_OUTCOME_UNCERTAIN) != PROVIDER_OUTCOME_UNCERTAIN
+            ):
+                _mark_challenge_delivery_failed(challenge.pk)
+            if isinstance(exc, PhoneVerificationDeliveryError):
+                exc.challenge_id = str(challenge.pk)
             raise
 
         try:
@@ -256,7 +292,9 @@ def start_phone_verification(
                 status=PhoneVerificationChallenge.Status.SENDING,
             ).exists()
         ):
-            raise PhoneVerificationDeliveryError("SMS challenge could not be finalized.")
+            raise PhoneVerificationDeliveryError(
+                "SMS challenge could not be finalized.", challenge_id=str(challenge.pk)
+            )
 
     logger.info("Phone verification started: message_id=%s", message_id)
     return {"status": DEFAULT_STATUS, "challenge_id": str(challenge.pk)}

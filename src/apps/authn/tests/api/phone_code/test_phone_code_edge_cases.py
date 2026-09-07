@@ -37,7 +37,10 @@ class PhoneAuthEdgeCaseTests(APITestCase):
         response = self.client.post(VERIFY_URL, {"phone_number": "2025550123", "code": "000000"}, format="json")
         self.assertEqual(response.status_code, 429)
 
-    @patch("apps.authn.views.auth.phone_code.check_phone_verification", side_effect=PhoneVerificationDeliveryError())
+    @patch(
+        "apps.authn.views.auth.phone_code.check_phone_verification",
+        side_effect=PhoneVerificationDeliveryError(outcome="permanent"),
+    )
     def test_verify_when_sms_unconfigured_returns_503(self, _check, _start):
         response = self.client.post(VERIFY_URL, {"phone_number": "2025550123", "code": "654321"}, format="json")
         self.assertEqual(response.status_code, 503)
@@ -49,7 +52,7 @@ class PhoneAuthEdgeCaseTests(APITestCase):
         self.assertEqual(response.status_code, 429)
 
     def test_request_delivery_error_returns_503(self, mock_start):
-        mock_start.side_effect = PhoneVerificationDeliveryError()
+        mock_start.side_effect = PhoneVerificationDeliveryError(outcome="permanent")
         response = self.client.post(REQUEST_URL, {"phone_number": "2025550123"}, format="json")
         self.assertEqual(response.status_code, 503)
 

@@ -7,7 +7,7 @@ from django.core.management import call_command
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail, Member
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SendVerificationConfig
 
 
 class SeedServiceConfigsTest(TestCase):
@@ -22,6 +22,9 @@ class SeedServiceConfigsTest(TestCase):
         self.assertTrue(config.is_active)
         self.assertEqual(config.provider, "ses")
         self.assertIn("Created skeleton active EmailServiceConfig 'Production'.", output)
+        send_config = SendVerificationConfig.objects.get(name="Production")
+        self.assertTrue(send_config.is_active)
+        self.assertEqual(send_config.mode, "observe")
 
     def test_skips_email_config_when_present(self):
         EmailServiceConfig.objects.create(name="Existing", is_active=True)

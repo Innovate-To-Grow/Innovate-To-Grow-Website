@@ -10,6 +10,13 @@
 {% block extrahead %}
     {{ block.super }}
     <script src="{% static 'admin/js/i2g-admin-theme-runtime.js' %}?v=20260608-admin-theme-global"></script>
+    <script src="{% static 'admin/js/send-verification.js' %}?v=20260905-send-verification-fix"
+            data-challenge-url="{% url 'admin-send-verification-challenge' %}"
+            data-altcha-url="{% static 'vendor/altcha/altcha.umd.js' %}"
+            data-status-url="{% url 'authn:send-verification-request-status' request_id='00000000-0000-0000-0000-000000000000' %}"
+            data-session-key="{{ send_verification_session_key }}"
+            data-unresolved-request-id="{{ send_verification_unresolved_request_id|default:'' }}"
+            nonce="{{ request.csp_nonce }}"></script>
 {% endblock %}
 
 {% block title %}
@@ -33,6 +40,12 @@
         </div>
 
         {% include "unfold/helpers/messages.html" %}
+
+        {% if send_verification_unresolved_request_id %}
+            <div class="login-message login-message--info" role="status">
+                {% translate "The previous send request is still unresolved. Check your messages, then reload this page to check its status." %}
+            </div>
+        {% endif %}
 
         {# Display message (info) #}
         {% if message %}

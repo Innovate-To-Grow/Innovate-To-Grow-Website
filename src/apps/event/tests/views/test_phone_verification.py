@@ -22,20 +22,16 @@ class PhoneVerificationViewsTest(TestCase):
         self.event = make_event(registration_open=True, collect_phone=True, verify_phone=True)
 
     @patch("apps.authn.services.sms.start_phone_verification", side_effect=RuntimeError("provider down"))
-    def test_send_phone_code_returns_generic_service_error(self, _mock_start):
-        with patch("apps.event.views.registration.logger.warning") as warning:
-            response = self.client.post(
-                "/event/send-phone-code/",
-                {
-                    "phone": "5551234567",
-                    "region": "1-US",
-                    "event_slug": self.event.slug,
-                },
-                format="json",
-            )
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.data["detail"], "Failed to send verification code. Please try again later.")
-        warning.assert_called_once_with("Failed to send phone verification SMS", exc_info=True)
+    def test_send_phone_code_returns_unknown_for_unclassified_provider_error(self, _mock_start):
+        response = self.client.post(
+            "/event/send-phone-code/",
+            {"phone": "5551234567", "region": "1-US", "event_slug": self.event.slug},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "send_unknown")
+        self.assertIn("request_id", response.data)
+        self.assertNotIn("provider down", response.data["detail"])
 
     @patch("apps.authn.services.sms.check_phone_verification", side_effect=RuntimeError("provider down"))
     def test_verify_phone_code_returns_generic_service_error(self, _mock_check):

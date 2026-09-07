@@ -37,6 +37,34 @@ function json(body: unknown, status = 200) {
   return {status, contentType: 'application/json', body: JSON.stringify(body)};
 }
 
+export async function mockSendVerification(page: Page): Promise<void> {
+  await page.route('**/authn/send-verification/challenge/', async (route) => {
+    await route.fulfill(
+      json({
+        challenge_id: '11111111-1111-4111-8111-111111111111',
+        expires_at: new Date(Date.now() + 300000).toISOString(),
+        algorithm: 'PBKDF2/SHA-256',
+        cost: 1,
+        challenge: {parameters: {
+          algorithm: 'PBKDF2/SHA-256', cost: 1, keyLength: 32, keyPrefix: '00',
+          nonce: 'cea3887d17e708f96ba9b276b28f1637', salt: '61562030d20d368221f28e886c0de709',
+        }},
+      }),
+    );
+  });
+  await page.route('**/authn/send-verification/requests/**', async (route) => {
+    await route.fulfill(
+      json({
+        request_id: '22222222-2222-4222-8222-222222222222',
+        status: 'provider_accepted',
+        code: null,
+        result: {message: 'Verification code sent.'},
+        challenge_id: null,
+      }),
+    );
+  });
+}
+
 export interface EmailAuthMockResult {
   requestPayloads: unknown[];
   verifyPayloads: unknown[];
@@ -54,6 +82,8 @@ export async function mockEmailAuthFlow(
   if (verifyStatus < 400) {
     await mockAuthenticatedLogin(page, verifyResponse);
   }
+
+  await mockSendVerification(page);
 
   await page.route('**/authn/email-auth/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());
@@ -95,6 +125,8 @@ export async function mockPhoneAuthFlow(
   if (verifyStatus < 400) {
     await mockAuthenticatedLogin(page, verifyResponse);
   }
+
+  await mockSendVerification(page);
 
   await page.route('**/authn/phone-auth/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());
@@ -138,6 +170,8 @@ export async function mockPasswordResetFlow(
   const verifyPayloads: unknown[] = [];
   const confirmPayloads: unknown[] = [];
 
+  await mockSendVerification(page);
+
   await page.route('**/authn/password-reset/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());
     await route.fulfill(
@@ -175,6 +209,8 @@ export async function mockEventRegistration(
 ): Promise<EventRegistrationMockResult> {
   const created: unknown[] = [];
   const options = opts.options ?? registrationOptions();
+
+  await mockSendVerification(page);
 
   await page.route('**/event/registration-options/**', (route) =>
     route.fulfill(json(options)),
@@ -478,6 +514,8 @@ export async function mockContactEmailsCRUD(
   const deleted: string[] = [];
   const primaryPayloads: unknown[] = [];
 
+  await mockSendVerification(page);
+
   // GET list
   await page.route('**/authn/contact-emails/', async (route) => {
     if (route.request().method() === 'GET') {
@@ -567,6 +605,8 @@ export async function mockContactPhonesCRUD(
   const updated: unknown[] = [];
   const deleted: string[] = [];
 
+  await mockSendVerification(page);
+
   await page.route('**/authn/contact-phones/', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill(json(phones));
@@ -644,6 +684,8 @@ export async function mockPasswordChangeFlow(
   const verifyPayloads: unknown[] = [];
   const confirmPayloads: unknown[] = [];
 
+  await mockSendVerification(page);
+
   await page.route('**/authn/change-password/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());
     await route.fulfill(json({message: 'Code sent.', channel: 'email', destination: 'm***@example.com'}));
@@ -679,6 +721,8 @@ export async function mockAccountDeleteFlow(
   const requestPayloads: unknown[] = [];
   const verifyPayloads: unknown[] = [];
   const confirmPayloads: unknown[] = [];
+
+  await mockSendVerification(page);
 
   await page.route('**/authn/delete-account/request-code/', async (route) => {
     requestPayloads.push(route.request().postDataJSON());

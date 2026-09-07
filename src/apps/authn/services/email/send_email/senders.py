@@ -82,6 +82,7 @@ def send_verification_email(
     link_event: str | None = None,
 ):
     import apps.authn.services.email.send_email as email_api
+    from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_PERMANENT, ProviderDeliveryError
 
     config = email_api._load_config()
     subject = PURPOSE_SUBJECTS.get(
@@ -102,8 +103,9 @@ def send_verification_email(
         recipient=recipient,
         subject=subject,
         html_body=html_body,
+        raise_provider_errors=True,
     ):
         logger.info("Verification email sent via SES")
         return
 
-    raise RuntimeError(SES_DELIVERY_ERROR)
+    raise ProviderDeliveryError(SES_DELIVERY_ERROR, outcome=PROVIDER_OUTCOME_PERMANENT)

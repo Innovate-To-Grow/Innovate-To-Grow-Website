@@ -14,6 +14,7 @@ from apps.authn.services.email.challenges import (
     AuthChallengeThrottled,
     issue_email_challenge,
 )
+from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
 
 Member = get_user_model()
 
@@ -33,7 +34,10 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
         )
 
     @patch("apps.authn.services.email.challenges._random_code", return_value="123456")
-    @patch("apps.authn.services.email.send_email.send_verification_email", side_effect=RuntimeError("boom"))
+    @patch(
+        "apps.authn.services.email.send_email.send_verification_email",
+        side_effect=ProviderDeliveryError("rejected", outcome="permanent"),
+    )
     def test_failed_delivery_deletes_challenge(self, _mock_send, _mock_code):
         """When email delivery fails the challenge record should be deleted."""
         with self.assertRaises(AuthChallengeDeliveryError):
@@ -46,7 +50,7 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
     def test_retry_after_failed_delivery_succeeds(self, mock_send, _mock_code):
         """After a delivery failure the user can immediately retry without being throttled."""
         # First attempt: email send fails
-        mock_send.side_effect = RuntimeError("boom")
+        mock_send.side_effect = ProviderDeliveryError("rejected", outcome="permanent")
         with self.assertRaises(AuthChallengeDeliveryError):
             issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
 
@@ -59,7 +63,7 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
     @patch("apps.authn.services.email.send_email.send_verification_email")
     def test_failed_deliveries_dont_exhaust_hourly_limit(self, mock_send, _mock_code):
         """Deleted challenges (from failed sends) must not count toward MAX_CHALLENGES_PER_HOUR."""
-        mock_send.side_effect = RuntimeError("boom")
+        mock_send.side_effect = ProviderDeliveryError("rejected", outcome="permanent")
 
         # Simulate many consecutive delivery failures
         for _ in range(MAX_CHALLENGES_PER_HOUR):
