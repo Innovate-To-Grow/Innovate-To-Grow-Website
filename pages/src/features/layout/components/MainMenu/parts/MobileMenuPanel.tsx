@@ -12,7 +12,7 @@ interface MobileMenuPanelProps {
   menuItems: MenuItem[];
   state: LayoutLoadState;
   isMobileOpen: boolean;
-  isAuthenticated: boolean;
+  hasMemberIdentity: boolean;
   user: User | null;
   openItemIndex: number | null;
   triggerRef: RefObject<HTMLButtonElement | null>;
@@ -38,7 +38,7 @@ export const MobileMenuPanel = ({
   menuItems,
   state,
   isMobileOpen,
-  isAuthenticated,
+  hasMemberIdentity,
   user,
   openItemIndex,
   triggerRef,
@@ -178,7 +178,7 @@ export const MobileMenuPanel = ({
         </nav>
 
         <div className="header-mobile-member">
-          {isAuthenticated ? (
+          {hasMemberIdentity ? (
             <>
               <div className="header-mobile-member-info">
                 {user?.profile_image ? (

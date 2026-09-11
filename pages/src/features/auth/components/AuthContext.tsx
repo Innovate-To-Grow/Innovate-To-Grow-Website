@@ -23,6 +23,12 @@ import {useAuthActions} from './context/useAuthActions';
 
 const AuthContext = createContext<AuthContextValue>(defaultContextValue);
 
+// A session check that fails for a transient reason leaves a valid session unverified,
+// and nothing else in the app re-runs it — protected pages would stay unreachable until
+// the member reloaded by hand. Retry on a capped exponential backoff instead.
+const VERIFY_RETRY_INITIAL_MS = 1_000;
+const VERIFY_RETRY_MAX_MS = 30_000;
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -51,15 +57,35 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
     let active = true;
     let syncSequence = 0;
     let verifiedSession: StoredAuthSession | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let retryDelay = VERIFY_RETRY_INITIAL_MS;
     const matchesVerifiedIdentity = (session: StoredAuthSession) =>
       verifiedSession?.generation === session.generation &&
       verifiedSession.user.member_uuid === session.user.member_uuid;
 
+    const cancelRetry = () => {
+      if (retryTimer === undefined) return;
+      clearTimeout(retryTimer);
+      retryTimer = undefined;
+    };
+
+    const scheduleRetry = () => {
+      if (!active || retryTimer !== undefined) return;
+      const delay = retryDelay;
+      retryDelay = Math.min(retryDelay * 2, VERIFY_RETRY_MAX_MS);
+      retryTimer = setTimeout(() => {
+        retryTimer = undefined;
+        void synchronize();
+      }, delay);
+    };
+
     const synchronize = async () => {
       const sequence = ++syncSequence;
+      cancelRetry();
       const stored = getStoredSession();
       if (!stored) {
         verifiedSession = null;
+        retryDelay = VERIFY_RETRY_INITIAL_MS;
         applySession(null);
         setUnverified(false);
         setIsInitializing(false);
@@ -88,6 +114,7 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
       }
       if (!current || result.status === 'anonymous') {
         verifiedSession = null;
+        retryDelay = VERIFY_RETRY_INITIAL_MS;
         applySession(null);
         setUnverified(false);
       } else {
@@ -98,10 +125,19 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
         ) {
           verifiedSession = result.session;
         }
+        const verified = matchesVerifiedIdentity(current);
         // Keep server-verified flags during transient failures; same-generation
         // local profile edits are not authoritative permission updates.
-        applySession(matchesVerifiedIdentity(current) ? verifiedSession : current);
-        setUnverified(!matchesVerifiedIdentity(current));
+        applySession(verified ? verifiedSession : current);
+        setUnverified(!verified);
+        // An unverified result here means the check did not reach a verdict for this
+        // generation. A confirmed logout takes the anonymous branch above, so this is a
+        // transient failure: keep checking rather than stranding a signed-in member.
+        if (verified) {
+          retryDelay = VERIFY_RETRY_INITIAL_MS;
+        } else {
+          scheduleRetry();
+        }
       }
       setIsInitializing(false);
     };
@@ -121,6 +157,7 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
     return () => {
       active = false;
       syncSequence += 1;
+      cancelRetry();
       window.removeEventListener(
         AUTH_STATE_CHANGE_EVENT,
         handleAuthStateChange,

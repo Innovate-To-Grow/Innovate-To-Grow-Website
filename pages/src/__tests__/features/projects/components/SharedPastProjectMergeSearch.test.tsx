@@ -7,6 +7,7 @@ import type {ProjectTableRow} from '@/features/projects/api';
 
 const mockUseAuth = vi.fn();
 const mockSearchPastProjectsWithAI = vi.fn();
+const mockHydrateProjectGridRows = vi.fn();
 const mockBuildLoginPath = vi.fn();
 
 vi.mock('@/features/auth', async (importOriginal) => {
@@ -30,6 +31,7 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
   return {
     ...actual,
     searchPastProjectsWithAI: (...args: unknown[]) => mockSearchPastProjectsWithAI(...args),
+    hydrateProjectGridRows: (...args: unknown[]) => mockHydrateProjectGridRows(...args),
   };
 });
 
@@ -72,6 +74,8 @@ describe('SharedPastProjectMergeSearch', () => {
     mockUseAuth.mockReset();
     mockUseAuth.mockReturnValue({isAuthenticated: true});
     mockSearchPastProjectsWithAI.mockReset();
+    mockHydrateProjectGridRows.mockReset();
+    mockHydrateProjectGridRows.mockImplementation(async (rows: ProjectGridRow[]) => rows);
     mockBuildLoginPath.mockReset();
   });
 
@@ -113,6 +117,59 @@ describe('SharedPastProjectMergeSearch', () => {
       ]);
     });
     expect(await screen.findByText('1 project added.')).toBeInTheDocument();
+  });
+
+  // Archive rows arrive compact. Saving them unchanged wrote the abstract and student names
+  // away as blank for every viewer of the share, and the detail endpoint is the only place
+  // that content exists.
+  it('fills in missing abstracts and student names before adding archive rows', async () => {
+    const compact = makeRow({id: 'p-1', team_number: 'T50', project_title: 'Compact Project'});
+    const hydrated = {...compact, abstract: 'Real abstract', student_names: 'Ada, Alan'};
+    mockHydrateProjectGridRows.mockResolvedValue([hydrated]);
+    const onAddRows = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <SharedPastProjectMergeSearch currentRows={[]} error={null} loading={false}
+        rows={[compact]} onAddRows={onAddRows} />,
+    );
+    fireEvent.click(screen.getAllByLabelText('Select Compact Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+
+    await waitFor(() => expect(onAddRows).toHaveBeenCalled());
+    expect(mockHydrateProjectGridRows).toHaveBeenCalled();
+    expect(onAddRows).toHaveBeenCalledWith([
+      expect.objectContaining({abstract: 'Real abstract', student_names: 'Ada, Alan'}),
+    ]);
+  });
+
+  it('does not offer a project whose hydrated copy is already in the shared result', () => {
+    const compact = makeRow({id: 'p-1', team_number: 'T50', project_title: 'Compact Project'});
+    const sharedCopy = {...compact, abstract: 'Real abstract', student_names: 'Ada, Alan'};
+
+    render(
+      <SharedPastProjectMergeSearch currentRows={[sharedCopy]} error={null} loading={false}
+        rows={[compact]} onAddRows={vi.fn()} />,
+    );
+
+    // The content fingerprint differs, but it is the same project id.
+    expect(screen.queryByText('Compact Project')).toBeNull();
+  });
+
+  it('keeps the selection and explains when project details cannot be loaded', async () => {
+    const compact = makeRow({id: 'p-1', team_number: 'T50', project_title: 'Compact Project'});
+    mockHydrateProjectGridRows.mockRejectedValue(new Error('network'));
+    const onAddRows = vi.fn();
+
+    render(
+      <SharedPastProjectMergeSearch currentRows={[]} error={null} loading={false}
+        rows={[compact]} onAddRows={onAddRows} />,
+    );
+    fireEvent.click(screen.getAllByLabelText('Select Compact Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+
+    expect(await screen.findByText('Unable to add selected projects. Please try again.')).toBeInTheDocument();
+    expect(onAddRows).not.toHaveBeenCalled();
+    expect(screen.getAllByLabelText('Select Compact Project')[0]).toBeChecked();
   });
 
   it('can refresh a full-archive standard search table without deleting it', () => {

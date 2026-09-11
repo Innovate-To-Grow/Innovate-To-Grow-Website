@@ -286,7 +286,16 @@ export const PastProjectsBuilder = ({
 
             const accountSequence = draftAccountSequence.current;
             const needsHydration = selected.some((row) => row.id && !row.abstract && !row.student_names);
-            const hydratedSelected = needsHydration ? await hydrateProjectGridRows(selected) : selected;
+            let hydratedSelected: ProjectGridRow[];
+            try {
+                hydratedSelected = needsHydration ? await hydrateProjectGridRows(selected) : selected;
+            } catch {
+                // One unreachable project detail used to reject the whole save with no merge and
+                // no explanation, leaving the user clicking a button that silently did nothing.
+                // Resolving to false keeps the checkboxes so the save can be retried as-is.
+                setBuilderMessage('Could not load full details for the selected projects. Please try again.');
+                return false;
+            }
             if (accountSequence !== draftAccountSequence.current) return;
 
             const seenFingerprints = new Set(
@@ -308,10 +317,26 @@ export const PastProjectsBuilder = ({
             }
 
             mergeSequence.current += 1;
-            setMergedRows((current) => [
-                ...current,
-                ...createProjectGridItems(rowsToAppend, `merged-${mergeSequence.current}`),
-            ]);
+            const namespace = `merged-${mergeSequence.current}`;
+            setMergedRows((current) => {
+                // `mergedRows` above was captured before the hydration await. A second save that
+                // resolves in the same window reads the same empty set, so both would append the
+                // same project. The committed rows here are the only authoritative view.
+                const committedFingerprints = new Set(
+                    current.map((row) => createProjectGridFingerprint(stripProjectGridItem(row))),
+                );
+                const committedIds = new Set(current.flatMap((row) => (row.id ? [row.id] : [])));
+                const unseen = rowsToAppend.filter((row) => {
+                    const fingerprint = createProjectGridFingerprint(row);
+                    if (committedFingerprints.has(fingerprint) || (row.id && committedIds.has(row.id))) {
+                        return false;
+                    }
+                    committedFingerprints.add(fingerprint);
+                    if (row.id) committedIds.add(row.id);
+                    return true;
+                });
+                return unseen.length ? [...current, ...createProjectGridItems(unseen, namespace)] : current;
+            });
             setMergedRowsUndo(null);
             setBuilderMessage(`${rowsToAppend.length} row${rowsToAppend.length === 1 ? '' : 's'} saved into merged results.`);
         },

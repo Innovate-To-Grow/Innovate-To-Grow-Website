@@ -646,6 +646,10 @@ export const MergedResultsTable = ({
       {sharedMode ? null : shareResultPanel}
 
       <ProjectGridTable
+        // Rows saved before the shared-add path hydrated them carry an id but no abstract
+        // or student names. Fetch those on expand so View is not a dead end on an existing
+        // shared page; rows that already carry their own content never request anything.
+        loadMissingDetails
         columns={PAST_PROJECT_GRID_COLUMNS}
         rows={rows}
         pagedRows={table.pagedRows}

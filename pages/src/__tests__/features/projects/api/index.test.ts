@@ -358,6 +358,37 @@ describe('project archive and detail fetch helpers', () => {
     expect(result[1]).toEqual(alreadyHydrated);
     expect(result[2]).toEqual(noId);
   });
+
+  it('bounds the detail requests it opens at once and preserves row order', async () => {
+    let open = 0;
+    let peak = 0;
+    apiMock.get.mockImplementation(async (url: string) => {
+      open += 1;
+      peak = Math.max(peak, open);
+      // Yield so every worker that is allowed to run gets a chance to start.
+      await Promise.resolve();
+      await Promise.resolve();
+      open -= 1;
+      const id = url.split('/').at(-2) as string;
+      return {data: makeTableRow({id, project_title: `Fetched ${id}`})};
+    });
+
+    const rows: ProjectGridRow[] = Array.from({length: 20}, (_, index) => ({
+      id: `project-${index}`,
+      ...makeGridRowBase(),
+      abstract: '',
+      student_names: '',
+    }));
+
+    const result = await hydrateProjectGridRows(rows);
+
+    // Selecting a large page of archive rows must not open one request per row at once.
+    expect(peak).toBeLessThanOrEqual(4);
+    expect(apiMock.get).toHaveBeenCalledTimes(20);
+    expect(result).toHaveLength(20);
+    expect(result[0].project_title).toBe('Fetched project-0');
+    expect(result[19].project_title).toBe('Fetched project-19');
+  });
 });
 
 const makeGridRowBase = (): Omit<ProjectGridRow, 'id'> => ({
