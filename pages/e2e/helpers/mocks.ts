@@ -251,7 +251,25 @@ export async function mockSchedule(page: Page, payload: EventSchedulePayload): P
 }
 
 export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Promise<void> {
-  await page.route('**/projects/past-all/', (route) => route.fulfill(json(rows)));
+  await page.route(/\/projects\/[^/]+\/(?:\?.*)?$/, async (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').at(-2);
+    const row = rows.find((project) => project.id === id);
+    if (!row) return route.fallback();
+    await route.fulfill(json(row));
+  });
+  await page.route(/\/projects\/archive\/(?:\?.*)?$/, (route) => {
+    const url = new URL(route.request().url());
+    const pageNumber = Number(url.searchParams.get('page') ?? 1);
+    const pageSize = Number(url.searchParams.get('page_size') ?? 20);
+    const start = (pageNumber - 1) * pageSize;
+    const results = rows.slice(start, start + pageSize).map((row) => ({
+      id: row.id, semester_label: row.semester_label, class_code: row.class_code,
+      team_number: row.team_number, team_name: row.team_name, project_title: row.project_title,
+      organization: row.organization, industry: row.industry, track: row.track,
+      presentation_order: row.presentation_order,
+    }));
+    return route.fulfill(json({count: rows.length, next: null, previous: null, results}));
+  });
 }
 
 export interface PastProjectShareMockController {
