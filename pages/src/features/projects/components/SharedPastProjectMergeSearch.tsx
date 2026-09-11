@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {buildLoginPath} from '@/features/auth/api/redirects';
-import {searchPastProjectsWithAI, toProjectGridRow} from '@/features/projects/api';
+import {hydrateProjectGridRows, searchPastProjectsWithAI, toProjectGridRow} from '@/features/projects/api';
 import {PastProjectsAIStatus} from './builder/PastProjectsAIStatus';
 import {PastProjectsAISearchForm} from './builder/PastProjectsAISearchForm';
 import {PastProjectsActionBar} from './builder/PastProjectsActionBar';
@@ -67,9 +67,22 @@ export const SharedPastProjectMergeSearch = ({
     () => new Set(currentRows.map((row) => createProjectGridFingerprint(row))),
     [currentRows],
   );
+  // The content fingerprint deliberately ignores `id`, so a compact archive row never
+  // matches the hydrated copy of the same project already in this share. Match on the
+  // project id as well, or already-included projects are offered (and added) again.
+  const currentProjectIds = useMemo(
+    () => new Set(currentRows.flatMap((row) => (row.id ? [row.id] : []))),
+    [currentRows],
+  );
+  const isAlreadyShared = useCallback(
+    (row: ProjectGridRow) =>
+      (Boolean(row.id) && currentProjectIds.has(row.id as string)) ||
+      currentFingerprints.has(createProjectGridFingerprint(row)),
+    [currentFingerprints, currentProjectIds],
+  );
   const availableRows = useMemo(
-    () => rows.filter((row) => !currentFingerprints.has(createProjectGridFingerprint(row))),
-    [currentFingerprints, rows],
+    () => rows.filter((row) => !isAlreadyShared(row)),
+    [isAlreadyShared, rows],
   );
   const hasAISearchTable = searchTables.some((table) => table.type === 'ai');
   const standardSearchTableIds = searchTables.filter((table) => table.type === 'standard').map((table) => table.id);
@@ -136,7 +149,7 @@ export const SharedPastProjectMergeSearch = ({
 
       const aiRows = response.results
         .map(toProjectGridRow)
-        .filter((row) => !currentFingerprints.has(createProjectGridFingerprint(row)));
+        .filter((row) => !isAlreadyShared(row));
 
       if (!aiRows.length) {
         updateSearchTable(tableId, (table) => ({
@@ -212,25 +225,34 @@ export const SharedPastProjectMergeSearch = ({
         return true;
       }
 
-      const seenFingerprints = new Set(currentFingerprints);
-      const rowsToAppend: ProjectGridRow[] = [];
-      selected.forEach((row) => {
-        const fingerprint = createProjectGridFingerprint(row);
-        if (seenFingerprints.has(fingerprint)) {
-          return;
-        }
-        seenFingerprints.add(fingerprint);
-        rowsToAppend.push(row);
-      });
-
-      if (!rowsToAppend.length) {
-        setBuilderMessage('Those projects are already in this shared result.');
-        return true;
-      }
-
       setIsSaving(true);
       setBuilderMessage('');
       try {
+        // Archive rows arrive compact, with no abstract or student names. Saving them as
+        // they are would write those fields away as blank for everyone who opens the share,
+        // and the detail endpoint is the only place that content lives. Fill them in first,
+        // exactly as the builder does before merging.
+        const needsHydration = selected.some((row) => row.id && !row.abstract && !row.student_names);
+        const hydratedSelected = needsHydration ? await hydrateProjectGridRows(selected) : selected;
+
+        const seenFingerprints = new Set(currentFingerprints);
+        const seenIds = new Set(currentProjectIds);
+        const rowsToAppend: ProjectGridRow[] = [];
+        hydratedSelected.forEach((row) => {
+          const fingerprint = createProjectGridFingerprint(row);
+          if (seenFingerprints.has(fingerprint) || (row.id && seenIds.has(row.id))) {
+            return;
+          }
+          seenFingerprints.add(fingerprint);
+          if (row.id) seenIds.add(row.id);
+          rowsToAppend.push(row);
+        });
+
+        if (!rowsToAppend.length) {
+          setBuilderMessage('Those projects are already in this shared result.');
+          return true;
+        }
+
         await onAddRows(rowsToAppend);
         setBuilderMessage(`${rowsToAppend.length} project${rowsToAppend.length === 1 ? '' : 's'} added.`);
         return true;
@@ -242,7 +264,7 @@ export const SharedPastProjectMergeSearch = ({
         setIsSaving(false);
       }
     },
-    [currentFingerprints, onAddRows],
+    [currentFingerprints, currentProjectIds, onAddRows],
   );
 
   return (

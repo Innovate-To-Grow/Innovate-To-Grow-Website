@@ -657,6 +657,46 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(within(getMergedSection() as HTMLElement).getAllByText('Hydrated Project').length).toBeGreaterThan(0);
   });
 
+  it('stores a project once when a second save starts while the first is still hydrating', async () => {
+    const resolvers: Array<(rows: ProjectGridRow[]) => void> = [];
+    mockHydrateProjectGridRows.mockImplementation(
+      () => new Promise<ProjectGridRow[]>((resolve) => { resolvers.push(resolve); }),
+    );
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+    const hydrated = makeRow({
+      id: 'p-9', team_number: 'T09', project_title: 'Id Only',
+      abstract: 'Abstract', student_names: 'Ada',
+    });
+
+    render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
+    fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
+    const save = screen.getByRole('button', {name: /save selected/i});
+    fireEvent.click(save);
+    fireEvent.click(save);
+
+    await act(async () => { resolvers[0]([hydrated]); });
+    await act(async () => { resolvers[1]([hydrated]); });
+    await waitFor(() => expect(getMergedSection()).not.toBeNull());
+
+    const persisted = JSON.parse(sessionStorage.getItem('past-projects:builder:merged-rows') ?? '[]');
+    expect(persisted).toHaveLength(1);
+  });
+
+  it('explains a failed detail load instead of silently saving nothing', async () => {
+    mockHydrateProjectGridRows.mockRejectedValue(new Error('Request failed with status code 404'));
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+
+    render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
+    fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+
+    expect(
+      await screen.findByText('Could not load full details for the selected projects. Please try again.'),
+    ).toBeInTheDocument();
+    expect(getMergedSection()).toBeNull();
+    expect(screen.getAllByLabelText('Select Id Only')[0]).toBeChecked();
+  });
+
   it('skips merging a project already in the saved results', async () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 

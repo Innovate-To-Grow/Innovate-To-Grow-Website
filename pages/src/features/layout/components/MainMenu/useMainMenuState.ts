@@ -61,6 +61,11 @@ export const useMainMenuState = () => {
   return {
     currentDate,
     isAuthenticated,
+    // The header only shows who is signed in; it makes no protected decision. Gating it on
+    // `isAuthenticated` flashes "Sign In" at a signed-in member for the whole background
+    // check, and leaves the anonymous header up indefinitely if that check cannot complete.
+    // A persisted identity is enough to render; protected routes still gate on the real flag.
+    hasMemberIdentity: Boolean(user),
     isMemberDropdownOpen,
     isMobileOpen,
     logout,

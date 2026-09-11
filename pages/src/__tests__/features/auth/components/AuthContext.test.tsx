@@ -340,6 +340,66 @@ describe('AuthProvider', () => {
     },
   );
 
+  it('retries a transient verification failure until the session verifies', async () => {
+    vi.useFakeTimers();
+    try {
+      authApi.getStoredSession.mockReturnValue(session);
+      authApi.bootstrapAuthSession.mockResolvedValueOnce({status: 'unverified', session});
+      render(<AuthProvider><AuthState /></AuthProvider>);
+      await act(async () => { await Promise.resolve(); });
+
+      // A transient failure keeps the identity but cannot authenticate it.
+      expect(screen.getByTestId('email')).toHaveTextContent('member@example.com');
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+      const callsAfterFailure = authApi.bootstrapAuthSession.mock.calls.length;
+
+      // Nothing else re-runs the check, so the provider must do it itself.
+      authApi.bootstrapAuthSession.mockResolvedValue(verifiedSession);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+
+      expect(authApi.bootstrapAuthSession.mock.calls.length).toBeGreaterThan(callsAfterFailure);
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not retry after a confirmed sign-out', async () => {
+    vi.useFakeTimers();
+    try {
+      authApi.getStoredSession.mockReturnValue(session);
+      authApi.bootstrapAuthSession.mockResolvedValue(anonymousSession);
+      render(<AuthProvider><AuthState /></AuthProvider>);
+      await act(async () => { await Promise.resolve(); });
+      const calls = authApi.bootstrapAuthSession.mock.calls.length;
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+
+      expect(authApi.bootstrapAuthSession).toHaveBeenCalledTimes(calls);
+      expect(screen.getByTestId('email')).toHaveTextContent('anonymous');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stops retrying once unmounted', async () => {
+    vi.useFakeTimers();
+    try {
+      authApi.getStoredSession.mockReturnValue(session);
+      authApi.bootstrapAuthSession.mockResolvedValue({status: 'unverified', session});
+      const {unmount} = render(<AuthProvider><AuthState /></AuthProvider>);
+      await act(async () => { await Promise.resolve(); });
+      const calls = authApi.bootstrapAuthSession.mock.calls.length;
+
+      unmount();
+      await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+
+      expect(authApi.bootstrapAuthSession).toHaveBeenCalledTimes(calls);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('does not apply bootstrap completion after unmount', async () => {
     let resolveBootstrap: (value: typeof verifiedSession) => void = () =>
       undefined;
