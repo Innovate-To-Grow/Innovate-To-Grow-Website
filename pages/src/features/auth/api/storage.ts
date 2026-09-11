@@ -1,6 +1,6 @@
 import type {AuthTokens, LoginResponse, User} from './types';
 
-const AUTH_SESSION_KEY = 'i2g_auth_session';
+export const AUTH_SESSION_KEY = 'i2g_auth_session';
 const AUTH_SESSION_VERSION = 1;
 
 // Legacy keys are read once and removed after migration. Keep these names stable
@@ -105,8 +105,20 @@ const isStoredAuthSession = (value: unknown): value is StoredAuthSession => {
   );
 };
 
+// The API uses null for an absent image, while older sessions omit the field.
+// Store one representation so profile/session responses cannot alternate the
+// record and trigger an endless chain of cross-tab storage events.
+const normalizeStoredUser = (user: User): User => {
+  const {profile_image, ...rest} = user;
+  return typeof profile_image === 'string' && profile_image
+    ? {...rest, profile_image}
+    : rest;
+};
+
 const writeSession = (session: StoredAuthSession) => {
-  const stored = safeLocalSet(AUTH_SESSION_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify({...session, user: normalizeStoredUser(session.user)});
+  const stored = safeLocalGet(AUTH_SESSION_KEY) === serialized ||
+    safeLocalSet(AUTH_SESSION_KEY, serialized);
   if (stored) removeLegacySession();
   return stored;
 };
@@ -123,7 +135,7 @@ const readCurrentRecord = (): StoredAuthSession | null => {
   if (!serialized) return null;
   try {
     const parsed: unknown = JSON.parse(serialized);
-    if (isStoredAuthSession(parsed)) return parsed;
+    if (isStoredAuthSession(parsed)) return {...parsed, user: normalizeStoredUser(parsed.user)};
   } catch {
     // Invalid or obsolete records are removed below.
   }
@@ -152,7 +164,7 @@ const migrateLegacySession = (): StoredAuthSession | null => {
       generation: createGeneration(),
       access,
       refresh,
-      user,
+      user: normalizeStoredUser(user),
       requires_profile_completion:
         safeSessionGet(LEGACY_PROFILE_COMPLETION_REQUIRED_KEY) === 'true',
     };
@@ -217,7 +229,7 @@ export const setTokens = (tokens: AuthTokens, user: User): StoredAuthSession => 
     generation: createGeneration(),
     access: tokens.access,
     refresh: tokens.refresh,
-    user,
+    user: normalizeStoredUser(user),
     requires_profile_completion: false,
   };
   return requireSessionWrite(session);
@@ -234,7 +246,7 @@ export const persistAuthSession = (
     generation: createGeneration(),
     access: response.access,
     refresh: response.refresh,
-    user: response.user,
+    user: normalizeStoredUser(response.user),
     requires_profile_completion: Boolean(
       response.requires_profile_completion,
     ),
@@ -270,7 +282,7 @@ export const updateStoredUser = (
   ) {
     return null;
   }
-  const user = updater(current.user);
+  const user = normalizeStoredUser(updater(current.user));
   return writeSession({...current, user}) ? user : null;
 };
 
@@ -289,7 +301,7 @@ export const updateStoredSessionProfile = (
   }
   const updated = {
     ...current,
-    user,
+    user: normalizeStoredUser(user),
     requires_profile_completion: requiresProfileCompletion,
   };
   return writeSession(updated) ? updated : null;
