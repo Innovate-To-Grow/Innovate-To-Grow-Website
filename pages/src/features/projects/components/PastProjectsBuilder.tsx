@@ -100,7 +100,8 @@ export const PastProjectsBuilder = ({
                                         onRefreshRows,
                                         onCreateShare,
                                     }: PastProjectsBuilderProps) => {
-    const {isAuthenticated} = useAuth();
+    const {isAuthenticated, isInitializing, unverified, user} = useAuth();
+    const memberId = user?.member_uuid ?? null;
     const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
     // Seed from any draft persisted before a login reload so the merged results survive the round-trip.
     const [mergedRows, setMergedRows] = useState<ProjectGridItem[]>(() =>
@@ -111,6 +112,7 @@ export const PastProjectsBuilder = ({
     const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
     const tableSequence = useRef(1);
     const mergeSequence = useRef(0);
+    const draftAccountSequence = useRef(0);
     const pendingRefreshTableId = useRef<string | null>(null);
     const lastSeenRows = useRef(rows);
 
@@ -124,19 +126,19 @@ export const PastProjectsBuilder = ({
         writePersistedMergedRows(mergedRows.map(stripProjectGridItem));
     }, [mergedRows]);
 
-    // Drop the persisted draft when the user logs out within the same tab, so a different user who
-    // signs in next on a shared machine does not inherit the previous user's merged selection. The
-    // login round-trip is a full page reload, so this never fires mid-flow — the component remounts
-    // already authenticated and restores from sessionStorage in the state initializer above.
-    const wasAuthenticatedRef = useRef(isAuthenticated);
+    // Revalidation is not a logout. Keep the draft while identity is being checked, and clear it
+    // only when a known member actually logs out or changes accounts. Guest drafts survive login.
+    const draftMemberRef = useRef(memberId);
     useEffect(() => {
-        if (wasAuthenticatedRef.current && !isAuthenticated) {
+        if (isInitializing || unverified) return;
+        if (draftMemberRef.current && draftMemberRef.current !== memberId) {
+            draftAccountSequence.current += 1;
             clearPersistedMergedRows();
             setMergedRows([]);
             setMergedRowsUndo(null);
         }
-        wasAuthenticatedRef.current = isAuthenticated;
-    }, [isAuthenticated]);
+        draftMemberRef.current = memberId;
+    }, [isInitializing, unverified, memberId]);
 
     // Wrap the parent's share creator so a *successful* share drops the persisted draft — the share
     // now owns this snapshot, and returning to the builder should start clean. A failed attempt keeps
@@ -282,8 +284,10 @@ export const PastProjectsBuilder = ({
                 return;
             }
 
+            const accountSequence = draftAccountSequence.current;
             const needsHydration = selected.some((row) => row.id && !row.abstract && !row.student_names);
             const hydratedSelected = needsHydration ? await hydrateProjectGridRows(selected) : selected;
+            if (accountSequence !== draftAccountSequence.current) return;
 
             const seenFingerprints = new Set(
                 mergedRows.map((row) => createProjectGridFingerprint(stripProjectGridItem(row))),

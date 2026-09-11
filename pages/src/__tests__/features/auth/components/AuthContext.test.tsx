@@ -42,10 +42,13 @@ vi.mock('@/features/auth/components/context/useAuthActions', () => ({
 import {AuthProvider, useAuth} from '@/features/auth/components/AuthContext';
 
 const user = {
-  id: '978b882b-d693-4e5e-aee1-21ff69ac82a4',
+  member_uuid: '978b882b-d693-4e5e-aee1-21ff69ac82a4',
   email: 'member@example.com',
 };
 const session = {
+  version: 1 as const,
+  access: 'access-1',
+  refresh: 'refresh-1',
   user,
   generation: 'generation-1',
   requires_profile_completion: true,
@@ -53,6 +56,18 @@ const session = {
 
 const verifiedSession = {status: 'verified' as const, session};
 const anonymousSession = {status: 'anonymous' as const, session: null};
+type BootstrapResult = typeof anonymousSession | {status: 'verified' | 'unverified'; session: typeof session};
+const deferredBootstrap = () => {
+  let resolve!: (result: BootstrapResult) => void;
+  const promise = new Promise<BootstrapResult>((done) => { resolve = done; });
+  return {promise, resolve};
+};
+const storageEvent = (key: string | null, storageArea = localStorage) => {
+  const event = new StorageEvent('storage', {key});
+  Object.defineProperty(event, 'storageArea', {value: storageArea});
+  return event;
+};
+const authStorageEvent = () => storageEvent('i2g_auth_session');
 
 function AuthState() {
   const auth = useAuth();
@@ -71,7 +86,7 @@ function AuthState() {
 
 describe('AuthProvider', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     authApi.bootstrapAuthSession.mockResolvedValue(anonymousSession);
     authApi.getStoredSession.mockReturnValue(null);
     authApi.isAuthenticated.mockReturnValue(false);
@@ -124,18 +139,19 @@ describe('AuthProvider', () => {
 
       authApi.getStoredSession.mockReturnValue(session);
       authApi.bootstrapAuthSession.mockResolvedValue(verifiedSession);
-      act(() => window.dispatchEvent(new Event(eventName)));
+      act(() => window.dispatchEvent(eventName === 'storage' ? authStorageEvent() : new Event(eventName)));
 
       await waitFor(() =>
         expect(screen.getByTestId('email')).toHaveTextContent(
           'member@example.com',
         ),
       );
-      expect(authApi.bootstrapAuthSession).toHaveBeenCalledTimes(2);
+      expect(authApi.bootstrapAuthSession).toHaveBeenCalledOnce();
     },
   );
 
   it('clears local state when another root logs out', async () => {
+    authApi.getStoredSession.mockReturnValue(session);
     authApi.bootstrapAuthSession.mockResolvedValueOnce(verifiedSession);
     const {unmount} = render(
       <AuthProvider>
@@ -172,7 +188,7 @@ describe('AuthProvider', () => {
     );
     await screen.findByText('anonymous');
 
-    act(() => window.dispatchEvent(new Event('storage')));
+    act(() => window.dispatchEvent(authStorageEvent()));
     unmount();
     await act(async () => resolveSync(verifiedSession));
 
@@ -183,9 +199,151 @@ describe('AuthProvider', () => {
     expect(removeSpy).toHaveBeenCalledWith('storage', expect.any(Function));
   });
 
+  it.each(['verified', 'unverified'] as const)(
+    'keeps a verified generation signed in through a background check returning %s',
+    async (status) => {
+      authApi.getStoredSession.mockReturnValue(session);
+      authApi.bootstrapAuthSession.mockResolvedValueOnce(verifiedSession);
+      render(<AuthProvider><AuthState /></AuthProvider>);
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('true'));
+
+      const pending = deferredBootstrap();
+      const refreshed = {...session, access: 'access-2', refresh: 'refresh-2'};
+      authApi.getStoredSession.mockReturnValue(refreshed);
+      authApi.bootstrapAuthSession.mockReturnValueOnce(pending.promise);
+      act(() => window.dispatchEvent(new Event('i2g-auth-state-change')));
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+      expect(screen.getByTestId('initializing')).toHaveTextContent('false');
+      await act(async () => pending.resolve({status, session: refreshed}));
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+      expect(screen.getByTestId('unverified')).toHaveTextContent('false');
+    },
+  );
+
+  it('synchronizes profile changes without signing out and ignores unrelated storage', async () => {
+    authApi.getStoredSession.mockReturnValue(session);
+    authApi.bootstrapAuthSession.mockResolvedValueOnce(verifiedSession);
+    render(<AuthProvider><AuthState /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('true'));
+    act(() => {
+      window.dispatchEvent(storageEvent('theme'));
+      window.dispatchEvent(storageEvent('i2g_auth_session', sessionStorage));
+    });
+    expect(authApi.bootstrapAuthSession).toHaveBeenCalledOnce();
+
+    const pending = deferredBootstrap();
+    const updated = {...session, user: {...user, email: 'updated@example.com'}};
+    authApi.getStoredSession.mockReturnValue(updated);
+    authApi.bootstrapAuthSession.mockReturnValueOnce(pending.promise);
+    act(() => window.dispatchEvent(authStorageEvent()));
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+    expect(screen.getByTestId('email')).toHaveTextContent('member@example.com');
+    await act(async () => pending.resolve({status: 'verified', session: updated}));
+    expect(screen.getByTestId('email')).toHaveTextContent('updated@example.com');
+  });
+
+  it('gates a replacement account and ignores the old initial bootstrap completion', async () => {
+    const initial = deferredBootstrap();
+    const replacement = deferredBootstrap();
+    authApi.getStoredSession.mockReturnValue(session);
+    authApi.bootstrapAuthSession.mockReturnValueOnce(initial.promise).mockReturnValueOnce(replacement.promise);
+    render(<AuthProvider><AuthState /></AuthProvider>);
+
+    const next = {...session, generation: 'generation-2', user: {...user, member_uuid: 'member-2', email: 'next@example.com'}};
+    authApi.getStoredSession.mockReturnValue(next);
+    act(() => window.dispatchEvent(authStorageEvent()));
+    expect(screen.getByTestId('email')).toHaveTextContent('next@example.com');
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+    expect(screen.getByTestId('initializing')).toHaveTextContent('true');
+    await act(async () => replacement.resolve({status: 'verified', session: next}));
+    await act(async () => initial.resolve(verifiedSession));
+    expect(screen.getByTestId('email')).toHaveTextContent('next@example.com');
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+  });
+
+  it('does not reuse a verified account for an unverified replacement', async () => {
+    authApi.getStoredSession.mockReturnValue(session);
+    authApi.bootstrapAuthSession.mockResolvedValueOnce(verifiedSession);
+    render(<AuthProvider><AuthState /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('true'));
+    const next = {...session, generation: 'generation-2', user: {...user, member_uuid: 'member-2'}};
+    authApi.getStoredSession.mockReturnValue(next);
+    authApi.bootstrapAuthSession.mockResolvedValueOnce({status: 'unverified', session: next});
+    await act(async () => window.dispatchEvent(authStorageEvent()));
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+    expect(screen.getByTestId('unverified')).toHaveTextContent('true');
+  });
+
+  it('retains verified profile requirements after unverified same-generation storage changes', async () => {
+    authApi.getStoredSession.mockReturnValue(session);
+    authApi.bootstrapAuthSession.mockResolvedValueOnce(verifiedSession);
+    render(<AuthProvider><AuthState /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('true'));
+    const pending = deferredBootstrap();
+    const changed = {...session, requires_profile_completion: false, user: {...user, email: 'unverified@example.com'}};
+    authApi.getStoredSession.mockReturnValue(changed);
+    authApi.bootstrapAuthSession.mockReturnValueOnce(pending.promise);
+    act(() => window.dispatchEvent(authStorageEvent()));
+    expect(screen.getByTestId('profile-required')).toHaveTextContent('true');
+    expect(screen.getByTestId('email')).toHaveTextContent('member@example.com');
+    await act(async () => pending.resolve({status: 'unverified', session: changed}));
+    expect(screen.getByTestId('profile-required')).toHaveTextContent('true');
+    expect(screen.getByTestId('email')).toHaveTextContent('member@example.com');
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+  });
+
+  it('does not accept a verification result for another identity', async () => {
+    const other = {...session, generation: 'generation-other', user: {...user, member_uuid: 'other-member'}};
+    authApi.getStoredSession.mockReturnValue(session);
+    authApi.bootstrapAuthSession.mockResolvedValueOnce({status: 'verified', session: other});
+    render(<AuthProvider><AuthState /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('initializing')).toHaveTextContent('false'));
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+    expect(screen.getByTestId('email')).toHaveTextContent('member@example.com');
+  });
+
+  it('verifies a replacement that arrived before its storage event', async () => {
+    const initial = deferredBootstrap();
+    const replacement = deferredBootstrap();
+    authApi.getStoredSession.mockReturnValue(session);
+    authApi.bootstrapAuthSession.mockReturnValueOnce(initial.promise).mockReturnValueOnce(replacement.promise);
+    render(<AuthProvider><AuthState /></AuthProvider>);
+    const next = {...session, generation: 'generation-2', user: {...user, member_uuid: 'member-2'}};
+    authApi.getStoredSession.mockReturnValue(next);
+    await act(async () => initial.resolve({status: 'unverified', session: next}));
+    expect(authApi.bootstrapAuthSession).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+    await act(async () => replacement.resolve({status: 'verified', session: next}));
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+  });
+
+  it.each(['logout', 'rejection'])(
+    'clears an established session on %s and cannot resurrect it from an older check',
+    async (reason) => {
+      authApi.getStoredSession.mockReturnValue(session);
+      authApi.bootstrapAuthSession.mockResolvedValueOnce(verifiedSession);
+      render(<AuthProvider><AuthState /></AuthProvider>);
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('true'));
+      const pending = deferredBootstrap();
+      authApi.bootstrapAuthSession.mockReturnValueOnce(pending.promise);
+      act(() => window.dispatchEvent(new Event('i2g-auth-state-change')));
+      authApi.getStoredSession.mockReturnValue(null);
+      if (reason === 'logout') {
+        act(() => window.dispatchEvent(storageEvent(null)));
+        await act(async () => pending.resolve(verifiedSession));
+      } else {
+        await act(async () => pending.resolve(anonymousSession));
+      }
+      expect(screen.getByTestId('email')).toHaveTextContent('anonymous');
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+      expect(screen.getByTestId('initializing')).toHaveTextContent('false');
+    },
+  );
+
   it('does not apply bootstrap completion after unmount', async () => {
     let resolveBootstrap: (value: typeof verifiedSession) => void = () =>
       undefined;
+    authApi.getStoredSession.mockReturnValue(session);
     authApi.bootstrapAuthSession.mockReturnValue(
       new Promise((resolve) => {
         resolveBootstrap = resolve;
