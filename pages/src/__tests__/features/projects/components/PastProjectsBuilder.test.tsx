@@ -1,4 +1,4 @@
-import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {PastProjectsBuilder} from '@/features/projects/components/PastProjectsBuilder';
@@ -9,6 +9,12 @@ const mockUseAuth = vi.fn();
 const mockSearchPastProjectsWithAI = vi.fn();
 const mockBuildLoginPath = vi.fn();
 const mockHydrateProjectGridRows = vi.fn();
+const authenticatedAuth = {
+  isAuthenticated: true,
+  isInitializing: false,
+  unverified: false,
+  user: {member_uuid: 'member-1', email: 'member@example.com'},
+};
 
 vi.mock('@/features/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/auth')>();
@@ -79,7 +85,7 @@ const getMergedSection = () => {
 describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   beforeEach(() => {
     mockUseAuth.mockReset();
-    mockUseAuth.mockReturnValue({isAuthenticated: true});
+    mockUseAuth.mockReturnValue(authenticatedAuth);
     mockSearchPastProjectsWithAI.mockReset();
     mockBuildLoginPath.mockReset();
     mockHydrateProjectGridRows.mockReset();
@@ -490,7 +496,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   it('drops the persisted draft when the user logs out in the same tab', () => {
     // sessionStorage survives a tab session, so without this a second user signing in on a shared
     // machine (tab never closed) would inherit the first user's merged selection.
-    mockUseAuth.mockReturnValue({isAuthenticated: true});
+    mockUseAuth.mockReturnValue(authenticatedAuth);
     sessionStorage.setItem(
       MERGED_ROWS_STORAGE_KEY,
       JSON.stringify([makeRow({team_number: 'T09', project_title: 'Persisted Project'})]),
@@ -504,6 +510,79 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
     rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
+    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(getMergedSection()).toBeNull();
+  });
+
+  it('keeps the draft through revalidation and a temporary verification failure', () => {
+    const builder = <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />;
+    const {rerender} = render(builder);
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    const draft = sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY);
+
+    for (const isInitializing of [true, false]) {
+      mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, unverified: true, isInitializing});
+      rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+      expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBe(draft);
+      expect(within(getMergedSection() as HTMLElement).getAllByText('Bravo Project').length).toBeGreaterThan(0);
+    }
+
+    mockUseAuth.mockReturnValue(authenticatedAuth);
+    rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBe(draft);
+  });
+
+  it('keeps a guest draft when the guest signs in', () => {
+    mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
+    sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, JSON.stringify([ROWS[1]]));
+    const {rerender} = render(
+      <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
+    );
+    const draft = sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY);
+    mockUseAuth.mockReturnValue(authenticatedAuth);
+    rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBe(draft);
+    expect(getMergedSection()).not.toBeNull();
+  });
+
+  it('clears the draft when switching directly to another member', () => {
+    sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, JSON.stringify([ROWS[1]]));
+    const {rerender} = render(
+      <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
+    );
+    mockUseAuth.mockReturnValue({...authenticatedAuth, user: {...authenticatedAuth.user, member_uuid: 'member-2'}});
+    rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(getMergedSection()).toBeNull();
+  });
+
+  it('clears a restored member draft when initial session verification confirms logout', () => {
+    mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, isInitializing: true, unverified: true});
+    sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, JSON.stringify([ROWS[1]]));
+    const {rerender} = render(
+      <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
+    );
+    expect(getMergedSection()).not.toBeNull();
+    mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
+    rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(getMergedSection()).toBeNull();
+  });
+
+  it('does not restore an in-flight merge after a confirmed logout', async () => {
+    let resolveDetails!: (rows: ProjectGridRow[]) => void;
+    mockHydrateProjectGridRows.mockReturnValue(new Promise<ProjectGridRow[]>((resolve) => { resolveDetails = resolve; }));
+    const rows = [makeRow({id: 'pending-project'})];
+    const {rerender} = render(
+      <PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />,
+    );
+    fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    expect(mockHydrateProjectGridRows).toHaveBeenCalledTimes(1);
+    mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
+    rerender(<PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />);
+    await act(async () => resolveDetails([{...rows[0], abstract: 'Loaded details'}]));
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
     expect(getMergedSection()).toBeNull();
   });
@@ -576,6 +655,46 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
 
     await waitFor(() => expect(mockHydrateProjectGridRows).toHaveBeenCalled());
     expect(within(getMergedSection() as HTMLElement).getAllByText('Hydrated Project').length).toBeGreaterThan(0);
+  });
+
+  it('stores a project once when a second save starts while the first is still hydrating', async () => {
+    const resolvers: Array<(rows: ProjectGridRow[]) => void> = [];
+    mockHydrateProjectGridRows.mockImplementation(
+      () => new Promise<ProjectGridRow[]>((resolve) => { resolvers.push(resolve); }),
+    );
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+    const hydrated = makeRow({
+      id: 'p-9', team_number: 'T09', project_title: 'Id Only',
+      abstract: 'Abstract', student_names: 'Ada',
+    });
+
+    render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
+    fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
+    const save = screen.getByRole('button', {name: /save selected/i});
+    fireEvent.click(save);
+    fireEvent.click(save);
+
+    await act(async () => { resolvers[0]([hydrated]); });
+    await act(async () => { resolvers[1]([hydrated]); });
+    await waitFor(() => expect(getMergedSection()).not.toBeNull());
+
+    const persisted = JSON.parse(sessionStorage.getItem('past-projects:builder:merged-rows') ?? '[]');
+    expect(persisted).toHaveLength(1);
+  });
+
+  it('explains a failed detail load instead of silently saving nothing', async () => {
+    mockHydrateProjectGridRows.mockRejectedValue(new Error('Request failed with status code 404'));
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+
+    render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
+    fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+
+    expect(
+      await screen.findByText('Could not load full details for the selected projects. Please try again.'),
+    ).toBeInTheDocument();
+    expect(getMergedSection()).toBeNull();
+    expect(screen.getAllByLabelText('Select Id Only')[0]).toBeChecked();
   });
 
   it('skips merging a project already in the saved results', async () => {

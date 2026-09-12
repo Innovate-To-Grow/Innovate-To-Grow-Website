@@ -82,6 +82,32 @@ describe('storage', () => {
     expect(getStoredUser()?.email).toBe('updated@test.com');
   });
 
+  it('keeps null and omitted profile images identical across session and profile updates', async () => {
+    const {setTokens, getStoredSession, updateStoredUser, updateStoredSessionProfile} = await import('@/features/auth/api/storage');
+    const withoutImage = {...mockUser, profile_image: null} as unknown as User;
+    const session = setTokens({access: 'a', refresh: 'r'}, withoutImage);
+    const original = mockLocalStorage.getItem('i2g_auth_session');
+    vi.mocked(mockLocalStorage.setItem).mockClear();
+
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      updateStoredSessionProfile(session, {...mockUser, profile_image: undefined}, false);
+      const updatedUser = updateStoredUser((user) => ({...user, profile_image: null}) as unknown as User, session.generation);
+      expect(updatedUser).not.toHaveProperty('profile_image');
+      expect(mockLocalStorage.getItem('i2g_auth_session')).toBe(original);
+    }
+    expect(getStoredSession()?.user).not.toHaveProperty('profile_image');
+    expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('normalizes old null images on read and persists real image changes', async () => {
+    const {setTokens, getStoredSession, updateStoredUser} = await import('@/features/auth/api/storage');
+    const session = setTokens({access: 'a', refresh: 'r'}, mockUser);
+    mockLocalStorage.setItem('i2g_auth_session', JSON.stringify({...session, user: {...mockUser, profile_image: null}}));
+    expect(getStoredSession()?.user).not.toHaveProperty('profile_image');
+    updateStoredUser((user) => ({...user, profile_image: '/new-avatar.png'}));
+    expect(getStoredSession()?.user.profile_image).toBe('/new-avatar.png');
+  });
+
   it('updateStoredUser does nothing when no user stored', async () => {
     const {updateStoredUser, getStoredUser} = await import('@/features/auth/api/storage');
     updateStoredUser((user) => ({...user, first_name: 'Updated'}));
@@ -381,8 +407,9 @@ describe('storage', () => {
   });
 
   it('returns false when clearing profile completion cannot be persisted', async () => {
-    const {setTokens, clearProfileCompletionRequired} = await import('@/features/auth/api/storage');
+    const {setTokens, setProfileCompletionRequired, clearProfileCompletionRequired} = await import('@/features/auth/api/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
+    setProfileCompletionRequired(true);
     vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
       throw new DOMException('Storage is full', 'QuotaExceededError');
     });
@@ -444,7 +471,7 @@ describe('storage', () => {
       throw new DOMException('Storage is full', 'QuotaExceededError');
     });
     expect(
-      updateStoredSessionProfile({generation: session.generation, refresh: 'r'}, mockUser, false),
+      updateStoredSessionProfile({generation: session.generation, refresh: 'r'}, mockUser, true),
     ).toBeNull();
   });
 

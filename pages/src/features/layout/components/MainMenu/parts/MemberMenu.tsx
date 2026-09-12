@@ -4,7 +4,9 @@ import {Icon} from '@/components/Icon/Icon';
 
 interface MemberMenuProps {
   user: User | null;
-  isAuthenticated: boolean;
+  /** Render the member view. True as soon as a persisted identity exists, so a background
+   *  session check never flashes the anonymous header at a signed-in member. */
+  hasMemberIdentity: boolean;
   isOpen: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -16,7 +18,7 @@ interface MemberMenuProps {
 
 export const MemberMenu = ({
   user,
-  isAuthenticated,
+  hasMemberIdentity,
   isOpen,
   onMouseEnter,
   onMouseLeave,
@@ -26,11 +28,11 @@ export const MemberMenu = ({
   onLogoutClick,
 }: MemberMenuProps) => (
   <div
-    className={`site-header-member${isAuthenticated ? ' is-authenticated' : ''}${isOpen ? ' is-open' : ''}`}
+    className={`site-header-member${hasMemberIdentity ? ' is-authenticated' : ''}${isOpen ? ' is-open' : ''}`}
     onMouseEnter={onMouseEnter}
     onMouseLeave={onMouseLeave}
   >
-    {isAuthenticated ? (
+    {hasMemberIdentity ? (
       <>
         <button
           type="button"
