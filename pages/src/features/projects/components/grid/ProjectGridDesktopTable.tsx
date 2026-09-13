@@ -1,12 +1,12 @@
 import {useId} from 'react';
 import {
-  getPastProjectDetailUrl,
   hasProjectGridDetails,
   type ProjectGridColumn,
   type ProjectGridColumnKey,
   type ProjectGridItem,
   type ProjectGridSortDirection,
 } from '../projectGrid';
+import {ProjectGridRowDetails} from './ProjectGridRowDetails';
 
 const COLUMN_WIDTHS: Partial<Record<ProjectGridColumnKey, string>> = {
   semester_label: '9%',
@@ -39,6 +39,7 @@ interface ProjectGridDesktopTableProps {
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  loadMissingDetails?: boolean;
 }
 
 const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: boolean) =>
@@ -47,7 +48,7 @@ const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: bool
 export const ProjectGridDesktopTable = ({
   columns,
   rows, pagedRows, emptyMessage, selectable, selectedKeys, selectAllStateRows, onToggleSelected, onToggleSelectAll,
-  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow,
+  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow, loadMissingDetails,
 }: ProjectGridDesktopTableProps) => {
   const selectionScopeRows = selectAllStateRows ?? rows;
   const selectedInScopeCount = selectionScopeRows.filter((row) => selectedKeys.has(row.__key)).length;
@@ -129,6 +130,7 @@ export const ProjectGridDesktopTable = ({
               onToggleExpanded={onToggleExpanded}
               onDeleteRow={onDeleteRow}
               colSpan={colSpan}
+              loadMissingDetails={loadMissingDetails}
             />
           ))}
         </tbody>
@@ -147,6 +149,7 @@ interface DesktopRowProps {
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
   colSpan: number;
+  loadMissingDetails?: boolean;
 }
 
 const DesktopRow = ({
@@ -159,9 +162,9 @@ const DesktopRow = ({
   onToggleExpanded,
   onDeleteRow,
   colSpan,
+  loadMissingDetails,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
-  const individualHref = row.id ? getPastProjectDetailUrl(row.id) : '';
   const detailsId = useId();
 
   return (
@@ -214,21 +217,7 @@ const DesktopRow = ({
         <tr className="project-grid-detail-row">
           <td colSpan={colSpan}>
             <div id={detailsId} className="project-grid-detail-content">
-              {individualHref ? (
-                <div className="project-grid-individual-link-row">
-                  <span className="project-grid-individual-link-label">Individual Project URL</span>
-                  <a
-                    className="project-grid-individual-link"
-                    href={individualHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {individualHref}
-                  </a>
-                </div>
-              ) : null}
-              {row.abstract ? <div><strong>Abstract:</strong> {row.abstract}</div> : null}
-              {row.student_names ? <div><strong>Student Names:</strong> {row.student_names}</div> : null}
+              <ProjectGridRowDetails row={row} loadMissingDetails={loadMissingDetails} />
             </div>
           </td>
         </tr>

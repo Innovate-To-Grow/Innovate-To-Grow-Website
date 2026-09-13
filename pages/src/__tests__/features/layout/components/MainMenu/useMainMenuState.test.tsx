@@ -69,6 +69,25 @@ describe('useMainMenuState', () => {
     expect(result.current.isAuthenticated).toBe(false);
   });
 
+  it('shows the member identity while a background check has not verified it yet', () => {
+    useAuth.mockReturnValue({
+      user: {member_uuid: 'u', email: 'a@b.c'},
+      // Still unverified: the header must not flash "Sign In" at a signed-in member.
+      isAuthenticated: false,
+      logout: vi.fn(),
+      refreshProfile: vi.fn(),
+    });
+    const {result} = renderHook(() => useMainMenuState(), {wrapper});
+
+    expect(result.current.hasMemberIdentity).toBe(true);
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it('shows the anonymous header when there is no persisted identity', () => {
+    const {result} = renderHook(() => useMainMenuState(), {wrapper});
+    expect(result.current.hasMemberIdentity).toBe(false);
+  });
+
   it('toggles the mobile menu on the toggle-menu window event', () => {
     const {result} = renderHook(() => useMainMenuState(), {wrapper});
     expect(result.current.isMobileOpen).toBe(false);

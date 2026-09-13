@@ -151,6 +151,7 @@ export function SearchTableCard({
         className={resultsMotionKey ? 'search-table-results-motion' : undefined}
       >
         <ProjectGridTable
+          loadMissingDetails
           columns={PAST_PROJECT_GRID_COLUMNS}
           rows={rows}
           pagedRows={table.pagedRows}

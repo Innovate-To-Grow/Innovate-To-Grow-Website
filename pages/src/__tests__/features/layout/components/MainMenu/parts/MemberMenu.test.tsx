@@ -16,7 +16,7 @@ const makeUser = (overrides: Partial<User> = {}): User => ({
 
 const makeProps = (overrides: Record<string, unknown> = {}) => ({
   user: makeUser(),
-  isAuthenticated: true,
+  hasMemberIdentity: true,
   isOpen: false,
   onMouseEnter: vi.fn(),
   onMouseLeave: vi.fn(),
@@ -29,7 +29,7 @@ const makeProps = (overrides: Record<string, unknown> = {}) => ({
 
 describe('MemberMenu', () => {
   it('shows a sign-in button for anonymous visitors', () => {
-    const props = makeProps({user: null, isAuthenticated: false});
+    const props = makeProps({user: null, hasMemberIdentity: false});
     render(<MemberMenu {...props} />);
 
     const button = screen.getByRole('button', {name: 'Sign In'});

@@ -1,10 +1,10 @@
 import {useId} from 'react';
 import {
-  getPastProjectDetailUrl,
   hasProjectGridDetails,
   type ProjectGridColumn,
   type ProjectGridItem,
 } from '../projectGrid';
+import {ProjectGridRowDetails} from './ProjectGridRowDetails';
 
 interface ProjectGridMobileCardsProps {
   columns: ProjectGridColumn[];
@@ -16,6 +16,7 @@ interface ProjectGridMobileCardsProps {
   selectedKeys: Set<string>;
   onToggleSelected?: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  loadMissingDetails?: boolean;
 }
 
 export const ProjectGridMobileCards = ({
@@ -28,6 +29,7 @@ export const ProjectGridMobileCards = ({
   selectedKeys,
   onToggleSelected,
   onDeleteRow,
+  loadMissingDetails,
 }: ProjectGridMobileCardsProps) => (
   <div className="project-grid-mobile-cards">
     {!pagedRows.length ? <div className="project-grid-empty">{emptyMessage}</div> : null}
@@ -43,6 +45,7 @@ export const ProjectGridMobileCards = ({
         isSelected={selectedKeys.has(row.__key)}
         onToggleSelected={onToggleSelected}
         onDeleteRow={onDeleteRow}
+        loadMissingDetails={loadMissingDetails}
       />
     ))}
   </div>
@@ -57,6 +60,7 @@ interface MobileCardProps {
   isSelected: boolean;
   onToggleSelected?: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  loadMissingDetails?: boolean;
 }
 
 const MobileCard = ({
@@ -68,9 +72,9 @@ const MobileCard = ({
   isSelected,
   onToggleSelected,
   onDeleteRow,
+  loadMissingDetails,
 }: MobileCardProps) => {
   const hasDetails = hasProjectGridDetails(row);
-  const individualHref = row.id ? getPastProjectDetailUrl(row.id) : '';
   const detailsId = useId();
 
   return (
@@ -113,21 +117,7 @@ const MobileCard = ({
 
       {isExpanded ? (
         <div id={detailsId} className="project-grid-mobile-card-details">
-          {individualHref ? (
-            <div className="project-grid-individual-link-row">
-              <span className="project-grid-individual-link-label">Individual Project URL</span>
-              <a
-                className="project-grid-individual-link"
-                href={individualHref}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {individualHref}
-              </a>
-            </div>
-          ) : null}
-          {row.abstract ? <div><strong>Abstract:</strong> {row.abstract}</div> : null}
-          {row.student_names ? <div><strong>Student Names:</strong> {row.student_names}</div> : null}
+          <ProjectGridRowDetails row={row} loadMissingDetails={loadMissingDetails} />
         </div>
       ) : null}
     </div>

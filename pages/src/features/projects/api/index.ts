@@ -221,16 +221,30 @@ export const fetchProjectDetail = async (id: string, signal?: AbortSignal): Prom
     return response.data;
 };
 
+// Matches the inline detail loader's bound. Saving a large selection of archive rows
+// would otherwise open one request per row at once.
+const HYDRATION_CONCURRENCY = 4;
+
 export const hydrateProjectGridRows = async (
     rows: ProjectGridRow[],
     signal?: AbortSignal,
-): Promise<ProjectGridRow[]> =>
-    Promise.all(
-        rows.map(async (row) => {
-            if (!row.id || row.abstract || row.student_names) return row;
-            return toProjectGridRow(await fetchProjectDetail(row.id, signal));
-        }),
+): Promise<ProjectGridRow[]> => {
+    const hydrated = [...rows];
+    let cursor = 0;
+    const worker = async () => {
+        while (cursor < rows.length) {
+            const index = cursor;
+            cursor += 1;
+            const row = rows[index];
+            if (!row.id || row.abstract || row.student_names) continue;
+            hydrated[index] = toProjectGridRow(await fetchProjectDetail(row.id, signal));
+        }
+    };
+    await Promise.all(
+        Array.from({length: Math.min(HYDRATION_CONCURRENCY, rows.length)}, worker),
     );
+    return hydrated;
+};
 
 export const createPastProjectShare = async (
     rows: ProjectGridRow[],

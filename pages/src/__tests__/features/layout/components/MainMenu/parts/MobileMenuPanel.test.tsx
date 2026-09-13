@@ -26,7 +26,7 @@ const Harness = () => {
         menuItems={[]}
         state="ready"
         isMobileOpen={open}
-        isAuthenticated={false}
+        hasMemberIdentity={false}
         user={null}
         openItemIndex={null}
         triggerRef={triggerRef}

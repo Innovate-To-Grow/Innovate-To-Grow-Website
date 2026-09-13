@@ -7,7 +7,7 @@ const useMainMenuState = vi.hoisted(() => vi.fn());
 
 interface MemberMenuProps {
   user: unknown;
-  isAuthenticated: boolean;
+  hasMemberIdentity: boolean;
   isOpen: boolean;
   onAccountClick: () => void;
   onLoginClick: () => void;
@@ -89,6 +89,7 @@ const menuItem = {
 const makeState = (overrides: Record<string, unknown> = {}) => ({
   currentDate: 'SUNDAY 24 AUGUST 2026',
   isAuthenticated: false,
+  hasMemberIdentity: false,
   isMemberDropdownOpen: false,
   isMobileOpen: false,
   logout: vi.fn(),
@@ -241,6 +242,7 @@ describe('MainMenu', () => {
     const navigate = vi.fn();
     const state = makeState({
       isAuthenticated: true,
+      hasMemberIdentity: true,
       setIsMemberDropdownOpen,
       logout,
     });
@@ -249,7 +251,7 @@ describe('MainMenu', () => {
 
     const member = childProps.memberMenu;
     expect(member.user).toBe(state.user);
-    expect(member.isAuthenticated).toBe(true);
+    expect(member.hasMemberIdentity).toBe(true);
     expect(member.isOpen).toBe(false);
 
     member.onAccountClick();
@@ -275,7 +277,7 @@ describe('MainMenu', () => {
   it('opens the member dropdown on mouse enter only when authenticated', () => {
     const setIsMemberDropdownOpen = vi.fn();
     useMainMenuState.mockReturnValue(
-      makeState({isAuthenticated: true, setIsMemberDropdownOpen}),
+      makeState({isAuthenticated: true, hasMemberIdentity: true, setIsMemberDropdownOpen}),
     );
     render(<MainMenu navigate={vi.fn()} />);
 
@@ -288,7 +290,7 @@ describe('MainMenu', () => {
   it('does not open the member dropdown on mouse enter when anonymous', () => {
     const setIsMemberDropdownOpen = vi.fn();
     useMainMenuState.mockReturnValue(
-      makeState({isAuthenticated: false, setIsMemberDropdownOpen}),
+      makeState({isAuthenticated: false, hasMemberIdentity: false, setIsMemberDropdownOpen}),
     );
     render(<MainMenu navigate={vi.fn()} />);
 

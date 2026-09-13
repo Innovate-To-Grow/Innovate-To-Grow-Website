@@ -44,6 +44,8 @@ interface ProjectGridTableProps {
   onToggleSelected?: (rowKey: string) => void;
   onToggleSelectAll?: () => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  /** Retrieve missing details when archive rows are expanded; saved snapshots keep their own fields. */
+  loadMissingDetails?: boolean;
 }
 
 interface PageSizeSelectProps {
@@ -219,6 +221,7 @@ export const ProjectGridTable = ({
   onToggleSelected,
   onToggleSelectAll,
   onDeleteRow,
+  loadMissingDetails = false,
 }: ProjectGridTableProps) => {
   const searchInputId = useId();
   const toolbarElement = toolbar ? (
@@ -291,6 +294,7 @@ export const ProjectGridTable = ({
             expandedKeys={expandedKeys}
             onToggleExpanded={onToggleExpanded}
             onDeleteRow={onDeleteRow}
+            loadMissingDetails={loadMissingDetails}
           />
 
           <ProjectGridMobileCards
@@ -303,6 +307,7 @@ export const ProjectGridTable = ({
             selectedKeys={selectedKeys}
             onToggleSelected={onToggleSelected}
             onDeleteRow={onDeleteRow}
+            loadMissingDetails={loadMissingDetails}
           />
 
           {totalPages > 1 ? (

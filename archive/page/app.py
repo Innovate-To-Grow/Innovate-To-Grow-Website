@@ -26,7 +26,7 @@ load_dotenv()
 ROOT = Path(__file__).resolve().parent
 
 app = Flask(__name__, static_folder=str(ROOT / "static"), static_url_path="/static")
-app.config.update(CACHE_TYPE="simple", CACHE_DEFAULT_TIMEOUT=3600)
+app.config.update(CACHE_TYPE="SimpleCache", CACHE_DEFAULT_TIMEOUT=3600)
 cache = Cache(app)
 
 # Only the spreadsheets the archived pages actually use — keeps the proxy from

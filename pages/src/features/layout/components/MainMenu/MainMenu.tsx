@@ -13,7 +13,7 @@ interface MainMenuProps {
 export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMenuProps) => {
   const {
     currentDate,
-    isAuthenticated,
+    hasMemberIdentity,
     isMemberDropdownOpen,
     isMobileOpen,
     logout,
@@ -166,9 +166,9 @@ export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMe
 
           <MemberMenu
             user={user}
-            isAuthenticated={isAuthenticated}
+            hasMemberIdentity={hasMemberIdentity}
             isOpen={isMemberDropdownOpen}
-            onMouseEnter={() => isAuthenticated && setIsMemberDropdownOpen(true)}
+            onMouseEnter={() => hasMemberIdentity && setIsMemberDropdownOpen(true)}
             onMouseLeave={() => setIsMemberDropdownOpen(false)}
             onToggle={() => setIsMemberDropdownOpen((prev) => !prev)}
             onAccountClick={() => {
@@ -188,7 +188,7 @@ export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMe
         menuItems={menuItems}
         state={state}
         isMobileOpen={isMobileOpen}
-        isAuthenticated={isAuthenticated}
+        hasMemberIdentity={hasMemberIdentity}
         user={user}
         openItemIndex={openItemIndex}
         triggerRef={mobileMenuTriggerRef}
