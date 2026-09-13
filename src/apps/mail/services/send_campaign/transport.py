@@ -75,15 +75,22 @@ def _send_via_ses(
     unsubscribe_url="",
     configuration_set="",
     before_provider_call=None,
+    recipient_log_id=None,
+    delivery_attempt=0,
 ) -> SesSendResult:
     del source
+    headers = _build_unsubscribe_headers(unsubscribe_url)
+    if getattr(ses_client, "provider", "") == "ses" and recipient_log_id and delivery_attempt:
+        # SES returns these tags in mail.tags even when the event arrives before
+        # send_raw_email returns its provider-assigned message ID.
+        headers["X-SES-MESSAGE-TAGS"] = f"i2g_recipient_id={recipient_log_id}, i2g_delivery_attempt={delivery_attempt}"
     try:
         result = deliver_email(
             EmailMessage(
                 subject=subject,
                 to=(recipient,),
                 html_body=html_body,
-                headers=_build_unsubscribe_headers(unsubscribe_url),
+                headers=headers,
             ),
             config=ses_client,
             retry_config=NO_PROVIDER_RETRIES,

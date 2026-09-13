@@ -48,6 +48,24 @@ Contact verification uses the email challenge system or AWS SNS SMS.
 
 The mail app (`src/apps/mail/`) provides email campaign functionality through Django admin. Campaigns are composed in the admin using CKEditor 5 and sent to selected audiences.
 
+### Choose the email sender
+
+Open **Mail → Notification Delivery → Edit Notification Delivery**. Under
+**Email Sender**, select **AWS SES** or **SMTP**, set the sender name and email
+address, and save the active configuration.
+
+- **AWS SES** uses the active AWS credentials and region. SMTP fields are not
+  required, and any saved SMTP credentials are preserved when selecting SES.
+- **SMTP** shows the server, port, security, and optional authentication fields.
+  Leave the password blank when editing to retain the saved password. STARTTLS
+  and SSL both verify the server certificate; enable only one of them.
+- AWS settings remain available for SMS even when email uses SMTP. Changing the
+  email provider does not switch the SMS provider.
+
+This selection applies to verification codes, admin invitations, tickets,
+campaigns, inbox replies, and the **Send Test Email** action. Saving settings
+does not send a message; use the test action to check delivery explicitly.
+
 ### Campaign model
 
 `EmailCampaign` (`src/apps/mail/models/campaign.py`):
@@ -100,8 +118,10 @@ Audience resolution is handled by `src/apps/mail/services/audience.py`.
 5. Aggregate campaign state/counts from the recipient logs
 
 Provider calls whose outcome cannot be determined are marked `uncertain` and
-are never resent automatically. Reconcile provider evidence before using the
-explicit admin retry action.
+are never resent automatically. A verified SES event for the same send attempt
+resolves the recipient and its background job together, clearing the uncertainty
+from worker monitoring without another send. Otherwise, reconcile provider
+evidence before using the explicit admin retry action.
 
 Switching providers is global and does not configure failover. SES campaign
 delivery, bounce, and complaint events remain available only for messages sent

@@ -450,28 +450,10 @@ def send_email_recipient_job(job) -> None:
             unsubscribe_url=unsubscribe_url,
             configuration_set=_get_configuration_set_name(config),
             before_provider_call=begin_provider_call,
+            recipient_log_id=log.pk,
+            delivery_attempt=job.attempts,
         )
-        if result.error:
-            raise _job_error_for_ses_result(result)
-        updated = RecipientLog.objects.filter(
-            pk=log.pk,
-            status="processing",
-            claim_token=job.claim_token,
-        ).update(
-            status="sent",
-            provider=result.provider,
-            error_message="",
-            sent_at=timezone.now(),
-            provider_message_id=result.message_id,
-            claim_token=None,
-            claimed_at=None,
-            uncertain_at=None,
-            updated_at=timezone.now(),
-        )
-        if not updated:
-            raise UncertainJobError(
-                "The email provider accepted delivery, but the recipient-log claim was lost before it could be recorded."
-            )
+        _record_email_job_result(log, job, result)
     except JobClaimLost:
         raise
     except Exception as exc:
@@ -502,6 +484,50 @@ def send_email_recipient_job(job) -> None:
             raise
         raise classified from exc
     aggregate_email_campaign(log.campaign_id)
+
+
+def _record_email_job_result(log, job, result):
+    error = None
+    with transaction.atomic():
+        current = RecipientLog.objects.select_for_update().get(pk=log.pk)
+        confirmed_by_event = (
+            current.attempts == job.attempts
+            and current.provider == "ses"
+            and current.provider_message_id
+            and current.last_sns_message_id
+            and current.status in _EMAIL_PROVIDER_TERMINAL_STATUSES
+        )
+        if confirmed_by_event:
+            # A callback can arrive before the provider returns, including when
+            # the response subsequently times out. Its confirmed outcome wins.
+            RecipientLog.objects.filter(pk=log.pk, claim_token=job.claim_token).update(
+                claim_token=None,
+                claimed_at=None,
+                uncertain_at=None,
+                updated_at=timezone.now(),
+            )
+            if current.status not in _EMAIL_SUCCESS_STATUSES:
+                error = PermanentJobError("Recipient already has a terminal provider failure.")
+        elif result.error:
+            error = _job_error_for_ses_result(result)
+        elif current.status == "processing" and current.claim_token == job.claim_token:
+            RecipientLog.objects.filter(pk=log.pk).update(
+                status="sent",
+                provider=result.provider,
+                error_message="",
+                sent_at=timezone.now(),
+                provider_message_id=result.message_id,
+                claim_token=None,
+                claimed_at=None,
+                uncertain_at=None,
+                updated_at=timezone.now(),
+            )
+        else:
+            error = UncertainJobError(
+                "The email provider accepted delivery, but the recipient-log claim was lost before it could be recorded."
+            )
+    if error is not None:
+        raise error
 
 
 def send_sms_recipient_job(job) -> None:

@@ -54,7 +54,15 @@ configured. A failed or uncertain request is never retried through the other
 provider. Jobs resolve the active provider when execution begins, so queued work
 that has not started follows the current global selection.
 
+Verification emails with uncertain provider acceptance retain their pending
+challenge and continue to code entry. The normal code hash, expiry, attempt
+limit, and resend limits still apply; no authentication is granted until the
+code is verified.
+
 SES Configuration Set and SNS delivery-event tracking remain SES-specific.
+Campaigns include recipient and attempt tags so configuration-set events can
+be recorded even before the send response returns. Older untagged messages
+continue to match by their saved provider message ID.
 SMTP records successful submission acceptance only; it does not claim delivered,
 bounced, or complained status without a future SMTP feedback integration.
 

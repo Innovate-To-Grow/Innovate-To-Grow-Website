@@ -193,10 +193,18 @@ class SMTPProviderConfig(ProjectControlModel):
         if bool(self.username) != bool(self.password):
             message = "SMTP username and password must be provided together."
             errors["username" if self.password else "password"] = message
-        if not 1 <= self.port <= 65535:
+        if not isinstance(self.port, int) or not 1 <= self.port <= 65535:
             errors["port"] = "SMTP port must be between 1 and 65535."
         if errors:
             raise ValidationError(errors)
+
+    def validate_constraints(self, exclude=None):
+        # save() replaces the active row atomically. Do not reject that switch
+        # during ModelForm validation; the database still enforces uniqueness.
+        exclude = set(exclude or ())
+        if self.is_active:
+            exclude.add("is_active")
+        super().validate_constraints(exclude=exclude)
 
     def save(self, *args, **kwargs):
         self.full_clean(validate_constraints=False)

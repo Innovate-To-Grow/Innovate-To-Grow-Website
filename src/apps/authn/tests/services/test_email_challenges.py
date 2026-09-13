@@ -1,10 +1,12 @@
 """Tests for authn.services.email.challenges."""
 
 from datetime import timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TransactionTestCase
+from django.core.cache import cache
+from django.test import TestCase, TransactionTestCase
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
@@ -13,6 +15,12 @@ from apps.authn.services.email.challenges import (
     AuthChallengeDeliveryError,
     AuthChallengeThrottled,
     issue_email_challenge,
+    verify_email_code,
+)
+from apps.core.services.email import (
+    PermanentEmailDeliveryError,
+    TransientEmailDeliveryError,
+    UncertainEmailDeliveryError,
 )
 
 Member = get_user_model()
@@ -87,3 +95,53 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
 
         with self.assertRaises(AuthChallengeThrottled):
             issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
+
+
+class IssueEmailChallengeOutcomeTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.member = Member.objects.create_user(password="TestPass123!", is_active=True, is_staff=True)
+        self.config_patch = patch(
+            "apps.authn.services.email.send_email._load_config",
+            return_value=SimpleNamespace(delivery_configured=True),
+        )
+        self.config_patch.start()
+        self.addCleanup(self.config_patch.stop)
+
+    @patch("apps.authn.services.email.challenges._random_code", return_value="123456")
+    @patch(
+        "apps.authn.services.email.send_email.transport.deliver_email",
+        side_effect=UncertainEmailDeliveryError("Provider response lost after submission"),
+    )
+    def test_uncertain_delivery_keeps_emailed_code_usable(self, delivery, _random_code):
+        challenge = issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
+
+        delivery.assert_called_once()
+        self.assertIn("123456", delivery.call_args.args[0].html_body)
+        challenge.refresh_from_db()
+        self.assertEqual(challenge.status, EmailAuthChallenge.Status.PENDING)
+        verified = verify_email_code(
+            member=self.member, purpose=PURPOSE, target_email="admin@example.com", code="123456"
+        )
+        self.assertEqual(verified.pk, challenge.pk)
+
+    @patch(
+        "apps.authn.services.email.send_email.transport.deliver_email",
+        side_effect=UncertainEmailDeliveryError("Provider response lost after submission"),
+    )
+    def test_uncertain_delivery_still_enforces_resend_cooldown(self, delivery):
+        issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
+
+        with self.assertRaises(AuthChallengeThrottled):
+            issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
+        delivery.assert_called_once()
+
+    def test_definitive_provider_failures_remove_challenge(self):
+        for error in (TransientEmailDeliveryError, PermanentEmailDeliveryError):
+            with (
+                self.subTest(error=error.__name__),
+                patch("apps.authn.services.email.send_email.transport.deliver_email", side_effect=error("Rejected")),
+            ):
+                with self.assertRaises(AuthChallengeDeliveryError):
+                    issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
+                self.assertFalse(EmailAuthChallenge.objects.filter(member=self.member).exists())
