@@ -57,10 +57,13 @@ class SMTPDeliveryForm(forms.ModelForm):
         fields = ("name", "is_active", "host", "port", "username", "password", "use_tls", "use_ssl", "timeout")
         widgets = {"password": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=False)}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, enabled=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["password"].required = False
         self.fields["password"].help_text = "Leave blank to keep the existing password."
+        for field in self.fields.values():
+            field.widget.attrs["data-smtp-required"] = "true" if field.required else "false"
+            field.disabled = not enabled
         _apply_admin_widget_classes(self)
 
     def clean_password(self):
@@ -121,19 +124,22 @@ def mail_settings_edit_view(request):
     email_config = EmailServiceConfig.load()
     aws_config = AWSCredentialConfig.load()
     smtp_config = SMTPProviderConfig.load()
+    form_data = request.POST if request.method == "POST" else None
+    selected_provider = request.POST.get("email-provider", email_config.provider)
+    smtp_enabled = selected_provider == EmailServiceConfig.Provider.SMTP
+    email_form = EmailDeliveryForm(form_data, instance=email_config, prefix="email")
+    aws_form = AwsDeliveryForm(form_data, instance=aws_config, prefix="aws")
+    # An unused provider must not block edits or overwrite retained credentials.
+    smtp_form = SMTPDeliveryForm(
+        form_data if smtp_enabled else None, instance=smtp_config, prefix="smtp", enabled=smtp_enabled
+    )
     if request.method == "POST":
-        selected_provider = request.POST.get("email-provider", email_config.provider)
-        email_form = EmailDeliveryForm(request.POST, instance=email_config, prefix="email")
-        aws_form = AwsDeliveryForm(request.POST, instance=aws_config, prefix="aws")
-        smtp_form = SMTPDeliveryForm(request.POST, instance=smtp_config, prefix="smtp")
-        if selected_provider != EmailServiceConfig.Provider.SMTP and smtp_config._state.adding:
-            for name in ("host", "port", "timeout"):
-                smtp_form.fields[name].required = False
-        if email_form.is_valid() and aws_form.is_valid() and smtp_form.is_valid():
+        forms_valid = all([email_form.is_valid(), aws_form.is_valid(), not smtp_enabled or smtp_form.is_valid()])
+        if forms_valid:
             try:
                 with transaction.atomic():
                     aws_form.save()
-                    if smtp_form.cleaned_data.get("host") or not smtp_config._state.adding:
+                    if smtp_enabled:
                         smtp_form.save()
                     email_form.instance.validate_activation()
                     email_form.save()
@@ -145,17 +151,13 @@ def mail_settings_edit_view(request):
             else:
                 messages.success(request, "Notification delivery settings saved.")
                 return HttpResponseRedirect(reverse("admin:mail_settings"))
-    else:
-        email_form = EmailDeliveryForm(instance=email_config, prefix="email")
-        aws_form = AwsDeliveryForm(instance=aws_config, prefix="aws")
-        smtp_form = SMTPDeliveryForm(instance=smtp_config, prefix="smtp")
-
     context = _notification_delivery_context(request, email_config, aws_config, smtp_config)
     context.update(
         {
             "email_form": email_form,
             "aws_form": aws_form,
             "smtp_form": smtp_form,
+            "smtp_enabled": smtp_enabled,
             "aws_fields": [
                 aws_form[name] for name in ("name", "is_active", "access_key_id", "secret_access_key", "default_region")
             ],

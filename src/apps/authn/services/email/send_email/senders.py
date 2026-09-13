@@ -6,7 +6,7 @@ from .actions import render_email_body
 from .config import PURPOSE_SUBJECTS
 
 logger = logging.getLogger(__name__)
-SES_DELIVERY_ERROR = "Email delivery via AWS SES failed or is not configured."
+SES_DELIVERY_ERROR = "Email delivery failed or is not configured."
 
 
 def send_notification_email(
@@ -37,7 +37,7 @@ def send_notification_email(
     if email_api._send_via_ses(
         **send_kwargs,
     ):
-        logger.info("Notification email sent via SES")
+        logger.info("Notification email accepted by the configured provider")
         return True
 
     logger.error("Notification email was not sent: %s", SES_DELIVERY_ERROR)
@@ -66,7 +66,7 @@ def send_admin_invitation_email(*, invitation, request=None):
         subject=subject,
         html_body=html_body,
     ):
-        logger.info("Admin invitation email sent via SES")
+        logger.info("Admin invitation email accepted by the configured provider")
         return
 
     raise RuntimeError(SES_DELIVERY_ERROR)
@@ -102,8 +102,9 @@ def send_verification_email(
         recipient=recipient,
         subject=subject,
         html_body=html_body,
+        raise_provider_errors=True,
     ):
-        logger.info("Verification email sent via SES")
+        logger.info("Verification email accepted by the configured provider")
         return
 
     raise RuntimeError(SES_DELIVERY_ERROR)

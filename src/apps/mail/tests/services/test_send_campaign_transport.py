@@ -1,6 +1,7 @@
 """Coverage for SES transport helpers."""
 
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 from django.test import TestCase, override_settings
 
@@ -170,6 +171,31 @@ class SendViaSesTests(TestCase):
     def test_send_via_ses_omits_configuration_set_when_empty(self):
         _, deliver = self._send()
         self.assertEqual(deliver.call_args.kwargs["configuration_set"], "")
+
+    def test_recipient_attempt_is_attached_as_ses_event_tags(self):
+        recipient_id = uuid4()
+        _, deliver = self._send(recipient_log_id=recipient_id, delivery_attempt=2)
+
+        message = deliver.call_args.args[0]
+        self.assertEqual(
+            message.headers["X-SES-MESSAGE-TAGS"],
+            f"i2g_recipient_id={recipient_id}, i2g_delivery_attempt=2",
+        )
+
+    def test_smtp_messages_do_not_include_ses_event_tags(self):
+        with patch("apps.mail.services.send_campaign.transport.deliver_email") as deliver:
+            deliver.return_value = DeliveryResult(provider="smtp", message_id="smtp-1")
+            _send_via_ses(
+                ses_client=MagicMock(provider="smtp"),
+                source="from@example.com",
+                recipient="to@example.com",
+                subject="Hi",
+                html_body="<p>Hi</p>",
+                recipient_log_id=uuid4(),
+                delivery_attempt=1,
+            )
+
+        self.assertNotIn("X-SES-MESSAGE-TAGS", deliver.call_args.args[0].headers)
 
 
 class SesSendResultTests(TestCase):

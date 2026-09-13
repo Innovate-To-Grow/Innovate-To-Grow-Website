@@ -5,7 +5,6 @@ from django.utils import timezone
 
 from apps.core.models import EmailServiceConfig
 from apps.mail.models import RecipientLog
-from apps.mail.services.campaign.state import campaign_state
 from apps.mail.services.tokens.login_links import issue_login_link
 
 from ..audience import get_recipients
@@ -20,6 +19,18 @@ logger = logging.getLogger(__name__)
 def send_campaign(campaign, sent_by):
     recipients = get_recipients(campaign)
     _mark_campaign_sending(campaign, sent_by, len(recipients))
+    logs = RecipientLog.objects.bulk_create(
+        [
+            RecipientLog(
+                campaign=campaign,
+                member_id=recipient["member_id"],
+                email_address=recipient["email"],
+                recipient_name=recipient["full_name"],
+                attempts=1,
+            )
+            for recipient in recipients
+        ]
+    )
     if not recipients:
         return _finalize_campaign(campaign)
 
@@ -36,29 +47,34 @@ def send_campaign(campaign, sent_by):
             campaign.pk,
         )
 
-    for recipient in recipients:
+    for index, (recipient, log) in enumerate(zip(recipients, logs, strict=True), start=1):
         send_timing.wait_if_needed()
-        _send_one_recipient(campaign, config, ses_client, configuration_set, recipient)
+        _send_one_recipient(campaign, config, ses_client, configuration_set, recipient, log=log)
         send_timing.mark_sent()
-        if (campaign.sent_count + campaign.failed_count) % 10 == 0:
-            campaign.save(update_fields=["sent_count", "failed_count"])
+        if index % 10 == 0:
+            _refresh_campaign_progress(campaign)
 
     return _finalize_campaign(campaign)
 
 
 def _finalize_campaign(campaign):
-    campaign.status = campaign_state(
-        total=campaign.total_recipients,
-        sent=campaign.sent_count,
-        failed=campaign.failed_count,
-    )
-    campaign.sent_at = timezone.now()
-    campaign.save(update_fields=["status", "sent_count", "failed_count", "sent_at"])
+    _refresh_campaign_progress(campaign)
     return {
         "total": campaign.total_recipients,
         "sent": campaign.sent_count,
         "failed": campaign.failed_count,
     }
+
+
+def _refresh_campaign_progress(campaign):
+    from apps.mail.services.campaign.dispatch import aggregate_email_campaign
+
+    # SES callbacks update the same rows while this loop is running. Always
+    # derive progress from persisted logs instead of overwriting their counts.
+    aggregate_email_campaign(campaign.pk)
+    campaign.refresh_from_db(
+        fields=["status", "total_recipients", "sent_count", "failed_count", "sent_at", "error_message"]
+    )
 
 
 class SendTiming:
@@ -77,20 +93,21 @@ class SendTiming:
         self.last_send_time = time.monotonic()
 
 
-def _send_one_recipient(campaign, config, ses_client, configuration_set, recipient):
+def _send_one_recipient(campaign, config, ses_client, configuration_set, recipient, *, log=None):
     try:
+        if log is None:
+            log = RecipientLog.objects.create(
+                campaign=campaign,
+                member_id=recipient["member_id"],
+                email_address=recipient["email"],
+                recipient_name=recipient["full_name"],
+                attempts=1,
+            )
         context = _recipient_context(recipient, campaign)
         subject = personalize(campaign.subject, context)
         body_html = personalize(campaign.body, context)
         unsubscribe_url = _unsubscribe_url_for(campaign, recipient)
         wrapped_html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
-        log = RecipientLog.objects.create(
-            campaign=campaign,
-            member_id=recipient["member_id"],
-            email_address=recipient["email"],
-            recipient_name=recipient["full_name"],
-            status="pending",
-        )
         result = _send_with_configured_provider(
             config=config,
             ses_client=ses_client,
@@ -99,26 +116,35 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
             subject=subject,
             wrapped_html=wrapped_html,
             unsubscribe_url=unsubscribe_url,
+            recipient_log_id=log.pk,
+            delivery_attempt=log.attempts,
         )
         _record_send_result(campaign, log, result)
     except Exception as exc:
         logger.exception("Failed to process recipient %s", recipient["email"])
-        RecipientLog.objects.update_or_create(
+        RecipientLog.objects.filter(
             campaign=campaign,
             email_address=recipient["email"],
-            defaults={
-                "member_id": recipient["member_id"],
-                "recipient_name": recipient["full_name"],
-                "status": "failed",
-                "provider": _configured_provider(config),
-                "error_message": str(exc),
-            },
+            status="pending",
+        ).update(
+            status="failed",
+            provider=_configured_provider(config),
+            error_message=str(exc),
         )
         campaign.failed_count += 1
 
 
 def _send_with_configured_provider(
-    *, config, ses_client, configuration_set, recipient, subject, wrapped_html, unsubscribe_url
+    *,
+    config,
+    ses_client,
+    configuration_set,
+    recipient,
+    subject,
+    wrapped_html,
+    unsubscribe_url,
+    recipient_log_id=None,
+    delivery_attempt=0,
 ):
     if ses_client is not None:
         return _send_via_ses(
@@ -129,6 +155,8 @@ def _send_with_configured_provider(
             html_body=wrapped_html,
             unsubscribe_url=unsubscribe_url,
             configuration_set=configuration_set,
+            recipient_log_id=recipient_log_id,
+            delivery_attempt=delivery_attempt,
         )
     return SesSendResult(provider="", error="Email delivery is not configured.")
 

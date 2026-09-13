@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email.auth_email import normalize_email
+from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_UNCERTAIN, ProviderDeliveryError
 
 from .queries import assert_within_limit, expire_queryset
 
@@ -84,6 +85,12 @@ def issue_email_challenge(
             link_event=link_event,
         )
     except Exception as exc:
+        if isinstance(exc, ProviderDeliveryError) and exc.outcome == PROVIDER_OUTCOME_UNCERTAIN:
+            # The email may already be on its way. Keep the normal code-entry
+            # flow and its expiry/cooldown; only possession of the code can
+            # complete verification, and resending here could duplicate mail.
+            logger.warning("Verification email delivery is uncertain for challenge %s", challenge.pk)
+            return challenge
         logger.exception("Failed to send verification email")
         with transaction.atomic():
             EmailAuthChallenge.objects.filter(pk=challenge.pk).delete()

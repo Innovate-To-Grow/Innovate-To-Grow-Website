@@ -139,6 +139,108 @@ class MailSettingsAdminTest(TestCase):
         # The manual override field is not part of the form; it stays untouched.
         self.assertEqual(self.aws_config.sms_from_number, "+12065550000")
 
+    def _delivery_post_data(self, provider):
+        data = {
+            "email-name": "Updated Mail",
+            "email-is_active": "on",
+            "email-provider": provider,
+            "email-from_name": "Updated Sender",
+            "email-from_email": "updated@example.com",
+            "email-max_send_rate": "8",
+            "aws-name": "Updated AWS",
+            "aws-is_active": "on",
+            "aws-access_key_id": "updated-key",
+            "aws-secret_access_key": "updated-secret",
+            "aws-default_region": "us-east-1",
+            "aws-sms_message_template": "Code: {code}",
+        }
+        if provider == "smtp":
+            data.update(
+                {
+                    "smtp-name": "Updated SMTP",
+                    "smtp-is_active": "on",
+                    "smtp-host": "mail.example.com",
+                    "smtp-port": "587",
+                    "smtp-username": "mailer",
+                    "smtp-password": "",
+                    "smtp-use_tls": "on",
+                    "smtp-timeout": "30",
+                }
+            )
+        return data
+
+    def test_ses_settings_are_editable_without_smtp_configuration(self):
+        SMTPProviderConfig.objects.all().delete()
+
+        response = self.client.get(reverse("admin:mail_settings_edit"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["smtp_enabled"])
+        self.assertIn("disabled", str(response.context["smtp_form"]["host"]))
+        self.assertContains(response, 'id="smtp-provider-settings"')
+
+        response = self.client.post(reverse("admin:mail_settings_edit"), self._delivery_post_data("ses"))
+
+        self.assertRedirects(response, reverse("admin:mail_settings"), fetch_redirect_response=False)
+        self.config.refresh_from_db()
+        self.aws_config.refresh_from_db()
+        self.assertEqual(self.config.from_email, "updated@example.com")
+        self.assertEqual(self.aws_config.sms_message_template, "Code: {code}")
+        self.assertEqual(self.aws_config.sms_from_number, "+12065550000")
+        self.assertFalse(SMTPProviderConfig.objects.exists())
+
+    def test_switching_providers_preserves_smtp_credentials(self):
+        for provider in ("smtp", "ses", "smtp"):
+            with self.subTest(provider=provider):
+                data = self._delivery_post_data(provider)
+                if provider == "ses":
+                    # Disabled provider inputs must not overwrite retained settings.
+                    data.update({"smtp-host": "", "smtp-port": "", "smtp-password": "ignored"})
+                response = self.client.post(reverse("admin:mail_settings_edit"), data)
+
+                self.assertRedirects(response, reverse("admin:mail_settings"), fetch_redirect_response=False)
+                self.config.refresh_from_db()
+                self.smtp_config.refresh_from_db()
+                self.assertEqual(self.config.provider, provider)
+                self.assertEqual(self.smtp_config.password, "existing-secret")
+                self.assertEqual(self.smtp_config.host, "mail.example.com")
+                self.assertTrue(self.smtp_config.is_active)
+
+        response = self.client.get(reverse("admin:mail_settings_edit"))
+        self.assertTrue(response.context["smtp_enabled"])
+        self.assertFalse(response.context["smtp_form"].fields["host"].disabled)
+        self.assertNotContains(response, "existing-secret")
+
+    def test_blank_smtp_port_returns_form_error_without_changing_settings(self):
+        data = self._delivery_post_data("smtp")
+        data["smtp-port"] = ""
+
+        response = self.client.post(reverse("admin:mail_settings_edit"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("port", response.context["smtp_form"].errors)
+        self.assertTrue(response.context["smtp_enabled"])
+        self.config.refresh_from_db()
+        self.aws_config.refresh_from_db()
+        self.assertEqual(self.config.provider, "ses")
+        self.assertEqual(self.aws_config.name, "Primary AWS")
+
+    def test_inactive_smtp_provider_rolls_back_other_settings(self):
+        data = self._delivery_post_data("smtp")
+        data.pop("smtp-is_active")
+
+        response = self.client.post(reverse("admin:mail_settings_edit"), data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("provider", response.context["email_form"].errors)
+        self.config.refresh_from_db()
+        self.aws_config.refresh_from_db()
+        self.smtp_config.refresh_from_db()
+        self.assertEqual(self.config.provider, "ses")
+        self.assertEqual(self.aws_config.name, "Primary AWS")
+        self.assertEqual(self.smtp_config.host, "smtp.example.com")
+        self.assertTrue(self.smtp_config.is_active)
+
     def test_test_email_view_renders_form(self):
         response = self.client.get(reverse("admin:mail_settings_test_email"))
 
