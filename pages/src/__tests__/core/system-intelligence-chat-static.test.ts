@@ -36,7 +36,7 @@ type StreamEventResult = {
 };
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(testDir, '../../..');
+const repoRoot = resolve(testDir, '../../../..');
 const stateScript = readFileSync(
   resolve(repoRoot, 'src/apps/system_intelligence/static/system_intelligence/js/chat-state.js'),
   'utf8',
