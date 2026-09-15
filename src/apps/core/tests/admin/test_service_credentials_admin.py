@@ -116,6 +116,35 @@ class AWSCredentialConfigAdminTests(TestCase):
 
 
 class SMTPProviderConfigFormTest(TestCase):
+    def test_standby_can_replace_active_configuration_without_disabling_it_first(self):
+        from apps.core.admin.service_credentials.smtp import SMTPProviderConfigForm
+        from apps.core.models import SMTPProviderConfig
+
+        active = SMTPProviderConfig.objects.create(name="Primary", host="smtp.example.com", is_active=True)
+        standby = SMTPProviderConfig.objects.create(name="Standby", host="backup.example.com")
+        form = SMTPProviderConfigForm(
+            data={
+                "name": "Standby",
+                "is_active": True,
+                "host": "backup.example.com",
+                "port": 587,
+                "use_tls": True,
+                "timeout": 30,
+                "username": "",
+                "password": "",
+            },
+            instance=standby,
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        # Validation alone must leave the working configuration active.
+        self.assertEqual(SMTPProviderConfig.load(), active)
+        form.save()
+        active.refresh_from_db()
+        self.assertFalse(active.is_active)
+        self.assertEqual(SMTPProviderConfig.load(), standby)
+        self.assertEqual(SMTPProviderConfig.objects.filter(is_active=True).count(), 1)
+
     def test_existing_password_is_not_rendered_and_blank_preserves_it(self):
         from apps.core.admin.service_credentials.smtp import SMTPProviderConfigForm
         from apps.core.models import SMTPProviderConfig

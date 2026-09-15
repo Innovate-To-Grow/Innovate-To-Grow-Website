@@ -66,10 +66,10 @@ class ProtectedEmailTransportTests(TestCase):
             ses = stack.enter_context(patch("apps.core.services.email.ses.boto3.client"))
             if provider == "smtp":
                 smtp.side_effect = connect_error
-                client = smtp.return_value.__enter__.return_value
+                client = smtp.return_value
                 delivery = client.send_message
                 delivery.return_value = {}
-                smtp.return_value.__exit__.side_effect = quit_error
+                client.quit.side_effect = quit_error
             else:
                 delivery = ses.return_value.send_raw_email
                 delivery.return_value = {"MessageId": "accepted-message"}

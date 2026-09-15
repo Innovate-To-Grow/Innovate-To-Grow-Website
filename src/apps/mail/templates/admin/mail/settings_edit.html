@@ -35,7 +35,7 @@
             {% endfor %}
         </div>
     </div>
-    <div class="mt-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+    <div id="smtp-provider-settings" class="mt-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800"{% if not smtp_enabled %} hidden{% endif %}>
         <h3 class="mb-4 text-sm font-semibold text-font-important-light dark:text-font-important-dark">SMTP Provider</h3>
         <div class="grid grid-cols-1 gap-x-6 md:grid-cols-2">
             {% for field in smtp_fields %}
@@ -52,4 +52,20 @@
         </a>
     </div>
 </form>
+<script nonce="{{ request.csp_nonce }}">
+    (() => {
+        const provider = document.getElementById("id_email-provider");
+        const smtpSettings = document.getElementById("smtp-provider-settings");
+        const updateProviderFields = () => {
+            const smtpEnabled = provider.value === "smtp";
+            smtpSettings.hidden = !smtpEnabled;
+            smtpSettings.querySelectorAll("[data-smtp-required]").forEach((field) => {
+                field.disabled = !smtpEnabled;
+                field.required = smtpEnabled && field.dataset.smtpRequired === "true";
+            });
+        };
+        provider.addEventListener("change", updateProviderFields);
+        updateProviderFields();
+    })();
+</script>
 {% endblock %}

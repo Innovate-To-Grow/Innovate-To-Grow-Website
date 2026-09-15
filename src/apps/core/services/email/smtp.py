@@ -2,6 +2,7 @@
 
 import smtplib
 import ssl
+from contextlib import contextmanager, suppress
 
 from .contracts import DeliveryResult, EmailMessage
 from .exceptions import PermanentEmailDeliveryError, TransientEmailDeliveryError, UncertainEmailDeliveryError
@@ -35,76 +36,83 @@ class SMTPProvider:
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         mime = build_mime_message(message, from_email=self.from_email, from_name=self.from_name)
-        submitted = False
-        accepted_result = None
+        with _smtp_errors(submitted=False):
+            smtp_class = smtplib.SMTP_SSL if self.use_ssl else smtplib.SMTP
+            options = {"timeout": self.timeout}
+            if self.use_ssl:
+                options["context"] = ssl.create_default_context()
+            client = smtp_class(self.host, self.port, **options)
+
         try:
-            try:
-                smtp_class = smtplib.SMTP_SSL if self.use_ssl else smtplib.SMTP
-                with smtp_class(self.host, self.port, timeout=self.timeout) as client:
-                    if self.use_tls:
-                        client.starttls(context=ssl.create_default_context())
-                    if self.username:
-                        client.login(self.username, self.password)
-                    if before_provider_call is not None:
-                        before_provider_call()
-                    submitted = True
-                    refused = client.send_message(
-                        mime,
-                        from_addr=self.from_email,
-                        to_addrs=list(message.envelope_recipients),
-                    )
-                    if not refused:
-                        accepted_result = DeliveryResult(provider=self.name, message_id=str(mime["Message-ID"]))
-            except (smtplib.SMTPException, OSError):
-                # send_message returned confirmed acceptance. A failed QUIT
-                # must not invalidate that result or authorize another send.
-                if accepted_result is not None:
-                    return accepted_result
-                raise
-        except smtplib.SMTPRecipientsRefused as exc:
-            codes = [response[0] for response in exc.recipients.values()]
-            error = (
-                TransientEmailDeliveryError
-                if codes and all(400 <= code < 500 for code in codes)
-                else PermanentEmailDeliveryError
-            )
-            raise error("SMTP rejected all recipients.") from exc
-        except (smtplib.SMTPSenderRefused, smtplib.SMTPAuthenticationError) as exc:
-            if 400 <= exc.smtp_code < 500:
-                raise TransientEmailDeliveryError("SMTP temporarily rejected the sender or authentication.") from exc
-            raise PermanentEmailDeliveryError("SMTP rejected the sender or authentication settings.") from exc
-        except smtplib.SMTPNotSupportedError as exc:
-            raise PermanentEmailDeliveryError("SMTP does not support a required operation.") from exc
-        except smtplib.SMTPDataError as exc:
-            if 400 <= exc.smtp_code < 500:
-                raise TransientEmailDeliveryError("SMTP temporarily rejected the message.") from exc
-            raise PermanentEmailDeliveryError("SMTP rejected the message.") from exc
-        except smtplib.SMTPServerDisconnected as exc:
-            error = UncertainEmailDeliveryError if submitted else TransientEmailDeliveryError
-            detail = (
-                "SMTP connection was lost after message submission began."
-                if submitted
-                else "SMTP server could not be reached."
-            )
-            raise error(detail) from exc
-        except smtplib.SMTPResponseException as exc:
-            if 400 <= exc.smtp_code < 500:
-                raise TransientEmailDeliveryError("SMTP temporarily rejected the request.") from exc
-            raise PermanentEmailDeliveryError("SMTP rejected the request.") from exc
-        except smtplib.SMTPException as exc:
-            error = UncertainEmailDeliveryError if submitted else PermanentEmailDeliveryError
-            raise error(
-                "SMTP request outcome could not be confirmed." if submitted else "SMTP request failed."
-            ) from exc
-        except (TimeoutError, ConnectionError, OSError) as exc:
-            error = UncertainEmailDeliveryError if submitted else TransientEmailDeliveryError
-            detail = (
-                "SMTP connection was lost after message submission began."
-                if submitted
-                else "SMTP server could not be reached."
-            )
-            raise error(detail) from exc
+            with _smtp_errors(submitted=False):
+                if self.use_tls:
+                    client.starttls(context=ssl.create_default_context())
+                if self.username:
+                    client.login(self.username, self.password)
+            if before_provider_call is not None:
+                before_provider_call()
+            with _smtp_errors(submitted=True):
+                refused = client.send_message(
+                    mime,
+                    from_addr=self.from_email,
+                    to_addrs=list(message.envelope_recipients),
+                )
+        finally:
+            # QUIT and socket cleanup cannot change the already observed send
+            # outcome or replace an exception from the caller's callback.
+            with suppress(Exception):
+                client.quit()
+            with suppress(Exception):
+                client.close()
 
         if refused:
             raise UncertainEmailDeliveryError("SMTP accepted the message for only some recipients.")
         return DeliveryResult(provider=self.name, message_id=str(mime["Message-ID"]))
+
+
+@contextmanager
+def _smtp_errors(*, submitted: bool):
+    """Classify only SMTP operations, leaving caller callbacks untouched."""
+    try:
+        yield
+    except smtplib.SMTPRecipientsRefused as exc:
+        codes = [response[0] for response in exc.recipients.values()]
+        error = (
+            TransientEmailDeliveryError
+            if codes and all(400 <= code < 500 for code in codes)
+            else PermanentEmailDeliveryError
+        )
+        raise error("SMTP rejected all recipients.") from exc
+    except (smtplib.SMTPSenderRefused, smtplib.SMTPAuthenticationError) as exc:
+        if 400 <= exc.smtp_code < 500:
+            raise TransientEmailDeliveryError("SMTP temporarily rejected the sender or authentication.") from exc
+        raise PermanentEmailDeliveryError("SMTP rejected the sender or authentication settings.") from exc
+    except smtplib.SMTPNotSupportedError as exc:
+        raise PermanentEmailDeliveryError("SMTP does not support a required operation.") from exc
+    except smtplib.SMTPDataError as exc:
+        if 400 <= exc.smtp_code < 500:
+            raise TransientEmailDeliveryError("SMTP temporarily rejected the message.") from exc
+        raise PermanentEmailDeliveryError("SMTP rejected the message.") from exc
+    except smtplib.SMTPServerDisconnected as exc:
+        error = UncertainEmailDeliveryError if submitted else TransientEmailDeliveryError
+        detail = (
+            "SMTP connection was lost after message submission began."
+            if submitted
+            else "SMTP server could not be reached."
+        )
+        raise error(detail) from exc
+    except smtplib.SMTPResponseException as exc:
+        if 400 <= exc.smtp_code < 500:
+            raise TransientEmailDeliveryError("SMTP temporarily rejected the request.") from exc
+        raise PermanentEmailDeliveryError("SMTP rejected the request.") from exc
+    except smtplib.SMTPException as exc:
+        error = UncertainEmailDeliveryError if submitted else PermanentEmailDeliveryError
+        raise error("SMTP request outcome could not be confirmed." if submitted else "SMTP request failed.") from exc
+    except (TimeoutError, ConnectionError, OSError) as exc:
+        error = UncertainEmailDeliveryError if submitted else TransientEmailDeliveryError
+        detail = (
+            "SMTP connection was lost after message submission began."
+            if submitted
+            else "SMTP server could not be reached."
+        )
+        raise error(detail) from exc
