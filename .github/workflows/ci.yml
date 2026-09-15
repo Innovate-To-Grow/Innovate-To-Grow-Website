@@ -944,7 +944,7 @@ jobs:
     # Keep the browser and its OS dependencies out of the runner's live APT
     # path. The image version must stay aligned with pages/package-lock.json.
     container:
-      image: "mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e"
+      image: "mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27"
       options: --user 1001
     needs:
       - frontend-build
@@ -1697,7 +1697,7 @@ jobs:
     # this Playwright version. Keeping E2E off the runner's live APT path avoids
     # correlated mirror stalls across the ten parallel matrix legs.
     container:
-      image: "mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e"
+      image: "mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27"
       options: --user 1001 --ipc=host
     defaults:
       run:
