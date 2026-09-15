@@ -44,9 +44,18 @@ test('expired access bootstraps through refresh and authoritative session state'
     });
   });
 
+  // The 401 → refresh → retry round-trip resolves after first paint (the menu
+  // shows the seeded email synchronously), so only assert the exact request
+  // count once the retried session response lands.
+  const retriedSessionResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/authn/session/') &&
+      response.status() === 200,
+  );
   await page.goto('/account', {waitUntil: 'domcontentloaded'});
 
   await expectSignedInAs(page, email);
+  await retriedSessionResponse;
   expect(sessionRequests).toBe(2);
   const keys = await page.evaluate(() => ({
     session: localStorage.getItem('i2g_auth_session'),
