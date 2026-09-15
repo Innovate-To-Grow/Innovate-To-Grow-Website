@@ -2,11 +2,11 @@
 
 # Core Framework
 Django>=5.2.17,<5.3
-djangorestframework==3.18.0
+djangorestframework==3.18.1
 djangorestframework-simplejwt>=5.5.1
 
 # Environment Variables
-python-dotenv>=1.2.2
+python-dotenv>=1.2.3
 
 # Admin Theme
 django-unfold>=0.91.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.11
@@ -29,7 +29,7 @@ openai-agents[litellm]>=0.7.0,<1.0
 litellm>=1.95.0,<2.0
 
 # Email
-imap-tools>=1.13.0
+imap-tools>=1.15.0
 
 # Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
 # in CVE fixes to the Rust bindings.
