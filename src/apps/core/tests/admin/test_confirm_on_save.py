@@ -117,9 +117,9 @@ class ConfirmOnSaveAddTest(TestCase):
     def test_invalid_token_rejects_the_save_but_keeps_the_pending_change(self):
         """A stale tab's wrong token must not destroy the pending change it did not match.
 
-        There is one pending slot per model, so a second submission (another tab, or an autosave
-        tick) replaces it — discarding on mismatch threw away the edits the admin was about to
-        confirm, in addition to refusing this one.
+        There is one pending slot per model, so a second submission (from another tab) replaces
+        it — discarding on mismatch threw away the edits the admin was about to confirm, in
+        addition to refusing this one.
         """
         url = reverse("admin:cms_cmsembedallowedhost_add")
         self.client.post(url, {"hostname": "bad-token.com", "is_active": True})

@@ -55,8 +55,8 @@ class ConfirmOnSaveMixin:
 
     def _invalid_confirmation_token_response(self, request, session_key):
         # Do NOT discard the pending state here. There is one slot per model, so a second submission
-        # (another tab, or an autosave tick) replaces it; destroying the replacement on a stale tab's
-        # token mismatch threw away the edits the admin was actually about to confirm.
+        # (from another tab) replaces it; destroying the replacement on a stale tab's token mismatch
+        # threw away the edits the admin was actually about to confirm.
         messages.error(request, "Invalid confirmation token. Please start over.")
         return HttpResponseRedirect(self._changelist_url())
 
@@ -118,8 +118,6 @@ class ConfirmOnSaveMixin:
         if not getattr(settings, "ADMIN_REQUIRE_CONFIRMATION", True):
             return True
         if IS_POPUP_VAR in request.POST or IS_POPUP_VAR in request.GET:
-            return True
-        if request.POST.get("_autosave"):
             return True
         return False
 
