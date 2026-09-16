@@ -1,7 +1,8 @@
 from django.contrib import admin, messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import redirect
 from django.urls import path, reverse
+from unfold.decorators import action
 
 from apps.core.admin import BaseModelAdmin
 from apps.core.models import GoogleCredentialConfig
@@ -40,6 +41,12 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
     search_fields = ("name", "sheet_id")
     readonly_fields = ("last_synced_at", "sync_error", "created_at", "updated_at")
     change_list_template = "admin/event/currentprojectschedule/change_list.html"
+    # Each schedule row (e.g. one per event year) has its own Google Sheet, so
+    # every row — not only the active one — can be pulled from the changelist
+    # and from its change form. The "Pull" object-tool above the list stays
+    # scoped to the active schedule.
+    actions_row = ["sync_from_google_sheets"]
+    actions_detail = ["sync_from_google_sheets_detail"]
 
     fieldsets = (
         (
@@ -89,6 +96,60 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+    # ``permissions=["change"]`` makes Unfold call ``has_change_permission``
+    # before the view runs, so per-app access is enforced like the custom views.
+    @action(
+        description="Sync from Google Sheets",
+        url_path="sync-from-google-sheets",
+        icon="sync",
+        permissions=["change"],
+    )
+    def sync_from_google_sheets(self, request, object_id):
+        """Changelist row action: sync this row and return to the list."""
+        changelist_url = reverse("admin:event_currentprojectschedule_changelist")
+        self._sync_by_object_id(request, object_id)
+        return redirect(changelist_url)
+
+    @action(
+        description="Sync from Google Sheets",
+        url_path="sync-from-google-sheets-detail",
+        icon="sync",
+        permissions=["change"],
+    )
+    def sync_from_google_sheets_detail(self, request, object_id):
+        """Change-form action: sync this row and stay on its change form."""
+        config = self._sync_by_object_id(request, object_id)
+        if config is None:
+            return redirect(reverse("admin:event_currentprojectschedule_changelist"))
+        return redirect(reverse("admin:event_currentprojectschedule_change", args=[config.pk]))
+
+    def _sync_by_object_id(self, request, object_id):
+        try:
+            config = CurrentProjectSchedule.objects.filter(pk=object_id).first()
+        except (TypeError, ValueError, ValidationError):
+            config = None
+        if config is None:
+            messages.error(request, "Schedule not found.")
+            return None
+        self._run_sync(request, config)
+        return config
+
+    def _run_sync(self, request, config):
+        try:
+            stats = sync_schedule(config, sync_type="manual")
+        except ScheduleSyncError as exc:
+            messages.error(request, f"Sync failed for '{config}': {exc}")
+            return
+        messages.success(
+            request,
+            (
+                f"Synced '{config}': {stats.sections_created} sections, "
+                f"{stats.tracks_created} tracks, "
+                f"{stats.slots_created} slots, "
+                f"{stats.unmatched_slots} unmatched."
+            ),
+        )
+
     def get_urls(self):
         custom_urls = [
             path(
@@ -114,19 +175,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         if not config:
             messages.error(request, "No configuration found. Add one first.")
             return redirect(changelist_url)
-        try:
-            stats = sync_schedule(config, sync_type="manual")
-            messages.success(
-                request,
-                (
-                    f"Synced: {stats.sections_created} sections, "
-                    f"{stats.tracks_created} tracks, "
-                    f"{stats.slots_created} slots, "
-                    f"{stats.unmatched_slots} unmatched."
-                ),
-            )
-        except ScheduleSyncError as exc:
-            messages.error(request, f"Sync failed: {exc}")
+        self._run_sync(request, config)
         return redirect(changelist_url)
 
     def save_sync_settings_view(self, request):

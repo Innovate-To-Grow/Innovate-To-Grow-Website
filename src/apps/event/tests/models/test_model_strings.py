@@ -44,6 +44,36 @@ class CurrentProjectScheduleSyncDueTest(TestCase):
         self.assertFalse(config.sync_is_due)
 
 
+class CurrentProjectScheduleActivationTest(TestCase):
+    def test_activating_a_schedule_stops_auto_sync_on_the_rows_it_archives(self):
+        previous = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", auto_sync_enabled=True)
+        current = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", auto_sync_enabled=True)
+
+        previous.refresh_from_db()
+        current.refresh_from_db()
+        self.assertFalse(previous.is_active)
+        self.assertFalse(previous.auto_sync_enabled)
+        self.assertTrue(current.is_active)
+        self.assertTrue(current.auto_sync_enabled)
+
+    def test_saving_the_active_schedule_again_keeps_its_own_auto_sync(self):
+        current = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", auto_sync_enabled=True)
+        current.name = "Innovate to Grow 2026 (Spring)"
+        current.save()
+        current.refresh_from_db()
+        self.assertTrue(current.auto_sync_enabled)
+
+    def test_archived_schedule_can_opt_back_into_auto_sync(self):
+        previous = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025")
+        CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026")
+        previous.refresh_from_db()
+        previous.auto_sync_enabled = True
+        previous.save()
+        previous.refresh_from_db()
+        self.assertFalse(previous.is_active)
+        self.assertTrue(previous.auto_sync_enabled)
+
+
 class CurrentProjectStrTest(TestCase):
     def setUp(self):
         self.config = CurrentProjectSchedule.objects.create(name="Demo Day")

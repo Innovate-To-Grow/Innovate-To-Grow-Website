@@ -73,7 +73,107 @@ class CurrentProjectScheduleAdminTest(TestCase):
 
         self.assertRedirects(response, self.changelist_url)
         messages = [str(m) for m in response.wsgi_request._messages]
-        self.assertTrue(any("Sync failed: kaboom" in m for m in messages))
+        self.assertTrue(any("Sync failed for 'Demo Day': kaboom" in m for m in messages))
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    def test_row_action_syncs_a_non_active_schedule(self, mock_sync):
+        # Any schedule row (e.g. a previous year's) can be pulled from its own
+        # sheet — not only the active one that the changelist "Pull" tool uses.
+        CurrentProjectSchedule.objects.create(name="Demo Day")
+        archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+        mock_sync.return_value = ScheduleSyncStats(sections_created=1, tracks_created=2, slots_created=3)
+
+        response = self.client.get(
+            reverse("admin:event_currentprojectschedule_sync_from_google_sheets", args=[archived.pk])
+        )
+
+        self.assertRedirects(response, self.changelist_url)
+        mock_sync.assert_called_once_with(archived, sync_type="manual")
+        messages = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any("Synced 'Innovate to Grow 2025'" in m and "3 slots" in m for m in messages))
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule", side_effect=ScheduleSyncError("kaboom"))
+    def test_row_action_failure_names_the_schedule(self, mock_sync):
+        archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+
+        response = self.client.get(
+            reverse("admin:event_currentprojectschedule_sync_from_google_sheets", args=[archived.pk])
+        )
+
+        self.assertRedirects(response, self.changelist_url)
+        messages = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any("Sync failed for 'Innovate to Grow 2025': kaboom" in m for m in messages))
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    def test_row_action_unknown_schedule_shows_error(self, mock_sync):
+        response = self.client.get(
+            reverse(
+                "admin:event_currentprojectschedule_sync_from_google_sheets",
+                args=["00000000-0000-0000-0000-000000000000"],
+            )
+        )
+
+        self.assertRedirects(response, self.changelist_url)
+        mock_sync.assert_not_called()
+        messages = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any("Schedule not found" in m for m in messages))
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    def test_row_action_malformed_object_id_shows_error(self, mock_sync):
+        response = self.client.get(
+            reverse("admin:event_currentprojectschedule_sync_from_google_sheets", args=["not-a-uuid"])
+        )
+
+        self.assertRedirects(response, self.changelist_url)
+        mock_sync.assert_not_called()
+        messages = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any("Schedule not found" in m for m in messages))
+
+    def test_changelist_renders_row_sync_action_for_every_schedule(self):
+        CurrentProjectSchedule.objects.create(name="Demo Day")
+        archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+
+        response = self.client.get(self.changelist_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            reverse("admin:event_currentprojectschedule_sync_from_google_sheets", args=[archived.pk]),
+        )
+
+    def test_change_form_renders_detail_sync_action(self):
+        archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+
+        response = self.client.get(reverse("admin:event_currentprojectschedule_change", args=[archived.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            reverse("admin:event_currentprojectschedule_sync_from_google_sheets_detail", args=[archived.pk]),
+        )
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    def test_detail_action_syncs_and_returns_to_the_change_form(self, mock_sync):
+        archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+        mock_sync.return_value = ScheduleSyncStats(sections_created=1)
+
+        response = self.client.get(
+            reverse("admin:event_currentprojectschedule_sync_from_google_sheets_detail", args=[archived.pk])
+        )
+
+        self.assertRedirects(response, reverse("admin:event_currentprojectschedule_change", args=[archived.pk]))
+        mock_sync.assert_called_once_with(archived, sync_type="manual")
+        messages = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any("Synced 'Innovate to Grow 2025'" in m for m in messages))
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    def test_detail_action_unknown_schedule_returns_to_changelist(self, mock_sync):
+        response = self.client.get(
+            reverse("admin:event_currentprojectschedule_sync_from_google_sheets_detail", args=["not-a-uuid"])
+        )
+
+        self.assertRedirects(response, self.changelist_url)
+        mock_sync.assert_not_called()
 
     def test_save_sync_settings_get_redirects(self):
         response = self.client.get(reverse("admin:event_currentprojectschedule_save_sync_settings"))

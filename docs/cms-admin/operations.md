@@ -312,9 +312,14 @@ From Event admin:
 
 ### Schedule import
 
-From Event admin:
-- Triggers schedule sync from Google Sheets
-- Creates/updates `Semester`, `Project`, and schedule models
+From Events → Current Project and Schedule (one row per event schedule, e.g. per year, each with its own
+Google Sheet):
+- **Pull Current Projects & Schedule** (changelist button) syncs the *active* row
+- **Sync from Google Sheets** (per-row action and change-form button) syncs *that* row — previous years can be
+  refreshed without activating them
+- `python manage.py sync_schedule` syncs every row whose auto-sync is enabled and due; `--schedule <uuid>`
+  targets one row; `--force` skips the interval check (and, without `--schedule`, syncs the active row only)
+- A sync replaces that row's `CurrentProject`, schedule sections/tracks/slots and agenda items only
 
 ### Check-in
 

@@ -35,7 +35,35 @@ The managed registration schema ends with a protected `Registration ID`
 column. Do not move, rename, edit, or add columns after it. A first full sync
 backs up a populated legacy/drifted tab before establishing this schema.
 
-### 5. Configure the past-projects sheet
+### 5. Configure the current-project schedule sheet(s)
+
+In Django admin → **Events → Current Project and Schedule**, add one row per event schedule you want to
+publish (e.g. one per year — put the year in the **Event Name**, it is what CMS editors pick from):
+1. Set `Google Sheet ID`, `Tracks Worksheet GID` and `Projects Worksheet GID` for **that** schedule's sheet.
+2. Share the sheet with the service-account `client_email` (**Viewer** is sufficient).
+3. Mark exactly one row **Active** — it backs `/schedule` when no schedule is selected, `/event/projects/`
+   and the assistant context. Other rows stay available for CMS embeds.
+4. Sync it: **Pull Current Projects & Schedule** (changelist button) pulls the *active* row; the
+   **Sync from Google Sheets** action on each row (and on the change form) pulls *that* row from its own sheet,
+   so previous years can be refreshed without activating them.
+
+#### Schedule auto-sync
+
+Each row has its own **Auto Sync** toggle and interval. Activating a schedule switches Auto Sync **off** on the
+row(s) it archives, so a past year is never re-pulled from a sheet that may since have been repurposed — re-enable
+it on that row deliberately if you still want it refreshed. Run the command externally (cron / ECS scheduled task):
+
+```bash
+python manage.py sync_schedule                       # every schedule whose auto-sync is enabled and due (active first)
+python manage.py sync_schedule --force               # the active schedule now, regardless of the interval
+python manage.py sync_schedule --schedule <uuid>     # one specific schedule (any row), honouring its interval
+python manage.py sync_schedule --schedule <uuid> --force
+```
+
+One failing sheet does not stop the others; the command still exits non-zero and names every failed schedule (a
+failed row stays "due", so fix the sheet or switch that row's Auto Sync off to stop the alerts).
+
+### 6. Configure the past-projects sheet
 
 In Django admin → **Projects → Past Projects Sheet**:
 1. Add a config, set `Google Sheet ID` (the `/d/{THIS_PART}/` part of the URL) and `Worksheet Name`

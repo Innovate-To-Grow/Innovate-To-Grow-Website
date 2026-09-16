@@ -24,6 +24,29 @@ class SyncScheduleRunnerTest(TestCase):
         log = ScheduleSyncLog.objects.filter(config=self.config).last()
         self.assertEqual(log.status, ScheduleSyncLog.Status.FAILED)
 
+    @patch("apps.event.services.schedule_sync.runner.fetch_schedule_sheet_records")
+    def test_fetches_the_synced_schedules_own_sheet_even_when_not_active(self, mock_fetch):
+        # Regression: the runner used to call the fetch helper with no argument
+        # and the helper resolved the ACTIVE schedule, so syncing a previous
+        # year's row pulled the active year's sheet into it.
+        archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+        mock_fetch.return_value = (
+            [{"Track": 1, "Class": "CAP", "Room": "Granite"}],
+            [{"Track": 1, "Order": 1, "Class": "CAP", "Team#": "OLD-1", "Project Title": "Alpha 2025"}],
+        )
+
+        stats = sync_schedule(archived, sync_type="manual")
+
+        mock_fetch.assert_called_once_with(archived)
+        self.assertEqual(stats.slots_created, 1)
+        self.assertTrue(EventScheduleSlot.objects.filter(track__section__config=archived, team_number="OLD-1").exists())
+        # The active schedule is untouched.
+        self.assertFalse(EventScheduleSlot.objects.filter(track__section__config=self.config).exists())
+        self.config.refresh_from_db()
+        self.assertIsNone(self.config.last_synced_at)
+        archived.refresh_from_db()
+        self.assertIsNotNone(archived.last_synced_at)
+
     def test_generic_exception_wrapped_in_schedule_sync_error(self):
         tracks = [{"Track": 1, "Class": "CAP", "Room": "Granite"}]
         projects = [{"Track": 1, "Order": 1, "Class": "CAP", "Team#": "CAP-1", "Project Title": "Alpha"}]

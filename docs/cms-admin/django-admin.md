@@ -73,10 +73,21 @@ Event admin includes:
 - Inclusive start/end dates for single-day and multi-day events
 - Safe prefill from an existing event when creating a new event; identity, registration availability, and sync state are reset before review
 - Google Sheets sync actions (registration sync, full replace)
-- Schedule sync from Google Sheets
 - Check-in record management
 
 **Registration open** controls whether the event appears in public registration and accepts new registrations. Multiple events can be open at the same time; there is no separate featured/live Event flag. Schedule and current-project selection are managed independently through `CurrentProjectSchedule`.
+
+### Current Project and Schedule admin
+
+One `CurrentProjectSchedule` row per event schedule (typically per year), each with its own Google Sheet ID and
+worksheet GIDs. Exactly one row is **Active**: it backs `/schedule` when no schedule is selected,
+`/event/projects/` and the assistant context. All rows can be selected from CMS embed widgets and their blocks
+(see [content management](content-management.md#embed-widget-blocks-and-schedule-selection)).
+
+- **Pull Current Projects & Schedule** (changelist button) syncs the active row from its sheet
+- **Sync from Google Sheets** (per-row action, also on the change form) syncs that row from its own sheet
+- **Auto Sync** + interval are per row; `python manage.py sync_schedule` honours them for every row. Activating a
+  schedule switches Auto Sync off on the row(s) it archives — re-enable it per row on purpose
 
 Registration form settings use **Prompt for Phone Number** and **Verify phone**. Verification is disabled and cleared when the phone prompt is off. Registration exports provide separate **Event Start Date** and **Event End Date** columns.
 

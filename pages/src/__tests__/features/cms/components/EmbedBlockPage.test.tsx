@@ -39,7 +39,9 @@ vi.mock('@/features/cms/components/embedAppRoutes', () => ({
   resolveEmbedAppRoute: (route?: string | null) =>
     route === '/schedule'
       ? ({scheduleId}: {scheduleId?: string | null}) => (
-          <div data-testid="embedded-schedule-route">{scheduleId || 'active-schedule'}</div>
+          <div data-testid="embedded-schedule-route">
+            {scheduleId === undefined ? 'no-prop' : scheduleId || 'active-schedule'}
+          </div>
         )
       : null,
 }));
@@ -424,6 +426,73 @@ describe('EmbedBlockPage', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent('schedule-123'),
+    );
+  });
+
+  it('prefers the block-level ?schedule_id= override over the widget default', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      widget_type: 'app_route',
+      app_route: '/schedule',
+      schedule_id: 'schedule-123',
+      blocks: [],
+      page_css_class: '',
+      page_css: '',
+    });
+
+    render(
+      <MemoryRouter
+        initialEntries={['/_embed/schedule-widget?schedule_id=6F1D2C3B-4A5E-4F60-8A9B-0C1D2E3F4A5B']}
+      >
+        <Routes>
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent(
+        '6f1d2c3b-4a5e-4f60-8a9b-0c1d2e3f4a5b',
+      ),
+    );
+  });
+
+  it('ignores a malformed ?schedule_id= and falls back to the widget default', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      widget_type: 'app_route',
+      app_route: '/schedule',
+      schedule_id: 'schedule-123',
+      blocks: [],
+      page_css_class: '',
+      page_css: '',
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/_embed/schedule-widget?schedule_id=../../etc']}>
+        <Routes>
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent('schedule-123'),
+    );
+  });
+
+  it('falls back to the active schedule when neither block nor widget pins one', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({
+      widget_type: 'app_route',
+      app_route: '/schedule',
+      schedule_id: null,
+      blocks: [],
+      page_css_class: '',
+      page_css: '',
+    });
+
+    renderAtSlug('schedule-widget');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent('active-schedule'),
     );
   });
 

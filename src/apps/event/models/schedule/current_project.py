@@ -34,7 +34,12 @@ class CurrentProjectSchedule(ActiveModel, ProjectControlModel):
     last_synced_at = models.DateTimeField(null=True, blank=True, editable=False)
     sync_error = models.TextField(blank=True, default="")
     auto_sync_enabled = models.BooleanField(
-        default=False, verbose_name="Auto Sync", help_text="Automatically sync from Google Sheets on a schedule."
+        default=False,
+        verbose_name="Auto Sync",
+        help_text=(
+            "Automatically sync this schedule from its Google Sheet on a schedule "
+            "(applies to every schedule, not only the active one — switch it off for archived years)."
+        ),
     )
     sync_interval_minutes = models.PositiveIntegerField(
         default=60,
@@ -60,10 +65,16 @@ class CurrentProjectSchedule(ActiveModel, ProjectControlModel):
         # Serialize concurrent activations so the single-active invariant holds:
         # lock the currently-active rows, deactivate them, then activate self —
         # all in one transaction. select_for_update is a no-op on SQLite (dev).
+        # Auto-sync applies to every row (each has its own sheet), so the rows
+        # being archived here also stop auto-syncing; an admin re-enables it on
+        # a past schedule deliberately rather than inheriting it from when that
+        # row was the live one.
         if self.is_active:
             with transaction.atomic():
                 list(CurrentProjectSchedule.objects.select_for_update().filter(is_active=True).exclude(pk=self.pk))
-                CurrentProjectSchedule.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+                CurrentProjectSchedule.objects.filter(is_active=True).exclude(pk=self.pk).update(
+                    is_active=False, auto_sync_enabled=False
+                )
                 super().save(**kwargs)
         else:
             super().save(**kwargs)

@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router';
 import { BlockRenderer } from './BlockRenderer';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '@/features/cms/api';
 import { resolveEmbedAppRoute } from './embedAppRoutes';
+import { normalizeScheduleId } from './embedScheduleId';
 import {
   SECTION_TITLES_KEY,
   buildHiddenSectionsCss,
@@ -38,6 +39,8 @@ export const EmbedBlockPage = () => {
 
   const hideTitlesFromQuery = isTruthyParam(searchParams.get('hide-titles'));
   const hideSectionsParam = searchParams.get('hide-sections');
+  // Block-level schedule override (see EmbedWidgetBlock); wins over the widget's own default.
+  const scheduleIdFromQuery = normalizeScheduleId(searchParams.get('schedule_id'));
   const hiddenSections = useMemo(
     () =>
       normalizeHiddenSections([
@@ -164,16 +167,17 @@ export const EmbedBlockPage = () => {
   if (!data) return null;
 
   return (
-    <EmbedBody data={data} containerRef={containerRef} />
+    <EmbedBody data={data} containerRef={containerRef} scheduleIdOverride={scheduleIdFromQuery} />
   );
 };
 
 interface EmbedBodyProps {
   data: CMSEmbedResponse;
   containerRef: React.RefObject<HTMLDivElement | null>;
+  scheduleIdOverride?: string | null;
 }
 
-const EmbedBody = ({ data, containerRef }: EmbedBodyProps) => {
+const EmbedBody = ({ data, containerRef, scheduleIdOverride = null }: EmbedBodyProps) => {
   const appRouteComponent = useMemo(
     () => (data.widget_type === 'app_route' ? resolveEmbedAppRoute(data.app_route) : null),
     [data.widget_type, data.app_route],
@@ -187,7 +191,9 @@ const EmbedBody = ({ data, containerRef }: EmbedBodyProps) => {
         </div>
       );
     }
-    const appRouteProps = data.app_route === '/schedule' ? {scheduleId: data.schedule_id ?? null} : undefined;
+    // Precedence: block override (iframe query) > widget default (embed payload) > active schedule.
+    const appRouteProps =
+      data.app_route === '/schedule' ? {scheduleId: scheduleIdOverride || data.schedule_id || null} : undefined;
     return (
       <div ref={containerRef} className="cms-embed-app-route">
         <Suspense fallback={null}>{createElement(appRouteComponent, appRouteProps)}</Suspense>

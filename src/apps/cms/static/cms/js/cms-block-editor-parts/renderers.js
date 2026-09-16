@@ -109,6 +109,32 @@
             + '</div>';
     }
 
+    function renderEmbedWidgetScheduleField(data, idx) {
+        // Only /schedule app-route widgets can pin a schedule (e.g. a specific
+        // event year). The widget's own schedule FK is the default; the active
+        // schedule is the final fallback when neither is set.
+        const widget = window.findEmbedWidget ? window.findEmbedWidget(data.slug) : null;
+        if (!widget || widget.widget_type !== 'app_route' || widget.app_route !== '/schedule') return '';
+        const schedules = Array.isArray(window.CMS_SCHEDULES) ? window.CMS_SCHEDULES : [];
+        const defaultLabel = widget.schedule_name
+            ? `Widget default (${widget.schedule_name})`
+            : 'Widget default (follows the active schedule)';
+        const options = [['', defaultLabel]].concat(
+            schedules.map(s => [s.id, s.is_active ? `${s.name} (currently active)` : s.name])
+        );
+        // A stored id that no longer matches any schedule must stay visible so the
+        // editor can fix it; the backend rejects it on save otherwise.
+        const current = String(data.schedule_id || '');
+        if (current && !schedules.some(s => String(s.id) === current)) {
+            options.push([current, `Unknown schedule (${current}) — pick another`]);
+        }
+        const select = `<div class="cms-block-field field-small"><label>${P.escapeHtml('Schedule')}</label><select ${P.actionAttrs('updateEmbedWidgetSchedule', 'change', [idx], 'value')}>${options.map(opt => `<option value="${P.escapeAttr(opt[0])}"${current === String(opt[0]) ? ' selected' : ''}>${P.escapeHtml(opt[1])}</option>`).join('')}</select></div>`;
+        const hint = schedules.length
+            ? 'Pick which event schedule (year) this block shows. Manage schedules under Events > Current Project and Schedule.'
+            : 'No schedules defined yet. Add one under Events > Current Project and Schedule.';
+        return select + `<div class="cms-block-field"><span class="field-hint">${P.escapeHtml(hint)}</span></div>`;
+    }
+
     function renderEmbedWidgetFields(data, idx) {
         const widgets = Array.isArray(window.CMS_EMBED_WIDGETS) ? window.CMS_EMBED_WIDGETS : [];
         const options = [['', '— select a widget —']].concat(
@@ -120,6 +146,7 @@
         return P.textField('Heading (optional)', data.heading, idx, 'heading')
             + renderEmbedWidgetSelectField('Widget', data.slug, idx, options)
             + emptyHint
+            + renderEmbedWidgetScheduleField(data, idx)
             + '<div class="cms-block-field-row">'
             + P.selectField('Aspect Ratio', data.aspect_ratio, idx, 'aspect_ratio', [
                 ['', 'Auto (resize to content)'],

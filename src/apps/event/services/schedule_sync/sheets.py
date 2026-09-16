@@ -15,8 +15,15 @@ def get_worksheet_by_gid(spreadsheet, worksheet_gid: int):
     )
 
 
-def fetch_schedule_sheet_records() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    source = CurrentProjectSchedule.load()
+def fetch_schedule_sheet_records(
+    source: CurrentProjectSchedule,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Read the tracks + projects worksheets of ``source``'s own Google Sheet.
+
+    Every CurrentProjectSchedule row (e.g. one per event year) carries its own
+    sheet id and worksheet gids, so the caller passes the schedule being synced
+    rather than this helper silently resolving the active one.
+    """
     if not source or not source.sheet_id or not source.tracks_gid or not source.projects_gid:
         raise ScheduleSyncError("Google Sheets source is not fully configured for this event.")
 
