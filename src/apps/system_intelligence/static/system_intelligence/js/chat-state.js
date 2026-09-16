@@ -116,13 +116,17 @@
     try {
       const parsed = new URL(raw, window.location.origin);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+      if (parsed.username || parsed.password) return "";
       const isSameOrigin = parsed.origin === window.location.origin;
       if (isSameOrigin) {
         if (!parsed.pathname.startsWith("/admin/")) return "";
-        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+        // Build the URL from a fixed safe prefix, rather than carrying an input
+        // URL scheme into the anchor through parsed URL components.
+        return `/admin/${parsed.pathname.slice("/admin/".length)}${parsed.search}${parsed.hash}`;
       }
       if (parsed.pathname.startsWith("/admin/")) return "";
-      return parsed.href;
+      const suffix = `${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
+      return parsed.protocol === "https:" ? `https://${suffix}` : `http://${suffix}`;
     } catch {
       return "";
     }

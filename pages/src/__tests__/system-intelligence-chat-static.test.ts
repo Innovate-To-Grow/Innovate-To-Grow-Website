@@ -134,6 +134,38 @@ describe('System Intelligence static chat link rendering', () => {
     expect((node as HTMLAnchorElement).href).toBeUndefined();
   });
 
+  it.each([
+    ['relative admin path', '/admin/example/?filter=a%26b#details', '/admin/example/?filter=a%26b#details'],
+    ['same-origin admin URL', `${window.location.origin}/admin/example/?filter=1#details`, '/admin/example/?filter=1#details'],
+    ['external HTTPS URL', 'https://reports.example:8443/results?q=a%26b#details', 'https://reports.example:8443/results?q=a%26b#details'],
+    ['external HTTP URL', 'http://reports.example/results?q=1#details', 'http://reports.example/results?q=1#details'],
+  ])('preserves safe %s links and their query/fragment', (_label, href, expected) => {
+    const node = window.SystemIntelligenceChat.link(href, '<img src=x onerror=alert(1)>');
+
+    expect(node.tagName).toBe('A');
+    expect(node.getAttribute('href')).toBe(expected);
+    expect(node.querySelector('img')).toBeNull();
+    expect(node.textContent).toBe('<img src=x onerror=alert(1)>');
+    expect(node.getAttribute('rel')).toBe('noopener');
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'https://admin.example@evil.example/report',
+    'https://user:password@reports.example/report',
+    `${window.location.origin}/outside-admin/`,
+    `${window.location.origin}/admin/../outside-admin/`,
+    'https://evil.example/admin/example/',
+    '//evil.example/admin/example/',
+  ])('leaves disallowed or credential-bearing URLs inert: %s', (href) => {
+    const node = window.SystemIntelligenceChat.link(href, 'Preview');
+
+    expect(node.tagName).toBe('SPAN');
+    expect(node.getAttribute('href')).toBeNull();
+    expect(node.textContent).toBe('Preview');
+  });
+
   it('parses CRLF SSE frames and fields without a required space', () => {
     const assistant = window.SystemIntelligenceChat.appendMessage('assistant', '');
     window.SystemIntelligenceChat.setAssistantStreaming(assistant, true);
