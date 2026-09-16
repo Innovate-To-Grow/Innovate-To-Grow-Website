@@ -28,6 +28,7 @@ from .registrations import (  # noqa: F401 - register admin
 from .service_credentials import (  # noqa: F401 - register admin
     GmailAccessAccountAdmin,
     GoogleCredentialConfigAdmin,
+    SendVerificationConfigAdmin,
     SMTPProviderConfigAdmin,
 )
 
@@ -47,4 +48,5 @@ __all__ = [
     "get_field_value",
     "format_file_size",
     "format_duration",
+    "SendVerificationConfigAdmin",
 ]

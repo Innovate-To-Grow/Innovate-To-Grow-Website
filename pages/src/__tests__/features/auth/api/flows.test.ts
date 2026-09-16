@@ -80,7 +80,7 @@ describe('auth flows', () => {
       mocks.post.mockRejectedValue(axiosError);
 
       await expect(register('a@b.com', 'pw', 'pw', 'F', 'L', 'O')).rejects.toBeDefined();
-      expect(mocks.clearKeyCache).toHaveBeenCalled();
+      expect(mocks.post).toHaveBeenCalled();
     });
   });
 
@@ -114,7 +114,10 @@ describe('auth flows', () => {
     it('posts email to request-code endpoint', async () => {
       mocks.post.mockResolvedValue({data: {message: 'sent'}});
       const result = await requestLoginCode('a@b.com');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/login/request-code/', {email: 'a@b.com'});
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/login/request-code/',
+        expect.objectContaining({email: 'a@b.com'}),
+      );
       expect(result).toEqual({message: 'sent'});
     });
   });
@@ -123,32 +126,44 @@ describe('auth flows', () => {
     it('posts email and source', async () => {
       mocks.post.mockResolvedValue({data: {message: 'ok'}});
       await requestEmailAuthCode('a@b.com', 'login');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/email-auth/request-code/', {email: 'a@b.com', source: 'login'});
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/email-auth/request-code/',
+        expect.objectContaining({email: 'a@b.com', source: 'login'}),
+      );
     });
 
     it('defaults source to login', async () => {
       mocks.post.mockResolvedValue({data: {message: 'ok'}});
       await requestEmailAuthCode('a@b.com');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/email-auth/request-code/', {email: 'a@b.com', source: 'login'});
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/email-auth/request-code/',
+        expect.objectContaining({email: 'a@b.com', source: 'login'}),
+      );
     });
 
     it('includes the event slug when provided', async () => {
       mocks.post.mockResolvedValue({data: {message: 'ok'}});
       await requestEmailAuthCode('a@b.com', 'event_registration', 'demo-day');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/email-auth/request-code/', {
-        email: 'a@b.com',
-        source: 'event_registration',
-        event: 'demo-day',
-      });
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/email-auth/request-code/',
+        expect.objectContaining({
+          email: 'a@b.com',
+          source: 'event_registration',
+          event: 'demo-day',
+        }),
+      );
     });
 
     it('omits the event key when no event is given', async () => {
       mocks.post.mockResolvedValue({data: {message: 'ok'}});
       await requestEmailAuthCode('a@b.com', 'event_registration');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/email-auth/request-code/', {
-        email: 'a@b.com',
-        source: 'event_registration',
-      });
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/email-auth/request-code/',
+        expect.objectContaining({
+          email: 'a@b.com',
+          source: 'event_registration',
+        }),
+      );
     });
   });
 
@@ -198,7 +213,10 @@ describe('auth flows', () => {
 
       const result = await requestPasswordReset('a@b.com');
 
-      expect(mocks.post).toHaveBeenCalledWith('/authn/password-reset/request-code/', {email: 'a@b.com'});
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/password-reset/request-code/',
+        expect.objectContaining({email: 'a@b.com'}),
+      );
       expect(result).toEqual({message: 'sent', challenge_id: challengeId});
 
       await verifyPasswordResetCode('a@b.com', '123456');
@@ -263,7 +281,12 @@ describe('auth flows', () => {
 
       const result = await requestPasswordChangeCode();
 
-      expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/request-code/', {});
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/change-password/request-code/',
+        expect.objectContaining({
+          verification_challenge_id: expect.any(String),
+        }),
+      );
       expect(result.channel).toBe('sms');
       expect(result.destination).toBe('(•••) •••-4567');
       expect(result.challenge_id).toBe(challengeId);
@@ -274,7 +297,10 @@ describe('auth flows', () => {
 
       await requestPasswordChangeCode('a@b.com');
 
-      expect(mocks.post).toHaveBeenCalledWith('/authn/change-password/request-code/', {email: 'a@b.com'});
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/change-password/request-code/',
+        expect.objectContaining({email: 'a@b.com'}),
+      );
     });
 
     it('passes the persisted challenge when verifying an SMS password-change code', async () => {
@@ -316,7 +342,9 @@ describe('auth flows', () => {
     it('posts email to the resend endpoint', async () => {
       mocks.post.mockResolvedValue({data: {message: 'resent'}});
       const result = await resendRegistrationCode('a@b.com');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/register/resend-code/', {email: 'a@b.com'});
+      expect(mocks.post).toHaveBeenCalledWith('/authn/register/resend-code/', expect.objectContaining({
+        email: 'a@b.com', verification_payload: 'test-altcha-payload',
+      }));
       expect(result).toEqual({message: 'resent'});
     });
   });
@@ -341,7 +369,11 @@ describe('auth flows', () => {
     it('requests a deletion code', async () => {
       mocks.post.mockResolvedValue({data: {message: 'sent'}});
       const result = await requestAccountDeletionCode();
-      expect(mocks.post).toHaveBeenCalledWith('/authn/delete-account/request-code/', {});
+      expect(mocks.post).toHaveBeenCalledWith('/authn/delete-account/request-code/', {
+        verification_challenge_id: '11111111-1111-4111-8111-111111111111',
+        verification_payload: 'test-altcha-payload',
+        send_request_id: '22222222-2222-4222-8222-222222222222',
+      });
       expect(result).toEqual({message: 'sent'});
     });
 

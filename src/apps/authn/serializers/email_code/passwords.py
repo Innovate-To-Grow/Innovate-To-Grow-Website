@@ -10,7 +10,9 @@ from rest_framework import serializers
 
 from apps.authn.constants import RECOVERY_CHANNEL_UNAVAILABLE, VERIFICATION_CONFIRM_INVALID, VERIFICATION_INVALID
 from apps.authn.services import (
+    AuthChallengeDeliveryError,
     AuthChallengeInvalid,
+    AuthChallengeThrottled,
     NoRecoveryChannelError,
     PhoneVerificationError,
     PhoneVerificationInvalid,
@@ -46,24 +48,45 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     account exists, and the channel follows the identifier the caller supplied.
     """
 
-    identifier = serializers.CharField(required=False, allow_blank=True)
-    email = serializers.CharField(required=False, allow_blank=True)
+    identifier = serializers.CharField(required=False, allow_blank=True, max_length=254)
+    email = serializers.CharField(required=False, allow_blank=True, max_length=254)
+
+    def validate(self, attrs: dict) -> dict:
+        from apps.authn.services.contacts.contact_phones import national_to_e164, normalize_to_national
+
+        identifier = _identifier_value(attrs)
+        if not identifier:
+            raise serializers.ValidationError({"identifier": "An email or phone number is required."})
+        resolved = resolve_login_identifier(identifier, require_active=True)
+        attrs["resolved"] = resolved
+        if resolved is not None:
+            kind = "phone" if resolved.via == "phone" else "email"
+            destination = resolved.e164 if kind == "phone" else resolved.email
+        elif "@" not in identifier and any(ch.isdigit() for ch in identifier):
+            kind = "phone"
+            destination = national_to_e164(normalize_to_national(identifier, "1-US"), "1-US")
+        else:
+            kind, destination = "email", normalize_email(identifier)
+        attrs["destination_kind"] = kind
+        attrs["destination_normalized"] = destination
+        return attrs
 
     def save(self):
-        # Always return an opaque ID so response shape cannot reveal whether the
-        # identifier resolved. For an eligible SMS account it is replaced with
-        # the durable challenge ID; email/unknown identifiers receive a decoy.
+        from apps.authn.models import SendVerificationRequest
+        from apps.authn.services.send_verification.outcomes import SendOutcome, failure_status, public_reset_payload
+
         challenge_id = str(uuid.uuid4())
-        resolved = resolve_login_identifier(_identifier_value(self.validated_data), require_active=True)
-        if resolved is not None:
-            if resolved.via == "email":
-                issue_email_challenge(
-                    member=resolved.member,
-                    purpose=PURPOSE.PASSWORD_RESET,
-                    target_email=resolved.email,
-                )
-            else:
-                try:
+        resolved = self.validated_data["resolved"]
+        outcome = SendVerificationRequest.Status.DEFINITELY_FAILED
+        try:
+            if resolved is not None:
+                if resolved.via == "email":
+                    issue_email_challenge(
+                        member=resolved.member,
+                        purpose=PURPOSE.PASSWORD_RESET,
+                        target_email=resolved.email,
+                    )
+                else:
                     issued_challenge_id = request_sms_password_code(
                         member=resolved.member,
                         e164=resolved.e164,
@@ -71,15 +94,23 @@ class PasswordResetRequestSerializer(serializers.Serializer):
                     )
                     if issued_challenge_id:
                         challenge_id = issued_challenge_id
-                except PhoneVerificationError:
-                    # Stay enumeration-safe on this public endpoint: never surface
-                    # per-number SMS send state. The generic response is returned
-                    # regardless; the per-number send cap is the backstop.
-                    logger.warning("Password-reset SMS send failed", exc_info=True)
-        return {
-            "message": "If an eligible account exists, a verification code has been sent.",
-            "challenge_id": challenge_id,
-        }
+                outcome = SendVerificationRequest.Status.PROVIDER_ACCEPTED
+        except (AuthChallengeDeliveryError, AuthChallengeThrottled, PhoneVerificationError) as exc:
+            challenge_id = str(getattr(exc, "challenge_id", "") or challenge_id)
+            outcome = (
+                SendVerificationRequest.Status.DEFINITELY_FAILED
+                if isinstance(exc, AuthChallengeThrottled | PhoneVerificationThrottled | PhoneVerificationInvalid)
+                else failure_status(exc)
+            )
+            logger.warning("Password-reset delivery did not complete", exc_info=True)
+        payload = public_reset_payload(challenge_id)
+        self.send_outcome = SendOutcome(
+            payload,
+            202,
+            outcome,
+            challenge_id if resolved is not None and resolved.via == "phone" else "",
+        )
+        return payload
 
 
 class PasswordResetVerifySerializer(serializers.Serializer):
@@ -94,6 +125,24 @@ class PasswordResetVerifySerializer(serializers.Serializer):
         resolved = resolve_login_identifier(_identifier_value(attrs), require_active=True)
         if resolved is None:
             raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
+
+        # New protected resets expose the stable send request UUID from the
+        # first response onward. Resolve it to the durable OTP after dispatch;
+        # old clients may continue supplying the actual phone challenge UUID.
+        if attrs.get("challenge_id"):
+            from apps.authn.models import SendVerificationRequest
+            from apps.authn.services.send_verification.constants import OP_PASSWORD_RESET_REQUEST_CODE
+
+            record = SendVerificationRequest.objects.filter(request_id=attrs["challenge_id"]).first()
+            if record is not None:
+                destination = resolved.e164 if resolved.via == "phone" else resolved.email
+                if (
+                    record.operation != OP_PASSWORD_RESET_REQUEST_CODE
+                    or record.destination_normalized != destination
+                    or not record.otp_challenge_id
+                ):
+                    raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
+                attrs["challenge_id"] = record.otp_challenge_id
 
         if resolved.via == "email":
             try:
@@ -291,18 +340,22 @@ class ChangePasswordCodeConfirmSerializer(serializers.Serializer):
 
 
 class DeleteAccountCodeRequestSerializer(serializers.Serializer):
-    def save(self):
+    def validate(self, attrs):
         member = self.context["request"].user
         email = member.get_primary_email()
         if not email:
             raise serializers.ValidationError(
                 {"detail": "No verified email is available for account deletion. Add and verify an email first."}
             )
+        attrs["target_email"] = normalize_email(email)
+        return attrs
 
+    def save(self):
+        member = self.context["request"].user
         issue_email_challenge(
             member=member,
             purpose=PURPOSE.ACCOUNT_DELETE,
-            target_email=email,
+            target_email=self.validated_data["target_email"],
         )
         return {"message": "Deletion verification code sent."}
 
