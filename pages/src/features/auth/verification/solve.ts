@@ -64,7 +64,9 @@ export async function solveAltchaChallenge(
       void (async () => {
         await widget.configure({challenge: challenge as unknown as Challenge, auto: 'off', hideFooter: true, hideLogo: true});
         if (settled) return;
-        const result = await widget.verify();
+        // Avoid terminating sibling workers while their WebCrypto jobs are active.
+        // One worker still searches every counter at the signed challenge cost.
+        const result = await widget.verify({concurrency: 1});
         if (!settled) finish(result ? undefined : new VerificationFlowError('Verification failed. Please try again.'), result?.payload);
       })().catch((error: unknown) => finish(error instanceof Error ? error : new VerificationFlowError('Verification failed. Please try again.')));
     };
