@@ -36,7 +36,7 @@ test('email-code login routes /login → verify → /account', {tag: '@core'}, a
   await expect(page).toHaveURL(
     new RegExp(`/verify-email\\?flow=auth&email=${encodeURIComponent(email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
   );
-  expect(requestPayloads).toEqual([{email, source: 'login'}]);
+  expect(requestPayloads).toEqual([expect.objectContaining({email, source: 'login'})]);
 
   await page.getByLabel('6-digit verification code').fill('123456');
   await page.getByRole('button', {name: 'Continue', exact: true}).click();

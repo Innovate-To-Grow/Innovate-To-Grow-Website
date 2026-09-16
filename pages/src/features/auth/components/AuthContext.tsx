@@ -14,6 +14,7 @@ import {
   type User,
 } from '@/features/auth/api';
 import {AUTH_SESSION_KEY} from '@/features/auth/api/storage';
+import {VerifiedSendStatus} from '@/features/auth/verification';
 import {
   AUTH_STATE_CHANGE_EVENT,
   defaultContextValue,
@@ -259,6 +260,7 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
   return (
     <AuthContext.Provider value={value}>
       {children}
+      <VerifiedSendStatus />
     </AuthContext.Provider>
   );
 };
