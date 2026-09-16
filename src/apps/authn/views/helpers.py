@@ -6,9 +6,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.authn.constants import VERIFICATION_THROTTLED
+from apps.authn.constants import VERIFICATION_INVALID, VERIFICATION_THROTTLED
 from apps.authn.services import (
     AuthChallengeDeliveryError,
+    AuthChallengeInvalid,
     AuthChallengeThrottled,
     PhoneVerificationDeliveryError,
     PhoneVerificationThrottled,
@@ -46,6 +47,8 @@ def build_auth_success_payload(
 
 
 def challenge_error_response(exc: Exception) -> Response:
+    if isinstance(exc, AuthChallengeInvalid):
+        return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
     if isinstance(exc, AuthChallengeThrottled):
         return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     if isinstance(exc, AuthChallengeDeliveryError):

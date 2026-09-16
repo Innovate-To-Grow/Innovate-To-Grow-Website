@@ -8,7 +8,6 @@ from django.utils import timezone
 
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email.auth_email import normalize_email
-from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_UNCERTAIN, ProviderDeliveryError
 
 from .queries import assert_within_limit, expire_queryset
 
@@ -68,6 +67,13 @@ def issue_email_challenge(
 ) -> EmailAuthChallenge:
     import apps.authn.services.email.challenges as api
     from apps.authn.services.email.send_email import send_verification_email
+    from apps.authn.services.send_verification.outcomes import record_otp_challenge
+    from apps.core.services.aws.provider_outcomes import (
+        PROVIDER_OUTCOME_PERMANENT,
+        PROVIDER_OUTCOME_TRANSIENT,
+        PROVIDER_OUTCOME_UNCERTAIN,
+        ProviderDeliveryError,
+    )
 
     challenge, plain_code = create_challenge_record(
         member=member,
@@ -76,6 +82,7 @@ def issue_email_challenge(
     )
 
     try:
+        record_otp_challenge(str(challenge.pk))
         send_verification_email(
             recipient=challenge.target_email,
             code=plain_code,
@@ -85,15 +92,22 @@ def issue_email_challenge(
             link_event=link_event,
         )
     except Exception as exc:
-        if isinstance(exc, ProviderDeliveryError) and exc.outcome == PROVIDER_OUTCOME_UNCERTAIN:
-            # The email may already be on its way. Keep the normal code-entry
-            # flow and its expiry/cooldown; only possession of the code can
-            # complete verification, and resending here could duplicate mail.
-            logger.warning("Verification email delivery is uncertain for challenge %s", challenge.pk)
-            return challenge
         logger.exception("Failed to send verification email")
-        with transaction.atomic():
-            EmailAuthChallenge.objects.filter(pk=challenge.pk).delete()
-        raise api.AuthChallengeDeliveryError("Failed to send verification email.") from exc
+        # Provider-neutral EmailDeliveryError inherits this contract, covering
+        # both SES and SMTP. Untyped or unknown metadata cannot prove rejection.
+        outcome = PROVIDER_OUTCOME_UNCERTAIN
+        if isinstance(exc, ProviderDeliveryError) and exc.outcome in {
+            PROVIDER_OUTCOME_PERMANENT,
+            PROVIDER_OUTCOME_TRANSIENT,
+        }:
+            outcome = exc.outcome
+        if outcome != PROVIDER_OUTCOME_UNCERTAIN:
+            with transaction.atomic():
+                EmailAuthChallenge.objects.filter(pk=challenge.pk).delete()
+        raise api.AuthChallengeDeliveryError(
+            "Failed to send verification email.",
+            outcome=outcome,
+            challenge_id=str(challenge.pk),
+        ) from exc
 
     return challenge

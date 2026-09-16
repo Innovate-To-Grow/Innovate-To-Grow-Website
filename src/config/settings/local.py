@@ -6,6 +6,7 @@ Inherits everything from base.py and overrides only what differs locally.
 """
 
 import os
+import sys
 
 from .base import *  # noqa: F403
 
@@ -73,3 +74,21 @@ CACHES = {
         "LOCATION": "innovate-to-grow-dev",
     }
 }
+
+# Self-hosted send verification: enforce locally so missing proofs fail in dev.
+# HMAC values are development-only; production secrets live in Site Settings.
+SEND_VERIFICATION_MODE = "enforce"
+SEND_VERIFICATION_HMAC_SECRET = "local-send-verification-hmac-secret"  # nosec B105
+SEND_VERIFICATION_HMAC_KEY_SECRET = "local-send-verification-hmac-key-secret"  # nosec B105
+SEND_VERIFICATION_COST = 500
+SEND_VERIFICATION_SMS_DAILY_LIMIT = 1000
+if "test" in sys.argv:
+    SEND_VERIFICATION_TEST_AUTOSOLVE = True
+    SEND_VERIFICATION_COST = 10
+    SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = 0
+    SEND_VERIFICATION_CHALLENGE_CACHE_LIMIT = 10_000
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
+        **REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"],  # noqa: F405
+        "send_verification_challenge": "10000/minute",
+        "send_verification_status": "10000/minute",
+    }

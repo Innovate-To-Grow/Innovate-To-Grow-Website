@@ -110,7 +110,7 @@ test('DeleteAccountSection: delete account flow', async ({page}) => {
   const deleteBtn = page.getByRole('button', {name: /delete account/i});
   if (await deleteBtn.isVisible()) {
     await deleteBtn.click();
-    await expect(page.locator('.delete-account-section')).toBeVisible();
+    await expect(page.locator('.account-danger-content')).toBeVisible();
   }
 });
 

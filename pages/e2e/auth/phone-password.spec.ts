@@ -8,6 +8,7 @@ import {
   mockAuthoritativeSession,
   mockProfileEndpoint,
   mockPublicKey,
+  mockSendVerification,
   profileResponse,
   seedAuthenticatedSession,
 } from '../helpers';
@@ -54,6 +55,7 @@ async function stubAccountSideEffects(page: import('@playwright/test').Page) {
 
 test('phone account signs in with phone+password and sets a password via SMS', {tag: '@core'}, async ({page}) => {
   await mockPublicKey(page);
+  await mockSendVerification(page);
 
   const loginPayloads: unknown[] = [];
   await page.route('**/authn/login/', async (route) => {
@@ -166,6 +168,7 @@ test('profile image upload via file input', async ({page}) => {
 });
 
 test('phone account can change password via SMS code from account page', async ({page}) => {
+  await mockSendVerification(page);
   await seedAuthenticatedSession(page, {
     user: {email: '', phone: '+12025550123'},
     profile: {email: '', email_verified: false, primary_email_id: null},
@@ -192,8 +195,7 @@ test('phone account can change password via SMS code from account page', async (
   await page.goto('/account', {waitUntil: 'domcontentloaded'});
 
   const sendCodeBtn = page.getByRole('button', {name: 'Send Code'});
-  if (await sendCodeBtn.isVisible()) {
-    await sendCodeBtn.click();
-    await expect(page.getByText(/texted a code/i)).toBeVisible();
-  }
+  await expect(sendCodeBtn).toBeVisible();
+  await sendCodeBtn.click();
+  await expect(page.getByText(/texted a code/i)).toBeVisible();
 });

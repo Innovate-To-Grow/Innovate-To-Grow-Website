@@ -41,6 +41,8 @@ from .views import (
     RegisterResendCodeView,
     RegisterVerifyCodeView,
     RegisterView,
+    SendVerificationChallengeView,
+    SendVerificationRequestStatusView,
     SessionView,
     SubscribeView,
     UnsubscribeAutoLoginView,
@@ -51,6 +53,16 @@ app_name = "authn"
 urlpatterns = [
     # Public key for RSA encryption
     path("public-key/", PublicKeyView.as_view(), name="public-key"),
+    path(
+        "send-verification/challenge/",
+        SendVerificationChallengeView.as_view(),
+        name="send-verification-challenge",
+    ),
+    path(
+        "send-verification/requests/<uuid:request_id>/",
+        SendVerificationRequestStatusView.as_view(),
+        name="send-verification-request-status",
+    ),
     # Unified email auth
     path("email-auth/request-code/", EmailAuthRequestCodeView.as_view(), name="email-auth-request-code"),
     path("email-auth/verify-code/", EmailAuthVerifyCodeView.as_view(), name="email-auth-verify-code"),

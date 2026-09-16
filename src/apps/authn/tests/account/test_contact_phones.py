@@ -250,7 +250,7 @@ class ContactPhoneTests(APITestCase):
 
     @patch("apps.authn.views.account.contact_phones.request_phone_verification")
     def test_request_verification_delivery_error_returns_503(self, mock_request):
-        mock_request.side_effect = PhoneVerificationDeliveryError()
+        mock_request.side_effect = PhoneVerificationDeliveryError(outcome="permanent")
         phone = ContactPhone.objects.create(member=self.member, phone_number="2025551234", region="1-US")
         response = self.client.post(f"/authn/contact-phones/{phone.pk}/request-verification/")
         self.assertEqual(response.status_code, 503)

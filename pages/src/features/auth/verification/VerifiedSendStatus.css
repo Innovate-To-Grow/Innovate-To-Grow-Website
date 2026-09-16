@@ -1,0 +1,15 @@
+.verified-send-status {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: var(--itg-color-text-secondary, #666);
+}
+
+.verified-send-status--error {
+  color: var(--itg-color-primary, #0f2d52);
+}
+
+.verified-send-status--solving,
+.verified-send-status--challenging,
+.verified-send-status--sending {
+  color: var(--itg-color-text, #444);
+}
