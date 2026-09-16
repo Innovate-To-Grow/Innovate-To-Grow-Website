@@ -60,7 +60,7 @@ COPY --from=builder /install /usr/local
 # Refresh packaging tools in the runtime image as well. The base image ships
 # older pip/setuptools/wheel under /usr/local, and Trivy scans those packages
 # even though application dependencies are copied from the builder.
-RUN pip install "pip==26.2.0" "setuptools==82.0.1" "wheel==0.46.3"
+RUN pip install "pip==26.2.0" "setuptools==83.0.0" "wheel==0.46.3"
 
 # Copy the application source.
 COPY --chown=app:app . .
