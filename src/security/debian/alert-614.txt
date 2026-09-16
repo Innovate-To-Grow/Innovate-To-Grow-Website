@@ -1,0 +1,4 @@
+# Alert: https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/security/code-scanning/614
+# CVE-2026-89156: require Debian's patched libpcre2-8-0 build.
+# Debian fix: https://security-tracker.debian.org/tracker/CVE-2026-89156
+libpcre2-8-0 10.46-1~deb13u2
