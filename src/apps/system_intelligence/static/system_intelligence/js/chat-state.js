@@ -144,7 +144,11 @@
       return node;
     }
     const node = document.createElement("a");
-    node.setAttribute("href", safeHref);
+    // URL encoding preserves delimiters and existing escapes while ensuring
+    // HTML metacharacters cannot survive into the link attribute.
+    node.setAttribute("href", safeHref.replace(/["'<>]/g, (character) =>
+      `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+    ));
     node.textContent = text;
     node.target = "_blank";
     node.rel = "noopener";

@@ -149,6 +149,17 @@ describe('System Intelligence static chat link rendering', () => {
     expect(node.getAttribute('rel')).toBe('noopener');
   });
 
+  it('encodes HTML metacharacters without changing URL delimiters or existing escapes', () => {
+    const href = `/admin/report'"<>/?filter=a%26b&mode=full#details'"<>`;
+    const node = window.SystemIntelligenceChat.link(href, 'Preview');
+
+    expect(node.getAttribute('href')).toBe(
+      '/admin/report%27%22%3C%3E/?filter=a%26b&mode=full#details%27%22%3C%3E',
+    );
+    expect(new URL((node as HTMLAnchorElement).href).searchParams.get('filter')).toBe('a&b');
+    expect(new URL((node as HTMLAnchorElement).href).searchParams.get('mode')).toBe('full');
+  });
+
   it.each([
     'javascript:alert(1)',
     'data:text/html,<script>alert(1)</script>',
