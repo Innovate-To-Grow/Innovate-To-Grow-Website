@@ -1,32 +1,43 @@
-from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.event.models import CurrentProjectSchedule
-from apps.event.services import ScheduleSyncError, sync_schedule
+from apps.event.services import ScheduleSyncError, resolve_sync_targets, sync_schedule
 
 
 class Command(BaseCommand):
     help = (
         "Sync CurrentProjectSchedule rows from their Google Sheets. "
         "By default every schedule whose auto-sync is enabled and due is synced (active first). "
-        "Use --schedule <uuid> to target one schedule; --force ignores the auto-sync interval "
-        "(and, without --schedule, syncs the active schedule)."
+        "--schedule <uuid> syncs that one schedule now (any row, regardless of its auto-sync settings); "
+        "--force syncs the active schedule now, ignoring its auto-sync interval."
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("--force", action="store_true", help="Sync even if the interval has not elapsed.")
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Sync even if the interval has not elapsed. Without --schedule this syncs the active schedule only.",
+        )
         parser.add_argument(
             "--schedule",
             dest="schedule_id",
             default="",
-            help="UUID of a specific CurrentProjectSchedule to sync (any row, not only the active one).",
+            help=(
+                "UUID of a specific CurrentProjectSchedule to sync now (any row, not only the active one; "
+                "its auto-sync settings are ignored)."
+            ),
         )
 
     def handle(self, *args, **options):
-        force = options["force"]
-        targets = self._resolve_targets(options["schedule_id"], force)
+        # An explicitly targeted schedule is an operator asking for a sync now —
+        # archived rows have auto-sync switched off, so never gate them on it.
+        force = options["force"] or bool(options["schedule_id"])
+        try:
+            targets = resolve_sync_targets(options["schedule_id"], force=force)
+        except ScheduleSyncError as exc:
+            raise CommandError(str(exc)) from exc
         if not targets:
-            self.stdout.write(self.style.WARNING("No active schedule configuration found. Skipping."))
+            missing = "No active schedule configuration found." if force else "No schedule configuration found."
+            self.stdout.write(self.style.WARNING(f"{missing} Skipping."))
             return
 
         failures = []
@@ -46,34 +57,7 @@ class Command(BaseCommand):
                 self.stderr.write(self.style.ERROR(f"  Sync failed for '{config.name}': {exc}"))
                 continue
 
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"  Synced: {stats.sections_created} sections, "
-                    f"{stats.tracks_created} tracks, "
-                    f"{stats.slots_created} slots, "
-                    f"{stats.unmatched_slots} unmatched."
-                )
-            )
+            self.stdout.write(self.style.SUCCESS(f"  Synced: {stats.summary()}"))
 
         if failures:
             raise CommandError("Sync failed: " + "; ".join(failures))
-
-    def _resolve_targets(self, schedule_id, force):
-        if schedule_id:
-            try:
-                config = CurrentProjectSchedule.objects.filter(pk=schedule_id).first()
-            except (TypeError, ValueError, ValidationError):
-                config = None
-            if config is None:
-                raise CommandError(f"No CurrentProjectSchedule found with id '{schedule_id}'.")
-            return [config]
-
-        if force:
-            # Historical behaviour: a forced run without a target syncs the
-            # active schedule only, so operators' manual runs stay predictable.
-            config = CurrentProjectSchedule.load()
-            return [config] if config else []
-
-        # Cron mode: consider every schedule (each row carries its own sheet and
-        # auto-sync settings); the active one goes first.
-        return list(CurrentProjectSchedule.objects.order_by("-is_active", "-created_at"))

@@ -151,6 +151,30 @@ class FetchScheduleSheetRecordsTest(TestCase):
             fetch_schedule_sheet_records(config)
         self.assertIn("not fully configured", str(ctx.exception))
 
+    @patch("apps.event.services.schedule_sync.sheets.GoogleCredentialConfig.load")
+    def test_gid_zero_is_a_valid_worksheet_id(self, mock_load):
+        # The first tab of every spreadsheet has gid 0; it must not read as "unconfigured".
+        config = CurrentProjectSchedule.objects.create(
+            name="Demo Day", sheet_id="sheet-id", tracks_gid=0, projects_gid=2
+        )
+        mock_load.return_value = MagicMock(
+            is_configured=True,
+            get_credentials_info=MagicMock(return_value={"client_email": "x@example.com"}),
+        )
+        tracks_ws = MagicMock(id=0)
+        tracks_ws.get_all_records.return_value = [{"Track": 1}]
+        projects_ws = MagicMock(id=2)
+        projects_ws.get_all_records.return_value = [{"Team#": "CAP-1"}]
+        spreadsheet = MagicMock(worksheets=MagicMock(return_value=[tracks_ws, projects_ws]))
+        client = MagicMock()
+        client.open_by_key.return_value = spreadsheet
+        with patch("gspread.service_account_from_dict", return_value=client):
+            tracks, projects = fetch_schedule_sheet_records(config)
+        self.assertEqual(tracks, [{"Track": 1}])
+        self.assertEqual(projects, [{"Team#": "CAP-1"}])
+        # One metadata call serves both worksheet lookups.
+        spreadsheet.worksheets.assert_called_once()
+
     def test_none_source_raises(self):
         with self.assertRaises(ScheduleSyncError) as ctx:
             fetch_schedule_sheet_records(None)

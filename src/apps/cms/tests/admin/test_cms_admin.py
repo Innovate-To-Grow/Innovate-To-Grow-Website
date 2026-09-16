@@ -481,12 +481,15 @@ class BuildEditorContextTests(TestCase):
             schedule=schedule,
         )
         CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/schedule", slug="ctx-bare-widget")
+        CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/news", slug="ctx-news-widget")
         context = build_editor_context()
         by_slug = {w["slug"]: w for w in json.loads(context["embed_widgets_json"])}
         self.assertEqual(by_slug["ctx-schedule-widget"]["schedule_id"], str(schedule.pk))
-        self.assertEqual(by_slug["ctx-schedule-widget"]["schedule_name"], "Innovate to Grow 2026")
+        self.assertTrue(by_slug["ctx-schedule-widget"]["supports_schedule"])
         self.assertEqual(by_slug["ctx-bare-widget"]["schedule_id"], "")
-        self.assertEqual(by_slug["ctx-bare-widget"]["schedule_name"], "")
+        self.assertTrue(by_slug["ctx-bare-widget"]["supports_schedule"])
+        self.assertFalse(by_slug["ctx-news-widget"]["supports_schedule"])
+        self.assertEqual(by_slug["ctx-news-widget"]["schedule_id"], "")
 
     def test_context_injects_schedules_active_first(self):
         from apps.event.models import CurrentProjectSchedule

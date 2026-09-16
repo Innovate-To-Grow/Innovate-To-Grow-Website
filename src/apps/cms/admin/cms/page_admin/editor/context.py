@@ -4,6 +4,7 @@ from django.conf import settings as django_settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 
+from apps.cms.app_routes import widget_supports_schedule
 from apps.cms.models import (
     BLOCK_SCHEMAS,
     BLOCK_TYPE_CHOICES,
@@ -32,11 +33,7 @@ def _format_widget_label(widget):
 def _schedule_choices():
     """Schedules an ``embed_widget`` block may pin (active first, then newest)."""
     return [
-        {
-            "id": str(schedule.pk),
-            "name": schedule.name or "Not configured",
-            "is_active": schedule.is_active,
-        }
+        {"id": str(schedule.pk), "name": str(schedule), "is_active": schedule.is_active}
         for schedule in CurrentProjectSchedule.objects.order_by("-is_active", "-created_at")
     ]
 
@@ -51,12 +48,12 @@ def build_editor_context(obj=None):
             "label": _format_widget_label(widget),
             "widget_type": widget.widget_type,
             "app_route": widget.app_route or "",
-            # Widget-level default schedule (only meaningful for /schedule
-            # widgets); the block editor shows it as the "widget default" choice.
-            "schedule_id": str(widget.schedule_id) if widget.schedule_id else "",
-            "schedule_name": (widget.schedule.name or "Not configured") if widget.schedule_id else "",
+            # Whether the block editor offers the Schedule dropdown, and the
+            # widget-level default it shows there (a CMS_SCHEDULES id).
+            "supports_schedule": widget_supports_schedule(widget),
+            "schedule_id": str(widget.schedule_id) if widget_supports_schedule(widget) and widget.schedule_id else "",
         }
-        for widget in CMSEmbedWidget.objects.select_related("schedule").order_by("slug")
+        for widget in CMSEmbedWidget.objects.select_related("page").order_by("slug")
     ]
     context = {
         "block_schemas_json": _safe_json(BLOCK_SCHEMAS),

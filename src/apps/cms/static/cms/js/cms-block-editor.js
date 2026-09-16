@@ -30,12 +30,12 @@
     }
 
     function normalizeEmbedWidgetSchedule(data) {
-        // A pinned schedule only makes sense on /schedule widgets; drop it when
-        // the block is re-pointed at another widget so the backend never sees a
-        // stray schedule_id it would reject.
+        // A pinned schedule only makes sense on schedule-selectable widgets;
+        // drop it when the block is re-pointed at another widget so the stored
+        // JSON never carries a stray schedule_id.
         if (!data || typeof data !== 'object') return;
         const widget = findEmbedWidget(data.slug);
-        const supportsSchedule = Boolean(widget && widget.widget_type === 'app_route' && widget.app_route === '/schedule');
+        const supportsSchedule = Boolean(widget && widget.supports_schedule);
         const value = String(data.schedule_id || '').trim();
         if (supportsSchedule && value) data.schedule_id = value;
         else delete data.schedule_id;

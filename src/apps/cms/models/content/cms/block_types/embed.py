@@ -7,10 +7,8 @@ from django.core.exceptions import ValidationError
 
 ASPECT_RATIO_RE = re.compile(r"^\d+:\d+$")
 
-SCHEDULE_APP_ROUTE = "/schedule"
-# Canonical hyphenated form only — the SPA (embedScheduleId.ts) accepts exactly
-# this shape off the iframe URL, and some write paths (AI page creation) store
-# validated data without the storage normalization below.
+# Hyphenated UUID only — the SPA (embedScheduleId.ts) accepts exactly this shape
+# off the iframe URL; storage normalization lower-cases it.
 SCHEDULE_ID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
 SANDBOX_TOKENS = {
@@ -53,22 +51,31 @@ def validate_embed_block(data):
                 raise ValidationError(f"Unknown sandbox token(s): {', '.join(unknown)}.")
 
 
-def validate_embed_widget_block(data):
+def inspect_embed_widget_block(data):
+    """Validate an ``embed_widget`` block once and return its resolved parts.
+
+    Returns ``(widget, hidden_sections, schedule_id)``; both validation and
+    storage normalization build on this so the widget/schedule lookups run a
+    single time per block.
+    """
     widget = resolve_embed_widget(data)
     validate_embed_sizing(data)
-    normalized_embed_widget_hidden_sections(data, widget)
-    normalized_embed_widget_schedule_id(data, widget)
+    hidden_sections = normalized_embed_widget_hidden_sections(data, widget)
+    schedule_id = normalized_embed_widget_schedule_id(data, widget)
+    return widget, hidden_sections, schedule_id
+
+
+def validate_embed_widget_block(data):
+    widget, _hidden_sections, _schedule_id = inspect_embed_widget_block(data)
     return widget
 
 
 def normalize_embed_widget_block_data(data):
     normalized = dict(data)
-    widget = validate_embed_widget_block(normalized)
-    hidden_sections = normalized_embed_widget_hidden_sections(normalized, widget)
+    _widget, hidden_sections, schedule_id = inspect_embed_widget_block(normalized)
     if hidden_sections or "hidden_sections" in normalized or normalized.get("hide_section_titles") is True:
         normalized["hidden_sections"] = hidden_sections
         normalized["hide_section_titles"] = "section_titles" in hidden_sections
-    schedule_id = normalized_embed_widget_schedule_id(normalized, widget)
     if schedule_id:
         normalized["schedule_id"] = schedule_id
     else:
@@ -126,8 +133,13 @@ def normalized_embed_widget_schedule_id(data, widget):
         raw = raw.strip()
     if raw in (None, ""):
         return ""
-    if widget.widget_type != "app_route" or widget.app_route != SCHEDULE_APP_ROUTE:
-        raise ValidationError("'schedule_id' is only supported for widgets that embed the /schedule app route.")
+    from apps.cms.app_routes import widget_supports_schedule
+
+    if not widget_supports_schedule(widget):
+        # Mirror CMSEmbedWidget._clean_schedule: a widget that was re-pointed
+        # away from a schedule route just loses the pin instead of making every
+        # page that embeds it fail on its next save.
+        return ""
     if not isinstance(raw, str) or not SCHEDULE_ID_RE.match(raw):
         raise ValidationError("'schedule_id' must be a schedule UUID.")
     schedule_pk = uuid.UUID(raw)

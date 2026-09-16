@@ -8,11 +8,11 @@ from apps.event.models import CurrentProjectSchedule
 from .shared import ScheduleSyncError
 
 
-def get_worksheet_by_gid(spreadsheet, worksheet_gid: int):
-    return next(
-        (worksheet for worksheet in spreadsheet.worksheets() if worksheet.id == worksheet_gid),
-        None,
-    )
+def get_worksheet_by_gid(spreadsheet, worksheet_gid: int, worksheets=None):
+    """Find a worksheet by gid; pass ``worksheets`` to reuse one ``worksheets()`` API call."""
+    if worksheets is None:
+        worksheets = spreadsheet.worksheets()
+    return next((worksheet for worksheet in worksheets if worksheet.id == worksheet_gid), None)
 
 
 def fetch_schedule_sheet_records(
@@ -24,7 +24,8 @@ def fetch_schedule_sheet_records(
     sheet id and worksheet gids, so the caller passes the schedule being synced
     rather than this helper silently resolving the active one.
     """
-    if not source or not source.sheet_id or not source.tracks_gid or not source.projects_gid:
+    # gid 0 is the first worksheet of every spreadsheet, so test for None, not falsiness.
+    if not source or not source.sheet_id or source.tracks_gid is None or source.projects_gid is None:
         raise ScheduleSyncError("Google Sheets source is not fully configured for this event.")
 
     credentials = GoogleCredentialConfig.load()
@@ -36,8 +37,9 @@ def fetch_schedule_sheet_records(
 
         client = gspread.service_account_from_dict(credentials.get_credentials_info())
         spreadsheet = client.open_by_key(source.sheet_id)
-        tracks_worksheet = get_worksheet_by_gid(spreadsheet, int(source.tracks_gid))
-        projects_worksheet = get_worksheet_by_gid(spreadsheet, int(source.projects_gid))
+        worksheets = spreadsheet.worksheets()
+        tracks_worksheet = get_worksheet_by_gid(spreadsheet, int(source.tracks_gid), worksheets)
+        projects_worksheet = get_worksheet_by_gid(spreadsheet, int(source.projects_gid), worksheets)
     except Exception as exc:
         raise ScheduleSyncError(f"Unable to open the configured Google Sheet: {exc}") from exc
 

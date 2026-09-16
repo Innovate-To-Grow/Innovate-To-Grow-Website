@@ -5,7 +5,7 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from apps.event.models import CurrentProjectSchedule
+from apps.event.models import CurrentProjectSchedule, ScheduleSyncLog
 from apps.event.services import ScheduleSyncError, ScheduleSyncStats
 
 
@@ -13,7 +13,34 @@ class SyncScheduleCommandTest(TestCase):
     def test_no_config_warns_and_skips(self):
         out = StringIO()
         call_command("sync_schedule", stdout=out)
+        self.assertIn("No schedule configuration found", out.getvalue())
+
+    def test_force_without_active_schedule_warns_and_skips(self):
+        CurrentProjectSchedule.objects.create(name="Archived", is_active=False, auto_sync_enabled=True)
+        out = StringIO()
+        call_command("sync_schedule", "--force", stdout=out)
         self.assertIn("No active schedule configuration found", out.getvalue())
+
+    @patch("apps.event.management.commands.sync_schedule.sync_schedule")
+    def test_failed_auto_sync_backs_off_for_one_interval(self, mock_sync):
+        # A broken sheet must not be hammered (and alert) on every cron tick:
+        # the failed attempt counts toward the interval.
+        config = CurrentProjectSchedule.objects.create(
+            name="Demo Day", auto_sync_enabled=True, sync_interval_minutes=60, last_synced_at=None
+        )
+        mock_sync.side_effect = ScheduleSyncError("sheet unreachable")
+        ScheduleSyncLog.objects.create(
+            config=config,
+            sync_type=ScheduleSyncLog.SyncType.AUTO,
+            status=ScheduleSyncLog.Status.FAILED,
+            error_message="sheet unreachable",
+        )
+        out = StringIO()
+
+        call_command("sync_schedule", stdout=out)
+
+        mock_sync.assert_not_called()
+        self.assertIn("Auto-sync not due for 'Demo Day'", out.getvalue())
 
     def test_not_due_skips_without_force(self):
         CurrentProjectSchedule.objects.create(name="Demo Day", auto_sync_enabled=False)
@@ -121,16 +148,19 @@ class SyncScheduleCommandTest(TestCase):
         self.assertIn("Syncing 'Innovate to Grow 2025'", out.getvalue())
 
     @patch("apps.event.management.commands.sync_schedule.sync_schedule")
-    def test_schedule_option_respects_due_check_without_force(self, mock_sync):
+    def test_schedule_option_syncs_an_archived_row_even_with_auto_sync_off(self, mock_sync):
+        # Archived rows have auto-sync switched off; an explicit target must
+        # still sync (otherwise the option silently does nothing).
         archived = CurrentProjectSchedule.objects.create(
             name="Innovate to Grow 2025", is_active=False, auto_sync_enabled=False
         )
+        mock_sync.return_value = ScheduleSyncStats()
         out = StringIO()
 
         call_command("sync_schedule", "--schedule", str(archived.pk), stdout=out)
 
-        mock_sync.assert_not_called()
-        self.assertIn("Auto-sync not due for 'Innovate to Grow 2025'", out.getvalue())
+        mock_sync.assert_called_once_with(archived, sync_type="auto")
+        self.assertIn("Syncing 'Innovate to Grow 2025'", out.getvalue())
 
     def test_schedule_option_unknown_id_raises(self):
         with self.assertRaises(CommandError) as ctx:

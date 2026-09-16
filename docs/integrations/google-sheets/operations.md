@@ -49,19 +49,21 @@ publish (e.g. one per year — put the year in the **Event Name**, it is what CM
 
 #### Schedule auto-sync
 
-Each row has its own **Auto Sync** toggle and interval. Activating a schedule switches Auto Sync **off** on the
-row(s) it archives, so a past year is never re-pulled from a sheet that may since have been repurposed — re-enable
-it on that row deliberately if you still want it refreshed. Run the command externally (cron / ECS scheduled task):
+Each row has its own **Auto Sync** toggle and interval. A schedule that stops being active — because you activate
+another one (allowed in one step; the previous row is archived automatically) or untick **Active** on it — has
+Auto Sync switched **off**, so a past year is never re-pulled from a sheet that may since have been repurposed.
+Re-enable it on that row deliberately if you still want it refreshed. Run the command externally (cron / ECS
+scheduled task):
 
 ```bash
-python manage.py sync_schedule                       # every schedule whose auto-sync is enabled and due (active first)
-python manage.py sync_schedule --force               # the active schedule now, regardless of the interval
-python manage.py sync_schedule --schedule <uuid>     # one specific schedule (any row), honouring its interval
-python manage.py sync_schedule --schedule <uuid> --force
+python manage.py sync_schedule                       # cron mode: every schedule whose auto-sync is enabled and due (active first)
+python manage.py sync_schedule --force               # the active schedule now, regardless of its interval
+python manage.py sync_schedule --schedule <uuid>     # one specific schedule now (any row; its auto-sync settings are ignored)
 ```
 
-One failing sheet does not stop the others; the command still exits non-zero and names every failed schedule (a
-failed row stays "due", so fix the sheet or switch that row's Auto Sync off to stop the alerts).
+In cron mode one failing sheet does not stop the others; the command still exits non-zero and names every failed
+schedule. A failed auto-sync attempt counts toward that row's interval, so a broken or unshared sheet is retried
+(and reported) once per interval rather than on every tick — fix the sheet, or switch that row's Auto Sync off.
 
 ### 6. Configure the past-projects sheet
 

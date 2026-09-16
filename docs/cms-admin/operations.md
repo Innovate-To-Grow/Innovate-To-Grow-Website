@@ -317,8 +317,8 @@ Google Sheet):
 - **Pull Current Projects & Schedule** (changelist button) syncs the *active* row
 - **Sync from Google Sheets** (per-row action and change-form button) syncs *that* row — previous years can be
   refreshed without activating them
-- `python manage.py sync_schedule` syncs every row whose auto-sync is enabled and due; `--schedule <uuid>`
-  targets one row; `--force` skips the interval check (and, without `--schedule`, syncs the active row only)
+- `python manage.py sync_schedule` syncs every row whose auto-sync is enabled and due; `--schedule <uuid>` syncs
+  one row now regardless of its auto-sync settings; `--force` syncs the active row now regardless of its interval
 - A sync replaces that row's `CurrentProject`, schedule sections/tracks/slots and agenda items only
 
 ### Check-in

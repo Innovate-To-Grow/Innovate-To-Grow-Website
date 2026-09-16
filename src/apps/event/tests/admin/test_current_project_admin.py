@@ -1,8 +1,9 @@
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.authn.tests.helpers import scrape_admin_form
 from apps.core.models import GoogleCredentialConfig
 from apps.event.models import (
     CurrentProject,
@@ -128,6 +129,37 @@ class CurrentProjectScheduleAdminTest(TestCase):
         mock_sync.assert_not_called()
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("Schedule not found" in m for m in messages))
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
+    def test_change_form_activates_a_schedule_in_one_step_and_archives_auto_sync_on_the_old_one(self):
+        previous = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", auto_sync_enabled=True)
+        incoming = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
+        url = reverse("admin:event_currentprojectschedule_change", args=[incoming.pk])
+        data = scrape_admin_form(self.client, url, overrides={"is_active": "on", "auto_sync_enabled": "on"})
+
+        response = self.client.post(url, data)
+
+        self.assertEqual(response.status_code, 302, response.content.decode()[:2000])
+        previous.refresh_from_db()
+        incoming.refresh_from_db()
+        self.assertTrue(incoming.is_active)
+        self.assertTrue(incoming.auto_sync_enabled)
+        self.assertFalse(previous.is_active)
+        self.assertFalse(previous.auto_sync_enabled)
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
+    def test_change_form_deactivation_archives_auto_sync(self):
+        current = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", auto_sync_enabled=True)
+        url = reverse("admin:event_currentprojectschedule_change", args=[current.pk])
+        data = scrape_admin_form(self.client, url)
+        data.pop("is_active", None)
+
+        response = self.client.post(url, data)
+
+        self.assertEqual(response.status_code, 302, response.content.decode()[:2000])
+        current.refresh_from_db()
+        self.assertFalse(current.is_active)
+        self.assertFalse(current.auto_sync_enabled)
 
     def test_changelist_renders_row_sync_action_for_every_schedule(self):
         CurrentProjectSchedule.objects.create(name="Demo Day")

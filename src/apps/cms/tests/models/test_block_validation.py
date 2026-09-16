@@ -7,7 +7,12 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from apps.cms.models import CMSBlock, CMSEmbedAllowedHost, CMSEmbedWidget, CMSPage
-from apps.cms.models.content.cms.block_types import BLOCK_SCHEMAS, BLOCK_TYPE_KEYS, validate_block_data
+from apps.cms.models.content.cms.block_types import (
+    BLOCK_SCHEMAS,
+    BLOCK_TYPE_KEYS,
+    normalize_block_data_for_storage,
+    validate_block_data,
+)
 from apps.cms.services.sanitization.embed_hosts import invalidate_cache as invalidate_embed_host_cache
 from apps.event.models import CurrentProjectSchedule
 
@@ -497,18 +502,27 @@ class EmbedWidgetBlockValidationTests(TestCase):
                 validate_block_data("embed_widget", {"slug": "schedule-embed", "schedule_id": bad})
             self.assertIn("must be a schedule UUID", str(ctx.exception))
 
-    def test_embed_widget_rejects_schedule_id_on_non_schedule_widget(self):
+    def test_embed_widget_ignores_schedule_id_on_non_schedule_widget(self):
+        # Mirrors CMSEmbedWidget._clean_schedule: a widget re-pointed away from a
+        # schedule route must not make every page embedding it fail to save.
         schedule = CurrentProjectSchedule.objects.create(name="Demo Day")
         CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/news", slug="news-embed")
-        with self.assertRaises(ValidationError) as ctx:
-            validate_block_data("embed_widget", {"slug": "news-embed", "schedule_id": str(schedule.pk)})
-        self.assertIn("only supported for widgets that embed the /schedule app route", str(ctx.exception))
+        data = {"slug": "news-embed", "schedule_id": str(schedule.pk)}
+        validate_block_data("embed_widget", data)
+        self.assertNotIn("schedule_id", normalize_block_data_for_storage("embed_widget", data))
 
-    def test_embed_widget_rejects_schedule_id_on_blocks_widget(self):
+    def test_embed_widget_ignores_schedule_id_on_blocks_widget(self):
         schedule = CurrentProjectSchedule.objects.create(name="Demo Day")
         CMSEmbedWidget.objects.create(widget_type="blocks", page=self.page, slug="blocks-embed", block_sort_orders=[])
-        with self.assertRaises(ValidationError):
-            validate_block_data("embed_widget", {"slug": "blocks-embed", "schedule_id": str(schedule.pk)})
+        data = {"slug": "blocks-embed", "schedule_id": str(schedule.pk)}
+        validate_block_data("embed_widget", data)
+        self.assertNotIn("schedule_id", normalize_block_data_for_storage("embed_widget", data))
+
+    def test_embed_widget_validation_hits_the_schedule_table_once_per_block(self):
+        schedule = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+        data = {"slug": "schedule-embed", "schedule_id": str(schedule.pk), "hidden_sections": ["schedule_header"]}
+        with self.assertNumQueries(2):  # one widget lookup + one schedule existence check
+            normalize_block_data_for_storage("embed_widget", data)
 
     def test_embed_widget_clean_canonicalizes_schedule_id_for_storage(self):
         schedule = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)

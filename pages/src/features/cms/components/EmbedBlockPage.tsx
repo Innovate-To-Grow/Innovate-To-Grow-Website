@@ -2,7 +2,7 @@ import { createElement, Suspense, useEffect, useMemo, useRef, useState } from 'r
 import { useParams, useSearchParams } from 'react-router';
 import { BlockRenderer } from './BlockRenderer';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '@/features/cms/api';
-import { resolveEmbedAppRoute } from './embedAppRoutes';
+import { embedRouteSupportsSchedule, resolveEmbedAppRoute } from './embedAppRoutes';
 import { normalizeScheduleId } from './embedScheduleId';
 import {
   SECTION_TITLES_KEY,
@@ -192,8 +192,9 @@ const EmbedBody = ({ data, containerRef, scheduleIdOverride = null }: EmbedBodyP
       );
     }
     // Precedence: block override (iframe query) > widget default (embed payload) > active schedule.
-    const appRouteProps =
-      data.app_route === '/schedule' ? {scheduleId: scheduleIdOverride || data.schedule_id || null} : undefined;
+    const appRouteProps = embedRouteSupportsSchedule(data.app_route)
+      ? {scheduleId: scheduleIdOverride || data.schedule_id || null}
+      : undefined;
     return (
       <div ref={containerRef} className="cms-embed-app-route">
         <Suspense fallback={null}>{createElement(appRouteComponent, appRouteProps)}</Suspense>

@@ -1,5 +1,5 @@
 from django.contrib import admin, messages
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.urls import path, reverse
 from unfold.decorators import action
@@ -124,10 +124,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         return redirect(reverse("admin:event_currentprojectschedule_change", args=[config.pk]))
 
     def _sync_by_object_id(self, request, object_id):
-        try:
-            config = CurrentProjectSchedule.objects.filter(pk=object_id).first()
-        except (TypeError, ValueError, ValidationError):
-            config = None
+        config = CurrentProjectSchedule.load_by_id(object_id)
         if config is None:
             messages.error(request, "Schedule not found.")
             return None
@@ -140,15 +137,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         except ScheduleSyncError as exc:
             messages.error(request, f"Sync failed for '{config}': {exc}")
             return
-        messages.success(
-            request,
-            (
-                f"Synced '{config}': {stats.sections_created} sections, "
-                f"{stats.tracks_created} tracks, "
-                f"{stats.slots_created} slots, "
-                f"{stats.unmatched_slots} unmatched."
-            ),
-        )
+        messages.success(request, f"Synced '{config}': {stats.summary()}")
 
     def get_urls(self):
         custom_urls = [

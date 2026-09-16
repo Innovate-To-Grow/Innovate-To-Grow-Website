@@ -76,7 +76,9 @@ def _sync_schedule(
         sync_error="",
         grand_winners=grand_winners,
     )
-    cache.delete("event:current-projects")
+    if config.is_active:
+        # /event/projects/ only ever caches the active schedule's projects.
+        cache.delete("event:current-projects")
     _record_sync_success(config, stats, sync_type)
     return stats
 

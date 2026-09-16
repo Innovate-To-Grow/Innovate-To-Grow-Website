@@ -36,6 +36,7 @@ vi.mock('@/features/cms/components/BlockRenderer', () => ({
 }));
 
 vi.mock('@/features/cms/components/embedAppRoutes', () => ({
+  embedRouteSupportsSchedule: (route?: string | null) => route === '/schedule',
   resolveEmbedAppRoute: (route?: string | null) =>
     route === '/schedule'
       ? ({scheduleId}: {scheduleId?: string | null}) => (

@@ -86,8 +86,9 @@ worksheet GIDs. Exactly one row is **Active**: it backs `/schedule` when no sche
 
 - **Pull Current Projects & Schedule** (changelist button) syncs the active row from its sheet
 - **Sync from Google Sheets** (per-row action, also on the change form) syncs that row from its own sheet
-- **Auto Sync** + interval are per row; `python manage.py sync_schedule` honours them for every row. Activating a
-  schedule switches Auto Sync off on the row(s) it archives — re-enable it per row on purpose
+- **Auto Sync** + interval are per row; `python manage.py sync_schedule` honours them for every row. A row that
+  stops being active (you activate another schedule — a one-step change that archives the previous row — or untick
+  **Active**) has Auto Sync switched off; re-enable it per row on purpose
 
 Registration form settings use **Prompt for Phone Number** and **Verify phone**. Verification is disabled and cleared when the phone prompt is off. Registration exports provide separate **Event Start Date** and **Event End Date** columns.
 
