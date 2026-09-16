@@ -61,6 +61,13 @@ class DebianSecurityFloorTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("older than required", result.stderr)
 
+    def test_final_requirement_without_newline_is_verified(self):
+        self.requirement("perl-base 5.40.1-6+deb13u1")
+        self.env.update(INSTALLED_VERSION="5.40.1-6", COMPARE_EXIT="1")
+        result = self.run_installer()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("older than required", result.stderr)
+
     def test_apt_failure_is_not_masked(self):
         self.requirement("perl-base 5.40.1-6+deb13u1\n")
         self.env["APT_EXIT"] = "100"

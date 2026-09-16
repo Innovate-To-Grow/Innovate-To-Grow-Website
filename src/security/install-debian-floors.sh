@@ -34,7 +34,7 @@ apt-get install -y --no-install-recommends $packages
 set +f
 
 for requirement in "$requirements"/*.txt; do
-    while read -r package minimum; do
+    while read -r package minimum || [ -n "$package" ]; do
         case "$package" in
             ''|'#'*) continue ;;
         esac
