@@ -1,0 +1,4 @@
+# Alert: https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/security/code-scanning/607
+# CVE-2026-5928: require Debian's patched libc-bin build.
+# Debian fix: https://security-tracker.debian.org/tracker/CVE-2026-5928
+libc-bin 2.41-12+deb13u4
