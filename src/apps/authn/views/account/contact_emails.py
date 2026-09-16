@@ -12,7 +12,6 @@ from rest_framework.views import APIView
 from apps.authn.constants import (
     CONTACT_EMAIL_ADD_FAILED,
     CONTACT_EMAIL_PRIMARY_FAILED,
-    CONTACT_EMAIL_SEND_FAILED,
     LAST_RECOVERY_CONTACT_DELETE_FAILED,
     VERIFICATION_INVALID,
 )
@@ -37,6 +36,14 @@ from apps.authn.services import (
     resend_contact_email_verification,
     verify_contact_email_code,
 )
+from apps.authn.services.email.auth_email import normalize_email
+from apps.authn.services.send_verification import (
+    OP_CONTACT_EMAIL_CREATE,
+    OP_CONTACT_EMAIL_REQUEST_VERIFICATION,
+    fingerprint_payload,
+    guarded_send,
+)
+from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
 
 from ..helpers import challenge_error_response
 
@@ -98,19 +105,35 @@ class ContactEmailListCreateView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            contact_email = create_contact_email(
-                member=request.user,
-                email_address=serializer.validated_data["email_address"],
-                email_type=serializer.validated_data["email_type"],
-                subscribe=serializer.validated_data["subscribe"],
-            )
-        except AuthChallengeInvalid:
-            return Response({"detail": CONTACT_EMAIL_ADD_FAILED}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:  # noqa: BLE001
-            return challenge_error_response(exc)
+        email_address = normalize_email(serializer.validated_data["email_address"])
 
-        return Response(ContactEmailSerializer(contact_email).data, status=status.HTTP_201_CREATED)
+        def perform():
+            try:
+                contact_email = create_contact_email(
+                    member=request.user,
+                    email_address=email_address,
+                    email_type=serializer.validated_data["email_type"],
+                    subscribe=serializer.validated_data["subscribe"],
+                )
+            except AuthChallengeInvalid:
+                return {"detail": CONTACT_EMAIL_ADD_FAILED}, status.HTTP_400_BAD_REQUEST
+            return ContactEmailSerializer(contact_email).data, status.HTTP_201_CREATED
+
+        return guarded_send(
+            request,
+            operation=OP_CONTACT_EMAIL_CREATE,
+            destination_kind=KIND_EMAIL,
+            destination_normalized=email_address,
+            fingerprint=fingerprint_payload(
+                {
+                    "email": email_address,
+                    "email_type": serializer.validated_data["email_type"],
+                    "subscribe": serializer.validated_data["subscribe"],
+                }
+            ),
+            channel=EMAIL_CHANNEL,
+            perform=perform,
+        )
 
 
 class ContactEmailDetailView(APIView):
@@ -178,14 +201,19 @@ class ContactEmailRequestVerificationView(APIView):
         if contact_email.verified:
             return Response({"detail": "This email is already verified."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
+        def perform():
             result = resend_contact_email_verification(member=request.user, contact_email_id=pk)
-        except AuthChallengeInvalid:
-            return Response({"detail": CONTACT_EMAIL_SEND_FAILED}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as exc:  # noqa: BLE001
-            return challenge_error_response(exc)
+            return result, status.HTTP_202_ACCEPTED
 
-        return Response(result, status=status.HTTP_202_ACCEPTED)
+        return guarded_send(
+            request,
+            operation=OP_CONTACT_EMAIL_REQUEST_VERIFICATION,
+            destination_kind=KIND_EMAIL,
+            destination_normalized=normalize_email(contact_email.email_address),
+            fingerprint=fingerprint_payload({"contact_id": str(pk)}),
+            channel=EMAIL_CHANNEL,
+            perform=perform,
+        )
 
 
 class ContactEmailVerifyCodeView(APIView):

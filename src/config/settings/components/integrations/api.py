@@ -44,8 +44,37 @@ REST_FRAMEWORK = {
         "cli_read": "120/minute",
         "cli_write": "60/minute",
         "public_assistant": "20/minute",
+        # Proof-of-work challenge issuance. Bound independently of send
+        # throttles so solvers cannot mint unlimited challenges.
+        "send_verification_challenge": "30/minute",
+        "send_verification_status": "60/minute",
     },
 }
+
+# ---------------------------------------------------------------------------
+# Self-hosted send verification (ALTCHA PoW v2 + destination quotas)
+# ---------------------------------------------------------------------------
+# Mode: observe (proofs optional) | enforce (required) | pause (fail closed).
+# None means inherit the active database configuration, then service defaults.
+# Only explicit environment/local/test settings override admin changes. HMAC
+# secrets for production normally live in SendVerificationConfig (Django admin).
+SEND_VERIFICATION_MODE = None
+SEND_VERIFICATION_HMAC_SECRET = None
+SEND_VERIFICATION_HMAC_KEY_SECRET = None
+SEND_VERIFICATION_HMAC_SECRET_PREVIOUS = None
+SEND_VERIFICATION_HMAC_KEY_SECRET_PREVIOUS = None
+SEND_VERIFICATION_ALGORITHM = None
+SEND_VERIFICATION_COST = None
+SEND_VERIFICATION_TTL_SECONDS = None
+SEND_VERIFICATION_MAX_PAYLOAD_BYTES = None
+SEND_VERIFICATION_DESTINATION_HOURLY_LIMIT = None
+SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = None
+# An uncalibrated effective SMS cap fails closed in enforce mode.
+SEND_VERIFICATION_SMS_DAILY_LIMIT = None
+SEND_VERIFICATION_IDEMPOTENCY_TTL_SECONDS = None
+SEND_VERIFICATION_RETENTION_DAYS = None
+SEND_VERIFICATION_CHALLENGE_CACHE_WINDOW_SECONDS = None
+SEND_VERIFICATION_CHALLENGE_CACHE_LIMIT = None
 
 # ---------------------------------------------------------------------------
 # SimpleJWT

@@ -23,8 +23,11 @@ from apps.authn.services import (
     resolve_or_create_member_by_phone,
 )
 from apps.authn.services.contacts.contact_phones import national_to_e164, normalize_to_national
+from apps.authn.services.send_verification import OP_PHONE_AUTH_REQUEST_CODE
+from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
 from apps.authn.services.sms import check_phone_verification
 
+from ..auth.email_code_helpers import protected_save
 from ..helpers import build_auth_success_payload
 
 
@@ -38,13 +41,18 @@ class PhoneAuthRequestCodeView(APIView):
         serializer = UnifiedPhoneAuthRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            payload = serializer.save()
-        except PhoneVerificationThrottled:
-            return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-        except PhoneVerificationDeliveryError:
-            return Response({"detail": PHONE_VERIFICATION_DELIVERY_FAILED}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        return Response(payload, status=status.HTTP_202_ACCEPTED)
+        phone_number = serializer.validated_data["phone_number"]
+        region = serializer.validated_data["region"]
+        e164 = national_to_e164(normalize_to_national(phone_number, region), region)
+        return protected_save(
+            request,
+            serializer,
+            operation=OP_PHONE_AUTH_REQUEST_CODE,
+            destination_kind=KIND_PHONE,
+            destination=e164,
+            fingerprint={"phone": e164, "region": region, "source": serializer.validated_data.get("source", "login")},
+            channel=SMS_CHANNEL,
+        )
 
 
 class PhoneAuthVerifyCodeView(APIView):
