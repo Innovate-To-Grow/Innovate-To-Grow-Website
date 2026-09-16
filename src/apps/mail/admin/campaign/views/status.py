@@ -30,7 +30,7 @@ class CampaignStatusMixin:
         """JSON endpoint for polling send progress."""
         if not self.has_view_permission(request):
             raise PermissionDenied("You do not have permission to view this campaign's status.")
-        status_cache_key = f"mail:campaign_status:{object_id}"
+        status_cache_key = f"mail:campaign_status:v2:{object_id}"
         cached = cache.get(status_cache_key)
         if cached is not None:
             return JsonResponse(cached)
@@ -78,12 +78,7 @@ class CampaignStatusMixin:
 
 
 def _short_error(msg: object) -> str:
-    """Trim error strings before they flow into the JSON response."""
+    """Keep provider/exception diagnostics in storage, outside the polling response."""
     if not msg:
         return ""
-    text = str(msg)
-    if "Traceback (most recent call last)" in text or '\n  File "' in text:
-        return "Send failed (see server logs for details)."
-    first_line = text.splitlines()[0] if text else ""
-    cleaned = "".join(ch for ch in first_line if ch.isprintable())
-    return cleaned[:200]
+    return "Send failed (see server logs for details)."
