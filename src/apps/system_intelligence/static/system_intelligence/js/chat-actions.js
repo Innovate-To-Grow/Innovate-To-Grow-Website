@@ -10,7 +10,8 @@
 
   app.renderAssistantError = function (assistant, message) {
     app.setAssistantStreaming(assistant, false);
-    app.renderRichText(assistant.body, message);
+    // Diagnostic text must never create export links or other interactive content.
+    assistant.body.textContent = message;
   };
 
   app.loadConversations = async function (selectId) {
