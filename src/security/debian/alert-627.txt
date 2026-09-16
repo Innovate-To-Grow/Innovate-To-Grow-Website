@@ -1,0 +1,4 @@
+# Alert: https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/security/code-scanning/627
+# CVE-2026-12087: require Debian's patched perl-base build.
+# Debian fix: https://security-tracker.debian.org/tracker/CVE-2026-12087
+perl-base 5.40.1-6+deb13u1
