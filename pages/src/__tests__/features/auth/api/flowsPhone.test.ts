@@ -37,11 +37,14 @@ describe('phone auth flows', () => {
     it('posts national digits with default region and source', async () => {
       mocks.post.mockResolvedValue({data: {message: 'sent'}});
       const result = await requestPhoneAuthCode('2025550123');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/phone-auth/request-code/', {
-        phone_number: '2025550123',
-        region: '1-US',
-        source: 'login',
-      });
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/phone-auth/request-code/',
+        expect.objectContaining({
+          phone_number: '2025550123',
+          region: '1-US',
+          source: 'login',
+        }),
+      );
       expect(result).toEqual({message: 'sent'});
     });
 
@@ -55,11 +58,14 @@ describe('phone auth flows', () => {
         '1-US',
         'subscribe',
       );
-      expect(mocks.post).toHaveBeenCalledWith('/authn/phone-auth/request-code/', {
-        phone_number: '2025550123',
-        region: '1-US',
-        source: 'subscribe',
-      });
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/phone-auth/request-code/',
+        expect.objectContaining({
+          phone_number: '2025550123',
+          region: '1-US',
+          source: 'subscribe',
+        }),
+      );
       expect(result.challenge_id).toBe(challengeId);
     });
   });

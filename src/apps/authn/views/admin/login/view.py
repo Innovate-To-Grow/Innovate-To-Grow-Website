@@ -22,6 +22,9 @@ class AdminLoginView(PasswordLoginMixin, EmailCodeLoginMixin, View):
     def get(self, request):
         import apps.authn.views.admin.login as login_api
 
+        if not request.session.session_key:
+            request.session.save()
+
         if request.user.is_authenticated and request.user.is_staff:
             return redirect(safe_admin_next(request))
 

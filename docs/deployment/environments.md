@@ -71,6 +71,9 @@ A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/serv
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
 | `REDIS_URL` | Redis connection URL | No (falls back to file cache) |
+| `SEND_VERIFICATION_MODE` | Explicit override: `observe` / `enforce` / `pause` | No (inherits active admin config; fallback `observe`) |
+| `SEND_VERIFICATION_COST` | Explicit override for ALTCHA PBKDF2 cost | No (inherits active admin config; fallback 5000) |
+| `SEND_VERIFICATION_SMS_DAILY_LIMIT` | Channel-wide SMS reservation cap per UTC day | Required before `enforce` for SMS |
 
 ### Frontend / CORS
 

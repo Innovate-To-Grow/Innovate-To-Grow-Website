@@ -17,6 +17,7 @@ from apps.authn.services.email.challenges import (
     issue_email_challenge,
     verify_email_code,
 )
+from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_UNCERTAIN, ProviderDeliveryError
 from apps.core.services.email import (
     PermanentEmailDeliveryError,
     TransientEmailDeliveryError,
@@ -41,7 +42,10 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
         )
 
     @patch("apps.authn.services.email.challenges._random_code", return_value="123456")
-    @patch("apps.authn.services.email.send_email.send_verification_email", side_effect=RuntimeError("boom"))
+    @patch(
+        "apps.authn.services.email.send_email.send_verification_email",
+        side_effect=ProviderDeliveryError("rejected", outcome="permanent"),
+    )
     def test_failed_delivery_deletes_challenge(self, _mock_send, _mock_code):
         """When email delivery fails the challenge record should be deleted."""
         with self.assertRaises(AuthChallengeDeliveryError):
@@ -54,7 +58,7 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
     def test_retry_after_failed_delivery_succeeds(self, mock_send, _mock_code):
         """After a delivery failure the user can immediately retry without being throttled."""
         # First attempt: email send fails
-        mock_send.side_effect = RuntimeError("boom")
+        mock_send.side_effect = ProviderDeliveryError("rejected", outcome="permanent")
         with self.assertRaises(AuthChallengeDeliveryError):
             issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
 
@@ -67,7 +71,7 @@ class IssueEmailChallengeDeliveryFailureTests(TransactionTestCase):
     @patch("apps.authn.services.email.send_email.send_verification_email")
     def test_failed_deliveries_dont_exhaust_hourly_limit(self, mock_send, _mock_code):
         """Deleted challenges (from failed sends) must not count toward MAX_CHALLENGES_PER_HOUR."""
-        mock_send.side_effect = RuntimeError("boom")
+        mock_send.side_effect = ProviderDeliveryError("rejected", outcome="permanent")
 
         # Simulate many consecutive delivery failures
         for _ in range(MAX_CHALLENGES_PER_HOUR):
@@ -114,11 +118,15 @@ class IssueEmailChallengeOutcomeTests(TestCase):
         side_effect=UncertainEmailDeliveryError("Provider response lost after submission"),
     )
     def test_uncertain_delivery_keeps_emailed_code_usable(self, delivery, _random_code):
-        challenge = issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
+        # The email may already be on its way, so the challenge survives and the
+        # caller learns the outcome is unresolved instead of resending.
+        with self.assertRaises(AuthChallengeDeliveryError) as caught:
+            issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
 
         delivery.assert_called_once()
         self.assertIn("123456", delivery.call_args.args[0].html_body)
-        challenge.refresh_from_db()
+        self.assertEqual(caught.exception.outcome, PROVIDER_OUTCOME_UNCERTAIN)
+        challenge = EmailAuthChallenge.objects.get(pk=caught.exception.challenge_id)
         self.assertEqual(challenge.status, EmailAuthChallenge.Status.PENDING)
         verified = verify_email_code(
             member=self.member, purpose=PURPOSE, target_email="admin@example.com", code="123456"
@@ -130,7 +138,8 @@ class IssueEmailChallengeOutcomeTests(TestCase):
         side_effect=UncertainEmailDeliveryError("Provider response lost after submission"),
     )
     def test_uncertain_delivery_still_enforces_resend_cooldown(self, delivery):
-        issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
+        with self.assertRaises(AuthChallengeDeliveryError):
+            issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")
 
         with self.assertRaises(AuthChallengeThrottled):
             issue_email_challenge(member=self.member, purpose=PURPOSE, target_email="admin@example.com")

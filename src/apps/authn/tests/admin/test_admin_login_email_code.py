@@ -248,7 +248,7 @@ class AdminLoginViewTest(TestCase):
 
     @patch("apps.authn.views.admin.login.issue_email_challenge")
     def test_delivery_failure_shows_error(self, mock_issue):
-        mock_issue.side_effect = AuthChallengeDeliveryError("Failed to send verification email.")
+        mock_issue.side_effect = AuthChallengeDeliveryError("Failed to send verification email.", outcome="permanent")
         resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Failed to send verification code")
@@ -258,7 +258,7 @@ class AdminLoginViewTest(TestCase):
     @patch("apps.authn.views.admin.login.issue_email_challenge")
     def test_delivery_failure_does_not_advance_to_code_step(self, mock_issue):
         """When email delivery fails, session should NOT move to 'code' step."""
-        mock_issue.side_effect = AuthChallengeDeliveryError("boom")
+        mock_issue.side_effect = AuthChallengeDeliveryError("boom", outcome="permanent")
         self.client.post(LOGIN_URL, {"email": "admin@example.com"})
         self.assertNotEqual(self.client.session.get("admin_login_step"), "code")
 
@@ -444,7 +444,7 @@ class AdminLoginViewTest(TestCase):
 
         # Resend fails
         mock_issue.reset_mock()
-        mock_issue.side_effect = AuthChallengeDeliveryError("Failed to send verification email.")
+        mock_issue.side_effect = AuthChallengeDeliveryError("Failed to send verification email.", outcome="permanent")
         resp = self.client.post(LOGIN_URL, {"action": "resend"})
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Failed to send verification code")
