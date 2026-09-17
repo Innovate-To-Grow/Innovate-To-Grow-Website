@@ -35,13 +35,18 @@ def normalize_cms_blocks(blocks: list[dict]) -> list[dict]:
 
 
 def create_cms_blocks(page: CMSPage, blocks: Iterable[dict]) -> None:
+    from apps.cms.models.content.cms.block_types import normalize_block_data_for_storage
+
     for index, block in enumerate(blocks):
+        block_type = block.get("block_type")
         CMSBlock.objects.create(
             page=page,
-            block_type=block.get("block_type"),
+            block_type=block_type,
             sort_order=index,
             admin_label=block.get("admin_label", ""),
-            data=block.get("data") or {},
+            # Same storage normalization as the admin editor and page import, so
+            # e.g. embed_widget schedule ids land in their canonical form.
+            data=normalize_block_data_for_storage(block_type, block.get("data") or {}),
         )
 
 

@@ -58,6 +58,7 @@
         "updateColumnLink",
         "updateCtaButton",
         "updateEmbedWidgetHiddenSection",
+        "updateEmbedWidgetSchedule",
         "updateEmbedWidgetSlug",
         "updateFooterLink",
         "updateItem",

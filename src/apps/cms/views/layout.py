@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.cms.app_routes import widget_supports_schedule
 from apps.core.utils.http_cache import public_json_response
 
 from ..models import CMSBlock, CMSEmbedWidget, FooterContent, Menu, SiteSettings, StyleSheet
@@ -143,7 +144,7 @@ class EmbedBlockView(APIView):
                 "hidden_sections": hidden_sections,
                 "hide_section_titles": "section_titles" in hidden_sections,
                 "schedule_id": str(widget.schedule_id)
-                if widget.app_route == "/schedule" and widget.schedule_id
+                if widget_supports_schedule(widget) and widget.schedule_id
                 else None,
             }
         else:

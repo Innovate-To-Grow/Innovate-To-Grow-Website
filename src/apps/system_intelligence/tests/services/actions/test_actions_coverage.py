@@ -445,6 +445,42 @@ class CmsActionTests(SystemIntelligenceActionBase):
         self.assertEqual(payload["title"], "About")
         self.assertEqual(payload["slug"], "about")
 
+    def test_apply_cms_page_update_stores_normalized_block_data(self):
+        # Every writer must persist canonical block data: an upper-case
+        # schedule_id from the LLM lands lower-cased, like the admin editor.
+        from apps.cms.models import CMSEmbedWidget
+        from apps.event.models import CurrentProjectSchedule
+
+        CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/schedule", slug="schedule-embed")
+        schedule = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+        action = SystemIntelligenceActionRequest.objects.create(
+            conversation=self.conversation,
+            created_by=self.admin_user,
+            action_type=SystemIntelligenceActionRequest.ACTION_CMS_PAGE_UPDATE,
+            target_app_label="cms",
+            target_model="CMSPage",
+            title="Create schedule page",
+            payload={
+                "page": {
+                    "slug": "ai-schedule",
+                    "route": "/ai-schedule",
+                    "title": "AI Schedule",
+                    "status": "draft",
+                    "blocks": [
+                        {
+                            "block_type": "embed_widget",
+                            "data": {"slug": "schedule-embed", "schedule_id": str(schedule.pk).upper()},
+                        }
+                    ],
+                }
+            },
+        )
+
+        cms_actions.apply_cms_page_update(action)
+
+        block = CMSPage.objects.get(slug="ai-schedule").blocks.get()
+        self.assertEqual(block.data["schedule_id"], str(schedule.pk))
+
     def test_apply_cms_page_update_rejects_non_dict_payload(self):
         action = SystemIntelligenceActionRequest.objects.create(
             conversation=self.conversation,
