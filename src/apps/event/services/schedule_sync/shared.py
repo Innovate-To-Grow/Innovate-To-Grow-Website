@@ -13,3 +13,10 @@ class ScheduleSyncStats:
     agenda_items_created: int = 0
     unmatched_slots: int = 0
     break_slots: int = 0
+
+    def summary(self) -> str:
+        """Operator-facing one-liner shared by the admin messages and the cron command."""
+        return (
+            f"{self.sections_created} sections, {self.tracks_created} tracks, "
+            f"{self.slots_created} slots, {self.unmatched_slots} unmatched."
+        )

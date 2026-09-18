@@ -1,10 +1,15 @@
 """Embed block validation helpers."""
 
 import re
+import uuid
 
 from django.core.exceptions import ValidationError
 
 ASPECT_RATIO_RE = re.compile(r"^\d+:\d+$")
+
+# Hyphenated UUID only — the SPA (embedScheduleId.ts) accepts exactly this shape
+# off the iframe URL; storage normalization lower-cases it.
+SCHEDULE_ID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
 SANDBOX_TOKENS = {
     "allow-scripts",
@@ -46,20 +51,35 @@ def validate_embed_block(data):
                 raise ValidationError(f"Unknown sandbox token(s): {', '.join(unknown)}.")
 
 
-def validate_embed_widget_block(data):
+def inspect_embed_widget_block(data):
+    """Validate an ``embed_widget`` block once and return its resolved parts.
+
+    Returns ``(widget, hidden_sections, schedule_id)``; both validation and
+    storage normalization build on this so the widget/schedule lookups run a
+    single time per block.
+    """
     widget = resolve_embed_widget(data)
     validate_embed_sizing(data)
-    normalized_embed_widget_hidden_sections(data, widget)
+    hidden_sections = normalized_embed_widget_hidden_sections(data, widget)
+    schedule_id = normalized_embed_widget_schedule_id(data, widget)
+    return widget, hidden_sections, schedule_id
+
+
+def validate_embed_widget_block(data):
+    widget, _hidden_sections, _schedule_id = inspect_embed_widget_block(data)
     return widget
 
 
 def normalize_embed_widget_block_data(data):
     normalized = dict(data)
-    widget = validate_embed_widget_block(normalized)
-    hidden_sections = normalized_embed_widget_hidden_sections(normalized, widget)
+    _widget, hidden_sections, schedule_id = inspect_embed_widget_block(normalized)
     if hidden_sections or "hidden_sections" in normalized or normalized.get("hide_section_titles") is True:
         normalized["hidden_sections"] = hidden_sections
         normalized["hide_section_titles"] = "section_titles" in hidden_sections
+    if schedule_id:
+        normalized["schedule_id"] = schedule_id
+    else:
+        normalized.pop("schedule_id", None)
     return normalized
 
 
@@ -98,6 +118,39 @@ def resolve_embed_widget(data):
             )
         raise ValidationError(f"CMS embed widget '{slug}' cannot be embedded: its app route is not configured.")
     return widget
+
+
+def normalized_embed_widget_schedule_id(data, widget):
+    """Return the block-level schedule override as a canonical UUID string, or "".
+
+    A block may pin a specific ``CurrentProjectSchedule`` (e.g. a previous
+    year's) so one ``/schedule`` widget can be reused across pages. The
+    override beats the widget's own ``schedule`` FK, which in turn beats the
+    active schedule.
+    """
+    raw = data.get("schedule_id")
+    if isinstance(raw, str):
+        raw = raw.strip()
+    if raw in (None, ""):
+        return ""
+    from apps.cms.app_routes import widget_supports_schedule
+
+    if not widget_supports_schedule(widget):
+        # Mirror CMSEmbedWidget._clean_schedule: a widget that was re-pointed
+        # away from a schedule route just loses the pin instead of making every
+        # page that embeds it fail on its next save.
+        return ""
+    if not isinstance(raw, str) or not SCHEDULE_ID_RE.match(raw):
+        raise ValidationError("'schedule_id' must be a schedule UUID.")
+    schedule_pk = uuid.UUID(raw)
+
+    from apps.event.models import CurrentProjectSchedule
+
+    if not CurrentProjectSchedule.objects.filter(pk=schedule_pk).exists():
+        raise ValidationError(
+            f"No schedule found with id '{schedule_pk}'. Pick one from Events > Current Project and Schedule."
+        )
+    return str(schedule_pk)
 
 
 def normalized_embed_widget_hidden_sections(data, widget):

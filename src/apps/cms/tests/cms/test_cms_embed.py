@@ -236,6 +236,44 @@ class EmbedAppRouteWidgetViewTest(TestCase):
         self.assertEqual(data["hidden_sections"], [])
         self.assertIsNone(data["schedule_id"])
 
+    def test_deleting_a_schedule_detaches_block_level_pins_and_the_widget_default(self):
+        # Block pins are JSON (no FK), so a schedule delete must clear them the
+        # way the widget FK's SET_NULL clears the widget default.
+        from django.core.cache import cache
+
+        from apps.cms.models import CMSBlock, CMSPage
+
+        other = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2024", is_active=False)
+        self.widget.schedule = self.schedule
+        self.widget.save(update_fields=["schedule"])
+        page = CMSPage.objects.create(slug="pinned", route="/pinned", title="Pinned", status="published")
+        pinned = CMSBlock.objects.create(
+            page=page,
+            block_type="embed_widget",
+            sort_order=0,
+            data={"slug": "schedule-embed", "heading": "2026", "schedule_id": str(self.schedule.pk)},
+        )
+        untouched = CMSBlock.objects.create(
+            page=page,
+            block_type="embed_widget",
+            sort_order=1,
+            data={"slug": "schedule-embed", "schedule_id": str(other.pk)},
+        )
+        cache.set("cms:page:/pinned", {"stale": True}, timeout=300)
+
+        # Cache invalidation is deferred to transaction.on_commit.
+        with self.captureOnCommitCallbacks(execute=True):
+            self.schedule.delete()
+
+        pinned.refresh_from_db()
+        untouched.refresh_from_db()
+        self.widget.refresh_from_db()
+        self.assertNotIn("schedule_id", pinned.data)
+        self.assertEqual(pinned.data["heading"], "2026")
+        self.assertEqual(untouched.data["schedule_id"], str(other.pk))
+        self.assertIsNone(self.widget.schedule_id)
+        self.assertIsNone(cache.get("cms:page:/pinned"))
+
     def test_returns_schedule_id_for_configured_schedule_widget(self):
         self.widget.schedule = self.schedule
         self.widget.save(update_fields=["schedule"])

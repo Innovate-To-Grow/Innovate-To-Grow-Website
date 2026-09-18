@@ -104,6 +104,26 @@ class CMSAdminCSPSourceTests(SimpleTestCase):
         self.assertIn('sandbox="allow-same-origin"', template)
         self.assertNotIn('sandbox="allow-same-origin allow-scripts"', template)
 
+    def test_every_editor_action_is_allowlisted_by_the_csp_dispatcher(self):
+        # csp-actions.js dispatches ``data-admin-call`` names through a hard-coded
+        # allowlist and silently ignores unknown ones, so a control wired with
+        # ``P.actionAttrs('newName', ...)`` but never allowlisted renders yet does
+        # nothing. Keep the two in lock-step.
+        dispatcher = (settings.BASE_DIR / "apps" / "core" / "static" / "admin" / "js" / "csp-actions.js").read_text()
+        allowlist_block = re.search(r"ALLOWED_CALLS = new Set\(\[(.*?)\]\)", dispatcher, re.S)
+        self.assertIsNotNone(allowlist_block)
+        allowed = set(re.findall(r'"([A-Za-z0-9_]+)"', allowlist_block.group(1)))
+
+        used = set()
+        static_root = settings.BASE_DIR / "apps" / "cms" / "static"
+        for path in static_root.rglob("*.js"):
+            used.update(re.findall(r"actionAttrs\(\s*'([A-Za-z0-9_]+)'", path.read_text()))
+        for path in (settings.BASE_DIR / "apps" / "cms" / "templates").rglob("*.html"):
+            used.update(re.findall(r'data-admin-call="([A-Za-z0-9_]+)"', path.read_text()))
+
+        self.assertTrue(used)
+        self.assertEqual(sorted(used - allowed), [])
+
     def test_cms_editors_do_not_require_unsafe_eval(self):
         static_root = settings.BASE_DIR / "apps" / "cms" / "static"
         violations = []
