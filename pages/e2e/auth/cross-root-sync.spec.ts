@@ -20,7 +20,8 @@ test('logged-out load shows Sign In in the menu root', {tag: '@core'}, async ({p
 test('expired access bootstraps through refresh and authoritative session state', async ({page}) => {
   const email = 'bootstrap@example.com';
   const seeded = await seedAuthenticatedSession(page, {
-    user: {email},
+    user: {email: 'cached-member@example.net'},
+    profile: {email},
     accessExp: Math.floor(Date.now() / 1000) - 60,
   });
   let sessionRequests = 0;
@@ -64,6 +65,7 @@ test('expired access bootstraps through refresh and authoritative session state'
     user: localStorage.getItem('i2g_user'),
   }));
   expect(keys.session).not.toBeNull();
+  expect(JSON.parse(keys.session!).user.email).toBe(email);
   expect(keys.access).toBeNull();
   expect(keys.refresh).toBeNull();
   expect(keys.user).toBeNull();
