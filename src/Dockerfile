@@ -73,7 +73,7 @@ COPY --from=builder /install /usr/local
 # (pip/_vendor/bom.cdx.json). Trivy parses that file and reports the vendored
 # setuptools/msgpack versions as if they were installed packages, so drop it —
 # the vendored copies are private to pip and not importable by the app.
-RUN pip install "pip==26.2.0" "setuptools==82.0.1" "wheel==0.46.3" \
+RUN pip install "pip==26.2.0" "setuptools==83.0.0" "wheel==0.46.3" \
  && find /usr/local/lib -path "*/pip/_vendor/*" -name "*.cdx.json" -delete
 
 # Copy the application source.
