@@ -2,7 +2,7 @@
 # Pin the base image by major-minor and (ideally) digest. Production images
 # should use a specific @sha256 digest once CI pins are in place; until then
 # the tag is updated through Dependabot/Renovate for visibility.
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim-trixie AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -10,6 +10,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /build
+
+# Keep distro-specific security floors tied to Debian trixie. Their own COPY
+# layer invalidates cached package installation whenever a requirement changes.
+COPY security/ /opt/itg-security/
 
 # Build-time dependencies, pinned to a major version to satisfy DL3008.
 #
@@ -22,6 +26,7 @@ WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential=12.* \
         libpq-dev=17.* \
+    && sh /opt/itg-security/install-debian-floors.sh \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the dependency manifests together so their nested `-r` includes resolve.
@@ -35,12 +40,14 @@ RUN pip install "pip==26.2.0" \
  && pip install --prefix=/install -r requirements/production.txt
 
 
-FROM python:3.11-slim AS production
+FROM python:3.11-slim-trixie AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
+
+COPY security/ /opt/itg-security/
 
 # Runtime libs only. libpq5 is the runtime sibling of libpq-dev used by
 # psycopg2. Major-version pinned for the same reason as libpq-dev above — the two
@@ -48,6 +55,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # publishes between the two layers.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq5=17.* \
+    && sh /opt/itg-security/install-debian-floors.sh \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system app \
     && useradd --system --gid app --home /app --shell /usr/sbin/nologin app

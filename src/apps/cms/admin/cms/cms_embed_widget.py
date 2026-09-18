@@ -7,7 +7,7 @@ from django.utils.html import format_html
 from unfold.widgets import UnfoldAdminSelectWidget
 
 from apps.cms.admin.cms.page_admin.editor import _safe_json
-from apps.cms.app_routes import EMBEDDABLE_APP_ROUTES
+from apps.cms.app_routes import EMBEDDABLE_APP_ROUTES, widget_supports_schedule
 from apps.cms.models import CMSBlock, CMSEmbedWidget, CMSPage
 from apps.cms.services.embed.embed_sections import (
     hidden_section_choices,
@@ -96,7 +96,7 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
     @admin.display(description="Target")
     def target_label(self, obj):
         if obj.widget_type == "app_route":
-            if obj.app_route == "/schedule" and obj.schedule_id:
+            if widget_supports_schedule(obj) and obj.schedule_id:
                 return format_html("<code>{}</code> — {}", obj.app_route or "—", obj.schedule)
             return format_html("<code>{}</code>", obj.app_route or "—")
         if obj.page_id:

@@ -59,17 +59,25 @@ header is written and the final `Registration ID` column is protected.
 
 ## Schedule sync (Sheets → Django)
 
-**Service:** `src/apps/event/services/schedule_sync.py`
+**Service:** `src/apps/event/services/schedule_sync/`
 
-Imports track assignments and project data from a Google Sheet into the database.
+Imports track assignments and project data from a Google Sheet into the database. Each
+`CurrentProjectSchedule` row (typically one per event year, e.g. "Innovate to Grow 2025",
+"Innovate to Grow 2026") carries **its own** sheet id and worksheet GIDs, and every row can be
+synced independently — not only the one marked **Active**.
 
 ### Flow
 
-1. Admin triggers schedule sync from the Django admin
-2. Service reads the configured worksheet (by GID) from the event's spreadsheet
+1. A sync is triggered for a specific `CurrentProjectSchedule` row:
+   - Django admin → Events → Current Project and Schedule → **Pull Current Projects & Schedule** (syncs the
+     *active* row), or the per-row / change-form **Sync from Google Sheets** action (syncs *that* row), or
+   - `python manage.py sync_schedule` (cron; see [operations](operations.md#schedule-auto-sync)).
+2. `fetch_schedule_sheet_records(config)` opens **that row's** `sheet_id` and reads the tracks and projects
+   worksheets by `tracks_gid` / `projects_gid`
 3. Parses rows into track and project records
-4. Creates or updates `Semester`, `Project`, `EventScheduleTrack`, and `EventScheduleSlot` models
-5. Supports grand winner tracking
+4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` and
+   `EventAgendaItem` rows inside one transaction (other schedules are untouched)
+5. Records grand winners on the schedule and writes a `ScheduleSyncLog` entry
 
 ### Sheet structure
 
@@ -78,14 +86,19 @@ The schedule sheet is expected to contain:
 - Project data (team name, project title, class code, presentation order)
 - Timing information mapped to schedule sections
 
-### Event model fields
+### `CurrentProjectSchedule` fields
 
 | Field | Purpose |
 |-------|---------|
-| `registration_sheet_id` | Google Sheets document ID |
-| `registration_sheet_gid` | Worksheet GID for registration data |
+| `name` | Event label shown to editors (include the year, e.g. "Innovate to Grow 2026") |
+| `is_active` | The default schedule for `/schedule`, `/event/projects/` and the assistant; exactly one row |
+| `sheet_id` | Google Sheets document ID for **this** schedule |
+| `tracks_gid` / `projects_gid` | Worksheet GIDs for the tracks and projects tabs |
+| `auto_sync_enabled` / `sync_interval_minutes` | Per-row cron settings honoured by `sync_schedule` |
 
-These are configured on the `Event` model in Django admin.
+These are configured per row in Django admin → Events → Current Project and Schedule. CMS pages pick which
+schedule an embedded `/schedule` widget shows — see
+[content management](../../cms-admin/content-management.md#embed-widget-blocks-and-schedule-selection).
 
 ## Past-projects sync (Sheets → Django)
 

@@ -119,6 +119,7 @@
         window.CMS_EMBED_ALLOWED_HOSTS = {{ embed_allowed_hosts_json|safe }};
         window.CMS_EMBED_DEFAULT_SANDBOX = "{{ embed_default_sandbox|escapejs }}";
         window.CMS_EMBED_WIDGETS = {{ embed_widgets_json|safe }};
+        window.CMS_SCHEDULES = {{ schedules_json|safe }};
         window.CMS_HIDDEN_SECTION_PRESETS = {{ hidden_section_presets_json|safe }};
         window.CMS_ASSET_MANAGER = {{ asset_manager_config_json|safe }};
         window.CMS_ROUTE_EDITOR = {
@@ -136,8 +137,8 @@
     <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=6"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/assets.js' %}?v=3"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=2"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=8"></script>
+    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=11"></script>
     <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=3"></script>
-    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=8"></script>
+    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=10"></script>
     <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>
 {% endblock %}
