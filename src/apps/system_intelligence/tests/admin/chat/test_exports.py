@@ -1,6 +1,6 @@
 from django.urls import reverse
 
-from apps.event.tests.helpers import make_superuser
+from apps.event.tests.helpers import make_admin, make_superuser
 from apps.system_intelligence.models import SystemIntelligenceExport
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.exports import create_export
@@ -27,12 +27,20 @@ class ExportDownloadViewTests(SystemIntelligenceAdminBase):
         self.assertIn("attachment", response["Content-Disposition"])
         self.assertIn(self.export.filename, response["Content-Disposition"])
 
-    def test_other_admin_cannot_download_someone_elses_export(self):
-        other = make_superuser(email="other@example.com")
+    def test_other_staff_cannot_download_someone_elses_export(self):
+        other = make_admin(apps=["system_intelligence"], email="other@example.com")
         self.client.force_login(other)
         url = reverse("admin:system_intelligence_export_download", args=[self.export.id])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
+
+    def test_superuser_can_download_any_export(self):
+        other = make_superuser(email="other@example.com")
+        self.client.force_login(other)
+        url = reverse("admin:system_intelligence_export_download", args=[self.export.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("attachment", response["Content-Disposition"])
 
     def test_missing_file_returns_410(self):
         SystemIntelligenceExport.objects.filter(pk=self.export.pk).update(file="")

@@ -11,6 +11,7 @@ class SystemIntelligenceConfig(AppConfig):
     def ready(self):
         from django.contrib import admin
 
+        from . import signals  # noqa: F401 -- registers post_delete storage cleanup
         from .admin import get_system_intelligence_urls
 
         if getattr(admin.AdminSite, "_system_intelligence_urls_patched", False):

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
+from django.contrib.admin.utils import flatten_fieldsets
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory, TestCase
 
@@ -88,6 +89,12 @@ class SystemIntelligenceConfigAdminTests(TestCase):
         request.session = "session"
         request._messages = FallbackStorage(request)
         return request
+
+    def test_fieldsets_expose_every_model_field(self):
+        """A config knob that is not on the form is invisible to admins — keep the two in sync."""
+        listed = set(flatten_fieldsets(self.admin.get_fieldsets(self._request())))
+        model_fields = {field.name for field in SystemIntelligenceConfig._meta.get_fields() if field.concrete}
+        self.assertEqual(model_fields - listed, set())
 
     def test_status_badge_active_and_inactive(self):
         active = SystemIntelligenceConfig(name="A", is_active=True)

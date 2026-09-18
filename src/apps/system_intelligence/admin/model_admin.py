@@ -96,6 +96,14 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         ),
         (_("System Prompt"), {"fields": ("system_prompt",)}),
         (
+            _("Exports"),
+            {
+                "description": "Excel files the assistant generates on request. Files are removed from storage "
+                "when their record is deleted, here or by the cleanup command.",
+                "fields": ("export_retention_days",),
+            },
+        ),
+        (
             _("Public Assistant"),
             {
                 "description": "Public, visitor-facing chatbot. It is tool-free and read-only -- it "
@@ -111,6 +119,9 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
                     "public_assistant_max_response_tokens",
                     "public_assistant_max_message_chars",
                     "public_assistant_max_history_messages",
+                    "public_assistant_max_history_chars",
+                    "public_assistant_max_context_chars",
+                    "public_assistant_max_estimated_input_tokens",
                     "public_assistant_ip_token_limit",
                     "public_assistant_ip_token_window_seconds",
                     "public_assistant_log_enabled",

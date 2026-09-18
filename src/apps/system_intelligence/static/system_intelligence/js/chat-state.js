@@ -94,7 +94,7 @@
     app.els.plan.disabled = streaming;
     document
       .querySelectorAll(
-        "[data-si-command], [data-si-new-chat], [data-si-rename], [data-si-conversations] button",
+        "[data-si-command], [data-si-new-chat], [data-si-rename], [data-si-conversations] button, [data-si-choice]",
       )
       .forEach((node) => {
         node.disabled = streaming;

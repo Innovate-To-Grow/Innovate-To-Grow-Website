@@ -1,5 +1,6 @@
 from apps.system_intelligence.services.agents import invoke_system_intelligence_stream
 
+from .export_admin import SystemIntelligenceExportAdmin
 from .model_admin import SystemIntelligenceActionRequestAdmin, SystemIntelligenceConfigAdmin
 from .urls import get_system_intelligence_urls
 from .usage_log import AssistantConversationLogAdmin, AssistantMessageLogAdmin
@@ -9,6 +10,7 @@ __all__ = [
     "AssistantMessageLogAdmin",
     "SystemIntelligenceActionRequestAdmin",
     "SystemIntelligenceConfigAdmin",
+    "SystemIntelligenceExportAdmin",
     "get_system_intelligence_urls",
     "invoke_system_intelligence_stream",
 ]

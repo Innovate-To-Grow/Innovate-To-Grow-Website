@@ -12,10 +12,12 @@ declare global {
       appendMessage: (role: string, content: string) => AssistantMessage;
       handleStreamEvent: (eventText: string, assistant: AssistantMessage) => StreamEventResult | null;
       link: (href: string, text: string) => HTMLElement;
+      parseClarification: (text: string) => Clarification | null;
       readStream: (response: Response, assistant: AssistantMessage) => Promise<void>;
       renderRichText: (container: HTMLElement, text: string) => void;
       runCommand: (command: string, args?: string) => Promise<void>;
       selectConversation: (id: string) => Promise<void>;
+      sendMessage: (text: string) => Promise<void>;
       setAssistantStreaming: (assistant: AssistantMessage, streaming: boolean) => void;
       setStreaming: (streaming: boolean) => void;
       state: {currentId: string | null; streaming: boolean};
@@ -34,6 +36,26 @@ type StreamEventResult = {
   error: string;
   event: string;
 };
+
+type Clarification = {
+  choices: Array<{description: string; number: string; title: string}>;
+  currentState: string;
+  preamble: string;
+  questions: string;
+};
+
+const clarificationText = [
+  'I found two events with that name.',
+  '',
+  'Current state:',
+  'Both **Innovate to Grow 2026** events are published.',
+  '',
+  'Questions before I proceed:',
+  'Which one should I update?',
+  '1. **Update the Spring event** — I will create one proposal for the Spring record.',
+  '2. **Update the Fall event** — I will create one proposal for the Fall record.',
+  '   It is currently unpublished.',
+].join('\n');
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, '../../..');
@@ -111,6 +133,72 @@ describe('System Intelligence static chat link rendering', () => {
     expect(link).not.toBeNull();
     expect(link?.getAttribute('href')).toBe(`/admin/system-intelligence/exports/${uuid}/download/`);
     expect(link?.textContent).toBe('members');
+  });
+
+  it('parses the clarification headings into state, questions and numbered choices', () => {
+    const parsed = window.SystemIntelligenceChat.parseClarification(clarificationText);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.preamble).toBe('I found two events with that name.');
+    expect(parsed?.currentState).toBe('Both **Innovate to Grow 2026** events are published.');
+    expect(parsed?.questions).toBe('Which one should I update?');
+    expect(parsed?.choices).toEqual([
+      {number: '1', title: 'Update the Spring event', description: 'I will create one proposal for the Spring record.'},
+      {
+        number: '2',
+        title: 'Update the Fall event',
+        description: 'I will create one proposal for the Fall record. It is currently unpublished.',
+      },
+    ]);
+  });
+
+  it('does not treat ordinary numbered lists as clarifications', () => {
+    expect(window.SystemIntelligenceChat.parseClarification('Steps:\n1. First\n2. Second')).toBeNull();
+  });
+
+  it('renders a clarification as an information card with clickable choices', () => {
+    const container = document.createElement('div');
+    const sendMessage = vi.fn().mockResolvedValue(undefined);
+    window.SystemIntelligenceChat.sendMessage = sendMessage;
+
+    window.SystemIntelligenceChat.renderRichText(container, clarificationText);
+
+    const card = container.querySelector('.si-clarification-card');
+    expect(card).not.toBeNull();
+    expect(card?.querySelector('h4')?.textContent).toBe('Clarification needed');
+    const labels = Array.from(card?.querySelectorAll('.si-clarification-label') ?? []).map((n) => n.textContent);
+    expect(labels).toEqual(['Current state', 'Questions before I proceed']);
+    expect(card?.querySelector('.si-clarification-text strong')?.textContent).toBe('Innovate to Grow 2026');
+    expect(card?.innerHTML).not.toContain('**');
+
+    const buttons = Array.from(card?.querySelectorAll<HTMLButtonElement>('[data-si-choice]') ?? []);
+    expect(buttons.map((b) => b.querySelector('strong')?.textContent)).toEqual([
+      'Update the Spring event',
+      'Update the Fall event',
+    ]);
+    buttons[1].click();
+    expect(sendMessage).toHaveBeenCalledWith('Option 2: Update the Fall event');
+  });
+
+  it('never interprets markup inside clarification text', () => {
+    const container = document.createElement('div');
+    const text = 'Questions before I proceed:\n1. **<img src=x onerror=alert(1)>** — <b>bold</b>';
+
+    window.SystemIntelligenceChat.renderRichText(container, text);
+
+    expect(container.querySelector('img, b')).toBeNull();
+    expect(container.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+
+  it('disables clarification choices while a turn is streaming', () => {
+    const container = document.createElement('div');
+    window.SystemIntelligenceChat.renderRichText(container, clarificationText);
+    document.body.append(container);
+
+    window.SystemIntelligenceChat.setStreaming(true);
+    expect(container.querySelector<HTMLButtonElement>('[data-si-choice]')?.disabled).toBe(true);
+    window.SystemIntelligenceChat.setStreaming(false);
+    expect(container.querySelector<HTMLButtonElement>('[data-si-choice]')?.disabled).toBe(false);
   });
 
   it('leaves unsafe and cross-origin admin-like message links inert', () => {

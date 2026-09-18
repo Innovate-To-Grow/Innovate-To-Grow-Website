@@ -83,6 +83,15 @@ class SystemIntelligenceConfig(ProjectControlModel):
         verbose_name="Temperature",
         help_text="Sampling temperature (0.0 = deterministic, 1.0 = creative).",
     )
+    export_retention_days = models.PositiveIntegerField(
+        default=30,
+        db_default=30,
+        verbose_name="Export Retention (days)",
+        help_text=(
+            "Days to keep AI-generated Excel exports before the cleanup command deletes them "
+            "(file and record). 0 keeps forever."
+        ),
+    )
 
     # ------------------------------------------------------------------
     # Public, visitor-facing assistant (separate, tool-free, read-only)

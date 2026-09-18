@@ -219,6 +219,95 @@
   gap: 8px;
 }
 
+.si-clarification-card {
+  border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
+  border-left: 4px solid var(--md-sys-color-primary, #1a73e8);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface-container-low, #fcf9f8);
+  padding: 12px 14px;
+}
+
+.si-clarification-card h4 {
+  margin: 0 0 8px;
+  color: var(--md-sys-color-on-surface, #202124);
+  font-size: 14px;
+}
+
+.si-clarification-block {
+  margin: 0 0 10px;
+}
+
+.si-clarification-label {
+  margin-bottom: 2px;
+  color: var(--md-sys-color-on-surface-variant, #5f6368);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.si-clarification-text {
+  color: var(--md-sys-color-on-surface, #202124);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.si-clarification-choices {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.si-clarification-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface-container-lowest, #fff);
+  color: var(--md-sys-color-on-surface, #202124);
+  padding: 8px 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.si-clarification-choice:hover:not(:disabled) {
+  border-color: var(--md-sys-color-primary, #1a73e8);
+  background: var(--md-sys-color-primary-container, #d5e3ff);
+}
+
+.si-clarification-choice:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.si-clarification-choice-number {
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--md-sys-color-primary, #1a73e8);
+  color: var(--md-sys-color-on-primary, #fff);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+}
+
+.si-clarification-choice-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.si-clarification-choice-description {
+  color: var(--md-sys-color-on-surface-variant, #5f6368);
+  font-size: 12px;
+}
+
 .si-chat-composer textarea {
   max-height: 160px;
   min-height: 54px;
