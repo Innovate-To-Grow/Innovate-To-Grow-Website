@@ -43,6 +43,112 @@ class CurrentProjectScheduleSyncDueTest(TestCase):
         )
         self.assertFalse(config.sync_is_due)
 
+    def test_recent_failed_auto_attempt_counts_toward_the_interval(self):
+        config = CurrentProjectSchedule.objects.create(
+            name="Demo Day", auto_sync_enabled=True, sync_interval_minutes=60, last_synced_at=None
+        )
+        ScheduleSyncLog.objects.create(
+            config=config, sync_type=ScheduleSyncLog.SyncType.AUTO, status=ScheduleSyncLog.Status.FAILED
+        )
+        self.assertFalse(config.sync_is_due)
+
+    def test_old_failed_auto_attempt_does_not_block_the_next_run(self):
+        config = CurrentProjectSchedule.objects.create(
+            name="Demo Day", auto_sync_enabled=True, sync_interval_minutes=10, last_synced_at=None
+        )
+        log = ScheduleSyncLog.objects.create(
+            config=config, sync_type=ScheduleSyncLog.SyncType.AUTO, status=ScheduleSyncLog.Status.FAILED
+        )
+        ScheduleSyncLog.objects.filter(pk=log.pk).update(created_at=timezone.now() - datetime.timedelta(minutes=30))
+        self.assertTrue(config.sync_is_due)
+
+    def test_failed_manual_pull_does_not_delay_auto_sync(self):
+        config = CurrentProjectSchedule.objects.create(
+            name="Demo Day", auto_sync_enabled=True, sync_interval_minutes=60, last_synced_at=None
+        )
+        ScheduleSyncLog.objects.create(
+            config=config, sync_type=ScheduleSyncLog.SyncType.MANUAL, status=ScheduleSyncLog.Status.FAILED
+        )
+        self.assertTrue(config.sync_is_due)
+
+
+class CurrentProjectScheduleLoadByIdTest(TestCase):
+    def test_returns_any_row_by_id(self):
+        CurrentProjectSchedule.objects.create(name="2026")
+        archived = CurrentProjectSchedule.objects.create(name="2025", is_active=False)
+        self.assertEqual(CurrentProjectSchedule.load_by_id(str(archived.pk)), archived)
+        self.assertEqual(CurrentProjectSchedule.load_by_id(archived.pk), archived)
+
+    def test_returns_none_for_unknown_blank_or_malformed_ids(self):
+        for raw in ("", None, "not-a-uuid", 12, "00000000-0000-0000-0000-000000000000"):
+            with self.subTest(raw=raw):
+                self.assertIsNone(CurrentProjectSchedule.load_by_id(raw))
+
+
+class CurrentProjectScheduleActivationTest(TestCase):
+    def test_activating_a_schedule_stops_auto_sync_on_the_rows_it_archives(self):
+        previous = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", auto_sync_enabled=True)
+        current = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", auto_sync_enabled=True)
+
+        previous.refresh_from_db()
+        current.refresh_from_db()
+        self.assertFalse(previous.is_active)
+        self.assertFalse(previous.auto_sync_enabled)
+        self.assertTrue(current.is_active)
+        self.assertTrue(current.auto_sync_enabled)
+
+    def test_saving_the_active_schedule_again_keeps_its_own_auto_sync(self):
+        current = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", auto_sync_enabled=True)
+        current.name = "Innovate to Grow 2026 (Spring)"
+        current.save()
+        current.refresh_from_db()
+        self.assertTrue(current.auto_sync_enabled)
+
+    def test_deactivating_the_active_schedule_stops_its_auto_sync(self):
+        # The admin's two-step habit (deactivate the old row, then activate the
+        # new one) must archive auto-sync just like a one-step activation does.
+        current = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", auto_sync_enabled=True)
+        current.is_active = False
+        current.save()
+        current.refresh_from_db()
+        self.assertFalse(current.is_active)
+        self.assertFalse(current.auto_sync_enabled)
+
+    def test_deactivating_with_update_fields_still_persists_the_auto_sync_change(self):
+        current = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", auto_sync_enabled=True)
+        current.is_active = False
+        current.save(update_fields=["is_active"])
+        current.refresh_from_db()
+        self.assertFalse(current.auto_sync_enabled)
+
+    def test_editing_an_inactive_schedule_keeps_its_auto_sync_choice(self):
+        previous = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+        previous.auto_sync_enabled = True
+        previous.name = "Innovate to Grow 2025 (archived)"
+        previous.save()
+        previous.refresh_from_db()
+        self.assertTrue(previous.auto_sync_enabled)
+
+    def test_one_step_activation_passes_model_validation(self):
+        # full_clean() runs ModelForm-style constraint validation; the
+        # single-active constraint must not reject activating a second row.
+        CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025")
+        incoming = CurrentProjectSchedule(name="Innovate to Grow 2026", is_active=True)
+        incoming.full_clean()
+        incoming.save()
+        self.assertEqual(CurrentProjectSchedule.objects.filter(is_active=True).count(), 1)
+        self.assertTrue(CurrentProjectSchedule.objects.get(name="Innovate to Grow 2026").is_active)
+
+    def test_archived_schedule_can_opt_back_into_auto_sync(self):
+        previous = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025")
+        CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026")
+        previous.refresh_from_db()
+        previous.auto_sync_enabled = True
+        previous.save()
+        previous.refresh_from_db()
+        self.assertFalse(previous.is_active)
+        self.assertTrue(previous.auto_sync_enabled)
+
 
 class CurrentProjectStrTest(TestCase):
     def setUp(self):

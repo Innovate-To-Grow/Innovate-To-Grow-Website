@@ -94,6 +94,16 @@ wildcard host patterns plus a `revision`; the same revision is sent as the
 `ETag`, and `If-None-Match` may receive 304. Until this policy has loaded, the
 frontend strips every iframe.
 
+### `GET /cms/embed/{slug}/`
+
+Public payload for a `CMSEmbedWidget`, rendered by the SPA at `/_embed/{slug}` inside an iframe (CORS `*`,
+`X-Frame-Options` exempt). `widget_type` is `blocks` (a subset of a published page's blocks plus `page_css`) or
+`app_route` (an interactive route such as `/schedule`). For `/schedule` widgets the payload includes
+`schedule_id` — the widget's default `CurrentProjectSchedule`, or `null` for the active schedule. A CMS
+`embed_widget` block can override it per block by adding `?schedule_id=<uuid>` to the iframe URL; the SPA
+prefers that query value over the payload's `schedule_id`, then falls back to the active schedule. Hidden
+sections travel the same way (`hidden_sections` in the payload, `?hide-sections=` on the URL).
+
 ## Key CMS models
 
 | Model | Purpose |
@@ -101,6 +111,7 @@ frontend strips every iframe.
 | `CMSPage` | Route-addressable page with status (draft, published, archived) |
 | `RouteRedirect` | Immutable legacy source path mapped to a published internal destination |
 | `CMSBlock` | Ordered content block within a page (JSON data by type) |
+| `CMSEmbedWidget` | Iframe-embeddable widget: page blocks or an app route, with an optional default schedule |
 | `CMSAsset` | Uploaded media files (images, PDFs) |
 | `SiteSettings` | Global settings including `homepage_route` |
 | `Menu` | Navigation menu structure (header, footer) |
