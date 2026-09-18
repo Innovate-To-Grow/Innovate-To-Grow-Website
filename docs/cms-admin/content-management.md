@@ -32,6 +32,33 @@ Each page contains ordered `CMSBlock` records. Each block has:
 
 Block data is validated by `validate_block_data()` against type-specific JSON schemas.
 
+### Embed widget blocks and schedule selection
+
+An **Embed CMS Widget** block (`embed_widget`) renders a `CMSEmbedWidget` inside an iframe. Its `data` keys:
+
+| Key | Purpose |
+|-----|---------|
+| `slug` | Widget to embed (CMS → CMS Embed Widgets) — required |
+| `heading` | Optional heading rendered above the iframe |
+| `aspect_ratio` / `height` | Sizing (`16:9`, or a fixed pixel height); auto-resize when both are blank |
+| `hidden_sections` | Safe section presets to hide (filtered by the widget's app route) |
+| `schedule_id` | **Which event schedule (year) to show** — only for widgets that embed the `/schedule` app route |
+
+The **Schedule** dropdown appears in the block editor as soon as the selected widget embeds `/schedule`. It
+lists every row from Events → Current Project and Schedule (active first), so one `schedule-widget` can be
+reused on many pages while each block shows a different year. Resolution order at render time:
+
+1. the block's `schedule_id` (this dropdown), else
+2. the widget's own **Schedule** field (CMS Embed Widget admin), else
+3. the **Active** `CurrentProjectSchedule`.
+
+The block value is validated on save: it must reference an existing schedule and the widget must embed
+`/schedule` (the editor clears it automatically when you switch the block to another widget). Schedule ids are
+environment-specific: importing a page bundle exported from another environment rejects the **whole page** whose
+block references an unknown schedule — remove `schedule_id` from that block in the JSON, import, then re-select the
+year in the editor. Each schedule pulls from **its own** Google Sheet — see
+[Google Sheets operations](../integrations/google-sheets/operations.md#5-configure-the-current-project-schedule-sheets).
+
 ### Publishing workflow
 
 1. Create a page in Django admin with status `draft`

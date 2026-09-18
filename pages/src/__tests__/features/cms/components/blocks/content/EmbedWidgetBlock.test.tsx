@@ -40,6 +40,42 @@ describe('EmbedWidgetBlock', () => {
     expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
   });
 
+  it('appends ?schedule_id=<uuid> when the block pins a schedule', () => {
+    const {container} = render(
+      <EmbedWidgetBlock
+        data={{slug: 'schedule-embed', schedule_id: '6F1D2C3B-4A5E-4F60-8A9B-0C1D2E3F4A5B'}}
+      />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe(
+      '/_embed/schedule-embed?schedule_id=6f1d2c3b-4a5e-4f60-8a9b-0c1d2e3f4a5b',
+    );
+  });
+
+  it('combines schedule_id with hidden sections on the iframe URL', () => {
+    const {container} = render(
+      <EmbedWidgetBlock
+        data={{
+          slug: 'schedule-embed',
+          hidden_sections: ['schedule_header'],
+          schedule_id: '6f1d2c3b-4a5e-4f60-8a9b-0c1d2e3f4a5b',
+        }}
+      />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe(
+      '/_embed/schedule-embed?hide-sections=schedule_header&schedule_id=6f1d2c3b-4a5e-4f60-8a9b-0c1d2e3f4a5b',
+    );
+  });
+
+  it('drops a schedule_id that is not a UUID', () => {
+    for (const bad of ['', '   ', 'not-a-uuid', '../../etc', null, undefined]) {
+      const {container, unmount} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed', schedule_id: bad}} />);
+      expect(container.querySelector('iframe')?.getAttribute('src')).toBe('/_embed/schedule-embed');
+      unmount();
+    }
+  });
+
   it('renders a placeholder when slug is missing or invalid', () => {
     const {container: empty} = render(<EmbedWidgetBlock data={{slug: ''}} />);
     expect(empty.querySelector('iframe')).toBeNull();
