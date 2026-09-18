@@ -126,12 +126,35 @@ guaranteed. Destination quotas still hold in PostgreSQL.
 | Setting / Site Settings field | Local | Test | Production default |
 |-------------------------------|-------|------|--------------------|
 | `SEND_VERIFICATION_MODE` | `enforce` | `enforce` | `observe` until cutover |
-| HMAC secrets | insecure local constants | test constants | **Send Verification** in Django admin |
+| HMAC secrets | insecure local constants | test constants | required signing key initialized at startup; managed in **Send Verification** in Django admin |
 | Cost | 500 | 10 | 5000 (env `SEND_VERIFICATION_COST`) |
 | SMS daily limit | 1000 | 1000 | unset until calibrated |
 
-Pause protected sends with mode `pause` (env or admin). Missing HMAC secrets or
-required throttle/database failures fail closed in `enforce`.
+Pause protected sends with mode `pause` (env or admin). Missing HMAC signing keys
+prevent challenge issuance in **every mode**, including `observe`. Required
+throttle/database failures also fail closed.
+
+After migrations, the web entrypoint runs `initialize_send_verification` and
+`verify_service_configs --strict --send-verification-only --require-sms` before
+starting the server. Initialization creates an active `observe` configuration
+with a cryptographically random signing key only when no configuration exists,
+or fills an empty signing key on the existing active configuration. Repeated
+starts retain the key, previous keys, mode, and all policy values. A PostgreSQL
+transaction advisory lock serializes simultaneous initializations across
+replicas. The background worker waits for the web container to become healthy.
+
+Explicit `SEND_VERIFICATION_HMAC_SECRET` overrides skip database initialization;
+the readiness check still validates their effective value, including an empty
+override. Existing inactive configurations remain inactive. An intentional
+`pause` produces a warning and permits server startup; missing/invalid effective
+settings, or enforced SMS without its daily cap, block startup. This focused
+check does not contact delivery providers or require unrelated service configs.
+
+For an existing installation, run `python manage.py initialize_send_verification`
+followed by the focused readiness command above. The command does not print
+keys, rotate existing keys, change send policy, or send email/SMS. The broader
+`seed_service_configs` command delegates its signing-key initialization to the
+same command, but also seeds unrelated service and staff records.
 
 For each policy field, an explicitly supplied setting/environment value wins,
 then the active database configuration, then the documented default. Unset/None
@@ -186,8 +209,11 @@ authorize redispatch.
 ## Deployment plan
 
 1. Apply migrations and deploy backend with `SEND_VERIFICATION_MODE=observe`.
-   Create an active Send Verification config and HMAC secrets. Do **not** send
-   live email/SMS as part of this change.
+   Startup initializes a missing signing key and checks the effective email/SMS
+   send policy before serving traffic. If existing configurations are all
+   inactive, explicitly activate the intended configuration in Django admin;
+   startup never chooses one automatically. Do **not** send live email/SMS as
+   part of this change.
 2. Deploy frontend and admin assets that issue challenges and attach proofs.
    Keep compatible widget/worker files for rollback. Admin widget URLs must
    resolve through Django static storage (S3 in production), not a hardcoded
@@ -218,6 +244,7 @@ the current UI.
 ## Regression gate
 
 Run `apps.authn.tests`, `apps.core.tests.commands.test_seed_service_configs`,
+`apps.core.tests.commands.test_initialize_send_verification`,
 `apps.core.tests.commands.test_verify_service_configs`,
 `apps.event.tests.views.test_sms_views`, and
 `apps.event.tests.views.test_phone_verification` with mocked delivery. Dedicated

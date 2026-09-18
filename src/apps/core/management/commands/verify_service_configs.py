@@ -1,25 +1,27 @@
-"""Verify that database-managed service credentials are configured.
+"""Verify service credentials and effective verification-code readiness.
 
 Run before removing process env vars to confirm that runtime services
 (email, SMS, Sheets) have valid configs in the database. All AWS-backed
-services share a single AWSCredentialConfig.
+services share a single AWSCredentialConfig. Send verification is checked using
+the effective policy, including settings and environment overrides.
 """
 
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.core.validators import validate_email
 
+from apps.authn.services.send_verification.config import require_ready
+from apps.authn.services.send_verification.exceptions import SendPaused, SendVerificationError
 from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
     GoogleCredentialConfig,
-    SendVerificationConfig,
     SMTPProviderConfig,
 )
 
 
 class Command(BaseCommand):
-    help = "Verify active service credential configs exist in the database."
+    help = "Verify active service credentials and effective verification-code policy."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -42,11 +44,21 @@ class Command(BaseCommand):
             action="store_true",
             help="Treat missing AWSCredentialConfig as a failure under --strict.",
         )
+        parser.add_argument(
+            "--send-verification-only",
+            action="store_true",
+            help="Check only effective verification-code policy, without provider credential checks.",
+        )
 
     def handle(self, *args, **options):
         strict = options["strict"]
         failures: list[str] = []
         warnings: list[str] = []
+
+        if options["send_verification_only"]:
+            self._check_send_verification(require_sms=options["require_sms"], failures=failures, warnings=warnings)
+            self._report_results(strict=strict, failures=failures, warnings=warnings)
+            return
 
         email = EmailServiceConfig.load()
         aws = AWSCredentialConfig.load()
@@ -100,12 +112,30 @@ class Command(BaseCommand):
         if not google_ok:
             (failures if options["require_google"] else warnings).append("GoogleCredentialConfig is not configured.")
 
-        send_verification = SendVerificationConfig.load()
-        send_ok = bool(send_verification.pk) and send_verification.is_configured
-        self._report("SendVerificationConfig", send_verification, send_ok, required=False)
-        if not send_ok:
-            warnings.append("SendVerificationConfig HMAC secret is not configured. Enforce mode will fail closed.")
+        self._check_send_verification(require_sms=options["require_sms"], failures=failures, warnings=warnings)
+        self._report_results(strict=strict, failures=failures, warnings=warnings)
 
+    def _check_send_verification(self, *, require_sms: bool, failures: list[str], warnings: list[str]) -> None:
+        # The browser requests a signed challenge in observe mode too. Check
+        # the same effective policy as that endpoint, including environment
+        # overrides, instead of checking only whether a database row exists.
+        try:
+            send_verification = require_ready(for_sms=require_sms)
+        except SendPaused:
+            self.stdout.write(self.style.WARNING("SendVerificationConfig: PAUSED"))
+            warnings.append("Verification-code sending is paused by the effective policy.")
+        except SendVerificationError:
+            self.stdout.write(self.style.ERROR("SendVerificationConfig: NOT READY"))
+            failures.append(
+                "Effective send verification is not ready. Configure a nonempty HMAC signing secret and valid "
+                "policy values; required SMS in enforce mode also needs a positive daily reservation limit."
+            )
+        else:
+            self.stdout.write(
+                self.style.SUCCESS(f"SendVerificationConfig: OK (effective mode: {send_verification.mode})")
+            )
+
+    def _report_results(self, *, strict: bool, failures: list[str], warnings: list[str]) -> None:
         for warning in warnings:
             self.stdout.write(self.style.WARNING(f"WARN: {warning}"))
 
