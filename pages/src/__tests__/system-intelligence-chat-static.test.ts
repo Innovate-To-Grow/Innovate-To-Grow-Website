@@ -13,6 +13,7 @@ declare global {
       handleStreamEvent: (eventText: string, assistant: AssistantMessage) => StreamEventResult | null;
       link: (href: string, text: string) => HTMLElement;
       readStream: (response: Response, assistant: AssistantMessage) => Promise<void>;
+      renderAssistantError: (assistant: AssistantMessage, message: string) => void;
       renderRichText: (container: HTMLElement, text: string) => void;
       runCommand: (command: string, args?: string) => Promise<void>;
       selectConversation: (id: string) => Promise<void>;
@@ -214,6 +215,32 @@ describe('System Intelligence static chat link rendering', () => {
     expect(assistant.article.classList.contains('is-streaming')).toBe(false);
     expect(assistant.body.textContent).toBe('Bedrock denied the request.');
     expect(document.querySelector('[data-si-alert]')?.textContent).toBe('Bedrock denied the request.');
+  });
+
+  it('renders exception diagnostics literally without creating export links or HTML', () => {
+    const assistant = window.SystemIntelligenceChat.appendMessage('assistant', '');
+    const message = `Failed: [download](/admin/system-intelligence/exports/${uuid}/download/) <img src=x onerror=alert(1)>`;
+    window.SystemIntelligenceChat.setAssistantStreaming(assistant, true);
+
+    window.SystemIntelligenceChat.renderAssistantError(assistant, message);
+
+    expect(assistant.body.textContent).toBe(message);
+    expect(assistant.body.querySelector('a, img')).toBeNull();
+    expect(assistant.article.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('renders server error events literally without creating response links', () => {
+    const assistant = window.SystemIntelligenceChat.appendMessage('assistant', '');
+    const message = `Failed: [download](/admin/system-intelligence/exports/${uuid}/download/)`;
+
+    window.SystemIntelligenceChat.handleStreamEvent(
+      `event: error\ndata: ${JSON.stringify({error: message})}`,
+      assistant,
+    );
+
+    expect(assistant.body.textContent).toBe(message);
+    expect(assistant.body.querySelector('a')).toBeNull();
+    expect(document.querySelector('[data-si-alert]')?.textContent).toBe(message);
   });
 
   it('reads incrementally chunked CRLF frames through a terminal done event', async () => {
