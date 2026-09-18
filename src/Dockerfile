@@ -60,7 +60,13 @@ COPY --from=builder /install /usr/local
 # Refresh packaging tools in the runtime image as well. The base image ships
 # older pip/setuptools/wheel under /usr/local, and Trivy scans those packages
 # even though application dependencies are copied from the builder.
-RUN pip install "pip==26.2.0" "setuptools==83.0.0" "wheel==0.46.3"
+#
+# pip >= 26.2 ships a CycloneDX SBOM of its vendored libraries
+# (pip/_vendor/bom.cdx.json). Trivy parses that file and reports the vendored
+# setuptools/msgpack versions as if they were installed packages, so drop it —
+# the vendored copies are private to pip and not importable by the app.
+RUN pip install "pip==26.2.0" "setuptools==83.0.0" "wheel==0.46.3" \
+ && find /usr/local/lib -path "*/pip/_vendor/*" -name "*.cdx.json" -delete
 
 # Copy the application source.
 COPY --chown=app:app . .
