@@ -45,6 +45,7 @@ describe('ALTCHA instance lifecycle', () => {
     configured!();
     await expect(result).resolves.toBe('proof');
     expect(verify).toHaveBeenCalledTimes(1);
+    expect(verify).toHaveBeenCalledWith({concurrency: 1});
     expect(document.querySelector('altcha-widget')).toBeNull();
   });
 

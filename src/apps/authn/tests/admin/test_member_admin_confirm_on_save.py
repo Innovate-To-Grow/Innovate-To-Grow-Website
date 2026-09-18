@@ -153,10 +153,11 @@ class MemberConfirmOnSaveTest(TestCase):
         self.assertEqual(pending["secret_key"], "")
         self.assertIn("csrfmiddlewaretoken", pending["post_data"])
 
-    # --- autosave -------------------------------------------------------------------------------
+    # --- the removed autosave bypass -----------------------------------------------------------
 
-    def test_autosave_post_actually_saves(self):
-        """The shipped autosave client sends _autosave so it bypasses the interstitial."""
+    def test_removed_autosave_marker_cannot_bypass_confirmation(self):
+        """The autosave client used to send ``_autosave`` to skip the interstitial. With the client
+        gone, the marker must not linger as a bypass anyone can add to a POST body."""
         data = self._post_data({"title": "Autosaved"})
         data.pop("_save", None)
         data["_continue"] = "1"
@@ -164,10 +165,11 @@ class MemberConfirmOnSaveTest(TestCase):
 
         response = self.client.post(self._change_url(), data, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
 
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/confirm-change/", response["Location"])
+        self.assertIn(SESSION_KEY, self.client.session)
         self.target.refresh_from_db()
-        self.assertEqual(self.target.title, "Autosaved")
-        self.assertNotIn("/confirm-change/", response.get("Location", ""))
-        self.assertNotIn(SESSION_KEY, self.client.session)
+        self.assertNotEqual(self.target.title, "Autosaved")
 
 
 @override_settings(ROOT_URLCONF="config.routing.urls", ADMIN_REQUIRE_CONFIRMATION=False)

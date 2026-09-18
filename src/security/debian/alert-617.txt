@@ -1,0 +1,4 @@
+# Alert: https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/security/code-scanning/617
+# CVE-2026-11822: require Debian's patched libsqlite3-0 build.
+# Debian fix: https://security-tracker.debian.org/tracker/CVE-2026-11822
+libsqlite3-0 3.46.1-7+deb13u2

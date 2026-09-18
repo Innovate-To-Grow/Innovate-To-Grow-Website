@@ -53,7 +53,7 @@ def _sync_schedule(
     sync_type: str,
 ) -> ScheduleSyncStats:
     if tracks_records is None or projects_records is None:
-        tracks_records, projects_records = fetch_schedule_sheet_records()
+        tracks_records, projects_records = fetch_schedule_sheet_records(config)
 
     parsed_tracks = build_track_rows(tracks_records)
     grand_winners = build_grand_winners(tracks_records)
@@ -76,7 +76,9 @@ def _sync_schedule(
         sync_error="",
         grand_winners=grand_winners,
     )
-    cache.delete("event:current-projects")
+    if config.is_active:
+        # /event/projects/ only ever caches the active schedule's projects.
+        cache.delete("event:current-projects")
     _record_sync_success(config, stats, sync_type)
     return stats
 
