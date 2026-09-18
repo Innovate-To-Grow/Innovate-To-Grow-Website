@@ -18,4 +18,6 @@ def short_destination_hash(value: str) -> str:
 
 def fingerprint_payload(data: dict) -> str:
     canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True, default=str)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    # This is an idempotency MAC, not password storage. Keep it deterministic
+    # across retries while preventing offline guesses of private payload fields.
+    return salted_hmac("send-verification.payload-fingerprint", canonical, algorithm="sha256").hexdigest()
