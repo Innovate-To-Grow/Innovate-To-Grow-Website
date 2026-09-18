@@ -5,6 +5,7 @@ from django.utils import timezone
 from apps.authn.services.sms import publish_plain_sms
 from apps.core.models import AWSCredentialConfig
 from apps.mail.models import SmsRecipientLog
+from apps.mail.services.campaign.errors import unexpected_delivery_error_message
 from apps.mail.services.campaign.personalize import personalize
 from apps.mail.services.campaign.state import campaign_state
 from apps.mail.services.sms.audience import get_sms_recipients
@@ -69,7 +70,7 @@ def _send_one_recipient(campaign, recipient):
                 "recipient_name": recipient["full_name"],
                 "status": "failed",
                 "provider": "aws_sns",
-                "error_message": str(exc),
+                "error_message": unexpected_delivery_error_message(exc),
             },
         )
         campaign.failed_count += 1

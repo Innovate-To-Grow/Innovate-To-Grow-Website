@@ -13,6 +13,7 @@ from apps.event.tests.helpers import make_superuser
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.admin.campaign.inlines import AudienceTypeFilter, RecipientLogInline
 from apps.mail.models import EmailCampaign, RecipientLog
+from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
 from apps.mail.services.campaign.preview import HTML_MARKER
 from apps.mail.services.gmail_import import GmailImportError
 
@@ -214,61 +215,65 @@ class CampaignStatusViewTests(TestCase):
         self.assertIsNotNone(payload["started_at"])
         recent_emails = {row["email"] for row in payload["recent_logs"]}
         self.assertEqual(recent_emails, {"sent@example.com", "failed@example.com"})
-        self.assertEqual(payload["failed_logs"][0]["error"], "Send failed (see server logs for details).")
+        self.assertEqual(payload["failed_logs"][0]["error"], "bounced hard")
+
+    def test_status_json_keeps_curated_delivery_messages(self):
+        campaign = EmailCampaign.objects.create(
+            name="Needs review",
+            subject="s",
+            body="b",
+            status="partial",
+            error_message="Email delivery is not configured. Check Notification Delivery in admin.",
+        )
+        RecipientLog.objects.create(
+            campaign=campaign,
+            email_address="uncertain@example.com",
+            status="uncertain",
+            error_message="Provider call outcome is uncertain; review before retrying.",
+        )
+        RecipientLog.objects.create(
+            campaign=campaign,
+            email_address="crashed@example.com",
+            status="failed",
+            error_message=f"{UNEXPECTED_DELIVERY_ERROR} (RuntimeError)",
+        )
+
+        response = self.client.get(reverse("admin:mail_emailcampaign_send_status_json", args=[campaign.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        # Operator-authored text is the point of the live status page; only raw
+        # exception text is kept out, and that happens where the row is written.
+        self.assertEqual(payload["error_message"], campaign.error_message)
+        errors = {row["email"]: row["error"] for row in payload["failed_logs"]}
+        self.assertEqual(errors["uncertain@example.com"], "Provider call outcome is uncertain; review before retrying.")
+        self.assertEqual(errors["crashed@example.com"], f"{UNEXPECTED_DELIVERY_ERROR} (RuntimeError)")
 
     def test_status_json_returns_cached_payload(self):
         campaign = EmailCampaign.objects.create(name="Cached", subject="s", body="b", status="sending")
-        cache.set(f"mail:campaign_status:v2:{campaign.pk}", {"status": "fromcache"}, 5)
+        cache.set(f"mail:campaign_status:{campaign.pk}", {"status": "fromcache"}, 5)
 
         response = self.client.get(reverse("admin:mail_emailcampaign_send_status_json", args=[campaign.pk]))
 
         self.assertEqual(response.json(), {"status": "fromcache"})
 
-    def test_status_json_hides_single_line_diagnostics_in_every_error_field(self):
-        diagnostic = "ConnectionError: smtp://user:private-value@internal-host/private/path"
-        campaign = EmailCampaign.objects.create(
-            name="Failed", subject="s", body="b", status="failed", error_message=diagnostic
-        )
-        recipient = RecipientLog.objects.create(
-            campaign=campaign,
-            email_address="failed@example.com",
-            status="failed",
-            error_message=diagnostic,
-        )
-        # A deployment must not replay the previous version's unredacted cache.
-        cache.set(f"mail:campaign_status:{campaign.pk}", {"error_message": diagnostic}, 5)
-        url = reverse("admin:mail_emailcampaign_send_status_json", args=[campaign.pk])
-        for _ in range(2):
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, 200)
-            payload = response.json()
-            self.assertEqual(payload["error_message"], "Send failed (see server logs for details).")
-            self.assertEqual(payload["recent_logs"][0]["error"], "Send failed (see server logs for details).")
-            self.assertEqual(payload["failed_logs"][0]["error"], "Send failed (see server logs for details).")
-            self.assertNotContains(response, "private-value")
-            self.assertNotContains(response, "internal-host")
-        campaign.refresh_from_db()
-        recipient.refresh_from_db()
-        self.assertEqual(campaign.error_message, diagnostic)
-        self.assertEqual(recipient.error_message, diagnostic)
 
-
-class CampaignStatusPublicErrorTests(TestCase):
-    def test_public_error_redacts_traceback(self):
+class CampaignStatusShortErrorTests(TestCase):
+    def test_short_error_redacts_traceback(self):
         from apps.mail.admin.campaign.views.status import _short_error
 
         traceback_text = 'Traceback (most recent call last):\n  File "x.py", line 1'
         self.assertEqual(_short_error(traceback_text), "Send failed (see server logs for details).")
 
-    def test_public_error_returns_empty_for_falsy(self):
+    def test_short_error_returns_empty_for_falsy(self):
         from apps.mail.admin.campaign.views.status import _short_error
 
         self.assertEqual(_short_error(""), "")
 
-    def test_public_error_does_not_expose_the_first_line(self):
+    def test_short_error_trims_first_line(self):
         from apps.mail.admin.campaign.views.status import _short_error
 
-        self.assertEqual(_short_error("first line\nsecond line"), "Send failed (see server logs for details).")
+        self.assertEqual(_short_error("first line\nsecond line"), "first line")
 
 
 class CampaignGmailViewTests(TestCase):

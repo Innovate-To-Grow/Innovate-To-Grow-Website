@@ -465,7 +465,7 @@ class SmsCampaignStatusViewTests(TestCase):
         recent_phones = {row["phone"] for row in payload["recent_logs"]}
         self.assertEqual(recent_phones, {"+12095551001", "+12095551002"})
         self.assertEqual(len(payload["failed_logs"]), 1)
-        self.assertEqual(payload["failed_logs"][0]["error"], "Send failed (see server logs for details).")
+        self.assertEqual(payload["failed_logs"][0]["error"], "Carrier rejected")
 
     def test_send_sms_campaign_action_warns_for_non_draft(self):
         campaign = SmsCampaign.objects.create(name="Sent SMS", message="Hi", status="sent")
