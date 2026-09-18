@@ -8,6 +8,7 @@ from .schedule_sync import (
     ScheduleSyncError,
     ScheduleSyncStats,
     fetch_schedule_sheet_records,
+    resolve_sync_targets,
     sync_schedule,
 )
 from .template import (
@@ -37,6 +38,7 @@ __all__ = [
     "format_event_date_range",
     "generate_ticket_barcode_data_url",
     "get_registration_from_access_token",
+    "resolve_sync_targets",
     "send_ticket_email",
     "sync_name_to_account",
     "sync_phone_to_account",
