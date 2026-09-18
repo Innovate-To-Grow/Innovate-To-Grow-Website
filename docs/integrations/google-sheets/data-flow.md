@@ -70,7 +70,8 @@ synced independently — not only the one marked **Active**.
 
 1. A sync is triggered for a specific `CurrentProjectSchedule` row:
    - Django admin → Events → Current Project and Schedule → **Pull Current Projects & Schedule** (syncs the
-     *active* row), or the per-row / change-form **Sync from Google Sheets** action (syncs *that* row), or
+     *active* row, or the only row when there is just one), or the per-row / change-form
+     **Sync from Google Sheets** action (syncs *that* row), or
    - `python manage.py sync_schedule` (cron; see [operations](operations.md#schedule-auto-sync)).
 2. `fetch_schedule_sheet_records(config)` opens **that row's** `sheet_id` and reads the tracks and projects
    worksheets by `tracks_gid` / `projects_gid`
