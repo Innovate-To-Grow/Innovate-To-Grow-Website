@@ -1,0 +1,4 @@
+# Alert: https://github.com/Innovate-To-Grow/Innovate-To-Grow-Website/security/code-scanning/604
+# CVE-2026-41992: require Debian's patched gzip build.
+# Debian fix: https://security-tracker.debian.org/tracker/CVE-2026-41992
+gzip 1.13-1+deb13u1
