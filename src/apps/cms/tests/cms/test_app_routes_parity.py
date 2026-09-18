@@ -17,6 +17,7 @@ from apps.cms.app_routes import (
     PROTECTED_APP_ROUTES,
     PUBLIC_APP_ROUTE_PATTERNS,
     PUBLIC_APP_ROUTES,
+    SCHEDULE_SELECTABLE_APP_ROUTES,
 )
 from apps.cms.services.embed.embed_sections import ROUTE_HIDDEN_SECTION_PRESETS
 
@@ -28,6 +29,8 @@ EMBED_REGISTRY_PATH = (
 # Accepts both single and double quotes so the test stays stable across
 # Prettier configs and hand-edits.
 _ROUTE_KEY_RE = re.compile(r"""^\s*['"](/[\w-]+)['"]:\s*React\.lazy""", flags=re.MULTILINE)
+# Matches "SCHEDULE_SELECTABLE_EMBED_ROUTES ... = new Set(['/schedule', ...])".
+_SCHEDULE_ROUTES_RE = re.compile(r"SCHEDULE_SELECTABLE_EMBED_ROUTES[^=]*=\s*new Set\(\[(.*?)\]\)", flags=re.S)
 _ROUTER_PATH_RE = re.compile(r"""\{\s*path:\s*['"]([^'"]+)['"]""")
 
 
@@ -67,6 +70,32 @@ class AppRoutesParityTests(SimpleTestCase):
             "Backend EMBEDDABLE_APP_ROUTES and frontend EMBED_APP_ROUTE_COMPONENTS drifted. "
             f"Backend-only: {sorted(backend - frontend)}; frontend-only: {sorted(frontend - backend)}.",
         )
+
+    def test_schedule_selectable_routes_match_frontend_registry(self):
+        source = EMBED_REGISTRY_PATH.read_text(encoding="utf-8")
+        match = _SCHEDULE_ROUTES_RE.search(source)
+        self.assertIsNotNone(match, f"SCHEDULE_SELECTABLE_EMBED_ROUTES not found in {EMBED_REGISTRY_PATH}")
+        frontend = set(re.findall(r"""['"](/[\w-]+)['"]""", match.group(1)))
+        self.assertEqual(
+            SCHEDULE_SELECTABLE_APP_ROUTES,
+            frontend,
+            "Backend schedule_selectable routes and frontend SCHEDULE_SELECTABLE_EMBED_ROUTES drifted.",
+        )
+        self.assertTrue(SCHEDULE_SELECTABLE_APP_ROUTES <= {r["url"] for r in EMBEDDABLE_APP_ROUTES})
+
+    def test_route_supports_schedule_helpers(self):
+        from types import SimpleNamespace
+
+        from apps.cms.app_routes import route_supports_schedule, widget_supports_schedule
+
+        self.assertTrue(route_supports_schedule("/schedule"))
+        self.assertTrue(route_supports_schedule(" /schedule "))
+        self.assertFalse(route_supports_schedule("/news"))
+        self.assertFalse(route_supports_schedule(""))
+        self.assertFalse(route_supports_schedule(None))
+        self.assertTrue(widget_supports_schedule(SimpleNamespace(widget_type="app_route", app_route="/schedule")))
+        self.assertFalse(widget_supports_schedule(SimpleNamespace(widget_type="blocks", app_route="/schedule")))
+        self.assertFalse(widget_supports_schedule(SimpleNamespace(widget_type="app_route", app_route="/news")))
 
     def test_route_hidden_section_presets_keys_are_embeddable(self):
         backend = {r["url"] for r in EMBEDDABLE_APP_ROUTES}
