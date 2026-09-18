@@ -169,7 +169,8 @@
           started = true;
           Promise.resolve()
             .then(function () { return widget.configure({challenge: challenge, auto: "off", hideFooter: true, hideLogo: true}); })
-            .then(function () { return settled ? null : widget.verify(); })
+            // Avoid terminating sibling workers with active WebCrypto jobs.
+            .then(function () { return settled ? null : widget.verify({concurrency: 1}); })
             .then(function (result) {
               if (!settled) finish(result ? null : new Error("Verification failed. Please try again."), result && result.payload);
             })
