@@ -5,6 +5,7 @@ from django.test import TestCase
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, LoginLinkToken, RecipientLog
+from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
 from apps.mail.services.send_campaign.runner import SendTiming, send_campaign
 from apps.mail.services.send_campaign.transport import SesSendResult
 
@@ -333,7 +334,10 @@ class SendOneRecipientHelperTests(TestCase):
         self.assertEqual(_configured_provider(None), "")
         self.assertEqual(_configured_provider(self.config), "ses")
 
-    @patch("apps.mail.services.send_campaign.runner.personalize", side_effect=RuntimeError("boom"))
+    @patch(
+        "apps.mail.services.send_campaign.runner.personalize",
+        side_effect=RuntimeError("smtp://user:private-value@internal-host/private/path"),
+    )
     def test_send_one_recipient_records_failure_on_exception(self, mock_personalize):
         from apps.mail.services.send_campaign.runner import _send_one_recipient
 
@@ -345,11 +349,17 @@ class SendOneRecipientHelperTests(TestCase):
             "last_name": "User",
         }
 
-        _send_one_recipient(self.campaign, self.config, MagicMock(), "", recipient)
+        with self.assertLogs("apps.mail.services.send_campaign.runner", level="ERROR") as captured:
+            _send_one_recipient(self.campaign, self.config, MagicMock(), "", recipient)
 
         log = RecipientLog.objects.get(campaign=self.campaign, email_address="boom@example.com")
         self.assertEqual(log.status, "failed")
-        self.assertEqual(log.error_message, "boom")
+        # Exception internals stay in the server log; the stored message that the
+        # admin renders only carries the exception class.
+        self.assertEqual(log.error_message, f"{UNEXPECTED_DELIVERY_ERROR} (RuntimeError)")
+        self.assertNotIn("private-value", log.error_message)
+        self.assertNotIn("internal-host", log.error_message)
+        self.assertIn("private-value@internal-host", "\n".join(captured.output))
         self.assertEqual(self.campaign.failed_count, 1)
 
     def test_record_send_result_handles_external_status_change(self):

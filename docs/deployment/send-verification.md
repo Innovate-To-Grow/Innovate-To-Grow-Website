@@ -158,6 +158,31 @@ the 24-hour idempotency window plus `SEND_VERIFICATION_RETENTION_DAYS` (14)
 by `python manage.py cleanup_send_verification`. Cleanup does not dispatch
 messages or authorize a replay of a consumed/expired challenge.
 
+### Keyed payload fingerprint rollout
+
+Business fingerprints use domain-separated HMAC-SHA256 with Django's
+`SECRET_KEY`. Equivalent canonical payloads produce the same 64-character
+fingerprint, and changing any business field still produces a request conflict.
+These are idempotency checks; password storage continues to use Django's
+password hashers.
+
+Coordinate the backend cutover so instances do not alternate between the old
+plain-SHA256 and new HMAC fingerprint formats. Transport retries for request IDs
+stored before this change return `409 send_request_conflict`; they cannot
+dispatch again or release reserved quotas. The same limitation applies when
+rotating `SECRET_KEY`. Original payloads are not retained, so old fingerprints
+cannot be converted in place. Do not delete request records or weaken the
+fingerprint comparison to bypass this conflict.
+
+An affected client should query the existing request's status endpoint under
+the same session/member and resolve that outcome before a new explicit send.
+Pending, sending, and unknown outcomes must not trigger an automatic new send.
+The status endpoint remains accessible without recalculating the fingerprint.
+The legacy conflict persists while the request row exists: by default, until
+cleanup runs after the 24-hour idempotency window plus 14 retention days (about
+15 days after creation, longer if cleanup is delayed). Expiry alone does not
+authorize redispatch.
+
 ## Deployment plan
 
 1. Apply migrations and deploy backend with `SEND_VERIFICATION_MODE=observe`.

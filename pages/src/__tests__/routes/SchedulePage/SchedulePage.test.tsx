@@ -216,6 +216,24 @@ describe('SchedulePage', () => {
     expect(useCurrentEventScheduleMock).toHaveBeenCalledWith('schedule-123');
   });
 
+  it('treats an explicit null prop as authoritative and ignores the URL', () => {
+    // The embed page resolves block > widget > active itself; a null prop means
+    // "active schedule", so a stray ?schedule_id= on the iframe URL must not win.
+    useCurrentEventScheduleMock.mockReturnValue({
+      data: schedulePayload(),
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/_embed/schedule-widget?schedule_id=not-a-uuid']}>
+        <SchedulePage scheduleId={null} />
+      </MemoryRouter>,
+    );
+
+    expect(useCurrentEventScheduleMock).toHaveBeenCalledWith(null);
+  });
+
   it('uses schedule_id from the URL when no prop is provided', () => {
     useCurrentEventScheduleMock.mockReturnValue({
       data: schedulePayload(),

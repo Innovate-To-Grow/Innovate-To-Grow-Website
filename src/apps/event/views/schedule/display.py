@@ -1,4 +1,3 @@
-from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -43,7 +42,4 @@ class CurrentEventScheduleView(APIView):
     def _get_config(self, schedule_id):
         if not schedule_id:
             return CurrentProjectSchedule.load()
-        try:
-            return CurrentProjectSchedule.objects.filter(pk=schedule_id).first()
-        except (TypeError, ValueError, ValidationError):
-            return None
+        return CurrentProjectSchedule.load_by_id(schedule_id)

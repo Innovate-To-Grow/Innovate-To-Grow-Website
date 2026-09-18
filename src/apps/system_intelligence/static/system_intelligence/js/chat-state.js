@@ -116,13 +116,17 @@
     try {
       const parsed = new URL(raw, window.location.origin);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+      if (parsed.username || parsed.password) return "";
       const isSameOrigin = parsed.origin === window.location.origin;
       if (isSameOrigin) {
         if (!parsed.pathname.startsWith("/admin/")) return "";
-        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+        // Build the URL from a fixed safe prefix, rather than carrying an input
+        // URL scheme into the anchor through parsed URL components.
+        return `/admin/${parsed.pathname.slice("/admin/".length)}${parsed.search}${parsed.hash}`;
       }
       if (parsed.pathname.startsWith("/admin/")) return "";
-      return parsed.href;
+      const suffix = `${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
+      return parsed.protocol === "https:" ? `https://${suffix}` : `http://${suffix}`;
     } catch {
       return "";
     }
@@ -140,7 +144,11 @@
       return node;
     }
     const node = document.createElement("a");
-    node.setAttribute("href", safeHref);
+    // URL encoding preserves delimiters and existing escapes while ensuring
+    // HTML metacharacters cannot survive into the link attribute.
+    node.setAttribute("href", safeHref.replace(/["'<>]/g, (character) =>
+      `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+    ));
     node.textContent = text;
     node.target = "_blank";
     node.rel = "noopener";
