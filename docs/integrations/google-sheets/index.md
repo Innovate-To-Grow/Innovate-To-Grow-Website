@@ -16,7 +16,7 @@ Engineers maintaining the event registration pipeline, admins configuring Google
 | Integration | Direction | Trigger | Service |
 |-------------|-----------|---------|---------|
 | Registration sync | Outbox worker → Sheets | Durable job created with registration | `src/apps/event/services/registration_sheet_sync/` |
-| Schedule sync | Sheets → Django | Admin action or management | `src/apps/event/services/schedule_sync.py` |
+| Schedule sync | Sheets → Django | Admin Pull (active) / per-row Sync / `sync_schedule` cron | `src/apps/event/services/schedule_sync/` |
 | Past-projects sync | Sheets → Django | Admin Pull / cron | `src/apps/projects/services/sheet_sync/` |
 
 Both integrations authenticate via a Google service account whose credentials are stored in the `GoogleCredentialConfig` model (managed through Django admin).

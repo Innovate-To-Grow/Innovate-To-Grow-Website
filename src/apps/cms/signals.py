@@ -13,6 +13,8 @@ from django.db import transaction
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
+from apps.event.models import CurrentProjectSchedule
+
 from .models import (
     CMSBlock,
     CMSEmbedAllowedHost,
@@ -109,6 +111,20 @@ def invalidate_cms_page_cache(sender, instance, **kwargs):
         _clear_layout_caches()
 
     transaction.on_commit(_clear)
+
+
+@receiver(post_delete, sender=CurrentProjectSchedule)
+# noinspection PyUnusedLocal
+def detach_deleted_schedule_from_embed_blocks(sender, instance, **kwargs):
+    """Block-level schedule pins are plain JSON, so mirror the widget FK's SET_NULL.
+
+    Saving each block routes through ``invalidate_cms_block_cache`` below, so the
+    affected pages re-render with the widget default / active schedule.
+    """
+    schedule_id = str(instance.pk)
+    for block in CMSBlock.objects.filter(block_type="embed_widget", data__schedule_id=schedule_id):
+        block.data.pop("schedule_id", None)
+        block.save(update_fields=["data", "updated_at"])
 
 
 @receiver([post_save, post_delete], sender=CMSBlock)

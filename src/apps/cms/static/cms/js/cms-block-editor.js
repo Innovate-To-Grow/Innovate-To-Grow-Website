@@ -29,6 +29,18 @@
         return data.hide_section_titles ? ['section_titles'] : [];
     }
 
+    function normalizeEmbedWidgetSchedule(data) {
+        // A pinned schedule only makes sense on schedule-selectable widgets;
+        // drop it when the block is re-pointed at another widget so the stored
+        // JSON never carries a stray schedule_id.
+        if (!data || typeof data !== 'object') return;
+        const widget = findEmbedWidget(data.slug);
+        const supportsSchedule = Boolean(widget && widget.supports_schedule);
+        const value = String(data.schedule_id || '').trim();
+        if (supportsSchedule && value) data.schedule_id = value;
+        else delete data.schedule_id;
+    }
+
     function normalizeEmbedWidgetHiddenSections(data) {
         if (!data || typeof data !== 'object') return;
         const selected = new Set(getEmbedWidgetSelectedHiddenSections(data).map(key => String(key || '').trim()).filter(Boolean));
@@ -98,7 +110,8 @@
     window.updateBlockData = function (idx, dataPath, value) { P.setNestedValue(blocks[idx].data, dataPath, value); syncToJson(); };
     window.updateBlockDataDirect = function (idx, dataPath, value) { P.setNestedValue(blocks[idx].data, dataPath, value); syncToJson(); };
     window.updateBlockDataJson = function (idx, fieldName, jsonStr) { try { const parsed = JSON.parse(jsonStr); if (fieldName) blocks[idx].data[fieldName] = parsed; else blocks[idx].data = parsed; syncToJson(); } catch (e) {} };
-    window.updateEmbedWidgetSlug = function (idx, value) { blocks[idx].data.slug = value; normalizeEmbedWidgetHiddenSections(blocks[idx].data); renderAll(); syncToJson(); };
+    window.updateEmbedWidgetSlug = function (idx, value) { blocks[idx].data.slug = value; normalizeEmbedWidgetHiddenSections(blocks[idx].data); normalizeEmbedWidgetSchedule(blocks[idx].data); renderAll(); syncToJson(); };
+    window.updateEmbedWidgetSchedule = function (idx, value) { blocks[idx].data.schedule_id = value; normalizeEmbedWidgetSchedule(blocks[idx].data); syncToJson(); };
     window.updateEmbedWidgetHiddenSection = function (idx, key, checked) {
         const data = blocks[idx].data;
         const selected = new Set(getEmbedWidgetSelectedHiddenSections(data).map(item => String(item || '').trim()).filter(Boolean));
@@ -110,6 +123,7 @@
     };
     window.getEmbedWidgetHiddenSectionPresets = getEmbedWidgetHiddenSectionPresets;
     window.getEmbedWidgetSelectedHiddenSections = getEmbedWidgetSelectedHiddenSections;
+    window.findEmbedWidget = findEmbedWidget;
     window.addRepeaterItem = function (blockIdx, fieldName) { const data = blocks[blockIdx].data; if (!data[fieldName]) data[fieldName] = []; data[fieldName].push(P.getRepeaterDefault(blocks[blockIdx].block_type, fieldName)); renderAll(); syncToJson(); };
     window.removeRepeaterItem = function (blockIdx, fieldName, itemIdx) { const arr = blocks[blockIdx].data[fieldName]; if (!arr) return; arr.splice(itemIdx, 1); renderAll(); syncToJson(); };
     window.moveRepeaterItem = function (blockIdx, fieldName, itemIdx, direction) { const arr = blocks[blockIdx].data[fieldName]; const newIdx = itemIdx + direction; if (!arr || newIdx < 0 || newIdx >= arr.length) return; [arr[itemIdx], arr[newIdx]] = [arr[newIdx], arr[itemIdx]]; renderAll(); syncToJson(); };

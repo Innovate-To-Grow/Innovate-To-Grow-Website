@@ -2,9 +2,12 @@ import logging
 
 from django import forms
 from django.contrib import admin, messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Count
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from django.utils.html import format_html, format_html_join
 
 from apps.cms.admin.cms.page_admin.editor import (
     assets_list_response,
@@ -16,6 +19,7 @@ from apps.cms.admin.cms.page_admin.editor import (
 )
 from apps.cms.admin.cms.page_admin.import_export import export_pages_response, render_json_import
 from apps.cms.models import CMSPage
+from apps.cms.services.pages import duplicate_page
 from apps.cms.services.routing.page_routes import apply_page_route_change
 from apps.cms.services.routing.route_redirects import page_route_conflicts
 from apps.core.admin import BaseModelAdmin
@@ -96,8 +100,9 @@ class CMSPageAdmin(BaseModelAdmin):
     search_fields = ("title", "slug", "route")
     readonly_fields = ("created_at", "updated_at", "published_at")
     inlines = []
-    actions = ["export_pages"]
-    actions_no_confirmation = ["export_pages"]
+    actions = ["duplicate_pages", "export_pages"]
+    # Duplicating only adds draft rows, so it is as safe to run unconfirmed as export.
+    actions_no_confirmation = ["duplicate_pages", "export_pages"]
     fieldsets = (
         (
             "Page Info",
@@ -254,6 +259,31 @@ class CMSPageAdmin(BaseModelAdmin):
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to upload CMS assets.")
         return assets_upload_response(request)
+
+    @admin.action(description="Duplicate selected pages as drafts", permissions=["add"])
+    def duplicate_pages(self, request, queryset):
+        pages = list(queryset.prefetch_related("blocks"))
+        copies = []
+        for page in pages:
+            try:
+                copies.append(duplicate_page(page))
+            except ValidationError as exc:
+                messages.error(request, f'Could not duplicate "{page.title}": {" ".join(exc.messages)}')
+        if not copies:
+            return None
+
+        links = format_html_join(
+            ", ",
+            '<a href="{}">{}</a>',
+            ((reverse("admin:cms_cmspage_change", args=[copy.pk]), f"{copy.title} ({copy.route})") for copy in copies),
+        )
+        if len(pages) == 1:
+            # A single page was duplicated: land on the copy so it can be renamed straight away.
+            messages.success(request, format_html("Created draft copy {}.", links))
+            return HttpResponseRedirect(reverse("admin:cms_cmspage_change", args=[copies[0].pk]))
+        noun = "copy" if len(copies) == 1 else "copies"
+        messages.success(request, format_html("Created {} draft {}: {}.", len(copies), noun, links))
+        return None
 
     @admin.action(description="Export selected pages as JSON")
     def export_pages(self, request, queryset):

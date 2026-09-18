@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { normalizeScheduleId } from '@/features/cms/components/embedScheduleId';
 
 export interface EmbedWidgetData {
   slug: string;
@@ -7,6 +8,8 @@ export interface EmbedWidgetData {
   aspect_ratio?: string;
   hidden_sections?: string[];
   hide_section_titles?: boolean;
+  /** Block-level CurrentProjectSchedule override for /schedule widgets (e.g. a specific year). */
+  schedule_id?: string | null;
 }
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
@@ -71,6 +74,10 @@ export const EmbedWidgetBlock = ({ data, previewMode = false }: {
   if (hiddenSections?.length) {
     queryParams.set('hide-sections', hiddenSections.join(','));
   }
+  // The block's pinned schedule beats the widget's default; EmbedBlockPage
+  // reads it back off the iframe URL.
+  const scheduleId = normalizeScheduleId(data.schedule_id);
+  if (scheduleId) queryParams.set('schedule_id', scheduleId);
   const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
   const src = `/_embed/${encodeURIComponent(slug)}${query}`;
 
