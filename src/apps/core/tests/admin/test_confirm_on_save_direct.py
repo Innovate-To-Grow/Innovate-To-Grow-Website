@@ -1,8 +1,8 @@
 """Direct unit tests for ConfirmOnSaveMixin internal branches.
 
 These exercise code paths that are awkward to hit through the full admin HTTP
-flow: the autosave/popup skips, file-upload caching + restore, and the many
-short-circuit branches inside ``response_action`` / ``_execute_confirmed_action``.
+flow: the popup skip, file-upload caching + restore, and the many short-circuit
+branches inside ``response_action`` / ``_execute_confirmed_action``.
 """
 
 from unittest.mock import MagicMock, patch
@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 from django.contrib import admin
 from django.contrib.admin import helpers
 from django.contrib.admin.exceptions import DisallowedModelAdminToField
-from django.contrib.admin.options import TO_FIELD_VAR
+from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.backends.db import SessionStore
@@ -57,9 +57,16 @@ class ShouldSkipConfirmationTest(TestCase):
             self.assertTrue(self.admin._should_skip_confirmation(request))
 
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
-    def test_skip_on_autosave(self):
-        request = _wire_request(self.factory.post("/admin/", {"_autosave": "1"}))
+    def test_skip_on_popup(self):
+        request = _wire_request(self.factory.post("/admin/", {IS_POPUP_VAR: "1"}))
         self.assertTrue(self.admin._should_skip_confirmation(request))
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_removed_autosave_marker_no_longer_skips(self):
+        """The admin autosave client is gone, so its ``_autosave`` marker must not remain a
+        confirmation bypass that any client able to add a form field could still use."""
+        request = _wire_request(self.factory.post("/admin/", {"_autosave": "1"}))
+        self.assertFalse(self.admin._should_skip_confirmation(request))
 
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
     def test_no_skip_for_plain_post(self):
@@ -354,7 +361,7 @@ class DeleteViewBranchesTest(TestCase):
         self.host = CMSEmbedAllowedHost.objects.create(hostname="del.com", is_active=True)
 
     def test_skip_confirmation_defers_to_super(self):
-        request = _wire_request(self.factory.post("/admin/", {"_autosave": "1", "post": "yes"}))
+        request = _wire_request(self.factory.post("/admin/", {IS_POPUP_VAR: "1", "post": "yes"}))
         sentinel = object()
         with patch(
             "django.contrib.admin.options.ModelAdmin.delete_view",
