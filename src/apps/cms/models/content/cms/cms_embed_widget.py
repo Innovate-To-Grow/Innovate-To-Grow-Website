@@ -134,7 +134,9 @@ class CMSEmbedWidget(ProjectControlModel):
         self.app_route = route
 
     def _clean_schedule(self):
-        if self.app_route != "/schedule":
+        from apps.cms.app_routes import route_supports_schedule
+
+        if not route_supports_schedule(self.app_route):
             self.schedule = None
 
     def _clean_blocks(self):

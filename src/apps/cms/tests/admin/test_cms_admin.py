@@ -291,6 +291,59 @@ class CMSPageChangeFormRenderTests(TestCase):
         self.assertEqual(block.data["hidden_sections"], ["section_titles"])
         self.assertTrue(block.data["hide_section_titles"])
 
+    def _save_embed_widget_blocks(self, blocks):
+        request = type("Request", (), {"POST": {"blocks_json": json.dumps(blocks)}})()
+        messages = _MessageCollector()
+        save_blocks_from_json(request, self.page, messages)
+        return messages
+
+    def test_save_blocks_from_json_persists_block_level_schedule_id(self):
+        from apps.event.models import CurrentProjectSchedule
+
+        CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/schedule", slug="schedule-embed")
+        schedule = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+
+        messages = self._save_embed_widget_blocks(
+            [
+                {
+                    "block_type": "embed_widget",
+                    "admin_label": "2025 schedule",
+                    "data": {"slug": "schedule-embed", "schedule_id": str(schedule.pk).upper()},
+                }
+            ]
+        )
+
+        self.assertEqual(messages.errors, [])
+        self.assertEqual(messages.warnings, [])
+        block = self.page.blocks.get()
+        self.assertEqual(block.data["schedule_id"], str(schedule.pk))
+
+    def test_save_blocks_from_json_drops_the_empty_widget_default_schedule_choice(self):
+        CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/schedule", slug="schedule-embed")
+
+        messages = self._save_embed_widget_blocks(
+            [{"block_type": "embed_widget", "admin_label": "", "data": {"slug": "schedule-embed", "schedule_id": ""}}]
+        )
+
+        self.assertEqual(messages.warnings, [])
+        self.assertNotIn("schedule_id", self.page.blocks.get().data)
+
+    def test_save_blocks_from_json_warns_and_skips_unknown_schedule_id(self):
+        CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/schedule", slug="schedule-embed")
+
+        messages = self._save_embed_widget_blocks(
+            [
+                {
+                    "block_type": "embed_widget",
+                    "admin_label": "",
+                    "data": {"slug": "schedule-embed", "schedule_id": "00000000-0000-0000-0000-000000000000"},
+                }
+            ]
+        )
+
+        self.assertEqual(self.page.blocks.count(), 0)
+        self.assertTrue(any("No schedule found" in w for w in messages.warnings))
+
     def test_change_form_does_not_render_embed_widget_section(self):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
         response = self.client.get(url)
@@ -325,6 +378,16 @@ class CMSPageChangeFormRenderTests(TestCase):
         # ...but the slug is exposed via window.CMS_EMBED_WIDGETS for the block editor picker.
         self.assertIn("CMS_EMBED_WIDGETS", content)
         self.assertIn(widget.slug, content)
+
+    def test_change_form_exposes_schedules_to_the_block_editor(self):
+        from apps.event.models import CurrentProjectSchedule
+
+        CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026")
+        response = self.client.get(reverse("admin:cms_cmspage_add"))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("window.CMS_SCHEDULES", content)
+        self.assertIn("Innovate to Grow 2026", content)
 
 
 class BuildEditorContextTests(TestCase):
@@ -406,6 +469,45 @@ class BuildEditorContextTests(TestCase):
         self.assertIn("Widget Ctx Source", by_slug["ctx-blocks-widget"]["label"])
         # App-route widget label exposes the route even without an admin_label.
         self.assertIn("/schedule", by_slug["ctx-route-widget"]["label"])
+
+    def test_context_injects_widget_default_schedule(self):
+        from apps.event.models import CurrentProjectSchedule
+
+        schedule = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026")
+        CMSEmbedWidget.objects.create(
+            widget_type="app_route",
+            app_route="/schedule",
+            slug="ctx-schedule-widget",
+            schedule=schedule,
+        )
+        CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/schedule", slug="ctx-bare-widget")
+        CMSEmbedWidget.objects.create(widget_type="app_route", app_route="/news", slug="ctx-news-widget")
+        context = build_editor_context()
+        by_slug = {w["slug"]: w for w in json.loads(context["embed_widgets_json"])}
+        self.assertEqual(by_slug["ctx-schedule-widget"]["schedule_id"], str(schedule.pk))
+        self.assertTrue(by_slug["ctx-schedule-widget"]["supports_schedule"])
+        self.assertEqual(by_slug["ctx-bare-widget"]["schedule_id"], "")
+        self.assertTrue(by_slug["ctx-bare-widget"]["supports_schedule"])
+        self.assertFalse(by_slug["ctx-news-widget"]["supports_schedule"])
+        self.assertEqual(by_slug["ctx-news-widget"]["schedule_id"], "")
+
+    def test_context_injects_schedules_active_first(self):
+        from apps.event.models import CurrentProjectSchedule
+
+        older = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2024", is_active=False)
+        active = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026")
+        newer_inactive = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+        unnamed = CurrentProjectSchedule.objects.create(name="", is_active=False)
+        context = build_editor_context()
+        self.assertIn("schedules_json", context)
+        schedules = json.loads(context["schedules_json"])
+        self.assertEqual(
+            [entry["id"] for entry in schedules],
+            [str(active.pk), str(unnamed.pk), str(newer_inactive.pk), str(older.pk)],
+        )
+        self.assertEqual(schedules[0], {"id": str(active.pk), "name": "Innovate to Grow 2026", "is_active": True})
+        self.assertEqual(schedules[1]["name"], "Not configured")
+        self.assertFalse(schedules[1]["is_active"])
 
     def test_context_injects_hidden_section_presets(self):
         context = build_editor_context()
