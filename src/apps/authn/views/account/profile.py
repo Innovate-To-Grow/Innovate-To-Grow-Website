@@ -10,9 +10,31 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.serializers import ProfileSerializer
-from apps.authn.services.members.profile_image import ProfileImageError, detect_image_mime, encode_profile_image
+from apps.authn.services.members.profile_image import (
+    CONTENT_TYPE_ERROR,
+    DIMENSIONS_ERROR,
+    OVERSIZE_ERROR,
+    SIGNATURE_ERROR,
+    ProfileImageError,
+    detect_image_mime,
+    encode_profile_image,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _profile_image_error_detail(error: ProfileImageError) -> str:
+    """Expose only the established upload-validation messages, never diagnostics."""
+    message = str(error)
+    if message == OVERSIZE_ERROR:
+        return OVERSIZE_ERROR
+    if message == CONTENT_TYPE_ERROR:
+        return CONTENT_TYPE_ERROR
+    if message == SIGNATURE_ERROR:
+        return SIGNATURE_ERROR
+    if message == DIMENSIONS_ERROR:
+        return DIMENSIONS_ERROR
+    return "Profile image could not be processed."
 
 
 def _validate_image_bytes(data: bytes) -> bool:
@@ -58,7 +80,7 @@ class ProfileView(APIView):
                 # content-type allow-list and magic-byte check, and both downscale before storing.
                 user.profile_image = encode_profile_image(request.FILES["profile_image"])
             except ProfileImageError as exc:
-                return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": _profile_image_error_detail(exc)}, status=status.HTTP_400_BAD_REQUEST)
             user.save(update_fields=["profile_image", "updated_at"])
             serializer = ProfileSerializer(instance=user)
             return Response(serializer.data, status=status.HTTP_200_OK)
