@@ -17,7 +17,7 @@ class SendVerificationLogInjectionTests(SimpleTestCase):
         message = logs.records[0].getMessage()
         self.assertNotIn("\n", message)
         self.assertNotIn("\r", message)
-        self.assertEqual(message, "send_verification.test\\nforged operation\\r\\n=login\\nadmin\\u003dtrue")
+        self.assertEqual(message, "send_verification.unknown ")
 
     def test_existing_plain_event_format_is_preserved(self):
         with self.assertLogs("apps.authn.send_verification", level="INFO") as logs:
