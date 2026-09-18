@@ -65,6 +65,27 @@ class EventCustomViewPerAppAccessTest(TestCase):
         resp = self.client.post(reverse("admin:event_currentprojectschedule_pull"))
         self.assertNotEqual(resp.status_code, 403)
 
+    def test_sync_from_google_sheets_action_denied_for_non_event_staff(self):
+        # Unfold row/detail action — the ``permissions=["change"]`` guard must
+        # re-check per-app access like the hand-written custom views do.
+        config = CurrentProjectSchedule.objects.create(name="Demo Day")
+        self.client.force_login(self.outsider)
+        url = reverse("admin:event_currentprojectschedule_sync_from_google_sheets", args=[config.pk])
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_sync_from_google_sheets_detail_action_denied_for_non_event_staff(self):
+        config = CurrentProjectSchedule.objects.create(name="Demo Day")
+        self.client.force_login(self.outsider)
+        url = reverse("admin:event_currentprojectschedule_sync_from_google_sheets_detail", args=[config.pk])
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    def test_sync_from_google_sheets_action_allowed_for_event_staff(self, _mock_sync):
+        config = CurrentProjectSchedule.objects.create(name="Demo Day")
+        self.client.force_login(self.event_staff)
+        url = reverse("admin:event_currentprojectschedule_sync_from_google_sheets", args=[config.pk])
+        self.assertNotEqual(self.client.get(url).status_code, 403)
+
     def test_save_sync_settings_denied_for_non_event_staff(self):
         self.client.force_login(self.outsider)
         url = reverse("admin:event_currentprojectschedule_save_sync_settings")

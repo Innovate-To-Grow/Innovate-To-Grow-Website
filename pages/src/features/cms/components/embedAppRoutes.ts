@@ -22,7 +22,18 @@ export const EMBED_APP_ROUTE_COMPONENTS: Record<string, LazyExoticComponent<Comp
   '/subscribe': React.lazy(() => import('@/routes/SubscribePage').then((m) => ({default: m.SubscribePage}))),
 };
 
+/**
+ * Embed routes whose component accepts a pinned `CurrentProjectSchedule`
+ * (`scheduleId` prop). Must match the routes flagged `schedule_selectable`
+ * in `src/apps/cms/app_routes.py`.
+ */
+export const SCHEDULE_SELECTABLE_EMBED_ROUTES: ReadonlySet<string> = new Set(['/schedule']);
+
 export function resolveEmbedAppRoute(route: string | undefined | null): LazyExoticComponent<ComponentType<EmbedAppRouteProps>> | null {
   if (!route) return null;
   return EMBED_APP_ROUTE_COMPONENTS[route] ?? null;
+}
+
+export function embedRouteSupportsSchedule(route: string | undefined | null): boolean {
+  return Boolean(route && SCHEDULE_SELECTABLE_EMBED_ROUTES.has(route));
 }

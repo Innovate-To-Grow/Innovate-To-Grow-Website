@@ -84,7 +84,10 @@ interface SchedulePageProps {
 
 export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedScheduleId = scheduleId || searchParams.get('schedule_id');
+  // An explicit prop (even null) wins: the embed page has already resolved the
+  // block/widget/active precedence and validated the value. Only the standalone
+  // /schedule route, which passes no prop, reads `?schedule_id=` itself.
+  const selectedScheduleId = scheduleId === undefined ? searchParams.get('schedule_id') : scheduleId;
   const {data, loading, error} = useCurrentEventSchedule(selectedScheduleId);
   const teamSearch = searchParams.get('value') || '';
   const [isMobileLayout, setIsMobileLayout] = useState(() =>
