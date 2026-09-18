@@ -103,6 +103,8 @@ Ticket confirmation emails no longer use a dedicated `/event/ticket-login/` endp
 
 Returns the selected `CurrentProjectSchedule` (or the active/default schedule when no `schedule_id` is supplied): sections (time blocks), tracks (rooms), slots (presentations), and agenda items.
 
+**Query parameters:** `schedule_id` (optional UUID) — any `CurrentProjectSchedule` row, active or not (e.g. a previous year). An unknown id returns `404 {"detail": "No schedule configured."}`; a schedule that has never been synced returns `404 {"detail": "No schedule available."}`. CMS embed widgets and their page blocks use this to show different years side by side.
+
 **Permission:** AllowAny
 
 **Response structure:**
