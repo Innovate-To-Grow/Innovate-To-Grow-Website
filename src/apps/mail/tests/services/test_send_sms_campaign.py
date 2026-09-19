@@ -6,6 +6,7 @@ from apps.authn.models import ContactPhone
 from apps.core.models import AWSCredentialConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsCampaign, SmsRecipientLog
+from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
 from apps.mail.services.sms.sender import send_sms_campaign
 
 
@@ -86,17 +87,20 @@ class SendSmsCampaignTests(TestCase):
         second = make_member(email="second@example.com")
         _add_phone(first, "2095551001")
         _add_phone(second, "2095551002")
-        mock_publish.side_effect = ["sns-msg-1", RuntimeError("boom")]
+        mock_publish.side_effect = ["sns-msg-1", RuntimeError("sns://AKIA-private-value@internal-host")]
         campaign = SmsCampaign.objects.create(message="Hello", audience_type="all_members")
 
-        result = send_sms_campaign(campaign, sent_by=self.sender)
+        with self.assertLogs("apps.mail.services.sms.sender", level="ERROR") as captured:
+            result = send_sms_campaign(campaign, sent_by=self.sender)
 
         campaign.refresh_from_db()
         self.assertEqual(result, {"total": 2, "sent": 1, "failed": 1})
         self.assertEqual(campaign.status, "partial")
         self.assertEqual(SmsRecipientLog.objects.filter(campaign=campaign, status="sent").count(), 1)
         failed = SmsRecipientLog.objects.get(campaign=campaign, status="failed")
-        self.assertEqual(failed.error_message, "boom")
+        self.assertEqual(failed.error_message, f"{UNEXPECTED_DELIVERY_ERROR} (RuntimeError)")
+        self.assertNotIn("private-value", failed.error_message)
+        self.assertIn("AKIA-private-value@internal-host", "\n".join(captured.output))
 
     @patch("apps.mail.services.sms.sender.publish_plain_sms", side_effect=RuntimeError("SNS rejected"))
     def test_fallback_campaign_with_all_provider_failures_is_failed(self, _publish):

@@ -30,7 +30,25 @@ async function assertProof(payload: string, challenge: Challenge) {
   expect(verified.verified).toBe(true);
 }
 
-test('real ALTCHA widget initializes, solves, and dispatches a verifiable proof once', async ({page}) => {
+async function countWorkersOnHighCoreDevice(page: Page): Promise<() => number> {
+  let workers = 0;
+  // The counter lives outside the page so native admin navigation cannot reset it.
+  await page.exposeFunction('recordVerificationWorker', () => {workers++;});
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'hardwareConcurrency', {configurable: true, get: () => 64});
+    window.Worker = new Proxy(window.Worker, {
+      construct(target, args, newTarget) {
+        const worker = Reflect.construct(target, args, newTarget);
+        void (window as typeof window & {recordVerificationWorker: () => Promise<void>}).recordVerificationWorker();
+        return worker;
+      },
+    });
+  });
+  return () => workers;
+}
+
+test('real ALTCHA widget bounds workers on high-core devices and dispatches a verifiable proof once', async ({page}) => {
+  const workers = await countWorkersOnHighCoreDevice(page);
   const challenge = await challengeFixture();
   await installChallenge(page, challenge);
   const sends: Record<string, string>[] = [];
@@ -44,6 +62,7 @@ test('real ALTCHA widget initializes, solves, and dispatches a verifiable proof 
   expect(sends[0].verification_challenge_id).toBe(challengeId);
   expect(sends[0].send_request_id).toMatch(/^[0-9a-f-]{36}$/);
   await assertProof(sends[0].verification_payload, challenge);
+  await expect.poll(workers).toBe(1);
   await expect(page.locator('altcha-widget')).toHaveCount(0);
 });
 
@@ -79,11 +98,32 @@ test('HTTP unknown survives reload and checks status without sending a second co
   expect(lookups).toBe(2);
 });
 
+test('retired standalone worker closes without accepting work', async ({page}) => {
+  const retiredWorker = await readFile(
+    new URL('../../../src/assets/vendor/altcha/workers/pbkdf2.js', import.meta.url),
+    'utf8',
+  );
+  await page.goto('/login');
+  const closed = new Promise<void>((resolve) => {
+    page.once('worker', (worker) => worker.once('close', () => resolve()));
+  });
+
+  await page.evaluate((source) => {
+    const worker = new Worker(URL.createObjectURL(new Blob([source], {type: 'text/javascript'})));
+    worker.postMessage({type: 'work'});
+  }, retiredWorker);
+
+  await closed;
+});
+
 for (const action of ['request_code', 'remembered_code', 'resend']) {
   test(`admin ${action} uses the configured asset and cookie-scoped route with the real widget`, async ({page}) => {
+    const workers = await countWorkersOnHighCoreDevice(page);
     const challenge = await challengeFixture();
     const wrapper = await readFile(new URL('../../../src/apps/core/static/admin/js/send-verification.js', import.meta.url), 'utf8');
     const widget = await readFile(new URL('../../../src/assets/vendor/altcha/altcha.umd.js', import.meta.url), 'utf8');
+    const workerUrls: string[] = [];
+    page.on('worker', (worker) => workerUrls.push(worker.url()));
     let assetLoads = 0;
     await page.route('https://static.example.test/altcha.js', (route) => {
       assetLoads++;
@@ -138,6 +178,9 @@ for (const action of ['request_code', 'remembered_code', 'resend']) {
       }
       expect(submitted).not.toBeNull();
       await assertProof(submitted!.get('verification_payload')!, challenge);
+      await expect.poll(workers).toBe(1);
+      expect(workerUrls.length).toBeGreaterThan(0);
+      expect(workerUrls.every((url) => url.startsWith('blob:') || url.startsWith('data:'))).toBe(true);
     } finally {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => error ? reject(error) : resolve());

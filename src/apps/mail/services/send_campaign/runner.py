@@ -8,6 +8,7 @@ from apps.mail.models import RecipientLog
 from apps.mail.services.tokens.login_links import issue_login_link
 
 from ..audience import get_recipients
+from ..campaign.errors import unexpected_delivery_error_message
 from ..campaign.personalize import personalize
 from ..campaign.preview import render_email_html
 from ..tokens.unsubscribe import build_oneclick_unsubscribe_url
@@ -129,7 +130,7 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
         ).update(
             status="failed",
             provider=_configured_provider(config),
-            error_message=str(exc),
+            error_message=unexpected_delivery_error_message(exc),
         )
         campaign.failed_count += 1
 
