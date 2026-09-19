@@ -4,12 +4,13 @@ from io import StringIO
 from unittest.mock import patch
 
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.authn.models import ContactEmail, Member
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SendVerificationConfig
 
 
+@override_settings(SEND_VERIFICATION_HMAC_SECRET=None)
 class SeedServiceConfigsTest(TestCase):
     def _run(self):
         out = StringIO()
@@ -25,6 +26,18 @@ class SeedServiceConfigsTest(TestCase):
         send_config = SendVerificationConfig.objects.get(name="Production")
         self.assertTrue(send_config.is_active)
         self.assertEqual(send_config.mode, "observe")
+        self.assertGreaterEqual(len(send_config.hmac_secret), 64)
+        self.assertNotIn(send_config.hmac_secret, output)
+
+    def test_repairs_empty_send_key_without_replacing_existing_policy(self):
+        config = SendVerificationConfig.objects.create(
+            name="Paused production", is_active=True, mode="pause", sms_daily_limit=50
+        )
+        self._run()
+        config.refresh_from_db()
+        self.assertTrue(config.hmac_secret)
+        self.assertEqual(config.mode, "pause")
+        self.assertEqual(config.sms_daily_limit, 50)
 
     def test_skips_email_config_when_present(self):
         EmailServiceConfig.objects.create(name="Existing", is_active=True)

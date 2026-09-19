@@ -8,6 +8,13 @@ set -e
 echo "Running database migrations..."
 python manage.py migrate --noinput
 
+# Both email and SMS challenge issuance require a signing key, including in
+# observe mode. Initialize only missing keys, then check effective policy before
+# accepting traffic. Explicit overrides and intentional pauses remain intact.
+echo "Initializing send verification..."
+python manage.py initialize_send_verification
+python manage.py verify_service_configs --strict --send-verification-only --require-sms
+
 case "${ENSURE_DEFAULT_ADMIN:-false}" in
   1|true|TRUE|yes|YES|on|ON)
     if [ -z "${DJANGO_SUPERUSER_EMAIL:-}" ]; then

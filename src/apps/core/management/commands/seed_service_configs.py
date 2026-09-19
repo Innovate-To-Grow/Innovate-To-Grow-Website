@@ -9,10 +9,11 @@ are set locally.
 import os
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 from apps.authn.models import ContactEmail
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SendVerificationConfig
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 
 Member = get_user_model()
 
@@ -60,16 +61,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Created active AWSCredentialConfig 'Production'."))
 
     def _seed_send_verification(self):
-        if SendVerificationConfig.objects.exists():
-            self.stdout.write(self.style.WARNING("SendVerificationConfig already exists — skipping."))
-            return
-        SendVerificationConfig.objects.create(name="Production", is_active=True, mode="observe")
-        self.stdout.write(
-            self.style.SUCCESS(
-                "Created skeleton active SendVerificationConfig 'Production'. "
-                "Fill in HMAC secrets in Django admin before enforcing."
-            )
-        )
+        call_command("initialize_send_verification", stdout=self.stdout, stderr=self.stderr)
 
     def _seed_staff_contact_emails(self):
         """Ensure every staff member has a verified primary ContactEmail so admin login works."""
