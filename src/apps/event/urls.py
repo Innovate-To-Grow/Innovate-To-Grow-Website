@@ -12,7 +12,9 @@ from apps.event.views import (
     MyTicketsView,
     ResendTicketEmailView,
     SendPhoneCodeView,
+    SendSecondaryEmailCodeView,
     VerifyPhoneCodeView,
+    VerifySecondaryEmailCodeView,
 )
 
 app_name = "event"
@@ -27,6 +29,8 @@ urlpatterns = [
     path("my-tickets/<uuid:pk>/resend-email/", ResendTicketEmailView.as_view(), name="resend-ticket-email"),
     path("send-phone-code/", SendPhoneCodeView.as_view(), name="send-phone-code"),
     path("verify-phone-code/", VerifyPhoneCodeView.as_view(), name="verify-phone-code"),
+    path("send-secondary-email-code/", SendSecondaryEmailCodeView.as_view(), name="send-secondary-email-code"),
+    path("verify-secondary-email-code/", VerifySecondaryEmailCodeView.as_view(), name="verify-secondary-email-code"),
     path("check-in/<uuid:checkin_id>/scan/", CheckInScanView.as_view(), name="checkin-scan"),
     path("check-in/<uuid:checkin_id>/status/", CheckInStatusView.as_view(), name="checkin-status"),
     path("check-in/<uuid:checkin_id>/records/<uuid:record_id>/undo/", CheckInUndoView.as_view(), name="checkin-undo"),

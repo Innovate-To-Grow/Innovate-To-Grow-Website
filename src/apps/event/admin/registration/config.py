@@ -8,6 +8,7 @@ CHANGE_READONLY_FIELDS = (
     "attendee_secondary_email",
     "attendee_phone",
     "phone_verified",
+    "secondary_email_verified",
     "attendee_organization",
     "question_answers",
     "send_ticket_email_action",
@@ -40,6 +41,7 @@ CHANGE_FIELDSETS = (
                 "attendee_secondary_email",
                 "attendee_phone",
                 "phone_verified",
+                "secondary_email_verified",
                 "attendee_organization",
             ),
         },
@@ -97,7 +99,7 @@ ADD_FIELDSETS = (
     (
         "Attendee overrides",
         {
-            "description": "Leave blank to auto-fill from the member's profile.",
+            "description": "Names, primary email, and organization default to the member's profile. Contacts remain blank unless entered.",
             "classes": ("collapse",),
             "fields": (
                 "attendee_first_name",
@@ -132,6 +134,7 @@ EXPORT_FIELDS = (
     ("attendee_secondary_email", "Attendee Secondary Email"),
     ("attendee_phone", "Attendee Phone"),
     ("phone_verified", "Attendee Phone Verified"),
+    ("secondary_email_verified", "Attendee Secondary Email Verified"),
     ("attendee_organization", "Attendee Organization"),
     ("question_answers", "Question Answers"),
     ("created_at", "Registered At"),

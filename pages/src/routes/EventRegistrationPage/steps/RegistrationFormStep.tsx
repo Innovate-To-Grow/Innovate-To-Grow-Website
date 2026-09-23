@@ -1,10 +1,11 @@
 import {useState} from 'react';
 import type {FormEvent} from 'react';
 
-import {VERIFICATION_CODE_PLACEHOLDER} from '@/features/auth';
 import {formatPhoneDisplay, stripPhoneFormat} from '@/lib/format';
 import type {EventRegistrationOptions} from '@/features/events/api';
 import type {OrganizationType} from '../useEventRegistration';
+import {ContactVerificationControls} from './ContactVerificationControls';
+import {getSecondaryEmailError} from './helpers';
 
 interface RegistrationFormStepProps {
   options: EventRegistrationOptions;
@@ -31,6 +32,14 @@ interface RegistrationFormStepProps {
   onAnswerChange: (questionId: string, answer: string) => void;
   onSecondaryEmailChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
+  secondaryEmailCode: string;
+  secondaryEmailCodeSent: boolean;
+  secondaryEmailSending: boolean;
+  secondaryEmailVerified: boolean;
+  verifyingSecondaryEmail: boolean;
+  onSecondaryEmailCodeChange: (value: string) => void;
+  onSendSecondaryEmailCode: () => void;
+  onVerifySecondaryEmailCode: () => void;
   phoneCode: string;
   phoneCodeSent: boolean;
   phoneSending: boolean;
@@ -67,6 +76,14 @@ export const RegistrationFormStep = ({
   onAnswerChange,
   onSecondaryEmailChange,
   onPhoneChange,
+  secondaryEmailCode,
+  secondaryEmailCodeSent,
+  secondaryEmailSending,
+  secondaryEmailVerified,
+  verifyingSecondaryEmail,
+  onSecondaryEmailCodeChange,
+  onSendSecondaryEmailCode,
+  onVerifySecondaryEmailCode,
   phoneCode,
   phoneCodeSent,
   phoneSending,
@@ -80,16 +97,18 @@ export const RegistrationFormStep = ({
   const [attempted, setAttempted] = useState(false);
   const [phoneFocused, setPhoneFocused] = useState(false);
 
-  const secondaryEmailSameAsPrimary =
-    !!attendeeSecondaryEmail.trim() &&
-    attendeeSecondaryEmail.trim().toLowerCase() === primaryEmail.trim().toLowerCase();
+  const secondaryEmailError = options.allow_secondary_email
+    ? getSecondaryEmailError(attendeeSecondaryEmail, primaryEmail) : null;
+  const missingSecondaryEmail = options.allow_secondary_email && options.require_secondary_email && !attendeeSecondaryEmail.trim();
+  const secondaryEmailNotVerified = options.allow_secondary_email && options.verify_secondary_email && !!attendeeSecondaryEmail.trim() && !secondaryEmailVerified;
 
   const missingFirstName = !attendeeFirstName.trim();
   const missingLastName = !attendeeLastName.trim();
   const missingOrganization = attendeeOrgType === 'organization' && !attendeeOrganization.trim();
   const missingTicket = !selectedTicketId;
-  const phoneVerificationRequired = options.collect_phone && options.verify_phone;
-  const phoneNotVerified = phoneVerificationRequired && !phoneVerified;
+  const phoneVerificationEnabled = options.collect_phone && options.verify_phone;
+  const missingPhone = options.collect_phone && options.require_phone && !attendeePhone.trim();
+  const phoneNotVerified = phoneVerificationEnabled && !!attendeePhone.trim() && !phoneVerified;
   const phoneHasError = options.collect_phone && !!phoneError;
   const missingRequiredAnswers = options.questions
     .filter((q) => q.is_required)
@@ -100,9 +119,12 @@ export const RegistrationFormStep = ({
     missingLastName ||
     missingOrganization ||
     missingTicket ||
+    missingPhone ||
     phoneNotVerified ||
     phoneHasError ||
-    secondaryEmailSameAsPrimary ||
+    missingSecondaryEmail ||
+    secondaryEmailNotVerified ||
+    !!secondaryEmailError ||
     missingRequiredAnswers.length > 0;
 
   const handleSubmit = (e: FormEvent) => {
@@ -259,89 +281,86 @@ export const RegistrationFormStep = ({
         )}
 
         {options.allow_secondary_email ? (
-          <div className={`event-reg-form-group${errorClass(secondaryEmailSameAsPrimary)}`}>
+          <div className={`event-reg-form-group${errorClass(missingSecondaryEmail || secondaryEmailNotVerified || !!secondaryEmailError)}`}>
             <label className="event-reg-label" htmlFor="secondary-email">
-              Secondary Email
+              Secondary Email {options.require_secondary_email ? <span className="required-mark">*</span> : <span className="event-reg-optional">(optional)</span>}
             </label>
             <p className="event-reg-field-hint">
-              Please provide a second email address so we can reach you if needed.
+              Provide a second email address so we can reach you if needed.
+              {options.verify_secondary_email ? ' If provided, this email must be verified.' : ''}
             </p>
-            <input
-              id="secondary-email"
-              type="email"
-              className="event-reg-input event-reg-input--editable"
-              value={attendeeSecondaryEmail}
-              onChange={(e) => onSecondaryEmailChange(e.target.value)}
-              placeholder="We recommend using your personal email"
-              disabled={submitting}
-            />
-            {secondaryEmailSameAsPrimary ? (
-              <p className="event-reg-field-error">
-                Secondary email must be different from the primary email.
-              </p>
+            <ContactVerificationControls
+              contactLabel="Secondary email"
+              enabled={options.verify_secondary_email}
+              hasValue={!!attendeeSecondaryEmail.trim()}
+              invalid={!!secondaryEmailError}
+              submitting={submitting}
+              code={secondaryEmailCode}
+              codeSent={secondaryEmailCodeSent}
+              sending={secondaryEmailSending}
+              verified={secondaryEmailVerified}
+              verifying={verifyingSecondaryEmail}
+              onCodeChange={onSecondaryEmailCodeChange}
+              onSendCode={onSendSecondaryEmailCode}
+              onVerifyCode={onVerifySecondaryEmailCode}
+            >
+              <input
+                id="secondary-email"
+                type="email"
+                className="event-reg-input event-reg-input--editable"
+                value={attendeeSecondaryEmail}
+                onChange={(event) => onSecondaryEmailChange(event.target.value)}
+                placeholder="We recommend using your personal email"
+                aria-required={options.require_secondary_email}
+                disabled={submitting}
+              />
+            </ContactVerificationControls>
+            {secondaryEmailError ? <p className="event-reg-field-error">{secondaryEmailError}</p> : null}
+            {showError && missingSecondaryEmail ? <p className="event-reg-field-error">Secondary email is required.</p> : null}
+            {showError && secondaryEmailNotVerified && !secondaryEmailError ? (
+              <p className="event-reg-field-error">Secondary email must be verified.</p>
             ) : null}
           </div>
         ) : null}
 
         {options.collect_phone ? (
-          <div className={`event-reg-form-group${errorClass(phoneNotVerified || phoneHasError)}`}>
+          <div className={`event-reg-form-group${errorClass(missingPhone || phoneNotVerified || phoneHasError)}`}>
             <label className="event-reg-label" htmlFor="phone">
-              Phone Number {phoneVerificationRequired ? <span className="required-mark">*</span> : null}
+              Phone Number {options.require_phone ? <span className="required-mark">*</span> : <span className="event-reg-optional">(optional)</span>}
             </label>
-            <div className="event-reg-phone-row">
+            {phoneVerificationEnabled ? <p className="event-reg-field-hint">If provided, this phone number must be verified.</p> : null}
+            <ContactVerificationControls
+              contactLabel="Phone"
+              enabled={phoneVerificationEnabled}
+              hasValue={!!attendeePhone.trim()}
+              invalid={!!phoneError}
+              submitting={submitting}
+              code={phoneCode}
+              codeSent={phoneCodeSent}
+              sending={phoneSending}
+              verified={phoneVerified}
+              verifying={verifyingPhone}
+              onCodeChange={onPhoneCodeChange}
+              onSendCode={onSendPhoneCode}
+              onVerifyCode={onVerifyPhoneCode}
+            >
               <input
                 id="phone"
                 type="tel"
                 className="event-reg-input event-reg-input--editable"
                 value={phoneFocused ? attendeePhone : formatPhoneDisplay(attendeePhone)}
-                onChange={(e) => onPhoneChange(stripPhoneFormat(e.target.value))}
+                onChange={(event) => onPhoneChange(stripPhoneFormat(event.target.value))}
                 onFocus={() => setPhoneFocused(true)}
                 onBlur={() => setPhoneFocused(false)}
                 placeholder="Phone number"
+                aria-required={options.require_phone}
                 disabled={submitting}
               />
-              {phoneVerificationRequired && !phoneVerified ? (
-                <button
-                  type="button"
-                  className="event-reg-phone-action"
-                  disabled={!attendeePhone.trim() || !!phoneError || phoneSending}
-                  onClick={onSendPhoneCode}
-                >
-                  {phoneSending ? 'Sending...' : phoneCodeSent ? 'Resend' : 'Send Code'}
-                </button>
-              ) : null}
-              {phoneVerified ? (
-                <span className="event-reg-phone-verified">Verified</span>
-              ) : null}
-            </div>
-            {phoneError ? (
-              <p className="event-reg-field-error">{phoneError}</p>
-            ) : null}
+            </ContactVerificationControls>
+            {phoneError ? <p className="event-reg-field-error">{phoneError}</p> : null}
+            {showError && missingPhone ? <p className="event-reg-field-error">Phone number is required.</p> : null}
             {showError && phoneNotVerified && !phoneError ? (
               <p className="event-reg-field-error">Phone number must be verified.</p>
-            ) : null}
-            {phoneVerificationRequired && phoneCodeSent && !phoneVerified ? (
-              <div className="event-reg-phone-code-row">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  className="event-reg-input"
-                  value={phoneCode}
-                  onChange={(e) => onPhoneCodeChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder={VERIFICATION_CODE_PLACEHOLDER}
-                  aria-label="6-digit verification code"
-                />
-                <button
-                  type="button"
-                  className="event-reg-phone-action"
-                  disabled={phoneCode.length !== 6 || verifyingPhone}
-                  onClick={onVerifyPhoneCode}
-                >
-                  {verifyingPhone ? 'Verifying...' : 'Verify'}
-                </button>
-              </div>
             ) : null}
           </div>
         ) : null}

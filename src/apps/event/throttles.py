@@ -9,6 +9,15 @@ per view and only the *rates* live in settings (DEFAULT_THROTTLE_RATES).
 event views can attach it without reaching across apps inline.
 """
 
-from apps.authn.security.throttles import PhoneCodeRequestThrottle
+from rest_framework.throttling import UserRateThrottle
 
-__all__ = ["PhoneCodeRequestThrottle"]
+from apps.authn.security.throttles import EmailCodeUserRequestThrottle, PhoneCodeRequestThrottle
+
+
+class SecondaryEmailCodeVerifyThrottle(UserRateThrottle):
+    """Apply the existing email verification rate to authenticated registrants."""
+
+    scope = "email_code_verify"
+
+
+__all__ = ["EmailCodeUserRequestThrottle", "PhoneCodeRequestThrottle", "SecondaryEmailCodeVerifyThrottle"]

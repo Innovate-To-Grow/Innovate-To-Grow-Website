@@ -1,10 +1,9 @@
 from rest_framework import status
 from rest_framework.response import Response
 
-from apps.authn.models import ContactPhone
-from apps.authn.services.contacts.contact_phones import normalize_to_national
 from apps.event.models import Event, EventRegistration, Question, Ticket
 from apps.event.serializers import build_registration_payload
+from apps.event.services.registration.contacts import RegistrationContactError, registration_contact_fields
 from apps.event.services.registration.sync_account import sync_name_to_account, sync_phone_to_account
 from apps.event.services.registration.sync_email import sync_secondary_email_to_account
 
@@ -12,8 +11,8 @@ from .notifications import send_initial_ticket_email
 
 
 class RegistrationRequestError(Exception):
-    def __init__(self, detail: str, response_status=status.HTTP_400_BAD_REQUEST):
-        self.response = Response({"detail": detail}, status=response_status)
+    def __init__(self, detail: str, response_status=status.HTTP_400_BAD_REQUEST, *, code: str | None = None):
+        self.response = Response({"detail": detail, **({"code": code} if code else {})}, status=response_status)
         super().__init__(detail)
 
 
@@ -101,7 +100,10 @@ def create_registration(request, event, ticket, question_answers, data):
         question_answers,
         data,
     )
-    apply_phone_fields(request, event, data, create_kwargs)
+    try:
+        create_kwargs.update(registration_contact_fields(request.user, event, data))
+    except RegistrationContactError as exc:
+        raise RegistrationRequestError(str(exc), code=exc.code) from exc
     return EventRegistration.objects.create(**create_kwargs)
 
 
@@ -119,68 +121,7 @@ def registration_create_kwargs(request, event, ticket, question_answers, data):
     ):
         if data.get(field_name):
             create_kwargs[field_name] = data[field_name]
-    if data.get("attendee_secondary_email") and event.allow_secondary_email:
-        create_kwargs["attendee_secondary_email"] = data["attendee_secondary_email"]
     return create_kwargs
-
-
-def apply_phone_fields(request, event, data, create_kwargs) -> None:
-    import apps.event.views.registration as registration_api
-
-    # US-only: AWS SNS only delivers to US numbers; ignore any client-supplied region.
-    phone_region = "1-US"
-    if data.get("attendee_phone") and event.collect_phone:
-        phone_error = registration_api._validate_phone_digits(
-            data["attendee_phone"],
-            phone_region,
-        )
-        if phone_error:
-            raise RegistrationRequestError(phone_error)
-        phone = registration_api._normalize_phone(data["attendee_phone"], phone_region)
-        create_kwargs["attendee_phone"] = phone
-        if event.verify_phone:
-            if not is_phone_verified(
-                request.user,
-                phone,
-                phone_region,
-                event=event,
-                challenge_id=data.get("phone_verification_challenge_id"),
-            ):
-                raise RegistrationRequestError("Please verify your phone number before completing registration.")
-            create_kwargs["phone_verified"] = True
-    elif event.verify_phone:
-        raise RegistrationRequestError("A verified phone number is required for this event.")
-
-
-def is_phone_verified(user, phone: str, phone_region: str, *, event, challenge_id=None) -> bool:
-    national_digits = normalize_to_national(phone, phone_region)
-    if ContactPhone.objects.filter(
-        member=user,
-        phone_number=national_digits,
-        verified=True,
-    ).exists():
-        return True
-
-    from apps.authn.services.sms import (
-        PhoneVerificationInvalid,
-        consume_verified_phone_challenge,
-    )
-    from apps.event.views.registration.phones import (
-        LEGACY_EVENT_REGISTRATION_CONTEXT,
-    )
-
-    try:
-        consume_verified_phone_challenge(
-            phone_number=phone,
-            purpose="event_registration",
-            member=user,
-            context_identifier=f"event-registration:{event.pk}",
-            challenge_id=challenge_id,
-            compatibility_context_identifiers=(LEGACY_EVENT_REGISTRATION_CONTEXT,),
-        )
-    except PhoneVerificationInvalid:
-        return False
-    return True
 
 
 def sync_registration_to_account(user, registration, event, data):
@@ -190,7 +131,9 @@ def sync_registration_to_account(user, registration, event, data):
         registration.attendee_last_name,
     )
     if event.allow_secondary_email and registration.attendee_secondary_email:
-        sync_secondary_email_to_account(user, registration.attendee_secondary_email)
+        sync_secondary_email_to_account(
+            user, registration.attendee_secondary_email, verified=registration.secondary_email_verified
+        )
     if event.collect_phone and registration.attendee_phone:
         sync_phone_to_account(
             user,

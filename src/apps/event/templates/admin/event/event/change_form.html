@@ -50,10 +50,15 @@
 {% endblock %}
 
 {% block field_sets %}
-    <p id="event-verify-phone-dependency-hint"
+    <p id="event-phone-dependency-hint"
        class="event-admin-visually-hidden"
        aria-live="polite">
-        Enable Prompt for Phone Number to make Verify phone available.
+        Enable Collect for Phone Number to make Verify if provided and Required available.
+    </p>
+    <p id="event-secondary-email-dependency-hint"
+       class="event-admin-visually-hidden"
+       aria-live="polite">
+        Enable Collect for Secondary Email to make Verify if provided and Required available.
     </p>
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div class="rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-900">

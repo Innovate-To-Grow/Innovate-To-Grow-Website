@@ -50,6 +50,7 @@ export interface Registration {
   attendee_secondary_email: string;
   attendee_phone: string;
   phone_verified: boolean;
+  secondary_email_verified: boolean;
   phone_verification_required: boolean;
   attendee_organization: string;
   registered_at: string;
@@ -87,10 +88,15 @@ export interface EventRegistrationOptions {
   allow_secondary_email: boolean;
   collect_phone: boolean;
   verify_phone: boolean;
+  require_phone: boolean;
+  verify_secondary_email: boolean;
+  require_secondary_email: boolean;
   tickets: TicketOption[];
   questions: QuestionOption[];
   registration: Registration | null;
   member_emails: string[];
+  member_primary_email?: string;
+  member_secondary_email: {email_address: string; verified: boolean} | null;
   member_profile: MemberProfile | null;
   member_phone: MemberPhone | null;
   phone_regions: Array<{code: string; label: string}>;
@@ -229,13 +235,23 @@ export async function fetchRegistrationEvents(): Promise<EventRegistrationSummar
   }
 }
 
+function normalizeRegistrationOptions(data: EventRegistrationOptions): EventRegistrationOptions {
+  return {
+    ...data,
+    // Older servers coupled verification to required entry; preserve that behavior during rollout.
+    require_phone: data.require_phone ?? Boolean(data.verify_phone),
+    verify_secondary_email: data.verify_secondary_email ?? false,
+    require_secondary_email: data.require_secondary_email ?? false,
+  };
+}
+
 export async function fetchRegistrationOptions(eventSlug?: string | null): Promise<EventRegistrationOptions> {
   const hasSession = Boolean(getStoredSession());
   try {
     const response = await (hasSession ? authApi : api).get<EventRegistrationOptions>('/event/registration-options/', {
       ...(eventSlug ? {params: {event_slug: eventSlug}} : {}),
     });
-    return response.data;
+    return normalizeRegistrationOptions(response.data);
   } catch (err: unknown) {
     const status = (err as {response?: {status?: number}}).response?.status;
     // AllowAny may retry without credentials only after the refresh endpoint
@@ -245,7 +261,7 @@ export async function fetchRegistrationOptions(eventSlug?: string | null): Promi
       const response = await api.get<EventRegistrationOptions>('/event/registration-options/', {
         ...(eventSlug ? {params: {event_slug: eventSlug}} : {}),
       });
-      return response.data;
+      return normalizeRegistrationOptions(response.data);
     }
     throw err;
   }
@@ -269,6 +285,8 @@ export async function createRegistration(data: {
   attendee_phone?: string;
   attendee_phone_region?: string;
   phone_verification_challenge_id?: string;
+  secondary_email_verification_challenge_id?: string;
+  secondary_email_verification_token?: string;
 }): Promise<Registration> {
   const response = await authApi.post<Registration>('/event/registrations/', data);
   return response.data;
@@ -323,5 +341,39 @@ export async function verifyPhoneCode(
       ...(eventSlug ? {event_slug: eventSlug} : {}),
     },
   );
+  return response.data;
+}
+
+export async function sendSecondaryEmailCode(
+  email: string,
+  eventSlug: string,
+): Promise<{email: string; challenge_id: string}> {
+  const {withVerifiedSend} = await import('@/features/auth/verification');
+  return withVerifiedSend({
+    operation: 'event.send_secondary_email_code',
+    destinationKind: 'email',
+    destination: email,
+    extraChallenge: {email, event_slug: eventSlug},
+    execute: async (verification) => {
+      const response = await authApi.post<{email: string; challenge_id: string}>(
+        '/event/send-secondary-email-code/',
+        {email, event_slug: eventSlug, ...verification},
+      );
+      return response.data;
+    },
+  });
+}
+
+export async function verifySecondaryEmailCode(
+  email: string,
+  code: string,
+  challengeId: string,
+  eventSlug: string,
+): Promise<{email: string; verified: boolean; challenge_id: string; verification_token: string}> {
+  const response = await authApi.post<{
+    email: string; verified: boolean; challenge_id: string; verification_token: string;
+  }>('/event/verify-secondary-email-code/', {
+    email, code, challenge_id: challengeId, event_slug: eventSlug,
+  });
   return response.data;
 }

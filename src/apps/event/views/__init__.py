@@ -6,7 +6,9 @@ from .registration import (
     MyTicketsView,
     ResendTicketEmailView,
     SendPhoneCodeView,
+    SendSecondaryEmailCodeView,
     VerifyPhoneCodeView,
+    VerifySecondaryEmailCodeView,
 )
 from .schedule import CurrentEventScheduleView, CurrentProjectsAPIView
 
@@ -21,6 +23,8 @@ __all__ = [
     "MyTicketsView",
     "ResendTicketEmailView",
     "SendPhoneCodeView",
+    "SendSecondaryEmailCodeView",
     "VerifyPhoneCodeView",
+    "VerifySecondaryEmailCodeView",
     "CurrentEventScheduleView",
 ]

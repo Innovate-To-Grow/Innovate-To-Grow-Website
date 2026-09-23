@@ -20,6 +20,7 @@ def create_challenge_record(
     member,
     purpose: str,
     target_email: str,
+    context_identifier: str = "",
 ) -> tuple[EmailAuthChallenge, str]:
     import apps.authn.services.email.challenges as api
 
@@ -36,6 +37,7 @@ def create_challenge_record(
             member=member,
             purpose=purpose,
             target_email__iexact=normalized_email,
+            context_identifier=context_identifier,
             status__in=[
                 EmailAuthChallenge.Status.PENDING,
                 EmailAuthChallenge.Status.VERIFIED,
@@ -48,6 +50,7 @@ def create_challenge_record(
         member=member,
         purpose=purpose,
         target_email=normalized_email,
+        context_identifier=context_identifier,
         code_hash=make_password(code),
         expires_at=now + api.CHALLENGE_TTL,
         max_attempts=5,
@@ -64,6 +67,7 @@ def issue_email_challenge(
     link_flow: str | None = None,
     link_source: str | None = None,
     link_event: str | None = None,
+    context_identifier: str = "",
 ) -> EmailAuthChallenge:
     import apps.authn.services.email.challenges as api
     from apps.authn.services.email.send_email import send_verification_email
@@ -79,6 +83,7 @@ def issue_email_challenge(
         member=member,
         purpose=purpose,
         target_email=target_email,
+        context_identifier=context_identifier,
     )
 
     try:

@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState, type FormEvent} from 'react';
+import {useCallback, useEffect, useRef, useState, type FormEvent} from 'react';
 import {useNavigate, useSearchParams} from 'react-router';
 import {useAuth} from '@/features/auth';
 import {updateProfileFields} from '@/features/auth';
@@ -8,6 +8,8 @@ import {
   fetchRegistrationOptions,
   sendPhoneCode,
   verifyPhoneCode,
+  sendSecondaryEmailCode,
+  verifySecondaryEmailCode,
   type EventRegistrationOptions,
   type EventRegistrationSummary,
   type Registration,
@@ -16,7 +18,7 @@ import {maxPhoneDigits, validatePhoneDigits} from '@/lib/format';
 import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
 import {buildCompleteProfilePath} from '@/features/auth/api/redirects';
 import {identifyLoginInput} from '@/features/auth/components/sections/internal/identifyLoginInput';
-import {getRegistrationErrorMessage, type EventRegistrationStep} from './steps/helpers';
+import {getRegistrationErrorMessage, getSecondaryEmailError, normalizeRegistrationEmail, type EventRegistrationStep} from './steps/helpers';
 
 export type OrganizationType = 'individual' | 'organization';
 
@@ -57,6 +59,13 @@ export const useEventRegistration = () => {
   const [attendeeTitle, setAttendeeTitle] = useState('');
   const [attendeeOrgType, setAttendeeOrgType] = useState<OrganizationType>('organization');
   const [attendeeSecondaryEmail, setAttendeeSecondaryEmail] = useState('');
+  const [secondaryEmailCode, setSecondaryEmailCode] = useState('');
+  const [secondaryEmailVerified, setSecondaryEmailVerified] = useState(false);
+  const [secondaryEmailChallengeId, setSecondaryEmailChallengeId] = useState('');
+  const [secondaryEmailVerificationToken, setSecondaryEmailVerificationToken] = useState('');
+  const [secondaryEmailSending, setSecondaryEmailSending] = useState(false);
+  const [secondaryEmailCodeSent, setSecondaryEmailCodeSent] = useState(false);
+  const [verifyingSecondaryEmail, setVerifyingSecondaryEmail] = useState(false);
   const [attendeePhone, setAttendeePhone] = useState('');
   const [primaryEmail, setPrimaryEmail] = useState('');
   const [phoneRegion, setPhoneRegion] = useState('1-US');
@@ -71,6 +80,10 @@ export const useEventRegistration = () => {
   // because `phoneChanged` is derived during render and must react when the snapshot is set.
   const [initialPhone, setInitialPhone] = useState<{digits: string; region: string} | null>(null);
   const initialProfileRef = useRef<{first_name: string; middle_name: string; last_name: string; organization: string; title: string} | null>(null);
+
+  // A changed contact or event invalidates every in-flight verification response.
+  const phoneRequestRef = useRef(0);
+  const secondaryEmailRequestRef = useRef(0);
 
   const selectedRegistrationPath = registrationPathForEvent(selectedEventSlug || eventSlugParam);
   const completeProfilePath = buildCompleteProfilePath(selectedRegistrationPath);
@@ -87,7 +100,18 @@ export const useEventRegistration = () => {
     setAttendeeOrganization('');
     setAttendeeTitle('');
     setAttendeeOrgType('organization');
+    phoneRequestRef.current += 1;
+    secondaryEmailRequestRef.current += 1;
     setAttendeeSecondaryEmail('');
+    setSecondaryEmailCode('');
+    setSecondaryEmailVerified(false);
+    setSecondaryEmailChallengeId('');
+    setSecondaryEmailVerificationToken('');
+    setSecondaryEmailSending(false);
+    setSecondaryEmailCodeSent(false);
+    setVerifyingSecondaryEmail(false);
+    setPhoneSending(false);
+    setVerifyingPhone(false);
     setAttendeePhone('');
     setPrimaryEmail('');
     setPhoneRegion('1-US');
@@ -156,10 +180,13 @@ export const useEventRegistration = () => {
         return;
       }
 
-      if (data.allow_secondary_email && data.member_emails?.length >= 2) {
-        setAttendeeSecondaryEmail(data.member_emails[1]);
+      if (data.allow_secondary_email) {
+        const secondaryEmail = data.member_secondary_email;
+        // An older options response can prefill an address, but cannot establish verification.
+        setAttendeeSecondaryEmail(secondaryEmail === undefined ? data.member_emails?.[1] || '' : secondaryEmail?.email_address || '');
+        setSecondaryEmailVerified(Boolean(secondaryEmail?.verified));
       }
-      setPrimaryEmail(data.member_emails?.[0] || '');
+      setPrimaryEmail(data.member_primary_email ?? data.member_emails?.[0] ?? '');
 
       if (data.collect_phone && data.member_phone) {
         const phone = data.member_phone.phone_number || '';
@@ -268,6 +295,9 @@ export const useEventRegistration = () => {
     void boot();
     return () => {
       cancelled = true;
+      optionsRequestRef.current += 1;
+      phoneRequestRef.current += 1;
+      secondaryEmailRequestRef.current += 1;
     };
   }, [
     eventSlugParam,
@@ -283,6 +313,9 @@ export const useEventRegistration = () => {
   // /event-registration and inside the chromeless /_embed/:embedSlug iframe; copying the current
   // params preserves the embed's hide-titles/hide-sections flags. Boot re-runs via eventSlugParam.
   const handleSelectEvent = (eventSlug: string) => {
+    optionsRequestRef.current += 1;
+    phoneRequestRef.current += 1;
+    secondaryEmailRequestRef.current += 1;
     setError(null);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('event', eventSlug);
@@ -290,6 +323,9 @@ export const useEventRegistration = () => {
   };
 
   const handleShowEventList = () => {
+    optionsRequestRef.current += 1;
+    phoneRequestRef.current += 1;
+    secondaryEmailRequestRef.current += 1;
     setError(null);
     setOptions(null);
     setRegistration(null);
@@ -352,9 +388,26 @@ export const useEventRegistration = () => {
     }
   };
 
+  const phoneChanged = initialPhone === null
+    || attendeePhone !== initialPhone.digits
+    || phoneRegion !== initialPhone.region;
+  const phoneError = attendeePhone.trim() && phoneChanged ? validatePhoneDigits(attendeePhone.trim()) : null;
+
   const handleRegistrationSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (!options || !selectedTicketId || !attendeeFirstName.trim() || !attendeeLastName.trim()) return;
+    const phone = options.collect_phone ? attendeePhone.trim() : '';
+    const secondaryEmail = options.allow_secondary_email ? normalizeRegistrationEmail(attendeeSecondaryEmail) : '';
+    const contactError = (options.collect_phone && options.require_phone && !phone ? 'Phone number is required.' : null)
+      || (phone ? phoneError : null)
+      || (phone && options.verify_phone && !phoneVerified ? 'Phone number must be verified.' : null)
+      || (options.allow_secondary_email && options.require_secondary_email && !secondaryEmail ? 'Secondary email is required.' : null)
+      || (secondaryEmail ? getSecondaryEmailError(secondaryEmail, primaryEmail) : null)
+      || (secondaryEmail && options.verify_secondary_email && !secondaryEmailVerified ? 'Secondary email must be verified.' : null);
+    if (contactError) {
+      setError(contactError);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -386,11 +439,17 @@ export const useEventRegistration = () => {
         attendee_last_name: attendeeLastName.trim(),
         attendee_organization: orgValue,
         answers: Object.entries(answers).filter(([, value]) => value.trim()).map(([questionId, answer]) => ({question_id: questionId, answer})),
-        attendee_secondary_email: options.allow_secondary_email ? attendeeSecondaryEmail.trim() || undefined : undefined,
+        attendee_secondary_email: secondaryEmail || undefined,
+        secondary_email_verification_challenge_id:
+          secondaryEmail && options.verify_secondary_email && secondaryEmailVerified && secondaryEmailChallengeId
+            ? secondaryEmailChallengeId : undefined,
+        secondary_email_verification_token:
+          secondaryEmail && options.verify_secondary_email && secondaryEmailVerified && secondaryEmailVerificationToken
+            ? secondaryEmailVerificationToken : undefined,
         attendee_phone: options.collect_phone ? attendeePhone.trim() || undefined : undefined,
         attendee_phone_region: options.collect_phone && attendeePhone.trim() ? phoneRegion : undefined,
         phone_verification_challenge_id:
-          options.verify_phone && phoneVerified && phoneChallengeId
+          options.collect_phone && phone && options.verify_phone && phoneVerified && phoneChallengeId
             ? phoneChallengeId
             : undefined,
       });
@@ -398,12 +457,29 @@ export const useEventRegistration = () => {
       syncEventRegistration(options.slug, result);
       setStep('done');
     } catch (err: unknown) {
-      const axiosErr = err as {response?: {status?: number; data?: {registration?: Registration}}};
+      const axiosErr = err as {response?: {status?: number; data?: {registration?: Registration; code?: string}}};
       if (axiosErr.response?.status === 409 && axiosErr.response.data?.registration) {
         setRegistration(axiosErr.response.data.registration);
         syncEventRegistration(options.slug, axiosErr.response.data.registration);
         setStep('done');
       } else {
+        const errorCode = axiosErr.response?.data?.code;
+        if (errorCode === 'phone_verification_required') {
+          phoneRequestRef.current += 1;
+          setPhoneVerified(false);
+          setPhoneCodeSent(false);
+          setPhoneCode('');
+          setNormalizedPhone('');
+          setPhoneChallengeId('');
+        }
+        if (errorCode === 'secondary_email_verification_required') {
+          secondaryEmailRequestRef.current += 1;
+          setSecondaryEmailVerified(false);
+          setSecondaryEmailCodeSent(false);
+          setSecondaryEmailCode('');
+          setSecondaryEmailChallengeId('');
+          setSecondaryEmailVerificationToken('');
+        }
         setError(getRegistrationErrorMessage(err));
       }
     } finally {
@@ -413,68 +489,125 @@ export const useEventRegistration = () => {
 
   const handleSendPhoneCode = async () => {
     const eventSlug = options?.slug;
-    if (!eventSlug || !attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim())) return;
+    if (!eventSlug || !options.collect_phone || !options.verify_phone || !attendeePhone.trim() || validatePhoneDigits(attendeePhone.trim())) return;
+    const requestId = ++phoneRequestRef.current;
     setPhoneSending(true);
+    setVerifyingPhone(false);
+    setPhoneVerified(false);
+    setPhoneCodeSent(false);
+    setPhoneCode('');
+    setPhoneChallengeId('');
+    setNormalizedPhone('');
     setError(null);
     try {
       const result = await sendPhoneCode(attendeePhone.trim(), phoneRegion, eventSlug);
+      if (requestId !== phoneRequestRef.current) return;
       setNormalizedPhone(result.phone);
       setPhoneChallengeId(result.challenge_id);
       setPhoneCodeSent(true);
     } catch (err: unknown) {
-      setError(getRegistrationErrorMessage(err));
+      if (requestId === phoneRequestRef.current) setError(getRegistrationErrorMessage(err));
     } finally {
-      setPhoneSending(false);
+      if (requestId === phoneRequestRef.current) setPhoneSending(false);
     }
   };
 
   const handleVerifyPhoneCode = async () => {
     const eventSlug = options?.slug;
-    if (!eventSlug || !normalizedPhone || !phoneCode.trim()) return;
+    if (!eventSlug || !options.collect_phone || !options.verify_phone || !normalizedPhone || !phoneChallengeId || phoneCode.length !== 6) return;
+    const requestId = ++phoneRequestRef.current;
     setVerifyingPhone(true);
     setError(null);
     try {
-      const result = await verifyPhoneCode(
-        normalizedPhone,
-        phoneCode.trim(),
-        phoneChallengeId || undefined,
-        eventSlug,
-      );
+      const result = await verifyPhoneCode(normalizedPhone, phoneCode.trim(), phoneChallengeId, eventSlug);
+      if (requestId !== phoneRequestRef.current) return;
       setNormalizedPhone(result.phone);
       setPhoneChallengeId(result.challenge_id);
-      setPhoneVerified(true);
+      setPhoneVerified(result.verified);
       setError(null);
     } catch (err: unknown) {
-      setError(getRegistrationErrorMessage(err));
+      if (requestId === phoneRequestRef.current) setError(getRegistrationErrorMessage(err));
     } finally {
-      setVerifyingPhone(false);
+      if (requestId === phoneRequestRef.current) setVerifyingPhone(false);
     }
   };
 
   const handlePhoneChange = (value: string) => {
     const capped = value.slice(0, maxPhoneDigits());
     if (capped !== attendeePhone) {
+      phoneRequestRef.current += 1;
       setPhoneVerified(false);
       setPhoneCodeSent(false);
       setPhoneCode('');
       setNormalizedPhone('');
       setPhoneChallengeId('');
+      setPhoneSending(false);
+      setVerifyingPhone(false);
     }
     setAttendeePhone(capped);
   };
 
-  const phoneChanged = initialPhone === null
-    || attendeePhone !== initialPhone.digits
-    || phoneRegion !== initialPhone.region;
+  const handleSecondaryEmailChange = (value: string) => {
+    if (normalizeRegistrationEmail(value) !== normalizeRegistrationEmail(attendeeSecondaryEmail)) {
+      secondaryEmailRequestRef.current += 1;
+      setSecondaryEmailVerified(false);
+      setSecondaryEmailCodeSent(false);
+      setSecondaryEmailCode('');
+      setSecondaryEmailChallengeId('');
+      setSecondaryEmailVerificationToken('');
+      setSecondaryEmailSending(false);
+      setVerifyingSecondaryEmail(false);
+    }
+    setAttendeeSecondaryEmail(value);
+  };
 
-  const phoneError = useMemo(
-    () => {
-      if (!attendeePhone.trim()) return null;
-      if (!phoneChanged) return null;
-      return validatePhoneDigits(attendeePhone.trim());
-    },
-    [attendeePhone, phoneChanged],
-  );
+  const handleSendSecondaryEmailCode = async () => {
+    const eventSlug = options?.slug;
+    const email = normalizeRegistrationEmail(attendeeSecondaryEmail);
+    if (!eventSlug || !options.allow_secondary_email || !options.verify_secondary_email || !email || getSecondaryEmailError(email, primaryEmail)) return;
+    const requestId = ++secondaryEmailRequestRef.current;
+    setSecondaryEmailSending(true);
+    setVerifyingSecondaryEmail(false);
+    setSecondaryEmailVerified(false);
+    setSecondaryEmailCodeSent(false);
+    setSecondaryEmailCode('');
+    setSecondaryEmailChallengeId('');
+    setSecondaryEmailVerificationToken('');
+    setError(null);
+    try {
+      const result = await sendSecondaryEmailCode(email, eventSlug);
+      if (requestId !== secondaryEmailRequestRef.current) return;
+      setSecondaryEmailChallengeId(result.challenge_id);
+      setSecondaryEmailCodeSent(true);
+    } catch (err: unknown) {
+      if (requestId === secondaryEmailRequestRef.current) setError(getRegistrationErrorMessage(err));
+    } finally {
+      if (requestId === secondaryEmailRequestRef.current) setSecondaryEmailSending(false);
+    }
+  };
+
+  const handleVerifySecondaryEmailCode = async () => {
+    const eventSlug = options?.slug;
+    if (!eventSlug || !options.allow_secondary_email || !options.verify_secondary_email || !secondaryEmailChallengeId || secondaryEmailCode.length !== 6) return;
+    const requestId = ++secondaryEmailRequestRef.current;
+    setVerifyingSecondaryEmail(true);
+    setError(null);
+    try {
+      const result = await verifySecondaryEmailCode(
+        normalizeRegistrationEmail(attendeeSecondaryEmail), secondaryEmailCode, secondaryEmailChallengeId, eventSlug,
+      );
+      if (requestId !== secondaryEmailRequestRef.current) return;
+      setSecondaryEmailChallengeId(result.challenge_id);
+      setSecondaryEmailVerificationToken(result.verification_token);
+      setSecondaryEmailVerified(result.verified);
+      setError(null);
+    } catch (err: unknown) {
+      if (requestId === secondaryEmailRequestRef.current) setError(getRegistrationErrorMessage(err));
+    } finally {
+      if (requestId === secondaryEmailRequestRef.current) setVerifyingSecondaryEmail(false);
+    }
+  };
+
 
   return {
     answers,
@@ -488,6 +621,14 @@ export const useEventRegistration = () => {
     attendeeSecondaryEmail,
     primaryEmail,
     phoneError,
+    secondaryEmailCode,
+    secondaryEmailCodeSent,
+    secondaryEmailSending,
+    secondaryEmailVerified,
+    verifyingSecondaryEmail,
+    setSecondaryEmailCode,
+    handleSendSecondaryEmailCode,
+    handleVerifySecondaryEmailCode,
     phoneRegion,
     phoneCode,
     phoneCodeSent,
@@ -513,7 +654,7 @@ export const useEventRegistration = () => {
     setAttendeeTitle,
     setAttendeeOrgType,
     handlePhoneChange,
-    setAttendeeSecondaryEmail,
+    handleSecondaryEmailChange,
     setPhoneCode,
     setCode,
     setEmail,

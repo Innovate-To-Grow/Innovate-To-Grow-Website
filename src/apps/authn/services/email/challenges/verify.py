@@ -8,6 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.authn.models.security import EmailAuthChallenge
+from apps.authn.services.email.auth_email import normalize_email
 
 from .queries import latest_pending_for_input
 
@@ -66,6 +67,8 @@ def verify_email_code_and_mint_token(
     target_email: str,
     code: str,
     member=None,
+    challenge_id=None,
+    context_identifier: str | None = None,
 ) -> tuple[EmailAuthChallenge, str]:
     """Verify a code and atomically transition it to a token-bearing state.
 
@@ -80,6 +83,8 @@ def verify_email_code_and_mint_token(
         code=code,
         target_status=EmailAuthChallenge.Status.VERIFIED,
         member=member,
+        challenge_id=challenge_id,
+        context_identifier=context_identifier,
     )
     if error or challenge is None or verification_token is None:
         import apps.authn.services.email.challenges as api
@@ -96,13 +101,23 @@ def _verify_and_transition_email_code(
     code: str,
     target_status: str,
     member=None,
+    challenge_id=None,
+    context_identifier: str | None = None,
 ) -> tuple[EmailAuthChallenge | None, str | None, str]:
     # Lock the pending challenge row so concurrent verification attempts serialize.
     # Without the lock, two simultaneous wrong guesses can both read attempts=N and
     # both write N+1 (a lost update that under-counts and weakens brute-force limits),
     # and two simultaneous correct guesses could both succeed. The conditional
     # status update below remains the final one-time-use guard.
-    challenge = latest_pending_for_input(purposes=purposes, target_email=target_email, for_update=True)
+    challenge = latest_pending_for_input(
+        purposes=purposes,
+        target_email=target_email,
+        for_update=True,
+        # Preserve historical lookup behavior for unscoped authentication callers.
+        member=member if challenge_id is not None or context_identifier is not None else None,
+        challenge_id=challenge_id,
+        context_identifier=context_identifier,
+    )
     if challenge is None:
         return None, None, "Verification code is invalid or has expired."
 
@@ -216,11 +231,17 @@ def consume_verification_token(
     purpose: str,
     verification_token: str,
     member=None,
+    target_email: str | None = None,
+    context_identifier: str | None = None,
+    challenge_id=None,
 ) -> EmailAuthChallenge:
     challenge = _consume_verification_token(
         purpose=purpose,
         verification_token=verification_token,
         member=member,
+        target_email=target_email,
+        context_identifier=context_identifier,
+        challenge_id=challenge_id,
     )
     if challenge is None:
         import apps.authn.services.email.challenges as api
@@ -235,6 +256,9 @@ def _consume_verification_token(
     purpose: str,
     verification_token: str,
     member=None,
+    target_email: str | None = None,
+    context_identifier: str | None = None,
+    challenge_id=None,
 ) -> EmailAuthChallenge | None:
     queryset = (
         EmailAuthChallenge.objects.select_for_update()
@@ -246,6 +270,12 @@ def _consume_verification_token(
     )
     if member is not None:
         queryset = queryset.filter(member=member)
+    if target_email is not None:
+        queryset = queryset.filter(target_email__iexact=normalize_email(target_email))
+    if context_identifier is not None:
+        queryset = queryset.filter(context_identifier=context_identifier)
+    if challenge_id is not None:
+        queryset = queryset.filter(pk=challenge_id)
 
     # No arbitrary cap: the candidate set is tightly scoped (purpose + VERIFIED +
     # member) and at most one row can match a given token hash. A prior [:10] slice

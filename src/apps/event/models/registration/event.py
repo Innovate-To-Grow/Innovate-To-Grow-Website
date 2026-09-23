@@ -20,18 +20,36 @@ class Event(ProjectControlModel):
     )
     allow_secondary_email = models.BooleanField(
         default=False,
-        help_text="Prompt registrants to enter a secondary email address.",
+        verbose_name="Collect secondary email",
+        help_text="Show the secondary email field on the registration form.",
+    )
+    verify_secondary_email = models.BooleanField(
+        default=False,
+        db_default=False,
+        verbose_name="Verify secondary email if provided",
+        help_text="Require verification when a secondary email address is provided.",
+    )
+    require_secondary_email = models.BooleanField(
+        default=False,
+        db_default=False,
+        verbose_name="Require secondary email",
+        help_text="Require registrants to provide a secondary email address.",
     )
     collect_phone = models.BooleanField(
         default=False,
-        verbose_name="Prompt for Phone Number",
-        help_text="Prompt registrants to enter a phone number on the registration form.",
+        verbose_name="Collect phone number",
+        help_text="Show the phone number field on the registration form.",
     )
     verify_phone = models.BooleanField(
         default=False,
-        help_text=(
-            "Require phone number verification via SMS code. Only available when Prompt for Phone Number is enabled."
-        ),
+        verbose_name="Verify phone if provided",
+        help_text="Require SMS verification when a phone number is provided.",
+    )
+    require_phone = models.BooleanField(
+        default=False,
+        db_default=False,
+        verbose_name="Require phone number",
+        help_text="Require registrants to provide a phone number.",
     )
     ticket_login_validity_days = models.PositiveSmallIntegerField(
         default=30,
@@ -92,6 +110,18 @@ class Event(ProjectControlModel):
                 condition=models.Q(collect_phone=True) | models.Q(verify_phone=False),
                 name="event_verify_phone_requires_prompt",
             ),
+            models.CheckConstraint(
+                condition=models.Q(collect_phone=True) | models.Q(require_phone=False),
+                name="event_require_phone_requires_collect",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(allow_secondary_email=True) | models.Q(verify_secondary_email=False),
+                name="event_verify_email_requires_collect",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(allow_secondary_email=True) | models.Q(require_secondary_email=False),
+                name="event_require_email_requires_collect",
+            ),
         ]
 
     def __str__(self):
@@ -116,8 +146,16 @@ class Event(ProjectControlModel):
         super().clean()
         if self.date and self.end_date and self.end_date < self.date:
             raise ValidationError({"end_date": "End date cannot be before start date."})
-        if self.verify_phone and not self.collect_phone:
-            raise ValidationError({"verify_phone": "Cannot verify phone without prompting for a phone number."})
+        errors = {}
+        for collect, dependent_fields in (
+            (self.collect_phone, ("verify_phone", "require_phone")),
+            (self.allow_secondary_email, ("verify_secondary_email", "require_secondary_email")),
+        ):
+            for field in dependent_fields:
+                if not collect and getattr(self, field):
+                    errors[field] = "Enable Collect before enabling this option."
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         if self.end_date is None and self.date is not None:

@@ -36,6 +36,7 @@ class EventRegistration(ProjectControlModel):
     attendee_last_name = models.CharField(max_length=150, blank=True, default="")
     attendee_email = models.EmailField(blank=True, default="")
     attendee_secondary_email = models.EmailField(blank=True, default="")
+    secondary_email_verified = models.BooleanField(default=False, db_default=False)
     attendee_phone = models.CharField(max_length=30, blank=True, default="")
     phone_verified = models.BooleanField(default=False)
     attendee_organization = models.CharField(max_length=255, blank=True, default="")
@@ -83,10 +84,6 @@ class EventRegistration(ProjectControlModel):
             self.attendee_last_name = self.member.last_name or ""
         if not self.attendee_email:
             self.attendee_email = self.member.get_primary_email()
-        if not self.attendee_secondary_email and self.event.allow_secondary_email:
-            secondary = self.member.contact_emails.filter(email_type="secondary").order_by("created_at").first()
-            if secondary:
-                self.attendee_secondary_email = secondary.email_address
         if not self.attendee_organization:
             self.attendee_organization = getattr(self.member, "organization", "") or ""
         super().save(*args, **kwargs)

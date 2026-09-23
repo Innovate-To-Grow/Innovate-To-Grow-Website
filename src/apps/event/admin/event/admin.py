@@ -78,14 +78,23 @@ class QuestionInline(EventRelatedInlineMixin, TabularInline):
 
 
 class EventAdminForm(forms.ModelForm):
-    verify_phone_dependency_hint_id = "event-verify-phone-dependency-hint"
+    contact_dependency_hints = {
+        "verify_phone": "event-phone-dependency-hint",
+        "require_phone": "event-phone-dependency-hint",
+        "verify_secondary_email": "event-secondary-email-dependency-hint",
+        "require_secondary_email": "event-secondary-email-dependency-hint",
+    }
 
     class Meta:
         model = Event
         fields = "__all__"
         labels = {
-            "allow_secondary_email": "Prompt for Second Email",
-            "collect_phone": "Prompt for Phone Number",
+            "collect_phone": "Collect",
+            "verify_phone": "Verify if provided",
+            "require_phone": "Required",
+            "allow_secondary_email": "Collect",
+            "verify_secondary_email": "Verify if provided",
+            "require_secondary_email": "Required",
         }
 
     def __init__(self, *args, **kwargs):
@@ -97,11 +106,12 @@ class EventAdminForm(forms.ModelForm):
             and self.instance.date is not None
         ):
             self.initial["end_date"] = self.instance.date
-        widget = self.fields["verify_phone"].widget
-        described_by = str(widget.attrs.get("aria-describedby") or "").split()
-        if self.verify_phone_dependency_hint_id not in described_by:
-            described_by.append(self.verify_phone_dependency_hint_id)
-        widget.attrs["aria-describedby"] = " ".join(described_by)
+        for field_name, hint_id in self.contact_dependency_hints.items():
+            widget = self.fields[field_name].widget
+            described_by = str(widget.attrs.get("aria-describedby") or "").split()
+            if hint_id not in described_by:
+                described_by.append(hint_id)
+            widget.attrs["aria-describedby"] = " ".join(described_by)
 
     class Media:
         css = {"all": ("event/css/event_admin.css",)}
@@ -146,13 +156,17 @@ class EventAdmin(BaseModelAdmin):
             },
         ),
         (
-            "Registration Form Options",
+            "Phone Number",
             {
-                "description": "Control which optional fields appear on the registration form.",
-                "fields": (
-                    "allow_secondary_email",
-                    ("collect_phone", "verify_phone"),
-                ),
+                "description": "Choose whether to collect, verify, and require a phone number.",
+                "fields": ("collect_phone", "verify_phone", "require_phone"),
+            },
+        ),
+        (
+            "Secondary Email",
+            {
+                "description": "Choose whether to collect, verify, and require a secondary email address.",
+                "fields": ("allow_secondary_email", "verify_secondary_email", "require_secondary_email"),
             },
         ),
         (
@@ -275,6 +289,11 @@ class EventAdmin(BaseModelAdmin):
 
     def get_confirmation_diff(self, request, obj, form, formsets, action_type):
         diff = super().get_confirmation_diff(request, obj, form, formsets, action_type)
+        for row in diff:
+            if row["field"] in {"collect_phone", "verify_phone", "require_phone"}:
+                row["label"] = f"Phone Number: {row['label']}"
+            elif row["field"] in {"allow_secondary_email", "verify_secondary_email", "require_secondary_email"}:
+                row["label"] = f"Secondary Email: {row['label']}"
         if action_type != "add":
             return diff + compute_formsets_diff(formsets)
 
@@ -345,19 +364,20 @@ class EventAdmin(BaseModelAdmin):
     def date_range(self, obj):
         return format_event_date_range(obj.date, obj.effective_end_date)
 
-    @display(description="2nd Email", label={"on": "success", "off": "info"})
+    @staticmethod
+    def _contact_badge(collect, verify, required):
+        if not collect:
+            return "off", "Off"
+        label = "Required" if required else "Optional"
+        return ("verify", f"{label} + verification") if verify else ("collect", label)
+
+    @display(description="Secondary Email", label={"verify": "warning", "collect": "success", "off": "info"})
     def secondary_email_badge(self, obj):
-        if obj.allow_secondary_email:
-            return "on", "On"
-        return "off", "Off"
+        return self._contact_badge(obj.allow_secondary_email, obj.verify_secondary_email, obj.require_secondary_email)
 
     @display(
         description="Phone",
-        label={"prompt_verify": "warning", "prompt": "success", "off": "info"},
+        label={"verify": "warning", "collect": "success", "off": "info"},
     )
     def phone_badge(self, obj):
-        if obj.collect_phone and obj.verify_phone:
-            return "prompt_verify", "Prompt + verification"
-        if obj.collect_phone:
-            return "prompt", "Prompt"
-        return "off", "Off"
+        return self._contact_badge(obj.collect_phone, obj.verify_phone, obj.require_phone)
