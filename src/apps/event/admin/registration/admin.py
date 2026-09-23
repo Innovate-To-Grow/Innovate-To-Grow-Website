@@ -44,6 +44,7 @@ class EventRegistrationAdmin(
         "attendee_secondary_email",
         "attendee_phone",
         "phone_verified",
+        "secondary_email_verified",
         "ticket",
         "event",
         "created_at",

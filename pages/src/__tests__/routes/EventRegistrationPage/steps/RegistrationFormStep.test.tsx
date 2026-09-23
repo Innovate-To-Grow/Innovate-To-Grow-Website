@@ -17,10 +17,14 @@ const baseOptions: EventRegistrationOptions = {
   allow_secondary_email: false,
   collect_phone: false,
   verify_phone: false,
+  require_phone: false,
+  verify_secondary_email: false,
+  require_secondary_email: false,
   tickets: [{id: 'ticket-1', name: 'General Admission'}],
   questions: [],
   registration: null,
   member_emails: ['ada@example.com'],
+  member_secondary_email: null,
   member_profile: {
     first_name: 'Ada',
     middle_name: '',
@@ -62,6 +66,14 @@ const renderForm = (
     onAnswerChange: vi.fn(),
     onSecondaryEmailChange: vi.fn(),
     onPhoneChange: vi.fn(),
+    secondaryEmailCode: '',
+    secondaryEmailCodeSent: false,
+    secondaryEmailSending: false,
+    secondaryEmailVerified: false,
+    verifyingSecondaryEmail: false,
+    onSecondaryEmailCodeChange: vi.fn(),
+    onSendSecondaryEmailCode: vi.fn(),
+    onVerifySecondaryEmailCode: vi.fn(),
     phoneCode: '',
     phoneCodeSent: false,
     phoneSending: false,
@@ -107,17 +119,17 @@ describe('RegistrationFormStep', () => {
   it('prompts for an optional phone number without requiring verification', () => {
     const {onSubmit} = renderForm({collect_phone: true, verify_phone: false});
 
-    expect(screen.getByLabelText('Phone Number')).toBeInTheDocument();
-    expect(screen.queryByRole('button', {name: 'Send Code'})).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Phone Number/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Send phone code'})).not.toBeInTheDocument();
     submitForm();
     expect(onSubmit).toHaveBeenCalledOnce();
   });
 
-  it('requires phone verification when both phone settings are on', () => {
-    const {onSubmit} = renderForm({collect_phone: true, verify_phone: true});
+  it('requires verification for a supplied phone when verification is enabled', () => {
+    const {onSubmit} = renderForm({collect_phone: true, verify_phone: true}, {attendeePhone: '2025550123'});
 
     expect(screen.getByLabelText(/Phone Number/)).toBeInTheDocument();
-    expect(screen.getByRole('button', {name: 'Send Code'})).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Send phone code'})).toBeInTheDocument();
     submitForm();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText('Phone number must be verified.')).toBeInTheDocument();
@@ -130,6 +142,97 @@ describe('RegistrationFormStep', () => {
     submitForm();
     expect(onSubmit).toHaveBeenCalledOnce();
     expect(screen.queryByText('Phone number must be verified.')).not.toBeInTheDocument();
+  });
+
+  describe.each(['phone', 'secondary email'] as const)('%s settings', (contact) => {
+    const flags = (collect: boolean, verify: boolean, required: boolean): Partial<EventRegistrationOptions> => contact === 'phone'
+      ? {collect_phone: collect, verify_phone: verify, require_phone: required}
+      : {allow_secondary_email: collect, verify_secondary_email: verify, require_secondary_email: required};
+    const values = (value: string, verified = false): Partial<RegistrationFormStepProps> => contact === 'phone'
+      ? {attendeePhone: value, phoneVerified: verified}
+      : {attendeeSecondaryEmail: value, secondaryEmailVerified: verified};
+    const validValue = contact === 'phone' ? '2025550123' : 'personal@example.com';
+    const label = contact === 'phone' ? /Phone Number/ : /Secondary Email/;
+    const requiredError = contact === 'phone' ? 'Phone number is required.' : 'Secondary email is required.';
+    const verificationError = contact === 'phone' ? 'Phone number must be verified.' : 'Secondary email must be verified.';
+
+    it.each([false, true])('allows a blank optional contact with verification=%s', (verify) => {
+      const {onSubmit} = renderForm(flags(true, verify, false));
+      expect(screen.getByLabelText(label)).toHaveAttribute('aria-required', 'false');
+      submitForm();
+      expect(onSubmit).toHaveBeenCalledOnce();
+    });
+
+    it.each([false, true])('requires a nonblank contact with verification=%s', (verify) => {
+      const {onSubmit} = renderForm(flags(true, verify, true));
+      expect(screen.getByLabelText(label)).toHaveAttribute('aria-required', 'true');
+      submitForm();
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(screen.getByText(requiredError)).toBeInTheDocument();
+      expect(screen.queryByText(verificationError)).not.toBeInTheDocument();
+    });
+
+    it('accepts a required unverified value when verification is disabled', () => {
+      const {onSubmit} = renderForm(flags(true, false, true), values(validValue));
+      submitForm();
+      expect(onSubmit).toHaveBeenCalledOnce();
+    });
+
+    it('blocks an optional supplied value until verified', () => {
+      const {onSubmit} = renderForm(flags(true, true, false), values(validValue));
+      submitForm();
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(screen.getByText(verificationError)).toBeInTheDocument();
+    });
+
+    it('accepts a required verified value', () => {
+      const {onSubmit} = renderForm(flags(true, true, true), values(validValue, true));
+      submitForm();
+      expect(onSubmit).toHaveBeenCalledOnce();
+      expect(screen.getByText('Verified')).toBeInTheDocument();
+    });
+
+    it('ignores dependent settings and stale values when collection is disabled', () => {
+      const {onSubmit} = renderForm(flags(false, true, true), values('ada@example.com'));
+      expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+      submitForm();
+      expect(onSubmit).toHaveBeenCalledOnce();
+    });
+  });
+
+  it.each([
+    ['invalid', 'Enter a valid secondary email address.'],
+    [' ADA@EXAMPLE.COM ', 'Secondary email must be different from the primary email.'],
+  ])('blocks invalid secondary email %s before sending or submitting', (email, error) => {
+    const {onSubmit} = renderForm(
+      {allow_secondary_email: true, verify_secondary_email: true},
+      {attendeeSecondaryEmail: email},
+    );
+    expect(screen.getByRole('button', {name: 'Send secondary email code'})).toBeDisabled();
+    submitForm();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(error)).toBeInTheDocument();
+  });
+
+  it('keeps phone and secondary email verification controls distinct', () => {
+    const onSecondaryEmailCodeChange = vi.fn();
+    const onSendSecondaryEmailCode = vi.fn();
+    const onVerifySecondaryEmailCode = vi.fn();
+    renderForm(
+      {allow_secondary_email: true, verify_secondary_email: true, collect_phone: true, verify_phone: true},
+      {
+        attendeePhone: '2025550123', attendeeSecondaryEmail: 'personal@example.com',
+        phoneCodeSent: true, secondaryEmailCodeSent: true, secondaryEmailCode: '123456',
+        onSecondaryEmailCodeChange, onSendSecondaryEmailCode, onVerifySecondaryEmailCode,
+      },
+    );
+    fireEvent.change(screen.getByLabelText('Secondary email verification code'), {target: {value: '12x34567'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Resend secondary email code'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Verify secondary email'}));
+    expect(onSecondaryEmailCodeChange).toHaveBeenCalledWith('123456');
+    expect(onSendSecondaryEmailCode).toHaveBeenCalledOnce();
+    expect(onVerifySecondaryEmailCode).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText('Phone verification code')).toBeInTheDocument();
   });
 
   it('requires answers to required questions', () => {
@@ -207,7 +310,7 @@ describe('RegistrationFormStep', () => {
     fireEvent.change(screen.getByLabelText(/Phone Number/), {target: {value: '(202) 555-0123'}});
     fireEvent.focus(screen.getByLabelText(/Phone Number/));
     fireEvent.blur(screen.getByLabelText(/Phone Number/));
-    fireEvent.change(screen.getByLabelText('6-digit verification code'), {target: {value: '123456'}});
+    fireEvent.change(screen.getByLabelText('Phone verification code'), {target: {value: '123456'}});
 
     expect(onSecondaryEmailChange).toHaveBeenCalledWith('x@example.com');
     expect(onPhoneChange).toHaveBeenCalledWith('2025550123');

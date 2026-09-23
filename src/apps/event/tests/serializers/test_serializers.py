@@ -160,6 +160,7 @@ class BuildRegistrationPayloadTest(TestCase):
             "attendee_name",
             "attendee_email",
             "attendee_secondary_email",
+            "secondary_email_verified",
             "attendee_phone",
             "phone_verified",
             "phone_verification_required",

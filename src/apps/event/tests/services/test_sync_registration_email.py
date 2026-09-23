@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.db import IntegrityError
 from django.test import TestCase
 
@@ -10,6 +11,7 @@ from apps.event.tests.helpers import make_member
 
 class SyncSecondaryEmailToAccountTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.member = make_member(email="primary@example.com")
 
     def test_creates_secondary_contact_email(self):
@@ -48,3 +50,23 @@ class SyncSecondaryEmailToAccountTest(TestCase):
         ContactEmail.objects.create(member=self.member, email_address="Mixed@Example.com", email_type="secondary")
         sync_secondary_email_to_account(self.member, "mixed@example.com")
         self.assertEqual(ContactEmail.objects.filter(email_address__iexact="mixed@example.com").count(), 1)
+
+    def test_stale_email_read_cannot_verify_changed_owner_or_address(self):
+        other = make_member(email="other@example.com")
+        for changes in ({"member": other}, {"email_address": "changed@example.com"}):
+            with self.subTest(changes=changes):
+                contact = ContactEmail.objects.create(
+                    member=self.member, email_address="secondary@example.com", email_type="secondary"
+                )
+                ContactEmail.objects.filter(pk=contact.pk).update(**changes)
+                with patch("django.db.models.query.QuerySet.first", return_value=contact):
+                    sync_secondary_email_to_account(self.member, "secondary@example.com", verified=True)
+                contact.refresh_from_db()
+                self.assertFalse(contact.verified)
+                contact.delete()
+
+    def test_concurrent_insert_conflict_does_not_break_registration_transaction(self):
+        ContactEmail.objects.create(member=self.member, email_address="secondary@example.com", email_type="secondary")
+        with patch("django.db.models.query.QuerySet.first", return_value=None):
+            sync_secondary_email_to_account(self.member, "secondary@example.com", verified=True)
+        self.assertEqual(ContactEmail.objects.filter(member=self.member).count(), 2)

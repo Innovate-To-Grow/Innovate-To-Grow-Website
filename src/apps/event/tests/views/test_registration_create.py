@@ -376,10 +376,11 @@ class EventRegistrationCreateViewTest(TestCase):
         self.assertEqual(reg.attendee_phone, "+15551234567")
         self.assertTrue(reg.phone_verified)
 
-    def test_phone_is_required_when_verification_is_enabled(self):
+    def test_phone_is_required_only_when_required_is_enabled(self):
         self.event.collect_phone = True
         self.event.verify_phone = True
-        self.event.save(update_fields=["collect_phone", "verify_phone"])
+        self.event.require_phone = True
+        self.event.save(update_fields=["collect_phone", "verify_phone", "require_phone"])
         response = self._post()
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], "A verified phone number is required for this event.")
+        self.assertEqual(response.data["detail"], "A phone number is required for this event.")

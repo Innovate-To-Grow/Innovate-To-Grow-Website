@@ -40,7 +40,16 @@ Event-bearing registration and ticket responses expose `date` as the inclusive s
 
 #### `GET /event/registration-options/`
 
-Returns one open event's registration form structure: available ticket types, custom questions, the event date range, and form configuration (whether to prompt for secondary email or a phone number, and whether phone verification is required).
+Returns one open event's registration form structure: available ticket types, custom questions, the event date range, and independent contact collection, verification, and requiredness settings.
+
+| Contact | Collect | Verify if provided | Required |
+|---------|---------|--------------------|----------|
+| Phone number | `collect_phone` | `verify_phone` | `require_phone` |
+| Secondary email | `allow_secondary_email` | `verify_secondary_email` | `require_secondary_email` |
+
+Verification and requiredness can only be enabled when collection is enabled. With collection enabled, an optional contact may be left blank even when verification is enabled. A supplied contact must have a valid format and, when verification is enabled, a valid verification proof. Requiredness alone does not require verification. Secondary email must differ from the member's primary email, ignoring case.
+
+Authenticated responses retain `member_emails` and `member_phone`, and add `member_secondary_email`: either `null` or `{ "email_address": "personal@example.com", "verified": true }`. `member_primary_email` identifies the actual primary email, or an empty string when none exists; the first item in `member_emails` is not necessarily a primary email. Profile contacts are explicit form prefills; submitting a blank optional contact does not silently refill it from the account. The server independently checks account contact ownership and verification on submission.
 
 **Query parameters:**
 - `event_slug` — preferred event selector.
@@ -68,8 +77,10 @@ Creates an event registration for an event whose `registration_open=true`.
   "attendee_first_name": "Jane",
   "attendee_last_name": "Doe",
   "attendee_organization": "Example Co",
-  "attendee_secondary_email": null,
-  "attendee_phone": null,
+  "attendee_secondary_email": "personal@example.com",
+  "secondary_email_verification_challenge_id": "<uuid>",
+  "secondary_email_verification_token": "<short-lived-token>",
+  "attendee_phone": "",
   "answers": [
     {"question_id": "<uuid>", "answer": "Computer Science"}
   ]
@@ -84,8 +95,36 @@ Creates an event registration for an event whose `registration_open=true`.
   registration snapshot to Google Sheets
 - One registration per member per event (unique constraint)
 - The same member can register once for each different open event
+- Optional contact fields may be omitted or set to an empty string. Collected values are validated against the selected event's current settings.
+- A member's own matching verified account contact can be reused without another code. Otherwise secondary-email verification requires both its challenge ID and verification token; phone verification uses `phone_verification_challenge_id`.
+- Verification proofs are bound to the member, event, purpose, and normalized contact. Proof consumption, registration, account synchronization, and durable delivery jobs commit atomically; failure rolls them back together.
+- Contact synchronization preserves trusted verification and never transfers a contact owned by someone else. Sending or checking a registration code does not create or update account contacts.
+- Registration responses include `phone_verified` and `secondary_email_verified`; they never return submitted verification tokens.
+- Missing, expired, or invalid required proofs return `400` with a descriptive `detail` and `code` of `phone_verification_required` or `secondary_email_verification_required`. Clients clear that contact's stale verification state and allow a new code request without clearing its value.
 
 **Barcode format:** `I2G|EVENT|{event_slug}|{ticket_code}`
+
+#### `POST /event/send-secondary-email-code/`
+
+**Permission:** Authenticated
+
+Request: `{ "event_slug": "demo-day", "email": "personal@example.com" }`, together with the shared send-verification proof fields for operation `event.send_secondary_email_code`. The event must be open and have both secondary-email collection and verification enabled.
+
+Returns `email` and `challenge_id` through the standard guarded-send response. The frontend uses `withVerifiedSend` for preflight, idempotency, and retry handling. Existing email delivery, resend cooldown, destination quotas, and per-member limits apply.
+
+#### `POST /event/verify-secondary-email-code/`
+
+**Permission:** Authenticated
+
+Request: `{ "event_slug": "demo-day", "email": "personal@example.com", "challenge_id": "<uuid>", "code": "123456" }`.
+
+Success returns `{ "email": "personal@example.com", "verified": true, "challenge_id": "<uuid>", "verification_token": "<short-lived-token>" }` plus a descriptive `detail`. Submit the challenge ID and token with registration. Editing the email or switching events invalidates the frontend's stored proof. Codes and tokens expire and cannot be replayed.
+
+### Contact settings migration
+
+Existing events initialize `require_phone` from their previous `verify_phone` value, preserving required phone entry. Secondary email remains optional and unverified by default. New events default all contact settings to false; existing registrations are not retroactively marked email-verified.
+
+The additive migrations retain database defaults for old-version inserts and preserve the earlier event schema's deferred compatibility columns. During a future mixed-version rollout, contact settings must be edited through the new admin: an older admin cannot clear the new required flags, and conflicting edits are rejected atomically by database constraints. This change does not deploy or modify any production event settings by itself.
 
 ### Tickets
 

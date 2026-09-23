@@ -18,3 +18,19 @@ export function getRegistrationErrorMessage(err: unknown): string {
 
   return 'An unexpected error occurred. Please try again.';
 }
+
+export function normalizeRegistrationEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+export function getSecondaryEmailError(value: string, primaryEmail: string): string | null {
+  const email = normalizeRegistrationEmail(value);
+  if (!email) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return 'Enter a valid secondary email address.';
+  }
+  if (email === normalizeRegistrationEmail(primaryEmail)) {
+    return 'Secondary email must be different from the primary email.';
+  }
+  return null;
+}
