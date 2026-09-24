@@ -6,56 +6,118 @@ How data moves between the Django backend and Google Sheets.
 
 **Service:** `src/apps/event/services/registration_sheet_sync/`
 
-When a new event registration is created, the same database transaction
-creates a deduplicated `BackgroundJob` outbox row. The ECS worker appends the
-registration snapshot to the configured Google Sheet.
+Registration sync is a one-way projection of database records into managed
+spreadsheet cells. It inserts missing registrations, updates existing ones by
+registration UUID, and preserves columns that belong to spreadsheet editors.
 
-### Flow
+### Configuration and management
 
-1. `EventRegistrationCreateView` saves the registration
-2. Creates the Sheets job in the registration transaction when durable jobs
-   are enabled
-3. A worker claims the job and locks the event row, serializing syncs per event
-4. The worker captures a cutoff and selects the complete database snapshot
-   through that cutoff
-5. It reads existing stable registration UUIDs and appends only missing rows
-6. It advances the audit cursor only after the write is confirmed
+Open an Event and select **Manage sync**. The dedicated management page contains
+connection settings, synchronization timing, field selection and labels, initial
+column mappings, a read-only preview, and execution history. Merely opening the
+page does not call Google or synchronize data.
 
-### Sheet columns
+`RegistrationSheetSyncConfig` stores per-event settings and durable scheduling
+state. Existing Event destination and last-sync fields remain available for
+compatibility. New event copies do not inherit a sheet destination or pending
+synchronization work.
 
-| Column | Source |
-|--------|--------|
-| Order | Sequential number |
-| First Name | `attendee_first_name` |
-| Last Name | `attendee_last_name` |
-| Phone | `attendee_phone` (if collected) |
-| When Started | Registration creation time |
-| Last Updated | Registration update time |
-| Membership Primary | `attendee_email` |
-| Membership Secondary | `attendee_secondary_email` when enabled |
-| Ticket Type | Ticket type name |
-| Custom questions | Dynamic columns based on `Question` model |
-| Registration ID | Stable registration UUID; final, application-managed, and protected |
+### Timing and durable work
 
-### Durable idempotent append
+- **Automatic:** Changes wait for a quiet window (15 seconds by default), capped
+  at 60 seconds from the first pending change. Bursts share a pending job.
+- **Interval:** Pending changes are collected into a batch with the configured
+  delay; later changes do not continuously postpone that batch.
+- **Manual:** Changes remain pending until an administrator chooses **Sync now**.
 
-`BackgroundJob` dedupe keys prevent duplicate queue records. The worker uses
-the final `Registration ID` column to make provider retries idempotent. It
-re-reads the full bounded snapshot on each run so a transaction that committed
-after an earlier read cannot be skipped because of timestamp/cursor ordering.
-`RegistrationSheetSyncLog` records the cursor range, selected IDs, written
-count, status, and sanitized error.
+The existing background worker executes durable jobs. Scheduling no longer uses
+in-process timers. Dirty state and enqueueing commit or roll back with the source
+change. A run captures a generation; changes arriving during that run remain
+pending for a subsequent run. The scheduling state lock is separate from the lock
+that serializes provider writes, so a slow Google request does not hold the
+scheduling lock.
 
-### Full replace sync
+A database-backed worker must be running for queued synchronization to execute.
+The batching delay is an eligibility time, not a delivery deadline: worker load,
+provider throttling, and retries can increase the actual delay.
 
-A recovery mechanism that replaces all sheet data with current database records. Useful when:
-- The sheet data has drifted from the database
-- Rows were accidentally deleted from the sheet
-- A bulk re-sync is needed after a data correction
+### Stable field identity
 
-Triggered via Django admin action on the Event model. A populated sheet with a
-legacy or drifted header is duplicated before replacement; the exact new
-header is written and the final `Registration ID` column is protected.
+Each managed column has Google Sheets developer metadata identifying its field.
+Built-in fields use stable keys; custom questions use their UUID, not their
+editable wording. The visible header can be renamed, and whole columns can be
+moved or inserted without changing field identity. The configured header row is
+also recorded in the mapping.
+
+The protected, hidden **Registration ID** column identifies rows and may appear
+anywhere. Normal synchronization updates only managed cells; it does not clear
+the worksheet or rewrite complete rows containing custom formulas or annotations.
+New fields can add columns. Disabled or removed fields are left in place rather
+than erased. Writes use literal cell values so attendee input and question labels
+cannot become spreadsheet formulas.
+
+An explicit display-label change in the management page updates the bound header
+once. Subsequent edits to that visible header in Google Sheets remain intact
+until the configured label changes again. New fields in an already managed sheet
+receive new columns; they never take over a custom column merely because its
+heading matches a question label.
+
+Metadata must be unambiguous. Duplicate field bindings, duplicate registration
+IDs, unknown registration IDs, and missing identity anchors produce actionable
+conflicts instead of guessed writes. Moving individual cell contents is different
+from moving entire columns or sorting complete rows: it can break the relationship
+between a row and its notes. Editors should operate on complete records.
+
+### Connecting existing worksheets
+
+An empty worksheet can be initialized automatically. An existing worksheet with
+recognizable headers is mapped using unique normalized names and known aliases;
+manual column mappings resolve labels the system cannot recognize. Once metadata
+exists it takes precedence over visible header wording.
+
+A populated legacy sheet without registration IDs requires a reviewed migration.
+The preview displays candidate row matches; only unambiguous matches using a
+strong combination of registration fields are eligible. Name-only or email-only
+matches are insufficient. Applying the migration backs up the existing worksheet
+before binding rows. A stale preview must be refreshed before applying.
+
+If an existing sheet cannot be safely adopted, administrators can create a fresh
+managed worksheet. Recovery preserves the original worksheet and backs it up;
+it does not clear the active sheet and then attempt a separate replacement write.
+The destination switches only after the new worksheet is populated successfully.
+
+### Reconciliation and audit
+
+Every run reconciles a bounded database snapshot with sheet registration IDs.
+Retries reread provider state, including after a provider write succeeds but the
+local transaction fails, so retrying does not blindly append the same UUID again.
+Changed registrations update in place. Deleted registrations are marked only
+when a durable receipt establishes that this integration previously synchronized
+that identity; an unknown UUID is a conflict, never an inferred deletion.
+
+The management page separates queued/running/attention state from the last
+successful synchronization. Audit results distinguish inserted, updated,
+unchanged, deleted, and conflicting rows. Temporary provider failures can retry;
+schema conflicts require an administrator to review the mapping. Old failures
+must not replace the current status of a newer successful run.
+
+Failure logs retain backup and newly created worksheet IDs and indicate whether
+Google had already accepted the managed write. This makes partial cross-system
+completion inspectable without deleting the original sheet or hiding recovery
+artifacts.
+
+Google applies requests within one `spreadsheets.batchUpdate` atomically, but
+there is no cross-system transaction spanning Google Sheets and PostgreSQL, nor
+an exclusive lock against spreadsheet editors. The engine rechecks identity
+anchors before writing and reconciles provider state on retry. Avoid concurrent
+structural edits during a run. See Google's
+[batch update contract](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/batchUpdate)
+and [developer metadata guide](https://developers.google.com/workspace/sheets/api/guides/metadata).
+
+On PostgreSQL, a destination-scoped transaction lock also serializes different
+events targeting the same worksheet. The second event then sees the first event's
+ownership metadata and stops instead of overwriting it. SQLite development uses
+its database write serialization; concurrency regression tests run on PostgreSQL.
 
 ## Schedule sync (Sheets → Django)
 

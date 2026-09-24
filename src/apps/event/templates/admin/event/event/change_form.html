@@ -1,6 +1,13 @@
 {% extends "admin/change_form.html" %}
 
 {% block form_before %}
+    {% if original and not add %}
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-900">
+            <div><strong>Registration Google Sheet</strong><p class="mt-1 text-sm text-base-500">Connection, sync timing, columns, and recent results.</p></div>
+            <a href="{% url 'admin:event_event_sheet_sync' original.pk %}" class="i2g-admin-action i2g-admin-action--primary">Manage sync</a>
+        </div>
+    {% endif %}
+
     {% if add %}
         <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-900">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-end">

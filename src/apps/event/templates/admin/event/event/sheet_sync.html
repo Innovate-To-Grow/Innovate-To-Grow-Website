@@ -1,0 +1,178 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'event/css/registration_sheet_sync.css' %}">
+    <script src="{% static 'event/js/registration_sheet_sync.js' %}" defer></script>
+{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="sheet-sync-breadcrumbs">
+        <a href="{% url 'admin:index' %}">Home</a><span>/</span>
+        <a href="{% url 'admin:event_event_changelist' %}">Events</a><span>/</span>
+        <a href="{{ change_url }}">{{ event.name }}</a><span>/</span><span>Sheet sync</span>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="sheet-sync-page">
+    <header class="sheet-sync-heading">
+        <div>
+            <p class="sheet-sync-eyebrow">{{ event.name }}</p>
+            <h1>Registration sheet sync</h1>
+            <p>Keep registration data up to date while preserving your worksheet layout, formulas, and other content.</p>
+        </div>
+        <nav class="sheet-sync-links" aria-label="Event tools">
+            <a href="{{ change_url }}">Back to event</a>
+            <a href="{{ registrations_url }}">Registrations</a>
+            <a href="{{ sync_log_url }}">Sync history</a>
+        </nav>
+    </header>
+
+    {% if sync_error %}<div class="sheet-sync-notice sheet-sync-notice--error" role="alert">{{ sync_error }}</div>{% endif %}
+    {% if form.errors %}<div class="sheet-sync-notice sheet-sync-notice--error" role="alert">Review the highlighted settings below. Nothing was saved or synced.{{ form.non_field_errors }}</div>{% endif %}
+
+    <section class="sheet-sync-card" aria-labelledby="sync-status-heading">
+        <div class="sheet-sync-card-heading">
+            <div><h2 id="sync-status-heading">Sync status</h2><p>Saved status from the background worker. Opening this page does not contact Google.</p></div>
+            <form method="post" action="{{ request.path }}">
+                {% csrf_token %}
+                <button type="submit" name="action" value="sync_now" class="sheet-sync-button sheet-sync-button--primary" {% if not can_change or not event.registration_sheet_id %}disabled{% endif %}>Sync now</button>
+            </form>
+        </div>
+        <dl class="sheet-sync-status-grid">
+            <div><dt>Status</dt><dd data-sync-status>{{ config.get_state_display }}</dd></div>
+            <div><dt>Last successful sync</dt><dd>{{ config.last_success_at|default:event.registration_sheet_synced_at|default:"Not yet synced" }}</dd></div>
+            <div><dt>Next scheduled sync</dt><dd>{{ config.next_sync_at|default:"Not scheduled" }}</dd></div>
+            <div><dt>Pending changes</dt><dd>{{ pending_changes }}</dd></div>
+        </dl>
+        <div class="sheet-sync-counts" aria-label="Last sync counts">
+            <span><strong>{{ config.last_added_count }}</strong> added</span>
+            <span><strong>{{ config.last_updated_count }}</strong> updated</span>
+            <span><strong>{{ config.last_deleted_count }}</strong> marked deleted</span>
+            <span><strong>{{ config.last_unchanged_count }}</strong> unchanged</span>
+            <span><strong>{{ config.last_header_changes_count }}</strong> header changes</span>
+            <span><strong>{{ config.last_conflict_count }}</strong> conflicts</span>
+        </div>
+        <p class="sheet-sync-hint">Pending changes count edits, not attendees. Sync now queues a safe update; the background worker must be running to complete it.</p>
+        {% if config.last_error or event.registration_sheet_sync_error %}<div class="sheet-sync-notice sheet-sync-notice--error" role="status">{{ config.last_error|default:event.registration_sheet_sync_error }}</div>{% endif %}
+    </section>
+
+    {% if review %}
+    <section class="sheet-sync-card sheet-sync-review" aria-labelledby="sync-review-heading">
+        <h2 id="sync-review-heading">Review before continuing</h2>
+        {% if review.operation == 'adoption' %}
+            <p>The matched legacy rows shown in the preview will receive stable registration identifiers. A backup will be created first, then managed registration data will be synchronized. Other rows and columns stay in place.</p>
+        {% elif review.operation == 'rebuild' %}
+            <p>A backup and a fresh, populated managed worksheet will be created. Sync will switch to the new worksheet. The current worksheet stays in the spreadsheet; its custom layout is not copied to the new worksheet.</p>
+        {% else %}
+            <p>A backup and a new managed worksheet will be created in this spreadsheet. After it is populated successfully, it becomes this event's sync destination. The current worksheet will remain available.</p>
+        {% endif %}
+        <p class="sheet-sync-hint">Review applies to the saved connection and settings below and expires after 10 minutes. If the sheet changes, preview again.</p>
+        <form method="post" action="{{ request.path }}" class="sheet-sync-confirm-form">
+            {% csrf_token %}
+            <input type="hidden" name="review_token" value="{{ review.token }}">
+            <label class="sheet-sync-check"><input type="checkbox" name="backup_acknowledged" required> I reviewed the preview and want a backup created before this operation.</label>
+            <div class="sheet-sync-actions">
+                <button type="submit" name="action" value="confirm_{{ review.operation }}" class="sheet-sync-button sheet-sync-button--primary">
+                    {% if review.operation == 'adoption' %}Back up and migrate matched rows{% elif review.operation == 'rebuild' %}Back up and rebuild in a new worksheet{% else %}Back up and create new worksheet{% endif %}
+                </button>
+                <a class="sheet-sync-button" href="{{ request.path }}">Cancel</a>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if preview %}
+    <section class="sheet-sync-card" id="sync-preview" aria-labelledby="sync-preview-heading">
+        <div class="sheet-sync-card-heading"><div><h2 id="sync-preview-heading">Connection and change preview</h2><p>Worksheet: <strong>{{ preview.connection.worksheet_title }}</strong> · Header row {{ preview.connection.header_row }}. No changes have been applied.</p></div></div>
+        <div class="sheet-sync-counts">
+            <span><strong>{{ preview.counts.added }}</strong> to add</span>
+            <span><strong>{{ preview.counts.updated }}</strong> to update</span>
+            <span><strong>{{ preview.counts.deleted }}</strong> to mark deleted</span>
+            <span><strong>{{ preview.counts.unchanged }}</strong> unchanged</span>
+            <span><strong>{{ preview.counts.header_changes }}</strong> header changes</span>
+        </div>
+        {% if preview.conflicts %}
+            <div class="sheet-sync-notice sheet-sync-notice--error"><strong>Resolve these conflicts before syncing:</strong><ul>{% for conflict in preview.conflicts %}<li>{{ conflict }}</li>{% endfor %}</ul></div>
+        {% elif preview.requires_adoption %}
+            <div class="sheet-sync-notice">This worksheet contains legacy rows. Review the matched rows below before migrating them.</div>
+        {% elif preview.can_sync %}
+            <p class="sheet-sync-ready">Ready for a safe sync.</p>
+        {% endif %}
+        <div class="sheet-sync-table-scroll">
+            <table class="sheet-sync-table">
+                <caption>Column preview</caption>
+                <thead><tr><th scope="col">Registration field</th><th scope="col">Sheet column</th><th scope="col">Ownership</th><th scope="col">Planned change</th></tr></thead>
+                <tbody>{% for column in preview.columns %}<tr><th scope="row">{{ column.label }}</th><td>{{ column.column|default:"New column" }}</td><td>{% if column.managed %}Managed{% else %}Not managed yet{% endif %}</td><td>{{ column.action }}</td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+        {% if preview.legacy_matches %}
+        <div class="sheet-sync-table-scroll">
+            <table class="sheet-sync-table">
+                <caption>Matched legacy rows</caption>
+                <thead><tr><th scope="col">Sheet row</th><th scope="col">Ticket code</th><th scope="col">Registration</th></tr></thead>
+                <tbody>{% for match in preview.legacy_matches %}<tr><td>{{ match.row }}</td><td>{{ match.ticket_code }}</td><td>{{ match.registration_id }}</td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+        {% endif %}
+        {% if preview.requires_adoption and not preview.conflicts %}
+            <form method="post" action="{{ request.path }}">{% csrf_token %}<p class="sheet-sync-hint">Migration uses saved settings. Save any edits below before reviewing.</p><button type="submit" name="action" value="review_adoption" class="sheet-sync-button" {% if not can_change %}disabled{% endif %}>Review legacy migration</button></form>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <form method="post" action="{{ request.path }}" id="sheet-sync-settings-form">
+        {% csrf_token %}
+        <fieldset {% if not can_change %}disabled{% endif %}>
+            <section class="sheet-sync-card" aria-labelledby="sync-connection-heading">
+                <div class="sheet-sync-card-heading"><div><h2 id="sync-connection-heading">Connection</h2><p>Choose the spreadsheet and worksheet for this event.</p></div><a href="{{ google_config_url }}">Google service account</a></div>
+                <div class="sheet-sync-form-grid">
+                    <div class="sheet-sync-field"><label for="{{ form.spreadsheet.id_for_label }}">{{ form.spreadsheet.label }}</label>{{ form.spreadsheet }}{{ form.spreadsheet.errors }}<p>{{ form.spreadsheet.help_text }}</p></div>
+                    <div class="sheet-sync-field"><label for="{{ form.worksheet_id.id_for_label }}">{{ form.worksheet_id.label }}</label>{{ form.worksheet_id }}{{ form.worksheet_id.errors }}<p>{{ form.worksheet_id.help_text }}</p></div>
+                </div>
+                <div class="sheet-sync-actions"><button type="submit" name="action" value="check_connection" class="sheet-sync-button">Check connection</button>{% if sheet_url %}<a href="{{ sheet_url }}" target="_blank" rel="noopener noreferrer">Open saved spreadsheet</a>{% endif %}</div>
+                <p class="sheet-sync-hint">Checking uses the values in this form and is read-only. Connection and column edits are saved only with Save settings.</p>
+            </section>
+
+            <section class="sheet-sync-card" aria-labelledby="sync-timing-heading">
+                <h2 id="sync-timing-heading">Sync timing</h2>
+                <div class="sheet-sync-field">{{ form.sync_mode }}{{ form.sync_mode.errors }}</div>
+                <p class="sheet-sync-hint" data-timing-hint="automatic">Wait 15 seconds after a change, with a maximum delay of 60 seconds while edits continue.</p>
+                <div class="sheet-sync-field sheet-sync-interval" data-interval-settings><label for="{{ form.interval_minutes.id_for_label }}">{{ form.interval_minutes.label }}</label>{{ form.interval_minutes }}{{ form.interval_minutes.errors }}<p>Changes are collected until the next interval. Additional edits do not push that time back.</p></div>
+                <p class="sheet-sync-hint" data-timing-hint="manual">Changes stay pending until you choose Sync now.</p>
+                <p class="sheet-sync-hint">Automatic and interval modes use the background worker. Refresh this page to see its latest saved status.</p>
+            </section>
+
+            <section class="sheet-sync-card" aria-labelledby="sync-columns-heading">
+                <h2 id="sync-columns-heading">Headers and columns</h2>
+                <div class="sheet-sync-field sheet-sync-header-row"><label for="{{ form.header_row.id_for_label }}">{{ form.header_row.label }}</label>{{ form.header_row }}{{ form.header_row.errors }}<p>Rows above the header are preserved.</p></div>
+                <p class="sheet-sync-hint">Choose fields and column labels. Leave Sheet column blank to match an existing header or add a new managed column. To map an existing column, enter its letter or number. Check connection to see current columns.</p>
+                <p class="sheet-sync-hint">Column mappings apply when a field is first connected. To move a managed column, move it in Google Sheets; sync follows that column.</p>
+                <datalist id="sheet-column-options">{% for column in preview.existing_columns %}<option value="{{ column.column }}">{{ column.label }}</option>{% endfor %}</datalist>
+                <div class="sheet-sync-table-scroll">
+                    <table class="sheet-sync-table sheet-sync-field-table">
+                        <caption>Registration export fields</caption>
+                        <thead><tr><th scope="col">Include</th><th scope="col">Registration field</th><th scope="col">Column label</th><th scope="col">Sheet column</th></tr></thead>
+                        <tbody>{% for row in form.field_rows %}<tr data-sync-field="{{ row.key }}"><td>{{ row.enabled }}{{ row.enabled.errors }}</td><th scope="row">{{ row.label }}{% if row.required %}<span class="sheet-sync-hint">Always included</span>{% endif %}</th><td>{{ row.column_label }}{{ row.column_label.errors }}</td><td>{{ row.column }}{{ row.column.errors }}</td></tr>{% endfor %}</tbody>
+                    </table>
+                </div>
+                <p class="sheet-sync-hint">Registration ID and Status stay enabled so rows can be matched safely and deleted registrations can be marked without deleting worksheet rows.</p>
+            </section>
+            <div class="sheet-sync-savebar"><button type="submit" name="action" value="preview" class="sheet-sync-button">Preview changes</button><button type="submit" name="action" value="save_settings" class="sheet-sync-button sheet-sync-button--primary">Save settings</button></div>
+        </fieldset>
+    </form>
+
+    <section class="sheet-sync-card" aria-labelledby="sync-worksheet-heading">
+        <h2 id="sync-worksheet-heading">New managed worksheet</h2>
+        <p>Create a separate worksheet with these saved export settings, then switch this event to it. The existing worksheet is backed up and preserved.</p>
+        <form method="post" action="{{ request.path }}">{% csrf_token %}<button type="submit" name="action" value="review_create" class="sheet-sync-button" {% if not can_change or not event.registration_sheet_id %}disabled{% endif %}>Review new worksheet</button></form>
+    </section>
+    <details class="sheet-sync-card sheet-sync-advanced">
+        <summary>Advanced: rebuild managed worksheet</summary>
+        <p>Use this when starting fresh is preferable to resolving existing mappings. Review the current sheet first. A backup and a new managed worksheet are created; the original worksheet remains unchanged.</p>
+        <form method="post" action="{{ request.path }}">{% csrf_token %}<button type="submit" name="action" value="review_rebuild" class="sheet-sync-button" {% if not can_change or not event.registration_sheet_id %}disabled{% endif %}>Review rebuild</button></form>
+    </details>
+</div>
+{% endblock %}

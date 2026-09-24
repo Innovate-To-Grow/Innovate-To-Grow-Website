@@ -12,6 +12,7 @@ from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 from ...models import Event, Question, Ticket
 from ...services.template.copy import EventCopyTemplate, build_event_copy_template
 from ...services.ticket.date_ranges import format_event_date_range
+from ..registration.sheet_sync import RegistrationSheetSyncAdminMixin
 
 COPY_TEMPLATE_ATTR = "_event_admin_copy_template"
 COPY_INLINE_INITIAL_ATTR = "_event_admin_copy_inline_initial"
@@ -119,7 +120,7 @@ class EventAdminForm(forms.ModelForm):
 
 
 @admin.register(Event)
-class EventAdmin(BaseModelAdmin):
+class EventAdmin(RegistrationSheetSyncAdminMixin, BaseModelAdmin):
     change_form_template = "admin/event/event/change_form.html"
     form = EventAdminForm
     list_display = (
@@ -129,6 +130,7 @@ class EventAdmin(BaseModelAdmin):
         "registration_open",
         "secondary_email_badge",
         "phone_badge",
+        "sheet_sync_link",
     )
     list_filter = ("registration_open", "date", "end_date", "allow_secondary_email", "collect_phone")
     search_fields = ("name", "location")
@@ -138,6 +140,7 @@ class EventAdmin(BaseModelAdmin):
         "registration_sheet_synced_at",
         "registration_sheet_sync_count",
         "registration_sheet_sync_error",
+        "registration_sheet_management",
     )
     prepopulated_fields = {"slug": ("name",)}
     inlines = [TicketInline, QuestionInline]
@@ -179,13 +182,8 @@ class EventAdmin(BaseModelAdmin):
         (
             "Registration Google Sheet",
             {
-                "classes": ("collapse",),
-                "description": "Link a Google Sheet to sync registration data for this event.",
-                "fields": (
-                    ("registration_sheet_id", "registration_sheet_gid"),
-                    ("registration_sheet_synced_at", "registration_sheet_sync_count"),
-                    "registration_sheet_sync_error",
-                ),
+                "description": "Manage the connection, timing, and exported columns on the dedicated sync page.",
+                "fields": ("registration_sheet_management",),
             },
         ),
         (

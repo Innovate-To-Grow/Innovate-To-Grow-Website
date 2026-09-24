@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.utils.text import slugify
 
 from apps.core.models import ProjectControlModel
@@ -157,6 +157,7 @@ class Event(ProjectControlModel):
         if errors:
             raise ValidationError(errors)
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         if self.end_date is None and self.date is not None:
             self.end_date = self.date

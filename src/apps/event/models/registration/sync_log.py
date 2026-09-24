@@ -5,8 +5,8 @@ from apps.core.models import ProjectControlModel
 
 class RegistrationSheetSyncLog(ProjectControlModel):
     class SyncType(models.TextChoices):
-        APPEND = "append", "Append Row"
-        FULL = "full", "Full Sync"
+        APPEND = "append", "Automatic sync"
+        FULL = "full", "Manual sync"
 
     class Status(models.TextChoices):
         SUCCESS = "success", "Success"
@@ -20,6 +20,7 @@ class RegistrationSheetSyncLog(ProjectControlModel):
     sync_type = models.CharField(max_length=10, choices=SyncType.choices)
     status = models.CharField(max_length=10, choices=Status.choices)
     rows_written = models.PositiveIntegerField(default=0)
+    details = models.JSONField(default=dict, db_default={}, blank=True)
     error_message = models.TextField(blank=True, default="")
     cursor_from = models.DateTimeField(null=True, blank=True)
     cursor_to = models.DateTimeField(null=True, blank=True)

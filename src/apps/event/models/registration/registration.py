@@ -1,7 +1,7 @@
 import secrets
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 
 from apps.core.models import ProjectControlModel
 
@@ -77,6 +77,7 @@ class EventRegistration(ProjectControlModel):
     def barcode_payload(self):
         return f"I2G|EVENT|{self.event.slug}|{self.ticket_code}"
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         if not self.attendee_first_name:
             self.attendee_first_name = self.member.first_name or self.member.get_primary_email()

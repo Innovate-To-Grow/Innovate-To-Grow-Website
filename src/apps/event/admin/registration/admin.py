@@ -1,5 +1,3 @@
-import logging
-
 from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import path, reverse
@@ -7,7 +5,7 @@ from django.urls import path, reverse
 from apps.core.admin import BaseModelAdmin
 from apps.core.utils.access import user_can_access_app
 
-from ...models import EventRegistration, Ticket
+from ...models import Event, EventRegistration, Ticket
 from .config import (
     ADD_FIELDSETS,
     ADD_READONLY_FIELDS,
@@ -18,8 +16,6 @@ from .exports import RegistrationExportMixin
 from .forms import EventRegistrationAdminForm
 from .info_views import RegistrationInfoViewsMixin
 from .ticket_emails import TicketEmailAdminMixin
-
-logger = logging.getLogger(__name__)
 
 
 @admin.register(EventRegistration)
@@ -97,6 +93,10 @@ class EventRegistrationAdmin(
         extra_context = {
             **(extra_context or {}),
             "send_all_ticket_emails_url": reverse("admin:event_eventregistration_send_all_ticket_emails"),
+            "sheet_sync_events": [
+                {"name": event.name, "url": reverse("admin:event_event_sheet_sync", args=[event.pk])}
+                for event in Event.objects.order_by("-date", "name")
+            ],
         }
         return super().changelist_view(request, extra_context)
 
@@ -119,15 +119,6 @@ class EventRegistrationAdmin(
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-
-        try:
-            from apps.event.services.registration_sheet_sync import (
-                schedule_registration_sync,
-            )
-
-            schedule_registration_sync(obj.event)
-        except Exception:
-            logger.exception("Sheet sync failed for registration %s", obj.pk)
 
         if form.cleaned_data.get("send_ticket_email") or "_send_ticket_email" in request.POST:
             self._send_ticket_email_registration(request, obj)
