@@ -61,6 +61,18 @@ def _prepare(event, config, worksheet=None, *, lock=False):
         event_id=event.pk,
         config=config,
     )
+    if plan.stale_rows:
+        foreign = {
+            str(identity)
+            for identity in EventRegistration.objects.filter(
+                pk__in=[stale["registration_id"] for stale in plan.stale_rows]
+            ).values_list("pk", flat=True)
+        }
+        for stale in plan.stale_rows:
+            if stale["registration_id"] in foreign:
+                plan.conflicts.append(
+                    f"Row {stale['row']} belongs to a registration from a different event. Choose a separate worksheet."
+                )
     return worksheet, snapshot, plan, credentials
 
 
@@ -86,6 +98,7 @@ def inspect_registration_sheet(event, *, config=None):
         "counts": plan.counts,
         "conflicts": plan.conflicts,
         "legacy_matches": plan.legacy_matches,
+        "stale_rows": plan.stale_rows,
         "requires_adoption": plan.requires_adoption,
         "can_sync": not plan.conflicts and not plan.requires_adoption,
         "fingerprint": plan.fingerprint,
@@ -114,6 +127,16 @@ def _record_success(event, plan, snapshot, *, generation, sync_type, cursor_from
         ignore_conflicts=True,
     )
     RegistrationSheetSyncRecord.objects.filter(event=event, registration_id__in=plan.active_ids).update(synced_at=now)
+    if plan.stale_rows:
+        # Receipts let later managed syncs recognize rows adopted as deleted.
+        stale_ids = [stale["registration_id"] for stale in plan.stale_rows]
+        RegistrationSheetSyncRecord.objects.bulk_create(
+            [RegistrationSheetSyncRecord(event=event, registration_id=identity) for identity in stale_ids],
+            ignore_conflicts=True,
+        )
+        stale_records = RegistrationSheetSyncRecord.objects.filter(event=event, registration_id__in=stale_ids)
+        stale_records.update(synced_at=now)
+        stale_records.filter(deleted_at__isnull=True).update(deleted_at=now)
     event_updates = {
         "registration_sheet_synced_at": now,
         "registration_sheet_sync_count": len(plan.active_ids),

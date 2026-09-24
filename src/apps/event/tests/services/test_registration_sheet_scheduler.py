@@ -1,3 +1,4 @@
+import threading
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -57,6 +58,64 @@ class RegistrationSheetSchedulerTest(TestCase):
         self.assertEqual(job.available_at, now + timedelta(seconds=15))
         self.assertEqual(self.config().requested_generation, 1)
         self.assertEqual(self.config().pending_job_id, job.pk)
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=False)
+    def test_without_worker_an_in_process_sync_starts_after_commit(self):
+        with patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync") as start:
+            with self.captureOnCommitCallbacks(execute=True):
+                schedule_registration_sync(self.event)
+            start.assert_called_once_with(str(self.event.pk), 15.0, False)
+            start.reset_mock()
+            with self.captureOnCommitCallbacks(execute=True):
+                schedule_registration_sync(self.event, immediate=True)
+            self.assertEqual(start.call_args.args[0], str(self.event.pk))
+            self.assertLessEqual(start.call_args.args[1], 0)
+            self.assertTrue(start.call_args.args[2])
+
+    @override_settings(BACKGROUND_JOBS_ENABLED=True)
+    def test_with_worker_no_in_process_sync_starts(self):
+        with patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync") as start:
+            with self.captureOnCommitCallbacks(execute=True):
+                schedule_registration_sync(self.event)
+        start.assert_not_called()
+
+    def test_in_process_timer_runs_only_pending_work(self):
+        from apps.event.services.registration_sheet_sync import append
+
+        event_id = str(self.event.pk)
+        RegistrationSheetSyncConfig.objects.create(event=self.event)
+        with patch.object(append, "_flush_pending_sync") as flush, patch.object(append, "close_old_connections"):
+            append._sync_timers[event_id] = threading.current_thread()
+            append._run_in_process_sync(event_id, False)
+            flush.assert_not_called()
+            schedule_registration_sync(self.event)
+            append._sync_timers[event_id] = threading.current_thread()
+            append._run_in_process_sync(event_id, False)
+            flush.assert_called_once_with(event_id, immediate=False)
+            # A replaced timer does nothing.
+            append._run_in_process_sync(event_id, False)
+            flush.assert_called_once()
+
+    def test_failed_explicit_sync_keeps_queued_changes(self):
+        job = schedule_registration_sync(self.event)
+        captured = begin_sync(self.event.pk)
+        job.refresh_from_db()
+        self.assertEqual(job.status, BackgroundJob.Status.PENDING)
+        self.assertEqual(self.config().pending_job_id, job.pk)
+        fail_sync(self.event.pk, captured["captured_generation"], "Google returned 503")
+        job.refresh_from_db()
+        self.assertEqual(job.status, BackgroundJob.Status.PENDING)
+        self.assertEqual(self.config().pending_job_id, job.pk)
+        self.assertTrue(job_should_run(job))
+
+    def test_successful_explicit_sync_cancels_queued_job(self):
+        job = schedule_registration_sync(self.event)
+        captured = begin_sync(self.event.pk)
+        complete_sync(self.event.pk, captured["captured_generation"])
+        job.refresh_from_db()
+        self.assertEqual(job.status, BackgroundJob.Status.CANCELLED)
+        self.assertIsNone(self.config().pending_job_id)
+        self.assertEqual(self.config().state, "succeeded")
 
     def test_burst_coalesces_and_capped_debounce_never_starves(self):
         start = timezone.now()

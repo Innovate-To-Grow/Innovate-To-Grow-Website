@@ -42,7 +42,9 @@ In Django admin → Events → Event, choose **Manage sync**:
    field is bound, move its whole column in Google Sheets to relocate it. Preview
    again after changing the destination, header row, or mappings.
 6. Choose **Sync now** to queue a non-destructive reconciliation, or review the
-   legacy adoption action when existing rows have no registration IDs.
+   legacy adoption action when existing rows have no registration IDs, or when
+   rows belong to registrations deleted before managed sync (adoption marks
+   those rows Deleted).
 
 The system maintains a protected, hidden `Registration ID` column. It does not
 need to be the last column. You can rename visible headers, reorder whole
@@ -58,7 +60,8 @@ The management page shows the next eligible run, latest results, and recent logs
 If the worksheet ID was left empty, the first successful sync pins the resolved
 worksheet ID. Reordering spreadsheet tabs therefore does not move the destination.
 
-The durable background worker must be running:
+Run the durable background worker (without it, an in-process timer runs syncs that
+do not survive a process restart):
 
 ```bash
 python manage.py run_background_worker

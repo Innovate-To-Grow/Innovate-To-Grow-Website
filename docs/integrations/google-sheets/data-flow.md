@@ -30,14 +30,16 @@ synchronization work.
   delay; later changes do not continuously postpone that batch.
 - **Manual:** Changes remain pending until an administrator chooses **Sync now**.
 
-The existing background worker executes durable jobs. Scheduling no longer uses
-in-process timers. Dirty state and enqueueing commit or roll back with the source
-change. A run captures a generation; changes arriving during that run remain
+The existing background worker executes durable jobs. When
+`BACKGROUND_JOBS_ENABLED` is false, an in-process timer runs the sync after the
+source change commits, and the queued job remains as a record. Dirty state and
+enqueueing commit or roll back with the source change. A run captures a generation; changes arriving during that run remain
 pending for a subsequent run. The scheduling state lock is separate from the lock
 that serializes provider writes, so a slow Google request does not hold the
 scheduling lock.
 
-A database-backed worker must be running for queued synchronization to execute.
+Run the database-backed worker in production; the in-process fallback does not
+survive a process restart.
 The batching delay is an eligibility time, not a delivery deadline: worker load,
 provider throttling, and retries can increase the actual delay.
 

@@ -3,6 +3,7 @@
 import hashlib
 import json
 import unicodedata
+import uuid
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -21,10 +22,12 @@ class SyncPlan:
     conflicts: list = field(default_factory=list)
     columns: list = field(default_factory=list)
     legacy_matches: list = field(default_factory=list)
+    stale_rows: list = field(default_factory=list)
     active_ids: list = field(default_factory=list)
     deleted_ids: list = field(default_factory=list)
     label_changes: list = field(default_factory=list)
     requires_adoption: bool = False
+    managed: bool = False
     counts: dict = field(
         default_factory=lambda: {"added": 0, "updated": 0, "deleted": 0, "unchanged": 0, "header_changes": 0}
     )
@@ -84,6 +87,7 @@ def _bind_columns(plan, snapshot, fields, event_id, config):
             plan.conflicts.append(f"Duplicate or invalid managed column binding: {key or 'unknown field'}.")
             continue
         plan.bindings[key] = column
+    plan.managed = managed
     if managed and not header_markers:
         plan.conflicts.append(
             "Managed header row metadata is missing. Restore the header row or create a new worksheet."
@@ -196,6 +200,13 @@ def _legacy_match(row_values, current_values):
     ]
 
 
+def _is_canonical_uuid(value):
+    try:
+        return str(uuid.UUID(value)) == value
+    except ValueError:
+        return False
+
+
 def plan_sync(snapshot, *, fields, current_values, deleted_ids, known_ids, event_id, config):
     plan = SyncPlan()
     _bind_columns(plan, snapshot, fields, event_id, config)
@@ -217,7 +228,11 @@ def plan_sync(snapshot, *, fields, current_values, deleted_ids, known_ids, event
             if registration_id in id_rows:
                 plan.conflicts.append(f"Registration ID {registration_id} appears in multiple rows.")
             elif registration_id not in current_values and registration_id not in known_ids:
-                if registration_id in deleted_ids:
+                if not plan.managed and _is_canonical_uuid(registration_id):
+                    # Append-only exports kept rows for registrations deleted
+                    # before receipts existed. Adoption marks them deleted.
+                    plan.stale_rows.append({"row": row, "registration_id": registration_id})
+                elif registration_id in deleted_ids:
                     plan.conflicts.append(
                         f"Row {row} belongs to a deleted registration without a completed sync receipt. Review the interrupted sync and create a new worksheet."
                     )
@@ -253,7 +268,7 @@ def plan_sync(snapshot, *, fields, current_values, deleted_ids, known_ids, event
                 "ticket_code": current_values[registration_id]["ticket_code"],
             }
         )
-    plan.requires_adoption = bool(plan.legacy_matches)
+    plan.requires_adoption = bool(plan.legacy_matches or plan.stale_rows)
     next_row = max(config.header_row, len(snapshot.values)) + 1
     for registration_id, values in current_values.items():
         row = id_rows.get(registration_id)
@@ -279,6 +294,12 @@ def plan_sync(snapshot, *, fields, current_values, deleted_ids, known_ids, event
             plan.cells[(row, column)] = "Deleted"
             plan.counts["deleted"] += 1
         plan.deleted_ids.append(registration_id)
+    for stale in plan.stale_rows:
+        column = plan.bindings["status"]
+        if _cell(snapshot, stale["row"], column) != "Deleted":
+            plan.cells[(stale["row"], column)] = "Deleted"
+            plan.counts["deleted"] += 1
+        plan.deleted_ids.append(stale["registration_id"])
     plan.fingerprint = hashlib.sha256(
         json.dumps(
             {

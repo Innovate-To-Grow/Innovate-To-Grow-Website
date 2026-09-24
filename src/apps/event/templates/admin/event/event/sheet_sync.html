@@ -63,7 +63,7 @@
     <section class="sheet-sync-card sheet-sync-review" aria-labelledby="sync-review-heading">
         <h2 id="sync-review-heading">Review before continuing</h2>
         {% if review.operation == 'adoption' %}
-            <p>The matched legacy rows shown in the preview will receive stable registration identifiers. A backup will be created first, then managed registration data will be synchronized. Other rows and columns stay in place.</p>
+            <p>The matched legacy rows shown in the preview will receive stable registration identifiers, and rows for deleted registrations will be marked Deleted. A backup will be created first, then managed registration data will be synchronized. Other rows and columns stay in place.</p>
         {% elif review.operation == 'rebuild' %}
             <p>A backup and a fresh, populated managed worksheet will be created. Sync will switch to the new worksheet. The current worksheet stays in the spreadsheet; its custom layout is not copied to the new worksheet.</p>
         {% else %}
@@ -114,6 +114,15 @@
                 <caption>Matched legacy rows</caption>
                 <thead><tr><th scope="col">Sheet row</th><th scope="col">Ticket code</th><th scope="col">Registration</th></tr></thead>
                 <tbody>{% for match in preview.legacy_matches %}<tr><td>{{ match.row }}</td><td>{{ match.ticket_code }}</td><td>{{ match.registration_id }}</td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+        {% endif %}
+        {% if preview.stale_rows %}
+        <div class="sheet-sync-table-scroll">
+            <table class="sheet-sync-table">
+                <caption>Rows for deleted registrations (will be marked Deleted)</caption>
+                <thead><tr><th scope="col">Sheet row</th><th scope="col">Registration</th></tr></thead>
+                <tbody>{% for stale in preview.stale_rows %}<tr><td>{{ stale.row }}</td><td>{{ stale.registration_id }}</td></tr>{% endfor %}</tbody>
             </table>
         </div>
         {% endif %}
