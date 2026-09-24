@@ -277,7 +277,7 @@ class RegistrationSheetSyncAdminMixin:
                     sync_api.schedule_registration_sync(event, immediate=True)
                     messages.success(
                         request,
-                        "Sync queued. The background worker will update managed registration data and preserve other sheet content.",
+                        "Sync queued. Managed registration data will be updated shortly; other sheet content is preserved.",
                     )
                     return redirect("admin:event_event_sheet_sync", event.pk)
                 elif action in {"review_adoption", "review_create", "review_rebuild"}:

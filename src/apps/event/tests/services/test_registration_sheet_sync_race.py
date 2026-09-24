@@ -17,6 +17,10 @@ from apps.event.tests.services.sheet_fakes import FakeWorksheet
 
 class ManagedSyncRaceTests(TransactionTestCase):
     def setUp(self):
+        # Real commits would start the no-worker fallback thread, which races teardown.
+        fallback = patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync")
+        fallback.start()
+        self.addCleanup(fallback.stop)
         self.event = make_event()
         Event.objects.filter(pk=self.event.pk).update(
             registration_sheet_id="fake-sheet-id", registration_sheet_sync_count=5

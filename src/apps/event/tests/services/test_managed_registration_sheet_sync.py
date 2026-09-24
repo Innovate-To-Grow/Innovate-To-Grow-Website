@@ -203,6 +203,48 @@ class ManagedRegistrationSheetTests(TestCase):
             sync_registrations_to_sheet(self.event)
         self.assertFalse(self.sheet.spreadsheet.batches)
 
+    def test_legacy_rows_for_deleted_registrations_are_adopted_as_deleted(self):
+        stale_id = str(uuid.uuid4())
+        self.sheet.values = [
+            ["Registration Status", "Notes", "Registration ID"],
+            ["Active", "Keep me", str(self.registration.pk)],
+            ["Active", "Removed before receipts", stale_id],
+        ]
+        preview = inspect_registration_sheet(self.event)
+        self.assertFalse(preview["conflicts"])
+        self.assertTrue(preview["requires_adoption"])
+        self.assertEqual(preview["stale_rows"], [{"row": 3, "registration_id": stale_id}])
+        with self.assertRaises(RegistrationSyncConflict):
+            sync_registrations_to_sheet(self.event)
+        sync_registrations_to_sheet(self.event, adopt_legacy=True, expected_fingerprint=preview["fingerprint"])
+        self.assertEqual(len(self.sheet.spreadsheet.backups), 1)
+        self.assertEqual(self.sheet.values[2][self.column("status") - 1], "Deleted")
+        self.assertEqual(self.sheet.values[2][1], "Removed before receipts")
+        record = RegistrationSheetSyncRecord.objects.get(event=self.event, registration_id=stale_id)
+        self.assertIsNotNone(record.synced_at)
+        self.assertIsNotNone(record.deleted_at)
+        # Later managed syncs recognize the adopted row instead of blocking on it.
+        self.assertTrue(inspect_registration_sheet(self.event)["can_sync"])
+        sync_registrations_to_sheet(self.event)
+
+    def test_legacy_row_for_other_event_registration_blocks_adoption(self):
+        other_event = make_event(name="Other")
+        other = make_registration(
+            make_member("grace@example.com", first_name="Grace"), other_event, make_ticket(other_event)
+        )
+        self.sheet.values = [["Registration ID"], [str(self.registration.pk)], [str(other.pk)]]
+        preview = inspect_registration_sheet(self.event)
+        self.assertTrue(any("different event" in error for error in preview["conflicts"]))
+
+    def test_unknown_registration_id_on_managed_sheet_still_blocks(self):
+        sync_registrations_to_sheet(self.event)
+        row = [""] * len(self.sheet.values[0])
+        row[self.column("registration_id") - 1] = str(uuid.uuid4())
+        self.sheet.values.append(row)
+        preview = inspect_registration_sheet(self.event)
+        self.assertTrue(any("unknown Registration ID" in error for error in preview["conflicts"]))
+        self.assertFalse(preview["stale_rows"])
+
     def test_other_event_metadata_blocks_shared_destination(self):
         self.sheet.metadata = [
             {

@@ -7,7 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.models import BackgroundJob
-from apps.core.services.background_jobs import enqueue_job
+from apps.core.services.background_jobs import enqueue_job, jobs_enabled
 from apps.event.models import Event, RegistrationSheetSyncConfig
 
 JOB_KIND = "event.registration_sheet_sync"
@@ -48,8 +48,8 @@ def schedule_registration_sync(event: Event, *, trigger_id=None, immediate=False
     """Mark a committed source change and queue it in the same source transaction.
 
     ``trigger_id`` remains accepted for existing callers. Generations provide
-    durable coalescing, rather than one job per registration. The shared worker
-    must be running; this function never starts an in-process provider thread.
+    durable coalescing, rather than one job per registration. Without the
+    shared worker, an in-process timer runs the sync after the source commits.
     """
     if not event.registration_sheet_id:
         config = RegistrationSheetSyncConfig.objects.select_for_update().filter(event_id=event.pk).first()
@@ -103,6 +103,16 @@ def schedule_registration_sync(event: Event, *, trigger_id=None, immediate=False
     config.last_error = ""
     config.save()
     queued.refresh_from_db()
+    if not jobs_enabled():
+        from .append import _schedule_in_process_sync
+
+        event_id = str(event.pk)
+        delay = (due_at - now).total_seconds()
+        run_immediately = bool(queued.payload.get("immediate"))
+        transaction.on_commit(
+            lambda: _schedule_in_process_sync(event_id, delay, run_immediately),
+            robust=True,
+        )
     return queued
 
 
@@ -119,9 +129,9 @@ def begin_sync(event_id, job=None):
             raise JobClaimLost("Registration sheet sync job is no longer owned by this worker.")
     if config.requested_generation <= config.completed_generation:
         config.requested_generation += 1
-    if job is None:
-        _cancel_pending(config, "Superseded by an explicit registration sheet sync.")
-    if job is None or config.pending_job_id == job.pk:
+    # An explicit sync (job=None) leaves queued work in place: complete_sync
+    # cancels it on success, and it still runs if this attempt fails.
+    if job is not None and config.pending_job_id == job.pk:
         config.pending_job = None
         config.next_sync_at = None
         config.first_dirty_at = None
