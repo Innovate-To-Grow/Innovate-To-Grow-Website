@@ -312,6 +312,10 @@ class RegistrationSheetSchedulerTest(TestCase):
 class RegistrationSheetSchedulerConcurrencyTest(TransactionTestCase):
     def setUp(self):
         cache.clear()
+        # Real commits would start the no-worker fallback thread, which races teardown.
+        fallback = patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync")
+        fallback.start()
+        self.addCleanup(fallback.stop)
         if connection.vendor != "postgresql":
             self.skipTest("Real row-lock behavior requires PostgreSQL.")
         self.event = make_event()

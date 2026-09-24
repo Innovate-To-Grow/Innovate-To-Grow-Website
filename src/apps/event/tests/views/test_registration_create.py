@@ -136,6 +136,7 @@ class EventRegistrationCreateViewTest(TestCase):
                 "apps.event.views.registration.create_support.notifications.start_in_process_task",
                 return_value=MagicMock(),
             ) as start_task,
+            patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync") as start_sync,
             self.captureOnCommitCallbacks(execute=True),
         ):
             response = self._post()
@@ -143,6 +144,7 @@ class EventRegistrationCreateViewTest(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(BackgroundJob.objects.filter(kind="event.registration_sheet_sync").count(), 1)
         start_task.assert_called_once()
+        start_sync.assert_called_once()
 
     def test_response_contains_registration_payload(self):
         response = self._post()
