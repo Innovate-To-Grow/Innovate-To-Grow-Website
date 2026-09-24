@@ -84,7 +84,12 @@ worksheet GIDs. Exactly one row is **Active**: it backs `/schedule` when no sche
 `/event/projects/` and the assistant context. All rows can be selected from CMS embed widgets and their blocks
 (see [content management](content-management.md#embed-widget-blocks-and-schedule-selection)).
 
-- **Pull Current Projects & Schedule** (changelist button) syncs the active row from its sheet
+The changelist's overview (Current Schedule card, **Pull** button, **Auto Sync** form, winners and project
+tables) shows the **Active** row. When only one row exists it is shown even if it is not active, so a freshly
+added schedule is visible before you activate it; with several rows only the active one is shown.
+
+- **Pull Current Projects & Schedule** (changelist button) syncs the row shown in the overview from its sheet
+  (the active row, or the only row when there is just one)
 - **Sync from Google Sheets** (per-row action, also on the change form) syncs that row from its own sheet
 - **Auto Sync** + interval are per row; `python manage.py sync_schedule` honours them for every row. A row that
   stops being active (you activate another schedule — a one-step change that archives the previous row — or untick

@@ -314,7 +314,8 @@ From Event admin:
 
 From Events → Current Project and Schedule (one row per event schedule, e.g. per year, each with its own
 Google Sheet):
-- **Pull Current Projects & Schedule** (changelist button) syncs the *active* row
+- **Pull Current Projects & Schedule** (changelist button) syncs the *active* row (or the only row, when there is
+  just one)
 - **Sync from Google Sheets** (per-row action and change-form button) syncs *that* row — previous years can be
   refreshed without activating them
 - `python manage.py sync_schedule` syncs every row whose auto-sync is enabled and due; `--schedule <uuid>` syncs
