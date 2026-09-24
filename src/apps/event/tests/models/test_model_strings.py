@@ -201,7 +201,7 @@ class SyncLogStrTest(TestCase):
             sync_type=RegistrationSheetSyncLog.SyncType.FULL,
             status=RegistrationSheetSyncLog.Status.SUCCESS,
         )
-        self.assertEqual(str(log), "Sync Log Event — Full Sync — Success")
+        self.assertEqual(str(log), "Sync Log Event — Manual sync — Success")
 
     def test_schedule_sync_log_str(self):
         log = ScheduleSyncLog.objects.create(

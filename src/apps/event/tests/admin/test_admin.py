@@ -1082,6 +1082,7 @@ class EventRegistrationAdminTest(TestCase):
         )
         event = make_event()
         ticket = Ticket.objects.create(event=event, name="GA")
+        mock_sync.reset_mock()
         response = self.client.post(
             "/admin/event/eventregistration/add/",
             {
@@ -1220,6 +1221,7 @@ class EventRegistrationAdminTest(TestCase):
         member = make_member(email="ticket-change@example.com")
         registration = make_registration(member, event, current_ticket)
 
+        mock_sync.reset_mock()
         response = self.client.post(
             f"/admin/event/eventregistration/{registration.pk}/change/",
             {
@@ -1242,6 +1244,7 @@ class EventRegistrationAdminTest(TestCase):
         member = make_member(email="ticket-mismatch-change@example.com")
         registration = make_registration(member, event, current_ticket)
 
+        mock_sync.reset_mock()
         response = self.client.post(
             f"/admin/event/eventregistration/{registration.pk}/change/",
             {
@@ -1264,6 +1267,7 @@ class EventRegistrationAdminTest(TestCase):
         member = make_member(email="ticket-send-button@example.com")
         registration = make_registration(member, event, current_ticket)
 
+        mock_sync.reset_mock()
         response = self.client.post(
             f"/admin/event/eventregistration/{registration.pk}/change/",
             {

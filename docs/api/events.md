@@ -225,8 +225,10 @@ Event registrations can be synced to a Google Sheet configured on the `Event` mo
 - `registration_sheet_gid` — Specific worksheet GID
 
 The PostgreSQL outbox worker serializes syncs per event, captures a cutoff,
-deduplicates by the final protected `Registration ID` column, and advances the
-cursor only after a confirmed write. See
+inserts or updates managed cells by a protected `Registration ID` column, and
+advances the cursor only after a confirmed write. Column metadata keeps field
+identity independent of header wording or position. Configure timing and field
+mappings through the Event **Manage sync** page. See
 [Google Sheets Integration](../integrations/google-sheets/index.md) for
 details.
 

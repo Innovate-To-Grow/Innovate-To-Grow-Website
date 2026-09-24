@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 
 from apps.core.models import ProjectControlModel
 
@@ -14,3 +14,7 @@ class Question(ProjectControlModel):
 
     def __str__(self):
         return f"{self.event.name} - {self.text[:50]}"
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        return super().save(*args, **kwargs)

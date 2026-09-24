@@ -2,6 +2,7 @@ from .checkin import CheckIn, CheckInRecord
 from .event import Event
 from .question import Question
 from .registration import EventRegistration
+from .sync_config import RegistrationSheetSyncConfig, RegistrationSheetSyncRecord
 from .sync_log import RegistrationSheetSyncLog
 from .ticket import Ticket
 
@@ -12,5 +13,7 @@ __all__ = [
     "EventRegistration",
     "Question",
     "RegistrationSheetSyncLog",
+    "RegistrationSheetSyncConfig",
+    "RegistrationSheetSyncRecord",
     "Ticket",
 ]

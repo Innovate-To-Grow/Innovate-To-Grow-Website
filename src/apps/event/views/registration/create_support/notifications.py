@@ -1,7 +1,6 @@
 from django.db import transaction
 
 from apps.core.services.helpers.in_process import start_in_process_task
-from apps.event.services.registration_sheet_sync import schedule_registration_sync
 
 INITIAL_TICKET_START_ERROR = "Ticket email could not be started. Check server logs for details."
 
@@ -9,7 +8,6 @@ INITIAL_TICKET_START_ERROR = "Ticket email could not be started. Check server lo
 def send_initial_ticket_email(registration) -> None:
     from apps.core.services.background_jobs import enqueue_job, jobs_enabled
 
-    schedule_registration_sync(registration.event, trigger_id=registration.pk)
     if jobs_enabled():
         enqueue_job(
             kind="event.ticket_email",
