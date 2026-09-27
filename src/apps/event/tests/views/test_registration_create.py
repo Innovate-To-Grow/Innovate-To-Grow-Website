@@ -89,13 +89,14 @@ class EventRegistrationCreateViewTest(TestCase):
 
         with patch(
             "apps.core.services.background_jobs.enqueue_job",
-            side_effect=[(MagicMock(), True), RuntimeError("outbox unavailable")],
+            side_effect=RuntimeError("outbox unavailable"),
         ):
             response = self._post()
 
         self.assertEqual(response.status_code, 500)
         self.assertFalse(EventRegistration.objects.filter(member=self.member, event=self.event).exists())
-        self.assertFalse(BackgroundJob.objects.filter(kind__startswith="event.").exists())
+        self.assertEqual(BackgroundJob.objects.filter(kind="event.registration_sheet_sync").count(), 1)
+        self.assertFalse(BackgroundJob.objects.filter(kind="event.ticket_email").exists())
 
     @patch(
         "apps.event.views.registration.create_support.notifications.start_in_process_task",
@@ -126,27 +127,24 @@ class EventRegistrationCreateViewTest(TestCase):
         self.assertIn("could not be started", registration.ticket_email_error)
 
     @override_settings(BACKGROUND_JOBS_ENABLED=False)
-    def test_sheet_callback_failure_does_not_skip_ticket_start(self):
+    def test_durable_sheet_job_does_not_delay_ticket_start(self):
         self.event.registration_sheet_id = "sheet-id"
         self.event.save(update_fields=["registration_sheet_id", "updated_at"])
 
         with (
             patch(
-                "apps.event.services.registration_sheet_sync.append._schedule_in_process_sync",
-                side_effect=RuntimeError("can't start sync"),
-            ) as schedule_sync,
-            patch(
                 "apps.event.views.registration.create_support.notifications.start_in_process_task",
                 return_value=MagicMock(),
             ) as start_task,
-            self.assertLogs("django.test", level="ERROR"),
+            patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync") as start_sync,
             self.captureOnCommitCallbacks(execute=True),
         ):
             response = self._post()
 
         self.assertEqual(response.status_code, 201)
-        schedule_sync.assert_called_once_with(str(self.event.pk))
+        self.assertEqual(BackgroundJob.objects.filter(kind="event.registration_sheet_sync").count(), 1)
         start_task.assert_called_once()
+        start_sync.assert_called_once()
 
     def test_response_contains_registration_payload(self):
         response = self._post()

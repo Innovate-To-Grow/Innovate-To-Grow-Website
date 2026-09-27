@@ -8,7 +8,7 @@ Used for event registration data sync and schedule/project data import.
 
 | Integration | Direction | Service file |
 |-------------|-----------|-------------|
-| Registration sheet sync | PostgreSQL outbox worker → Google Sheets (idempotent append) | `src/apps/event/services/registration_sheet_sync/` |
+| Registration sheet sync | PostgreSQL outbox worker → Google Sheets (managed-cell reconciliation) | `src/apps/event/services/registration_sheet_sync/` |
 | Schedule sync | Google Sheets → Django (import tracks, projects) | `src/apps/event/services/schedule_sync.py` |
 
 **Authentication**: Google service account credentials are stored in

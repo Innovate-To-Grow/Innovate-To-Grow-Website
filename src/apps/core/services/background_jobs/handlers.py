@@ -72,8 +72,10 @@ def send_notification_email_job(job) -> None:
 
 def sync_registration_sheet_job(job) -> None:
     from apps.event.services.registration_sheet_sync import _flush_pending_sync
+    from apps.event.services.registration_sheet_sync.scheduler import job_should_run
 
-    _flush_pending_sync(job.payload["event_id"], raise_errors=True)
+    if job_should_run(job):
+        _flush_pending_sync(job.payload["event_id"], raise_errors=True, job=job)
 
 
 def send_ticket_email_job(job) -> None:
@@ -110,3 +112,9 @@ def send_ticket_email_job(job) -> None:
         )
     except ProviderDeliveryError as exc:
         raise _provider_job_error(exc) from exc
+
+
+def sync_registration_sheet_job_state(job):
+    from apps.event.services.registration_sheet_sync.scheduler import mirror_job_state
+
+    mirror_job_state(job)

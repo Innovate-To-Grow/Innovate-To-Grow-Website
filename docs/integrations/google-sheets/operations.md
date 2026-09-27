@@ -27,13 +27,54 @@ Share each target Google Sheet with the service account's email address (found i
 
 ### 4. Configure event sheets
 
-In Django admin → Events → Event:
-1. Set `registration_sheet_id` to the Google Sheets document ID (from the URL: `docs.google.com/spreadsheets/d/{THIS_PART}/edit`)
-2. Set `registration_sheet_gid` to the worksheet GID (from the URL: `#gid={THIS_PART}`)
+In Django admin → Events → Event, choose **Manage sync**:
 
-The managed registration schema ends with a protected `Registration ID`
-column. Do not move, rename, edit, or add columns after it. A first full sync
-backs up a populated legacy/drifted tab before establishing this schema.
+1. Set the Google Sheets document ID (the `/d/{ID}/` part of the URL) and worksheet
+   GID (`#gid={GID}`). Share the document with the configured service account.
+2. Set the header row and choose automatic, interval, or manual synchronization.
+   Automatic batching defaults to a 15-second quiet window with a 60-second cap.
+3. Select the fields to synchronize. Changing a display label explicitly updates
+   that header on the next sync. Later renames made directly in Google Sheets are
+   preserved until the configured label changes again.
+4. Use **Check connection** and **Preview changes**. These actions read Google
+   Sheets but do not modify its content.
+5. Resolve ambiguous initial field mappings using the column selectors. After a
+   field is bound, move its whole column in Google Sheets to relocate it. Preview
+   again after changing the destination, header row, or mappings.
+6. Choose **Sync now** to queue a non-destructive reconciliation, or review the
+   legacy adoption action when existing rows have no registration IDs, or when
+   rows belong to registrations deleted before managed sync (adoption marks
+   those rows Deleted).
+
+The system maintains a protected, hidden `Registration ID` column. It does not
+need to be the last column. You can rename visible headers, reorder whole
+columns, and add custom columns. Notes, formulas, and formatting in custom columns
+are preserved. Use complete-row sorts so identities and annotations stay together.
+Do not delete or overwrite the identity column or copy only part of a record.
+
+Registration, ticket, question, and relevant event changes mark the sheet as
+pending. Manual mode records pending changes without automatically writing them.
+Interval mode batches changed data; it does not perform empty periodic exports.
+The management page shows the next eligible run, latest results, and recent logs.
+
+If the worksheet ID was left empty, the first successful sync pins the resolved
+worksheet ID. Reordering spreadsheet tabs therefore does not move the destination.
+
+Run the durable background worker (without it, an in-process timer runs syncs that
+do not survive a process restart):
+
+```bash
+python manage.py run_background_worker
+```
+
+Queueing work does not prove that a provider write succeeded. Confirm the run
+result, row counts, and the resulting worksheet after an authorized production
+rollout. Provider failures and worker load may delay a run beyond its configured
+batching window.
+
+For a rollout, apply the additive migration and finish updating all web processes
+and background workers before adopting managed sheets. Older exporters do not
+understand the new column mappings and must not run against managed worksheets.
 
 ### 5. Configure the current-project schedule sheet(s)
 
@@ -126,25 +167,40 @@ Google service-account credentials are stored in the database via [`GoogleCreden
 | `APIError 429` | Google Sheets API rate limit exceeded | Let the durable job retry with backoff; inspect queue age and quota before an explicit retry |
 | `InvalidCredentials` | JSON key is malformed or expired | Re-generate the service account key |
 | No `GoogleCredentialConfig` found | No active config in database | Create one in Django admin |
-| Invalid/missing `Registration ID` | Legacy sheet or header drift | Back up the sheet and run the Event full-sync action |
+| Missing `Registration ID` | Legacy worksheet requires a reviewed identity mapping | Open Manage sync, preview the legacy row matches, then adopt or create a fresh worksheet |
+| Duplicate field binding or registration ID | Conflicting column metadata or copied identities | Resolve the specific columns or rows listed in the preview and preview again |
+| Missing managed header row | A previously bound header row was deleted | Restore the original header row and mapping, or create a fresh managed worksheet after previewing recovery |
 
 ### Data drift
 
-If sheet data doesn't match database records:
+If sheet data does not match database records:
 
-1. Export or independently back up the current sheet
-2. Use the "Full replace sync" admin action on one canary Event
-3. Confirm the automatic backup tab exists when the old schema differed
-4. Compare database registrations with unique final-column IDs at the logged cutoff
-5. Confirm the final `Registration ID` column is protected
-6. Create one canary registration and confirm append mode adds it exactly once
+1. Open **Manage sync** for the affected Event and select **Preview changes**.
+2. Review inserted, updated, unchanged, deleted, and conflicting records.
+3. Resolve identity or column conflicts before proceeding. Never assign identities
+   by guessing from a person's name or email alone.
+4. Use **Sync now** to update managed cells while retaining custom content.
+5. For a populated legacy sheet, inspect the row-match preview and use the
+   separately reviewed adoption action. A backup is created before identities
+   are written.
+6. If adoption is impossible, create a fresh managed worksheet. The original tab
+   remains available, and the event switches only after the new sheet is ready.
+7. After an authorized live run, inspect the backup/new tab, unique registration
+   IDs, representative updated values, and preserved custom cells separately.
+
+If Google accepts a write but the database transaction fails, the failure log
+records that distinction and any created backup or worksheet IDs. Those tabs are
+retained for inspection. An ordinary retry reconciles existing registration IDs;
+if an interrupted write leaves an unknown identity, review the conflict or use
+the fresh-worksheet recovery action instead of assigning an identity by guesswork.
 
 ### Local development
 
-For local testing without Google API access, leave
-`BACKGROUND_JOBS_ENABLED=false` or avoid processing Sheets jobs. A configured
-sync with no active `GoogleCredentialConfig` fails closed and records the
-error; it does not silently select an inactive credential.
+Use an isolated database and mock the Google provider in tests. Do not seed real
+service-account credentials into that database. Automatic scheduling is durable
+and does not start a background timer inside the web process; queued jobs run
+only when a worker processes them. A missing active `GoogleCredentialConfig`
+fails closed and is shown on the management page.
 
 ## Monitoring
 

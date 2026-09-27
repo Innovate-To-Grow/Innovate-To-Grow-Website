@@ -45,11 +45,11 @@ class RegistrationSheetSyncLogAdminTest(TestCase):
 
     def test_sync_type_badge_full(self):
         log = RegistrationSheetSyncLog(sync_type=RegistrationSheetSyncLog.SyncType.FULL)
-        self.assertEqual(self.admin.sync_type_badge(log), ("Full Sync", "warning"))
+        self.assertEqual(self.admin.sync_type_badge(log), ("Manual sync", "warning"))
 
     def test_sync_type_badge_append(self):
         log = RegistrationSheetSyncLog(sync_type=RegistrationSheetSyncLog.SyncType.APPEND)
-        self.assertEqual(self.admin.sync_type_badge(log), ("Append", "info"))
+        self.assertEqual(self.admin.sync_type_badge(log), ("Automatic sync", "info"))
 
     def test_status_badge_success(self):
         log = RegistrationSheetSyncLog(status=RegistrationSheetSyncLog.Status.SUCCESS)
@@ -68,6 +68,11 @@ class RegistrationSheetSyncLogAdminTest(TestCase):
 
     def test_error_short_keeps_short(self):
         self.assertEqual(self.admin.error_short(RegistrationSheetSyncLog(error_message="boom")), "boom")
+
+    def test_change_summary_distinguishes_writes_deletions_and_conflicts(self):
+        log = RegistrationSheetSyncLog(details={"added": 1, "updated": 2, "deleted": 3, "conflicts": 4})
+        self.assertEqual(self.admin.change_summary(log), "1 added, 2 updated, 3 marked deleted, 4 conflicts")
+        self.assertEqual(self.admin.change_summary(RegistrationSheetSyncLog()), "-")
 
     def test_delete_permission_requires_staff(self):
         request = self.factory.get("/admin/")

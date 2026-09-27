@@ -42,19 +42,22 @@ class RegistrationSaveModelTest(TestCase):
         request._messages = FallbackStorage(request)
         return request
 
-    @patch(
-        "apps.event.services.registration_sheet_sync.schedule_registration_sync",
-        side_effect=RuntimeError("sheet exploded"),
-    )
-    def test_save_model_swallows_sheet_sync_exception(self, _mock_sync):
+    def test_save_model_rolls_back_if_durable_scheduling_fails(self):
         registration = make_registration(self.member, self.event, self.ticket)
+        original_name = registration.attendee_first_name
 
         class _Form:
             cleaned_data = {}
 
-        with patch("apps.event.admin.registration.admin.logger.exception") as log_exc:
-            # save_model must not raise even when the sheet sync fails.
+        registration.attendee_first_name = "Unsaved change"
+        with (
+            patch(
+                "apps.event.services.registration_sheet_sync.schedule_registration_sync",
+                side_effect=RuntimeError("outbox unavailable"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
             self.admin.save_model(self._request(), registration, _Form(), change=True)
 
-        log_exc.assert_called_once()
-        self.assertTrue(EventRegistration.objects.filter(pk=registration.pk).exists())
+        registration.refresh_from_db()
+        self.assertEqual(registration.attendee_first_name, original_name)

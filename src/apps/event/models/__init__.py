@@ -1,4 +1,14 @@
-from .registration import CheckIn, CheckInRecord, Event, EventRegistration, Question, RegistrationSheetSyncLog, Ticket
+from .registration import (
+    CheckIn,
+    CheckInRecord,
+    Event,
+    EventRegistration,
+    Question,
+    RegistrationSheetSyncConfig,
+    RegistrationSheetSyncLog,
+    RegistrationSheetSyncRecord,
+    Ticket,
+)
 from .schedule import (
     CurrentProject,
     CurrentProjectSchedule,
@@ -18,6 +28,8 @@ __all__ = [
     "EventRegistration",
     "Question",
     "RegistrationSheetSyncLog",
+    "RegistrationSheetSyncConfig",
+    "RegistrationSheetSyncRecord",
     "ScheduleSyncLog",
     "Ticket",
     "EventAgendaItem",

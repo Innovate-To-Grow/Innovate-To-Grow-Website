@@ -1,6 +1,6 @@
 import uuid
 
-from django.db import models
+from django.db import models, transaction
 
 from apps.core.models import ProjectControlModel
 
@@ -22,3 +22,7 @@ class Ticket(ProjectControlModel):
 
     def __str__(self):
         return f"{self.event.name} - {self.name}"
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        return super().save(*args, **kwargs)

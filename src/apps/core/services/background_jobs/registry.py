@@ -27,6 +27,7 @@ _HANDLER_LOADERS = {
 }
 
 _STATE_HANDLER_LOADERS = {
+    "event.registration_sheet_sync": lambda: _core_handlers().sync_registration_sheet_job_state,
     "cms.amplify_redirects": lambda: _cms_handlers().sync_amplify_redirect_job_state,
     "mail.email_recipient": lambda: _mail_handlers().sync_delivery_job_state,
     "mail.sms_recipient": lambda: _mail_handlers().sync_delivery_job_state,

@@ -8,6 +8,12 @@
             <span class="material-symbols-outlined">mail</span>
             Send All Tickets
         </a>
+        <details class="relative">
+            <summary class="i2g-admin-action cursor-pointer">Manage sheet sync</summary>
+            <div class="absolute right-0 z-50 mt-2 min-w-64 rounded-default border border-base-200 bg-white p-2 shadow-lg dark:border-base-700 dark:bg-base-900">
+                {% for event in sheet_sync_events %}<a class="block rounded-default px-3 py-2 text-sm hover:bg-base-50 dark:hover:bg-base-800" href="{{ event.url }}">{{ event.name }}</a>{% empty %}<p class="px-3 py-2 text-sm">Create an event first.</p>{% endfor %}
+            </div>
+        </details>
         {{ block.super }}
     </div>
 {% endblock %}
