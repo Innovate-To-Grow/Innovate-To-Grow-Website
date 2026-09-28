@@ -38,6 +38,13 @@ updates:
       # Keep in sync with the comments in src/requirements/{base,production}.txt.
       - dependency-name: "django-unfold"
         versions: [">=0.92"]
+      # 0.21.0 requires openai>=3.0,<4, but litellm (our only model backend,
+      # see src/apps/system_intelligence/services/agents/litellm.py) still
+      # requires openai<3.0 as of writing. Un-ignore once litellm ships
+      # openai 3.x support. Keep in sync with the comment in
+      # src/requirements/base.txt.
+      - dependency-name: "openai-agents"
+        versions: [">=0.21"]
 
   # React/Vite frontend
   - package-ecosystem: npm

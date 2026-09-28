@@ -25,7 +25,13 @@ google-auth>=2.56.3
 gspread>=6.2.1
 
 # AI Runtime
-openai-agents[litellm]>=0.7.0,<1.0
+# openai-agents 0.21.0 raised its core `openai` dependency to >=3.0,<4, but
+# litellm (every release through 1.104.0.dev2) still requires openai<3.0 for
+# its Bedrock backend, which is the only model backend this app uses (see
+# src/apps/system_intelligence/services/agents/litellm.py). Capped below that
+# break until litellm ships openai 3.x support; see PR #542 for the conflict
+# this avoids. >=0.20.0 just makes explicit what already resolves today.
+openai-agents[litellm]>=0.20.0,<0.21.0
 litellm>=1.95.0,<2.0
 
 # Email
