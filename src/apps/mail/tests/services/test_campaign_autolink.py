@@ -9,7 +9,7 @@ import re
 from unittest.mock import MagicMock, patch
 
 from django.core.cache import cache
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.core.models import EmailServiceConfig
@@ -114,6 +114,7 @@ class RenderEmailHtmlTests(SimpleTestCase):
         self.assertNotIn("color:#0f2d52", html)
 
 
+@override_settings(FRONTEND_URL="https://i2g.example")
 class PlainTextLoginLinkSendPathTests(TestCase):
     """Render a real plain-text campaign body through the send path (only the provider is mocked)."""
 
