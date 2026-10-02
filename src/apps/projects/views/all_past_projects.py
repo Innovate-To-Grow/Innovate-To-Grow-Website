@@ -16,6 +16,7 @@ class AllPastProjectsAPIView(ListAPIView):
     """
 
     permission_classes = [AllowAny]
+    authentication_classes = []
     serializer_class = ProjectTableSerializer
     pagination_class = None
 

@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
+from apps.authn.security import SoftJWTAuthentication
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import normalize_bedrock_model_id
 from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog, SystemIntelligenceConfig
@@ -57,6 +58,7 @@ class PublicAssistantConfigView(APIView):
     """GET /assistant/config/ -- public-safe display config only (never secrets)."""
 
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get(self, request, *args, **kwargs):
         config = SystemIntelligenceConfig.load()
@@ -79,6 +81,9 @@ class PublicAssistantChatView(APIView):
     """POST /assistant/chat/ -- tool-free, read-only public chat."""
 
     permission_classes = [AllowAny]
+    # ``AnonRateThrottle`` reads ``request.user`` to skip signed-in members: a valid token keeps that exemption, a
+    # stale one is throttled as the anonymous caller it is instead of getting a 401.
+    authentication_classes = [SoftJWTAuthentication]
     throttle_classes = [PublicAssistantThrottle]
 
     def post(self, request, *args, **kwargs):

@@ -9,6 +9,7 @@ from apps.event.serializers import CurrentProjectSerializer
 
 class CurrentProjectsAPIView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def get(self, request):
