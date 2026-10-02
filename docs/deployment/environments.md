@@ -44,6 +44,7 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
 | `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
+| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` GitHub Environment variable, default `1`) |
 | `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | No (defaults to false) |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
 

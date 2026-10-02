@@ -111,8 +111,9 @@ normal cooldown and budgets.
 - Existing member/purpose email caps and DRF per-view throttles remain.
 - Channel-wide SMS daily reservation is required in `enforce` mode. Leave it
   unset until production traffic is measured; enforce then fails closed for SMS.
-- Challenge issuance is rate-limited per real client IP (`NUM_PROXIES=1` behind
-  the ALB). Campus users share IPs, so per-IP limits are not the sole control.
+- Challenge issuance is rate-limited per real client IP (`REST_FRAMEWORK["NUM_PROXIES"]`,
+  `1` behind the ALB; see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)).
+  Campus users share IPs, so per-IP limits are not the sole control.
 - A new anonymous session does not grant a fresh global sending budget.
 
 Redis (when configured) is used only for early challenge throttles. PostgreSQL

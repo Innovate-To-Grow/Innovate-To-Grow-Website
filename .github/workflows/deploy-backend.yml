@@ -205,6 +205,7 @@ jobs:
           REDIS_URL_SECRET_ARN: ${{ vars.REDIS_URL_SECRET_ARN || secrets.REDIS_URL_SECRET_ARN }}
           WEB_CONCURRENCY: ${{ vars.WEB_CONCURRENCY || '2' }}
           UVICORN_LIMIT_CONCURRENCY: ${{ vars.UVICORN_LIMIT_CONCURRENCY || '20' }}
+          NUM_PROXIES: ${{ vars.NUM_PROXIES || '1' }}
           DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
           DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
           DJANGO_SUPERUSER_FIRST_NAME: ${{ vars.DJANGO_SUPERUSER_FIRST_NAME || matrix.superuser_first_name }}
@@ -290,6 +291,7 @@ jobs:
               "__DB_CONN_HEALTH_CHECKS__": env_value("DB_CONN_HEALTH_CHECKS", "true"),
               "__WEB_CONCURRENCY__": env_value("WEB_CONCURRENCY", "2"),
               "__UVICORN_LIMIT_CONCURRENCY__": env_value("UVICORN_LIMIT_CONCURRENCY", "20"),
+              "__NUM_PROXIES__": env_value("NUM_PROXIES", "1"),
               "__CSRF_TRUSTED_ORIGINS__": csrf_origins,
               "__CORS_ALLOWED_ORIGINS__": cors_origins,
               "__FRONTEND_URL__": frontend_url,
