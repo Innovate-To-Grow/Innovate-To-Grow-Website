@@ -10,6 +10,7 @@ from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.authn.security import SoftJWTAuthentication
 from apps.cms.models import CMSPage, RouteRedirect, SiteSettings
 from apps.cms.serializers.cms import CMSPageSerializer
 from apps.cms.services.routing.route_redirects import (
@@ -67,6 +68,7 @@ class CMSPreviewFetchView(APIView):
     """Fetch cached preview data by token."""
 
     permission_classes = [AllowAny]
+    authentication_classes = []  # the token in the URL is the capability; the caller's identity is never read
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def get(self, request, token):
@@ -134,6 +136,8 @@ class CMSPageView(APIView):
     """Serve a published CMS page by its route path."""
 
     permission_classes = [AllowAny]
+    # ``?preview=true`` shows a draft to a member with cms access, so a valid token is honoured; a stale one is anonymous.
+    authentication_classes = [SoftJWTAuthentication]
 
     # noinspection PyMethodMayBeStatic
     def get(self, request, route_path=""):
@@ -191,6 +195,7 @@ class CMSHomepageView(APIView):
     """Serve the selected published homepage, falling back to the published root page."""
 
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     # noinspection PyMethodMayBeStatic
     def get(self, request):

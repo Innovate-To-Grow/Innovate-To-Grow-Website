@@ -4,8 +4,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from apps.authn.security import SoftJWTAuthentication
 from apps.cms.serializers import PageViewCreateSerializer
 from apps.cms.services.analytics import enqueue
 
@@ -17,7 +17,8 @@ class PageViewThrottle(AnonRateThrottle):
 class PageViewCreateView(APIView):
     """Accept page-view tracking events from the frontend."""
 
-    authentication_classes = [JWTAuthentication]
+    # Attributes the view to the member behind a valid token; a stale token records it as anonymous, not a 401.
+    authentication_classes = [SoftJWTAuthentication]
     permission_classes = [AllowAny]
     throttle_classes = [PageViewThrottle]
 

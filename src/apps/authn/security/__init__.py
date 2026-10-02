@@ -1,3 +1,4 @@
+from .authentication import SoftJWTAuthentication
 from .backends import EmailAuthBackend
 from .throttles import (
     ContactEmailCreateThrottle,
@@ -18,4 +19,5 @@ __all__ = [
     "LoginRateThrottle",
     "PhoneAuthCodeRequestThrottle",
     "PhoneCodeRequestThrottle",
+    "SoftJWTAuthentication",
 ]
