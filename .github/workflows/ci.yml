@@ -240,7 +240,7 @@ jobs:
     if: ${{ needs.changes.outputs.backend == 'true' }}
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -426,7 +426,7 @@ jobs:
         app: ${{ fromJson(needs.django-test-plan.outputs.apps) }}
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -548,7 +548,7 @@ jobs:
     if: ${{ needs.changes.outputs.backend == 'true' && needs.django-test-plan.outputs.cli_admin_coverage == 'true' }}
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -1304,7 +1304,7 @@ jobs:
           trap cleanup EXIT
 
           docker network create "$network"
-          postgres_image="public.ecr.aws/docker/library/postgres:16"
+          postgres_image="postgres:16"
           for attempt in {1..5}; do
             if docker pull "$postgres_image"; then
               break
@@ -1723,7 +1723,7 @@ jobs:
       - changes
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
