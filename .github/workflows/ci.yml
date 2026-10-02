@@ -54,9 +54,11 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  # Match the interpreter used by the production Docker image.
+  BACKEND_PYTHON_VERSION: "3.14"
   NODE_VERSION: "22.22.2"
   DJANGO_SETTINGS_MODULE: config.settings.test
-  COVERAGE_VERSION: "7.6.10"
+  COVERAGE_VERSION: "7.16.1"
   CLI_COVERAGE_LINES: "99"
   CLI_COVERAGE_BRANCHES: "98"
 
@@ -269,7 +271,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
@@ -340,7 +342,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
@@ -455,7 +457,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
@@ -577,7 +579,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
@@ -1753,7 +1755,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
