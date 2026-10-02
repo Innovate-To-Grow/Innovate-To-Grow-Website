@@ -28,7 +28,7 @@ gspread>=6.2.1
 # Agents 0.21+ requires openai 3, while LiteLLM requires openai <3.
 # Revisit the cap when LiteLLM supports openai 3 (see PR #542).
 openai-agents[litellm]>=0.20.0,<0.21.0
-litellm>=1.102.1,<2.0
+litellm>=1.103.0,<2.0
 
 # Email
 imap-tools>=1.15.0
