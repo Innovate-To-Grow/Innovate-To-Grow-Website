@@ -85,7 +85,15 @@ SECURE_HSTS_PRELOAD = True
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True  # Defense-in-depth; ALB already redirects, but enforce at the app layer too.
-NUM_PROXIES = 1  # ALB is the single trusted proxy; fixes X-Forwarded-For rate-limit bypass
+
+# Trusted reverse-proxy hops in front of uvicorn (one ALB = 1). ``X-Forwarded-For`` is client-supplied
+# except for the entries our own proxies append, so the Nth entry from the right is the real client.
+# This top-level value serves the app's own helpers (``apps.core.utils.client_ip`` etc.); DRF throttling
+# reads ``REST_FRAMEWORK["NUM_PROXIES"]`` instead, which ``production.py`` sets from this value.
+# A value below 1 would key every throttle on the ALB's own address, i.e. one global bucket.
+NUM_PROXIES = _get_int_env("NUM_PROXIES", 1)
+if NUM_PROXIES < 1:
+    raise ImproperlyConfigured("NUM_PROXIES must be at least 1 in production (the ALB is a trusted proxy hop).")
 
 # Cookie security
 SESSION_COOKIE_SECURE = True

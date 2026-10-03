@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 from django.test import SimpleTestCase
@@ -68,6 +69,43 @@ class ECSTaskDefinitionTopologyTests(SimpleTestCase):
             "must retain its deployment placeholder",
         ):
             validator.validate_task_definition(taskdef, rendered=False)
+
+    def _rendered(self, **env_overrides):
+        """Fill every template placeholder the way ``deploy-backend.yml`` does (worker mirrors Web)."""
+        taskdef = copy.deepcopy(self.taskdef)
+        web = next(c for c in taskdef["containerDefinitions"] if c["name"] == validator.WEB_CONTAINER)
+        worker = next(c for c in taskdef["containerDefinitions"] if c["name"] == validator.WORKER_CONTAINER)
+        values = {"DJANGO_SETTINGS_MODULE": "config.settings.production", "AMPLIFY_CONFIG_REVISION": "1.1"}
+        for item in web["environment"]:
+            item["value"] = env_overrides.get(item["name"], values.get(item["name"], "1"))
+        for item in web["secrets"]:
+            item["valueFrom"] = "arn:aws:secretsmanager:us-west-2:000000000000:secret:test"
+        worker["environment"] = copy.deepcopy(web["environment"])
+        worker["secrets"] = copy.deepcopy(web["secrets"])
+        return json.loads(re.sub(r"__[A-Z0-9_]+__", "x", json.dumps(taskdef)))
+
+    def test_rendered_task_definition_with_trusted_proxy_hops_is_valid(self):
+        validator.validate_task_definition(self._rendered(NUM_PROXIES="2"), rendered=True)
+
+    def test_validator_rejects_a_rendered_task_without_a_positive_num_proxies(self):
+        for value in ("0", "", "-1", "one", "1.5"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(validator.TaskDefinitionValidationError, "NUM_PROXIES must be a positive"):
+                    validator.validate_task_definition(self._rendered(NUM_PROXIES=value), rendered=True)
+
+    def test_validator_rejects_a_template_missing_num_proxies(self):
+        taskdef = copy.deepcopy(self.taskdef)
+        web = next(c for c in taskdef["containerDefinitions"] if c["name"] == validator.WEB_CONTAINER)
+        web["environment"] = [item for item in web["environment"] if item["name"] != "NUM_PROXIES"]
+
+        with self.assertRaisesRegex(validator.TaskDefinitionValidationError, "missing required shared environment"):
+            validator.validate_task_definition(taskdef, rendered=False)
+
+    def test_backend_workflow_renders_num_proxies_defaulting_to_one_alb_hop(self):
+        workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("NUM_PROXIES: ${{ vars.NUM_PROXIES || '1' }}", workflow)
+        self.assertIn('"__NUM_PROXIES__": env_value("NUM_PROXIES", "1")', workflow)
 
     def test_backend_workflow_renders_and_validates_the_worker(self):
         workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
