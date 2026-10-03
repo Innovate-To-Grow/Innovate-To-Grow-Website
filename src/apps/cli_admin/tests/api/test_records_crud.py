@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 from django.db import IntegrityError
+from django.test import override_settings
 
 from apps.cli_admin.models import CliAuditLog
 from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff
@@ -116,6 +117,21 @@ class RecordWriteTests(CliApiTestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["year"], 2040)
+        log = CliAuditLog.objects.get(action="create", status="success")
+        self.assertEqual(log.request_ip, "203.0.113.7")
+
+    @override_settings(NUM_PROXIES=1)
+    def test_create_audit_ip_ignores_forged_leftmost_forwarded_hop(self):
+        # Behind the ALB the rightmost entry is the one the trusted proxy appended; a caller-supplied
+        # leftmost hop must not be recorded as the audit IP.
+        response = self.client.post(
+            COLLECTION,
+            {"year": 2043, "season": 1},
+            format="json",
+            HTTP_X_FORWARDED_FOR="198.51.100.99, 203.0.113.7",
+            **self.auth(self.raw),
+        )
+        self.assertEqual(response.status_code, 201)
         log = CliAuditLog.objects.get(action="create", status="success")
         self.assertEqual(log.request_ip, "203.0.113.7")
 
