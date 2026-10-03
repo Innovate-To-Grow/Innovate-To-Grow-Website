@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.test import override_settings
 from django.utils import timezone
 
 from apps.cli_admin.models import CliAccessToken
@@ -42,6 +43,16 @@ class OAuthTokenTests(CliApiTestCase):
         # Only the hash is stored; the raw token never is.
         self.assertFalse(CliAccessToken.objects.filter(token_hash=access).exists())
         self.assertTrue(CliAccessToken.objects.filter(token_hash=CliAccessToken.hash_token(access)).exists())
+
+    @override_settings(NUM_PROXIES=1)
+    def test_minted_token_records_trusted_proxy_ip_not_forged_hop(self):
+        _, raw = issue_code(self.staff, challenge=self.challenge)
+        response = self.client.post(
+            TOKEN, self._body(raw), format="json", HTTP_X_FORWARDED_FOR="198.51.100.99, 203.0.113.7"
+        )
+        self.assertEqual(response.status_code, 200)
+        token = CliAccessToken.objects.get(token_hash=CliAccessToken.hash_token(response.data["access_token"]))
+        self.assertEqual(token.created_ip, "203.0.113.7")
 
     def test_wrong_verifier_is_invalid_grant_and_consumes_code(self):
         code, raw = issue_code(self.staff, challenge=self.challenge)
