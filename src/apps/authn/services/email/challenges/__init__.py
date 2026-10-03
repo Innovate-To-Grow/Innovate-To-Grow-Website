@@ -19,6 +19,8 @@ from .verify import (
 CHALLENGE_TTL = timedelta(minutes=10)
 RESEND_COOLDOWN = timedelta(seconds=60)
 MAX_CHALLENGES_PER_HOUR = 10
+# Guesses a new code allows; a destination under guessing attack gets fewer (see ``degradation``).
+MAX_VERIFY_ATTEMPTS = 5
 
 
 class AuthChallengeError(RuntimeError):
@@ -63,6 +65,7 @@ __all__ = [
     "issue_email_challenge",
     "mark_challenge_verified",
     "MAX_CHALLENGES_PER_HOUR",
+    "MAX_VERIFY_ATTEMPTS",
     "RESEND_COOLDOWN",
     "verify_email_code",
     "verify_email_code_and_mint_token",

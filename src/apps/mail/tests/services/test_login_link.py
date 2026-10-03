@@ -1,5 +1,4 @@
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.test import override_settings
 from django.utils import timezone
@@ -137,7 +136,6 @@ class ReusableLoginLinkTests(APITestCase):
         self.token = LoginLinkToken.generate_token()
         self.link = LoginLinkToken.objects.create(token=self.token, member=self.member, campaign=self.campaign)
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_reusable_campaign_allows_repeat_logins(self):
         first = self.client.post("/mail/login-link/", {"token": self.token}, format="json")
         second = self.client.post("/mail/login-link/", {"token": self.token}, format="json")
@@ -148,7 +146,6 @@ class ReusableLoginLinkTests(APITestCase):
         self.assertTrue(self.link.is_used)
         self.assertIsNotNone(self.link.used_at)
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_repeat_login_updates_used_at(self):
         self.client.post("/mail/login-link/", {"token": self.token}, format="json")
         self.link.refresh_from_db()
@@ -158,7 +155,6 @@ class ReusableLoginLinkTests(APITestCase):
         self.link.refresh_from_db()
         self.assertGreaterEqual(self.link.used_at, first_used_at)
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_unticking_reusable_acts_as_kill_switch(self):
         first = self.client.post("/mail/login-link/", {"token": self.token}, format="json")
         self.assertEqual(first.status_code, 200)
@@ -170,7 +166,6 @@ class ReusableLoginLinkTests(APITestCase):
         self.assertEqual(blocked.status_code, 400)
         self.assertEqual(blocked.data["detail"], "This login link has already been used.")
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_reusable_token_still_expires(self):
         self.link.expires_at = timezone.now() - timedelta(seconds=1)
         self.link.save(update_fields=["expires_at"])
@@ -179,7 +174,6 @@ class ReusableLoginLinkTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "This login link has expired.")
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_reusable_login_rejected_for_inactive_member(self):
         self.member.is_active = False
         self.member.save(update_fields=["is_active", "updated_at"])
@@ -189,7 +183,6 @@ class ReusableLoginLinkTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "Invalid login link.")
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_orphaned_token_degrades_to_one_time(self):
         # Campaign deleted -> SET_NULL -> reusable flag is gone; safest is one-time.
         self.campaign.delete()
@@ -217,7 +210,6 @@ class TicketLoginLinkReuseTests(APITestCase):
             redirect_path="/event-registration",
         )
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_event_reusable_default_allows_repeat_logins(self):
         first = self.client.post("/mail/login-link/", {"token": self.token}, format="json")
         second = self.client.post("/mail/login-link/", {"token": self.token}, format="json")
@@ -226,7 +218,6 @@ class TicketLoginLinkReuseTests(APITestCase):
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.data["redirect_to"], "/event-registration")
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_event_kill_switch_blocks_used_links(self):
         self.client.post("/mail/login-link/", {"token": self.token}, format="json")
 
@@ -295,14 +286,12 @@ class LoginLinkViewErrorTests(APITestCase):
     def setUp(self):
         self.member = make_member(email="err@example.com")
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_missing_token_returns_400(self):
         response = self.client.post("/mail/login-link/", {"token": "  "}, format="json")
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "Token is required.")
 
-    @patch("apps.mail.views.LoginLinkView.throttle_classes", [])
     def test_unknown_token_returns_400(self):
         response = self.client.post("/mail/login-link/", {"token": "does-not-exist"}, format="json")
 

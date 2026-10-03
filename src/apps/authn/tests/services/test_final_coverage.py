@@ -1,4 +1,4 @@
-"""Coverage for services: challenges, rsa_manager, export_vcf, unsubscribe."""
+"""Coverage for services: challenges, rsa_manager, export_vcf."""
 
 from unittest.mock import patch
 
@@ -7,7 +7,6 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail, RSAKeypair
-from apps.authn.services.account.unsubscribe import build_unsubscribe_url
 from apps.authn.services.email.challenges import _random_code
 from apps.authn.services.members.export_vcf import _build_vcard, _escape, _profile_image
 from apps.authn.services.security.rsa_manager import (
@@ -93,10 +92,3 @@ class ExportVcfHelperTests(TestCase):
         with patch.object(ContactPhone, "to_e164", side_effect=RuntimeError("bad region")):
             card = _build_vcard(member)
         self.assertNotIn("TEL", card)
-
-
-class UnsubscribeUrlTests(TestCase):
-    def test_build_unsubscribe_url_contains_token(self):
-        member = _member(is_active=True)
-        url = build_unsubscribe_url(member)
-        self.assertIn("/unsubscribe-login#token=", url)

@@ -8,7 +8,6 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.authn.security.throttles import EmailCodeRequestThrottle
 from apps.authn.serializers import RegisterSerializer
 from apps.authn.services.send_verification import OP_REGISTER, fingerprint_payload, guarded_send
 from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
@@ -22,7 +21,8 @@ class RegisterView(APIView):
 
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeRequestThrottle]
+    # No per-IP throttle by design (campus users share one IP): the ALTCHA proof and the per-destination
+    # cooldown / hourly cap bound the verification emails this can trigger.
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

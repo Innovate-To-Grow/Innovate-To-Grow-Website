@@ -435,6 +435,9 @@ class NewsSourceToolTests(TransactionTestCase):
 class StyleSheetToolTests(TransactionTestCase):
     def setUp(self):
         cache.clear()
+        # cms migrations seed a "global" sheet. A TransactionTestCase sees it until some earlier test flushes the
+        # database, so this class failed when it ran first (alone, or early in a shuffled order).
+        StyleSheet.objects.filter(name__in=("global", "hidden")).delete()
         self.sheet = StyleSheet.objects.create(
             name="global", display_name="Global", css="body { color: #000; }", is_active=True
         )

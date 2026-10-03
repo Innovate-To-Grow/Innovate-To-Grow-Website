@@ -1,7 +1,6 @@
 export type AuthCallbackRoute =
   | 'login-link'
   | 'impersonate-login'
-  | 'unsubscribe-login'
   | 'email-auth-link';
 
 const CALLBACK_STORAGE_PREFIX = 'i2g_callback_params:';
@@ -19,7 +18,6 @@ const CALLBACK_ROUTES: Readonly<
   '/magic-login': {route: 'login-link', fields: ['token']},
   '/ticket-login': {route: 'login-link', fields: ['token']},
   '/impersonate-login': {route: 'impersonate-login', fields: ['token']},
-  '/unsubscribe-login': {route: 'unsubscribe-login', fields: ['token']},
   '/email-auth-link': {
     route: 'email-auth-link',
     fields: ['flow', 'source', 'email', 'code', 'event'],
