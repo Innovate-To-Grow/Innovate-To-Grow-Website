@@ -21,8 +21,8 @@ from apps.authn.services import (
 # are all far shorter: ``LoginLinkToken.token`` and ``ImpersonationToken.token`` are ``secrets.token_urlsafe(48)``
 # (64 characters) in columns capped at ``max_length=128``, so a longer string can never match a row.
 # 2048 leaves 16x headroom over that column cap, so no real credential can be rejected here, while a value
-# of megabytes (DRF parses a JSON body from the stream, past Django's ``DATA_UPLOAD_MAX_MEMORY_SIZE``) never
-# reaches a query.
+# of megabytes never reaches a query. Do not rely on Django's ``DATA_UPLOAD_MAX_MEMORY_SIZE`` for that: DRF before
+# 3.18 parsed a JSON body from the stream past it, and a body under the cap can still hold a megabyte-long value.
 MAX_CREDENTIAL_LENGTH = 2048
 
 

@@ -114,8 +114,8 @@ class CredentialEndpointLengthLimitTests(APITestCase):
     def post_token(self, url, token):
         return self.client.post(url, json.dumps({"token": token}), content_type="application/json")
 
-    def test_megabytes_long_token_is_answered_400_without_reaching_the_database(self):
-        huge = "a" * (3 * 1024 * 1024)  # past Django's 2.5 MB request-body cap, which DRF's stream parsing bypasses
+    def test_megabyte_long_token_is_answered_like_a_missing_one_without_reaching_the_database(self):
+        huge = "a" * (1024 * 1024)  # under Django's 2.5 MB request-body cap, so the view itself must refuse it
 
         for label, (url, _) in self.ENDPOINTS.items():
             with self.subTest(endpoint=label):
@@ -124,6 +124,18 @@ class CredentialEndpointLengthLimitTests(APITestCase):
 
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(response.data["detail"], self.TOKEN_REQUIRED)
+
+    def test_body_past_the_request_size_cap_is_answered_400_without_reaching_the_database(self):
+        # DRF 3.18+ lets Django's DATA_UPLOAD_MAX_MEMORY_SIZE reject this before the view runs; older DRF parsed it
+        # and the view refused the token. Either way: a 400 and no query.
+        huge = "a" * (3 * 1024 * 1024)
+
+        for label, (url, _) in self.ENDPOINTS.items():
+            with self.subTest(endpoint=label):
+                with self.assertNumQueries(0):
+                    response = self.post_token(url, huge)
+
+                self.assertEqual(response.status_code, 400)
 
     def test_token_at_the_limit_is_still_looked_up_and_one_character_more_is_not(self):
         for label, (url, invalid_detail) in self.ENDPOINTS.items():
