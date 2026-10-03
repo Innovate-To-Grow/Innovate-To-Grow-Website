@@ -44,7 +44,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
     # Each schedule row (e.g. one per event year) has its own Google Sheet, so
     # every row — not only the active one — can be pulled from the changelist
     # and from its change form. The "Pull" object-tool above the list stays
-    # scoped to the active schedule.
+    # scoped to the overview schedule (see ``_overview_schedule``).
     actions_row = ["sync_from_google_sheets"]
     actions_detail = ["sync_from_google_sheets_detail"]
 
@@ -139,6 +139,19 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
             return
         messages.success(request, f"Synced '{config}': {stats.summary()}")
 
+    def _overview_schedule(self):
+        """The schedule the changelist overview (cards, Pull, Auto Sync) acts on.
+
+        With several rows only the active one qualifies. With a single row it
+        is shown even when it is not active, so a schedule that has not been
+        activated yet is not hidden behind an empty overview.
+        """
+        config = CurrentProjectSchedule.load()
+        if config is not None:
+            return config
+        rows = list(CurrentProjectSchedule.objects.all()[:2])
+        return rows[0] if len(rows) == 1 else None
+
     def get_urls(self):
         custom_urls = [
             path(
@@ -160,7 +173,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to sync the schedule.")
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")
-        config = CurrentProjectSchedule.load()
+        config = self._overview_schedule()
         if not config:
             messages.error(request, "No configuration found. Add one first.")
             return redirect(changelist_url)
@@ -175,7 +188,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")
         if request.method != "POST":
             return redirect(changelist_url)
-        config = CurrentProjectSchedule.load()
+        config = self._overview_schedule()
         if not config:
             messages.error(request, "No active configuration to update.")
             return redirect(changelist_url)
@@ -197,7 +210,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
         extra_context["google_project_id"] = google_config.project_id
         extra_context["google_client_email"] = google_config.client_email
 
-        config = CurrentProjectSchedule.load()
+        config = self._overview_schedule()
         extra_context["config"] = config
         extra_context["pull_url"] = reverse("admin:event_currentprojectschedule_pull")
         extra_context["save_sync_settings_url"] = reverse("admin:event_currentprojectschedule_save_sync_settings")
