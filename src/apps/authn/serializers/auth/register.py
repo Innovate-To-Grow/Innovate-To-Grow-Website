@@ -149,6 +149,7 @@ class RegisterSerializer(serializers.Serializer):
                 first_name=first_name,
                 last_name=last_name,
                 is_active=False,
+                registration_pending=True,
             )
             if claim_unclaimed_contact_email(email, member=member) is None:
                 pending_member = get_pending_registration_member(email)

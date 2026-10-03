@@ -215,6 +215,20 @@ intentionally fails closed.
 - Impersonation links expire after five minutes and are conditionally marked used before JWT issuance. An already-used result is expected replay protection; issue a fresh link instead of changing `is_used`.
 - Failed email/SMS attempts and expiry transitions are deliberately committed before error responses. Do not treat a rising attempt counter as a transaction bug.
 
+### Deactivated-member reactivation audit
+
+Only members created by the self-service signup flows and never activated (`Member.registration_pending`) can be activated by an email code. Before that flag existed, any inactive member counted as pending, so an admin-deactivated account could request a REGISTER code and reactivate itself. The "Deactivate selected members" action writes no `LogEntry`, so the audit looks for REGISTER codes issued to a member that was already active instead:
+
+```bash
+python manage.py audit_register_reactivations
+```
+
+The command is read-only and prints one line per flagged code (times in UTC) with the evidence that the member was already active: `earlier_other_code`, `earlier_consumed_register`, `not_created_by_signup`, `logged_in_before`, or `staff`.
+
+- `consumed` lines are accounts that were reactivated. Review each one and redeactivate with the admin action if the reactivation was not intended.
+- `pending`/`expired` lines are attempts that never completed. Verification now rejects those codes.
+- A signup whose first code email failed and was retried more than 10 minutes later shows `not_created_by_signup` on its own. Treat that reason alone as weak evidence.
+
 ### Handoff acceptance checklist
 
 - [ ] `showmigrations` marks the five invariant migrations applied and `migrate_locked --check` exits successfully on PostgreSQL.

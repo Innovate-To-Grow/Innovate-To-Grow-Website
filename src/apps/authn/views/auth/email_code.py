@@ -261,8 +261,13 @@ def _complete_login(challenge):
 def _complete_registration(challenge):
     member = _lock_challenge_member(challenge)
     if not member.is_active:
+        if not member.registration_pending:
+            # Deactivated after the code was issued (or never a self-service signup):
+            # proving email ownership must not revive it.
+            raise AuthChallengeInvalid("Verification code is invalid or has expired.")
         member.is_active = True
-        member.save(update_fields=["is_active", "updated_at"])
+        member.registration_pending = False
+        member.save(update_fields=["is_active", "registration_pending", "updated_at"])
         _link_email_subscriber(member)
     _mark_contact_email_verified(member, challenge.target_email)
     return build_auth_success_payload(member, "Email verified. Registration successful.")

@@ -107,6 +107,7 @@ class EmailCodeAuthRegisterTests(APITestCase):
         pending = Member.objects.create_user(
             password="OldPass123!",
             is_active=False,
+            registration_pending=True,
             first_name="Old",
         )
         ContactEmail.objects.create(
