@@ -2,7 +2,8 @@ import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/reac
 import {MemoryRouter, Route, Routes} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {VerifyEmailPage} from '@/features/auth/components/pages/VerifyEmailPage';
+import {VerifyEmailPage, VerifyEmailPageContent} from '@/features/auth/components/pages/VerifyEmailPage';
+import type {VerifyFlow} from '@/features/auth/components/pages/verify/shared';
 
 const mockUseAuth = vi.fn();
 const mockNavigate = vi.fn();
@@ -386,5 +387,285 @@ describe('VerifyEmailPage', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Back'}));
 
     expect(mockNavigate).toHaveBeenCalledWith('/login');
+  });
+
+  it.each(['auth', 'login', 'register', 'reset'])(
+    'leaves focus alone on the standalone route (%s flow)',
+    (flow) => {
+      renderPage(`/verify-email?flow=${flow}&email=ada@example.com`);
+
+      expect(screen.getByRole('textbox', {name: '6-digit verification code'})).not.toHaveFocus();
+    },
+  );
+});
+
+describe('VerifyEmailPageContent message and hint', () => {
+  const ACK = 'If an eligible account exists, a verification code has been sent.';
+  const HINT = "Didn't get a code? Check the address above or go back to correct it.";
+
+  const renderContent = (props: {initialMessage?: string | null; hint?: string | null} = {}) =>
+    render(
+      <MemoryRouter>
+        <VerifyEmailPageContent flow="login" email="ada@example.com" returnTo={null} {...props} />
+      </MemoryRouter>,
+    );
+
+  const codeField = () => screen.getByRole('textbox', {name: '6-digit verification code'});
+
+  beforeEach(() => {
+    mockUseAuth.mockReset();
+    mockNavigate.mockReset();
+    mockUseAuth.mockReturnValue(buildAuth());
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('shows no message, hint, or description by default', () => {
+    const {container} = renderContent();
+
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(container.querySelector('.auth-help-text')).toBeNull();
+    expect(codeField()).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('is unchanged on the standalone /verify-email route', () => {
+    const {container} = renderPage('/verify-email?flow=login&email=ada@example.com');
+
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(container.querySelector('.auth-help-text')).toBeNull();
+    expect(codeField()).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('opens with the initial message as an info status', () => {
+    renderContent({initialMessage: ACK});
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveClass('auth-alert', 'info');
+    expect(status).toHaveTextContent(ACK);
+    // The address block above it is still there, once.
+    expect(screen.getAllByText('ada@example.com')).toHaveLength(1);
+  });
+
+  it('shows the hint as help text under the code field', () => {
+    const {container} = renderContent({hint: HINT});
+
+    const help = screen.getByText(HINT);
+    expect(help).toHaveClass('auth-help-text');
+    expect(help.closest('.auth-form-group')).toContainElement(codeField());
+    expect(container.querySelectorAll('.auth-help-text')).toHaveLength(1);
+    // No message was given, so no status.
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('describes the code field by the message and the hint together', () => {
+    renderContent({initialMessage: ACK, hint: HINT});
+
+    expect(codeField()).toHaveAccessibleDescription(`${ACK} ${HINT}`);
+  });
+
+  it('describes the code field by the hint alone when there is no message', () => {
+    renderContent({hint: HINT});
+
+    expect(codeField()).toHaveAccessibleDescription(HINT);
+  });
+
+  it('replaces the initial message with the resend response and keeps the hint', async () => {
+    renderContent({initialMessage: ACK, hint: HINT});
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+    authValue.requestLoginCode.mockResolvedValue({message: 'Another code is on its way.'});
+
+    fireEvent.click(screen.getByRole('button', {name: 'Resend code'}));
+
+    expect(await screen.findByText('Another code is on its way.')).toBeInTheDocument();
+    expect(authValue.requestLoginCode).toHaveBeenCalledWith('ada@example.com');
+    expect(screen.queryByText(ACK)).toBeNull();
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.getByText(HINT)).toBeInTheDocument();
+    expect(codeField()).toHaveAccessibleDescription(`Another code is on its way. ${HINT}`);
+  });
+
+  it('drops the initial message once a code is submitted, and keeps the hint', async () => {
+    renderContent({initialMessage: ACK, hint: HINT});
+    const authValue = mockUseAuth.mock.results.at(-1)?.value;
+    authValue.verifyLoginCode.mockRejectedValue(new Error('Invalid or expired code.'));
+
+    fireEvent.change(codeField(), {target: {value: '000000'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Verify and Sign In'}));
+
+    await waitFor(() => {
+      expect(authValue.verifyLoginCode).toHaveBeenCalledWith('ada@example.com', '000000');
+    });
+    expect(screen.queryByText(ACK)).toBeNull();
+    expect(screen.getByText(HINT)).toBeInTheDocument();
+  });
+
+  it('still goes Back through the host when it supplies a message and hint', () => {
+    const onBack = vi.fn();
+    render(
+      <MemoryRouter>
+        <VerifyEmailPageContent
+          flow="login"
+          email="ada@example.com"
+          returnTo={null}
+          onBack={onBack}
+          initialMessage={ACK}
+          hint={HINT}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: 'Back'}));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('VerifyEmailPageContent', () => {
+  const renderContent = (
+    onBack?: () => void,
+    props: {flow?: VerifyFlow; onSignedIn?: () => void; autoFocus?: boolean} = {},
+  ) =>
+    render(
+      <MemoryRouter>
+        <VerifyEmailPageContent
+          flow={props.flow ?? 'auth'}
+          email="ada@example.com"
+          returnTo="/schedule"
+          onBack={onBack}
+          onSignedIn={props.onSignedIn}
+          autoFocus={props.autoFocus}
+        />
+      </MemoryRouter>,
+    );
+
+  const codeField = () => screen.getByRole('textbox', {name: '6-digit verification code'});
+
+  beforeEach(() => {
+    mockUseAuth.mockReset();
+    mockNavigate.mockReset();
+    mockUseAuth.mockReturnValue(buildAuth());
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('runs a supplied onBack instead of navigating away', () => {
+    const onBack = vi.fn();
+    renderContent(onBack);
+
+    fireEvent.click(screen.getByRole('button', {name: 'Back'}));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('keeps the flow default when no onBack is supplied', () => {
+    renderContent();
+
+    fireEvent.click(screen.getByRole('button', {name: 'Back'}));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
+  });
+
+  it('verifies the code and honours the given returnTo without a route of its own', async () => {
+    const auth = buildAuth();
+    auth.verifyEmailAuthCode.mockResolvedValue({next_step: 'account', requires_profile_completion: false});
+    mockUseAuth.mockReturnValue(auth);
+    renderContent(vi.fn());
+
+    enterCodeAndSubmit('Continue');
+
+    await waitFor(() => {
+      expect(auth.verifyEmailAuthCode).toHaveBeenCalledWith('ada@example.com', '123456');
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('/schedule', {replace: true});
+  });
+
+  describe('focus', () => {
+    it('does not focus the code field unless asked to', () => {
+      renderContent();
+
+      expect(codeField()).not.toHaveFocus();
+    });
+
+    it.each(['auth', 'login'] as const)('focuses the code field on mount when asked to (%s flow)', (flow) => {
+      renderContent(undefined, {flow, autoFocus: true});
+
+      expect(codeField()).toHaveFocus();
+    });
+
+    it('does not steal focus for the password form that replaces the code field', async () => {
+      const auth = buildAuth();
+      auth.verifyPasswordResetCode.mockResolvedValue({verification_token: 'tok', message: 'verified'});
+      mockUseAuth.mockReturnValue(auth);
+      renderContent(undefined, {flow: 'reset', autoFocus: true});
+      expect(codeField()).toHaveFocus();
+
+      enterCodeAndSubmit('Verify Code');
+
+      expect(await screen.findByLabelText('New Password')).not.toHaveFocus();
+    });
+  });
+
+  describe('onSignedIn', () => {
+    const SIGN_IN: Array<[VerifyFlow, string, 'verifyEmailAuthCode' | 'verifyLoginCode' | 'verifyRegistrationCode']> = [
+      ['auth', 'Continue', 'verifyEmailAuthCode'],
+      ['login', 'Verify and Sign In', 'verifyLoginCode'],
+      ['register', 'Verify and Activate', 'verifyRegistrationCode'],
+    ];
+
+    it.each(SIGN_IN)('runs after a %s code signs the visitor in, before navigating on', async (flow, button, method) => {
+      const auth = buildAuth();
+      auth[method].mockResolvedValue({
+        next_step: 'account',
+        requires_profile_completion: false,
+      });
+      mockUseAuth.mockReturnValue(auth);
+      const order: string[] = [];
+      const onSignedIn = vi.fn(() => order.push('signed-in'));
+      mockNavigate.mockImplementation(() => order.push('navigate'));
+      renderContent(undefined, {flow, onSignedIn});
+
+      enterCodeAndSubmit(button);
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledTimes(1);
+      });
+      expect(onSignedIn).toHaveBeenCalledTimes(1);
+      expect(order).toEqual(['signed-in', 'navigate']);
+    });
+
+    it.each(SIGN_IN)('does not run when the %s code is rejected', async (flow, button, method) => {
+      const auth = buildAuth();
+      auth[method].mockRejectedValue(new Error('Invalid code.'));
+      mockUseAuth.mockReturnValue(auth);
+      const onSignedIn = vi.fn();
+      renderContent(undefined, {flow, onSignedIn});
+
+      enterCodeAndSubmit(button);
+
+      await waitFor(() => {
+        expect(auth[method]).toHaveBeenCalledTimes(1);
+      });
+      expect(onSignedIn).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('does not run for a flow that does not sign anyone in', async () => {
+      const auth = buildAuth();
+      auth.verifyPasswordResetCode.mockResolvedValue({verification_token: 'tok', message: 'verified'});
+      mockUseAuth.mockReturnValue(auth);
+      const onSignedIn = vi.fn();
+      renderContent(undefined, {flow: 'reset', onSignedIn});
+
+      enterCodeAndSubmit('Verify Code');
+
+      expect(await screen.findByLabelText('New Password')).toBeInTheDocument();
+      expect(onSignedIn).not.toHaveBeenCalled();
+    });
   });
 });

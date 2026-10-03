@@ -51,6 +51,23 @@ describe('CodeInput', () => {
     expect(input).not.toHaveAttribute('aria-label');
   });
 
+  it('has no description unless describedBy is given', () => {
+    render(<CodeInput value="" onChange={vi.fn()} />);
+    expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('is described by the elements named in describedBy', () => {
+    render(
+      <>
+        <span id="first">First sentence.</span>
+        <span id="second">Second sentence.</span>
+        <CodeInput value="" onChange={vi.fn()} describedBy="first second" />
+      </>,
+    );
+    expect(screen.getByRole('textbox')).toHaveAttribute('aria-describedby', 'first second');
+    expect(screen.getByRole('textbox')).toHaveAccessibleDescription('First sentence. Second sentence.');
+  });
+
   it('focuses the input when autoFocus is set', () => {
     render(<CodeInput value="" onChange={vi.fn()} autoFocus />);
     expect(screen.getByRole('textbox')).toHaveFocus();

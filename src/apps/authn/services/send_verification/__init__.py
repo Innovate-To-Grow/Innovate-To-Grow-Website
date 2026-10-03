@@ -1,5 +1,5 @@
 from .challenges import issue_challenge, serialize_challenge
-from .cleanup import cleanup_expired_records
+from .cleanup import cleanup_expired_records, clear_expired_sessions
 from .constants import (
     ALL_OPERATIONS,
     FIELD_CHALLENGE_ID,
@@ -50,6 +50,7 @@ __all__ = [
     "OP_REGISTER_RESEND_CODE",
     "SendVerificationError",
     "cleanup_expired_records",
+    "clear_expired_sessions",
     "consume_and_reserve",
     "extract_verification_fields",
     "fingerprint_payload",

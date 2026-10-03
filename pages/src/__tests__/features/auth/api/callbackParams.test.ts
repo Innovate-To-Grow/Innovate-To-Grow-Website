@@ -63,7 +63,7 @@ describe('auth callback parameter handoff', () => {
         },
       },
     });
-    window.history.replaceState({}, '', '/unsubscribe-login#token=private');
+    window.history.replaceState({}, '', '/impersonate-login#token=private');
 
     try {
       captureAuthCallbackParams();
@@ -81,7 +81,7 @@ describe('auth callback parameter handoff', () => {
     expect(descriptor?.enumerable).toBe(false);
     expect(
       readAuthCallbackParams(
-        'unsubscribe-login',
+        'impersonate-login',
         new URLSearchParams(),
       ).get('token'),
     ).toBe('private');

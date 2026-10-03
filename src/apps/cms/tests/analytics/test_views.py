@@ -11,6 +11,11 @@ class PageViewCreateViewTest(TestCase):
         PageView.objects.all().delete()
         self.client = APIClient()
 
+    def tearDown(self):
+        # Drain what the test posted: left in the process-wide buffer, the flush timer would write it 5 seconds
+        # later from its own thread and connection, outside this test's transaction, into whichever test runs then.
+        flush_sync()
+
     def test_create_page_view(self):
         response = self.client.post(
             "/analytics/pageview/",
