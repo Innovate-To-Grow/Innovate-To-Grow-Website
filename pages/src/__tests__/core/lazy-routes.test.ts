@@ -23,7 +23,6 @@ describe('Lazy route modules resolve', () => {
     ['EventRegistrationPage', () => import('@/routes/EventRegistrationPage')],
     ['LoginLinkPage', () => import('@/routes/LoginLinkPage')],
     ['SubscribePage', () => import('@/routes/SubscribePage')],
-    ['UnsubscribeLoginPage', () => import('@/routes/UnsubscribeLoginPage')],
   ] as const;
 
   it.each([...authPages, ...contentPages])(

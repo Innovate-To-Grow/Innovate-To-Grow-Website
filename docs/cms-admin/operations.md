@@ -79,7 +79,7 @@ Configuration models are available in Django admin:
 | `MemberSheetSyncConfig` | Members & Auth | Member-to-Sheets selection |
 | `CurrentProjectSchedule` | Events | Published current-project schedule/source |
 | `PastProjectsSheetConfig` | Projects | Past-project Sheets source |
-| `SystemIntelligenceConfig` | System Intelligence | Bedrock and public-assistant behavior |
+| `SystemIntelligenceConfig` | System Intelligence | Bedrock and public-assistant behavior, including the per-visitor/member and global token limits that bound assistant and AI-search spend ([sizing](../integrations/assistant-limits.md#sizing-the-global-limit)) |
 | `SiteMaintenanceControl` | Site Settings | Maintenance mode toggle |
 
 The selector models permit only one active/enabled row in their scope; saving a replacement demotes the previous row. `SiteMaintenanceControl` is a separate true singleton stored at primary key `1`.

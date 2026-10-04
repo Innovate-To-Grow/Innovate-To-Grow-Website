@@ -15,11 +15,24 @@ from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase, override_settings
 from django.utils import timezone
 
-from apps.authn.models import SendDestinationState, SendQuotaWindow, SendVerificationChallenge, SendVerificationRequest
+from apps.authn.models import (
+    PhoneVerificationChallenge,
+    SendDestinationState,
+    SendQuotaWindow,
+    SendVerificationChallenge,
+    SendVerificationRequest,
+)
 from apps.authn.services.send_verification.config import load_settings
 from apps.authn.services.send_verification.constants import OP_LOGIN_REQUEST_CODE, OP_PHONE_AUTH_REQUEST_CODE
 from apps.authn.services.send_verification.hashing import hash_value
 from apps.authn.services.send_verification.http import guarded_send
+from apps.authn.services.sms import start_phone_verification
+
+SMS_BUDGET_SPENT_ANSWER = {
+    "code": "send_throttled",
+    "detail": "The SMS sending budget for today has been reached.",
+    "retry_after": 3600,
+}
 
 
 def verified_request(
@@ -67,6 +80,24 @@ def send(request, provider, *, destination="member@example.com", operation=OP_LO
         fingerprint=hash_value(destination),
         channel=channel,
         perform=lambda: (provider(), 202),
+    )
+
+
+def send_sms(request, destination):
+    """A protected passwordless-phone send through the real SMS service (the caller replaces the provider)."""
+
+    def perform():
+        started = start_phone_verification(destination, purpose="phone_auth", context_identifier="1-US")
+        return {"challenge_id": started["challenge_id"]}, 202
+
+    return guarded_send(
+        request,
+        operation=OP_PHONE_AUTH_REQUEST_CODE,
+        destination_kind="phone",
+        destination_normalized=destination,
+        fingerprint=hash_value(destination),
+        channel="sms",
+        perform=perform,
     )
 
 
@@ -162,26 +193,53 @@ class SendVerificationPostgresLockTests(TransactionTestCase):
         self.assertEqual(SendDestinationState.objects.count(), 1)
         self.assertEqual(SendVerificationRequest.objects.filter(quota_reserved=True).count(), 1)
 
-    def test_sms_daily_limit_serializes_different_destinations(self):
-        destinations = ["+12025550100", "+12025550101"]
+    def parallel_sms(self, destinations):
+        """One protected SMS send per destination, all at once, with the provider call replaced by a mock.
+
+        The early budget check is switched off so every request reaches the dispatch step, as when they all arrive
+        before any reservation has committed: the row lock in ``reserve_sms_dispatch`` alone has to decide.
+        """
         requests = [
             verified_request(destination=value, kind="phone", operation=OP_PHONE_AUTH_REQUEST_CODE)
             for value in destinations
         ]
-        provider = Mock(return_value={"message": "sent"})
-        responses = self.parallel(
-            [
-                lambda i=i: send(
-                    requests[i],
-                    provider,
-                    destination=destinations[i],
-                    channel="sms",
-                    operation=OP_PHONE_AUTH_REQUEST_CODE,
-                )
-                for i in range(2)
-            ]
-        )
-        self.assertEqual(sorted(response.status_code for response in responses), [202, 429])
-        provider.assert_called_once()
+        aws_config = SimpleNamespace(render_sms_otp_message=lambda code: f"Code: {code}")
+        with (
+            patch("apps.authn.services.sms.sns_verify._assert_configured", return_value=aws_config),
+            patch("apps.authn.services.sms.sns_verify._publish_sms", return_value="message-id") as publish,
+            patch("apps.authn.services.send_verification.quotas._sms_budget_spent", return_value=False),
+        ):
+            responses = self.parallel(
+                [lambda i=i: send_sms(requests[i], destinations[i]) for i in range(len(destinations))]
+            )
+        return responses, publish
+
+    def assert_budget_refusals(self, responses, *, sent):
+        statuses = sorted(response.status_code for response in responses)
+        self.assertEqual(statuses, [202] * sent + [429] * (len(responses) - sent))
+        for response in responses:
+            if response.status_code == 429:
+                self.assertEqual(response.data, SMS_BUDGET_SPENT_ANSWER)
+                self.assertEqual(response["Retry-After"], "3600")
+
+    def test_sms_daily_limit_serializes_different_destinations(self):
+        responses, publish = self.parallel_sms(["+12025550100", "+12025550101"])
+
+        self.assert_budget_refusals(responses, sent=1)
+        publish.assert_called_once()
         self.assertEqual(SendQuotaWindow.objects.get(kind="sms_daily").reserved_count, 1)
-        self.assertEqual(SendVerificationRequest.objects.filter(quota_reserved=True).count(), 1)
+        # The refused send rolled its code back with the reservation; its request row records the refusal.
+        self.assertEqual(PhoneVerificationChallenge.objects.count(), 1)
+        self.assertEqual(
+            sorted(SendVerificationRequest.objects.values_list("status", flat=True)),
+            ["definitely_failed", "provider_accepted"],
+        )
+
+    @override_settings(SEND_VERIFICATION_SMS_DAILY_LIMIT=2)
+    def test_concurrent_sms_sends_never_overspend_the_budget(self):
+        responses, publish = self.parallel_sms([f"+1202555011{index}" for index in range(5)])
+
+        self.assert_budget_refusals(responses, sent=2)
+        self.assertEqual(publish.call_count, 2)
+        self.assertEqual(SendQuotaWindow.objects.get(kind="sms_daily").reserved_count, 2)
+        self.assertEqual(PhoneVerificationChallenge.objects.count(), 2)

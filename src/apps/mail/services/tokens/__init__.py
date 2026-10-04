@@ -9,6 +9,7 @@ from .unsubscribe import (
     build_resubscribe_token,
     get_member_from_oneclick_token,
     get_member_from_resubscribe_token,
+    load_resubscribe_token,
 )
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "get_member_from_oneclick_token",
     "get_member_from_resubscribe_token",
     "issue_login_link",
+    "load_resubscribe_token",
     "revoke_login_links",
     "send_subscription_confirmation",
     "subscription_confirmation_dedupe_key",

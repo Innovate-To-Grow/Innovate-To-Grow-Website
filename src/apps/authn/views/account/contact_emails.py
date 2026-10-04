@@ -187,7 +187,7 @@ class ContactEmailDetailView(APIView):
 
 class ContactEmailRequestVerificationView(APIView):
     permission_classes = [IsAuthenticated]
-    # Per-user cap: the anon EmailCodeRequestThrottle never fires for an
+    # Per-user cap: an anonymous (per-IP) throttle never fires for an
     # authenticated caller, leaving SES sends to an attacker-supplied address
     # unbounded.
     throttle_classes = [EmailCodeUserRequestThrottle]

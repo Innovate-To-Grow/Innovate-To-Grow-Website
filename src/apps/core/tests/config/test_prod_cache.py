@@ -50,6 +50,33 @@ class ProductionCacheSettingsTests(SimpleTestCase):
         )
         self.assertEqual(prod_settings.CACHES["default"]["LOCATION"], cache_dir)
 
+    def test_prod_file_cache_is_kept_small(self):
+        """Every write lists the cache directory, so the bound caps how much junk keys can slow cache writes.
+
+        Nothing that bounds security or money may depend on this cache (lockout, quotas and budgets are in
+        PostgreSQL), which is what makes a small bound safe. Raising it again re-opens the slow-down.
+        """
+        with patch.dict("os.environ", {**PROD_ENV, "REDIS_URL": ""}, clear=True):
+            prod_settings = reload_prod_settings()
+
+        self.assertEqual(prod_settings.CACHES["default"]["OPTIONS"], {"MAX_ENTRIES": 2_000})
+
+    def test_prod_defines_the_bounded_throttle_alias_with_and_without_redis(self):
+        """Throttles keyed on a caller-minted value must never land in ``default`` (a file per key without Redis)."""
+        from config.settings.components.framework.cache import THROTTLE_CACHE
+
+        for redis_url in ("", "redis://cache.example.com:6379/0"):
+            with self.subTest(redis_url=redis_url):
+                with patch.dict("os.environ", {**PROD_ENV, "REDIS_URL": redis_url}, clear=True):
+                    prod_settings = reload_prod_settings()
+
+                self.assertEqual(sorted(prod_settings.CACHES), ["default", "throttle"])
+                throttle = prod_settings.CACHES["throttle"]
+                self.assertEqual(throttle, THROTTLE_CACHE)
+                self.assertEqual(throttle["BACKEND"], "django.core.cache.backends.locmem.LocMemCache")
+                self.assertEqual(throttle["OPTIONS"], {"MAX_ENTRIES": 50_000, "CULL_FREQUENCY": 3})
+                self.assertNotEqual(prod_settings.CACHES["default"]["BACKEND"], throttle["BACKEND"])
+
     def test_prod_requires_secret_key(self):
         env = {key: value for key, value in PROD_ENV.items() if key != "DJANGO_SECRET_KEY"}
         with patch.dict("os.environ", env, clear=True):

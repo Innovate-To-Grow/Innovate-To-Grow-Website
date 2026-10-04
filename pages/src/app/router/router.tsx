@@ -52,7 +52,6 @@ const AcknowledgementPage = React.lazy(() => import('@/routes/AcknowledgementPag
 const EventArchivePage = React.lazy(() => import('@/routes/EventArchivePage').then(m => ({default: m.EventArchivePage})));
 const EventRegistrationPage = React.lazy(() => import('@/routes/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
 const SubscribePage = React.lazy(() => import('@/routes/SubscribePage').then(m => ({default: m.SubscribePage})));
-const UnsubscribeLoginPage = React.lazy(() => import('@/routes/UnsubscribeLoginPage').then(m => ({default: m.UnsubscribeLoginPage})));
 const LoginLinkPage = React.lazy(() => import('@/routes/LoginLinkPage').then(m => ({default: m.LoginLinkPage})));
 const EmailAuthLinkPage = React.lazy(() => import('@/routes/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
 const ImpersonateLoginPage = React.lazy(() => import('@/routes/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
@@ -101,7 +100,10 @@ export const createAppRouter = () => createBrowserRouter([
             // valid tokens) and /ticket-login (tokens already invalidated).
             {path: 'magic-login', element: <LegacyLoginLinkRedirect/>},
             {path: 'ticket-login', element: <LegacyLoginLinkRedirect/>},
-            {path: 'unsubscribe-login', element: lazyRoute(<UnsubscribeLoginPage/>)},
+            // Retired: old unsubscribe emails point at /unsubscribe-login, whose
+            // tokens have all expired. Their email preferences live on /account;
+            // the redirect drops the stale token instead of forwarding it.
+            {path: 'unsubscribe-login', element: <Navigate to="/account" replace/>},
             {path: 'email-auth-link', element: lazyRoute(<EmailAuthLinkPage/>)},
             {path: 'impersonate-login', element: lazyRoute(<ImpersonateLoginPage/>)},
 

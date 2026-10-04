@@ -14,21 +14,26 @@ from apps.system_intelligence.models import (
     PublicAssistantTokenBudget,
     SystemIntelligenceConfig,
 )
-from apps.system_intelligence.services.public_assistant import budget
+from apps.system_intelligence.services.public_assistant import actors, budget
 
 MOCK_RESULT = {
     "text": "Innovate to Grow connects student teams with industry partners.",
     "usage": {"inputTokens": 120, "outputTokens": 40, "totalTokens": 160},
 }
 
+# Mocks that must NOT be called still return MOCK_RESULT: a bare MagicMock reaching
+# the JSON renderer makes a regression hang the run instead of failing an assertion.
 INVOKE_PATH = "apps.system_intelligence.views.public_assistant.answer_public_question"
 
 
 @override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=True)
 class PublicAssistantChatTestBase(TestCase):
     def setUp(self):
-        # Clearing the cache resets both the throttle and the per-IP budget.
+        # Clearing the cache resets both the throttle and the token budgets.
         cache.clear()
+        # These requests carry no visitor value, so they are all charged to the
+        # shared legacy bucket (never to the client IP).
+        self.legacy_key = actors.legacy_actor().key
         self.client = APIClient()
         self.chat_url = reverse("system_intelligence:public-assistant-chat")
         self.config_url = reverse("system_intelligence:public-assistant-config")
@@ -53,7 +58,7 @@ class DisabledConfigTests(PublicAssistantChatTestBase):
     def test_disabled_returns_available_false(self):
         self.config.public_assistant_enabled = False
         self.config.save()
-        with patch(INVOKE_PATH) as mock_invoke:
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
             response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["available"])
@@ -75,7 +80,7 @@ class HappyPathTests(PublicAssistantChatTestBase):
         self.aws.access_key_id = ""
         self.aws.secret_access_key = ""
         self.aws.save()
-        with patch(INVOKE_PATH) as mock_invoke:
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
             response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["available"])
@@ -85,7 +90,7 @@ class HappyPathTests(PublicAssistantChatTestBase):
         self.config.public_assistant_model_id = ""
         self.config.default_model_id = ""
         self.config.save()
-        with patch(INVOKE_PATH) as mock_invoke:
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
             response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["available"])
@@ -131,7 +136,7 @@ class ValidationTests(PublicAssistantChatTestBase):
 
     def test_history_item_count_is_bounded_before_child_validation(self):
         history = [{"role": "user", "content": "x"} for _ in range(101)]
-        with patch(INVOKE_PATH) as mock_invoke:
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
             response = self.client.post(
                 self.chat_url,
                 {"message": "hi", "history": history},
@@ -144,7 +149,7 @@ class ValidationTests(PublicAssistantChatTestBase):
     def test_estimated_input_limit_rejects_before_model_call(self):
         self.config.public_assistant_max_estimated_input_tokens = 5
         self.config.save()
-        with patch(INVOKE_PATH) as mock_invoke:
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
             response = self.client.post(
                 self.chat_url,
                 {"message": "This request is larger than five estimated tokens."},
@@ -204,22 +209,82 @@ class BudgetTests(PublicAssistantChatTestBase):
     def test_budget_exceeded_returns_429_and_skips_model(self):
         self.config.public_assistant_ip_token_limit = 100
         self.config.save()
-        ip_hash = budget.hash_ip("127.0.0.1")
-        budget.record_usage(ip_hash, 100, 86400)
-        with patch(INVOKE_PATH) as mock_invoke:
-            response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
+        visitor = self.client.get(self.config_url).data["visitor_token"]
+        budget.record_usage(actors.visitor_actor(visitor).key, 100, 86400)
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
+            response = self.client.post(
+                self.chat_url,
+                {"message": "hi", "visitor_token": visitor},
+                format="json",
+            )
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.data["code"], "budget_exceeded")
+        # The limit may be a shared one, so the copy must not blame the asker.
+        self.assertEqual(
+            response.data["detail"],
+            "The assistant has reached its usage limit for now. Please try again later.",
+        )
         mock_invoke.assert_not_called()
 
+    def test_requests_without_a_visitor_value_are_not_held_to_the_per_visitor_limit(self):
+        # The shared legacy actor is many people at once: only the assistant's
+        # global budget (and its request throttle) bound it.
+        self.config.public_assistant_ip_token_limit = 100
+        self.config.save()
+        budget.record_usage(self.legacy_key, 100, 86400)
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
+            response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["available"])
+        mock_invoke.assert_called_once()
+        self.assertEqual(budget.tokens_used(self.legacy_key), 100 + MOCK_RESULT["usage"]["totalTokens"])
+
     def test_usage_increments_after_response(self):
-        ip_hash = budget.hash_ip("127.0.0.1")
-        before = budget.tokens_used(ip_hash)
+        before = budget.tokens_used(self.legacy_key)
         with patch(INVOKE_PATH, return_value=MOCK_RESULT):
             response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
         self.assertEqual(response.status_code, 200)
-        after = budget.tokens_used(ip_hash)
+        after = budget.tokens_used(self.legacy_key)
         self.assertEqual(after - before, MOCK_RESULT["usage"]["totalTokens"])
+        # Every chat turn is also charged to the assistant's global budget,
+        # and never to AI search's.
+        self.assertEqual(budget.global_tokens_used(budget.FEATURE_ASSISTANT), MOCK_RESULT["usage"]["totalTokens"])
+        self.assertEqual(budget.global_tokens_used(budget.FEATURE_AI_SEARCH), 0)
+
+    def test_a_usage_block_that_is_not_plain_integers_is_never_echoed_or_a_500(self):
+        """The provider's usage block is outside our control: NaN cannot even be serialised as JSON."""
+        odd_blocks = (
+            {"inputTokens": float("nan"), "outputTokens": float("inf"), "totalTokens": float("nan")},
+            {"inputTokens": "12", "outputTokens": [3], "totalTokens": "x"},
+            {"inputTokens": 5, "outputTokens": 7, "totalTokens": 10**30},
+            {"inputTokens": -4, "outputTokens": True, "totalTokens": None},
+            ["not", "a", "mapping"],
+            "garbage",
+        )
+        for usage in odd_blocks:
+            with self.subTest(usage=repr(usage)[:60]):
+                cache.clear()
+                with patch(INVOKE_PATH, return_value={"text": "Hello.", "usage": usage}):
+                    response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["reply"], "Hello.")
+                for key, value in response.data["usage"].items():
+                    self.assertIn(key, ("inputTokens", "outputTokens", "totalTokens"))
+                    self.assertIs(type(value), int)
+                    self.assertGreaterEqual(value, 0)
+                    self.assertLessEqual(value, budget.MAX_REPORTED_TOKENS)
+
+    def test_a_readable_usage_block_is_returned_unchanged(self):
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT):
+            response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
+
+        self.assertEqual(response.data["usage"], MOCK_RESULT["usage"])
+
+    def test_client_ip_keys_no_budget(self):
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT):
+            self.client.post(self.chat_url, {"message": "hi"}, format="json", REMOTE_ADDR="198.51.100.77")
+        self.assertEqual(budget.tokens_used(budget.hash_ip("198.51.100.77")), 0)
 
     @override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="redis://configured")
     @patch(
@@ -227,7 +292,7 @@ class BudgetTests(PublicAssistantChatTestBase):
         side_effect=budget.BudgetBackendUnavailable("redis down"),
     )
     def test_redis_failure_returns_graceful_503(self, _redis):
-        with patch(INVOKE_PATH) as mock_invoke:
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
             response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.data["code"], "budget_unavailable")
@@ -241,18 +306,26 @@ class BudgetTests(PublicAssistantChatTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data["available"])
         mock_invoke.assert_called_once()
-        state = PublicAssistantTokenBudget.objects.get()
-        self.assertEqual(state.tokens_used, MOCK_RESULT["usage"]["totalTokens"])
+        # One row for the actor (the legacy bucket here) and the assistant's
+        # global row. AI search's global row is not created by a chat turn.
+        used = dict(PublicAssistantTokenBudget.objects.values_list("pk", "tokens_used"))
+        self.assertEqual(
+            used,
+            {
+                self.legacy_key: MOCK_RESULT["usage"]["totalTokens"],
+                budget.GLOBAL_BUDGET_KEYS[budget.FEATURE_ASSISTANT]: MOCK_RESULT["usage"]["totalTokens"],
+            },
+        )
 
 
 class InvocationErrorTests(PublicAssistantChatTestBase):
     def test_model_error_returns_502(self):
-        ip_hash = budget.hash_ip("127.0.0.1")
         with patch(INVOKE_PATH, side_effect=RuntimeError("boom")):
             response = self.client.post(self.chat_url, {"message": "hi"}, format="json")
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.data["code"], "assistant_error")
-        self.assertEqual(budget.tokens_used(ip_hash), 0)
+        self.assertEqual(budget.tokens_used(self.legacy_key), 0)
+        self.assertEqual(budget.global_tokens_used(budget.FEATURE_ASSISTANT), 0)
 
 
 class ConfigEndpointTests(PublicAssistantChatTestBase):
@@ -280,6 +353,34 @@ class ConfigEndpointTests(PublicAssistantChatTestBase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["starter_questions"], [])
 
+    def test_config_issues_a_signed_visitor_identity(self):
+        response = self.client.get(self.config_url)
+
+        actor = actors.visitor_actor(response.data["visitor_token"])
+        self.assertEqual(actor.kind, actors.KIND_VISITOR)
+        self.assertIsNone(actor.replacement)
+
+    def test_every_config_response_is_a_different_visitor_and_is_never_cached(self):
+        first = self.client.get(self.config_url)
+        second = self.client.get(self.config_url)
+
+        self.assertNotEqual(first.data["visitor_token"], second.data["visitor_token"])
+        self.assertNotEqual(
+            actors.visitor_actor(first.data["visitor_token"]).key,
+            actors.visitor_actor(second.data["visitor_token"]).key,
+        )
+        # A shared cache replaying this body would hand many people one identity.
+        self.assertEqual(first["Cache-Control"], "no-store")
+
+    def test_config_issues_no_identity_and_no_budget_rows_when_disabled(self):
+        self.config.public_assistant_enabled = False
+        self.config.save()
+
+        response = self.client.get(self.config_url)
+
+        self.assertNotIn("visitor_token", response.data)
+        self.assertFalse(PublicAssistantTokenBudget.objects.exists())
+
 
 SESSION = "44444444-4444-4444-4444-444444444444"
 
@@ -305,7 +406,7 @@ class AuditLoggingTests(PublicAssistantChatTestBase):
         self.aws.access_key_id = ""
         self.aws.secret_access_key = ""
         self.aws.save()
-        with patch(INVOKE_PATH) as mock_invoke:
+        with patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke:
             response = self._post()
         self.assertEqual(response.status_code, 200)
         mock_invoke.assert_not_called()
@@ -313,10 +414,15 @@ class AuditLoggingTests(PublicAssistantChatTestBase):
         self.assertEqual(message.status, AssistantMessageLog.STATUS_UNAVAILABLE)
 
     def test_budget_logs_budget_row(self):
-        self.config.public_assistant_ip_token_limit = 100
+        # The assistant's global budget is spent (these requests carry no
+        # visitor value, and the legacy actor has no per-actor token limit).
+        self.config.public_assistant_global_token_limit = 100
         self.config.save()
-        budget.record_usage(budget.hash_ip("127.0.0.1"), 100, 86400)
-        with patch(INVOKE_PATH) as mock_invoke:
+        budget.record_usage(budget.GLOBAL_BUDGET_KEYS[budget.FEATURE_ASSISTANT], 100, 86400)
+        with (
+            patch(INVOKE_PATH, return_value=MOCK_RESULT) as mock_invoke,
+            self.assertLogs("apps.system_intelligence.services.public_assistant.budget", level="WARNING"),
+        ):
             response = self._post()
         self.assertEqual(response.status_code, 429)
         mock_invoke.assert_not_called()

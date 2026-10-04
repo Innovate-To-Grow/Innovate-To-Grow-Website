@@ -73,6 +73,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     def save(self):
         from apps.authn.models import SendVerificationRequest
+        from apps.authn.services.send_verification.exceptions import SendVerificationError
         from apps.authn.services.send_verification.outcomes import SendOutcome, failure_status, public_reset_payload
 
         challenge_id = str(uuid.uuid4())
@@ -95,11 +96,25 @@ class PasswordResetRequestSerializer(serializers.Serializer):
                     if issued_challenge_id:
                         challenge_id = issued_challenge_id
                 outcome = SendVerificationRequest.Status.PROVIDER_ACCEPTED
-        except (AuthChallengeDeliveryError, AuthChallengeThrottled, PhoneVerificationError) as exc:
+        except (
+            AuthChallengeDeliveryError,
+            AuthChallengeThrottled,
+            PhoneVerificationError,
+            SendVerificationError,
+        ) as exc:
+            # ``SendVerificationError`` here is the SMS daily budget being spent at dispatch: nothing was sent, and
+            # the caller still gets the neutral answer below, exactly as for a number without an account. A 429
+            # would only ever be seen for a number that HAS an account.
             challenge_id = str(getattr(exc, "challenge_id", "") or challenge_id)
+            definitely_failed = (
+                AuthChallengeThrottled,
+                PhoneVerificationThrottled,
+                PhoneVerificationInvalid,
+                SendVerificationError,
+            )
             outcome = (
                 SendVerificationRequest.Status.DEFINITELY_FAILED
-                if isinstance(exc, AuthChallengeThrottled | PhoneVerificationThrottled | PhoneVerificationInvalid)
+                if isinstance(exc, definitely_failed)
                 else failure_status(exc)
             )
             logger.warning("Password-reset delivery did not complete", exc_info=True)
