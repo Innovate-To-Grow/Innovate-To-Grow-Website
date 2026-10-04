@@ -4,12 +4,15 @@ from django import forms
 from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
 from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget
 
 from apps.core.admin.common.base import BaseModelAdmin
 from apps.system_intelligence.models import SystemIntelligenceActionRequest, SystemIntelligenceConfig
+from apps.system_intelligence.services.public_assistant import global_budget_usage
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +116,8 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
                     "public_assistant_max_history_messages",
                     "public_assistant_ip_token_limit",
                     "public_assistant_ip_token_window_seconds",
+                    "public_assistant_global_token_limit",
+                    "public_assistant_global_usage",
                     "public_assistant_log_enabled",
                     "public_assistant_log_retention_days",
                 ),
@@ -120,11 +125,49 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         ),
         (_("Info"), {"fields": ("id", "created_at", "updated_at")}),
     )
-    readonly_fields = ("id", "created_at", "updated_at")
+    readonly_fields = ("id", "created_at", "updated_at", "public_assistant_global_usage")
 
     @display(description="Status", label=True)
     def status_badge(self, obj):
         return ("Active", "success") if obj.is_active else ("Inactive", "danger")
+
+    @display(description="Global Tokens Used (current window)")
+    def public_assistant_global_usage(self, obj):
+        """Read-only: how close each feature's global budget is to the limit above.
+
+        The counters are site-wide (one per feature), not per config, and are
+        read without locking anything.
+        """
+        try:
+            usage = global_budget_usage()
+        except Exception:
+            logger.exception("Could not read the assistant global token budget usage.")
+            return "Usage is unavailable right now (the budget store could not be read)."
+        limit = obj.public_assistant_global_token_limit or 0
+        rows = []
+        for entry in usage:
+            if limit > 0:
+                spent = f"{entry.tokens_used:,} of {limit:,} tokens ({entry.tokens_used * 100 // limit}%)"
+            else:
+                spent = f"{entry.tokens_used:,} tokens; switched off (the limit is 0)"
+            if entry.window_expires_at is not None:
+                window = f"window ends {timezone.localtime(entry.window_expires_at):%Y-%m-%d %H:%M %Z}"
+            elif entry.tokens_used:
+                window = "window open"
+            else:
+                window = "no window open"
+            rows.append((entry.label, spent, window))
+        note = (
+            "Each feature has its own counter. Reserved tokens of calls in flight are included."
+            if obj.is_active
+            else "Each feature has its own counter. This config is not active: the counters are site-wide and "
+            "the active config's limit is the one enforced."
+        )
+        return format_html(
+            "{}<div>{}</div>",
+            format_html_join("", "<div><strong>{}:</strong> {} &middot; {}</div>", rows),
+            note,
+        )
 
     @display(description="Default Model")
     def default_model_display(self, obj):

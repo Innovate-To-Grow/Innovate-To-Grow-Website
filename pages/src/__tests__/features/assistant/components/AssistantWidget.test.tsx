@@ -175,14 +175,14 @@ describe('AssistantWidget', () => {
   it('shows a budget-specific error on 429-classified results', async () => {
     mocks.sendAssistantMessage.mockResolvedValueOnce({
       status: 'budget',
-      message: "You've reached the message limit for now, please try again later.",
+      message: 'The assistant has reached its usage limit for now. Please try again later.',
     });
 
     await renderAndOpen();
     typeMessage('too much');
     clickSend();
 
-    expect(await screen.findByText(/reached the message limit/i)).toBeInTheDocument();
+    expect(await screen.findByText(/assistant has reached its usage limit/i)).toBeInTheDocument();
   });
 
   it('renders the unavailable message and disables input when config is disabled', async () => {

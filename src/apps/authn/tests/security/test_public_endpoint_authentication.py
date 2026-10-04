@@ -17,18 +17,6 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.authn.security import SoftJWTAuthentication
 
-# Credential-exchange views (emailed login link, impersonation, one-click unsubscribe, logout) that the login-link
-# fix moves to ``authentication_classes = []``. That change is not on this branch yet, so they are excused here. Once it
-# lands, empty this set: ``test_the_excused_views_still_need_the_excuse`` fails until you do.
-PENDING_CREDENTIAL_EXCHANGE_FIX = {
-    "ImpersonateLoginView",
-    "LoginLinkView",
-    "LogoutView",
-    "OneClickUnsubscribeView",
-    "ResubscribeView",
-    "UnsubscribeAutoLoginView",
-}
-
 
 def api_views(patterns, prefix=""):
     """Yield ``(route, view class)`` for every DRF view reachable from ``patterns``."""
@@ -52,28 +40,15 @@ def runs_strict_jwt(view_class):
     )
 
 
-def strict_public_views():
-    return sorted(
-        (route, view_class)
-        for route, view_class in api_views(get_resolver().url_patterns)
-        if is_public(view_class) and runs_strict_jwt(view_class)
-    )
-
-
 class PublicEndpointAuthenticationTests(SimpleTestCase):
     def test_no_public_view_runs_strict_jwt_authentication(self):
-        offenders = [
+        offenders = sorted(
             f"{route} ({view_class.__name__})"
-            for route, view_class in strict_public_views()
-            if view_class.__name__ not in PENDING_CREDENTIAL_EXCHANGE_FIX
-        ]
+            for route, view_class in api_views(get_resolver().url_patterns)
+            if is_public(view_class) and runs_strict_jwt(view_class)
+        )
 
         self.assertEqual(offenders, [])
-
-    def test_the_excused_views_still_need_the_excuse(self):
-        still_strict = {view_class.__name__ for _, view_class in strict_public_views()}
-
-        self.assertEqual(PENDING_CREDENTIAL_EXCHANGE_FIX & still_strict, PENDING_CREDENTIAL_EXCHANGE_FIX)
 
     def test_the_walk_finds_the_public_views_it_is_meant_to_guard(self):
         public = {

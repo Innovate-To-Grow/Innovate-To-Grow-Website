@@ -49,3 +49,14 @@ class CleanupCommandTests(TestCase):
 
         self.assertEqual(AssistantConversationLog.objects.count(), 1)
         self.assertIn("keep forever", out.getvalue())
+
+    def test_no_active_configuration_is_a_noop(self):
+        self.config.is_active = False
+        self.config.save()
+        self._convo(timezone.now() - timedelta(days=365))
+
+        out = StringIO()
+        call_command("system_intelligence_cleanup", stdout=out)
+
+        self.assertEqual(AssistantConversationLog.objects.count(), 1)
+        self.assertIn("no configuration is active", out.getvalue())

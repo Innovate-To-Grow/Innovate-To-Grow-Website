@@ -1,70 +1,69 @@
 """A stale stored session must not break the public assistant endpoints.
 
 The SPA sends whatever access token local storage holds with every request, and DRF authenticates before it
-checks permissions. The config read never looks at the caller, so it runs no authentication. The chat endpoint is
-throttled by ``AnonRateThrottle``, which reads ``request.user`` to skip signed-in members, so it honours a valid
-token and treats a bad one as an anonymous, throttled caller.
+checks permissions. The config read never looks at the caller, so it runs no authentication. The chat endpoint keys
+its throttle and token budgets on an actor resolved from ``request.user`` (the member behind a valid token, else the
+visitor in the body), so it honours a valid token and treats a bad one as the visitor that sent it.
 """
 
-from unittest.mock import patch
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.test import override_settings
 
-from django.core.cache import cache
-
-from apps.authn.models import Member
 from apps.authn.tests.stale_bearer import (
     assert_stale_bearer_reads_as_anonymous,
     stale_bearer_headers,
     valid_bearer_header,
 )
-from apps.system_intelligence.tests.public_assistant.test_chat_api import (
-    INVOKE_PATH,
-    MOCK_RESULT,
-    PublicAssistantChatTestBase,
-)
-from apps.system_intelligence.views.public_assistant import PublicAssistantThrottle
+from apps.system_intelligence.services.public_assistant import actors
+from apps.system_intelligence.tests.public_assistant.test_actor_limits_api import ActorLimitsTestBase
+
+Member = get_user_model()
 
 
-class PublicAssistantStaleBearerTests(PublicAssistantChatTestBase):
+def visitor_rate(rate):
+    rates = {**settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], "public_assistant": rate}
+    return override_settings(REST_FRAMEWORK={**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates})
+
+
+class PublicAssistantStaleBearerTests(ActorLimitsTestBase):
     def test_config_stale_bearer_reads_as_anonymous(self):
-        assert_stale_bearer_reads_as_anonymous(self, lambda **extra: self.client.get(self.config_url, **extra))
+        assert_stale_bearer_reads_as_anonymous(
+            self,
+            lambda **extra: self.client.get(self.config_url, **extra),
+            # Every config read mints a fresh visitor value.
+            project=lambda response: {k: v for k, v in response.data.items() if k != "visitor_token"},
+        )
 
     def test_chat_stale_bearer_reads_as_anonymous(self):
-        with patch(INVOKE_PATH, return_value=MOCK_RESULT):
-            assert_stale_bearer_reads_as_anonymous(
-                self,
-                lambda **extra: self.client.post(self.chat_url, {"message": "hi"}, format="json", **extra),
-                # A fresh conversation id is minted for every turn.
-                project=lambda response: response.data["available"],
-            )
+        assert_stale_bearer_reads_as_anonymous(
+            self,
+            lambda **extra: self.ask(self.new_visitor(), **extra),
+            project=lambda response: response.data["available"],
+        )
 
-    def test_chat_stale_bearer_is_throttled_like_an_anonymous_caller(self):
-        with (
-            patch(INVOKE_PATH, return_value=MOCK_RESULT),
-            patch.object(PublicAssistantThrottle, "THROTTLE_RATES", {"public_assistant": "2/minute"}),
-        ):
-            for label, header in stale_bearer_headers().items():
-                with self.subTest(stale=label):
-                    cache.clear()  # the subtests share one IP, so give each a fresh throttle bucket
-                    statuses = [
-                        self.client.post(
-                            self.chat_url, {"message": "hi"}, format="json", HTTP_AUTHORIZATION=header
-                        ).status_code
-                        for _ in range(3)
-                    ]
+    def test_chat_stale_bearer_stays_the_visitor_that_sent_it(self):
+        for label, header in stale_bearer_headers().items():
+            with self.subTest(stale=label), visitor_rate("2/minute"):
+                visitor = self.new_visitor()
 
-                    self.assertEqual(statuses, [200, 200, 429])
+                statuses = [self.ask(visitor, HTTP_AUTHORIZATION=header).status_code for _ in range(3)]
 
-    def test_chat_valid_bearer_is_not_throttled_as_anonymous(self):
+                self.assertEqual(statuses, [200, 200, 429])
+                self.assertIn(actors.visitor_actor(visitor).key, self.actor_rows().values_list("pk", flat=True))
+
+    def test_chat_valid_bearer_is_the_member_not_the_visitor(self):
         member = Member.objects.create_user(password="testpass123", is_active=True)
-        with (
-            patch(INVOKE_PATH, return_value=MOCK_RESULT),
-            patch.object(PublicAssistantThrottle, "THROTTLE_RATES", {"public_assistant": "2/minute"}),
-        ):
-            statuses = [
-                self.client.post(
-                    self.chat_url, {"message": "hi"}, format="json", HTTP_AUTHORIZATION=valid_bearer_header(member)
-                ).status_code
-                for _ in range(3)
-            ]
+        header = valid_bearer_header(member)
+        with visitor_rate("2/minute"):
+            visitor = self.new_visitor()
+            exhausted = [self.ask(visitor).status_code for _ in range(3)]
 
-        self.assertEqual(statuses, [200, 200, 200])
+            as_member = self.ask(visitor, HTTP_AUTHORIZATION=header)
+            as_stale = self.ask(visitor, HTTP_AUTHORIZATION=stale_bearer_headers()["garbage token"])
+
+        self.assertEqual(exhausted, [200, 200, 429])
+        self.assertEqual(as_member.status_code, 200)  # the member's own bucket, not the exhausted visitor's
+        self.assertNotIn("visitor_token", as_member.data)
+        self.assertIn(actors.member_actor(member.pk).key, self.actor_rows().values_list("pk", flat=True))
+        self.assertEqual(as_stale.status_code, 429)  # a stale token is still the exhausted visitor

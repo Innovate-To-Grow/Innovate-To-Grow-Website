@@ -15,6 +15,7 @@ alphabetically, which would re-introduce the subtle ordering bug).
 from . import _legacy_imports  # noqa: F401  # installs the legacy app-import meta-path finder (must be first)
 from .components.framework.environment import *  # noqa: F403  # BASE_DIR, .env, shared env vars
 from .components.framework.django import *  # noqa: F403       # apps, middleware, templates, auth, static
+from .components.framework.cache import *  # noqa: F403        # dev/CI CACHES + the shared throttle alias
 from .components.integrations.admin import *  # noqa: F403     # Unfold admin theme
 from .components.integrations.api import *  # noqa: F403       # DRF + SimpleJWT
 from .components.integrations.editor import *  # noqa: F403    # CKEditor 5

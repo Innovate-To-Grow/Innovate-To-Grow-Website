@@ -1,7 +1,8 @@
-"""Invariants for .github/workflows/ci.yml that CI itself cannot check."""
+"""Invariants for CI and its production runtime that CI itself cannot check."""
 
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import yaml
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 CI_WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml"
+BACKEND_DOCKERFILE = REPOSITORY_ROOT / "src" / "Dockerfile"
 
 
 def load_ci() -> dict:
@@ -55,7 +57,7 @@ class BackendVirtualenvCacheTests(unittest.TestCase):
                 self.assertNotIn(
                     "py${{ env.PYTHON_VERSION }}",
                     key,
-                    "env.PYTHON_VERSION is only the 3.11 minor series, not the patch",
+                    "env.PYTHON_VERSION is only the minor series, not the patch",
                 )
 
     def test_every_caching_job_resolves_that_python_version(self) -> None:
@@ -101,6 +103,43 @@ class RequiredResultGateTests(unittest.TestCase):
 
         self.assertIn('ok = {"success"}', script)
         self.assertNotIn('ok = {"success", "skipped"}', script)
+
+
+class BackendPythonVersionTests(unittest.TestCase):
+    """Keep the Django test interpreter aligned with the deployed image."""
+
+    BACKEND_JOBS = (
+        "backend-db-migration",
+        "backend-static-and-prod-check",
+        "django-test-coverage",
+        "cli-admin-coverage",
+        "e2e",
+    )
+
+    def test_docker_stages_use_the_tested_python_minor(self) -> None:
+        tested_version = load_ci()["env"]["BACKEND_PYTHON_VERSION"]
+        dockerfile = BACKEND_DOCKERFILE.read_text(encoding="utf-8")
+        stages = {
+            stage: version
+            for version, stage in re.findall(
+                r"^FROM python:(\d+\.\d+)[^\s]* AS (builder|production)$", dockerfile, re.MULTILINE
+            )
+        }
+        self.assertEqual(set(stages), {"builder", "production"})
+        for stage, version in stages.items():
+            with self.subTest(stage=stage):
+                self.assertEqual(version, tested_version)
+
+    def test_backend_jobs_run_with_the_production_python_minor(self) -> None:
+        jobs = load_ci()["jobs"]
+        for name in self.BACKEND_JOBS:
+            with self.subTest(job=name):
+                setup = next(
+                    step
+                    for step in steps_of(jobs[name])
+                    if str(step.get("uses", "")).startswith("actions/setup-python@")
+                )
+                self.assertEqual(setup["with"]["python-version"], "${{ env.BACKEND_PYTHON_VERSION }}")
 
 
 if __name__ == "__main__":

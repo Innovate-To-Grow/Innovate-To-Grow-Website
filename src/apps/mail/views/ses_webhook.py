@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
+from apps.core.utils.throttle_cache import throttle_cache
 from apps.mail.services.ses_events import SesEventError, process_sns_envelope
 from apps.mail.services.sns.signature import SnsVerificationError, verify_sns_message
 
@@ -23,6 +24,9 @@ class SesEventThrottle(AnonRateThrottle):
     """Throttle for SES SNS webhook: 600/minute per source IP."""
 
     scope = "ses_events"
+    # Keyed on the caller-supplied X-Forwarded-For string (anyone can vary it), so its history stays out of the
+    # file cache. Authenticity comes from the SNS signature check, not from this throttle.
+    cache = throttle_cache
 
 
 class SnsEnvelopeParser(BaseParser):
