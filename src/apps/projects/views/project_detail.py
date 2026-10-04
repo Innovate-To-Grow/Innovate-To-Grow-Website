@@ -7,6 +7,7 @@ from ..serializers import ProjectDetailSerializer
 
 class ProjectDetailAPIView(RetrieveAPIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     serializer_class = ProjectDetailSerializer
     queryset = Project.objects.filter(semester__is_published=True).select_related("semester")
     lookup_field = "pk"

@@ -17,6 +17,7 @@ class CompactPastProjectsAPIView(APIView):
     """Paginated, filterable project-level archive discovery endpoint."""
 
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get(self, request):
         query_serializer = PastProjectQuerySerializer(data=request.query_params)
