@@ -133,7 +133,7 @@ total page-view cap:
 | `PageViewVisitorThrottle`, `PageViewLegacyThrottle` | `POST /analytics/pageview/` | browser `visitor_id`, or one shared legacy bucket |
 | `PageViewTotalThrottle` | `POST /analytics/pageview/` | one constant key: at most 3,000 page views a minute in total |
 | `PublicAssistantActorThrottle` | `POST /assistant/chat/` | visitor token, member, or one shared legacy bucket |
-| `PhoneAuthCodeRequestThrottle` | SMS code requests, only while no SMS daily budget is configured | client address as DRF reads it (the forgeable `X-Forwarded-For` string); a speed bump only. While it applies, enforce mode sends no SMS and observe mode is bounded only per number, so configure `sms_daily_limit` |
+| `PhoneAuthCodeRequestThrottle` | SMS code requests, only while no SMS daily budget is configured | client address as DRF reads it: in production the `X-Forwarded-For` entry the ALB appended (`NUM_PROXIES`, see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)); with `NUM_PROXIES` unset (local, CI) the whole, forgeable header string. A speed bump only. While it applies, enforce mode sends no SMS and observe mode is bounded only per number, so configure `sms_daily_limit` |
 | `SesEventThrottle` | `POST /mail/ses/events/` | the same client address |
 
 While `BACKGROUND_JOBS_ENABLED` is off it also holds the one-hour marker that

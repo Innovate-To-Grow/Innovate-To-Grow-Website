@@ -308,4 +308,6 @@ For set C the application also logs, at most once a minute per worker process:
   bound request count, and each refused request still writes an audit-log row
   while audit logging is on. Watch the RDS free-storage alarm.
 - **Client-IP handling inside the application** (`NUM_PROXIES`,
-  `X-Forwarded-For`) is separate work and does not change these rules.
+  `X-Forwarded-For`; see
+  [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)) is separate
+  work and does not change these rules.

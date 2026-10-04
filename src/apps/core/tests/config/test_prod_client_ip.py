@@ -9,15 +9,20 @@ from unittest.mock import patch
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.test import RequestFactory, SimpleTestCase, override_settings
+from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
-from rest_framework.test import APITestCase
+from rest_framework.response import Response
+from rest_framework.test import APIRequestFactory
 from rest_framework.throttling import BaseThrottle
+from rest_framework.views import APIView
 
+from apps.authn.security.throttles import PhoneAuthCodeRequestThrottle
 from apps.core.tests.config.test_prod_cache import PROD_ENV, reload_prod_settings
+from apps.core.utils.throttle_cache import throttle_cache
 
 ALB_ADDRESS = "10.0.5.7"  # REMOTE_ADDR behind the ALB: the load balancer, never the client
 REAL_CLIENT = "203.0.113.9"  # what the ALB appended to X-Forwarded-For
-LOGIN_URL = "/authn/login/"  # LoginRateThrottle: 10/minute per IP
 
 
 def production_rest_framework():
@@ -82,27 +87,41 @@ class ForgedForwardedForThrottleIdentityTests(SimpleTestCase):
             self.assertEqual(BaseThrottle().get_ident(request), ALB_ADDRESS)
 
 
-class ForgedForwardedForThrottleLimitTests(APITestCase):
-    """End to end through a real per-IP throttle (login, 10/minute)."""
+class SmsRequestProbeView(APIView):
+    """A public view guarded by the per-IP SMS-request throttle (the toll-fraud fallback)."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [PhoneAuthCodeRequestThrottle]
+
+    # noinspection PyMethodMayBeStatic
+    def post(self, request):
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ForgedForwardedForThrottleLimitTests(SimpleTestCase):
+    """End to end through a real per-IP throttle: rotating a forged leading entry must not mint fresh buckets."""
 
     # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
+        throttle_cache.clear()
         self.addCleanup(cache.clear)
+        self.addCleanup(throttle_cache.clear)
+        self.limit = PhoneAuthCodeRequestThrottle().num_requests
 
-    def _login(self, forwarded_for):
-        return self.client.post(
-            LOGIN_URL, {}, format="json", HTTP_X_FORWARDED_FOR=forwarded_for, REMOTE_ADDR=ALB_ADDRESS
-        )
+    def _post(self, forwarded_for):
+        request = APIRequestFactory().post("/", HTTP_X_FORWARDED_FOR=forwarded_for, REMOTE_ADDR=ALB_ADDRESS)
+        return SmsRequestProbeView.as_view()(request)
 
     def test_rotating_a_forged_leading_entry_still_hits_the_limit(self):
         with override_settings(REST_FRAMEWORK=production_rest_framework()):
-            for attempt in range(10):
-                response = self._login(f"198.51.100.{attempt}, {REAL_CLIENT}")
-                self.assertNotEqual(response.status_code, 429, f"attempt {attempt} throttled early")
+            for attempt in range(self.limit):
+                response = self._post(f"198.51.100.{attempt}, {REAL_CLIENT}")
+                self.assertEqual(response.status_code, 204, f"attempt {attempt} throttled early")
 
-            blocked = self._login(f"198.51.100.200, {REAL_CLIENT}")
-            other_client = self._login("198.51.100.201, 203.0.113.10")
+            blocked = self._post(f"198.51.100.200, {REAL_CLIENT}")
+            other_client = self._post("198.51.100.201, 203.0.113.10")
 
         self.assertEqual(blocked.status_code, 429)
-        self.assertNotEqual(other_client.status_code, 429)
+        self.assertEqual(other_client.status_code, 204)

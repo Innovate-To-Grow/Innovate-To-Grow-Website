@@ -126,8 +126,11 @@ Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 
 ## Client IP and proxy trust
 
-Every per-IP throttle (login, email/phone verification codes, send-verification challenges, CLI OAuth, …) and the
-app's own `client_ip()` helper need the *real* client address. Production traffic is
+Sign-in, verification-code and challenge flows are deliberately **not** limited per client IP (see
+[Environments: what still keys on the client IP](environments.md#what-still-keys-on-the-client-ip)). The limiters that
+remain (`PhoneAuthCodeRequestThrottle`, the SMS-request fallback; `SesEventThrottle`; the CSP-report limiter) and the
+app's own `client_ip()` helper still need the *real* client address, and a wrong one silently gives every caller a
+fresh bucket. Production traffic is
 `browser → ALB → ECS task (uvicorn)`. Uvicorn is started without `--forwarded-allow-ips`, so it trusts only
 `127.0.0.1` and never rewrites the peer address: Django sees `REMOTE_ADDR` = the ALB's private VPC address and the
 raw `X-Forwarded-For` header. The ALB **appends** the address it received the connection from, so every entry to
