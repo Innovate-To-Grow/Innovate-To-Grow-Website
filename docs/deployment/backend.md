@@ -42,8 +42,10 @@ The CI pipeline builds and validates the Docker image on every push.
 | Log driver | `awslogs` → CloudWatch `/ecs/itg-backend` (`ecs` and `worker` stream prefixes) |
 
 Both containers use the same SHA-pinned image, environment, Secrets Manager or
-SSM references, task role, database, and cache. The worker explicitly replaces
-the image entrypoint with:
+SSM references, task role, database, and cache configuration. Without
+`REDIS_URL` (production today) each container has its own file cache; see
+[Environments: production cache](environments.md#production-cache-today). The
+worker explicitly replaces the image entrypoint with:
 
 ```text
 python manage.py run_background_worker --settings=config.settings.production
@@ -55,7 +57,10 @@ collect static files, or start Uvicorn. Its ECS `HEALTHY` dependency on
 migrations and the liveness check passes. The worker is essential: an
 unexpected worker exit replaces the whole task instead of leaving a healthy
 Web process with an unconsumed queue. SIGTERM receives the Fargate maximum
-120-second stop window.
+120-second stop window. Besides jobs, the worker runs the hourly database
+maintenance (retired RSA keys, public-assistant budgets, send-verification rows,
+expired sessions, login failure windows) listed in
+[Send verification: scheduled cleanup](send-verification.md#scheduled-cleanup).
 
 The task was increased from 0.5 vCPU/1 GiB to 1 vCPU/2 GiB so the second Django
 runtime cannot starve Web requests or trigger avoidable out-of-memory restarts.
@@ -177,7 +182,7 @@ and is not affected.
 - `SESSION_COOKIE_SECURE = True`
 - `CSRF_COOKIE_SECURE = True`
 - `SECURE_SERVER_HEADER = None` (strip server identification)
-- Structured JSON logging to CloudWatch
+- Plain-text console logging (`LEVEL time module pid tid message`) to CloudWatch Logs
 
 ## Database
 

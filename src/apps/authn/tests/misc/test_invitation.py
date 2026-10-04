@@ -95,13 +95,66 @@ class AcceptInvitationViewTests(TestCase):
         from django.core.cache import cache
 
         invitation = self._create_invitation(email="rl@example.com")
-        cache.set(f"invitation-rate:{invitation.token}", 10, timeout=3600)
+        cache.set(f"invitation-rate:{invitation.pk}", 10, timeout=3600)
         response = self.client.post(
             f"/authn/invite/{invitation.token}/",
             {"first_name": "A", "last_name": "B", "password1": "x", "password2": "x"},
         )
         self.assertEqual(response.status_code, 429)
         cache.clear()
+
+    def test_post_attempts_on_a_real_invitation_are_counted_and_then_refused(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.addCleanup(cache.clear)
+        invitation = self._create_invitation(email="counted@example.com")
+        body = {"email": "counted@example.com", "first_name": "A", "last_name": "B", "password1": "x", "password2": "y"}
+
+        statuses = [self.client.post(f"/authn/invite/{invitation.token}/", body).status_code for _ in range(11)]
+
+        self.assertEqual(statuses, [200] * 10 + [429])
+        self.assertEqual(cache.get(f"invitation-rate:{invitation.pk}"), 10)
+
+    def test_a_token_that_cannot_be_a_real_one_is_invalid_without_a_query(self):
+        """PostgreSQL rejects a NUL in a string parameter; an over-long value can never match the column."""
+        for token in ("a%00b", "x" * 65, "x" * 200):
+            for method in (self.client.get, self.client.post):
+                with self.subTest(token=token[:8], method=method.__name__):
+                    with self.assertNumQueries(0):
+                        response = method(f"/authn/invite/{token}/")
+
+                    self.assertEqual(response.status_code, 400)
+
+    def test_post_with_made_up_tokens_writes_nothing_to_the_cache(self):
+        """The token is caller-chosen: counting before the lookup would mint one cache entry per made-up token."""
+        from unittest.mock import patch
+
+        from apps.authn.views.admin import invitation as invitation_view
+
+        with patch.object(invitation_view, "cache") as cache_mock:
+            statuses = [
+                self.client.post(f"/authn/invite/made-up-{index}/", {"first_name": "A"}).status_code
+                for index in range(25)
+            ]
+
+        self.assertEqual(set(statuses), {400})
+        cache_mock.get.assert_not_called()
+        cache_mock.set.assert_not_called()
+
+    def test_post_on_an_expired_or_used_invitation_is_not_counted(self):
+        from unittest.mock import patch
+
+        from apps.authn.views.admin import invitation as invitation_view
+
+        expired = self._create_invitation(
+            email="gone@example.com", expires_at=timezone.now() - timezone.timedelta(days=1)
+        )
+        with patch.object(invitation_view, "cache") as cache_mock:
+            response = self.client.post(f"/authn/invite/{expired.token}/", {"first_name": "A"})
+
+        self.assertEqual(response.status_code, 400)
+        cache_mock.set.assert_not_called()
 
     def test_post_creates_staff_member(self):
         invitation = self._create_invitation()

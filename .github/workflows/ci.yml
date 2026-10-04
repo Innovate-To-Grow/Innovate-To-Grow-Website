@@ -54,11 +54,19 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  # Match the interpreter used by the production Docker image.
+  BACKEND_PYTHON_VERSION: "3.14"
   NODE_VERSION: "22.22.2"
   DJANGO_SETTINGS_MODULE: config.settings.test
-  COVERAGE_VERSION: "7.6.10"
+  COVERAGE_VERSION: "7.16.1"
   CLI_COVERAGE_LINES: "99"
   CLI_COVERAGE_BRANCHES: "98"
+  # npm only retries registry reads on network/5xx errors; keep the extra
+  # attempts short so deterministic lint, test, and audit failures stay red.
+  NPM_CONFIG_FETCH_RETRIES: "3"
+  NPM_CONFIG_FETCH_RETRY_FACTOR: "2"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "2000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "8000"
 
 jobs:
   preflight:
@@ -91,7 +99,10 @@ jobs:
           pip install "pre-commit==4.0.1" "PyYAML==6.0.2"
           ACTIONLINT_VERSION="1.7.7"
           ACTIONLINT_SHA256="023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
-          curl -sSL -o /tmp/actionlint.tar.gz \
+          curl --fail --show-error --silent --location \
+            --retry 3 --retry-delay 2 --retry-max-time 180 \
+            --connect-timeout 10 --max-time 60 \
+            -o /tmp/actionlint.tar.gz \
             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum --check --strict -
           tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
@@ -201,7 +212,10 @@ jobs:
           set -euo pipefail
           GITLEAKS_VERSION="8.21.2"
           GITLEAKS_SHA256="5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba"
-          curl -sSL -o /tmp/gitleaks.tar.gz \
+          curl --fail --show-error --silent --location \
+            --retry 3 --retry-delay 2 --retry-max-time 180 \
+            --connect-timeout 10 --max-time 60 \
+            -o /tmp/gitleaks.tar.gz \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum --check --strict -
           mkdir -p /tmp/gitleaks
@@ -240,7 +254,7 @@ jobs:
     if: ${{ needs.changes.outputs.backend == 'true' }}
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -269,7 +283,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
@@ -340,7 +354,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
@@ -426,7 +440,7 @@ jobs:
         app: ${{ fromJson(needs.django-test-plan.outputs.apps) }}
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -455,7 +469,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
@@ -548,7 +562,7 @@ jobs:
     if: ${{ needs.changes.outputs.backend == 'true' && needs.django-test-plan.outputs.cli_admin_coverage == 'true' }}
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -577,7 +591,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache
@@ -1277,10 +1291,10 @@ jobs:
           failure-threshold: error
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Build backend Docker image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: src
           load: true
@@ -1304,7 +1318,7 @@ jobs:
           trap cleanup EXIT
 
           docker network create "$network"
-          postgres_image="public.ecr.aws/docker/library/postgres:16"
+          postgres_image="postgres:16"
           for attempt in {1..5}; do
             if docker pull "$postgres_image"; then
               break
@@ -1407,7 +1421,7 @@ jobs:
       - name: Upload Trivy SARIF to GitHub Security tab
         if: ${{ github.event_name == 'push' && steps.trivy-sarif.outcome == 'success' }}
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: trivy-results.sarif
           category: trivy-backend-image
@@ -1500,10 +1514,10 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Build and publish backend image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: src
           push: true
@@ -1723,7 +1737,7 @@ jobs:
       - changes
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        image: postgres:16
         env:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
@@ -1753,7 +1767,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
 
       - name: Cache backend virtualenv
         id: backend-venv-cache

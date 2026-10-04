@@ -60,7 +60,7 @@ PUBLIC_APP_ROUTES = [
     {"url": "/login-link", "title": "Login Link"},
     {"url": "/magic-login", "title": "Legacy Magic Login"},
     {"url": "/ticket-login", "title": "Legacy Ticket Login"},
-    {"url": "/unsubscribe-login", "title": "Unsubscribe Login"},
+    {"url": "/unsubscribe-login", "title": "Legacy Unsubscribe Link"},
     {"url": "/email-auth-link", "title": "Email Authentication Link"},
     {"url": "/impersonate-login", "title": "Impersonation Login"},
     {"url": "/profile", "title": "Profile Redirect"},

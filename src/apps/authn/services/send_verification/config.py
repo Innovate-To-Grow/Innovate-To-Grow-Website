@@ -32,8 +32,6 @@ class SendVerificationSettings:
     sms_daily_limit: int | None
     idempotency_ttl_seconds: int
     retention_days: int
-    challenge_cache_window_seconds: int
-    challenge_cache_limit: int
     sources: dict[str, str] = field(default_factory=dict, repr=False, compare=False)
 
     @property
@@ -136,8 +134,6 @@ def load_settings() -> SendVerificationSettings:
         sms_daily_limit=sms_daily,
         idempotency_ttl_seconds=integer("idempotency_ttl_seconds", 86400),
         retention_days=integer("retention_days", 14),
-        challenge_cache_window_seconds=integer("challenge_cache_window_seconds", 60),
-        challenge_cache_limit=integer("challenge_cache_limit", 30),
         sources=sources,
     )
 

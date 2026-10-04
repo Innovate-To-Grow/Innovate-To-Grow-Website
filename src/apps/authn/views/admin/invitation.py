@@ -75,15 +75,18 @@ class AcceptInvitationView(View):
         )
 
     def post(self, request, token):
-        cache_key = f"invitation-rate:{token}"
+        # Look the invitation up BEFORE counting. The token is part of the URL, so counting first would let an
+        # anonymous caller mint one cache key (in production: one cache file) per made-up token. An unknown token
+        # needs no attempt limit: it is a long random secret, and every miss gets the same "invalid" page.
+        invitation = self._get_invitation(token)
+        if invitation is None:
+            return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
+
+        cache_key = f"invitation-rate:{invitation.pk}"
         attempts = cache.get(cache_key, 0)
         if attempts >= _INVITATION_RATE_LIMIT:
             return HttpResponse("Too many attempts. Please try again later.", status=429, content_type="text/plain")
         cache.set(cache_key, attempts + 1, timeout=3600)
-
-        invitation = self._get_invitation(token)
-        if invitation is None:
-            return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
         existing = self._get_verified_member(invitation)
         if existing:
@@ -141,6 +144,10 @@ class AcceptInvitationView(View):
 
     # noinspection PyMethodMayBeStatic
     def _get_invitation(self, token):
+        # The token comes from the URL. PostgreSQL rejects a NUL in a string parameter, and nothing longer than
+        # the column can match, so such values are "invalid" without a query (and without a 500).
+        if "\x00" in token or len(token) > AdminInvitation._meta.get_field("token").max_length:
+            return None
         try:
             invitation = AdminInvitation.objects.get(token=token)
         except AdminInvitation.DoesNotExist:
