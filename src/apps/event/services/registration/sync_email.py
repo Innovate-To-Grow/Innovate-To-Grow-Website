@@ -1,19 +1,20 @@
 import logging
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from apps.authn.models import ContactEmail
 
 logger = logging.getLogger(__name__)
 
 
-def sync_secondary_email_to_account(member, email_address: str) -> None:
+def sync_secondary_email_to_account(member, email_address: str, *, verified: bool = False) -> None:
     """Sync event registration secondary email to the member's account.
 
     Conflict rules:
-    - Already on this member → skip.
+    - Already on this member → preserve or upgrade verification.
     - Owned by a different member → skip (don't steal).
-    - Brand new → create as unverified secondary.
+    - Brand new → create with the server-verified registration status.
     - Race condition (concurrent create) → swallow IntegrityError.
     """
     if not email_address or not email_address.strip():
@@ -24,6 +25,10 @@ def sync_secondary_email_to_account(member, email_address: str) -> None:
     existing = ContactEmail.objects.filter(email_address__iexact=normalized).first()
     if existing:
         if existing.member_id == member.pk:
+            if verified and not existing.verified:
+                ContactEmail.objects.filter(pk=existing.pk, member=member, email_address__iexact=normalized).update(
+                    verified=True, updated_at=timezone.now()
+                )
             logger.debug("Secondary email %s already belongs to member %s, skipping.", normalized, member.pk)
         else:
             logger.info(
@@ -34,12 +39,13 @@ def sync_secondary_email_to_account(member, email_address: str) -> None:
         return
 
     try:
-        ContactEmail.objects.create(
-            member=member,
-            email_address=normalized,
-            email_type="secondary",
-            verified=False,
-        )
+        with transaction.atomic():
+            ContactEmail.objects.create(
+                member=member,
+                email_address=normalized,
+                email_type="secondary",
+                verified=verified,
+            )
         logger.info("Synced secondary email %s to member %s account.", normalized, member.pk)
     except IntegrityError:
         logger.warning(

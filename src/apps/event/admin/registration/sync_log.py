@@ -9,7 +9,15 @@ from ...models import RegistrationSheetSyncLog
 
 @admin.register(RegistrationSheetSyncLog)
 class RegistrationSheetSyncLogAdmin(ReadOnlyModelAdmin):
-    list_display = ("event", "sync_type_badge", "status_badge", "rows_written", "error_short", "created_at")
+    list_display = (
+        "event",
+        "sync_type_badge",
+        "status_badge",
+        "rows_written",
+        "change_summary",
+        "error_short",
+        "created_at",
+    )
     list_filter = ("event", "sync_type", "status")
     search_fields = ("event__name", "error_message")
     list_select_related = ("event",)
@@ -21,8 +29,8 @@ class RegistrationSheetSyncLogAdmin(ReadOnlyModelAdmin):
     @display(description="Type", label=True)
     def sync_type_badge(self, obj):
         if obj.sync_type == RegistrationSheetSyncLog.SyncType.FULL:
-            return "Full Sync", "warning"
-        return "Append", "info"
+            return "Manual sync", "warning"
+        return "Automatic sync", "info"
 
     @display(description="Status", label=True)
     def status_badge(self, obj):
@@ -35,3 +43,18 @@ class RegistrationSheetSyncLogAdmin(ReadOnlyModelAdmin):
         if not obj.error_message:
             return "-"
         return obj.error_message[:80] + "..." if len(obj.error_message) > 80 else obj.error_message
+
+    @admin.display(description="Changes")
+    def change_summary(self, obj):
+        details = obj.details or {}
+        if not details:
+            return "-"
+        return ", ".join(
+            f"{details.get(key, 0)} {label}"
+            for key, label in (
+                ("added", "added"),
+                ("updated", "updated"),
+                ("deleted", "marked deleted"),
+                ("conflicts", "conflicts"),
+            )
+        )

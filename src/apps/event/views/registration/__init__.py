@@ -7,6 +7,7 @@ from .phones import (
     _normalize_phone,
     _validate_phone_digits,
 )
+from .secondary_email import SendSecondaryEmailCodeView, VerifySecondaryEmailCodeView
 from .sms import SendPhoneCodeView, VerifyPhoneCodeView
 from .tickets import MyTicketsView, ResendTicketEmailView
 
@@ -19,7 +20,9 @@ __all__ = [
     "MyTicketsView",
     "ResendTicketEmailView",
     "SendPhoneCodeView",
+    "SendSecondaryEmailCodeView",
     "VerifyPhoneCodeView",
+    "VerifySecondaryEmailCodeView",
     "LEGACY_EVENT_REGISTRATION_CONTEXT",
     "_normalize_phone",
     "_validate_phone_digits",

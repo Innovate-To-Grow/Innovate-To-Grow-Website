@@ -21,6 +21,7 @@ class EmailAuthChallenge(ProjectControlModel):
         PASSWORD_CHANGE = "password_change", "Password Change"
         ACCOUNT_DELETE = "account_delete", "Account Delete"
         CONTACT_EMAIL_VERIFY = "contact_email_verify", "Contact Email Verify"
+        EVENT_REGISTRATION = "event_registration", "Event Registration"
         ADMIN_LOGIN = "admin_login", "Admin Login"
 
     class Status(models.TextChoices):
@@ -41,6 +42,13 @@ class EmailAuthChallenge(ProjectControlModel):
     purpose = models.CharField(
         max_length=32,
         choices=Purpose.choices,
+    )
+    context_identifier = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        db_default="",
+        help_text="Business context that must match when verifying or consuming this challenge.",
     )
     channel = models.CharField(
         max_length=8,

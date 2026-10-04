@@ -1,8 +1,6 @@
 (function () {
   "use strict";
 
-  var VERIFY_PHONE_HINT_ID = "event-verify-phone-dependency-hint";
-
   function appendAriaDescription(input, descriptionId) {
     var describedBy = (input.getAttribute("aria-describedby") || "")
       .split(/\s+/)
@@ -11,37 +9,34 @@
     input.setAttribute("aria-describedby", describedBy.join(" "));
   }
 
-  function initializePhoneOptionDependency() {
-    var promptInput = document.getElementById("id_collect_phone");
-    var verifyInput = document.getElementById("id_verify_phone");
-    if (!promptInput || !verifyInput) return;
+  function initializeContactOptionDependency(collectField, dependentFields, hintId, label) {
+    var collectInput = document.getElementById("id_" + collectField);
+    var dependentInputs = dependentFields.map(function (field) {
+      return document.getElementById("id_" + field);
+    });
+    if (!collectInput || dependentInputs.some(function (input) { return !input; })) return;
 
-    var verifyContainer =
-      verifyInput.closest("[class*='field-verify_phone']") ||
-      verifyInput.closest(".field-line") ||
-      verifyInput.closest(".form-row") ||
-      verifyInput.parentElement;
-    var dependencyHint = document.getElementById(VERIFY_PHONE_HINT_ID);
+    var dependencyHint = document.getElementById(hintId);
+    dependentInputs.forEach(function (input) { appendAriaDescription(input, hintId); });
 
-    appendAriaDescription(verifyInput, VERIFY_PHONE_HINT_ID);
-
-    function syncVerifyState() {
-      var disabled = !promptInput.checked;
-      if (disabled) verifyInput.checked = false;
-      verifyInput.disabled = disabled;
-      verifyInput.setAttribute("aria-disabled", disabled ? "true" : "false");
-      if (verifyContainer) {
-        verifyContainer.classList.toggle("event-admin-dependent-disabled", disabled);
-      }
+    function syncDependentState() {
+      var disabled = !collectInput.checked;
+      dependentInputs.forEach(function (input) {
+        if (disabled) input.checked = false;
+        input.disabled = disabled;
+        input.setAttribute("aria-disabled", disabled ? "true" : "false");
+        var container = input.closest(".field-" + input.name) || input.closest(".field-line") || input.parentElement;
+        if (container) container.classList.toggle("event-admin-dependent-disabled", disabled);
+      });
       if (dependencyHint) {
         dependencyHint.textContent = disabled
-          ? "Enable Prompt for Phone Number to make Verify phone available."
-          : "Verify phone is available because Prompt for Phone Number is enabled.";
+          ? "Enable Collect for " + label + " to make Verify if provided and Required available."
+          : "Verify if provided and Required are available because Collect for " + label + " is enabled.";
       }
     }
 
-    promptInput.addEventListener("change", syncVerifyState);
-    syncVerifyState();
+    collectInput.addEventListener("change", syncDependentState);
+    syncDependentState();
   }
 
   function parseDateOnly(value) {
@@ -126,7 +121,13 @@
   }
 
   function initializeEventAdmin() {
-    initializePhoneOptionDependency();
+    initializeContactOptionDependency(
+      "collect_phone", ["verify_phone", "require_phone"], "event-phone-dependency-hint", "Phone Number",
+    );
+    initializeContactOptionDependency(
+      "allow_secondary_email", ["verify_secondary_email", "require_secondary_email"],
+      "event-secondary-email-dependency-hint", "Secondary Email",
+    );
     initializeDateRangeDependency();
     initializeCopyFormDirtyGuard();
   }

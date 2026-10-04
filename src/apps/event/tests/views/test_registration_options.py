@@ -3,7 +3,7 @@ import datetime
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.authn.models import ContactEmail, ContactPhone
+from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.event.models import EventRegistration, Question, Ticket
 from apps.event.tests.helpers import make_event, make_member
 
@@ -108,6 +108,9 @@ class EventRegistrationOptionsViewTest(TestCase):
         self.assertTrue(response.data["allow_secondary_email"])
         self.assertTrue(response.data["collect_phone"])
         self.assertFalse(response.data["verify_phone"])
+        self.assertFalse(response.data["require_phone"])
+        self.assertFalse(response.data["verify_secondary_email"])
+        self.assertFalse(response.data["require_secondary_email"])
 
     def test_options_include_member_emails_when_authenticated(self):
         make_event(registration_open=True)
@@ -116,11 +119,47 @@ class EventRegistrationOptionsViewTest(TestCase):
         self.client.force_authenticate(member)
         response = self.client.get("/event/registration-options/")
         self.assertEqual(response.data["member_emails"], ["primary@example.com", "secondary@example.com"])
+        self.assertEqual(response.data["member_primary_email"], "primary@example.com")
+        self.assertEqual(
+            response.data["member_secondary_email"], {"email_address": "secondary@example.com", "verified": False}
+        )
+
+    def test_secondary_email_prefill_includes_authoritative_verified_status(self):
+        make_event(registration_open=True, allow_secondary_email=True, verify_secondary_email=True)
+        member = make_member(email="primary@example.com")
+        ContactEmail.objects.create(
+            member=member, email_address="secondary@example.com", email_type="secondary", verified=True
+        )
+        self.client.force_authenticate(member)
+
+        response = self.client.get("/event/registration-options/")
+
+        self.assertEqual(
+            response.data["member_secondary_email"], {"email_address": "secondary@example.com", "verified": True}
+        )
 
     def test_options_member_emails_empty_when_anonymous(self):
         make_event(registration_open=True)
         response = self.client.get("/event/registration-options/")
         self.assertEqual(response.data["member_emails"], [])
+        self.assertIsNone(response.data["member_secondary_email"])
+        self.assertEqual(response.data["member_primary_email"], "")
+
+    def test_secondary_only_member_is_not_reported_as_having_a_primary_email(self):
+        make_event(registration_open=True, allow_secondary_email=True)
+        member = Member.objects.create_user(first_name="Phone", last_name="User")
+        ContactEmail.objects.create(
+            member=member, email_address="secondary@example.com", email_type="secondary", verified=True
+        )
+        self.client.force_authenticate(member)
+
+        response = self.client.get("/event/registration-options/")
+
+        self.assertEqual(response.data["member_primary_email"], "")
+        self.assertEqual(response.data["member_emails"], ["secondary@example.com"])
+        self.assertEqual(
+            response.data["member_secondary_email"], {"email_address": "secondary@example.com", "verified": True}
+        )
 
     def test_options_include_member_phone_when_authenticated(self):
         make_event(registration_open=True, collect_phone=True, verify_phone=True)

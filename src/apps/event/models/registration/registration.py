@@ -1,7 +1,7 @@
 import secrets
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 
 from apps.core.models import ProjectControlModel
 
@@ -36,6 +36,7 @@ class EventRegistration(ProjectControlModel):
     attendee_last_name = models.CharField(max_length=150, blank=True, default="")
     attendee_email = models.EmailField(blank=True, default="")
     attendee_secondary_email = models.EmailField(blank=True, default="")
+    secondary_email_verified = models.BooleanField(default=False, db_default=False)
     attendee_phone = models.CharField(max_length=30, blank=True, default="")
     phone_verified = models.BooleanField(default=False)
     attendee_organization = models.CharField(max_length=255, blank=True, default="")
@@ -76,6 +77,7 @@ class EventRegistration(ProjectControlModel):
     def barcode_payload(self):
         return f"I2G|EVENT|{self.event.slug}|{self.ticket_code}"
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         if not self.attendee_first_name:
             self.attendee_first_name = self.member.first_name or self.member.get_primary_email()
@@ -83,10 +85,6 @@ class EventRegistration(ProjectControlModel):
             self.attendee_last_name = self.member.last_name or ""
         if not self.attendee_email:
             self.attendee_email = self.member.get_primary_email()
-        if not self.attendee_secondary_email and self.event.allow_secondary_email:
-            secondary = self.member.contact_emails.filter(email_type="secondary").order_by("created_at").first()
-            if secondary:
-                self.attendee_secondary_email = secondary.email_address
         if not self.attendee_organization:
             self.attendee_organization = getattr(self.member, "organization", "") or ""
         super().save(*args, **kwargs)

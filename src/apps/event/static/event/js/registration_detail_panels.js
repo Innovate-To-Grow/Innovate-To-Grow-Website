@@ -90,11 +90,14 @@
         if (d.description) L("Description", d.description);
         L("Registration", d.registration_open ? "Open" : "Closed");
 
-        var flags = [];
-        if (d.allow_secondary_email) flags.push("Secondary email");
-        if (d.collect_phone) flags.push("Prompt for Phone Number");
-        if (d.verify_phone) flags.push("Verify phone");
-        if (flags.length) L("Options", flags.join(", "));
+        function contactOptions(collect, verify, required) {
+          if (!collect) return "Off";
+          return (required ? "Required" : "Optional") + (verify ? " + verification" : "");
+        }
+        L("Phone Number", contactOptions(d.collect_phone, d.verify_phone, d.require_phone));
+        L("Secondary Email", contactOptions(
+          d.allow_secondary_email, d.verify_secondary_email, d.require_secondary_email,
+        ));
 
         L("Total registrations", String(d.total_registrations));
 

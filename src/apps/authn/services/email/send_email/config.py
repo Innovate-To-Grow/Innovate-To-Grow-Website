@@ -5,6 +5,7 @@ PURPOSE_SUBJECTS = {
     "password_change": "Password change code - Innovate to Grow",
     "account_delete": "Delete account code - Innovate to Grow",
     "contact_email_verify": "Verify your contact email - Innovate to Grow",
+    "event_registration": "Verify your event registration email - Innovate to Grow",
     "admin_login": "Admin login code - Innovate to Grow",
 }
 
@@ -15,6 +16,7 @@ PURPOSE_DISPLAY = {
     "password_change": "change your password",
     "account_delete": "delete your account",
     "contact_email_verify": "verify your contact email",
+    "event_registration": "verify your secondary email for event registration",
     "admin_login": "sign in to the admin panel",
 }
 

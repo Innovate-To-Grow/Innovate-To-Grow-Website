@@ -26,6 +26,7 @@ from apps.authn.services.send_verification.constants import (
     OP_DELETE_ACCOUNT_REQUEST_CODE,
     OP_EMAIL_AUTH_REQUEST_CODE,
     OP_EVENT_SEND_PHONE_CODE,
+    OP_EVENT_SEND_SECONDARY_EMAIL_CODE,
     OP_LOGIN_REQUEST_CODE,
     OP_PASSWORD_RESET_REQUEST_CODE,
     OP_PHONE_AUTH_REQUEST_CODE,
@@ -60,6 +61,8 @@ def _operation_for(path: str, data: dict) -> str | None:
         return OP_CONTACT_EMAIL_CREATE
     if path.rstrip("/") == "/event/send-phone-code":
         return OP_EVENT_SEND_PHONE_CODE
+    if path.rstrip("/") == "/event/send-secondary-email-code":
+        return OP_EVENT_SEND_SECONDARY_EMAIL_CODE
     if path.rstrip("/") == "/admin/login":
         action = str(data.get("action") or "")
         if action == "remembered_code":

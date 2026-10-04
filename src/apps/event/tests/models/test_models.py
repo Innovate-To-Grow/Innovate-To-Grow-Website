@@ -1,5 +1,6 @@
 import datetime
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
@@ -18,6 +19,9 @@ def _make_question(event, text="What is your role?", **kwargs):
 
 
 class EventModelTest(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_str_returns_name(self):
         event = make_event(name="Spring Showcase")
         self.assertEqual(str(event), "Spring Showcase")
@@ -123,6 +127,48 @@ class EventModelTest(TestCase):
     def test_database_rejects_verify_phone_without_prompt(self):
         with self.assertRaises(IntegrityError), transaction.atomic():
             make_event(name="Invalid database phone options", collect_phone=False, verify_phone=True)
+
+    def test_new_event_contact_options_default_to_off(self):
+        event = make_event()
+        for field in (
+            "collect_phone",
+            "verify_phone",
+            "require_phone",
+            "allow_secondary_email",
+            "verify_secondary_email",
+            "require_secondary_email",
+        ):
+            self.assertFalse(getattr(event, field), field)
+
+    def test_contact_settings_model_and_database_reject_dependent_options_without_collection(self):
+        for field in ("verify_phone", "require_phone", "verify_secondary_email", "require_secondary_email"):
+            with self.subTest(field=field):
+                event = Event(**{field: True})
+                with self.assertRaises(ValidationError) as raised:
+                    event.clean()
+                self.assertIn(field, raised.exception.message_dict)
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    make_event(name=f"Invalid {field}", **{field: True})
+
+    def test_all_contact_setting_combinations_are_valid(self):
+        for collect, verify, required in (
+            (False, False, False),
+            (True, False, False),
+            (True, True, False),
+            (True, False, True),
+            (True, True, True),
+        ):
+            with self.subTest(collect=collect, verify=verify, required=required):
+                event = make_event(
+                    name=f"Contact settings {collect} {verify} {required}",
+                    collect_phone=collect,
+                    verify_phone=verify,
+                    require_phone=required,
+                    allow_secondary_email=collect,
+                    verify_secondary_email=verify,
+                    require_secondary_email=required,
+                )
+                event.full_clean()
 
 
 # ---------- Ticket ----------
@@ -275,12 +321,13 @@ class EventRegistrationModelTest(TestCase):
         with self.assertRaises(ProtectedError):
             reg.ticket.delete()
 
-    def test_save_auto_populates_secondary_email_when_flag_on(self):
+    def test_save_keeps_secondary_email_blank_when_collecting(self):
         self.event.allow_secondary_email = True
         self.event.save()
         ContactEmail.objects.create(member=self.member, email_address="sec@example.com", email_type="secondary")
         reg = self._make_registration()
-        self.assertEqual(reg.attendee_secondary_email, "sec@example.com")
+        self.assertEqual(reg.attendee_secondary_email, "")
+        self.assertFalse(reg.secondary_email_verified)
 
     def test_save_does_not_auto_populate_secondary_email_when_flag_off(self):
         ContactEmail.objects.create(member=self.member, email_address="sec@example.com", email_type="secondary")

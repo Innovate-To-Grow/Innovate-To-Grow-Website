@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.db import IntegrityError
 from django.test import TestCase
 
@@ -10,6 +11,7 @@ from apps.event.tests.helpers import make_member
 
 class SyncNameToAccountTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.member = make_member(email="sync@example.com", first_name="Original", last_name="Name")
 
     def test_updates_both_names(self):
@@ -49,6 +51,7 @@ class SyncNameToAccountTest(TestCase):
 
 class SyncPhoneToAccountTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.member = make_member(email="phone@example.com")
 
     def test_creates_new_phone(self):
@@ -89,6 +92,28 @@ class SyncPhoneToAccountTest(TestCase):
         sync_phone_to_account(self.member, "+12095551234")
         self.assertEqual(ContactPhone.objects.filter(member=self.member).count(), 0)
         self.assertEqual(ContactPhone.objects.get(phone_number="2095551234").member, other)
+
+    def test_stale_phone_read_cannot_verify_changed_owner_number_or_region(self):
+        other = make_member(email="other@example.com")
+        for changes in (
+            {"member": other},
+            {"phone_number": "2095559999"},
+            {"region": "44-GB"},
+        ):
+            with self.subTest(changes=changes):
+                phone = ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US")
+                ContactPhone.objects.filter(pk=phone.pk).update(**changes)
+                with patch("django.db.models.query.QuerySet.first", return_value=phone):
+                    sync_phone_to_account(self.member, "+12095551234", verified=True)
+                phone.refresh_from_db()
+                self.assertFalse(phone.verified)
+                phone.delete()
+
+    def test_concurrent_insert_conflict_does_not_break_registration_transaction(self):
+        ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US")
+        with patch("django.db.models.query.QuerySet.first", return_value=None):
+            sync_phone_to_account(self.member, "+12095551234", verified=True)
+        self.assertEqual(ContactPhone.objects.filter(member=self.member).count(), 1)
 
     @patch("apps.event.services.registration.sync_account.ContactPhone.objects.create")
     def test_integrity_error_swallowed(self, mock_create):

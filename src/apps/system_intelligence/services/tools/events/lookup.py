@@ -19,6 +19,9 @@ EVENT_FIELDS = [
     "allow_secondary_email",
     "collect_phone",
     "verify_phone",
+    "require_phone",
+    "verify_secondary_email",
+    "require_secondary_email",
     "created_at",
     "updated_at",
 ]

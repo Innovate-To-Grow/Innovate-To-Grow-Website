@@ -35,6 +35,8 @@ import {
   resendTicketEmail,
   sendPhoneCode,
   verifyPhoneCode,
+  sendSecondaryEmailCode,
+  verifySecondaryEmailCode,
 } from '@/features/events/api/index';
 
 const eventFields = {
@@ -144,6 +146,20 @@ describe('event API', () => {
       await expect(fetchRegistrationEvents()).resolves.toEqual([]);
     });
 
+    it('preserves legacy required-phone behavior while honoring explicit new settings', async () => {
+      apiMock.get.mockResolvedValueOnce({data: {...eventFields, collect_phone: true, verify_phone: true}});
+      expect(await fetchRegistrationOptions()).toEqual(expect.objectContaining({
+        require_phone: true, verify_secondary_email: false, require_secondary_email: false,
+      }));
+      apiMock.get.mockResolvedValueOnce({data: {
+        ...eventFields, collect_phone: true, verify_phone: true, require_phone: false,
+        verify_secondary_email: true, require_secondary_email: false,
+      }});
+      expect(await fetchRegistrationOptions()).toEqual(expect.objectContaining({
+        require_phone: false, verify_secondary_email: true, require_secondary_email: false,
+      }));
+    });
+
     it('passes event_slug and retains it for an anonymous 401 fallback', async () => {
       mockGetStoredSession.mockReturnValue({generation: 'session-a'});
       authApiMock.get.mockRejectedValue({
@@ -232,4 +248,20 @@ describe('event API', () => {
     );
     expect(apiMock.post).not.toHaveBeenCalled();
   });
+
+  it('keeps secondary email challenges scoped to the event and submits verification receipts', async () => {
+    authApiMock.post.mockResolvedValueOnce({data: {email: 'personal@example.com', challenge_id: 'email-challenge'}});
+    authApiMock.post.mockResolvedValueOnce({data: {email: 'personal@example.com', verified: true, challenge_id: 'email-challenge', verification_token: 'email-proof'}});
+    await sendSecondaryEmailCode('personal@example.com', 'fall-showcase');
+    const proof = await verifySecondaryEmailCode('personal@example.com', '123456', 'email-challenge', 'fall-showcase');
+    expect(authApiMock.post).toHaveBeenNthCalledWith(1, '/event/send-secondary-email-code/', expect.objectContaining({
+      email: 'personal@example.com', event_slug: 'fall-showcase',
+    }));
+    expect(authApiMock.post).toHaveBeenNthCalledWith(2, '/event/verify-secondary-email-code/', {
+      email: 'personal@example.com', code: '123456', challenge_id: 'email-challenge', event_slug: 'fall-showcase',
+    });
+    expect(proof.verification_token).toBe('email-proof');
+    expect(apiMock.post).not.toHaveBeenCalled();
+  });
+
 });

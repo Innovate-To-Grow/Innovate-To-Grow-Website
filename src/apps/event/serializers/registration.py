@@ -18,9 +18,11 @@ class EventRegistrationCreateSerializer(serializers.Serializer):
     attendee_first_name = serializers.CharField(max_length=150, required=True, allow_blank=False)
     attendee_last_name = serializers.CharField(max_length=150, required=True, allow_blank=False)
     attendee_organization = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
-    attendee_secondary_email = serializers.EmailField(required=False, allow_blank=True, default="")
+    attendee_secondary_email = serializers.EmailField(required=False, allow_blank=True, default="", max_length=254)
     attendee_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     phone_verification_challenge_id = serializers.UUIDField(required=False)
+    secondary_email_verification_challenge_id = serializers.UUIDField(required=False)
+    secondary_email_verification_token = serializers.CharField(required=False, max_length=256, write_only=True)
     # US-only: the phone region is pinned to "1-US" server-side, so no client region field is accepted.
 
 
@@ -63,6 +65,7 @@ def build_registration_payload(registration, request=None) -> dict:
         "attendee_name": registration.attendee_name,
         "attendee_email": registration.attendee_email,
         "attendee_secondary_email": registration.attendee_secondary_email,
+        "secondary_email_verified": registration.secondary_email_verified,
         "attendee_phone": registration.attendee_phone,
         "phone_verified": registration.phone_verified,
         "phone_verification_required": bool(
@@ -111,6 +114,13 @@ def _get_member_profile(user) -> dict:
     }
 
 
+def _get_member_secondary_email(user) -> dict | None:
+    contact = user.contact_emails.filter(email_type="secondary").order_by("created_at").first()
+    if contact is None:
+        return None
+    return {"email_address": contact.email_address, "verified": contact.verified}
+
+
 def _get_member_phone(user) -> dict | None:
     phone = user.contact_phones.order_by("-verified", "created_at").first()
     if phone is None:
@@ -126,10 +136,14 @@ def build_event_registration_option_payload(event, registration=None, request=No
     member_emails = []
     member_profile = None
     member_phone = None
+    member_secondary_email = None
+    member_primary_email = ""
     if request and getattr(request, "user", None) and request.user.is_authenticated:
         member_emails = _get_member_emails(request.user)
         member_profile = _get_member_profile(request.user)
         member_phone = _get_member_phone(request.user)
+        member_secondary_email = _get_member_secondary_email(request.user)
+        member_primary_email = request.user.get_primary_email() or ""
     return {
         "id": str(event.pk),
         "name": event.name,
@@ -139,13 +153,18 @@ def build_event_registration_option_payload(event, registration=None, request=No
         "location": event.location,
         "description": event.description,
         "allow_secondary_email": event.allow_secondary_email,
+        "verify_secondary_email": event.verify_secondary_email,
+        "require_secondary_email": event.require_secondary_email,
         "collect_phone": event.collect_phone,
         "verify_phone": event.verify_phone,
+        "require_phone": event.require_phone,
         "tickets": [_serialize_ticket_option(ticket) for ticket in event.tickets.all()],
         "questions": [_serialize_question(question) for question in event.questions.all()],
         "registration": build_registration_payload(registration, request=request) if registration else None,
         "member_emails": member_emails,
         "member_profile": member_profile,
         "member_phone": member_phone,
+        "member_secondary_email": member_secondary_email,
+        "member_primary_email": member_primary_email,
         "phone_regions": [{"code": code, "label": label} for code, label in PHONE_REGION_CHOICES],
     }

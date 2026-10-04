@@ -29,6 +29,7 @@ from apps.authn.services.send_verification.constants import (
     OP_DELETE_ACCOUNT_REQUEST_CODE,
     OP_EMAIL_AUTH_REQUEST_CODE,
     OP_EVENT_SEND_PHONE_CODE,
+    OP_EVENT_SEND_SECONDARY_EMAIL_CODE,
     OP_LOGIN_REQUEST_CODE,
     OP_PASSWORD_RESET_REQUEST_CODE,
     OP_PHONE_AUTH_REQUEST_CODE,
@@ -190,7 +191,13 @@ class SendVerificationCoverageTests(APITestCase):
     setUp = SendVerificationContextTests.setUp
 
     def _sending_cases(self):
-        event = make_event(registration_open=True, collect_phone=True, verify_phone=True)
+        event = make_event(
+            registration_open=True,
+            collect_phone=True,
+            verify_phone=True,
+            allow_secondary_email=True,
+            verify_secondary_email=True,
+        )
         return (
             (OP_EMAIL_AUTH_REQUEST_CODE, "/authn/email-auth/request-code/", {"email": "new@example.com"}, {}),
             (OP_PHONE_AUTH_REQUEST_CODE, "/authn/phone-auth/request-code/", {"phone_number": "2025550100"}, {}),
@@ -229,6 +236,12 @@ class SendVerificationCoverageTests(APITestCase):
                 OP_EVENT_SEND_PHONE_CODE,
                 "/event/send-phone-code/",
                 {"phone": "2025550100", "event_slug": event.slug},
+                {},
+            ),
+            (
+                OP_EVENT_SEND_SECONDARY_EMAIL_CODE,
+                "/event/send-secondary-email-code/",
+                {"email": "new@example.com", "event_slug": event.slug},
                 {},
             ),
         )

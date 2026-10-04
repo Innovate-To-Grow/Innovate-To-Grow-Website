@@ -6,3 +6,6 @@ class EventConfig(AppConfig):
     name = "apps.event"
     label = "event"
     verbose_name = "Event"
+
+    def ready(self):
+        from . import signals  # noqa: F401

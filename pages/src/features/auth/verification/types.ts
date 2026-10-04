@@ -11,6 +11,7 @@ export type SendVerificationOperation =
   | 'contact_email.request_verification'
   | 'contact_phone.request_verification'
   | 'event.send_phone_code'
+  | 'event.send_secondary_email_code'
   | 'admin.login.request_code'
   | 'admin.login.remembered_code'
   | 'admin.login.resend';

@@ -201,6 +201,10 @@ export async function mockPasswordResetFlow(
 
 export interface EventRegistrationMockResult {
   created: unknown[];
+  phoneCodeRequests: unknown[];
+  phoneVerifications: unknown[];
+  secondaryEmailCodeRequests: unknown[];
+  secondaryEmailVerifications: unknown[];
 }
 
 export async function mockEventRegistration(
@@ -208,6 +212,10 @@ export async function mockEventRegistration(
   opts: {events?: EventRegistrationSummary[]; options?: EventRegistrationOptions; registration?: Registration} = {},
 ): Promise<EventRegistrationMockResult> {
   const created: unknown[] = [];
+  const phoneCodeRequests: unknown[] = [];
+  const phoneVerifications: unknown[] = [];
+  const secondaryEmailCodeRequests: unknown[] = [];
+  const secondaryEmailVerifications: unknown[] = [];
   const options = opts.options ?? registrationOptions();
 
   await mockSendVerification(page);
@@ -236,17 +244,31 @@ export async function mockEventRegistration(
     await route.fulfill(json(opts.registration ?? buildRegistration(), 201));
   });
 
-  await page.route('**/event/send-phone-code/', (route) =>
-    route.fulfill(json({detail: 'Code sent.', phone: '+15551234567'})),
-  );
-  await page.route('**/event/verify-phone-code/', (route) =>
-    route.fulfill(json({detail: 'Verified.', verified: true, phone: '+15551234567'})),
-  );
+  await page.route('**/event/send-phone-code/', (route) => {
+    const payload = route.request().postDataJSON();
+    phoneCodeRequests.push(payload);
+    return route.fulfill(json({detail: 'Code sent.', phone: `+1${payload.phone}`, challenge_id: 'phone-challenge-e2e'}));
+  });
+  await page.route('**/event/verify-phone-code/', (route) => {
+    const payload = route.request().postDataJSON();
+    phoneVerifications.push(payload);
+    return route.fulfill(json({detail: 'Verified.', verified: true, phone: payload.phone, challenge_id: 'phone-challenge-e2e'}));
+  });
+  await page.route('**/event/send-secondary-email-code/', (route) => {
+    const payload = route.request().postDataJSON();
+    secondaryEmailCodeRequests.push(payload);
+    return route.fulfill(json({email: payload.email, challenge_id: 'email-challenge-e2e'}));
+  });
+  await page.route('**/event/verify-secondary-email-code/', (route) => {
+    const payload = route.request().postDataJSON();
+    secondaryEmailVerifications.push(payload);
+    return route.fulfill(json({email: payload.email, verified: true, challenge_id: 'email-challenge-e2e', verification_token: 'email-proof-e2e'}));
+  });
   await page.route('**/event/my-tickets/*/resend-email/', (route) =>
     route.fulfill(json({message: 'Email sent successfully.'})),
   );
 
-  return {created};
+  return {created, phoneCodeRequests, phoneVerifications, secondaryEmailCodeRequests, secondaryEmailVerifications};
 }
 
 export async function mockNews(

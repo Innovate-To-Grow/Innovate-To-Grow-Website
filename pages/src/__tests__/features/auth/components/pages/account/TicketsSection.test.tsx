@@ -15,6 +15,7 @@ const registration = (overrides: Partial<Registration> = {}): Registration => ({
   attendee_secondary_email: '',
   attendee_phone: '',
   phone_verified: false,
+  secondary_email_verified: false,
   phone_verification_required: false,
   attendee_organization: 'Acme',
   registered_at: '2026-05-01T12:00:00Z',

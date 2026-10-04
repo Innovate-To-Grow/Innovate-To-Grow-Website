@@ -14,6 +14,8 @@ const mockFetchRegistrationEvents = vi.fn();
 const mockFetchRegistrationOptions = vi.fn();
 const mockSendPhoneCode = vi.fn();
 const mockVerifyPhoneCode = vi.fn();
+const mockSendSecondaryEmailCode = vi.fn();
+const mockVerifySecondaryEmailCode = vi.fn();
 
 vi.mock('@/features/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/auth')>();
@@ -33,6 +35,8 @@ vi.mock('@/features/events/api', async () => {
     createRegistration: (...args: unknown[]) => mockCreateRegistration(...args),
     sendPhoneCode: (...args: unknown[]) => mockSendPhoneCode(...args),
     verifyPhoneCode: (...args: unknown[]) => mockVerifyPhoneCode(...args),
+    sendSecondaryEmailCode: (...args: unknown[]) => mockSendSecondaryEmailCode(...args),
+    verifySecondaryEmailCode: (...args: unknown[]) => mockVerifySecondaryEmailCode(...args),
   };
 });
 
@@ -69,10 +73,14 @@ const baseOptions: EventRegistrationOptions = {
   allow_secondary_email: false,
   collect_phone: false,
   verify_phone: false,
+  require_phone: false,
+  verify_secondary_email: false,
+  require_secondary_email: false,
   tickets: [{id: 'ticket-1', name: 'General Admission'}],
   questions: [],
   registration: null,
   member_emails: [],
+  member_secondary_email: null,
   member_profile: null,
   member_phone: null,
   phone_regions: [{code: '1-US', label: 'United States'}],
@@ -96,6 +104,7 @@ const registrationFixture = (overrides: Partial<Registration> = {}): Registratio
   attendee_secondary_email: '',
   attendee_phone: '',
   phone_verified: false,
+  secondary_email_verified: false,
   phone_verification_required: false,
   attendee_organization: 'Acme',
   registered_at: '2026-05-01T12:00:00Z',
@@ -121,6 +130,7 @@ const authenticated = {
 const formOptions = (overrides: Partial<EventRegistrationOptions> = {}): EventRegistrationOptions => ({
   ...baseOptions,
   member_emails: ['ada@example.com'],
+  member_secondary_email: null,
   member_profile: {...memberProfile},
   ...overrides,
 });
@@ -141,6 +151,8 @@ describe('useEventRegistration', () => {
     mockFetchRegistrationOptions.mockReset();
     mockSendPhoneCode.mockReset();
     mockVerifyPhoneCode.mockReset();
+    mockSendSecondaryEmailCode.mockReset();
+    mockVerifySecondaryEmailCode.mockReset();
     requestEmailAuthCode.mockReset();
     verifyEmailAuthCode.mockReset();
     requestPhoneAuthCode.mockReset();
@@ -177,6 +189,8 @@ describe('useEventRegistration', () => {
     mockCreateRegistration.mockResolvedValue(registrationFixture());
     mockSendPhoneCode.mockResolvedValue({detail: 'sent', phone: '2025550123', challenge_id: 'challenge-1'});
     mockVerifyPhoneCode.mockResolvedValue({detail: 'verified', verified: true, phone: '2025550123', challenge_id: 'challenge-1'});
+    mockSendSecondaryEmailCode.mockResolvedValue({email: 'personal@example.com', challenge_id: 'email-challenge-1'});
+    mockVerifySecondaryEmailCode.mockResolvedValue({email: 'personal@example.com', verified: true, challenge_id: 'email-challenge-1', verification_token: 'email-proof-1'});
   });
 
   afterEach(() => {
@@ -197,6 +211,7 @@ describe('useEventRegistration', () => {
       allow_secondary_email: true,
       collect_phone: true,
       member_emails: ['ada@example.com', 'personal@example.com'],
+      member_secondary_email: {email_address: 'personal@example.com', verified: true},
       member_phone: {phone_number: '+12025550123', region: '1-US', verified: true},
     }));
 
@@ -204,6 +219,7 @@ describe('useEventRegistration', () => {
 
     await waitFor(() => expect(result.current.step).toBe('form'));
     expect(result.current.attendeeSecondaryEmail).toBe('personal@example.com');
+    expect(result.current.secondaryEmailVerified).toBe(true);
     expect(result.current.attendeePhone).toBe('2025550123');
     expect(result.current.phoneVerified).toBe(true);
     expect(result.current.phoneCodeSent).toBe(true);
@@ -466,7 +482,7 @@ describe('useEventRegistration', () => {
 
   it('sends and verifies a phone code', async () => {
     mockUseAuth.mockReturnValue({...authenticated});
-    mockFetchRegistrationOptions.mockResolvedValue(formOptions({collect_phone: true}));
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({collect_phone: true, verify_phone: true}));
 
     const {result} = renderHook(() => useEventRegistration(), {wrapper});
     await waitFor(() => expect(result.current.step).toBe('form'));
@@ -492,7 +508,7 @@ describe('useEventRegistration', () => {
 
   it('surfaces a phone send error', async () => {
     mockUseAuth.mockReturnValue({...authenticated});
-    mockFetchRegistrationOptions.mockResolvedValue(formOptions({collect_phone: true}));
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({collect_phone: true, verify_phone: true}));
     mockSendPhoneCode.mockRejectedValue({response: {data: {detail: 'Send failed.'}}});
 
     const {result} = renderHook(() => useEventRegistration(), {wrapper});
@@ -510,7 +526,7 @@ describe('useEventRegistration', () => {
 
   it('surfaces a phone verify error', async () => {
     mockUseAuth.mockReturnValue({...authenticated});
-    mockFetchRegistrationOptions.mockResolvedValue(formOptions({collect_phone: true}));
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({collect_phone: true, verify_phone: true}));
     mockVerifyPhoneCode.mockRejectedValue({response: {data: {detail: 'Verify failed.'}}});
 
     const {result} = renderHook(() => useEventRegistration(), {wrapper});
@@ -554,4 +570,286 @@ describe('useEventRegistration', () => {
 
     expect(result.current.phoneError).toBe('US phone numbers must be exactly 10 digits.');
   });
+
+  it('uses explicit secondary email metadata instead of the legacy email array', async () => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({
+      allow_secondary_email: true,
+      member_emails: ['ada@example.com', 'legacy@example.com'],
+      member_secondary_email: {email_address: 'current@example.com', verified: false},
+    }));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    expect(result.current.attendeeSecondaryEmail).toBe('current@example.com');
+    expect(result.current.secondaryEmailVerified).toBe(false);
+  });
+
+  it('does not mistake a secondary-only member email for a primary address', async () => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({
+      allow_secondary_email: true, verify_secondary_email: true,
+      member_primary_email: '', member_emails: ['personal@example.com'],
+      member_secondary_email: {email_address: 'personal@example.com', verified: false},
+    }));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    expect(result.current.primaryEmail).toBe('');
+    expect(result.current.attendeeSecondaryEmail).toBe('personal@example.com');
+    await act(async () => { await result.current.handleSendSecondaryEmailCode(); });
+    expect(mockSendSecondaryEmailCode).toHaveBeenCalledWith('personal@example.com', 'demo-day');
+  });
+
+  it('prefills legacy secondary email responses without claiming verification', async () => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    const legacyOptions: Partial<EventRegistrationOptions> = formOptions({allow_secondary_email: true, member_emails: ['ada@example.com', 'personal@example.com']});
+    delete legacyOptions.member_secondary_email;
+    mockFetchRegistrationOptions.mockResolvedValue(legacyOptions);
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    expect(result.current.primaryEmail).toBe('ada@example.com');
+    expect(result.current.attendeeSecondaryEmail).toBe('personal@example.com');
+    expect(result.current.secondaryEmailVerified).toBe(false);
+  });
+
+  it('sends and verifies a secondary email without updating the account, then submits the receipt', async () => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({allow_secondary_email: true, verify_secondary_email: true}));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    act(() => result.current.handleSecondaryEmailChange(' PERSONAL@EXAMPLE.COM '));
+    await act(async () => { await result.current.handleSendSecondaryEmailCode(); });
+    expect(mockSendSecondaryEmailCode).toHaveBeenCalledWith('personal@example.com', 'demo-day');
+    act(() => result.current.setSecondaryEmailCode('123456'));
+    await act(async () => { await result.current.handleVerifySecondaryEmailCode(); });
+    expect(mockVerifySecondaryEmailCode).toHaveBeenCalledWith('personal@example.com', '123456', 'email-challenge-1', 'demo-day');
+    expect(result.current.secondaryEmailVerified).toBe(true);
+    expect(mockUpdateProfileFields).not.toHaveBeenCalled();
+    expect(mockCreateRegistration).not.toHaveBeenCalled();
+    act(() => result.current.setSelectedTicketId('ticket-1'));
+    await act(async () => { await result.current.handleRegistrationSubmit(fakeEvent()); });
+    expect(mockCreateRegistration).toHaveBeenCalledWith(expect.objectContaining({
+      attendee_secondary_email: 'personal@example.com',
+      secondary_email_verification_challenge_id: 'email-challenge-1',
+      secondary_email_verification_token: 'email-proof-1',
+    }));
+  });
+
+  it('clears secondary verification receipts on address change but preserves formatting-only changes', async () => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({allow_secondary_email: true, verify_secondary_email: true}));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    act(() => result.current.handleSecondaryEmailChange('personal@example.com'));
+    await act(async () => { await result.current.handleSendSecondaryEmailCode(); });
+    act(() => result.current.setSecondaryEmailCode('123456'));
+    await act(async () => { await result.current.handleVerifySecondaryEmailCode(); });
+    act(() => result.current.handleSecondaryEmailChange(' PERSONAL@EXAMPLE.COM '));
+    expect(result.current.secondaryEmailVerified).toBe(true);
+    act(() => result.current.handleSecondaryEmailChange('different@example.com'));
+    expect(result.current.secondaryEmailVerified).toBe(false);
+    expect(result.current.secondaryEmailCodeSent).toBe(false);
+    expect(result.current.secondaryEmailCode).toBe('');
+    act(() => {
+      result.current.handleSecondaryEmailChange('');
+      result.current.setSelectedTicketId('ticket-1');
+    });
+    await act(async () => { await result.current.handleRegistrationSubmit(fakeEvent()); });
+    expect(mockCreateRegistration).toHaveBeenCalledWith(expect.objectContaining({
+      attendee_secondary_email: undefined,
+      secondary_email_verification_challenge_id: undefined,
+      secondary_email_verification_token: undefined,
+    }));
+  });
+
+  it.each([
+    [{collect_phone: true, require_phone: true}, 'Phone number is required.'],
+    [{allow_secondary_email: true, require_secondary_email: true}, 'Secondary email is required.'],
+  ] as const)('rejects required contacts before saving profile changes', async (flags, message) => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions(flags));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    act(() => {
+      result.current.setSelectedTicketId('ticket-1');
+      result.current.setAttendeeFirstName('Grace');
+    });
+    await act(async () => { await result.current.handleRegistrationSubmit(fakeEvent()); });
+    expect(result.current.error).toBe(message);
+    expect(mockUpdateProfileFields).not.toHaveBeenCalled();
+    expect(mockCreateRegistration).not.toHaveBeenCalled();
+  });
+
+  it('omits stale hidden contacts even when their dependent flags remain enabled', async () => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({require_phone: true, verify_phone: true, require_secondary_email: true, verify_secondary_email: true}));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    act(() => {
+      result.current.setSelectedTicketId('ticket-1');
+      result.current.handlePhoneChange('2025550123');
+      result.current.handleSecondaryEmailChange('ada@example.com');
+    });
+    await act(async () => { await result.current.handleRegistrationSubmit(fakeEvent()); });
+    expect(mockCreateRegistration).toHaveBeenCalledWith(expect.objectContaining({
+      attendee_secondary_email: undefined, attendee_phone: undefined,
+      phone_verification_challenge_id: undefined, secondary_email_verification_token: undefined,
+    }));
+  });
+
+  it.each(['send', 'verify'] as const)('surfaces secondary email %s failures', async (operation) => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({allow_secondary_email: true, verify_secondary_email: true}));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    act(() => result.current.handleSecondaryEmailChange('personal@example.com'));
+    if (operation === 'send') mockSendSecondaryEmailCode.mockRejectedValue({response: {data: {detail: 'Email send failed.'}}});
+    await act(async () => { await result.current.handleSendSecondaryEmailCode(); });
+    if (operation === 'verify') {
+      mockVerifySecondaryEmailCode.mockRejectedValue({response: {data: {detail: 'Email verify failed.'}}});
+      act(() => result.current.setSecondaryEmailCode('123456'));
+      await act(async () => { await result.current.handleVerifySecondaryEmailCode(); });
+    }
+    expect(result.current.error).toBe(`Email ${operation} failed.`);
+    expect(result.current.secondaryEmailVerified).toBe(false);
+  });
+
+  describe.each(['phone', 'secondary email'] as const)('%s asynchronous verification', (contact) => {
+    it.each(['send', 'verify'] as const)('ignores a stale %s result after changing the contact', async (operation) => {
+      mockUseAuth.mockReturnValue({...authenticated});
+      mockFetchRegistrationOptions.mockResolvedValue(formOptions({collect_phone: true, verify_phone: true, allow_secondary_email: true, verify_secondary_email: true}));
+      const {result} = renderHook(() => useEventRegistration(), {wrapper});
+      await waitFor(() => expect(result.current.step).toBe('form'));
+      const isPhone = contact === 'phone';
+      const send = () => isPhone ? result.current.handleSendPhoneCode() : result.current.handleSendSecondaryEmailCode();
+      const verify = () => isPhone ? result.current.handleVerifyPhoneCode() : result.current.handleVerifySecondaryEmailCode();
+      act(() => {
+        if (isPhone) result.current.handlePhoneChange('2025550123');
+        else result.current.handleSecondaryEmailChange('personal@example.com');
+      });
+      if (operation === 'verify') {
+        await act(async () => { await send(); });
+        act(() => {
+          if (isPhone) result.current.setPhoneCode('123456');
+          else result.current.setSecondaryEmailCode('123456');
+        });
+      }
+      let resolveRequest!: (value: unknown) => void;
+      const deferred = new Promise((resolve) => { resolveRequest = resolve; });
+      const mock = isPhone
+        ? operation === 'send' ? mockSendPhoneCode : mockVerifyPhoneCode
+        : operation === 'send' ? mockSendSecondaryEmailCode : mockVerifySecondaryEmailCode;
+      mock.mockReturnValueOnce(deferred);
+      let pending!: Promise<void>;
+      act(() => { pending = operation === 'send' ? send() : verify(); });
+      act(() => {
+        if (isPhone) result.current.handlePhoneChange('4155550123');
+        else result.current.handleSecondaryEmailChange('changed@example.com');
+      });
+      await act(async () => {
+        resolveRequest({phone: '2025550123', email: 'personal@example.com', verified: true, challenge_id: 'obsolete', verification_token: 'obsolete'});
+        await pending;
+      });
+      expect(isPhone ? result.current.phoneVerified : result.current.secondaryEmailVerified).toBe(false);
+      expect(isPhone ? result.current.phoneCodeSent : result.current.secondaryEmailCodeSent).toBe(false);
+    });
+  });
+
+  it('ignores an in-flight email verification when switching events', async () => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    const secondEvent = {...demoEvent, id: 'event-2', slug: 'second-event'};
+    mockFetchRegistrationEvents.mockResolvedValue([{...demoEvent}, secondEvent]);
+    mockFetchRegistrationOptions.mockImplementation((slug) => Promise.resolve(formOptions({slug, allow_secondary_email: true, verify_secondary_email: true})));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('select'));
+    act(() => result.current.handleSelectEvent('demo-day'));
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    act(() => result.current.handleSecondaryEmailChange('personal@example.com'));
+    await act(async () => { await result.current.handleSendSecondaryEmailCode(); });
+    act(() => result.current.setSecondaryEmailCode('123456'));
+    let resolveRequest!: (value: unknown) => void;
+    mockVerifySecondaryEmailCode.mockReturnValueOnce(new Promise((resolve) => { resolveRequest = resolve; }));
+    let pending!: Promise<void>;
+    act(() => { pending = result.current.handleVerifySecondaryEmailCode(); });
+    act(() => result.current.handleSelectEvent('second-event'));
+    await waitFor(() => expect(result.current.options?.slug).toBe('second-event'));
+    await act(async () => {
+      resolveRequest({email: 'personal@example.com', verified: true, challenge_id: 'obsolete', verification_token: 'obsolete'});
+      await pending;
+    });
+    expect(result.current.attendeeSecondaryEmail).toBe('');
+    expect(result.current.secondaryEmailVerified).toBe(false);
+    expect(result.current.secondaryEmailCodeSent).toBe(false);
+  });
+
+
+  it.each(['phone', 'secondary email'] as const)('allows reverification after the server rejects an expired %s receipt', async (contact) => {
+    const isPhone = contact === 'phone';
+    mockUseAuth.mockReturnValue({...authenticated});
+    mockFetchRegistrationOptions.mockResolvedValue(formOptions({
+      collect_phone: true, verify_phone: true, allow_secondary_email: true, verify_secondary_email: true,
+    }));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('form'));
+    act(() => {
+      result.current.setSelectedTicketId('ticket-1');
+      if (isPhone) result.current.handlePhoneChange('2025550123');
+      else result.current.handleSecondaryEmailChange('personal@example.com');
+    });
+    await act(async () => {
+      if (isPhone) await result.current.handleSendPhoneCode();
+      else await result.current.handleSendSecondaryEmailCode();
+    });
+    act(() => {
+      if (isPhone) result.current.setPhoneCode('123456');
+      else result.current.setSecondaryEmailCode('123456');
+    });
+    await act(async () => {
+      if (isPhone) await result.current.handleVerifyPhoneCode();
+      else await result.current.handleVerifySecondaryEmailCode();
+    });
+    mockCreateRegistration.mockRejectedValueOnce({response: {status: 400, data: {
+      detail: 'Please verify this contact again.',
+      code: isPhone ? 'phone_verification_required' : 'secondary_email_verification_required',
+    }}});
+    await act(async () => { await result.current.handleRegistrationSubmit(fakeEvent()); });
+    expect(result.current.error).toBe('Please verify this contact again.');
+    expect(isPhone ? result.current.phoneVerified : result.current.secondaryEmailVerified).toBe(false);
+    expect(isPhone ? result.current.phoneCodeSent : result.current.secondaryEmailCodeSent).toBe(false);
+    expect(isPhone ? result.current.attendeePhone : result.current.attendeeSecondaryEmail).toBe(isPhone ? '2025550123' : 'personal@example.com');
+    await act(async () => {
+      if (isPhone) await result.current.handleSendPhoneCode();
+      else await result.current.handleSendSecondaryEmailCode();
+    });
+    expect(isPhone ? mockSendPhoneCode : mockSendSecondaryEmailCode).toHaveBeenCalledTimes(2);
+  });
+
+
+  it('ignores old event options while the next event list is still loading', async () => {
+    mockUseAuth.mockReturnValue({...authenticated});
+    const eventList = [{...demoEvent}, {...demoEvent, id: 'event-2', slug: 'second-event'}];
+    mockFetchRegistrationEvents.mockResolvedValue(eventList);
+    let resolveOldOptions!: (value: EventRegistrationOptions) => void;
+    const oldOptions = new Promise<EventRegistrationOptions>((resolve) => { resolveOldOptions = resolve; });
+    mockFetchRegistrationOptions.mockImplementation((slug) => slug === 'demo-day'
+      ? oldOptions : Promise.resolve(formOptions({slug, allow_secondary_email: true})));
+    const {result} = renderHook(() => useEventRegistration(), {wrapper});
+    await waitFor(() => expect(result.current.step).toBe('select'));
+    act(() => result.current.handleSelectEvent('demo-day'));
+    await waitFor(() => expect(mockFetchRegistrationOptions).toHaveBeenCalledWith('demo-day'));
+    let resolveEventList!: (value: typeof eventList) => void;
+    mockFetchRegistrationEvents.mockReturnValueOnce(new Promise((resolve) => { resolveEventList = resolve; }));
+    act(() => result.current.handleSelectEvent('second-event'));
+    await waitFor(() => expect(mockFetchRegistrationEvents).toHaveBeenCalledTimes(3));
+    await act(async () => {
+      resolveOldOptions(formOptions({allow_secondary_email: true, member_secondary_email: {email_address: 'old@example.com', verified: true}}));
+      await oldOptions;
+    });
+    expect(result.current.step).toBe('loading');
+    expect(result.current.options).toBeNull();
+    expect(result.current.secondaryEmailVerified).toBe(false);
+    await act(async () => { resolveEventList(eventList); });
+    await waitFor(() => expect(result.current.options?.slug).toBe('second-event'));
+    expect(result.current.attendeeSecondaryEmail).toBe('');
+  });
+
 });

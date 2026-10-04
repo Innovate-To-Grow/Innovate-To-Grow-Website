@@ -111,8 +111,16 @@ export const EventRegistrationPage = () => {
           onTitleChange={reg.setAttendeeTitle}
           onTicketChange={reg.setSelectedTicketId}
           onAnswerChange={(questionId, answer) => reg.setAnswers((current) => ({...current, [questionId]: answer}))}
-          onSecondaryEmailChange={reg.setAttendeeSecondaryEmail}
+          onSecondaryEmailChange={reg.handleSecondaryEmailChange}
           onPhoneChange={reg.handlePhoneChange}
+          secondaryEmailCode={reg.secondaryEmailCode}
+          secondaryEmailCodeSent={reg.secondaryEmailCodeSent}
+          secondaryEmailSending={reg.secondaryEmailSending}
+          secondaryEmailVerified={reg.secondaryEmailVerified}
+          verifyingSecondaryEmail={reg.verifyingSecondaryEmail}
+          onSecondaryEmailCodeChange={reg.setSecondaryEmailCode}
+          onSendSecondaryEmailCode={reg.handleSendSecondaryEmailCode}
+          onVerifySecondaryEmailCode={reg.handleVerifySecondaryEmailCode}
           phoneCode={reg.phoneCode}
           phoneCodeSent={reg.phoneCodeSent}
           phoneSending={reg.phoneSending}

@@ -6,7 +6,8 @@ Updates: first_name, last_name, and creates ContactPhone if phone was collected.
 
 import logging
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from apps.authn.models import ContactPhone
 from apps.authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
@@ -51,20 +52,26 @@ def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", ve
     if existing:
         if existing.member_id == member.pk:
             if verified and not existing.verified:
-                existing.verified = True
-                existing.save(update_fields=["verified", "updated_at"])
-                logger.info("Marked registration phone as verified for member %s.", member.pk)
+                updated = ContactPhone.objects.filter(
+                    pk=existing.pk,
+                    member=member,
+                    phone_number=national,
+                    region=region,
+                ).update(verified=True, updated_at=timezone.now())
+                if updated:
+                    logger.info("Marked registration phone as verified for member %s.", member.pk)
         else:
             logger.info("Registration phone belongs to another member; not syncing to member %s.", member.pk)
         return
 
     try:
-        ContactPhone.objects.create(
-            member=member,
-            phone_number=national,
-            region=region,
-            verified=verified,
-        )
+        with transaction.atomic():
+            ContactPhone.objects.create(
+                member=member,
+                phone_number=national,
+                region=region,
+                verified=verified,
+            )
         logger.info("Synced registration phone to member %s account.", member.pk)
     except IntegrityError:
         logger.warning("Registration phone was claimed concurrently; skipping sync for member %s.", member.pk)

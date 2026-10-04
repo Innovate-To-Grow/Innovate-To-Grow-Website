@@ -158,7 +158,7 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await expect(page.locator('body')).not.toContainText(/0 projects|0 results/i);
   });
 
-  test('loads a safe Event template and enforces dependent phone options', async ({page}) => {
+  test('loads a safe Event template and enforces dependent contact options', async ({page}) => {
     await adminLogin(page);
     await expectAdminDocument(page, '/admin/event/event/add/');
 
@@ -169,10 +169,17 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await expect(page.locator('#id_verify_phone')).toBeDisabled();
     await expect(page.locator('#id_verify_phone')).toHaveAttribute(
       'aria-describedby',
-      /event-verify-phone-dependency-hint/,
+      /event-phone-dependency-hint/,
     );
-    await expect(page.locator('#event-verify-phone-dependency-hint')).toContainText(
-      'Enable Prompt for Phone Number',
+    await expect(page.locator('#event-phone-dependency-hint')).toContainText(
+      'Enable Collect for Phone Number',
+    );
+    for (const field of ['require_phone', 'verify_secondary_email', 'require_secondary_email']) {
+      await expect(page.locator(`#id_${field}`)).not.toBeChecked();
+      await expect(page.locator(`#id_${field}`)).toBeDisabled();
+    }
+    await expect(page.locator('#id_verify_secondary_email')).toHaveAttribute(
+      'aria-describedby', /event-secondary-email-dependency-hint/,
     );
     const sourceValue = await sourceSelect.locator('option', {hasText: seededEventTemplateName}).getAttribute('value');
     expect(sourceValue).not.toBeNull();
@@ -228,8 +235,8 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await expect(promptPhone).toBeChecked();
     await expect(verifyPhone).toBeChecked();
     await expect(verifyPhone).toBeEnabled();
-    await expect(page.locator('#event-verify-phone-dependency-hint')).toContainText(
-      'Verify phone is available',
+    await expect(page.locator('#event-phone-dependency-hint')).toContainText(
+      'Verify if provided and Required are available',
     );
 
     await promptPhone.uncheck();
@@ -239,6 +246,28 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await promptPhone.check();
     await expect(verifyPhone).toBeEnabled();
     await expect(verifyPhone).not.toBeChecked();
+    for (const [collectField, verifyField, requiredField] of [
+      ['collect_phone', 'verify_phone', 'require_phone'],
+      ['allow_secondary_email', 'verify_secondary_email', 'require_secondary_email'],
+    ]) {
+      const collect = page.locator(`#id_${collectField}`);
+      const verify = page.locator(`#id_${verifyField}`);
+      const required = page.locator(`#id_${requiredField}`);
+      await collect.check();
+      await verify.check();
+      await required.check();
+      await collect.uncheck();
+      await expect(verify).not.toBeChecked();
+      await expect(required).not.toBeChecked();
+      await expect(verify).toBeDisabled();
+      await expect(required).toBeDisabled();
+      await collect.check();
+      await expect(verify).toBeEnabled();
+      await expect(required).toBeEnabled();
+      await expect(verify).not.toBeChecked();
+      await expect(required).not.toBeChecked();
+    }
+
   });
 
   test('copies Event Ticket types and Questions through confirmation', async ({page}) => {
@@ -267,6 +296,10 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     const eventSlug = `e2e-copied-event-${suffix}`;
     await page.locator('input[name="name"]').fill(eventName);
     await page.locator('input[name="slug"]').fill(eventSlug);
+    for (const field of [
+      'collect_phone', 'verify_phone', 'require_phone',
+      'allow_secondary_email', 'verify_secondary_email', 'require_secondary_email',
+    ]) await page.locator(`#id_${field}`).check();
     await page.locator('button[name="_save"]').click();
 
     await expect(page).toHaveURL(/\/admin\/event\/event\/confirm-change\//);
@@ -282,6 +315,11 @@ test.describe.serial('Django admin browser flows', {tag: '@admin'}, () => {
     await page.locator('input[name="q"]').fill(eventName);
     await page.locator('input[name="q"]').press('Enter');
     await page.getByRole('link', {name: eventName}).first().click();
+    await page.reload({waitUntil: 'domcontentloaded'});
+    for (const field of [
+      'collect_phone', 'verify_phone', 'require_phone',
+      'allow_secondary_email', 'verify_secondary_email', 'require_secondary_email',
+    ]) await expect(page.locator(`#id_${field}`)).toBeChecked();
     await expect(page.locator('input[name="tickets-0-name"]')).toHaveValue(copiedTicketName);
     await expect(page.locator('input[name="tickets-1-name"]')).toHaveValue('E2E VIP Admission');
     await expect(page.locator('input[name="questions-0-text"]')).toHaveValue(copiedQuestionText);

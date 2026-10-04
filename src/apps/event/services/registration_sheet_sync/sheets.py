@@ -12,6 +12,10 @@ class RegistrationSyncError(RuntimeError):
     """Raised when registration sheet sync fails."""
 
 
+class RegistrationSyncConflict(RegistrationSyncError):
+    """A mapping or identity conflict that requires operator review."""
+
+
 def read_sheet_values(worksheet) -> list[list[str]]:
     """Return worksheet values while keeping test doubles and empty sheets safe."""
     values = worksheet.get_all_values()
