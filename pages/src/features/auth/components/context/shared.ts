@@ -94,16 +94,53 @@ export function isSafeMessage(value: string): boolean {
   return value.length <= 300 && !looksLikeHtml(value);
 }
 
+/**
+ * The `code` a password sign-in is refused with (HTTP 429) once the account's
+ * failed-attempt budget is spent. The block is keyed to the account, not to the
+ * visitor's network, so it says nothing about the address it was sent from.
+ */
+const LOGIN_LOCKED_CODE = 'login_locked';
+
+/** Shown when a `login_locked` answer carries no usable `detail`; keeps the way out in view. */
+const LOGIN_LOCKED_FALLBACK_MESSAGE =
+  'Too many failed sign-in attempts. Please try again later or sign in with an email code.';
+
+/** The generic sentence for a failure whose body carries nothing usable, chosen by HTTP status. */
+function statusFallbackMessage(status?: number): string {
+  if (status && status >= 400 && status < 500) {
+    return 'Request failed. Please check your input and try again.';
+  }
+  if (status && status >= 500) {
+    return 'A server error occurred. Please try again later.';
+  }
+  return 'An unexpected error occurred. Please try again.';
+}
+
 export function getAuthErrorMessage(err: unknown): string {
   if (err instanceof VerificationFlowError && isSafeMessage(err.message)) return err.message;
   if (typeof err !== 'object' || err === null) {
     return 'An unexpected error occurred. Please try again.';
   }
-  const axiosError = err as { response?: { status?: number; data?: Record<string, unknown> } };
+  const axiosError = err as { response?: { status?: number; data?: unknown } };
   if (!axiosError.response?.data) {
     return 'An unexpected error occurred. Please try again.';
   }
-  const data = axiosError.response.data;
+  const body = axiosError.response.data;
+  // A non-JSON body (plain text or an HTML page from a proxy, WAF or CDN, e.g. an edge 429 or 502) arrives as a
+  // string; iterating it below would spell it out one character at a time. It gets the status-based sentence.
+  if (typeof body !== 'object' || body === null) {
+    return statusFallbackMessage(axiosError.response.status);
+  }
+  const data = body as Record<string, unknown>;
+  // The machine-readable code decides, as for the login link: the server's own
+  // sentence is shown (it already points to the email-code sign-in), and the
+  // way out is never lost to an unusable `detail`. Every other 429 keeps the
+  // generic mapping below.
+  if (axiosError.response.status === 429 && data.code === LOGIN_LOCKED_CODE) {
+    return typeof data.detail === 'string' && isSafeMessage(data.detail)
+      ? data.detail
+      : LOGIN_LOCKED_FALLBACK_MESSAGE;
+  }
   if (typeof data.detail === 'string' && isSafeMessage(data.detail)) {
     return data.detail;
   }
@@ -119,11 +156,5 @@ export function getAuthErrorMessage(err: unknown): string {
     }
   }
   if (messages.length > 0) return messages.join(' ');
-  if (axiosError.response.status && axiosError.response.status >= 400 && axiosError.response.status < 500) {
-    return 'Request failed. Please check your input and try again.';
-  }
-  if (axiosError.response.status && axiosError.response.status >= 500) {
-    return 'A server error occurred. Please try again later.';
-  }
-  return 'An unexpected error occurred. Please try again.';
+  return statusFallbackMessage(axiosError.response.status);
 }

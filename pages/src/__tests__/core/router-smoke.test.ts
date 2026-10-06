@@ -59,7 +59,6 @@ describe('Router', () => {
         'event-registration',
         'membership/events',
         'subscribe',
-        'unsubscribe-login',
         'login-link',
         'email-auth-link',
         'impersonate-login',

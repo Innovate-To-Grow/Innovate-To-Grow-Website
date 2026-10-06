@@ -58,6 +58,38 @@ class PublicTokenRefreshTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("access", response.data)
 
+    def test_refresh_rotates_the_refresh_token(self):
+        refresh = RefreshToken.for_user(self.member)
+
+        response = self.client.post("/authn/refresh/", {"refresh": str(refresh)}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+        self.assertNotEqual(response.data["refresh"], str(refresh))
+        replay = self.client.post("/authn/refresh/", {"refresh": str(refresh)}, format="json")
+        self.assertEqual(replay.status_code, 401)
+
+    def test_refresh_for_deleted_member_is_invalid_token_not_server_error(self):
+        """A hard-deleted member's refresh token must read as a dead session (401), never a 500."""
+        refresh = RefreshToken.for_user(self.member)
+        self.member.delete()
+
+        response = self.client.post("/authn/refresh/", {"refresh": str(refresh)}, format="json")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data["code"], "token_not_valid")
+        self.assertEqual(response.data["detail"], "Token is invalid or expired")
+
+    def test_refresh_for_inactive_member_still_reports_no_active_account(self):
+        refresh = RefreshToken.for_user(self.member)
+        self.member.is_active = False
+        self.member.save(update_fields=["is_active"])
+
+        response = self.client.post("/authn/refresh/", {"refresh": str(refresh)}, format="json")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data["detail"].code, "no_active_account")
+
 
 class ImageMagicByteValidationTests(SimpleTestCase):
     """Tests for _validate_image_bytes helper (S6 fix)."""

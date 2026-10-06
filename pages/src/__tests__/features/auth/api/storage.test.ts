@@ -211,6 +211,31 @@ describe('storage', () => {
     expect(getStoredSession()).toEqual(original);
   });
 
+  it('reports an unwritable session with the typed error the login-link page relies on', async () => {
+    const {persistAuthSession} = await import('@/features/auth/api/storage');
+    const {SessionNotSavedError} = await import('@/features/auth/api/errors');
+    vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
+      throw new DOMException('Storage is unavailable', 'QuotaExceededError');
+    });
+
+    let thrown: unknown;
+    try {
+      persistAuthSession({
+        access: 'blocked-access',
+        refresh: 'blocked-refresh',
+        user: mockUser,
+        requires_profile_completion: false,
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(SessionNotSavedError);
+    // Still an Error with the historical message, so existing catch sites match.
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe('Unable to persist the authentication session.');
+  });
+
   it('migrates and removes a complete legacy session', async () => {
     mockLocalStorage.setItem('i2g_access_token', 'legacy-access');
     mockLocalStorage.setItem('i2g_refresh_token', 'legacy-refresh');

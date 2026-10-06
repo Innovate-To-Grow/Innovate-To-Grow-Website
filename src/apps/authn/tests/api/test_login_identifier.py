@@ -28,7 +28,6 @@ class PasswordLoginIdentifierTests(APITestCase):
         )
 
     def _login(self, identifier, password=PASSWORD, field="email"):
-        cache.clear()  # keep each attempt clear of the login throttle
         return self.client.post(LOGIN_URL, {field: identifier, "password": password}, format="json")
 
     def test_phone_number_and_password_login(self):

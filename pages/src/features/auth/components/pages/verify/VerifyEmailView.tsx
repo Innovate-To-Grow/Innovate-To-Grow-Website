@@ -4,6 +4,17 @@ import type {FormEvent} from 'react';
 import {CodeInput} from '../../forms/CodeInput';
 import type {VerifyFlow} from './shared';
 
+const MESSAGE_ID = 'verify-email-message';
+const HINT_ID = 'verify-email-hint';
+
+/**
+ * The code field usually holds focus when the message appears, and a live
+ * region inserted together with its text is not reliably announced, so the
+ * message and hint are also read as the field's description.
+ */
+const describeCodeField = (message: string | null, hint: string | null) =>
+  [message ? MESSAGE_ID : null, hint ? HINT_ID : null].filter(Boolean).join(' ') || undefined;
+
 interface VerifyEmailViewProps {
   flow: VerifyFlow;
   email: string;
@@ -18,6 +29,10 @@ interface VerifyEmailViewProps {
   localSuccess: string | null;
   error: string | null;
   isLoading: boolean;
+  /** Focus the code field on mount. */
+  autoFocus?: boolean;
+  /** Help text under the code field (e.g. what to try when no code arrives). */
+  hint?: string | null;
   onCodeChange: (value: string) => void;
   onNewPasswordChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
@@ -41,6 +56,8 @@ export const VerifyEmailView = ({
   localSuccess,
   error,
   isLoading,
+  autoFocus = false,
+  hint = null,
   onCodeChange,
   onNewPasswordChange,
   onConfirmPasswordChange,
@@ -66,7 +83,7 @@ export const VerifyEmailView = ({
         <div className="auth-alert-wrapper">
           <div className="auth-alert info" role="status">
             <Icon name="info-circle" className="auth-alert-icon" />
-            <span>{localMessage}</span>
+            <span id={MESSAGE_ID}>{localMessage}</span>
           </div>
         </div>
       ) : null}
@@ -134,7 +151,18 @@ export const VerifyEmailView = ({
             <label className="auth-form-label" htmlFor="verify-email-code">
               Verification Code
             </label>
-            <CodeInput value={code} onChange={onCodeChange} disabled={isLoading} />
+            <CodeInput
+              value={code}
+              onChange={onCodeChange}
+              disabled={isLoading}
+              autoFocus={autoFocus}
+              describedBy={describeCodeField(localMessage, hint)}
+            />
+            {hint ? (
+              <span id={HINT_ID} className="auth-help-text">
+                {hint}
+              </span>
+            ) : null}
           </div>
 
           <button type="submit" className="auth-form-submit" disabled={isLoading || code.length !== 6}>

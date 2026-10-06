@@ -117,6 +117,10 @@ export const LoginForm = ({ returnTo }: LoginFormProps = {}) => {
   };
 
   const switchToIdentifier = () => {
+    // Carry over what was typed in the password form, so a visitor sent here by a lockout does not retype it.
+    if (!identifier.trim() && email.trim()) {
+      setIdentifier(email.trim());
+    }
     setMode('identifier');
     setPassword('');
     clearFeedback();

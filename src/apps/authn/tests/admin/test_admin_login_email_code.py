@@ -247,6 +247,119 @@ class AdminLoginViewTest(TestCase):
         self.assertContains(resp, "Too many codes requested")
 
     @patch("apps.authn.views.admin.login.issue_email_challenge")
+    def test_a_send_refused_by_the_address_limits_still_opens_the_code_step(self, mock_issue):
+        """Anyone can request codes for a staff address; that must not keep the mailbox owner out.
+
+        The refusal means a code went to the address a moment ago (here: requested by someone else). The owner is
+        taken to the code step and signs in with the code they hold.
+        """
+        _create_pending_challenge(self.staff, "admin@example.com", code="246810")
+        mock_issue.side_effect = AuthChallengeThrottled("Please wait before requesting another code.")
+
+        resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="code"')
+        self.assertNotContains(resp, 'name="email"')
+        self.assertContains(resp, "Please wait before requesting another code.")
+        self.assertContains(resp, "enter the most recent one below")
+
+        signed_in = self.client.post(LOGIN_URL, {"code": "246810"})
+
+        self.assertEqual(signed_in.status_code, 302)
+        self.assertEqual(self.client.get("/admin/").status_code, 200)
+
+    @patch("apps.authn.views.admin.login.issue_email_challenge")
+    def test_the_code_step_opened_by_a_refused_send_still_needs_the_code(self, mock_issue):
+        _create_pending_challenge(self.staff, "admin@example.com", code="246810")
+        mock_issue.side_effect = AuthChallengeThrottled("Please wait before requesting another code.")
+        self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+
+        wrong = self.client.post(LOGIN_URL, {"code": "000000"})
+
+        self.assertEqual(wrong.status_code, 200)
+        self.assertContains(wrong, "Verification code is invalid or has expired.")
+        self.assertEqual(self.client.get("/admin/").status_code, 302)
+
+    @patch("apps.authn.views.admin.login.issue_email_challenge")
+    def test_a_refused_send_without_a_usable_admin_code_stays_on_the_email_step(self, mock_issue):
+        """The address limits are shared by every code endpoint: a refusal alone does not mean an admin code exists."""
+        mock_issue.side_effect = AuthChallengeThrottled("Please wait before requesting another code.")
+
+        resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+
+        self.assertContains(resp, 'name="email"')
+        self.assertNotContains(resp, 'name="code"')
+        self.assertContains(resp, "Please wait before requesting another code.")
+        self.assertNotContains(resp, "enter the most recent one below")
+
+    @patch("apps.authn.views.admin.login.issue_email_challenge")
+    def test_a_sign_in_code_of_another_kind_does_not_open_the_admin_code_step(self, mock_issue):
+        EmailAuthChallenge.objects.create(
+            member=self.staff,
+            purpose=EmailAuthChallenge.Purpose.LOGIN,
+            target_email="admin@example.com",
+            code_hash=make_password("135790"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+            max_attempts=5,
+            last_sent_at=timezone.now(),
+        )
+        mock_issue.side_effect = AuthChallengeThrottled("Please wait before requesting another code.")
+
+        resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+
+        self.assertContains(resp, 'name="email"')
+        self.assertNotContains(resp, 'name="code"')
+
+    @patch("apps.authn.views.admin.login.issue_email_challenge")
+    def test_a_spent_or_expired_admin_code_does_not_open_the_code_step(self, mock_issue):
+        mock_issue.side_effect = AuthChallengeThrottled("Please wait before requesting another code.")
+        spent = _create_pending_challenge(self.staff, "admin@example.com")
+        spent.attempts = spent.max_attempts
+        spent.save(update_fields=["attempts"])
+
+        resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+        self.assertNotContains(resp, 'name="code"')
+
+        EmailAuthChallenge.objects.all().delete()
+        timed_out = _create_pending_challenge(self.staff, "admin@example.com")
+        timed_out.expires_at = timezone.now() - timedelta(seconds=1)
+        timed_out.save(update_fields=["expires_at"])
+
+        resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+        self.assertNotContains(resp, 'name="code"')
+
+    def test_a_send_refused_for_any_other_reason_stays_on_the_email_step(self):
+        """Only a 429 from the address limits can open the code step; a missing proof or a conflict cannot."""
+        from rest_framework.response import Response
+
+        _create_pending_challenge(self.staff, "admin@example.com", code="246810")
+        for status_code, body in (
+            (400, {"detail": "Verification is required before a code can be sent.", "code": "verification_required"}),
+            (409, {"detail": "This request conflicts with an earlier one.", "code": "request_conflict"}),
+            (503, {"detail": "Sending is unavailable."}),
+        ):
+            with self.subTest(status_code=status_code):
+                with patch(
+                    "apps.authn.views.admin.login.email_code.guarded_send",
+                    return_value=Response(body, status=status_code),
+                ):
+                    resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
+
+                self.assertContains(resp, 'name="email"')
+                self.assertNotContains(resp, 'name="code"')
+                self.assertNotContains(resp, "enter the most recent one below")
+
+    @patch("apps.authn.views.admin.login.issue_email_challenge")
+    def test_a_refused_send_for_a_non_staff_address_never_reaches_the_code_step(self, mock_issue):
+        mock_issue.side_effect = AuthChallengeThrottled("Please wait before requesting another code.")
+
+        resp = self.client.post(LOGIN_URL, {"email": "regular@example.com"})
+
+        self.assertNotContains(resp, 'name="code"')
+        mock_issue.assert_not_called()
+
+    @patch("apps.authn.views.admin.login.issue_email_challenge")
     def test_delivery_failure_shows_error(self, mock_issue):
         mock_issue.side_effect = AuthChallengeDeliveryError("Failed to send verification email.", outcome="permanent")
         resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})

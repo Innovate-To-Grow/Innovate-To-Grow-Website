@@ -194,9 +194,12 @@ Per-view scoped throttles (rates in `src/config/settings/components/integrations
 
 | Scope | Rate | Applies to |
 |---|---|---|
-| `cli_oauth` | 30/min (per IP) | Token exchange |
 | `cli_read` | 120/min (per member) | Reads |
 | `cli_write` | 60/min (per member) | Writes |
+
+The token exchange (`POST /admin-api/oauth/token/`) has no throttle: a per-IP bucket would only limit staff sharing
+the campus IP, and the authorization code is a single-use 384-bit secret that lives 60 seconds, is burned by the first
+attempt and is bound to the PKCE verifier and the redirect URI.
 
 ## Operations
 

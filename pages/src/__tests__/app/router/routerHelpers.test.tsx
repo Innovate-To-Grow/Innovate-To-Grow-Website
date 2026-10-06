@@ -1,5 +1,6 @@
+import type {ReactElement} from 'react';
 import {cleanup, render, screen} from '@testing-library/react';
-import {MemoryRouter, Route, Routes, useLocation} from 'react-router';
+import {MemoryRouter, Navigate, Route, Routes, useLocation} from 'react-router';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 vi.mock('@/features/cms', () => ({
@@ -46,4 +47,26 @@ describe('router helpers', () => {
       );
     },
   );
+
+  it('redirects the retired /unsubscribe-login to /account and drops its token', async () => {
+    const {createAppRouter} = await import('@/app/router');
+    const rootRoute = createAppRouter().routes.find((route) => route.path === '/');
+    const legacyRoute = rootRoute?.children?.find(
+      (route) => 'path' in route && route.path === 'unsubscribe-login',
+    ) as {element?: ReactElement} | undefined;
+
+    // A bare redirect, not a page: nothing loads and no token is exchanged.
+    expect(legacyRoute?.element?.type).toBe(Navigate);
+
+    render(
+      <MemoryRouter initialEntries={['/unsubscribe-login?token=expired#token=expired']}>
+        <Routes>
+          <Route path="/unsubscribe-login" element={legacyRoute?.element} />
+          <Route path="/account" element={<LocationState />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('destination').textContent).toBe('/account');
+  });
 });

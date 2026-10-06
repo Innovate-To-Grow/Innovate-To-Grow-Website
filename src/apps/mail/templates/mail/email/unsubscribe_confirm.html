@@ -1,0 +1,16 @@
+{% extends "mail/email/_subscription_page.html" %}
+
+{% block title %}Unsubscribe{% endblock %}
+
+{% block content %}
+  <h1>Unsubscribe from newsletters?</h1>
+  <p>Hi {{ member.first_name|default:"there" }}, confirm below to unsubscribe all email addresses on your Innovate to Grow account from Innovate to Grow newsletters.</p>
+  <p>You may still receive account messages, messages about events you registered for, and program announcements.</p>
+  {# No action: the form posts back to this page's own URL. #}
+  <form method="post" class="actions">
+    <button type="submit" class="btn">Unsubscribe</button>
+  </form>
+  {% if frontend_url %}
+    <p>To choose which of your addresses receive newsletters, <a href="{{ frontend_url }}/account">manage email preferences</a> in your account instead.</p>
+  {% endif %}
+{% endblock %}

@@ -1,7 +1,22 @@
 import datetime
+from importlib import import_module
+
+from django.conf import settings
 
 from apps.authn.models import ContactEmail, Member
 from apps.event.models import Event, EventRegistration, Ticket
+
+
+def load_urlconf():
+    """Import the URLconf, and with it every view module, before a test class patches a service the views use.
+
+    A view module that does ``from apps.authn.services.sms import check_phone_verification`` keeps whatever that name
+    holds when the module is first imported. ``manage.py test`` imports the URLconf before any test runs (its system
+    checks resolve every URL), but a ``--parallel`` worker started with ``spawn`` (the macOS default) imports it on its
+    first request. If that request runs inside ``patch("apps.authn.services.sms.check_phone_verification")``, the
+    view binds the mock and answers every later test in that worker with it. Call this from ``setUpClass``.
+    """
+    import_module(settings.ROOT_URLCONF)
 
 
 def make_member(email="test@example.com", **kwargs):

@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from apps.authn.models import PhoneVerificationChallenge
+from apps.authn.models import PhoneVerificationChallenge, SendQuotaWindow
 from apps.authn.services.sms.sns_verify import (
     MAX_SENDS_PER_HOUR,
     MAX_VERIFY_ATTEMPTS,
@@ -544,11 +544,15 @@ class SnsVerifyExtraCoverageTest(TestCase):
         self.aws_config.sms_message_template = "No placeholder here"
         self.aws_config.save(update_fields=["sms_message_template"])
 
-        with self.assertRaises(PhoneVerificationDeliveryError):
+        with self.assertRaises(PhoneVerificationDeliveryError) as caught:
             start_phone_verification(self.phone)
-        challenge = PhoneVerificationChallenge.objects.get(phone_number=self.phone)
-        self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.EXPIRED)
-        self.assertIsNotNone(challenge.send_reserved_at)
+
+        # Found before anything is reserved: no code is stored, so neither the number's hourly cap nor the SMS
+        # daily budget is charged for an SMS that could never be sent.
+        self.assertEqual(caught.exception.outcome, "permanent")
+        self.assertFalse(PhoneVerificationChallenge.objects.filter(phone_number=self.phone).exists())
+        self.assertFalse(SendQuotaWindow.objects.exists())
+        mock_boto_client.assert_not_called()
 
     def test_check_phone_verification_no_payload_raises_invalid(self):
         with self.assertRaises(PhoneVerificationInvalid):

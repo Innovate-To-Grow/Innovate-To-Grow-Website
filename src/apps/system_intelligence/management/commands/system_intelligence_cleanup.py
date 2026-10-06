@@ -1,21 +1,22 @@
-from datetime import timedelta
-
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 
-from apps.system_intelligence.models import AssistantConversationLog, SystemIntelligenceConfig
+from apps.system_intelligence.services.usage_log import (
+    conversation_log_retention_days,
+    purge_expired_conversation_logs,
+)
 
 
 class Command(BaseCommand):
-    help = "Delete audited assistant conversations older than the configured retention window."
+    help = (
+        "Delete audited assistant conversations older than the configured retention window, in batches. "
+        "Nothing runs this automatically; schedule it if the retention setting should take effect."
+    )
 
     def handle(self, *args, **options):
-        config = SystemIntelligenceConfig.load()
-        retention_days = config.public_assistant_log_retention_days
+        retention_days = conversation_log_retention_days()
         if not retention_days:
-            self.stdout.write("Retention is set to 0 (keep forever); nothing to delete.")
+            self.stdout.write("Retention is set to 0 (keep forever), or no configuration is active; nothing to delete.")
             return
 
-        cutoff = timezone.now() - timedelta(days=retention_days)
-        deleted, _ = AssistantConversationLog.objects.filter(last_activity_at__lt=cutoff).delete()
+        deleted = purge_expired_conversation_logs()
         self.stdout.write(self.style.SUCCESS(f"Removed {deleted} record(s) older than {retention_days} day(s)."))
