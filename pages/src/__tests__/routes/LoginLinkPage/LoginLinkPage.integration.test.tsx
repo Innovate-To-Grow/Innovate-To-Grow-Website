@@ -456,7 +456,7 @@ describe('LoginLinkPage falling back to an emailed code against the fixed backen
       expect(screen.queryByRole('alert')).toBeNull();
       expect(container.querySelector('.magic-login-error')).toBeNull();
       expect(screen.queryByText('Account page')).toBeNull();
-      expect(screen.getByLabelText('Email address')).toHaveFocus();
+      await waitFor(() => expect(screen.getByLabelText('Email address')).toHaveFocus());
       // The anonymous exchange neither used nor destroyed any stored session.
       expect(loginLinkRequests()).toHaveLength(1);
       expect(loginLinkRequests()[0]).toMatchObject({authorization: null, body: {token}});
