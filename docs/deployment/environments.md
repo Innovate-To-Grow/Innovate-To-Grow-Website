@@ -44,6 +44,7 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
 | `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
+| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` GitHub Environment variable, default `1`) |
 | `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | No (defaults to false) |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
 
@@ -132,7 +133,7 @@ total page-view cap:
 | `PageViewVisitorThrottle`, `PageViewLegacyThrottle` | `POST /analytics/pageview/` | browser `visitor_id`, or one shared legacy bucket |
 | `PageViewTotalThrottle` | `POST /analytics/pageview/` | one constant key: at most 3,000 page views a minute in total |
 | `PublicAssistantActorThrottle` | `POST /assistant/chat/` | visitor token, member, or one shared legacy bucket |
-| `PhoneAuthCodeRequestThrottle` | SMS code requests, only while no SMS daily budget is configured | client address as DRF reads it (the forgeable `X-Forwarded-For` string); a speed bump only. While it applies, enforce mode sends no SMS and observe mode is bounded only per number, so configure `sms_daily_limit` |
+| `PhoneAuthCodeRequestThrottle` | SMS code requests, only while no SMS daily budget is configured | client address as DRF reads it: in production the `X-Forwarded-For` entry the ALB appended (`NUM_PROXIES`, see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)); with `NUM_PROXIES` unset (local, CI) the whole, forgeable header string. A speed bump only. While it applies, enforce mode sends no SMS and observe mode is bounded only per number, so configure `sms_daily_limit` |
 | `SesEventThrottle` | `POST /mail/ses/events/` | the same client address |
 
 While `BACKGROUND_JOBS_ENABLED` is off it also holds the one-hour marker that
