@@ -54,7 +54,7 @@ def _drop_protected_members(admin_obj, request, queryset):
 
 def activate_members(admin_obj, request, queryset):
     allowed, skipped = _drop_protected_members(admin_obj, request, queryset)
-    updated = allowed.update(is_active=True)
+    updated = allowed.update(is_active=True, registration_pending=False)
     admin_obj.message_user(request, f"{updated} member(s) activated.")
     if skipped:
         admin_obj.message_user(
@@ -66,7 +66,9 @@ def activate_members(admin_obj, request, queryset):
 
 def deactivate_members(admin_obj, request, queryset):
     allowed, skipped = _drop_protected_members(admin_obj, request, queryset)
-    updated = allowed.update(is_active=False)
+    # An explicit admin deactivation also ends any unfinished self-service signup, so the
+    # email-code flow can't activate the account afterwards.
+    updated = allowed.update(is_active=False, registration_pending=False)
     admin_obj.message_user(request, f"{updated} member(s) deactivated.")
     if skipped:
         admin_obj.message_user(

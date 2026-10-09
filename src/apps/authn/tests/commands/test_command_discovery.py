@@ -6,5 +6,11 @@ class CommandDiscoveryTests(SimpleTestCase):
     def test_authn_commands_are_discoverable(self):
         commands = get_commands()
 
-        for name in ("createsuperuser", "ensure_default_admin", "migrate_locked", "sync_members_to_sheet"):
+        for name in (
+            "audit_register_reactivations",
+            "createsuperuser",
+            "ensure_default_admin",
+            "migrate_locked",
+            "sync_members_to_sheet",
+        ):
             self.assertEqual(commands[name], "apps.authn")
