@@ -1,0 +1,613 @@
+.ucm-api {
+  --ucm-blue: #002856;
+  --ucm-blue-dark: #001b3a;
+  --ucm-blue-light: #0b4f8a;
+  --ucm-gold: #daa900;
+  --ucm-gold-light: #f5e6a8;
+  --ucm-ink: #1f2933;
+  --ucm-muted: #5d6773;
+  --ucm-border: #d8dee7;
+  --ucm-surface: #ffffff;
+  --ucm-page: #f3f5f8;
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--ucm-page);
+  color: var(--ucm-ink);
+  font-family: "Open Sans", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.ucm-api *,
+.ucm-api *::before,
+.ucm-api *::after {
+  box-sizing: border-box;
+}
+
+.ucm-api .wrapper {
+  position: static;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 0 32px;
+}
+
+.ucm-api .container {
+  width: min(100% - 32px, 1170px);
+  max-width: 1170px;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.ucm-api a {
+  color: var(--ucm-blue-light);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.ucm-api a:hover,
+.ucm-api a:focus {
+  color: var(--ucm-blue);
+}
+
+.ucm-api :focus {
+  outline: 3px solid var(--ucm-gold);
+  outline-offset: 3px;
+}
+
+.ucm-api :focus:not(:focus-visible) {
+  outline: none;
+}
+
+.ucm-api :focus-visible {
+  outline: 3px solid var(--ucm-gold);
+  outline-offset: 3px;
+}
+
+.ucm-api .ucm-api__skip-link {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  z-index: 1100;
+  min-height: 44px;
+  padding: 11px 18px;
+  border-radius: 4px;
+  background: var(--ucm-gold);
+  color: var(--ucm-blue-dark);
+  font-weight: 700;
+  transform: translateY(-180%);
+  transition: transform 120ms ease-out;
+}
+
+.ucm-api .ucm-api__skip-link:focus {
+  color: var(--ucm-blue-dark);
+  transform: translateY(0);
+}
+
+.ucm-api .ucm-api__header {
+  width: 100%;
+  border: 0;
+  border-bottom: 4px solid var(--ucm-gold);
+  background: var(--ucm-blue);
+  color: var(--ucm-surface);
+}
+
+.ucm-api .ucm-api__header-inner {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  align-items: center;
+  min-height: 105px;
+  gap: 32px;
+}
+
+/* Bootstrap's container clearfix creates generated grid items unless it is
+   disabled here, which displaces the service label and account controls. */
+.ucm-api .ucm-api__header-inner::before,
+.ucm-api .ucm-api__header-inner::after {
+  display: none;
+  content: none;
+}
+
+.ucm-api .ucm-api__university-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 97px;
+  margin-left: 0;
+  padding: 20px;
+  border-radius: 3px;
+}
+
+.ucm-api .ucm-api__university-link:hover,
+.ucm-api .ucm-api__university-link:focus {
+  background: rgb(255 255 255 / 8%);
+}
+
+.ucm-api .ucm-api__university-logo {
+  display: block;
+  width: 230px;
+  max-width: 100%;
+  height: auto;
+}
+
+.ucm-api .ucm-api__service {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-self: start;
+  gap: 2px;
+}
+
+.ucm-api .ucm-api__service-kicker {
+  color: var(--ucm-gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ucm-api .ucm-api__service-name {
+  color: var(--ucm-surface);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ucm-api .ucm-api__account {
+  justify-self: end;
+}
+
+.ucm-api .ucm-api__user-links {
+  float: none;
+  margin: 0;
+}
+
+.ucm-api .ucm-api__user-links > li {
+  float: none;
+}
+
+.ucm-api .ucm-api__user-links > li > a,
+.ucm-api .ucm-api__user-links > li.navbar-text {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 4px;
+  color: var(--ucm-surface);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ucm-api .ucm-api__user-links > li > a:hover,
+.ucm-api .ucm-api__user-links > li > a:focus,
+.ucm-api .ucm-api__user-links > .open > a,
+.ucm-api .ucm-api__user-links > .open > a:hover,
+.ucm-api .ucm-api__user-links > .open > a:focus {
+  border-color: var(--ucm-gold);
+  background: rgb(255 255 255 / 10%);
+  color: var(--ucm-surface);
+}
+
+.ucm-api .ucm-api__user-links .dropdown-menu {
+  right: 0;
+  left: auto;
+  padding: 8px;
+  border-color: var(--ucm-border);
+  border-radius: 4px;
+  box-shadow: 0 12px 32px rgb(0 24 52 / 20%);
+}
+
+.ucm-api .ucm-api__user-links .dropdown-menu > li > a {
+  min-height: 44px;
+  padding: 11px 14px;
+  border-radius: 3px;
+  color: var(--ucm-blue);
+}
+
+.ucm-api ul.breadcrumb {
+  margin: 24px 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--ucm-border);
+  border-radius: 4px;
+  background: #e9edf3;
+  color: var(--ucm-muted);
+}
+
+.ucm-api .breadcrumb > li + li::before {
+  color: #7c8794;
+}
+
+.ucm-api .breadcrumb li.active a {
+  color: var(--ucm-ink);
+  font-weight: 600;
+}
+
+.ucm-api #content {
+  margin: 0;
+  padding: clamp(20px, 4vw, 44px);
+  overflow: hidden;
+  border: 1px solid var(--ucm-border);
+  border-top: 4px solid var(--ucm-blue);
+  border-radius: 5px;
+  background: var(--ucm-surface);
+  box-shadow: 0 14px 34px rgb(0 40 86 / 8%);
+}
+
+.ucm-api .ucm-api__main {
+  display: block;
+  min-width: 0;
+}
+
+.ucm-api .ucm-api__main:focus {
+  border-radius: 2px;
+}
+
+.ucm-api .region {
+  min-height: 44px;
+  margin-bottom: 24px;
+}
+
+.ucm-api .region::after,
+.ucm-api .content-main::after {
+  display: table;
+  clear: both;
+  content: "";
+}
+
+.ucm-api .page-header {
+  margin: 0 0 14px;
+  padding: 0 0 14px;
+  border-bottom: 2px solid var(--ucm-gold);
+}
+
+.ucm-api .page-header h1 {
+  margin: 0;
+  color: var(--ucm-blue);
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 650;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+.ucm-api .content-main > .pull-left {
+  max-width: 72ch;
+  margin-bottom: 20px;
+  color: var(--ucm-muted);
+}
+
+.ucm-api .btn {
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 4px;
+  background-image: none;
+  box-shadow: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: none;
+}
+
+.ucm-api .btn-primary,
+.ucm-api .btn-primary:active,
+.ucm-api .btn-primary.active {
+  border-color: var(--ucm-blue);
+  background-color: var(--ucm-blue);
+  color: var(--ucm-surface);
+}
+
+.ucm-api .btn-primary:hover,
+.ucm-api .btn-primary:focus,
+.ucm-api .btn-primary.focus {
+  border-color: var(--ucm-blue-dark);
+  background-color: var(--ucm-blue-dark);
+  color: var(--ucm-surface);
+}
+
+.ucm-api .btn-default {
+  border-color: var(--ucm-blue);
+  background: var(--ucm-surface);
+  color: var(--ucm-blue);
+}
+
+.ucm-api .btn-default:hover,
+.ucm-api .btn-default:focus {
+  border-color: var(--ucm-blue);
+  background: #e8eef5;
+  color: var(--ucm-blue-dark);
+}
+
+.ucm-api .btn-danger {
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.ucm-api .btn-group > .dropdown-toggle {
+  min-width: 44px;
+  padding-right: 14px;
+  padding-left: 14px;
+}
+
+.ucm-api .dropdown-menu {
+  border-color: var(--ucm-border);
+  border-radius: 4px;
+  box-shadow: 0 12px 28px rgb(0 40 86 / 16%);
+}
+
+.ucm-api .dropdown-menu > li > a {
+  min-height: 40px;
+  padding: 10px 16px;
+  color: var(--ucm-blue);
+}
+
+.ucm-api .dropdown-menu > li > a:hover,
+.ucm-api .dropdown-menu > li > a:focus {
+  background: #e8eef5;
+  color: var(--ucm-blue-dark);
+}
+
+.ucm-api .request-info,
+.ucm-api .response-info {
+  clear: both;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.ucm-api .request-info {
+  margin-top: 20px;
+}
+
+.ucm-api .response-info {
+  margin-bottom: 32px;
+}
+
+.ucm-api pre,
+.ucm-api code,
+.ucm-api .format-option,
+.ucm-api textarea[data-override="content"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.ucm-api pre.prettyprint {
+  max-width: 100%;
+  margin: 0 0 18px;
+  padding: 18px;
+  overflow: auto;
+  border: 1px solid #ccd4df;
+  border-radius: 4px;
+  background: #f6f8fb;
+  color: #162232;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  white-space: pre;
+  word-wrap: normal;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ucm-api pre.prettyprint .meta {
+  color: var(--ucm-blue);
+}
+
+.ucm-api .well {
+  padding: 24px;
+  border-color: var(--ucm-border);
+  border-radius: 4px;
+  background: #f6f8fb;
+  box-shadow: none;
+}
+
+.ucm-api .nav-tabs > li > a {
+  min-height: 44px;
+  padding: 11px 16px;
+  color: var(--ucm-blue);
+  font-weight: 600;
+}
+
+.ucm-api .nav-tabs > li.active > a,
+.ucm-api .nav-tabs > li.active > a:hover,
+.ucm-api .nav-tabs > li.active > a:focus {
+  border-top: 3px solid var(--ucm-gold);
+  background: #f6f8fb;
+  color: var(--ucm-blue-dark);
+}
+
+.ucm-api .form-control,
+.ucm-api form select,
+.ucm-api form input:not([type="checkbox"]):not([type="radio"]),
+.ucm-api form textarea {
+  width: 100%;
+  min-height: 44px;
+  border-color: #9da9b7;
+  border-radius: 3px;
+  color: var(--ucm-ink);
+  font-size: 1rem;
+}
+
+.ucm-api .form-control:focus,
+.ucm-api form select:focus,
+.ucm-api form input:focus,
+.ucm-api form textarea:focus {
+  border-color: var(--ucm-blue-light);
+  box-shadow: 0 0 0 3px rgb(218 169 0 / 30%);
+}
+
+.ucm-api .help-block {
+  color: var(--ucm-muted);
+}
+
+.ucm-api .pagination > li > a,
+.ucm-api .pagination > li > span,
+.ucm-api .pager > li > a,
+.ucm-api .pager > li > span {
+  min-height: 44px;
+  padding: 11px 15px;
+  border-color: var(--ucm-border);
+  color: var(--ucm-blue);
+}
+
+.ucm-api .pagination > .active > a,
+.ucm-api .pagination > .active > span {
+  border-color: var(--ucm-blue);
+  background: var(--ucm-blue);
+  color: var(--ucm-surface);
+}
+
+.ucm-api .modal-content {
+  overflow: hidden;
+  border-color: var(--ucm-border);
+  border-radius: 5px;
+  box-shadow: 0 18px 48px rgb(0 24 52 / 28%);
+}
+
+.ucm-api .modal-header,
+.ucm-api .modal-footer {
+  border-color: var(--ucm-border);
+}
+
+.ucm-api .ucm-api__footer {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 36px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--ucm-border);
+  background: transparent;
+}
+
+.ucm-api .ucm-api__footer p {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--ucm-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .ucm-api .container {
+    width: min(100% - 24px, 1170px);
+  }
+
+  .ucm-api .ucm-api__header-inner {
+    grid-template-columns: 1fr auto;
+    min-height: 0;
+    gap: 8px 16px;
+    padding: 8px 0 14px;
+  }
+
+  .ucm-api .ucm-api__university-link {
+    min-height: 97px;
+    padding: 20px;
+  }
+
+  .ucm-api .ucm-api__university-logo {
+    width: min(200px, 58vw);
+  }
+
+  .ucm-api .ucm-api__service {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ucm-api .ucm-api__service-name {
+    font-size: 1.15rem;
+  }
+
+  .ucm-api .ucm-api__account {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ucm-api ul.breadcrumb {
+    margin-top: 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .ucm-api #content {
+    padding: 20px 16px;
+  }
+
+  .ucm-api .region {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+
+  .ucm-api .region .pull-right,
+  .ucm-api .region .button-form,
+  .ucm-api .region > .dropdown,
+  .ucm-api .region > button {
+    float: none !important;
+    margin: 0 !important;
+  }
+
+  .ucm-api .content-main > .pull-left,
+  .ucm-api .content-main > .pull-right {
+    float: none !important;
+    width: 100%;
+  }
+
+  .ucm-api .btn {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .ucm-api pre.prettyprint {
+    padding: 14px;
+    font-size: 0.8125rem;
+  }
+
+  .ucm-api .well {
+    padding: 16px;
+  }
+
+  .ucm-api .form-horizontal .control-label {
+    padding-top: 0;
+    text-align: left;
+  }
+
+  .ucm-api .ucm-api__footer p {
+    flex-direction: column;
+  }
+
+  .ucm-api .ucm-api__footer p span[aria-hidden="true"] {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .ucm-api .ucm-api__header-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .ucm-api .ucm-api__account {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: stretch;
+  }
+
+  .ucm-api .ucm-api__user-links,
+  .ucm-api .ucm-api__user-links > li,
+  .ucm-api .ucm-api__user-links > li > a,
+  .ucm-api .ucm-api__user-links > li.navbar-text {
+    width: 100%;
+  }
+
+  .ucm-api .ucm-api__user-links > li > a,
+  .ucm-api .ucm-api__user-links > li.navbar-text {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ucm-api .ucm-api__skip-link {
+    transition: none;
+  }
+}

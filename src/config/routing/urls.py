@@ -25,6 +25,7 @@ from django.views.static import serve as static_serve
 from apps.authn.views.admin.login import AdminLoginView
 from apps.authn.views.admin.send_verification import AdminSendVerificationChallengeView
 from apps.cms.views import LayoutAPIView, LayoutStylesheetView
+from apps.core.legacy_view import get_legacy_view_urls
 from apps.core.middleware import csp_report
 from apps.core.views import MaintenanceBypassView, robots_txt, root_index, sitemap_xml
 
@@ -77,6 +78,8 @@ urlpatterns = [
     path("admin-api/", include("apps.cli_admin.urls")),
     # public, visitor-facing AI assistant (tool-free, read-only)
     path("assistant/", include("apps.system_intelligence.urls")),
+    # private, CloudFront-gated read-only gateway to the retired Flask site
+    path("legacy-view/", include((get_legacy_view_urls(), "legacy_view"))),
 ]
 
 handler404 = "apps.core.views.custom_404"

@@ -11,6 +11,7 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 - [CI/CD](ci-cd.md) — GitHub Actions pipelines
 - [Production Deployment Approval](production.md) — One protected approval gate for all production targets
 - [Send verification](send-verification.md) — Self-hosted ALTCHA + destination quotas for email/SMS codes
+- [Legacy read-only viewer](legacy-view.md) — Private CloudFront gateway to the retired Flask site, launched from Admin
 - [WAF rate limits](waf-rate-limits.md) — Campus-aware AWS WAF rules for the unauthenticated auth endpoints
 - [Assistant and AI search limits](../integrations/assistant-limits.md) — Per-visitor/member and global token budgets, sizing and alarm
 

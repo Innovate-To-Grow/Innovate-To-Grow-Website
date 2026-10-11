@@ -21,6 +21,14 @@ def _can_any(*app_labels):
     return lambda request: any(user_can_access_app(request.user, label) for label in app_labels)
 
 
+def _can_open_legacy_viewer(request):
+    # Read the flag at request time: settings modules cannot import the
+    # legacy_access service (it loads models before the app registry is ready).
+    from django.conf import settings
+
+    return getattr(settings, "LEGACY_VIEW_ENABLED", False) is True and user_can_access_app(request.user, "core")
+
+
 def _is_system_intelligence_chat(request):
     path = request.path
     return path.startswith("/admin/system-intelligence/") and not path.startswith("/admin/system-intelligence/usage/")
@@ -311,6 +319,11 @@ UNFOLD = {
                         "title": "Service Credentials",
                         "link": "/admin/core/awscredentialconfig/",
                         "permission": _can("core"),
+                    },
+                    {
+                        "title": "Legacy Viewer",
+                        "link": "/admin/legacy-view/",
+                        "permission": _can_open_legacy_viewer,
                     },
                     {"title": "Admin Log", "link": "/admin/admin/logentry/", "permission": _can("admin")},
                 ],

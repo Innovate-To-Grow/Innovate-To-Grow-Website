@@ -16,6 +16,12 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    # UC Merced-branded browsable API; it also forces private/no-store caching
+    # on HTML responses, which can carry user-specific forms and CSRF tokens.
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+        "apps.core.renderers.UCMercedBrowsableAPIRenderer",
+    ],
     # Throttle *rates* only -- classes are set per-view, not globally.
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/minute",

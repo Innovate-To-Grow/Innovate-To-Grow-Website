@@ -123,6 +123,9 @@ jobs:
       - name: Validate CI planner scripts
         run: python -m unittest discover -s scripts/ci/tests
 
+      - name: Validate Legacy viewer infrastructure
+        run: python scripts/ci/validate_legacy_infrastructure.py
+
       - name: Validate Dependabot labels
         env:
           GH_TOKEN: ${{ github.token }}

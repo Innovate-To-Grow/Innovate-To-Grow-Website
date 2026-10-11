@@ -214,6 +214,14 @@ jobs:
           FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
           BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
           API_BASE_URL: ${{ vars.VITE_API_BASE_URL || matrix.api_base_url }}
+          DEPLOY_TARGET: ${{ matrix.target }}
+          LEGACY_VIEW_ENABLED: ${{ vars.LEGACY_VIEW_ENABLED || 'false' }}
+          LEGACY_ORIGIN_URL: ${{ vars.LEGACY_ORIGIN_URL }}
+          LEGACY_VIEWER_URL: ${{ vars.LEGACY_VIEWER_URL }}
+          LEGACY_ORIGIN_HEADER_NAME: ${{ vars.LEGACY_ORIGIN_HEADER_NAME }}
+          LEGACY_CONNECT_TIMEOUT_SECONDS: ${{ vars.LEGACY_CONNECT_TIMEOUT_SECONDS || '3' }}
+          LEGACY_READ_TIMEOUT_SECONDS: ${{ vars.LEGACY_READ_TIMEOUT_SECONDS || '15' }}
+          LEGACY_ORIGIN_HEADER_SECRET_ARN: ${{ vars.LEGACY_ORIGIN_HEADER_SECRET_ARN }}
           DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
           CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
           CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
@@ -309,13 +317,30 @@ jobs:
               "__DJANGO_SUPERUSER_FIRST_NAME__": env_value("DJANGO_SUPERUSER_FIRST_NAME", "Demo"),
               "__DJANGO_SUPERUSER_LAST_NAME__": env_value("DJANGO_SUPERUSER_LAST_NAME", "Admin"),
               "__ENSURE_DEFAULT_ADMIN__": env_value("ENSURE_DEFAULT_ADMIN", "false"),
+              "__LEGACY_VIEW_ENABLED__": env_value("LEGACY_VIEW_ENABLED", "false"),
+              "__LEGACY_ORIGIN_URL__": env_value("LEGACY_ORIGIN_URL"),
+              "__LEGACY_VIEWER_URL__": env_value("LEGACY_VIEWER_URL"),
+              "__LEGACY_ORIGIN_HEADER_NAME__": env_value("LEGACY_ORIGIN_HEADER_NAME"),
+              "__LEGACY_CONNECT_TIMEOUT_SECONDS__": env_value("LEGACY_CONNECT_TIMEOUT_SECONDS", "3"),
+              "__LEGACY_READ_TIMEOUT_SECONDS__": env_value("LEGACY_READ_TIMEOUT_SECONDS", "15"),
           }
           secret_mapping = {
               "__DJANGO_SECRET_KEY_SECRET_ARN__": env_value("DJANGO_SECRET_KEY_SECRET_ARN"),
               "__DB_PASSWORD_SECRET_ARN__": env_value("DB_PASSWORD_SECRET_ARN"),
               "__REDIS_URL_SECRET_ARN__": env_value("REDIS_URL_SECRET_ARN"),
               "__DJANGO_SUPERUSER_PASSWORD_SECRET_ARN__": env_value("DJANGO_SUPERUSER_PASSWORD_SECRET_ARN"),
+              "__LEGACY_ORIGIN_HEADER_SECRET_ARN__": env_value("LEGACY_ORIGIN_HEADER_SECRET_ARN"),
           }
+
+          # The private Legacy viewer exists only in production. Every other
+          # target renders it disabled with no origin, viewer URL, or secret,
+          # even when a repository-level variable leaks into that environment.
+          if env_value("DEPLOY_TARGET").strip() != "prod":
+              mapping["__LEGACY_VIEW_ENABLED__"] = "false"
+              mapping["__LEGACY_ORIGIN_URL__"] = ""
+              mapping["__LEGACY_VIEWER_URL__"] = ""
+              mapping["__LEGACY_ORIGIN_HEADER_NAME__"] = ""
+              secret_mapping["__LEGACY_ORIGIN_HEADER_SECRET_ARN__"] = ""
           required_secret_placeholders = {
               "__DJANGO_SECRET_KEY_SECRET_ARN__",
               "__DB_PASSWORD_SECRET_ARN__",
@@ -395,9 +420,15 @@ jobs:
 
           from copy import deepcopy
 
+          WEB_ONLY_SECRETS = {"LEGACY_ORIGIN_HEADER_VALUE"}
+
           worker_container["image"] = web_container["image"]
           worker_container["environment"] = deepcopy(web_container["environment"])
-          worker_container["secrets"] = deepcopy(web_container["secrets"])
+          # The CloudFront origin secret authenticates inbound Web requests
+          # only; the worker never serves HTTP, so it never receives it.
+          worker_container["secrets"] = [
+              deepcopy(item) for item in web_container["secrets"] if item["name"] not in WEB_ONLY_SECRETS
+          ]
           worker_log_options = worker_container.setdefault("logConfiguration", {}).setdefault("options", {})
           worker_log_options["awslogs-group"] = mapping["__AWS_LOG_GROUP__"]
           worker_log_options["awslogs-region"] = mapping["__AWS_REGION__"]

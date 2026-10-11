@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  us-east-1 monitoring for the global I2G legacy-view CloudFront distribution.
+  CloudFront publishes its AWS/CloudFront metrics only in us-east-1.
+
+Parameters:
+  DistributionId:
+    Type: String
+    AllowedPattern: "^[A-Z0-9]+$"
+    Description: LegacyDistributionId output from the us-west-2 gateway stack.
+  CloudFront5xxAlarmThreshold:
+    Type: Number
+    Default: 5
+    MinValue: 0
+    MaxValue: 100
+
+Resources:
+  LegacyDistribution5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: CloudFront legacy viewer 5xx error rate exceeded the threshold.
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DistributionId
+          Value: !Ref DistributionId
+        - Name: Region
+          Value: Global
+      EvaluationPeriods: 5
+      MetricName: 5xxErrorRate
+      Namespace: AWS/CloudFront
+      Period: 60
+      Statistic: Average
+      Threshold: !Ref CloudFront5xxAlarmThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  LegacyDistribution5xxAlarmName:
+    Value: !Ref LegacyDistribution5xxAlarm
