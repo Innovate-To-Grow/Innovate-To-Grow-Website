@@ -7,6 +7,7 @@ from importlib import import_module
 from django.conf import settings
 from django.contrib.auth import HASH_SESSION_KEY, SESSION_KEY, get_user_model
 from django.contrib.sessions.models import Session
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 
@@ -132,7 +133,7 @@ def require_legacy_viewer(request):
     user_model = get_user_model()
     try:
         user = user_model._default_manager.get(pk=user_id)
-    except (user_model.DoesNotExist, TypeError, ValueError):
+    except (user_model.DoesNotExist, TypeError, ValueError, ValidationError):
         _discard_viewer_session(viewer_session_key)
         raise LegacyViewerAccessDenied("The legacy viewer session is no longer valid.") from None
 

@@ -118,3 +118,62 @@ class LegacyPathPolicyTest(SimpleTestCase):
             filter_query_string("page=2&code=do-not-forward&search=capstone&page=3&token=nope"),
             "page=2&search=capstone&page=3",
         )
+
+
+@override_settings(**GATEWAY_SETTINGS)
+class LegacyGatewayConfigValidationTest(SimpleTestCase):
+    @override_settings(LEGACY_VIEW_ENABLED=False)
+    def test_disabled_feature_flag_refuses_to_build_config(self):
+        with self.assertRaisesMessage(ImproperlyConfigured, "disabled"):
+            get_gateway_config()
+
+    def test_missing_required_urls_are_rejected(self):
+        for name in ("LEGACY_ORIGIN_URL", "LEGACY_VIEWER_URL"):
+            with self.subTest(name=name), override_settings(**{name: "  "}):
+                with self.assertRaisesMessage(ImproperlyConfigured, f"{name} must be set"):
+                    get_gateway_config()
+
+    def test_non_numeric_timeouts_are_rejected(self):
+        for name in ("LEGACY_CONNECT_TIMEOUT_SECONDS", "LEGACY_READ_TIMEOUT_SECONDS"):
+            for value in ("soon", None):
+                with self.subTest(name=name, value=value), override_settings(**{name: value}):
+                    with self.assertRaisesMessage(ImproperlyConfigured, f"{name} must be a number."):
+                        get_gateway_config()
+
+    def test_out_of_range_timeouts_are_rejected(self):
+        cases = (
+            ("LEGACY_CONNECT_TIMEOUT_SECONDS", 0),
+            ("LEGACY_CONNECT_TIMEOUT_SECONDS", 30.5),
+            ("LEGACY_READ_TIMEOUT_SECONDS", 121),
+        )
+        for name, value in cases:
+            with self.subTest(name=name, value=value), override_settings(**{name: value}):
+                with self.assertRaisesMessage(ImproperlyConfigured, f"{name} must be between"):
+                    get_gateway_config()
+
+    @override_settings(LEGACY_ORIGIN_URL="http://172.31.69.63:not-a-port")
+    def test_unparseable_origin_port_is_rejected(self):
+        with self.assertRaisesMessage(ImproperlyConfigured, "LEGACY_ORIGIN_URL is invalid."):
+            get_gateway_config()
+
+    @override_settings(LEGACY_VIEWER_URL="https://d111111abcdef8.cloudfront.net:not-a-port")
+    def test_unparseable_viewer_port_is_rejected(self):
+        with self.assertRaisesMessage(ImproperlyConfigured, "LEGACY_VIEWER_URL is invalid."):
+            get_gateway_config()
+
+
+class LegacyPathPolicyEdgeCaseTest(SimpleTestCase):
+    def test_canonicalizer_rejects_non_string_and_overlong_paths(self):
+        for path in (None, b"/about", "a" * 2049):
+            with self.subTest(path=type(path)), self.assertRaises(InvalidLegacyPath):
+                canonicalize_legacy_path(path)
+
+    def test_canonicalizer_rejects_more_than_three_layers_of_encoding(self):
+        with self.assertRaisesMessage(InvalidLegacyPath, "excessive encoding"):
+            canonicalize_legacy_path("static%252525252Fadmin")
+
+    def test_query_filter_drops_query_with_too_many_fields(self):
+        self.assertEqual(filter_query_string("page=1&" * 51), "")
+
+    def test_query_filter_drops_overlong_query(self):
+        self.assertEqual(filter_query_string("page=" + "1" * 2048), "")
