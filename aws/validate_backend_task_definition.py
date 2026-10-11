@@ -37,6 +37,7 @@ REQUIRED_SHARED_ENV = {
     "LEGACY_ORIGIN_HEADER_NAME",
     "LEGACY_CONNECT_TIMEOUT_SECONDS",
     "LEGACY_READ_TIMEOUT_SECONDS",
+    "NUM_PROXIES",
 }
 REQUIRED_SHARED_SECRETS = {"DJANGO_SECRET_KEY", "DB_PASSWORD"}
 # Secrets that authenticate inbound HTTP and must never reach the worker.
@@ -48,6 +49,7 @@ CLOUDFRONT_HOST_RE = re.compile(r"^d[a-z0-9]+\.cloudfront\.net$")
 LEGACY_TIMEOUT_LIMITS = {"LEGACY_CONNECT_TIMEOUT_SECONDS": 30.0, "LEGACY_READ_TIMEOUT_SECONDS": 120.0}
 PLACEHOLDER_RE = re.compile(r"__[A-Z0-9_]+__")
 AMPLIFY_CONFIG_REVISION_RE = re.compile(r"^[1-9][0-9]*\.[1-9][0-9]*$")
+POSITIVE_INT_RE = re.compile(r"^[1-9][0-9]*$")
 
 
 class TaskDefinitionValidationError(ValueError):
@@ -238,6 +240,10 @@ def validate_task_definition(taskdef: dict[str, Any], *, rendered: bool) -> None
             bool(AMPLIFY_CONFIG_REVISION_RE.fullmatch(web_env["AMPLIFY_CONFIG_REVISION"])),
             "AMPLIFY_CONFIG_REVISION must use the positive numeric '<run_id>.<run_attempt>' format.",
         )
+        _require(
+            bool(POSITIVE_INT_RE.fullmatch(web_env["NUM_PROXIES"])),
+            "NUM_PROXIES must be a positive integer (trusted proxy hops in front of uvicorn; the ALB is one).",
+        )
         _require(not _contains_placeholder(taskdef), "Rendered task definition still contains a template placeholder.")
         _require(
             all(value.startswith(SECRET_ARN_PREFIXES) for value in web_secrets.values()),
@@ -245,6 +251,10 @@ def validate_task_definition(taskdef: dict[str, Any], *, rendered: bool) -> None
         )
         _validate_legacy_view(web_env, web_secrets)
     else:
+        _require(
+            web_env["NUM_PROXIES"] == "__NUM_PROXIES__",
+            "Template NUM_PROXIES must retain its deployment placeholder.",
+        )
         _require(
             web_env["AMPLIFY_CONFIG_REVISION"] == "__AMPLIFY_CONFIG_REVISION__",
             "Template AMPLIFY_CONFIG_REVISION must retain its deployment placeholder.",

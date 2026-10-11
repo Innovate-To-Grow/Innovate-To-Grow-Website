@@ -60,6 +60,10 @@
           "value": "__UVICORN_LIMIT_CONCURRENCY__"
         },
         {
+          "name": "NUM_PROXIES",
+          "value": "__NUM_PROXIES__"
+        },
+        {
           "name": "CSRF_TRUSTED_ORIGINS",
           "value": "__CSRF_TRUSTED_ORIGINS__"
         },
