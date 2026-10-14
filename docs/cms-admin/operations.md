@@ -219,6 +219,15 @@ intentionally fails closed.
 
 Only members created by the self-service signup flows and never activated (`Member.registration_pending`) can be activated by an email code. Before that flag existed, any inactive member counted as pending, so an admin-deactivated account could request a REGISTER code and reactivate itself. The "Deactivate selected members" action writes no `LogEntry`, so the audit looks for REGISTER codes issued to a member that was already active instead:
 
+Migration `authn.0021` leaves every existing inactive member with `registration_pending=False`.
+Old challenge, login, and contact records cannot reliably distinguish an unfinished signup
+from an account that an administrator activated and later deactivated. Administrators must
+review any pre-deployment unfinished registrations and explicitly activate those accounts
+after confirming their identity; the old email-code flow cannot resume them. New signups
+created after the application update receive the pending flag automatically. During a
+rolling deployment, signups created by old application instances after the migration
+also need that administrator review.
+
 ```bash
 python manage.py audit_register_reactivations
 ```

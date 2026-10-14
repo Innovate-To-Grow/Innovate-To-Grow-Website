@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
+from rest_framework import serializers
 from rest_framework.test import APITestCase
 
 from apps.authn.admin.members.member import MemberAdmin
@@ -347,3 +348,34 @@ class RegistrationPendingMarkerTests(TestCase):
         self.assertFalse(self.pending.is_active)
         self.assertFalse(self.pending.registration_pending)
         self.assertIsNone(get_pending_registration_member("pending@example.com"))
+
+    def test_password_register_cannot_write_after_admin_deactivation(self):
+        from apps.authn.serializers.auth.register import RegisterSerializer
+
+        original_password = self.pending.password
+        serializer = RegisterSerializer(
+            data={
+                "email": "pending@example.com",
+                "password": "encrypted",
+                "password_confirm": "encrypted",
+                "first_name": "Attacker",
+                "last_name": "Changed",
+                "organization": "Elsewhere",
+            }
+        )
+        with patch("apps.authn.serializers.auth.register.decrypt_password_pair", return_value="NewStrongPass456!"):
+            self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        # The serializer has cached a formerly pending Member. Deactivation
+        # happens before save, as it can in a real concurrent request.
+        _run_admin_action("deactivate_members", self.site_admin, self.pending)
+        with patch("apps.authn.serializers.auth.register.issue_email_challenge") as issue_challenge:
+            with self.assertRaises(serializers.ValidationError) as raised:
+                serializer.save()
+
+        self.assertEqual(raised.exception.detail["email"], "Unable to register with this email address.")
+        issue_challenge.assert_not_called()
+        self.pending.refresh_from_db()
+        self.assertEqual((self.pending.first_name, self.pending.last_name), ("", ""))
+        self.assertEqual(self.pending.password, original_password)
+        self.assertFalse(self.pending.registration_pending)
