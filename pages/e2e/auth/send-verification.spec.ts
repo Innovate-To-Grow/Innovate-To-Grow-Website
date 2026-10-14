@@ -1,11 +1,17 @@
+import {execFile} from 'node:child_process';
+import {randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {promisify} from 'node:util';
 import {createChallenge, pbkdf2, verifySolution, type Challenge, type Payload} from 'altcha/lib';
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
 
 const secret = 'local-browser-regression-secret';
 const challengeId = '11111111-1111-4111-8111-111111111111';
+const execFileAsync = promisify(execFile);
 
 async function challengeFixture(): Promise<Challenge> {
   return createChallenge({algorithm: 'PBKDF2/SHA-256', cost: 1, counter: 4, deriveKey: pbkdf2.deriveKey, hmacSignatureSecret: secret});
@@ -64,6 +70,41 @@ test('real ALTCHA widget bounds workers on high-core devices and dispatches a ve
   await assertProof(sends[0].verification_payload, challenge);
   await expect.poll(workers).toBe(1);
   await expect(page.locator('altcha-widget')).toHaveCount(0);
+});
+
+test('Python-issued ALTCHA challenge is solved by the browser widget and verified by Python', async ({page}) => {
+  const email = `altcha-cross-language-${randomUUID()}@example.test`;
+  const issued = page.waitForResponse((response) =>
+    response.url().endsWith('/authn/send-verification/challenge/') && response.request().method() === 'POST');
+  const sends: Record<string, string>[] = [];
+  await page.route('**/authn/email-auth/request-code/', (route) => {
+    sends.push(route.request().postDataJSON());
+    return route.fulfill({status: 202, json: {message: 'Verification code sent.'}});
+  });
+
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('button', {name: 'Continue', exact: true}).click();
+  const challengeResponse = await issued;
+  expect(challengeResponse.status()).toBe(200);
+  const challenge = await challengeResponse.json() as {challenge_id: string};
+  await expect(page).toHaveURL(/\/verify-email\?flow=auth/);
+  expect(sends).toHaveLength(1);
+  expect(sends[0].verification_challenge_id).toBe(challenge.challenge_id);
+
+  const backendDir = fileURLToPath(new URL('../../../src/', import.meta.url));
+  const python = process.env.ALTCHA_TEST_PYTHON ?? join(backendDir, '.venv/bin/python');
+  const verify = [
+    'import django, sys',
+    'django.setup()',
+    'from apps.authn.services.send_verification.config import load_settings',
+    'from apps.authn.services.send_verification.proofs import verify_payload',
+    'verify_payload(sys.argv[1], load_settings())',
+  ].join('\n');
+  await execFileAsync(python, ['-c', verify, sends[0].verification_payload], {
+    cwd: backendDir,
+    env: {...process.env, DJANGO_SETTINGS_MODULE: 'config.settings.test'},
+  });
 });
 
 test('a real widget failure returns promptly and never sends', async ({page}) => {
