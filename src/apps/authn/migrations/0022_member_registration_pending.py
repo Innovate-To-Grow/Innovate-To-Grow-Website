@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("authn", "0020_event_email_challenge_context"),
+        ("authn", "0021_login_failure_window"),
     ]
 
     operations = [

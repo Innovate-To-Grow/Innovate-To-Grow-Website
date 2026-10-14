@@ -9,8 +9,8 @@ from django.utils import timezone
 
 
 class RegistrationPendingMigrationTests(TransactionTestCase):
-    migrate_from = [("authn", "0020_event_email_challenge_context")]
-    migrate_to = [("authn", "0021_member_registration_pending")]
+    migrate_from = [("authn", "0021_login_failure_window")]
+    migrate_to = [("authn", "0022_member_registration_pending")]
 
     def test_old_register_code_cannot_identify_safe_pending_member(self):
         executor = MigrationExecutor(connection)
