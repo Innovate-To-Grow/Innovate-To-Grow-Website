@@ -34,7 +34,36 @@ class TextToHtmlTrailingPunctuationTests(SimpleTestCase):
         self.assertEqual(len(URL.split("#token=")[1]), 64)
 
     def test_trailing_punctuation_is_emitted_after_the_anchor(self):
-        for punctuation in [".", ",", ";", ":", "!", "?", ")", "]", "}", "'", '"', "’", "”"]:
+        for punctuation in [
+            ".",
+            ",",
+            ";",
+            ":",
+            "!",
+            "?",
+            ")",
+            "]",
+            "}",
+            "'",
+            '"',
+            "’",
+            "”",
+            "。",
+            "，",
+            "、",
+            "；",
+            "：",
+            "！",
+            "？",
+            "…",
+            "．",
+            "）",
+            "］",
+            "｝",
+            "》",
+            "」",
+            "』",
+        ]:
             with self.subTest(punctuation=punctuation):
                 html = _text_to_html(f"{URL}{punctuation}")
                 self.assertEqual(_hrefs(html), [URL])
@@ -43,6 +72,7 @@ class TextToHtmlTrailingPunctuationTests(SimpleTestCase):
     def test_wrapped_in_parentheses(self):
         html = _text_to_html(f"({URL})")
         self.assertEqual(html, f"({ANCHOR})")
+        self.assertEqual(_text_to_html(f"（{URL}）"), f"（{ANCHOR}）")
 
     def test_sentence_forms(self):
         for template, expected in [
@@ -161,6 +191,9 @@ class PlainTextLoginLinkSendPathTests(TestCase):
             "Sign in here: {{login_link}},",
             "Click {{login_link}}!",
             "Sign in here: {{ login_link }}.",
+            "登录链接：{{login_link}}。",
+            "（{{login_link}}）",
+            "登录链接：{{login_link}}，请继续",
         ]:
             with self.subTest(body=body):
                 campaign, html = self._send(body)

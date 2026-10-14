@@ -16,7 +16,8 @@ SAMPLE_CONTEXT = {
     "login_link": "#",
 }
 
-_URL_RE = re.compile(r"https?://[^\s<>&]+")
+# CJK sentence punctuation delimits prose even when the next word has no whitespace.
+_URL_RE = re.compile(r"https?://[^\s<>&。，、；：！？…．（）［］｛｝《》「」『』]+")
 # Sentence punctuation that trails a URL in prose ("see https://x.example.") but is not part of it.
 _TRAILING_PUNCTUATION = ".,;:!?'\"\u2019\u201d"
 _CLOSING_TO_OPENING = {")": "(", "]": "[", "}": "{"}
