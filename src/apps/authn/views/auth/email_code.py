@@ -1,4 +1,14 @@
-"""Views for public email-code auth flows."""
+"""Views for public email-code auth flows.
+
+None of these views is throttled per client IP (campus users share one public address). Code requests are
+bounded by the ALTCHA proof plus the per-destination cooldown and hourly cap; verification by the per-challenge
+attempt limit. The one exception is a password reset requested for a PHONE number, which sends an SMS: it takes
+the per-IP SMS throttle, but only as a fallback while no global SMS daily budget is configured.
+
+That budget is reserved where the SMS is dispatched (``start_phone_verification``), so a reset for a number without
+an account costs nothing, and a spent budget never changes the reset's answer: it stays the neutral 202 for every
+number and the SMS is simply not sent (``PasswordResetRequestSerializer.save``).
+"""
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -7,11 +17,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.security.throttles import (
-    EmailCodeRequestThrottle,
-    EmailCodeVerifyThrottle,
-    PhoneAuthCodeRequestThrottle,
-)
+from apps.authn.security.throttles import sms_request_throttles
 from apps.authn.serializers import (
     LoginCodeRequestSerializer,
     LoginCodeVerifySerializer,
@@ -41,7 +47,6 @@ Member = get_user_model()
 class LoginCodeRequestView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -63,7 +68,6 @@ class LoginCodeRequestView(APIView):
 class EmailAuthRequestCodeView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -89,7 +93,6 @@ class EmailAuthRequestCodeView(APIView):
 class LoginCodeVerifyView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -109,7 +112,6 @@ class LoginCodeVerifyView(APIView):
 class EmailAuthVerifyCodeView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -129,7 +131,6 @@ class EmailAuthVerifyCodeView(APIView):
 class RegisterVerifyCodeView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -149,7 +150,6 @@ class RegisterVerifyCodeView(APIView):
 class RegisterResendCodeView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -171,17 +171,20 @@ class RegisterResendCodeView(APIView):
 class PasswordResetRequestView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeRequestThrottle]
 
     def get_throttles(self):
-        # A phone identifier triggers an SMS send, so bound it with the stricter
-        # per-IP SMS throttle instead of the looser email-code throttle. The channel
-        # is inferred from the identifier before the view body runs.
+        # Only a phone identifier triggers an SMS send (real money), so only it can take the per-IP SMS throttle,
+        # and only as a fallback while no global SMS daily budget is configured (``sms_request_throttles``). An
+        # email identifier is never throttled per IP (campus NAT); the per-destination cooldown and hourly cap bound
+        # it. The channel is inferred from the identifier before the view body runs.
         data = self.request.data if isinstance(self.request.data, dict) else {}
-        identifier = str(data.get("identifier") or data.get("email") or "")
+        # Pick the identifier exactly as PasswordResetRequestSerializer does: each field is trimmed BEFORE the
+        # ``identifier`` -> ``email`` fallback. Deciding from the untrimmed value would let a blank ``identifier``
+        # plus a phone number in the ``email`` alias send an SMS while skipping this throttle.
+        identifier = str(data.get("identifier") or "").strip() or str(data.get("email") or "").strip()
         if identifier and "@" not in identifier and any(ch.isdigit() for ch in identifier):
-            return [PhoneAuthCodeRequestThrottle()]
-        return [EmailCodeRequestThrottle()]
+            return sms_request_throttles()
+        return []
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -205,7 +208,6 @@ class PasswordResetRequestView(APIView):
 class PasswordResetVerifyView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -215,7 +217,6 @@ class PasswordResetVerifyView(APIView):
 class PasswordResetConfirmView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [EmailCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

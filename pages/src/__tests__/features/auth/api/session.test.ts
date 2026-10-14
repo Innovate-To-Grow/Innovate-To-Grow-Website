@@ -204,41 +204,118 @@ describe('auth session lifecycle', () => {
     expect(storedSession).toEqual(baseSession);
   });
 
+  const loginData = () => ({
+    access: 'a',
+    refresh: 'r',
+    user: {member_uuid: 'member-b', email: 'new@example.com'},
+  });
+
+  // Not a login response: what a proxy, captive portal, or SPA rewrite answers
+  // with on a 2xx.
+  const MALFORMED_BODIES: Array<[string, unknown]> = [
+    ['an HTML page', '<!doctype html><html></html>'],
+    ['an empty body', ''],
+    ['null', null],
+    ['an array', []],
+    ['an object without tokens', {message: 'ok', user: {member_uuid: 'm', email: 'e@example.com'}}],
+    ['an empty access token', {...loginData(), access: ''}],
+    ['a non-string refresh token', {...loginData(), refresh: 7}],
+    ['no user', {access: 'a', refresh: 'r'}],
+    ['a null user', {access: 'a', refresh: 'r', user: null}],
+    ['a string user', {access: 'a', refresh: 'r', user: 'ada'}],
+    ['a user without member_uuid', {access: 'a', refresh: 'r', user: {email: 'e@example.com'}}],
+    ['a user without an email', {access: 'a', refresh: 'r', user: {member_uuid: 'm'}}],
+  ];
+
   it('posts a login-link token and persists the returned session', async () => {
-    const data = {access: 'a', refresh: 'r', user: {}};
+    const data = loginData();
     authApiPost.mockResolvedValue({data});
     const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
 
     const result = await loginLinkAutoLogin('token-1');
 
-    expect(authApiPost).toHaveBeenCalledWith('/mail/login-link/', {token: 'token-1'});
+    expect(authApiPost).toHaveBeenCalledWith(
+      '/mail/login-link/',
+      {token: 'token-1'},
+      {skipAuth: true},
+    );
     expect(persistAuthSession).toHaveBeenCalledWith(data);
     expect(result).toBe(data);
   });
 
-  it('exchanges an unsubscribe token without persisting a session', async () => {
-    const data = {message: 'unsubscribed'};
+  it('accepts a phone-only account, whose email is an empty string', async () => {
+    const data = {...loginData(), user: {member_uuid: 'member-p', email: ''}};
     authApiPost.mockResolvedValue({data});
-    const {unsubscribeAutoLogin} = await import('@/features/auth/api/session');
+    const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
 
-    const result = await unsubscribeAutoLogin('token-2');
+    await expect(loginLinkAutoLogin('token-p')).resolves.toBe(data);
+    expect(persistAuthSession).toHaveBeenCalledWith(data);
+  });
 
-    expect(authApiPost).toHaveBeenCalledWith('/authn/unsubscribe-login/', {token: 'token-2'});
+  it.each(MALFORMED_BODIES)(
+    'rejects a login-link 2xx answer that is %s without touching storage',
+    async (_label, data) => {
+      authApiPost.mockResolvedValue({data});
+      const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
+      const {MalformedLoginResponseError} = await import('@/features/auth/api/errors');
+
+      await expect(loginLinkAutoLogin('token-x')).rejects.toBeInstanceOf(
+        MalformedLoginResponseError,
+      );
+      expect(persistAuthSession).not.toHaveBeenCalled();
+    },
+  );
+
+  it('lets the typed storage failure through untouched when the session cannot be written', async () => {
+    authApiPost.mockResolvedValue({data: loginData()});
+    const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
+    const {SessionNotSavedError} = await import('@/features/auth/api/errors');
+    const failure = new SessionNotSavedError();
+    persistAuthSession.mockImplementation(() => {
+      throw failure;
+    });
+
+    await expect(loginLinkAutoLogin('token-y')).rejects.toBe(failure);
+  });
+
+  it('passes an Axios failure through untouched', async () => {
+    const failure = Object.assign(new Error('Request failed'), {isAxiosError: true});
+    authApiPost.mockRejectedValue(failure);
+    const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
+
+    await expect(loginLinkAutoLogin('token-z')).rejects.toBe(failure);
     expect(persistAuthSession).not.toHaveBeenCalled();
-    expect(result).toBe(data);
   });
 
   it('posts an impersonation token and persists the returned session', async () => {
-    const data = {access: 'a', refresh: 'r', user: {}};
+    const data = loginData();
     authApiPost.mockResolvedValue({data});
     const {impersonateAutoLogin} = await import('@/features/auth/api/session');
 
     const result = await impersonateAutoLogin('token-3');
 
-    expect(authApiPost).toHaveBeenCalledWith('/authn/impersonate-login/', {token: 'token-3'});
+    expect(authApiPost).toHaveBeenCalledWith(
+      '/authn/impersonate-login/',
+      {token: 'token-3'},
+      {skipAuth: true},
+    );
     expect(persistAuthSession).toHaveBeenCalledWith(data);
     expect(result).toBe(data);
   });
+
+  it.each(MALFORMED_BODIES)(
+    'rejects an impersonation 2xx answer that is %s without touching storage',
+    async (_label, data) => {
+      authApiPost.mockResolvedValue({data});
+      const {impersonateAutoLogin} = await import('@/features/auth/api/session');
+      const {MalformedLoginResponseError} = await import('@/features/auth/api/errors');
+
+      await expect(impersonateAutoLogin('token-x')).rejects.toBeInstanceOf(
+        MalformedLoginResponseError,
+      );
+      expect(persistAuthSession).not.toHaveBeenCalled();
+    },
+  );
 
   it('reports unauthenticated when no access token is stored', async () => {
     storedSession = null;

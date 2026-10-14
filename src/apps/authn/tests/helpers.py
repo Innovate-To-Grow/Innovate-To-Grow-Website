@@ -4,8 +4,12 @@ Test helpers for creating members with ContactEmail records.
 
 import base64
 import binascii
+from datetime import timedelta
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
+from rest_framework_simplejwt.settings import api_settings as jwt_settings
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from apps.authn.models import ContactEmail, Member
 
@@ -112,3 +116,77 @@ def create_test_member(email, password="testpass123", **kwargs):
     # Store the email on the instance for convenience in tests
     member._test_email = email
     return member
+
+
+def malformed_field_bodies(field: str) -> dict[str, str]:
+    """Raw JSON request bodies a credential-exchange view must answer with a 400 "missing", not a 500.
+
+    Covers a non-string ``field`` value and a body that is not an object at all.
+    """
+    return {
+        "null value": f'{{"{field}": null}}',
+        "numeric value": f'{{"{field}": 123}}',
+        "boolean value": f'{{"{field}": true}}',
+        "list value": f'{{"{field}": ["a"]}}',
+        "object value": f'{{"{field}": {{"a": 1}}}}',
+        "null body": "null",
+        "list body": '["a"]',
+        "string body": '"credential"',
+        "numeric body": "123",
+    }
+
+
+MALFORMED_TOKEN_BODIES = malformed_field_bodies("token")
+MALFORMED_REFRESH_BODIES = malformed_field_bodies("refresh")
+
+# Token strings that can never be a real credential and that the database layer cannot take: a lone surrogate
+# (not UTF-8 encodable, so a 500 in the ORM driver) and NUL (rejected by PostgreSQL). Written as JSON escapes so the
+# request body itself stays plain ASCII.
+UNUSABLE_TOKEN_BODIES = {
+    "lone high surrogate": '{"token": "\\ud800"}',
+    "lone low surrogate": '{"token": "\\udfff"}',
+    "surrogate inside text": '{"token": "abc\\ud800def"}',
+    "NUL": '{"token": "\\u0000"}',
+    "NUL inside text": '{"token": "abc\\u0000def"}',
+    "NUL after whitespace": '{"token": "  \\u0000  "}',
+}
+
+
+def bearer_header(member) -> str:
+    """``Authorization`` value carrying a currently valid access token for ``member``."""
+    return f"Bearer {RefreshToken.for_user(member).access_token}"
+
+
+def expired_bearer_header(member) -> str:
+    """``Authorization`` value carrying a correctly signed access token for ``member`` that has expired."""
+    access = RefreshToken.for_user(member).access_token
+    access.set_exp(from_time=timezone.now() - timedelta(hours=2))  # one-hour lifetime: expired an hour ago
+    return f"Bearer {access}"
+
+
+def access_token_owner_id(access: str) -> str:
+    """The member id an access token was issued for."""
+    return str(AccessToken(access)[jwt_settings.USER_ID_CLAIM])
+
+
+def stale_bearer_headers() -> dict[str, str]:
+    """``Authorization`` values the SPA can still hold for a session that no longer works.
+
+    The shared axios client attaches whatever access token is in local storage to every request. Each
+    value below makes ``JWTAuthentication`` answer 401 on any view that still runs authentication, so a
+    credential-exchange view that has not opted out fails before its handler ever runs.
+    """
+    expired_owner = Member.objects.create_user(password="StrongPass123!", is_active=True)
+
+    deleted = Member.objects.create_user(password="StrongPass123!", is_active=True)
+    deleted_header = bearer_header(deleted)
+    deleted.delete()
+
+    inactive = Member.objects.create_user(password="StrongPass123!", is_active=False)
+
+    return {
+        "expired access token": expired_bearer_header(expired_owner),
+        "garbage token": "Bearer not-a-jwt",
+        "deleted member": deleted_header,
+        "inactive member": bearer_header(inactive),
+    }

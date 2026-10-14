@@ -9,6 +9,9 @@ explicitly sets AllowAny so the refresh endpoint remains accessible.
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from apps.authn.serializers import MemberTokenRefreshSerializer
+
 
 class PublicTokenRefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
+    serializer_class = MemberTokenRefreshSerializer

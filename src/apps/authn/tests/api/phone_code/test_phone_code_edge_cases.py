@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactPhone
@@ -88,12 +89,23 @@ class PhoneAuthEdgeCaseTests(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     # ── Abuse / enumeration ──────────────────────────────
-    def test_request_rate_limited_per_ip(self, _start):
+    # The per-IP throttle is only the fallback while no SMS daily budget is configured (local/test settings set one;
+    # enforce mode would refuse every SMS without it, so observe).
+    @override_settings(SEND_VERIFICATION_SMS_DAILY_LIMIT=None, SEND_VERIFICATION_MODE="observe")
+    def test_request_rate_limited_per_ip_without_an_sms_budget(self, _start):
         statuses = [
             self.client.post(REQUEST_URL, {"phone_number": "2025550123"}, format="json").status_code for _ in range(6)
         ]
         self.assertEqual(statuses[0], 202)
         self.assertEqual(statuses[-1], 429)
+
+    @override_settings(SEND_VERIFICATION_SMS_DAILY_LIMIT=100)
+    def test_request_not_rate_limited_per_ip_with_an_sms_budget(self, _start):
+        statuses = [
+            self.client.post(REQUEST_URL, {"phone_number": f"20255501{i:02d}"}, format="json").status_code
+            for i in range(8)
+        ]
+        self.assertEqual(statuses, [202] * 8)
 
     def test_request_does_not_reveal_account_existence(self, _start):
         member = Member.objects.create_user(is_active=True)

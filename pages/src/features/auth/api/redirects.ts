@@ -54,7 +54,7 @@ export const getPostAuthPath = (
   // matching the register flow. Both values are sanitized before use.
   const safeReturnTo = getSafeInternalRedirectPath(returnTo);
   // Preserve the post-login destination when the server asks us to detour through
-  // profile completion. Without this, magic/ticket/unsubscribe/impersonate logins
+  // profile completion. Without this, magic/ticket/impersonate logins
   // drop users at /account after completing their profile, even though `redirect_to`
   // (or a page `returnTo`) specified a real landing page. `buildCompleteProfilePath`
   // safely rejects a value that isn't an internal path.

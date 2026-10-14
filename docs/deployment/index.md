@@ -11,6 +11,8 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 - [CI/CD](ci-cd.md) — GitHub Actions pipelines
 - [Production Deployment Approval](production.md) — One protected approval gate for all production targets
 - [Send verification](send-verification.md) — Self-hosted ALTCHA + destination quotas for email/SMS codes
+- [WAF rate limits](waf-rate-limits.md) — Campus-aware AWS WAF rules for the unauthenticated auth endpoints
+- [Assistant and AI search limits](../integrations/assistant-limits.md) — Per-visitor/member and global token budgets, sizing and alarm
 
 ## Who this is for
 
@@ -23,7 +25,7 @@ Engineers setting up a local development environment, deploying changes, or debu
 | Backend | Django dev server (port 8000) | Docker build + PostgreSQL service | ECS Fargate (Uvicorn, port 8000) |
 | Frontend | Vite dev server (port 5173) | npm build validation | AWS Amplify (S3 + CDN) |
 | Database | SQLite | PostgreSQL 16 (GH Actions service) | PostgreSQL + SSL |
-| Cache | LocMemCache | LocMemCache | Redis (file fallback) |
+| Cache | LocMemCache | LocMemCache | Redis if `REDIS_URL` is set, else per-container file cache (production today); plus the in-process `throttle` alias everywhere |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Email | Console (stdout) | Console (stdout) | AWS SES / SMTP |
 | Load balancer | None | None | ALB with health probes |

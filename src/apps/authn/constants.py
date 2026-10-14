@@ -17,5 +17,3 @@ CONTACT_PHONE_SEND_FAILED = "Unable to send verification code for this phone."
 LAST_RECOVERY_CONTACT_DELETE_FAILED = (
     "You can't remove your only verified recovery method. Add and verify another email or phone first."
 )
-UNSUBSCRIBE_LOGIN_INVALID = "Invalid or expired unsubscribe link."
-UNSUBSCRIBE_LOGIN_ALREADY_USED = "This unsubscribe link has already been used."

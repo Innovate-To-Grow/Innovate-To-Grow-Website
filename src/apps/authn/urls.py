@@ -44,8 +44,6 @@ from .views import (
     SendVerificationChallengeView,
     SendVerificationRequestStatusView,
     SessionView,
-    SubscribeView,
-    UnsubscribeAutoLoginView,
 )
 
 app_name = "authn"
@@ -131,10 +129,6 @@ urlpatterns = [
     ),
     # Admin invitation acceptance (public)
     path("invite/<str:token>/", AcceptInvitationView.as_view(), name="accept-invitation"),
-    # Subscribe (public)
-    path("subscribe/", SubscribeView.as_view(), name="subscribe"),
-    # Unsubscribe auto-login (from email link)
-    path("unsubscribe-login/", UnsubscribeAutoLoginView.as_view(), name="unsubscribe-login"),
     # Admin impersonation login
     path("impersonate-login/", ImpersonateLoginView.as_view(), name="impersonate-login"),
 ]

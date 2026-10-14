@@ -1,3 +1,4 @@
+import {SessionNotSavedError} from './errors';
 import type {AuthTokens, LoginResponse, User} from './types';
 
 export const AUTH_SESSION_KEY = 'i2g_auth_session';
@@ -125,7 +126,7 @@ const writeSession = (session: StoredAuthSession) => {
 
 const requireSessionWrite = (session: StoredAuthSession) => {
   if (!writeSession(session)) {
-    throw new Error('Unable to persist the authentication session.');
+    throw new SessionNotSavedError();
   }
   return session;
 };

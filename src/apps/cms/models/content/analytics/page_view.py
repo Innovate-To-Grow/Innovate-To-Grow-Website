@@ -15,8 +15,16 @@ class PageView(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     path = models.CharField(max_length=2048, db_index=True)
     referrer = models.URLField(max_length=2048, blank=True, default="")
+    # No column limit; the write path cuts it to 512 characters (apps.cms.services.analytics.record).
     user_agent = models.TextField(blank=True, default="")
     ip_address = models.GenericIPAddressField(null=True, blank=True, db_index=True)
+    # Random id the browser keeps in localStorage and sends with every page view. Campus visitors share one public
+    # IP, so this, not ip_address, is what tells visitors apart (ip_address stays for audit and geolocation). NULL on
+    # rows recorded before the frontend sent it and for clients that still do not; the admin stats then fall back
+    # to ip_address through COALESCE, which is why this string column is nullable rather than "". Not indexed:
+    # no query filters on it (COALESCE is an expression, admin search is icontains), and this is the largest
+    # write-heavy table.
+    visitor_id = models.CharField(max_length=64, null=True, blank=True)
     member = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

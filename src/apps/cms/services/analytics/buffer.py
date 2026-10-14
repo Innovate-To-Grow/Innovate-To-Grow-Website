@@ -13,6 +13,8 @@ from collections import deque
 
 from django.db import DatabaseError
 
+from .record import bounded_page_view
+
 logger = logging.getLogger(__name__)
 
 _BATCH_SIZE = 100
@@ -84,7 +86,12 @@ def _ensure_initialized():
 
 
 def enqueue(data: dict) -> None:
-    """Add a page-view record to the in-memory buffer."""
+    """Add a page-view record to the in-memory buffer.
+
+    Client-controlled fields are bounded to their columns first: a batch is one ``bulk_create``, so a single
+    value PostgreSQL refuses would lose every row of it.
+    """
+    data = bounded_page_view(data)
     with _lock:
         _ensure_initialized()
         _buffer.append(data)

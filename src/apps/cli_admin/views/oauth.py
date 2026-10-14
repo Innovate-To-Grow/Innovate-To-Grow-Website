@@ -18,7 +18,6 @@ from ..auth.constants import ACCESS_TOKEN_TTL, CLI_CLIENT_ID, PKCE_METHOD
 from ..auth.pkce import verify_pkce_s256
 from ..auth.redirect_uri import RedirectUriError, validate_loopback_redirect_uri
 from ..auth.serializers import TokenExchangeSerializer
-from ..auth.throttles import CliOAuthThrottle
 from ..models import CliAccessToken, CliAuthorizationCode
 from .helpers import client_ip
 
@@ -112,7 +111,9 @@ class OAuthTokenView(APIView):
 
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [CliOAuthThrottle]
+    # No per-IP throttle by design (staff share the campus public IP): the 384-bit, 60-second, single-use code,
+    # bound to the PKCE verifier and the redirect URI and burned by any failed attempt, is the control.
+    throttle_classes = []
 
     def post(self, request):
         serializer = TokenExchangeSerializer(data=request.data)

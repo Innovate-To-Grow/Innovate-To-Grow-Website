@@ -8,13 +8,20 @@ from rest_framework.test import APIClient
 
 from apps.authn.models import PhoneVerificationChallenge
 from apps.event.models import EventRegistration, Ticket
-from apps.event.tests.helpers import make_event, make_member
+from apps.event.tests.helpers import load_urlconf, make_event, make_member
 from apps.event.views.registration.phones import (
     LEGACY_EVENT_REGISTRATION_CONTEXT,
 )
 
 
 class PhoneVerificationViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # A test below patches apps.authn.services.sms.check_phone_verification around a request: import the views
+        # first so apps.authn.views.auth.phone_code cannot bind that mock for the rest of this process.
+        load_urlconf()
+
     def setUp(self):
         self.client = APIClient()
         self.member = make_member()

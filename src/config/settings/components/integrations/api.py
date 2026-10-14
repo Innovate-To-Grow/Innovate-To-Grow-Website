@@ -19,8 +19,6 @@ REST_FRAMEWORK = {
     # Throttle *rates* only -- classes are set per-view, not globally.
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/minute",
-        "login": "10/minute",
-        "email_code_request": "30/minute",
         "email_code_verify": "60/minute",
         # Per-authenticated-user cap on SMS verification sends. Each send spends
         # real AWS SNS money to an attacker-supplied destination, and the
@@ -29,27 +27,29 @@ REST_FRAMEWORK = {
         "phone_code_request": "5/minute",
         # Per-IP cap on the PUBLIC passwordless phone-auth SMS request endpoint.
         # phone_code_request above is a UserRateThrottle (no-op for anonymous
-        # callers), so this anon scope is what actually bounds toll-fraud / SMS
-        # pumping on the unauthenticated signup/login endpoint.
+        # callers). This anon scope is a fallback speed bump, attached only
+        # while no SMS daily budget is configured; the bounds on toll-fraud /
+        # SMS pumping are the per-number caps and that budget.
         "phone_auth_code_request": "5/minute",
-        # Per-authenticated-user cap on email verification-code sends (the shared
-        # email_code_request throttle is anon-only and a no-op once authenticated,
-        # so it cannot stop bombing an attacker-supplied address).
+        # Per-authenticated-user cap on email verification-code sends (an anon,
+        # per-IP throttle is a no-op once authenticated, so it cannot stop
+        # bombing an attacker-supplied address).
         "email_code_user_request": "5/minute",
         "past_project_share": "10/minute",
         "past_project_ai_search": "10/minute",
         "contact_email_create": "5/hour",
         "ses_events": "600/minute",
-        "cli_oauth": "30/minute",
         "cli_read": "120/minute",
         "cli_write": "60/minute",
-        "public_assistant": "20/minute",
-        # Proof-of-work challenge issuance. Bound independently of send
-        # throttles so solvers cannot mint unlimited challenges.
-        "send_verification_challenge": "30/minute",
-        "send_verification_status": "60/minute",
+        # Per ACTOR (signed visitor value or member), never per IP: see
+        # apps.system_intelligence.views.public_assistant.PublicAssistantActorThrottle.
+        "public_assistant": "6/minute",
     },
 }
+# Deliberately absent: per-IP rates for password login, email-link exchange, verification-code request/verify
+# and ALTCHA challenge/status. Most users share one campus IP, so such a bucket throttles everyone at once (and
+# is bypassable through X-Forwarded-For). Those flows are bounded per token / destination / challenge and, for
+# password login, by the identifier-keyed lockout in apps.authn.services.login_guard.
 
 # ---------------------------------------------------------------------------
 # Self-hosted send verification (ALTCHA PoW v2 + destination quotas)
@@ -73,8 +73,6 @@ SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = None
 SEND_VERIFICATION_SMS_DAILY_LIMIT = None
 SEND_VERIFICATION_IDEMPOTENCY_TTL_SECONDS = None
 SEND_VERIFICATION_RETENTION_DAYS = None
-SEND_VERIFICATION_CHALLENGE_CACHE_WINDOW_SECONDS = None
-SEND_VERIFICATION_CHALLENGE_CACHE_LIMIT = None
 
 # ---------------------------------------------------------------------------
 # SimpleJWT

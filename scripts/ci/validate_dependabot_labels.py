@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -16,6 +18,8 @@ except ImportError as exc:  # pragma: no cover - exercised in CI preflight
 
 ROOT = Path(__file__).resolve().parents[2]
 DEPENDABOT = ROOT / ".github" / "dependabot.yml"
+RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
+MAX_API_ATTEMPTS = 3
 
 
 def configured_labels() -> set[str]:
@@ -24,6 +28,28 @@ def configured_labels() -> set[str]:
     for update in config.get("updates", []):
         labels.update(str(label) for label in update.get("labels", []))
     return labels
+
+
+def _read_labels_page(request: urllib.request.Request) -> list[dict[str, str]]:
+    """Retry temporary API failures for this page without restarting pagination."""
+    attempts = 0
+    while True:
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            attempts += 1
+            if isinstance(exc, urllib.error.HTTPError) and exc.code not in RETRYABLE_HTTP_CODES:
+                raise
+            if attempts >= MAX_API_ATTEMPTS:
+                raise
+            delay = attempts
+            print(
+                f"GitHub labels API temporarily unavailable; retrying in {delay}s "
+                f"(attempt {attempts + 1}/{MAX_API_ATTEMPTS}).",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
 
 
 def existing_repo_labels(repo: str, token: str) -> set[str]:
@@ -39,8 +65,7 @@ def existing_repo_labels(repo: str, token: str) -> set[str]:
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
-        with urllib.request.urlopen(request, timeout=30) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        payload = _read_labels_page(request)
         if not payload:
             break
         labels.update(item["name"] for item in payload)

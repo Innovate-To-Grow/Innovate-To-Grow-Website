@@ -9,7 +9,7 @@ djangorestframework-simplejwt>=5.5.1
 python-dotenv>=1.2.3
 
 # Admin Theme
-django-unfold>=0.91.0,<0.92  # 0.92+ requires Python >=3.12; project targets 3.11
+django-unfold>=0.91.0,<0.92  # Keep the current Unfold minor until its upgrade is reviewed.
 
 # Rich Text Editor
 django-ckeditor-5>=0.2.20
@@ -20,20 +20,22 @@ pdf417gen>=0.8.1
 openpyxl>=3.1.5
 
 # Google APIs
-google-api-python-client>=2.198.0
-google-auth>=2.56.3
+google-api-python-client>=2.200.0
+google-auth>=2.59.0
 gspread>=6.2.1
 
 # AI Runtime
-openai-agents[litellm]>=0.7.0,<1.0
-litellm>=1.95.0,<2.0
+# Agents 0.21+ requires openai 3, while LiteLLM requires openai <3.
+# Revisit the cap when LiteLLM supports openai 3 (see PR #542).
+openai-agents[litellm]>=0.20.0,<0.21.0
+litellm>=1.103.0,<2.0
 
 # Email
 imap-tools>=1.15.0
 
 # Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
 # in CVE fixes to the Rust bindings.
-cryptography>=50.0.0
+cryptography>=50.0.1
 
 # Self-hosted ALTCHA proof-of-work (open-source widget protocol, PoW v2).
 # Pin 2.1.0+: 2.1.0 patches the PoW v2 keyPrefix fallback verification issue

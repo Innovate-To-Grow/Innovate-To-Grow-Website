@@ -15,14 +15,16 @@ Member management, email campaigns, and contact administration.
 | `first_name`, `last_name` | CharField | Required |
 | `middle_name` | CharField | Optional |
 | `organization` | CharField | Optional |
-| `email_subscribe` | BooleanField | Newsletter opt-in |
 | `profile_image` | ImageField | Profile photo |
+
+There is no member-level subscription field: newsletter subscription is the `subscribe` flag of each contact email
+(below). The profile API's `email_subscribe` is the primary contact email's flag.
 
 ### Admin capabilities
 
 In Django admin → Members & Auth → Members:
 - Search by name, email
-- Filter by active status, subscription, date joined
+- Filter by active status, staff status, date joined (subscription is filtered per address in the Contact Emails admin)
 - Inline contact emails and phones
 - Import/export members via Excel (openpyxl)
 
@@ -30,7 +32,9 @@ In Django admin → Members & Auth → Members:
 
 Members can have multiple contact emails and phones:
 
-- **ContactEmail**: Types (primary, secondary, other), verified flag, subscribe flag
+- **ContactEmail**: Types (primary, secondary, other), verified flag, and a per-address `subscribe` flag (on by
+  default). That flag is the only thing that decides whether the address receives newsletters (see
+  [Audience types](#audience-types)); `verified` plays no part in it
 - **ContactPhone**: Region support, verified flag, subscribe flag
 
 Contact verification uses the email challenge system or AWS SNS SMS.
@@ -75,6 +79,8 @@ does not send a message; use the test action to check delivery explicitly.
 | `subject` | Email subject line |
 | `body` | HTML body (CKEditor 5) |
 | `audience_type` | Target audience selector |
+| `member_email_scope` | **Send to**: each member's primary contact email only, or every contact email (member-based audiences) |
+| `include_unsubscribe_header` | **Include one-click unsubscribe** (default on): the footer unsubscribe link and the RFC 8058 `List-Unsubscribe` headers |
 | `status` | `draft`, `sending`, `sent`, `failed` |
 | `total_recipients` | Calculated recipient count |
 | `sent_count` | Successfully sent count |
@@ -83,7 +89,7 @@ does not send a message; use the test action to check delivery explicitly.
 
 | Type | Recipients |
 |------|-----------|
-| `subscribers` | Members with `email_subscribe = True` |
+| `subscribers` | All Email Subscribers: active members, at their subscribed addresses only (below) |
 | `event_registrants` | Members registered for a specific event |
 | `selected_members` | Manually selected members (ManyToMany) |
 | `manual` | Comma-separated email addresses |
@@ -93,17 +99,57 @@ does not send a message; use the test action to check delivery explicitly.
 | `all_members` | All active members |
 | `staff` | Staff users only |
 
-Audience resolution is handled by `src/apps/mail/services/audience.py`.
+Audience resolution is handled by `src/apps/mail/services/audience/` (`resolvers.py`). The recipient list is resolved
+once, when sending starts (with the background worker, when the campaign is queued), so an address unsubscribed after
+that still receives that campaign.
+
+**All Email Subscribers.** The per-address `subscribe` flag is authoritative. Only members with `is_active` set are
+included, and each is mailed only at addresses whose own flag is on:
+
+- **Send to: primary only** — the primary address, and only if it is subscribed. A subscribed secondary address
+  does not stand in for an unsubscribed primary; such a member gets nothing.
+- **Send to: all emails** — every subscribed address (primary, secondary, other).
+
+`verified` is not required. The member import creates addresses unverified and subscribed unless the sheet says
+otherwise, so requiring verification would drop most of the mailing list. The one-click unsubscribe link turns off
+every address of the member at once (see
+[Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe)); members change single addresses on
+`/account`. When **Exclude audience** is All Email Subscribers, the same rules build the exclusion list with the
+exclude **Send to** setting. The campaign form's **Send to** help text states these rules too.
+
+**Change from the old primary-only rule.** The audience used to take every member whose primary address was
+subscribed and, with **Send to: all emails**, mail all of that member's addresses whatever their own flags; the
+one-click link and the `/account` primary toggle cleared only the primary. The data migration
+`mail.0019_carry_primary_opt_out_to_all_addresses` (it runs with the deploy's `migrate`) turns off the other addresses
+of every member whose primary is unsubscribed, so nobody who opted out that way is mailed again. Compared with the old
+rule, the audience shrinks by inactive members and by addresses whose own flag is off (with **Send to: all emails**),
+and grows by members who have no primary address at all, a legacy gap: they are now mailed at their subscribed
+addresses with **Send to: all emails**. An address an event registration adds to an account is subscribed only while
+another address of the member is.
+
+**Open product question: the other audiences ignore the flag.** Only All Email Subscribers reads `subscribe`. All
+Active Members, Staff Members and Selected Members mail the primary (or every) address of each member, and the
+event-based audiences mail the attendee or primary address, whether or not it is subscribed. Those emails still carry
+the unsubscribe link and header when **Include one-click unsubscribe** is on, so a person who unsubscribed keeps
+receiving them, and clicking that link does not stop them. The unsubscribe pages and confirmation email say only
+newsletters stop ("You may still receive account messages, messages about events you registered for, and program
+announcements"). Whether those audiences should honour the flag, or leave out the unsubscribe link, is undecided.
 
 ### Personalization
 
-`src/apps/mail/services/personalize.py` supports template variables in the email body:
+`src/apps/mail/services/campaign/personalize.py` replaces these placeholders in the subject and body (plain string
+replacement, `{{name}}` or `{{ name }}`):
 
 | Variable | Replaced with |
 |----------|--------------|
-| `{{ first_name }}` | Recipient's first name |
-| `{{ organization }}` | Recipient's organization |
-| `{{ unsubscribe_link }}` | Auto-login unsubscribe URL |
+| `{{ first_name }}`, `{{ last_name }}`, `{{ full_name }}` | Recipient's name (for event-based audiences, the registration's attendee name when set) |
+| `{{ login_link }}` | The recipient's login link (see [Login link tokens](#login-link-tokens)); empty for manual addresses |
+
+There is no unsubscribe placeholder. With **Include one-click unsubscribe** on, every email to a member (any
+audience) gets an "Unsubscribe from newsletters" link in the footer and the RFC 8058 `List-Unsubscribe` /
+`List-Unsubscribe-Post` headers, both pointing at the backend page `/mail/unsubscribe/{token}/` (valid 365 days; see
+[Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe)). Manual addresses get neither, and
+nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeholder link.
 
 ### Sending
 

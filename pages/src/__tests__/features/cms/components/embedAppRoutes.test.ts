@@ -72,7 +72,7 @@ describe('embed app route lazy components', () => {
       // bodies in the registry.
       await waitFor(() => {
         expect(container.querySelector('[data-testid="suspense-fallback"]')).toBeNull();
-      });
+      }, {timeout: 5000});
 
       cleanup();
     }

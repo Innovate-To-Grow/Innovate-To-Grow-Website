@@ -121,8 +121,6 @@ class SendVerificationConfigTests(TestCase):
             "MAX_PAYLOAD_BYTES": (0, -1, "bad"),
             "IDEMPOTENCY_TTL_SECONDS": (0, -1),
             "RETENTION_DAYS": (0, -1),
-            "CHALLENGE_CACHE_WINDOW_SECONDS": (0, "bad"),
-            "CHALLENGE_CACHE_LIMIT": (0, "bad"),
         }
         for name, values in invalid.items():
             for value in values:

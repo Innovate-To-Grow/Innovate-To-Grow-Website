@@ -5,19 +5,13 @@ import uuid
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
 from django.shortcuts import render
 from django.utils.http import url_has_allowed_host_and_scheme
-
-from apps.core.utils.client_ip import client_ip
 
 _SESSION_STEP = "admin_login_step"
 _SESSION_EMAIL = "admin_login_email"
 _SESSION_MEMBER_ID = "admin_login_member_id"
 _SESSION_HIDE_EMAIL = "admin_login_hide_email"
-_RATE_LIMIT_PREFIX = "admin_pwd_login:"
-_MAX_PASSWORD_ATTEMPTS = 10
-_RATE_LIMIT_WINDOW = 120
 LAST_ADMIN_LOGIN_COOKIE_NAME = "i2g_last_admin_member"
 LAST_ADMIN_LOGIN_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 _LAST_ADMIN_LOGIN_COOKIE_PATH = "/admin/"
@@ -61,11 +55,18 @@ def set_admin_login_state(
     step: str,
     email: str,
     member_id: str | None = None,
-    hide_email: bool = False,
+    hide_email: bool | None = None,
 ) -> None:
+    """Record where the admin login flow stands.
+
+    ``hide_email`` is changed only when given. The remembered-admin flow shows the member's name instead of the
+    address, and a resend (or a failed send restoring the previous step) must not flip that back and reveal the
+    address to whoever is at a browser that merely holds the remembered cookie.
+    """
     request.session[_SESSION_STEP] = step
     request.session[_SESSION_EMAIL] = email
-    request.session[_SESSION_HIDE_EMAIL] = hide_email
+    if hide_email is not None:
+        request.session[_SESSION_HIDE_EMAIL] = hide_email
     if member_id is not None:
         request.session[_SESSION_MEMBER_ID] = member_id
 
@@ -75,22 +76,6 @@ def safe_admin_next(request):
     if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
         return next_url
     return "/admin/"
-
-
-def is_password_throttled(request):
-    return cache.get(_password_rate_key(request), 0) >= _MAX_PASSWORD_ATTEMPTS
-
-
-def record_password_failure(request):
-    key = _password_rate_key(request)
-    try:
-        cache.incr(key)
-    except ValueError:
-        cache.set(key, 1, _RATE_LIMIT_WINDOW)
-
-
-def clear_password_rate_limit(request):
-    cache.delete(_password_rate_key(request))
 
 
 def get_last_admin_login_member(request):
@@ -215,13 +200,3 @@ def render_admin_login(request, *, form, step: str, email: str = "", **extra):
     )
     context.update(extra)
     return render(request, "admin/login.html", context)
-
-
-def _password_rate_key(request):
-    # REMOTE_ADDR is the ALB for every production request, so keying on it gave the whole admin team
-    # ONE shared counter: ten wrong passwords from anyone locked everybody out of password login, and
-    # no attacker was ever isolated. Resolve the real client through NUM_PROXIES, and include the
-    # submitted email so one client cannot starve the others either.
-    client_address = client_ip(request) or "unknown"
-    account = (request.POST.get("email") or "").strip().lower()
-    return "".join((_RATE_LIMIT_PREFIX, client_address, ":", account))

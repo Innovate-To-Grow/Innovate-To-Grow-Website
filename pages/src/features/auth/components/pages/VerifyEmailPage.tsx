@@ -37,9 +37,44 @@ interface VerifyEmailPageContentProps {
   flow: VerifyFlow;
   email: string;
   returnTo: string | null;
+  /**
+   * What the "Back" link does. Defaults to leaving for the flow's own entry
+   * page; a host that renders this inline (no route of its own) supplies its
+   * own step back instead.
+   */
+  onBack?: () => void;
+  /**
+   * Runs once a code has signed the visitor in (the auth, login and register
+   * flows), just before navigating on. A host that keeps state about the
+   * sign-in it replaced drops it here.
+   */
+  onSignedIn?: () => void;
+  /**
+   * Focus the code field on mount. Off by default so the standalone
+   * `/verify-email` route is unchanged; a host that swaps this in for the step
+   * the visitor was just typing in turns it on, or focus is lost to <body>.
+   */
+  autoFocus?: boolean;
+  /**
+   * An info message shown when the step opens, in the place a resend's
+   * confirmation later takes (which replaces it). A host that has just
+   * requested the code itself passes the server's acknowledgement here.
+   */
+  initialMessage?: string | null;
+  /** Help text under the code field, for as long as the step is open. */
+  hint?: string | null;
 }
 
-const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageContentProps) => {
+export const VerifyEmailPageContent = ({
+  flow,
+  email,
+  returnTo,
+  onBack,
+  onSignedIn,
+  autoFocus = false,
+  initialMessage = null,
+  hint = null,
+}: VerifyEmailPageContentProps) => {
   const {
     error,
     isLoading,
@@ -63,7 +98,7 @@ const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageConten
   const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [localMessage, setLocalMessage] = useState<string | null>(null);
+  const [localMessage, setLocalMessage] = useState<string | null>(initialMessage);
   const [localSuccess, setLocalSuccess] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,16 +114,19 @@ const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageConten
     try {
       if (flow === 'auth') {
         const response = await verifyEmailAuthCode(email, code);
+        onSignedIn?.();
         navigate(getPostAuthPath(response, returnTo), { replace: true });
         return;
       }
       if (flow === 'login') {
         const response = await verifyLoginCode(email, code);
+        onSignedIn?.();
         navigate(getPostAuthPath(response, returnTo), { replace: true });
         return;
       }
       if (flow === 'register') {
         const response = await verifyRegistrationCode(email, code);
+        onSignedIn?.();
         navigate(
           response.next_step === 'complete_profile' ? getPostAuthPath(response) : (returnTo ?? getPostAuthPath(response)),
           { replace: true },
@@ -175,6 +213,8 @@ const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageConten
       localSuccess={localSuccess}
       error={error}
       isLoading={isLoading}
+      autoFocus={autoFocus}
+      hint={hint}
       onCodeChange={(value) => {
         setCode(value);
         clearError();
@@ -190,7 +230,7 @@ const VerifyEmailPageContent = ({ flow, email, returnTo }: VerifyEmailPageConten
       onVerifySubmit={handleVerify}
       onPasswordSubmit={handlePasswordSubmit}
       onResend={handleResend}
-      onBack={() => navigate(flow === 'change' ? '/account' : flow === 'reset' ? '/forgot-password' : '/login')}
+      onBack={onBack ?? (() => navigate(flow === 'change' ? '/account' : flow === 'reset' ? '/forgot-password' : '/login'))}
     />
   );
 };

@@ -325,6 +325,25 @@ def test_proxy_caches_successful_response(client, monkeypatch):
     assert calls == [A_URL]
 
 
+def test_proxy_cache_keeps_allowed_ranges_separate(client, monkeypatch):
+    first_pair, second_pair = sorted(ALLOWED_SHEET_RANGES)[:2]
+    first_url = TRUSTED_SHEET_URLS[first_pair]
+    second_url = TRUSTED_SHEET_URLS[second_pair]
+    calls = []
+
+    def fetch(url):
+        calls.append(url)
+        return {"values": [[url]]}, 200
+
+    monkeypatch.setattr(app_module, "_fetch_values", fetch)
+    for sheet_id, cell_range in (first_pair, second_pair, first_pair, second_pair):
+        response = client.get(f"/api/sheets/{sheet_id}/values/{cell_range}")
+        assert response.status_code == 200
+        assert response.get_json() == {"values": [[TRUSTED_SHEET_URLS[(sheet_id, cell_range)]]]}
+
+    assert calls == [first_url, second_url]
+
+
 def test_missing_key_is_a_server_error(client, monkeypatch):
     monkeypatch.delenv("SHEETS_API_KEY", raising=False)
     monkeypatch.setattr(app_module.requests, "get", lambda *a, **k: pytest.fail("no upstream call"))

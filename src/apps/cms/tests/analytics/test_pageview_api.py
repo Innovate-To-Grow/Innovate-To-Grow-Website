@@ -13,6 +13,11 @@ class PageViewIPExtractionTests(TestCase):
         PageView.objects.all().delete()
         self.client = APIClient()
 
+    def tearDown(self):
+        # Drain what the test posted: left in the process-wide buffer, the flush timer would write it 5 seconds
+        # later from its own thread and connection, outside this test's transaction, into whichever test runs then.
+        flush_sync()
+
     def test_ip_from_x_forwarded_for(self):
         self.client.post(
             "/analytics/pageview/",
@@ -80,6 +85,11 @@ class PageViewValidationTests(TestCase):
         PageView.objects.all().delete()
         self.client = APIClient()
 
+    def tearDown(self):
+        # Drain what the test posted: left in the process-wide buffer, the flush timer would write it 5 seconds
+        # later from its own thread and connection, outside this test's transaction, into whichever test runs then.
+        flush_sync()
+
     def test_missing_path_returns_400(self):
         resp = self.client.post("/analytics/pageview/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
@@ -102,6 +112,11 @@ class PageViewAuthTests(TestCase):
         flush_sync()
         PageView.objects.all().delete()
         self.client = APIClient()
+
+    def tearDown(self):
+        # Drain what the test posted: left in the process-wide buffer, the flush timer would write it 5 seconds
+        # later from its own thread and connection, outside this test's transaction, into whichever test runs then.
+        flush_sync()
 
     def test_anonymous_can_create(self):
         resp = self.client.post("/analytics/pageview/", {"path": "/"}, format="json")

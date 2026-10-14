@@ -14,7 +14,8 @@ def sync_secondary_email_to_account(member, email_address: str, *, verified: boo
     Conflict rules:
     - Already on this member → preserve or upgrade verification.
     - Owned by a different member → skip (don't steal).
-    - Brand new → create with the server-verified registration status.
+    - Brand new → create with the server-verified registration status; subscribed to newsletters only when
+      another address of the member is.
     - Race condition (concurrent create) → swallow IntegrityError.
     """
     if not email_address or not email_address.strip():
@@ -45,6 +46,8 @@ def sync_secondary_email_to_account(member, email_address: str, *, verified: boo
                 email_address=normalized,
                 email_type="secondary",
                 verified=verified,
+                # The per-address flag decides the newsletter audience: a member who unsubscribed stays so.
+                subscribe=ContactEmail.objects.filter(member=member, subscribe=True).exists(),
             )
         logger.info("Synced secondary email %s to member %s account.", normalized, member.pk)
     except IntegrityError:

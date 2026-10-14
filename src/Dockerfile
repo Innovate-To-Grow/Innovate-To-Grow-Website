@@ -2,7 +2,7 @@
 # Pin the base image by major-minor and (ideally) digest. Production images
 # should use a specific @sha256 digest once CI pins are in place; until then
 # the tag is updated through Dependabot/Renovate for visibility.
-FROM python:3.11-slim-trixie AS builder
+FROM python:3.14-slim-trixie AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -40,7 +40,7 @@ RUN pip install "pip==26.2.0" \
  && pip install --prefix=/install -r requirements/production.txt
 
 
-FROM python:3.11-slim-trixie AS production
+FROM python:3.14-slim-trixie AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

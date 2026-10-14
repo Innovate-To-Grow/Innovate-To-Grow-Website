@@ -8,12 +8,6 @@ from django.db import IntegrityError
 from django.test import TestCase, override_settings
 
 from apps.authn.models import ContactEmail
-from apps.authn.services.account.unsubscribe import (
-    UnsubscribeLoginTokenAlreadyUsed,
-    UnsubscribeLoginTokenInvalid,
-    build_unsubscribe_login_token,
-    get_member_from_unsubscribe_token,
-)
 from apps.authn.services.contacts.contact_emails import (
     _member_has_secondary,
     create_contact_email,
@@ -229,33 +223,3 @@ class KeyEncryptionTests(TestCase):
             encrypted = encrypt_pem("PEM-DATA")
         with self.assertRaisesMessage(ValueError, "Failed to decrypt private key"):
             decrypt_pem(encrypted)
-
-
-class UnsubscribeTokenTests(TestCase):
-    def setUp(self):
-        from django.core.cache import cache
-
-        cache.clear()
-        self.member = _member()
-
-    def test_round_trip_returns_member(self):
-        token = build_unsubscribe_login_token(self.member)
-        resolved = get_member_from_unsubscribe_token(token)
-        self.assertEqual(resolved.pk, self.member.pk)
-
-    def test_invalid_token_raises(self):
-        with self.assertRaises(UnsubscribeLoginTokenInvalid):
-            get_member_from_unsubscribe_token("garbage.token.value")
-
-    def test_inactive_or_missing_member_raises(self):
-        token = build_unsubscribe_login_token(self.member)
-        self.member.is_active = False
-        self.member.save(update_fields=["is_active"])
-        with self.assertRaises(UnsubscribeLoginTokenInvalid):
-            get_member_from_unsubscribe_token(token)
-
-    def test_token_replay_raises_already_used(self):
-        token = build_unsubscribe_login_token(self.member)
-        get_member_from_unsubscribe_token(token)
-        with self.assertRaises(UnsubscribeLoginTokenAlreadyUsed):
-            get_member_from_unsubscribe_token(token)

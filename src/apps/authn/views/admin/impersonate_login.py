@@ -8,9 +8,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.models import ImpersonationToken
-from apps.authn.security.throttles import LoginRateThrottle
 
-from ..helpers import build_auth_success_payload
+from ..helpers import build_auth_success_payload, read_body_string
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +18,14 @@ class ImpersonateLoginView(APIView):
     """Exchange a one-time impersonation token for JWT credentials."""
 
     permission_classes = [AllowAny]
-    throttle_classes = [LoginRateThrottle]
+    # Authenticated by the one-time token in the body: a stale, expired or other-account Bearer must never 401 this.
+    authentication_classes = []
+    # No per-IP throttle by design: the ~384-bit, five-minute, single-use admin-issued token is the control.
+    throttle_classes = []
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
-        token = request.data.get("token", "").strip()
+        token = read_body_string(request, "token")
         if not token:
             return Response({"detail": "Token is required."}, status=status.HTTP_400_BAD_REQUEST)
 

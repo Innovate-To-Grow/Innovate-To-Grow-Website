@@ -156,9 +156,14 @@ async def _async_event_stream(request, convo, messages, chat_config, aws_config,
     context_usage = {}
     try:
         yield _sse("start", {"model_id": model_id})
+        # Context preparation runs ORM queries (and may save a summary), so it
+        # must stay on the request's thread-sensitive executor like the rest of
+        # the request's DB work: a default-pool thread would use a separate
+        # connection that never sees uncommitted writes and is never closed by
+        # Django's request_finished cleanup. Heartbeats still flow meanwhile.
         context_events = _with_heartbeats(
             _awaitable_stream(
-                sync_to_async(prepare_conversation_context, thread_sensitive=False)(
+                sync_to_async(prepare_conversation_context, thread_sensitive=True)(
                     convo,
                     messages,
                     chat_config=chat_config,

@@ -82,7 +82,6 @@ describe('Page barrel exports', () => {
     ['ProjectsPage', 'ProjectsPage'],
     ['SchedulePage', 'SchedulePage'],
     ['SubscribePage', 'SubscribePage'],
-    ['UnsubscribeLoginPage', 'UnsubscribeLoginPage'],
   ] as const;
 
   it.each(pages)('pages/%s exports %s', async (dir, exportName) => {

@@ -7,7 +7,6 @@ from .constants import (
     CODE_EXPIRED,
     CODE_INVALID,
     CODE_PAUSED,
-    CODE_RATE_LIMITED,
     CODE_REQUIRED,
     CODE_SEND_THROTTLED,
     CODE_SEND_UNKNOWN,
@@ -57,13 +56,6 @@ class SendVerificationContextMismatch(SendVerificationError):
     code = CODE_CONTEXT_MISMATCH
     http_status = 400
     detail = "Verification does not match this request."
-
-
-class SendVerificationRateLimited(SendVerificationError):
-    code = CODE_RATE_LIMITED
-    http_status = 429
-    detail = "Too many verification attempts. Please try again later."
-    retry_after = 60
 
 
 class SendVerificationUnavailable(SendVerificationError):
