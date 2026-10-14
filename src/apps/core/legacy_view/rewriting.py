@@ -33,6 +33,9 @@ _URL_ATTRIBUTES = {
 }
 
 _FORM_CONTROL_TAGS = {"button", "fieldset", "input", "option", "select", "textarea"}
+# These controls in the archived past-projects template only filter or merge
+# tables in the browser. The separate #share form makes the POST and stays inert.
+_PAST_PROJECTS_BUTTON_CLASSES = {"addtable", "merge", "deleterow", "keeprow"}
 
 
 @dataclass(frozen=True)
@@ -140,6 +143,35 @@ def _rewrite_srcset(value: str, current_path: str, origin_host: str, viewer_base
     return ", ".join(candidates)
 
 
+def _is_read_only_control(control, current_path: str) -> bool:
+    """Preserve only audited browser-local controls outside disabled forms."""
+
+    if control.find_parent("form") is not None:
+        return False
+    if any(attribute.lower().startswith("on") for attribute in control.attrs):
+        return False
+    classes = set(control.get("class", ()))
+    if control.name == "button":
+        if (
+            "btn-navbar" in classes
+            and control.get("data-toggle") == "collapse"
+            and control.get("data-target") == ".nav-collapse"
+        ):
+            return True
+        return (
+            (current_path == "/past-projects" or current_path.startswith("/past-projects/"))
+            and control.get("type") == "button"
+            and bool(classes & _PAST_PROJECTS_BUTTON_CLASSES)
+        )
+    return (
+        (current_path == "/past-projects" or current_path.startswith("/past-projects/"))
+        and control.name == "input"
+        and control.get("type") == "checkbox"
+        and control.get("id") == "tabledelete"
+        and "deletetable" in classes
+    )
+
+
 def rewrite_legacy_html(html: str, current_path: str, origin_host: str, viewer_base_url: str) -> str:
     """Make the old document visibly and mechanically read-only."""
 
@@ -160,6 +192,8 @@ def rewrite_legacy_html(html: str, current_path: str, origin_host: str, viewer_b
             del form[event_attribute]
 
     for control in soup.find_all(list(_FORM_CONTROL_TAGS)):
+        if _is_read_only_control(control, current_path):
+            continue
         control["disabled"] = ""
         control["aria-disabled"] = "true"
 

@@ -232,7 +232,9 @@ server {
     server_name _;
 
     access_log /var/log/nginx/i2g-legacy-private-access.log i2g_legacy_private;
-    error_log  /var/log/nginx/i2g-legacy-private-error.log warn;
+    # Error messages may include the full request line and query values.
+    # Diagnose through the sanitized access log and Django/CloudFront metrics.
+    error_log /dev/null error;
 
     allow 10.2.0.0/16;
     deny all;

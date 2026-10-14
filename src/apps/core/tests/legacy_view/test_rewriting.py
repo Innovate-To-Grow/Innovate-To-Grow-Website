@@ -1,4 +1,6 @@
+from pathlib import Path
 from unittest.mock import patch
+from zipfile import ZipFile
 
 from bs4 import BeautifulSoup
 from django.test import SimpleTestCase
@@ -10,9 +12,16 @@ from apps.core.legacy_view.rewriting import (
     rewrite_legacy_html,
     rewrite_location,
 )
+from apps.core.legacy_view.views import _LEGACY_CSP
 
 VIEWER_URL = "https://d111111abcdef8.cloudfront.net"
 ORIGIN_HOST = "172.31.69.63"
+ARCHIVE_PATH = Path(__file__).resolve().parents[5] / "archive" / "legacy" / "webpages.zip"
+
+
+def archived_source(member: str) -> str:
+    with ZipFile(ARCHIVE_PATH) as archive:
+        return archive.read(f"webpages/project/{member}").decode("utf-8")
 
 
 class LegacyHTMLRewritingTest(SimpleTestCase):
@@ -72,6 +81,76 @@ class LegacyHTMLRewritingTest(SimpleTestCase):
         for control in form.find_all(["input", "select", "option", "textarea", "button"]):
             self.assertIn("disabled", control.attrs)
 
+    def test_archived_mobile_navigation_button_remains_usable(self):
+        archived_nav = BeautifulSoup(archived_source("templates/includes/nav.html"), "html.parser")
+        nav_button = archived_nav.select_one("button.btn-navbar")
+        self.assertIsNotNone(nav_button)
+
+        rewritten = rewrite_legacy_html(f"<body>{nav_button}</body>", "/about", ORIGIN_HOST, VIEWER_URL)
+        button = BeautifulSoup(rewritten, "html.parser").select_one("button.btn-navbar")
+
+        self.assertNotIn("disabled", button.attrs)
+        self.assertEqual(button["data-toggle"], "collapse")
+        self.assertEqual(button["data-target"], ".nav-collapse")
+
+    def test_archived_past_project_local_controls_work_but_share_stays_disabled(self):
+        archived_page = BeautifulSoup(archived_source("templates/home/past-projects.html"), "html.parser")
+        controls = archived_page.select_one(".buttonStick")
+        self.assertIsNotNone(controls)
+
+        rewritten = rewrite_legacy_html(f"<body>{controls}</body>", "/past-projects", ORIGIN_HOST, VIEWER_URL)
+        soup = BeautifulSoup(rewritten, "html.parser")
+
+        for selector in ("button.addtable", "button.merge", "button.deleterow", "button.keeprow", "#tabledelete"):
+            with self.subTest(selector=selector):
+                self.assertNotIn("disabled", soup.select_one(selector).attrs)
+        share = soup.select_one("#share")
+        self.assertIn("disabled", share.attrs)
+        self.assertIn("inert", share.find_parent("form").attrs)
+        self.assertEqual(share.find_parent("form")["action"], "#")
+
+        other_page = BeautifulSoup(
+            rewrite_legacy_html(f"<body>{controls}</body>", "/about", ORIGIN_HOST, VIEWER_URL), "html.parser"
+        )
+        self.assertIn("disabled", other_page.select_one("button.addtable").attrs)
+
+        inline_write = BeautifulSoup(
+            rewrite_legacy_html(
+                '<button class="addtable" type="button" onclick="fetch(\'/update\')">Add</button>',
+                "/past-projects",
+                ORIGIN_HOST,
+                VIEWER_URL,
+            ),
+            "html.parser",
+        )
+        self.assertIn("disabled", inline_write.button.attrs)
+
+    def test_archived_sheets_reads_are_permitted_by_the_viewer_csp(self):
+        script = archived_source("static/js/merge-search-tables.js")
+        self.assertIn('$.getJSON("https://sheets.googleapis.com/', script)
+        event_templates = (
+            "2020-fall-post-event",
+            "2021-fall-event",
+            "2021-spring-event",
+            "2022-fall-event",
+            "2022-spring-event",
+            "2023-fall-event",
+            "2023-spring-event",
+            "2024-fall-event",
+            "2024-spring-event",
+            "2025-fall-event",
+            "2025-spring-event",
+            "home-post-event",
+        )
+        for page in event_templates:
+            with self.subTest(page=page):
+                self.assertIn(
+                    'getJSON("https://sheets.googleapis.com/',
+                    archived_source(f"templates/home/{page}.html"),
+                )
+        connect_src = next(directive for directive in _LEGACY_CSP.split("; ") if directive.startswith("connect-src "))
+        self.assertEqual(connect_src, "connect-src 'self' https://sheets.googleapis.com")
+
     def test_rewrites_internal_location_but_preserves_external_location(self):
         self.assertEqual(
             rewrite_location("http://legacy.i2g.ucmerced.edu/admin/", "/about", ORIGIN_HOST, VIEWER_URL),
@@ -121,6 +200,11 @@ class LegacyURLRewritingEdgeCaseTest(SimpleTestCase):
             with self.subTest(value=value):
                 self.assertEqual(self.rewrite(value), RewrittenURL("#", blocked=True, internal=True))
 
+    def test_internal_url_with_malformed_utf8_is_blocked_without_breaking_the_page(self):
+        for value in ("/static/%FF", "/static/%25FF", "/about/%C3%28"):
+            with self.subTest(value=value):
+                self.assertEqual(self.rewrite(value), RewrittenURL("#", blocked=True, internal=True))
+
     def test_private_origin_and_public_hosts_are_rewritten_to_viewer_with_filtered_query(self):
         for value in (
             "http://172.31.69.63:8080/past-projects?page=2&token=secret",
@@ -151,6 +235,9 @@ class LegacyLocationRewritingEdgeCaseTest(SimpleTestCase):
 
     def test_internal_redirect_with_ambiguous_path_falls_back_to_viewer_root(self):
         self.assertEqual(self.location("http://172.31.69.63:8080/static/%2e%2e/admin"), VIEWER_URL)
+
+    def test_internal_redirect_with_malformed_utf8_falls_back_to_viewer_root(self):
+        self.assertEqual(self.location("http://172.31.69.63:8080/static/%FF"), VIEWER_URL)
 
     def test_private_origin_redirect_never_leaks_origin(self):
         location = self.location("http://172.31.69.63:8080/past-projects?page=3&code=secret#top")

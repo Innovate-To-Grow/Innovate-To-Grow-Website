@@ -138,14 +138,18 @@ def canonicalize_legacy_path(raw_path: str) -> str:
         raise InvalidLegacyPath("Legacy path is invalid.")
 
     decoded = raw_path
-    for _iteration in range(3):
-        next_value = unquote(decoded, errors="strict")
-        if next_value == decoded:
-            break
-        decoded = next_value
-    else:
-        if unquote(decoded, errors="strict") != decoded:
-            raise InvalidLegacyPath("Legacy path has excessive encoding.")
+    try:
+        for _iteration in range(3):
+            next_value = unquote(decoded, errors="strict")
+            if next_value == decoded:
+                break
+            decoded = next_value
+        else:
+            if unquote(decoded, errors="strict") != decoded:
+                raise InvalidLegacyPath("Legacy path has excessive encoding.")
+        decoded.encode("utf-8", errors="strict")
+    except (UnicodeDecodeError, UnicodeEncodeError) as exc:
+        raise InvalidLegacyPath("Legacy path has invalid UTF-8 encoding.") from exc
 
     if any(ord(character) < 32 or ord(character) == 127 for character in decoded):
         raise InvalidLegacyPath("Legacy path contains control characters.")

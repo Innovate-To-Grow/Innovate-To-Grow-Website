@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.core.admin.legacy_view import get_legacy_view_admin_urls
+from apps.core.legacy_view.views import legacy_access_exchange_gateway, legacy_proxy_view
 from apps.core.middleware.csp_middleware import ContentSecurityPolicyMiddleware
 from apps.core.models import LegacyAccessGrant
 from apps.core.services.legacy_access import (
@@ -35,6 +36,7 @@ from apps.core.services.legacy_access.sessions import (
     database_session_expiry,
     source_session_is_valid,
 )
+from apps.core.tests.legacy_view.test_transport_and_views import origin_handle
 from apps.core.views.legacy_access import legacy_access_exchange_view
 from apps.event.tests.helpers import make_admin, make_superuser
 
@@ -60,6 +62,8 @@ def verified_exchange(request):
 urlpatterns = [
     path("admin/", legacy_admin_site.urls),
     path("legacy-view/_i2g-auth/exchange", verified_exchange, name="legacy_exchange"),
+    path("legacy-view/_i2g-auth/real-exchange", legacy_access_exchange_gateway, name="legacy_gateway_exchange"),
+    path("legacy-view/<path:legacy_path>", legacy_proxy_view, name="legacy_gateway_proxy"),
     path("unsafe-bare-exchange", legacy_access_exchange_view, name="unsafe_bare_exchange"),
 ]
 
@@ -165,6 +169,44 @@ class LegacyAccessAdminTests(TestCase):
         replay = self._exchange_code(code)
         self.assertEqual(replay.status_code, 403)
         self.assertEqual(replay.content, b"Access denied.")
+
+    @override_settings(
+        LEGACY_ORIGIN_URL="http://172.31.69.63:8080",
+        LEGACY_ORIGIN_HEADER_NAME="X-I2G-Legacy-Origin-Secret",
+        LEGACY_ORIGIN_HEADER_VALUE="a-random-cloudfront-origin-value-with-32-characters",
+    )
+    def test_real_gateway_exchanges_admin_code_then_serves_read_only_page(self):
+        code = self._issue_code()
+        viewer = Client(enforce_csrf_checks=True)
+        exchange_url = reverse("legacy_gateway_exchange")
+        origin_header = {"X-I2G-Legacy-Origin-Secret": "a-random-cloudfront-origin-value-with-32-characters"}
+
+        self.assertEqual(viewer.post(exchange_url, {"code": code}).status_code, 404)
+        exchange = viewer.post(exchange_url, {"code": code}, headers=origin_header, secure=True)
+
+        self.assertEqual(exchange.status_code, 303)
+        self.assertEqual(exchange["Location"], "/")
+        self.assertIn(LEGACY_VIEWER_COOKIE_NAME, viewer.cookies)
+        self.assertEqual(viewer.post(exchange_url, {"code": code}, headers=origin_header).status_code, 403)
+
+        origin = origin_handle(
+            b"<html><body><form action='/update' method='post'><button>Save</button></form>"
+            b"<a href='/about'>About</a></body></html>",
+            headers={"Content-Type": "text/html; charset=utf-8"},
+        )
+        with patch("apps.core.legacy_view.views.open_legacy_origin", return_value=origin) as open_origin:
+            page_url = reverse("legacy_gateway_proxy", kwargs={"legacy_path": "about"})
+            self.assertEqual(viewer.get(page_url, secure=True).status_code, 404)
+            page = viewer.get(page_url, headers=origin_header, secure=True)
+            # The CSRF middleware rejects this browser write before the gateway's
+            # GET/HEAD-only check; neither path reaches the legacy origin.
+            self.assertEqual(viewer.post(page_url, headers=origin_header, secure=True).status_code, 403)
+
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"i2g-legacy-read-only-banner", page.content)
+        self.assertIn(b'disabled=""', page.content)
+        self.assertIn(b"form-action 'none'", page["Content-Security-Policy"].encode())
+        self.assertEqual(open_origin.call_count, 1)
 
     def test_invalid_expired_and_replayed_codes_share_the_same_denial(self):
         invalid = self._exchange_code("not-a-real-code")

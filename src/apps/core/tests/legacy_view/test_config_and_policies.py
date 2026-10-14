@@ -172,6 +172,11 @@ class LegacyPathPolicyEdgeCaseTest(SimpleTestCase):
         with self.assertRaisesMessage(InvalidLegacyPath, "excessive encoding"):
             canonicalize_legacy_path("static%252525252Fadmin")
 
+    def test_canonicalizer_rejects_malformed_utf8_at_every_decoding_layer(self):
+        for path in ("static/%FF", "static/%C3%28", "static/%25FF", "static/\udcff"):
+            with self.subTest(path=repr(path)), self.assertRaises(InvalidLegacyPath):
+                canonicalize_legacy_path(path)
+
     def test_query_filter_drops_query_with_too_many_fields(self):
         self.assertEqual(filter_query_string("page=1&" * 51), "")
 

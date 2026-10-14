@@ -49,7 +49,7 @@ _LEGACY_CSP = "; ".join(
         "https://css.gg https://fonts.googleapis.com",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
-        "connect-src 'self'",
+        "connect-src 'self' https://sheets.googleapis.com",
         "media-src 'self' https:",
         "frame-src https:",
         "object-src 'none'",
@@ -85,7 +85,13 @@ def _copy_origin_headers(
     include_content_length: bool = True,
 ) -> None:
     for name in _COPIED_RESPONSE_HEADERS:
-        if transformed_html and name in {"Content-Encoding", "Content-Length", "ETag"}:
+        if transformed_html and name in {
+            "Accept-Ranges",
+            "Content-Encoding",
+            "Content-Length",
+            "Content-Range",
+            "ETag",
+        }:
             continue
         if not include_content_length and name == "Content-Length":
             continue
@@ -139,7 +145,12 @@ def _render_head_or_empty(
 ) -> HttpResponse:
     response = HttpResponse(status=handle.response.status)
     try:
-        _copy_origin_headers(response, handle, canonical_path, config)
+        html_response = _origin_content_type(handle) in {"text/html", "application/xhtml+xml"}
+        _copy_origin_headers(response, handle, canonical_path, config, transformed_html=html_response)
+        if html_response:
+            # GET changes the representation, so the origin's length and range
+            # metadata cannot describe a HEAD response from the viewer.
+            response["Content-Type"] = "text/html; charset=utf-8"
     finally:
         handle.close()
     return _apply_gateway_headers(response)
@@ -163,6 +174,9 @@ def _render_html(
     handle: LegacyOriginHandle,
     config: LegacyGatewayConfig,
 ) -> HttpResponse:
+    if handle.response.status == HTTPStatus.PARTIAL_CONTENT:
+        handle.close()
+        raise LegacyOriginUnavailable("Partial Legacy HTML cannot be safely rewritten.")
     encoding = handle.response.headers.get("Content-Encoding", "").strip().lower()
     content_length = handle.response.headers.get("Content-Length", "").strip()
     if encoding not in {"", "identity"}:

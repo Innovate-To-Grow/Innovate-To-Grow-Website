@@ -254,6 +254,11 @@ def validate_nginx_policy() -> None:
     log_format_names = log_format.replace("$request_method", "").replace("$request_time", "")
     require("$request" not in log_format_names, "private log must not record raw requests")
     require("$args" not in log_format, "private log must not record query strings")
+    error_logs = [line.strip() for line in server_config.splitlines() if line.strip().startswith("error_log ")]
+    require(
+        error_logs == ["error_log /dev/null error;"],
+        "private Nginx error log must not record request lines or query strings",
+    )
 
     for required in (
         "uwsgi_pass i2g_legacy_application;",
