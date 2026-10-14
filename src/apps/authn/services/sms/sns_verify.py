@@ -24,9 +24,11 @@ from botocore.exceptions import BotoCoreError, ClientError
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from apps.authn.models import PhoneVerificationChallenge
+from apps.authn.services.email.challenges.degradation import FAILURE_WINDOW, max_attempts_for
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 from apps.core.services.aws.provider_outcomes import (
     NO_PROVIDER_RETRIES,
@@ -200,6 +202,19 @@ def _mark_challenge_delivery_failed(challenge_id) -> None:
         logger.exception("Unable to record SMS delivery failure for challenge %s", challenge_id)
 
 
+def _recent_phone_failures(phone_number: str, *, now) -> int:
+    """Failed code guesses against ``phone_number`` (E.164) over the degradation window (see ``degradation``).
+
+    One aggregate query answered by the ``(phone_number, send_reserved_at)`` index; ``send_reserved_at`` is the issue
+    time of every challenge ``start_phone_verification`` creates. Only wrong guesses increment ``attempts``.
+    """
+    total = PhoneVerificationChallenge.objects.filter(
+        phone_number=phone_number,
+        send_reserved_at__gte=now - FAILURE_WINDOW,
+    ).aggregate(total=Sum("attempts"))["total"]
+    return int(total or 0)
+
+
 def start_phone_verification(
     phone_number: str,
     *,
@@ -210,10 +225,25 @@ def start_phone_verification(
     """
     Generate and durably store an OTP, then send it via AWS End User Messaging.
 
+    This is the only place an OTP SMS leaves the system, so it is also where the global SMS daily budget is spent:
+    one unit per provider call, reserved together with the challenge row and never released (an uncertain or failed
+    provider call keeps it). Raises ``SendThrottled`` (from ``send_verification``) when the budget is spent; nothing
+    is stored or sent in that case.
+
     Returns ``{"status": "pending", "challenge_id": "..."}``.
     """
+    from apps.authn.services.send_verification.quotas import reserve_sms_dispatch
+
     aws_config = _assert_configured()
     code = _random_code()
+    # Rendered before anything is reserved: a broken template costs neither an hourly slot nor an SMS budget unit.
+    try:
+        message = aws_config.render_sms_otp_message(code)
+    except ValueError as exc:
+        raise PhoneVerificationDeliveryError(
+            "SMS message template is invalid.",
+            outcome=PROVIDER_OUTCOME_PERMANENT,
+        ) from exc
     now = timezone.now()
     with _lock_phone(phone_number):
         # Commit the reservation before the external provider call. A crash or
@@ -226,6 +256,8 @@ def start_phone_verification(
                 ).count()
                 if recent_sends >= MAX_SENDS_PER_HOUR:
                     raise PhoneVerificationThrottled("Too many verification attempts. Please try again later.")
+                # A number with many recent failed guesses gets single-guess codes (per number, all purposes).
+                max_attempts = max_attempts_for(_recent_phone_failures(phone_number, now=now), MAX_VERIFY_ATTEMPTS)
                 PhoneVerificationChallenge.objects.select_for_update().filter(
                     phone_number=phone_number,
                     purpose=purpose,
@@ -241,24 +273,19 @@ def start_phone_verification(
                     context_identifier=str(context_identifier or ""),
                     code_hash=make_password(code),
                     status=PhoneVerificationChallenge.Status.SENDING,
-                    max_attempts=MAX_VERIFY_ATTEMPTS,
+                    max_attempts=max_attempts,
                     expires_at=now + timedelta(seconds=OTP_TTL_SECONDS),
                     send_reserved_at=now,
                 )
+                # One unit of the global SMS daily budget, taken last (so the shared budget row is locked only for
+                # this UPDATE and the commit) and in the same transaction as the challenge row: a spent budget
+                # raises ``SendThrottled`` and rolls the whole reservation back (no challenge, earlier codes stay
+                # valid); otherwise the unit is committed before the provider call below and is never released.
+                reserve_sms_dispatch(destination=phone_number, now=now)
         except PhoneVerificationThrottled:
             raise
         except (IntegrityError, ValidationError, ValueError) as exc:
             raise PhoneVerificationThrottled("A verification code was already requested. Please try again.") from exc
-
-        try:
-            message = aws_config.render_sms_otp_message(code)
-        except ValueError as exc:
-            _mark_challenge_delivery_failed(challenge.pk)
-            raise PhoneVerificationDeliveryError(
-                "SMS message template is invalid.",
-                outcome=PROVIDER_OUTCOME_PERMANENT,
-                challenge_id=str(challenge.pk),
-            ) from exc
 
         try:
             from apps.authn.services.send_verification.outcomes import record_otp_challenge
@@ -343,6 +370,17 @@ def check_phone_verification(
     return callback_result if approved_callback is not None else challenge
 
 
+def _spent_code_outcome(challenge: PhoneVerificationChallenge) -> str:
+    """The outcome for a wrong guess that uses up (or finds used up) ``challenge``'s attempts.
+
+    A normal code keeps the verifier's ``"throttled"`` answer on its last allowed guess. A degraded code (issued
+    with fewer than ``MAX_VERIFY_ATTEMPTS`` guesses, see ``degradation``) is spent by its first wrong guess and
+    answers ``"invalid"``, exactly what a first wrong guess gets on any other number, so no verify endpoint shows
+    that a number is degraded.
+    """
+    return "throttled" if challenge.max_attempts >= MAX_VERIFY_ATTEMPTS else "invalid"
+
+
 @transaction.atomic
 def _check_phone_verification(
     *,
@@ -383,14 +421,15 @@ def _check_phone_verification(
     if challenge.expires_at <= now or challenge.attempts >= challenge.max_attempts:
         challenge.status = PhoneVerificationChallenge.Status.EXPIRED
         challenge.save(update_fields=["status", "updated_at"])
-        return None, "throttled" if challenge.attempts >= challenge.max_attempts else "invalid"
+        return None, _spent_code_outcome(challenge) if challenge.attempts >= challenge.max_attempts else "invalid"
 
     if not check_password(code, challenge.code_hash):
         challenge.attempts += 1
         if challenge.attempts >= challenge.max_attempts:
             challenge.status = PhoneVerificationChallenge.Status.EXPIRED
         challenge.save(update_fields=["attempts", "status", "updated_at"])
-        return None, "throttled" if challenge.status == PhoneVerificationChallenge.Status.EXPIRED else "invalid"
+        spent = challenge.status == PhoneVerificationChallenge.Status.EXPIRED
+        return None, _spent_code_outcome(challenge) if spent else "invalid"
 
     next_status = PhoneVerificationChallenge.Status.CONSUMED if consume else PhoneVerificationChallenge.Status.VERIFIED
     update_fields = {

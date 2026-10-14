@@ -70,9 +70,11 @@ DATABASES = {
 # ---------------------------------------------------------------------------
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        # LocMemCache whose clear() also empties the throttle alias (see components/framework/cache.py).
+        "BACKEND": "apps.core.utils.throttle_cache.DevelopmentLocMemCache",
         "LOCATION": "innovate-to-grow-dev",
-    }
+    },
+    "throttle": THROTTLE_CACHE,  # noqa: F405
 }
 
 # Self-hosted send verification: enforce locally so missing proofs fail in dev.
@@ -86,9 +88,3 @@ if "test" in sys.argv:
     SEND_VERIFICATION_TEST_AUTOSOLVE = True
     SEND_VERIFICATION_COST = 10
     SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = 0
-    SEND_VERIFICATION_CHALLENGE_CACHE_LIMIT = 10_000
-    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
-        **REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"],  # noqa: F405
-        "send_verification_challenge": "10000/minute",
-        "send_verification_status": "10000/minute",
-    }

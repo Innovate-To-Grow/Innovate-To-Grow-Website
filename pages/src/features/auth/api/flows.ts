@@ -134,13 +134,26 @@ export const requestEmailAuthCode = async (
 };
 
 export const verifyLoginCode = async (email: string, code: string): Promise<LoginResponse> => {
-  const response = await authApi.post<LoginResponse>('/authn/login/verify-code/', { email, code });
+  // The emailed code is the credential, so the stored session must not ride
+  // along (see `skipAuth` in client.ts): a stale one would otherwise be
+  // refreshed, and destroyed, on behalf of a request that never needed it.
+  const response = await authApi.post<LoginResponse>(
+    '/authn/login/verify-code/',
+    { email, code },
+    { skipAuth: true },
+  );
   persistAuthSession(response.data);
   return response.data;
 };
 
 export const verifyEmailAuthCode = async (email: string, code: string): Promise<EmailAuthVerifyResponse> => {
-  const response = await authApi.post<EmailAuthVerifyResponse>('/authn/email-auth/verify-code/', { email, code });
+  // The emailed link exchanges its one-time code here; the stored session must
+  // not ride along (see `skipAuth` in client.ts).
+  const response = await authApi.post<EmailAuthVerifyResponse>(
+    '/authn/email-auth/verify-code/',
+    { email, code },
+    { skipAuth: true },
+  );
   persistAuthSession(response.data);
   return response.data;
 };
@@ -360,10 +373,5 @@ export const confirmAccountDeletion = async (verificationToken: string): Promise
   const response = await authApi.post<MessageResponse>('/authn/delete-account/confirm/', {
     verification_token: verificationToken,
   });
-  return response.data;
-};
-
-export const subscribe = async (email: string): Promise<MessageResponse> => {
-  const response = await authApi.post<MessageResponse>('/authn/subscribe/', { email });
   return response.data;
 };

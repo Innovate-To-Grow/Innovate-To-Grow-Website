@@ -41,11 +41,6 @@ export interface SmsChallengeResponse extends MessageResponse {
   challenge_id?: string;
 }
 
-export interface UnsubscribeResponse {
-  message: string;
-  unsubscribed: boolean;
-}
-
 export interface EmailAuthVerifyResponse extends LoginResponse {
   next_step: AuthNextStep;
   requires_profile_completion: boolean;

@@ -21,6 +21,7 @@ URL organization for the Django backend, defined in `src/config/urls.py` with de
 | `/analytics/` | `apps.cms.analytics_urls` | Page view tracking |
 | `/event/` | `apps.event.urls` | Event registration and management |
 | `/projects/` | `apps.projects.urls` | Past project archives |
+| `/assistant/` | `apps.system_intelligence.urls` | Public assistant (tool-free, read-only chat) |
 | `/mail/` | `apps.mail.urls` | Login links, subscription links, and SES delivery events |
 | `/admin-api/` | `apps.cli_admin.urls` | OAuth2 + PKCE generic CRUD for the `i2g-admin` CLI |
 | `/ckeditor5/` | CKEditor 5 | Rich text editor file uploads |
@@ -40,7 +41,7 @@ Key groups:
 - Profile (`/authn/profile/`)
 - Contact emails and phones (`/authn/contact-emails/`, `/authn/contact-phones/`)
 - Token refresh (`/authn/refresh/`)
-- Auto-login (`/authn/unsubscribe-login/`, `/authn/impersonate-login/`)
+- Admin impersonation login (`/authn/impersonate-login/`)
 - Admin invitation form (`/authn/invite/{token}/`)
 
 ### Content (`/cms/`, `/news/`, `/analytics/`, `/layout/`)
@@ -71,11 +72,20 @@ See [CMS & News](cms-and-news.md) for details.
 - Past project listing (paginated and full)
 - Project detail
 - Sharing
+- AI search (`/projects/past-ai-search/`, members only)
+
+### Public assistant (`/assistant/`)
+
+- `/assistant/config/` — Display configuration, plus a signed `visitor_token` while the assistant is enabled
+- `/assistant/chat/` — Chat; limits are keyed on the visitor token or member, never on the client IP
+
+See [Assistant and AI search limits](../integrations/assistant-limits.md).
 
 ### Mail (`/mail/`)
 
 - `/mail/login-link/` — Token-based auto-login from campaign and ticket emails (legacy alias: `/mail/magic-login/`)
-- `/mail/unsubscribe/{token}/`, `/mail/resubscribe/{token}/` — One-click subscription preference links
+- `/mail/unsubscribe/{token}/` — Newsletter unsubscribe page and RFC 8058 one-click target: `GET` only asks for confirmation, `POST` unsubscribes every address of the member (link valid 365 days, idempotent)
+- `/mail/resubscribe/{token}/` — `POST`-only undo of that unsubscribe (1 hour); see [Auth & Mail](auth-and-mail.md#one-click-unsubscribe-and-resubscribe)
 - `/mail/ses/events/` — Signed SES delivery-event webhook
 
 ### Admin API (`/admin-api/`)

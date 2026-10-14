@@ -1,4 +1,5 @@
 import {authApi, isDefinitiveAuthFailure} from './client';
+import {MalformedLoginResponseError} from './errors';
 import {
   clearTokens,
   getAccessToken,
@@ -7,26 +8,56 @@ import {
   updateStoredSessionProfile,
   type StoredAuthSession,
 } from './storage';
-import type {LoginResponse, UnsubscribeResponse, User} from './types';
+import type {LoginResponse, User} from './types';
 
+/**
+ * A 2xx answer is only a login when it carries the fields a session is built
+ * from. Anything else (a proxy or captive portal answering with HTML, an SPA
+ * rewrite) must not reach storage: persisting it would either throw a
+ * confusing TypeError or store a session that cannot be read back. The check
+ * mirrors what `storage.ts` requires of a stored user.
+ */
+const readLoginResponse = (data: unknown): LoginResponse => {
+  const candidate =
+    data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
+  const user =
+    candidate?.user && typeof candidate.user === 'object'
+      ? (candidate.user as Record<string, unknown>)
+      : null;
+  if (
+    !candidate ||
+    typeof candidate.access !== 'string' ||
+    !candidate.access ||
+    typeof candidate.refresh !== 'string' ||
+    !candidate.refresh ||
+    !user ||
+    typeof user.member_uuid !== 'string' ||
+    typeof user.email !== 'string'
+  ) {
+    throw new MalformedLoginResponseError();
+  }
+  return data as LoginResponse;
+};
+
+/**
+ * Exchange the emailed one-time token for a session and store it.
+ *
+ * Rejects with an Axios error when the exchange fails, with
+ * `MalformedLoginResponseError` when the server answers 2xx with something that
+ * is not a login, and with `SessionNotSavedError` when the browser refuses to
+ * store the session after the token was already spent.
+ */
 export const loginLinkAutoLogin = async (
   token: string,
 ): Promise<LoginResponse> => {
-  const response = await authApi.post<LoginResponse>('/mail/login-link/', {
-    token,
-  });
-  persistAuthSession(response.data);
-  return response.data;
-};
-
-export const unsubscribeAutoLogin = async (
-  token: string,
-): Promise<UnsubscribeResponse> => {
-  const response = await authApi.post<UnsubscribeResponse>(
-    '/authn/unsubscribe-login/',
+  const response = await authApi.post<LoginResponse>(
+    '/mail/login-link/',
     {token},
+    {skipAuth: true},
   );
-  return response.data;
+  const login = readLoginResponse(response.data);
+  persistAuthSession(login);
+  return login;
 };
 
 export const impersonateAutoLogin = async (
@@ -35,9 +66,11 @@ export const impersonateAutoLogin = async (
   const response = await authApi.post<LoginResponse>(
     '/authn/impersonate-login/',
     {token},
+    {skipAuth: true},
   );
-  persistAuthSession(response.data);
-  return response.data;
+  const login = readLoginResponse(response.data);
+  persistAuthSession(login);
+  return login;
 };
 
 export const logout = async (): Promise<void> => {

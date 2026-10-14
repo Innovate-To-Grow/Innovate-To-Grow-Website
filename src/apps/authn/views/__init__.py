@@ -26,8 +26,6 @@ from .account.email_code import (
     DeleteAccountCodeVerifyView,
 )
 from .account.profile import ProfileView
-from .account.subscribe import SubscribeView
-from .account.unsubscribe_login import UnsubscribeAutoLoginView
 from .admin.impersonate_login import ImpersonateLoginView
 from .admin.invitation import AcceptInvitationView
 from .admin.login import AdminLoginView
@@ -94,7 +92,5 @@ __all__ = [
     "PublicTokenRefreshView",
     "AcceptInvitationView",
     "AdminLoginView",
-    "SubscribeView",
-    "UnsubscribeAutoLoginView",
     "ImpersonateLoginView",
 ]

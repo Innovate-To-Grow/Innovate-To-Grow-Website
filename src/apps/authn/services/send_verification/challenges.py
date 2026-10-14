@@ -10,7 +10,6 @@ from .exceptions import SendVerificationInvalid
 from .hashing import fingerprint_payload
 from .metrics import emit
 from .principal import principal_from_request
-from .rate_limit import enforce_challenge_rate_limit
 
 
 def issue_challenge(
@@ -35,8 +34,8 @@ def issue_challenge(
     ):
         raise SendVerificationInvalid("Invalid verification destination.")
 
+    # No per-IP limit on issuance (campus users share one IP); sending stays capped per destination.
     config = require_ready(for_sms=destination_kind == KIND_PHONE or operation in SMS_OPERATIONS)
-    enforce_challenge_rate_limit(request, config)
     principal_type, principal_key = principal_from_request(request, operation=operation)
     now = timezone.now()
     expires_at = now + timedelta(seconds=config.ttl_seconds)

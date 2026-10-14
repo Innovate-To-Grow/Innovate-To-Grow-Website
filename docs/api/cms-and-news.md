@@ -164,15 +164,62 @@ Tracks a page view. Called by the frontend's `trackPageView()` function.
 **Request:**
 ```json
 {
-  "route": "/about",
+  "path": "/about",
   "referrer": "https://google.com",
-  "user_agent": "Mozilla/5.0..."
+  "visitor_id": "0b6a2f0e-6c1d-4c0e-9f8e-2f6f3a1d9b77"
 }
 ```
 
+`visitor_id` is optional: a random id the browser keeps in `localStorage` (a UUID, or any 1-64 characters of
+`A-Z a-z 0-9 _ -`). A missing or malformed id never fails the request; the view is recorded without one. The user
+agent and client IP are read from the request, not the body.
+
 **Permission:** AllowAny
 
-**Model:** `PageView` — stores timestamp, route, referrer, and user agent. Writes are buffered for performance.
+**Responses:** `201` with an empty body; `400` for a missing, empty or over-long `path` / `referrer`; `429` when a
+limit below is reached. The frontend ignores every outcome, so a refused page view costs one analytics row and
+nothing the visitor can see.
+
+**Limits:** never per client IP (campus visitors share one).
+
+| Limit | Rate | Key |
+|-------|------|-----|
+| `PageViewVisitorThrottle` | 120/minute | the `visitor_id` |
+| `PageViewLegacyThrottle` | 600/minute | one shared bucket for requests without a usable id (older cached frontend bundles) |
+| `PageViewTotalThrottle` | 3,000/minute | one constant key: all page views together |
+
+- The per-visitor id is client-chosen, so the first two only stop a runaway client: a script can send a fresh id
+  with every request. The total cap is what bounds such a flood. It is about twenty times the estimated busiest
+  campus minute (150 page views); above it page views are answered `429` and not recorded, and the worker logs
+  `analytics.pageview_total_cap` (WARNING) at most once a minute.
+- The total counts only page views the per-visitor / legacy limit accepted, so one looping browser uses 120 of the
+  3,000, not all of them. While the cap is reached, a request is refused before its id gets a bucket of its own.
+- All three keep their history in the `throttle` cache alias, a bounded in-process `LocMemCache` (50,000 entries,
+  least recently used culled first), never in the default cache. In production the default cache is a
+  per-container file cache where every key is a file and every write lists the directory, so client-minted keys
+  must not reach it (see [Environments](../deployment/environments.md#the-throttle-cache-alias)).
+- In-process means per Uvicorn worker: with `WEB_CONCURRENCY=2` a container admits up to twice each rate, each ECS
+  task has its own counters, and a restart forgets them. These are fairness limits over analytics rows; nothing
+  about security or money depends on them.
+- A flood from one off-campus address belongs at the edge:
+  [WAF rate limits](../deployment/waf-rate-limits.md), pattern set C.
+
+**Stored fields:** every field is bounded before it is buffered, because a batch is written with one
+`bulk_create` and a value PostgreSQL refuses would lose the whole batch.
+
+| Field | Bound |
+|-------|-------|
+| `path`, `referrer` | 2,048 characters each (the column size); longer values are rejected with `400` |
+| `path`, in bytes | cut to 2,048 bytes of UTF-8. The column is indexed and PostgreSQL refuses an index entry over about 2,700 bytes. Real paths are percent-encoded ASCII, so this only affects a path of raw non-ASCII text |
+| User agent | cut to 512 characters |
+| Session key | the session cookie value when it is at most 64 characters, else empty |
+| Client IP | stored when it parses as an IPv4 / IPv6 address, else `NULL` |
+| `visitor_id` | 1-64 characters of the alphabet above, else `NULL` |
+
+**Model:** `PageView` — stores timestamp, path, referrer, user agent, client IP and `visitor_id`. Writes are
+buffered for performance. `visitor_id` is a nullable column without an index (nothing filters on it). The table
+has no retention. The admin dashboard counts unique visitors by `visitor_id`, falling back to the IP address for
+rows recorded without one.
 
 ## Layout
 

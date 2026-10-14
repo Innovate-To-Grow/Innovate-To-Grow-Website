@@ -10,7 +10,7 @@ from .auth.phone_code import (
     UnifiedPhoneAuthVerifySerializer,
 )
 from .auth.register import RegisterSerializer
-from .auth.subscribe import SubscribeSerializer
+from .auth.token_refresh import MemberTokenRefreshSerializer
 from .contacts.emails import (
     ContactEmailCreateSerializer,
     ContactEmailSerializer,
@@ -62,6 +62,7 @@ __all__ = [
     "LoginCodeRequestSerializer",
     "LoginCodeVerifySerializer",
     "LoginSerializer",
+    "MemberTokenRefreshSerializer",
     "PasswordResetConfirmSerializer",
     "PasswordResetRequestSerializer",
     "PasswordResetVerifySerializer",
@@ -69,7 +70,6 @@ __all__ = [
     "RegisterResendCodeSerializer",
     "RegisterSerializer",
     "RegisterVerifyCodeSerializer",
-    "SubscribeSerializer",
     "UnifiedEmailAuthRequestSerializer",
     "UnifiedEmailAuthVerifySerializer",
     "UnifiedPhoneAuthRequestSerializer",

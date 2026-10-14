@@ -115,15 +115,43 @@ class SystemIntelligenceConfig(ProjectControlModel):
         verbose_name="Public Assistant Temperature",
         help_text="Sampling temperature for the public assistant (lower = more factual).",
     )
+    # NOTE: the two "ip" columns below are NOT keyed on the client IP any more
+    # (the whole campus shares one public address). They bound one ACTOR: an
+    # anonymous visitor (signed visitor value) or a signed-in member. The one
+    # shared bucket for callers without a valid visitor value is exempt from
+    # the token limit. The column names are kept to avoid a rename migration.
     public_assistant_ip_token_limit = models.PositiveIntegerField(
         default=50000,
-        verbose_name="Public Per-IP Token Limit",
-        help_text="Max tokens a single visitor IP may consume within the window. 0 disables the limit.",
+        verbose_name="Per-Visitor / Per-Member Token Limit",
+        help_text=(
+            "Max tokens ONE visitor (anonymous browser) or ONE signed-in member may consume within the window, across "
+            "the public assistant and past-project AI search. Not keyed on IP address. Requests from old cached pages "
+            "without a visitor identity share one bucket that is exempt from this limit (it stands for many people at "
+            "once; the public assistant's Global Token Limit and a request-rate limit bound it instead). A fairness "
+            "limit only (visitor identities are free to obtain) -- the spend ceiling is the Global Token Limit. 0 "
+            "disables this per-visitor/member limit."
+        ),
     )
     public_assistant_ip_token_window_seconds = models.PositiveIntegerField(
         default=86400,
-        verbose_name="Public Per-IP Token Window (seconds)",
-        help_text="Rolling window, in seconds, for the per-IP token budget (default 24h).",
+        verbose_name="Per-Visitor / Per-Member Token Window (seconds)",
+        help_text="Window, in seconds, for the per-visitor/member token limit (default 24h).",
+    )
+    public_assistant_global_token_limit = models.PositiveIntegerField(
+        default=2_000_000,
+        db_default=2_000_000,
+        verbose_name="Global Token Limit (per feature, per 24 hours)",
+        help_text=(
+            "Spend ceiling, applied to EACH feature separately: the public assistant and the past-project AI search "
+            "each have their own counter and may each consume up to this many tokens, for all users, in a 24-hour "
+            "window (a feature's window opens with its first request after its previous window ended). When a feature "
+            "reaches it, that feature answers 'usage limit reached' for everyone until its window ends or this value "
+            "is raised (a change applies immediately); the other feature keeps working. Size it at 2x or more of the "
+            "busiest expected day of the busier feature: people x questions x ~2,700 tokens per chat answer (up to "
+            "~7,300 with a full site context), or searches x ~15,000 tokens per AI search. Worst-case daily cost is "
+            "about this value x the model's OUTPUT price per token, for each feature (so at most twice that for both). "
+            "0 switches off the model calls of both features."
+        ),
     )
     public_assistant_max_message_chars = models.PositiveIntegerField(
         default=2000,

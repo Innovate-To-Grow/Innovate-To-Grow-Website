@@ -8,17 +8,24 @@ from apps.core.models.base.control import ProjectControlModel
 
 
 class PublicAssistantTokenBudget(models.Model):
-    """Shared per-IP token counter used when Redis is not configured.
+    """Shared token counter used when Redis is not configured.
 
-    The row is locked only for the short reserve/reconcile update, so every
-    web worker and ECS task observes one atomic budget without holding a
-    database transaction open during the model call.
+    One row per budget: an actor (a visitor, a member, or the shared legacy
+    bucket) or the global budget of one feature (the public assistant and AI
+    search have one each). The row is locked only for the short
+    reserve/reconcile update, so every web worker and ECS task observes one
+    atomic budget without holding a database transaction open during the
+    model call.
     """
 
+    # Historical column name: the key is no longer derived from an IP address.
     ip_hash = models.CharField(
         max_length=64,
         primary_key=True,
-        help_text="Salted SHA-256 hash of the visitor IP (never the raw IP).",
+        help_text=(
+            "Opaque 64-hex budget key: a keyed hash of the visitor or member the budget belongs to, "
+            "or the fixed key of one feature's global budget. Never an IP address or a raw id."
+        ),
     )
     window_id = models.PositiveBigIntegerField(default=0)
     tokens_used = models.PositiveBigIntegerField(default=0)

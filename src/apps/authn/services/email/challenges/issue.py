@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email.auth_email import normalize_email
 
+from .degradation import max_attempts_for, recent_email_failures
 from .queries import assert_within_limit, expire_queryset
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,9 @@ def create_challenge_record(
         )
     )
 
+    # A destination with many recent failed guesses gets single-guess codes (per destination, all purposes).
+    max_attempts = max_attempts_for(recent_email_failures(normalized_email, now=now), api.MAX_VERIFY_ATTEMPTS)
+
     code = api._random_code()
     challenge = EmailAuthChallenge.objects.create(
         member=member,
@@ -53,7 +57,7 @@ def create_challenge_record(
         context_identifier=context_identifier,
         code_hash=make_password(code),
         expires_at=now + api.CHALLENGE_TTL,
-        max_attempts=5,
+        max_attempts=max_attempts,
         last_sent_at=now,
     )
     return challenge, code

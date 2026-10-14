@@ -12,6 +12,8 @@ interface CodeInputProps {
   className?: string;
   autoFocus?: boolean;
   required?: boolean;
+  /** Space-separated ids of elements that describe the field (`aria-describedby`). */
+  describedBy?: string;
 }
 
 export const CodeInput = ({
@@ -22,6 +24,7 @@ export const CodeInput = ({
   className,
   autoFocus = false,
   required = false,
+  describedBy,
 }: CodeInputProps) => {
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value.replace(/\D/g, '').slice(0, 6);
@@ -43,6 +46,7 @@ export const CodeInput = ({
       placeholder={VERIFICATION_CODE_PLACEHOLDER}
       disabled={disabled}
       aria-label={id ? undefined : '6-digit verification code'}
+      aria-describedby={describedBy}
     />
   );
 };

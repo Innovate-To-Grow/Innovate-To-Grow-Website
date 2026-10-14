@@ -16,6 +16,10 @@ class PublicAssistantChatSerializer(serializers.Serializer):
     ``message`` is required, trimmed, non-empty, and length-capped. The cap is
     passed in by the view from ``SystemIntelligenceConfig`` so it stays
     admin-configurable. ``history`` is an optional list of {role, content}.
+
+    ``visitor_token`` is deliberately NOT a field here: a missing, malformed or
+    forged value must never reject the request (old cached bundles send none),
+    so it is read from the raw body by ``resolve_chat_actor`` instead.
     """
 
     # trim_whitespace is disabled so the blank/length checks below own the

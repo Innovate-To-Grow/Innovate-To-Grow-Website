@@ -69,9 +69,9 @@ class ContactEmailAccessTests(APITestCase):
         mock_send.assert_called_once()
 
     def test_request_verification_is_rate_limited_per_user(self, _mock_code, _mock_send):
-        # The shared email_code_request throttle is anon-only (a no-op once
-        # authenticated); the per-user throttle (5/minute) must bound resends so a
-        # logged-in caller cannot bomb an attacker-supplied address with codes.
+        # An anonymous (per-IP) throttle is a no-op once authenticated; the
+        # per-user throttle (5/minute) must bound resends so a logged-in caller
+        # cannot bomb an attacker-supplied address with codes.
         from django.core.cache import cache
 
         cache.clear()

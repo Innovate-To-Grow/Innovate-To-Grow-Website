@@ -1,4 +1,6 @@
-from apps.authn.models import Member
+from django.db.models import Exists, OuterRef
+
+from apps.authn.models import ContactEmail, Member
 from apps.event.models import EventRegistration
 
 from .converters import (
@@ -33,16 +35,20 @@ def recipients_for_audience(
 
 
 def _subscribers(send_all=False):
+    """Active members, each at the addresses whose own ``subscribe`` flag is on.
+
+    The per-address flag is authoritative: scope "primary" mails the primary only when it is subscribed, scope
+    "all" mails every subscribed address. ``verified`` is not required (imported addresses start unverified).
+    """
+    subscribed = ContactEmail.objects.filter(member=OuterRef("pk"), subscribe=True)
+    if not send_all:
+        subscribed = subscribed.filter(email_type="primary")
     members = (
-        Member.objects.filter(
-            contact_emails__subscribe=True,
-            contact_emails__email_type="primary",
-        )
-        .distinct()
+        Member.objects.filter(Exists(subscribed), is_active=True)
         .prefetch_related("contact_emails")
         .order_by("first_name", "last_name")
     )
-    return members_to_recipients(members, send_all=send_all)
+    return members_to_recipients(members, send_all=send_all, subscribed_only=True)
 
 
 def _event_registrants(event):

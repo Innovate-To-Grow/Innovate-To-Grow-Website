@@ -15,6 +15,7 @@ from .constants import (
     FIELD_PAYLOAD,
     FIELD_REQUEST_ID,
     MODE_OBSERVE,
+    OP_PASSWORD_RESET_REQUEST_CODE,
     SMS_CHANNEL,
     SMS_OPERATIONS,
 )
@@ -104,6 +105,11 @@ def consume_and_reserve(
     challenge_id, payload, request_id = extract_verification_fields(raw)
     principal_type, principal_key = principal_from_request(request, operation=operation)
     config = load_settings()
+    # The SMS daily budget is reserved where the SMS is dispatched (``reserve_sms_dispatch``), not here. A request
+    # that is certain to send one is still refused up front when the budget is already spent, before its proof and
+    # cooldown are used. Password reset is not: it sends only when the number has an account, so its answer must not
+    # depend on the budget (it answers its neutral 202 and the SMS is quietly not sent).
+    refuse_spent_sms_budget = channel == SMS_CHANNEL and operation != OP_PASSWORD_RESET_REQUEST_CODE
 
     if config.mode == MODE_OBSERVE and not (challenge_id and payload and request_id):
         emit("observe_missing_proof", operation=operation, destination=destination_normalized)
@@ -117,6 +123,7 @@ def consume_and_reserve(
             channel=channel,
             principal_type=principal_type,
             principal_key=principal_key,
+            refuse_spent_sms_budget=refuse_spent_sms_budget,
         )
 
     config = require_ready(for_sms=channel == SMS_CHANNEL or operation in SMS_OPERATIONS)
@@ -138,6 +145,7 @@ def consume_and_reserve(
             principal_key=principal_key,
             fingerprint=fingerprint,
             config=config,
+            refuse_spent_sms_budget=refuse_spent_sms_budget,
             **context,
         )
     except IntegrityError as exc:
@@ -163,6 +171,7 @@ def _consume_transaction(
     channel,
     destination_kind,
     destination_normalized,
+    refuse_spent_sms_budget=False,
 ):
     context = {
         "operation": operation,
@@ -238,6 +247,7 @@ def _consume_transaction(
             destination_kind=destination_kind,
             destination_normalized=destination_normalized,
             now=now,
+            refuse_spent_sms_budget=refuse_spent_sms_budget,
         )
         record.quota_reserved = True
         record.reserved_at = now
@@ -256,6 +266,7 @@ def _observe_without_proof(
     channel,
     principal_type,
     principal_key,
+    refuse_spent_sms_budget=False,
 ) -> ProtectedSend:
     from uuid import uuid4
 
@@ -268,6 +279,7 @@ def _observe_without_proof(
             destination_kind=destination_kind,
             destination_normalized=destination_normalized,
             now=now,
+            refuse_spent_sms_budget=refuse_spent_sms_budget,
         )
         record = SendVerificationRequest.objects.create(
             request_id=uuid4(),

@@ -39,7 +39,6 @@ import {
   requestPasswordChangeCode,
   requestPasswordReset,
   resendRegistrationCode,
-  subscribe,
   verifyAccountDeletionCode,
   verifyEmailAuthCode,
   verifyLoginCode,
@@ -173,7 +172,13 @@ describe('auth flows', () => {
       mocks.post.mockResolvedValue({data: response});
 
       await verifyLoginCode('a@b.com', '123456');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/login/verify-code/', {email: 'a@b.com', code: '123456'});
+      // The emailed code is the credential: the browser's stored session (a
+      // stale one, on /login-link) must not ride along.
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/login/verify-code/',
+        {email: 'a@b.com', code: '123456'},
+        {skipAuth: true},
+      );
       expect(mocks.persist).toHaveBeenCalledWith(response);
     });
   });
@@ -184,7 +189,12 @@ describe('auth flows', () => {
       mocks.post.mockResolvedValue({data: response});
 
       await verifyEmailAuthCode('a@b.com', '654321');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/email-auth/verify-code/', {email: 'a@b.com', code: '654321'});
+      // The emailed-link exchange must not carry the browser's stored session.
+      expect(mocks.post).toHaveBeenCalledWith(
+        '/authn/email-auth/verify-code/',
+        {email: 'a@b.com', code: '654321'},
+        {skipAuth: true},
+      );
       expect(mocks.persist).toHaveBeenCalledWith(response);
     });
   });
@@ -262,15 +272,6 @@ describe('auth flows', () => {
         new_password_confirm: 'enc-pw',
         key_id: 'key-1',
       });
-    });
-  });
-
-  describe('subscribe', () => {
-    it('posts email to subscribe endpoint', async () => {
-      mocks.post.mockResolvedValue({data: {message: 'subscribed'}});
-      const result = await subscribe('a@b.com');
-      expect(mocks.post).toHaveBeenCalledWith('/authn/subscribe/', {email: 'a@b.com'});
-      expect(result).toEqual({message: 'subscribed'});
     });
   });
 

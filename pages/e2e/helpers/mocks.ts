@@ -104,6 +104,49 @@ export async function mockEmailAuthFlow(
   return {requestPayloads, verifyPayloads};
 }
 
+export interface LoginCodeMockResult {
+  requestPayloads: unknown[];
+  verifyPayloads: unknown[];
+}
+
+// Login-code twin of mockEmailAuthFlow: the existing-accounts-only code flow
+// (`/authn/login/*`), which answers every address with the same generic
+// acknowledgement and never creates an account. Same option semantics.
+export async function mockLoginCodeFlow(
+  page: Page,
+  opts: {verifyResponse?: LoginResponse; verifyStatus?: number} = {},
+): Promise<LoginCodeMockResult> {
+  const requestPayloads: unknown[] = [];
+  const verifyPayloads: unknown[] = [];
+  const verifyResponse = opts.verifyResponse ?? loginResponse();
+  const verifyStatus = opts.verifyStatus ?? 200;
+
+  if (verifyStatus < 400) {
+    await mockAuthenticatedLogin(page, verifyResponse);
+  }
+
+  await mockSendVerification(page);
+
+  await page.route('**/authn/login/request-code/', async (route) => {
+    requestPayloads.push(route.request().postDataJSON());
+    await route.fulfill(
+      json({message: 'If an eligible account exists, a verification code has been sent.'}, 202),
+    );
+  });
+
+  await page.route('**/authn/login/verify-code/', async (route) => {
+    verifyPayloads.push(route.request().postDataJSON());
+    if (verifyStatus >= 400) {
+      await route.fulfill(json({detail: 'Verification code is invalid or has expired.'}, verifyStatus));
+      return;
+    }
+    await mockAuthenticatedLogin(page, verifyResponse);
+    await route.fulfill(json(verifyResponse));
+  });
+
+  return {requestPayloads, verifyPayloads};
+}
+
 export interface PhoneAuthMockResult {
   requestPayloads: unknown[];
   verifyPayloads: unknown[];
