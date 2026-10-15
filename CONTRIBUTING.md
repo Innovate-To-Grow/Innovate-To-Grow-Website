@@ -150,6 +150,7 @@ npx tsc --noEmit       # Type check
 | Backend unit/functional tests | `cd src && python manage.py test` | You can scope tests with dotted paths (`python manage.py test pages.tests.test_views`). |
 | Backend migrations | `python manage.py makemigrations && python manage.py migrate` | Required whenever models change. Commit the generated migration files. |
 | Frontend linting | `cd pages && npm run lint` | Ensures TypeScript + React hooks compliance. |
+| Frontend unit tests | `cd pages && npm run test:coverage` | Runs the same unit suite and coverage checks as CI. |
 | Frontend type/build check | `cd pages && npm run build` | Runs `tsc -b` and the production Vite build. |
 | Manual smoke test | Run both dev servers, then load http://localhost:5173 | Verify menus, content pages, and API-driven sections render without console errors. |
 
@@ -158,6 +159,8 @@ Please add or update automated tests when you:
 - Modify API endpoints or request/response shapes.
 - Introduce new React components, hooks, or data flows.
 - Fix a bug (include a regression test).
+
+For asynchronous frontend tests, wait for the behavior being asserted. A `findBy*` query only confirms that an element exists; use `waitFor` when checking a later effect such as focus.
 
 ---
 

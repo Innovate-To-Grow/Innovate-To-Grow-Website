@@ -5,6 +5,7 @@ Member admin configuration.
 import logging
 import re
 import uuid
+from urllib.parse import unquote
 
 from django.conf import settings
 from django.contrib import admin
@@ -14,7 +15,6 @@ from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
-from django.utils.http import unquote
 from django.utils.translation import gettext_lazy as _
 from unfold.forms import AdminPasswordChangeForm
 

@@ -124,6 +124,41 @@ Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 | Graceful shutdown | 120s | Accommodate long-running operations (sheet sync, email campaigns) |
 | Bind | `0.0.0.0:8000` | Listen on all interfaces (required for Fargate networking) |
 
+## Client IP and proxy trust
+
+Sign-in, verification-code and challenge flows are deliberately **not** limited per client IP (see
+[Environments: what still keys on the client IP](environments.md#what-still-keys-on-the-client-ip)). The limiters that
+remain (`PhoneAuthCodeRequestThrottle`, the SMS-request fallback; `SesEventThrottle`; the CSP-report limiter) and the
+app's own `client_ip()` helper still need the *real* client address, and a wrong one silently gives every caller a
+fresh bucket. Production traffic is
+`browser → ALB → ECS task (uvicorn)`. Uvicorn is started without `--forwarded-allow-ips`, so it trusts only
+`127.0.0.1` and never rewrites the peer address: Django sees `REMOTE_ADDR` = the ALB's private VPC address and the
+raw `X-Forwarded-For` header. The ALB **appends** the address it received the connection from, so every entry to
+the left of the last one is client-supplied and forgeable.
+
+`NUM_PROXIES` says how many trailing `X-Forwarded-For` entries belong to our own proxies; the Nth entry from the
+right is the client.
+
+| | |
+|---|---|
+| Env var | `NUM_PROXIES` (integer ≥ 1, default `1`; startup fails on anything else). Not a secret. |
+| Where it is applied | `settings.NUM_PROXIES` (used by `apps.core.utils.client_ip`) **and** `REST_FRAMEWORK["NUM_PROXIES"]` (used by DRF's throttle `get_ident()`, which ignores the top-level setting). Both are set once in `config/settings/production.py`. |
+| Deployment | `aws/task-definition.json` carries `__NUM_PROXIES__`; `deploy-backend.yml` renders it from the `NUM_PROXIES` GitHub Environment variable (default `1`) and `aws/validate_backend_task_definition.py` rejects a rendered value that is not a positive integer. |
+| Local / CI | Unset (no proxy): DRF falls back to the full header / `REMOTE_ADDR`. |
+
+ALB requirements (both are the AWS defaults; do not change them): `routing.http.xff_header_processing.mode = append`
+(with `preserve` the last entry would be client-controlled) and `routing.http.xff_client_port.enabled = false`
+(otherwise entries become `ip:port` and each connection would get a fresh throttle bucket).
+
+**Extra hops.** Setting the value too low is safe but coarse (throttles key on the outermost trusted proxy's
+address); too high trusts a client-controlled entry and re-opens the bypass. The demo frontend calls the API through
+the Amplify domain (`VITE_API_BASE_URL=https://demo.i2g.ucmerced.edu/api`, proxied by the Amplify rewrite to the
+ALB), so requests there pass through CloudFront *and* the ALB. It is deployed with `NUM_PROXIES=1` (throttles then
+key on the edge address). Only raise its `NUM_PROXIES` GitHub Environment variable to `2` after confirming from a
+real request that CloudFront appended the viewer address to `X-Forwarded-For`. Production's frontend calls
+`https://api.i2g.ucmerced.edu` directly, which is one hop. The archive service is a Flask app without DRF throttling
+and is not affected.
+
 ## Health endpoints
 
 `HealthCheckMiddleware` intercepts these paths before URL routing:
