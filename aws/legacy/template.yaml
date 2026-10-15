@@ -1,0 +1,268 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Private network path and CloudFront gateway for the read-only I2G legacy
+  viewer. This stack deliberately does not manage the legacy public DNS record
+  or the legacy instance's existing public ingress rules; those are removed
+  only after the gateway has passed the rollout checks.
+
+Parameters:
+  ApplicationVpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-0bdf6f90f9593cafa
+    Description: VPC containing the production Django ECS tasks.
+  ApplicationVpcCidr:
+    Type: String
+    Default: 10.2.0.0/16
+    AllowedPattern: "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/(?:[0-9]|[12][0-9]|3[0-2])$"
+  ApplicationRouteTableId:
+    Type: String
+    Default: rtb-0971181ab921a5eb3
+    AllowedPattern: "^rtb-[0-9a-f]+$"
+    Description: Route table associated with both production ECS subnets.
+  ApplicationSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: sg-0c8cad5d34229f0d6
+    Description: Security group attached to the production Django ECS tasks.
+
+  LegacyVpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-067c86afb5ca877b0
+    Description: VPC containing EC2 instance i-0f06723e3677e7f24.
+  LegacyVpcCidr:
+    Type: String
+    Default: 172.31.0.0/16
+    AllowedPattern: "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}/(?:[0-9]|[12][0-9]|3[0-2])$"
+  LegacyRouteTableId:
+    Type: String
+    Default: rtb-0beeb6cc1991fbc77
+    AllowedPattern: "^rtb-[0-9a-f]+$"
+    Description: Route table associated with the legacy EC2 subnet.
+  LegacySecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Default: sg-058c6e65ca6e2b7e4
+    Description: Existing security group attached to the legacy EC2 instance.
+  LegacyPrivatePort:
+    Type: Number
+    Default: 8080
+    MinValue: 1
+    MaxValue: 65535
+
+  BackendOriginDomainName:
+    Type: String
+    Default: api.i2g.ucmerced.edu
+    AllowedPattern: "^[A-Za-z0-9.-]+$"
+    Description: DNS name only; do not include a scheme, port, or path.
+  BackendOriginPath:
+    Type: String
+    Default: /legacy-view
+    AllowedPattern: "^/[A-Za-z0-9/_-]*[A-Za-z0-9_-]$"
+  OriginHeaderName:
+    Type: String
+    Default: X-I2G-Legacy-Origin-Secret
+    AllowedPattern: "^[A-Za-z0-9-]+$"
+    Description: Must equal the Django LEGACY_ORIGIN_HEADER_NAME setting.
+  OriginHeaderSecretName:
+    Type: String
+    Default: itg/backend/legacy-view-origin-header
+    AllowedPattern: "^[A-Za-z0-9/_+=.@-]+$"
+  CloudFrontPriceClass:
+    Type: String
+    Default: PriceClass_100
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+Resources:
+  LegacyVpcPeering:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      VpcId: !Ref ApplicationVpcId
+      PeerVpcId: !Ref LegacyVpcId
+      Tags:
+        - Key: Name
+          Value: i2g-production-to-legacy-read-only
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  ApplicationToLegacyRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref ApplicationRouteTableId
+      DestinationCidrBlock: !Ref LegacyVpcCidr
+      VpcPeeringConnectionId: !Ref LegacyVpcPeering
+
+  LegacyToApplicationRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref LegacyRouteTableId
+      DestinationCidrBlock: !Ref ApplicationVpcCidr
+      VpcPeeringConnectionId: !Ref LegacyVpcPeering
+
+  LegacyPrivateIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: LegacyVpcPeering
+    Properties:
+      GroupId: !Ref LegacySecurityGroupId
+      IpProtocol: tcp
+      FromPort: !Ref LegacyPrivatePort
+      ToPort: !Ref LegacyPrivatePort
+      SourceSecurityGroupId: !Ref ApplicationSecurityGroupId
+      SourceSecurityGroupOwnerId: !Ref AWS::AccountId
+      Description: Django ECS to the private read-only Nginx listener
+
+  LegacyOriginHeaderSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Ref OriginHeaderSecretName
+      Description: Shared CloudFront-to-Django header for the I2G legacy viewer.
+      GenerateSecretString:
+        PasswordLength: 64
+        ExcludePunctuation: true
+      Tags:
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Application
+          Value: i2g-legacy-view
+
+  LegacyNoCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub ${AWS::StackName}-no-cache
+        Comment: Never cache authenticated legacy viewer responses.
+        DefaultTTL: 0
+        MaxTTL: 0
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: false
+          EnableAcceptEncodingGzip: false
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  LegacyOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub ${AWS::StackName}-authenticated-viewer
+        Comment: Forward only the viewer cookie and audited request headers.
+        CookiesConfig:
+          CookieBehavior: whitelist
+          Cookies:
+            - i2g_legacy_viewer
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - Accept
+            - Accept-Language
+            - Content-Type
+            - If-Modified-Since
+            - If-None-Match
+            - If-Range
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  LegacyResponseHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub ${AWS::StackName}-security
+        Comment: Security headers for authenticated read-only legacy content.
+        CustomHeadersConfig:
+          Items:
+            - Header: Cache-Control
+              Override: true
+              Value: no-store, private
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            ContentSecurityPolicy: "form-action 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+            Override: false
+          ContentTypeOptions:
+            Override: true
+          FrameOptions:
+            FrameOption: DENY
+            Override: false
+          ReferrerPolicy:
+            ReferrerPolicy: no-referrer
+            Override: false
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+
+  LegacyDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: Authenticated read-only I2G legacy viewer
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: !Ref CloudFrontPriceClass
+        Origins:
+          - Id: django-legacy-gateway
+            DomainName: !Ref BackendOriginDomainName
+            OriginPath: !Ref BackendOriginPath
+            ConnectionAttempts: 3
+            ConnectionTimeout: 10
+            OriginCustomHeaders:
+              - HeaderName: !Ref OriginHeaderName
+                HeaderValue: !Sub "{{resolve:secretsmanager:${LegacyOriginHeaderSecret}:SecretString}}"
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginKeepaliveTimeout: 5
+              OriginProtocolPolicy: https-only
+              OriginReadTimeout: 30
+              OriginSSLProtocols:
+                - TLSv1.2
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - DELETE
+            - GET
+            - HEAD
+            - OPTIONS
+            - PATCH
+            - POST
+            - PUT
+          CachePolicyId: !Ref LegacyNoCachePolicy
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: false
+          OriginRequestPolicyId: !Ref LegacyOriginRequestPolicy
+          ResponseHeadersPolicyId: !Ref LegacyResponseHeadersPolicy
+          SmoothStreaming: false
+          TargetOriginId: django-legacy-gateway
+          ViewerProtocolPolicy: https-only
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Application
+          Value: i2g-legacy-view
+
+Outputs:
+  VpcPeeringConnectionId:
+    Description: Peering connection used by the two managed routes.
+    Value: !Ref LegacyVpcPeering
+  LegacyOriginHeaderSecretArn:
+    Description: Configure this ARN as LEGACY_ORIGIN_HEADER_SECRET_ARN for ECS rendering.
+    Value: !Ref LegacyOriginHeaderSecret
+  LegacyOriginHeaderName:
+    Description: Configure this value as LEGACY_ORIGIN_HEADER_NAME.
+    Value: !Ref OriginHeaderName
+  LegacyViewerDomainName:
+    Description: AWS-assigned CloudFront domain name.
+    Value: !GetAtt LegacyDistribution.DomainName
+  LegacyViewerUrl:
+    Description: Configure this value as LEGACY_VIEWER_URL.
+    Value: !Sub https://${LegacyDistribution.DomainName}
+  LegacyDistributionId:
+    Value: !Ref LegacyDistribution

@@ -13,7 +13,7 @@ from .base import (
 )
 from .managers import ProjectControlManager, ProjectControlQuerySet
 from .mixins import ActiveModel, AuthoredModel, OrderedModel
-from .records import BackgroundJob, DeliveryRateLimit
+from .records import BackgroundJob, DeliveryRateLimit, LegacyAccessGrant
 
 __all__ = [
     "AWSCredentialConfig",
@@ -24,6 +24,7 @@ __all__ = [
     "EmailServiceConfig",
     "GmailAccessAccount",
     "GoogleCredentialConfig",
+    "LegacyAccessGrant",
     "OrderedModel",
     "ProjectControlManager",
     "ProjectControlModel",

@@ -80,6 +80,30 @@
           "value": "__BACKEND_URL__"
         },
         {
+          "name": "LEGACY_VIEW_ENABLED",
+          "value": "__LEGACY_VIEW_ENABLED__"
+        },
+        {
+          "name": "LEGACY_ORIGIN_URL",
+          "value": "__LEGACY_ORIGIN_URL__"
+        },
+        {
+          "name": "LEGACY_VIEWER_URL",
+          "value": "__LEGACY_VIEWER_URL__"
+        },
+        {
+          "name": "LEGACY_ORIGIN_HEADER_NAME",
+          "value": "__LEGACY_ORIGIN_HEADER_NAME__"
+        },
+        {
+          "name": "LEGACY_CONNECT_TIMEOUT_SECONDS",
+          "value": "__LEGACY_CONNECT_TIMEOUT_SECONDS__"
+        },
+        {
+          "name": "LEGACY_READ_TIMEOUT_SECONDS",
+          "value": "__LEGACY_READ_TIMEOUT_SECONDS__"
+        },
+        {
           "name": "AWS_STORAGE_BUCKET_NAME",
           "value": "__AWS_STORAGE_BUCKET_NAME__"
         },
@@ -168,6 +192,10 @@
         {
           "name": "DJANGO_SUPERUSER_PASSWORD",
           "valueFrom": "__DJANGO_SUPERUSER_PASSWORD_SECRET_ARN__"
+        },
+        {
+          "name": "LEGACY_ORIGIN_HEADER_VALUE",
+          "valueFrom": "__LEGACY_ORIGIN_HEADER_SECRET_ARN__"
         }
       ]
     },

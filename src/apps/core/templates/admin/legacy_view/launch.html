@@ -1,0 +1,40 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<section class="rounded-default border border-base-200 bg-white p-6 shadow-xs dark:border-base-700 dark:bg-base-900">
+  {% if launch_code %}
+    <h2 class="mb-2 text-lg font-semibold">Opening the private archive…</h2>
+    <p class="mb-5 text-font-muted-light dark:text-font-muted-dark">
+      Your one-time access code expires in 60 seconds. This page will submit it to the read-only viewer now.
+    </p>
+    <form id="legacy-view-exchange" method="post" action="{{ exchange_url }}">
+      <input type="hidden" name="code" value="{{ launch_code }}">
+      <button type="submit" class="bg-primary-600 hover:bg-primary-700 rounded-default px-4 py-2 font-medium text-white">
+        Continue to legacy viewer
+      </button>
+    </form>
+    <script nonce="{{ request.csp_nonce }}">
+      document.getElementById("legacy-view-exchange").submit();
+    </script>
+  {% elif exchange_url %}
+    <h2 class="mb-2 text-lg font-semibold">Historical I2G content</h2>
+    <p class="mb-5 text-font-muted-light dark:text-font-muted-dark">
+      The legacy system is available for historical reference only. Forms, registration, administration, tracking, and all other write actions are disabled.
+    </p>
+    <form method="post" target="_blank">
+      {% csrf_token %}
+      <button type="submit" class="bg-primary-600 hover:bg-primary-700 rounded-default px-4 py-2 font-medium text-white">
+        Open read-only viewer
+      </button>
+    </form>
+  {% else %}
+    <h2 class="mb-2 text-lg font-semibold">Viewer unavailable</h2>
+    <p class="text-font-muted-light dark:text-font-muted-dark">
+      The legacy viewer address has not been configured. Contact an I2G administrator.
+    </p>
+  {% endif %}
+</section>
+{% endblock %}

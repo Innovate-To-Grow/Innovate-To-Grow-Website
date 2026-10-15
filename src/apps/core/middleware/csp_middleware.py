@@ -42,6 +42,7 @@ class ContentSecurityPolicyMiddleware:
         response[header_name] = self._build_policy(
             request.csp_nonce,
             allow_framing=bool(getattr(response, "xframe_options_exempt", False)),
+            form_action_origins=self._form_action_origins(response),
         )
         self._nonce_vendor_styles(response, request.csp_nonce)
         return response
@@ -66,6 +67,21 @@ class ContentSecurityPolicyMiddleware:
         rendered_port = f":{port}" if port is not None else ""
         return f"{parsed.scheme}://{rendered_host}{rendered_port}"
 
+    def _form_action_origins(self, response) -> list[str]:
+        """Return validated HTTPS origins a single response may post forms to.
+
+        A view opts in per response (``response.csp_form_action_origins``);
+        anything that is not an absolute HTTPS URL is dropped and only the
+        origin is kept, so a path or script URL can never widen the policy.
+        """
+
+        origins = []
+        for value in getattr(response, "csp_form_action_origins", ()) or ():
+            origin = self._url_origin(value)
+            if origin and origin.startswith("https://"):
+                origins.append(origin)
+        return list(dict.fromkeys(origins))
+
     def _storage_origins(self) -> list[str]:
         origins = []
         for setting_name in ("STATIC_URL", "MEDIA_URL"):
@@ -79,6 +95,7 @@ class ContentSecurityPolicyMiddleware:
         nonce: str,
         *,
         allow_framing: bool = False,
+        form_action_origins: list[str] | None = None,
     ) -> str:
         storage_origins = self._storage_origins()
         script_sources = self._configured_sources(
@@ -121,6 +138,7 @@ class ContentSecurityPolicyMiddleware:
 
         nonce_source = f"'nonce-{nonce}'"
         media_sources = list(dict.fromkeys(["'self'", "blob:", *storage_origins]))
+        form_action_sources = list(dict.fromkeys(["'self'", *(form_action_origins or [])]))
         directives = [
             "default-src 'self'",
             f"script-src {' '.join(dict.fromkeys([*script_sources, *storage_origins, nonce_source]))}",
@@ -139,7 +157,7 @@ class ContentSecurityPolicyMiddleware:
             "worker-src 'self' blob:",
             "object-src 'none'",
             "base-uri 'self'",
-            "form-action 'self'",
+            f"form-action {' '.join(form_action_sources)}",
             "report-uri /csp-report/",
         ]
         if not allow_framing:

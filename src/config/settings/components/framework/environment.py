@@ -60,6 +60,25 @@ BACKGROUND_JOB_METRICS_NAMESPACE = os.environ.get(
 ).strip()
 
 # ---------------------------------------------------------------------------
+# Private read-only Legacy viewer (docs/deployment/legacy-view.md)
+# ---------------------------------------------------------------------------
+# Fail closed: every legacy route 404s unless the flag is true AND CloudFront
+# presents the shared origin header. LEGACY_ORIGIN_HEADER_VALUE is injected
+# from Secrets Manager into the Web container only.
+LEGACY_VIEW_ENABLED = os.environ.get("LEGACY_VIEW_ENABLED", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+LEGACY_ORIGIN_URL = os.environ.get("LEGACY_ORIGIN_URL", "").strip()
+LEGACY_VIEWER_URL = os.environ.get("LEGACY_VIEWER_URL", "").strip().rstrip("/")
+LEGACY_ORIGIN_HEADER_NAME = os.environ.get("LEGACY_ORIGIN_HEADER_NAME", "").strip()
+LEGACY_ORIGIN_HEADER_VALUE = os.environ.get("LEGACY_ORIGIN_HEADER_VALUE", "").strip()
+LEGACY_CONNECT_TIMEOUT_SECONDS = os.environ.get("LEGACY_CONNECT_TIMEOUT_SECONDS", "2").strip()
+LEGACY_READ_TIMEOUT_SECONDS = os.environ.get("LEGACY_READ_TIMEOUT_SECONDS", "10").strip()
+
+# ---------------------------------------------------------------------------
 # Internationalization / timezone
 # ---------------------------------------------------------------------------
 LANGUAGE_CODE = "en-us"

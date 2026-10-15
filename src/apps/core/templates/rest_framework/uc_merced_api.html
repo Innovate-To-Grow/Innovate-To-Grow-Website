@@ -1,0 +1,86 @@
+{% extends "rest_framework/base.html" %}
+{% load i18n static rest_framework %}
+
+{% block meta %}
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+{% endblock %}
+
+{% block title %}{% if name %}{{ name }} | {% endif %}Innovate to Grow API | UC Merced{% endblock %}
+
+{% block style %}
+  {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% static 'rest_framework/css/uc-merced-api.css' %}">
+{% endblock %}
+
+{% block bodyclass %}ucm-api{% endblock %}
+
+{% block navbar %}
+  <a class="ucm-api__skip-link" href="#ucm-api-main">{% trans "Skip to main content" %}</a>
+  <header class="ucm-api__header">
+    <div class="container ucm-api__header-inner">
+      {% block branding %}
+        <a
+          class="ucm-api__university-link"
+          href="https://www.ucmerced.edu/"
+          rel="noopener noreferrer"
+          aria-label="UC Merced home"
+        >
+          <img
+            class="ucm-api__university-logo"
+            src="{% static 'images/ucmerced-logo.png' %}"
+            width="230"
+            height="57"
+            alt="University of California, Merced"
+          >
+        </a>
+        <div class="ucm-api__service" aria-label="API service">
+          <span class="ucm-api__service-kicker">Developer Services</span>
+          <span class="ucm-api__service-name">Innovate to Grow API</span>
+        </div>
+      {% endblock %}
+
+      <nav class="ucm-api__account" aria-label="API account">
+        <ul class="nav navbar-nav ucm-api__user-links">
+          {% block userlinks %}
+            {% if user.is_authenticated %}
+              {% optional_logout request user csrf_token %}
+            {% else %}
+              {% optional_login request %}
+            {% endif %}
+          {% endblock %}
+        </ul>
+      </nav>
+    </div>
+  </header>
+{% endblock %}
+
+{% block content %}
+  <div id="ucm-api-main" class="ucm-api__main" tabindex="-1">
+    {{ block.super }}
+  </div>
+  <footer class="ucm-api__footer">
+    <p>
+      <span>University of California, Merced</span>
+      <span aria-hidden="true">&middot;</span>
+      <span>Innovate to Grow API</span>
+    </p>
+  </footer>
+{% endblock %}
+
+{% block script %}
+  <script type="application/json" id="drf_csrf" nonce="{{ request.csp_nonce|default:'' }}">
+    {
+      "csrfHeaderName": "{{ csrf_header_name|default:'X-CSRFToken' }}",
+      "csrfToken": "{% if user.is_authenticated %}{{ csrf_token }}{% elif delete_form %}{{ csrf_token }}{% elif post_form or raw_data_post_form %}{{ csrf_token }}{% elif put_form or raw_data_put_form or raw_data_patch_form %}{{ csrf_token }}{% endif %}"
+    }
+  </script>
+  <script src="{% static 'rest_framework/js/jquery-3.7.1.min.js' %}"></script>
+  <script src="{% static 'rest_framework/js/ajax-form.js' %}"></script>
+  <script src="{% static 'rest_framework/js/csrf.js' %}"></script>
+  <script src="{% static 'rest_framework/js/bootstrap.min.js' %}"></script>
+  <script src="{% static 'rest_framework/js/prettify-min.js' %}"></script>
+  <script src="{% static 'rest_framework/js/default.js' %}"></script>
+  <script src="{% static 'rest_framework/js/load-ajax-form.js' %}"></script>
+{% endblock %}
