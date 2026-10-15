@@ -21,6 +21,8 @@ declare module 'axios' {
      * stored session — an anonymous exchange must neither use nor destroy it.
      */
     skipAuth?: boolean;
+    /** Refresh an expired stored token before a public request that reads the member. */
+    requireFreshIdentity?: boolean;
   }
 }
 
@@ -192,26 +194,62 @@ const stripAuthorizationHeader = (
   }
 };
 
-authApi.interceptors.request.use((config) => {
-  if (config.skipAuth) {
-    // The stored session is neither read nor recorded for this request.
-    stripAuthorizationHeader(config.headers);
-  } else {
-    const session = getStoredSession();
-    if (session) {
-      config.headers.Authorization = `Bearer ${session.access}`;
-      requestSessions.set(config, {
-        generation: session.generation,
-        access: session.access,
-      });
-    } else if (config.headers) {
-      delete config.headers.Authorization;
-    }
+const accessNeedsRefresh = (access: string): boolean => {
+  try {
+    const encoded = access.split('.')[1];
+    if (!encoded) return true;
+    const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      '=',
+    );
+    const payload = JSON.parse(atob(padded)) as {exp?: unknown};
+    // Leave room for transit time and small client/server clock differences.
+    return typeof payload.exp !== 'number' || payload.exp <= Date.now() / 1000 + 30;
+  } catch {
+    return true;
   }
+};
+
+const attachStoredSession = (config: InternalAxiosRequestConfig) => {
+  const session = getStoredSession();
+  if (session) {
+    config.headers.Authorization = `Bearer ${session.access}`;
+    requestSessions.set(config, {
+      generation: session.generation,
+      access: session.access,
+    });
+  } else if (config.headers) {
+    stripAuthorizationHeader(config.headers);
+  }
+  return config;
+};
+
+authApi.interceptors.request.use((config) => {
   if (config.data instanceof FormData && config.headers) {
     delete config.headers['Content-Type'];
   }
-  return config;
+  if (config.skipAuth) {
+    // The stored session is neither read nor recorded for this request.
+    stripAuthorizationHeader(config.headers);
+    return config;
+  }
+  const snapshot = getStoredSession();
+  if (config.requireFreshIdentity && snapshot && accessNeedsRefresh(snapshot.access)) {
+    return refreshAccessTokenAttempt(snapshot.generation).then(() => {
+      const current = getStoredSession();
+      if (current && current.generation !== snapshot.generation) {
+        throw new Error('The member session changed while this request was waiting.');
+      }
+      if (current && current.access === snapshot.access) {
+        // A transient refresh failure must not make a member-aware public view
+        // look anonymous while the same stored session is still present.
+        throw new Error('The member session could not be refreshed.');
+      }
+      return attachStoredSession(config);
+    });
+  }
+  return attachStoredSession(config);
 });
 
 authApi.interceptors.response.use(
