@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -17,6 +18,7 @@ from apps.event.tests.helpers import make_superuser
 
 class CurrentProjectScheduleAdminTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.admin_user = make_superuser(email="schedule-admin@example.com")
         self.client.login(username="schedule-admin@example.com", password="testpass123")
         self.changelist_url = reverse("admin:event_currentprojectschedule_changelist")
@@ -297,3 +299,106 @@ class CurrentProjectScheduleAdminTest(TestCase):
         winners = list(response.context["winners"])
         self.assertEqual(len(winners), 1)
         self.assertEqual(winners[0].winner, "Winning Team")
+
+    # The overview (cards, Pull button, Auto Sync form, project tables) acts on
+    # the active schedule — or on the only schedule when there is just one, so
+    # a row that has not been activated yet is still visible on this page.
+
+    def test_changelist_view_shows_the_only_schedule_even_when_inactive(self):
+        config = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
+        project = CurrentProject.objects.create(
+            schedule=config, class_code="CAP", team_number="CAP-1", project_title="Alpha"
+        )
+
+        response = self.client.get(self.changelist_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["config"], config)
+        self.assertEqual(response.context["current_schedule_name"], "Innovate to Grow 2026")
+        self.assertEqual([p.pk for p in response.context["current_projects"]], [project.pk])
+        self.assertContains(response, "Pull Current Projects &amp; Schedule (only schedule)")
+        self.assertContains(response, "Auto Sync (only schedule)")
+        self.assertContains(response, "shown because it is the only schedule")
+        self.assertNotContains(response, "Schedule (active)")
+
+    def test_changelist_view_with_several_schedules_shows_only_the_active_one(self):
+        active = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026")
+        archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+        CurrentProject.objects.create(schedule=archived, class_code="CAP", team_number="CAP-9", project_title="Old")
+
+        response = self.client.get(self.changelist_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["config"], active)
+        self.assertEqual(response.context["current_schedule_name"], "Innovate to Grow 2026")
+        self.assertEqual(list(response.context["current_projects"]), [])
+        self.assertContains(response, "Pull Current Projects &amp; Schedule (active)")
+        self.assertContains(response, "Auto Sync (active schedule)")
+        self.assertNotContains(response, "only schedule")
+
+    def test_changelist_view_with_several_inactive_schedules_shows_no_overview(self):
+        CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
+        CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+
+        response = self.client.get(self.changelist_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["config"])
+        self.assertEqual(response.context["current_schedule_name"], "")
+        self.assertEqual(list(response.context["current_projects"]), [])
+        self.assertContains(response, "No active schedule configured.")
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    def test_pull_view_syncs_the_only_schedule_even_when_inactive(self, mock_sync):
+        config = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
+        mock_sync.return_value = ScheduleSyncStats(sections_created=1)
+
+        response = self.client.post(reverse("admin:event_currentprojectschedule_pull"))
+
+        self.assertRedirects(response, self.changelist_url)
+        mock_sync.assert_called_once_with(config, sync_type="manual")
+        messages = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any("Synced 'Innovate to Grow 2026'" in m for m in messages))
+
+    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    def test_pull_view_with_several_inactive_schedules_shows_error(self, mock_sync):
+        CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
+        CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+
+        response = self.client.post(reverse("admin:event_currentprojectschedule_pull"))
+
+        self.assertRedirects(response, self.changelist_url)
+        mock_sync.assert_not_called()
+        messages = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any("No configuration found" in m for m in messages))
+
+    def test_save_sync_settings_updates_the_only_schedule_even_when_inactive(self):
+        config = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
+
+        response = self.client.post(
+            reverse("admin:event_currentprojectschedule_save_sync_settings"),
+            {"auto_sync_enabled": "1", "sync_interval_minutes": "15"},
+        )
+
+        self.assertRedirects(response, self.changelist_url)
+        config.refresh_from_db()
+        self.assertTrue(config.auto_sync_enabled)
+        self.assertEqual(config.sync_interval_minutes, 15)
+        self.assertFalse(config.is_active)
+
+    def test_save_sync_settings_with_several_inactive_schedules_shows_error(self):
+        first = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
+        second = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
+
+        response = self.client.post(
+            reverse("admin:event_currentprojectschedule_save_sync_settings"),
+            {"auto_sync_enabled": "1", "sync_interval_minutes": "15"},
+        )
+
+        self.assertRedirects(response, self.changelist_url)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertFalse(first.auto_sync_enabled)
+        self.assertFalse(second.auto_sync_enabled)
+        messages = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any("No active configuration to update" in m for m in messages))

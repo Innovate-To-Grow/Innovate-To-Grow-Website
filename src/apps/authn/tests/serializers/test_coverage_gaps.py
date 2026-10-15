@@ -95,7 +95,7 @@ class RegisterSerializerRaceTests(TestCase):
         """register.py:136-137 — claim returns None but a pending member exists -> reuse it."""
         from apps.authn.serializers.auth.register import RegisterSerializer
 
-        pending = Member.objects.create_user(first_name="", last_name="", is_active=False)
+        pending = Member.objects.create_user(first_name="", last_name="", is_active=False, registration_pending=True)
 
         serializer = RegisterSerializer(data=self._data())
         serializer.initial_data  # noqa: B018 - ensure data attached
@@ -123,7 +123,7 @@ class RegisterSerializerRaceTests(TestCase):
         """register.py:146-153 — ContactEmail.create IntegrityError, pending then found -> reuse."""
         from apps.authn.serializers.auth.register import RegisterSerializer
 
-        pending = Member.objects.create_user(first_name="", last_name="", is_active=False)
+        pending = Member.objects.create_user(first_name="", last_name="", is_active=False, registration_pending=True)
 
         serializer = RegisterSerializer(data=self._data("race2@example.com"))
         with (

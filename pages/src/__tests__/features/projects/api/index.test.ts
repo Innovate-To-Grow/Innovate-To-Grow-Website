@@ -89,6 +89,7 @@ describe('past project share API', () => {
     });
     expect(authApiMock.get).toHaveBeenCalledWith(
       '/projects/past-shares/share-1/',
+      {requireFreshIdentity: true},
     );
     expect(apiMock.get).not.toHaveBeenCalled();
   });

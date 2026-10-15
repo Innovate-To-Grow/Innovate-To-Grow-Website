@@ -26,6 +26,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
+from apps.authn.security import SoftJWTAuthentication
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.bedrock import normalize_bedrock_model_id
 from apps.core.utils.throttle_cache import throttle_cache
@@ -124,6 +125,7 @@ class PublicAssistantConfigView(APIView):
     """GET /assistant/config/ -- public-safe display config only (never secrets)."""
 
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get(self, request, *args, **kwargs):
         config = SystemIntelligenceConfig.load()
@@ -151,6 +153,9 @@ class PublicAssistantChatView(APIView):
     """POST /assistant/chat/ -- tool-free, read-only public chat."""
 
     permission_classes = [AllowAny]
+    # The actor (member / visitor / shared legacy bucket) that keys every limit comes from ``request.user``: a valid
+    # token keeps its member actor, a stale one is the visitor it is instead of getting a 401.
+    authentication_classes = [SoftJWTAuthentication]
     throttle_classes = [PublicAssistantActorThrottle]
 
     def throttled(self, request, wait):
