@@ -1891,6 +1891,9 @@ jobs:
     name: E2E Report
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
     needs: [e2e, changes]
     if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
     continue-on-error: true
@@ -1909,17 +1912,10 @@ jobs:
         working-directory: pages
         run: npm ci
 
-      - name: Download blob reports
-        id: download-blobs
-        # This report job is informational; a flaky/conflicting artifact
-        # download must not turn the run red. The merge step below tolerates a
-        # missing/empty directory.
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          path: pages/all-blob-reports
-          pattern: blob-*
-          merge-multiple: true
+      - name: Download and validate blob reports
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/download_playwright_blobs.sh
 
       - name: Merge blob reports into HTML + JUnit + GitHub annotations
         working-directory: pages
