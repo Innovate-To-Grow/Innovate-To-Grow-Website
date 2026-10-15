@@ -278,7 +278,7 @@ class EmailCodeRequestBurstTests(NoIpThrottleTestCase):
         ]
         # A different pending registration per resend: repeating one would (rightly) meet that destination's own cap.
         for i in range(BURST):
-            pending = Member.objects.create_user(password=None, is_active=False)
+            pending = Member.objects.create_user(password=None, is_active=False, registration_pending=True)
             ContactEmail.objects.create(
                 member=pending, email_address=f"pending{i}@example.com", email_type="primary", verified=False
             )

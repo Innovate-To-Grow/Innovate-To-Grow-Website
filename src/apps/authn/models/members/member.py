@@ -25,9 +25,32 @@ class Member(AbstractUser, ProjectControlModel):
         verbose_name="Admin apps",
     )
 
+    # Set only on members created by the self-service registration flows (email-code
+    # and password /register) and cleared the first time the member becomes active.
+    # It is what tells an unfinished signup apart from an account an admin
+    # deactivated: only a pending registration may be activated by proving email
+    # ownership. Fail-closed — any other inactive member is never self-activatable.
+    registration_pending = models.BooleanField(
+        default=False,
+        db_default=False,
+        editable=False,
+        help_text="Self-service registration not yet completed. Cleared once the member is first activated.",
+        verbose_name="Registration pending",
+    )
+
     def can_access_app(self, app_label: str) -> bool:
         """Whether this member may manage records in the Django app ``app_label``."""
         return user_can_access_app(self, app_label)
+
+    def save(self, *args, **kwargs):
+        # Activation by any path (registration, admin form, invitation, import) ends the
+        # pending state, so a later deactivation can't be undone through self-service.
+        if self.is_active and self.registration_pending:
+            self.registration_pending = False
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = {*update_fields, "registration_pending"}
+        super().save(*args, **kwargs)
 
     def get_username(self):
         """Return UUID as a string so templates and admin can handle it."""

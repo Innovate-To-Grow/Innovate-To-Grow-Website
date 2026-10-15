@@ -168,7 +168,7 @@ class PublicEmailCodeViewEdgeTests(APITestCase):
     # ── resend code view (line 140) ───────────────────────
 
     def test_register_resend_code_for_pending_member(self, _c, mock_send):
-        pending = Member.objects.create_user(password="StrongPass123!", is_active=False)
+        pending = Member.objects.create_user(password="StrongPass123!", is_active=False, registration_pending=True)
         ContactEmail.objects.create(
             member=pending, email_address="pending@example.com", email_type="primary", verified=False
         )
@@ -239,6 +239,7 @@ class PublicEmailCodeViewEdgeTests(APITestCase):
         self.assertTrue(EmailAuthChallenge.objects.filter(member=self.active, purpose=PURPOSE_LOGIN).exists())
 
     def test_email_auth_request_reuses_pending_member(self, _c, mock_send):
+        Member.objects.filter(pk=self.inactive.pk).update(registration_pending=True)
         resp = self.client.post(
             "/authn/email-auth/request-code/",
             {"email": "inactive@example.com"},
