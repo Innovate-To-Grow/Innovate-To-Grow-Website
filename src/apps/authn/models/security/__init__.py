@@ -4,6 +4,7 @@ Security-related models.
 
 from .email_auth_challenge import EmailAuthChallenge
 from .impersonation_token import ImpersonationToken
+from .login_failure_window import LoginFailureWindow
 from .phone_verification_challenge import PhoneVerificationChallenge
 from .rsa_keypair import RSAKeypair
 from .send_verification import (
@@ -16,6 +17,7 @@ from .send_verification import (
 __all__ = [
     "EmailAuthChallenge",
     "ImpersonationToken",
+    "LoginFailureWindow",
     "PhoneVerificationChallenge",
     "RSAKeypair",
     "SendDestinationState",

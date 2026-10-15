@@ -21,12 +21,23 @@ class PageViewAdmin(ReadOnlyModelAdmin):
         "path",
         "referrer",
         "ip_address",
+        "visitor_id",
         "session_key",
         "member__contact_emails__email_address",
         "member__first_name",
         "member__last_name",
     )
-    readonly_fields = ("id", "path", "referrer", "user_agent", "ip_address", "member", "session_key", "timestamp")
+    readonly_fields = (
+        "id",
+        "path",
+        "referrer",
+        "user_agent",
+        "ip_address",
+        "visitor_id",
+        "member",
+        "session_key",
+        "timestamp",
+    )
     ordering = ("-timestamp",)
     date_hierarchy = "timestamp"
     list_per_page = 50
@@ -37,7 +48,7 @@ class PageViewAdmin(ReadOnlyModelAdmin):
 
     fieldsets = (
         ("Request", {"fields": ("id", "path", "referrer", "timestamp")}),
-        ("Visitor", {"fields": ("member", "ip_address", "session_key", "user_agent")}),
+        ("Visitor", {"fields": ("member", "ip_address", "visitor_id", "session_key", "user_agent")}),
     )
 
     def changelist_view(self, request, extra_context=None):

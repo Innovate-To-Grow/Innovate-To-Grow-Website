@@ -119,6 +119,9 @@ const accountA = (): TestSession => ({
   requires_profile_completion: false,
 });
 
+const accessWithExpiry = (exp: number) =>
+  `header.${btoa(JSON.stringify({exp}))}.signature`;
+
 const prepareRequest = (request: TestRequest) => {
   if (!requestFulfilledHandler) {
     throw new Error('Request interceptor was not registered');
@@ -450,6 +453,217 @@ describe('auth refresh session guards', () => {
     storedSession = null;
     const request = prepareRequest({} as TestRequest);
     expect(request).toEqual({});
+  });
+
+  describe('member-aware public requests', () => {
+    it('refreshes an expired token before the request can read as anonymous', async () => {
+      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
+      axiosPost.mockResolvedValue({data: {access: 'fresh-access', refresh: 'fresh-refresh'}});
+
+      const request = await prepareRequest({headers: {}, requireFreshIdentity: true});
+
+      expect(axiosPost).toHaveBeenCalledTimes(1);
+      expect(request.headers.Authorization).toBe('Bearer fresh-access');
+    });
+
+    it('uses a still-valid token without a refresh request', async () => {
+      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 + 3600)};
+
+      const request = await prepareRequest({headers: {}, requireFreshIdentity: true});
+
+      expect(axiosPost).not.toHaveBeenCalled();
+      expect(request.headers.Authorization).toBe(`Bearer ${storedSession?.access}`);
+    });
+
+    it('refreshes before an almost-expired token can reach the server', async () => {
+      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 + 10)};
+      axiosPost.mockResolvedValue({data: {access: 'fresh-access'}});
+
+      const request = await prepareRequest({headers: {}, requireFreshIdentity: true});
+
+      expect(axiosPost).toHaveBeenCalledTimes(1);
+      expect(request.headers.Authorization).toBe('Bearer fresh-access');
+    });
+
+    it('does not silently return anonymous data after a transient refresh failure', async () => {
+      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
+      axiosPost.mockRejectedValue({response: {status: 503}});
+
+      await expect(prepareRequest({headers: {}, requireFreshIdentity: true})).rejects.toThrow(
+        'could not be refreshed',
+      );
+      expect(storedSession?.generation).toBe('generation-a');
+    });
+
+    it('can continue anonymously after the refresh credential is rejected', async () => {
+      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
+      axiosPost.mockRejectedValue({response: {status: 401}});
+
+      const request = await prepareRequest({headers: {}, requireFreshIdentity: true});
+
+      expect(request.headers.Authorization).toBeUndefined();
+      expect(storedSession).toBeNull();
+    });
+
+    it('does not send an account-A request under account B after a switch', async () => {
+      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
+      let resolveRefresh!: (value: {data: {access: string}}) => void;
+      axiosPost.mockReturnValue(new Promise((resolve) => { resolveRefresh = resolve; }));
+
+      const pending = prepareRequest({headers: {}, requireFreshIdentity: true});
+      storedSession = {...accountA(), generation: 'generation-b', access: 'access-b'};
+      resolveRefresh({data: {access: 'new-access'}});
+
+      await expect(pending).rejects.toThrow('session changed');
+      expect(storedSession?.generation).toBe('generation-b');
+    });
+
+    it('keeps one-time credential requests anonymous even with the flag', async () => {
+      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
+
+      const request = await prepareRequest({headers: {}, requireFreshIdentity: true, skipAuth: true});
+
+      expect(request.headers.Authorization).toBeUndefined();
+      expect(axiosPost).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('skipAuth requests', () => {
+    it('sends no Authorization header even when a session is stored', () => {
+      const request = prepareRequest({headers: {}, skipAuth: true});
+
+      expect(request.headers.Authorization).toBeUndefined();
+    });
+
+    it('does not record a session for the request, so nothing can be refreshed or cleared on its behalf', async () => {
+      const request = prepareRequest({headers: {}, skipAuth: true});
+      if (!responseRejectedHandler) {
+        throw new Error('Response interceptor was not registered');
+      }
+      const error = {config: request, response: {status: 401}};
+
+      await expect(responseRejectedHandler(error)).rejects.toBe(error);
+
+      expect(axiosPost).not.toHaveBeenCalled();
+      expect(clearTokens).not.toHaveBeenCalled();
+    });
+
+    it('strips an Authorization header supplied by the caller', () => {
+      const request = prepareRequest({
+        headers: {Authorization: 'Bearer caller-supplied'},
+        skipAuth: true,
+      });
+
+      expect(request.headers.Authorization).toBeUndefined();
+    });
+
+    it('strips the header whatever its casing on a plain headers object', () => {
+      const request = prepareRequest({
+        headers: {
+          authorization: 'Bearer lower',
+          AUTHORIZATION: 'Bearer upper',
+          Accept: 'application/json',
+        },
+        skipAuth: true,
+      });
+
+      expect(request.headers).toEqual({Accept: 'application/json'});
+    });
+
+    it.each([
+      ['a lowercase key', {authorization: 'Bearer lower', Accept: 'application/json'}],
+      ['the canonical key', {Authorization: 'Bearer canonical', Accept: 'application/json'}],
+      ['an upper-case key', {AUTHORIZATION: 'Bearer upper', Accept: 'application/json'}],
+    ])('strips the header from an AxiosHeaders instance (%s)', async (_label, initial) => {
+      const {AxiosHeaders} = await vi.importActual<typeof import('axios')>('axios');
+      const headers = new AxiosHeaders(initial);
+
+      const request = prepareRequest({
+        headers: headers as unknown as Record<string, string>,
+        skipAuth: true,
+      });
+
+      const result = request.headers as unknown as InstanceType<typeof AxiosHeaders>;
+      expect(result.has('Authorization')).toBe(false);
+      expect(result.get('authorization')).toBeUndefined();
+      expect(result.get('Accept')).toBe('application/json');
+    });
+
+    it('still attaches the stored session to requests that do not opt out', () => {
+      const request = prepareRequest({headers: {}});
+
+      expect(request.headers.Authorization).toBe('Bearer old-access');
+    });
+
+    it('still clears the Content-Type header for FormData requests', () => {
+      const request = prepareRequest({
+        headers: {'Content-Type': 'application/json'},
+        data: new FormData(),
+        skipAuth: true,
+      });
+
+      expect(request.headers['Content-Type']).toBeUndefined();
+    });
+
+    it('rejects a 401 without refreshing, retrying, or touching the stored session', async () => {
+      const request = prepareRequest({headers: {}, skipAuth: true});
+      if (!responseRejectedHandler) {
+        throw new Error('Response interceptor was not registered');
+      }
+      const {isDefinitiveAuthFailure} = await import('@/features/auth/api/client');
+      const error = {config: request, response: {status: 401}};
+
+      await expect(responseRejectedHandler(error)).rejects.toBe(error);
+
+      expect(axiosPost).not.toHaveBeenCalled();
+      expect(retryRequest).not.toHaveBeenCalled();
+      expect(clearTokens).not.toHaveBeenCalled();
+      expect(isDefinitiveAuthFailure(error)).toBe(false);
+      expect(storedSession).toEqual(accountA());
+    });
+
+    it('never clears the stored session, even for a request that was already tagged and retried', async () => {
+      // Defense in depth: the opt-out wins over any per-request session record.
+      const request = prepareRequest({headers: {}});
+      request.skipAuth = true;
+      request._i2gAuthRetried = true;
+      if (!responseRejectedHandler) {
+        throw new Error('Response interceptor was not registered');
+      }
+      const {isDefinitiveAuthFailure} = await import('@/features/auth/api/client');
+      const error = {config: request, response: {status: 401}};
+
+      await expect(responseRejectedHandler(error)).rejects.toBe(error);
+
+      expect(clearTokens).not.toHaveBeenCalled();
+      expect(isDefinitiveAuthFailure(error)).toBe(false);
+      expect(storedSession).toEqual(accountA());
+    });
+
+    it('does not refresh for a tagged request that opted out after the fact', async () => {
+      const request = prepareRequest({headers: {}});
+      request.skipAuth = true;
+      if (!responseRejectedHandler) {
+        throw new Error('Response interceptor was not registered');
+      }
+      const error = {config: request, response: {status: 401}};
+
+      await expect(responseRejectedHandler(error)).rejects.toBe(error);
+
+      expect(axiosPost).not.toHaveBeenCalled();
+      expect(retryRequest).not.toHaveBeenCalled();
+    });
+
+    it('passes non-401 failures through untouched', async () => {
+      const request = prepareRequest({headers: {}, skipAuth: true});
+      if (!responseRejectedHandler) {
+        throw new Error('Response interceptor was not registered');
+      }
+      const error = {config: request, response: {status: 400}};
+
+      await expect(responseRejectedHandler(error)).rejects.toBe(error);
+      expect(storedSession).toEqual(accountA());
+    });
   });
 
   it('rejects a non-401 response error without retrying', async () => {

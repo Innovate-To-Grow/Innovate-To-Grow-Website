@@ -28,7 +28,6 @@ _CODES = (
     constants.CODE_EXPIRED,
     constants.CODE_CONSUMED,
     constants.CODE_CONTEXT_MISMATCH,
-    constants.CODE_RATE_LIMITED,
     constants.CODE_UNAVAILABLE,
     constants.CODE_SEND_UNKNOWN,
     constants.CODE_SEND_THROTTLED,

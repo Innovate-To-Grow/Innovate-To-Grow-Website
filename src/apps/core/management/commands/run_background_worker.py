@@ -6,7 +6,9 @@ import time
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from apps.authn.services.login_guard import purge_expired_failure_windows
 from apps.authn.services.security.rsa_manager import purge_retired_auth_keypairs
+from apps.authn.services.send_verification import cleanup_expired_records, clear_expired_sessions
 from apps.core.services.background_jobs import (
     claim_jobs,
     process_claimed_job,
@@ -17,6 +19,73 @@ from apps.core.services.background_jobs import (
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_MAINTENANCE_SECONDS = 3600
+MIN_MAINTENANCE_SECONDS = 300
+
+
+def _purge_retired_keys(should_stop=None) -> None:
+    if purge_retired_auth_keypairs():
+        # Keep key material and values derived from the key store out of logs. The static event is enough for
+        # operators; detailed counts belong in controlled metrics.
+        logger.info("Purged retired RSA keypair rows")
+
+
+def _purge_public_assistant_budgets(should_stop=None) -> None:
+    if purge_expired_public_assistant_budgets():
+        # Do not log counts or IP-derived identifiers. Operators only need confirmation that maintenance is active.
+        logger.info("Purged expired public assistant budget rows")
+
+
+def _cleanup_send_verification(should_stop=None) -> None:
+    result = cleanup_expired_records(should_stop=should_stop)
+    if any(result.values()):
+        logger.info(
+            "Send verification cleanup: expired %(expired_challenges)d challenges; deleted %(deleted_challenges)d "
+            "challenges and %(deleted_requests)d send requests",
+            result,
+        )
+
+
+def _clear_expired_sessions(should_stop=None) -> None:
+    cleared = clear_expired_sessions(should_stop=should_stop)
+    if cleared:
+        logger.info("Cleared %d expired sessions", cleared)
+
+
+def _purge_login_failure_windows(should_stop=None) -> None:
+    # Only windows that have already ended are deleted, so this never lifts a password-login lockout early.
+    if purged := purge_expired_failure_windows(should_stop=should_stop):
+        logger.info("Purged %d expired login failure windows", purged)
+
+
+# Periodic maintenance, run in this order every ``--maintenance-seconds`` (hourly by default). Each entry is
+# ``(name, callable)``; ``run_maintenance`` isolates every call, so one failure never stops the worker or the rest.
+# Every callable takes the stop check: the three batched tasks hand it to their batch loops, so a stop request ends
+# them after the batch in flight; the two single-statement purges ignore it.
+MAINTENANCE_TASKS = (
+    ("Retired RSA key purge", _purge_retired_keys),
+    ("Public assistant budget purge", _purge_public_assistant_budgets),
+    ("Send verification cleanup", _cleanup_send_verification),
+    ("Expired session cleanup", _clear_expired_sessions),
+    ("Login failure window purge", _purge_login_failure_windows),
+)
+
+
+def run_maintenance(tasks=None, *, should_stop=None) -> None:
+    """Run each maintenance task once, in order; log (never raise) a failure and move on to the next task.
+
+    ``should_stop`` (the worker's shutdown flag) is checked before every task and passed to each task, which checks
+    it before every batch: a stop request ends the run after the batch in flight, with every finished batch already
+    committed. What is left waits for the next run.
+    """
+    for name, task in MAINTENANCE_TASKS if tasks is None else tasks:
+        if should_stop is not None and should_stop():
+            return
+        try:
+            task(should_stop)
+        except Exception:  # noqa: BLE001 - maintenance must not stop delivery or the remaining tasks.
+            logger.exception("%s failed", name)
 
 
 def schedule_startup_reconciliation() -> bool:
@@ -51,7 +120,14 @@ class Command(BaseCommand):
         parser.add_argument("--batch-size", type=int, default=10)
         parser.add_argument("--poll-seconds", type=float, default=5.0)
         parser.add_argument("--stale-minutes", type=int, default=10)
-        parser.add_argument("--key-purge-seconds", type=int, default=3600)
+        parser.add_argument(
+            "--maintenance-seconds",
+            "--key-purge-seconds",  # the original name, kept for existing invocations
+            dest="key_purge_seconds",
+            type=int,
+            default=DEFAULT_MAINTENANCE_SECONDS,
+            help=f"Seconds between maintenance runs (minimum {MIN_MAINTENANCE_SECONDS}).",
+        )
 
     def handle(self, *args, **options):
         stopping = False
@@ -64,34 +140,21 @@ class Command(BaseCommand):
         signal.signal(signal.SIGINT, request_stop)
         poll_seconds = min(30.0, max(0.25, options["poll_seconds"]))
         batch_size = max(1, options["batch_size"])
-        key_purge_seconds = max(300, options.get("key_purge_seconds", 3600))
-        next_key_purge_at = 0.0
+        maintenance_seconds = max(
+            MIN_MAINTENANCE_SECONDS, options.get("key_purge_seconds", DEFAULT_MAINTENANCE_SECONDS)
+        )
+        next_maintenance_at = 0.0
         schedule_startup_reconciliation()
 
         while not stopping:
             from datetime import timedelta
 
             now_monotonic = time.monotonic()
-            if now_monotonic >= next_key_purge_at:
+            if now_monotonic >= next_maintenance_at:
                 try:
-                    purged_row_count = purge_retired_auth_keypairs()
-                    if purged_row_count:
-                        # Keep key material and values derived from the key store
-                        # out of logs. The static event is enough for operators;
-                        # detailed counts belong in controlled metrics.
-                        logger.info("Purged retired RSA keypair rows")
-                except Exception:  # noqa: BLE001 - maintenance must not stop delivery.
-                    logger.exception("Retired RSA key purge failed")
-                try:
-                    purged_budget_count = purge_expired_public_assistant_budgets()
-                    if purged_budget_count:
-                        # Do not log counts or IP-derived identifiers. Operators
-                        # only need confirmation that maintenance is active.
-                        logger.info("Purged expired public assistant budget rows")
-                except Exception:  # noqa: BLE001 - maintenance must not stop delivery.
-                    logger.exception("Public assistant budget purge failed")
+                    run_maintenance(should_stop=lambda: stopping)
                 finally:
-                    next_key_purge_at = now_monotonic + key_purge_seconds
+                    next_maintenance_at = now_monotonic + maintenance_seconds
 
             processed_jobs = 0
             try:
@@ -129,5 +192,6 @@ class Command(BaseCommand):
 
             if options["once"]:
                 return
-            if not processed_jobs:
+            # No idle wait once a stop was requested: the loop condition ends the worker right away.
+            if not processed_jobs and not stopping:
                 time.sleep(poll_seconds)

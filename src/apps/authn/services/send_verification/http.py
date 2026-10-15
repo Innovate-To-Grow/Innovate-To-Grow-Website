@@ -18,14 +18,23 @@ from .outcomes import SendOutcome, delivery_context, failure_status, public_rese
 logger = logging.getLogger(__name__)
 
 
-def verification_error_response(exc: SendVerificationError) -> Response:
+def _error_payload(exc: SendVerificationError) -> dict:
     payload = {"code": exc.code, "detail": exc.detail}
     if exc.retry_after:
         payload["retry_after"] = exc.retry_after
-    response = Response(payload, status=exc.http_status)
-    if exc.retry_after:
-        response["Retry-After"] = str(exc.retry_after)
+    return payload
+
+
+def _with_retry_after(response: Response) -> Response:
+    """Mirror a positive integer ``retry_after`` in the body as the ``Retry-After`` header."""
+    retry_after = response.data.get("retry_after") if isinstance(response.data, dict) else None
+    if type(retry_after) is int and retry_after > 0:
+        response["Retry-After"] = str(retry_after)
     return response
+
+
+def verification_error_response(exc: SendVerificationError) -> Response:
+    return _with_retry_after(Response(_error_payload(exc), status=exc.http_status))
 
 
 def _reset_payload(record) -> dict:
@@ -58,7 +67,9 @@ def replay_response(record: SendVerificationRequest) -> Response:
     payload = dict(record.result_payload or {})
     if record.client_error_code:
         payload.setdefault("code", record.client_error_code)
-    return Response(payload, status=record.http_status)
+    # A refusal raised while dispatching (the SMS daily budget, reserved at the provider call) answers exactly like
+    # the same refusal raised before the claim: same body, same ``Retry-After`` header.
+    return _with_retry_after(Response(payload, status=record.http_status))
 
 
 def _finalize(record, outcome: SendOutcome):
@@ -132,8 +143,9 @@ def guarded_send(
                 str(payload.get("challenge_id") or ""),
             )
     except SendVerificationError as exc:
+        # Raised before anything reached a provider (for an SMS: the daily budget was spent), so definitely failed.
         outcome = SendOutcome(
-            {"code": exc.code, "detail": exc.detail},
+            _error_payload(exc),
             exc.http_status,
             SendVerificationRequest.Status.DEFINITELY_FAILED,
         )

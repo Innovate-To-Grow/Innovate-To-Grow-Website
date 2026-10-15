@@ -218,9 +218,9 @@ async function fetchRegistrationEventsFallback(): Promise<EventRegistrationSumma
 export async function fetchRegistrationEvents(): Promise<EventRegistrationSummary[]> {
   const hasSession = Boolean(getStoredSession());
   try {
-    const response = await (hasSession ? authApi : api).get<EventRegistrationSummary[]>(
-      '/event/registration-events/',
-    );
+    const response = hasSession
+      ? await authApi.get<EventRegistrationSummary[]>('/event/registration-events/', {requireFreshIdentity: true})
+      : await api.get<EventRegistrationSummary[]>('/event/registration-events/');
     return response.data;
   } catch (err: unknown) {
     const status = (err as {response?: {status?: number}}).response?.status;
@@ -248,9 +248,13 @@ function normalizeRegistrationOptions(data: EventRegistrationOptions): EventRegi
 export async function fetchRegistrationOptions(eventSlug?: string | null): Promise<EventRegistrationOptions> {
   const hasSession = Boolean(getStoredSession());
   try {
-    const response = await (hasSession ? authApi : api).get<EventRegistrationOptions>('/event/registration-options/', {
-      ...(eventSlug ? {params: {event_slug: eventSlug}} : {}),
-    });
+    const config = {...(eventSlug ? {params: {event_slug: eventSlug}} : {})};
+    const response = hasSession
+      ? await authApi.get<EventRegistrationOptions>('/event/registration-options/', {
+          ...config,
+          requireFreshIdentity: true,
+        })
+      : await api.get<EventRegistrationOptions>('/event/registration-options/', config);
     return normalizeRegistrationOptions(response.data);
   } catch (err: unknown) {
     const status = (err as {response?: {status?: number}}).response?.status;

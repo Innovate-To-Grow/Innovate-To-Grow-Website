@@ -36,7 +36,7 @@ Browser
                   │              │
                   │              ├─ /livez/ → HealthCheckMiddleware → 200 JSON, no DB
                   │              ├─ /readyz/ → HealthCheckMiddleware → 200/503 JSON, checks DB
-                  │              └─ DRF views → Services → PostgreSQL + Redis
+                  │              └─ DRF views → Services → PostgreSQL + cache (Redis, or per-container file cache)
                   │
                   └─ Health probes every 30s
 ```
@@ -150,9 +150,13 @@ Email-originated login paths bypass the normal login form:
 
 | Path | Trigger | Backend endpoint |
 |------|---------|-----------------|
-| `/login-link?token=X` | Login link in campaign or ticket email | `POST /mail/login-link/` |
-| `/magic-login?token=X`, `/ticket-login?token=X` | Legacy aliases — redirect to `/login-link` | — |
-| `/unsubscribe-login?token=X` | Unsubscribe link in email (no login; preference-only) | `POST /authn/unsubscribe-login/` |
+| `/login-link#token=X` | Login link in campaign or ticket email | `POST /mail/login-link/` |
+| `/magic-login#token=X`, `/ticket-login#token=X` | Legacy aliases — redirect to `/login-link` | — |
+| `/unsubscribe-login#token=X` | Retired unsubscribe link in older emails | — (redirects to `/account`, dropping the token) |
+
+Emitted links carry the token in the URL fragment so it is never sent to a server or logged; the frontend captures it, scrubs the URL, and still accepts the legacy `?token=X` query form for links sent earlier.
+
+Newsletter unsubscribe links do not go through the SPA or sign anyone in: they point at the backend page `/mail/unsubscribe/{token}/`, whose `GET` only asks for confirmation and whose `POST` (the confirmation form, or the mailbox provider's RFC 8058 one-click request) unsubscribes every address of the member. See [API: Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe).
 
 `/login-link` validates the token, returns JWT access/refresh tokens plus `redirect_to`, and the frontend stores them and navigates there.
 

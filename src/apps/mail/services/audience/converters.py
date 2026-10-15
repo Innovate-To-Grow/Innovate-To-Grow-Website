@@ -20,11 +20,18 @@ def registrations_to_recipients(registrations):
     return recipients
 
 
-def members_to_recipients(members, *, send_all=False):
+def members_to_recipients(members, *, send_all=False, subscribed_only=False):
+    """One recipient per address of each member: the primary only, or every address with ``send_all``.
+
+    ``subscribed_only`` keeps just the addresses whose own ``subscribe`` flag is on (the "subscribers" audience).
+    """
     seen = set()
     recipients = []
     for member in members:
-        emails = _member_emails(member, send_all=send_all)
+        if subscribed_only:
+            emails = _subscribed_member_emails(member, send_all=send_all)
+        else:
+            emails = _member_emails(member, send_all=send_all)
         for email in emails:
             if not email or email in seen:
                 continue
@@ -68,3 +75,15 @@ def _member_emails(member, *, send_all: bool):
         ]
     primary = member.get_primary_email()
     return [primary] if primary else []
+
+
+def _subscribed_member_emails(member, *, send_all: bool):
+    # Reads the contact_emails prefetch directly: Member.get_primary_email() falls back to a query that ignores
+    # the subscribe flag, so it would return an unsubscribed primary.
+    return [
+        contact_email.email_address
+        for contact_email in member.contact_emails.all()
+        if contact_email.email_address
+        and contact_email.subscribe
+        and (send_all or contact_email.email_type == "primary")
+    ]

@@ -11,6 +11,7 @@ from apps.event.serializers import build_schedule_payload
 
 class CurrentEventScheduleView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     # noinspection PyMethodMayBeStatic
     def get(self, request):

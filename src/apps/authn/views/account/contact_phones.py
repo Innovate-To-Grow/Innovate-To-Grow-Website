@@ -103,8 +103,8 @@ class ContactPhoneRequestVerificationView(APIView):
     """Request an SMS verification code for a contact phone."""
 
     permission_classes = [IsAuthenticated]
-    # Per-user cap on real SNS spend (the anon EmailCodeRequestThrottle was a
-    # no-op for authenticated callers).
+    # Per-user cap on real SNS spend (an anonymous, per-IP throttle is a no-op
+    # for authenticated callers).
     throttle_classes = [PhoneCodeRequestThrottle]
 
     # noinspection PyMethodMayBeStatic

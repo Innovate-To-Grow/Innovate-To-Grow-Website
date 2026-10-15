@@ -2,14 +2,24 @@
 
 from datetime import timedelta
 
-from django.db.models import Count
-from django.db.models.functions import TruncDate, TruncHour
+from django.db.models import CharField, Count
+from django.db.models.functions import Cast, Coalesce, TruncDate, TruncHour
 from django.utils import timezone
 
 from apps.cms.models import PageView
 
 DASHBOARD_CACHE_KEY = "cms:analytics:dashboard"
 DASHBOARD_CACHE_TTL = 300
+
+
+def visitor_key():
+    """Expression naming the visitor behind a page view: its ``visitor_id``, else its IP address.
+
+    Campus visitors share one public IP, so counting distinct IPs counted the whole campus as one visitor. Rows
+    recorded before the frontend sent a visitor id (and rows from clients that still send none) have no id and keep
+    counting by IP, so old data stays comparable with itself. Rows with neither are not counted as a visitor.
+    """
+    return Coalesce("visitor_id", Cast("ip_address", output_field=CharField()), output_field=CharField())
 
 
 def compute_dashboard_stats():
@@ -22,7 +32,7 @@ def compute_dashboard_stats():
         "total_views": qs.count(),
         "today_views": qs.filter(timestamp__gte=today_start).count(),
         "unique_paths": qs.values("path").distinct().count(),
-        "unique_visitors": qs.values("ip_address").distinct().count(),
+        "unique_visitors": qs.aggregate(visitors=Count(visitor_key(), distinct=True))["visitors"],
         "top_pages": list(qs.values("path").annotate(view_count=Count("id")).order_by("-view_count")[:10]),
     }
     _add_daily_stats(stats, qs, seven_days_ago)
@@ -57,7 +67,7 @@ def _add_daily_stats(stats, qs, seven_days_ago):
         qs.filter(timestamp__gte=seven_days_ago)
         .annotate(date=TruncDate("timestamp"))
         .values("date")
-        .annotate(visitor_count=Count("ip_address", distinct=True))
+        .annotate(visitor_count=Count(visitor_key(), distinct=True))
         .order_by("date")
     )
     visitor_map = {entry["date"]: entry["visitor_count"] for entry in daily_visitors}

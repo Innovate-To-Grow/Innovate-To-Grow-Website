@@ -58,6 +58,22 @@ Creates a versioned shared-project snapshot.
 
 **Throttle:** `PastProjectShareRateThrottle` — 10 requests/minute
 
+### `POST /projects/past-ai-search/`
+
+Ranks past projects against a free-text `query` with the Bedrock model (`limit` 1-10, default 10). Answers `200` with
+`available`, `query`, `results` and `usage`; `available: false` when Bedrock is not configured.
+
+**Permission:** Authenticated
+
+**Throttle:** `PastProjectAISearchRateThrottle` — 10 requests/minute per member
+
+**Token budget:** charged to the member and to AI search's own global budget (separate from the public assistant's, so anonymous
+assistant traffic cannot pause AI search), never to the client IP. Estimated input plus the output cap is reserved before the model call and reconciled to actual usage afterwards.
+`429` with `code: "budget_exceeded"` ("AI search has reached its usage limit for now. Please try again later.") means
+the member's budget or the global one is spent; `503` with `code: "budget_unavailable"` means the budget store could
+not be reached; `502` with `code: "ai_search_error"` means the model call failed (nothing is charged). See
+[Assistant and AI search limits](../integrations/assistant-limits.md).
+
 ### `GET /projects/past-shares/mine/`
 
 Lists snapshots created by the authenticated user.

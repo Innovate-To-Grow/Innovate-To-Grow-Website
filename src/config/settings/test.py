@@ -14,6 +14,7 @@ SECRET_KEY = "ci-secret-key"
 DEBUG = False
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 CORS_ALLOWED_ORIGINS = ["http://127.0.0.1:4173", "http://localhost:4173"]
+CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 # ---------------------------------------------------------------------------
@@ -48,9 +49,3 @@ SEND_VERIFICATION_COST = 10
 SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = 0
 SEND_VERIFICATION_SMS_DAILY_LIMIT = 1000
 SEND_VERIFICATION_TEST_AUTOSOLVE = True
-SEND_VERIFICATION_CHALLENGE_CACHE_LIMIT = 10_000
-REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
-    **REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"],  # noqa: F405
-    "send_verification_challenge": "10000/minute",
-    "send_verification_status": "10000/minute",
-}

@@ -58,6 +58,7 @@ class LayoutAPIView(APIView):
     """Unified endpoint for menu and footer data with caching."""
 
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     # noinspection PyMethodMayBeStatic
     def get(self, request, *args, **kwargs):
@@ -124,6 +125,7 @@ class EmbedBlockView(APIView):
     """
 
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     # noinspection PyMethodMayBeStatic
     def get(self, request, embed_slug, *args, **kwargs):

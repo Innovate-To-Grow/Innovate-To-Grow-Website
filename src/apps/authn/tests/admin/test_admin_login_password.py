@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
+from apps.authn.tests.clock import freeze_time
 from apps.authn.views.admin.login_helpers import LAST_ADMIN_LOGIN_COOKIE_NAME
 
 Member = get_user_model()
@@ -189,6 +190,7 @@ class AdminPasswordLoginTest(TestCase):
         self.assertContains(resp, "Sign in with email code instead")
 
     def test_password_rate_limit(self):
+        freeze_time(self)  # the lockout windows are clock-aligned: keep all eleven attempts in one window
         for _ in range(10):
             self.client.post(LOGIN_URL, {"mode": "password", "email": "admin@example.com", "password": "wrongpass"})
 

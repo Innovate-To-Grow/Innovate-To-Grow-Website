@@ -10,7 +10,7 @@ from apps.authn.constants import (
     VERIFICATION_INVALID,
     VERIFICATION_THROTTLED,
 )
-from apps.authn.security.throttles import EmailCodeVerifyThrottle, PhoneAuthCodeRequestThrottle
+from apps.authn.security.throttles import sms_request_throttles
 from apps.authn.serializers import (
     UnifiedPhoneAuthRequestSerializer,
     UnifiedPhoneAuthVerifySerializer,
@@ -34,7 +34,12 @@ from ..helpers import build_auth_success_payload
 class PhoneAuthRequestCodeView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [PhoneAuthCodeRequestThrottle]
+
+    def get_throttles(self):
+        # Per-IP only as a fallback while no global SMS daily budget is configured (campus users share one IP).
+        # With a budget, a spent one answers 429 ``send_throttled`` here: every number that asks is sent an SMS, so
+        # the refusal says nothing about any account (unlike password reset, which stays neutral).
+        return sms_request_throttles()
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
@@ -58,9 +63,8 @@ class PhoneAuthRequestCodeView(APIView):
 class PhoneAuthVerifyCodeView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    # Verify spends no SMS budget (it only checks the cached OTP), so the shared
-    # anon verify throttle is sufficient here.
-    throttle_classes = [EmailCodeVerifyThrottle]
+    # Verify spends no SMS budget, and guesses are bounded per challenge (MAX_VERIFY_ATTEMPTS, cut to one per code
+    # for a number with many recent failures), so there is no per-IP throttle (campus users share one IP).
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

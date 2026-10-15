@@ -8,7 +8,6 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.authn.security.throttles import SendVerificationChallengeThrottle, SendVerificationStatusThrottle
 from apps.authn.services.send_verification import (
     ALL_OPERATIONS,
     SendVerificationError,
@@ -26,7 +25,8 @@ from apps.authn.services.send_verification.principal import authenticate_for_ope
 class SendVerificationChallengeView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [SendVerificationChallengeThrottle]
+    # No per-IP throttle by design (campus users share one IP). A challenge alone sends nothing: the proof is
+    # bound to operation + destination + browser session, and the send itself is capped per destination.
     allowed_operations = frozenset(operation for operation in ALL_OPERATIONS if not operation.startswith("admin."))
 
     def get_authenticate_header(self, request):
@@ -73,7 +73,7 @@ class SendVerificationChallengeView(APIView):
 class SendVerificationRequestStatusView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [SendVerificationStatusThrottle]
+    # No per-IP throttle: the lookup is scoped to the caller's own principal and the request id is a UUID.
 
     def get_authenticate_header(self, request):
         return "Bearer"

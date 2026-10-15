@@ -9,7 +9,7 @@ from apps.authn.services.sms import (
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
 )
-from apps.event.tests.helpers import make_event, make_member
+from apps.event.tests.helpers import load_urlconf, make_event, make_member
 from apps.event.views.registration.phones import (
     LEGACY_EVENT_REGISTRATION_CONTEXT,
 )
@@ -167,6 +167,14 @@ class SendPhoneCodeThrottleTest(TestCase):
 
 
 class VerifyPhoneCodeViewTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # These tests patch apps.authn.services.sms.check_phone_verification around a request. Import the views first,
+        # or apps.authn.views.auth.phone_code could bind the mock for every later phone-auth test in this process (a
+        # MagicMock response never finishes rendering: DRF's JSON encoder keeps calling .tolist() on it).
+        load_urlconf()
+
     def setUp(self):
         self.client = APIClient()
         self.member = make_member()

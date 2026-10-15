@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from django.db.models import Q, QuerySet
 
@@ -10,12 +11,18 @@ from apps.core.services.bedrock import BedrockError, normalize_bedrock_model_id
 from apps.projects.models import Project
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.agents import run_tool_free_agent
+from apps.system_intelligence.services.public_assistant import estimate_prompt_input_tokens
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_AI_SEARCH_LIMIT = 10
 MAX_AI_SEARCH_LIMIT = 10
 _CANDIDATE_LIMIT = 80
+_MAX_OUTPUT_TOKENS = 700
+_SYSTEM_TEXT = (
+    "You are a read-only project search assistant for Innovate to Grow. "
+    "Your only job is to select matching project IDs from the supplied candidate list."
+)
 _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9+#.&/-]*", re.IGNORECASE)
 _STOP_WORDS = {
     "a",
@@ -174,23 +181,66 @@ def _is_temperature_error(exc: Exception) -> bool:
     return False
 
 
-def run_past_project_ai_search(*, query: str, limit: int, config: SystemIntelligenceConfig) -> dict:
+@dataclass(frozen=True)
+class PreparedPastProjectAISearch:
+    """Everything the model call needs, assembled BEFORE any tokens are spent.
+
+    Building the prompt first lets the caller reserve
+    ``estimated_input_tokens + max_tokens`` against the token budgets, so a
+    search can no longer be admitted on a nearly-spent budget and then charge
+    its whole cost on top (check-then-record overshoot).
+    """
+
+    limit: int
+    system_text: str
+    prompt: str
+    max_tokens: int
+    estimated_input_tokens: int
+
+
+def prepare_past_project_ai_search(
+    *,
+    query: str,
+    limit: int,
+    config: SystemIntelligenceConfig,
+) -> PreparedPastProjectAISearch | None:
+    """Find candidates and build the prompt. ``None`` when nothing matches (no model call)."""
     limit = min(max(1, limit), MAX_AI_SEARCH_LIMIT)
     candidates = find_ai_search_candidates(query)
     if not candidates:
+        return None
+    prompt = _build_prompt(query=query, candidates=candidates, limit=limit)
+    return PreparedPastProjectAISearch(
+        limit=limit,
+        system_text=_SYSTEM_TEXT,
+        prompt=prompt,
+        max_tokens=min(config.public_assistant_max_response_tokens, _MAX_OUTPUT_TOKENS),
+        estimated_input_tokens=estimate_prompt_input_tokens(system_text=_SYSTEM_TEXT, prompt=prompt),
+    )
+
+
+def run_past_project_ai_search(
+    *,
+    query: str,
+    limit: int,
+    config: SystemIntelligenceConfig,
+    prepared: PreparedPastProjectAISearch | None = None,
+) -> dict:
+    """Run the search. Pass ``prepared`` to reuse a prompt the caller already budgeted for."""
+    if prepared is None:
+        prepared = prepare_past_project_ai_search(query=query, limit=limit, config=config)
+    if prepared is None:
         return {"project_ids": [], "usage": {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}}
 
     normalized_model_id = normalize_bedrock_model_id(config.public_model_id)
     if not normalized_model_id:
         raise BedrockError("No valid public assistant model is configured.")
 
-    system_text = (
-        "You are a read-only project search assistant for Innovate to Grow. "
-        "Your only job is to select matching project IDs from the supplied candidate list."
-    )
-    prompt = _build_prompt(query=query, candidates=candidates, limit=limit)
+    limit = prepared.limit
+    system_text = prepared.system_text
+    prompt = prepared.prompt
     aws_config = AWSCredentialConfig.load()
-    max_tokens = min(config.public_assistant_max_response_tokens, 700)
+    max_tokens = prepared.max_tokens
 
     try:
         result = run_tool_free_agent(

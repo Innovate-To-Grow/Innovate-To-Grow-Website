@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, {type InternalAxiosRequestConfig} from 'axios';
 
 import {
   clearTokens,
@@ -8,6 +8,23 @@ import {
 } from './storage';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+declare module 'axios' {
+  // The type parameter must match axios' own declaration to merge.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  interface AxiosRequestConfig<D = any> {
+    /**
+     * Opt out of the stored member session for this request. Set it on
+     * endpoints that authenticate by a one-time credential in the request body
+     * (emailed login links, impersonation tokens): no Authorization
+     * header is sent, and a failure never refreshes, retries, or clears the
+     * stored session — an anonymous exchange must neither use nor destroy it.
+     */
+    skipAuth?: boolean;
+    /** Refresh an expired stored token before a public request that reads the member. */
+    requireFreshIdentity?: boolean;
+  }
+}
 
 const authApi = axios.create({
   baseURL: API_BASE_URL,
@@ -157,7 +174,44 @@ export async function refreshAccessToken(
   return (await refreshAccessTokenAttempt(expectedGeneration)).result;
 }
 
-authApi.interceptors.request.use((config) => {
+/**
+ * Remove every spelling of the Authorization header. Header names are
+ * case-insensitive on the wire, so a caller-supplied `authorization` must not
+ * survive an opt-out. `AxiosHeaders` deletes case-insensitively on its own; a
+ * plain object (older call sites, tests) needs each casing found by hand.
+ */
+const stripAuthorizationHeader = (
+  headers: InternalAxiosRequestConfig['headers'] | undefined,
+) => {
+  if (!headers) return;
+  if (typeof headers.delete === 'function') {
+    headers.delete('Authorization');
+    return;
+  }
+  const plain = headers as unknown as Record<string, unknown>;
+  for (const name of Object.keys(plain)) {
+    if (name.toLowerCase() === 'authorization') delete plain[name];
+  }
+};
+
+const accessNeedsRefresh = (access: string): boolean => {
+  try {
+    const encoded = access.split('.')[1];
+    if (!encoded) return true;
+    const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      '=',
+    );
+    const payload = JSON.parse(atob(padded)) as {exp?: unknown};
+    // Leave room for transit time and small client/server clock differences.
+    return typeof payload.exp !== 'number' || payload.exp <= Date.now() / 1000 + 30;
+  } catch {
+    return true;
+  }
+};
+
+const attachStoredSession = (config: InternalAxiosRequestConfig) => {
   const session = getStoredSession();
   if (session) {
     config.headers.Authorization = `Bearer ${session.access}`;
@@ -166,18 +220,46 @@ authApi.interceptors.request.use((config) => {
       access: session.access,
     });
   } else if (config.headers) {
-    delete config.headers.Authorization;
+    stripAuthorizationHeader(config.headers);
   }
+  return config;
+};
+
+authApi.interceptors.request.use((config) => {
   if (config.data instanceof FormData && config.headers) {
     delete config.headers['Content-Type'];
   }
-  return config;
+  if (config.skipAuth) {
+    // The stored session is neither read nor recorded for this request.
+    stripAuthorizationHeader(config.headers);
+    return config;
+  }
+  const snapshot = getStoredSession();
+  if (config.requireFreshIdentity && snapshot && accessNeedsRefresh(snapshot.access)) {
+    return refreshAccessTokenAttempt(snapshot.generation).then(() => {
+      const current = getStoredSession();
+      if (current && current.generation !== snapshot.generation) {
+        throw new Error('The member session changed while this request was waiting.');
+      }
+      if (current && current.access === snapshot.access) {
+        // A transient refresh failure must not make a member-aware public view
+        // look anonymous while the same stored session is still present.
+        throw new Error('The member session could not be refreshed.');
+      }
+      return attachStoredSession(config);
+    });
+  }
+  return attachStoredSession(config);
 });
 
 authApi.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // Anonymous exchange: a stale stored session must be neither refreshed nor
+    // cleared on its behalf.
+    if (originalRequest?.skipAuth) return Promise.reject(error);
 
     if (error.response?.status === 401 && originalRequest) {
       const requestSession = requestSessions.get(originalRequest);

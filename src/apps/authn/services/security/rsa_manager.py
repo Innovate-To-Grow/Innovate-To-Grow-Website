@@ -5,14 +5,19 @@ Manages RSA keypairs for authentication encryption with automatic daily rotation
 """
 
 import base64
+import threading
+import time
+from collections import OrderedDict
 from datetime import timedelta
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.crypto import salted_hmac
 
 from apps.authn.models import RSAKeypair
 
@@ -27,11 +32,60 @@ KEY_ROTATION_INTERVAL = timedelta(days=1)
 KEY_DECRYPTION_GRACE_PERIOD = timedelta(hours=24)
 KEY_PURGE_RETENTION = timedelta(hours=48)
 
+# Parsed private keys, reused across decrypts in this process. Parsing a PEM runs the RSA key consistency check,
+# about 45 ms for a 2048-bit key: nearly all of a password sign-in that never reaches PBKDF2 (unknown identifier).
+# Entries are keyed on the key id plus a SECRET_KEY-keyed fingerprint of the stored (encrypted) key material, so a
+# row whose material changes misses. Only the parse is cached: decrypt_password still reads the row and applies the
+# active/grace checks on every call, so rotation, retirement and purge take effect immediately. Entries expire after
+# a TTL (re-parsed at most that often) so a retired key's parsed form does not outlive its use by much.
+_PRIVATE_KEY_CACHE_SIZE = 8
+_PRIVATE_KEY_CACHE_TTL_SECONDS = 15 * 60
+_PRIVATE_KEY_FINGERPRINT_SALT = "rsa-manager.private-key-cache"
+_private_keys: OrderedDict[tuple[str, str], tuple[float, PrivateKeyTypes]] = OrderedDict()
+_private_keys_lock = threading.Lock()
+_monotonic = time.monotonic
+
 
 class RSADecryptionError(Exception):
     """Raised when RSA decryption fails."""
 
     pass
+
+
+def clear_private_key_cache() -> None:
+    """Forget every parsed private key held by this process."""
+    with _private_keys_lock:
+        _private_keys.clear()
+
+
+def _load_private_key(keypair: RSAKeypair) -> PrivateKeyTypes:
+    """The parsed private key of ``keypair``, reusing an earlier parse of the same stored key material."""
+    fingerprint = salted_hmac(_PRIVATE_KEY_FINGERPRINT_SALT, keypair.private_key_pem, algorithm="sha256").hexdigest()
+    cache_key = (str(keypair.key_id), fingerprint)
+    now = _monotonic()
+    with _private_keys_lock:
+        for stale in [key for key, (expires, _parsed) in _private_keys.items() if expires <= now]:
+            del _private_keys[stale]
+        entry = _private_keys.get(cache_key)
+        if entry is not None:
+            _private_keys.move_to_end(cache_key)
+            return entry[1]
+
+    # Parsed outside the lock: two threads missing at once both parse, and either result is correct.
+    private_key = serialization.load_pem_private_key(
+        keypair.decrypted_private_key_pem.encode("utf-8"),
+        password=None,
+        backend=default_backend(),
+    )
+
+    with _private_keys_lock:
+        for replaced in [key for key in _private_keys if key[0] == cache_key[0] and key != cache_key]:
+            del _private_keys[replaced]  # the same key id with other material: that material is gone
+        _private_keys[cache_key] = (now + _PRIVATE_KEY_CACHE_TTL_SECONDS, private_key)
+        _private_keys.move_to_end(cache_key)
+        while len(_private_keys) > _PRIVATE_KEY_CACHE_SIZE:
+            _private_keys.popitem(last=False)
+    return private_key
 
 
 @transaction.atomic
@@ -125,12 +179,8 @@ def decrypt_password(encrypted_password_b64: str, key_id: str | None = None) -> 
         else:
             keypair = get_or_create_auth_keypair()
 
-        # Load private key (decrypted from Fernet-encrypted DB storage)
-        private_key = serialization.load_pem_private_key(
-            keypair.decrypted_private_key_pem.encode("utf-8"),
-            password=None,
-            backend=default_backend(),
-        )
+        # Load private key (decrypted from Fernet-encrypted DB storage; parsed once per stored material)
+        private_key = _load_private_key(keypair)
 
         # Decode the base64 encrypted data
         encrypted_data = base64.b64decode(encrypted_password_b64)

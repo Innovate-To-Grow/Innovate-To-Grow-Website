@@ -101,12 +101,21 @@ def _estimate_input_tokens(system_text: str, messages: list[dict]) -> int:
     )
 
 
+def estimate_prompt_input_tokens(*, system_text: str, prompt: str) -> int:
+    """Conservative input estimate for a tool-free call with one user prompt.
+
+    Shared with the past-project AI search so it can reserve its budget before
+    the model call, using the same estimator as the public chat.
+    """
+    return _estimate_input_tokens(system_text, [{"role": "user", "content": prompt}])
+
+
 def _estimate_usage(system_text: str, messages: list[dict], reply_text: str) -> dict:
     """Conservative token estimate when Bedrock omits a usage block.
 
     The input estimate covers the system prompt AND every message turn actually
-    sent (history + the new user message), so the per-IP budget is not
-    under-charged when prior turns are present.
+    sent (history + the new user message), so the per-actor and global
+    budgets are not under-charged when prior turns are present.
     """
     output_tokens = _estimate_text_tokens(reply_text)
     input_tokens = _estimate_input_tokens(system_text, messages)

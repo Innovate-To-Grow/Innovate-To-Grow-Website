@@ -1,11 +1,11 @@
 from .public_assistant import (
+    PublicAssistantActorThrottle,
     PublicAssistantChatView,
     PublicAssistantConfigView,
-    PublicAssistantThrottle,
 )
 
 __all__ = [
+    "PublicAssistantActorThrottle",
     "PublicAssistantChatView",
     "PublicAssistantConfigView",
-    "PublicAssistantThrottle",
 ]

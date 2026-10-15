@@ -3,6 +3,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.authn.security import SoftJWTAuthentication
 from apps.event.models import Event, EventRegistration
 from apps.event.serializers import (
     build_event_registration_option_payload,
@@ -29,6 +30,8 @@ def registration_for_events(user, events):
 
 class EventRegistrationEventsView(APIView):
     permission_classes = [AllowAny]
+    # Reports the caller's own registration: a valid token is honoured, a stale one reads as anonymous.
+    authentication_classes = [SoftJWTAuthentication]
 
     # noinspection PyMethodMayBeStatic
     def get(self, request):
@@ -48,6 +51,7 @@ class EventRegistrationEventsView(APIView):
 
 class EventRegistrationOptionsView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = [SoftJWTAuthentication]
 
     # noinspection PyMethodMayBeStatic,PyProtectedMember
     def get(self, request):

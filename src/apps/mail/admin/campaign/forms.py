@@ -15,6 +15,11 @@ from apps.mail.utils.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_red
 
 from .widgets import BODY_FORMAT_CHOICES, ManualEmailsWidget, PersonalizationTextInput, TicketSelectWidget
 
+SUBSCRIBERS_SCOPE_NOTE = (
+    " For All Email Subscribers, only active members are included, and only the addresses that are themselves "
+    "subscribed receive the email."
+)
+
 
 class EmailCampaignForm(forms.ModelForm):
     ticket = forms.ModelChoiceField(
@@ -65,6 +70,9 @@ class EmailCampaignForm(forms.ModelForm):
             self.fields["audience_type"].choices = ALL_AUDIENCE_CHOICES
         if "exclude_audience_type" in self.fields:
             self.fields["exclude_audience_type"].choices = EXCLUDE_AUDIENCE_CHOICES
+        if "member_email_scope" in self.fields:
+            # Appended here rather than on the model field, whose help_text change would need a migration.
+            self.fields["member_email_scope"].help_text += SUBSCRIBERS_SCOPE_NOTE
         self.fields.pop("exclude_ticket_id", None)
 
         current_path = self.initial.get("login_redirect_path") or getattr(self.instance, "login_redirect_path", None)

@@ -10,6 +10,7 @@ from .members import AdminInvitation, Member
 from .security import (
     EmailAuthChallenge,
     ImpersonationToken,
+    LoginFailureWindow,
     PhoneVerificationChallenge,
     RSAKeypair,
     SendDestinationState,
@@ -28,6 +29,7 @@ __all__ = [
     # Security
     "EmailAuthChallenge",
     "ImpersonationToken",
+    "LoginFailureWindow",
     "PhoneVerificationChallenge",
     "RSAKeypair",
     "SendDestinationState",

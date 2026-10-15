@@ -13,7 +13,43 @@ const pendingRequests = new Map<string, string>();
 const storagePrefix = 'i2g_verified_send:';
 const unresolvedMessage = 'The previous send request is still unresolved. Please wait, then check your messages before requesting another code.';
 
-function identity(): string {
+/**
+ * Whether the server binds an operation's challenge to the signed-in member.
+ * This mirrors `AUTHENTICATED_OPERATIONS` in
+ * `apps/authn/services/send_verification/constants.py`. Every other operation
+ * is bound to the browser's Django session cookie and never looks at the JWT
+ * session. Typed as a complete record so a new operation cannot be added
+ * without deciding which kind it is.
+ */
+const MEMBER_BOUND: Record<SendVerificationOperation, boolean> = {
+  'email_auth.request_code': false,
+  'phone_auth.request_code': false,
+  'login.request_code': false,
+  register: false,
+  'register.resend_code': false,
+  'password_reset.request_code': false,
+  'change_password.request_code': true,
+  'delete_account.request_code': true,
+  'contact_email.create': true,
+  'contact_email.request_verification': true,
+  'contact_phone.request_verification': true,
+  'event.send_phone_code': true,
+  'event.send_secondary_email_code': true,
+  'admin.login.request_code': false,
+  'admin.login.remembered_code': false,
+  'admin.login.resend': false,
+};
+
+/**
+ * Who a send acts for. A member-bound operation is tied to the stored session
+ * generation, so switching or clearing the account cancels it. An anonymous one
+ * has a single constant identity: the stored session is irrelevant to it, and
+ * must stay so — a browser holding a dead session has it cleared by the auth
+ * bootstrap while a code request is still in flight, and that must not abort
+ * the request.
+ */
+function identity(operation: SendVerificationOperation): string {
+  if (!MEMBER_BOUND[operation]) return 'anonymous';
   return getStoredSession()?.generation ?? 'anonymous';
 }
 
@@ -79,7 +115,7 @@ export async function withVerifiedSend<T>(options: {
   signal?: AbortSignal;
   execute: (verification: SendVerificationFields) => Promise<T>;
 }): Promise<T> {
-  const startedIdentity = identity();
+  const startedIdentity = identity(options.operation);
   const context = Object.entries(options.extraChallenge ?? {}).sort(([left], [right]) => left.localeCompare(right));
   const flightKey = JSON.stringify([startedIdentity, options.operation, options.destinationKind, options.destination, context]);
   options.signal?.throwIfAborted();
@@ -90,7 +126,7 @@ export async function withVerifiedSend<T>(options: {
     const controller = new AbortController();
     const abort = () => controller.abort();
     const checkIdentity = () => {
-      if (identity() !== startedIdentity) controller.abort();
+      if (identity(options.operation) !== startedIdentity) controller.abort();
     };
     options.signal?.addEventListener('abort', abort, {once: true});
     window.addEventListener('i2g-auth-state-change', checkIdentity);

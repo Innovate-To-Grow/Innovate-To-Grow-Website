@@ -79,7 +79,7 @@ Configuration models are available in Django admin:
 | `MemberSheetSyncConfig` | Members & Auth | Member-to-Sheets selection |
 | `CurrentProjectSchedule` | Events | Published current-project schedule/source |
 | `PastProjectsSheetConfig` | Projects | Past-project Sheets source |
-| `SystemIntelligenceConfig` | System Intelligence | Bedrock and public-assistant behavior |
+| `SystemIntelligenceConfig` | System Intelligence | Bedrock and public-assistant behavior, including the per-visitor/member and global token limits that bound assistant and AI-search spend ([sizing](../integrations/assistant-limits.md#sizing-the-global-limit)) |
 | `SiteMaintenanceControl` | Site Settings | Maintenance mode toggle |
 
 The selector models permit only one active/enabled row in their scope; saving a replacement demotes the previous row. `SiteMaintenanceControl` is a separate true singleton stored at primary key `1`.
@@ -214,6 +214,29 @@ intentionally fails closed.
 - Email login/registration codes, password/deletion verification tokens, and SMS challenges use locked or conditional state transitions. One concurrent caller succeeds; later callers receive an invalid/expired response.
 - Impersonation links expire after five minutes and are conditionally marked used before JWT issuance. An already-used result is expected replay protection; issue a fresh link instead of changing `is_used`.
 - Failed email/SMS attempts and expiry transitions are deliberately committed before error responses. Do not treat a rising attempt counter as a transaction bug.
+
+### Deactivated-member reactivation audit
+
+Only members created by the self-service signup flows and never activated (`Member.registration_pending`) can be activated by an email code. Before that flag existed, any inactive member counted as pending, so an admin-deactivated account could request a REGISTER code and reactivate itself. The "Deactivate selected members" action writes no `LogEntry`, so the audit looks for REGISTER codes issued to a member that was already active instead:
+
+Migration `authn.0022` leaves every existing inactive member with `registration_pending=False`.
+Old challenge, login, and contact records cannot reliably distinguish an unfinished signup
+from an account that an administrator activated and later deactivated. Administrators must
+review any pre-deployment unfinished registrations and explicitly activate those accounts
+after confirming their identity; the old email-code flow cannot resume them. New signups
+created after the application update receive the pending flag automatically. During a
+rolling deployment, signups created by old application instances after the migration
+also need that administrator review.
+
+```bash
+python manage.py audit_register_reactivations
+```
+
+The command is read-only and prints one line per flagged code (times in UTC) with the evidence that the member was already active: `earlier_other_code`, `earlier_consumed_register`, `not_created_by_signup`, `logged_in_before`, or `staff`.
+
+- `consumed` lines are accounts that were reactivated. Review each one and redeactivate with the admin action if the reactivation was not intended.
+- `pending`/`expired` lines are attempts that never completed. Verification now rejects those codes.
+- A signup whose first code email failed and was retried more than 10 minutes later shows `not_created_by_signup` on its own. Treat that reason alone as weak evidence.
 
 ### Handoff acceptance checklist
 

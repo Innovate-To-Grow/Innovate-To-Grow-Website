@@ -91,6 +91,7 @@ manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
 | Concern | Implementation |
 |---------|---------------|
 | AI behavior | `SystemIntelligenceConfig` (`src/apps/system_intelligence/models/config.py`) |
+| Public spend limits | Per-visitor/member and global token budgets in PostgreSQL, set on the same config; see [Assistant and AI search limits](../integrations/assistant-limits.md) |
 | AWS credentials | Shared `AWSCredentialConfig` IAM key + `default_region` |
 | Runtime | `src/apps/core/services/bedrock/` |
 
