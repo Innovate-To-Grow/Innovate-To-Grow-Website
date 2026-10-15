@@ -15,6 +15,7 @@ class NewsPageNumberPagination(PageNumberPagination):
 
 class NewsListAPIView(ListAPIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     serializer_class = NewsArticleSerializer
     queryset = NewsArticle.objects.all()
     pagination_class = NewsPageNumberPagination
@@ -26,6 +27,7 @@ class NewsListAPIView(ListAPIView):
 
 class NewsDetailAPIView(RetrieveAPIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     serializer_class = NewsArticleDetailSerializer
     queryset = NewsArticle.objects.all()
     lookup_field = "pk"
