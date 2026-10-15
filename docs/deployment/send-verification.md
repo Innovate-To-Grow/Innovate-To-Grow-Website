@@ -256,10 +256,12 @@ per-IP limit (the campus network is one IP). Also intentional:
   policy cannot be read. Once `sms_daily_limit` is set, every public SMS send
   reserves against it (in `observe` and `enforce` mode; `pause` sends nothing)
   and each number keeps its 60-second cooldown and 10/hour cap, so the throttle
-  drops off by itself with no deploy. While it applies it is keyed on the raw
-  `X-Forwarded-For` string like every DRF per-IP throttle
-  (`REST_FRAMEWORK["NUM_PROXIES"]` is unset), so a forged header defeats it: a
-  speed bump, not a budget.
+  drops off by itself with no deploy. While it applies it is keyed on the client
+  address DRF resolves from `X-Forwarded-For`: in production the entry the ALB
+  appended (`REST_FRAMEWORK["NUM_PROXIES"]`, see
+  [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)), which a
+  caller cannot forge. It is still a speed bump, not a budget: the history is
+  per Uvicorn process and a caller with many addresses gets a bucket per address.
 - **The SMS daily budget is one global counter.** It is spent only by SMS
   actually handed to the provider (see [SMS daily budget](#sms-daily-budget)),
   so requests that send nothing, such as password resets for numbers without an

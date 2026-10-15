@@ -134,15 +134,33 @@ def claim_unclaimed_contact_email(
 
 
 def get_pending_registration_member(email: str) -> Member | None:
+    """Return the never-activated self-service signup that owns ``email``, if any.
+
+    Only members flagged ``registration_pending`` qualify. An inactive member without
+    the flag was deactivated (by an admin, import, ...) and must not be handed a
+    REGISTER challenge, since completing one activates the account.
+    """
     normalized = normalize_email(email)
     if not normalized:
         return None
     contact = (
         ContactEmail.objects.select_related("member")
-        .filter(email_address__iexact=normalized, member__is_active=False)
+        .filter(email_address__iexact=normalized, member__is_active=False, member__registration_pending=True)
         .first()
     )
     return contact.member if contact else None
+
+
+def is_deactivated_member_email(email: str) -> bool:
+    """Whether ``email`` belongs to an inactive member that is not a pending signup."""
+    normalized = normalize_email(email)
+    if not normalized:
+        return False
+    return ContactEmail.objects.filter(
+        email_address__iexact=normalized,
+        member__is_active=False,
+        member__registration_pending=False,
+    ).exists()
 
 
 def registration_email_conflicts(email: str, *, exclude_member_id=None, allow_unclaimed: bool = False) -> bool:
