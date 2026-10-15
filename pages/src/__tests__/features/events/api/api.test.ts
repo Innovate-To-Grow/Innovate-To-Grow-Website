@@ -80,6 +80,7 @@ describe('event API', () => {
 
       expect(authApiMock.get).toHaveBeenCalledWith(
         '/event/registration-events/',
+        {requireFreshIdentity: true},
       );
       expect(apiMock.get).not.toHaveBeenCalled();
       expect(events).toEqual([{...eventFields, registration: null}]);
@@ -174,7 +175,7 @@ describe('event API', () => {
 
       expect(authApiMock.get).toHaveBeenCalledWith(
         '/event/registration-options/',
-        {params: {event_slug: 'fall-showcase'}},
+        {params: {event_slug: 'fall-showcase'}, requireFreshIdentity: true},
       );
       expect(apiMock.get).toHaveBeenCalledWith(
         '/event/registration-options/',
