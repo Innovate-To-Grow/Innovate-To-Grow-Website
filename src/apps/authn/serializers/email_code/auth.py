@@ -11,6 +11,7 @@ from apps.authn.services import (
     AuthChallengeInvalid,
     claim_unclaimed_contact_email,
     get_pending_registration_member,
+    is_deactivated_member_email,
     issue_email_challenge,
     registration_email_conflicts,
     resolve_auth_email,
@@ -56,6 +57,7 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
 
         member = Member(
             is_active=False,
+            registration_pending=True,
             first_name="",
             last_name="",
             organization="",
@@ -103,6 +105,10 @@ class UnifiedEmailAuthRequestSerializer(BaseEmailSerializer):
             return generic_response
 
         pending_member = get_pending_registration_member(email)
+        if pending_member is None and is_deactivated_member_email(email):
+            # A deactivated account is neither logged in nor re-registered. Answer exactly
+            # like a successful send so the response doesn't reveal the account's state.
+            return generic_response
         if registration_email_conflicts(
             email,
             exclude_member_id=pending_member.pk if pending_member else None,
@@ -158,14 +164,7 @@ class RegisterVerifyCodeSerializer(BaseCodeVerifySerializer):
 
 class RegisterResendCodeSerializer(BaseEmailSerializer):
     def save(self):
-        from apps.authn.models import ContactEmail
-
-        contact = (
-            ContactEmail.objects.filter(email_address__iexact=self.validated_data["email"], member__is_active=False)
-            .select_related("member")
-            .first()
-        )
-        member = contact.member if contact else None
+        member = get_pending_registration_member(self.validated_data["email"])
         if member is None:
             raise serializers.ValidationError({"email": "No pending registration was found for this email."})
         issue_email_challenge(
