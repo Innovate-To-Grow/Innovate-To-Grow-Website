@@ -29,10 +29,12 @@ REQUIRED_SHARED_ENV = {
     "AMPLIFY_PROXY_ADMIN_PATHS",
     "AMPLIFY_CONFIG_REVISION",
     "BACKGROUND_JOBS_ENABLED",
+    "NUM_PROXIES",
 }
 REQUIRED_SHARED_SECRETS = {"DJANGO_SECRET_KEY", "DB_PASSWORD"}
 PLACEHOLDER_RE = re.compile(r"__[A-Z0-9_]+__")
 AMPLIFY_CONFIG_REVISION_RE = re.compile(r"^[1-9][0-9]*\.[1-9][0-9]*$")
+POSITIVE_INT_RE = re.compile(r"^[1-9][0-9]*$")
 
 
 class TaskDefinitionValidationError(ValueError):
@@ -157,12 +159,20 @@ def validate_task_definition(taskdef: dict[str, Any], *, rendered: bool) -> None
             bool(AMPLIFY_CONFIG_REVISION_RE.fullmatch(web_env["AMPLIFY_CONFIG_REVISION"])),
             "AMPLIFY_CONFIG_REVISION must use the positive numeric '<run_id>.<run_attempt>' format.",
         )
+        _require(
+            bool(POSITIVE_INT_RE.fullmatch(web_env["NUM_PROXIES"])),
+            "NUM_PROXIES must be a positive integer (trusted proxy hops in front of uvicorn; the ALB is one).",
+        )
         _require(not _contains_placeholder(taskdef), "Rendered task definition still contains a template placeholder.")
         _require(
             all(value.startswith(("arn:aws:secretsmanager:", "arn:aws:ssm:")) for value in web_secrets.values()),
             "Rendered secret valueFrom entries must be Secrets Manager or SSM ARNs.",
         )
     else:
+        _require(
+            web_env["NUM_PROXIES"] == "__NUM_PROXIES__",
+            "Template NUM_PROXIES must retain its deployment placeholder.",
+        )
         _require(
             web_env["AMPLIFY_CONFIG_REVISION"] == "__AMPLIFY_CONFIG_REVISION__",
             "Template AMPLIFY_CONFIG_REVISION must retain its deployment placeholder.",

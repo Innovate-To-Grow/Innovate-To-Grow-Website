@@ -263,7 +263,9 @@ export const createPastProjectShare = async (
 export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
     if (getAccessToken()) {
         try {
-            const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${id}/`);
+            const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${id}/`, {
+                requireFreshIdentity: true,
+            });
             return response.data;
         } catch (err) {
             const status = (err as { response?: { status?: number } }).response?.status;

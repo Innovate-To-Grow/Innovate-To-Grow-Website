@@ -2,6 +2,9 @@ from rest_framework import status
 from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+from apps.authn.security import SoftJWTAuthentication
 
 from ..models import PastProjectShare
 from ..serializers import (
@@ -28,14 +31,26 @@ class PastProjectShareMineAPIView(ListAPIView):
         return PastProjectShare.objects.filter(created_by=self.request.user)
 
 
+_WRITE_METHODS = {"DELETE", "PATCH", "PUT"}
+
+
 class PastProjectShareDetailAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = PastProjectShareSerializer
     queryset = PastProjectShare.objects.all()
     lookup_field = "pk"
+    authentication_classes = [JWTAuthentication]  # changing a share needs a valid token
+
+    def get_authenticators(self):
+        # Viewing a snapshot is public and reports ``can_edit`` for the caller, so it honours a valid token and reads
+        # a stale one as anonymous instead of 401ing it. Writes keep the strict class: a bad token there is a 401 the
+        # SPA can refresh and retry.
+        if self.request.method in _WRITE_METHODS:
+            return super().get_authenticators()
+        return [SoftJWTAuthentication()]
 
     def get_permissions(self):
         # Viewing a shared snapshot is public; changing one requires authentication.
-        if self.request.method in {"DELETE", "PATCH", "PUT"}:
+        if self.request.method in _WRITE_METHODS:
             return [IsAuthenticated()]
         return [AllowAny()]
 
