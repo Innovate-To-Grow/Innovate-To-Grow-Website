@@ -60,8 +60,10 @@ class PhoneAuthCodeRequestThrottle(AnonRateThrottle):
     """
 
     scope = "phone_auth_code_request"
-    # Keyed on the caller-supplied X-Forwarded-For string, which anyone can vary, so its history stays out of the
-    # file cache. That also makes it a speed bump, not a bound. While it applies (no SMS daily budget configured),
+    # Keyed on the client address DRF resolves from X-Forwarded-For. Production trusts only the entry the ALB
+    # appended (``REST_FRAMEWORK["NUM_PROXIES"]``), but with it unset (local, CI) that is the whole caller-supplied
+    # string, so the key space is not bounded: its history stays out of the file cache. Either way it is a speed
+    # bump, not a bound (per process, one bucket per address). While it applies (no SMS daily budget configured),
     # enforce mode sends no SMS at all and observe mode is bounded only per number: configure ``sms_daily_limit``.
     cache = throttle_cache
 
@@ -72,8 +74,8 @@ def sms_request_throttles() -> list:
     With a global SMS daily budget configured (``load_settings().sms_daily_limit``), every public SMS send reserves
     against it (in observe and enforce mode alike; pause sends nothing), and each number keeps its own cooldown and
     hourly cap, so spend is bounded without keying anything on the client IP (the campus shares one address).
-    Without a budget the per-IP throttle is the only aggregate speed bump left (a forged X-Forwarded-For gets a
-    fresh bucket, so it is not a bound), so it stays. A settings error keeps it too: fail safe.
+    Without a budget the per-IP throttle is the only aggregate speed bump left (a caller with many addresses gets
+    a bucket per address, so it is not a bound), so it stays. A settings error keeps it too: fail safe.
     """
     from apps.authn.services.send_verification.config import load_settings
 

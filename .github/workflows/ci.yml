@@ -958,7 +958,7 @@ jobs:
     # Keep the browser and its OS dependencies out of the runner's live APT
     # path. The image version must stay aligned with pages/package-lock.json.
     container:
-      image: "mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27"
+      image: "mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f"
       options: --user 1001
     needs:
       - frontend-build
@@ -1711,7 +1711,7 @@ jobs:
     # this Playwright version. Keeping E2E off the runner's live APT path avoids
     # correlated mirror stalls across the ten parallel matrix legs.
     container:
-      image: "mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27"
+      image: "mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f"
       options: --user 1001 --ipc=host
     defaults:
       run:
@@ -1891,6 +1891,9 @@ jobs:
     name: E2E Report
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
     needs: [e2e, changes]
     if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
     continue-on-error: true
@@ -1909,17 +1912,10 @@ jobs:
         working-directory: pages
         run: npm ci
 
-      - name: Download blob reports
-        id: download-blobs
-        # This report job is informational; a flaky/conflicting artifact
-        # download must not turn the run red. The merge step below tolerates a
-        # missing/empty directory.
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          path: pages/all-blob-reports
-          pattern: blob-*
-          merge-multiple: true
+      - name: Download and validate blob reports
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/download_playwright_blobs.sh
 
       - name: Merge blob reports into HTML + JUnit + GitHub annotations
         working-directory: pages

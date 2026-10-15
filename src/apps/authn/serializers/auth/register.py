@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.authn.models.security import EmailAuthChallenge
@@ -149,6 +150,7 @@ class RegisterSerializer(serializers.Serializer):
                 first_name=first_name,
                 last_name=last_name,
                 is_active=False,
+                registration_pending=True,
             )
             if claim_unclaimed_contact_email(email, member=member) is None:
                 pending_member = get_pending_registration_member(email)
@@ -179,8 +181,20 @@ class RegisterSerializer(serializers.Serializer):
 
         member.organization = organization or ""
         member.title = title or ""
-        update_fields = ["first_name", "last_name", "organization", "title", "is_active", "password", "updated_at"]
-        member.save(update_fields=update_fields)
+        # Validation and the fallback lookup can race with an administrator's
+        # deactivation. Check the pending flag in the same database statement
+        # that writes the profile/password, rather than trusting a stale Member.
+        member.updated_at = timezone.now()
+        updated = Member.objects.filter(pk=member.pk, is_active=False, registration_pending=True).update(
+            first_name=member.first_name,
+            last_name=member.last_name,
+            organization=member.organization,
+            title=member.title,
+            password=member.password,
+            updated_at=member.updated_at,
+        )
+        if updated != 1:
+            raise serializers.ValidationError({"email": "Unable to register with this email address."})
 
         issue_email_challenge(
             member=member,
