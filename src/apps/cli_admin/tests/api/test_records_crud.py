@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 from django.db import IntegrityError
+from django.test import override_settings
 
 from apps.cli_admin.models import CliAuditLog
 from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff
@@ -9,6 +10,11 @@ from apps.core.services.db_tools.safe_orm import serialize_model_instance
 from apps.projects.models import Project, Semester
 
 COLLECTION = "/admin-api/records/projects/semester/"
+
+# Behind the ALB (NUM_PROXIES=1) the rightmost X-Forwarded-For entry is the one the trusted proxy appended;
+# anything to its left is caller-supplied and must never reach the audit row.
+FORGED_XFF = "198.51.100.99, 203.0.113.7"
+TRUSTED_IP = "203.0.113.7"
 
 
 def detail(pk):
@@ -118,6 +124,53 @@ class RecordWriteTests(CliApiTestCase):
         self.assertEqual(response.data["year"], 2040)
         log = CliAuditLog.objects.get(action="create", status="success")
         self.assertEqual(log.request_ip, "203.0.113.7")
+
+    # records.py resolves the audit IP at four independent call sites (the create / update / delete service
+    # calls and the ``_write`` failure handler), so each one gets its own forged-hop test.
+    @override_settings(NUM_PROXIES=1)
+    def test_create_audit_ip_ignores_forged_leftmost_forwarded_hop(self):
+        response = self.client.post(
+            COLLECTION,
+            {"year": 2043, "season": 1},
+            format="json",
+            HTTP_X_FORWARDED_FOR=FORGED_XFF,
+            **self.auth(self.raw),
+        )
+        self.assertEqual(response.status_code, 201)
+        log = CliAuditLog.objects.get(action="create", status="success")
+        self.assertEqual(log.request_ip, TRUSTED_IP)
+
+    @override_settings(NUM_PROXIES=1)
+    def test_failed_write_audit_ip_ignores_forged_leftmost_forwarded_hop(self):
+        # The failed-audit row is written by ``_write``'s own handler, not by the service layer.
+        response = self.client.post(
+            COLLECTION, {"year": 2041}, format="json", HTTP_X_FORWARDED_FOR=FORGED_XFF, **self.auth(self.raw)
+        )
+        self.assertEqual(response.status_code, 400)
+        log = CliAuditLog.objects.get(action="create", status="failed")
+        self.assertEqual(log.request_ip, TRUSTED_IP)
+
+    @override_settings(NUM_PROXIES=1)
+    def test_update_audit_ip_ignores_forged_leftmost_forwarded_hop(self):
+        sem = Semester.objects.create(year=2050, season=1)
+        response = self.client.patch(
+            detail(sem.pk),
+            {"is_published": True},
+            format="json",
+            HTTP_X_FORWARDED_FOR=FORGED_XFF,
+            **self.auth(self.raw),
+        )
+        self.assertEqual(response.status_code, 200)
+        log = CliAuditLog.objects.get(action="update", status="success")
+        self.assertEqual(log.request_ip, TRUSTED_IP)
+
+    @override_settings(NUM_PROXIES=1)
+    def test_delete_audit_ip_ignores_forged_leftmost_forwarded_hop(self):
+        sem = Semester.objects.create(year=2051, season=1)
+        response = self.client.delete(detail(sem.pk), HTTP_X_FORWARDED_FOR=FORGED_XFF, **self.auth(self.raw))
+        self.assertEqual(response.status_code, 200)
+        log = CliAuditLog.objects.get(action="delete", status="success")
+        self.assertEqual(log.request_ip, TRUSTED_IP)
 
     def test_create_validation_error_is_400_and_audits_failure(self):
         response = self.client.post(COLLECTION, {"year": 2041}, format="json", **self.auth(self.raw))

@@ -614,7 +614,7 @@ describe('LoginLinkFallback', () => {
       fireEvent.click(screen.getByRole('button', {name: 'Back'}));
 
       expect(await screen.findByLabelText('Email address')).toHaveValue('ada@example.com');
-      expect(emailField()).toHaveFocus();
+      await waitFor(() => expect(emailField()).toHaveFocus());
       expect(auth.clearError).toHaveBeenCalled();
       // The default Back leaves for /login, which would strand a signed-in browser.
       expect(mockNavigate).not.toHaveBeenCalled();

@@ -9,6 +9,7 @@ from ..serializers import SemesterWithProjectsSerializer
 
 class PastProjectsAPIView(ListAPIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     serializer_class = SemesterWithProjectsSerializer
     pagination_class = PastProjectsPageNumberPagination
 

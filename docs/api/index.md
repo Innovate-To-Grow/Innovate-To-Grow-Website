@@ -20,6 +20,13 @@ Engineers adding or modifying API endpoints, frontend developers consuming the A
 
 Most endpoints require JWT authentication. The frontend sends an `Authorization: Bearer <access_token>` header. Public endpoints use `AllowAny` permission.
 
+DRF authenticates a request *before* it checks permissions, and the SPA's axios client attaches whatever access token local storage holds to every request. On a stock `JWTAuthentication` an expired, garbage, deleted-member or inactive-member token would therefore answer 401 even on an `AllowAny` endpoint (and the client clears the stored session when it cannot refresh). So a public endpoint never runs the strict class:
+
+- It sets `authentication_classes = []` when it never reads the caller (layout, CMS pages/homepage/embed/preview token, news, projects, schedule, assistant config, maintenance bypass).
+- It sets `authentication_classes = [SoftJWTAuthentication]` (`apps.authn.security`) when it reads the caller: a valid token identifies the member, and an invalid or expired one is anonymous rather than a 401. Used by draft preview on `/cms/pages/`, `/event/registration-*`, `/analytics/pageview/`, the `GET` of `/projects/past-shares/<id>/` (`can_edit`) and `/assistant/chat/` (the anonymous throttle skips signed-in members).
+
+An endpoint that needs the token for authorization is not `AllowAny` and keeps the strict class, so a bad token there is still a 401 the client can refresh and retry (this includes `PATCH`/`PUT`/`DELETE` on `/projects/past-shares/<id>/`). `apps.authn.tests.security` fails if a public view runs the strict class.
+
 JWT configuration (from `src/config/settings/components/integrations/api.py`):
 - Access token lifetime: 1 hour
 - Refresh token lifetime: 7 days
