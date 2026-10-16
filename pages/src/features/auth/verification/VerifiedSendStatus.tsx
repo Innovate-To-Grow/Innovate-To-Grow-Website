@@ -10,7 +10,7 @@ export const VerifiedSendStatus = () => {
 
   useEffect(() => subscribeVerifiedSendStatus(setStatus), []);
 
-  if (status.phase === 'idle' || !status.message) return null;
+  if (status.phase === 'idle' || status.phase === 'error' || !status.message) return null;
 
   return (
     <p

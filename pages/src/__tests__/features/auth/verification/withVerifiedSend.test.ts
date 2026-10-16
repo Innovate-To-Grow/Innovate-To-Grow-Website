@@ -9,6 +9,7 @@ vi.mock('@/features/auth/verification/solve', () => ({newRequestId: () => '22222
 import {createSendChallenge, fetchSendRequestStatus} from '@/features/auth/verification/api';
 import {solveAltchaChallenge} from '@/features/auth/verification/solve';
 import {withVerifiedSend} from '@/features/auth/verification/withVerifiedSend';
+import {getVerifiedSendStatus, setVerifiedSendStatus} from '@/features/auth/verification/status';
 import type {SendVerificationOperation} from '@/features/auth/verification/types';
 
 let sequence = 0;
@@ -46,6 +47,7 @@ describe('withVerifiedSend', () => {
     });
     vi.mocked(fetchSendRequestStatus).mockReset().mockResolvedValue(accepted);
     vi.mocked(solveAltchaChallenge).mockReset().mockResolvedValue('signed-payload');
+    setVerifiedSendStatus({phase: 'idle', message: ''});
   });
 
   it('passes the solved proof and a request id to one send', async () => {
@@ -95,6 +97,21 @@ describe('withVerifiedSend', () => {
     const input = options(vi.fn().mockRejectedValue(networkError()));
     await expect(withVerifiedSend(input)).rejects.toMatchObject({response: {status: 400, data: {detail: 'Invalid request'}}});
     expect(sessionStorage.length).toBe(0);
+  });
+
+  it('clears progress without publishing a raw error when code sending is throttled', async () => {
+    const failure = new AxiosError(
+      'Request failed with status code 429',
+      AxiosError.ERR_BAD_REQUEST,
+      undefined,
+      undefined,
+      {status: 429, data: {code: 'send_throttled', detail: 'Please wait before requesting another code.'}} as AxiosResponse,
+    );
+    const input = options(vi.fn().mockRejectedValue(failure));
+
+    await expect(withVerifiedSend(input)).rejects.toBe(failure);
+    expect(input.execute).toHaveBeenCalledTimes(1);
+    expect(getVerifiedSendStatus()).toEqual({phase: 'idle', message: ''});
   });
 
   it('deduplicates concurrent actions with the same complete context', async () => {
