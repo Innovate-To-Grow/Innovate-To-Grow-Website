@@ -9,7 +9,7 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -24,6 +24,8 @@ vi.mock('@/lib/security', () => ({
 import {authApi} from '@/features/auth/api/client';
 import {AuthProvider} from '@/features/auth/components/AuthContext';
 import {LoginForm} from '@/features/auth/components/forms/LoginForm';
+import {VerifiedSendStatus} from '@/features/auth/verification/VerifiedSendStatus';
+import {setVerifiedSendStatus} from '@/features/auth/verification/status';
 
 // Exactly what the login view answers once an account's failed attempts are spent.
 const LOCKED_DETAIL =
@@ -36,6 +38,7 @@ interface Reply {
 }
 
 let loginReply: Reply;
+let codeReply: Reply | null;
 let loginBodies: unknown[];
 
 const reply = (config: InternalAxiosRequestConfig, {status, data}: Reply) => {
@@ -56,6 +59,9 @@ const backend: AxiosAdapter = async (config) => {
   if ((config.url ?? '').endsWith('/authn/login/')) {
     loginBodies.push(typeof config.data === 'string' ? JSON.parse(config.data) : config.data);
     return reply(config, loginReply);
+  }
+  if ((config.url ?? '').endsWith('/authn/email-auth/request-code/') && codeReply) {
+    return reply(config, codeReply);
   }
   return reply(config, {status: 404, data: {detail: 'Not found.'}});
 };
@@ -83,6 +89,7 @@ describe('LoginForm password sign-in refusals', () => {
   beforeEach(() => {
     loginBodies = [];
     loginReply = LOCKED;
+    codeReply = null;
     localStorage.clear();
     sessionStorage.clear();
     authApi.defaults.adapter = backend;
@@ -91,6 +98,7 @@ describe('LoginForm password sign-in refusals', () => {
 
   afterEach(() => {
     cleanup();
+    setVerifiedSendStatus({phase: 'idle', message: ''});
     authApi.defaults.adapter = originalAdapter;
     axios.defaults.adapter = originalAxiosAdapter;
     localStorage.clear();
@@ -233,5 +241,31 @@ describe('LoginForm password sign-in refusals', () => {
         expect(screen.getByRole('alert')).toHaveTextContent('A server error occurred. Please try again later.');
       });
     });
+  });
+
+  it('shows a throttled email-code request once inside the login form, without the raw Axios error in either React root', async () => {
+    codeReply = {
+      status: 429,
+      data: {detail: 'Please wait before requesting another code.', code: 'send_throttled'},
+    };
+    // Production mounts a separate AuthProvider for the menu and the main app.
+    render(<AuthProvider><div data-testid="menu-root" /></AuthProvider>);
+    renderForm();
+    render(<VerifiedSendStatus />);
+
+    fireEvent.change(await screen.findByLabelText('Email or phone number'), {
+      target: {value: 'ada@example.com'},
+    });
+    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Please wait before requesting another code.');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+
+    // The app's one progress indicator must not display a raw transport error,
+    // even if another caller publishes an error state.
+    act(() => setVerifiedSendStatus({phase: 'error', message: 'Request failed with status code 429'}));
+    expect(screen.queryAllByText('Request failed with status code 429')).toHaveLength(0);
+    expect(document.querySelectorAll('.verified-send-status')).toHaveLength(0);
   });
 });

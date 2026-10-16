@@ -180,8 +180,9 @@ export async function withVerifiedSend<T>(options: {
         throw error;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Verification failed. Please try again.';
-      setVerifiedSendStatus({phase: 'error', message});
+      // The caller shows the server's actionable error beside the form. Clear
+      // progress here so a transport error is never left in the global status.
+      setVerifiedSendStatus({phase: 'idle', message: ''});
       throw error;
     } finally {
       options.signal?.removeEventListener('abort', abort);

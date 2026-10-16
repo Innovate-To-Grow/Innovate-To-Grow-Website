@@ -4,7 +4,7 @@ import { RouterProvider } from 'react-router/dom';
 import { createAppRouter } from '@/app/router';
 import { Footer, MainMenu, LayoutProvider } from '@/features/layout';
 import { HealthCheckProvider } from '@/app/MaintenanceMode';
-import { AuthProvider } from '@/features/auth';
+import { AuthProvider, VerifiedSendStatus } from '@/features/auth';
 import { AssistantWidget, shouldMountWidget } from '@/features/assistant';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import {
@@ -50,6 +50,7 @@ export function mountApp() {
             <LayoutProvider>
               <RouterProvider router={router} />
             </LayoutProvider>
+            <VerifiedSendStatus />
           </AuthProvider>
         </HealthCheckProvider>
       </ErrorBoundary>
