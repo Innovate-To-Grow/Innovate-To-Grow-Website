@@ -204,6 +204,25 @@ export function useProjectGridTable({
     setSelectedKeys(new Set(rowsToSelect.map((row) => row.__key)));
   };
 
+  // Add rows to the selection, keeping rows already checked under an earlier search.
+  const addToSelection = (rowsToSelect: ProjectGridItem[]) => {
+    setSelectedKeys((current) => {
+      const next = new Set(current);
+      rowsToSelect.forEach((row) => next.add(row.__key));
+      return next;
+    });
+  };
+
+  const removeFromSelection = (rowKeys: Iterable<string>) => {
+    setSelectedKeys((current) => {
+      const next = new Set(current);
+      for (const rowKey of rowKeys) {
+        next.delete(rowKey);
+      }
+      return next;
+    });
+  };
+
   const toggleAllDetails = () => {
     if (allDetailsExpanded) {
       setExpandedKeys(new Set());
@@ -246,6 +265,8 @@ export function useProjectGridTable({
     clearSelection,
     selectAllRows,
     selectRows,
+    addToSelection,
+    removeFromSelection,
     toggleAllDetails,
     allDetailsExpanded,
     hasSelection: selectedKeys.size > 0,

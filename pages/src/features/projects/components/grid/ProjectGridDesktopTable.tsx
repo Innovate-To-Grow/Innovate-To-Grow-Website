@@ -7,6 +7,7 @@ import {
   type ProjectGridSortDirection,
 } from '../projectGrid';
 import {ProjectGridRowDetails} from './ProjectGridRowDetails';
+import {ProjectTitleWithChips} from './ProjectTitleWithChips';
 
 const COLUMN_WIDTHS: Partial<Record<ProjectGridColumnKey, string>> = {
   semester_label: '9%',
@@ -40,6 +41,9 @@ interface ProjectGridDesktopTableProps {
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
   loadMissingDetails?: boolean;
+  isRowSaved?: (row: ProjectGridItem) => boolean;
+  savedRowLabel?: string;
+  highlightedKeys?: ReadonlySet<string>;
 }
 
 const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: boolean) =>
@@ -49,6 +53,7 @@ export const ProjectGridDesktopTable = ({
   columns,
   rows, pagedRows, emptyMessage, selectable, selectedKeys, selectAllStateRows, onToggleSelected, onToggleSelectAll,
   sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow, loadMissingDetails,
+  isRowSaved, savedRowLabel = 'Saved', highlightedKeys,
 }: ProjectGridDesktopTableProps) => {
   const selectionScopeRows = selectAllStateRows ?? rows;
   const selectedInScopeCount = selectionScopeRows.filter((row) => selectedKeys.has(row.__key)).length;
@@ -131,6 +136,9 @@ export const ProjectGridDesktopTable = ({
               onDeleteRow={onDeleteRow}
               colSpan={colSpan}
               loadMissingDetails={loadMissingDetails}
+              isSaved={Boolean(isRowSaved?.(row))}
+              savedRowLabel={savedRowLabel}
+              isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
             />
           ))}
         </tbody>
@@ -150,6 +158,9 @@ interface DesktopRowProps {
   onDeleteRow?: (row: ProjectGridItem) => void;
   colSpan: number;
   loadMissingDetails?: boolean;
+  isSaved: boolean;
+  savedRowLabel: string;
+  isHighlighted: boolean;
 }
 
 const DesktopRow = ({
@@ -163,13 +174,25 @@ const DesktopRow = ({
   onDeleteRow,
   colSpan,
   loadMissingDetails,
+  isSaved,
+  savedRowLabel,
+  isHighlighted,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const detailsId = useId();
+  const rowClassName = [
+    'project-grid-row',
+    isSelected ? 'is-selected' : '',
+    isExpanded ? 'is-expanded' : '',
+    isSaved ? 'is-saved' : '',
+    isHighlighted ? 'is-new' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <>
-      <tr className={`project-grid-row${isSelected ? ' is-selected' : ''}${isExpanded ? ' is-expanded' : ''}`}>
+      <tr className={rowClassName}>
         {selectable ? (
           <td className="project-grid-select-col">
             <input
@@ -182,7 +205,18 @@ const DesktopRow = ({
         ) : null}
 
         {columns.map((column) => (
-          <td key={column.key}>{row[column.key]}</td>
+          <td key={column.key}>
+            {column.key === 'project_title' ? (
+              <ProjectTitleWithChips
+                title={row.project_title}
+                isNew={isHighlighted}
+                isSaved={isSaved}
+                savedRowLabel={savedRowLabel}
+              />
+            ) : (
+              row[column.key]
+            )}
+          </td>
         ))}
 
         <td className="project-grid-detail-col">

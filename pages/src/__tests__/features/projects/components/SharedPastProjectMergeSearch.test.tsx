@@ -7,7 +7,7 @@ import type {ProjectTableRow} from '@/features/projects/api';
 
 const mockUseAuth = vi.fn();
 const mockSearchPastProjectsWithAI = vi.fn();
-const mockHydrateProjectGridRows = vi.fn();
+const mockHydrateProjectGridRowsSettled = vi.fn();
 const mockBuildLoginPath = vi.fn();
 
 vi.mock('@/features/auth', async (importOriginal) => {
@@ -31,7 +31,7 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
   return {
     ...actual,
     searchPastProjectsWithAI: (...args: unknown[]) => mockSearchPastProjectsWithAI(...args),
-    hydrateProjectGridRows: (...args: unknown[]) => mockHydrateProjectGridRows(...args),
+    hydrateProjectGridRowsSettled: (...args: unknown[]) => mockHydrateProjectGridRowsSettled(...args),
   };
 });
 
@@ -74,8 +74,12 @@ describe('SharedPastProjectMergeSearch', () => {
     mockUseAuth.mockReset();
     mockUseAuth.mockReturnValue({isAuthenticated: true});
     mockSearchPastProjectsWithAI.mockReset();
-    mockHydrateProjectGridRows.mockReset();
-    mockHydrateProjectGridRows.mockImplementation(async (rows: ProjectGridRow[]) => rows);
+    mockHydrateProjectGridRowsSettled.mockReset();
+    mockHydrateProjectGridRowsSettled.mockImplementation(async (rows: ProjectGridRow[]) => ({
+      rows,
+      failedIndexes: [],
+      unavailableIndexes: [],
+    }));
     mockBuildLoginPath.mockReset();
   });
 
@@ -116,7 +120,7 @@ describe('SharedPastProjectMergeSearch', () => {
         }),
       ]);
     });
-    expect(await screen.findByText('1 project added.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 project added.'));
   });
 
   // Archive rows arrive compact. Saving them unchanged wrote the abstract and student names
@@ -125,7 +129,7 @@ describe('SharedPastProjectMergeSearch', () => {
   it('fills in missing abstracts and student names before adding archive rows', async () => {
     const compact = makeRow({id: 'p-1', team_number: 'T50', project_title: 'Compact Project'});
     const hydrated = {...compact, abstract: 'Real abstract', student_names: 'Ada, Alan'};
-    mockHydrateProjectGridRows.mockResolvedValue([hydrated]);
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({rows: [hydrated], failedIndexes: [], unavailableIndexes: []});
     const onAddRows = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -136,7 +140,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() => expect(onAddRows).toHaveBeenCalled());
-    expect(mockHydrateProjectGridRows).toHaveBeenCalled();
+    expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalled();
     expect(onAddRows).toHaveBeenCalledWith([
       expect.objectContaining({abstract: 'Real abstract', student_names: 'Ada, Alan'}),
     ]);
@@ -157,7 +161,7 @@ describe('SharedPastProjectMergeSearch', () => {
 
   it('keeps the selection and explains when project details cannot be loaded', async () => {
     const compact = makeRow({id: 'p-1', team_number: 'T50', project_title: 'Compact Project'});
-    mockHydrateProjectGridRows.mockRejectedValue(new Error('network'));
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({rows: [compact], failedIndexes: [0], unavailableIndexes: []});
     const onAddRows = vi.fn();
 
     render(
@@ -167,9 +171,88 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getAllByLabelText('Select Compact Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
-    expect(await screen.findByText('Unable to add selected projects. Please try again.')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '1 project could not be loaded and is still selected. Click Add Selected to try again.',
+    );
     expect(onAddRows).not.toHaveBeenCalled();
     expect(screen.getAllByLabelText('Select Compact Project')[0]).toBeChecked();
+  });
+
+  it('adds the projects that loaded and keeps only the failed ones selected', async () => {
+    const first = makeRow({id: 'p-1', team_number: 'T50', project_title: 'Loads Fine'});
+    const second = makeRow({id: 'p-2', team_number: 'T51', project_title: 'Fails To Load'});
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({
+      rows: [{...first, abstract: 'Loaded'}, second],
+      failedIndexes: [1],
+      unavailableIndexes: [],
+    });
+    const onAddRows = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <SharedPastProjectMergeSearch currentRows={[]} error={null} loading={false}
+        rows={[first, second]} onAddRows={onAddRows} />,
+    );
+    fireEvent.click(screen.getAllByLabelText('Select Loads Fine')[0]);
+    fireEvent.click(screen.getAllByLabelText('Select Fails To Load')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 project added. 1 project could not be loaded');
+    expect(onAddRows).toHaveBeenCalledWith([expect.objectContaining({project_title: 'Loads Fine', abstract: 'Loaded'})]);
+    expect(screen.getAllByLabelText('Select Loads Fine')[0]).not.toBeChecked();
+    expect(screen.getAllByLabelText('Select Fails To Load')[0]).toBeChecked();
+  });
+
+  it('refuses an add that would pass the 1000-project limit before loading anything', async () => {
+    const current = Array.from({length: 999}, (_, index) => makeRow({team_number: `C${index}`, project_title: `Current ${index}`}));
+    const first = makeRow({id: 'p-1', team_number: 'T50', project_title: 'New One'});
+    const second = makeRow({id: 'p-2', team_number: 'T51', project_title: 'New Two'});
+    const onAddRows = vi.fn();
+
+    render(
+      <SharedPastProjectMergeSearch currentRows={current} error={null} loading={false}
+        rows={[first, second]} onAddRows={onAddRows} />,
+    );
+    fireEvent.click(screen.getAllByLabelText('Select New One')[0]);
+    fireEvent.click(screen.getAllByLabelText('Select New Two')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('A shared page can include at most 1000 projects.');
+    expect(mockHydrateProjectGridRowsSettled).not.toHaveBeenCalled();
+    expect(onAddRows).not.toHaveBeenCalled();
+    expect(screen.getAllByLabelText('Select New One')[0]).toBeChecked();
+  });
+
+  it('skips and unchecks a project the archive no longer has', async () => {
+    const compact = makeRow({id: 'gone', team_number: 'T50', project_title: 'Removed Project'});
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({rows: [compact], failedIndexes: [], unavailableIndexes: [0]});
+    const onAddRows = vi.fn();
+
+    render(
+      <SharedPastProjectMergeSearch currentRows={[]} error={null} loading={false}
+        rows={[compact]} onAddRows={onAddRows} />,
+    );
+    fireEvent.click(screen.getAllByLabelText('Select Removed Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 project is no longer in the archive and was skipped.');
+    expect(onAddRows).not.toHaveBeenCalled();
+    expect(screen.getAllByLabelText('Select Removed Project')[0]).not.toBeChecked();
+  });
+
+  it('reports what the share actually appended', async () => {
+    // The share already had the project by the time the add was applied.
+    const onAddRows = vi.fn().mockResolvedValue(0);
+
+    render(
+      <SharedPastProjectMergeSearch currentRows={[alphaRow]} error={null} loading={false}
+        rows={[alphaRow, bravoRow]} onAddRows={onAddRows} />,
+    );
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Those projects are already in this shared result.'),
+    );
   });
 
   it('can refresh a full-archive standard search table without deleting it', () => {
@@ -303,7 +386,7 @@ describe('SharedPastProjectMergeSearch', () => {
     expect(aiSearchForm).toHaveClass('past-projects-ai-search', 'is-loading');
     expect(aiSearchForm).toHaveAttribute('aria-busy', 'true');
     expect(aiSearchInputFrame).not.toBeNull();
-    expect(screen.getByRole('status')).toHaveTextContent('Searching past projects with AI...');
+    expect(within(aiSearchForm as HTMLElement).getByRole('status')).toHaveTextContent('Searching past projects with AI...');
     expect(document.querySelector('.past-projects-ai-search-spinner')).toBeNull();
     expect(document.querySelector('.past-projects-ai-search-progress')).toBeNull();
     expect(screen.getByText('Searching past projects with AI...').closest('.project-grid-controls-status')).toBeNull();
@@ -550,7 +633,9 @@ describe('SharedPastProjectMergeSearch', () => {
 
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
-    expect(await screen.findByText('Those projects are already in this shared result.')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Those projects are already in this shared result.'),
+    );
     expect(onAddRows).not.toHaveBeenCalled();
   });
 
@@ -570,7 +655,9 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
-    expect(await screen.findByText('Unable to add selected projects. Please try again.')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to add selected projects. They are still selected, so you can try again.',
+    );
     expect(screen.getAllByLabelText('Select Bravo Project')[0]).toBeChecked();
   });
 

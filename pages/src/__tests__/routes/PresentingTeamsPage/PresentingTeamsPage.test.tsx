@@ -69,6 +69,8 @@ const tableResult = () => ({
   clearSelection: vi.fn(),
   selectAllRows: vi.fn(),
   selectRows: vi.fn(),
+  addToSelection: vi.fn(),
+  removeFromSelection: vi.fn(),
   toggleAllDetails: vi.fn(),
   allDetailsExpanded: false,
   hasSelection: false,

@@ -5,6 +5,7 @@ import {
   type ProjectGridItem,
 } from '../projectGrid';
 import {ProjectGridRowDetails} from './ProjectGridRowDetails';
+import {ProjectTitleWithChips} from './ProjectTitleWithChips';
 
 interface ProjectGridMobileCardsProps {
   columns: ProjectGridColumn[];
@@ -17,6 +18,9 @@ interface ProjectGridMobileCardsProps {
   onToggleSelected?: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
   loadMissingDetails?: boolean;
+  isRowSaved?: (row: ProjectGridItem) => boolean;
+  savedRowLabel?: string;
+  highlightedKeys?: ReadonlySet<string>;
 }
 
 export const ProjectGridMobileCards = ({
@@ -30,6 +34,9 @@ export const ProjectGridMobileCards = ({
   onToggleSelected,
   onDeleteRow,
   loadMissingDetails,
+  isRowSaved,
+  savedRowLabel = 'Saved',
+  highlightedKeys,
 }: ProjectGridMobileCardsProps) => (
   <div className="project-grid-mobile-cards">
     {!pagedRows.length ? <div className="project-grid-empty">{emptyMessage}</div> : null}
@@ -46,6 +53,9 @@ export const ProjectGridMobileCards = ({
         onToggleSelected={onToggleSelected}
         onDeleteRow={onDeleteRow}
         loadMissingDetails={loadMissingDetails}
+        isSaved={Boolean(isRowSaved?.(row))}
+        savedRowLabel={savedRowLabel}
+        isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
       />
     ))}
   </div>
@@ -61,6 +71,9 @@ interface MobileCardProps {
   onToggleSelected?: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
   loadMissingDetails?: boolean;
+  isSaved: boolean;
+  savedRowLabel: string;
+  isHighlighted: boolean;
 }
 
 const MobileCard = ({
@@ -73,12 +86,24 @@ const MobileCard = ({
   onToggleSelected,
   onDeleteRow,
   loadMissingDetails,
+  isSaved,
+  savedRowLabel,
+  isHighlighted,
 }: MobileCardProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const detailsId = useId();
+  const cardClassName = [
+    'project-grid-mobile-card',
+    isExpanded ? 'is-expanded' : '',
+    isSelected ? 'is-selected' : '',
+    isSaved ? 'is-saved' : '',
+    isHighlighted ? 'is-new' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
-    <div className={`project-grid-mobile-card${isExpanded ? ' is-expanded' : ''}${isSelected ? ' is-selected' : ''}`}>
+    <div className={cardClassName}>
       {selectable ? (
         <div className="project-grid-mobile-card-select">
           <input
@@ -95,7 +120,18 @@ const MobileCard = ({
           row[column.key] ? (
             <div key={column.key} className="project-grid-mobile-card-field">
               <span className="project-grid-mobile-card-label">{column.label}</span>
-              <span className="project-grid-mobile-card-value">{row[column.key]}</span>
+              <span className="project-grid-mobile-card-value">
+                {column.key === 'project_title' ? (
+                  <ProjectTitleWithChips
+                    title={row.project_title}
+                    isNew={isHighlighted}
+                    isSaved={isSaved}
+                    savedRowLabel={savedRowLabel}
+                  />
+                ) : (
+                  row[column.key]
+                )}
+              </span>
             </div>
           ) : null,
         )}

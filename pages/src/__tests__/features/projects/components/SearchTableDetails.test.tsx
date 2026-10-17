@@ -72,7 +72,7 @@ describe('compact archive row details', () => {
     }
     expect(desktop.getByRole('button', {name: 'Hide'})).toHaveAttribute('aria-controls', detailsId);
     fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
-    expect(onMerge).toHaveBeenCalledWith([row]);
+    expect(onMerge).toHaveBeenCalledWith([row], expect.objectContaining({reportProgress: expect.any(Function)}));
     // The detail cache enriches presentation only; row identity and merge inputs stay stable.
     expect(row.abstract).toBe('');
     fireEvent.click(desktop.getByRole('button', {name: 'Hide'}));

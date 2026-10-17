@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
@@ -37,7 +37,7 @@ import {
   fetchPastProjects,
   fetchPastProjectShare,
   fetchProjectDetail,
-  hydrateProjectGridRows,
+  hydrateProjectGridRowsSettled,
   listMyShares,
   scheduleProjectToGridRow,
   searchPastProjectsWithAI,
@@ -346,12 +346,13 @@ describe('project archive and detail fetch helpers', () => {
     const noId: ProjectGridRow = {...alreadyHydrated, id: undefined, abstract: '', student_names: ''};
     apiMock.get.mockResolvedValue({data: makeTableRow({id: 'project-1', project_title: 'Fetched'})});
 
-    const result = await hydrateProjectGridRows([
+    const {rows: result, failedIndexes} = await hydrateProjectGridRowsSettled([
       {id: 'project-1', ...makeGridRowBase(), abstract: '', student_names: ''},
       alreadyHydrated,
       noId,
     ]);
 
+    expect(failedIndexes).toEqual([]);
     expect(apiMock.get).toHaveBeenCalledTimes(1);
     expect(apiMock.get).toHaveBeenCalledWith('/projects/project-1/', expect.objectContaining({}));
     expect(result).toHaveLength(3);
@@ -381,7 +382,7 @@ describe('project archive and detail fetch helpers', () => {
       student_names: '',
     }));
 
-    const result = await hydrateProjectGridRows(rows);
+    const {rows: result} = await hydrateProjectGridRowsSettled(rows);
 
     // Selecting a large page of archive rows must not open one request per row at once.
     expect(peak).toBeLessThanOrEqual(4);
@@ -389,6 +390,98 @@ describe('project archive and detail fetch helpers', () => {
     expect(result).toHaveLength(20);
     expect(result[0].project_title).toBe('Fetched project-0');
     expect(result[19].project_title).toBe('Fetched project-19');
+  });
+});
+
+describe('hydrateProjectGridRowsSettled retries and partial results', () => {
+  const compactRow = (id: string): ProjectGridRow => ({id, ...makeGridRowBase(), project_title: `Compact ${id}`});
+  const detail = (id: string) => ({data: makeTableRow({id, project_title: `Fetched ${id}`})});
+  const httpError = (status?: number) => Object.assign(new Error('request failed'), status ? {response: {status}} : {});
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('retries a transient failure before giving up on a row', async () => {
+    apiMock.get.mockRejectedValueOnce(httpError()).mockRejectedValueOnce(httpError(503)).mockResolvedValueOnce(detail('p-1'));
+
+    const pending = hydrateProjectGridRowsSettled([compactRow('p-1')]);
+    await vi.runAllTimersAsync();
+    const {rows, failedIndexes} = await pending;
+
+    expect(apiMock.get).toHaveBeenCalledTimes(3);
+    expect(failedIndexes).toEqual([]);
+    expect(rows[0].project_title).toBe('Fetched p-1');
+  });
+
+  it('keeps every row that loaded and reports the ones that still failed', async () => {
+    apiMock.get.mockImplementation(async (url: string) => {
+      if (url.includes('p-2')) throw httpError(500);
+      return detail(url.split('/').at(-2) as string);
+    });
+
+    const pending = hydrateProjectGridRowsSettled([compactRow('p-1'), compactRow('p-2'), compactRow('p-3')]);
+    await vi.runAllTimersAsync();
+    const {rows, failedIndexes} = await pending;
+
+    expect(failedIndexes).toEqual([1]);
+    // 1 try + 2 retries for the failing row, 1 each for the others.
+    expect(apiMock.get).toHaveBeenCalledTimes(5);
+    expect(rows[0].project_title).toBe('Fetched p-1');
+    expect(rows[1].project_title).toBe('Compact p-2');
+    expect(rows[2].project_title).toBe('Fetched p-3');
+  });
+
+  it('reports a missing project as unavailable without retrying it', async () => {
+    apiMock.get.mockRejectedValue(httpError(404));
+
+    const {failedIndexes, unavailableIndexes} = await hydrateProjectGridRowsSettled([compactRow('gone')]);
+
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
+    expect(failedIndexes).toEqual([]);
+    expect(unavailableIndexes).toEqual([0]);
+  });
+
+  it('gives each detail request a timeout, which is retried like a network failure', async () => {
+    apiMock.get.mockRejectedValueOnce(Object.assign(new Error('timeout of 15000ms exceeded'), {code: 'ECONNABORTED'}));
+    apiMock.get.mockResolvedValueOnce(detail('p-1'));
+
+    const pending = hydrateProjectGridRowsSettled([compactRow('p-1')]);
+    await vi.runAllTimersAsync();
+    const {rows, failedIndexes} = await pending;
+
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/p-1/', expect.objectContaining({timeout: 15_000}));
+    expect(failedIndexes).toEqual([]);
+    expect(rows[0].project_title).toBe('Fetched p-1');
+  });
+
+  it('reports progress over the rows that needed a request', async () => {
+    apiMock.get.mockImplementation(async (url: string) => detail(url.split('/').at(-2) as string));
+    const onProgress = vi.fn();
+    const complete = {...compactRow('done'), abstract: 'Has details'};
+
+    await hydrateProjectGridRowsSettled([compactRow('p-1'), complete, compactRow('p-2')], {onProgress});
+
+    expect(onProgress.mock.calls).toEqual([
+      [1, 2],
+      [2, 2],
+    ]);
+  });
+
+  it('rejects when its signal aborts instead of reporting rows as failed', async () => {
+    const controller = new AbortController();
+    apiMock.get.mockRejectedValueOnce(httpError(503));
+
+    const pending = hydrateProjectGridRowsSettled([compactRow('p-1')], {signal: controller.signal});
+    const assertion = expect(pending).rejects.toBeDefined();
+    await vi.advanceTimersByTimeAsync(100);
+    controller.abort();
+    await assertion;
   });
 });
 

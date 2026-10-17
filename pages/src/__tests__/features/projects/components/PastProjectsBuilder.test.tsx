@@ -8,7 +8,7 @@ import type {ProjectTableRow} from '@/features/projects/api';
 const mockUseAuth = vi.fn();
 const mockSearchPastProjectsWithAI = vi.fn();
 const mockBuildLoginPath = vi.fn();
-const mockHydrateProjectGridRows = vi.fn();
+const mockHydrateProjectGridRowsSettled = vi.fn();
 const authenticatedAuth = {
   isAuthenticated: true,
   isInitializing: false,
@@ -37,7 +37,7 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
   return {
     ...actual,
     searchPastProjectsWithAI: (...args: unknown[]) => mockSearchPastProjectsWithAI(...args),
-    hydrateProjectGridRows: (...args: unknown[]) => mockHydrateProjectGridRows(...args),
+    hydrateProjectGridRowsSettled: (...args: unknown[]) => mockHydrateProjectGridRowsSettled(...args),
   };
 });
 
@@ -88,7 +88,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     mockUseAuth.mockReturnValue(authenticatedAuth);
     mockSearchPastProjectsWithAI.mockReset();
     mockBuildLoginPath.mockReset();
-    mockHydrateProjectGridRows.mockReset();
+    mockHydrateProjectGridRowsSettled.mockReset();
     // The builder persists merged rows to sessionStorage; clear it so drafts don't leak between tests.
     sessionStorage.clear();
     vi.spyOn(window, 'confirm').mockImplementation(() => {
@@ -161,7 +161,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(undoButton).toBeDisabled();
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /delete selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /remove from table/i}));
 
     expect(screen.queryByText('Bravo Project')).toBeNull();
     expect(undoButton).toBeEnabled();
@@ -192,7 +192,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       .getByRole('heading', {level: 3, name: 'Search Table 2'})
       .closest('section') as HTMLElement;
     fireEvent.click(within(table2).getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(within(table2).getByRole('button', {name: /delete selected/i}));
+    fireEvent.click(within(table2).getByRole('button', {name: /remove from table/i}));
     expect(within(table2).queryAllByText('Bravo Project')).toHaveLength(0);
 
     // Ask table 1 to refresh — the parent starts a refetch while the stale rows stay mounted.
@@ -329,7 +329,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(aiSearchForm).toHaveClass('past-projects-ai-search', 'is-loading');
     expect(aiSearchForm).toHaveAttribute('aria-busy', 'true');
     expect(aiSearchInputFrame).not.toBeNull();
-    expect(screen.getByRole('status')).toHaveTextContent('Searching past projects with AI...');
+    expect(within(aiSearchForm as HTMLElement).getByRole('status')).toHaveTextContent('Searching past projects with AI...');
     expect(document.querySelector('.past-projects-ai-search-spinner')).toBeNull();
     expect(document.querySelector('.past-projects-ai-search-progress')).toBeNull();
     expect(screen.getByText('Searching past projects with AI...').closest('.project-grid-controls-status')).toBeNull();
@@ -571,20 +571,25 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('does not restore an in-flight merge after a confirmed logout', async () => {
-    let resolveDetails!: (rows: ProjectGridRow[]) => void;
-    mockHydrateProjectGridRows.mockReturnValue(new Promise<ProjectGridRow[]>((resolve) => { resolveDetails = resolve; }));
+    let resolveDetails!: (result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void;
+    mockHydrateProjectGridRowsSettled.mockReturnValue(
+      new Promise((resolve) => { resolveDetails = resolve; }),
+    );
     const rows = [makeRow({id: 'pending-project'})];
     const {rerender} = render(
       <PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />,
     );
     fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
-    expect(mockHydrateProjectGridRows).toHaveBeenCalledTimes(1);
+    expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalledTimes(1);
     mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
     rerender(<PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />);
-    await act(async () => resolveDetails([{...rows[0], abstract: 'Loaded details'}]));
+    await act(async () => resolveDetails({rows: [{...rows[0], abstract: 'Loaded details'}], failedIndexes: [], unavailableIndexes: []}));
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
     expect(getMergedSection()).toBeNull();
+    // The dropped save says so where it was started, and keeps the checkbox for a retry.
+    expect(screen.getByRole('alert')).toHaveTextContent('Your sign-in changed while saving, so nothing was saved.');
+    expect(screen.getAllByLabelText('Select Alpha Project')[0]).toBeChecked();
   });
 
   it('shows a no-results message when AI search finds nothing', async () => {
@@ -643,9 +648,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   });
 
   it('hydrates id-only rows before merging them', async () => {
-    mockHydrateProjectGridRows.mockResolvedValue([
-      makeRow({id: 'p-9', team_number: 'T09', project_title: 'Hydrated Project'}),
-    ]);
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({
+      rows: [makeRow({id: 'p-9', team_number: 'T09', project_title: 'Hydrated Project'})],
+      failedIndexes: [],
+      unavailableIndexes: [],
+    });
     const rowsWithId = [makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'})];
 
     render(<PastProjectsBuilder rows={rowsWithId} loading={false} error={null} onCreateShare={vi.fn()} />);
@@ -653,61 +660,287 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
 
-    await waitFor(() => expect(mockHydrateProjectGridRows).toHaveBeenCalled());
+    await waitFor(() => expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('1 project added to Saved Merged Results (1 in total).'),
+    );
     expect(within(getMergedSection() as HTMLElement).getAllByText('Hydrated Project').length).toBeGreaterThan(0);
   });
 
-  it('stores a project once when a second save starts while the first is still hydrating', async () => {
-    const resolvers: Array<(rows: ProjectGridRow[]) => void> = [];
-    mockHydrateProjectGridRows.mockImplementation(
-      () => new Promise<ProjectGridRow[]>((resolve) => { resolvers.push(resolve); }),
+  it('ignores a second click on the same table while its save is still loading', async () => {
+    const resolvers: Array<(result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void> = [];
+    mockHydrateProjectGridRowsSettled.mockImplementation(
+      () => new Promise((resolve) => { resolvers.push(resolve); }),
     );
     const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
-    const hydrated = makeRow({
-      id: 'p-9', team_number: 'T09', project_title: 'Id Only',
-      abstract: 'Abstract', student_names: 'Ada',
-    });
+    const hydrated = {...compact, abstract: 'Abstract', student_names: 'Ada'};
 
     render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
     fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
-    const save = screen.getByRole('button', {name: /save selected/i});
-    fireEvent.click(save);
-    fireEvent.click(save);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    const saving = screen.getByRole('button', {name: 'Saving…'});
+    expect(saving).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(saving);
+    expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalledTimes(1);
 
-    await act(async () => { resolvers[0]([hydrated]); });
-    await act(async () => { resolvers[1]([hydrated]); });
-    await waitFor(() => expect(getMergedSection()).not.toBeNull());
-
+    await act(async () => { resolvers[0]({rows: [hydrated], failedIndexes: [], unavailableIndexes: []}); });
     const persisted = JSON.parse(sessionStorage.getItem('past-projects:builder:merged-rows') ?? '[]');
     expect(persisted).toHaveLength(1);
   });
 
-  it('explains a failed detail load instead of silently saving nothing', async () => {
-    mockHydrateProjectGridRows.mockRejectedValue(new Error('Request failed with status code 404'));
+  it('stores a project once when two tables save it at the same time', async () => {
+    const resolvers: Array<(result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void> = [];
+    mockHydrateProjectGridRowsSettled.mockImplementation(
+      () => new Promise((resolve) => { resolvers.push(resolve); }),
+    );
     const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+    const hydrated = {...compact, abstract: 'Abstract', student_names: 'Ada'};
+
+    render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', {name: '+ Search Table'}));
+    const table = (name: string) =>
+      screen.getByRole('heading', {level: 3, name}).closest('section') as HTMLElement;
+    for (const name of ['Search Table 1', 'Search Table 2']) {
+      fireEvent.click(within(table(name)).getAllByLabelText('Select Id Only')[0]);
+      fireEvent.click(within(table(name)).getByRole('button', {name: /save selected/i}));
+    }
+    expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalledTimes(2);
+
+    await act(async () => { resolvers[0]({rows: [hydrated], failedIndexes: [], unavailableIndexes: []}); });
+    await act(async () => { resolvers[1]({rows: [hydrated], failedIndexes: [], unavailableIndexes: []}); });
+
+    const persisted = JSON.parse(sessionStorage.getItem('past-projects:builder:merged-rows') ?? '[]');
+    expect(persisted).toHaveLength(1);
+    expect(within(table('Search Table 1')).getByRole('status')).toHaveTextContent(
+      '1 project added to Saved Merged Results (1 in total).',
+    );
+    // The later save reports against what was committed meanwhile, not what it saw when clicked.
+    expect(within(table('Search Table 2')).getByRole('status')).toHaveTextContent(
+      'That project is already in Saved Merged Results.',
+    );
+  });
+
+  it('explains a failed detail load instead of silently saving nothing', async () => {
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({rows: [compact], failedIndexes: [0], unavailableIndexes: []});
 
     render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
     fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
 
-    expect(
-      await screen.findByText('Could not load full details for the selected projects. Please try again.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '1 project could not be loaded and is still selected. Click Save Selected to try again.',
+    );
     expect(getMergedSection()).toBeNull();
     expect(screen.getAllByLabelText('Select Id Only')[0]).toBeChecked();
+  });
+
+  it('keeps the projects that loaded when only some details fail', async () => {
+    const first = makeRow({id: 'p-1', team_number: 'T01', project_title: 'Loads Fine'});
+    const second = makeRow({id: 'p-2', team_number: 'T02', project_title: 'Fails To Load'});
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({
+      rows: [{...first, abstract: 'Loaded'}, second],
+      failedIndexes: [1],
+      unavailableIndexes: [],
+    });
+
+    render(<PastProjectsBuilder rows={[first, second]} loading={false} error={null} onCreateShare={vi.fn()} />);
+    fireEvent.click(screen.getAllByLabelText('Select Loads Fine')[0]);
+    fireEvent.click(screen.getAllByLabelText('Select Fails To Load')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '1 project added to Saved Merged Results (1 in total). 1 project could not be loaded and is still selected.',
+    );
+    const merged = within(getMergedSection() as HTMLElement);
+    expect(merged.getAllByText('Loads Fine').length).toBeGreaterThan(0);
+    expect(merged.queryByText('Fails To Load')).toBeNull();
+    expect(screen.getAllByLabelText('Select Loads Fine')[0]).not.toBeChecked();
+    expect(screen.getAllByLabelText('Select Fails To Load')[0]).toBeChecked();
   });
 
   it('skips merging a project already in the saved results', async () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    const searchTable = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
+    fireEvent.click(within(searchTable).getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
     expect(within(getMergedSection() as HTMLElement).getAllByText('Bravo Project').length).toBeGreaterThan(0);
 
+    // The merged table above also lists Bravo, so target the search table's checkbox.
+    fireEvent.click(within(searchTable).getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+
+    expect(within(searchTable).getByRole('status')).toHaveTextContent('That project is already in Saved Merged Results.');
+  });
+
+  it('reports each save inside its table and marks saved projects in every table', () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    expect(screen.getByRole('status')).toHaveTextContent('1 project added to Saved Merged Results (1 in total).');
+    expect(screen.getByRole('button', {name: 'View Saved Results'})).toBeInTheDocument();
 
-    expect(await screen.findByText('Those rows are already in your saved results.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {name: '+ Search Table'}));
+    const table2 = screen.getByRole('heading', {level: 3, name: 'Search Table 2'}).closest('section') as HTMLElement;
+    // Desktop table + mobile card.
+    expect(within(table2).getAllByText('Saved')).toHaveLength(2);
+  });
+
+  it('shows newly saved older projects instead of leaving them on a later page', () => {
+    const newer = Array.from({length: 5}, (_, index) =>
+      makeRow({semester_label: '2026 Spring', team_number: `N${index}`, project_title: `Newer ${index}`}),
+    );
+    const older = makeRow({semester_label: '2021 Fall', team_number: 'O1', project_title: 'Older Project'});
+    render(<PastProjectsBuilder rows={[...newer, older]} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    newer.forEach((row) => fireEvent.click(screen.getAllByLabelText(`Select ${row.project_title}`)[0]));
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    // The search table pages at 5 rows too; the older project sits on its page 2.
+    const searchTable = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
+    fireEvent.click(within(searchTable).getByRole('button', {name: 'Next'}));
+    fireEvent.click(within(searchTable).getAllByLabelText('Select Older Project')[0]);
+    fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+
+    const merged = getMergedSection() as HTMLElement;
+    expect(within(merged).getByText('Page 2 of 2')).toBeInTheDocument();
+    const olderRow = within(merged).getAllByText('Older Project')[0].closest('tr') as HTMLElement;
+    expect(olderRow).toHaveClass('is-new');
+  });
+
+  it('waits for saves still loading before a shareable link can be created', async () => {
+    let resolveDetails!: (result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void;
+    mockHydrateProjectGridRowsSettled.mockReturnValue(new Promise((resolve) => { resolveDetails = resolve; }));
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+    const onCreateShare = vi.fn();
+    render(<PastProjectsBuilder rows={[...ROWS, compact]} loading={false} error={null} onCreateShare={onCreateShare} />);
+
+    // Alpha needs no detail request, so the saved results card appears straight away.
+    fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    const searchTable = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
+    fireEvent.click(within(searchTable).getAllByLabelText('Select Id Only')[0]);
+    fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+
+    // A link created now would leave out the project that is still loading.
+    const shareButtons = screen.getAllByRole('button', {name: /get shareable url/i});
+    shareButtons.forEach((button) => expect(button).toBeDisabled());
+    expect(screen.getByText(/Waiting for projects to finish saving/)).toBeInTheDocument();
+
+    await act(async () => resolveDetails({rows: [{...compact, abstract: 'Loaded'}], failedIndexes: [], unavailableIndexes: []}));
+    screen.getAllByRole('button', {name: /get shareable url/i}).forEach((button) => expect(button).toBeEnabled());
+    expect(screen.queryByText(/Waiting for projects to finish saving/)).toBeNull();
+  });
+
+  it('points out checked projects another table has not saved yet', () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', {name: '+ Search Table'}));
+    const table = (name: string) =>
+      screen.getByRole('heading', {level: 3, name}).closest('section') as HTMLElement;
+
+    fireEvent.click(within(table('Search Table 1')).getAllByLabelText('Select Alpha Project')[0]);
+    fireEvent.click(within(table('Search Table 2')).getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(within(table('Search Table 2')).getByRole('button', {name: /save selected/i}));
+
+    expect(within(table('Search Table 2')).getByRole('status')).toHaveTextContent(
+      '1 project added to Saved Merged Results (1 in total). Search Table 1 still has 1 selected project that is not saved yet.',
+    );
+  });
+
+  it('does not load details again for a project that is already saved', async () => {
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({
+      rows: [{...compact, abstract: 'Loaded'}],
+      failedIndexes: [],
+      unavailableIndexes: [],
+    });
+    render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
+    const searchTable = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
+
+    fireEvent.click(within(searchTable).getAllByLabelText('Select Id Only')[0]);
+    fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+    await waitFor(() => expect(getMergedSection()).not.toBeNull());
+
+    fireEvent.click(within(searchTable).getAllByLabelText('Select Id Only')[0]);
+    fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+
+    expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalledTimes(1);
+    expect(within(searchTable).getByRole('status')).toHaveTextContent('That project is already in Saved Merged Results.');
+  });
+
+  it('skips and unchecks a project the archive no longer has', async () => {
+    const compact = makeRow({id: 'gone', team_number: 'T09', project_title: 'Removed Project'});
+    mockHydrateProjectGridRowsSettled.mockResolvedValue({rows: [compact], failedIndexes: [], unavailableIndexes: [0]});
+    render(<PastProjectsBuilder rows={[compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getAllByLabelText('Select Removed Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+
+    // Retrying could never work, so the row is not left checked.
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 project is no longer in the archive and was skipped.');
+    expect(screen.getAllByLabelText('Select Removed Project')[0]).not.toBeChecked();
+    expect(getMergedSection()).toBeNull();
+  });
+
+  it('keeps a Reset undoable when a save lands after it', async () => {
+    let resolveDetails!: (result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void;
+    mockHydrateProjectGridRowsSettled.mockReturnValue(new Promise((resolve) => { resolveDetails = resolve; }));
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Late Project'});
+    render(<PastProjectsBuilder rows={[...ROWS, compact]} loading={false} error={null} onCreateShare={vi.fn()} />);
+    const searchTable = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
+
+    fireEvent.click(within(searchTable).getAllByLabelText('Select Alpha Project')[0]);
+    fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+    fireEvent.click(within(searchTable).getAllByLabelText('Select Late Project')[0]);
+    fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Reset Merged Results'}));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: 'Reset Merged Results'}));
+
+    await act(async () => resolveDetails({rows: [{...compact, abstract: 'Loaded'}], failedIndexes: [], unavailableIndexes: []}));
+    fireEvent.click(screen.getByRole('button', {name: 'Undo Merged Change'}));
+
+    const merged = within(getMergedSection() as HTMLElement);
+    expect(merged.getAllByText('Alpha Project').length).toBeGreaterThan(0);
+    expect(merged.getAllByText('Late Project').length).toBeGreaterThan(0);
+  });
+
+  it('keeps the table that saved where it was when the saved results card appears above it', () => {
+    const scrollBy = vi.fn();
+    vi.stubGlobal('scrollBy', scrollBy);
+    const tops = [120, 920];
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const top = this.hasAttribute('data-search-table-id') ? (tops.shift() ?? 920) : 0;
+      return {top, bottom: top, left: 0, right: 0, width: 0, height: 0, x: 0, y: top, toJSON: () => ({})} as DOMRect;
+    });
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    try {
+      fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
+      fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+
+      expect(scrollBy).toHaveBeenCalledWith(0, 800);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('takes the viewer and keyboard focus to the saved results', () => {
+    const scrollIntoView = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+      fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
+      fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+      fireEvent.click(screen.getByRole('button', {name: 'View Saved Results'}));
+
+      expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({block: 'start'}));
+      expect(document.activeElement).toBe(screen.getByRole('heading', {level: 2, name: 'Saved Merged Results'}));
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
   });
 
   it('removes multiple selected merged rows at once', async () => {

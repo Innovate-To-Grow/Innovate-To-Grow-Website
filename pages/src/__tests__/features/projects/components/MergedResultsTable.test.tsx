@@ -1,3 +1,4 @@
+import {StrictMode} from 'react';
 import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -256,6 +257,121 @@ describe('MergedResultsTable', () => {
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
     expect(context).toMatchObject({title: 'Saved Merged Results'});
+  });
+
+  it('exports with the typed name and note so the PDF matches the page it will share', async () => {
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'CSE capstones for Bob'}});
+    setRichTextEditorHtml(screen.getByRole('textbox', {name: /add a curation note/i}), 'Hello Bob');
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
+
+    await waitFor(() => expect(exportMocks.exportProjectRowsPdf).toHaveBeenCalledTimes(1));
+    const [, fileBaseName, context] = exportMocks.exportProjectRowsPdf.mock.calls[0];
+    expect(fileBaseName).toBe('past-projects-cse-capstones-for-bob');
+    expect(context).toEqual({title: 'CSE capstones for Bob', note: 'Hello Bob'});
+  });
+
+  it('explains how an unnamed curation will be titled', () => {
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+
+    expect(screen.getByLabelText(/name this curation/i)).toHaveAccessibleDescription(
+      'Leave blank to use the first line of your note, or “Past Project Curation” if there is no note.',
+    );
+  });
+
+  it('pages to and highlights the rows the latest save added', () => {
+    const newer = Array.from({length: 5}, (_, index) => ({
+      ...baseRow,
+      semester_label: '2026 Spring',
+      team_number: `N${index}`,
+      project_title: `Newer ${index}`,
+    }));
+    const older = {...baseRow, semester_label: '2021 Fall', team_number: 'O1', project_title: 'Older Project'};
+    const firstItems = createProjectGridItems(newer, 'first');
+    const addedItems = createProjectGridItems([older], 'second');
+    const {container, rerender} = render(
+      <MergedResultsTable rows={firstItems} recentlyAdded={{keys: new Set(firstItems.map((row) => row.__key)), token: 1}} />,
+    );
+    expect(screen.queryByText('Page 2 of 2')).toBeNull();
+
+    rerender(
+      <MergedResultsTable
+        rows={[...firstItems, ...addedItems]}
+        recentlyAdded={{keys: new Set(addedItems.map((row) => row.__key)), token: 2}}
+      />,
+    );
+
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
+    const olderRow = within(desktopTable(container)).getByText('Older Project').closest('tr') as HTMLElement;
+    expect(olderRow).toHaveClass('is-new');
+  });
+
+  it('says when the merged-table search hides newly saved rows and can clear it', async () => {
+    const firstItems = makeItems([baseRow]);
+    const addedItems = createProjectGridItems([addedRow], 'second');
+    const {rerender} = render(<MergedResultsTable rows={firstItems} />);
+    fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Shared Project'}});
+
+    rerender(
+      <MergedResultsTable
+        rows={[...firstItems, ...addedItems]}
+        recentlyAdded={{keys: new Set(addedItems.map((row) => row.__key)), token: 1}}
+      />,
+    );
+
+    expect(await screen.findByText(/1 newly saved project is hidden by your search\./)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
+    await waitFor(() => expect(screen.queryByText(/hidden by your search/)).toBeNull());
+    expect(screen.getAllByText('Irrigation Sensor').length).toBeGreaterThan(0);
+  });
+
+  it('waits for saves still loading before a shareable link can be created', () => {
+    const onCreateShare = vi.fn();
+    render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} pendingSaveCount={1} />);
+
+    screen.getAllByRole('button', {name: /get shareable url/i}).forEach((button) => expect(button).toBeDisabled());
+    expect(screen.getByRole('status')).toHaveTextContent('Waiting for projects to finish saving');
+  });
+
+  it('says when its search narrows what the shareable link and exports include', async () => {
+    render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={vi.fn()} />);
+
+    fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Irrigation'}});
+
+    expect(
+      await screen.findByText(
+        /Your search shows 1 of 2 saved projects\. The shareable link and exports include only the 1 it shows\./,
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
+    await waitFor(() => expect(screen.queryByText(/Your search shows/)).toBeNull());
+  });
+
+  it('labels the rows the latest save added, not only by colour', () => {
+    const items = makeItems([baseRow, addedRow]);
+    const {container} = render(
+      <MergedResultsTable rows={items} recentlyAdded={{keys: new Set([items[1].__key]), token: 1}} />,
+    );
+
+    const addedTitle = within(desktopTable(container)).getByText('Irrigation Sensor');
+    expect(within(addedTitle.closest('td') as HTMLElement).getByText('New')).toBeInTheDocument();
+    expect(within(desktopTable(container)).queryAllByText('New')).toHaveLength(1);
+  });
+
+  it('recovers from a failed share under StrictMode', async () => {
+    const onCreateShare = vi.fn().mockRejectedValue(new Error('boom'));
+    render(
+      <StrictMode>
+        <MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />
+      </StrictMode>,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+
+    expect(await screen.findByText('Unable to create a shareable URL. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Creating URL...'})).toBeNull();
   });
 
   it('surfaces an error message when an export fails', async () => {
