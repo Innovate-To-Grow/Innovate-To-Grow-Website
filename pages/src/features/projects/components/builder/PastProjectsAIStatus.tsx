@@ -1,5 +1,3 @@
-import type {ReactNode} from 'react';
-
 export type PastProjectsStatusTone = 'error' | 'info' | 'loading' | 'success';
 
 interface PastProjectsAIStatusProps {
@@ -10,12 +8,10 @@ interface PastProjectsAIStatusProps {
    * persistent live region elsewhere already announces the message.
    */
   announce?: boolean;
-  /** Optional action rendered after the message (e.g. a "View Saved Results" button). */
-  children?: ReactNode;
 }
 
 // Status line for AI search and for per-table saves.
-export const PastProjectsAIStatus = ({message, tone, announce = true, children}: PastProjectsAIStatusProps) => (
+export const PastProjectsAIStatus = ({message, tone, announce = true}: PastProjectsAIStatusProps) => (
   <div
     className={`past-projects-ai-search-message is-${tone}`}
     role={announce ? (tone === 'error' ? 'alert' : 'status') : undefined}
@@ -23,7 +19,6 @@ export const PastProjectsAIStatus = ({message, tone, announce = true, children}:
   >
     <div className="past-projects-ai-search-message-content">
       <span>{message}</span>
-      {children}
     </div>
   </div>
 );

@@ -107,19 +107,10 @@ body .past-projects-dialog-actions {
   background: #f8fafc;
 }
 
-body .past-projects-ai-table-button:disabled,
-body .past-projects-ai-table-button:disabled:hover {
-  border-color: #d1d5db;
-  background: #e5e7eb;
-  color: #6b7280;
-  box-shadow: none;
-  cursor: not-allowed;
-  opacity: 1;
-  transform: none;
-}
-
 /* The CMS sheet only greys out disabled .itg-btn-outline buttons, so a disabled Save Selected kept its
    navy fill, pointer cursor and hover tint and looked clickable. */
+body .past-projects-ai-table-button:disabled,
+body .past-projects-ai-table-button:disabled:hover,
 body .past-projects-page .itg-btn-primary:disabled,
 body .past-projects-page .itg-btn-primary:disabled:hover,
 body .past-projects-page .itg-btn-primary[aria-disabled='true'],
@@ -476,11 +467,16 @@ body .project-grid-row-chip.is-new {
   color: #92400e;
 }
 
-/* Rows the latest save added to the merged results. */
+/* Rows the latest save added to the merged results. A checked one keeps the CMS sheet's selected background,
+   so the checkbox is not the only sign it is selected. */
 body .project-grid-row.is-new,
 body .project-grid-mobile-card.is-new {
-  background: #fefce8;
   box-shadow: inset 4px 0 0 #facc15;
+}
+
+body .project-grid-row.is-new:not(.is-selected),
+body .project-grid-mobile-card.is-new:not(.is-selected) {
+  background: #fefce8;
 }
 
 body .project-grid-narrowed-hint {
@@ -488,7 +484,7 @@ body .project-grid-narrowed-hint {
 }
 
 body .project-grid-share-pending {
-  margin: 0.5rem 1.5rem 0;
+  margin: 0;
   color: var(--itg-color-text-secondary);
   font-size: var(--itg-font-size-small);
 }
@@ -582,7 +578,10 @@ body .project-grid-share-result-copy {
 /* Top-of-curation "Get Shareable URL" action, so it is reachable without scrolling past a long list. */
 body .project-grid-share-actions--top {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
   margin: 0 1.5rem 0.5rem;
 }
 

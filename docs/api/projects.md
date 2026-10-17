@@ -61,7 +61,9 @@ Creates a versioned shared-project snapshot.
 **Name:** optional. A blank or missing `name` here or on a `PUT`, or a blank `name` sent in a `PATCH`, is replaced
 with the first line of the owner's own `note` text, truncated to 60 characters, else `"Past Project Curation"`
 (`apps/projects/services/share_names.py`). A `PATCH` without `name` keeps the stored name. Project details added by
-"Insert projects into note" never count as the owner's text, and the name is never taken from `rows`.
+"Insert projects into note" never count as the owner's text, even once "Clear formatting" has made them plain text,
+so an owner's line that starts like one of their fields (`Organization: …`) is skipped as well. The name is never
+taken from `rows`.
 
 ### `POST /projects/past-ai-search/`
 

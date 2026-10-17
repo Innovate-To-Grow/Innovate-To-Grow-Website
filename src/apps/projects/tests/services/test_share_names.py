@@ -66,11 +66,45 @@ class DefaultShareNameTests(SimpleTestCase):
             "<div><strong>Abstract:</strong> Line one.\nLine two.</div></div></div>"
         )
         self.assertEqual(default_share_name(note), DEFAULT_SHARE_NAME)
+        # Once "Clear formatting" removed the field's <div>, only the abstract's first line still carries the label.
+        for flattened in ["Project 1<br>Abstract: Line one.\nLine two.<br>", "Abstract: Line one.\r\nLine two.<br>"]:
+            with self.subTest(note=flattened):
+                self.assertEqual(default_share_name(flattened), DEFAULT_SHARE_NAME)
+
+    def test_keeps_owner_lines_that_only_start_like_a_project_label(self):
+        self.assertEqual(
+            default_share_name("Project 3 finalists<div>for the board</div>"),
+            "Project 3 finalists",
+        )
+        self.assertEqual(default_share_name("Project 1 Year-Semester: 2026 Spring<br>Mine"), "Mine")
 
     def test_ignores_invisible_characters(self):
         self.assertEqual(default_share_name("<div>\u200b</div>"), DEFAULT_SHARE_NAME)
         self.assertEqual(default_share_name("\ufeff"), DEFAULT_SHARE_NAME)
+        self.assertEqual(default_share_name("<div>\u00ad</div>"), DEFAULT_SHARE_NAME)
         self.assertEqual(default_share_name("<div>\u200b</div><div>Real title</div>"), "Real title")
+        self.assertEqual(default_share_name("\u200e\nSpring shortlist"), "Spring shortlist")
+        self.assertEqual(default_share_name("\ufeffHello\u200b"), "Hello")
+
+    def test_keeps_joiners_inside_the_text(self):
+        family = "\U0001f468\u200d\U0001f469\u200d\U0001f467 family picks"
+        self.assertEqual(default_share_name(f"<div>{family}</div>"), family)
+        self.assertEqual(
+            default_share_name("<div>\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645</div>"),
+            "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645",
+        )
+
+    def test_ignores_comments_and_labels_wrapped_in_other_formatting(self):
+        self.assertEqual(default_share_name("<!-- hidden --><div>Visible</div>"), "Visible")
+        self.assertEqual(
+            default_share_name("<div><strong><em>Abstract:</em></strong> text</div><div>Mine</div>"), "Mine"
+        )
+
+    def test_handles_deeply_nested_notes(self):
+        # Used to take seconds of CPU per request (each nested <div> rescanned its whole subtree).
+        self.assertEqual(default_share_name("<div>" * 5000 + "Deep" + "</div>" * 5000), "Deep")
+        self.assertEqual(default_share_name("<div><strong>" * 2000 + "Deep" + "</strong></div>" * 2000), "Deep")
+        self.assertEqual(default_share_name("<div>" * 10000 + "Unclosed"), "Unclosed")
 
     def test_decodes_entities(self):
         self.assertEqual(default_share_name("<div>R&amp;D &lt;picks&gt;</div>"), "R&D <picks>")

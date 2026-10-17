@@ -32,14 +32,14 @@ const archiveRows = (): ProjectTableRow[] =>
   });
 
 // Detail requests take a realistic moment, and the first one for `flakyId` fails with a 503.
-async function mockProjectDetails(page: Page, rows: ProjectTableRow[], flakyId?: string) {
+async function mockProjectDetails(page: Page, rows: ProjectTableRow[], flakyId?: string, delayMs = 150) {
   const requests: string[] = [];
   await page.route(/\/projects\/[^/]+\/(?:\?.*)?$/, async (route) => {
     const id = new URL(route.request().url()).pathname.split('/').at(-2) ?? '';
     const row = rows.find((project) => project.id === id);
     if (!row) return route.fallback();
     requests.push(id);
-    await new Promise((settle) => setTimeout(settle, 150));
+    await new Promise((settle) => setTimeout(settle, delayMs));
     if (id === flakyId && requests.filter((requested) => requested === id).length === 1) {
       return route.fulfill({status: 503, contentType: 'application/json', body: '{"detail":"Unavailable"}'});
     }
@@ -126,4 +126,42 @@ test('a disabled Save looks disabled and the first save does not move the table 
   await expect(page.locator('#past-projects-saved-results')).toBeAttached();
   const after = (await table.boundingBox())?.y ?? 0;
   expect(Math.abs(after - before)).toBeLessThanOrEqual(2);
+
+  // A newly saved row that is checked shows the sheet's selected background, not only its "New" tint.
+  const savedRow = page
+    .locator('#past-projects-saved-results .project-grid-table-wrap tr')
+    .filter({has: page.getByText('WD Project 0', {exact: true})});
+  await expect(savedRow).toHaveClass(/is-new/);
+  await savedRow.getByRole('checkbox', {name: 'Select WD Project 0'}).check();
+  await expect(savedRow).toHaveCSS('background-color', 'rgb(238, 244, 251)');
+});
+
+test('a save that lands while the user names the curation does not move the page under them', async ({page}) => {
+  const rows = archiveRows();
+  await page.setViewportSize({width: 1440, height: 900});
+  await serveSeedStylesheets(page);
+  await seedAuthenticatedSession(page);
+  await mockPastProjects(page, rows);
+  await mockProjectDetails(page, rows, undefined, 1_500);
+  await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
+
+  const table = searchTable(page);
+  const rowCheckbox = (title: string) =>
+    table.locator('.project-grid-table-wrap').getByRole('checkbox', {name: `Select ${title}`});
+  await rowCheckbox('WD Project 0').check();
+  await table.getByRole('button', {name: 'Save Selected'}).first().click();
+  await expect(table.getByRole('status')).toHaveText('1 project added to Saved Merged Results (1 in total).');
+
+  // Start a second save, then go up to the saved results and type a name while its details load.
+  // Same first page as WD Project 0: the table sorts by semester, newest first.
+  await rowCheckbox('WD Project 6').check();
+  await table.getByRole('button', {name: 'Save Selected'}).first().click();
+  const name = page.getByLabel('Name this curation (optional)');
+  await name.click();
+  await name.pressSequentially('Spring picks');
+  const before = (await name.boundingBox())?.y ?? 0;
+  await expect(table.getByRole('status')).toHaveText('1 project added to Saved Merged Results (2 in total).');
+  const after = (await name.boundingBox())?.y ?? 0;
+  expect(Math.abs(after - before)).toBeLessThanOrEqual(2);
+  await expect(name).toBeFocused();
 });

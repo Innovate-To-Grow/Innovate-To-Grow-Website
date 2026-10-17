@@ -257,7 +257,8 @@ export const MergedResultsTable = ({
         context: {title: sharedTitle, note: canEditShared ? prepareNoteForSave(editNoteDraft) : sharedNoteHtml},
       };
     }
-    // In the builder, export what the shared page will show: the typed name and note.
+    // In the builder, export with the typed name and note. A blank name exports as this card's title; the
+    // shared page's default name is derived by the server from the note when the link is created.
     const typedName = canShare ? nameDraft.trim() : '';
     return {
       fileBaseName: getExportFileBaseName(typedName),
@@ -450,8 +451,9 @@ export const MergedResultsTable = ({
     }
   };
 
+  // While a link is being created the rows stay as they were at the click: the link is made from them.
   const handleDeleteMergedRow = async (row: ProjectGridItem) => {
-    if (!onDeleteRow) {
+    if (!onDeleteRow || isSharing) {
       return;
     }
 
@@ -459,7 +461,7 @@ export const MergedResultsTable = ({
   };
 
   const handleRemoveSelectedMergedRows = () => {
-    if (!onDeleteRows || !table.hasSelection) {
+    if (!onDeleteRows || !table.hasSelection || isSharing) {
       return;
     }
     onDeleteRows(table.selectedRows);
@@ -478,7 +480,7 @@ export const MergedResultsTable = ({
   };
 
   const handleConfirmBulkAction = () => {
-    if (pendingBulkAction === 'reset-builder') {
+    if (pendingBulkAction === 'reset-builder' && !isSharing) {
       onResetRows?.();
     }
 
@@ -527,10 +529,11 @@ export const MergedResultsTable = ({
       {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
     </button>
   ) : null;
+  // Shown beside the button rather than on a line of its own, so it does not push the tables below down.
   const pendingSaveHint =
     canShare && pendingSaveCount > 0 ? (
       <p className="project-grid-share-pending" role="status">
-        Waiting for projects to finish saving before a shareable link can be created…
+        Waiting for projects to finish saving…
       </p>
     ) : null;
   // In the builder the link and exports take the rows the search shows; say so when it hides some, above
@@ -677,8 +680,8 @@ export const MergedResultsTable = ({
                 onChange={(event) => setNameDraft(event.target.value)}
               />
               <p id="past-project-share-name-hint" className="project-grid-share-name-hint">
-                Leave blank to use the first line of your note, or “{DEFAULT_PAST_PROJECT_SHARE_NAME}” if there is no
-                note.
+                Leave blank to use the first line you write in the note (inserted project details are skipped), or
+                “{DEFAULT_PAST_PROJECT_SHARE_NAME}” if there is none.
               </p>
             </div>
             <div className="project-grid-share-note">
@@ -698,8 +701,10 @@ export const MergedResultsTable = ({
                 onChange={setNoteDraft}
               />
             </div>
-            <div className="project-grid-share-actions project-grid-share-actions--top">{createShareButton}</div>
-            {pendingSaveHint}
+            <div className="project-grid-share-actions project-grid-share-actions--top">
+              {pendingSaveHint}
+              {createShareButton}
+            </div>
           </>
         ) : (
           <p className="project-grid-share-login-hint">
@@ -762,7 +767,7 @@ export const MergedResultsTable = ({
         toolbarPlacement="bottom"
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
-            <div className="project-grid-toolbar-cluster" aria-label="Export">
+            <div className="project-grid-toolbar-cluster" role="group" aria-label="Export">
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
@@ -789,13 +794,13 @@ export const MergedResultsTable = ({
               </button>
             </div>
             {onUndoRows || onResetRows || canEditShared || canBulkRemove ? (
-              <div className="project-grid-toolbar-cluster" aria-label="Recovery">
+              <div className="project-grid-toolbar-cluster" role="group" aria-label="Recovery">
                 {canBulkRemove ? (
                   <button
                     type="button"
                     className="itg-btn itg-btn-outline"
                     onClick={handleRemoveSelectedMergedRows}
-                    disabled={!table.hasSelection}
+                    disabled={!table.hasSelection || isSharing}
                   >
                     Remove Selected
                   </button>
@@ -805,7 +810,7 @@ export const MergedResultsTable = ({
                     type="button"
                     className="itg-btn itg-btn-outline"
                     onClick={onUndoRows}
-                    disabled={!canUndoRows}
+                    disabled={!canUndoRows || isSharing}
                   >
                     Undo Merged Change
                   </button>
@@ -815,7 +820,7 @@ export const MergedResultsTable = ({
                     type="button"
                     className="itg-btn itg-btn-outline"
                     onClick={() => setPendingBulkAction('reset-builder')}
-                    disabled={!rows.length}
+                    disabled={!rows.length || isSharing}
                   >
                     Reset Merged Results
                   </button>
@@ -843,7 +848,7 @@ export const MergedResultsTable = ({
               </div>
             ) : null}
             {canShare ? (
-              <div className="project-grid-toolbar-cluster" aria-label="Share link">
+              <div className="project-grid-toolbar-cluster" role="group" aria-label="Share link">
                 {createShareButton}
               </div>
             ) : null}

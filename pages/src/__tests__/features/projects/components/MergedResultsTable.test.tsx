@@ -1,5 +1,5 @@
 import {StrictMode} from 'react';
-import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MergedResultsTable} from '@/features/projects/components/MergedResultsTable';
@@ -277,7 +277,8 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
     expect(screen.getByLabelText(/name this curation/i)).toHaveAccessibleDescription(
-      'Leave blank to use the first line of your note, or “Past Project Curation” if there is no note.',
+      'Leave blank to use the first line you write in the note (inserted project details are skipped), or ' +
+        '“Past Project Curation” if there is none.',
     );
   });
 
@@ -333,6 +334,34 @@ describe('MergedResultsTable', () => {
 
     screen.getAllByRole('button', {name: /get shareable url/i}).forEach((button) => expect(button).toBeDisabled());
     expect(screen.getByRole('status')).toHaveTextContent('Waiting for projects to finish saving');
+    // Beside the button, not on a line of its own that would push the search tables below down.
+    expect(screen.getByRole('status').closest('.project-grid-share-actions--top')).not.toBeNull();
+  });
+
+  it('keeps the saved rows as they are while a shareable link is being created', async () => {
+    let finishShare!: (value: string) => void;
+    const onCreateShare = vi.fn(() => new Promise<string>((resolve) => { finishShare = resolve; }));
+    const onDeleteRows = vi.fn();
+    render(
+      <MergedResultsTable
+        rows={makeItems([baseRow, addedRow])}
+        onCreateShare={onCreateShare}
+        onDeleteRows={onDeleteRows}
+        canUndoRows
+        onUndoRows={vi.fn()}
+        onResetRows={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getAllByLabelText(/^Select /)[1]);
+    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+
+    expect(screen.getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Undo Merged Change'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Reset Merged Results'})).toBeDisabled();
+
+    await act(async () => finishShare('share-1'));
+    expect(screen.getByRole('button', {name: 'Reset Merged Results'})).toBeEnabled();
+    expect(onDeleteRows).not.toHaveBeenCalled();
   });
 
   it('says when its search narrows what the shareable link and exports include', async () => {

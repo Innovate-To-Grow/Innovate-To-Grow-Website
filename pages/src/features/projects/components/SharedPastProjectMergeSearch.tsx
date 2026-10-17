@@ -12,10 +12,8 @@ import {PastProjectsAISearchForm} from './builder/PastProjectsAISearchForm';
 import {PastProjectsActionBar} from './builder/PastProjectsActionBar';
 import {PastProjectsDialog} from './builder/PastProjectsDialog';
 import {SearchTableCard, type SearchTableSaveHelpers, type SearchTableSaveResult} from './SearchTableCard';
-import {
-  createProjectGridFingerprint,
-  type ProjectGridRow,
-} from './projectGrid';
+import {createProjectGridRowMatcher, type ProjectGridRow} from './projectGrid';
+import {RELOADED_WHILE_SAVING, describeSaveResult} from './saveResults';
 
 const INITIAL_SEARCH_TABLE: SearchTableState = {id: 'shared-search-table-1', type: 'standard'};
 const AI_SEARCH_LIMIT = 10;
@@ -26,47 +24,8 @@ const createAISearchTableTitle = (query: string) => {
   return `AI Search Table: ${clipped}`;
 };
 
-const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
-
 // The share API refuses more rows than this (PastProjectShareSerializer.validate_rows).
 const MAX_SHARED_ROWS = 1000;
-
-const describeAddResult = ({
-  added,
-  alreadyAdded,
-  failed,
-  unavailable,
-}: {
-  added: number;
-  alreadyAdded: number;
-  failed: number;
-  unavailable: number;
-}): Pick<SearchTableSaveResult, 'tone' | 'message'> => {
-  const parts: string[] = [];
-  if (added) {
-    parts.push(`${pluralize(added, 'project')} added.`);
-  }
-  if (alreadyAdded) {
-    parts.push(
-      added || failed || unavailable
-        ? `${pluralize(alreadyAdded, 'project')} ${alreadyAdded === 1 ? 'was' : 'were'} already in this shared result.`
-        : 'Those projects are already in this shared result.',
-    );
-  }
-  if (unavailable) {
-    parts.push(
-      `${pluralize(unavailable, 'project')} ${unavailable === 1 ? 'is' : 'are'} no longer in the archive ` +
-        `and ${unavailable === 1 ? 'was' : 'were'} skipped.`,
-    );
-  }
-  if (failed) {
-    parts.push(
-      `${pluralize(failed, 'project')} could not be loaded and ${failed === 1 ? 'is' : 'are'} still selected. ` +
-        'Click Add Selected to try again.',
-    );
-  }
-  return {tone: failed || (unavailable && !added) ? 'error' : added ? 'success' : 'info', message: parts.join(' ')};
-};
 
 const getAISearchErrorMessage = (error: unknown) => {
   const payload = (error as {response?: {data?: {detail?: string; message?: string}}}).response?.data;
@@ -108,27 +67,20 @@ export const SharedPastProjectMergeSearch = ({
   const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const saveControllers = useRef(new Set<AbortController>());
+  // Reloading a search table (Refresh, new AI results) replaces its card. An add that finishes afterwards has
+  // lost the card that would show its outcome, so the outcome is carried over to the new one.
+  const tableGenerations = useRef(new Map<string, number>());
+  const carrySequence = useRef(0);
+  const [carriedStatuses, setCarriedStatuses] = useState<
+    Record<string, {token: number; result: SearchTableSaveResult}>
+  >({});
   const tableSequence = useRef(1);
   const pendingRefreshTableId = useRef<string | null>(null);
   const lastSeenRows = useRef(rows);
 
-  const currentFingerprints = useMemo(
-    () => new Set(currentRows.map((row) => createProjectGridFingerprint(row))),
-    [currentRows],
-  );
-  // The content fingerprint deliberately ignores `id`, so a compact archive row never
-  // matches the hydrated copy of the same project already in this share. Match on the
-  // project id as well, or already-included projects are offered (and added) again.
-  const currentProjectIds = useMemo(
-    () => new Set(currentRows.flatMap((row) => (row.id ? [row.id] : []))),
-    [currentRows],
-  );
-  const isAlreadyShared = useCallback(
-    (row: ProjectGridRow) =>
-      (Boolean(row.id) && currentProjectIds.has(row.id as string)) ||
-      currentFingerprints.has(createProjectGridFingerprint(row)),
-    [currentFingerprints, currentProjectIds],
-  );
+  // Matches on project id as well as content: a compact archive row never has the fingerprint of the hydrated
+  // copy of the same project already in this share, which would otherwise be offered (and added) again.
+  const isAlreadyShared = useMemo(() => createProjectGridRowMatcher(currentRows).has, [currentRows]);
   const availableRows = useMemo(
     () => rows.filter((row) => !isAlreadyShared(row)),
     [isAlreadyShared, rows],
@@ -173,6 +125,10 @@ export const SharedPastProjectMergeSearch = ({
     setSearchTables((current) => current.map((table) => (table.id === tableId ? update(table) : table)));
   };
 
+  const markTableReloaded = (tableId: string) => {
+    tableGenerations.current.set(tableId, (tableGenerations.current.get(tableId) ?? 0) + 1);
+  };
+
   const handleAISearch = async (tableId: string, query: string) => {
     if (!isAuthenticated) {
       return;
@@ -212,6 +168,7 @@ export const SharedPastProjectMergeSearch = ({
         return;
       }
 
+      markTableReloaded(tableId);
       updateSearchTable(tableId, (table) => ({
         ...table,
         initialRows: aiRows,
@@ -249,6 +206,7 @@ export const SharedPastProjectMergeSearch = ({
       return;
     }
     pendingRefreshTableId.current = null;
+    tableGenerations.current.set(tableId, (tableGenerations.current.get(tableId) ?? 0) + 1);
     setSearchTables((current) =>
       current.map((table) =>
         table.id === tableId ? {...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1} : table,
@@ -278,8 +236,12 @@ export const SharedPastProjectMergeSearch = ({
   // Save = add a single search table's checked rows into the shared result. Projects already in the
   // shared result (by id or fingerprint) are skipped so each project is stored once. The outcome is
   // reported inside the table that added them.
-  const handleMergeSelected = useCallback(
-    async (selected: ProjectGridRow[], {reportProgress}: SearchTableSaveHelpers): Promise<SearchTableSaveResult> => {
+  const addSelectedRows = useCallback(
+    async (
+      selected: ProjectGridRow[],
+      reportProgress: SearchTableSaveHelpers['reportProgress'],
+      replaced: () => boolean,
+    ): Promise<SearchTableSaveResult> => {
       // Projects already shared need no detail request.
       const toAdd = selected.flatMap((row, index) => (isAlreadyShared(row) ? [] : [index]));
       if (currentRows.length + toAdd.length > MAX_SHARED_ROWS) {
@@ -303,45 +265,74 @@ export const SharedPastProjectMergeSearch = ({
           : {rows: pendingRows, failedIndexes: [] as number[], unavailableIndexes: [] as number[]};
 
         const skipped = new Set([...failedIndexes, ...unavailableIndexes]);
-        const seenFingerprints = new Set(currentFingerprints);
-        const seenIds = new Set(currentProjectIds);
+        const shared = createProjectGridRowMatcher(currentRows);
         const rowsToAppend: ProjectGridRow[] = [];
         let alreadyAdded = selected.length - toAdd.length;
         loadedRows.forEach((row, index) => {
           if (skipped.has(index)) {
             return;
           }
-          const fingerprint = createProjectGridFingerprint(row);
-          if (seenFingerprints.has(fingerprint) || (row.id && seenIds.has(row.id))) {
+          if (shared.has(row)) {
             alreadyAdded += 1;
             return;
           }
-          seenFingerprints.add(fingerprint);
-          if (row.id) seenIds.add(row.id);
+          shared.add(row);
           rowsToAppend.push(row);
         });
 
         const appended = rowsToAppend.length ? await onAddRows(rowsToAppend) : 0;
         const added = typeof appended === 'number' ? appended : rowsToAppend.length;
-        const result = describeAddResult({
-          added,
-          alreadyAdded: alreadyAdded + (rowsToAppend.length - added),
-          failed: failedIndexes.length,
-          unavailable: unavailableIndexes.length,
-        });
+        const result = describeSaveResult(
+          {
+            added,
+            alreadySaved: alreadyAdded + (rowsToAppend.length - added),
+            failed: failedIndexes.length,
+            unavailable: unavailableIndexes.length,
+          },
+          {
+            added: 'added.',
+            already: 'in this shared result',
+            place: 'in this shared result',
+            retryLabel: 'Add Selected',
+            selectionKept: !replaced(),
+          },
+        );
         return {...result, retainedIndexes: failedIndexes.map((index) => toAdd[index])};
       } catch {
         // Keep the user's selection so they can retry without re-checking rows.
         return {
           tone: 'error',
-          message: 'Unable to add selected projects. They are still selected, so you can try again.',
+          message: replaced()
+            ? 'Unable to add selected projects. Select them again and click Add Selected to try again.'
+            : 'Unable to add selected projects. They are still selected, so you can try again.',
         };
       } finally {
         saveControllers.current.delete(controller);
         setIsSaving(false);
       }
     },
-    [currentFingerprints, currentProjectIds, currentRows.length, isAlreadyShared, onAddRows],
+    [currentRows, isAlreadyShared, onAddRows],
+  );
+
+  const handleMergeSelected = useCallback(
+    async (
+      selected: ProjectGridRow[],
+      {tableId, reportProgress}: SearchTableSaveHelpers,
+    ): Promise<SearchTableSaveResult> => {
+      const generation = tableGenerations.current.get(tableId) ?? 0;
+      const replaced = () => (tableGenerations.current.get(tableId) ?? 0) !== generation;
+      const result = await addSelectedRows(selected, reportProgress, replaced);
+      if (replaced()) {
+        carrySequence.current += 1;
+        const carried = {
+          token: carrySequence.current,
+          result: {...result, message: `${RELOADED_WHILE_SAVING} ${result.message}`},
+        };
+        setCarriedStatuses((current) => ({...current, [tableId]: carried}));
+      }
+      return result;
+    },
+    [addSelectedRows],
   );
 
   return (
@@ -399,6 +390,7 @@ export const SharedPastProjectMergeSearch = ({
                 mergeDisabled={isSaving}
                 isRowSaved={isAlreadyShared}
                 savedRowLabel="Added"
+                carriedOverStatus={carriedStatuses[table.id] ?? null}
                 description={
                   isAISearchTable
                     ? 'Use AI to load matching past projects into this table, then check the projects you want and click Add Selected.'

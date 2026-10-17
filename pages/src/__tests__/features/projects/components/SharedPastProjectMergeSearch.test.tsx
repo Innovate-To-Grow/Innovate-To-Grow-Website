@@ -1,4 +1,4 @@
-import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {SharedPastProjectMergeSearch} from '@/features/projects/components/SharedPastProjectMergeSearch';
@@ -86,6 +86,27 @@ describe('SharedPastProjectMergeSearch', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it('shows the outcome in the reloaded table when a refresh lands while it adds', async () => {
+    let resolveDetails!: (result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void;
+    mockHydrateProjectGridRowsSettled.mockReturnValue(new Promise((resolve) => { resolveDetails = resolve; }));
+    const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
+    const onAddRows = vi.fn().mockResolvedValue(undefined);
+    const props = {currentRows: [alphaRow], error: null, loading: false, onAddRows, onRefreshRows: vi.fn()};
+    const {rerender} = render(<SharedPastProjectMergeSearch rows={[compact]} {...props} />);
+
+    fireEvent.click(screen.getByRole('button', {name: 'Refresh Search Table'}));
+    fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    rerender(<SharedPastProjectMergeSearch rows={[{...compact}]} {...props} />);
+
+    await act(async () => resolveDetails({rows: [compact], failedIndexes: [0], unavailableIndexes: []}));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'This table was reloaded while saving. 1 project could not be loaded. Select it again and click Add Selected to try again.',
+    );
+    expect(onAddRows).not.toHaveBeenCalled();
   });
 
   it('uses the search table merge flow to add selected projects', async () => {
@@ -251,7 +272,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Those projects are already in this shared result.'),
+      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this shared result.'),
     );
   });
 
@@ -634,7 +655,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Those projects are already in this shared result.'),
+      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this shared result.'),
     );
     expect(onAddRows).not.toHaveBeenCalled();
   });

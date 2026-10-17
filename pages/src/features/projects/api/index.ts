@@ -237,6 +237,10 @@ const HYDRATION_RETRY_DELAYS_MS = [300, 900];
 // Without a timeout one stalled request would leave a save "Saving…" indefinitely; a timeout is
 // retried like any other network failure.
 const HYDRATION_REQUEST_TIMEOUT_MS = 15_000;
+// Once no request has been answered for this long the API is down or stalled, and the rows not requested
+// yet are reported as failed at once instead of each waiting out its own timeouts and retries. One slow or
+// broken project does not trip it while the others keep loading.
+const HYDRATION_STALL_MS = 30_000;
 
 /** Archive rows arrive compact; their abstract and student names live only on the detail endpoint. */
 export const needsProjectGridHydration = (row: ProjectGridRow) =>
@@ -314,15 +318,29 @@ export const hydrateProjectGridRowsSettled = async (
     const unavailableIndexes: number[] = [];
     let cursor = 0;
     let done = 0;
+    let lastAnsweredAt = Date.now();
     const worker = async () => {
         while (cursor < pendingIndexes.length) {
             const index = pendingIndexes[cursor];
             cursor += 1;
-            try {
-                hydrated[index] = toProjectGridRow(await fetchProjectDetailWithRetry(rows[index].id as string, signal));
-            } catch (error) {
-                if (signal?.aborted) throw error;
-                (isRetryableDetailError(error) ? failedIndexes : unavailableIndexes).push(index);
+            if (Date.now() - lastAnsweredAt > HYDRATION_STALL_MS) {
+                failedIndexes.push(index);
+            } else {
+                try {
+                    hydrated[index] = toProjectGridRow(
+                        await fetchProjectDetailWithRetry(rows[index].id as string, signal),
+                    );
+                    lastAnsweredAt = Date.now();
+                } catch (error) {
+                    if (signal?.aborted) throw error;
+                    if (isRetryableDetailError(error)) {
+                        failedIndexes.push(index);
+                    } else {
+                        // Refused outright (e.g. a 404): the API is answering, this project is just not there.
+                        lastAnsweredAt = Date.now();
+                        unavailableIndexes.push(index);
+                    }
+                }
             }
             done += 1;
             onProgress?.(done, pendingIndexes.length);

@@ -82,6 +82,25 @@ export const createProjectGridFingerprint = (row: ProjectGridRow) =>
     row.is_presenting,
   ]);
 
+/**
+ * Tells whether a row is one of `rows`: the same project id, or the same content. The fingerprint alone is not
+ * enough, since a compact archive row and the hydrated copy of the same project differ in abstract and students.
+ */
+export const createProjectGridRowMatcher = (rows: ProjectGridRow[]) => {
+  const ids = new Set<string>();
+  const fingerprints = new Set<string>();
+  const add = (row: ProjectGridRow) => {
+    if (row.id) ids.add(row.id);
+    fingerprints.add(createProjectGridFingerprint(row));
+  };
+  rows.forEach(add);
+  return {
+    add,
+    has: (row: ProjectGridRow) =>
+      (Boolean(row.id) && ids.has(row.id as string)) || fingerprints.has(createProjectGridFingerprint(row)),
+  };
+};
+
 export const createProjectGridItems = (rows: ProjectGridRow[], namespace: string): ProjectGridItem[] =>
   rows.map((row, index) => {
     const gridRow = {

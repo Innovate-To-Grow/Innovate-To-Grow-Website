@@ -127,13 +127,13 @@ describe('useProjectGridTable', () => {
         expect(result.current.hasSelection).toBe(false);
     });
 
-    it('selects all rows, clears them, and selects a filtered subset', () => {
+    it('selects a subset of rows and clears them', () => {
         const rows = makeItems(makeRows());
         const {result} = renderHook(() =>
             useProjectGridTable({rows, defaultSortField: 'semester_label'}),
         );
 
-        act(() => result.current.selectAllRows());
+        act(() => result.current.selectRows(rows));
         expect(result.current.selectedKeys.size).toBe(3);
 
         act(() => result.current.selectRows(rows.slice(0, 2)));

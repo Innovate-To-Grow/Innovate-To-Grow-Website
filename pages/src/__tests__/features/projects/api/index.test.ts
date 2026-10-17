@@ -473,6 +473,39 @@ describe('hydrateProjectGridRowsSettled retries and partial results', () => {
     ]);
   });
 
+  it('stops requesting once nothing has been answered for a while, and reports the rest as failed', async () => {
+    // The API is down: every request fails without a response.
+    apiMock.get.mockRejectedValue(httpError());
+    const rows = Array.from({length: 200}, (_, index) => compactRow(`p-${index}`));
+
+    const pending = hydrateProjectGridRowsSettled(rows);
+    await vi.runAllTimersAsync();
+    const {failedIndexes} = await pending;
+
+    expect(failedIndexes).toHaveLength(200);
+    // Each row takes 1.2 s of retries, so 4 at a time get through about 100 rows before 30 s pass without an
+    // answer; the rest are never requested (every row tried 3 times would be 600 requests).
+    expect(apiMock.get.mock.calls.length).toBeLessThan(400);
+    expect(apiMock.get).not.toHaveBeenCalledWith('/projects/p-199/', expect.anything());
+  });
+
+  it('keeps going while other rows load, however long one broken project takes', async () => {
+    apiMock.get.mockImplementation(async (url: string) => {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      if (url === '/projects/p-0/') throw httpError(500);
+      return detail(url.split('/').at(-2) as string);
+    });
+    const rows = Array.from({length: 120}, (_, index) => compactRow(`p-${index}`));
+
+    const pending = hydrateProjectGridRowsSettled(rows);
+    await vi.runAllTimersAsync();
+    const {rows: loaded, failedIndexes} = await pending;
+
+    // 120 rows at 2 s each, 4 at a time, run past 30 s; answers keep coming, so nothing is given up.
+    expect(failedIndexes).toEqual([0]);
+    expect(loaded[119].project_title).toBe('Fetched p-119');
+  });
+
   it('rejects when its signal aborts instead of reporting rows as failed', async () => {
     const controller = new AbortController();
     apiMock.get.mockRejectedValueOnce(httpError(503));

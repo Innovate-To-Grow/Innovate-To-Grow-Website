@@ -10,6 +10,7 @@ import {
   type ProjectGridItem,
   type ProjectGridRow,
 } from './projectGrid';
+import {pluralize} from './saveResults';
 
 /** Outcome of saving a table's checked rows, shown inside the table that saved them. */
 export interface SearchTableSaveResult {
@@ -25,11 +26,13 @@ export interface SearchTableSaveResult {
 export interface SearchTableSaveHelpers {
   /** The table that is saving, so the caller can tell it apart from the others. */
   tableId: string;
+  /** Its title, to name it in a message. */
+  title: string;
   /** Report detail-loading progress while a save runs. */
   reportProgress: (done: number, total: number) => void;
 }
 
-type SaveOutcome = SearchTableSaveResult | boolean | void;
+type SaveOutcome = SearchTableSaveResult | void;
 type SaveOrigin = 'top' | 'bottom';
 
 interface SearchTableCardProps {
@@ -57,15 +60,22 @@ interface SearchTableCardProps {
   /** Scroll to the saved results; offered next to a save's outcome. */
   onViewMergedResults?: () => void;
   viewMergedResultsLabel?: string;
-  /** Told how many rows this table has checked, so the page can mention selections another table left unsaved. */
-  onSelectionCountChange?: (tableId: string, count: number, title: string) => void;
+  /**
+   * The outcome of a save that finished after this table was reloaded: the card that started it was replaced,
+   * so it is shown by this one. A new token shows a new outcome.
+   */
+  carriedOverStatus?: {token: number; result: SearchTableSaveResult} | null;
+  /**
+   * Told which checked rows this table has not submitted yet, so the page can mention selections another
+   * table left unsaved.
+   */
+  onSelectionChange?: (tableId: string, rows: ProjectGridRow[], title: string) => void;
   onRemove: (tableId: string) => void;
   onRefresh?: (tableId: string) => void;
   /**
-   * Push this table's checked rows into the merged results. Resolve to a SearchTableSaveResult to report
-   * the outcome inside this table; legacy callers may resolve to `false` to keep the whole selection.
-   * Submitted rows are unchecked afterwards except the retained ones, so rows checked while a save runs
-   * stay checked.
+   * Push this table's checked rows into the merged results, and resolve to a SearchTableSaveResult to report
+   * the outcome inside this table. Submitted rows are unchecked afterwards except the retained ones, so rows
+   * checked while a save runs stay checked.
    */
   onMergeSelected: (
     rows: ProjectGridRow[],
@@ -80,8 +90,6 @@ const LARGE_SAVE_THRESHOLD = 100;
 const PROGRESS_MIN_TOTAL = 20;
 // Long pages get a second Save button under the table, where the eye is after checking rows.
 const BOTTOM_ACTIONS_MIN_ROWS = 6;
-
-const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
 const isPromiseLike = <T,>(value: unknown): value is PromiseLike<T> =>
   typeof (value as {then?: unknown} | null | undefined)?.then === 'function';
@@ -117,7 +125,8 @@ export function SearchTableCard({
   savedRowLabel,
   onViewMergedResults,
   viewMergedResultsLabel = 'View Saved Results',
-  onSelectionCountChange,
+  carriedOverStatus = null,
+  onSelectionChange,
   onRemove,
   onRefresh,
   onMergeSelected,
@@ -127,6 +136,8 @@ export function SearchTableCard({
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState<{count: number; done: number; total: number} | null>(null);
   const [saveStatus, setSaveStatus] = useState<SearchTableSaveResult | null>(null);
+  // An outcome carried over from before a reload is shown when it arrives, never again on a later remount.
+  const [shownCarriedToken, setShownCarriedToken] = useState(carriedOverStatus?.token ?? null);
   const [saveOrigin, setSaveOrigin] = useState<SaveOrigin>('top');
   const [pendingLargeSave, setPendingLargeSave] = useState<{rows: ProjectGridItem[]; origin: SaveOrigin} | null>(null);
   // Rows submitted by the save in flight: still checked, but no longer waiting for the user to save them.
@@ -139,15 +150,24 @@ export function SearchTableCard({
     defaultSortDirection: 'desc',
   });
 
+  if (carriedOverStatus && carriedOverStatus.token !== shownCarriedToken) {
+    setShownCarriedToken(carriedOverStatus.token);
+    setSaveOrigin('top');
+    setSaveStatus(carriedOverStatus.result);
+  }
+
   const shownKeys = useMemo(() => new Set(table.filteredRows.map((row) => row.__key)), [table.filteredRows]);
   const selectedCount = table.selectedRows.length;
   const hiddenSelectedCount = table.selectedRows.filter((row) => !shownKeys.has(row.__key)).length;
-  const unsavedSelectedCount = table.selectedRows.filter((row) => !inFlightKeys.has(row.__key)).length;
+  const pendingSelection = useMemo(
+    () => table.selectedRows.filter((row) => !inFlightKeys.has(row.__key)).map(stripProjectGridItem),
+    [inFlightKeys, table.selectedRows],
+  );
 
   useEffect(() => {
-    onSelectionCountChange?.(tableId, unsavedSelectedCount, title);
-    return () => onSelectionCountChange?.(tableId, 0, title);
-  }, [onSelectionCountChange, unsavedSelectedCount, tableId, title]);
+    onSelectionChange?.(tableId, pendingSelection, title);
+    return () => onSelectionChange?.(tableId, [], title);
+  }, [onSelectionChange, pendingSelection, tableId, title]);
 
   // A save's outcome stays up until the user starts a new selection in this table.
   const clearSaveStatus = () => setSaveStatus(null);
@@ -187,13 +207,10 @@ export function SearchTableCard({
   // and rows checked while the save ran are not wiped.
   const finishSave = useCallback(
     (submitted: ProjectGridItem[], outcome: SaveOutcome) => {
-      const keepsAll =
-        outcome === false || (typeof outcome === 'object' && outcome.tone === 'error' && !outcome.retainedIndexes);
-      const retained = keepsAll
-        ? new Set(submitted.map((_, index) => index))
-        : new Set(typeof outcome === 'object' ? (outcome.retainedIndexes ?? []) : []);
+      const keepsAll = outcome?.tone === 'error' && !outcome.retainedIndexes;
+      const retained = new Set(keepsAll ? submitted.map((_, index) => index) : (outcome?.retainedIndexes ?? []));
       table.removeFromSelection(submitted.filter((_, index) => !retained.has(index)).map((row) => row.__key));
-      setSaveStatus(typeof outcome === 'object' && outcome.message ? outcome : null);
+      setSaveStatus(outcome?.message ? outcome : null);
     },
     [table],
   );
@@ -206,6 +223,7 @@ export function SearchTableCard({
       try {
         pending = onMergeSelected(submitted.map(stripProjectGridItem), {
           tableId,
+          title,
           reportProgress: (done, total) => {
             const step = Math.max(1, Math.floor(total / 10));
             if (total >= PROGRESS_MIN_TOTAL && (done === total || done % step === 0)) {
@@ -241,11 +259,11 @@ export function SearchTableCard({
       }
       finishSave(submitted, outcome);
     },
-    [finishSave, onMergeSelected, tableId],
+    [finishSave, onMergeSelected, tableId, title],
   );
 
   const handleSaveSelectedRows = (origin: SaveOrigin) => {
-    if (!table.hasSelection || isSavingRef.current) {
+    if (!table.hasSelection || isSavingRef.current || mergeDisabled) {
       return;
     }
     const submitted = table.selectedRows;
@@ -303,27 +321,20 @@ export function SearchTableCard({
     </span>
   ) : null;
 
-  // Screen readers hear outcomes through one persistent polite region per table (errors use an alert);
-  // the visible box sits next to the Save button that was pressed.
-  const liveText = saveProgress
-    ? `${mergingVerb} ${pluralize(saveProgress.count, 'project')}…`
-    : saveStatus && saveStatus.tone !== 'error'
-      ? saveStatus.message
-      : '';
+  // Screen readers hear outcomes apart from the visible box, so an outcome is announced wherever (or whether)
+  // that box is shown: a persistent polite region, and for errors an alert, which is announced when it appears.
+  const progressText = saveProgress ? `${mergingVerb} ${pluralize(saveProgress.count, 'project')}…` : '';
+  const politeText = progressText || (saveStatus && saveStatus.tone !== 'error' ? saveStatus.message : '');
+  const alertText = !saveProgress && saveStatus?.tone === 'error' ? saveStatus.message : '';
   let visibleStatus: ReactNode = null;
   if (saveProgress) {
-    const loaded = saveProgress.total ? ` Loaded details for ${saveProgress.done} of ${saveProgress.total}.` : '';
-    visibleStatus = (
-      <PastProjectsAIStatus
-        announce={false}
-        tone="loading"
-        message={`${mergingVerb} ${pluralize(saveProgress.count, 'project')}…${loaded}`}
-      />
-    );
+    // Counts settled requests, failed ones included, so it reports progress rather than how many loaded.
+    const loading = saveProgress.total ? ` Loading details: ${saveProgress.done} of ${saveProgress.total}.` : '';
+    visibleStatus = <PastProjectsAIStatus announce={false} tone="loading" message={`${progressText}${loading}`} />;
   } else if (saveStatus) {
     visibleStatus = (
       <>
-        <PastProjectsAIStatus announce={saveStatus.tone === 'error'} tone={saveStatus.tone} message={saveStatus.message} />
+        <PastProjectsAIStatus announce={false} tone={saveStatus.tone} message={saveStatus.message} />
         {onViewMergedResults && saveStatus.tone !== 'error' ? (
           <button type="button" className="past-projects-status-action" onClick={onViewMergedResults}>
             {viewMergedResultsLabel}
@@ -332,8 +343,12 @@ export function SearchTableCard({
       </>
     );
   }
+  // The visible box sits next to the Save button that was pressed, or the top one once the bottom one is gone
+  // (the page got shorter than BOTTOM_ACTIONS_MIN_ROWS rows).
+  const showBottomActions = table.pagedRows.length >= BOTTOM_ACTIONS_MIN_ROWS;
+  const statusOrigin: SaveOrigin = saveOrigin === 'bottom' && showBottomActions ? 'bottom' : 'top';
   const statusFor = (origin: SaveOrigin) =>
-    visibleStatus && saveOrigin === origin ? <div className="search-table-save-status">{visibleStatus}</div> : null;
+    visibleStatus && statusOrigin === origin ? <div className="search-table-save-status">{visibleStatus}</div> : null;
 
   return (
     <section
@@ -361,8 +376,13 @@ export function SearchTableCard({
       </div>
 
       <p className="sr-only" role="status" aria-live="polite">
-        {liveText}
+        {politeText}
       </p>
+      {alertText ? (
+        <p className="sr-only" role="alert">
+          {alertText}
+        </p>
+      ) : null}
 
       <div
         key={resultsMotionKey === undefined ? 'search-table-static-results' : `search-table-results-${resultsMotionKey}`}
@@ -403,12 +423,12 @@ export function SearchTableCard({
           savedRowLabel={savedRowLabel}
           toolbar={
             <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
-              <div className="project-grid-toolbar-cluster" aria-label="Save">
+              <div className="project-grid-toolbar-cluster" role="group" aria-label="Save">
                 {saveButton('top')}
                 {selectionCount}
               </div>
               {statusFor('top')}
-              <div className="project-grid-toolbar-cluster" aria-label="Table rows">
+              <div className="project-grid-toolbar-cluster" role="group" aria-label="Table rows">
                 <button
                   type="button"
                   className="itg-btn itg-btn-outline"
@@ -434,7 +454,7 @@ export function SearchTableCard({
                   Undo Row Change
                 </button>
               </div>
-              <div className="project-grid-toolbar-cluster" aria-label="Selection">
+              <div className="project-grid-toolbar-cluster" role="group" aria-label="Selection">
                 <button
                   type="button"
                   className="itg-btn itg-btn-outline"
@@ -471,7 +491,7 @@ export function SearchTableCard({
             </div>
           }
         />
-        {table.pagedRows.length >= BOTTOM_ACTIONS_MIN_ROWS ? (
+        {showBottomActions ? (
           <div className="search-table-bottom-actions" role="group" aria-label={`Save from ${title}`}>
             <div className="project-grid-toolbar-cluster">
               {saveButton('bottom')}
@@ -490,7 +510,9 @@ export function SearchTableCard({
           onConfirm={() => {
             const {rows: submitted, origin} = pendingLargeSave;
             setPendingLargeSave(null);
-            void runSave(submitted, origin);
+            if (!mergeDisabled) {
+              void runSave(submitted, origin);
+            }
           }}
         >
           <p>
