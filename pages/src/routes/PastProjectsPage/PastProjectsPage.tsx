@@ -8,6 +8,7 @@ import {
 } from '@/features/projects';
 import {usePastProjectGridData, usePastProjectShareData} from '@/features/projects/hooks/useProjectGridData';
 import {
+  DEFAULT_PAST_PROJECT_SHARE_NAME,
   createPastProjectShare,
   fetchPastProjectShare,
   updatePastProjectShare,
@@ -171,6 +172,9 @@ const isStaleSnapshotConflict = (error: unknown) => {
     )
   );
 };
+
+const shareDisplayTitle = (share: Pick<PastProjectShare, 'name'>) =>
+  share.name?.trim() || DEFAULT_PAST_PROJECT_SHARE_NAME;
 
 const SHARE_CONFLICT_RELOADED =
   'This shared page changed elsewhere. The latest version was reloaded; review it before editing again.';
@@ -342,7 +346,10 @@ export const PastProjectsPage = () => {
           patch.rows = rebasedRows;
         }
       }
-      if (name !== baseline.name) patch.name = name;
+      // MergedResultsTable passes back the title it displays, which for a legacy blank-name share is
+      // the fallback, so compare against that rather than the raw name or a note/row edit would store
+      // the fallback as a typed name.
+      if (name !== shareDisplayTitle(baseline)) patch.name = name;
       if (note !== baseline.note) patch.note = note;
       return patch;
     });
@@ -352,9 +359,21 @@ export const PastProjectsPage = () => {
     if (!activeShare) {
       throw new Error('Shared past projects are not loaded yet.');
     }
-    await enqueueShareMutation((current) => ({
-      rows: [...current.rows, ...rowsToAdd],
-    }));
+    // The add loaded project details first, so the share may have changed meanwhile (another tab, a
+    // reloaded conflict): append only projects the current version does not already have.
+    let appended = 0;
+    await enqueueShareMutation((current) => {
+      const existing = new Set(current.rows.map(projectRowIdentityBase));
+      const freshRows = rowsToAdd.filter((row) => {
+        const identity = projectRowIdentityBase(row);
+        if (existing.has(identity)) return false;
+        existing.add(identity);
+        return true;
+      });
+      appended = freshRows.length;
+      return freshRows.length ? {rows: [...current.rows, ...freshRows]} : {};
+    });
+    return appended;
   };
 
   return (
@@ -387,7 +406,7 @@ export const PastProjectsPage = () => {
                 rows={sharedItems}
                 sharedMode
                 note={activeShare?.note}
-                title={activeShare?.name?.trim() || 'Shared Past Project Results'}
+                title={activeShare ? shareDisplayTitle(activeShare) : DEFAULT_PAST_PROJECT_SHARE_NAME}
                 editable={Boolean(activeShare?.can_edit)}
                 onUpdateShare={activeShare?.can_edit ? handleUpdateShare : undefined}
               />

@@ -6,6 +6,10 @@ interface PastProjectsActionBarProps {
   loading: boolean;
   showHelp?: boolean;
   title?: string;
+  /** How the help text names each table's save button, where it saves to, and the saved-row chip. */
+  saveLabel?: string;
+  saveTarget?: string;
+  savedLabel?: string;
   onAddAISearchTable?: () => void;
   onAddSearchTable: () => void;
 }
@@ -18,6 +22,9 @@ export const PastProjectsActionBar = ({
   loading,
   showHelp = true,
   title = 'Search Tables',
+  saveLabel = 'Save Selected',
+  saveTarget = 'your saved results at the top of the page',
+  savedLabel = 'Saved',
   onAddAISearchTable,
   onAddSearchTable,
 }: PastProjectsActionBarProps) => (
@@ -67,19 +74,21 @@ export const PastProjectsActionBar = ({
           </span>
         </div>
         <div className="project-grid-help-card">
-          <strong>Save Selected / Delete Selected / Keep Selected</strong>
+          <strong>{saveLabel}</strong>
           <span>
-            These live <strong>inside each search table</strong> and act on the rows you have <em>checked</em> in that
-            table. <strong>Save Selected</strong> adds the checked rows to your saved results below (duplicates are
-            stored once); <strong>Delete Selected</strong> removes the checked rows; <strong>Keep Selected</strong>{' '}
-            removes every row that is <em>not</em> checked. They stay disabled until you check at least one row.
+            Lives <strong>inside each search table</strong> and adds the rows you have <em>checked</em> in that table to{' '}
+            {saveTarget} (projects already there are stored once). Each table saves only its own checked rows, and the
+            result is shown right under that table&apos;s buttons. Those projects are then marked{' '}
+            <strong>{savedLabel}</strong> in every table.
           </span>
         </div>
         <div className="project-grid-help-card">
-          <strong>Undo Row Change</strong>
+          <strong>Remove from Table / Keep Only Selected / Undo Row Change</strong>
           <span>
-            Inside a table, reverses the last <strong>Delete Selected</strong> or <strong>Keep Selected</strong> in that
-            table. It is greyed out until you make such a change, then becomes available to restore the rows.
+            These only tidy the search table itself and never save anything. <strong>Remove from Table</strong> removes
+            the checked rows from the table; <strong>Keep Only Selected</strong> removes every row that is{' '}
+            <em>not</em> checked and keeps the rest checked, ready for {saveLabel}; <strong>Undo Row Change</strong>{' '}
+            reverses the last of these in that table.
           </span>
         </div>
         <div className="project-grid-help-card">
@@ -93,9 +102,10 @@ export const PastProjectsActionBar = ({
           <strong>Inside each table</strong>
           <span>
             Use the search field, click column headers to sort, and change <strong>Per page</strong> if you want more
-            rows at once. Open <strong>View</strong> on a row to read abstracts and student names when available. Use
-            the table toolbar for “Save Selected”, “Delete Selected”, “Keep Selected”, “Undo Row Change”, “Select All
-            Entries”, “Deselect”, and (for full-archive tables) “Refresh Search Table”.
+            rows at once. Open <strong>View</strong> on a row to read abstracts and student names when available.{' '}
+            <strong>Select All</strong> and the header checkbox select the rows that match the current search, and the
+            toolbar shows how many rows are selected. Use “Deselect” to clear the selection and (for full-archive
+            tables) “Refresh Search Table” to reload the archive.
           </span>
         </div>
       </div>

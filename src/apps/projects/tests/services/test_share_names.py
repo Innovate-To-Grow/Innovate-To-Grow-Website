@@ -1,0 +1,132 @@
+from django.test import SimpleTestCase
+
+from apps.projects.services.share_names import DEFAULT_NAME_MAX_CHARS, DEFAULT_SHARE_NAME, default_share_name
+
+PROJECT_SUMMARY_BLOCK = (
+    '<div data-past-project-note-curation="project-summary">'
+    '<div data-past-project-key="k1"><div><strong>Project 1</strong></div>'
+    "<div><strong>Year-Semester:</strong> 2026 Spring</div>"
+    "<div><strong>Project Title:</strong> Upgrading Advanced Image Analysis Platform</div></div>"
+    "<div>------------------------------</div>"
+    '<div data-past-project-key="k2"><div><strong>Project 2</strong></div></div>'
+    "</div>"
+)
+
+
+class DefaultShareNameTests(SimpleTestCase):
+    def test_empty_or_blank_notes_use_the_generic_title(self):
+        for note in ["", "<br>", "<div>&nbsp;</div>", "<div> </div><p></p>", None]:
+            with self.subTest(note=note):
+                self.assertEqual(default_share_name(note), DEFAULT_SHARE_NAME)
+
+    def test_inserted_project_details_never_name_the_curation(self):
+        self.assertEqual(default_share_name(PROJECT_SUMMARY_BLOCK), DEFAULT_SHARE_NAME)
+
+    def test_owner_text_before_inserted_projects_is_used(self):
+        self.assertEqual(default_share_name("<div>Hi Bob,</div><br><br>" + PROJECT_SUMMARY_BLOCK), "Hi Bob,")
+        self.assertEqual(default_share_name("Western Digital picks" + PROJECT_SUMMARY_BLOCK), "Western Digital picks")
+
+    def test_uses_only_the_first_line(self):
+        self.assertEqual(
+            default_share_name("<div>Spring 2026 finalists</div><div>Please review by Friday</div>"),
+            "Spring 2026 finalists",
+        )
+        self.assertEqual(default_share_name("First line<br>second line"), "First line")
+
+    def test_skips_separator_lines_and_flattens_emphasis(self):
+        self.assertEqual(default_share_name("<div>------</div><div>Real title</div>"), "Real title")
+        self.assertEqual(default_share_name("<div><b>Spring 2026</b>  <i>finalists</i></div>"), "Spring 2026 finalists")
+
+    def test_splits_lines_the_way_browsers_write_them(self):
+        # Chromium/WebKit keep the first typed line as a bare text node and wrap later lines in <div>.
+        self.assertEqual(
+            default_share_name("Spring 2026 finalists<div>Please review by Friday</div>"), "Spring 2026 finalists"
+        )
+        # bleach strips non-allowlisted blocks (h1, li) and leaves their text beside the next <div>.
+        self.assertEqual(default_share_name("Title<div>body</div>"), "Title")
+        self.assertEqual(default_share_name("Pasted first line\nsecond"), "Pasted first line")
+
+    def test_keeps_a_heading_typed_inside_the_inserted_block(self):
+        note = PROJECT_SUMMARY_BLOCK.replace(
+            '<div data-past-project-key="k1">',
+            '<div data-past-project-key="k1"><div><strong>My CSE list</strong></div>',
+        )
+        self.assertEqual(default_share_name(note), "My CSE list")
+
+    def test_skips_inserted_details_once_formatting_was_cleared(self):
+        flattened = (
+            "Project 1<br>Year-Semester: 2026 Spring<br>Project Title: Upgrading Advanced Image Analysis Platform"
+            "<br>------------------------------<br>Project 2"
+        )
+        self.assertEqual(default_share_name(flattened), DEFAULT_SHARE_NAME)
+
+    def test_skips_every_line_of_a_multi_line_inserted_abstract(self):
+        note = (
+            '<div data-past-project-note-curation="project-summary"><div data-past-project-key="k1">'
+            "<div><strong>Abstract:</strong> Line one.\nLine two.</div></div></div>"
+        )
+        self.assertEqual(default_share_name(note), DEFAULT_SHARE_NAME)
+        # Once "Clear formatting" removed the field's <div>, only the abstract's first line still carries the label.
+        for flattened in ["Project 1<br>Abstract: Line one.\nLine two.<br>", "Abstract: Line one.\r\nLine two.<br>"]:
+            with self.subTest(note=flattened):
+                self.assertEqual(default_share_name(flattened), DEFAULT_SHARE_NAME)
+
+    def test_keeps_owner_lines_that_only_start_like_a_project_label(self):
+        self.assertEqual(
+            default_share_name("Project 3 finalists<div>for the board</div>"),
+            "Project 3 finalists",
+        )
+        self.assertEqual(default_share_name("Project 1 Year-Semester: 2026 Spring<br>Mine"), "Mine")
+
+    def test_skips_only_the_labelled_line_of_pasted_text(self):
+        # Only a multi-line field (an abstract, a list of students) takes the lines pasted after it along.
+        self.assertEqual(
+            default_share_name("Organization: Keysight\nSpring 2026 shortlist for the board"),
+            "Spring 2026 shortlist for the board",
+        )
+        self.assertEqual(
+            default_share_name("Project 1\nGreat team, recommend for Keysight"), "Great team, recommend for Keysight"
+        )
+        self.assertEqual(default_share_name("Project 1<br>Students: Ada\nGrace<br>"), DEFAULT_SHARE_NAME)
+
+    def test_ignores_invisible_characters(self):
+        self.assertEqual(default_share_name("<div>\u200b</div>"), DEFAULT_SHARE_NAME)
+        self.assertEqual(default_share_name("\ufeff"), DEFAULT_SHARE_NAME)
+        self.assertEqual(default_share_name("<div>\u00ad</div>"), DEFAULT_SHARE_NAME)
+        self.assertEqual(default_share_name("<div>\u200b</div><div>Real title</div>"), "Real title")
+        self.assertEqual(default_share_name("\u200e\nSpring shortlist"), "Spring shortlist")
+        self.assertEqual(default_share_name("\ufeffHello\u200b"), "Hello")
+
+    def test_keeps_format_characters_that_are_part_of_the_text(self):
+        # The tag characters of a subdivision flag (Scotland) are format characters too.
+        flag = chr(0x1F3F4) + "".join(map(chr, (0xE0067, 0xE0062, 0xE0073, 0xE0063, 0xE0074, 0xE007F)))
+        self.assertEqual(default_share_name(f"<div>Scotland picks {flag}</div>"), f"Scotland picks {flag}")
+        self.assertEqual(default_share_name(f"<div>Spring picks{chr(0x200F)}</div>"), "Spring picks")
+
+    def test_keeps_joiners_inside_the_text(self):
+        family = "\U0001f468\u200d\U0001f469\u200d\U0001f467 family picks"
+        self.assertEqual(default_share_name(f"<div>{family}</div>"), family)
+        self.assertEqual(
+            default_share_name("<div>\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645</div>"),
+            "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645",
+        )
+
+    def test_ignores_comments_and_labels_wrapped_in_other_formatting(self):
+        self.assertEqual(default_share_name("<!-- hidden --><div>Visible</div>"), "Visible")
+        self.assertEqual(
+            default_share_name("<div><strong><em>Abstract:</em></strong> text</div><div>Mine</div>"), "Mine"
+        )
+
+    def test_handles_deeply_nested_notes(self):
+        # Used to take seconds of CPU per request (each nested <div> rescanned its whole subtree).
+        self.assertEqual(default_share_name("<div>" * 5000 + "Deep" + "</div>" * 5000), "Deep")
+        self.assertEqual(default_share_name("<div><strong>" * 2000 + "Deep" + "</strong></div>" * 2000), "Deep")
+        self.assertEqual(default_share_name("<div>" * 10000 + "Unclosed"), "Unclosed")
+
+    def test_decodes_entities(self):
+        self.assertEqual(default_share_name("<div>R&amp;D &lt;picks&gt;</div>"), "R&D <picks>")
+
+    def test_truncates_long_lines_with_an_ellipsis(self):
+        name = default_share_name("<div>" + ("x" * 200) + "</div>")
+        self.assertEqual(len(name), DEFAULT_NAME_MAX_CHARS)
+        self.assertTrue(name.endswith("…"))

@@ -44,8 +44,15 @@ interface ProjectGridTableProps {
   onToggleSelected?: (rowKey: string) => void;
   onToggleSelectAll?: () => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  /** Show each row's Remove button disabled, e.g. while the rows are being turned into a shareable link. */
+  deleteDisabled?: boolean;
   /** Retrieve missing details when archive rows are expanded; saved snapshots keep their own fields. */
   loadMissingDetails?: boolean;
+  /** Marks rows already in the saved results with a chip after the project title. */
+  isRowSaved?: (row: ProjectGridItem) => boolean;
+  savedRowLabel?: string;
+  /** Rows to emphasise, e.g. the ones the latest save just added. */
+  highlightedKeys?: ReadonlySet<string>;
 }
 
 interface PageSizeSelectProps {
@@ -221,7 +228,11 @@ export const ProjectGridTable = ({
   onToggleSelected,
   onToggleSelectAll,
   onDeleteRow,
+  deleteDisabled = false,
   loadMissingDetails = false,
+  isRowSaved,
+  savedRowLabel,
+  highlightedKeys,
 }: ProjectGridTableProps) => {
   const searchInputId = useId();
   const toolbarElement = toolbar ? (
@@ -294,7 +305,11 @@ export const ProjectGridTable = ({
             expandedKeys={expandedKeys}
             onToggleExpanded={onToggleExpanded}
             onDeleteRow={onDeleteRow}
+            deleteDisabled={deleteDisabled}
             loadMissingDetails={loadMissingDetails}
+            isRowSaved={isRowSaved}
+            savedRowLabel={savedRowLabel}
+            highlightedKeys={highlightedKeys}
           />
 
           <ProjectGridMobileCards
@@ -307,7 +322,11 @@ export const ProjectGridTable = ({
             selectedKeys={selectedKeys}
             onToggleSelected={onToggleSelected}
             onDeleteRow={onDeleteRow}
+            deleteDisabled={deleteDisabled}
             loadMissingDetails={loadMissingDetails}
+            isRowSaved={isRowSaved}
+            savedRowLabel={savedRowLabel}
+            highlightedKeys={highlightedKeys}
           />
 
           {totalPages > 1 ? (

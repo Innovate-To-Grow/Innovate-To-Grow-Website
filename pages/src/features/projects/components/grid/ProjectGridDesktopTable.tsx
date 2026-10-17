@@ -7,6 +7,7 @@ import {
   type ProjectGridSortDirection,
 } from '../projectGrid';
 import {ProjectGridRowDetails} from './ProjectGridRowDetails';
+import {ProjectTitleWithChips} from './ProjectTitleWithChips';
 
 const COLUMN_WIDTHS: Partial<Record<ProjectGridColumnKey, string>> = {
   semester_label: '9%',
@@ -39,7 +40,11 @@ interface ProjectGridDesktopTableProps {
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  deleteDisabled?: boolean;
   loadMissingDetails?: boolean;
+  isRowSaved?: (row: ProjectGridItem) => boolean;
+  savedRowLabel?: string;
+  highlightedKeys?: ReadonlySet<string>;
 }
 
 const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: boolean) =>
@@ -48,7 +53,8 @@ const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: bool
 export const ProjectGridDesktopTable = ({
   columns,
   rows, pagedRows, emptyMessage, selectable, selectedKeys, selectAllStateRows, onToggleSelected, onToggleSelectAll,
-  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow, loadMissingDetails,
+  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow, deleteDisabled = false,
+  loadMissingDetails, isRowSaved, savedRowLabel = 'Saved', highlightedKeys,
 }: ProjectGridDesktopTableProps) => {
   const selectionScopeRows = selectAllStateRows ?? rows;
   const selectedInScopeCount = selectionScopeRows.filter((row) => selectedKeys.has(row.__key)).length;
@@ -129,8 +135,12 @@ export const ProjectGridDesktopTable = ({
               isExpanded={expandedKeys.has(row.__key)}
               onToggleExpanded={onToggleExpanded}
               onDeleteRow={onDeleteRow}
+              deleteDisabled={deleteDisabled}
               colSpan={colSpan}
               loadMissingDetails={loadMissingDetails}
+              isSaved={Boolean(isRowSaved?.(row))}
+              savedRowLabel={savedRowLabel}
+              isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
             />
           ))}
         </tbody>
@@ -148,8 +158,12 @@ interface DesktopRowProps {
   isExpanded: boolean;
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  deleteDisabled: boolean;
   colSpan: number;
   loadMissingDetails?: boolean;
+  isSaved: boolean;
+  savedRowLabel: string;
+  isHighlighted: boolean;
 }
 
 const DesktopRow = ({
@@ -161,15 +175,28 @@ const DesktopRow = ({
   isExpanded,
   onToggleExpanded,
   onDeleteRow,
+  deleteDisabled,
   colSpan,
   loadMissingDetails,
+  isSaved,
+  savedRowLabel,
+  isHighlighted,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const detailsId = useId();
+  const rowClassName = [
+    'project-grid-row',
+    isSelected ? 'is-selected' : '',
+    isExpanded ? 'is-expanded' : '',
+    isSaved ? 'is-saved' : '',
+    isHighlighted ? 'is-new' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <>
-      <tr className={`project-grid-row${isSelected ? ' is-selected' : ''}${isExpanded ? ' is-expanded' : ''}`}>
+      <tr className={rowClassName}>
         {selectable ? (
           <td className="project-grid-select-col">
             <input
@@ -182,7 +209,18 @@ const DesktopRow = ({
         ) : null}
 
         {columns.map((column) => (
-          <td key={column.key}>{row[column.key]}</td>
+          <td key={column.key}>
+            {column.key === 'project_title' ? (
+              <ProjectTitleWithChips
+                title={row.project_title}
+                isNew={isHighlighted}
+                isSaved={isSaved}
+                savedRowLabel={savedRowLabel}
+              />
+            ) : (
+              row[column.key]
+            )}
+          </td>
         ))}
 
         <td className="project-grid-detail-col">
@@ -206,6 +244,7 @@ const DesktopRow = ({
               type="button"
               className="project-grid-delete-button"
               onClick={() => onDeleteRow(row)}
+              disabled={deleteDisabled}
             >
               Remove
             </button>

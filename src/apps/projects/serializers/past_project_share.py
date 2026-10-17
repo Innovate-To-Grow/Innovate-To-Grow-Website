@@ -1,4 +1,3 @@
-import html
 import re
 import uuid
 
@@ -9,10 +8,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from ..models import PastProjectShare, Project
-
-# When the user does not name a curation, derive one from its content (the email request: "is the
-# name necessary? … or just a default e.g. the first N characters of the curation").
-DEFAULT_NAME_MAX_CHARS = 60
+from ..services.share_names import default_share_name
 
 # Allowlist for the stored details_text HTML: inline emphasis + line/paragraph structure, no
 # attributes. Defense-in-depth so safety does not rely solely on every client render calling
@@ -44,28 +40,6 @@ def sanitize_details_text(value: str) -> str:
     if not value:
         return value
     return bleach.clean(value, tags=DETAILS_ALLOWED_TAGS, attributes=DETAILS_ALLOWED_ATTRIBUTES, strip=True)
-
-
-def _strip_html_to_text(value: str) -> str:
-    """Flatten the (already sanitized) note HTML to collapsed plain text for name derivation."""
-    if not value:
-        return ""
-    no_tags = re.sub(r"<[^>]+>", " ", value)
-    return re.sub(r"\s+", " ", html.unescape(no_tags)).strip()
-
-
-def _default_share_name(note: str, rows) -> str:
-    """Derive a curation name when the user leaves it blank: the first chars of the note, else the
-    first project's title, else a generic fallback."""
-    candidate = _strip_html_to_text(note or "")
-    if not candidate and rows:
-        candidate = str((rows[0] or {}).get("project_title", "") or "").strip()
-    candidate = candidate.strip()
-    if not candidate:
-        return "Untitled curation"
-    if len(candidate) > DEFAULT_NAME_MAX_CHARS:
-        return candidate[: DEFAULT_NAME_MAX_CHARS - 1].rstrip() + "…"
-    return candidate
 
 
 def _normalized_text_key(value):
@@ -221,8 +195,9 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
-    # name is optional: a blank/omitted name is replaced with one derived from the curation content
-    # (see _default_share_name) in create()/update(). trim_whitespace=True still trims a given name.
+    # name is optional: a blank/omitted name is replaced with the first line of the owner's note, else a
+    # generic title (services.share_names.default_share_name), in create()/update(). It is never taken from
+    # the rows. trim_whitespace=True still trims a given name.
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -262,11 +237,10 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         created_by = user if (user is not None and user.is_authenticated) else None
         note = validated_data.get("note", "")
-        rows = validated_data["rows"]
-        name = (validated_data.get("name") or "").strip() or _default_share_name(note, rows)
+        name = (validated_data.get("name") or "").strip() or default_share_name(note)
         return PastProjectShare.objects.create(
             name=name,
-            rows=rows,
+            rows=validated_data["rows"],
             note=note,
             details_text=validated_data.get("details_text", ""),
             created_by=created_by,
@@ -274,14 +248,13 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         expected_version = validated_data.pop("version")
-        next_rows = validated_data.get("rows", instance.rows)
         next_note = validated_data.get("note", instance.note)
         updates = {
             field: validated_data[field] for field in ("rows", "note", "details_text") if field in validated_data
         }
         if "name" in validated_data:
             name = (validated_data.get("name") or "").strip()
-            updates["name"] = name or _default_share_name(next_note, next_rows)
+            updates["name"] = name or default_share_name(next_note)
         updates.update(version=F("version") + 1, updated_at=timezone.now())
         updated = type(instance).objects.filter(pk=instance.pk, version=expected_version).update(**updates)
         if updated != 1:

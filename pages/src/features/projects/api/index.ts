@@ -114,6 +114,13 @@ export interface PastProjectShare {
     created_at: string;
 }
 
+/**
+ * Title of a share saved without a name or any note text of the owner's own. Mirrors the backend
+ * default (src/apps/projects/services/share_names.py DEFAULT_SHARE_NAME); also the display fallback for
+ * legacy shares stored with a blank name.
+ */
+export const DEFAULT_PAST_PROJECT_SHARE_NAME = 'Past Project Curation';
+
 export interface PastProjectShareSummary {
     id: string;
     name: string;
@@ -224,26 +231,134 @@ export const fetchProjectDetail = async (id: string, signal?: AbortSignal): Prom
 // Matches the inline detail loader's bound. Saving a large selection of archive rows
 // would otherwise open one request per row at once.
 const HYDRATION_CONCURRENCY = 4;
+// A save must not fail because one of many detail requests hit a transient error, so each
+// request is retried after these delays before its row is reported as failed.
+const HYDRATION_RETRY_DELAYS_MS = [300, 900];
+// Without a timeout one stalled request would leave a save "Saving…" indefinitely; a timeout is
+// retried like any other network failure.
+const HYDRATION_REQUEST_TIMEOUT_MS = 15_000;
+// Once rows have kept failing for this long with no request answered in between, the API is down or
+// stalled, and the rows not requested yet are reported as failed at once instead of each waiting out its own
+// timeouts and retries. It counts from the first such failure, not from the last answer, so time the page
+// spends suspended (a sleeping laptop) does not count. One slow or broken project does not trip it while
+// the others keep loading.
+const HYDRATION_STALL_MS = 30_000;
 
-export const hydrateProjectGridRows = async (
+/** Archive rows arrive compact; their abstract and student names live only on the detail endpoint. */
+export const needsProjectGridHydration = (row: ProjectGridRow) =>
+    Boolean(row.id) && !row.abstract && !row.student_names;
+
+const isRetryableDetailError = (error: unknown) => {
+    const status = (error as {response?: {status?: number}}).response?.status;
+    // No response at all is a network failure or timeout.
+    return status === undefined || status === 408 || status === 429 || status >= 500;
+};
+
+const sleep = (ms: number, signal?: AbortSignal) =>
+    new Promise<void>((resolve, reject) => {
+        if (signal?.aborted) {
+            reject(signal.reason);
+            return;
+        }
+        const onAbort = () => {
+            clearTimeout(timer);
+            reject(signal?.reason);
+        };
+        const timer = setTimeout(() => {
+            signal?.removeEventListener('abort', onAbort);
+            resolve();
+        }, ms);
+        signal?.addEventListener('abort', onAbort, {once: true});
+    });
+
+const fetchProjectDetailWithRetry = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
+    for (let attempt = 0; ; attempt += 1) {
+        try {
+            const response = await api.get<ProjectDetail>(`/projects/${id}/`, {
+                signal,
+                timeout: HYDRATION_REQUEST_TIMEOUT_MS,
+            });
+            return response.data;
+        } catch (error) {
+            if (signal?.aborted || attempt >= HYDRATION_RETRY_DELAYS_MS.length || !isRetryableDetailError(error)) {
+                throw error;
+            }
+            await sleep(HYDRATION_RETRY_DELAYS_MS[attempt], signal);
+        }
+    }
+};
+
+export interface ProjectGridHydrationResult {
+    rows: ProjectGridRow[];
+    /** Input indexes whose details still failed after retries (worth trying again); returned unchanged. */
+    failedIndexes: number[];
+    /**
+     * Input indexes the detail endpoint refused outright, e.g. a 404 for a project that was removed or whose
+     * semester is unpublished. Retrying cannot help; returned unchanged.
+     */
+    unavailableIndexes: number[];
+}
+
+interface HydrationOptions {
+    signal?: AbortSignal;
+    /** Called after each detail request settles, over only the rows that needed one. */
+    onProgress?: (done: number, total: number) => void;
+}
+
+/**
+ * Fill in abstract/student names for compact rows. Unlike an all-or-nothing load, a row whose
+ * details cannot be loaded is reported in `failedIndexes` or `unavailableIndexes` while every
+ * other row is returned hydrated, so a save can keep what loaded. Rejects only when `signal` aborts.
+ */
+export const hydrateProjectGridRowsSettled = async (
     rows: ProjectGridRow[],
-    signal?: AbortSignal,
-): Promise<ProjectGridRow[]> => {
+    {signal, onProgress}: HydrationOptions = {},
+): Promise<ProjectGridHydrationResult> => {
     const hydrated = [...rows];
+    const pendingIndexes = rows.flatMap((row, index) => (needsProjectGridHydration(row) ? [index] : []));
+    const failedIndexes: number[] = [];
+    const unavailableIndexes: number[] = [];
     let cursor = 0;
+    let done = 0;
+    // When the current run of failures began, or null while requests are being answered.
+    let failingSince: number | null = null;
     const worker = async () => {
-        while (cursor < rows.length) {
-            const index = cursor;
+        while (cursor < pendingIndexes.length) {
+            const index = pendingIndexes[cursor];
             cursor += 1;
-            const row = rows[index];
-            if (!row.id || row.abstract || row.student_names) continue;
-            hydrated[index] = toProjectGridRow(await fetchProjectDetail(row.id, signal));
+            if (failingSince !== null && Date.now() - failingSince > HYDRATION_STALL_MS) {
+                failedIndexes.push(index);
+            } else {
+                try {
+                    hydrated[index] = toProjectGridRow(
+                        await fetchProjectDetailWithRetry(rows[index].id as string, signal),
+                    );
+                    failingSince = null;
+                } catch (error) {
+                    if (signal?.aborted) throw error;
+                    if (isRetryableDetailError(error)) {
+                        failingSince ??= Date.now();
+                        failedIndexes.push(index);
+                    } else {
+                        // Refused outright (e.g. a 404): the API is answering, this project is just not there.
+                        failingSince = null;
+                        unavailableIndexes.push(index);
+                    }
+                }
+            }
+            done += 1;
+            onProgress?.(done, pendingIndexes.length);
         }
     };
     await Promise.all(
-        Array.from({length: Math.min(HYDRATION_CONCURRENCY, rows.length)}, worker),
+        Array.from({length: Math.min(HYDRATION_CONCURRENCY, pendingIndexes.length)}, worker),
     );
-    return hydrated;
+    const byIndex = (left: number, right: number) => left - right;
+    return {
+        rows: hydrated,
+        failedIndexes: failedIndexes.sort(byIndex),
+        unavailableIndexes: unavailableIndexes.sort(byIndex),
+    };
 };
 
 export const createPastProjectShare = async (
