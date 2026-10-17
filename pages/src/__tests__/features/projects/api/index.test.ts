@@ -483,10 +483,31 @@ describe('hydrateProjectGridRowsSettled retries and partial results', () => {
     const {failedIndexes} = await pending;
 
     expect(failedIndexes).toHaveLength(200);
-    // Each row takes 1.2 s of retries, so 4 at a time get through about 100 rows before 30 s pass without an
-    // answer; the rest are never requested (every row tried 3 times would be 600 requests).
+    // Each row takes 1.2 s of retries, so 4 at a time get through about 100 rows before failures have gone on
+    // for 30 s; the rest are never requested (every row tried 3 times would be 600 requests).
     expect(apiMock.get.mock.calls.length).toBeLessThan(400);
     expect(apiMock.get).not.toHaveBeenCalledWith('/projects/p-199/', expect.anything());
+  });
+
+  it('does not give up on the remaining rows after the page was suspended mid-save', async () => {
+    // A laptop sleeps for a minute: the requests in flight hang, then fail on waking, before the network is back.
+    const wakeAt = Date.now() + 60_000;
+    apiMock.get.mockImplementation(async (url: string) => {
+      if (Date.now() < wakeAt) {
+        await new Promise((resolve) => setTimeout(resolve, wakeAt - Date.now()));
+        throw httpError();
+      }
+      if (Date.now() < wakeAt + 2_000) throw httpError();
+      return detail(url.split('/').at(-2) as string);
+    });
+    const rows = Array.from({length: 20}, (_, index) => compactRow(`p-${index}`));
+
+    const pending = hydrateProjectGridRowsSettled(rows);
+    await vi.runAllTimersAsync();
+    const {failedIndexes} = await pending;
+
+    // Only the 4 rows in flight during the sleep failed; the others were requested once it was over, and loaded.
+    expect(failedIndexes).toEqual([0, 1, 2, 3]);
   });
 
   it('keeps going while other rows load, however long one broken project takes', async () => {

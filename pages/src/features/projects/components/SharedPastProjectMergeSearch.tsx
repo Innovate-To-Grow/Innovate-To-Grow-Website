@@ -13,7 +13,7 @@ import {PastProjectsActionBar} from './builder/PastProjectsActionBar';
 import {PastProjectsDialog} from './builder/PastProjectsDialog';
 import {SearchTableCard, type SearchTableSaveHelpers, type SearchTableSaveResult} from './SearchTableCard';
 import {createProjectGridRowMatcher, type ProjectGridRow} from './projectGrid';
-import {RELOADED_WHILE_SAVING, describeSaveResult} from './saveResults';
+import {describeSaveResult} from './saveResults';
 
 const INITIAL_SEARCH_TABLE: SearchTableState = {id: 'shared-search-table-1', type: 'standard'};
 const AI_SEARCH_LIMIT = 10;
@@ -67,13 +67,6 @@ export const SharedPastProjectMergeSearch = ({
   const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const saveControllers = useRef(new Set<AbortController>());
-  // Reloading a search table (Refresh, new AI results) replaces its card. An add that finishes afterwards has
-  // lost the card that would show its outcome, so the outcome is carried over to the new one.
-  const tableGenerations = useRef(new Map<string, number>());
-  const carrySequence = useRef(0);
-  const [carriedStatuses, setCarriedStatuses] = useState<
-    Record<string, {token: number; result: SearchTableSaveResult}>
-  >({});
   const tableSequence = useRef(1);
   const pendingRefreshTableId = useRef<string | null>(null);
   const lastSeenRows = useRef(rows);
@@ -125,10 +118,6 @@ export const SharedPastProjectMergeSearch = ({
     setSearchTables((current) => current.map((table) => (table.id === tableId ? update(table) : table)));
   };
 
-  const markTableReloaded = (tableId: string) => {
-    tableGenerations.current.set(tableId, (tableGenerations.current.get(tableId) ?? 0) + 1);
-  };
-
   const handleAISearch = async (tableId: string, query: string) => {
     if (!isAuthenticated) {
       return;
@@ -168,7 +157,6 @@ export const SharedPastProjectMergeSearch = ({
         return;
       }
 
-      markTableReloaded(tableId);
       updateSearchTable(tableId, (table) => ({
         ...table,
         initialRows: aiRows,
@@ -195,7 +183,8 @@ export const SharedPastProjectMergeSearch = ({
 
   // Refresh is per-table: the refetch keeps serving stale rows (so the stack stays mounted and
   // every other table keeps its local curation), and once the fresh archive lands as a new `rows`
-  // array, only the table that asked is remounted — via its key — with the new data.
+  // array, only the table that asked is reset — via its resetKey — with the new data. The card stays
+  // mounted, so an add it has running still reports its outcome there.
   useEffect(() => {
     if (rows === lastSeenRows.current) {
       return;
@@ -206,7 +195,6 @@ export const SharedPastProjectMergeSearch = ({
       return;
     }
     pendingRefreshTableId.current = null;
-    tableGenerations.current.set(tableId, (tableGenerations.current.get(tableId) ?? 0) + 1);
     setSearchTables((current) =>
       current.map((table) =>
         table.id === tableId ? {...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1} : table,
@@ -236,12 +224,8 @@ export const SharedPastProjectMergeSearch = ({
   // Save = add a single search table's checked rows into the shared result. Projects already in the
   // shared result (by id or fingerprint) are skipped so each project is stored once. The outcome is
   // reported inside the table that added them.
-  const addSelectedRows = useCallback(
-    async (
-      selected: ProjectGridRow[],
-      reportProgress: SearchTableSaveHelpers['reportProgress'],
-      replaced: () => boolean,
-    ): Promise<SearchTableSaveResult> => {
+  const handleMergeSelected = useCallback(
+    async (selected: ProjectGridRow[], {reportProgress}: SearchTableSaveHelpers): Promise<SearchTableSaveResult> => {
       // Projects already shared need no detail request.
       const toAdd = selected.flatMap((row, index) => (isAlreadyShared(row) ? [] : [index]));
       if (currentRows.length + toAdd.length > MAX_SHARED_ROWS) {
@@ -289,22 +273,14 @@ export const SharedPastProjectMergeSearch = ({
             failed: failedIndexes.length,
             unavailable: unavailableIndexes.length,
           },
-          {
-            added: 'added.',
-            already: 'in this shared result',
-            place: 'in this shared result',
-            retryLabel: 'Add Selected',
-            selectionKept: !replaced(),
-          },
+          {added: 'added.', already: 'in this shared result', place: 'in this shared result', retryLabel: 'Add Selected'},
         );
         return {...result, retainedIndexes: failedIndexes.map((index) => toAdd[index])};
       } catch {
         // Keep the user's selection so they can retry without re-checking rows.
         return {
           tone: 'error',
-          message: replaced()
-            ? 'Unable to add selected projects. Select them again and click Add Selected to try again.'
-            : 'Unable to add selected projects. They are still selected, so you can try again.',
+          message: 'Unable to add selected projects. They are still selected, so you can try again.',
         };
       } finally {
         saveControllers.current.delete(controller);
@@ -312,27 +288,6 @@ export const SharedPastProjectMergeSearch = ({
       }
     },
     [currentRows, isAlreadyShared, onAddRows],
-  );
-
-  const handleMergeSelected = useCallback(
-    async (
-      selected: ProjectGridRow[],
-      {tableId, reportProgress}: SearchTableSaveHelpers,
-    ): Promise<SearchTableSaveResult> => {
-      const generation = tableGenerations.current.get(tableId) ?? 0;
-      const replaced = () => (tableGenerations.current.get(tableId) ?? 0) !== generation;
-      const result = await addSelectedRows(selected, reportProgress, replaced);
-      if (replaced()) {
-        carrySequence.current += 1;
-        const carried = {
-          token: carrySequence.current,
-          result: {...result, message: `${RELOADED_WHILE_SAVING} ${result.message}`},
-        };
-        setCarriedStatuses((current) => ({...current, [tableId]: carried}));
-      }
-      return result;
-    },
-    [addSelectedRows],
   );
 
   return (
@@ -382,7 +337,8 @@ export const SharedPastProjectMergeSearch = ({
 
             return (
               <SearchTableCard
-                key={table.rowsResetKey === undefined ? table.id : `${table.id}-${table.rowsResetKey}`}
+                key={table.id}
+                resetKey={table.rowsResetKey}
                 canRemove={searchTables.length > 1}
                 mergeLabel="Add Selected"
                 mergeVerb="Add"
@@ -390,7 +346,6 @@ export const SharedPastProjectMergeSearch = ({
                 mergeDisabled={isSaving}
                 isRowSaved={isAlreadyShared}
                 savedRowLabel="Added"
-                carriedOverStatus={carriedStatuses[table.id] ?? null}
                 description={
                   isAISearchTable
                     ? 'Use AI to load matching past projects into this table, then check the projects you want and click Add Selected.'

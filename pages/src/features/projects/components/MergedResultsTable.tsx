@@ -748,6 +748,7 @@ export const MergedResultsTable = ({
         emptyMessage="No merged results saved yet."
         countLabel="results"
         onDeleteRow={sharedMode ? (canEditShared ? handleDeleteSharedRow : undefined) : handleDeleteMergedRow}
+        deleteDisabled={!sharedMode && isSharing}
         selectable={canBulkRemove}
         selectedKeys={table.selectedKeys}
         selectAllStateRows={table.filteredRows}

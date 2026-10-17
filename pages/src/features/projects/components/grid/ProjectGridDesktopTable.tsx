@@ -40,6 +40,7 @@ interface ProjectGridDesktopTableProps {
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  deleteDisabled?: boolean;
   loadMissingDetails?: boolean;
   isRowSaved?: (row: ProjectGridItem) => boolean;
   savedRowLabel?: string;
@@ -52,8 +53,8 @@ const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: bool
 export const ProjectGridDesktopTable = ({
   columns,
   rows, pagedRows, emptyMessage, selectable, selectedKeys, selectAllStateRows, onToggleSelected, onToggleSelectAll,
-  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow, loadMissingDetails,
-  isRowSaved, savedRowLabel = 'Saved', highlightedKeys,
+  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow, deleteDisabled = false,
+  loadMissingDetails, isRowSaved, savedRowLabel = 'Saved', highlightedKeys,
 }: ProjectGridDesktopTableProps) => {
   const selectionScopeRows = selectAllStateRows ?? rows;
   const selectedInScopeCount = selectionScopeRows.filter((row) => selectedKeys.has(row.__key)).length;
@@ -134,6 +135,7 @@ export const ProjectGridDesktopTable = ({
               isExpanded={expandedKeys.has(row.__key)}
               onToggleExpanded={onToggleExpanded}
               onDeleteRow={onDeleteRow}
+              deleteDisabled={deleteDisabled}
               colSpan={colSpan}
               loadMissingDetails={loadMissingDetails}
               isSaved={Boolean(isRowSaved?.(row))}
@@ -156,6 +158,7 @@ interface DesktopRowProps {
   isExpanded: boolean;
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  deleteDisabled: boolean;
   colSpan: number;
   loadMissingDetails?: boolean;
   isSaved: boolean;
@@ -172,6 +175,7 @@ const DesktopRow = ({
   isExpanded,
   onToggleExpanded,
   onDeleteRow,
+  deleteDisabled,
   colSpan,
   loadMissingDetails,
   isSaved,
@@ -240,6 +244,7 @@ const DesktopRow = ({
               type="button"
               className="project-grid-delete-button"
               onClick={() => onDeleteRow(row)}
+              disabled={deleteDisabled}
             >
               Remove
             </button>

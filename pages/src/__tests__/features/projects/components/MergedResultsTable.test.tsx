@@ -358,6 +358,7 @@ describe('MergedResultsTable', () => {
     expect(screen.getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
     expect(screen.getByRole('button', {name: 'Undo Merged Change'})).toBeDisabled();
     expect(screen.getByRole('button', {name: 'Reset Merged Results'})).toBeDisabled();
+    screen.getAllByRole('button', {name: 'Remove'}).forEach((button) => expect(button).toBeDisabled());
 
     await act(async () => finishShare('share-1'));
     expect(screen.getByRole('button', {name: 'Reset Merged Results'})).toBeEnabled();

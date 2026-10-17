@@ -219,6 +219,17 @@ export function useProjectGridTable({
     });
   };
 
+  // Start over as a newly mounted table would, for when the rows are replaced by a reload.
+  const reset = () => {
+    setPageSizeState(Math.max(1, initialPageSize));
+    setSearch(initialSearch);
+    setSortField(defaultSortField);
+    setSortDirection(defaultSortDirection);
+    setPage(0);
+    setExpandedKeys(new Set());
+    setSelectedKeys(new Set());
+  };
+
   const toggleAllDetails = () => {
     if (allDetailsExpanded) {
       setExpandedKeys(new Set());
@@ -262,6 +273,7 @@ export function useProjectGridTable({
     selectRows,
     addToSelection,
     removeFromSelection,
+    reset,
     toggleAllDetails,
     allDetailsExpanded,
     hasSelection: selectedKeys.size > 0,

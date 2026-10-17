@@ -20,7 +20,7 @@ import {
     type ProjectGridItem,
     type ProjectGridRow,
 } from './projectGrid';
-import {RELOADED_WHILE_SAVING, describeSaveResult, pluralize} from './saveResults';
+import {describeSaveResult, pluralize} from './saveResults';
 
 const INITIAL_SEARCH_TABLE: SearchTableState = {id: 'search-table-1', type: 'standard'};
 
@@ -174,7 +174,6 @@ export const PastProjectsBuilder = ({
     const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
     const tableSequence = useRef(1);
     const mergeSequence = useRef(0);
-    const carrySequence = useRef(0);
     const draftAccountSequence = useRef(0);
     const pendingRefreshTableId = useRef<string | null>(null);
     const lastSeenRows = useRef(rows);
@@ -187,12 +186,6 @@ export const PastProjectsBuilder = ({
     // The rows each search table has checked but not submitted, to point out selections another table left
     // unsaved.
     const pendingSelections = useRef(new Map<string, {rows: ProjectGridRow[]; title: string}>());
-    // Reloading a search table (Refresh, new AI results) replaces its card. A save that finishes afterwards
-    // has lost the card that would show its outcome, so the outcome is carried over to the new one.
-    const tableGenerations = useRef(new Map<string, number>());
-    const [carriedStatuses, setCarriedStatuses] = useState<
-        Record<string, {token: number; result: SearchTableSaveResult}>
-    >({});
     // The search table to keep in place when a save commits, and where it sat on screen just before.
     const pendingScrollAnchor = useRef<{element: Element; top: number} | null>(null);
 
@@ -299,12 +292,6 @@ export const PastProjectsBuilder = ({
         setSearchTables((current) => current.map((table) => (table.id === tableId ? update(table) : table)));
     };
 
-    // Replace a search table's rows; its card remounts through the key.
-    const reloadSearchTable = (tableId: string, update: (table: SearchTableState) => SearchTableState) => {
-        tableGenerations.current.set(tableId, (tableGenerations.current.get(tableId) ?? 0) + 1);
-        updateSearchTable(tableId, (table) => ({...update(table), rowsResetKey: (table.rowsResetKey ?? 0) + 1}));
-    };
-
     const handleAISearch = async (tableId: string, query: string) => {
         if (!isAuthenticated) {
             return;
@@ -339,12 +326,13 @@ export const PastProjectsBuilder = ({
                 return;
             }
 
-            reloadSearchTable(tableId, (table) => ({
+            updateSearchTable(tableId, (table) => ({
                 ...table,
                 initialRows: aiRows,
                 isLoading: false,
                 message: `${aiRows.length} AI result${aiRows.length === 1 ? '' : 's'} loaded into this table.`,
                 messageTone: 'success',
+                rowsResetKey: (table.rowsResetKey ?? 0) + 1,
                 title: createAISearchTableTitle(response.query || query),
             }));
             setBuilderMessage('');
@@ -364,7 +352,8 @@ export const PastProjectsBuilder = ({
 
     // Refresh is per-table: the refetch keeps serving stale rows (so the stack stays mounted and
     // every other table keeps its local curation), and once the fresh archive lands as a new `rows`
-    // array, only the table that asked is remounted — via its key — with the new data.
+    // array, only the table that asked is reset — via its resetKey — with the new data. The card stays
+    // mounted, so a save it has running still reports its outcome there.
     useEffect(() => {
         if (rows === lastSeenRows.current) {
             return;
@@ -375,7 +364,6 @@ export const PastProjectsBuilder = ({
             return;
         }
         pendingRefreshTableId.current = null;
-        tableGenerations.current.set(tableId, (tableGenerations.current.get(tableId) ?? 0) + 1);
         setSearchTables((current) =>
             current.map((table) =>
                 table.id === tableId ? {...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1} : table,
@@ -409,7 +397,7 @@ export const PastProjectsBuilder = ({
             loadedRows: ProjectGridRow[],
             {failed, unavailable, presaved}: {failed: number[]; unavailable: number[]; presaved: number[]},
             accountSequence: number,
-            source: {tableId: string; title: string; generation: number},
+            tableId: string,
         ): SearchTableSaveResult => {
             setBuilderMessage('');
             if (accountSequence !== draftAccountSequence.current) {
@@ -422,12 +410,14 @@ export const PastProjectsBuilder = ({
 
             // Dedup against the merged rows as committed now, not as they were when Save was clicked:
             // another save, Reset or Remove may have landed meanwhile. Rows that were already saved at the
-            // click were not loaded, so they are never appended: if they were removed meanwhile, the removal
-            // stands rather than a copy without abstract or students taking their place.
-            const skipped = new Set([...failed, ...unavailable, ...presaved]);
+            // click were not loaded, so they are never appended. One removed from the saved results meanwhile
+            // stays removed, rather than a copy without abstract or students taking its place, and stays
+            // checked so it can be saved again.
             const saved = createProjectGridRowMatcher(mergedRowsRef.current);
+            const removedMeanwhile = presaved.filter((index) => !saved.has(loadedRows[index]));
+            const skipped = new Set([...failed, ...unavailable, ...presaved]);
             const rowsToAppend: ProjectGridRow[] = [];
-            let alreadySaved = presaved.length;
+            let alreadySaved = presaved.length - removedMeanwhile.length;
             loadedRows.forEach((row, index) => {
                 if (skipped.has(index)) {
                     return;
@@ -443,13 +433,12 @@ export const PastProjectsBuilder = ({
             if (rowsToAppend.length) {
                 mergeSequence.current += 1;
                 const added = createProjectGridItems(rowsToAppend, `merged-${mergeSequence.current}`);
-                pendingScrollAnchor.current = findScrollAnchor(source.tableId);
+                pendingScrollAnchor.current = findScrollAnchor(tableId);
                 commitMergedRows((current) => [...current, ...added]);
                 setMergedRowsUndo((snapshot) => (snapshot ? appendUnsaved(snapshot, added) : null));
                 setRecentlyAdded({keys: new Set(added.map((row) => row.__key)), token: mergeSequence.current});
             }
 
-            const replaced = (tableGenerations.current.get(source.tableId) ?? 0) !== source.generation;
             const {tone, message} = describeSaveResult(
                 {added: rowsToAppend.length, alreadySaved, failed: failed.length, unavailable: unavailable.length},
                 {
@@ -457,30 +446,27 @@ export const PastProjectsBuilder = ({
                     already: 'saved',
                     place: 'in Saved Merged Results',
                     retryLabel: 'Save Selected',
-                    selectionKept: !replaced,
                 },
             );
+            const removed = removedMeanwhile.length;
+            const removedNote = removed
+                ? `${pluralize(removed, 'project')} ${removed === 1 ? 'was' : 'were'} removed from Saved Merged ` +
+                  `Results while saving and ${removed === 1 ? 'is' : 'are'} still selected.`
+                : '';
             // Checked rows another table holds that are not saved now (this save may have saved some of them).
             const unsavedElsewhere = describeUnsavedSelections(
                 [...pendingSelections.current].flatMap(([id, selection]) => {
-                    const count = id === source.tableId ? 0 : selection.rows.filter((row) => !saved.has(row)).length;
+                    const count = id === tableId ? 0 : selection.rows.filter((row) => !saved.has(row)).length;
                     return count ? [{count, title: selection.title}] : [];
                 }),
             );
-            const result: SearchTableSaveResult = {
+            return {
                 tone,
-                message: tone !== 'error' && unsavedElsewhere ? `${message} ${unsavedElsewhere}` : message,
-                retainedIndexes: failed,
+                message: [message, removedNote, tone !== 'error' ? unsavedElsewhere : '']
+                    .filter(Boolean)
+                    .join(' '),
+                retainedIndexes: [...failed, ...removedMeanwhile].sort((left, right) => left - right),
             };
-            if (replaced) {
-                carrySequence.current += 1;
-                const carried = {
-                    token: carrySequence.current,
-                    result: {...result, message: `${RELOADED_WHILE_SAVING} ${result.message}`},
-                };
-                setCarriedStatuses((current) => ({...current, [source.tableId]: carried}));
-            }
-            return result;
         },
         [commitMergedRows],
     );
@@ -488,10 +474,9 @@ export const PastProjectsBuilder = ({
     const handleMergeSelectedFromTable = useCallback(
         (
             selected: ProjectGridRow[],
-            {tableId, title, reportProgress}: SearchTableSaveHelpers,
+            {tableId, reportProgress}: SearchTableSaveHelpers,
         ): SearchTableSaveResult | Promise<SearchTableSaveResult> => {
             const accountSequence = draftAccountSequence.current;
-            const source = {tableId, title, generation: tableGenerations.current.get(tableId) ?? 0};
             const saved = createProjectGridRowMatcher(mergedRowsRef.current);
             const presaved = selected.flatMap((row, index) => (saved.has(row) ? [index] : []));
             // Only compact archive rows not saved yet need a detail request. Complete rows (AI results,
@@ -500,7 +485,7 @@ export const PastProjectsBuilder = ({
                 needsProjectGridHydration(row) && !saved.has(row) ? [index] : [],
             );
             if (!loadIndexes.length) {
-                return mergeLoadedRows(selected, {failed: [], unavailable: [], presaved}, accountSequence, source);
+                return mergeLoadedRows(selected, {failed: [], unavailable: [], presaved}, accountSequence, tableId);
             }
 
             const controller = new AbortController();
@@ -523,7 +508,7 @@ export const PastProjectsBuilder = ({
                             presaved,
                         },
                         accountSequence,
-                        source,
+                        tableId,
                     );
                 })
                 .finally(() => {
@@ -649,7 +634,8 @@ export const PastProjectsBuilder = ({
 
                         return (
                             <SearchTableCard
-                                key={table.rowsResetKey === undefined ? table.id : `${table.id}-${table.rowsResetKey}`}
+                                key={table.id}
+                                resetKey={table.rowsResetKey}
                                 canRemove={searchTables.length > 1}
                                 description={
                                     isAISearchTable
@@ -689,7 +675,6 @@ export const PastProjectsBuilder = ({
                                 mergeDisabled={isCreatingShare}
                                 isRowSaved={isRowSaved}
                                 onViewMergedResults={handleViewMergedResults}
-                                carriedOverStatus={carriedStatuses[table.id] ?? null}
                                 onSelectionChange={handleSelectionChange}
                                 onMergeSelected={handleMergeSelectedFromTable}
                             />

@@ -955,11 +955,15 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     const persisted = JSON.parse(sessionStorage.getItem('past-projects:builder:merged-rows') ?? '[]') as ProjectGridRow[];
     expect(persisted.map((row) => [row.project_title, row.abstract])).toEqual([['Saved Later', 'Later abstract']]);
     expect(within(searchTable).getByRole('status')).toHaveTextContent(
-      '1 project added to Saved Merged Results (1 in total). 1 project was already saved.',
+      '1 project added to Saved Merged Results (1 in total). ' +
+        '1 project was removed from Saved Merged Results while saving and is still selected.',
     );
+    // Still checked, so it can be saved again.
+    expect(within(searchTable).getAllByLabelText('Select Saved First')[0]).toBeChecked();
+    expect(within(searchTable).getAllByLabelText('Select Saved Later')[0]).not.toBeChecked();
   });
 
-  it('shows the outcome in the reloaded table when a refresh lands while it saves', async () => {
+  it('keeps reporting a save in its table when a refresh lands while it runs', async () => {
     let resolveDetails!: (result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void;
     mockHydrateProjectGridRowsSettled.mockReturnValue(new Promise((resolve) => { resolveDetails = resolve; }));
     const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
@@ -972,14 +976,17 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
     rerender(<PastProjectsBuilder rows={[{...compact}]} {...props} />);
-    expect(screen.queryByRole('button', {name: 'Saving…'})).toBeNull();
+    expect(screen.getByText('Search table refreshed from the latest past-project archive.')).toBeInTheDocument();
+    // The table was reset in place, so the save is still shown as running there.
+    expect(screen.getByRole('button', {name: 'Saving…'})).toBeInTheDocument();
 
     await act(async () => resolveDetails({rows: [compact], failedIndexes: [0], unavailableIndexes: []}));
 
     const searchTable = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
     expect(within(searchTable).getByRole('alert')).toHaveTextContent(
-      'This table was reloaded while saving. 1 project could not be loaded. Select it again and click Save Selected to try again.',
+      '1 project could not be loaded and is still selected. Click Save Selected to try again.',
     );
+    expect(within(searchTable).getAllByLabelText('Select Id Only')[0]).toBeChecked();
   });
 
   it('waits for a shareable link being created before saving more projects', async () => {

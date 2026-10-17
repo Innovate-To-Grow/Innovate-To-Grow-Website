@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode} from 'react';
 import {ProjectGridTable} from './ProjectGridTable';
 import {useProjectGridTable} from './useProjectGridTable';
 import {PastProjectsAIStatus, type PastProjectsStatusTone} from './builder/PastProjectsAIStatus';
@@ -6,6 +6,7 @@ import {PastProjectsDialog} from './builder/PastProjectsDialog';
 import {
   PAST_PROJECT_GRID_COLUMNS,
   createProjectGridItems,
+  createProjectGridRowMatcher,
   stripProjectGridItem,
   type ProjectGridItem,
   type ProjectGridRow,
@@ -26,8 +27,6 @@ export interface SearchTableSaveResult {
 export interface SearchTableSaveHelpers {
   /** The table that is saving, so the caller can tell it apart from the others. */
   tableId: string;
-  /** Its title, to name it in a message. */
-  title: string;
   /** Report detail-loading progress while a save runs. */
   reportProgress: (done: number, total: number) => void;
 }
@@ -41,6 +40,11 @@ interface SearchTableCardProps {
   description?: string;
   emptyMessage?: string;
   initialRows: ProjectGridRow[];
+  /**
+   * Changing it replaces the rows with `initialRows` and starts the table over (search, sort, selection), as a
+   * reload (Refresh, new AI results). A save that is running carries on and reports its outcome here.
+   */
+  resetKey?: string | number;
   resultsMotionKey?: string | number;
   searchControl?: ReactNode;
   controlsStatus?: ReactNode;
@@ -60,11 +64,6 @@ interface SearchTableCardProps {
   /** Scroll to the saved results; offered next to a save's outcome. */
   onViewMergedResults?: () => void;
   viewMergedResultsLabel?: string;
-  /**
-   * The outcome of a save that finished after this table was reloaded: the card that started it was replaced,
-   * so it is shown by this one. A new token shows a new outcome.
-   */
-  carriedOverStatus?: {token: number; result: SearchTableSaveResult} | null;
   /**
    * Told which checked rows this table has not submitted yet, so the page can mention selections another
    * table left unsaved.
@@ -112,6 +111,7 @@ export function SearchTableCard({
   description = 'Search this table, check the projects you want, then click Save Selected to add them to your saved results.',
   emptyMessage = 'No rows available in this search table.',
   initialRows,
+  resetKey,
   resultsMotionKey,
   searchControl,
   controlsStatus,
@@ -125,7 +125,6 @@ export function SearchTableCard({
   savedRowLabel,
   onViewMergedResults,
   viewMergedResultsLabel = 'View Saved Results',
-  carriedOverStatus = null,
   onSelectionChange,
   onRemove,
   onRefresh,
@@ -136,13 +135,16 @@ export function SearchTableCard({
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState<{count: number; done: number; total: number} | null>(null);
   const [saveStatus, setSaveStatus] = useState<SearchTableSaveResult | null>(null);
-  // An outcome carried over from before a reload is shown when it arrives, never again on a later remount.
-  const [shownCarriedToken, setShownCarriedToken] = useState(carriedOverStatus?.token ?? null);
+  const [appliedResetKey, setAppliedResetKey] = useState(resetKey);
+  const [resetCount, setResetCount] = useState(0);
   const [saveOrigin, setSaveOrigin] = useState<SaveOrigin>('top');
   const [pendingLargeSave, setPendingLargeSave] = useState<{rows: ProjectGridItem[]; origin: SaveOrigin} | null>(null);
   // Rows submitted by the save in flight: still checked, but no longer waiting for the user to save them.
   const [inFlightKeys, setInFlightKeys] = useState<ReadonlySet<string>>(() => new Set());
   const isSavingRef = useRef(false);
+  // The rows and reset count as last rendered, for a save that finishes after a reload replaced the rows.
+  const rowsRef = useRef(rows);
+  const resetCountRef = useRef(resetCount);
   const table = useProjectGridTable({
     rows,
     pageSize: 5,
@@ -150,11 +152,23 @@ export function SearchTableCard({
     defaultSortDirection: 'desc',
   });
 
-  if (carriedOverStatus && carriedOverStatus.token !== shownCarriedToken) {
-    setShownCarriedToken(carriedOverStatus.token);
-    setSaveOrigin('top');
-    setSaveStatus(carriedOverStatus.result);
+  if (resetKey !== appliedResetKey) {
+    setAppliedResetKey(resetKey);
+    setResetCount((count) => count + 1);
+    setRows(createProjectGridItems(initialRows, tableId));
+    setUndoRows(null);
+    setPendingLargeSave(null);
+    if (!isSaving) {
+      setSaveStatus(null);
+    }
+    table.reset();
   }
+
+  // Synced during commit, so a save resolving right after a reset already sees the new rows.
+  useLayoutEffect(() => {
+    rowsRef.current = rows;
+    resetCountRef.current = resetCount;
+  }, [resetCount, rows]);
 
   const shownKeys = useMemo(() => new Set(table.filteredRows.map((row) => row.__key)), [table.filteredRows]);
   const selectedCount = table.selectedRows.length;
@@ -204,13 +218,25 @@ export function SearchTableCard({
   }, [rows, table]);
 
   // Uncheck only what was submitted and not retained: a failed save keeps its rows checked for a retry,
-  // and rows checked while the save ran are not wiped.
+  // and rows checked while the save ran are not wiped. If the table was reloaded meanwhile, the retained rows
+  // are checked again among the new rows.
   const finishSave = useCallback(
-    (submitted: ProjectGridItem[], outcome: SaveOutcome) => {
+    (submitted: ProjectGridItem[], outcome: SaveOutcome, startedAtReset: number) => {
       const keepsAll = outcome?.tone === 'error' && !outcome.retainedIndexes;
       const retained = new Set(keepsAll ? submitted.map((_, index) => index) : (outcome?.retainedIndexes ?? []));
       table.removeFromSelection(submitted.filter((_, index) => !retained.has(index)).map((row) => row.__key));
-      setSaveStatus(outcome?.message ? outcome : null);
+      let message = outcome?.message ?? '';
+      if (resetCountRef.current !== startedAtReset && retained.size) {
+        const retainedRows = submitted.filter((_, index) => retained.has(index));
+        const isRetained = createProjectGridRowMatcher(retainedRows).has;
+        const inNewRows = createProjectGridRowMatcher(rowsRef.current).has;
+        table.addToSelection(rowsRef.current.filter(isRetained));
+        const missing = retainedRows.filter((row) => !inNewRows(row)).length;
+        if (missing && message) {
+          message += ` ${missing === 1 ? 'One of them is' : `${missing} of them are`} not in the reloaded table.`;
+        }
+      }
+      setSaveStatus(outcome && message ? {...outcome, message} : null);
     },
     [table],
   );
@@ -218,12 +244,12 @@ export function SearchTableCard({
   const runSave = useCallback(
     async (submitted: ProjectGridItem[], origin: SaveOrigin) => {
       const failure: SearchTableSaveResult = {tone: 'error', message: SAVE_FAILED_MESSAGE};
+      const startedAtReset = resetCountRef.current;
       setSaveOrigin(origin);
       let pending: SaveOutcome | PromiseLike<SaveOutcome>;
       try {
         pending = onMergeSelected(submitted.map(stripProjectGridItem), {
           tableId,
-          title,
           reportProgress: (done, total) => {
             const step = Math.max(1, Math.floor(total / 10));
             if (total >= PROGRESS_MIN_TOTAL && (done === total || done % step === 0)) {
@@ -232,12 +258,12 @@ export function SearchTableCard({
           },
         });
       } catch {
-        finishSave(submitted, failure);
+        finishSave(submitted, failure, startedAtReset);
         return;
       }
       // A save that needs no network finishes in this click; only a pending one shows the in-flight state.
       if (!isPromiseLike<SaveOutcome>(pending)) {
-        finishSave(submitted, pending);
+        finishSave(submitted, pending, startedAtReset);
         return;
       }
 
@@ -257,9 +283,9 @@ export function SearchTableCard({
         setInFlightKeys(new Set());
         setSaveProgress(null);
       }
-      finishSave(submitted, outcome);
+      finishSave(submitted, outcome, startedAtReset);
     },
-    [finishSave, onMergeSelected, tableId, title],
+    [finishSave, onMergeSelected, tableId],
   );
 
   const handleSaveSelectedRows = (origin: SaveOrigin) => {

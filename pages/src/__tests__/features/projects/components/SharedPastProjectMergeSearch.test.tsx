@@ -88,7 +88,7 @@ describe('SharedPastProjectMergeSearch', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows the outcome in the reloaded table when a refresh lands while it adds', async () => {
+  it('keeps reporting an add in its table when a refresh lands while it runs', async () => {
     let resolveDetails!: (result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void;
     mockHydrateProjectGridRowsSettled.mockReturnValue(new Promise((resolve) => { resolveDetails = resolve; }));
     const compact = makeRow({id: 'p-9', team_number: 'T09', project_title: 'Id Only'});
@@ -104,8 +104,9 @@ describe('SharedPastProjectMergeSearch', () => {
     await act(async () => resolveDetails({rows: [compact], failedIndexes: [0], unavailableIndexes: []}));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'This table was reloaded while saving. 1 project could not be loaded. Select it again and click Add Selected to try again.',
+      '1 project could not be loaded and is still selected. Click Add Selected to try again.',
     );
+    expect(screen.getAllByLabelText('Select Id Only')[0]).toBeChecked();
     expect(onAddRows).not.toHaveBeenCalled();
   });
 

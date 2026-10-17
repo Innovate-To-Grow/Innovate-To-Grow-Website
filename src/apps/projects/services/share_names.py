@@ -35,6 +35,9 @@ _INSERTED_LABEL = re.compile(rf"{_PROJECT_LABEL}|{_FIELD_LABEL}")
 # The same lines once "Clear formatting" has flattened the inserted block to plain text. A field line carries its
 # value; a project line is the bare "Project N", so an owner's "Project 3 finalists" is still the owner's line.
 _INSERTED_LINE = re.compile(rf"{_PROJECT_LABEL}(?:\s+{_FIELD_LABEL}.*)?|{_FIELD_LABEL}(?:\s.*)?")
+# Fields whose value can run over several lines. Once "Clear formatting" removed their <div>, only the first line
+# carries the label, so the lines after it go too.
+_MULTILINE_FIELD = re.compile(r"(?:Abstract|Students):(?:\s.*)?")
 # Lines made only of dashes or rules, like the separator the insert puts between projects.
 _SEPARATOR_LINE = re.compile(r"[-–—_=*·•\s]+")
 # Newlines inside text are line breaks too: pasted text keeps them and the note is shown with white-space: pre-wrap.
@@ -44,9 +47,30 @@ _TEXT_TYPES = (NavigableString, CData)
 _END_OF_BLOCK = object()
 
 
-def _is_invisible(char: str) -> bool:
-    # Whitespace and format characters (zero-width spaces and joiners, bidi marks, soft hyphens, BOM).
-    return char.isspace() or unicodedata.category(char) == "Cf"
+# Invisible characters dropped from the ends of a name: zero-width spaces and joiners, bidi marks, soft hyphens and
+# BOMs, which only make a line look blank. Other format characters, such as the tag characters that make up
+# subdivision flags, are kept.
+_EDGE_INVISIBLE = frozenset(
+    map(
+        chr,
+        (
+            0x00AD,  # soft hyphen
+            0x200B,  # zero-width space
+            0x200C,  # zero-width non-joiner
+            0x200D,  # zero-width joiner
+            0x200E,  # left-to-right mark
+            0x200F,  # right-to-left mark
+            *range(0x202A, 0x202F),  # bidi embeddings and overrides
+            *range(0x2060, 0x2065),  # word joiner, invisible operators
+            *range(0x2066, 0x206A),  # bidi isolates
+            0xFEFF,  # byte order mark
+        ),
+    )
+)
+
+
+def _is_edge_invisible(char: str) -> bool:
+    return char.isspace() or char in _EDGE_INVISIBLE
 
 
 def _visible_text(text: str) -> str:
@@ -54,12 +78,12 @@ def _visible_text(text: str) -> str:
 
 
 def _trim(text: str) -> str:
-    """Collapse whitespace and drop invisible characters at the ends; joiners inside the text (emoji, Persian) stay."""
+    """Collapse whitespace and drop invisible characters at the ends; those inside the text (emoji, Persian) stay."""
     text = re.sub(r"\s+", " ", text)
     start, end = 0, len(text)
-    while start < end and _is_invisible(text[start]):
+    while start < end and _is_edge_invisible(text[start]):
         start += 1
-    while end > start and _is_invisible(text[end - 1]):
+    while end > start and _is_edge_invisible(text[end - 1]):
         end -= 1
     return text[start:end]
 
@@ -136,9 +160,7 @@ def _owner_note_lines(note: str) -> list[str]:
     for parts in _note_lines(note):
         trimmed = [_trim(part) for part in parts]
         first_text = next((part for part in trimmed if _visible_text(part)), "")
-        # "Clear formatting" turns every inserted field into text ending in <br>. A field whose value has newlines
-        # (an abstract) keeps them, and only its first part carries the label: drop the whole line.
-        if _is_inserted_line(first_text):
+        if _MULTILINE_FIELD.fullmatch(_visible_text(first_text)):
             continue
         lines.extend(part for part in trimmed if not _is_inserted_line(part))
     return lines

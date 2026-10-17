@@ -78,6 +78,17 @@ class DefaultShareNameTests(SimpleTestCase):
         )
         self.assertEqual(default_share_name("Project 1 Year-Semester: 2026 Spring<br>Mine"), "Mine")
 
+    def test_skips_only_the_labelled_line_of_pasted_text(self):
+        # Only a multi-line field (an abstract, a list of students) takes the lines pasted after it along.
+        self.assertEqual(
+            default_share_name("Organization: Keysight\nSpring 2026 shortlist for the board"),
+            "Spring 2026 shortlist for the board",
+        )
+        self.assertEqual(
+            default_share_name("Project 1\nGreat team, recommend for Keysight"), "Great team, recommend for Keysight"
+        )
+        self.assertEqual(default_share_name("Project 1<br>Students: Ada\nGrace<br>"), DEFAULT_SHARE_NAME)
+
     def test_ignores_invisible_characters(self):
         self.assertEqual(default_share_name("<div>\u200b</div>"), DEFAULT_SHARE_NAME)
         self.assertEqual(default_share_name("\ufeff"), DEFAULT_SHARE_NAME)
@@ -85,6 +96,12 @@ class DefaultShareNameTests(SimpleTestCase):
         self.assertEqual(default_share_name("<div>\u200b</div><div>Real title</div>"), "Real title")
         self.assertEqual(default_share_name("\u200e\nSpring shortlist"), "Spring shortlist")
         self.assertEqual(default_share_name("\ufeffHello\u200b"), "Hello")
+
+    def test_keeps_format_characters_that_are_part_of_the_text(self):
+        # The tag characters of a subdivision flag (Scotland) are format characters too.
+        flag = chr(0x1F3F4) + "".join(map(chr, (0xE0067, 0xE0062, 0xE0073, 0xE0063, 0xE0074, 0xE007F)))
+        self.assertEqual(default_share_name(f"<div>Scotland picks {flag}</div>"), f"Scotland picks {flag}")
+        self.assertEqual(default_share_name(f"<div>Spring picks{chr(0x200F)}</div>"), "Spring picks")
 
     def test_keeps_joiners_inside_the_text(self):
         family = "\U0001f468\u200d\U0001f469\u200d\U0001f467 family picks"

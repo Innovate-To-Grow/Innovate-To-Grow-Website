@@ -162,7 +162,6 @@ describe('SearchTableCard', () => {
         fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
 
         expect(helpers?.tableId).toBe('table-1');
-        expect(helpers?.title).toBe('Search Table');
         // aria-disabled rather than disabled, so keyboard focus stays on the pressed button.
         const savingButton = screen.getByRole('button', {name: 'Saving…'});
         expect(savingButton).toHaveAttribute('aria-disabled', 'true');
@@ -317,26 +316,81 @@ describe('SearchTableCard', () => {
         expect(onSelectionChange).toHaveBeenLastCalledWith('table-1', [], 'Search Table');
     });
 
-    it('shows an outcome carried over from before the table was reloaded, once', () => {
+    it('starts over when its rows are reloaded, and a running save still reports here', async () => {
+        const pending = deferred<SearchTableSaveResult>();
+        const rows = [
+            makeRow({id: 'p-1', team_number: 'T01', project_title: 'Project 1'}),
+            makeRow({id: 'p-2', team_number: 'T02', project_title: 'Project 2'}),
+        ];
         const props = {
             canRemove: true,
-            initialRows: makeRows(),
             tableId: 'table-1',
             title: 'Search Table',
             onRemove: vi.fn(),
-            onMergeSelected: vi.fn(),
+            onMergeSelected: () => pending.promise,
         };
-        const carried = {token: 1, result: {tone: 'error' as const, message: 'This table was reloaded while saving.'}};
-        const {rerender, unmount} = render(<SearchTableCard {...props} carriedOverStatus={null} />);
-        expect(screen.queryByRole('alert')).toBeNull();
+        const {container, rerender} = render(<SearchTableCard {...props} initialRows={rows} resetKey={0} />);
+        fireEvent.change(within(cardSection(container)).getByRole('searchbox'), {target: {value: 'Project'}});
+        fireEvent.click(rowCheckbox('Project 1'));
+        fireEvent.click(rowCheckbox('Project 2'));
+        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
 
-        rerender(<SearchTableCard {...props} carriedOverStatus={carried} />);
-        expect(screen.getByRole('alert')).toHaveTextContent('This table was reloaded while saving.');
-        unmount();
+        // A Refresh lands while the save runs: fresh rows, and the search starts over.
+        const fresh = [...rows.map((row) => ({...row})), makeRow({id: 'p-3', team_number: 'T03', project_title: 'Project 3'})];
+        rerender(<SearchTableCard {...props} initialRows={fresh} resetKey={1} />);
+        expect(within(cardSection(container)).getByRole('searchbox')).toHaveValue('');
+        expect(screen.getAllByText('Project 3').length).toBeGreaterThan(0);
+        expect(screen.getByRole('button', {name: 'Saving…'})).toHaveAttribute('aria-disabled', 'true');
 
-        // A card mounted later (another reload) does not show it again.
-        render(<SearchTableCard {...props} carriedOverStatus={carried} />);
-        expect(screen.queryByRole('alert')).toBeNull();
+        await act(async () =>
+            pending.resolve({
+                tone: 'error',
+                message: '1 project could not be loaded and is still selected.',
+                retainedIndexes: [1],
+            }),
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent('1 project could not be loaded and is still selected.');
+        // The failed project is checked again among the fresh rows.
+        expect(rowCheckbox('Project 2')).toBeChecked();
+        expect(rowCheckbox('Project 1')).not.toBeChecked();
+    });
+
+    it('says when a project to retry is not in the reloaded rows', async () => {
+        const pending = deferred<SearchTableSaveResult>();
+        const props = {
+            canRemove: true,
+            tableId: 'table-1',
+            title: 'AI Search Table',
+            onRemove: vi.fn(),
+            onMergeSelected: () => pending.promise,
+        };
+        const {rerender} = render(
+            <SearchTableCard {...props} initialRows={[makeRow({id: 'p-1', project_title: 'Old Result'})]} resetKey={1} />,
+        );
+        fireEvent.click(rowCheckbox('Old Result'));
+        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        rerender(<SearchTableCard {...props} initialRows={[makeRow({id: 'p-9', project_title: 'New Result'})]} resetKey={2} />);
+
+        await act(async () => pending.resolve({tone: 'error', message: 'Could not load it.', retainedIndexes: [0]}));
+        expect(screen.getByRole('alert')).toHaveTextContent('Could not load it. One of them is not in the reloaded table.');
+        expect(rowCheckbox('New Result')).not.toBeChecked();
+    });
+
+    it('clears its selection and outcome when reloaded with no save running', () => {
+        const props = {canRemove: true, tableId: 'table-1', title: 'Search Table', onRemove: vi.fn()};
+        const onMergeSelected = vi.fn((): SearchTableSaveResult => ({tone: 'info', message: 'Already saved.'}));
+        const {rerender} = render(
+            <SearchTableCard {...props} initialRows={makeRows()} resetKey={0} onMergeSelected={onMergeSelected} />,
+        );
+        fireEvent.click(rowCheckbox('Project 1'));
+        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        expect(screen.getByRole('status')).toHaveTextContent('Already saved.');
+        fireEvent.click(rowCheckbox('Project 2'));
+
+        rerender(<SearchTableCard {...props} initialRows={makeRows()} resetKey={1} onMergeSelected={onMergeSelected} />);
+        expect(screen.getByRole('status')).toBeEmptyDOMElement();
+        expect(rowCheckbox('Project 2')).not.toBeChecked();
+        expect(screen.getByRole('button', {name: 'Save Selected'})).toBeDisabled();
     });
 
     it('removes the checked rows from the table and lets the user undo the last change', () => {

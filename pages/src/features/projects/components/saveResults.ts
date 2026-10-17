@@ -20,13 +20,11 @@ interface SaveWording {
   place: string;
   /** The button that saves, e.g. "Save Selected". */
   retryLabel: string;
-  /** False once the table that saved was reloaded: rows that failed are no longer checked there. */
-  selectionKept?: boolean;
 }
 
 export const describeSaveResult = (
   {added, alreadySaved, failed, unavailable}: SaveCounts,
-  {added: addedText, already, place, retryLabel, selectionKept = true}: SaveWording,
+  {added: addedText, already, place, retryLabel}: SaveWording,
 ): Pick<SearchTableSaveResult, 'tone' | 'message'> => {
   const parts: string[] = [];
   if (added) {
@@ -47,15 +45,9 @@ export const describeSaveResult = (
   }
   if (failed) {
     parts.push(
-      selectionKept
-        ? `${pluralize(failed, 'project')} could not be loaded and ${failed === 1 ? 'is' : 'are'} still selected. ` +
-            `Click ${retryLabel} to try again.`
-        : `${pluralize(failed, 'project')} could not be loaded. Select ${failed === 1 ? 'it' : 'them'} again and ` +
-            `click ${retryLabel} to try again.`,
+      `${pluralize(failed, 'project')} could not be loaded and ${failed === 1 ? 'is' : 'are'} still selected. ` +
+        `Click ${retryLabel} to try again.`,
     );
   }
   return {tone: failed || (unavailable && !added) ? 'error' : added ? 'success' : 'info', message: parts.join(' ')};
 };
-
-/** Prefix for an outcome that arrived after the table that saved was reloaded (its rows replaced). */
-export const RELOADED_WHILE_SAVING = 'This table was reloaded while saving.';

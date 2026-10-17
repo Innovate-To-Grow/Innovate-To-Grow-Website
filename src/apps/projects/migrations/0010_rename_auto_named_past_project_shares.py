@@ -55,10 +55,29 @@ PROJECT_LABEL = r"Project \d+"
 FIELD_LABEL = "(?:" + "|".join(re.escape(label) for label in INSERTED_FIELD_LABELS) + "):"
 INSERTED_LABEL = re.compile(rf"{PROJECT_LABEL}|{FIELD_LABEL}")
 INSERTED_LINE = re.compile(rf"{PROJECT_LABEL}(?:\s+{FIELD_LABEL}.*)?|{FIELD_LABEL}(?:\s.*)?")
+MULTILINE_FIELD = re.compile(r"(?:Abstract|Students):(?:\s.*)?")
 SEPARATOR_LINE = re.compile(r"[-–—_=*·•\s]+")
 TEXT_NEWLINE = re.compile(r"\r\n?|\n")
 TEXT_TYPES = (NavigableString, CData)
+EDGE_INVISIBLE = frozenset(
+    map(
+        chr,
+        (
+            0x00AD,  # soft hyphen
+            0x200B,  # zero-width space
+            0x200C,  # zero-width non-joiner
+            0x200D,  # zero-width joiner
+            0x200E,  # left-to-right mark
+            0x200F,  # right-to-left mark
+            *range(0x202A, 0x202F),  # bidi embeddings and overrides
+            *range(0x2060, 0x2065),  # word joiner, invisible operators
+            *range(0x2066, 0x206A),  # bidi isolates
+            0xFEFF,  # byte order mark
+        ),
+    )
+)
 END_OF_BLOCK = object()
+END_OF_TAG = object()
 
 
 def _truncate(text):
@@ -84,8 +103,8 @@ def old_default_name(note, rows):
     return _truncate(candidate)
 
 
-def _is_invisible(char):
-    return char.isspace() or unicodedata.category(char) == "Cf"
+def _is_edge_invisible(char):
+    return char.isspace() or char in EDGE_INVISIBLE
 
 
 def _visible_text(text):
@@ -95,9 +114,9 @@ def _visible_text(text):
 def _trim(text):
     text = re.sub(r"\s+", " ", text)
     start, end = 0, len(text)
-    while start < end and _is_invisible(text[start]):
+    while start < end and _is_edge_invisible(text[start]):
         start += 1
-    while end > start and _is_invisible(text[end - 1]):
+    while end > start and _is_edge_invisible(text[end - 1]):
         end -= 1
     return text[start:end]
 
@@ -117,30 +136,44 @@ def _is_inserted_field(block):
 
 
 def _note_lines(note):
+    """The note's lines, split at <br>, <div> and <p>, each as its newline-separated parts. Every part is a pair: its
+    text, and the same text with a space wherever a tag was, the way the old code flattened notes."""
     lines = []
     text = []
+    flat = []
 
     def end_line():
-        lines.append(TEXT_NEWLINE.split("".join(text)))
+        lines.append(list(zip(TEXT_NEWLINE.split("".join(text)), TEXT_NEWLINE.split("".join(flat)), strict=True)))
         text.clear()
+        flat.clear()
 
     pending = list(reversed(BeautifulSoup(note or "", "html.parser").contents))
     while pending:
         node = pending.pop()
         if node is END_OF_BLOCK:
+            flat.append(" ")
             end_line()
+        elif node is END_OF_TAG:
+            flat.append(" ")
         elif isinstance(node, NavigableString):
             if type(node) in TEXT_TYPES:
                 text.append(str(node))
+                flat.append(str(node))
+            else:
+                flat.append(" ")
         elif node.name == "br":
+            flat.append(" ")
             end_line()
         elif node.name in ("div", "p"):
             if node.name == "div" and _is_inserted_field(node):
                 continue
+            flat.append(" ")
             end_line()
             pending.append(END_OF_BLOCK)
             pending.extend(reversed(node.contents))
         else:
+            flat.append(" ")
+            pending.append(END_OF_TAG)
             pending.extend(reversed(node.contents))
     end_line()
     return lines
@@ -150,21 +183,22 @@ def _is_inserted_line(text):
     return bool(INSERTED_LINE.fullmatch(_visible_text(text)))
 
 
-def _owner_note_lines(note):
-    """The note's lines without inserted project details, structured or flattened by "Clear formatting"."""
-    lines = []
+def _owner_note_parts(note):
+    """The note's (text, flattened text) parts without inserted project details, structured or flattened by "Clear
+    formatting"."""
+    owner_parts = []
     for parts in _note_lines(note):
-        trimmed = [_trim(part) for part in parts]
-        first_text = next((part for part in trimmed if _visible_text(part)), "")
-        if _is_inserted_line(first_text):
+        first_text = next((_trim(part) for part, _ in parts if _visible_text(_trim(part))), "")
+        if MULTILINE_FIELD.fullmatch(_visible_text(first_text)):
             continue
-        lines.extend(part for part in trimmed if not _is_inserted_line(part))
-    return lines
+        owner_parts.extend((part, flat) for part, flat in parts if not _is_inserted_line(_trim(part)))
+    return owner_parts
 
 
 def new_default_name(note):
     """The fixed derivation: first line of the owner's own note text, else the generic title."""
-    for line in _owner_note_lines(note):
+    for part, _ in _owner_note_parts(note):
+        line = _trim(part)
         visible = _visible_text(line)
         if visible and not SEPARATOR_LINE.fullmatch(visible):
             return _truncate(line)
@@ -172,8 +206,9 @@ def new_default_name(note):
 
 
 def _owner_note_text(note):
-    """The note's text outside the inserted project details, flattened the way the old code did."""
-    return re.sub(r"\s+", " ", " ".join(_owner_note_lines(note))).strip()
+    """The note's text outside the inserted project details, flattened exactly as the old code flattened whole notes:
+    a space for every tag, invisible characters kept. For a note with no inserted details it equals _old_flatten."""
+    return re.sub(r"\s+", " ", " ".join(flat for _, flat in _owner_note_parts(note))).strip()
 
 
 def renamed_share_name(name, note, rows, created_at, updated_at):

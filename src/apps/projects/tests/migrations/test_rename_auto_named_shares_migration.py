@@ -87,6 +87,15 @@ class RenamedShareNameTests(SimpleTestCase):
         self.assertIsNone(renamed_share_name("Spring 2026 finalists Please review by Friday", note, rows))
         separated = "Spring picks<br>-----<br>More text"
         self.assertIsNone(renamed_share_name(migration.old_default_name(separated, rows), separated, rows))
+        # The old code put a space wherever a tag was and kept invisible characters; those names are the owner's too.
+        for note in [
+            "<div><b>Note</b>: please review</div><div>Second line</div>",
+            "Picks for <a href='https://example.com'>Keysight</a>.",
+            "Key<strong>sight</strong> picks",
+            f"Spring picks{chr(0x200F)}",
+        ]:
+            with self.subTest(note=note):
+                self.assertIsNone(renamed_share_name(migration.old_default_name(note, rows), note, rows))
         # The owner's note happens to start with the first project's title: that is the note-derived default.
         self.assertIsNone(renamed_share_name("A", "<div>A</div>", rows))
 

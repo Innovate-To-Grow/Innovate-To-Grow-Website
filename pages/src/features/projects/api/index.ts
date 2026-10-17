@@ -237,9 +237,11 @@ const HYDRATION_RETRY_DELAYS_MS = [300, 900];
 // Without a timeout one stalled request would leave a save "Saving…" indefinitely; a timeout is
 // retried like any other network failure.
 const HYDRATION_REQUEST_TIMEOUT_MS = 15_000;
-// Once no request has been answered for this long the API is down or stalled, and the rows not requested
-// yet are reported as failed at once instead of each waiting out its own timeouts and retries. One slow or
-// broken project does not trip it while the others keep loading.
+// Once rows have kept failing for this long with no request answered in between, the API is down or
+// stalled, and the rows not requested yet are reported as failed at once instead of each waiting out its own
+// timeouts and retries. It counts from the first such failure, not from the last answer, so time the page
+// spends suspended (a sleeping laptop) does not count. One slow or broken project does not trip it while
+// the others keep loading.
 const HYDRATION_STALL_MS = 30_000;
 
 /** Archive rows arrive compact; their abstract and student names live only on the detail endpoint. */
@@ -318,26 +320,28 @@ export const hydrateProjectGridRowsSettled = async (
     const unavailableIndexes: number[] = [];
     let cursor = 0;
     let done = 0;
-    let lastAnsweredAt = Date.now();
+    // When the current run of failures began, or null while requests are being answered.
+    let failingSince: number | null = null;
     const worker = async () => {
         while (cursor < pendingIndexes.length) {
             const index = pendingIndexes[cursor];
             cursor += 1;
-            if (Date.now() - lastAnsweredAt > HYDRATION_STALL_MS) {
+            if (failingSince !== null && Date.now() - failingSince > HYDRATION_STALL_MS) {
                 failedIndexes.push(index);
             } else {
                 try {
                     hydrated[index] = toProjectGridRow(
                         await fetchProjectDetailWithRetry(rows[index].id as string, signal),
                     );
-                    lastAnsweredAt = Date.now();
+                    failingSince = null;
                 } catch (error) {
                     if (signal?.aborted) throw error;
                     if (isRetryableDetailError(error)) {
+                        failingSince ??= Date.now();
                         failedIndexes.push(index);
                     } else {
                         // Refused outright (e.g. a 404): the API is answering, this project is just not there.
-                        lastAnsweredAt = Date.now();
+                        failingSince = null;
                         unavailableIndexes.push(index);
                     }
                 }

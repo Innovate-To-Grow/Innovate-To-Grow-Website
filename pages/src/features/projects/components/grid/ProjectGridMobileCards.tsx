@@ -17,6 +17,7 @@ interface ProjectGridMobileCardsProps {
   selectedKeys: Set<string>;
   onToggleSelected?: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  deleteDisabled?: boolean;
   loadMissingDetails?: boolean;
   isRowSaved?: (row: ProjectGridItem) => boolean;
   savedRowLabel?: string;
@@ -33,6 +34,7 @@ export const ProjectGridMobileCards = ({
   selectedKeys,
   onToggleSelected,
   onDeleteRow,
+  deleteDisabled = false,
   loadMissingDetails,
   isRowSaved,
   savedRowLabel = 'Saved',
@@ -52,6 +54,7 @@ export const ProjectGridMobileCards = ({
         isSelected={selectedKeys.has(row.__key)}
         onToggleSelected={onToggleSelected}
         onDeleteRow={onDeleteRow}
+        deleteDisabled={deleteDisabled}
         loadMissingDetails={loadMissingDetails}
         isSaved={Boolean(isRowSaved?.(row))}
         savedRowLabel={savedRowLabel}
@@ -70,6 +73,7 @@ interface MobileCardProps {
   isSelected: boolean;
   onToggleSelected?: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
+  deleteDisabled: boolean;
   loadMissingDetails?: boolean;
   isSaved: boolean;
   savedRowLabel: string;
@@ -85,6 +89,7 @@ const MobileCard = ({
   isSelected,
   onToggleSelected,
   onDeleteRow,
+  deleteDisabled,
   loadMissingDetails,
   isSaved,
   savedRowLabel,
@@ -148,7 +153,16 @@ const MobileCard = ({
         >
           {hasDetails ? (isExpanded ? 'Hide Details' : 'View Details') : 'No Details'}
         </button>
-        {onDeleteRow ? <button type="button" className="project-grid-delete-button" onClick={() => onDeleteRow(row)}>Remove</button> : null}
+        {onDeleteRow ? (
+          <button
+            type="button"
+            className="project-grid-delete-button"
+            onClick={() => onDeleteRow(row)}
+            disabled={deleteDisabled}
+          >
+            Remove
+          </button>
+        ) : null}
       </div>
 
       {isExpanded ? (
