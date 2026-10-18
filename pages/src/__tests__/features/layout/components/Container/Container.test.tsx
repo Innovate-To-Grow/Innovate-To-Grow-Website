@@ -75,38 +75,13 @@ describe('Container', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  it('adds the section sidebar and the phone section select on a section page', () => {
+  it('renders no section sidebar or section select, even on a page in a menu section', () => {
     renderContainer(<h1>Current Projects</h1>, '/current-projects', layoutValue);
 
     const layout = document.querySelector('.app-layout') as HTMLElement;
-    expect(layout).toHaveClass('has-section-nav');
-    const sidebar = screen.getByRole('navigation', {name: 'Projects'});
-    expect(layout.firstElementChild).toContainElement(sidebar);
-    expect(screen.getByRole('link', {name: 'Current Projects'})).toHaveAttribute('aria-current', 'page');
-
-    const main = document.querySelector('.app-layout-main') as HTMLElement;
-    const select = screen.getByRole('combobox', {name: 'In Projects'});
-    expect(main.firstElementChild).toContainElement(select);
-    expect(main).toHaveTextContent('Current Projects');
-  });
-
-  it('maps detail routes onto their list page', () => {
-    renderContainer(<h1>Project</h1>, '/projects/abc', layoutValue);
-    expect(screen.getByRole('link', {name: 'Current Projects'})).toHaveAttribute('aria-current', 'true');
-  });
-
-  it.each([
-    ['the home page', '/'],
-    ['a page whose section has no children', '/news'],
-    ['an auth page', '/login'],
-    ['an account page', '/account'],
-    ['an isolated embed', '/current-projects?_isolated=1'],
-    ['a page outside the menu', '/somewhere-else'],
-  ])('lets main span the container on %s', (_label, path) => {
-    renderContainer(<div>Body</div>, path, layoutValue);
-
-    expect(document.querySelector('.app-layout')).not.toHaveClass('has-section-nav');
-    expect(document.querySelector('.section-nav')).toBeNull();
+    expect(layout.children).toHaveLength(1);
+    expect(layout.firstElementChild).toHaveClass('app-layout-main');
+    expect(screen.queryByRole('navigation')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
   });
 
@@ -122,7 +97,6 @@ describe('Container', () => {
         fireEvent.click(screen.getByRole('link', {name: 'Go'}));
       });
       expect(seen).toEqual(['/current-projects', '/past-projects']);
-      expect(screen.getByRole('link', {name: 'Past Projects'})).toHaveAttribute('aria-current', 'page');
     } finally {
       window.removeEventListener(ROUTE_CHANGE_EVENT, listener);
     }

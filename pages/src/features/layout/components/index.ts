@@ -2,7 +2,6 @@
 export { Footer } from './Footer/Footer';
 export { MainMenu } from './MainMenu/MainMenu';
 export { Container } from './Container/Container';
-export { SectionNav, SectionSelect } from './SectionNav/SectionNav';
 
 // Re-export Container as Layout for backward compatibility
 export { Container as Layout } from './Container/Container';

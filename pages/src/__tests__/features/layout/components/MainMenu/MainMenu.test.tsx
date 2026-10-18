@@ -191,7 +191,6 @@ describe('MainMenu', () => {
     expect(childProps.menuTree.openItemIndex).toBe(1);
     expect(childProps.menuTree.current).toEqual({
       menuIndex: null,
-      section: null,
       currentPath: '/',
       isExact: true,
     });

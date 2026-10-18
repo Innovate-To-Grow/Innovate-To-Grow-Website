@@ -1,5 +1,5 @@
-// /schedule with the real CMS sheets: the presentation grids fit the main column
-// beside the section sidebar, schedule text meets WCAG AA contrast, long winner
+// /schedule with the real CMS sheets: the presentation grids fit the full-width
+// content column, schedule text meets WCAG AA contrast, long winner
 // names stay inside their cards, and phone team buttons are 44px touch targets.
 import AxeBuilder from '@axe-core/playwright';
 import type {Page} from '@playwright/test';
@@ -93,7 +93,7 @@ function payload(sections: ScheduleSection[] = [CAP, CSE]) {
   });
 }
 
-// /schedule belongs to the Events menu section, so the shell shows the section sidebar.
+// /schedule belongs to the Events menu section; the shell still shows no section sidebar.
 async function mockEventsSection(page: Page) {
   const item = (title: string, url: string) => ({type: 'app', title, icon: '', open_in_new_tab: false, url, children: []});
   await page.route('**/layout/', (route) =>
@@ -126,16 +126,14 @@ async function openSchedule(page: Page, width: number, sections?: ScheduleSectio
   await expect(page.getByRole('heading', {name: 'E2E Showcase', level: 1})).toBeVisible();
 }
 
-// Desktop widths show the sidebar (870px column at 1440: the 1170px container less the
-// 270px sidebar and 30px gap; 676px at 1024, 645px at 993); tablet widths use the full
-// column (736px at 768, 689px at 721).
+// The schedule spans the whole content column at every width (1170px at 1440).
 for (const width of [1440, 1024, 993, 768, 721]) {
   test(`five-track presentation grids fit the ${width}px layout without clipping a track`, async ({page}) => {
     await openSchedule(page, width);
-    if (width > 992) {
-      await expect(page.getByRole('navigation', {name: 'Events', exact: true})).toBeVisible();
-      expect((await page.locator('.schedule-page').boundingBox())!.width).toBeLessThanOrEqual(870);
-    }
+    await expect(page.locator('.section-nav, .section-nav-select')).toHaveCount(0);
+    const column = (await page.locator('.app-layout-main').boundingBox())!;
+    expect((await page.locator('.schedule-page').boundingBox())!.width).toBeGreaterThanOrEqual(column.width - 1);
+    if (width === 1440) expect(column.width).toBe(1170);
 
     const wraps = page.locator('.schedule-page-table-wrap');
     await expect(wraps).toHaveCount(2);
@@ -153,7 +151,7 @@ for (const width of [1440, 1024, 993, 768, 721]) {
 }
 
 test('a class with more tracks than fit scrolls inside its grid, not the page', async ({page}) => {
-  const wide = section('CSE', 'Software Engineering Capstone', 6, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], []);
+  const wide = section('CSE', 'Software Engineering Capstone', 6, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'], []);
   await openSchedule(page, 1024, [wide]);
 
   const wrap = page.locator('.schedule-page-table-wrap');
@@ -162,7 +160,7 @@ test('a class with more tracks than fit scrolls inside its grid, not the page', 
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024);
 });
 
-test('long winner names wrap inside their track cards beside the sidebar', async ({page}) => {
+test('long winner names wrap inside their track cards', async ({page}) => {
   await openSchedule(page, 1024);
 
   const escaping = await page.locator('.schedule-winner-card').evaluateAll((cards) =>
