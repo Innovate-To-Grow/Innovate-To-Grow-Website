@@ -6,15 +6,15 @@ export const LoadingState = ({error}: LoadingStateProps) => {
   if (error) {
     return (
       <div className="event-reg-page">
-        <h1 className="event-reg-title">Event Registration</h1>
-        <div className="event-reg-alert error">{error}</div>
+        <h1 className="itg-page-title event-reg-title">Event Registration</h1>
+        <div className="event-reg-alert error" role="alert">{error}</div>
       </div>
     );
   }
 
   return (
     <div className="event-reg-page">
-      <div className="event-reg-loading">Loading event details...</div>
+      <p className="event-reg-loading" role="status">Loading event details...</p>
     </div>
   );
 };

@@ -105,9 +105,9 @@ describe('MergedResultsTable', () => {
 
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
-    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'Spring finalists'}});
+    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'Spring finalists'}});
     setRichTextEditorHtml(
-      screen.getByRole('textbox', {name: /add a curation note/i}),
+      screen.getByRole('textbox', {name: /curation note/i}),
       'Review these with the team',
     );
     fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
@@ -135,7 +135,7 @@ describe('MergedResultsTable', () => {
     );
 
     // Narrow the visible rows to just the "Irrigation Sensor" row; "Shared Project" is hidden.
-    fireEvent.change(screen.getByPlaceholderText(/search merged results/i), {target: {value: 'Irrigation'}});
+    fireEvent.change(screen.getByLabelText('Search this list'), {target: {value: 'Irrigation'}});
     await waitFor(() =>
       expect(within(desktopTable(container)).queryByText('Shared Project')).not.toBeInTheDocument(),
     );
@@ -157,7 +157,7 @@ describe('MergedResultsTable', () => {
 
     render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={onCreateShare} />);
 
-    const noteEditor = screen.getByRole('textbox', {name: /add a curation note/i});
+    const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
     fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
 
     const expectedIndividualHref = new URL(`/past-projects/project/${rowWithId.id}`, window.location.origin).href;
@@ -167,7 +167,7 @@ describe('MergedResultsTable', () => {
     const insertedLink = noteEditor.querySelector('a');
     expect(insertedLink?.getAttribute('href')).toBe(expectedIndividualHref);
 
-    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'Spring finalists'}});
+    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'Spring finalists'}});
     fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
@@ -179,7 +179,7 @@ describe('MergedResultsTable', () => {
   it('inserts curation content when the note editor was focused', async () => {
     render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={vi.fn()} />);
 
-    const noteEditor = screen.getByRole('textbox', {name: /add a curation note/i});
+    const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
     const insertButton = screen.getByRole('button', {name: 'Insert projects into note'});
     noteEditor.focus();
     expect(noteEditor).toHaveFocus();
@@ -194,12 +194,12 @@ describe('MergedResultsTable', () => {
   it('excludes configured project fields from inserted note text', async () => {
     render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', {name: 'Project insert settings'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Choose fields'}));
     fireEvent.click(screen.getByRole('checkbox', {name: 'Individual Link'}));
     fireEvent.click(screen.getByRole('checkbox', {name: 'Abstract'}));
     fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
 
-    const noteEditor = screen.getByRole('textbox', {name: /add a curation note/i});
+    const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
     await waitFor(() => expect(noteEditor.textContent).toContain('Project 1'));
     expect(noteEditor.textContent).toContain('Project Title: Shared Project');
     expect(noteEditor.textContent).not.toContain('Individual Link');
@@ -210,7 +210,7 @@ describe('MergedResultsTable', () => {
   it('updates the existing curated note block without overwriting manual note text', async () => {
     render(<MergedResultsTable rows={makeItems([rowWithId, addedRow])} onCreateShare={vi.fn()} />);
 
-    const noteEditor = screen.getByRole('textbox', {name: /add a curation note/i});
+    const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
     setRichTextEditorHtml(noteEditor, '<div>Manual intro</div>');
     fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
 
@@ -262,8 +262,8 @@ describe('MergedResultsTable', () => {
   it('exports with the typed name and note so the PDF matches the page it will share', async () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
-    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'CSE capstones for Bob'}});
-    setRichTextEditorHtml(screen.getByRole('textbox', {name: /add a curation note/i}), 'Hello Bob');
+    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'CSE capstones for Bob'}});
+    setRichTextEditorHtml(screen.getByRole('textbox', {name: /curation note/i}), 'Hello Bob');
     const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
     fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
 
@@ -276,10 +276,41 @@ describe('MergedResultsTable', () => {
   it('explains how an unnamed curation will be titled', () => {
     render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
-    expect(screen.getByLabelText(/name this curation/i)).toHaveAccessibleDescription(
-      'Leave blank to use the first line you write in the note (inserted project details are skipped), or ' +
-        '“Past Project Curation” if there is none.',
+    const name = screen.getByLabelText(/shared page name/i);
+    expect(name).toHaveAccessibleName('Shared page name (optional)');
+    expect(name).toHaveAttribute('placeholder', 'Past Project Curation');
+    expect(name).toHaveAccessibleDescription('Leave it blank to use the first line of your note.');
+  });
+
+  it('lays out the saved list as a panel with its count, the table, the export and edit groups, and sharing', () => {
+    const {container} = render(
+      <MergedResultsTable
+        id="saved"
+        rows={makeItems([baseRow, addedRow])}
+        onCreateShare={vi.fn()}
+        onDeleteRow={vi.fn()}
+        onDeleteRows={vi.fn()}
+        onUndoRows={vi.fn()}
+        onResetRows={vi.fn()}
+      />,
     );
+
+    const section = screen.getByRole('region', {name: 'Saved Merged Results'});
+    expect(section).toHaveClass('itg-panel');
+    expect(section.querySelector('.project-grid-card-count')).toHaveTextContent('2 projects in this list');
+    const editGroup = within(section).getByRole('group', {name: 'Edit list'});
+    expect(within(editGroup).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Remove Selected',
+      'Undo Merged Change',
+      'Reset Merged Results',
+    ]);
+    expect(within(editGroup).getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
+    expect(within(editGroup).getByRole('button', {name: 'Reset Merged Results'})).toHaveClass('itg-btn-danger');
+    expect(within(section).getByRole('heading', {level: 3, name: 'Share this list'})).toBeInTheDocument();
+    expect(within(section).getByText('Anyone with the link can view this list.')).toBeInTheDocument();
+    // The share button lives only in the share section.
+    expect(within(section).getAllByRole('button', {name: /get shareable url/i})).toHaveLength(1);
+    expect(container.querySelector('.project-grid-share-actions')).not.toBeNull();
   });
 
   it('pages to and highlights the rows the latest save added', () => {
@@ -333,9 +364,10 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} pendingSaveCount={1} />);
 
     screen.getAllByRole('button', {name: /get shareable url/i}).forEach((button) => expect(button).toBeDisabled());
-    expect(screen.getByRole('status')).toHaveTextContent('Waiting for projects to finish saving');
-    // Beside the button, not on a line of its own that would push the search tables below down.
-    expect(screen.getByRole('status').closest('.project-grid-share-actions--top')).not.toBeNull();
+    const pending = screen.getByText(/Waiting for projects to finish saving/);
+    expect(pending).toHaveAttribute('role', 'status');
+    // Beside the button, not on a line of its own.
+    expect(pending.closest('.project-grid-share-actions')).not.toBeNull();
   });
 
   it('keeps the saved rows as they are while a shareable link is being created', async () => {
@@ -432,7 +464,7 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={onCreateShare} />);
 
     fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Irrigation'}});
-    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'Filtered'}});
+    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'Filtered'}});
     fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
@@ -457,8 +489,8 @@ describe('MergedResultsTable', () => {
   it('searches only the saved rows in a shared merged-results table', () => {
     const {container} = render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} sharedMode />);
 
-    const search = screen.getByRole('searchbox');
-    expect(search).toHaveAttribute('placeholder', 'Search saved results...');
+    const search = screen.getByRole('searchbox', {name: 'Search this list'});
+    expect(search).toHaveAttribute('placeholder', 'Team, project, organization…');
     fireEvent.change(search, {target: {value: 'Blue Diamond'}});
 
     expect(within(desktopTable(container)).getByText('Irrigation Sensor')).toBeInTheDocument();
@@ -471,10 +503,10 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
     expect(screen.queryByRole('button', {name: /get shareable url/i})).toBeNull();
-    expect(screen.queryByLabelText(/name this curation/i)).toBeNull();
-    expect(screen.getByText(/to create a shareable link/i)).toBeInTheDocument();
-    // The login link carries a returnTo so sign-in brings the visitor back to this page.
-    const loginLink = screen.getByRole('link', {name: 'Log in'});
+    expect(screen.queryByLabelText(/shared page name/i)).toBeNull();
+    expect(screen.getByText(/to name this list and get a shareable link/i)).toBeInTheDocument();
+    // The sign-in link carries a returnTo so sign-in brings the visitor back to this page.
+    const loginLink = screen.getByRole('link', {name: 'Sign in'});
     expect(loginLink.getAttribute('href')).toMatch(/^\/login\?returnTo=/);
   });
 
@@ -483,11 +515,13 @@ describe('MergedResultsTable', () => {
       <MergedResultsTable rows={makeItems()} sharedMode note="Curated highlights" />,
     );
 
-    const shareBlock = await screen.findByRole('status');
+    const shareBlock = container.querySelector('.project-grid-share-result');
+    expect(shareBlock).toHaveClass('itg-panel');
+    expect(within(shareBlock as HTMLElement).getByRole('button', {name: 'Copy link'})).toBeInTheDocument();
     const noteBlock = container.querySelector('.project-grid-shared-note');
     expect(noteBlock).not.toBeNull();
     expect(screen.getByText('Curated highlights')).toBeInTheDocument();
-    expect(screen.getByLabelText('Shareable URL')).toBeInTheDocument();
+    expect(screen.getByLabelText('Shareable link')).toBeInTheDocument();
 
     const headerBlocks = Array.from(
       container.querySelectorAll('.project-grid-share-result, .project-grid-shared-note'),
@@ -501,6 +535,82 @@ describe('MergedResultsTable', () => {
     expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Microsoft Word']);
   });
 
+  it('folds the saved list behind a disclosure for phones', () => {
+    render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={vi.fn()} />);
+
+    const toggle = screen.getByRole('button', {name: 'Show the 2 saved projects'});
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    const list = document.getElementById(toggle.getAttribute('aria-controls') as string);
+    expect(list).not.toHaveClass('is-open');
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole('button', {name: 'Hide the saved projects'})).toHaveAttribute('aria-expanded', 'true');
+    expect(list).toHaveClass('is-open');
+  });
+
+  it('heads a shared list search with no matches one level under the list title (h2)', () => {
+    render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} sharedMode title="Spring picks" />);
+
+    fireEvent.change(screen.getByRole('searchbox', {name: 'Search this list'}), {target: {value: 'hydroponics'}});
+
+    expect(screen.getByRole('heading', {level: 1, name: 'Spring picks'})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {level: 2, name: 'No projects match “hydroponics”'})).toBeInTheDocument();
+  });
+
+  it('heads a saved-results search with no matches one level under the card title (h3)', () => {
+    render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={vi.fn()} title="Merged Results" />);
+
+    fireEvent.change(screen.getByRole('searchbox', {name: 'Search this list'}), {target: {value: 'hydroponics'}});
+
+    expect(screen.getByRole('heading', {level: 2, name: 'Merged Results'})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {level: 3, name: 'No projects match “hydroponics”'})).toBeInTheDocument();
+  });
+
+  it('shows a shared list without the phone disclosure', () => {
+    render(<MergedResultsTable rows={makeItems()} sharedMode />);
+
+    expect(screen.queryByRole('button', {name: /saved project/})).toBeNull();
+  });
+
+  it('heads a shared list with an eyebrow, the list name and when it was shared', () => {
+    render(
+      <MergedResultsTable
+        rows={makeItems([baseRow, addedRow])}
+        sharedMode
+        title="Spring picks"
+        sharedAt="2026-10-16T12:00:00Z"
+      />,
+    );
+
+    expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
+    expect(screen.getByRole('heading', {level: 1, name: 'Spring picks'})).toBeInTheDocument();
+    expect(screen.getByText('2 projects · shared October 16, 2026')).toHaveClass('itg-page-meta');
+  });
+
+  it('leaves the date out of the meta line when the share has none', () => {
+    const {container} = render(
+      <MergedResultsTable rows={makeItems()} sharedMode title="Spring picks" sharedAt="not a date" />,
+    );
+
+    expect(container.querySelector('.project-grid-shared-header .itg-page-meta')).toHaveTextContent(/^1 project$/);
+  });
+
+  it('copies the shareable link with the Copy link button', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
+    try {
+      render(<MergedResultsTable rows={makeItems()} sharedMode />);
+
+      fireEvent.click(screen.getByRole('button', {name: 'Copy link'}));
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
+      expect(await screen.findByRole('status')).toHaveTextContent('Shareable URL copied.');
+    } finally {
+      Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
+    }
+  });
+
   it('does not render a note block in shared mode when note is empty', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} sharedMode note="" />);
     expect(container.querySelector('.project-grid-shared-note')).toBeNull();
@@ -512,7 +622,7 @@ describe('MergedResultsTable', () => {
     try {
       render(<MergedResultsTable rows={makeItems()} sharedMode />);
 
-      fireEvent.click(screen.getByLabelText('Shareable URL'));
+      fireEvent.click(screen.getByLabelText('Shareable link'));
 
       await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
       expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();
@@ -525,15 +635,15 @@ describe('MergedResultsTable', () => {
     // jsdom has neither navigator.clipboard nor document.execCommand — both paths fall through.
     render(<MergedResultsTable rows={makeItems()} sharedMode />);
 
-    fireEvent.click(screen.getByLabelText('Shareable URL'));
+    fireEvent.click(screen.getByLabelText('Shareable link'));
 
     expect(await screen.findByText('Unable to copy URL. Select the link and copy it manually.')).toBeInTheDocument();
   });
 
-  it('shows the individual project URL in expanded desktop and mobile details', () => {
+  it('links to the project page from expanded desktop and mobile details', () => {
     const {container} = render(<MergedResultsTable rows={makeItems([rowWithId])} />);
 
-    const desktopDetailsButton = within(desktopTable(container)).getByRole('button', {name: 'View'});
+    const desktopDetailsButton = within(desktopTable(container)).getByRole('button', {name: 'Details'});
     expect(desktopDetailsButton).toHaveAttribute('aria-expanded', 'false');
     const desktopDetailsId = desktopDetailsButton.getAttribute('aria-controls');
     expect(desktopDetailsId).toBeTruthy();
@@ -546,18 +656,16 @@ describe('MergedResultsTable', () => {
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
-    expect(desktopLink).toHaveTextContent(expectedHref);
-    expect(desktopLink).toBeVisible();
-    expect(within(desktopTable(container)).getByText('Individual Project URL')).toBeVisible();
+    expect(desktopLink).toHaveTextContent('Open the project page');
+    expect(desktopLink).toHaveAttribute('target', '_blank');
+    expect(within(desktopTable(container)).getByRole('button', {name: 'Copy project link'})).toBeVisible();
 
     const mobileCards = container.querySelector('.project-grid-mobile-cards') as HTMLElement;
     const mobileLink = mobileCards.querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(mobileLink).not.toBeNull();
     expect(mobileLink.getAttribute('href')).toBe(expectedHref);
-    expect(mobileLink).toHaveTextContent(expectedHref);
-    expect(mobileLink).toBeVisible();
-    expect(within(mobileCards).getByText('Individual Project URL')).toBeVisible();
-    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: 'Hide Details'});
+    expect(mobileLink).toHaveTextContent('Open the project page');
+    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: 'Hide details'});
     expect(mobileDetailsButton).toHaveAttribute('aria-expanded', 'true');
     const mobileDetailsId = mobileDetailsButton.getAttribute('aria-controls');
     expect(mobileDetailsId).toBeTruthy();
@@ -567,8 +675,8 @@ describe('MergedResultsTable', () => {
   it('exposes the current desktop sort direction to assistive technology', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} />);
     const table = desktopTable(container);
-    const semesterHeader = within(table).getByRole('columnheader', {name: /year-semester/i});
-    const titleHeader = within(table).getByRole('columnheader', {name: /project title/i});
+    const semesterHeader = within(table).getByRole('columnheader', {name: 'Term'});
+    const titleHeader = within(table).getByRole('columnheader', {name: 'Project'});
 
     expect(semesterHeader).toHaveAttribute('aria-sort', 'descending');
     expect(titleHeader).toHaveAttribute('aria-sort', 'none');
@@ -582,7 +690,7 @@ describe('MergedResultsTable', () => {
   it('lets an id-only row expand so its individual project URL is reachable', () => {
     const idOnlyRow: ProjectGridRow = {...rowWithId, abstract: '', student_names: ''};
     const {container} = render(<MergedResultsTable rows={makeItems([idOnlyRow])} />);
-    const detailButton = within(desktopTable(container)).getByRole('button', {name: 'View'});
+    const detailButton = within(desktopTable(container)).getByRole('button', {name: 'Details'});
 
     expect(detailButton).toBeEnabled();
     fireEvent.click(detailButton);
@@ -591,15 +699,16 @@ describe('MergedResultsTable', () => {
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
-    expect(desktopLink).toHaveTextContent(expectedHref);
+    expect(desktopLink).toHaveTextContent('Open the project page');
   });
 
   it('does not show an individual link for legacy rows without an id', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} />);
 
-    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'View'}));
+    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'Details'}));
 
     expect(desktopTable(container).querySelector('.project-grid-individual-link')).toBeNull();
+    expect(within(desktopTable(container)).queryByRole('link')).toBeNull();
   });
 
   it('lets an editable shared page save note changes', async () => {
@@ -828,13 +937,13 @@ describe('MergedResultsTable', () => {
   it('re-includes an excluded field when the checkbox is toggled again', async () => {
     render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', {name: 'Project insert settings'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Choose fields'}));
     const individualLinkCheckbox = screen.getByRole('checkbox', {name: 'Individual Link'});
     fireEvent.click(individualLinkCheckbox);
     fireEvent.click(individualLinkCheckbox);
     fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
 
-    const noteEditor = screen.getByRole('textbox', {name: /add a curation note/i});
+    const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
     await waitFor(() => expect(noteEditor.textContent).toContain('Individual Link'));
   });
 
@@ -869,7 +978,7 @@ describe('MergedResultsTable', () => {
     try {
       render(<MergedResultsTable rows={makeItems()} sharedMode />);
 
-      fireEvent.click(screen.getByLabelText('Shareable URL'));
+      fireEvent.click(screen.getByLabelText('Shareable link'));
 
       expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();
       expect(execCommand).toHaveBeenCalledWith('copy');
@@ -990,7 +1099,7 @@ describe('MergedResultsTable', () => {
     try {
       render(<MergedResultsTable rows={makeItems()} sharedMode />);
 
-      fireEvent.focus(screen.getByLabelText('Shareable URL'));
+      fireEvent.focus(screen.getByLabelText('Shareable link'));
 
       await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
       expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();

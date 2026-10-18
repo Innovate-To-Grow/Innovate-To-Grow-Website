@@ -1,4 +1,3 @@
-import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
 import {Icon} from '@/components/Icon/Icon';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
@@ -28,12 +27,11 @@ export const ForgotPasswordPage = () => {
 
   return (
     <div className="auth-page">
-      <div className="auth-page-card">
-        <div className="auth-page-header">
-          <ResponsiveBrandImage brand="i2g" alt="I2G" className="auth-page-logo" sizes="160px" />
-          <h1 className="auth-page-title">Forgot Password</h1>
-          <p className="auth-page-subtitle">Request a verification code to reset your password</p>
-        </div>
+      <header className="auth-page-header">
+        <h1 className="itg-page-title auth-page-title">Forgot Password</h1>
+        <p className="itg-page-meta auth-page-subtitle">Request a verification code to reset your password</p>
+      </header>
+      <div className="itg-panel auth-page-card">
 
         {infoMessage && (
           <div className="auth-alert-wrapper">
@@ -55,13 +53,13 @@ export const ForgotPasswordPage = () => {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="auth-form-group">
-            <label className="auth-form-label" htmlFor="forgot-email">
+            <label className="itg-label auth-form-label" htmlFor="forgot-email">
               Email or Phone
             </label>
             <input
               id="forgot-email"
               type="text"
-              className="auth-form-input"
+              className="itg-input auth-form-input"
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
@@ -77,7 +75,7 @@ export const ForgotPasswordPage = () => {
             </span>
           </div>
 
-          <button type="submit" className="auth-form-submit" disabled={isLoading || !email}>
+          <button type="submit" className="itg-btn itg-btn-primary auth-form-submit" disabled={isLoading || !email}>
             {isLoading ? (
               <>
                 <span className="auth-spinner" />
@@ -89,7 +87,7 @@ export const ForgotPasswordPage = () => {
           </button>
 
           <div className="auth-inline-links">
-            <button type="button" className="auth-text-link" onClick={() => navigate('/login')}>
+            <button type="button" className="itg-btn itg-btn-text auth-text-link" onClick={() => navigate('/login')}>
               Back to login
             </button>
           </div>

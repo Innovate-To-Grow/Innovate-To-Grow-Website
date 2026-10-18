@@ -24,15 +24,36 @@ const BRAND_IMAGES = {
     },
 } as const;
 
-interface ResponsiveBrandImageProps
-    extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'srcSet' | 'width' | 'height'> {
-    brand: keyof typeof BRAND_IMAGES;
+export type BrandImageName = keyof typeof BRAND_IMAGES;
+
+/** Swap in a different brand image while `media` matches (art direction, e.g. a round logo on phones). */
+export interface BrandImageArtDirection {
+    media: string;
+    brand: BrandImageName;
+    sizes?: string;
 }
 
-export const ResponsiveBrandImage = ({brand, alt, sizes = '100vw', ...props}: ResponsiveBrandImageProps) => {
+interface ResponsiveBrandImageProps
+    extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'srcSet' | 'width' | 'height'> {
+    brand: BrandImageName;
+    artDirection?: BrandImageArtDirection;
+}
+
+export const ResponsiveBrandImage = ({brand, alt, sizes = '100vw', artDirection, ...props}: ResponsiveBrandImageProps) => {
     const image = BRAND_IMAGES[brand];
+    const directed = artDirection ? BRAND_IMAGES[artDirection.brand] : null;
     return (
         <picture>
+            {artDirection && directed ? (
+                <source
+                    type="image/webp"
+                    media={artDirection.media}
+                    srcSet={directed.srcSet}
+                    sizes={artDirection.sizes ?? sizes}
+                    width={directed.width}
+                    height={directed.height}
+                />
+            ) : null}
             <source type="image/webp" srcSet={image.srcSet} sizes={sizes}/>
             <img
                 {...props}

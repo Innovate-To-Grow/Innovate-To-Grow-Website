@@ -13,7 +13,7 @@
          emits this block). -->
     <style>
       html { background: #fff; }
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; }
+      body { font-family: "Open Sans", "Segoe UI", Arial, sans-serif; margin: 0; }
 
       /* ---- init loader ---- */
       @keyframes itg-init-loader-spin { to { transform: rotate(360deg); } }
@@ -50,18 +50,31 @@
       html[data-block-preview] #content,
       html[data-block-preview] #content-wrapper { padding: 0; margin: 0; max-width: none; width: auto; }
       html[data-block-preview] #root:empty::before { display: none; }
+      /* Isolated routes mount no header or footer: their roots take no space,
+         whatever the CMS-managed sheets reserve for them. */
+      html[data-block-preview] #menu-root,
+      html[data-block-preview] #footer-root { display: none; }
+      /* The wrappers above are plain blocks here, so the first heading's top margin would
+         collapse up through them and push the whole page down; keep it inside #main. */
+      html[data-block-preview] #main { display: flow-root; }
     </style>
     <!-- Server-managed design tokens + stylesheets. Render-blocking so tokens
          resolve before first paint of the styled page; the inline spinner above
          already covers the pre-stylesheet paint window. -->
-    <link rel="stylesheet" href="/api/layout/styles.css?v=6">
+    <link rel="stylesheet" href="/api/layout/styles.css?v=7">
+    <!-- UC Merced subsite typefaces: Open Sans (text) and Khula (site name). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Khula:wght@300;600&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap">
   </head>
   <body class="html front not-logged-in no-sidebars page-node">
     <!-- NAVBAR -->
     <div id="menu-root"></div>
     <!-- END NAVBAR -->
 
-    <div id="main" class="clearfix main" role="main">
+    <!-- The page's one main landmark (a native element, so page-level <header>s
+         inside it are not exposed as nested banners). The skip link targets #main. -->
+    <main id="main" class="clearfix main">
         <div class="container">
             <div id="main-content" class="row main-content">
                 <div id="content" class="mc-content span12">
@@ -72,7 +85,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- FOOTER: rendered dynamically by React -->
     <div id="footer-root"></div>

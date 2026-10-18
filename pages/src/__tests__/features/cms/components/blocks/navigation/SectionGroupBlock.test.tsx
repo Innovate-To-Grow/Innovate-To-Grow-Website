@@ -15,6 +15,8 @@ describe('SectionGroupBlock', () => {
     expect(container.querySelector('.cms-section-group')).not.toBeNull();
     expect(screen.getByRole('heading', {name: 'Resources', level: 1})).toHaveClass(
       'section-title',
+      'itg-page-title',
+      'cms-page-title',
     );
   });
 
@@ -46,12 +48,22 @@ describe('SectionGroupBlock', () => {
   });
 
   it('honors a per-section heading_level', () => {
-    render(
+    const {container} = render(
       <SectionGroupBlock
         data={{sections: [{heading: 'Deep Dive', heading_level: 3, body_html: ''}]}}
       />,
     );
-    expect(screen.getByRole('heading', {name: 'Deep Dive', level: 3})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: 'Deep Dive', level: 3})).toHaveClass(
+      'itg-subsection-title',
+    );
+    expect(container.querySelector('.cms-section-group-body')).toHaveClass('cms-prose');
+  });
+
+  it('renders no sections when sections are malformed', () => {
+    const {container} = render(
+      <SectionGroupBlock data={{sections: undefined as unknown as []}} />,
+    );
+    expect(container.querySelectorAll('section')).toHaveLength(0);
   });
 
   it('falls back to h2 when a section heading_level is falsy', () => {

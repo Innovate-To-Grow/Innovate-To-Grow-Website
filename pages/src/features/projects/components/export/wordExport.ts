@@ -1,5 +1,6 @@
 import {
   BRAND_BLUE,
+  MUTED_TEXT,
   EXPORT_COLUMNS,
   HIGHLIGHT_FILL,
   normalizeProjectRowsExportContext,
@@ -160,7 +161,7 @@ export const createProjectRowsWordBlob = (
     ${wordParagraph('Innovate to Grow Past Projects', {
       alignment: 'center',
       bold: true,
-      color: '53657A',
+      color: MUTED_TEXT,
       size: 20,
       spacingAfter: 220,
     })}

@@ -1,4 +1,3 @@
-import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
 import {Icon} from '@/components/Icon/Icon';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -142,13 +141,12 @@ export const CompleteProfilePage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-page-card wide">
-        <div className="auth-page-header">
-          <ResponsiveBrandImage brand="i2g" alt="I2G" className="auth-page-logo" sizes="160px" />
-          <h1 className="auth-page-title">Complete Your Profile</h1>
-          <p className="auth-page-subtitle">Add your name and organization before continuing to your account.</p>
-        </div>
+    <div className="auth-page auth-page--wide">
+      <header className="auth-page-header">
+        <h1 className="itg-page-title auth-page-title">Complete Your Profile</h1>
+        <p className="itg-page-meta auth-page-subtitle">Add your name and organization before continuing to your account.</p>
+      </header>
+      <div className="itg-panel auth-page-card">
 
         {error && (
           <div className="auth-alert-wrapper">

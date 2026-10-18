@@ -232,26 +232,51 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(screen.getByText('Search table refreshed from the latest past-project archive.')).toBeInTheDocument();
   });
 
+  it('seeds only the first search table with the search it was given', () => {
+    render(
+      <PastProjectsBuilder rows={ROWS} loading={false} error={null} initialSearch="Bravo" onCreateShare={vi.fn()} />,
+    );
+
+    const table = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
+    expect(within(table).getByRole('searchbox')).toHaveValue('Bravo');
+
+    fireEvent.click(screen.getByRole('button', {name: '+ Search Table'}));
+    const table2 = screen.getByRole('heading', {level: 3, name: 'Search Table 2'}).closest('section') as HTMLElement;
+    expect(within(table2).getByRole('searchbox')).toHaveValue('');
+  });
+
+  it('heads the search tables with a section title and its add buttons', () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    const section = screen.getByRole('region', {name: 'Search Tables'});
+    const addGroup = within(section).getByRole('group', {name: 'Add a table'});
+    expect(within(addGroup).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '+ Search Table',
+      '+ AI Search Table',
+    ]);
+    expect(within(section).getByText('Help: buttons, saving and tables')).toBeInTheDocument();
+  });
+
   it('omits the search table number until there are multiple tables', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     expect(screen.queryByRole('heading', {level: 3, name: 'Search Table 1'})).toBeNull();
-    expect(screen.queryByRole('button', {name: /delete search table/i})).toBeNull();
+    expect(screen.queryByRole('button', {name: /delete table/i})).toBeNull();
 
     fireEvent.click(screen.getByRole('button', {name: /\+ search table/i}));
 
     expect(screen.queryByRole('heading', {level: 3, name: 'Search Table'})).toBeNull();
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table 1'})).toBeInTheDocument();
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table 2'})).toBeInTheDocument();
-    expect(screen.getByRole('button', {name: /delete search table 1/i})).toBeInTheDocument();
-    expect(screen.getByRole('button', {name: /delete search table 2/i})).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: /delete table: search table 1/i})).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: /delete table: search table 2/i})).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', {name: /delete search table 1/i}));
+    fireEvent.click(screen.getByRole('button', {name: /delete table: search table 1/i}));
 
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     expect(screen.queryByRole('heading', {level: 3, name: 'Search Table 2'})).toBeNull();
-    expect(screen.queryByRole('button', {name: /delete search table/i})).toBeNull();
+    expect(screen.queryByRole('button', {name: /delete table/i})).toBeNull();
   });
 
   it('does not number the only standard Search Table when an AI Search Table is also open', () => {
@@ -357,8 +382,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
 
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    const addAIButton = screen.getByRole('button', {name: /\+ ai search table/i});
+    const addAIButton = screen.getByRole('button', {name: 'AI Search Table'});
     expect(screen.queryByText('Sign in to use AI search.')).toBeNull();
+    // A lock and a note say why, instead of the "+".
+    expect(addAIButton).toHaveAccessibleDescription('AI Search Table needs you to sign in.');
+    expect(addAIButton.querySelector('svg')).not.toBeNull();
     expect(addAIButton).toBeEnabled();
     expect(addAIButton).not.toHaveAttribute('aria-disabled');
     expect(addAIButton).toHaveClass('is-login-required');
@@ -468,7 +496,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
 
-    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'My picks'}});
+    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'My picks'}});
     fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
@@ -485,7 +513,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
     expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
 
-    fireEvent.change(screen.getByLabelText(/name this curation/i), {target: {value: 'My picks'}});
+    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'My picks'}});
     fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
@@ -1042,14 +1070,38 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       vi.unstubAllGlobals();
     });
 
-    it('leaves the page alone while the user is working in the saved results', () => {
+    it('keeps the field the user is typing in where it is when the saved list grows above it', () => {
+      const nameTops = [100, 186];
+      vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+        const top = this.matches('input[type="text"]')
+          ? (nameTops.shift() ?? 186)
+          : this.hasAttribute('data-search-table-id')
+            ? (tops.shift() ?? 300)
+            : 0;
+        return {top, bottom: top + 40, left: 0, right: 0, width: 0, height: 40, x: 0, y: top, toJSON: () => ({})} as DOMRect;
+      });
       render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
       const searchTable = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
       fireEvent.click(within(searchTable).getAllByLabelText('Select Alpha Project')[0]);
       fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
       scrollBy.mockReset();
 
-      screen.getByLabelText(/name this curation/i).focus();
+      screen.getByLabelText(/shared page name/i).focus();
+      fireEvent.click(within(searchTable).getAllByLabelText('Select Bravo Project')[0]);
+      fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+
+      expect(getMergedSection()?.textContent).toContain('Bravo Project');
+      expect(scrollBy).toHaveBeenCalledWith(0, 86);
+    });
+
+    it('leaves the page alone while the user is working in the saved results and nothing moves', () => {
+      render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+      const searchTable = screen.getByRole('heading', {level: 3, name: 'Search Table'}).closest('section') as HTMLElement;
+      fireEvent.click(within(searchTable).getAllByLabelText('Select Alpha Project')[0]);
+      fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
+      scrollBy.mockReset();
+
+      screen.getByLabelText(/shared page name/i).focus();
       tops = [120, 300];
       fireEvent.click(within(searchTable).getAllByLabelText('Select Bravo Project')[0]);
       fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
@@ -1138,7 +1190,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
 
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'AI Search Table'}));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: /sign in/i}));
 
     expect(mockBuildLoginPath).toHaveBeenCalled();

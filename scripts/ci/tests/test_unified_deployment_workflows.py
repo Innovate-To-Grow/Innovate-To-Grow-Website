@@ -70,6 +70,15 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
         self.assertEqual(backend["needs"], "approve")
         self.assertEqual(set(backend["with"]), {"deploy_sha", "build_image"})
 
+    def test_frontend_ships_after_the_backend(self) -> None:
+        production = load_workflow("deploy-production.yml")
+
+        frontend = production["jobs"]["deploy-frontend"]
+        self.assertEqual(frontend["needs"], ["approve", "deploy-backend"])
+        # Ordered after the backend, but not skipped when a backend leg fails.
+        self.assertEqual(frontend["if"], "${{ !cancelled() && needs.approve.result == 'success' }}")
+        self.assertEqual(production["jobs"]["deploy-archive"]["needs"], "approve")
+
     def test_manual_production_release_requires_successful_ci_for_current_main_sha(self) -> None:
         production = load_workflow("deploy-production.yml")
         resolver = production["jobs"]["resolve-ci-release"]

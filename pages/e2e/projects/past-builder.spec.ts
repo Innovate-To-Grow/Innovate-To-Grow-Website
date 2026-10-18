@@ -55,7 +55,9 @@ test('"Sign in required" dialog shown for unauthenticated AI search', async ({pa
   await mockPastProjects(page, pastProjectRows());
   const {queries} = await mockAiSearch(page, {status: 401});
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
-  await page.getByRole('button', {name: '+ AI Search Table'}).click();
+  // Signed out, the button shows a lock instead of "+" and a note says why.
+  await expect(page.getByText('AI Search Table needs you to sign in.')).toBeVisible();
+  await page.getByRole('button', {name: 'AI Search Table', exact: true}).click();
 
   await expect(page.getByRole('dialog', {name: 'Sign in required'})).toBeVisible();
   await expect(page.getByText('You need to sign in before using AI search.')).toBeVisible();

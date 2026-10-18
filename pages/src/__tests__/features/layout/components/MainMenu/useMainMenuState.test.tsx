@@ -7,7 +7,6 @@ import {
   LayoutContext,
   type LayoutContextValue,
 } from '@/features/layout/components/LayoutProvider/context';
-import {formatCurrentMenuDate} from '@/features/layout/components/MainMenu/parts/shared';
 import {useMainMenuState} from '@/features/layout/components/MainMenu/useMainMenuState';
 
 const useAuth = vi.hoisted(() => vi.fn());
@@ -58,12 +57,12 @@ describe('useMainMenuState', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns the current date, menu items, and auth state', () => {
+  it('returns the menu items and auth state (no date: the redesigned header has none)', () => {
     const menu = makeMenu('main', [item]);
     layoutValue = {state: 'ready', menus: [menu], footer: null, error: null};
     const {result} = renderHook(() => useMainMenuState(), {wrapper});
 
-    expect(result.current.currentDate).toBe(formatCurrentMenuDate());
+    expect(result.current).not.toHaveProperty('currentDate');
     expect(result.current.menuItems).toEqual([item]);
     expect(result.current.state).toBe('ready');
     expect(result.current.isAuthenticated).toBe(false);
@@ -202,5 +201,13 @@ describe('useMainMenuState', () => {
     rerender();
     act(() => vi.advanceTimersByTime(0));
     expect(result.current.navIntroFade).toBe(false);
+  });
+
+  it('keeps the same menu items array across renders while the menu is unchanged', () => {
+    layoutValue = {state: 'ready', menus: [makeMenu('main', [item])], footer: null, error: null};
+    const {result, rerender} = renderHook(() => useMainMenuState(), {wrapper});
+    const first = result.current.menuItems;
+    rerender();
+    expect(result.current.menuItems).toBe(first);
   });
 });

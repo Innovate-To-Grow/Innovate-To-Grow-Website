@@ -91,7 +91,7 @@ export const EmbedBlock = ({
 
   if (!safeSrc) {
     return (
-      <section className="cms-embed cms-embed--invalid" aria-label="Invalid embed">
+      <section className="cms-embed cms-embed--invalid itg-notice" aria-label="Invalid embed">
         <p>Embed source is missing or not https.</p>
       </section>
     );
@@ -124,7 +124,7 @@ export const EmbedBlock = ({
 
   return (
     <section className="cms-embed">
-      {data.heading && <h2 className="section-title">{data.heading}</h2>}
+      {data.heading && <h2 className="section-title itg-section-title">{data.heading}</h2>}
       <div className="cms-embed__frame" style={frameStyle}>
         <iframe
           ref={iframeRef}

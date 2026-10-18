@@ -15,17 +15,76 @@ export interface ProjectGridItem extends ProjectGridRow {
   __key: string;
 }
 
+/**
+ * Columns of the current-projects table. Cells are composite: "Team" shows the class code and team number,
+ * and "Project" shows the title (linked to the project page) with the team name under it.
+ */
 export const PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
-  {key: 'semester_label', label: 'Year-Semester'},
-  {key: 'class_code', label: 'Class'},
-  {key: 'team_number', label: 'Team#'},
-  {key: 'team_name', label: 'Team Name'},
-  {key: 'project_title', label: 'Project Title'},
+  {key: 'class_code', label: 'Team'},
+  {key: 'project_title', label: 'Project'},
   {key: 'organization', label: 'Organization'},
   {key: 'industry', label: 'Industry'},
 ];
 
-export const PAST_PROJECT_GRID_COLUMNS = PROJECT_GRID_COLUMNS;
+/** Columns of the past-project tables: "Term" shows the semester with the class code and team number under it. */
+export const PAST_PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
+  {key: 'semester_label', label: 'Term'},
+  {key: 'project_title', label: 'Project'},
+  {key: 'organization', label: 'Organization'},
+  {key: 'industry', label: 'Industry'},
+];
+
+/** Which page a project title links to: the current-projects detail route or the past-projects one. */
+export type ProjectGridLinkScope = 'current' | 'past';
+
+/** "CAP 101": the class code and team number a team is known by. */
+export const getProjectGridTeamCode = (row: Pick<ProjectGridRow, 'class_code' | 'team_number'>) =>
+  [row.class_code, row.team_number].map((value) => (value ?? '').trim()).filter(Boolean).join(' ');
+
+/** "2026 Spring" (how terms are listed in tables) to "Spring 2026" (how they read in a sentence). */
+export const formatTermForProse = (label: string) => {
+  const normalized = formatSemesterLabel(label ?? '').trim();
+  const match = normalized.match(/^(\d{4})\s+(.+)$/);
+  return match ? `${match[2]} ${match[1]}` : normalized;
+};
+
+/** The term most rows belong to (rows with no term are ignored), for a page's meta line. */
+export const getPredominantTerm = (rows: Array<Pick<ProjectGridRow, 'semester_label'>>) => {
+  const counts = new Map<string, number>();
+  rows.forEach((row) => {
+    const term = formatSemesterLabel(row.semester_label ?? '').trim();
+    if (term) counts.set(term, (counts.get(term) ?? 0) + 1);
+  });
+  let best = '';
+  let bestCount = 0;
+  counts.forEach((count, term) => {
+    if (count > bestCount) {
+      best = term;
+      bestCount = count;
+    }
+  });
+  return best;
+};
+
+/** The earliest year any row's term names, e.g. for "920 projects since 2012". */
+export const getEarliestTermYear = (rows: Array<Pick<ProjectGridRow, 'semester_label'>>) => {
+  let earliest: number | null = null;
+  rows.forEach((row) => {
+    const match = (row.semester_label ?? '').match(/^\s*(\d{4})/);
+    if (match) {
+      const year = Number(match[1]);
+      earliest = earliest === null ? year : Math.min(earliest, year);
+    }
+  });
+  return earliest;
+};
+
+/** Splits a "Name One, Name Two" student list into names. */
+export const splitStudentNames = (value: string) =>
+  (value ?? '')
+    .split(/[,;\n]/)
+    .map((name) => name.trim())
+    .filter(Boolean);
 
 const SEMESTER_SEASON_RANKS: Record<string, number> = {
   spring: 1,
@@ -123,6 +182,8 @@ export const stripProjectGridItem = (row: ProjectGridItem): ProjectGridRow => {
 export const getPastProjectDetailPath = (projectId: string) =>
   `/past-projects/project/${encodeURIComponent(projectId)}`;
 
+export const getCurrentProjectDetailPath = (projectId: string) => `/projects/${encodeURIComponent(projectId)}`;
+
 const currentFrontendOrigin = () => {
   if (typeof window === 'undefined') {
     return '';
@@ -135,6 +196,10 @@ export const getPastProjectDetailUrl = (projectId: string) => {
   const origin = currentFrontendOrigin();
   return origin ? new URL(path, origin).href : path;
 };
+
+/** The project page a row links to, or '' for rows without a project id (legacy snapshots). */
+export const getProjectGridRowHref = (row: Pick<ProjectGridRow, 'id'>, scope: ProjectGridLinkScope) =>
+  row.id ? (scope === 'past' ? getPastProjectDetailUrl(row.id) : getCurrentProjectDetailPath(row.id)) : '';
 
 export const hasProjectGridDetails = (row: ProjectGridRow) => Boolean(row.id || row.abstract || row.student_names);
 
@@ -165,7 +230,15 @@ export const sortProjectGridItems = (
     const rightValue = right[sortField] || '';
     let comparison: number;
 
-    if (sortField === 'semester_label') {
+    if (sortField === 'class_code') {
+      // "Team number" order: class code, then team number within the class.
+      comparison =
+        leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'}) ||
+        (left.team_number || '').localeCompare(right.team_number || '', undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+    } else if (sortField === 'semester_label') {
       const leftSemester = semesterSortKey(leftValue);
       const rightSemester = semesterSortKey(rightValue);
       if (leftSemester && rightSemester) {

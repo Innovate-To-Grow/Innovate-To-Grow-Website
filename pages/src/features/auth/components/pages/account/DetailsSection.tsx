@@ -4,7 +4,7 @@ interface DetailsSectionProps {
 }
 
 export const DetailsSection = ({displayEmail, dateJoined}: DetailsSectionProps) => (
-  <div className="account-section">
+  <div className="itg-panel account-section">
     <h2 className="account-section-title">Account Details</h2>
 
     <div className="account-details-rows">

@@ -95,6 +95,10 @@ class SystemIntelligenceExtendedToolTests(TransactionTestCase):
         style_sheet = asyncio.run(system_intelligence_tools.get_style_sheet_detail(name="tool-global"))
         self.assertGreater(style_sheet["style_sheet"]["css_length"], 0)
 
+        StyleSheet.objects.create(name="tool-aaa-inactive", display_name="Inactive", is_active=False, sort_order=-1)
+        listed = asyncio.run(system_intelligence_tools.search_style_sheets(name="tool-", limit=1))
+        self.assertEqual(listed["rows"][0]["name"], "tool-global")
+
         assets = asyncio.run(system_intelligence_tools.search_cms_assets(name="Map"))
         self.assertEqual(assets["total"], 1)
 

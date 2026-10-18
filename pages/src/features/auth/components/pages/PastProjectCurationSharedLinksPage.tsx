@@ -37,24 +37,22 @@ export const PastProjectCurationSharedLinksPage = () => {
 
   return (
     <div className="account-page account-shared-links-page">
-      <div className="account-shared-links-page-header">
-        <h1 className="account-page-title">{PAST_PROJECT_CURATION_SHARED_LINKS_TITLE}</h1>
-        <a className="account-outline-btn account-shared-links-back" href="/account">
-          Back to Account
-        </a>
-      </div>
+      <a className="itg-back-link account-shared-links-back" href="/account">
+        <span aria-hidden="true">‹&nbsp;</span>Back to Account
+      </a>
+      <h1 className="itg-page-title account-page-title">{PAST_PROJECT_CURATION_SHARED_LINKS_TITLE}</h1>
 
-      <div className="account-section account-shared-links-section">
-        {successMessage ? <StatusAlert tone="success" message={successMessage} style={{marginBottom: '1rem'}} /> : null}
-        {error ? <StatusAlert tone="error" message={error} style={{marginBottom: '1rem'}} /> : null}
+      <div className="itg-panel account-section account-shared-links-section">
+        {successMessage ? <StatusAlert tone="success" message={successMessage} /> : null}
+        {error ? <StatusAlert tone="error" message={error} /> : null}
 
         <div className="account-shared-links-toolbar">
-          <label className="auth-form-label" htmlFor="past-project-curation-shared-links-search">
+          <label className="itg-label auth-form-label" htmlFor="past-project-curation-shared-links-search">
             Search Shared Links
           </label>
           <input
             id="past-project-curation-shared-links-search"
-            className="auth-form-input account-shared-links-search"
+            className="itg-input auth-form-input account-shared-links-search"
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}

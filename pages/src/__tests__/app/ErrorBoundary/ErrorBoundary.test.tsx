@@ -57,4 +57,17 @@ describe('ErrorBoundary', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Refresh'}));
     expect(reload).toHaveBeenCalledOnce();
   });
+
+  it('announces the failure and links home without needing the router', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <ErrorBoundary>
+        <Throws />
+      </ErrorBoundary>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
+    expect(screen.getByRole('link', {name: 'Go to the home page'})).toHaveAttribute('href', '/');
+  });
 });

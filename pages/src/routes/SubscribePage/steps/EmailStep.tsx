@@ -8,19 +8,19 @@ interface EmailStepProps {
 }
 
 export const EmailStep = ({email, authLoading, onEmailChange, onSubmit}: EmailStepProps) => (
-  <div className="subscribe-section">
+  <div className="itg-panel subscribe-section">
     <p className="subscribe-hint">
       Enter your email or phone to continue. If an account already exists, you'll be signed in.
     </p>
     <form onSubmit={onSubmit}>
       <div className="subscribe-form-group">
-        <label className="subscribe-label" htmlFor="subscribe-email">
+        <label className="itg-label subscribe-label" htmlFor="subscribe-email">
           Email or Phone
         </label>
         <input
           id="subscribe-email"
           type="text"
-          className="subscribe-input"
+          className="itg-input subscribe-input"
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
           placeholder="you@example.com or (201) 555-0123"
@@ -30,7 +30,7 @@ export const EmailStep = ({email, authLoading, onEmailChange, onSubmit}: EmailSt
           disabled={authLoading}
         />
       </div>
-      <button type="submit" className="subscribe-submit" disabled={authLoading || !email.trim()}>
+      <button type="submit" className="itg-btn itg-btn-primary subscribe-submit" disabled={authLoading || !email.trim()}>
         {authLoading ? <><span className="subscribe-spinner" /> Sending code...</> : 'Continue'}
       </button>
     </form>

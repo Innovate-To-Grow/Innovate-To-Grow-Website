@@ -124,7 +124,7 @@ describe('SharedPastProjectMergeSearch', () => {
     );
 
     expect(screen.getByRole('heading', {level: 2, name: 'Add Projects from Full Archive'})).toBeInTheDocument();
-    expect(screen.getByText('More help: buttons, saving & tables')).toBeInTheDocument();
+    expect(screen.getByText('Help: buttons, saving and tables')).toBeInTheDocument();
     expect(screen.getAllByRole('button', {name: 'Add Selected'}).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     expect(screen.queryByText('Alpha Project')).toBeNull();
@@ -526,7 +526,7 @@ describe('SharedPastProjectMergeSearch', () => {
       />,
     );
 
-    const addAIButton = screen.getByRole('button', {name: /\+ ai search table/i});
+    const addAIButton = screen.getByRole('button', {name: 'AI Search Table'});
     expect(addAIButton).toBeEnabled();
     expect(addAIButton).not.toHaveAttribute('aria-disabled');
     expect(addAIButton).toHaveClass('is-login-required');
@@ -567,7 +567,7 @@ describe('SharedPastProjectMergeSearch', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /\+ search table/i}));
-    fireEvent.click(screen.getByRole('button', {name: /delete search table 1/i}));
+    fireEvent.click(screen.getByRole('button', {name: /delete table: search table 1/i}));
 
     expect(screen.queryByRole('heading', {level: 3, name: 'Search Table 1'})).toBeNull();
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
@@ -720,7 +720,7 @@ describe('SharedPastProjectMergeSearch', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'AI Search Table'}));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: /sign in/i}));
 
     expect(mockBuildLoginPath).toHaveBeenCalled();

@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react';
-import {Icon} from '@/components/Icon/Icon';
 
 interface MaintenanceModeProps {
   message?: string;
@@ -7,6 +6,11 @@ interface MaintenanceModeProps {
   onBypass?: (password: string) => Promise<boolean>;
 }
 
+/**
+ * Full-screen maintenance page. It replaces the whole app (menu, footer and the
+ * layout data may be unavailable), so it carries its own UC Merced chrome: the
+ * navy bar with the gold rule, the site-name band, and a footer.
+ */
 export const MaintenanceMode = ({ message, maintenance, onBypass }: MaintenanceModeProps) => {
   const displayMessage = message || 'The system is currently temporarily down for maintenance. We apologize for the inconvenience and appreciate your patience.';
 
@@ -33,89 +37,90 @@ export const MaintenanceMode = ({ message, maintenance, onBypass }: MaintenanceM
     }
   };
 
+  const canBypass = Boolean(maintenance && onBypass);
+
   return (
     <div className="maintenance-container">
-      <div className="maintenance-shell">
-        <div className="maintenance-main">
-          <main className="maintenance-content">
-          <div className="maintenance-card">
-            <div className="maintenance-hero">
-              <div className="maintenance-title-row">
-                  <img
-                    src="/assets/images/ucmlogo.png"
-                    alt="UC Merced"
-                    className="maintenance-ucm-logo"
-                  />
-                  <div className="maintenance-gear">
-                    <Icon name="cog" />
-                  </div>
-              </div>
-            </div>
-
-            <div className="maintenance-alert">
-              <div className="maintenance-alert-icon">
-                <Icon name="exclamation-triangle" />
-              </div>
-              <div className="maintenance-alert-content">
-                <h3>Service Unavailable</h3>
-                <p>{displayMessage}</p>
-              </div>
-            </div>
-
-            <section className="maintenance-info" aria-label="Maintenance details">
-              <div className="info-block">
-                <h2>What happened?</h2>
-                <p>We are performing maintenance on this service.</p>
-              </div>
-              <div className="info-block">
-                <h2>What can I do?</h2>
-                <p>Please try again in a few minutes. This page will refresh automatically.</p>
-              </div>
-            </section>
-          </div>
-        </main>
+      <header className="maintenance-bar">
+        <div className="maintenance-bar-inner">
+          <a href="https://www.ucmerced.edu" className="maintenance-ucm-link">
+            <img src="/assets/images/ucmlogo.png" alt="UC Merced" className="maintenance-ucm-logo" width={138} height={34} />
+          </a>
         </div>
+      </header>
 
-        <footer className="maintenance-footer">
-          <div className="maintenance-footer-links">
-            <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">UC Merced</a>
-            <span className="footer-divider">|</span>
-            <a href="https://engineering.ucmerced.edu" target="_blank" rel="noopener noreferrer">School of Engineering</a>
-            {maintenance && onBypass && (
-              <>
-                <span className="footer-divider">|</span>
-                <button
-                  type="button"
-                  className="bypass-toggle-link"
-                  onClick={() => setShowForm(!showForm)}
-                >
-                  Bypass with Password
-                </button>
-              </>
-            )}
+      <div className="maintenance-band">
+        <div className="maintenance-band-inner">
+          <p className="maintenance-site-name">Innovate To Grow</p>
+          <p className="maintenance-site-school">School of Engineering</p>
+        </div>
+      </div>
+
+      {/* A div, not <main>: this page renders inside the shell's own <main id="main">, and
+          a second main landmark nested in it is an accessibility error. */}
+      <div className="maintenance-content">
+        <h1 className="maintenance-title">Service Unavailable</h1>
+        <p className="maintenance-meta">Scheduled maintenance</p>
+        <p className="maintenance-lead" role="status">{displayMessage}</p>
+
+        <section className="maintenance-info" aria-label="Maintenance details">
+          <div className="itg-panel maintenance-info-block">
+            <h2>What happened?</h2>
+            <p>We are performing maintenance on this service.</p>
           </div>
+          <div className="itg-panel maintenance-info-block">
+            <h2>What can I do?</h2>
+            <p>Please try again in a few minutes. This page will refresh automatically.</p>
+          </div>
+        </section>
+      </div>
 
-          {showForm && maintenance && onBypass && (
-            <form className="bypass-form" onSubmit={handleSubmit}>
-              <input
-                type="password"
-                className="bypass-input"
-                placeholder="Enter bypass password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoFocus
-                disabled={loading}
-              />
-              <button type="submit" className="bypass-submit" disabled={loading || !password.trim()}>
-                {loading ? 'Verifying...' : 'Enter'}
+      <footer className="maintenance-footer">
+        <div className="maintenance-footer-inner">
+          <nav className="maintenance-footer-links" aria-label="University links">
+            <a href="https://www.ucmerced.edu" target="_blank" rel="noopener noreferrer">UC Merced</a>
+            <a href="https://engineering.ucmerced.edu" target="_blank" rel="noopener noreferrer">School of Engineering</a>
+            {canBypass && (
+              <button
+                type="button"
+                className="itg-btn itg-btn-text bypass-toggle-link"
+                aria-expanded={showForm}
+                onClick={() => setShowForm(!showForm)}
+              >
+                Bypass with Password
               </button>
-              {error && <span className="bypass-error">{error}</span>}
+            )}
+          </nav>
+
+          {showForm && canBypass && (
+            <form className="bypass-form" onSubmit={handleSubmit}>
+              <label className="itg-label bypass-label" htmlFor="maintenance-bypass-password">
+                Bypass password
+              </label>
+              <div className="bypass-row">
+                <input
+                  id="maintenance-bypass-password"
+                  type="password"
+                  className="itg-input bypass-input"
+                  placeholder="Enter bypass password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoFocus
+                  disabled={loading}
+                />
+                <button type="submit" className="itg-btn itg-btn-primary bypass-submit" disabled={loading || !password.trim()}>
+                  {loading ? 'Verifying...' : 'Enter'}
+                </button>
+              </div>
+              {error && <p className="itg-error bypass-error" role="alert">{error}</p>}
             </form>
           )}
+        </div>
 
+        <div className="maintenance-footer-bottom">
           <p className="maintenance-copyright">&copy; {new Date().getFullYear()} The Regents of the University of California</p>
-        </footer>
-      </div>
+        </div>
+      </footer>
     </div>
   );
 };

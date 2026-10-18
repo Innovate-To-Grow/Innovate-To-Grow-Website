@@ -21,6 +21,7 @@ import {
 const {
     addedRow,
     mockNavigate,
+    mockRetryShare,
     sampleRow,
     sharedState,
 } = vi.hoisted(() => {
@@ -47,7 +48,8 @@ const {
             project_title: 'Queued Project',
         },
         mockNavigate: vi.fn(),
-        sharedState: {share: null as unknown},
+        mockRetryShare: vi.fn(),
+        sharedState: {share: null as unknown, shareError: null as string | null, shareNotFound: false},
     };
 });
 
@@ -59,8 +61,9 @@ vi.mock('react-router', async (importOriginal) => {
         useParams: () => {
             const current = sharedState.share as { id?: unknown } | null;
             return {
-                shareId:
-                    typeof current?.id === 'string' ? current.id : undefined,
+                shareId: sharedState.shareError
+                    ? 'missing-share'
+                    : typeof current?.id === 'string' ? current.id : undefined,
             };
         },
     };
@@ -81,9 +84,11 @@ vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
         refetch: vi.fn(),
     }),
     usePastProjectShareData: () => ({
-        error: null,
+        error: sharedState.shareError,
         loading: false,
         share: sharedState.share,
+        notFound: sharedState.shareNotFound,
+        retry: mockRetryShare,
     }),
 }));
 
@@ -94,9 +99,11 @@ vi.mock('@/features/projects', () => ({
                              note,
                              onUpdateShare,
                              rows,
+                             sharedAt,
                              title,
                          }: {
         note?: string;
+        sharedAt?: string;
         onUpdateShare?: (
             rows: ProjectGridRow[],
             name: string,
@@ -111,7 +118,7 @@ vi.mock('@/features/projects', () => ({
         });
         return (
             <div>
-                <h2 data-testid="share-title">{title}</h2>
+                <h2 data-testid="share-title" data-shared-at={sharedAt}>{title}</h2>
                 <div data-testid="share-note">{note}</div>
                 <button
                     type="button"
@@ -225,8 +232,10 @@ vi.mock('@/features/projects', () => ({
         </button>
     ),
     PastProjectsBuilder: ({
+                              initialSearch,
                               onCreateShare,
                           }: {
+        initialSearch?: string;
         onCreateShare: (
             rows: ProjectGridRow[],
             name: string,
@@ -235,6 +244,7 @@ vi.mock('@/features/projects', () => ({
     }) => (
         <button
             type="button"
+            data-initial-search={initialSearch}
             onClick={() =>
                 void onCreateShare(
                     [sampleRow],
@@ -273,7 +283,10 @@ const renderPage = () =>
 describe('PastProjectsPage', () => {
     beforeEach(() => {
         sharedState.share = null;
+        sharedState.shareError = null;
+        sharedState.shareNotFound = false;
         mockNavigate.mockReset();
+        mockRetryShare.mockReset();
         vi.mocked(createPastProjectShare).mockReset();
         vi.mocked(fetchPastProjectShare).mockReset();
         vi.mocked(updatePastProjectShare).mockReset();
@@ -743,4 +756,67 @@ describe('PastProjectsPage', () => {
         expect(await screen.findByTestId('share-note')).toHaveTextContent('second');
     });
 
+
+    it('heads the builder with the archive size, the years it spans and a lede', () => {
+        renderPage();
+
+        expect(screen.getByRole('heading', {level: 1, name: 'Past Projects'})).toBeInTheDocument();
+        expect(screen.getByText('1 project since 2025')).toHaveClass('itg-page-meta');
+        expect(screen.getByText(/^Search past Innovate to Grow projects, check the ones you want/)).toHaveClass('itg-lead');
+    });
+
+    it('passes the ?value= search on to the builder', () => {
+        render(
+            <MemoryRouter initialEntries={['/past-projects?value=hydroponics']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByRole('button', {name: 'Create mocked share'})).toHaveAttribute(
+            'data-initial-search',
+            'hydroponics',
+        );
+    });
+
+    it('shows a shared list with its date and a way to start a list of your own', async () => {
+        sharedState.share = shareFixture();
+
+        renderPage();
+
+        expect(await screen.findByTestId('share-title')).toHaveAttribute('data-shared-at', '2026-06-08T00:00:00Z');
+        expect(screen.queryByRole('heading', {level: 1, name: 'Past Projects'})).toBeNull();
+        expect(screen.getByText(/Want to make your own list\?/)).toBeInTheDocument();
+        expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
+    });
+
+    it('explains a shared list that does not exist', () => {
+        sharedState.shareError = 'Request failed with status code 404';
+        sharedState.shareNotFound = true;
+
+        renderPage();
+
+        expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
+        expect(screen.getByRole('heading', {level: 1, name: "This shared list isn't available"})).toBeInTheDocument();
+        expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
+        expect(screen.getByRole('link', {name: 'Go to Projects'})).toHaveAttribute('href', '/projects');
+        expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+        expect(screen.queryByTestId('share-title')).toBeNull();
+    });
+
+    it('offers to try again, without calling the link wrong, when a shared list fails to load', () => {
+        sharedState.shareError = 'Request failed with status code 503';
+        sharedState.shareNotFound = false;
+
+        renderPage();
+
+        expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
+        expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this shared list"})).toBeInTheDocument();
+        expect(screen.queryByRole('heading', {name: "This shared list isn't available"})).toBeNull();
+        expect(screen.queryByText(/deleted the list/)).toBeNull();
+        expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
+        expect(screen.queryByTestId('share-title')).toBeNull();
+
+        fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+        expect(mockRetryShare).toHaveBeenCalledTimes(1);
+    });
 });

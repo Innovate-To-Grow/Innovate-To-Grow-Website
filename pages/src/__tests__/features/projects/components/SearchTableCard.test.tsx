@@ -60,25 +60,64 @@ describe('SearchTableCard', () => {
         cleanup();
     });
 
-    it('renders the title, description, and per-table entry counts', () => {
+    it('renders the title, description, and the project count of the table', () => {
         renderCard();
 
         expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
         expect(screen.getByText(/check the projects you want, then click save selected/i)).toBeInTheDocument();
-        expect(screen.getByText('entries')).toBeInTheDocument();
+        expect(screen.getByText('3 projects')).toBeInTheDocument();
+    });
+
+    it('heads a search with no matches one level under the card title (h4)', () => {
+        const {container} = renderCard();
+
+        fireEvent.change(within(cardSection(container)).getByRole('searchbox'), {target: {value: 'hydroponics'}});
+
+        expect(screen.getByRole('heading', {level: 4, name: 'No projects match “hydroponics”'})).toBeInTheDocument();
+    });
+
+    it('groups the actions: Save, then Selection, then Tidy this table, as text buttons', () => {
+        const {container} = renderCard({onRefresh: vi.fn()});
+        const toolbar = container.querySelector('.project-grid-toolbar') as HTMLElement;
+
+        expect(within(toolbar).getByRole('button', {name: 'Save Selected'})).toHaveClass('itg-btn-primary');
+        const selection = within(toolbar).getByRole('group', {name: 'Selection'});
+        expect(within(selection).getAllByRole('button').map((button) => button.textContent)).toEqual([
+            'Select All',
+            'Deselect',
+        ]);
+        const tidy = within(toolbar).getByRole('group', {name: 'Tidy this table'});
+        expect(within(tidy).getAllByRole('button').map((button) => button.textContent)).toEqual([
+            'Remove from Table',
+            'Keep Only Selected',
+            'Undo Row Change',
+            'Refresh Search Table',
+        ]);
+        within(tidy).getAllByRole('button').forEach((button) => expect(button).toHaveClass('itg-btn-text'));
+    });
+
+    it('counts the checked rows in the Save button for phones without changing its name', () => {
+        renderCard();
+
+        fireEvent.click(rowCheckbox('Project 1'));
+        fireEvent.click(rowCheckbox('Project 2'));
+
+        const save = screen.getByRole('button', {name: 'Save Selected'});
+        expect(save).toHaveTextContent('Save Selected · 2');
+        expect(within(save).getByText('· 2', {exact: false})).toHaveAttribute('aria-hidden', 'true');
     });
 
     it('hides the remove button when the table cannot be removed', () => {
         renderCard({canRemove: false});
 
-        expect(screen.queryByRole('button', {name: /delete search table/i})).toBeNull();
+        expect(screen.queryByRole('button', {name: /delete table/i})).toBeNull();
     });
 
     it('forwards removal of the table via its id', () => {
         const onRemove = vi.fn();
         renderCard({onRemove});
 
-        fireEvent.click(screen.getByRole('button', {name: 'Delete Search Table'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Delete table: Search Table'}));
         expect(onRemove).toHaveBeenCalledWith('table-1');
     });
 
@@ -174,7 +213,7 @@ describe('SearchTableCard', () => {
         expect(screen.getByRole('status')).not.toHaveTextContent('Loading details');
         // Tidying the table while it saves would contradict the outcome it is about to report.
         expect(screen.getByRole('button', {name: 'Remove from Table'})).toBeDisabled();
-        expect(screen.getByRole('button', {name: 'Delete Search Table'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Delete table: Search Table'})).toBeDisabled();
 
         // Checked while the save is running: must survive the save finishing.
         fireEvent.click(rowCheckbox('Project 3'));
@@ -263,8 +302,7 @@ describe('SearchTableCard', () => {
         const {container} = renderCard({initialRows: rows, onMergeSelected});
         expect(container.querySelector('.search-table-bottom-actions')).toBeNull();
 
-        fireEvent.click(screen.getByRole('button', {name: /per page/i}));
-        fireEvent.click(screen.getByRole('option', {name: '25'}));
+        fireEvent.change(screen.getByLabelText('Per page'), {target: {value: '25'}});
         const bottom = container.querySelector('.search-table-bottom-actions') as HTMLElement;
         expect(bottom).not.toBeNull();
 
@@ -280,8 +318,7 @@ describe('SearchTableCard', () => {
         const pending = deferred<SearchTableSaveResult>();
         const rows = Array.from({length: 12}, (_, index) => makeRow({team_number: `T${index}`, project_title: `Row ${index}`}));
         const {container} = renderCard({initialRows: rows, onMergeSelected: () => pending.promise});
-        fireEvent.click(screen.getByRole('button', {name: /per page/i}));
-        fireEvent.click(screen.getByRole('option', {name: '25'}));
+        fireEvent.change(screen.getByLabelText('Per page'), {target: {value: '25'}});
         fireEvent.click(rowCheckbox('Row 3'));
         const bottom = container.querySelector('.search-table-bottom-actions') as HTMLElement;
         fireEvent.click(within(bottom).getByRole('button', {name: 'Save Selected'}));

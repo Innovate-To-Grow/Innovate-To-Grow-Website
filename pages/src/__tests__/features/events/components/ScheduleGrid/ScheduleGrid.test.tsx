@@ -23,7 +23,6 @@ const classes: ClassConfig[] = [
     startTime: '2:00',
     slotMinutes: 20,
     trackLabels: ['TrackC'],
-    accentColor: '#FFBF3C',
   },
 ];
 
@@ -136,6 +135,33 @@ describe('ScheduleGrid', () => {
 
     // CAP renders 2 orders x 2 tracks; CSE renders 1 order x 1 track.
     expect(container.querySelectorAll('.sg-td-cell')).toHaveLength(5);
+  });
+
+  it('colours each track column by its class, as on the reference schedule, never with inline styles', () => {
+    const {container} = render(<ScheduleGrid classes={classes} rows={[makeRow()]} trackInfos={trackInfos} />);
+
+    const sections = container.querySelectorAll<HTMLElement>('.sg-class-section');
+    expect(sections).toHaveLength(2);
+    // CAP columns take the gold family, one lighter step per track; CSE takes navy.
+    const capTracks = sections[0].querySelectorAll('.sg-th-track');
+    expect(capTracks[0].className).toContain('schedule-tone--gold schedule-tone--col-0');
+    expect(capTracks[1].className).toContain('schedule-tone--gold schedule-tone--col-1');
+    expect(sections[0].querySelector('.sg-td-cell')?.className).toContain('schedule-tone--gold schedule-tone--col-0');
+    expect(sections[1].querySelector('.sg-td-cell')?.className).toContain('schedule-tone--navy schedule-tone--col-0');
+    // Sections, titles, track labels and team buttons carry no inline colour.
+    expect(container.querySelector('[style]')).toBeNull();
+    for (const element of container.querySelectorAll<HTMLElement>('.sg-class-title, .sg-th-track, .sg-team-btn')) {
+      expect(element.style.color).toBe('');
+    }
+    expect(screen.getByRole('button', {name: 'CAP-101'})).toHaveAttribute('type', 'button');
+  });
+
+  it('announces loading and errors', () => {
+    const {rerender} = render(<ScheduleGrid classes={[]} rows={[]} trackInfos={[]} loading />);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading schedule...');
+
+    rerender(<ScheduleGrid classes={[]} rows={[]} trackInfos={[]} error="Failed to load" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load');
   });
 
   it('invokes onTeamClick with the first three characters of the team number', () => {

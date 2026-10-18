@@ -39,8 +39,13 @@ export const HealthCheckProvider = ({
   );
   const mountedRef = useRef(true);
 
-  useEffect(() => () => {
-    mountedRef.current = false;
+  // Set on every mount: StrictMode's dev-only unmount/remount would otherwise
+  // leave the ref false and every health result would be dropped.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const performHealthCheck = useCallback(async () => {

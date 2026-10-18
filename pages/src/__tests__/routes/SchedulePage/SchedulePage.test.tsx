@@ -260,6 +260,7 @@ describe('SchedulePage', () => {
     );
 
     expect(screen.getByText('Loading schedule...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading schedule...');
   });
 
   it('renders the error state and its unavailable fallback', () => {
@@ -272,6 +273,89 @@ describe('SchedulePage', () => {
     );
 
     expect(screen.getByText('Backend unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Backend unavailable');
+  });
+
+  it('colours each track column from its class tone family instead of inline palettes', () => {
+    const payload = schedulePayload();
+    payload.sections = [
+      {...payload.sections[0], id: 's-cse', code: 'CSE'},
+      {...payload.sections[0], id: 's-cap', code: 'CAP', label: 'Capstone', display_order: 2},
+      {...payload.sections[0], id: 's-cee', code: 'CEE', label: 'Civil', display_order: 3},
+      {...payload.sections[0], id: 's-zzz', code: 'ZZZ', label: 'Unknown', display_order: 4},
+    ];
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    const {container} = render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    const tables = container.querySelectorAll('.schedule-presentation-table');
+    const firstSlotClass = (index: number) => tables[index].querySelector('.schedule-presentation-slot')?.className;
+    // Known order: CAP, CEE, CSE, then unknown codes (which fall back to the gold family).
+    expect(firstSlotClass(0)).toContain('schedule-tone--gold');
+    expect(firstSlotClass(1)).toContain('schedule-tone--teal');
+    expect(firstSlotClass(2)).toContain('schedule-tone--navy');
+    expect(firstSlotClass(3)).toContain('schedule-tone--gold');
+    // Second track column gets the next tone step.
+    expect(tables[0].querySelectorAll('.schedule-presentation-topic-cell')[1].className).toContain('schedule-tone--col-1');
+    expect(container.querySelector('.schedule-presentation-slot[style]')).toBeNull();
+    // The time column is sized by the sheet; track columns share the rest.
+    expect(tables[0].querySelector('col.schedule-presentation-time-col')).not.toBeNull();
+    expect(container.querySelector('col[style]')).toBeNull();
+  });
+
+  it('tells each presentation grid its track count so the sheet can fit it to the main column', () => {
+    const payload = schedulePayload();
+    const [section] = payload.sections;
+    const extraTracks = [3, 4, 5].map((trackNumber) => ({
+      ...section.tracks[0],
+      id: `track-${trackNumber}`,
+      track_number: trackNumber,
+      display_order: trackNumber,
+    }));
+    payload.sections = [
+      {...section, id: 's-cse', code: 'CSE', tracks: [...section.tracks, ...extraTracks]},
+      {...section, id: 's-cap', code: 'CAP', label: 'Capstone', display_order: 2},
+    ];
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    const {container} = render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+
+    const cap = container.querySelector<HTMLTableElement>('.schedule-presentation-table--cap')!;
+    const cse = container.querySelector<HTMLTableElement>('.schedule-presentation-table--cse')!;
+    expect(cap.style.getPropertyValue('--schedule-track-count')).toBe('2');
+    expect(cse.style.getPropertyValue('--schedule-track-count')).toBe('5');
+    expect(cse.querySelectorAll('thead tr:nth-child(2) th')).toHaveLength(6);
+  });
+
+  it('shows the event description as the lede only when there is one', () => {
+    const payload = schedulePayload();
+    useCurrentEventScheduleMock.mockReturnValue({data: payload, loading: false, error: null});
+
+    const {container, unmount} = render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('heading', {name: 'Demo Day', level: 1})).toBeInTheDocument();
+    expect(screen.getByText('May 7, 2026 · Conference Center')).toBeInTheDocument();
+    expect(container.querySelector('.schedule-page-text')).toHaveTextContent('Presentation schedule');
+    unmount();
+
+    payload.event.description = '';
+    const {container: emptyContainer} = render(
+      <MemoryRouter>
+        <SchedulePage />
+      </MemoryRouter>,
+    );
+    expect(emptyContainer.querySelector('.schedule-page-text')).toBeNull();
   });
 
   it('falls back to the unavailable message when there is neither data nor error', () => {

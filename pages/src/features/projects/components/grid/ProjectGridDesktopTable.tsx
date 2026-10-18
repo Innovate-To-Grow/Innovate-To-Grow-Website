@@ -1,42 +1,29 @@
 import {useId} from 'react';
 import {
+  getProjectGridTeamCode,
   hasProjectGridDetails,
   type ProjectGridColumn,
   type ProjectGridColumnKey,
   type ProjectGridItem,
+  type ProjectGridLinkScope,
   type ProjectGridSortDirection,
 } from '../projectGrid';
 import {ProjectGridRowDetails} from './ProjectGridRowDetails';
 import {ProjectTitleWithChips} from './ProjectTitleWithChips';
 
-const COLUMN_WIDTHS: Partial<Record<ProjectGridColumnKey, string>> = {
-  semester_label: '9%',
-  class_code: '6%',
-  team_number: '7%',
-  team_name: '12%',
-  project_title: '22%',
-  organization: '16%',
-  industry: '10%',
-  is_presenting: '8%',
-};
-const DEFAULT_COL_WIDTH = '10%';
-const SELECT_COL_WIDTH = '4%';
-const DETAIL_COL_WIDTH = '8%';
-const DELETE_COL_WIDTH = '10%';
-
 interface ProjectGridDesktopTableProps {
   columns: ProjectGridColumn[];
   rows: ProjectGridItem[];
   pagedRows: ProjectGridItem[];
-  emptyMessage: string;
+  linkScope: ProjectGridLinkScope;
   selectable: boolean;
   selectedKeys: Set<string>;
   selectAllStateRows?: ProjectGridItem[];
   onToggleSelected?: (rowKey: string) => void;
   onToggleSelectAll?: () => void;
-  sortField: ProjectGridColumn['key'];
+  sortField: ProjectGridColumnKey;
   sortDirection: ProjectGridSortDirection;
-  onSortChange: (field: ProjectGridColumn['key']) => void;
+  onSortChange: (field: ProjectGridColumnKey) => void;
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
@@ -47,36 +34,48 @@ interface ProjectGridDesktopTableProps {
   highlightedKeys?: ReadonlySet<string>;
 }
 
-const detailColspan = (baseColumns: number, selectable: boolean, hasDelete: boolean) =>
-  baseColumns + 1 + Number(selectable) + Number(hasDelete);
-
 export const ProjectGridDesktopTable = ({
   columns,
-  rows, pagedRows, emptyMessage, selectable, selectedKeys, selectAllStateRows, onToggleSelected, onToggleSelectAll,
-  sortField, sortDirection, onSortChange, expandedKeys, onToggleExpanded, onDeleteRow, deleteDisabled = false,
-  loadMissingDetails, isRowSaved, savedRowLabel = 'Saved', highlightedKeys,
+  rows,
+  pagedRows,
+  linkScope,
+  selectable,
+  selectedKeys,
+  selectAllStateRows,
+  onToggleSelected,
+  onToggleSelectAll,
+  sortField,
+  sortDirection,
+  onSortChange,
+  expandedKeys,
+  onToggleExpanded,
+  onDeleteRow,
+  deleteDisabled = false,
+  loadMissingDetails,
+  isRowSaved,
+  savedRowLabel = 'Saved',
+  highlightedKeys,
 }: ProjectGridDesktopTableProps) => {
   const selectionScopeRows = selectAllStateRows ?? rows;
   const selectedInScopeCount = selectionScopeRows.filter((row) => selectedKeys.has(row.__key)).length;
   const allSelected = selectable && selectionScopeRows.length > 0 && selectedInScopeCount === selectionScopeRows.length;
   const partiallySelected = selectable && selectedInScopeCount > 0 && !allSelected;
-  const colSpan = detailColspan(columns.length, selectable, Boolean(onDeleteRow));
+  const tableClassName = [
+    'itg-table',
+    'project-grid-table',
+    selectable ? 'is-selectable' : '',
+    onDeleteRow ? 'has-remove' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className="project-grid-table-wrap">
-      <table className="project-grid-table" style={{tableLayout: 'fixed', width: '100%'}}>
-        <colgroup>
-          {selectable ? <col style={{width: SELECT_COL_WIDTH}} /> : null}
-          {columns.map((column) => (
-            <col key={column.key} style={{width: COLUMN_WIDTHS[column.key] ?? DEFAULT_COL_WIDTH}} />
-          ))}
-          <col style={{width: DETAIL_COL_WIDTH}} />
-          {onDeleteRow ? <col style={{width: DELETE_COL_WIDTH}} /> : null}
-        </colgroup>
+      <table className={tableClassName}>
         <thead>
           <tr>
             {selectable ? (
-              <th className="project-grid-select-col">
+              <th scope="col" className="project-grid-select-col">
                 <input
                   type="checkbox"
                   aria-label="Select all rows"
@@ -89,46 +88,38 @@ export const ProjectGridDesktopTable = ({
               </th>
             ) : null}
 
-            {columns.map((column) => (
-              <th
-                key={column.key}
-                scope="col"
-                aria-sort={
-                  sortField === column.key
-                    ? sortDirection === 'asc'
-                      ? 'ascending'
-                      : 'descending'
-                    : 'none'
-                }
-              >
-                <button type="button" onClick={() => onSortChange(column.key)}>
-                  <span>{column.label}</span>
-                  {sortField === column.key ? (
-                    <span className="project-grid-sort-indicator">{sortDirection === 'asc' ? '▲' : '▼'}</span>
-                  ) : null}
-                </button>
-              </th>
-            ))}
+            {columns.map((column) => {
+              const isSorted = sortField === column.key;
+              // The sort arrows are the header's background (DataTables style); aria-sort states the order.
+              const sortClass = isSorted ? ` is-sorted is-sorted-${sortDirection}` : '';
+              return (
+                <th
+                  key={column.key}
+                  scope="col"
+                  className={`project-grid-col-${column.key} project-grid-sortable${sortClass}`}
+                  aria-sort={isSorted ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                >
+                  <button type="button" className="project-grid-sort-button" onClick={() => onSortChange(column.key)}>
+                    {column.label}
+                  </button>
+                </th>
+              );
+            })}
 
-            <th className="project-grid-detail-col">Details</th>
-            {onDeleteRow ? <th className="project-grid-delete-col">Remove</th> : null}
+            <th scope="col" className="project-grid-actions-col">
+              Details{onDeleteRow ? <span className="sr-only"> and removal</span> : null}
+            </th>
           </tr>
         </thead>
 
         <tbody>
-          {!pagedRows.length ? (
-            <tr>
-              <td colSpan={colSpan}>
-                <div className="project-grid-empty">{emptyMessage}</div>
-              </td>
-            </tr>
-          ) : null}
-
-          {pagedRows.map((row) => (
+          {pagedRows.map((row, index) => (
             <DesktopRow
               key={row.__key}
               row={row}
+              isOdd={index % 2 === 0}
               columns={columns}
+              linkScope={linkScope}
               selectable={selectable}
               isSelected={selectedKeys.has(row.__key)}
               onToggleSelected={onToggleSelected}
@@ -136,11 +127,11 @@ export const ProjectGridDesktopTable = ({
               onToggleExpanded={onToggleExpanded}
               onDeleteRow={onDeleteRow}
               deleteDisabled={deleteDisabled}
-              colSpan={colSpan}
               loadMissingDetails={loadMissingDetails}
               isSaved={Boolean(isRowSaved?.(row))}
               savedRowLabel={savedRowLabel}
               isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
+              sortField={sortField}
             />
           ))}
         </tbody>
@@ -151,7 +142,10 @@ export const ProjectGridDesktopTable = ({
 
 interface DesktopRowProps {
   row: ProjectGridItem;
+  /** Striped like DataTables' "odd" rows: counted over the project rows, not the detail rows between them. */
+  isOdd: boolean;
   columns: ProjectGridColumn[];
+  linkScope: ProjectGridLinkScope;
   selectable: boolean;
   isSelected: boolean;
   onToggleSelected?: (rowKey: string) => void;
@@ -159,16 +153,18 @@ interface DesktopRowProps {
   onToggleExpanded: (rowKey: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
   deleteDisabled: boolean;
-  colSpan: number;
   loadMissingDetails?: boolean;
   isSaved: boolean;
   savedRowLabel: string;
   isHighlighted: boolean;
+  sortField: ProjectGridColumnKey;
 }
 
 const DesktopRow = ({
   row,
+  isOdd,
   columns,
+  linkScope,
   selectable,
   isSelected,
   onToggleSelected,
@@ -176,16 +172,17 @@ const DesktopRow = ({
   onToggleExpanded,
   onDeleteRow,
   deleteDisabled,
-  colSpan,
   loadMissingDetails,
   isSaved,
   savedRowLabel,
   isHighlighted,
+  sortField,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const detailsId = useId();
   const rowClassName = [
     'project-grid-row',
+    isOdd ? 'is-odd' : '',
     isSelected ? 'is-selected' : '',
     isExpanded ? 'is-expanded' : '',
     isSaved ? 'is-saved' : '',
@@ -193,6 +190,38 @@ const DesktopRow = ({
   ]
     .filter(Boolean)
     .join(' ');
+  // The expanded details sit under every column except the leading one (and the checkbox), like the drafts.
+  const leadingColumns = Number(selectable) + 1;
+  const detailColumns = columns.length + Number(selectable) + 1 - leadingColumns;
+
+  const renderCell = (key: ProjectGridColumnKey) => {
+    switch (key) {
+      case 'semester_label':
+        return (
+          <>
+            <span className="project-grid-term">{row.semester_label}</span>
+            <span className="project-grid-team-code">{getProjectGridTeamCode(row)}</span>
+          </>
+        );
+      case 'class_code':
+        return <span className="project-grid-team-code">{getProjectGridTeamCode(row)}</span>;
+      case 'project_title':
+        return (
+          <>
+            <ProjectTitleWithChips
+              row={row}
+              scope={linkScope}
+              isNew={isHighlighted}
+              isSaved={isSaved}
+              savedRowLabel={savedRowLabel}
+            />
+            {row.team_name ? <span className="project-grid-team-name">{row.team_name}</span> : null}
+          </>
+        );
+      default:
+        return row[key];
+    }
+  };
 
   return (
     <>
@@ -209,54 +238,49 @@ const DesktopRow = ({
         ) : null}
 
         {columns.map((column) => (
-          <td key={column.key}>
-            {column.key === 'project_title' ? (
-              <ProjectTitleWithChips
-                title={row.project_title}
-                isNew={isHighlighted}
-                isSaved={isSaved}
-                savedRowLabel={savedRowLabel}
-              />
-            ) : (
-              row[column.key]
-            )}
+          <td
+            key={column.key}
+            className={`project-grid-col-${column.key}${column.key === sortField ? ' is-sorted-col' : ''}`}
+          >
+            {renderCell(column.key)}
           </td>
         ))}
 
-        <td className="project-grid-detail-col">
-          <button
-            type="button"
-            className="project-grid-detail-button"
-            disabled={!hasDetails}
-            aria-expanded={hasDetails ? isExpanded : undefined}
-            aria-controls={hasDetails ? detailsId : undefined}
-            onClick={() => {
-              if (hasDetails) onToggleExpanded(row.__key);
-            }}
-          >
-            {hasDetails ? (isExpanded ? 'Hide' : 'View') : 'N/A'}
-          </button>
-        </td>
-
-        {onDeleteRow ? (
-          <td className="project-grid-delete-col">
+        <td className="project-grid-actions-col">
+          {hasDetails ? (
             <button
               type="button"
-              className="project-grid-delete-button"
+              className="project-grid-detail-button project-grid-detail-icon-button"
+              aria-expanded={isExpanded}
+              aria-controls={detailsId}
+              onClick={() => onToggleExpanded(row.__key)}
+            >
+              {/* The reference's navy square with a white arrow; the hidden text names the button. */}
+              <span className="project-grid-detail-icon" aria-hidden="true" />
+              <span className="sr-only">{isExpanded ? 'Hide' : 'Details'}</span>
+            </button>
+          ) : (
+            <span className="project-grid-no-details">No details</span>
+          )}
+          {onDeleteRow ? (
+            <button
+              type="button"
+              className="itg-btn itg-btn-text itg-btn-danger project-grid-delete-button"
               onClick={() => onDeleteRow(row)}
               disabled={deleteDisabled}
             >
               Remove
             </button>
-          </td>
-        ) : null}
+          ) : null}
+        </td>
       </tr>
 
       {isExpanded ? (
-        <tr className="project-grid-detail-row">
-          <td colSpan={colSpan}>
+        <tr className="project-grid-detail-row is-expanded">
+          <td className="project-grid-detail-spacer" colSpan={leadingColumns} />
+          <td colSpan={detailColumns}>
             <div id={detailsId} className="project-grid-detail-content">
-              <ProjectGridRowDetails row={row} loadMissingDetails={loadMissingDetails} />
+              <ProjectGridRowDetails row={row} scope={linkScope} loadMissingDetails={loadMissingDetails} />
             </div>
           </td>
         </tr>

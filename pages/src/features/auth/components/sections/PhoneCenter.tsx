@@ -8,11 +8,11 @@ export const PhoneCenter = () => {
     const pc = usePhoneCenter();
 
     return (
-        <div className="account-section">
+        <div className="itg-panel account-section">
             <h2 className="account-section-title">Phone Numbers</h2>
 
-            {pc.successMessage ? <StatusAlert tone="success" message={pc.successMessage} style={{marginBottom: '1rem'}} /> : null}
-            {pc.error ? <StatusAlert tone="error" message={pc.error} style={{marginBottom: '1rem'}} /> : null}
+            {pc.successMessage ? <StatusAlert tone="success" message={pc.successMessage} /> : null}
+            {pc.error ? <StatusAlert tone="error" message={pc.error} /> : null}
 
             {pc.loading ? (
                 <p className="account-status-text">Loading phone numbers...</p>
@@ -79,7 +79,7 @@ export const PhoneCenter = () => {
             ) : (
                 <button
                     type="button"
-                    className="auth-form-submit account-action-primary account-action-primary--inline"
+                    className="itg-btn itg-btn-primary account-action-primary account-action-primary--inline"
                     onClick={pc.beginAddPhoneFlow}
                 >
                     Add Phone

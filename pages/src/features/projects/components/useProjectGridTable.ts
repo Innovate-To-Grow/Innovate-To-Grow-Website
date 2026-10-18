@@ -23,6 +23,8 @@ interface UseProjectGridTableOptions {
   initialSearch?: string;
   /** Seed every expandable row open on mount (used by the shared, read-only view). */
   expandAllByDefault?: boolean;
+  /** Extra filter applied with the search (e.g. the Class and Industry selects). Keep its identity stable. */
+  filterRow?: (row: ProjectGridItem) => boolean;
 }
 
 export function useProjectGridTable({
@@ -33,6 +35,7 @@ export function useProjectGridTable({
   defaultSortDirection = 'asc',
   initialSearch = '',
   expandAllByDefault = false,
+  filterRow,
 }: UseProjectGridTableOptions) {
   const [pageSize, setPageSizeState] = useState(() => Math.max(1, initialPageSize));
   const [search, setSearch] = useState(initialSearch);
@@ -60,12 +63,13 @@ export function useProjectGridTable({
   }, [initialSearch]);
 
   const filteredRows = useMemo(() => {
+    const candidates = filterRow ? rows.filter(filterRow) : rows;
     if (!deferredSearch.trim()) {
-      return rows;
+      return candidates;
     }
     const query = deferredSearch.trim().toLowerCase();
-    return rows.filter((row) => getProjectGridSearchValue(row).includes(query));
-  }, [deferredSearch, rows]);
+    return candidates.filter((row) => getProjectGridSearchValue(row).includes(query));
+  }, [deferredSearch, filterRow, rows]);
 
   const sortedRows = useMemo(
     () => sortProjectGridItems(filteredRows, sortField, sortDirection),

@@ -35,18 +35,18 @@ export const ProfileStep = ({
   onTitleChange,
   onSubmit,
 }: ProfileStepProps) => (
-  <div className="subscribe-section">
+  <div className="itg-panel subscribe-section">
     <p className="subscribe-hint">Complete your profile to finish subscribing.</p>
     <form onSubmit={onSubmit}>
       <div className="subscribe-form-row">
         <div className="subscribe-form-group">
-          <label className="subscribe-label" htmlFor="subscribe-first-name">
+          <label className="itg-label subscribe-label" htmlFor="subscribe-first-name">
             First Name <span className="subscribe-required">*</span>
           </label>
           <input
             id="subscribe-first-name"
             type="text"
-            className="subscribe-input"
+            className="itg-input subscribe-input"
             value={firstName}
             onChange={(event) => onFirstNameChange(event.target.value)}
             placeholder="First name"
@@ -57,13 +57,13 @@ export const ProfileStep = ({
           />
         </div>
         <div className="subscribe-form-group">
-          <label className="subscribe-label" htmlFor="subscribe-middle-name">
+          <label className="itg-label subscribe-label" htmlFor="subscribe-middle-name">
             Middle Name <span className="subscribe-optional">(optional)</span>
           </label>
           <input
             id="subscribe-middle-name"
             type="text"
-            className="subscribe-input"
+            className="itg-input subscribe-input"
             value={middleName}
             onChange={(event) => onMiddleNameChange(event.target.value)}
             placeholder="Middle name"
@@ -74,13 +74,13 @@ export const ProfileStep = ({
       </div>
       <div className="subscribe-form-row">
         <div className="subscribe-form-group">
-          <label className="subscribe-label" htmlFor="subscribe-last-name">
+          <label className="itg-label subscribe-label" htmlFor="subscribe-last-name">
             Last Name <span className="subscribe-required">*</span>
           </label>
           <input
             id="subscribe-last-name"
             type="text"
-            className="subscribe-input"
+            className="itg-input subscribe-input"
             value={lastName}
             onChange={(event) => onLastNameChange(event.target.value)}
             placeholder="Last name"
@@ -90,11 +90,12 @@ export const ProfileStep = ({
           />
         </div>
         <div className="subscribe-form-group">
-          <label className="subscribe-label">Organization</label>
+          <label className="itg-label subscribe-label">Organization</label>
           <div className="subscribe-org-toggle">
             <button
               type="button"
               className={`subscribe-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
+              aria-pressed={organizationType === 'organization'}
               onClick={() => onOrganizationTypeChange('organization')}
               disabled={saving}
             >
@@ -103,6 +104,7 @@ export const ProfileStep = ({
             <button
               type="button"
               className={`subscribe-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+              aria-pressed={organizationType === 'individual'}
               onClick={() => onOrganizationTypeChange('individual')}
               disabled={saving}
             >
@@ -113,7 +115,7 @@ export const ProfileStep = ({
             <input
               id="subscribe-org"
               type="text"
-              className="subscribe-input"
+              className="itg-input subscribe-input"
               value={organization}
               onChange={(event) => onOrganizationChange(event.target.value)}
               placeholder="Company or organization name"
@@ -127,13 +129,13 @@ export const ProfileStep = ({
       {organizationType === 'organization' && (
         <div className="subscribe-form-row">
           <div className="subscribe-form-group subscribe-form-group--full-width">
-            <label className="subscribe-label" htmlFor="subscribe-title">
+            <label className="itg-label subscribe-label" htmlFor="subscribe-title">
               Title <span className="subscribe-optional">(optional)</span>
             </label>
             <input
               id="subscribe-title"
               type="text"
-              className="subscribe-input"
+              className="itg-input subscribe-input"
               value={title}
               onChange={(event) => onTitleChange(event.target.value)}
               placeholder="Your title or position (e.g. CEO, Director)"
@@ -145,7 +147,7 @@ export const ProfileStep = ({
       )}
       <button
         type="submit"
-        className="subscribe-submit"
+        className="itg-btn itg-btn-primary subscribe-submit"
         disabled={
           saving ||
           !firstName.trim() ||

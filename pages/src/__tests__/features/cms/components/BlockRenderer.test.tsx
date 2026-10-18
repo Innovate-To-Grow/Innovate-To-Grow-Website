@@ -1,4 +1,5 @@
-import {cleanup, render} from '@testing-library/react';
+import {cleanup, render, screen} from '@testing-library/react';
+import {MemoryRouter} from 'react-router';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import type {CMSBlock} from '@/features/cms/api';
@@ -134,6 +135,48 @@ describe('BlockRenderer', () => {
     expect(images[1]).toHaveAttribute('loading', 'lazy');
     expect(images[1]).toHaveAttribute('decoding', 'async');
     expect(images[1]).not.toHaveAttribute('fetchpriority');
+  });
+
+  it('also prioritizes a hero image when the hero opens the page', () => {
+    const blocks: CMSBlock[] = [
+      {block_type: 'hero', sort_order: 0, data: {heading: 'Welcome', image_url: '/assets/images/home_img.jpg'}},
+      {block_type: 'hero', sort_order: 1, data: {image_url: '/second.jpg'}},
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} prioritizeFirstImage />);
+    const images = container.querySelectorAll('img.cms-hero-image');
+    expect(images[0]).toHaveAttribute('loading', 'eager');
+    expect(images[0]).toHaveAttribute('fetchpriority', 'high');
+    expect(images[1]).toHaveAttribute('loading', 'lazy');
+  });
+
+  it('renders the hero, cta_group, notice and numbered_list types the admin offers', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const blocks: CMSBlock[] = [
+      {block_type: 'hero', sort_order: 0, data: {heading: 'Hero title', subheading: 'Hero lead'}},
+      {block_type: 'cta_group', sort_order: 1, data: {items: [{label: 'Register', href: '/event-registration', style: 'primary'}]}},
+      {block_type: 'notice', sort_order: 2, data: {heading: 'Notice title', style: 'warning', body_html: '<p>Notice body</p>'}},
+      {block_type: 'numbered_list', sort_order: 3, data: {heading: 'Steps', preamble_html: '<p>Intro</p>', items: ['One', 'Two']}},
+    ];
+    const {container} = render(
+      <MemoryRouter>
+        <BlockRenderer blocks={blocks} />
+      </MemoryRouter>,
+    );
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', {name: 'Hero title', level: 1})).toBeInTheDocument();
+    expect(container.querySelector('.cms-hero .itg-lead')).toHaveTextContent('Hero lead');
+    expect(screen.getByRole('link', {name: 'Register'})).toHaveClass('itg-btn', 'itg-btn-primary');
+    expect(screen.getByRole('note')).toHaveClass('itg-notice', 'itg-notice-warning');
+    expect(screen.getByText('Notice body')).toBeInTheDocument();
+    expect(container.querySelectorAll('.cms-numbered-list ol > li')).toHaveLength(2);
+    // Blocks keep their order.
+    expect(Array.from(container.children).map((el) => el.className.split(' ')[0])).toEqual([
+      'cms-hero',
+      'cms-cta-group',
+      'cms-notice',
+      'cms-numbered-list',
+    ]);
   });
 
   it('dispatches every remaining known block type to its component', () => {

@@ -29,14 +29,14 @@ export const LoginPasswordMode = ({
   return (
     <form className="auth-form" onSubmit={onSubmit} noValidate>
       <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="login-email">
+        <label className="itg-label auth-form-label" htmlFor="login-email">
           Email or Phone
         </label>
         <input
           ref={emailInputRef}
           id="login-email"
           type="text"
-          className="auth-form-input"
+          className="itg-input auth-form-input"
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
           placeholder="you@email.com or (201) 555-0123"
@@ -53,13 +53,13 @@ export const LoginPasswordMode = ({
       </div>
 
       <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="login-password">
+        <label className="itg-label auth-form-label" htmlFor="login-password">
           Password
         </label>
         <input
           id="login-password"
           type="password"
-          className="auth-form-input"
+          className="itg-input auth-form-input"
           value={password}
           onChange={(event) => onPasswordChange(event.target.value)}
           placeholder="Enter your password"
@@ -70,7 +70,7 @@ export const LoginPasswordMode = ({
 
       <PrivacyLegalNotice />
 
-      <button type="submit" className="auth-form-submit" disabled={isLoading || !email || !password}>
+      <button type="submit" className="itg-btn itg-btn-primary auth-form-submit" disabled={isLoading || !email || !password}>
         {isLoading ? (
           <>
             <span className="auth-spinner" />
@@ -82,10 +82,10 @@ export const LoginPasswordMode = ({
       </button>
 
       <div className="auth-inline-links">
-        <button type="button" className="auth-text-link" onClick={onSwitchToCode} style={{ fontSize: '0.8125rem' }}>
+        <button type="button" className="itg-btn itg-btn-text auth-text-link" onClick={onSwitchToCode}>
           Sign in with a verification code
         </button>
-        <Link to="/forgot-password" className="auth-text-link" style={{ fontSize: '0.8125rem' }}>
+        <Link to="/forgot-password" className="itg-btn itg-btn-text auth-text-link">
           Forgot password?
         </Link>
       </div>

@@ -19,13 +19,13 @@ export const CodeVerificationStep = ({
   onSubmit,
   onBack,
 }: CodeVerificationStepProps) => (
-  <div className="event-reg-auth">
+  <div className="itg-panel event-reg-auth">
     <p className="event-reg-auth-hint">
       A verification code has been sent to <strong>{email}</strong>.
     </p>
     <form onSubmit={onSubmit}>
       <div className="event-reg-form-group">
-        <label className="event-reg-label" htmlFor="reg-code">
+        <label className="itg-label event-reg-label" htmlFor="reg-code">
           Verification Code
         </label>
         <CodeInput
@@ -37,15 +37,11 @@ export const CodeVerificationStep = ({
           required
         />
       </div>
-      <button type="submit" className="event-reg-submit" disabled={authLoading || code.length !== 6}>
+      <button type="submit" className="itg-btn itg-btn-primary event-reg-submit" disabled={authLoading || code.length !== 6}>
         {authLoading ? <><span className="event-reg-spinner" /> Verifying...</> : 'Verify Code'}
       </button>
     </form>
-    <button
-      type="button"
-      style={{marginTop: '0.75rem', background: 'none', border: 'none', color: '#003366', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline'}}
-      onClick={onBack}
-    >
+    <button type="button" className="itg-btn itg-btn-text event-reg-text-button" onClick={onBack}>
       Use a different email or phone
     </button>
   </div>

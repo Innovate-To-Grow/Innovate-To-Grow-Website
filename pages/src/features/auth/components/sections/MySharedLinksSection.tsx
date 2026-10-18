@@ -15,16 +15,16 @@ export const MySharedLinksSection = () => {
   }
 
   return (
-    <div className="account-section">
+    <div className="itg-panel account-section">
       <div className="account-shares-header">
         <h2 className="account-section-title">{PAST_PROJECT_CURATION_SHARED_LINKS_TITLE}</h2>
-        <a className="account-outline-btn account-shares-page-link" href={PAST_PROJECT_CURATION_SHARED_LINKS_PATH}>
+        <a className="itg-btn itg-btn-outline account-outline-btn account-shares-page-link" href={PAST_PROJECT_CURATION_SHARED_LINKS_PATH}>
           View Full Page
         </a>
       </div>
 
-      {successMessage ? <StatusAlert tone="success" message={successMessage} style={{marginBottom: '1rem'}} /> : null}
-      {error ? <StatusAlert tone="error" message={error} style={{marginBottom: '1rem'}} /> : null}
+      {successMessage ? <StatusAlert tone="success" message={successMessage} /> : null}
+      {error ? <StatusAlert tone="error" message={error} /> : null}
 
       {loading ? (
         <p className="account-status-text">Loading your shared links...</p>

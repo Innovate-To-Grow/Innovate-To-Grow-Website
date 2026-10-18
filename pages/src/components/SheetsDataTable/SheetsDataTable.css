@@ -1,31 +1,191 @@
+/* Project data table on event archive pages. The table, input and pagination look come from the global
+   class contract (.itg-table, .itg-input, .itg-pagination); this file lays them out and adds the reference's
+   DataTables details (sort arrows, sorted-column shading, navy square detail buttons). */
+
+.sdt-container {
+  margin: 2rem 0;
+}
+
+.sdt-loading,
+.sdt-error {
+  padding: 1.5rem 0;
+  color: var(--itg-color-text-secondary);
+}
+
+.sdt-error {
+  color: var(--itg-color-error);
+}
+
+.sdt-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.sdt-search {
+  flex: 0 1 20rem;
+}
+
+.sdt-count {
+  color: var(--itg-color-text);
+}
+
+.sdt-th {
+  white-space: nowrap;
+}
+
+/* Sortable headers: DataTables' grey double arrow at the right edge; the sorted column shows its one arrow. */
+.sdt-table thead th.sdt-th:not(.sdt-th-expand) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9zM5 10l4.5 6.5 4.5-6.5z' fill='%23dcdcdc'/%3E%3C/svg%3E");
+  background-position: right center;
+  background-repeat: no-repeat;
+}
+
+.sdt-table thead th.sdt-sorted-asc {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9z' fill='%237a80dd'/%3E%3C/svg%3E");
+}
+
+.sdt-table thead th.sdt-sorted-desc {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 10l4.5 6.5 4.5-6.5z' fill='%237a80dd'/%3E%3C/svg%3E");
+}
+
+/* Row shading as DataTables does it: stripes count the project rows only, the sorted column is shaded
+   ("sorting_1"), an open row is the reference's "shown" row (bold #162d4f on #f6f6f6, sorted column #eaeaea,
+   a 1px #ccc rule under it) with its details on white below. */
+.sdt-table tbody > tr.sdt-row > td {
+  background: transparent;
+}
+
+.sdt-table tbody > tr.sdt-row.is-odd > td {
+  background: #f9f9f9;
+}
+
+.sdt-table tbody > tr.sdt-row > td.is-sorted-col {
+  background: #fafafa;
+}
+
+.sdt-table tbody > tr.sdt-row.is-odd > td.is-sorted-col {
+  background: #f1f1f1;
+}
+
+.sdt-table tbody > tr.sdt-row.is-expanded > td {
+  border-bottom: 1px solid #cccccc;
+  background: #f6f6f6;
+  color: #162d4f;
+  font-weight: 700;
+}
+
+.sdt-table tbody > tr.sdt-row.is-expanded > td.is-sorted-col {
+  background: #eaeaea;
+}
+
+.sdt-table tbody > tr.sdt-detail-row > td {
+  background: var(--itg-color-white);
+}
+
 .sdt-sort-button,
 .sdt-expand-button {
   appearance: none;
-  background: transparent;
+  padding: 0;
   border: 0;
+  background: transparent;
   color: inherit;
-  cursor: pointer;
   font: inherit;
+  cursor: pointer;
 }
 
+/* The whole header cell is the sort button (24px text + 10px padding above and below = a 44px target). */
 .sdt-sort-button {
   display: block;
-  font-weight: inherit;
-  padding: 0;
-  text-align: inherit;
+  box-sizing: content-box;
   width: 100%;
+  margin: -10px -18px;
+  padding: 10px 18px;
+  font-weight: inherit;
+  text-align: left;
 }
 
+.sdt-th-expand {
+  width: 5.75rem;
+}
+
+.sdt-td-expand {
+  text-align: center;
+}
+
+/* The reference's details_open.png / details_close.png: a 35px #162d4f square with a 2px bevel and a light
+   hollow arrow (up while open). */
 .sdt-expand-button {
-  align-items: center;
+  box-sizing: border-box;
   display: inline-flex;
+  align-items: center;
   justify-content: center;
-  min-height: 2.75rem;
-  min-width: 2.75rem;
+  width: 35px;
+  height: 35px;
+  background: #162d4f;
+  box-shadow: inset 2px 2px 0 #48566c, inset -2px -2px 0 #041329;
+  color: #e3e5ea;
+  vertical-align: middle;
+  transition: background-color var(--itg-transition-fast) ease-in-out;
 }
 
-.sdt-sort-button:focus-visible,
+.sdt-expand-button:hover,
 .sdt-expand-button:focus-visible {
-  outline: 3px solid currentColor;
-  outline-offset: 3px;
+  background: var(--itg-color-primary-hover);
+}
+
+.sdt-expand-icon {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin-left: -1px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.sdt-expand-button[aria-expanded='true'] .sdt-expand-icon {
+  transform: rotate(180deg);
+}
+
+/* The details under an open row, indented like the reference's child row (padding-left 50px). */
+.sdt-detail-row .sdt-detail-cell {
+  padding: 16px 10px 16px 60px;
+  border-top: 0;
+}
+
+/* "No data available in table" / "No matching records found", as DataTables writes them. */
+.sdt-table tbody > tr.sdt-empty-row > td {
+  background: #f9f9f9;
+  text-align: center;
+}
+
+.sdt-detail-section {
+  margin: 0 0 12px;
+}
+
+.sdt-detail-section:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 992px) {
+  .sdt-expand-button {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Phones keep the 16px table (it scrolls sideways, like the reference's). */
+@media (max-width: 768px) {
+  .sdt-search {
+    flex-basis: 100%;
+  }
+
+  /* Previous / Page x of y / Next. */
+  .sdt-pagination {
+    justify-content: space-between;
+  }
 }

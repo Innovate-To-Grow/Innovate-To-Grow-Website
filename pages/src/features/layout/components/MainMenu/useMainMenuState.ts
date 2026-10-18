@@ -1,7 +1,9 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useMenu} from '../LayoutProvider/context';
 import {useAuth} from '@/features/auth';
-import {formatCurrentMenuDate} from './parts/shared';
+import {type MenuItem} from '@/features/layout/api';
+
+const NO_MENU_ITEMS: MenuItem[] = [];
 
 export const useMainMenuState = () => {
   const {menu, state} = useMenu();
@@ -13,8 +15,7 @@ export const useMainMenuState = () => {
   const prevLayoutStateRef = useRef<typeof state | undefined>(undefined);
   const introFadePlayedRef = useRef(false);
   const [navIntroFade, setNavIntroFade] = useState(false);
-  const currentDate = useMemo(() => formatCurrentMenuDate(), []);
-  const menuItems = menu?.items ?? [];
+  const menuItems = useMemo(() => menu?.items ?? NO_MENU_ITEMS, [menu]);
 
   useEffect(() => {
     const handleToggle = () => setIsMobileOpen((prev) => !prev);
@@ -59,7 +60,6 @@ export const useMainMenuState = () => {
   }, [isMobileOpen]);
 
   return {
-    currentDate,
     isAuthenticated,
     // The header only shows who is signed in; it makes no protected decision. Gating it on
     // `isAuthenticated` flashes "Sign In" at a signed-in member for the whole background

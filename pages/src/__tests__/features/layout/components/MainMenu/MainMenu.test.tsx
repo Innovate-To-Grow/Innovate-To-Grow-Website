@@ -1,7 +1,8 @@
-import {cleanup, fireEvent, render, screen} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MainMenu} from '@/features/layout/components/MainMenu/MainMenu';
+import {ROUTE_CHANGE_EVENT} from '@/features/layout/hooks/useCurrentPathname';
 
 const useMainMenuState = vi.hoisted(() => vi.fn());
 
@@ -20,6 +21,7 @@ interface MemberMenuProps {
 interface MenuTreeProps {
   items: unknown[];
   openItemIndex: number | null;
+  current: {menuIndex: number | null; currentPath: string; isExact: boolean} | null;
   onDesktopToggle: (index: number, hasChildren: boolean) => void;
   onDesktopOpen: (index: number, hasChildren: boolean) => void;
   onDesktopClose: () => void;
@@ -27,6 +29,7 @@ interface MenuTreeProps {
 
 interface MobileMenuPanelProps {
   isMobileOpen: boolean;
+  current: {menuIndex: number | null; currentPath: string; isExact: boolean} | null;
   state: unknown;
   user: unknown;
   onClose: () => void;
@@ -87,7 +90,6 @@ const menuItem = {
 };
 
 const makeState = (overrides: Record<string, unknown> = {}) => ({
-  currentDate: 'SUNDAY 24 AUGUST 2026',
   isAuthenticated: false,
   hasMemberIdentity: false,
   isMemberDropdownOpen: false,
@@ -124,19 +126,43 @@ describe('MainMenu', () => {
     cleanup();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
-  it('renders the header landmark, current date, and brand anchors', () => {
+  it('renders the blue bar, the site-name band and the menu row with the date, without a badge', () => {
+    vi.useFakeTimers({toFake: ['Date']});
+    vi.setSystemTime(new Date(2026, 8, 20, 10, 30));
     useMainMenuState.mockReturnValue(makeState());
-    render(<MainMenu navigate={vi.fn()} />);
+    const {container} = render(<MainMenu navigate={vi.fn()} />);
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
-    expect(screen.getByText('SUNDAY 24 AUGUST 2026')).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: 'UC Merced'})).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', {name: 'Innovate To Grow'}),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: 'Home'})).toBeInTheDocument();
+    const bar = container.querySelector('.site-header-bar') as HTMLElement;
+    const ucm = within(bar).getByRole('link', {name: 'UC Merced'});
+    expect(ucm).toHaveAttribute('href', 'https://www.ucmerced.edu');
+    expect(within(bar).getByRole('link', {name: 'Innovate To Grow home'})).toHaveAttribute('href', '/');
+
+    const university = within(bar).getByRole('navigation', {name: 'UC Merced'});
+    expect(within(university).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Directory',
+      'Apply',
+      'Give',
+    ]);
+
+    const siteName = screen.getByRole('link', {name: 'Innovate To Grow School of Engineering'});
+    expect(siteName).toHaveAttribute('href', '/');
+    expect(siteName.querySelector('.site-header-sitename-title')).toHaveTextContent(/^Innovate To Grow$/);
+    expect(siteName.querySelector('.site-header-sitename-subtitle')).toHaveTextContent(/^School of Engineering$/);
+
+    expect(container.querySelector('.site-header-menu')).toContainElement(
+      screen.getByRole('navigation', {name: 'Main menu'}),
+    );
+    // The current date sits at the right end of the menu row, next to the member link.
+    const utility = container.querySelector('.site-header-menu .site-header-utility') as HTMLElement;
+    const date = utility.querySelector('time.site-header-date');
+    expect(date).toHaveTextContent(/^Sunday 20 September 2026$/);
+    expect(date).toHaveAttribute('dateTime', '2026-09-20');
+    expect(container.querySelector('.site-header-badge')).toBeNull();
+    expect(screen.queryByRole('link', {name: 'Home'})).toBeNull();
   });
 
   it('renders the skeleton when the layout is loading', () => {
@@ -163,6 +189,12 @@ describe('MainMenu', () => {
     expect(childProps.menuTree).toBeTruthy();
     expect(childProps.menuTree.items).toEqual([menuItem]);
     expect(childProps.menuTree.openItemIndex).toBe(1);
+    expect(childProps.menuTree.current).toEqual({
+      menuIndex: null,
+      section: null,
+      currentPath: '/',
+      isExact: true,
+    });
   });
 
   it('renders a placeholder when ready but with no menu items', () => {
@@ -427,5 +459,132 @@ describe('MainMenu', () => {
 
     childProps.memberMenu.onLoginClick();
     expect(assign).toHaveBeenCalledWith('/login');
+  });
+
+  it('offers a skip link that moves focus to the main landmark', () => {
+    // index.html's page container: a native <main id="main">.
+    const main = document.createElement('main');
+    main.id = 'main';
+    document.body.appendChild(main);
+    try {
+      useMainMenuState.mockReturnValue(makeState());
+      render(<MainMenu navigate={vi.fn()} />);
+
+      const skip = screen.getByRole('link', {name: 'Skip to main content'});
+      expect(screen.getByRole('banner').firstElementChild).toBe(skip);
+      fireEvent.click(skip);
+      expect(screen.getByRole('main')).toBe(main);
+      expect(main).toHaveFocus();
+      expect(main).toHaveAttribute('tabindex', '-1');
+      expect(window.location.hash).toBe('');
+    } finally {
+      main.remove();
+    }
+  });
+
+  describe('current section', () => {
+    afterEach(() => {
+      window.history.replaceState(null, '', '/');
+    });
+
+    it('resolves the current section from the location and passes it to both menus', () => {
+      window.history.replaceState(null, '', '/child');
+      useMainMenuState.mockReturnValue(makeState({state: 'ready', menuItems: [menuItem]}));
+      render(<MainMenu navigate={vi.fn()} />);
+
+      expect(childProps.menuTree.current).toMatchObject({menuIndex: 0, currentPath: '/child', isExact: true});
+      expect(childProps.mobilePanel.current).toMatchObject({menuIndex: 0, currentPath: '/child'});
+    });
+
+    it('follows in-app route changes announced by the page shell and back/forward', () => {
+      useMainMenuState.mockReturnValue(makeState({state: 'ready', menuItems: [menuItem]}));
+      render(<MainMenu navigate={vi.fn()} />);
+      expect(childProps.menuTree.current?.menuIndex).toBeNull();
+
+      act(() => {
+        window.history.pushState(null, '', '/child');
+        window.dispatchEvent(new CustomEvent(ROUTE_CHANGE_EVENT, {detail: {pathname: '/child'}}));
+      });
+      expect(childProps.menuTree.current?.menuIndex).toBe(0);
+
+      act(() => {
+        window.history.replaceState(null, '', '/elsewhere');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      expect(childProps.menuTree.current?.menuIndex).toBeNull();
+    });
+  });
+
+  describe('scroll behaviour', () => {
+    const setScrollY = (value: number) => {
+      Object.defineProperty(window, 'scrollY', {configurable: true, value});
+    };
+
+    afterEach(() => {
+      setScrollY(0);
+    });
+
+    it('tucks the site-name band away after scrolling down and never leaves its room empty', () => {
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+        callback(0);
+        return 1;
+      });
+      // The phone band is 84px tall: #menu-root keeps that room for it under the fixed bar.
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        const height = this.classList.contains('site-header-band') ? 84 : 0;
+        return {height, width: 0, top: 0, left: 0, right: 0, bottom: height, x: 0, y: 0, toJSON: () => ({})} as DOMRect;
+      });
+      useMainMenuState.mockReturnValue(makeState());
+      render(<MainMenu navigate={vi.fn()} />);
+      const header = screen.getByRole('banner');
+      const scrollTo = (value: number) =>
+        act(() => {
+          setScrollY(value);
+          window.dispatchEvent(new Event('scroll'));
+        });
+      expect(header).not.toHaveClass('is-band-hidden');
+
+      // Still over its own room: hiding it here would uncover an empty strip.
+      scrollTo(60);
+      expect(header).not.toHaveClass('is-band-hidden');
+
+      scrollTo(120);
+      expect(header).toHaveClass('is-band-hidden');
+
+      // Scrolling back up: it returns as soon as its room comes into view, not only at the top.
+      scrollTo(20);
+      expect(header).not.toHaveClass('is-band-hidden');
+
+      scrollTo(120);
+      expect(header).toHaveClass('is-band-hidden');
+      scrollTo(0);
+      expect(header).not.toHaveClass('is-band-hidden');
+    });
+
+    it('publishes the header part heights as CSS custom properties', () => {
+      useMainMenuState.mockReturnValue(makeState());
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        const height = this.classList.contains('site-header-bar')
+          ? 85
+          : this.classList.contains('site-header-band')
+            ? 109.6
+            : this.classList.contains('site-header-menu')
+              ? 44
+              : 0;
+        return {height, width: 0, top: 0, left: 0, right: 0, bottom: height, x: 0, y: 0, toJSON: () => ({})} as DOMRect;
+      });
+      render(<MainMenu navigate={vi.fn()} />);
+
+      const style = document.documentElement.style;
+      expect(style.getPropertyValue('--itg-header-bar-height')).toBe('85px');
+      expect(style.getPropertyValue('--itg-header-band-height')).toBe('109.6px');
+      expect(style.getPropertyValue('--itg-header-menu-height')).toBe('44px');
+    });
+
+    it('marks the header while the mobile menu is open', () => {
+      useMainMenuState.mockReturnValue(makeState({isMobileOpen: true}));
+      render(<MainMenu navigate={vi.fn()} />);
+      expect(screen.getByRole('banner')).toHaveClass('is-mobile-open');
+    });
   });
 });

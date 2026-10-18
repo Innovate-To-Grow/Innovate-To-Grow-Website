@@ -5,18 +5,25 @@ import {EventSelectionStep} from './steps/EventSelectionStep';
 import {formatEventDateRange} from '@/features/events/formatEventDateRange';
 import {LoadingState} from './steps/LoadingState';
 import {RegistrationFormStep} from './steps/RegistrationFormStep';
+import {getRegistrationStepIndex} from './steps/helpers';
+import {RegistrationSteps} from './steps/RegistrationSteps';
 import {useEventRegistration} from './useEventRegistration';
 
 export const EventRegistrationPage = () => {
   const reg = useEventRegistration();
+  const stepIndex = getRegistrationStepIndex(reg.step);
 
   if (reg.step === 'done' && reg.registration) {
     return (
-      <DoneState
-        registration={reg.registration}
-        showChooseAnother={reg.events.length > 1}
-        onChooseAnother={reg.handleShowEventList}
-      />
+      <div className="event-reg-page">
+        <h1 className="itg-page-title event-reg-title">Event Registration</h1>
+        {stepIndex !== null ? <RegistrationSteps current={stepIndex} /> : null}
+        <DoneState
+          registration={reg.registration}
+          showChooseAnother={reg.events.length > 1}
+          onChooseAnother={reg.handleShowEventList}
+        />
+      </div>
     );
   }
 
@@ -30,26 +37,36 @@ export const EventRegistrationPage = () => {
 
   return (
     <div className="event-reg-page">
-      <h1 className="event-reg-title">Event Registration</h1>
+      <h1 className="itg-page-title event-reg-title">Event Registration</h1>
+
+      {stepIndex !== null ? <RegistrationSteps current={stepIndex} /> : null}
 
       {reg.options ? (
-        <div className="event-reg-info">
-          <h2>{reg.options.name}</h2>
-          <p>
-            <strong>Date:</strong> {formatEventDateRange(reg.options.date, reg.options.end_date)}
-          </p>
-          <p>
-            <strong>Location:</strong> {reg.options.location}
-          </p>
-          {reg.options.description ? <p style={{marginTop: '0.5rem'}}>{reg.options.description}</p> : null}
-        </div>
+        <section className="event-reg-info" aria-labelledby="event-reg-info-title">
+          <h2 id="event-reg-info-title" className="itg-section-title event-reg-info-title">
+            {reg.options.name}
+          </h2>
+          <dl className="itg-meta-box event-reg-info-meta">
+            <div className="itg-meta-item">
+              <dt className="itg-meta-label">Date</dt>
+              <dd className="itg-meta-value">{formatEventDateRange(reg.options.date, reg.options.end_date)}</dd>
+            </div>
+            <div className="itg-meta-item">
+              <dt className="itg-meta-label">Location</dt>
+              <dd className="itg-meta-value">{reg.options.location || 'TBA'}</dd>
+            </div>
+          </dl>
+          {reg.options.description ? <p className="event-reg-info-description">{reg.options.description}</p> : null}
+        </section>
       ) : null}
 
-      {bootLoading ? <div className="event-reg-loading">Loading event details...</div> : null}
+      {bootLoading ? <p className="event-reg-loading" role="status">Loading event details...</p> : null}
 
-      {routingLoading ? <div className="event-reg-loading event-reg-loading--inline">Loading registration form...</div> : null}
+      {routingLoading ? (
+        <p className="event-reg-loading event-reg-loading--inline" role="status">Loading registration form...</p>
+      ) : null}
 
-      {reg.error ? <div className="event-reg-alert error">{reg.error}</div> : null}
+      {reg.error ? <div className="event-reg-alert error" role="alert">{reg.error}</div> : null}
 
       {reg.step === 'select' ? (
         <EventSelectionStep

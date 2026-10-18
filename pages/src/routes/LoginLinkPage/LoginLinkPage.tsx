@@ -136,8 +136,8 @@ export function LoginLinkPage() {
     // email-code fallback could not persist one either: say so plainly.
     return (
       <div className="magic-login-page">
-        <p className="magic-login-error">{NOT_SAVED_MESSAGE}</p>
-        <a href="/login" className="magic-login-link">Go to Login</a>
+        <p className="itg-notice itg-notice-error magic-login-error" role="alert">{NOT_SAVED_MESSAGE}</p>
+        <a href="/login" className="itg-btn itg-btn-primary magic-login-link">Go to Login</a>
       </div>
     );
   }
@@ -154,7 +154,7 @@ export function LoginLinkPage() {
 
   return (
     <div className="magic-login-page">
-      <p>Signing you in...</p>
+      <p className="magic-login-status" role="status">Signing you in...</p>
     </div>
   );
 }

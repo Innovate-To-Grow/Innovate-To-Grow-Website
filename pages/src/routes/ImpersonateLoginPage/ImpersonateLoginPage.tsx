@@ -47,15 +47,15 @@ export function ImpersonateLoginPage() {
   if (error) {
     return (
       <div className="impersonate-login-page">
-        <p className="impersonate-login-error">{error}</p>
-        <a href="/login" className="impersonate-login-link">Go to Login</a>
+        <p className="itg-notice itg-notice-error impersonate-login-error" role="alert">{error}</p>
+        <a href="/login" className="itg-btn itg-btn-primary impersonate-login-link">Go to Login</a>
       </div>
     );
   }
 
   return (
     <div className="impersonate-login-page">
-      <p>Signing you in...</p>
+      <p className="impersonate-login-status" role="status">Signing you in...</p>
     </div>
   );
 }

@@ -4,9 +4,10 @@ import {type User} from '@/features/auth/api/types';
 import {formatE164ForDisplay} from '@/features/auth/components/sections/internal/phoneInput';
 import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
 import {Icon} from '@/components/Icon/Icon';
+import {type SectionMatch} from '@/features/layout/sections';
 import {type LayoutLoadState} from '../../LayoutProvider/context';
-import {MenuTree} from './MenuTree';
-import {MENU_BAR_SKELETON_WIDTHS_PX} from './shared';
+import {MobileMenuTree} from './MobileMenuTree';
+import {MENU_BAR_SKELETON_WIDTHS_PX, UNIVERSITY_LINKS, memberDisplayName} from './shared';
 
 interface MobileMenuPanelProps {
   menuItems: MenuItem[];
@@ -14,12 +15,10 @@ interface MobileMenuPanelProps {
   isMobileOpen: boolean;
   hasMemberIdentity: boolean;
   user: User | null;
-  openItemIndex: number | null;
+  /** Current section + page, used to expand the current section and mark aria-current. */
+  current?: Pick<SectionMatch, 'menuIndex' | 'currentPath' | 'isExact'> | null;
   triggerRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
-  onDesktopOpen: (index: number, hasChildren: boolean) => void;
-  onDesktopClose: () => void;
-  onDesktopToggle: (index: number, hasChildren: boolean) => void;
   onAccountClick: () => void;
   onLoginClick: () => void;
   onLogoutClick: () => void;
@@ -34,18 +33,25 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+const isVisible = (element: HTMLElement) => !element.closest('[hidden]');
+
+/**
+ * Phone menu dialog. It covers the viewport and repeats the blue bar at the
+ * top (UC Merced wordmark, round logo, close button where the menu button
+ * was) and the site name, so it reads as the reference site's menu panel
+ * opening under the bar while keeping its own close control inside the modal
+ * for screen-reader users. Rows, member links and the Directory / Apply / Give
+ * strip follow the reference's phone menu.
+ */
 export const MobileMenuPanel = ({
   menuItems,
   state,
   isMobileOpen,
   hasMemberIdentity,
   user,
-  openItemIndex,
+  current = null,
   triggerRef,
   onClose,
-  onDesktopOpen,
-  onDesktopClose,
-  onDesktopToggle,
   onAccountClick,
   onLoginClick,
   onLogoutClick,
@@ -70,9 +76,7 @@ export const MobileMenuPanel = ({
       }
       if (event.key !== 'Tab') return;
 
-      const focusable = Array.from(
-        panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-      );
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(isVisible);
       if (!focusable.length) {
         event.preventDefault();
         panel.focus();
@@ -82,16 +86,10 @@ export const MobileMenuPanel = ({
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       const active = document.activeElement;
-      if (
-        event.shiftKey &&
-        (active === first || !panel.contains(active))
-      ) {
+      if (event.shiftKey && (active === first || !panel.contains(active))) {
         event.preventDefault();
         last.focus();
-      } else if (
-        !event.shiftKey &&
-        (active === last || !panel.contains(active))
-      ) {
+      } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
         event.preventDefault();
         first.focus();
       }
@@ -106,162 +104,89 @@ export const MobileMenuPanel = ({
   }, [isMobileOpen, onClose, triggerRef]);
 
   return (
-    <>
-      <div
-        className={`header-mobile-overlay ${isMobileOpen ? 'is-open' : ''}`}
-        onClick={onClose}
-        aria-hidden="true"
-        hidden={!isMobileOpen}
-      />
-
-      <div
-        ref={panelRef}
-        id="mobile-menu"
-        className={`header-mobile-menu ${isMobileOpen ? 'is-open' : ''}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Mobile menu"
-        aria-hidden={!isMobileOpen}
-        inert={!isMobileOpen}
-        hidden={!isMobileOpen}
-        tabIndex={-1}
-      >
-        <div className="header-mobile-top">
-          <a href="/" className="header-mobile-brand">
-            <ResponsiveBrandImage
-              brand="i2g"
-              alt="I2G"
-              className="header-mobile-logo"
-              sizes="64px"
-            />
-            <span>Innovate To Grow</span>
-          </a>
-          <button
-            type="button"
-            className="header-mobile-close"
-            aria-label="Close menu"
-            onClick={onClose}
-          >
-            <Icon name="times" />
-          </button>
-        </div>
-
-        <nav
-          className="header-mobile-nav"
-          aria-label="Mobile navigation"
-          aria-busy={state === 'loading'}
-        >
-          {state === 'loading' ? (
-            <ul className="header-mobile-nav-skeleton" aria-hidden="true">
-              {MENU_BAR_SKELETON_WIDTHS_PX.map((width, index) => (
-                <li
-                  key={index}
-                  className="header-mobile-nav-skeleton-row"
-                >
-                  <span
-                    className="menu-bar-skeleton"
-                    style={{width: `${Math.min(width + 24, 200)}px`}}
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {state === 'ready' && menuItems.length > 0 ? (
-            <MenuTree
-              items={menuItems}
-              openItemIndex={openItemIndex}
-              onDesktopOpen={onDesktopOpen}
-              onDesktopClose={onDesktopClose}
-              onDesktopToggle={onDesktopToggle}
-            />
-          ) : null}
-        </nav>
-
-        <div className="header-mobile-member">
-          {hasMemberIdentity ? (
-            <>
-              <div className="header-mobile-member-info">
-                {user?.profile_image ? (
-                  <img
-                    src={user.profile_image}
-                    alt=""
-                    className="header-mobile-member-avatar"
-                  />
-                ) : (
-                  <Icon name="user-circle" />
-                )}
-                <span>
-                  {user?.email ||
-                    formatE164ForDisplay(user?.phone ?? '') ||
-                    'Member'}
-                </span>
-              </div>
-              <div className="header-mobile-member-actions">
-                <button
-                  type="button"
-                  className="header-mobile-action"
-                  onClick={onAccountClick}
-                >
-                  Account
-                </button>
-                <button
-                  type="button"
-                  className="header-mobile-action"
-                  onClick={onLogoutClick}
-                >
-                  Sign Out
-                </button>
-              </div>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="header-mobile-action primary"
-              onClick={onLoginClick}
-            >
-              <Icon name="user" />
-              Sign In / Sign Up
-            </button>
-          )}
-        </div>
-
-        <div className="header-mobile-actions">
-          <a
-            href="https://directory.ucmerced.edu/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-mobile-action"
-          >
-            Directory
-          </a>
-          <a
-            href="https://admissions.ucmerced.edu/first-year/apply?button"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-mobile-action primary"
-          >
-            Apply Now
-          </a>
-          <a
-            href="https://giving.ucmerced.edu/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="header-mobile-action"
-          >
-            Give
-          </a>
-        </div>
-
-        <div className="header-mobile-footer">
-          <a
-            href="https://www.ucmerced.edu"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ResponsiveBrandImage brand="ucm" sizes="230px" />
-          </a>
-        </div>
+    <div
+      ref={panelRef}
+      id="mobile-menu"
+      className={`header-mobile-menu${isMobileOpen ? ' is-open' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Mobile menu"
+      aria-hidden={!isMobileOpen}
+      inert={!isMobileOpen}
+      hidden={!isMobileOpen}
+      tabIndex={-1}
+    >
+      <div className="header-mobile-top">
+        <span className="header-mobile-ucm" aria-hidden="true">
+          <ResponsiveBrandImage brand="ucm" alt="" sizes="138px" />
+        </span>
+        <a href="/" className="header-mobile-brand" aria-label="Innovate To Grow home">
+          <ResponsiveBrandImage brand="i2g" alt="" className="header-mobile-logo" sizes="50px" />
+        </a>
+        {/* Drawn like the menu button it replaces (the reference keeps the three bars). */}
+        <button type="button" className="header-mobile-close" aria-label="Close menu" onClick={onClose}>
+          <span className="header-mobile-close-bar" />
+          <span className="header-mobile-close-bar" />
+          <span className="header-mobile-close-bar" />
+        </button>
       </div>
-    </>
+
+      <div className="header-mobile-sitename" aria-hidden="true">
+        Innovate To Grow
+      </div>
+
+      <nav className="header-mobile-nav" aria-label="Mobile navigation" aria-busy={state === 'loading'}>
+        {state === 'loading' ? (
+          <ul className="header-mobile-nav-skeleton" aria-hidden="true">
+            {MENU_BAR_SKELETON_WIDTHS_PX.map((width, index) => (
+              <li key={index} className="header-mobile-nav-skeleton-row">
+                <span className="menu-bar-skeleton" style={{width: `${Math.min(width + 24, 200)}px`}} />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {state === 'error' ? <p className="header-mobile-nav-message">Menu unavailable</p> : null}
+        {state === 'ready' && menuItems.length > 0 ? (
+          <MobileMenuTree key={current?.menuIndex ?? 'none'} items={menuItems} current={current} />
+        ) : null}
+      </nav>
+
+      <div className="header-mobile-member">
+        {hasMemberIdentity ? (
+          <>
+            <div className="header-mobile-member-info">
+              {user?.profile_image ? (
+                <img src={user.profile_image} alt="" className="header-mobile-member-avatar" />
+              ) : (
+                <Icon name="user-circle" />
+              )}
+              <span>{memberDisplayName(user, formatE164ForDisplay)}</span>
+            </div>
+            <div className="header-mobile-member-actions">
+              <button type="button" className="header-mobile-action" onClick={onAccountClick}>
+                Account
+              </button>
+              <button type="button" className="header-mobile-action" onClick={onLogoutClick}>
+                Sign Out
+              </button>
+            </div>
+          </>
+        ) : (
+          <button type="button" className="header-mobile-action primary" onClick={onLoginClick}>
+            Sign In / Sign Up
+          </button>
+        )}
+      </div>
+
+      <ul className="header-mobile-actions" aria-label="UC Merced links">
+        {UNIVERSITY_LINKS.map((link) => (
+          <li key={link.label}>
+            <a href={link.href} target="_blank" rel="noopener noreferrer" className="header-mobile-university-link">
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 };

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BlockRenderer } from './BlockRenderer';
+import { cmsPageClassName } from './pageClassName';
 import type { CMSBlock } from '@/features/cms/api';
 
 /**
@@ -187,14 +188,14 @@ export const BlockPreviewPage = () => {
 
   if (!block) {
     return (
-      <div style={{ padding: '24px', color: '#999', fontStyle: 'italic', textAlign: 'center' }}>
+      <p className="cms-block-preview-waiting" role="status">
         Waiting for block data...
-      </div>
+      </p>
     );
   }
 
   return (
-    <div className={pageCssClass || 'cms-page'}>
+    <div className={cmsPageClassName(pageCssClass)}>
       <BlockRenderer blocks={[block]} previewMode />
     </div>
   );

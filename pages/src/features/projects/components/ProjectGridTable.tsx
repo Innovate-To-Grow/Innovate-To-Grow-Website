@@ -1,12 +1,20 @@
-import {useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode} from 'react';
+import './projects.css';
+import {useId, type ReactNode} from 'react';
 import {
   type ProjectGridColumn,
   type ProjectGridColumnKey,
   type ProjectGridItem,
+  type ProjectGridLinkScope,
   type ProjectGridSortDirection,
 } from './projectGrid';
 import {ProjectGridDesktopTable} from './grid/ProjectGridDesktopTable';
 import {ProjectGridMobileCards} from './grid/ProjectGridMobileCards';
+import {ProjectGridPager} from './grid/ProjectGridPager';
+
+export interface ProjectGridSortOption {
+  field: ProjectGridColumnKey;
+  label: string;
+}
 
 interface ProjectGridTableProps {
   columns: ProjectGridColumn[];
@@ -15,13 +23,30 @@ interface ProjectGridTableProps {
   filteredCount: number;
   totalCount: number;
   search: string;
+  /** Replaces the search field (e.g. the AI search form). */
   searchControl?: ReactNode;
   controlsStatus?: ReactNode;
   searchPlaceholder?: string;
+  /** Label above the search field. */
+  searchLabel?: string;
+  /** More fields for the filter well, after the search field (e.g. Class and Industry selects). */
+  filterControls?: ReactNode;
+  /** Shows a "Sort by" select in the results bar; Per page and View All Details move there too. */
+  sortOptions?: ProjectGridSortOption[];
   sortField: ProjectGridColumnKey;
   sortDirection: ProjectGridSortDirection;
   onSearchChange: (value: string) => void;
   onSortChange: (field: ProjectGridColumnKey) => void;
+  /** Clears the extra filters too when the visitor clicks "Clear search" in the no-results state. */
+  onClearFilters?: () => void;
+  /** Extra hint and actions for the no-results state (e.g. a link to search past projects). */
+  noResultsHint?: string;
+  noResultsActions?: ReactNode;
+  /**
+   * Level of the no-results heading, one below the heading the table sits under: 2 under a page title,
+   * 3 in a card titled with an h2, 4 in a card titled with an h3.
+   */
+  noResultsHeadingLevel?: 2 | 3 | 4;
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
   onToggleAllDetails?: () => void;
@@ -35,9 +60,13 @@ interface ProjectGridTableProps {
   loading?: boolean;
   error?: string | null;
   emptyMessage?: string;
+  /** Plural noun for the result count ("projects", "teams"). */
   countLabel?: string;
+  /** Actions shown above the results ('top', after the filter well) or under the table ('bottom'). */
   toolbar?: ReactNode;
   toolbarPlacement?: 'top' | 'bottom';
+  /** Which project page a title links to. Past-project links open in a new tab so curation work is kept. */
+  linkScope?: ProjectGridLinkScope;
   selectable?: boolean;
   selectedKeys?: Set<string>;
   selectAllStateRows?: ProjectGridItem[];
@@ -48,146 +77,41 @@ interface ProjectGridTableProps {
   deleteDisabled?: boolean;
   /** Retrieve missing details when archive rows are expanded; saved snapshots keep their own fields. */
   loadMissingDetails?: boolean;
-  /** Marks rows already in the saved results with a chip after the project title. */
+  /** Marks rows already in the saved results with a tag after the project title. */
   isRowSaved?: (row: ProjectGridItem) => boolean;
   savedRowLabel?: string;
   /** Rows to emphasise, e.g. the ones the latest save just added. */
   highlightedKeys?: ReadonlySet<string>;
 }
 
-interface PageSizeSelectProps {
+const singular = (noun: string) => (noun.endsWith('ies') ? `${noun.slice(0, -3)}y` : noun.replace(/s$/, ''));
+const countNoun = (count: number, noun: string) => `${count} ${count === 1 ? singular(noun) : noun}`;
+
+interface PageSizeFieldProps {
   value: number;
   options: number[];
   onChange: (size: number) => void;
 }
 
-const PageSizeSelect = ({value, options, onChange}: PageSizeSelectProps) => {
-  const labelId = useId();
-  const buttonId = useId();
-  const listboxId = useId();
-  const valueId = useId();
-  const [isOpen, setIsOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const selectedIndex = Math.max(0, options.indexOf(value));
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [isOpen]);
-
-  const focusOption = (index: number) => {
-    optionRefs.current[index]?.focus();
-  };
-
-  const openListbox = (focusIndex = selectedIndex) => {
-    setIsOpen(true);
-    window.requestAnimationFrame(() => focusOption(focusIndex));
-  };
-
-  const chooseOption = (option: number) => {
-    onChange(option);
-    setIsOpen(false);
-    window.requestAnimationFrame(() => buttonRef.current?.focus());
-  };
-
-  const handleButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      const direction = event.key === 'ArrowDown' ? 1 : -1;
-      const nextIndex = Math.min(options.length - 1, Math.max(0, selectedIndex + direction));
-      openListbox(nextIndex);
-    }
-
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      if (isOpen) {
-        setIsOpen(false);
-      } else {
-        openListbox();
-      }
-    }
-  };
-
-  const handleOptionKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      setIsOpen(false);
-      buttonRef.current?.focus();
-    }
-
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      const direction = event.key === 'ArrowDown' ? 1 : -1;
-      focusOption(Math.min(options.length - 1, Math.max(0, index + direction)));
-    }
-
-    if (event.key === 'Home') {
-      event.preventDefault();
-      focusOption(0);
-    }
-
-    if (event.key === 'End') {
-      event.preventDefault();
-      focusOption(options.length - 1);
-    }
-  };
-
+const PageSizeField = ({value, options, onChange}: PageSizeFieldProps) => {
+  const selectId = useId();
   return (
-    <div className={`project-grid-page-size${isOpen ? ' is-open' : ''}`} ref={rootRef}>
-      <span id={labelId} className="project-grid-field-label">
+    <div className="itg-field project-grid-page-size">
+      <label className="project-grid-field-label" htmlFor={selectId}>
         Per page
-      </span>
-      <div className="project-grid-page-size-select">
-        <button
-          id={buttonId}
-          ref={buttonRef}
-          type="button"
-          className="project-grid-page-size-button"
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          aria-controls={listboxId}
-          aria-labelledby={`${labelId} ${valueId}`}
-          onClick={() => (isOpen ? setIsOpen(false) : openListbox())}
-          onKeyDown={handleButtonKeyDown}
-        >
-          <span id={valueId}>{value}</span>
-          <span className="project-grid-page-size-chevron" aria-hidden="true" />
-        </button>
-        {isOpen ? (
-          <div id={listboxId} className="project-grid-page-size-menu" role="listbox" aria-labelledby={labelId}>
-            {options.map((option, index) => {
-              const isSelected = option === value;
-
-              return (
-                <button
-                  key={option}
-                  ref={(node) => {
-                    optionRefs.current[index] = node;
-                  }}
-                  type="button"
-                  className={`project-grid-page-size-option${isSelected ? ' is-selected' : ''}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  onClick={() => chooseOption(option)}
-                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
-                >
-                  {option}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
+      </label>
+      <select
+        id={selectId}
+        className="itg-select project-grid-select"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </div>
   );
 };
@@ -202,10 +126,17 @@ export const ProjectGridTable = ({
   searchControl,
   controlsStatus,
   searchPlaceholder = 'Search projects...',
+  searchLabel = 'Search',
+  filterControls,
+  sortOptions,
   sortField,
   sortDirection,
   onSearchChange,
   onSortChange,
+  onClearFilters,
+  noResultsHint,
+  noResultsActions,
+  noResultsHeadingLevel = 2,
   expandedKeys,
   onToggleExpanded,
   onToggleAllDetails,
@@ -222,6 +153,7 @@ export const ProjectGridTable = ({
   countLabel = 'projects',
   toolbar,
   toolbarPlacement = 'top',
+  linkScope = 'current',
   selectable = false,
   selectedKeys = new Set<string>(),
   selectAllStateRows,
@@ -235,123 +167,194 @@ export const ProjectGridTable = ({
   highlightedKeys,
 }: ProjectGridTableProps) => {
   const searchInputId = useId();
+  const sortSelectId = useId();
+  const query = search.trim();
   const toolbarElement = toolbar ? (
     <div className={`project-grid-toolbar${toolbarPlacement === 'bottom' ? ' project-grid-toolbar--bottom' : ''}`}>
       {toolbar}
     </div>
   ) : null;
 
+  const pageSizeField = <PageSizeField value={pageSize} options={pageSizeOptions} onChange={onPageSizeChange} />;
+  const toggleDetailsButton = onToggleAllDetails ? (
+    <button
+      type="button"
+      className={`itg-btn ${sortOptions ? 'itg-btn-text' : 'itg-btn-outline'} project-grid-toggle-details`}
+      onClick={onToggleAllDetails}
+    >
+      {allDetailsExpanded ? 'Hide All Details' : 'View All Details'}
+    </button>
+  ) : null;
+
+  // The Sort select lists the offered fields; a column sorted from its header joins them so the select never
+  // shows a field the table is not sorted by.
+  const sortChoices =
+    sortOptions && !sortOptions.some((option) => option.field === sortField)
+      ? [
+          ...sortOptions,
+          {field: sortField, label: columns.find((column) => column.key === sortField)?.label ?? String(sortField)},
+        ]
+      : sortOptions;
+
+  const isNarrowed = filteredCount !== totalCount;
+  const firstShown = page * pageSize + 1;
+  const lastShown = Math.min((page + 1) * pageSize, filteredCount);
+  const showing = filteredCount > 0 ? ` · showing ${firstShown}–${lastShown}` : '';
+  const matchText = `${filteredCount === 1 ? 'matches' : 'match'} ${query ? `“${query}”` : 'the filters'}`;
+  const noResults = totalCount > 0 && filteredCount === 0;
+  const NoResultsHeading = `h${noResultsHeadingLevel}` as const;
+
   return (
     <div className="project-grid-table-shell">
-      {toolbarPlacement === 'top' ? toolbarElement : null}
-
-      <div className="project-grid-controls">
-        <div className="project-grid-controls-inner">
-          <div className="project-grid-controls-row">
-            {searchControl ?? (
-              <label className="project-grid-search-field" htmlFor={searchInputId}>
-                <span className="project-grid-field-label">Search</span>
-                <input
-                  id={searchInputId}
-                  type="search"
-                  className="project-grid-search-input"
-                  value={search}
-                  placeholder={searchPlaceholder}
-                  onChange={(event) => onSearchChange(event.target.value)}
-                />
+      <div className="project-grid-controls itg-well">
+        <div className={`project-grid-controls-row${filterControls ? ' has-filters' : ''}`}>
+          {searchControl ?? (
+            <div className="itg-field project-grid-search-field">
+              <label className="project-grid-field-label" htmlFor={searchInputId}>
+                {searchLabel}
               </label>
-            )}
-            <div className="project-grid-controls-meta" role="group" aria-label="Results and pagination">
-              <p className="project-grid-count">
-                <span className="project-grid-count-value">
-                  {filteredCount} of {totalCount}
-                </span>{' '}
-                <span className="project-grid-count-label">{countLabel}</span>
-              </p>
-              <PageSizeSelect value={pageSize} options={pageSizeOptions} onChange={onPageSizeChange} />
-              {onToggleAllDetails ? (
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-outline project-grid-toggle-details"
-                  onClick={onToggleAllDetails}
-                >
-                  {allDetailsExpanded ? 'Hide All Details' : 'View All Details'}
-                </button>
-              ) : null}
+              <input
+                id={searchInputId}
+                type="search"
+                className="itg-input project-grid-search-input"
+                value={search}
+                placeholder={searchPlaceholder}
+                onChange={(event) => onSearchChange(event.target.value)}
+              />
             </div>
-          </div>
-          {controlsStatus ? <div className="project-grid-controls-status">{controlsStatus}</div> : null}
+          )}
+          {filterControls}
+          {sortOptions ? null : pageSizeField}
+          {sortOptions ? null : toggleDetailsButton}
         </div>
+        {controlsStatus ? <div className="project-grid-controls-status">{controlsStatus}</div> : null}
       </div>
 
-      {loading ? <div className="project-grid-state">Loading project data...</div> : null}
-      {error ? <div className="project-grid-state project-grid-state-error">{error}</div> : null}
+      {toolbarPlacement === 'top' ? toolbarElement : null}
+
+      {loading ? <p className="project-grid-state">Loading project data...</p> : null}
+      {error ? (
+        <p className="project-grid-state project-grid-state-error itg-error" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {!loading && !error ? (
         <>
-          <ProjectGridDesktopTable
-            columns={columns}
-            rows={rows}
-            pagedRows={pagedRows}
-            emptyMessage={emptyMessage}
-            selectable={selectable}
-            selectedKeys={selectedKeys}
-            selectAllStateRows={selectAllStateRows}
-            onToggleSelected={onToggleSelected}
-            onToggleSelectAll={onToggleSelectAll}
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSortChange={onSortChange}
-            expandedKeys={expandedKeys}
-            onToggleExpanded={onToggleExpanded}
-            onDeleteRow={onDeleteRow}
-            deleteDisabled={deleteDisabled}
-            loadMissingDetails={loadMissingDetails}
-            isRowSaved={isRowSaved}
-            savedRowLabel={savedRowLabel}
-            highlightedKeys={highlightedKeys}
-          />
-
-          <ProjectGridMobileCards
-            columns={columns}
-            pagedRows={pagedRows}
-            emptyMessage={emptyMessage}
-            expandedKeys={expandedKeys}
-            onToggleExpanded={onToggleExpanded}
-            selectable={selectable}
-            selectedKeys={selectedKeys}
-            onToggleSelected={onToggleSelected}
-            onDeleteRow={onDeleteRow}
-            deleteDisabled={deleteDisabled}
-            loadMissingDetails={loadMissingDetails}
-            isRowSaved={isRowSaved}
-            savedRowLabel={savedRowLabel}
-            highlightedKeys={highlightedKeys}
-          />
-
-          {totalPages > 1 ? (
-            <div className="project-grid-pagination">
-              <button
-                type="button"
-                className="itg-btn itg-btn-outline"
-                onClick={() => onPageChange(page - 1)}
-                disabled={page === 0}
-              >
-                Previous
-              </button>
-              <span>
-                Page {page + 1} of {totalPages}
-              </span>
-              <button
-                type="button"
-                className="itg-btn itg-btn-outline"
-                onClick={() => onPageChange(page + 1)}
-                disabled={page >= totalPages - 1}
-              >
-                Next
-              </button>
+          {totalCount > 0 ? (
+            <div className="project-grid-results-bar">
+              <p className="project-grid-count" aria-live="polite">
+                {isNarrowed ? (
+                  <>
+                    <strong>
+                      {filteredCount} of {totalCount}
+                    </strong>{' '}
+                    {countLabel} {matchText}
+                    {showing}
+                  </>
+                ) : (
+                  <>
+                    <strong>{countNoun(totalCount, countLabel)}</strong>
+                    {showing}
+                  </>
+                )}
+              </p>
+              {sortChoices ? (
+                <div className="project-grid-results-controls">
+                  <div className="project-grid-sort">
+                    <label htmlFor={sortSelectId}>Sort by</label>
+                    <select
+                      id={sortSelectId}
+                      className="itg-select project-grid-select"
+                      value={sortField}
+                      onChange={(event) => onSortChange(event.target.value as ProjectGridColumnKey)}
+                    >
+                      {sortChoices.map((option) => (
+                        <option key={option.field} value={option.field}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {pageSizeField}
+                  {toggleDetailsButton}
+                </div>
+              ) : null}
             </div>
           ) : null}
+
+          {totalCount === 0 ? <p className="project-grid-empty">{emptyMessage}</p> : null}
+
+          {noResults ? (
+            <div className="itg-empty-state project-grid-no-results">
+              <NoResultsHeading className="itg-empty-state-title">
+                No {countLabel} {query ? `match “${query}”` : 'match the filters'}
+              </NoResultsHeading>
+              <p className="itg-empty-state-text">
+                Check the spelling, or try a team, sponsor or industry name.
+                {noResultsHint ? ` ${noResultsHint}` : ''}
+              </p>
+              <div className="itg-empty-state-actions">
+                <button
+                  type="button"
+                  className="itg-btn itg-btn-outline"
+                  onClick={() => {
+                    onSearchChange('');
+                    onClearFilters?.();
+                  }}
+                >
+                  Clear search
+                </button>
+                {noResultsActions}
+              </div>
+            </div>
+          ) : null}
+
+          {totalCount > 0 && !noResults ? (
+            <>
+              <ProjectGridDesktopTable
+                columns={columns}
+                rows={rows}
+                pagedRows={pagedRows}
+                linkScope={linkScope}
+                selectable={selectable}
+                selectedKeys={selectedKeys}
+                selectAllStateRows={selectAllStateRows}
+                onToggleSelected={onToggleSelected}
+                onToggleSelectAll={onToggleSelectAll}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSortChange={onSortChange}
+                expandedKeys={expandedKeys}
+                onToggleExpanded={onToggleExpanded}
+                onDeleteRow={onDeleteRow}
+                deleteDisabled={deleteDisabled}
+                loadMissingDetails={loadMissingDetails}
+                isRowSaved={isRowSaved}
+                savedRowLabel={savedRowLabel}
+                highlightedKeys={highlightedKeys}
+              />
+
+              <ProjectGridMobileCards
+                columns={columns}
+                pagedRows={pagedRows}
+                linkScope={linkScope}
+                expandedKeys={expandedKeys}
+                onToggleExpanded={onToggleExpanded}
+                selectable={selectable}
+                selectedKeys={selectedKeys}
+                onToggleSelected={onToggleSelected}
+                onDeleteRow={onDeleteRow}
+                deleteDisabled={deleteDisabled}
+                loadMissingDetails={loadMissingDetails}
+                isRowSaved={isRowSaved}
+                savedRowLabel={savedRowLabel}
+                highlightedKeys={highlightedKeys}
+              />
+            </>
+          ) : null}
+
+          {totalPages > 1 ? <ProjectGridPager page={page} totalPages={totalPages} onPageChange={onPageChange} /> : null}
         </>
       ) : null}
 

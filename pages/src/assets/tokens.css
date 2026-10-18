@@ -1,23 +1,89 @@
 /* ==========================================================================
-   Fallback design tokens — used before the layout API responds.
-   Full tokens are managed in Django Admin (SiteSettings → Design Tokens)
-   and injected at runtime by LayoutProvider.
+   Fallback design tokens.
+   The live values come from Django Admin (Site Settings -> Design Tokens) and
+   are served at the top of /api/layout/styles.css. These fallbacks sit in a
+   cascade layer, so any token the server defines wins even though this file
+   loads later; they only fill in when the server sheet is missing a token.
+   Keep in sync with default_design_tokens() in
+   src/apps/cms/models/content/layout/site_settings.py.
    ========================================================================== */
 
-:root {
-  --itg-color-primary: #0f2d52;
-  --itg-color-text: #444;
-  --itg-color-text-dark: #333;
-  --itg-color-text-secondary: #666;
-  --itg-color-bg-page: #f9f9f9;
-  --itg-color-white: #fff;
-  --itg-color-border: #e0e0e0;
-  --itg-font-size-body: 1rem;
-  --itg-font-size-h1: 2rem;
-  --itg-page-max-width: 1200px;
-  --itg-page-padding: 2rem 1rem;
-  --itg-page-padding-mobile: 1rem;
-  --itg-radius-card: 8px;
-  --itg-radius-button: 4px;
-  --itg-transition-fast: 0.2s;
+@layer itg-fallback-tokens {
+  :root {
+    --itg-color-primary: #0f2d52;
+    --itg-color-primary-hover: #005487;
+    --itg-color-secondary: #005487;
+    --itg-color-text: #323336;
+    --itg-color-text-dark: #333333;
+    --itg-color-text-secondary: #555555;
+    --itg-color-bg-light: #f2f2f2;
+    --itg-color-bg-panel: #f7f7f7;
+    --itg-color-bg-page: #ffffff;
+    --itg-color-white: #fff;
+    --itg-color-border: #dddddd;
+    --itg-color-border-table: #cccccc;
+    --itg-color-border-input: #cccccc;
+    --itg-color-accent-gold: #dbaa00;
+    --itg-color-accent-gold-hover: #be882c;
+    --itg-color-accent-bright: #ffbf3c;
+    --itg-color-accent-menu: #f8bd38;
+    --itg-color-sidebar-rule: #0f5479;
+    --itg-color-footer-bar: #142d52;
+    --itg-color-footer-bar-rule: #d9a928;
+    --itg-color-highlight: #fff6db;
+    --itg-color-tag-new: #ffe9a8;
+    --itg-color-success: #1e7b34;
+    --itg-color-disabled-text: #6b6b6b;
+    --itg-color-disabled-bg: #efefef;
+    --itg-color-disabled-border: #d6d6d6;
+    --itg-color-footer-bg: #e5e5e5;
+    --itg-color-error: #9b1c1c;
+    --itg-color-error-light: #b30000;
+
+    --itg-font-family-body: 'Open Sans', 'Segoe UI', Arial, sans-serif;
+    --itg-font-family-display: 'Khula', 'Open Sans', 'Segoe UI', Arial, sans-serif;
+    --itg-font-size-hero: 3rem;
+    --itg-font-size-h1: 2.25rem;
+    --itg-font-size-h2: 1.75rem;
+    --itg-font-size-h3: 1.5rem;
+    --itg-font-size-h4: 1.25rem;
+    --itg-font-size-lead: 1.125rem;
+    --itg-font-size-subtitle: 1.125rem;
+    --itg-font-size-body: 1rem;
+    --itg-font-size-meta: 1rem;
+    --itg-font-size-small: 0.875rem;
+    --itg-font-size-label: 1rem;
+    --itg-line-height-body: 1.5;
+    --itg-line-height-meta: 1.5;
+    --itg-line-height-heading: 1.5;
+    --itg-line-height-card: 1.4;
+    --itg-line-height-summary: 1.5;
+    --itg-font-size-hero-mobile: 2rem;
+    --itg-font-size-h1-mobile: 2.25rem;
+    --itg-font-size-h2-mobile: 1.75rem;
+    --itg-font-size-h3-mobile: 1.5rem;
+    --itg-font-size-h4-mobile: 1.25rem;
+    --itg-font-size-lead-mobile: 1.125rem;
+    --itg-font-size-table-mobile: 0.875rem;
+
+    --itg-page-max-width: 1170px;
+    --itg-page-narrow-width: 870px;
+    --itg-page-gutter: 1.5rem;
+    --itg-page-gutter-mobile: 1.25rem;
+    --itg-page-padding: 1rem 1.5rem 3rem;
+    --itg-page-padding-mobile: 1rem 1.25rem 2.5rem;
+    --itg-sidebar-width: 270px;
+    --itg-section-gap: 2rem;
+    --itg-list-indent: 1.5625rem;
+
+    --itg-radius-card: 0;
+    --itg-radius-button: 0;
+    --itg-radius-image: 0;
+    --itg-radius-input: 4px;
+
+    --itg-transition-fast: 0.2s;
+    --itg-transition-link: 0.15s;
+    --itg-shadow-card-hover: 0 2px 8px rgba(15, 45, 82, 0.12);
+    --itg-shadow-header: 0 6px 6px -2px rgba(121, 121, 121, 0.67);
+  }
 }

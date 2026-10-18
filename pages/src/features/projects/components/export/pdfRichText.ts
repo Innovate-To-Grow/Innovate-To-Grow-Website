@@ -1,9 +1,10 @@
 import type {jsPDF} from 'jspdf';
 
 import type {StyledRun} from './exportRichText';
+import {HIGHLIGHT_FILL_RGB, TEXT_COLOR_RGB} from './exportTypes';
 
-const HIGHLIGHT_RGB: [number, number, number] = [255, 243, 163];
-const TEXT_RGB: [number, number, number] = [32, 54, 77];
+const HIGHLIGHT_RGB = HIGHLIGHT_FILL_RGB;
+const TEXT_RGB = TEXT_COLOR_RGB;
 
 interface Token {
   text: string;

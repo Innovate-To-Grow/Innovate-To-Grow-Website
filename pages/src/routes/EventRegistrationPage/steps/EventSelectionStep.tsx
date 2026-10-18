@@ -10,7 +10,7 @@ interface EventSelectionStepProps {
 
 export const EventSelectionStep = ({events, selectedEventSlug, onSelect}: EventSelectionStepProps) => {
   if (events.length === 0) {
-    return <div className="event-reg-loading">No event is currently accepting registrations.</div>;
+    return <p className="event-reg-loading">No event is currently accepting registrations.</p>;
   }
 
   return (
@@ -26,7 +26,7 @@ export const EventSelectionStep = ({events, selectedEventSlug, onSelect}: EventS
             <div className="event-reg-event-card-main">
               <div className="event-reg-event-card-header">
                 <h2 className="event-reg-event-card-title">{event.name}</h2>
-                <span className={`event-reg-event-status${registered ? ' is-registered' : ''}`}>
+                <span className={`itg-tag event-reg-event-status ${registered ? 'itg-tag-saved is-registered' : 'itg-tag-new'}`}>
                   {registered ? 'Registered' : 'Open'}
                 </span>
               </div>
@@ -44,7 +44,7 @@ export const EventSelectionStep = ({events, selectedEventSlug, onSelect}: EventS
             </div>
             <button
               type="button"
-              className="event-reg-submit event-reg-event-action"
+              className={`itg-btn ${registered ? 'itg-btn-outline' : 'itg-btn-primary'} event-reg-event-action`}
               onClick={() => onSelect(event.slug)}
             >
               {registered ? 'View Ticket' : 'Register'}

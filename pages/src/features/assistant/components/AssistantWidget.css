@@ -5,10 +5,10 @@
 
 .itg-assistant {
   /* Reset font so the widget is independent of inherited page chrome. */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--itg-font-family-body, 'Open Sans', 'Segoe UI', Arial, sans-serif);
   font-size: 0.9375rem;
   line-height: 1.45;
-  color: var(--itg-color-text, #444);
+  color: var(--itg-color-text, #323336);
 }
 
 /* ---- Launcher button --------------------------------------------------- */
@@ -24,23 +24,21 @@
   height: 56px;
   padding: 0;
   border: none;
-  border-radius: 50%;
+  border-bottom: 4px solid var(--itg-color-accent-gold, #dbaa00);
+  border-radius: 0;
   background: var(--itg-color-primary, #0f2d52);
   color: var(--itg-color-white, #fff);
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-  transition:
-    transform var(--itg-transition-fast, 0.2s) ease,
-    box-shadow var(--itg-transition-fast, 0.2s) ease;
+  box-shadow: var(--itg-shadow-header, 0 6px 6px -2px rgba(121, 121, 121, 0.67));
+  transition: background-color var(--itg-transition-fast, 0.2s) ease;
 }
 
 .itg-assistant__launcher:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  background: var(--itg-color-primary-hover, #005487);
 }
 
 .itg-assistant__launcher:focus-visible {
-  outline: 3px solid var(--itg-color-white, #fff);
+  outline: 2px solid var(--itg-color-secondary, #005487);
   outline-offset: 2px;
 }
 
@@ -62,9 +60,9 @@
   height: 560px;
   max-height: calc(100vh - 2rem);
   background: var(--itg-color-white, #fff);
-  border: 1px solid var(--itg-color-border, #e0e0e0);
-  border-radius: var(--itg-radius-card, 8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--itg-color-border, #ddd);
+  border-radius: 0;
+  box-shadow: var(--itg-shadow-header, 0 6px 6px -2px rgba(121, 121, 121, 0.67));
   overflow: hidden;
 }
 
@@ -74,13 +72,17 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
+  border-bottom: 3px solid var(--itg-color-accent-gold, #dbaa00);
   background: var(--itg-color-primary, #0f2d52);
   color: var(--itg-color-white, #fff);
   flex: 0 0 auto;
 }
 
+/* Explicit colour: the global heading rule paints every h1-h6 navy, which would
+   vanish on the navy header. */
 .itg-assistant__title {
   margin: 0;
+  color: var(--itg-color-white, #fff);
   font-size: 1rem;
   font-weight: 600;
 }
@@ -94,10 +96,12 @@
 .itg-assistant__new {
   padding: 0.3rem 0.6rem;
   border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: var(--itg-radius-button, 4px);
+  border-radius: 0;
   background: transparent;
   color: var(--itg-color-white, #fff);
+  font: inherit;
   font-size: 0.8125rem;
+  font-weight: 600;
   line-height: 1.2;
   cursor: pointer;
   transition: background var(--itg-transition-fast, 0.2s) ease;
@@ -120,7 +124,7 @@
   height: 32px;
   padding: 0;
   border: none;
-  border-radius: var(--itg-radius-button, 4px);
+  border-radius: 0;
   background: transparent;
   color: var(--itg-color-white, #fff);
   font-size: 1.5rem;
@@ -146,29 +150,27 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  background: var(--itg-color-bg-page, #f9f9f9);
+  background: var(--itg-color-bg-light, #f2f2f2);
 }
 
 .itg-assistant__bubble {
   max-width: 85%;
   padding: 0.5rem 0.75rem;
-  border-radius: 14px;
+  border-radius: 0;
   word-wrap: break-word;
 }
 
 .itg-assistant__bubble--assistant {
   align-self: flex-start;
   background: var(--itg-color-white, #fff);
-  border: 1px solid var(--itg-color-border, #e0e0e0);
-  color: var(--itg-color-text-dark, #333);
-  border-bottom-left-radius: 4px;
+  border: 1px solid var(--itg-color-border, #ddd);
+  color: var(--itg-color-text-dark, #333333);
 }
 
 .itg-assistant__bubble--user {
   align-self: flex-end;
   background: var(--itg-color-primary, #0f2d52);
   color: var(--itg-color-white, #fff);
-  border-bottom-right-radius: 4px;
   /* User input is plain text; preserve their newlines and spacing. */
   white-space: pre-wrap;
 }
@@ -207,7 +209,8 @@
 }
 
 .itg-assistant__bubble--assistant a {
-  color: var(--itg-color-primary, #0f2d52);
+  color: var(--itg-color-secondary, #005487);
+  font-weight: 600;
   text-decoration: underline;
 }
 
@@ -223,7 +226,7 @@
   margin: 0.5rem 0;
   padding: 0.6rem 0.75rem;
   overflow-x: auto;
-  border-radius: 6px;
+  border-radius: 0;
   background: rgba(0, 0, 0, 0.06);
 }
 
@@ -238,8 +241,8 @@
 .itg-assistant__bubble--assistant blockquote {
   margin: 0.5rem 0;
   padding-left: 0.75rem;
-  border-left: 3px solid var(--itg-color-border, #e0e0e0);
-  color: var(--itg-color-text-secondary, #666);
+  border-left: 3px solid var(--itg-color-accent-gold, #dbaa00);
+  color: var(--itg-color-text-secondary, #555555);
 }
 
 .itg-assistant__bubble--assistant table {
@@ -251,8 +254,13 @@
 .itg-assistant__bubble--assistant th,
 .itg-assistant__bubble--assistant td {
   padding: 0.3rem 0.5rem;
-  border: 1px solid var(--itg-color-border, #e0e0e0);
+  border-bottom: 1px solid var(--itg-color-border, #ddd);
   text-align: left;
+}
+
+.itg-assistant__bubble--assistant thead th {
+  border-bottom: 3px solid var(--itg-color-accent-gold, #dbaa00);
+  color: var(--itg-color-primary, #0f2d52);
 }
 
 /* ---- Starter questions ------------------------------------------------- */
@@ -266,10 +274,12 @@
 .itg-assistant__starter {
   padding: 0.4rem 0.7rem;
   border: 1px solid var(--itg-color-primary, #0f2d52);
-  border-radius: 16px;
+  border-radius: 0;
   background: var(--itg-color-white, #fff);
   color: var(--itg-color-primary, #0f2d52);
+  font: inherit;
   font-size: 0.8125rem;
+  font-weight: 600;
   cursor: pointer;
   text-align: left;
   transition:
@@ -282,8 +292,15 @@
   color: var(--itg-color-white, #fff);
 }
 
+.itg-assistant__starter:focus-visible {
+  outline: 2px solid var(--itg-color-secondary, #005487);
+  outline-offset: 2px;
+}
+
 .itg-assistant__starter:disabled {
-  opacity: 0.6;
+  border-color: var(--itg-color-disabled-border, #d6d6d6);
+  background: var(--itg-color-disabled-bg, #efefef);
+  color: var(--itg-color-disabled-text, #6b6b6b);
   cursor: not-allowed;
 }
 
@@ -294,16 +311,15 @@
   gap: 4px;
   padding: 0.6rem 0.85rem;
   background: var(--itg-color-white, #fff);
-  border: 1px solid var(--itg-color-border, #e0e0e0);
-  border-radius: 14px;
-  border-bottom-left-radius: 4px;
+  border: 1px solid var(--itg-color-border, #ddd);
+  border-radius: 0;
 }
 
 .itg-assistant__loading-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--itg-color-text-secondary, #666);
+  background: var(--itg-color-primary, #0f2d52);
   animation: itg-assistant-bounce 1.2s infinite ease-in-out both;
 }
 
@@ -339,34 +355,44 @@
 .itg-assistant__error {
   align-self: stretch;
   padding: 0.6rem 0.75rem;
-  border: 1px solid #d9534f;
-  border-radius: var(--itg-radius-card, 8px);
-  background: #fdecea;
-  color: #842029;
+  border: 1px solid var(--itg-color-border, #ddd);
+  border-left: 4px solid var(--itg-color-error, #9b1c1c);
+  border-radius: 0;
+  background: var(--itg-color-white, #fff);
+  color: var(--itg-color-error, #9b1c1c);
   font-size: 0.875rem;
 }
 
 .itg-assistant__retry {
   margin-top: 0.5rem;
   padding: 0.35rem 0.75rem;
-  border: 1px solid #842029;
-  border-radius: var(--itg-radius-button, 4px);
+  border: 1px solid var(--itg-color-error, #9b1c1c);
+  border-radius: 0;
   background: transparent;
-  color: #842029;
+  color: var(--itg-color-error, #9b1c1c);
   cursor: pointer;
+  font: inherit;
   font-size: 0.8125rem;
+  font-weight: 700;
 }
 
 .itg-assistant__retry:hover {
-  background: rgba(132, 32, 41, 0.08);
+  background: var(--itg-color-error, #9b1c1c);
+  color: var(--itg-color-white, #fff);
+}
+
+.itg-assistant__retry:focus-visible {
+  outline: 2px solid var(--itg-color-secondary, #005487);
+  outline-offset: 2px;
 }
 
 .itg-assistant__unavailable {
   align-self: stretch;
   padding: 0.75rem;
   text-align: center;
-  color: var(--itg-color-text-secondary, #666);
+  color: var(--itg-color-text-secondary, #555555);
   font-size: 0.875rem;
+  font-style: italic;
 }
 
 /* ---- Input row --------------------------------------------------------- */
@@ -376,7 +402,7 @@
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.75rem;
-  border-top: 1px solid var(--itg-color-border, #e0e0e0);
+  border-top: 1px solid var(--itg-color-border, #ddd);
   background: var(--itg-color-white, #fff);
 }
 
@@ -391,49 +417,66 @@
   resize: none;
   max-height: 96px;
   padding: 0.5rem 0.6rem;
-  border: 1px solid var(--itg-color-border, #e0e0e0);
-  border-radius: var(--itg-radius-button, 4px);
+  border: 1px solid var(--itg-color-border-input, #ccc);
+  border-radius: var(--itg-radius-input, 4px);
   font-family: inherit;
   font-size: 0.9375rem;
   line-height: 1.4;
-  color: var(--itg-color-text-dark, #333);
+  color: var(--itg-color-text-dark, #333333);
 }
 
 .itg-assistant__textarea:focus-visible {
-  outline: 2px solid var(--itg-color-primary, #0f2d52);
-  outline-offset: 0;
+  outline: 2px solid var(--itg-color-secondary, #005487);
+  outline-offset: 2px;
 }
 
 .itg-assistant__textarea:disabled {
-  background: var(--itg-color-bg-page, #f9f9f9);
+  background: var(--itg-color-disabled-bg, #efefef);
+  color: var(--itg-color-disabled-text, #6b6b6b);
   cursor: not-allowed;
 }
 
 .itg-assistant__send {
   flex: 0 0 auto;
-  padding: 0.5rem 0.9rem;
-  border: none;
-  border-radius: var(--itg-radius-button, 4px);
+  min-height: 40px;
+  padding: 0 1rem;
+  border: 1px solid var(--itg-color-primary, #0f2d52);
+  border-radius: 0;
   background: var(--itg-color-primary, #0f2d52);
   color: var(--itg-color-white, #fff);
-  font-weight: 600;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity var(--itg-transition-fast, 0.2s) ease;
+  transition: background-color var(--itg-transition-fast, 0.2s) ease;
+}
+
+.itg-assistant__send:hover:not(:disabled) {
+  border-color: var(--itg-color-primary-hover, #005487);
+  background: var(--itg-color-primary-hover, #005487);
+}
+
+.itg-assistant__send:focus-visible {
+  outline: 2px solid var(--itg-color-secondary, #005487);
+  outline-offset: 2px;
 }
 
 .itg-assistant__send:disabled {
-  opacity: 0.5;
+  border-color: var(--itg-color-disabled-border, #d6d6d6);
+  background: var(--itg-color-disabled-bg, #efefef);
+  color: var(--itg-color-disabled-text, #6b6b6b);
   cursor: not-allowed;
 }
 
 .itg-assistant__counter {
   align-self: flex-end;
   font-size: 0.75rem;
-  color: var(--itg-color-text-secondary, #666);
+  color: var(--itg-color-text-secondary, #555555);
 }
 
 .itg-assistant__counter--over {
-  color: #d9534f;
+  color: var(--itg-color-error, #9b1c1c);
+  font-weight: 700;
 }
 
 /* ---- Mobile: near-full-width bottom sheet ------------------------------ */
@@ -445,7 +488,7 @@
     bottom: 0;
     height: auto;
     max-height: 80vh;
-    border-radius: 16px 16px 0 0;
+    border-radius: 0;
     border-left: none;
     border-right: none;
     border-bottom: none;

@@ -62,7 +62,7 @@ export const ProfileSection = ({
   onStartEditing,
   onCancelEditing,
 }: ProfileSectionProps) => (
-  <div className="account-section account-profile-section">
+  <div className="itg-panel account-section account-profile-section">
     <h2 className="account-section-title">Profile Information</h2>
 
     <div className="profile-image-section">
@@ -90,7 +90,7 @@ export const ProfileSection = ({
           type="file"
           accept="image/*"
           onChange={onImageChange}
-          style={{display: 'none'}}
+          className="sr-only profile-image-input"
           disabled={imageUploading}
         />
       </div>
@@ -106,7 +106,7 @@ export const ProfileSection = ({
         <span className="account-profile-error-text">{profileError}</span>
         <button
           type="button"
-          className="auth-verify-resend account-retry-btn"
+          className="itg-btn itg-btn-text account-retry-btn"
           onClick={onRetryProfile}
         >
           Retry
@@ -117,11 +117,11 @@ export const ProfileSection = ({
     <form className="auth-form account-profile-form" onSubmit={onSubmit}>
       <div className="account-form-row">
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="account-first-name">First Name</label>
+          <label className="itg-label auth-form-label" htmlFor="account-first-name">First Name</label>
           <input
             id="account-first-name"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={firstName}
             onChange={(event) => onFirstNameChange(event.target.value)}
             autoComplete="given-name"
@@ -130,11 +130,11 @@ export const ProfileSection = ({
         </div>
 
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="account-middle-name">Middle Name</label>
+          <label className="itg-label auth-form-label" htmlFor="account-middle-name">Middle Name</label>
           <input
             id="account-middle-name"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={middleName}
             onChange={(event) => onMiddleNameChange(event.target.value)}
             autoComplete="additional-name"
@@ -143,11 +143,11 @@ export const ProfileSection = ({
         </div>
 
         <div className="auth-form-group auth-form-group--full-width">
-          <label className="auth-form-label" htmlFor="account-last-name">Last Name</label>
+          <label className="itg-label auth-form-label" htmlFor="account-last-name">Last Name</label>
           <input
             id="account-last-name"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={lastName}
             onChange={(event) => onLastNameChange(event.target.value)}
             autoComplete="family-name"
@@ -157,11 +157,12 @@ export const ProfileSection = ({
       </div>
 
       <div className="auth-form-group">
-        <label className="auth-form-label">Organization</label>
+        <label className="itg-label auth-form-label">Organization</label>
         <div className="auth-org-toggle">
           <button
             type="button"
             className={`auth-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
+            aria-pressed={organizationType === 'organization'}
             onClick={() => onOrganizationTypeChange('organization')}
             disabled={!isEditingProfile}
           >
@@ -170,6 +171,7 @@ export const ProfileSection = ({
           <button
             type="button"
             className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+            aria-pressed={organizationType === 'individual'}
             onClick={() => onOrganizationTypeChange('individual')}
             disabled={!isEditingProfile}
           >
@@ -180,7 +182,7 @@ export const ProfileSection = ({
           <input
             id="account-organization"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={organization}
             onChange={(event) => onOrganizationChange(event.target.value)}
             placeholder="Company or organization name"
@@ -193,13 +195,13 @@ export const ProfileSection = ({
 
       {organizationType === 'organization' && (
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="account-title">
+          <label className="itg-label auth-form-label" htmlFor="account-title">
             Title <span className="account-label-hint">(optional)</span>
           </label>
           <input
             id="account-title"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={title}
             onChange={(event) => onTitleChange(event.target.value)}
             placeholder="Your title or position (e.g. CEO, Director)"
@@ -211,15 +213,15 @@ export const ProfileSection = ({
 
       {isEditingProfile ? (
         <div className="account-action-row">
-          <button type="submit" className="auth-form-submit account-action-primary" disabled={profileSaving}>
+          <button type="submit" className="itg-btn itg-btn-primary account-action-primary" disabled={profileSaving}>
             {profileSaving ? <><span className="auth-spinner" /> Saving...</> : 'Save Profile'}
           </button>
-          <button type="button" className="account-edit-btn" onClick={onCancelEditing}>
+          <button type="button" className="itg-btn itg-btn-outline account-edit-btn" onClick={onCancelEditing}>
             Cancel
           </button>
         </div>
       ) : (
-        <button type="button" className="account-edit-btn" onClick={onStartEditing}>
+        <button type="button" className="itg-btn itg-btn-outline account-edit-btn" onClick={onStartEditing}>
           Edit Profile
         </button>
       )}

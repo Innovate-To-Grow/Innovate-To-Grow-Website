@@ -168,7 +168,7 @@ export const SheetsDataTable = ({
     <div className="sdt-container" id="projects">
       <div className="sdt-controls">
         <input
-          className="sdt-search"
+          className="itg-input sdt-search"
           type="search"
           aria-label="Search projects"
           placeholder="Search projects..."
@@ -180,8 +180,8 @@ export const SheetsDataTable = ({
         </span>
       </div>
 
-      <div className="sdt-table-wrap">
-        <table className="sdt-table">
+      <div className="itg-table-wrap sdt-table-wrap">
+        <table className="itg-table sdt-table">
           <thead>
             <tr>
               {columns.map((column) => {
@@ -209,24 +209,43 @@ export const SheetsDataTable = ({
                   </th>
                 );
               })}
-              <th
-                scope="col"
-                className="sdt-th sdt-th-expand"
-                aria-label="Project details"
-              />
+              <th scope="col" className="sdt-th sdt-th-expand">
+                Details
+              </th>
             </tr>
           </thead>
           <tbody>
-            {paged.map(({key, detailId, row}) => {
+            {paged.length === 0 ? (
+              <tr className="sdt-empty-row">
+                <td colSpan={columns.length + 1}>
+                  {rows.length === 0
+                    ? 'No data available in table'
+                    : 'No matching records found'}
+                </td>
+              </tr>
+            ) : null}
+            {paged.map(({key, detailId, row}, index) => {
               const isExpanded = expandedKey === key;
               const hasDetails = Boolean(
                 row.Abstract || row['Student Names'],
               );
               return (
                 <Fragment key={key}>
-                  <tr className={isExpanded ? 'sdt-row-expanded' : ''}>
+                  <tr
+                    className={[
+                      'sdt-row',
+                      // Striped over the project rows only, so an open row's details do not shift the stripes.
+                      index % 2 === 0 ? 'is-odd' : '',
+                      isExpanded ? 'sdt-row-expanded is-expanded' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
                     {columns.map((column) => (
-                      <td key={column.key} className="sdt-td">
+                      <td
+                        key={column.key}
+                        className={`sdt-td${column.key === sortField ? ' is-sorted-col' : ''}`}
+                      >
                         {row[column.key]}
                       </td>
                     ))}
@@ -244,28 +263,26 @@ export const SheetsDataTable = ({
                             setExpandedKey(isExpanded ? null : key)
                           }
                         >
-                          {isExpanded ? '\u25B2' : '\u25BC'}
+                          <span className="sdt-expand-icon" aria-hidden="true" />
                         </button>
                       ) : null}
                     </td>
                   </tr>
                   {isExpanded ? (
-                    <tr className="sdt-detail-row">
+                    <tr className="sdt-detail-row is-expanded">
                       <td
                         id={detailId}
                         colSpan={columns.length + 1}
                         className="sdt-detail-cell"
                       >
                         {row.Abstract ? (
-                          <div className="sdt-detail-section">
-                            <strong>Abstract:</strong> {row.Abstract}
-                          </div>
+                          <p className="sdt-detail-section">{row.Abstract}</p>
                         ) : null}
                         {row['Student Names'] ? (
-                          <div className="sdt-detail-section">
-                            <strong>Student Names:</strong>{' '}
+                          <p className="sdt-detail-section">
+                            <strong>Team members:</strong>{' '}
                             {row['Student Names']}
-                          </div>
+                          </p>
                         ) : null}
                       </td>
                     </tr>
@@ -278,21 +295,21 @@ export const SheetsDataTable = ({
       </div>
 
       {totalPages > 1 ? (
-        <div className="sdt-pagination">
+        <nav className="itg-pagination sdt-pagination" aria-label="Project pages">
           <button
             type="button"
-            className="sdt-page-btn"
+            className="itg-pagination-link sdt-page-btn"
             disabled={currentPage === 0}
             onClick={() => setPage((current) => Math.max(0, current - 1))}
           >
             Previous
           </button>
-          <span className="sdt-page-info">
+          <span className="itg-pagination-info sdt-page-info">
             Page {currentPage + 1} of {totalPages}
           </span>
           <button
             type="button"
-            className="sdt-page-btn"
+            className="itg-pagination-link sdt-page-btn"
             disabled={currentPage >= totalPages - 1}
             onClick={() =>
               setPage((current) =>
@@ -302,7 +319,7 @@ export const SheetsDataTable = ({
           >
             Next
           </button>
-        </div>
+        </nav>
       ) : null}
     </div>
   );

@@ -59,15 +59,15 @@ export function EmailAuthLinkPage() {
   if (error) {
     return (
       <div className="magic-login-page">
-        <p className="magic-login-error">{error}</p>
-        <a href="/login" className="magic-login-link">Go to Login</a>
+        <p className="itg-notice itg-notice-error magic-login-error" role="alert">{error}</p>
+        <a href="/login" className="itg-btn itg-btn-primary magic-login-link">Go to Login</a>
       </div>
     );
   }
 
   return (
     <div className="magic-login-page">
-      <p>Verifying your email...</p>
+      <p className="magic-login-status" role="status">Verifying your email...</p>
     </div>
   );
 }

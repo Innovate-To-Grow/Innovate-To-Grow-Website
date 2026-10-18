@@ -1,3 +1,5 @@
+/* Progress note for a verified send (solving the challenge, sending the code).
+   A square toast with the gold rule, bottom centre. */
 .verified-send-status {
   position: fixed;
   z-index: 1000;
@@ -7,13 +9,14 @@
   box-sizing: border-box;
   max-width: min(90vw, 28rem);
   margin: 0;
-  padding: 0.65rem 0.9rem;
-  border: 1px solid var(--itg-color-border, #d9dee5);
-  border-radius: 0.5rem;
-  background: #fff;
-  box-shadow: 0 4px 18px rgba(15, 45, 82, 0.12);
-  font-size: 0.9rem;
-  color: var(--itg-color-text-secondary, #666);
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--itg-color-border, #ddd);
+  border-top: 3px solid var(--itg-color-accent-gold, #dbaa00);
+  border-radius: 0;
+  background: var(--itg-color-white, #fff);
+  box-shadow: var(--itg-shadow-header, 0 6px 6px -2px rgba(121, 121, 121, 0.67));
+  font-size: var(--itg-font-size-small, 0.875rem);
+  color: var(--itg-color-text-secondary, #555555);
   pointer-events: none;
   text-align: center;
 }
@@ -21,5 +24,5 @@
 .verified-send-status--solving,
 .verified-send-status--challenging,
 .verified-send-status--sending {
-  color: var(--itg-color-text, #444);
+  color: var(--itg-color-text, #323336);
 }

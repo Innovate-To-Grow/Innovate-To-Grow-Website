@@ -216,10 +216,47 @@ describe('useCurrentProjectGridData', () => {
         expect(result.current.error).toBe('Failed to load current projects');
     });
 
+    it('links each row to its project and names the classes from the schedule sections', async () => {
+        mockFetchCurrentSchedule.mockResolvedValue({
+            projects: [
+                scheduleRow,
+                {...scheduleRow, id: 'slot-without-project', team_number: '102'},
+                {...scheduleRow, id: 'project-9', track: 0, order: 0, year_semester: '', is_presenting: false},
+            ],
+            sections: [
+                {
+                    code: 'CAP',
+                    label: 'Engineering Capstone',
+                    tracks: [
+                        {
+                            slots: [
+                                {id: 'schedule-1', project_id: 'project-1'},
+                                {id: 'slot-without-project', project_id: null},
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        const {result} = renderHook(() => useCurrentProjectGridData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // A presenting row is a schedule slot: it links to the slot's project, when the slot has one.
+        expect(result.current.rows.map((row) => row.id)).toEqual(['project-1', undefined, 'project-9']);
+        expect(result.current.classLabels).toEqual({CAP: 'Engineering Capstone'});
+    });
+
     it('returns immediately without loading when disabled', () => {
         const {result} = renderHook(() => useCurrentProjectGridData(false));
 
-        expect(result.current).toEqual({rows: [], loading: false, error: null, refetch: expect.any(Function)});
+        expect(result.current).toEqual({
+            rows: [],
+            loading: false,
+            error: null,
+            refetch: expect.any(Function),
+            classLabels: {},
+        });
         expect(mockFetchCurrentSchedule).not.toHaveBeenCalled();
     });
 
@@ -272,7 +309,13 @@ describe('usePastProjectShareData', () => {
     it('returns null share without loading when no share id is provided', () => {
         const {result} = renderHook(() => usePastProjectShareData(undefined));
 
-        expect(result.current).toEqual({share: null, loading: false, error: null});
+        expect(result.current).toEqual({
+            share: null,
+            loading: false,
+            error: null,
+            notFound: false,
+            retry: expect.any(Function),
+        });
         expect(mockFetchPastProjectShare).not.toHaveBeenCalled();
     });
 
@@ -296,6 +339,48 @@ describe('usePastProjectShareData', () => {
         await waitFor(() => expect(result.current.loading).toBe(false));
         expect(result.current.error).toBe('not found');
         expect(result.current.share).toBeNull();
+        // No HTTP status: the request failed, which says nothing about whether the list exists.
+        expect(result.current.notFound).toBe(false);
+    });
+
+    it.each([404, 400])('reports a share the API answers %i for as not found', async (status) => {
+        mockFetchPastProjectShare.mockRejectedValue(
+            Object.assign(new Error(`Request failed with status code ${status}`), {response: {status}}),
+        );
+
+        const {result} = renderHook(() => usePastProjectShareData('share-1'));
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+        expect(result.current.notFound).toBe(true);
+    });
+
+    it.each([500, 502, 503])('does not report a %i as a missing share', async (status) => {
+        mockFetchPastProjectShare.mockRejectedValue(
+            Object.assign(new Error(`Request failed with status code ${status}`), {response: {status}}),
+        );
+
+        const {result} = renderHook(() => usePastProjectShareData('share-1'));
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+        expect(result.current.error).toBe(`Request failed with status code ${status}`);
+        expect(result.current.notFound).toBe(false);
+    });
+
+    it('loads the share again on retry after a failed request', async () => {
+        mockFetchPastProjectShare.mockRejectedValueOnce(new Error('Network Error')).mockResolvedValueOnce(makeShare());
+
+        const {result} = renderHook(() => usePastProjectShareData('share-1'));
+
+        await waitFor(() => expect(result.current.error).toBe('Network Error'));
+
+        act(() => result.current.retry());
+        expect(result.current.loading).toBe(true);
+        expect(result.current.error).toBeNull();
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+        expect(result.current.share).toMatchObject({id: 'share-1'});
+        expect(result.current.error).toBeNull();
+        expect(mockFetchPastProjectShare).toHaveBeenCalledTimes(2);
     });
 
     it('falls back to a generic message for non-Error rejections', async () => {

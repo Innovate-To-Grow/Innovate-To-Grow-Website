@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { BlockRenderer } from './BlockRenderer';
+import { cmsPageClassName } from './pageClassName';
 import {
   clearCMSRouteRedirectChain,
   performCMSRouteRedirect,
@@ -138,8 +139,8 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
 
   if (!isLivePreview && currentRedirectFailure === 'error') {
     return (
-      <div className="cms-page-error">
-        <p>Something went wrong loading this page.</p>
+      <div className="cms-page-error" role="alert">
+        <p className="cms-page-error-text">Something went wrong loading this page.</p>
       </div>
     );
   }
@@ -155,8 +156,10 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   if (!isLivePreview && error) {
     return (
       <div className="cms-page-error" role="alert">
-        <p>Something went wrong loading this page.</p>
-        <button type="button" onClick={retry}>Try again</button>
+        <p className="cms-page-error-text">Something went wrong loading this page.</p>
+        <div className="cms-page-error-actions">
+          <button type="button" className="itg-btn itg-btn-outline" onClick={retry}>Try again</button>
+        </div>
       </div>
     );
   }
@@ -170,29 +173,33 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
       {isLivePreview && showPreviewModal && (
         <div className="cms-live-preview-overlay" onClick={() => setShowPreviewModal(false)}>
           <div className="cms-live-preview-modal" onClick={(e) => e.stopPropagation()}>
-            <span className="cms-live-preview-modal-dot" />
+            <span className="cms-live-preview-modal-dot" aria-hidden="true" />
             <p className="cms-live-preview-modal-text">
               Previewing This Page With Content Management System with Admin Permission
             </p>
             {expiryDisplay && (
               <p className="cms-live-preview-modal-expiry">Expires at {expiryDisplay}</p>
             )}
-            <button className="cms-live-preview-modal-close" onClick={() => setShowPreviewModal(false)}>
+            <button
+              type="button"
+              className="itg-btn itg-btn-primary cms-live-preview-modal-close"
+              onClick={() => setShowPreviewModal(false)}
+            >
               OK
             </button>
           </div>
         </div>
       )}
       {isLivePreview && !showPreviewModal && (
-        <div className="cms-live-preview-badge" onClick={() => setShowPreviewModal(true)}>
-          <span className="cms-live-preview-modal-dot" />
+        <button type="button" className="cms-live-preview-badge" onClick={() => setShowPreviewModal(true)}>
+          <span className="cms-live-preview-modal-dot" aria-hidden="true" />
           <span>CMS Preview</span>
           {expiryDisplay && (
             <span className="cms-live-preview-badge-expiry">Expires {expiryDisplay}</span>
           )}
-        </div>
+        </button>
       )}
-      <div className={page?.page_css_class || 'cms-page'}>
+      <div className={cmsPageClassName(page?.page_css_class)}>
         {page && (
           <BlockRenderer
             blocks={page.blocks}

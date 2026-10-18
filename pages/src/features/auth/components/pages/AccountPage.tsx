@@ -18,8 +18,8 @@ export const AccountPage = () => {
     if (account.profileLoading) {
         return (
             <div className="account-page">
-                <div className="account-section">
-                    <p className="account-status-text account-status-text--center">Loading profile...</p>
+                <div className="itg-panel account-section">
+                    <p className="account-status-text" role="status">Loading profile...</p>
                 </div>
             </div>
         );
@@ -27,7 +27,7 @@ export const AccountPage = () => {
 
     return (
         <div className="account-page">
-            <h1 className="account-page-title">Account Dashboard</h1>
+            <h1 className="itg-page-title account-page-title">Account Dashboard</h1>
 
             <div className="account-grid">
                 <div className="account-column account-column--primary">
@@ -92,10 +92,10 @@ export const AccountPage = () => {
                         onNewPasswordChange={account.setNewPassword}
                         onConfirmPasswordChange={account.setConfirmPassword}
                     />
-                    <div className="account-section account-signout-row">
+                    <div className="account-signout-row">
                         <button
                             type="button"
-                            className="profile-logout"
+                            className="itg-btn itg-btn-outline profile-logout"
                             onClick={account.logout}
                         >
                             <Icon name="sign-out" />
