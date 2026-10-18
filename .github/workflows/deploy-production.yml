@@ -155,7 +155,14 @@ jobs:
 
   deploy-frontend:
     name: Deploy frontend targets
-    needs: approve
+    # The SPA requests the CMS stylesheets as /api/layout/styles.css?v=N, and only
+    # the new backend serves version N. Shipping the frontend first would let the
+    # CDN and browsers cache the old CSS under the new version for ten minutes.
+    # Only the order changes: a failed backend leg (prod or demo) does not hold
+    # back the frontend, since new backend tasks may already have migrated the
+    # database to match it.
+    needs: [approve, deploy-backend]
+    if: ${{ !cancelled() && needs.approve.result == 'success' }}
     uses: ./.github/workflows/deploy-frontend.yml
     with:
       deploy_sha: ${{ needs.approve.outputs.deploy_sha }}

@@ -9,6 +9,13 @@ environment. Approving that single gate releases the complete deployment set:
 - frontend production and demo on Amplify;
 - archive production on ECS.
 
+The frontend starts only after both backend targets have finished. It still
+ships if a backend target fails, because new backend tasks run migrations at boot
+and may already have moved the database on. The SPA requests the CMS stylesheets as
+`/api/layout/styles.css?v=N`, and only the new backend serves version `N`; a
+frontend that went out first would let CloudFront and browsers cache the old CSS
+under the new version for ten minutes. The archive deploys in parallel.
+
 The component workflows are reusable workflows called only by
 `deploy-production.yml`. They receive the selected full commit SHA, so automatic
 runs promote the backend image published by CI while frontend and archive check
