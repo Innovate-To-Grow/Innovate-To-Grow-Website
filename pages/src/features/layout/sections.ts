@@ -1,22 +1,17 @@
 import type {MenuItem} from '@/features/layout/api';
-import {isIsolatedRoute} from '@/lib/isolatedRoute';
 
 /**
- * Section resolution shared by the header menu row (current-section underline)
- * and the page shell (sidebar section nav + phone "In <Section>" select).
+ * Section resolution for the header menu row (current-section underline and
+ * aria-current).
  *
  * A "section" is a top-level CMS menu item. The menu row highlights the
  * top-level item whose own URL is the current page, otherwise the first one
- * that contains the page among its descendants. The sidebar only uses
- * top-level items that have children, so a childless top-level duplicate
- * (e.g. "Project Submission") never hides the section it also belongs to.
+ * that contains the page among its descendants.
  */
 
 export interface SectionMatch {
   /** Index of the top-level menu item to underline in the menu row, or null. */
   menuIndex: number | null;
-  /** Top-level item with children that the page belongs to, or null (no sidebar). */
-  section: MenuItem | null;
   /** Normalised path the navigation treats as the current page. */
   currentPath: string;
   /**
@@ -40,24 +35,6 @@ const DETAIL_ROUTE_RULES: ReadonlyArray<readonly [RegExp, readonly string[]]> = 
   [/^\/news\/[^/]+$/, ['/news']],
   [/^\/events\/[^/]+$/, ['/past-events', '/event', '/events']],
   [/^\/membership\/events$/, ['/event-registration']],
-];
-
-/** Pages that never show the section nav (auth + account flows). */
-const NO_SECTION_NAV_PATHS = [
-  '/login',
-  '/register',
-  '/forgot-password',
-  '/verify-email',
-  '/verify-phone',
-  '/complete-profile',
-  '/account',
-  '/profile',
-  '/login-link',
-  '/email-auth-link',
-  '/impersonate-login',
-  '/magic-login',
-  '/ticket-login',
-  '/unsubscribe-login',
 ];
 
 export const normalizePath = (path: string): string => {
@@ -85,8 +62,6 @@ export const menuItemPath = (item: Pick<MenuItem, 'url'>): string | null => {
 const hasDescendantPath = (items: MenuItem[] | undefined, path: string): boolean =>
   (items ?? []).some((child) => menuItemPath(child) === path || hasDescendantPath(child.children, path));
 
-const hasChildren = (item: MenuItem) => Array.isArray(item.children) && item.children.length > 0;
-
 const candidatePaths = (path: string): PathCandidate[] => {
   const candidates: PathCandidate[] = [{path, exact: true}];
   for (const [pattern, targets] of DETAIL_ROUTE_RULES) {
@@ -110,39 +85,18 @@ const findMenuIndex = (items: MenuItem[], path: string): number | null => {
   return parent >= 0 ? parent : null;
 };
 
-const findSection = (items: MenuItem[], path: string): MenuItem | null => {
-  const withChildren = items.filter(hasChildren);
-  return (
-    withChildren.find((item) => menuItemPath(item) === path) ??
-    withChildren.find((item) => hasDescendantPath(item.children, path)) ??
-    null
-  );
-};
-
 export const resolveSection = (items: MenuItem[] | null | undefined, pathname: string): SectionMatch => {
   const path = normalizePath(pathname);
   const menuItems = items ?? [];
   if (path === '/') {
-    return {menuIndex: findMenuIndex(menuItems, '/'), section: null, currentPath: '/', isExact: true};
+    return {menuIndex: findMenuIndex(menuItems, '/'), currentPath: '/', isExact: true};
   }
   for (const candidate of candidatePaths(path)) {
     const menuIndex = findMenuIndex(menuItems, candidate.path);
     if (menuIndex === null) continue;
-    return {
-      menuIndex,
-      section: findSection(menuItems, candidate.path),
-      currentPath: candidate.path,
-      isExact: candidate.exact,
-    };
+    return {menuIndex, currentPath: candidate.path, isExact: candidate.exact};
   }
-  return {menuIndex: null, section: null, currentPath: path, isExact: true};
-};
-
-/** Whether the page shell may show the sidebar / section select on this route. */
-export const allowsSectionNav = (pathname: string, search = ''): boolean => {
-  const path = normalizePath(pathname);
-  if (path === '/' || isIsolatedRoute(pathname, search)) return false;
-  return !NO_SECTION_NAV_PATHS.some((blocked) => path === blocked || path.startsWith(`${blocked}/`));
+  return {menuIndex: null, currentPath: path, isExact: true};
 };
 
 /**
@@ -155,28 +109,4 @@ export const ariaCurrentFor = (
 ): 'page' | 'true' | undefined => {
   if (!itemPath || itemPath !== match.currentPath) return undefined;
   return match.isExact ? 'page' : 'true';
-};
-
-export interface SectionOption {
-  item: MenuItem;
-  label: string;
-  path: string | null;
-}
-
-/** The section landing page (when it is not already one of its children), then every child, depth-first. */
-export const sectionOptions = (section: MenuItem): SectionOption[] => {
-  const options: SectionOption[] = [];
-  const visit = (items: MenuItem[], depth: number) => {
-    for (const item of items) {
-      options.push({item, label: `${'– '.repeat(depth)}${item.title}`, path: menuItemPath(item)});
-      if (item.children?.length) visit(item.children, depth + 1);
-    }
-  };
-  const sectionPath = menuItemPath(section);
-  const isListedAsChild = sectionPath !== null && section.children.some((child) => menuItemPath(child) === sectionPath);
-  if (section.url && !isListedAsChild) {
-    options.push({item: section, label: section.title, path: sectionPath});
-  }
-  visit(section.children, 0);
-  return options;
 };
