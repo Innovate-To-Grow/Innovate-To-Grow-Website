@@ -27,7 +27,8 @@ def _search_style_sheets(name=None, is_active=None, limit=None) -> dict[str, Any
     if is_active is not None:
         qs = qs.filter(is_active=is_active)
     return queryset_payload(
-        qs.order_by("sort_order", "name"),
+        # Active sheets first, so a limited listing is not crowded out by inactive copies.
+        qs.order_by("-is_active", "sort_order", "name"),
         ["id", "name", "display_name", "description", "is_active", "sort_order"],
         limit=limit,
     )
