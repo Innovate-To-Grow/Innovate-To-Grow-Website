@@ -107,8 +107,14 @@ body .past-projects-dialog-actions {
   background: #f8fafc;
 }
 
+/* The CMS sheet only greys out disabled .itg-btn-outline buttons, so a disabled Save Selected kept its
+   navy fill, pointer cursor and hover tint and looked clickable. */
 body .past-projects-ai-table-button:disabled,
-body .past-projects-ai-table-button:disabled:hover {
+body .past-projects-ai-table-button:disabled:hover,
+body .past-projects-page .itg-btn-primary:disabled,
+body .past-projects-page .itg-btn-primary:disabled:hover,
+body .past-projects-page .itg-btn-primary[aria-disabled='true'],
+body .past-projects-page .itg-btn-primary[aria-disabled='true']:hover {
   border-color: #d1d5db;
   background: #e5e7eb;
   color: #6b7280;
@@ -408,6 +414,116 @@ body .past-projects-ai-search-message.is-success {
   color: #166534;
 }
 
+body .past-projects-ai-search-message-content {
+  flex-wrap: wrap;
+}
+
+body .past-projects-status-action {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* The outcome of a save sits on its own line under the table's toolbar buttons, next to where the
+   Save button was clicked (the builder message above all tables is usually off-screen). */
+body .search-table-save-status {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+body .search-table-selection-count {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-weight: 600;
+}
+
+body .project-grid-row-chip {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.5;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+body .project-grid-row-chip.is-saved {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+  color: #166534;
+}
+
+body .project-grid-row-chip.is-new {
+  border-color: #fde68a;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Rows the latest save added to the merged results. A checked one keeps the CMS sheet's selected background,
+   so the checkbox is not the only sign it is selected. */
+body .project-grid-row.is-new,
+body .project-grid-mobile-card.is-new {
+  box-shadow: inset 4px 0 0 #facc15;
+}
+
+body .project-grid-row.is-new:not(.is-selected),
+body .project-grid-mobile-card.is-new:not(.is-selected) {
+  background: #fefce8;
+}
+
+body .project-grid-narrowed-hint {
+  margin-bottom: 0;
+}
+
+body .project-grid-share-pending {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+}
+
+/* A second Save under long pages, where the eye is after checking rows. */
+body .search-table-bottom-actions {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0 1.5rem 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #edf1f6;
+}
+
+@media (max-width: 900px) {
+  body .search-table-bottom-actions {
+    margin-right: 1rem;
+    margin-left: 1rem;
+  }
+}
+
+body .project-grid-share-name-hint {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+}
+
+/* The builder spaces its cards with its grid gap. The CMS sheet's '.project-grid-card + .project-grid-card'
+   margin added to that gap and, when the saved results card mounted above the action bar, changed the
+   action bar's own margin, which turns off the browser's scroll anchoring and pushed the table being worked
+   on down the page. The saved results card keeps the same total spacing with its own bottom margin. */
+body .past-projects-builder > .project-grid-card + .project-grid-card {
+  margin-top: 0;
+}
+
+body .past-projects-builder > .past-projects-saved-results {
+  margin-bottom: 1.5rem;
+  scroll-margin-top: 5rem;
+}
+
 body .search-table-results-motion {
   animation: ai-results-enter 280ms ease-out both;
   transform-origin: top center;
@@ -462,7 +578,10 @@ body .project-grid-share-result-copy {
 /* Top-of-curation "Get Shareable URL" action, so it is reachable without scrolling past a long list. */
 body .project-grid-share-actions--top {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
   margin: 0 1.5rem 0.5rem;
 }
 

@@ -7,6 +7,7 @@ const mockListMyShares = vi.fn();
 const mockDeleteShare = vi.fn();
 
 vi.mock('@/features/projects/api', () => ({
+    DEFAULT_PAST_PROJECT_SHARE_NAME: 'Past Project Curation',
     listMyShares: () => mockListMyShares(),
     deleteShare: (id: string) => mockDeleteShare(id),
 }));
@@ -50,6 +51,16 @@ describe('MySharedLinksSection', () => {
         );
         expect(screen.queryByRole('button', {name: /copy link/i})).toBeNull();
         expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
+    });
+
+    it('shows the default curation title for a share stored without a name', async () => {
+        mockListMyShares.mockResolvedValue([share({name: ''})]);
+        render(<MySharedLinksSection/>);
+
+        expect(await screen.findByText('Past Project Curation')).toBeInTheDocument();
+        // Several unnamed shares look alike, so each control names the row it acts on.
+        expect(screen.getByRole('link', {name: /^Open Past Project Curation \(3 results · /})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: /^Delete Past Project Curation \(3 results · /})).toBeInTheDocument();
     });
 
     it('deletes a share after confirmation and removes it from the list', async () => {

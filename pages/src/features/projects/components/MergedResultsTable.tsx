@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {buildLoginPath} from '@/features/auth/api/redirects';
+import {DEFAULT_PAST_PROJECT_SHARE_NAME} from '@/features/projects/api';
 import {ProjectGridTable} from './ProjectGridTable';
 import type {ProjectRowsExporter} from './export/exportTypes';
 import {useProjectGridTable} from './useProjectGridTable';
@@ -24,7 +25,13 @@ import {InsertProjectsIcon, InsertProjectsSettingsIcon, SharedEditIcon, SharedSa
 import {getExportFileBaseName, getShareErrorMessage} from './shareHelpers';
 
 interface MergedResultsTableProps {
+  id?: string;
+  className?: string;
   rows: ProjectGridItem[];
+  /** Rows added by the latest save (builder): highlighted, and the table pages to the first of them. */
+  recentlyAdded?: {keys: ReadonlySet<string>; token: number} | null;
+  /** Saves still loading their projects (builder). Sharing waits, or the link would leave those rows out. */
+  pendingSaveCount?: number;
   sharedMode?: boolean;
   title?: string;
   note?: string;
@@ -131,7 +138,11 @@ const ProjectNoteInsertControl = ({
 };
 
 export const MergedResultsTable = ({
+  id,
+  className,
   rows,
+  recentlyAdded = null,
+  pendingSaveCount = 0,
   sharedMode = false,
   title = 'Saved Merged Results',
   note,
@@ -178,6 +189,7 @@ export const MergedResultsTable = ({
   // an effect would cause.
   const [lastSyncedNote, setLastSyncedNote] = useState(note ?? '');
   const [lastSyncedTitle, setLastSyncedTitle] = useState(title);
+  const [revealedToken, setRevealedToken] = useState(recentlyAdded?.token ?? null);
   const editTitleInputRef = useRef<HTMLInputElement>(null);
   const isMountedRef = useRef(true);
 
@@ -197,7 +209,23 @@ export const MergedResultsTable = ({
     setIsEditingSharedTitle(false);
   }
 
+  // After a save, move to the page holding the first newly added row (the table sorts by semester, so
+  // older projects otherwise land on a later page and the save looks like it did nothing).
+  if (recentlyAdded && recentlyAdded.token !== revealedToken) {
+    setRevealedToken(recentlyAdded.token);
+    const firstAddedIndex = table.sortedRows.findIndex((row) => recentlyAdded.keys.has(row.__key));
+    if (firstAddedIndex >= 0) {
+      table.setPage(Math.floor(firstAddedIndex / table.pageSize));
+    }
+  }
+  const shownKeys = new Set(table.filteredRows.map((row) => row.__key));
+  const hiddenAddedCount = recentlyAdded
+    ? rows.filter((row) => recentlyAdded.keys.has(row.__key) && !shownKeys.has(row.__key)).length
+    : 0;
+
   useEffect(() => {
+    // Set in the body too: StrictMode runs this cleanup once on mount, which would leave it false.
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
@@ -217,18 +245,25 @@ export const MergedResultsTable = ({
 
   const sharedNoteHtml = sharedMode ? (note ?? '') : '';
   const sharedNoteHasContent = pastProjectsDetailHtmlToPlainText(sharedNoteHtml).trim() !== '';
-  const sharedExportTitle = (canEditShared ? editTitleDraft : title).trim() || title;
-  const sharedExportNote = canEditShared ? prepareNoteForSave(editNoteDraft) : sharedNoteHtml;
-  const sharedExportFileBaseName = getExportFileBaseName(sharedExportTitle);
-  const exportTitle = sharedMode ? sharedExportTitle : title;
-  const exportNote = sharedMode ? sharedExportNote : '';
-  const exportFileBaseName = sharedMode ? sharedExportFileBaseName : 'past-projects';
   // In shared mode the export represents the whole shared snapshot, so a viewer's transient table
   // search must not narrow it. In builder mode the visible (filtered) rows ARE the selection.
   const exportRows = sharedMode ? allRows : visibleRows;
-  const exportContext = {
-    note: exportNote,
-    title: exportTitle,
+  // Built on click rather than every render: prepareNoteForSave sanitizes and walks the whole note.
+  const buildExportTarget = () => {
+    if (sharedMode) {
+      const sharedTitle = (canEditShared ? editTitleDraft : title).trim() || title;
+      return {
+        fileBaseName: getExportFileBaseName(sharedTitle),
+        context: {title: sharedTitle, note: canEditShared ? prepareNoteForSave(editNoteDraft) : sharedNoteHtml},
+      };
+    }
+    // In the builder, export with the typed name and note. A blank name exports as this card's title; the
+    // shared page's default name is derived by the server from the note when the link is created.
+    const typedName = canShare ? nameDraft.trim() : '';
+    return {
+      fileBaseName: getExportFileBaseName(typedName),
+      context: {title: typedName || title, note: canShare ? prepareNoteForSave(noteDraft) : ''},
+    };
   };
   const excludedProjectNoteInsertFieldList = useMemo(
     () => Array.from(excludedProjectNoteInsertFields),
@@ -238,7 +273,8 @@ export const MergedResultsTable = ({
   const handleExport = async (format: ProjectRowsExportFormat, label: string) => {
     try {
       const exporter = await loadProjectRowsExporter(format);
-      await exporter(exportRows, exportFileBaseName, exportContext);
+      const {fileBaseName, context} = buildExportTarget();
+      await exporter(exportRows, fileBaseName, context);
     } catch {
       // Dynamic-import (code-split chunk) or serialization failures otherwise reject silently.
       setStatusMessage(`Unable to export ${label}. Please try again.`);
@@ -256,7 +292,7 @@ export const MergedResultsTable = ({
     const trimmedName = nameDraft.trim();
     // name is optional — when blank the backend derives one from the curation content. Only rows are
     // required.
-    if (!onCreateShare || !visibleRows.length) {
+    if (!onCreateShare || !visibleRows.length || pendingSaveCount > 0) {
       return;
     }
 
@@ -415,8 +451,9 @@ export const MergedResultsTable = ({
     }
   };
 
+  // While a link is being created the rows stay as they were at the click: the link is made from them.
   const handleDeleteMergedRow = async (row: ProjectGridItem) => {
-    if (!onDeleteRow) {
+    if (!onDeleteRow || isSharing) {
       return;
     }
 
@@ -424,7 +461,7 @@ export const MergedResultsTable = ({
   };
 
   const handleRemoveSelectedMergedRows = () => {
-    if (!onDeleteRows || !table.hasSelection) {
+    if (!onDeleteRows || !table.hasSelection || isSharing) {
       return;
     }
     onDeleteRows(table.selectedRows);
@@ -443,7 +480,7 @@ export const MergedResultsTable = ({
   };
 
   const handleConfirmBulkAction = () => {
-    if (pendingBulkAction === 'reset-builder') {
+    if (pendingBulkAction === 'reset-builder' && !isSharing) {
       onResetRows?.();
     }
 
@@ -487,11 +524,33 @@ export const MergedResultsTable = ({
       type="button"
       className="itg-btn itg-btn-primary"
       onClick={() => void handleCreateShare()}
-      disabled={!visibleRows.length || isSharing}
+      disabled={!visibleRows.length || isSharing || pendingSaveCount > 0}
     >
       {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
     </button>
   ) : null;
+  // Shown beside the button rather than on a line of its own, so it does not push the tables below down.
+  const pendingSaveHint =
+    canShare && pendingSaveCount > 0 ? (
+      <p className="project-grid-share-pending" role="status">
+        Waiting for projects to finish saving…
+      </p>
+    ) : null;
+  // In the builder the link and exports take the rows the search shows; say so when it hides some, above
+  // all when it hides projects that were just saved.
+  const shownCount = table.filteredRows.length;
+  const narrowedHint =
+    !sharedMode && shownCount < rows.length ? (
+      <p className="project-grid-status project-grid-narrowed-hint" role={hiddenAddedCount ? 'status' : undefined}>
+        {hiddenAddedCount
+          ? `${hiddenAddedCount === 1 ? '1 newly saved project is' : `${hiddenAddedCount} newly saved projects are`} hidden by your search.`
+          : `Your search shows ${shownCount} of ${rows.length} saved projects.`}{' '}
+        The shareable link and exports include only the {shownCount} it shows.{' '}
+        <button type="button" className="past-projects-status-action" onClick={() => table.setSearch('')}>
+          Clear search
+        </button>
+      </p>
+    ) : null;
 
   const sharedNoteAction = (
     <button
@@ -538,7 +597,7 @@ export const MergedResultsTable = ({
   ) : null;
 
   return (
-    <section className="project-grid-card">
+    <section id={id} className={`project-grid-card${className ? ` ${className}` : ''}`}>
       <div className={`project-grid-card-header${canEditShared ? ' project-grid-share-card-header' : ''}`}>
         <div className="project-grid-share-title-content">
           {canEditShared ? (
@@ -560,11 +619,15 @@ export const MergedResultsTable = ({
                   }}
                 />
               ) : (
-                <h2 className="project-grid-card-title">{title}</h2>
+                <h2 className="project-grid-card-title" tabIndex={-1}>
+                  {title}
+                </h2>
               )}
             </div>
           ) : (
-            <h2 className="project-grid-card-title">{title}</h2>
+            <h2 className="project-grid-card-title" tabIndex={-1}>
+              {title}
+            </h2>
           )}
           <p className="project-grid-card-copy">
             {sharedMode
@@ -612,9 +675,14 @@ export const MergedResultsTable = ({
                 className="project-grid-share-name-input"
                 value={nameDraft}
                 maxLength={200}
-                placeholder="e.g. Spring 2025 finalists — defaults to the start of your curation"
+                placeholder="e.g. Spring 2025 finalists"
+                aria-describedby="past-project-share-name-hint"
                 onChange={(event) => setNameDraft(event.target.value)}
               />
+              <p id="past-project-share-name-hint" className="project-grid-share-name-hint">
+                Leave blank to use the first line you write in the note (inserted project details are skipped), or
+                “{DEFAULT_PAST_PROJECT_SHARE_NAME}” if there is none.
+              </p>
             </div>
             <div className="project-grid-share-note">
               <RichTextDetailEditor
@@ -633,7 +701,10 @@ export const MergedResultsTable = ({
                 onChange={setNoteDraft}
               />
             </div>
-            <div className="project-grid-share-actions project-grid-share-actions--top">{createShareButton}</div>
+            <div className="project-grid-share-actions project-grid-share-actions--top">
+              {pendingSaveHint}
+              {createShareButton}
+            </div>
           </>
         ) : (
           <p className="project-grid-share-login-hint">
@@ -645,6 +716,8 @@ export const MergedResultsTable = ({
 
       {sharedMode ? null : shareResultPanel}
 
+      {narrowedHint}
+
       <ProjectGridTable
         // Rows saved before the shared-add path hydrated them carry an id but no abstract
         // or student names. Fetch those on expand so View is not a dead end on an existing
@@ -652,6 +725,7 @@ export const MergedResultsTable = ({
         loadMissingDetails
         columns={PAST_PROJECT_GRID_COLUMNS}
         rows={rows}
+        highlightedKeys={recentlyAdded?.keys}
         pagedRows={table.pagedRows}
         filteredCount={table.filteredRows.length}
         totalCount={rows.length}
@@ -674,6 +748,7 @@ export const MergedResultsTable = ({
         emptyMessage="No merged results saved yet."
         countLabel="results"
         onDeleteRow={sharedMode ? (canEditShared ? handleDeleteSharedRow : undefined) : handleDeleteMergedRow}
+        deleteDisabled={!sharedMode && isSharing}
         selectable={canBulkRemove}
         selectedKeys={table.selectedKeys}
         selectAllStateRows={table.filteredRows}
@@ -693,7 +768,7 @@ export const MergedResultsTable = ({
         toolbarPlacement="bottom"
         toolbar={
           <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
-            <div className="project-grid-toolbar-cluster" aria-label="Export">
+            <div className="project-grid-toolbar-cluster" role="group" aria-label="Export">
               <button
                 type="button"
                 className="itg-btn itg-btn-outline"
@@ -720,13 +795,13 @@ export const MergedResultsTable = ({
               </button>
             </div>
             {onUndoRows || onResetRows || canEditShared || canBulkRemove ? (
-              <div className="project-grid-toolbar-cluster" aria-label="Recovery">
+              <div className="project-grid-toolbar-cluster" role="group" aria-label="Recovery">
                 {canBulkRemove ? (
                   <button
                     type="button"
                     className="itg-btn itg-btn-outline"
                     onClick={handleRemoveSelectedMergedRows}
-                    disabled={!table.hasSelection}
+                    disabled={!table.hasSelection || isSharing}
                   >
                     Remove Selected
                   </button>
@@ -736,7 +811,7 @@ export const MergedResultsTable = ({
                     type="button"
                     className="itg-btn itg-btn-outline"
                     onClick={onUndoRows}
-                    disabled={!canUndoRows}
+                    disabled={!canUndoRows || isSharing}
                   >
                     Undo Merged Change
                   </button>
@@ -746,7 +821,7 @@ export const MergedResultsTable = ({
                     type="button"
                     className="itg-btn itg-btn-outline"
                     onClick={() => setPendingBulkAction('reset-builder')}
-                    disabled={!rows.length}
+                    disabled={!rows.length || isSharing}
                   >
                     Reset Merged Results
                   </button>
@@ -774,7 +849,7 @@ export const MergedResultsTable = ({
               </div>
             ) : null}
             {canShare ? (
-              <div className="project-grid-toolbar-cluster" aria-label="Share link">
+              <div className="project-grid-toolbar-cluster" role="group" aria-label="Share link">
                 {createShareButton}
               </div>
             ) : null}

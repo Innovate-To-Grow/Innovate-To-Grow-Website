@@ -13,6 +13,7 @@ vi.mock('@/features/auth/components/AuthContext', () => ({
 }));
 
 vi.mock('@/features/projects/api', () => ({
+    DEFAULT_PAST_PROJECT_SHARE_NAME: 'Past Project Curation',
     listMyShares: () => mockListMyShares(),
     deleteShare: (id: string) => mockDeleteShare(id),
 }));

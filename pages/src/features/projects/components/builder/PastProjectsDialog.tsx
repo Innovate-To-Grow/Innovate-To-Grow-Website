@@ -1,4 +1,4 @@
-import {useEffect, useId, useRef, type ReactNode} from 'react';
+import {useEffect, useEffectEvent, useId, useRef, type ReactNode} from 'react';
 
 interface PastProjectsDialogProps {
   cancelLabel?: string;
@@ -23,19 +23,22 @@ export const PastProjectsDialog = ({
   const titleId = useId();
   const descriptionId = useId();
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const handleEscape = useEffectEvent(() => onCancel());
 
+  // Focus the confirm button once, when the dialog opens. Callers pass inline handlers, so an effect that
+  // depended on onCancel re-ran on every parent render and pulled focus back from Cancel to confirm.
   useEffect(() => {
     confirmButtonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onCancel();
+        handleEscape();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCancel]);
+  }, []);
 
   return (
     <div

@@ -67,6 +67,7 @@ vi.mock('react-router', async (importOriginal) => {
 });
 
 vi.mock('@/features/projects/api', () => ({
+    DEFAULT_PAST_PROJECT_SHARE_NAME: 'Past Project Curation',
     createPastProjectShare: vi.fn(),
     fetchPastProjectShare: vi.fn(),
     updatePastProjectShare: vi.fn(),
@@ -110,6 +111,7 @@ vi.mock('@/features/projects', () => ({
         });
         return (
             <div>
+                <h2 data-testid="share-title">{title}</h2>
                 <div data-testid="share-note">{note}</div>
                 <button
                     type="button"
@@ -162,6 +164,14 @@ vi.mock('@/features/projects', () => ({
                     }
                 >
                     Rename mocked share
+                </button>
+                <button
+                    type="button"
+                    onClick={() =>
+                        void onUpdateShare?.(cleanRows, '', note ?? '').catch(() => undefined)
+                    }
+                >
+                    Clear mocked name
                 </button>
                 <button
                     type="button"
@@ -664,6 +674,58 @@ describe('PastProjectsPage', () => {
                 version: 4,
             }),
         );
+    });
+
+    it('titles a share stored without a name with the default curation title', async () => {
+        sharedState.share = shareFixture({name: '  '});
+
+        renderPage();
+
+        expect(await screen.findByTestId('share-title')).toHaveTextContent('Past Project Curation');
+    });
+
+    it('does not store the fallback title as the name when a blank-name share is edited', async () => {
+        const initial = shareFixture({name: ''});
+        sharedState.share = initial;
+        vi.mocked(updatePastProjectShare).mockResolvedValue(
+            shareFixture({name: '', note: 'Updated note', version: 5}),
+        );
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'Update mocked note'}));
+
+        await waitFor(() =>
+            expect(updatePastProjectShare).toHaveBeenCalledWith(initial.id, {
+                note: 'Updated note',
+                version: 4,
+            }),
+        );
+    });
+
+    it('sends a cleared name so the server derives the default again', async () => {
+        const initial = shareFixture();
+        sharedState.share = initial;
+        vi.mocked(updatePastProjectShare).mockResolvedValue(
+            shareFixture({name: 'Past Project Curation', version: 5}),
+        );
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'Clear mocked name'}));
+
+        await waitFor(() =>
+            expect(updatePastProjectShare).toHaveBeenCalledWith(initial.id, {name: '', version: 4}),
+        );
+    });
+
+    it('adds only projects the current share does not have yet', async () => {
+        // The project landed in the share (another tab, a reloaded conflict) while the add loaded details.
+        sharedState.share = shareFixture({rows: [sampleRow, addedRow]});
+
+        renderPage();
+        fireEvent.click(screen.getByRole('button', {name: 'Add mocked row'}));
+
+        await act(async () => {});
+        expect(updatePastProjectShare).not.toHaveBeenCalled();
     });
 
     it('resets overrides and mutation state when switching to a different share', async () => {
