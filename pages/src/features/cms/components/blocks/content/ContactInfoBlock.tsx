@@ -1,4 +1,5 @@
 import { safeHref } from '@/lib/security';
+import {CMS_PAGE_TITLE_CLASS} from '../headings';
 
 export interface ContactInfoItem {
   label: string;
@@ -29,17 +30,24 @@ function renderValue(item: ContactInfoItem) {
 }
 
 export const ContactInfoBlock = ({ data }: { data: ContactInfoData }) => {
+  const items = Array.isArray(data.items) ? data.items : [];
+
   return (
     <section className="cms-contact-info">
-      {data.heading && <h1>{data.heading}</h1>}
-      <p>
+      {data.heading && <h1 className={CMS_PAGE_TITLE_CLASS}>{data.heading}</h1>}
+      <p className="cms-contact-info-intro">
         For any questions, comments, or inquiries about the Innovate to Grow program, please reach out to us:
       </p>
-      {data.items.map((item, i) => (
-        <p key={i}>
-          <strong>{item.label}:</strong> {renderValue(item)}
-        </p>
-      ))}
+      {items.length > 0 && (
+        <dl className="itg-meta-box cms-contact-info-list">
+          {items.map((item, i) => (
+            <div key={i} className="itg-meta-item">
+              <dt className="itg-meta-label">{item.label}</dt>
+              <dd className="itg-meta-value">{renderValue(item)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </section>
   );
 };

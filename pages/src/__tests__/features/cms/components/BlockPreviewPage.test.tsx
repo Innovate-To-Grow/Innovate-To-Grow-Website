@@ -166,6 +166,7 @@ describe('BlockPreviewPage', () => {
       );
     });
     expect(container.querySelector('.custom-wrapper')).toBeInTheDocument();
+    expect(container.querySelector('.custom-wrapper')).toHaveClass('cms-page');
   });
 
   it('falls back to cms-page class when pageCssClass is empty', () => {

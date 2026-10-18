@@ -148,7 +148,7 @@ export const RegistrationFormStep = ({
 
   return (
   <form onSubmit={handleSubmit} noValidate>
-    <div className="event-reg-section-card">
+    <div className="itg-panel event-reg-section-card">
       <div className="event-reg-section-header">
         <h3 className="event-reg-section-title">Personal Information</h3>
       </div>
@@ -156,13 +156,13 @@ export const RegistrationFormStep = ({
       <>
         {primaryEmail ? (
           <div className="event-reg-form-group">
-            <label className="event-reg-label" htmlFor="primary-email">
+            <label className="itg-label event-reg-label" htmlFor="primary-email">
               Primary Email
             </label>
             <input
               id="primary-email"
               type="email"
-              className="event-reg-input"
+              className="itg-input event-reg-input"
               value={primaryEmail}
               autoComplete="email"
               disabled
@@ -172,13 +172,13 @@ export const RegistrationFormStep = ({
 
         <div className="event-reg-form-row">
           <div className={`event-reg-form-group${errorClass(missingFirstName)}`}>
-            <label className="event-reg-label" htmlFor="first-name">
+            <label className="itg-label event-reg-label" htmlFor="first-name">
               First Name <span className="required-mark">*</span>
             </label>
             <input
               id="first-name"
               type="text"
-              className="event-reg-input event-reg-input--editable"
+              className="itg-input event-reg-input"
               value={attendeeFirstName}
               onChange={(e) => onFirstNameChange(e.target.value)}
               autoComplete="given-name"
@@ -190,13 +190,13 @@ export const RegistrationFormStep = ({
           </div>
 
           <div className="event-reg-form-group">
-            <label className="event-reg-label" htmlFor="middle-name">
+            <label className="itg-label event-reg-label" htmlFor="middle-name">
               Middle Name
             </label>
             <input
               id="middle-name"
               type="text"
-              className="event-reg-input event-reg-input--editable"
+              className="itg-input event-reg-input"
               value={attendeeMiddleName}
               onChange={(e) => onMiddleNameChange(e.target.value)}
               autoComplete="additional-name"
@@ -205,13 +205,13 @@ export const RegistrationFormStep = ({
           </div>
 
           <div className={`event-reg-form-group${errorClass(missingLastName)}`}>
-            <label className="event-reg-label" htmlFor="last-name">
+            <label className="itg-label event-reg-label" htmlFor="last-name">
               Last Name <span className="required-mark">*</span>
             </label>
             <input
               id="last-name"
               type="text"
-              className="event-reg-input event-reg-input--editable"
+              className="itg-input event-reg-input"
               value={attendeeLastName}
               onChange={(e) => onLastNameChange(e.target.value)}
               autoComplete="family-name"
@@ -224,13 +224,14 @@ export const RegistrationFormStep = ({
         </div>
 
         <div className={`event-reg-form-group${errorClass(missingOrganization)}`}>
-          <label className="event-reg-label">
+          <label className="itg-label event-reg-label">
             Organization <span className="required-mark">*</span>
           </label>
           <div className="auth-org-toggle event-reg-org-toggle--editable">
             <button
               type="button"
               className={`auth-org-toggle-btn ${attendeeOrgType === 'organization' ? 'is-active' : ''}`}
+              aria-pressed={attendeeOrgType === 'organization'}
               onClick={() => onOrgTypeChange('organization')}
               disabled={submitting}
             >
@@ -239,6 +240,7 @@ export const RegistrationFormStep = ({
             <button
               type="button"
               className={`auth-org-toggle-btn ${attendeeOrgType === 'individual' ? 'is-active' : ''}`}
+              aria-pressed={attendeeOrgType === 'individual'}
               onClick={() => onOrgTypeChange('individual')}
               disabled={submitting}
             >
@@ -249,7 +251,7 @@ export const RegistrationFormStep = ({
             <input
               id="attendee-organization"
               type="text"
-              className="event-reg-input event-reg-input--editable"
+              className="itg-input event-reg-input"
               value={attendeeOrganization}
               onChange={(e) => onOrganizationChange(e.target.value)}
               placeholder="Company or organization name"
@@ -264,13 +266,13 @@ export const RegistrationFormStep = ({
 
         {attendeeOrgType === 'organization' && (
           <div className="event-reg-form-group">
-            <label className="event-reg-label" htmlFor="attendee-title">
+            <label className="itg-label event-reg-label" htmlFor="attendee-title">
               Title <span className="event-reg-optional">(optional)</span>
             </label>
             <input
               id="attendee-title"
               type="text"
-              className="event-reg-input event-reg-input--editable"
+              className="itg-input event-reg-input"
               value={attendeeTitle}
               onChange={(e) => onTitleChange(e.target.value)}
               placeholder="Your title or position (e.g. CEO, Director)"
@@ -282,7 +284,7 @@ export const RegistrationFormStep = ({
 
         {options.allow_secondary_email ? (
           <div className={`event-reg-form-group${errorClass(missingSecondaryEmail || secondaryEmailNotVerified || !!secondaryEmailError)}`}>
-            <label className="event-reg-label" htmlFor="secondary-email">
+            <label className="itg-label event-reg-label" htmlFor="secondary-email">
               Secondary Email {options.require_secondary_email ? <span className="required-mark">*</span> : <span className="event-reg-optional">(optional)</span>}
             </label>
             <p className="event-reg-field-hint">
@@ -307,7 +309,7 @@ export const RegistrationFormStep = ({
               <input
                 id="secondary-email"
                 type="email"
-                className="event-reg-input event-reg-input--editable"
+                className="itg-input event-reg-input"
                 value={attendeeSecondaryEmail}
                 onChange={(event) => onSecondaryEmailChange(event.target.value)}
                 placeholder="We recommend using your personal email"
@@ -325,7 +327,7 @@ export const RegistrationFormStep = ({
 
         {options.collect_phone ? (
           <div className={`event-reg-form-group${errorClass(missingPhone || phoneNotVerified || phoneHasError)}`}>
-            <label className="event-reg-label" htmlFor="phone">
+            <label className="itg-label event-reg-label" htmlFor="phone">
               Phone Number {options.require_phone ? <span className="required-mark">*</span> : <span className="event-reg-optional">(optional)</span>}
             </label>
             {phoneVerificationEnabled ? <p className="event-reg-field-hint">If provided, this phone number must be verified.</p> : null}
@@ -347,7 +349,7 @@ export const RegistrationFormStep = ({
               <input
                 id="phone"
                 type="tel"
-                className="event-reg-input event-reg-input--editable"
+                className="itg-input event-reg-input"
                 value={phoneFocused ? attendeePhone : formatPhoneDisplay(attendeePhone)}
                 onChange={(event) => onPhoneChange(stripPhoneFormat(event.target.value))}
                 onFocus={() => setPhoneFocused(true)}
@@ -367,11 +369,11 @@ export const RegistrationFormStep = ({
       </>
     </div>
 
-    <div className="event-reg-section-card event-reg-section-card--spaced">
+    <div className="itg-panel event-reg-section-card event-reg-section-card--spaced">
       <h3 className="event-reg-section-title">Registration Details</h3>
 
       <div className={`event-reg-form-group${errorClass(missingTicket)}`}>
-        <label className="event-reg-label">
+        <label className="itg-label event-reg-label">
           Select a Ticket <span className="required-mark">*</span>
         </label>
         <div className="event-reg-tickets">
@@ -402,13 +404,13 @@ export const RegistrationFormStep = ({
           const qMissing = question.is_required && !answers[question.id]?.trim();
           return (
           <div key={question.id} className={`event-reg-form-group${errorClass(qMissing)}`}>
-            <label className="event-reg-label" htmlFor={`q-${question.id}`}>
+            <label className="itg-label event-reg-label" htmlFor={`q-${question.id}`}>
               {question.text}
               {question.is_required ? <span className="required-mark">*</span> : null}
             </label>
             <textarea
               id={`q-${question.id}`}
-              className="event-reg-input event-reg-textarea"
+              className="itg-input event-reg-input event-reg-textarea"
               value={answers[question.id] || ''}
               onChange={(event) => onAnswerChange(question.id, event.target.value)}
             />
@@ -422,7 +424,7 @@ export const RegistrationFormStep = ({
 
     <button
       type="submit"
-      className="event-reg-submit"
+      className="itg-btn itg-btn-primary itg-btn-lg event-reg-submit"
       disabled={submitting}
     >
       {submitting ? <><span className="event-reg-spinner" /> Registering...</> : 'Register'}

@@ -40,6 +40,8 @@ interface SearchTableCardProps {
   description?: string;
   emptyMessage?: string;
   initialRows: ProjectGridRow[];
+  /** Search to start the table with. */
+  initialSearch?: string;
   /**
    * Changing it replaces the rows with `initialRows` and starts the table over (search, sort, selection), as a
    * reload (Refresh, new AI results). A save that is running carries on and reports its outcome here.
@@ -93,24 +95,13 @@ const BOTTOM_ACTIONS_MIN_ROWS = 6;
 const isPromiseLike = <T,>(value: unknown): value is PromiseLike<T> =>
   typeof (value as {then?: unknown} | null | undefined)?.then === 'function';
 
-function SearchTableRemoveIcon() {
-  return (
-    <svg className="search-table-remove-button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M3.75 6.25h16.5" />
-      <path d="M9 6.25V4.8c0-.88.72-1.6 1.6-1.6h2.8c.88 0 1.6.72 1.6 1.6v1.45" />
-      <path d="m18.75 6.25-.7 12.05a2.05 2.05 0 0 1-2.05 1.95H8a2.05 2.05 0 0 1-2.05-1.95L5.25 6.25" />
-      <path d="M10 11v5" />
-      <path d="M14 11v5" />
-    </svg>
-  );
-}
-
 export function SearchTableCard({
   canRemove,
   className,
   description = 'Search this table, check the projects you want, then click Save Selected to add them to your saved results.',
   emptyMessage = 'No rows available in this search table.',
   initialRows,
+  initialSearch,
   resetKey,
   resultsMotionKey,
   searchControl,
@@ -150,6 +141,7 @@ export function SearchTableCard({
     pageSize: 5,
     defaultSortField: 'semester_label',
     defaultSortDirection: 'desc',
+    initialSearch,
   });
 
   if (resetKey !== appliedResetKey) {
@@ -330,13 +322,19 @@ export function SearchTableCard({
   const saveButton = (origin: SaveOrigin) => (
     <button
       type="button"
-      className="itg-btn itg-btn-primary"
+      className="itg-btn itg-btn-primary search-table-save-button"
       onClick={() => handleSaveSelectedRows(origin)}
       // aria-disabled (not disabled) while saving keeps keyboard focus on the button that was pressed.
       disabled={!isSaving && (!table.hasSelection || mergeDisabled)}
       aria-disabled={isSaving || undefined}
     >
       {isSaving ? `${mergingVerb}…` : mergeLabel}
+      {!isSaving && selectedCount ? (
+        <span className="search-table-save-count" aria-hidden="true">
+          {' '}
+          · {selectedCount}
+        </span>
+      ) : null}
     </button>
   );
 
@@ -362,7 +360,7 @@ export function SearchTableCard({
       <>
         <PastProjectsAIStatus announce={false} tone={saveStatus.tone} message={saveStatus.message} />
         {onViewMergedResults && saveStatus.tone !== 'error' ? (
-          <button type="button" className="past-projects-status-action" onClick={onViewMergedResults}>
+          <button type="button" className="itg-btn itg-btn-text past-projects-status-action" onClick={onViewMergedResults}>
             {viewMergedResultsLabel}
           </button>
         ) : null}
@@ -382,24 +380,21 @@ export function SearchTableCard({
       data-search-table-id={tableId}
       aria-busy={isSaving}
     >
-      <div className="project-grid-card-header">
-        <div>
-          <h3 className="project-grid-card-title">{title}</h3>
-          <p className="project-grid-card-copy">{description}</p>
-        </div>
+      <div className="project-grid-card-header search-table-card-header">
+        <h3 className="project-grid-card-title">{title}</h3>
         {canRemove ? (
           <button
             type="button"
-            className="search-table-remove-button"
-            aria-label={`Delete ${title}`}
-            title={`Delete ${title}`}
+            className="itg-btn itg-btn-text search-table-remove-button"
+            aria-label={`Delete table: ${title}`}
             onClick={() => onRemove(tableId)}
             disabled={isSaving}
           >
-            <SearchTableRemoveIcon />
+            Delete table
           </button>
         ) : null}
       </div>
+      <p className="project-grid-card-copy">{description}</p>
 
       <p className="sr-only" role="status" aria-live="polite">
         {politeText}
@@ -416,14 +411,18 @@ export function SearchTableCard({
       >
         <ProjectGridTable
           loadMissingDetails
+          linkScope="past"
           columns={PAST_PROJECT_GRID_COLUMNS}
           rows={rows}
           pagedRows={table.pagedRows}
           filteredCount={table.filteredRows.length}
           totalCount={rows.length}
           search={table.search}
+          searchPlaceholder="Team, project, organization…"
           searchControl={searchControl}
           controlsStatus={controlsStatus}
+          // The card is titled with an h3.
+          noResultsHeadingLevel={4}
           sortField={table.sortField}
           sortDirection={table.sortDirection}
           onSearchChange={table.setSearch}
@@ -439,7 +438,7 @@ export function SearchTableCard({
           pageSizeOptions={table.pageSizeOptions}
           onPageSizeChange={table.setPageSize}
           emptyMessage={emptyMessage}
-          countLabel="entries"
+          countLabel="projects"
           selectable
           selectedKeys={table.selectedKeys}
           selectAllStateRows={table.filteredRows}
@@ -448,78 +447,93 @@ export function SearchTableCard({
           isRowSaved={isRowSaved}
           savedRowLabel={savedRowLabel}
           toolbar={
-            <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
-              <div className="project-grid-toolbar-cluster" role="group" aria-label="Save">
-                {saveButton('top')}
-                {selectionCount}
+            <div className="search-table-actions">
+              <div className="search-table-save-row">
+                <div className="project-grid-toolbar-cluster search-table-save-group" role="group" aria-label="Save">
+                  {saveButton('top')}
+                  {selectionCount}
+                </div>
+                {statusFor('top')}
               </div>
-              {statusFor('top')}
-              <div className="project-grid-toolbar-cluster" role="group" aria-label="Table rows">
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-outline"
-                  onClick={handleDeleteSelectedRows}
-                  disabled={!table.hasSelection || isSaving}
-                >
-                  Remove from Table
-                </button>
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-outline"
-                  onClick={handleKeepSelectedRows}
-                  disabled={!table.hasSelection || isSaving}
-                >
-                  Keep Only Selected
-                </button>
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-outline"
-                  onClick={handleUndoLastRowAction}
-                  disabled={!undoRows || isSaving}
-                >
-                  Undo Row Change
-                </button>
-              </div>
-              <div className="project-grid-toolbar-cluster" role="group" aria-label="Selection">
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-outline"
-                  onClick={() => {
-                    clearSaveStatus();
-                    table.addToSelection(table.filteredRows);
-                  }}
-                  disabled={!table.filteredRows.length}
-                >
-                  Select All
-                </button>
-                <button
-                  type="button"
-                  className="itg-btn itg-btn-outline"
-                  onClick={() => {
-                    clearSaveStatus();
-                    table.clearSelection();
-                  }}
-                  disabled={!table.hasSelection}
-                >
-                  Deselect
-                </button>
-                {onRefresh ? (
+              <div className="search-table-secondary-actions">
+                <div className="project-grid-toolbar-cluster search-table-action-group" role="group" aria-label="Selection">
+                  <span className="search-table-group-label" aria-hidden="true">
+                    Selection
+                  </span>
                   <button
                     type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() => onRefresh(tableId)}
-                    disabled={isSaving}
+                    className="itg-btn itg-btn-text"
+                    onClick={() => {
+                      clearSaveStatus();
+                      table.addToSelection(table.filteredRows);
+                    }}
+                    disabled={!table.filteredRows.length}
                   >
-                    Refresh Search Table
+                    Select All
                   </button>
-                ) : null}
+                  <button
+                    type="button"
+                    className="itg-btn itg-btn-text"
+                    onClick={() => {
+                      clearSaveStatus();
+                      table.clearSelection();
+                    }}
+                    disabled={!table.hasSelection}
+                  >
+                    Deselect
+                  </button>
+                </div>
+                <span className="search-table-group-divider" aria-hidden="true" />
+                <div
+                  className="project-grid-toolbar-cluster search-table-action-group"
+                  role="group"
+                  aria-label="Tidy this table"
+                >
+                  <span className="search-table-group-label" aria-hidden="true">
+                    Tidy this table
+                  </span>
+                  <button
+                    type="button"
+                    className="itg-btn itg-btn-text"
+                    onClick={handleDeleteSelectedRows}
+                    disabled={!table.hasSelection || isSaving}
+                  >
+                    Remove from Table
+                  </button>
+                  <button
+                    type="button"
+                    className="itg-btn itg-btn-text"
+                    onClick={handleKeepSelectedRows}
+                    disabled={!table.hasSelection || isSaving}
+                  >
+                    Keep Only Selected
+                  </button>
+                  <button
+                    type="button"
+                    className="itg-btn itg-btn-text"
+                    onClick={handleUndoLastRowAction}
+                    disabled={!undoRows || isSaving}
+                  >
+                    Undo Row Change
+                  </button>
+                  {onRefresh ? (
+                    <button
+                      type="button"
+                      className="itg-btn itg-btn-text"
+                      onClick={() => onRefresh(tableId)}
+                      disabled={isSaving}
+                    >
+                      Refresh Search Table
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           }
         />
         {showBottomActions ? (
           <div className="search-table-bottom-actions" role="group" aria-label={`Save from ${title}`}>
-            <div className="project-grid-toolbar-cluster">
+            <div className="project-grid-toolbar-cluster search-table-save-group">
               {saveButton('bottom')}
               {selectionCount}
             </div>

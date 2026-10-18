@@ -55,7 +55,8 @@ describe('NewsDetailPage', () => {
 
     renderPage('/news/11111111-1111-4111-8111-111111111111');
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading...');
+    expect(screen.getByRole('link', {name: 'Back to News'})).toHaveClass('itg-back-link');
   });
 
   it('scrolls to the top when the article loads', async () => {
@@ -73,6 +74,7 @@ describe('NewsDetailPage', () => {
     renderPage('/news/11111111-1111-4111-8111-111111111111');
 
     expect(await screen.findByText('Unable to load this article.')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load this article.');
     expect(screen.getByRole('link', {name: /back to news/i}).getAttribute('href')).toBe('/news');
   });
 
@@ -99,11 +101,14 @@ describe('NewsDetailPage', () => {
     );
     expect(screen.getByText('Hero caption')).toBeInTheDocument();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('Ada Lovelace').closest('p')).toHaveClass('itg-page-meta', 'news-detail-meta');
+    expect(screen.getByRole('heading', {name: 'Detail Article', level: 1})).toHaveClass('itg-page-title');
     expect(screen.getByTestId('safe-html')).toHaveTextContent('Full body.');
     expect(screen.queryByText('A summary.')).toBeNull();
-    expect(
-      screen.getByRole('link', {name: 'View original article'}).getAttribute('href'),
-    ).toBe('https://example.com/detail');
+    const source = screen.getByRole('link', {name: 'View original article'});
+    expect(source.getAttribute('href')).toBe('https://example.com/detail');
+    expect(source).toHaveClass('itg-btn', 'itg-btn-outline');
+    expect(screen.getAllByRole('link', {name: /back to news/i})).toHaveLength(1);
   });
 
   it('falls back to the summary and hides missing hero and author fields', async () => {
@@ -121,6 +126,7 @@ describe('NewsDetailPage', () => {
     expect(await screen.findByRole('heading', {name: 'Detail Article'})).toBeInTheDocument();
     expect(screen.queryByAltText('Detail Article')).toBeNull();
     expect(screen.queryByText('Ada Lovelace')).toBeNull();
+    expect(document.querySelector('.news-detail-meta-separator')).toBeNull();
     expect(screen.queryByTestId('safe-html')).toBeNull();
     expect(screen.getByText('A summary.')).toBeInTheDocument();
   });

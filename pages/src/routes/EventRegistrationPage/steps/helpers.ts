@@ -1,5 +1,18 @@
 export type EventRegistrationStep = 'loading' | 'select' | 'email' | 'code' | 'form' | 'done';
 
+const STEP_INDEX: Partial<Record<EventRegistrationStep, number>> = {
+  select: 0,
+  email: 1,
+  code: 1,
+  form: 2,
+  done: 3,
+};
+
+/** Where a registration step sits in the four-step progress row (null while loading). */
+export function getRegistrationStepIndex(step: EventRegistrationStep): number | null {
+  return STEP_INDEX[step] ?? null;
+}
+
 export function getRegistrationErrorMessage(err: unknown): string {
   if (typeof err === 'object' && err !== null) {
     const axiosError = err as {response?: {data?: Record<string, unknown>}};

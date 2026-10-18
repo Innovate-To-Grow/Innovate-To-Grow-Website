@@ -47,14 +47,14 @@ export const ContactEmailCard = ({
       <div className="email-center-card-main">
         <div className="email-center-card-heading">
           <span className="email-center-card-title">{contact.email_address}</span>
-          <span className={`email-center-badge ${contact.verified ? 'verified' : 'unverified'}`}>
+          <span className={`itg-tag email-center-badge ${contact.verified ? 'itg-tag-saved verified' : 'itg-tag-new unverified'}`}>
             {contact.verified ? 'Verified' : 'Unverified'}
           </span>
         </div>
 
         <div className="email-center-actions">
           <select
-            className="email-center-type-select"
+            className="itg-select email-center-type-select"
             value={contact.email_type}
             disabled={makePrimaryLoadingId === contact.id}
             onChange={(event) => {
@@ -89,14 +89,14 @@ export const ContactEmailCard = ({
           {!contact.verified && verifyingId !== contact.id ? (
             <button
               type="button"
-              className="email-center-btn verify"
+              className="itg-btn itg-btn-outline email-center-btn verify"
               disabled={resendLoading}
               onClick={() => onToggleVerify(contact.id)}
             >
               Verify
             </button>
           ) : null}
-          <button type="button" className="email-center-btn delete" onClick={() => onDelete(contact.id)}>
+          <button type="button" className="itg-btn itg-btn-danger email-center-btn delete" onClick={() => onDelete(contact.id)}>
             Remove
           </button>
         </div>
@@ -115,7 +115,7 @@ export const ContactEmailCard = ({
           <div className="email-center-verify-actions">
             <button
               type="submit"
-              className="auth-form-submit account-action-primary email-center-verify-submit"
+              className="itg-btn itg-btn-primary email-center-verify-submit"
               disabled={verifyLoading || verifyCode.length !== 6}
             >
               {verifyLoading ? <><span className="auth-spinner" /> Submitting...</> : 'Submit code'}
@@ -123,7 +123,7 @@ export const ContactEmailCard = ({
             <div className="email-center-verify-secondary-row">
               <button
                 type="button"
-                className="email-center-btn verify email-center-verify-secondary-btn"
+                className="itg-btn itg-btn-outline email-center-btn verify email-center-verify-secondary-btn"
                 disabled={resendLoading}
                 onClick={() => onResend(contact.id)}
               >
@@ -131,7 +131,7 @@ export const ContactEmailCard = ({
               </button>
               <button
                 type="button"
-                className="email-center-btn delete email-center-verify-secondary-btn"
+                className="itg-btn itg-btn-text email-center-btn cancel email-center-verify-secondary-btn"
                 onClick={onCancelVerify}
               >
                 Cancel

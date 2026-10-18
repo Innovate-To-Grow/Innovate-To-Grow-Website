@@ -83,4 +83,29 @@ describe('LinkListBlock', () => {
     expect(container.querySelectorAll('li')).toHaveLength(2);
     expect(container.querySelector('.cms-link-list-items')).not.toBeNull();
   });
+
+  it('applies the list style as a modifier class, defaulting to list', () => {
+    const {container} = render(
+      <MemoryRouter>
+        <LinkListBlock data={{style: 'grid', items: [{label: 'One', url: '/one'}]}} />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector('.cms-link-list-items')).toHaveClass('cms-link-list-items--grid');
+
+    const {container: unknownStyle} = render(
+      <MemoryRouter>
+        <LinkListBlock data={{style: 'cards' as unknown as 'list', items: []}} />
+      </MemoryRouter>,
+    );
+    expect(unknownStyle.querySelector('.cms-link-list-items')).toHaveClass('cms-link-list-items--list');
+  });
+
+  it('marks the heading as a section title', () => {
+    const {container} = render(
+      <MemoryRouter>
+        <LinkListBlock data={{heading: 'Events', items: []}} />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector('h2')).toHaveClass('section-title', 'itg-section-title');
+  });
 });

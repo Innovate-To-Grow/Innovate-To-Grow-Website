@@ -1,6 +1,7 @@
 import { createElement, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { BlockRenderer } from './BlockRenderer';
+import { cmsPageClassName } from './pageClassName';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '@/features/cms/api';
 import { embedRouteSupportsSchedule, resolveEmbedAppRoute } from './embedAppRoutes';
 import { normalizeScheduleId } from './embedScheduleId';
@@ -159,9 +160,9 @@ export const EmbedBlockPage = () => {
 
   if (notFound || !embedSlug) {
     return (
-      <div style={{ padding: '24px', color: '#6b7280', fontFamily: 'sans-serif', textAlign: 'center' }}>
+      <p className="cms-embed-message">
         Embed not found.
-      </div>
+      </p>
     );
   }
   if (!data) return null;
@@ -186,9 +187,9 @@ const EmbedBody = ({ data, containerRef, scheduleIdOverride = null }: EmbedBodyP
   if (data.widget_type === 'app_route') {
     if (!appRouteComponent) {
       return (
-        <div style={{ padding: '24px', color: '#6b7280', fontFamily: 'sans-serif', textAlign: 'center' }}>
+        <p className="cms-embed-message">
           App route <code>{data.app_route}</code> is not available for embedding.
-        </div>
+        </p>
       );
     }
     // Precedence: block override (iframe query) > widget default (embed payload) > active schedule.
@@ -203,7 +204,7 @@ const EmbedBody = ({ data, containerRef, scheduleIdOverride = null }: EmbedBodyP
   }
 
   return (
-    <div ref={containerRef} className={data.page_css_class || 'cms-page'}>
+    <div ref={containerRef} className={cmsPageClassName(data.page_css_class)}>
       <BlockRenderer blocks={data.blocks} />
     </div>
   );

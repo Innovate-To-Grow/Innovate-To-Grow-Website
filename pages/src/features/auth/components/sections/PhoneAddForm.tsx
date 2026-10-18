@@ -42,14 +42,14 @@ export const PhoneAddForm = ({
   return (
     <div className="email-center-add-form">
       <h3 className="account-subsection-title">Add Phone Number</h3>
-      {addError ? <StatusAlert tone="error" message={addError} style={{marginBottom: '0.75rem'}} /> : null}
+      {addError ? <StatusAlert tone="error" message={addError} /> : null}
       <form onSubmit={onSubmit} className="email-center-add-fields">
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="add-phone-number">Phone Number</label>
+          <label className="itg-label auth-form-label" htmlFor="add-phone-number">Phone Number</label>
           <input
             id="add-phone-number"
             type="tel"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             inputMode="numeric"
             autoComplete="tel-national"
             maxLength={nationalInputMaxLength()}
@@ -74,7 +74,7 @@ export const PhoneAddForm = ({
         <div className="account-action-row">
           <button
             type="submit"
-            className="auth-form-submit account-action-primary"
+            className="itg-btn itg-btn-primary account-action-primary"
             disabled={addLoading || !canSubmitForm}
           >
             {addLoading ? (
@@ -87,7 +87,7 @@ export const PhoneAddForm = ({
               'Save Preferences'
             )}
           </button>
-          <button type="button" className="auth-form-submit account-action-secondary" onClick={onCancel}>
+          <button type="button" className="itg-btn itg-btn-outline account-action-secondary" onClick={onCancel}>
             Cancel
           </button>
         </div>

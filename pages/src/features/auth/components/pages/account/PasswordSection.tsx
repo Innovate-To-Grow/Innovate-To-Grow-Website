@@ -35,7 +35,7 @@ export const PasswordSection = ({
   onNewPasswordChange,
   onConfirmPasswordChange,
 }: PasswordSectionProps) => (
-  <div className="account-section account-section--full-width">
+  <div className="itg-panel account-section">
     <div className="account-password-section">
       <div className="account-password-header">
         <div>
@@ -45,7 +45,7 @@ export const PasswordSection = ({
         {!passwordCodeRequested && !passwordVerificationToken ? (
           <button
             type="button"
-            className="auth-form-submit account-action-primary account-action-primary--inline"
+            className="itg-btn itg-btn-primary account-action-primary account-action-primary--inline"
             onClick={onPasswordRequestCode}
             disabled={passwordLoading}
           >
@@ -60,13 +60,13 @@ export const PasswordSection = ({
       {passwordCodeRequested && !passwordVerificationToken ? (
         <form className="account-password-form" onSubmit={onPasswordVerifyCode}>
           <div className="auth-form-group">
-            <label className="auth-form-label" htmlFor="account-password-code">Verification Code</label>
+            <label className="itg-label auth-form-label" htmlFor="account-password-code">Verification Code</label>
             <CodeInput value={passwordCode} onChange={onPasswordCodeChange} disabled={passwordLoading} />
           </div>
           <div className="account-action-row">
             <button
               type="submit"
-              className="auth-form-submit account-action-primary"
+              className="itg-btn itg-btn-primary account-action-primary"
               disabled={passwordLoading || passwordCode.length !== 6}
             >
               {passwordLoading ? <><span className="auth-spinner" /> Verifying...</> : 'Verify Code'}
@@ -78,11 +78,11 @@ export const PasswordSection = ({
       {passwordVerificationToken ? (
         <form className="account-password-form" onSubmit={onPasswordConfirm}>
           <div className="auth-form-group">
-            <label className="auth-form-label" htmlFor="account-new-password">New Password</label>
+            <label className="itg-label auth-form-label" htmlFor="account-new-password">New Password</label>
             <input
               id="account-new-password"
               type="password"
-              className="auth-form-input"
+              className="itg-input auth-form-input"
               value={newPassword}
               onChange={(event) => onNewPasswordChange(event.target.value)}
               autoComplete="new-password"
@@ -92,11 +92,11 @@ export const PasswordSection = ({
             />
           </div>
           <div className="auth-form-group">
-            <label className="auth-form-label" htmlFor="account-confirm-password">Confirm Password</label>
+            <label className="itg-label auth-form-label" htmlFor="account-confirm-password">Confirm Password</label>
             <input
               id="account-confirm-password"
               type="password"
-              className="auth-form-input"
+              className="itg-input auth-form-input"
               value={confirmPassword}
               onChange={(event) => onConfirmPasswordChange(event.target.value)}
               autoComplete="new-password"
@@ -107,7 +107,7 @@ export const PasswordSection = ({
           <div className="account-action-row">
             <button
               type="submit"
-              className="auth-form-submit account-action-primary"
+              className="itg-btn itg-btn-primary account-action-primary"
               disabled={passwordLoading || !newPassword || !confirmPassword}
             >
               {passwordLoading ? <><span className="auth-spinner" /> Saving...</> : 'Change Password'}

@@ -19,6 +19,8 @@ import {
 interface RichTextDetailEditorProps {
   id: string;
   label: string;
+  /** Muted text after the label, e.g. where the note is shown. Part of the field's accessible name. */
+  labelHint?: string;
   value: string;
   placeholder?: string;
   readOnly?: boolean;
@@ -37,6 +39,7 @@ interface RichTextDetailEditorProps {
 export function RichTextDetailEditor({
   id,
   label,
+  labelHint,
   value,
   placeholder = '',
   readOnly = false,
@@ -283,6 +286,7 @@ export function RichTextDetailEditor({
       <div className="project-grid-rich-detail-header">
         <label id={labelId} className="project-grid-share-note-label" htmlFor={id}>
           {label}
+          {labelHint ? <span className="project-grid-label-hint"> {labelHint}</span> : null}
         </label>
         {!readOnly || headerAction || onCopyAll ? (
           <div className="project-grid-rich-detail-controls">

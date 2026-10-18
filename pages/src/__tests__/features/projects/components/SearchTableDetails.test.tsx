@@ -56,7 +56,7 @@ describe('compact archive row details', () => {
 
     expect(fetchDetail).not.toHaveBeenCalled();
     fireEvent.click(desktop.getByRole('checkbox', {name: `Select ${row.project_title}`}));
-    fireEvent.click(desktop.getByRole('button', {name: 'View'}));
+    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
     const detailsId = desktop.getByRole('button', {name: 'Hide'}).getAttribute('aria-controls');
     expect(desktop.getByRole('status')).toHaveTextContent('Loading project details...');
     expect(mobile.getByRole('status')).toHaveTextContent('Loading project details...');
@@ -67,8 +67,8 @@ describe('compact archive row details', () => {
       expect(layout.getByText(`Abstract ${row.id}`)).toBeInTheDocument();
       expect(layout.getByText(`Students ${row.id}`)).toBeInTheDocument();
       expect(layout.getByRole('checkbox', {name: `Select ${row.project_title}`})).toBeChecked();
-      expect(layout.getByRole('link')).toHaveAttribute('href', `${window.location.origin}/past-projects/project/${row.id}`);
-      expect(layout.getByRole('link')).toHaveAttribute('target', '_blank');
+      expect(layout.getByRole('link', {name: /open the project page/i})).toHaveAttribute('href', `${window.location.origin}/past-projects/project/${row.id}`);
+      expect(layout.getByRole('link', {name: /open the project page/i})).toHaveAttribute('target', '_blank');
     }
     expect(desktop.getByRole('button', {name: 'Hide'})).toHaveAttribute('aria-controls', detailsId);
     fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
@@ -76,7 +76,7 @@ describe('compact archive row details', () => {
     // The detail cache enriches presentation only; row identity and merge inputs stay stable.
     expect(row.abstract).toBe('');
     fireEvent.click(desktop.getByRole('button', {name: 'Hide'}));
-    fireEvent.click(desktop.getByRole('button', {name: 'View'}));
+    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
     expect(desktop.getByText(`Abstract ${row.id}`)).toBeInTheDocument();
     expect(fetchDetail).toHaveBeenCalledTimes(1);
   });
@@ -84,9 +84,9 @@ describe('compact archive row details', () => {
   it('shows a failure without losing the link and retries from mobile in both layouts', async () => {
     fetchDetail.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(detail('retry-details'));
     const {desktop, mobile} = renderTable([compactRow('retry-details')]);
-    fireEvent.click(mobile.getByRole('button', {name: 'View Details'}));
+    fireEvent.click(mobile.getByRole('button', {name: 'Show details'}));
     expect(await mobile.findByRole('alert')).toHaveTextContent('Unable to load project details.');
-    expect(mobile.getByRole('link')).toHaveAttribute('href', `${window.location.origin}/past-projects/project/retry-details`);
+    expect(mobile.getByRole('link', {name: /open the project page/i})).toHaveAttribute('href', `${window.location.origin}/past-projects/project/retry-details`);
     expect(fetchDetail).toHaveBeenCalledTimes(1);
     fireEvent.click(mobile.getByRole('button', {name: 'Retry'}));
     await waitFor(() => expect(desktop.getByText('Abstract retry-details')).toBeInTheDocument());
@@ -98,10 +98,10 @@ describe('compact archive row details', () => {
   it('remembers a successful empty detail response across collapse and reopening', async () => {
     fetchDetail.mockResolvedValue(detail('empty-details', {abstract: '', student_names: ''}));
     const {desktop} = renderTable([compactRow('empty-details')]);
-    fireEvent.click(desktop.getByRole('button', {name: 'View'}));
+    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
     expect(await desktop.findByText('No abstract or student names available.')).toBeInTheDocument();
     fireEvent.click(desktop.getByRole('button', {name: 'Hide'}));
-    fireEvent.click(desktop.getByRole('button', {name: 'View'}));
+    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
     expect(desktop.getByText('No abstract or student names available.')).toBeInTheDocument();
     expect(fetchDetail).toHaveBeenCalledTimes(1);
   });
@@ -130,9 +130,9 @@ describe('compact archive row details', () => {
 
   it('preserves saved snapshot fields and does not request details for existing content', () => {
     const snapshot = compactRow('saved-snapshot');
-    const {rerender} = render(<ProjectGridRowDetails row={snapshot} />);
+    const {rerender} = render(<ProjectGridRowDetails row={snapshot} scope="past" />);
     expect(fetchDetail).not.toHaveBeenCalled();
-    rerender(<ProjectGridRowDetails row={{...snapshot, abstract: 'Saved abstract'}} loadMissingDetails />);
+    rerender(<ProjectGridRowDetails row={{...snapshot, abstract: 'Saved abstract'}} scope="past" loadMissingDetails />);
     expect(screen.getByText('Saved abstract')).toBeInTheDocument();
     expect(fetchDetail).not.toHaveBeenCalled();
   });
@@ -162,12 +162,37 @@ describe('compact archive row details', () => {
     fetchDetail.mockResolvedValueOnce(detail('expired-details', {abstract: 'Earlier abstract'}))
       .mockResolvedValueOnce(detail('expired-details', {abstract: 'Updated abstract'}));
     const {desktop} = renderTable([compactRow('expired-details')]);
-    fireEvent.click(desktop.getByRole('button', {name: 'View'}));
+    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
     expect(await desktop.findByText('Earlier abstract')).toBeInTheDocument();
     fireEvent.click(desktop.getByRole('button', {name: 'Hide'}));
     clock.mockReturnValue(1_000 + 5 * 60 * 1_000);
-    fireEvent.click(desktop.getByRole('button', {name: 'View'}));
+    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
     expect(await desktop.findByText('Updated abstract')).toBeInTheDocument();
     expect(fetchDetail).toHaveBeenCalledTimes(2);
+  });
+
+  it('copies a past project link and says so', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
+    try {
+      render(<ProjectGridRowDetails row={{...compactRow('copy-me'), abstract: 'Copied abstract'}} scope="past" />);
+      fireEvent.click(screen.getByRole('button', {name: 'Copy project link'}));
+      expect(await screen.findByRole('status')).toHaveTextContent('Project link copied.');
+      expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/past-projects/project/copy-me`);
+    } finally {
+      Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
+    }
+  });
+
+  it('says when a project link cannot be copied', async () => {
+    render(<ProjectGridRowDetails row={{...compactRow('no-clipboard'), abstract: 'Abstract'}} scope="past" />);
+    fireEvent.click(screen.getByRole('button', {name: 'Copy project link'}));
+    expect(await screen.findByRole('status')).toHaveTextContent('Could not copy the link.');
+  });
+
+  it('links current projects to their page without a copy button', () => {
+    render(<ProjectGridRowDetails row={{...compactRow('current'), abstract: 'Abstract'}} scope="current" />);
+    expect(screen.getByRole('link', {name: 'Open the project page'})).toHaveAttribute('href', '/projects/current');
+    expect(screen.queryByRole('button', {name: 'Copy project link'})).toBeNull();
   });
 });

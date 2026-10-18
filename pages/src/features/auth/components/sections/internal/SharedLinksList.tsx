@@ -21,7 +21,7 @@ export const SharedLinksList = ({shares, onDelete}: SharedLinksListProps) => (
           </div>
           <div className="account-shares-actions">
             <a
-              className="account-outline-btn"
+              className="itg-btn itg-btn-outline account-outline-btn"
               href={`/past-projects/${share.id}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -31,7 +31,7 @@ export const SharedLinksList = ({shares, onDelete}: SharedLinksListProps) => (
             </a>
             <button
               type="button"
-              className="account-shares-delete"
+              className="itg-btn itg-btn-danger account-shares-delete"
               aria-label={`Delete ${rowLabel}`}
               onClick={() => void onDelete(share.id)}
             >

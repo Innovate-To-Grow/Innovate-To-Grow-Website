@@ -49,7 +49,7 @@ export const ManageStep = ({
   const primaryEmail = normalizeEmailAddress(profile.email);
 
   return (
-    <div className="subscribe-section">
+    <div className="itg-panel subscribe-section">
       <section className="subscribe-preference-group" aria-labelledby="subscribe-email-preferences">
         <h3 id="subscribe-email-preferences" className="subscribe-preference-heading">Email Newsletters</h3>
         <div className="subscribe-preference-list">
@@ -141,9 +141,9 @@ export const ManageStep = ({
         )}
       </section>
 
-      {message ? <div className="subscribe-alert success">{message}</div> : null}
+      {message ? <div className="subscribe-alert success" role="status">{message}</div> : null}
 
-      <Link to="/account" className="subscribe-link">
+      <Link to="/account" className="itg-btn itg-btn-outline subscribe-link">
         View My Account
       </Link>
     </div>

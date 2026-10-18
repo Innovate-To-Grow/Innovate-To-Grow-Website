@@ -10,6 +10,14 @@ interface PastProjectsAIStatusProps {
   announce?: boolean;
 }
 
+function StatusCheckIcon() {
+  return (
+    <svg className="past-projects-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M5 12l5 5L20 7" />
+    </svg>
+  );
+}
+
 // Status line for AI search and for per-table saves.
 export const PastProjectsAIStatus = ({message, tone, announce = true}: PastProjectsAIStatusProps) => (
   <div
@@ -18,6 +26,7 @@ export const PastProjectsAIStatus = ({message, tone, announce = true}: PastProje
     aria-live={announce ? (tone === 'error' ? 'assertive' : 'polite') : undefined}
   >
     <div className="past-projects-ai-search-message-content">
+      {tone === 'success' ? <StatusCheckIcon /> : null}
       <span>{message}</span>
     </div>
   </div>

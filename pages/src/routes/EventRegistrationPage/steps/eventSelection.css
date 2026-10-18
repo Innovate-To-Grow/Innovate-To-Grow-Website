@@ -1,104 +1,88 @@
-body .event-reg-event-list {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
+/* Open-event list on /event-registration: rows under a gold rule, separated by
+   hairlines (no cards, no shadows), in the reference's 16px / 24px text with
+   bold navy field labels. Buttons and tags use the global classes. */
+
+.event-reg-event-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border-top: 3px solid var(--itg-color-accent-gold);
 }
 
-body .event-reg-event-card {
+.event-reg-event-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1rem;
   align-items: center;
-  padding: 1rem;
-  border: 1px solid rgba(15, 45, 82, 0.14);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 2px 10px rgba(15, 45, 82, 0.06);
+  gap: 12px 24px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--itg-color-border);
 }
 
-body .event-reg-event-card.is-selected {
-  border-color: rgba(15, 45, 82, 0.36);
+.event-reg-event-card.is-selected {
+  padding-inline: 12px;
+  background: var(--itg-color-highlight);
 }
 
-body .event-reg-event-card-header {
+.event-reg-event-card-header {
   display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
 }
 
-body .event-reg-event-card-title {
+.event-reg-event-card-title {
   margin: 0;
   color: var(--itg-color-primary);
-  font-size: 1.2rem;
-  line-height: 1.25;
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
 }
 
-body .event-reg-event-status {
+/* Status tag: .itg-tag-new ("Open") / .itg-tag-saved ("Registered"). */
+.event-reg-event-status {
   flex-shrink: 0;
-  border: 1px solid rgba(35, 120, 71, 0.25);
-  border-radius: 999px;
-  padding: 0.2rem 0.55rem;
-  background: #eef8f1;
-  color: #237847;
-  font-size: 0.78rem;
-  font-weight: 700;
 }
 
-body .event-reg-event-status.is-registered {
-  border-color: rgba(15, 45, 82, 0.22);
-  background: #eef5fd;
-  color: var(--itg-color-primary);
+.event-reg-event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 32px;
+  margin: 12px 0 0;
+  line-height: 24px;
 }
 
-body .event-reg-event-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin: 0.75rem 0 0;
-}
-
-body .event-reg-event-meta div {
+.event-reg-event-meta div {
   min-width: 0;
 }
 
-body .event-reg-event-meta dt {
-  color: var(--itg-color-muted, #5d6b7c);
-  font-size: 0.78rem;
+.event-reg-event-meta dt {
+  color: var(--itg-color-primary);
   font-weight: 700;
 }
 
-body .event-reg-event-meta dd {
-  margin: 0.2rem 0 0;
-  color: var(--itg-color-text-dark);
+.event-reg-event-meta dd {
+  margin: 0;
+  color: var(--itg-color-text);
   overflow-wrap: anywhere;
 }
 
-body .event-reg-event-description {
-  margin: 0.8rem 0 0;
-  color: var(--itg-color-text, #374151);
-  font-size: 0.95rem;
-  line-height: 1.5;
+.event-reg-event-description {
+  margin: 12px 0 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
 }
 
-body .event-reg-event-action {
+.event-reg-event-card .event-reg-event-action {
   min-width: 8.5rem;
 }
 
 @media (max-width: 600px) {
-  body .event-reg-event-card {
-    grid-template-columns: 1fr;
+  .event-reg-event-card {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  body .event-reg-event-card-header {
-    flex-direction: column;
-  }
-
-  body .event-reg-event-meta {
-    grid-template-columns: 1fr;
-  }
-
-  body .event-reg-event-action {
+  .event-reg-event-card .event-reg-event-action {
     width: 100%;
   }
 }

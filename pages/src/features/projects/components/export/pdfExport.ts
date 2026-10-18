@@ -1,7 +1,11 @@
 import type {jsPDF} from 'jspdf';
 
 import {
+  ACCENT_GOLD_RGB,
   BRAND_BLUE_RGB,
+  MUTED_TEXT_RGB,
+  TABLE_ALT_FILL_RGB,
+  TEXT_COLOR_RGB,
   normalizeProjectRowsExportContext,
   toDisplayValue,
   type ProjectGridRow,
@@ -11,9 +15,8 @@ import {parseRichTextRuns, type StyledRun} from './exportRichText';
 import {drawRunLine, wrapRunsToLines} from './pdfRichText';
 import {loadI2gLogoAsset} from './logoAsset';
 
-const LABEL_RGB: [number, number, number] = [15, 45, 82];
-const ALT_FILL_RGB: [number, number, number] = [247, 250, 252];
-const CARD_BORDER_RGB: [number, number, number] = [189, 211, 234];
+const LABEL_RGB = BRAND_BLUE_RGB;
+const ALT_FILL_RGB = TABLE_ALT_FILL_RGB;
 
 // Fields shown per project, in the same order as the on-screen expanded row detail.
 const detailFieldsFor = (row: ProjectGridRow): Array<{label: string; value: string}> => [
@@ -45,7 +48,7 @@ export const exportProjectRowsPdf = async (
   let cursorY = headerBottomY + 8;
 
   const setBrandTextColor = () => pdf.setTextColor(BRAND_BLUE_RGB[0], BRAND_BLUE_RGB[1], BRAND_BLUE_RGB[2]);
-  const setBodyTextColor = () => pdf.setTextColor(32, 54, 77);
+  const setBodyTextColor = () => pdf.setTextColor(TEXT_COLOR_RGB[0], TEXT_COLOR_RGB[1], TEXT_COLOR_RGB[2]);
 
   const drawPageHeader = () => {
     const logoSize = 16;
@@ -64,11 +67,14 @@ export const exportProjectRowsPdf = async (
 
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
-    pdf.setTextColor(83, 101, 122);
+    pdf.setTextColor(MUTED_TEXT_RGB[0], MUTED_TEXT_RGB[1], MUTED_TEXT_RGB[2]);
     pdf.text('Innovate to Grow Past Projects', titleX, titleLines.length > 1 ? 25 : 21);
 
-    pdf.setDrawColor(CARD_BORDER_RGB[0], CARD_BORDER_RGB[1], CARD_BORDER_RGB[2]);
+    // The gold rule the site draws under page headers and table headings.
+    pdf.setDrawColor(ACCENT_GOLD_RGB[0], ACCENT_GOLD_RGB[1], ACCENT_GOLD_RGB[2]);
+    pdf.setLineWidth(0.8);
     pdf.line(margin, headerBottomY, pageWidth - margin, headerBottomY);
+    pdf.setLineWidth(0.2);
     setBodyTextColor();
   };
 

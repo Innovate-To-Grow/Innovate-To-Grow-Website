@@ -7,13 +7,13 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--itg-font-family-body, 'Open Sans', 'Segoe UI', Arial, sans-serif);
+  font-size: var(--itg-font-size-body, 1rem);
+  line-height: var(--itg-line-height-body, 1.5);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: var(--itg-color-text-dark);
-  background-color: var(--itg-color-bg-page);
+  color: var(--itg-color-text, #323336);
+  background-color: var(--itg-color-bg-page, #fff);
 }
 
 body .sr-only {

@@ -59,7 +59,7 @@ export const PhonePendingVerifyPanel = ({
       <div className="email-center-pending-verify-actions">
         <button
           type="submit"
-          className="auth-form-submit account-action-primary email-center-pending-verify-submit"
+          className="itg-btn itg-btn-primary email-center-pending-verify-submit"
           disabled={verifyLoading || verifyCode.length !== 6 || !termsAccepted}
         >
           {verifyLoading ? <><span className="auth-spinner" /> Submitting...</> : 'Submit code'}
@@ -67,7 +67,7 @@ export const PhonePendingVerifyPanel = ({
         <div className="email-center-pending-verify-actions-row">
           <button
             type="button"
-            className="email-center-btn verify email-center-pending-verify-secondary-btn"
+            className="itg-btn itg-btn-outline email-center-btn verify email-center-pending-verify-secondary-btn"
             disabled={resendLoading || abandonLoading}
             onClick={onResend}
           >
@@ -75,7 +75,7 @@ export const PhonePendingVerifyPanel = ({
           </button>
           <button
             type="button"
-            className="email-center-btn delete email-center-pending-verify-secondary-btn"
+            className="itg-btn itg-btn-danger email-center-btn delete email-center-pending-verify-secondary-btn"
             disabled={abandonLoading || verifyLoading}
             onClick={onAbandon}
           >

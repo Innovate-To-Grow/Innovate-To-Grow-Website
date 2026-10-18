@@ -1,12 +1,15 @@
 import type {Workbook, Worksheet} from 'exceljs';
 
 import {
+  ACCENT_GOLD,
   BRAND_BLUE,
-  BORDER_BLUE,
   EXPORT_COLUMNS,
   HIGHLIGHT_TEXT,
-  LIGHT_BLUE,
+  MUTED_TEXT,
+  PANEL_FILL,
   TABLE_ALT_FILL,
+  TABLE_BORDER,
+  TEXT_COLOR,
   normalizeProjectRowsExportContext,
   toDisplayValue,
   triggerDownload,
@@ -77,7 +80,7 @@ export const buildProjectsWorksheet = (
       worksheet.getCell(rowNumber, columnNumber).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: {argb: LIGHT_BLUE},
+        fgColor: {argb: PANEL_FILL},
       };
     }
   }
@@ -100,7 +103,7 @@ export const buildProjectsWorksheet = (
   worksheet.getCell(2, 2).alignment = {vertical: 'middle'};
 
   worksheet.getCell(3, 2).value = `${rows.length} project${rows.length === 1 ? '' : 's'} exported`;
-  worksheet.getCell(3, 2).font = {color: {argb: '53657A'}, size: 10};
+  worksheet.getCell(3, 2).font = {color: {argb: MUTED_TEXT}, size: 10};
   worksheet.getCell(3, 2).alignment = {vertical: 'top'};
 
   worksheet.addRow([]);
@@ -124,13 +127,13 @@ export const buildProjectsWorksheet = (
     row.eachCell({includeEmpty: true}, (cell) => {
       cell.alignment = {vertical: 'top', wrapText: true};
       cell.border = {
-        bottom: {style: 'thin', color: {argb: BORDER_BLUE}},
-        left: {style: 'thin', color: {argb: BORDER_BLUE}},
-        right: {style: 'thin', color: {argb: BORDER_BLUE}},
-        top: {style: 'thin', color: {argb: BORDER_BLUE}},
+        bottom: {style: 'thin', color: {argb: TABLE_BORDER}},
+        left: {style: 'thin', color: {argb: TABLE_BORDER}},
+        right: {style: 'thin', color: {argb: TABLE_BORDER}},
+        top: {style: 'thin', color: {argb: TABLE_BORDER}},
       };
       cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: fill}};
-      cell.font = {color: {argb: '20364D'}, size: 11};
+      cell.font = {color: {argb: TEXT_COLOR}, size: 11};
     });
     return row;
   };
@@ -151,12 +154,12 @@ export const buildProjectsWorksheet = (
   const headerRow = worksheet.addRow(EXPORT_COLUMNS as unknown as string[]);
   headerRow.font = {bold: true};
   headerRow.eachCell((cell) => {
-    cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: LIGHT_BLUE}};
+    // Like the site's tables: navy header text over a gold rule.
+    cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: PANEL_FILL}};
     cell.font = {bold: true, color: {argb: BRAND_BLUE}};
     cell.alignment = {vertical: 'middle', wrapText: true};
     cell.border = {
-      bottom: {style: 'thin', color: {argb: BORDER_BLUE}},
-      top: {style: 'thin', color: {argb: BORDER_BLUE}},
+      bottom: {style: 'medium', color: {argb: ACCENT_GOLD}},
     };
   });
 
@@ -179,7 +182,7 @@ export const buildProjectsWorksheet = (
 
     dataRow.eachCell({includeEmpty: true}, (cell) => {
       cell.alignment = {vertical: 'top', wrapText: true};
-      cell.border = {bottom: {style: 'thin', color: {argb: 'D7DDE7'}}};
+      cell.border = {bottom: {style: 'thin', color: {argb: TABLE_BORDER}}};
       if (index % 2 === 1) {
         cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: TABLE_ALT_FILL}};
       }

@@ -1,70 +1,116 @@
-body .account-shares-actions .account-outline-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.2;
-  text-decoration: none;
-}
+/* Past Project Curation shared links: the account panel and its full page.
+   Buttons, the back link and the search input use the global classes
+   (.itg-btn*, .itg-back-link, .itg-input); this file only lays the list out
+   in the reference rhythm (16px / 24px rows, 14px / 21px meta, 12px gaps). */
 
-body .account-shares-header,
-body .account-shared-links-page-header {
+.account-shares-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 12px 20px;
+  margin-bottom: 12px;
 }
 
-body .account-shares-header {
-  margin-bottom: 1.25rem;
-}
-
-body .account-shares-header .account-section-title,
-body .account-shared-links-page-header .account-page-title {
+.account-section .account-shares-header .account-section-title {
   margin-bottom: 0;
 }
 
-body .account-shares-page-link,
-body .account-shared-links-back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.account-shares-page-link {
   flex-shrink: 0;
-  line-height: 1.2;
-  text-decoration: none;
 }
 
-body .account-shared-links-page-header {
-  margin-bottom: 1.5rem;
-}
-
-body .account-shared-links-section {
+.account-shared-links-section {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 12px;
 }
 
-body .account-shared-links-toolbar {
+/* The search: label 5px above the field, on a white box inside the grey panel. */
+.account-shared-links-toolbar {
   display: grid;
-  gap: 0.45rem;
+  gap: 5px;
+  padding: 16px;
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-input);
+  background: var(--itg-color-white);
 }
 
-body .account-shared-links-search {
+.account-shared-links-search {
   max-width: 42rem;
 }
 
-body .account-shared-links-count {
-  margin-top: 0.1rem;
+.account-shared-links-count {
+  margin-top: 0;
+}
+
+/* The list: white rows with hairline separators under a gold rule. */
+.account-shares-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 3px solid var(--itg-color-accent-gold);
+  background: var(--itg-color-white);
+}
+
+.account-shares-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--itg-color-border);
+}
+
+.account-shares-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.account-shares-name {
+  color: var(--itg-color-primary);
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.account-shares-sub {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-style: italic;
+  line-height: 21px;
+}
+
+.account-shares-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+.account-shares-actions .account-outline-btn {
+  min-height: 32px;
+  padding: 2px 12px;
+  font-size: var(--itg-font-size-small);
+}
+
+@media (max-width: 992px) {
+  .account-shares-actions .account-outline-btn {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 600px) {
-  body .account-shares-header,
-  body .account-shared-links-page-header {
-    align-items: stretch;
+  .account-shares-header {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  body .account-shares-page-link,
-  body .account-shared-links-back {
+  .account-shares-page-link {
     width: 100%;
   }
 }

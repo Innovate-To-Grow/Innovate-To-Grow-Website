@@ -1,35 +1,71 @@
+import {useCopyLink} from '../../hooks/useCopyLink';
 import {useProjectGridDetails} from '../../hooks/useProjectGridDetails';
-import {getPastProjectDetailUrl, type ProjectGridRow} from '../projectGrid';
+import {getProjectGridRowHref, type ProjectGridLinkScope, type ProjectGridRow} from '../projectGrid';
+import {ProjectPageLink} from './ProjectTitleWithChips';
 
 interface ProjectGridRowDetailsProps {
   row: ProjectGridRow;
+  scope: ProjectGridLinkScope;
   loadMissingDetails?: boolean;
 }
 
-export function ProjectGridRowDetails({row, loadMissingDetails = false}: ProjectGridRowDetailsProps) {
-  const individualHref = row.id ? getPastProjectDetailUrl(row.id) : '';
+/** Copies the project's page URL; past-project rows offer it so a single project can be passed on. */
+const CopyProjectLinkButton = ({href}: {href: string}) => {
+  const {status, copy} = useCopyLink({
+    copied: 'Project link copied.',
+    failed: 'Could not copy the link. Use Open the project page and copy its address.',
+  });
+
+  return (
+    <>
+      <button type="button" className="itg-btn itg-btn-text project-grid-copy-link" onClick={() => void copy(href)}>
+        Copy project link
+      </button>
+      {status ? (
+        <span className="project-grid-copy-status" role="status">
+          {status}
+        </span>
+      ) : null}
+    </>
+  );
+};
+
+export function ProjectGridRowDetails({row, scope, loadMissingDetails = false}: ProjectGridRowDetailsProps) {
+  const href = getProjectGridRowHref(row, scope);
   const {details, loading, error, loaded, retry} = useProjectGridDetails(row, loadMissingDetails);
 
   return (
     <>
-      {individualHref ? (
-        <div className="project-grid-individual-link-row">
-          <span className="project-grid-individual-link-label">Individual Project URL</span>
-          <a className="project-grid-individual-link" href={individualHref} target="_blank" rel="noopener noreferrer">
-            {individualHref}
-          </a>
-        </div>
+      {loading ? (
+        <p className="project-grid-detail-state" role="status">
+          Loading project details...
+        </p>
       ) : null}
-      {loading ? <div role="status">Loading project details...</div> : null}
       {error ? (
-        <div role="alert">
+        <p className="project-grid-detail-state itg-error" role="alert">
           Unable to load project details.{' '}
-          <button type="button" className="project-grid-detail-button" onClick={retry}>Retry</button>
+          <button type="button" className="itg-btn itg-btn-text" onClick={retry}>
+            Retry
+          </button>
+        </p>
+      ) : null}
+      {details.abstract ? <p className="project-grid-detail-abstract">{details.abstract}</p> : null}
+      {details.student_names ? (
+        <p className="project-grid-detail-members">
+          <strong>Team members:</strong> {details.student_names}
+        </p>
+      ) : null}
+      {loaded && !details.abstract && !details.student_names ? (
+        <p className="project-grid-detail-state">No abstract or student names available.</p>
+      ) : null}
+      {href ? (
+        <div className="project-grid-detail-links">
+          <ProjectPageLink className="project-grid-individual-link" href={href} scope={scope}>
+            Open the project page
+          </ProjectPageLink>
+          {scope === 'past' ? <CopyProjectLinkButton href={href} /> : null}
         </div>
       ) : null}
-      {details.abstract ? <div><strong>Abstract:</strong> {details.abstract}</div> : null}
-      {details.student_names ? <div><strong>Student Names:</strong> {details.student_names}</div> : null}
-      {loaded && !details.abstract && !details.student_names ? <div>No abstract or student names available.</div> : null}
     </>
   );
 }

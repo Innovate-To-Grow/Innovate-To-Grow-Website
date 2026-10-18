@@ -44,14 +44,21 @@ export const EventArchivePage = () => {
 
     if (!config) {
         return (
-            <div className="ea-page">
-                <h1 className="ea-title">Event Not Found</h1>
-                <p className="ea-text">
-                    The event archive &quot;{eventSlug}&quot; does not exist.
-                </p>
-                <Link to="/past-events" className="ea-back-link">
-                    View all past events
+            <div className="ea-page ea-not-found">
+                <Link to="/past-events" className="itg-back-link ea-back-link">
+                    <span aria-hidden="true">‹&nbsp;</span>Back to Past Events
                 </Link>
+                <section className="itg-empty-state" aria-labelledby="ea-not-found-title">
+                    <h1 id="ea-not-found-title" className="itg-empty-state-title ea-title">Event Not Found</h1>
+                    <p className="itg-empty-state-text">
+                        The event archive &quot;{eventSlug}&quot; does not exist.
+                    </p>
+                    <div className="itg-empty-state-actions">
+                        <Link to="/past-events" className="itg-btn itg-btn-primary">
+                            View all past events
+                        </Link>
+                    </div>
+                </section>
             </div>
         );
     }
@@ -60,17 +67,17 @@ export const EventArchivePage = () => {
 
     return (
         <div className="ea-page">
-            <div className="ea-header">
-                <Link to="/past-events" className="ea-back-link">
-                    &larr; Past Events
+            <header className="ea-header">
+                <Link to="/past-events" className="itg-back-link ea-back-link">
+                    <span aria-hidden="true">‹&nbsp;</span>Back to Past Events
                 </Link>
-                <h1 className="ea-title">{config.title}</h1>
-                <p className="ea-subtitle">{config.semester} &mdash; Innovate to Grow</p>
-            </div>
+                <h1 className="itg-page-title ea-title">{config.title}</h1>
+                <p className="itg-page-meta ea-subtitle">{config.semester} · Innovate to Grow</p>
+            </header>
 
             {hasSchedule && (
                 <section className="ea-section">
-                    <h2 className="ea-section-title">Presentation Schedule</h2>
+                    <h2 className="itg-section-title ea-section-title">Presentation Schedule</h2>
                     <ScheduleGrid
                         classes={config.classes}
                         rows={filteredRows}
@@ -83,7 +90,7 @@ export const EventArchivePage = () => {
             )}
 
             <section className="ea-section">
-                <h2 className="ea-section-title">Projects &amp; Teams</h2>
+                <h2 className="itg-section-title ea-section-title">Projects &amp; Teams</h2>
                 <SheetsDataTable
                     key={teamSearch || 'all-projects'}
                     rows={filteredRows}

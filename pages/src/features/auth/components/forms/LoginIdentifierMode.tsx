@@ -36,14 +36,14 @@ export const LoginIdentifierMode = ({
   return (
     <form className="auth-form" onSubmit={onSubmit} noValidate>
       <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="login-identifier">
+        <label className="itg-label auth-form-label" htmlFor="login-identifier">
           Email or phone number
         </label>
         <input
           ref={identifierInputRef}
           id="login-identifier"
           type="text"
-          className="auth-form-input"
+          className="itg-input auth-form-input"
           value={identifier}
           onChange={(event) => onIdentifierChange(event.target.value)}
           placeholder="you@email.com or (201)555-0123"
@@ -61,7 +61,7 @@ export const LoginIdentifierMode = ({
 
       <PrivacyLegalNotice />
 
-      <button type="submit" className="auth-form-submit" disabled={isLoading || !canSubmit}>
+      <button type="submit" className="itg-btn itg-btn-primary auth-form-submit" disabled={isLoading || !canSubmit}>
         {isLoading ? (
           <>
             <span className="auth-spinner" />
@@ -72,8 +72,8 @@ export const LoginIdentifierMode = ({
         )}
       </button>
 
-      <div className="auth-inline-links" style={{ justifyContent: 'center' }}>
-        <button type="button" className="auth-text-link" onClick={onSwitchToPassword} style={{ fontSize: '0.8125rem' }}>
+      <div className="auth-inline-links">
+        <button type="button" className="itg-btn itg-btn-text auth-text-link" onClick={onSwitchToPassword}>
           Sign in with password instead
         </button>
       </div>

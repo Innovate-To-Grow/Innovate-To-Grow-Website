@@ -19,6 +19,21 @@ describe('TableBlock', () => {
     expect(noHeading.querySelector('h2.cms-table-block-title')).toBeNull();
   });
 
+  it('wraps the table in a labelled, keyboard-focusable scroll region', () => {
+    const {container} = render(
+      <TableBlock data={{heading: 'Results', columns: ['A'], rows: [['x']]}} />,
+    );
+    const region = container.querySelector('.cms-table-block-wrap');
+    expect(region).toHaveAttribute('role', 'region');
+    expect(region).toHaveAttribute('aria-label', 'Results');
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(container.querySelector('h2.cms-table-block-title')).toHaveClass('itg-section-title');
+
+    const {container: unlabeled} = render(<TableBlock data={{heading: '  ', rows: []}} />);
+    expect(unlabeled.querySelector('h2')).toBeNull();
+    expect(unlabeled.querySelector('.cms-table-block-wrap')).toHaveAttribute('aria-label', 'Table');
+  });
+
   it('renders columns as header cells', () => {
     const {container} = render(
       <TableBlock data={{columns: ['Name', 'Score'], rows: []}} />,

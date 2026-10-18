@@ -54,6 +54,14 @@ describe('SheetsDataTable accessibility and row identity', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Project Title'}));
 
     expect(projectHeader).toHaveAttribute('aria-sort', 'ascending');
+    // DataTables look: the sorted header carries the arrow class, its column's cells the shading class.
+    expect(projectHeader).toHaveClass('sdt-sorted-asc');
+    expect(
+      screen.getByRole('cell', {name: 'Alpha Project'}),
+    ).toHaveClass('is-sorted-col');
+    expect(
+      screen.getByRole('columnheader', {name: 'Details'}),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', {name: 'Hide details for Zulu Project'}),
     ).toHaveAttribute('aria-expanded', 'true');
@@ -117,5 +125,31 @@ describe('SheetsDataTable accessibility and row identity', () => {
     const table = screen.getByRole('table');
     expect(within(table).getByText('Alpha Project')).toBeInTheDocument();
     expect(within(table).queryByText('Zulu Project')).toBeNull();
+  });
+
+  it('says so inside the table when there are no rows or no matches, as DataTables does', () => {
+    const {rerender} = render(
+      <MemoryRouter>
+        <SheetsDataTable rows={[]} />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole('cell', {name: 'No data available in table'}),
+    ).toHaveAttribute('colspan', String(9 + 1));
+
+    rerender(
+      <MemoryRouter>
+        <SheetsDataTable rows={[makeRow('Alpha Project', '1', 'Alpha abstract')]} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText('No data available in table')).toBeNull();
+
+    fireEvent.change(screen.getByRole('searchbox', {name: 'Search projects'}), {
+      target: {value: 'nothing like this'},
+    });
+    expect(
+      screen.getByRole('cell', {name: 'No matching records found'}),
+    ).toBeInTheDocument();
   });
 });

@@ -47,6 +47,17 @@ describe('LoginPage returnTo handling', () => {
         expect(screen.getByTestId('login-return-to')).toHaveTextContent('/past-projects/share-123');
     });
 
+    it('titles the page above the form panel without a second logo', () => {
+        mockUseAuth.mockReturnValue({isAuthenticated: false, requiresProfileCompletion: false});
+
+        const {container} = renderPage('/login');
+
+        expect(screen.getByRole('heading', {name: 'Welcome to I2G', level: 1})).toHaveClass('itg-page-title');
+        // The form sits in the page's panel; the site header already carries the i2G logo.
+        expect(container.querySelector('.auth-page > .auth-page-card [data-testid="login-return-to"]')).not.toBeNull();
+        expect(container.querySelector('.auth-page img')).toBeNull();
+    });
+
     it('returns an authenticated visitor to the requested page', async () => {
         mockUseAuth.mockReturnValue({isAuthenticated: true, requiresProfileCompletion: false});
 

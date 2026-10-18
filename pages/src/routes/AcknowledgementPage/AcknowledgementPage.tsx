@@ -26,53 +26,57 @@ export const AcknowledgementPage = () => {
 
   return (
     <div className="ack-page">
-      <h1 className="ack-page-title">Partners &amp; Sponsors</h1>
+      <h1 className="itg-page-title ack-page-title">Partners &amp; Sponsors</h1>
 
-      <p className="ack-page-lead">
+      <p className="itg-lead ack-page-lead">
         The Innovate to Grow program thrives thanks to the generous support of our partners and
         sponsors. Their commitment to engineering education and student innovation makes this
         program possible.
       </p>
 
-      <p className="ack-page-text">
-        We extend our sincere gratitude to all organizations and individuals who contribute to
-        Innovate to Grow through project sponsorship, financial support, mentorship, and judging.
-        Your involvement directly impacts the educational experience of UC Merced students and
-        helps prepare the next generation of engineers and innovators.
-      </p>
+      <div className="itg-content ack-page-content">
+        <p>
+          We extend our sincere gratitude to all organizations and individuals who contribute to
+          Innovate to Grow through project sponsorship, financial support, mentorship, and judging.
+          Your involvement directly impacts the educational experience of UC Merced students and
+          helps prepare the next generation of engineers and innovators.
+        </p>
+      </div>
 
       {loading ? (
-        <div className="ack-page-loading">Loading sponsors...</div>
+        <p className="ack-page-loading" role="status">Loading sponsors...</p>
       ) : sponsorBlocks.length > 0 ? (
         sponsorBlocks.map((block) => (
           <SponsorYearBlock key={`${block.sort_order}-${block.data.year}`} data={block.data} />
         ))
       ) : (
-        <section className="ack-page-section">
-          <h2 className="ack-page-section-title">Our Sponsors</h2>
-          <div className="ack-page-placeholder">
-            <p className="ack-page-text">
-              Sponsor logos and acknowledgements will be updated for each event.
-            </p>
-          </div>
+        <section className="ack-page-section" aria-labelledby="ack-our-sponsors">
+          <h2 id="ack-our-sponsors" className="itg-section-title ack-page-section-title">Our Sponsors</h2>
+          <p className="itg-well ack-page-placeholder">
+            Sponsor logos and acknowledgements will be updated for each event.
+          </p>
         </section>
       )}
 
-      <section className="ack-page-section">
-        <h2 className="ack-page-section-title">Become a Sponsor</h2>
-        <p className="ack-page-text">
-          Interested in supporting the Innovate to Grow program? Learn more about sponsorship
-          opportunities and how your organization can get involved.
-        </p>
-        <p className="ack-page-text">
-          <Link to="/sponsorship" className="ack-page-link">
+      <section className="itg-panel ack-page-section ack-page-cta" aria-labelledby="ack-become-sponsor">
+        <h2 id="ack-become-sponsor" className="itg-section-title ack-page-section-title">Become a Sponsor</h2>
+        <div className="itg-content ack-page-content">
+          <p>
+            Interested in supporting the Innovate to Grow program? Learn more about sponsorship
+            opportunities and how your organization can get involved.
+          </p>
+        </div>
+        <p className="ack-page-actions">
+          <Link to="/sponsorship" className="itg-btn itg-btn-primary itg-btn-lg ack-page-link">
             View Sponsorship Information
           </Link>
         </p>
-        <p className="ack-page-text">
-          For questions about sponsorship, please contact us at{' '}
-          <a href="mailto:i2g@ucmerced.edu">i2g@ucmerced.edu</a>.
-        </p>
+        <div className="itg-content ack-page-content">
+          <p>
+            For questions about sponsorship, please contact us at{' '}
+            <a href="mailto:i2g@ucmerced.edu">i2g@ucmerced.edu</a>.
+          </p>
+        </div>
       </section>
     </div>
   );

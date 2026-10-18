@@ -78,6 +78,7 @@ describe('PastProjectCurationSharedLinksPage', () => {
         expect(screen.getByText('Spring finalists')).toBeInTheDocument();
         expect(screen.getByText('Fall demo set')).toBeInTheDocument();
         expect(screen.getByText('2 of 2 shared links')).toBeInTheDocument();
+        expect(screen.getByRole('link', {name: 'Back to Account'})).toHaveAttribute('href', '/account');
 
         const openLinks = screen.getAllByRole('link', {name: /open/i});
         expect(openLinks[0]).toHaveAttribute('href', '/past-projects/share-1');

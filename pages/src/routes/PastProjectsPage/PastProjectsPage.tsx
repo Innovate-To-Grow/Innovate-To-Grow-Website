@@ -1,11 +1,13 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {useNavigate, useParams} from 'react-router';
+import {Link, useNavigate, useParams, useSearchParams} from 'react-router';
 import {
   MergedResultsTable,
   PastProjectsBuilder,
   SharedPastProjectMergeSearch,
   createProjectGridItems,
 } from '@/features/projects';
+import {ProjectsMessagePage} from '@/features/projects/components/ProjectsMessagePage';
+import {getEarliestTermYear} from '@/features/projects/components/projectGrid';
 import {usePastProjectGridData, usePastProjectShareData} from '@/features/projects/hooks/useProjectGridData';
 import {
   DEFAULT_PAST_PROJECT_SHARE_NAME,
@@ -183,11 +185,62 @@ const SHARE_CONFLICT_RELOADING =
 const SHARE_CONFLICT_RELOAD_FAILED =
   'This shared page changed elsewhere, and the latest version could not be reloaded. Reload the page before editing again.';
 
+const SharedListUnavailable = () => (
+  <ProjectsMessagePage
+    className="past-projects-share-unavailable"
+    eyebrow="Shared list · Past Projects"
+    title="This shared list isn't available"
+    actions={
+      <>
+        <Link className="itg-btn itg-btn-primary" to="/past-projects">
+          Search past projects
+        </Link>
+        <Link className="itg-link" to="/projects">
+          Go to Projects
+        </Link>
+      </>
+    }
+  >
+    <p>
+      The link may be incomplete, or the person who shared it has deleted the list. Ask them to send the link again,
+      or search the past projects yourself.
+    </p>
+  </ProjectsMessagePage>
+);
+
+/** The share request failed (server error, network, timeout): the link may be fine, so offer to try again. */
+const SharedListLoadFailed = ({onRetry}: {onRetry: () => void}) => (
+  <ProjectsMessagePage
+    className="past-projects-share-failed"
+    eyebrow="Shared list · Past Projects"
+    title="We couldn't load this shared list"
+    actions={
+      <>
+        <button type="button" className="itg-btn itg-btn-primary" onClick={onRetry}>
+          Try again
+        </button>
+        <Link className="itg-btn itg-btn-outline" to="/past-projects">
+          Search past projects
+        </Link>
+      </>
+    }
+  >
+    <p>Something went wrong while loading this list. Check your connection and try again.</p>
+  </ProjectsMessagePage>
+);
+
 export const PastProjectsPage = () => {
   const {shareId} = useParams<{shareId: string}>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const sharedMode = Boolean(shareId);
-  const {share, loading: shareLoading, error: shareError} = usePastProjectShareData(shareId);
+  const {
+    share,
+    loading: shareLoading,
+    error: shareError,
+    notFound: shareNotFound,
+    retry: retryShare,
+  } = usePastProjectShareData(shareId);
   const [editableShare, setEditableShare] = useState<PastProjectShare | null>(null);
   // Reset the local override to the freshly fetched share whenever `share` changes identity.
   // This is the render-phase equivalent of the old `useEffect(() => setEditableShare(share), [share])`
@@ -376,62 +429,72 @@ export const PastProjectsPage = () => {
     return appended;
   };
 
-  return (
-    <div className="past-projects-page">
-      <header className="past-projects-hero">
-        <h1 className="past-projects-title">Past Projects</h1>
-        {!sharedMode ? (
-          <p className="past-projects-lead">
-            Search across past Innovate to Grow projects, keep only the items you want, merge the selected results into
-            a shareable archive, and curate the results.
+  const sinceYear = useMemo(() => getEarliestTermYear(rows), [rows]);
+  const archiveMeta = rows.length
+    ? `${rows.length} ${rows.length === 1 ? 'project' : 'projects'}${sinceYear ? ` since ${sinceYear}` : ''}`
+    : '';
+
+  if (sharedMode) {
+    return (
+      <div className="past-projects-page past-projects-page--shared">
+        {shareLoading ? <p className="past-projects-state">Loading shared list...</p> : null}
+        {/* "Isn't available" only when the API says the list does not exist; any other failure may pass. */}
+        {shareError && shareNotFound ? <SharedListUnavailable /> : null}
+        {shareError && !shareNotFound ? <SharedListLoadFailed onRetry={retryShare} /> : null}
+        {shareConflict && shareConflict.shareId === shareId ? (
+          <p className="past-projects-state past-projects-state-error itg-error" role="alert">
+            {shareConflict.message}
           </p>
         ) : null}
+        {!shareLoading && !shareError ? (
+          <>
+            <MergedResultsTable
+              rows={sharedItems}
+              sharedMode
+              note={activeShare?.note}
+              title={activeShare ? shareDisplayTitle(activeShare) : DEFAULT_PAST_PROJECT_SHARE_NAME}
+              sharedAt={activeShare?.created_at}
+              editable={Boolean(activeShare?.can_edit)}
+              onUpdateShare={activeShare?.can_edit ? handleUpdateShare : undefined}
+            />
+            {activeShare?.can_edit ? (
+              <SharedPastProjectMergeSearch
+                currentRows={activeShare.rows}
+                error={error}
+                loading={loading}
+                rows={rows}
+                onAddRows={handleAddShareRows}
+                onRefreshRows={refetch}
+              />
+            ) : null}
+            <p className="past-projects-shared-closing">
+              Want to make your own list? <Link to="/past-projects">Search all past projects</Link>
+            </p>
+          </>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="past-projects-page">
+      <header className="past-projects-header">
+        <h1 className="itg-page-title">Past Projects</h1>
+        {archiveMeta ? <p className="itg-page-meta">{archiveMeta}</p> : null}
+        <p className="itg-lead">
+          Search past Innovate to Grow projects, check the ones you want, and save them into one list. Export the list
+          or share it with a link.
+        </p>
       </header>
 
-      {sharedMode ? (
-        <>
-          {shareLoading ? <div className="past-projects-state">Loading shared results...</div> : null}
-          {shareError ? <div className="past-projects-state past-projects-state-error">{shareError}</div> : null}
-          {shareConflict && shareConflict.shareId === shareId ? (
-            <div
-              className="past-projects-state past-projects-state-error"
-              role="alert"
-            >
-              {shareConflict.message}
-            </div>
-          ) : null}
-          {!shareLoading && !shareError ? (
-            <>
-              <MergedResultsTable
-                rows={sharedItems}
-                sharedMode
-                note={activeShare?.note}
-                title={activeShare ? shareDisplayTitle(activeShare) : DEFAULT_PAST_PROJECT_SHARE_NAME}
-                editable={Boolean(activeShare?.can_edit)}
-                onUpdateShare={activeShare?.can_edit ? handleUpdateShare : undefined}
-              />
-              {activeShare?.can_edit ? (
-                <SharedPastProjectMergeSearch
-                  currentRows={activeShare.rows}
-                  error={error}
-                  loading={loading}
-                  rows={rows}
-                  onAddRows={handleAddShareRows}
-                  onRefreshRows={refetch}
-                />
-              ) : null}
-            </>
-          ) : null}
-        </>
-      ) : (
-        <PastProjectsBuilder
-          rows={rows}
-          loading={loading}
-          error={error}
-          onRefreshRows={refetch}
-          onCreateShare={handleCreateShare}
-        />
-      )}
+      <PastProjectsBuilder
+        rows={rows}
+        loading={loading}
+        error={error}
+        initialSearch={searchParams.get('value') || ''}
+        onRefreshRows={refetch}
+        onCreateShare={handleCreateShare}
+      />
     </div>
   );
 };

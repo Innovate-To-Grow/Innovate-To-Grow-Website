@@ -44,7 +44,7 @@ const RegistrationCard = ({
     </div>
     <button
       type="button"
-      className="account-outline-btn"
+      className="itg-btn itg-btn-outline account-outline-btn"
       disabled={resendingId === ticket.id}
       onClick={() => onResendTicketEmail(ticket.id)}
     >
@@ -62,7 +62,7 @@ const OpenRegistrationCard = ({event}: {event: EventRegistrationSummary}) => {
     <div className="account-ticket-card account-open-registration-card">
       <div className="account-open-reg-header">
         <h3 className="account-open-reg-title">{event.name}</h3>
-        <span className="account-open-reg-badge">Open</span>
+        <span className="itg-tag itg-tag-new account-open-reg-badge">Open</span>
       </div>
       <p className="account-open-reg-lead">You are not registered yet. Use the button below to complete registration.</p>
       <ul className="account-open-reg-details">
@@ -77,7 +77,7 @@ const OpenRegistrationCard = ({event}: {event: EventRegistrationSummary}) => {
       </ul>
       {showDescription ? <p className="account-open-reg-description">{description}</p> : null}
       <div className="account-open-reg-actions">
-        <Link to={`/event-registration?event=${encodeURIComponent(event.slug)}`} className="account-edit-btn account-open-reg-cta">
+        <Link to={`/event-registration?event=${encodeURIComponent(event.slug)}`} className="itg-btn itg-btn-outline account-open-reg-cta">
           Register for this event
         </Link>
       </div>
@@ -104,7 +104,7 @@ export const TicketsSection = ({
   const hasRows = openUnregisteredEvents.length > 0 || allRegistrations.length > 0;
 
   return (
-    <div className="account-section">
+    <div className="itg-panel account-section">
       <h2 className="account-section-title">Event Registrations</h2>
       {loading ? (
         <p className="account-status-text">Loading registrations...</p>

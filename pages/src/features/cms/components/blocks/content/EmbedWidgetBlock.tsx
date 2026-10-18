@@ -62,7 +62,7 @@ export const EmbedWidgetBlock = ({ data, previewMode = false }: {
 
   if (!validSlug) {
     return (
-      <section className="cms-embed-widget cms-embed-widget--invalid" aria-label="Invalid embed widget">
+      <section className="cms-embed-widget cms-embed-widget--invalid itg-notice" aria-label="Invalid embed widget">
         <p>Embed widget slug is missing or invalid.</p>
       </section>
     );
@@ -107,7 +107,7 @@ export const EmbedWidgetBlock = ({ data, previewMode = false }: {
 
   return (
     <section className="cms-embed-widget">
-      {data.heading && <h2 className="section-title">{data.heading}</h2>}
+      {data.heading && <h2 className="section-title itg-section-title">{data.heading}</h2>}
       <div className="cms-embed-widget__frame" style={frameStyle}>
         <iframe
           ref={iframeRef}

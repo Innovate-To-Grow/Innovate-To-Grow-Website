@@ -41,7 +41,7 @@ export const SponsorYearBlock = ({ data }: { data: SponsorYearBlockData }) => {
 
   return (
     <section className="cms-sponsor-year">
-      <h2 className="cms-sponsor-year-title">{year} Sponsors</h2>
+      <h2 className="cms-sponsor-year-title itg-section-title">{year} Sponsors</h2>
       <div className="cms-sponsor-year-grid">
         {sponsors.map((sponsor) => {
           const content = (

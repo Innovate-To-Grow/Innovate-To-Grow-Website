@@ -3,6 +3,7 @@ import {useEffect, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router';
 import {ProjectGridTable, PROJECT_GRID_COLUMNS, createProjectGridItems, useProjectGridTable} from '@/features/projects';
 import {useCurrentEventSchedule} from '@/features/events/hooks/useCurrentEventSchedule';
+import {scheduleToneClass} from '@/features/events/scheduleTones';
 import {scheduleProjectToGridRow} from '@/features/projects/api';
 import {addMinutes} from '@/lib/format';
 
@@ -14,42 +15,6 @@ const GRAND_AWARD_LABELS: Record<string, string> = {
   ENGSL: 'F3 Innovate Engineering Award',
 };
 
-const SECTION_THEMES: Record<
-  string,
-  {
-    palette: string[];
-    cellTextColor: string;
-    organizationColor: string;
-    topicTextColor: string;
-  }
-> = {
-  CAP: {
-    palette: ['#e7ba2d', '#e8c24f', '#ebca69', '#edd484', '#efdc9a'],
-    cellTextColor: '#0f2d52',
-    organizationColor: '#0f2d52',
-    topicTextColor: '#0f2d52',
-  },
-  CEE: {
-    palette: ['#c3dedd', '#b5d4d2', '#a8c8c6', '#9bbcbc', '#8fb0b0'],
-    cellTextColor: '#0f2d52',
-    organizationColor: '#0f2d52',
-    topicTextColor: '#0f2d52',
-  },
-  ENGSL: {
-    palette: ['#c3dedd', '#b5d4d2', '#a8c8c6', '#9bbcbc', '#8fb0b0'],
-    cellTextColor: '#0f2d52',
-    organizationColor: '#0f2d52',
-    topicTextColor: '#0f2d52',
-  },
-  CSE: {
-    palette: ['#25315f', '#33406f', '#414e7c', '#4b5888', '#556291'],
-    cellTextColor: '#f0cb58',
-    organizationColor: '#f0cb58',
-    topicTextColor: '#f0cb58',
-  },
-};
-
-
 function buildTimeSlots(startTime: string, slotMinutes: number, maxOrder: number): string[] {
   const slots: string[] = [];
   let currentTime = startTime;
@@ -60,18 +25,6 @@ function buildTimeSlots(startTime: string, slotMinutes: number, maxOrder: number
   }
 
   return slots;
-}
-
-function columnStyle(sectionCode: string, columnIndex: number): CSSProperties {
-  const theme = SECTION_THEMES[sectionCode] ?? SECTION_THEMES.CAP;
-  const columnTone = theme.palette[Math.min(columnIndex, theme.palette.length - 1)];
-
-  return {
-    '--schedule-column-bg': columnTone,
-    '--schedule-cell-text': theme.cellTextColor,
-    '--schedule-org-color': theme.organizationColor,
-    '--schedule-topic-color': theme.topicTextColor,
-  } as CSSProperties;
 }
 
 function isFullyEmptyOrder(tracks: Array<{slots: Array<{order: number}>}>, order: number): boolean {
@@ -187,8 +140,8 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
   if (loading) {
     return (
       <div className="schedule-page">
-        <h1 className="schedule-page-title">Event Schedule</h1>
-        <div className="schedule-page-state">Loading schedule...</div>
+        <h1 className="itg-page-title schedule-page-title">Event Schedule</h1>
+        <p className="schedule-page-state" role="status">Loading schedule...</p>
       </div>
     );
   }
@@ -196,10 +149,10 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
   if (error || !data) {
     return (
       <div className="schedule-page">
-        <h1 className="schedule-page-title">Event Schedule</h1>
-        <div className="schedule-page-state schedule-page-state-error">
+        <h1 className="itg-page-title schedule-page-title">Event Schedule</h1>
+        <p className="schedule-page-state schedule-page-state-error" role="alert">
           {error || 'Event schedule is unavailable.'}
-        </div>
+        </p>
       </div>
     );
   }
@@ -207,15 +160,15 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
   return (
     <div className="schedule-page">
       <header className="schedule-page-header" data-embed-section="schedule-header">
-        <h1 className="schedule-page-title">{data.event.name}</h1>
-        {schedulePageMeta ? <p className="schedule-page-meta">{schedulePageMeta}</p> : null}
-        <p className="schedule-page-text">{data.event.description}</p>
+        <h1 className="itg-page-title schedule-page-title">{data.event.name}</h1>
+        {schedulePageMeta ? <p className="itg-page-meta schedule-page-meta">{schedulePageMeta}</p> : null}
+        {data.event.description ? <p className="itg-lead schedule-page-text">{data.event.description}</p> : null}
       </header>
 
       {data.show_winners && orderedSections.some((s) => s.tracks.some((t) => t.winner)) && (
         <section className="schedule-page-section schedule-page-section-winners" data-embed-section="schedule-winners">
           <div className="schedule-winners-hero">
-            <h2 className="schedule-page-section-title schedule-winners-title">
+            <h2 className="itg-section-title schedule-page-section-title schedule-winners-title">
               <span className="schedule-winners-title-emphasis">Winners!</span>{' '}
               <span className="schedule-winners-title-event">{data.event.name}</span>
             </h2>
@@ -235,7 +188,7 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
           <div className="schedule-winners">
             {winnerSections.map((section) => (
               <div className="schedule-winners-group" key={section.id}>
-                <h3 className="schedule-winners-group-title">
+                <h3 className="schedule-class-label schedule-winners-group-title">
                   {section.label} ({section.code})
                 </h3>
                 <div
@@ -247,7 +200,7 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
                   }
                 >
                   {section.winnerTracks.map((track, index) => (
-                    <article className="schedule-winner-card" key={track.id} style={columnStyle(section.code, index)}>
+                    <article className={`schedule-winner-card ${scheduleToneClass(section.code, index)}`} key={track.id}>
                       <div className="schedule-winner-card-header">
                         <p className="schedule-winner-track">Track {track.track_number}</p>
                       </div>
@@ -266,19 +219,19 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
 
       {data.expo.items.length > 0 && (
         <section className="schedule-page-section" data-embed-section="schedule-expo">
-          <h2 className="schedule-page-section-title">{data.expo.title}</h2>
+          <h2 className="itg-section-title schedule-page-section-title">{data.expo.title}</h2>
           <div className="schedule-page-agenda-wrap">
             <table className="schedule-page-agenda-table">
               <thead>
                 <tr>
-                  <th>Room:</th>
-                  <th>{data.expo.location}</th>
+                  <th scope="col">Room:</th>
+                  <th scope="col">{data.expo.location}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.expo.items.map((item) => (
                   <tr key={item.id}>
-                    <th>{item.time}</th>
+                    <th scope="row">{item.time}</th>
                     <td>{item.title}</td>
                   </tr>
                 ))}
@@ -289,7 +242,7 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
       )}
 
       <section className="schedule-page-section" data-embed-section="schedule-presentations">
-        <h2 className="schedule-page-section-title schedule-page-section-title-main">{data.presentations_title}</h2>
+        <h2 className="itg-section-title schedule-page-section-title">{data.presentations_title}</h2>
         <div className="schedule-page-section-stack">
           {orderedSections.map((section) => {
             const orderedTracks = [...section.tracks].sort(
@@ -302,11 +255,10 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
                 .filter((order) => isFullyEmptyOrder(orderedTracks, order)),
             );
             const showTopicRow = orderedTracks.some((track) => track.topic);
-            const columnWidth = `${100 / (orderedTracks.length + 1)}%`;
 
             return (
               <section key={section.id} className="schedule-presentation-block">
-                <h3 className="schedule-presentation-heading">
+                <h3 className="schedule-class-label schedule-presentation-heading">
                   {section.label} ({section.code})
                 </h3>
 
@@ -315,8 +267,7 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
                     {orderedTracks.map((track, columnIndex) => (
                       <article
                         key={`${section.id}-${track.id}-mobile`}
-                        className="schedule-mobile-card"
-                        style={columnStyle(section.code, columnIndex)}
+                        className={`schedule-mobile-card ${scheduleToneClass(section.code, columnIndex)}`}
                       >
                         <header className="schedule-mobile-card-header">
                           <div>
@@ -366,11 +317,17 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
                   </div>
                 ) : (
                   <div className="schedule-page-table-wrap">
-                    <table className={`schedule-presentation-table schedule-presentation-table--${section.code.toLowerCase()}`}>
+                    {/* The track count sizes the table's minimum width in the events sheet, so the grid
+                        fits the main column and only scrolls when a class has too many tracks to fit. */}
+                    <table
+                      className={`schedule-presentation-table schedule-presentation-table--${section.code.toLowerCase()}`}
+                      style={{'--schedule-track-count': orderedTracks.length} as CSSProperties}
+                    >
+                      {/* Narrow time column; the fixed layout shares the rest equally between tracks. */}
                       <colgroup>
-                        <col style={{width: columnWidth}} />
+                        <col className="schedule-presentation-time-col" />
                         {orderedTracks.map((track) => (
-                          <col key={`${track.id}-col`} style={{width: columnWidth}} />
+                          <col key={`${track.id}-col`} />
                         ))}
                       </colgroup>
                       <thead>
@@ -396,8 +353,7 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
                             {orderedTracks.map((track, index) => (
                               <td
                                 key={`${track.id}-topic`}
-                                className="schedule-presentation-topic-cell"
-                                style={columnStyle(section.code, index)}
+                                className={`schedule-presentation-topic-cell ${scheduleToneClass(section.code, index)}`}
                               >
                                 <span className="schedule-presentation-topic">{track.topic || 'TBD'}</span>
                               </td>
@@ -412,17 +368,16 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
 
                           return (
                             <tr key={`${section.id}-${order}`}>
-                              <th className="schedule-presentation-time">{time}</th>
+                              <th scope="row" className="schedule-presentation-time">{time}</th>
                               {orderedTracks.map((track, columnIndex) => {
                                 const slot = track.slots.find((entry) => entry.order === order);
 
                                 return (
                                   <td
                                     key={`${track.id}-${order}`}
-                                    className={`schedule-presentation-slot ${
-                                      slot?.is_break || isFullyEmpty ? 'schedule-presentation-slot-break' : ''
+                                    className={`schedule-presentation-slot ${scheduleToneClass(section.code, columnIndex)}${
+                                      slot?.is_break || isFullyEmpty ? ' schedule-presentation-slot-break' : ''
                                     }`}
-                                    style={columnStyle(section.code, columnIndex)}
                                     title={slot?.tooltip || ''}
                                   >
                                     {slot ? (
@@ -463,19 +418,19 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
 
       {data.awards.items.length > 0 && (
         <section className="schedule-page-section" data-embed-section="schedule-awards">
-          <h2 className="schedule-page-section-title">{data.awards.title}</h2>
+          <h2 className="itg-section-title schedule-page-section-title">{data.awards.title}</h2>
           <div className="schedule-page-agenda-wrap">
             <table className="schedule-page-agenda-table">
               <thead>
                 <tr>
-                  <th>Room:</th>
-                  <th>{data.awards.location}</th>
+                  <th scope="col">Room:</th>
+                  <th scope="col">{data.awards.location}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.awards.items.map((item) => (
                   <tr key={item.id}>
-                    <th>{item.time}</th>
+                    <th scope="row">{item.time}</th>
                     <td>{item.title}</td>
                   </tr>
                 ))}
@@ -486,12 +441,13 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
       )}
 
       <section id="projects" className="schedule-page-section" data-embed-section="schedule-projects">
-        <h2 className="schedule-page-section-title">Projects &amp; Teams</h2>
+        <h2 className="itg-section-title schedule-page-section-title">Projects &amp; Teams</h2>
         <p className="schedule-page-section-text">
           Click a team number above or search by title, organization, class, or track below.
         </p>
         <ProjectGridTable
           columns={PROJECT_GRID_COLUMNS}
+          noResultsHeadingLevel={3}
           rows={projectItems}
           pagedRows={projectTable.pagedRows}
           filteredCount={projectTable.filteredRows.length}

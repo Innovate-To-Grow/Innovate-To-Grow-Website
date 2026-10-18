@@ -13,7 +13,10 @@ describe('FaqListBlock', () => {
       <FaqListBlock data={{heading: 'FAQ', items: []}} />,
     );
     expect(container.querySelector('.cms-faq-list')).not.toBeNull();
-    expect(screen.getByRole('heading', {name: 'FAQ', level: 1})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: 'FAQ', level: 1})).toHaveClass(
+      'itg-page-title',
+      'cms-page-title',
+    );
   });
 
   it('omits the heading when not provided', () => {
@@ -41,5 +44,26 @@ describe('FaqListBlock', () => {
       screen.getByRole('heading', {name: 'Who can apply?', level: 2}),
     ).toBeInTheDocument();
     expect(screen.getByText('UC Merced students')).toBeInTheDocument();
+  });
+
+  it('styles questions as section titles and answers as prose', () => {
+    const {container} = render(
+      <FaqListBlock
+        data={{items: [{question: 'What is I2G?', answer_html: '<p>Innovate To Grow</p>'}]}}
+      />,
+    );
+
+    expect(screen.getByRole('heading', {name: 'What is I2G?', level: 2})).toHaveClass(
+      'itg-section-title',
+      'cms-faq-question',
+    );
+    expect(container.querySelector('.cms-faq-answer')).toHaveClass('cms-prose');
+  });
+
+  it('renders no questions when items are malformed', () => {
+    const {container} = render(
+      <FaqListBlock data={{heading: 'FAQ', items: undefined as unknown as []}} />,
+    );
+    expect(container.querySelectorAll('.cms-faq-item')).toHaveLength(0);
   });
 });

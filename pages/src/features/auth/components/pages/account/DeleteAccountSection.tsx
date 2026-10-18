@@ -30,7 +30,7 @@ export const DeleteAccountSection = ({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="account-section account-danger-section">
+    <div className="itg-panel account-section account-danger-section">
       <button
         type="button"
         className="account-section-header account-danger-toggle"
@@ -49,15 +49,15 @@ export const DeleteAccountSection = ({
 
       {isExpanded ? (
         <div className="account-danger-content">
-          {deleteMessage ? <StatusAlert tone="success" message={deleteMessage} style={{marginTop: '0.25rem'}} /> : null}
-          {deleteError ? <StatusAlert tone="error" message={deleteError} style={{marginTop: '0.25rem'}} /> : null}
+          {deleteMessage ? <StatusAlert tone="success" message={deleteMessage} /> : null}
+          {deleteError ? <StatusAlert tone="error" message={deleteError} /> : null}
 
           <div className="account-danger-header">
             <p className="account-danger-help">This permanently deletes your account and connected data.</p>
             {!deleteCodeRequested && !deleteVerificationToken ? (
               <button
                 type="button"
-                className="account-danger-button"
+                className="itg-btn itg-btn-outline itg-btn-danger account-danger-button"
                 onClick={onDeleteRequestCode}
                 disabled={deleteLoading}
               >
@@ -69,13 +69,13 @@ export const DeleteAccountSection = ({
           {deleteCodeRequested && !deleteVerificationToken ? (
             <form className="account-password-form" onSubmit={onDeleteVerifyCode}>
               <div className="auth-form-group">
-                <label className="auth-form-label" htmlFor="account-delete-code">Deletion Code</label>
+                <label className="itg-label auth-form-label" htmlFor="account-delete-code">Deletion Code</label>
                 <CodeInput value={deleteCode} onChange={onDeleteCodeChange} disabled={deleteLoading} />
               </div>
               <div className="account-action-row">
                 <button
                   type="submit"
-                  className="account-danger-button"
+                  className="itg-btn itg-btn-outline itg-btn-danger account-danger-button"
                   disabled={deleteLoading || deleteCode.length !== 6}
                 >
                   {deleteLoading ? 'Verifying...' : 'Verify Code'}
@@ -90,7 +90,7 @@ export const DeleteAccountSection = ({
                 Your code has been verified. Deleting your account cannot be undone.
               </p>
               <div className="account-action-row">
-                <button type="submit" className="account-danger-button" disabled={deleteLoading}>
+                <button type="submit" className="itg-btn itg-btn-outline itg-btn-danger account-danger-button" disabled={deleteLoading}>
                   {deleteLoading ? 'Deleting...' : 'Delete Account'}
                 </button>
               </div>

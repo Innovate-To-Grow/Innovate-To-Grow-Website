@@ -1,6 +1,7 @@
 import {useMemo} from 'react';
 import type {SheetRow, TrackInfo} from '@/components/SheetsDataTable';
 import {addMinutes} from '@/lib/format';
+import {scheduleToneClass} from '@/features/events/scheduleTones';
 
 export interface ClassConfig {
   /** Class code, e.g. "CAP", "CEE", "CSE" */
@@ -17,8 +18,6 @@ export interface ClassConfig {
   slotMinutes: number;
   /** Track labels e.g. ["FoodTech", "Precision"] */
   trackLabels: string[];
-  /** Accent color for this class section */
-  accentColor?: string;
 }
 
 interface ScheduleGridProps {
@@ -62,14 +61,13 @@ export const ScheduleGrid = ({
     return offsets;
   }, [classes]);
 
-  if (loading) return <div className="sg-loading">Loading schedule...</div>;
-  if (error) return <div className="sg-error">{error}</div>;
+  if (loading) return <div className="sg-loading" role="status">Loading schedule...</div>;
+  if (error) return <div className="sg-error" role="alert">{error}</div>;
 
   return (
     <div className="sg-container">
       {classes.map((cls, classIndex) => {
         const startOffset = classOffsets[classIndex] ?? 0;
-        const accent = cls.accentColor || '#002856';
         const times: string[] = [];
         let t = cls.startTime;
         for (let i = 0; i < cls.orderCount; i++) {
@@ -78,8 +76,8 @@ export const ScheduleGrid = ({
         }
 
         return (
-          <div key={cls.code} className="sg-class-section">
-            <h3 className="sg-class-title" style={{color: accent}}>
+          <section key={cls.code} className="sg-class-section">
+            <h3 className="sg-class-title">
               {cls.label} ({cls.code})
             </h3>
             <div className="sg-table-wrap">
@@ -99,7 +97,7 @@ export const ScheduleGrid = ({
                   <tr>
                     <th className="sg-th sg-th-time" />
                     {cls.trackLabels.map((label, ti) => (
-                      <th key={ti} className="sg-th sg-th-track" style={{color: accent}}>
+                      <th key={ti} className={`sg-th sg-th-track ${scheduleToneClass(cls.code, ti)}`}>
                         {label}
                       </th>
                     ))}
@@ -115,12 +113,16 @@ export const ScheduleGrid = ({
                           const track = startOffset + ti + 1;
                           const cell = cellMap[cls.code]?.[`${order}-${track}`];
                           return (
-                            <td key={ti} className="sg-td-cell" title={cell?.NameTitle || ''}>
+                            <td
+                              key={ti}
+                              className={`sg-td-cell ${scheduleToneClass(cls.code, ti)}`}
+                              title={cell?.NameTitle || ''}
+                            >
                               {cell ? (
                                 <>
                                   <button
+                                    type="button"
                                     className="sg-team-btn"
-                                    style={{color: accent}}
                                     onClick={() => onTeamClick?.(cell['Team#'].substring(0, 3))}
                                   >
                                     {cell['Team#']}
@@ -137,7 +139,7 @@ export const ScheduleGrid = ({
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
         );
       })}
     </div>

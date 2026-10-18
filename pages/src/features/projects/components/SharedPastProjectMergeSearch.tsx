@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useId, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {buildLoginPath} from '@/features/auth/api/redirects';
 import {
@@ -62,6 +62,7 @@ export const SharedPastProjectMergeSearch = ({
   onRefreshRows,
 }: SharedPastProjectMergeSearchProps) => {
   const {isAuthenticated} = useAuth();
+  const headingId = useId();
   const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
   const [builderMessage, setBuilderMessage] = useState('');
   const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
@@ -291,8 +292,9 @@ export const SharedPastProjectMergeSearch = ({
   );
 
   return (
-    <div className="shared-past-project-merge-search">
+    <section className="shared-past-project-merge-search past-projects-search-tables" aria-labelledby={headingId}>
       <PastProjectsActionBar
+        headingId={headingId}
         builderMessage={builderMessage}
         error={error}
         loading={loading || isSaving}
@@ -320,8 +322,12 @@ export const SharedPastProjectMergeSearch = ({
         </PastProjectsDialog>
       ) : null}
 
-      {loading ? <div className="project-grid-card"><div className="project-grid-state">Loading past projects...</div></div> : null}
-      {error ? <div className="project-grid-card"><div className="project-grid-state project-grid-state-error">{error}</div></div> : null}
+      {loading ? <p className="project-grid-state">Loading past projects...</p> : null}
+      {error ? (
+        <p className="project-grid-state project-grid-state-error itg-error" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {!loading && !error ? (
         <div className="search-table-stack">
@@ -387,14 +393,12 @@ export const SharedPastProjectMergeSearch = ({
           })}
 
           {!searchTables.length ? (
-            <div className="project-grid-card project-grid-empty-shell">
-              <div className="project-grid-empty">
-                No search tables are open. Add a new table to search for more projects.
-              </div>
-            </div>
+            <p className="project-grid-empty project-grid-empty-shell">
+              No search tables are open. Add a new table to search for more projects.
+            </p>
           ) : null}
         </div>
       ) : null}
-    </div>
+    </section>
   );
 };

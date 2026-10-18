@@ -107,11 +107,13 @@ describe('LoginLinkFallback', () => {
       expect(screen.queryByRole('alert')).toBeNull();
     });
 
-    it('is informational, in the same card layout as the login page', () => {
+    it('is informational, in the same page layout as the login page', () => {
       const {container} = renderFallback();
 
-      expect(container.querySelector('.auth-page > .auth-page-card')).not.toBeNull();
-      expect(container.querySelector('.auth-page-header img.auth-page-logo')).not.toBeNull();
+      // Title on the page, notice and form in the panel below it (no logo: the site header carries it).
+      expect(container.querySelector('.auth-page > .auth-page-header h1')).not.toBeNull();
+      expect(container.querySelector('.auth-page > .auth-page-card .auth-alert.info')).not.toBeNull();
+      expect(container.querySelector('.auth-page img')).toBeNull();
       expect(screen.getByRole('heading', {name: 'Sign in to I2G', level: 1})).toBeInTheDocument();
       expect(container.querySelector('.magic-login-error')).toBeNull();
       expect(container.querySelector('.auth-alert.error')).toBeNull();

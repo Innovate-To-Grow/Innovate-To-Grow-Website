@@ -30,14 +30,14 @@ export const EmailAddForm = ({
 }: EmailAddFormProps) => (
   <div className="email-center-add-form email-add-form">
     <h3 className="account-subsection-title">Add Email</h3>
-    {addError ? <StatusAlert tone="error" message={addError} style={{marginBottom: '0.75rem'}} /> : null}
+    {addError ? <StatusAlert tone="error" message={addError} /> : null}
     <form onSubmit={onSubmit} className="email-center-add-fields email-add-form-fields">
       <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="add-contact-email">Email Address</label>
+        <label className="itg-label auth-form-label" htmlFor="add-contact-email">Email Address</label>
         <input
           id="add-contact-email"
           type="email"
-          className="auth-form-input"
+          className="itg-input auth-form-input"
           value={addEmail}
           onChange={(event) => onEmailChange(event.target.value)}
           placeholder="email@example.com"
@@ -46,10 +46,10 @@ export const EmailAddForm = ({
         />
       </div>
       <div className="auth-form-group">
-        <label className="auth-form-label" htmlFor="add-contact-type">Type</label>
+        <label className="itg-label auth-form-label" htmlFor="add-contact-type">Type</label>
         <select
           id="add-contact-type"
-          className="auth-form-input auth-form-select"
+          className="itg-select auth-form-select"
           value={addType}
           onChange={(event) => onTypeChange(event.target.value as 'secondary' | 'other')}
           disabled={addLoading}
@@ -66,7 +66,7 @@ export const EmailAddForm = ({
       </div>
       <div className="auth-form-group email-add-newsletters-group">
         <div className="email-add-newsletters-row">
-          <span className="auth-form-label email-add-newsletters-label" id="add-email-newsletters-heading">
+          <span className="itg-label auth-form-label email-add-newsletters-label" id="add-email-newsletters-heading">
             Newsletters
           </span>
           <label className="email-center-toggle email-add-newsletters-toggle" aria-labelledby="add-email-newsletters-heading">
@@ -76,10 +76,10 @@ export const EmailAddForm = ({
         </div>
       </div>
       <div className="email-add-form-actions">
-        <button type="submit" className="auth-form-submit account-action-primary email-add-form-submit" disabled={addLoading || !addEmail.trim()}>
+        <button type="submit" className="itg-btn itg-btn-primary email-add-form-submit" disabled={addLoading || !addEmail.trim()}>
           {addLoading ? <><span className="auth-spinner" /> Adding...</> : 'Add & Send Verification'}
         </button>
-        <button type="button" className="auth-form-submit account-action-secondary email-add-form-cancel" onClick={onCancel}>
+        <button type="button" className="itg-btn itg-btn-outline email-add-form-cancel" onClick={onCancel}>
           Cancel
         </button>
       </div>

@@ -41,6 +41,7 @@ describe('SponsorYearBlock', () => {
     expect(container.querySelector('h2.cms-sponsor-year-title')?.textContent).toBe(
       '2025 Sponsors',
     );
+    expect(container.querySelector('h2.cms-sponsor-year-title')).toHaveClass('itg-section-title');
   });
 
   it('renders a logo image when logo_url is provided', () => {

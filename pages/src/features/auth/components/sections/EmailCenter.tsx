@@ -18,11 +18,11 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
     const primaryEmail = normalizeEmailAddress(profile.email);
 
     return (
-        <div className="account-section">
+        <div className="itg-panel account-section">
             <h2 className="account-section-title">Account Emails & Newsletters</h2>
 
-            {emailCenter.successMessage ? <StatusAlert tone="success" message={emailCenter.successMessage} style={{marginBottom: '1rem'}} /> : null}
-            {emailCenter.error ? <StatusAlert tone="error" message={emailCenter.error} style={{marginBottom: '1rem'}} /> : null}
+            {emailCenter.successMessage ? <StatusAlert tone="success" message={emailCenter.successMessage} /> : null}
+            {emailCenter.error ? <StatusAlert tone="error" message={emailCenter.error} /> : null}
 
             {primaryEmail ? (
                 <PrimaryEmailCard
@@ -96,7 +96,7 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
             ) : (
                 <button
                     type="button"
-                    className="auth-form-submit account-action-primary account-action-primary--inline"
+                    className="itg-btn itg-btn-primary account-action-primary account-action-primary--inline"
                     onClick={() => {
                         emailCenter.setShowAddForm(true);
                         emailCenter.setAddType(emailCenter.hasSecondaryEmail ? 'other' : 'secondary');

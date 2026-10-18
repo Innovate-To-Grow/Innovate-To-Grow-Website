@@ -321,11 +321,10 @@ export const SubscribePage = () => {
 
   return (
     <div className="subscribe-page">
-      <h1 className="subscribe-title">Subscriptions</h1>
+      <h1 className="itg-page-title subscribe-title">Subscriptions</h1>
 
       <div className="subscribe-info">
-        <h2>Stay Updated</h2>
-        <p>
+        <p className="itg-lead subscribe-lead">
           {step === 'manage'
             ? 'Manage your email and text message subscription preferences below.'
             : 'Subscribe to receive updates and announcements from Innovate to Grow.'}
@@ -338,7 +337,7 @@ export const SubscribePage = () => {
         ) : null}
       </div>
 
-      {error && <div className="subscribe-alert error">{error}</div>}
+      {error && <div className="subscribe-alert error" role="alert">{error}</div>}
 
       {step === 'email' && (
         <EmailStep
@@ -406,19 +405,19 @@ export const SubscribePage = () => {
             onSubmit={handleProfileSubmit}
           />
         ) : profileLoadState === 'error' ? (
-          <div className="subscribe-section" role="alert">
+          <div className="itg-panel subscribe-section" role="alert">
             <p className="subscribe-hint">{profileLoadError}</p>
             <button
               type="button"
-              className="subscribe-submit"
+              className="itg-btn itg-btn-primary subscribe-submit"
               onClick={() => void loadProfileForForm()}
             >
               Retry
             </button>
           </div>
         ) : (
-          <div className="subscribe-section" role="status">
-            Loading your profile...
+          <div className="itg-panel subscribe-section" role="status">
+            <p className="subscribe-hint">Loading your profile...</p>
           </div>
         )
       )}
@@ -436,18 +435,18 @@ export const SubscribePage = () => {
             onContactPhoneToggle={handleContactPhoneToggle}
           />
         ) : preferencesLoadState === 'error' ? (
-          <div className="subscribe-section" role="alert">
+          <div className="itg-panel subscribe-section" role="alert">
             <p className="subscribe-hint">{preferencesLoadError}</p>
             <button
               type="button"
-              className="subscribe-submit"
+              className="itg-btn itg-btn-primary subscribe-submit"
               onClick={() => void loadPreferences()}
             >
               Retry
             </button>
           </div>
         ) : (
-          <div className="subscribe-section" role="status">
+          <div className="itg-panel subscribe-section" role="status">
             <p className="subscribe-hint">
               Loading subscription preferences...
             </p>

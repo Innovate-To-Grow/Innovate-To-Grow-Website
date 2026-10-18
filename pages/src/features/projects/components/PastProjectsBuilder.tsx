@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {buildLoginPath} from '@/features/auth/api/redirects';
 import {
@@ -87,13 +87,15 @@ const appendUnsaved = (snapshot: ProjectGridItem[], added: ProjectGridItem[]) =>
     return [...snapshot, ...added.filter((row) => !inSnapshot.has(row))];
 };
 
-// The search table to keep in place while the saved results change above it: the one holding focus, else
-// the one that saved, and only while it is on screen. When the user is in the saved results, or the table
-// is off-screen, the browser's own scroll anchoring keeps what they are looking at where it is.
+// What to keep in place while the saved results change: when the user is working in the saved results
+// (naming the list, writing the note, checking rows), the element they are in, since the save can add a row
+// above it; otherwise the search table holding focus, else the one that saved. Only while it is on screen:
+// off-screen, the browser's own scroll anchoring keeps what they are looking at where it is.
 const findScrollAnchor = (tableId: string) => {
     const active = document.activeElement;
     if (active?.closest(`#${MERGED_RESULTS_ID}`)) {
-        return null;
+        const {top, bottom} = active.getBoundingClientRect();
+        return bottom > 0 && top < window.innerHeight ? {element: active, top} : null;
     }
     const candidates = [
         active?.closest('[data-search-table-id]'),
@@ -125,6 +127,8 @@ interface PastProjectsBuilderProps {
     error: string | null;
     loading: boolean;
     rows: ProjectGridRow[];
+    /** Seeds the first search table's search (e.g. from "Search Past Projects for …" on Current Projects). */
+    initialSearch?: string;
     onRefreshRows?: () => void;
     onCreateShare: (
         rows: ProjectGridRow[],
@@ -148,6 +152,7 @@ export const PastProjectsBuilder = ({
                                         error,
                                         loading,
                                         rows,
+                                        initialSearch = '',
                                         onRefreshRows,
                                         onCreateShare,
                                     }: PastProjectsBuilderProps) => {
@@ -189,6 +194,7 @@ export const PastProjectsBuilder = ({
     // The search table to keep in place when a save commits, and where it sat on screen just before.
     const pendingScrollAnchor = useRef<{element: Element; top: number} | null>(null);
 
+    const searchTablesHeadingId = useId();
     const hasAISearchTable = searchTables.some((table) => table.type === 'ai');
     const standardSearchTableIds = searchTables.filter((table) => table.type === 'standard').map((table) => table.id);
     const standardSearchTableCount = standardSearchTableIds.length;
@@ -589,107 +595,109 @@ export const PastProjectsBuilder = ({
                 />
             ) : null}
 
-            <PastProjectsActionBar
-                builderMessage={builderMessage}
-                error={error}
-                loading={loading}
-                aiSearchDisabled={hasAISearchTable}
-                aiSearchLoginRequired={!isAuthenticated}
-                onAddAISearchTable={handleAddAISearchTable}
-                onAddSearchTable={handleAddSearchTable}
-            />
+            <section className="past-projects-search-tables" aria-labelledby={searchTablesHeadingId}>
+                <PastProjectsActionBar
+                    headingId={searchTablesHeadingId}
+                    builderMessage={builderMessage}
+                    error={error}
+                    loading={loading}
+                    aiSearchDisabled={hasAISearchTable}
+                    aiSearchLoginRequired={!isAuthenticated}
+                    onAddAISearchTable={handleAddAISearchTable}
+                    onAddSearchTable={handleAddSearchTable}
+                />
 
-            {isAISearchLoginDialogOpen ? (
-                <PastProjectsDialog
-                    title="Sign in required"
-                    cancelLabel="Close"
-                    confirmLabel="Sign In"
-                    onCancel={() => setIsAISearchLoginDialogOpen(false)}
-                    onConfirm={() => {
-                        window.location.href = buildLoginPath(`${window.location.pathname}${window.location.search}`);
-                    }}
-                >
-                    <p>You need to sign in before using AI search.</p>
-                </PastProjectsDialog>
-            ) : null}
+                {isAISearchLoginDialogOpen ? (
+                    <PastProjectsDialog
+                        title="Sign in required"
+                        cancelLabel="Close"
+                        confirmLabel="Sign In"
+                        onCancel={() => setIsAISearchLoginDialogOpen(false)}
+                        onConfirm={() => {
+                            window.location.href = buildLoginPath(`${window.location.pathname}${window.location.search}`);
+                        }}
+                    >
+                        <p>You need to sign in before using AI search.</p>
+                    </PastProjectsDialog>
+                ) : null}
 
-            {loading ? <div className="project-grid-card">
-                <div className="project-grid-state">Loading past projects...</div>
-            </div> : null}
-            {error ? <div className="project-grid-card">
-                <div className="project-grid-state project-grid-state-error">{error}</div>
-            </div> : null}
+                {loading ? <p className="project-grid-state">Loading past projects...</p> : null}
+                {error ? (
+                    <p className="project-grid-state project-grid-state-error itg-error" role="alert">
+                        {error}
+                    </p>
+                ) : null}
 
-            {!loading && !error ? (
-                <div className="search-table-stack">
-                    {searchTables.map((table) => {
-                        const isAISearchTable = table.type === 'ai';
-                        const title =
-                            table.title ??
-                            (isAISearchTable
-                                ? 'AI Search Table'
-                                : standardSearchTableCount === 1
-                                    ? 'Search Table'
-                                    : `Search Table ${standardSearchTableIds.indexOf(table.id) + 1}`);
+                {!loading && !error ? (
+                    <div className="search-table-stack">
+                        {searchTables.map((table) => {
+                            const isAISearchTable = table.type === 'ai';
+                            const title =
+                                table.title ??
+                                (isAISearchTable
+                                    ? 'AI Search Table'
+                                    : standardSearchTableCount === 1
+                                        ? 'Search Table'
+                                        : `Search Table ${standardSearchTableIds.indexOf(table.id) + 1}`);
 
-                        return (
-                            <SearchTableCard
-                                key={table.id}
-                                resetKey={table.rowsResetKey}
-                                canRemove={searchTables.length > 1}
-                                description={
-                                    isAISearchTable
-                                        ? 'Use AI to load matching past projects into this table, then check the projects you want and click Save Selected.'
-                                        : undefined
-                                }
-                                emptyMessage={
-                                    isAISearchTable
-                                        ? 'Run AI search to load projects into this table.'
-                                        : undefined
-                                }
-                                initialRows={table.initialRows ?? rows}
-                                controlsStatus={
-                                    table.message && table.messageTone && table.messageTone !== 'loading' ? (
-                                        <PastProjectsAIStatus message={table.message} tone={table.messageTone}/>
-                                    ) : undefined
-                                }
-                                searchControl={
-                                    isAISearchTable ? (
-                                        <PastProjectsAISearchForm
-                                            isAuthenticated={isAuthenticated}
-                                            loading={Boolean(table.isLoading)}
-                                            onSearch={(query) => handleAISearch(table.id, query)}
-                                        />
-                                    ) : undefined
-                                }
-                                tableId={table.id}
-                                title={title}
-                                className={
-                                    isAISearchTable
-                                        ? `is-ai-search-table${table.rowsResetKey ? ' has-ai-results' : ''}`
-                                        : undefined
-                                }
-                                resultsMotionKey={isAISearchTable ? table.rowsResetKey : undefined}
-                                onRemove={handleRemoveSearchTable}
-                                onRefresh={isAISearchTable || !onRefreshRows ? undefined : handleRefreshSearchTable}
-                                mergeDisabled={isCreatingShare}
-                                isRowSaved={isRowSaved}
-                                onViewMergedResults={handleViewMergedResults}
-                                onSelectionChange={handleSelectionChange}
-                                onMergeSelected={handleMergeSelectedFromTable}
-                            />
-                        );
-                    })}
+                            return (
+                                <SearchTableCard
+                                    key={table.id}
+                                    resetKey={table.rowsResetKey}
+                                    canRemove={searchTables.length > 1}
+                                    description={
+                                        isAISearchTable
+                                            ? 'Use AI to load matching past projects into this table, then check the projects you want and click Save Selected.'
+                                            : undefined
+                                    }
+                                    emptyMessage={
+                                        isAISearchTable
+                                            ? 'Run AI search to load projects into this table.'
+                                            : undefined
+                                    }
+                                    initialRows={table.initialRows ?? rows}
+                                    initialSearch={table.id === INITIAL_SEARCH_TABLE.id ? initialSearch : undefined}
+                                    controlsStatus={
+                                        table.message && table.messageTone && table.messageTone !== 'loading' ? (
+                                            <PastProjectsAIStatus message={table.message} tone={table.messageTone}/>
+                                        ) : undefined
+                                    }
+                                    searchControl={
+                                        isAISearchTable ? (
+                                            <PastProjectsAISearchForm
+                                                isAuthenticated={isAuthenticated}
+                                                loading={Boolean(table.isLoading)}
+                                                onSearch={(query) => handleAISearch(table.id, query)}
+                                            />
+                                        ) : undefined
+                                    }
+                                    tableId={table.id}
+                                    title={title}
+                                    className={
+                                        isAISearchTable
+                                            ? `is-ai-search-table${table.rowsResetKey ? ' has-ai-results' : ''}`
+                                            : undefined
+                                    }
+                                    resultsMotionKey={isAISearchTable ? table.rowsResetKey : undefined}
+                                    onRemove={handleRemoveSearchTable}
+                                    onRefresh={isAISearchTable || !onRefreshRows ? undefined : handleRefreshSearchTable}
+                                    mergeDisabled={isCreatingShare}
+                                    isRowSaved={isRowSaved}
+                                    onViewMergedResults={handleViewMergedResults}
+                                    onSelectionChange={handleSelectionChange}
+                                    onMergeSelected={handleMergeSelectedFromTable}
+                                />
+                            );
+                        })}
 
-                    {!searchTables.length ? (
-                        <div className="project-grid-card project-grid-empty-shell">
-                            <div className="project-grid-empty">
-                                No search tables are open. Add a new table to start filtering past projects.
-                            </div>
-                        </div>
-                    ) : null}
-                </div>
-            ) : null}
+                        {!searchTables.length ? (
+                            <p className="project-grid-empty project-grid-empty-shell">
+                                No search tables are open. Add a new table to start searching past projects.
+                            </p>
+                        ) : null}
+                    </div>
+                ) : null}
+            </section>
         </div>
     );
 };

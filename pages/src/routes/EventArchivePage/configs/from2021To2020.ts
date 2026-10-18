@@ -7,7 +7,7 @@ export const configsFrom2021To2020: Record<string, EventConfig> = {
     classes: [
       {code: 'CAP', label: 'Engineering Capstone', trackCount: 6, orderCount: 6, startTime: '1:00', slotMinutes: 30, trackLabels: ['AgEngineering', 'AgTech', 'FoodTech', 'System', 'TomatoTech', 'Transportation']},
       {code: 'CEE', label: 'Civil & Environmental Engineering', trackCount: 1, orderCount: 2, startTime: '1:00', slotMinutes: 30, trackLabels: ['Environment']},
-      {code: 'CSE', label: 'Software Engineering Capstone', trackCount: 4, orderCount: 8, startTime: '1:00', slotMinutes: 20, trackLabels: ['Code', 'Computer', 'Data', 'User'], accentColor: '#FFBF3C'},
+      {code: 'CSE', label: 'Software Engineering Capstone', trackCount: 4, orderCount: 8, startTime: '1:00', slotMinutes: 20, trackLabels: ['Code', 'Computer', 'Data', 'User']},
     ],
   },
   '2021-spring': {

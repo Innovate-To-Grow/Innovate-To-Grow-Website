@@ -1,5 +1,7 @@
 // #chatbot-root: AI assistant floating chat widget. Independent React root with
 // launcher, chat panel, message sending, starter questions, and error states.
+import AxeBuilder from '@axe-core/playwright';
+
 import {test, expect} from '../helpers/fixtures';
 import {
   assistantChatSuccess,
@@ -7,6 +9,7 @@ import {
   mockAssistantChat,
   mockAssistantConfig,
 } from '../helpers';
+import {serveSeedStylesheets} from '../helpers/stylesheets';
 
 test('widget launcher button is visible on page load', async ({page}) => {
   await mockAssistantConfig(page, assistantConfig());
@@ -22,6 +25,26 @@ test('click launcher opens the chat panel', async ({page}) => {
   await page.locator('.itg-assistant__launcher').click();
   await expect(page.locator('.itg-assistant__panel')).toBeVisible();
   await expect(page.locator('.itg-assistant__title')).toContainText('Ask Innovate to Grow');
+});
+
+test('panel title stays readable on the navy header under the site stylesheets', async ({page}) => {
+  // The real sheets paint every h1-h6 navy; the title must keep its own light colour.
+  await serveSeedStylesheets(page);
+  await mockAssistantConfig(page, assistantConfig());
+  await mockAssistantChat(page);
+  await page.goto('/', {waitUntil: 'domcontentloaded'});
+  await page.locator('.itg-assistant__launcher').click();
+
+  const title = page.getByRole('heading', {name: 'Ask Innovate to Grow'});
+  await expect(title).toBeVisible();
+  const colours = await title.evaluate((heading) => ({
+    text: getComputedStyle(heading).color,
+    header: getComputedStyle(heading.closest('.itg-assistant__header')!).backgroundColor,
+  }));
+  expect(colours.text).not.toBe(colours.header);
+
+  const results = await new AxeBuilder({page}).include('.itg-assistant__header').withRules(['color-contrast']).analyze();
+  expect(results.violations).toEqual([]);
 });
 
 test('starter questions render as clickable chips', async ({page}) => {

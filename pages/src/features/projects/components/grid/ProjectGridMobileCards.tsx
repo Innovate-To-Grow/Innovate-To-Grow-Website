@@ -1,8 +1,10 @@
 import {useId} from 'react';
 import {
+  getProjectGridTeamCode,
   hasProjectGridDetails,
   type ProjectGridColumn,
   type ProjectGridItem,
+  type ProjectGridLinkScope,
 } from '../projectGrid';
 import {ProjectGridRowDetails} from './ProjectGridRowDetails';
 import {ProjectTitleWithChips} from './ProjectTitleWithChips';
@@ -10,7 +12,7 @@ import {ProjectTitleWithChips} from './ProjectTitleWithChips';
 interface ProjectGridMobileCardsProps {
   columns: ProjectGridColumn[];
   pagedRows: ProjectGridItem[];
-  emptyMessage: string;
+  linkScope: ProjectGridLinkScope;
   expandedKeys: Set<string>;
   onToggleExpanded: (rowKey: string) => void;
   selectable: boolean;
@@ -24,10 +26,11 @@ interface ProjectGridMobileCardsProps {
   highlightedKeys?: ReadonlySet<string>;
 }
 
+/** The phone layout: one list row per project instead of the wide table. */
 export const ProjectGridMobileCards = ({
   columns,
   pagedRows,
-  emptyMessage,
+  linkScope,
   expandedKeys,
   onToggleExpanded,
   selectable,
@@ -39,34 +42,39 @@ export const ProjectGridMobileCards = ({
   isRowSaved,
   savedRowLabel = 'Saved',
   highlightedKeys,
-}: ProjectGridMobileCardsProps) => (
-  <div className="project-grid-mobile-cards">
-    {!pagedRows.length ? <div className="project-grid-empty">{emptyMessage}</div> : null}
+}: ProjectGridMobileCardsProps) => {
+  // Archive tables lead each row with its term; the current-projects list is all one term.
+  const showTerm = columns.some((column) => column.key === 'semester_label');
 
-    {pagedRows.map((row) => (
-      <MobileCard
-        key={row.__key}
-        row={row}
-        columns={columns}
-        isExpanded={expandedKeys.has(row.__key)}
-        onToggleExpanded={onToggleExpanded}
-        selectable={selectable}
-        isSelected={selectedKeys.has(row.__key)}
-        onToggleSelected={onToggleSelected}
-        onDeleteRow={onDeleteRow}
-        deleteDisabled={deleteDisabled}
-        loadMissingDetails={loadMissingDetails}
-        isSaved={Boolean(isRowSaved?.(row))}
-        savedRowLabel={savedRowLabel}
-        isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
-      />
-    ))}
-  </div>
-);
+  return (
+    <ol className="project-grid-mobile-cards">
+      {pagedRows.map((row) => (
+        <MobileCard
+          key={row.__key}
+          row={row}
+          showTerm={showTerm}
+          linkScope={linkScope}
+          isExpanded={expandedKeys.has(row.__key)}
+          onToggleExpanded={onToggleExpanded}
+          selectable={selectable}
+          isSelected={selectedKeys.has(row.__key)}
+          onToggleSelected={onToggleSelected}
+          onDeleteRow={onDeleteRow}
+          deleteDisabled={deleteDisabled}
+          loadMissingDetails={loadMissingDetails}
+          isSaved={Boolean(isRowSaved?.(row))}
+          savedRowLabel={savedRowLabel}
+          isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
+        />
+      ))}
+    </ol>
+  );
+};
 
 interface MobileCardProps {
   row: ProjectGridItem;
-  columns: ProjectGridColumn[];
+  showTerm: boolean;
+  linkScope: ProjectGridLinkScope;
   isExpanded: boolean;
   onToggleExpanded: (rowKey: string) => void;
   selectable: boolean;
@@ -82,7 +90,8 @@ interface MobileCardProps {
 
 const MobileCard = ({
   row,
-  columns,
+  showTerm,
+  linkScope,
   isExpanded,
   onToggleExpanded,
   selectable,
@@ -103,73 +112,77 @@ const MobileCard = ({
     isSelected ? 'is-selected' : '',
     isSaved ? 'is-saved' : '',
     isHighlighted ? 'is-new' : '',
+    selectable ? 'is-selectable' : '',
   ]
     .filter(Boolean)
     .join(' ');
+  const meta = [showTerm ? row.semester_label : '', getProjectGridTeamCode(row), row.industry]
+    .map((part) => (part ?? '').trim())
+    .filter(Boolean)
+    .join(' · ');
+  const byline = [row.team_name, row.organization]
+    .map((part) => (part ?? '').trim())
+    .filter(Boolean)
+    .join(' · ');
 
   return (
-    <div className={cardClassName}>
+    <li className={cardClassName}>
       {selectable ? (
-        <div className="project-grid-mobile-card-select">
+        <label className="project-grid-mobile-card-select">
           <input
             type="checkbox"
             aria-label={`Select ${row.project_title}`}
             checked={isSelected}
             onChange={() => onToggleSelected?.(row.__key)}
           />
-        </div>
+          <span aria-hidden="true">Select</span>
+        </label>
       ) : null}
 
-      <div className="project-grid-mobile-card-fields">
-        {columns.map((column) =>
-          row[column.key] ? (
-            <div key={column.key} className="project-grid-mobile-card-field">
-              <span className="project-grid-mobile-card-label">{column.label}</span>
-              <span className="project-grid-mobile-card-value">
-                {column.key === 'project_title' ? (
-                  <ProjectTitleWithChips
-                    title={row.project_title}
-                    isNew={isHighlighted}
-                    isSaved={isSaved}
-                    savedRowLabel={savedRowLabel}
-                  />
-                ) : (
-                  row[column.key]
-                )}
-              </span>
-            </div>
-          ) : null,
-        )}
-      </div>
+      <div className="project-grid-mobile-card-body">
+        {meta ? <p className="project-grid-mobile-card-meta">{meta}</p> : null}
+        <ProjectTitleWithChips
+          row={row}
+          scope={linkScope}
+          isNew={isHighlighted}
+          isSaved={isSaved}
+          savedRowLabel={savedRowLabel}
+        />
+        {byline ? <p className="project-grid-mobile-card-byline">{byline}</p> : null}
 
-      <div className="project-grid-mobile-card-actions">
-        <button
-          type="button"
-          className="project-grid-detail-button"
-          disabled={!hasDetails}
-          aria-expanded={hasDetails ? isExpanded : undefined}
-          aria-controls={hasDetails ? detailsId : undefined}
-          onClick={() => hasDetails && onToggleExpanded(row.__key)}
-        >
-          {hasDetails ? (isExpanded ? 'Hide Details' : 'View Details') : 'No Details'}
-        </button>
-        {onDeleteRow ? (
-          <button
-            type="button"
-            className="project-grid-delete-button"
-            onClick={() => onDeleteRow(row)}
-            disabled={deleteDisabled}
-          >
-            Remove
-          </button>
+        {isExpanded ? (
+          <div id={detailsId} className="project-grid-mobile-card-details">
+            <ProjectGridRowDetails row={row} scope={linkScope} loadMissingDetails={loadMissingDetails} />
+          </div>
+        ) : null}
+
+        {hasDetails || onDeleteRow ? (
+          <div className="project-grid-mobile-card-actions">
+            {hasDetails ? (
+              <button
+                type="button"
+                className="itg-btn itg-btn-text project-grid-detail-button"
+                aria-expanded={isExpanded}
+                aria-controls={detailsId}
+                onClick={() => onToggleExpanded(row.__key)}
+              >
+                {isExpanded ? 'Hide details' : 'Show details'}
+                <span aria-hidden="true">{isExpanded ? ' ▴' : ' ▾'}</span>
+              </button>
+            ) : null}
+            {onDeleteRow ? (
+              <button
+                type="button"
+                className="itg-btn itg-btn-text itg-btn-danger project-grid-delete-button"
+                onClick={() => onDeleteRow(row)}
+                disabled={deleteDisabled}
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
-
-      {isExpanded ? (
-        <div id={detailsId} className="project-grid-mobile-card-details">
-          <ProjectGridRowDetails row={row} loadMissingDetails={loadMissingDetails} />
-        </div>
-      ) : null}
-    </div>
+    </li>
   );
 };

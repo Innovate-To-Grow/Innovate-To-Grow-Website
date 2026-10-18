@@ -40,7 +40,7 @@ export const PhoneCard = ({
       <div className="email-center-card-main">
         <div className="email-center-card-heading">
           <span className="email-center-card-title">{formatPhoneDisplay(phone.phone_number)}</span>
-          <span className={`email-center-badge ${phone.verified ? 'verified' : 'unverified'}`}>
+          <span className={`itg-tag email-center-badge ${phone.verified ? 'itg-tag-saved verified' : 'itg-tag-new unverified'}`}>
             {phone.verified ? 'Verified' : 'Unverified'}
           </span>
         </div>
@@ -51,11 +51,11 @@ export const PhoneCard = ({
             <span className="email-center-toggle-label">Text Messages</span>
           </label>
           {!phone.verified && verifyingId !== phone.id ? (
-            <button type="button" className="email-center-btn verify" onClick={() => onToggleVerify(phone.id)}>
+            <button type="button" className="itg-btn itg-btn-outline email-center-btn verify" onClick={() => onToggleVerify(phone.id)}>
               Verify
             </button>
           ) : null}
-          <button type="button" className="email-center-btn delete" onClick={() => onDelete(phone.id)}>
+          <button type="button" className="itg-btn itg-btn-danger email-center-btn delete" onClick={() => onDelete(phone.id)}>
             Remove
           </button>
         </div>
@@ -74,7 +74,7 @@ export const PhoneCard = ({
           <div className="email-center-verify-actions">
             <button
               type="submit"
-              className="auth-form-submit account-action-primary email-center-verify-submit"
+              className="itg-btn itg-btn-primary email-center-verify-submit"
               disabled={verifyLoading || verifyCode.length !== 6}
             >
               {verifyLoading ? <><span className="auth-spinner" /> Submitting...</> : 'Submit code'}
@@ -82,7 +82,7 @@ export const PhoneCard = ({
             <div className="email-center-verify-secondary-row">
               <button
                 type="button"
-                className="email-center-btn verify email-center-verify-secondary-btn"
+                className="itg-btn itg-btn-outline email-center-btn verify email-center-verify-secondary-btn"
                 disabled={resendLoading}
                 onClick={() => onResend(phone.id)}
               >
@@ -90,7 +90,7 @@ export const PhoneCard = ({
               </button>
               <button
                 type="button"
-                className="email-center-btn delete email-center-verify-secondary-btn"
+                className="itg-btn itg-btn-text email-center-btn cancel email-center-verify-secondary-btn"
                 onClick={onCancelVerify}
               >
                 Cancel

@@ -1,4 +1,4 @@
-import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -173,6 +173,45 @@ describe('EventRegistrationPage', () => {
       expect(requestPhoneAuthCode).toHaveBeenCalledWith('2025550123', '1-US', 'event_registration');
     });
     expect(requestEmailAuthCode).not.toHaveBeenCalled();
+  });
+
+  it('shows the progress row with the verify step current for a signed-out visitor', async () => {
+    render(
+      <MemoryRouter initialEntries={['/event-registration']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByLabelText('Email or Phone');
+    const items = within(screen.getByRole('list', {name: 'Registration steps'})).getAllByRole('listitem');
+    expect(items.map((item) => item.querySelector('.event-reg-step-label')?.textContent)).toEqual([
+      'Choose event',
+      'Verify',
+      'Your details',
+      'Ticket',
+    ]);
+    expect(items[0]).toHaveClass('is-complete');
+    expect(items[1]).toHaveClass('is-current');
+    expect(items[1]).toHaveAttribute('aria-current', 'step');
+    expect(items[2]).toHaveClass('is-upcoming');
+    expect(items[2]).not.toHaveAttribute('aria-current');
+  });
+
+  it('hides the progress row while the event list is still loading', () => {
+    mockFetchRegistrationEvents.mockReturnValue(new Promise(() => {}));
+
+    render(
+      <MemoryRouter initialEntries={['/event-registration']}>
+        <Routes>
+          <Route path="/event-registration" element={<EventRegistrationPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading event details...');
+    expect(screen.queryByRole('list', {name: 'Registration steps'})).toBeNull();
   });
 
   it('renders the selected event date range in the registration header', async () => {
@@ -613,6 +652,11 @@ describe('EventRegistrationPage', () => {
 
     await screen.findByRole('heading', {name: "You're Registered!"});
     expect(screen.getByText('Thursday, October 1 – Saturday, October 3, 2026')).toBeInTheDocument();
+    // The confirmation keeps the page title and marks the last step as current.
+    expect(screen.getByRole('heading', {name: 'Event Registration', level: 1})).toBeInTheDocument();
+    const doneSteps = within(screen.getByRole('list', {name: 'Registration steps'})).getAllByRole('listitem');
+    expect(doneSteps[3]).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('link', {name: 'View My Account'})).toHaveAttribute('href', '/account');
     fireEvent.click(screen.getByRole('button', {name: 'View Other Events'}));
 
     await screen.findByRole('heading', {name: 'Spring Showcase'});

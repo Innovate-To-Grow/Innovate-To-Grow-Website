@@ -45,8 +45,8 @@ export const PrimaryEmailCard = ({
       <div className="email-center-card-main">
         <div className="email-center-card-heading">
           <span className="email-center-card-title email-center-card-title--emphasis">{email}</span>
-          <span className="email-center-badge primary">Primary</span>
-          <span className={`email-center-badge ${profile.email_verified ? 'verified' : 'unverified'}`}>
+          <span className="itg-tag email-center-badge primary">Primary</span>
+          <span className={`itg-tag email-center-badge ${profile.email_verified ? 'itg-tag-saved verified' : 'itg-tag-new unverified'}`}>
             {profile.email_verified ? 'Verified' : 'Unverified'}
           </span>
         </div>
@@ -57,12 +57,12 @@ export const PrimaryEmailCard = ({
             <span className="email-center-toggle-label">Newsletters</span>
           </label>
           {!profile.email_verified && profile.primary_email_id && !verifying ? (
-            <button type="button" className="email-center-btn verify" disabled={resendLoading} onClick={onToggleVerify}>
+            <button type="button" className="itg-btn itg-btn-outline email-center-btn verify" disabled={resendLoading} onClick={onToggleVerify}>
               Verify
             </button>
           ) : null}
           {profile.primary_email_id && !verifying ? (
-            <button type="button" className="email-center-btn delete" disabled={deleteLoading} onClick={onDelete}>
+            <button type="button" className="itg-btn itg-btn-danger email-center-btn delete" disabled={deleteLoading} onClick={onDelete}>
               {deleteLoading ? 'Removing...' : 'Remove'}
             </button>
           ) : null}
@@ -82,7 +82,7 @@ export const PrimaryEmailCard = ({
           <div className="email-center-verify-actions">
             <button
               type="submit"
-              className="auth-form-submit account-action-primary email-center-verify-submit"
+              className="itg-btn itg-btn-primary email-center-verify-submit"
               disabled={verifyLoading || verifyCode.length !== 6}
             >
               {verifyLoading ? <><span className="auth-spinner" /> Submitting...</> : 'Submit code'}
@@ -90,7 +90,7 @@ export const PrimaryEmailCard = ({
             <div className="email-center-verify-secondary-row">
               <button
                 type="button"
-                className="email-center-btn verify email-center-verify-secondary-btn"
+                className="itg-btn itg-btn-outline email-center-btn verify email-center-verify-secondary-btn"
                 disabled={resendLoading}
                 onClick={onResend}
               >
@@ -98,7 +98,7 @@ export const PrimaryEmailCard = ({
               </button>
               <button
                 type="button"
-                className="email-center-btn delete email-center-verify-secondary-btn"
+                className="itg-btn itg-btn-text email-center-btn cancel email-center-verify-secondary-btn"
                 onClick={onCancelVerify}
               >
                 Cancel

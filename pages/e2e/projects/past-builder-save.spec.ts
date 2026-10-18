@@ -60,7 +60,7 @@ test('saves only the rows a filtered search shows, retrying a failed detail requ
 
   const table = searchTable(page);
   await table.getByRole('searchbox').fill('Western Digital');
-  await expect(table.locator('.project-grid-count-value')).toHaveText('12 of 30');
+  await expect(table.locator('.project-grid-count strong')).toHaveText('12 of 30');
   await table.locator('.project-grid-table-wrap').getByRole('checkbox', {name: 'Select all rows'}).check();
   await expect(table.getByText('12 selected', {exact: true}).first()).toBeVisible();
   await table.locator('.project-grid-table-wrap').getByRole('checkbox', {name: 'Select WD Project 0'}).uncheck();
@@ -71,7 +71,7 @@ test('saves only the rows a filtered search shows, retrying a failed detail requ
 
   await expect(table.getByRole('status')).toHaveText('11 projects added to Saved Merged Results (11 in total).');
   const saved = page.locator('#past-projects-saved-results');
-  await expect(saved.locator('.project-grid-count-value')).toHaveText('11 of 11');
+  await expect(saved.locator('.project-grid-card-count')).toHaveText('11 projects in this list');
   // Only the checked Western Digital rows were loaded, and the 503 was retried rather than failing the save.
   expect(new Set(detailRequests)).toEqual(new Set(rows.slice(1, 12).map((row) => row.id)));
   expect(detailRequests.filter((id) => id === 'wd-3')).toHaveLength(2);
@@ -114,6 +114,7 @@ test('a disabled Save looks disabled and the first save does not move the table 
     return {background: style.backgroundColor, cursor: style.cursor};
   });
   expect(disabledLook.cursor).toBe('not-allowed');
+  // Not the navy fill of an enabled primary button.
   expect(disabledLook.background).not.toBe('rgb(15, 45, 82)');
 
   // From the top of the page the saved results card mounts below the browser's scroll anchor, which
@@ -127,13 +128,14 @@ test('a disabled Save looks disabled and the first save does not move the table 
   const after = (await table.boundingBox())?.y ?? 0;
   expect(Math.abs(after - before)).toBeLessThanOrEqual(2);
 
-  // A newly saved row that is checked shows the sheet's selected background, not only its "New" tint.
+  // A newly saved row is tagged "New"; once checked its cells show the selected-row highlight.
   const savedRow = page
     .locator('#past-projects-saved-results .project-grid-table-wrap tr')
     .filter({has: page.getByText('WD Project 0', {exact: true})});
   await expect(savedRow).toHaveClass(/is-new/);
+  await expect(savedRow.locator('.itg-tag-new')).toHaveText('New');
   await savedRow.getByRole('checkbox', {name: 'Select WD Project 0'}).check();
-  await expect(savedRow).toHaveCSS('background-color', 'rgb(238, 244, 251)');
+  await expect(savedRow.locator('td').first()).toHaveCSS('background-color', 'rgb(255, 246, 219)');
 });
 
 test('a save that lands while the user names the curation does not move the page under them', async ({page}) => {
@@ -156,7 +158,7 @@ test('a save that lands while the user names the curation does not move the page
   // Same first page as WD Project 0: the table sorts by semester, newest first.
   await rowCheckbox('WD Project 6').check();
   await table.getByRole('button', {name: 'Save Selected'}).first().click();
-  const name = page.getByLabel('Name this curation (optional)');
+  const name = page.getByLabel('Shared page name (optional)');
   await name.click();
   await name.pressSequentially('Spring picks');
   const before = (await name.boundingBox())?.y ?? 0;

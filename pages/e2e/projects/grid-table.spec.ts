@@ -38,35 +38,54 @@ test('search input filters rows across all columns', async ({page}) => {
 test('row expand shows abstract and student names', async ({page}) => {
   await mockSchedule(page, schedulePayload());
   await page.goto('/current-projects', {waitUntil: 'domcontentloaded'});
-  // Click to expand the first row.
-  const expandButton = page.locator('[aria-label="Expand row"]').first();
-  if (await expandButton.isVisible()) {
-    await expandButton.click();
-    await expect(page.locator('.projects-page')).toContainText('irrigation schedules');
-  }
+  // "Details" in the table, "Show details" in the phone list: whichever layout is showing.
+  const toggle = page.locator('.project-grid-detail-button:visible').first();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('.projects-page')).toContainText('irrigation schedules');
 });
 
-test('"Expand All" and "Collapse All" toggle', async ({page}) => {
+test('"View All Details" and "Hide All Details" toggle', async ({page}) => {
   await mockSchedule(page, largePayload(3));
   await page.goto('/current-projects', {waitUntil: 'domcontentloaded'});
-  const expandAll = page.getByRole('button', {name: /expand all/i});
-  if (await expandAll.isVisible()) {
-    await expandAll.click();
-    const collapseAll = page.getByRole('button', {name: /collapse all/i});
-    await expect(collapseAll).toBeVisible();
-    await collapseAll.click();
-    await expect(expandAll).toBeVisible();
-  }
+  const viewAll = page.getByRole('button', {name: 'View All Details'});
+  await viewAll.click();
+  await expect(page.locator('.projects-page')).toContainText('Abstract for project 3.');
+  const hideAll = page.getByRole('button', {name: 'Hide All Details'});
+  await hideAll.click();
+  await expect(page.getByRole('button', {name: 'View All Details'})).toBeVisible();
+});
+
+test('class and industry filters narrow the rows', async ({page}) => {
+  await mockSchedule(page, largePayload(10));
+  await page.goto('/current-projects', {waitUntil: 'domcontentloaded'});
+  await page.getByLabel('Industry').selectOption('Hardware');
+  await expect(page.locator('.project-grid-count')).toContainText('5 of 10 projects match the filters');
+  await page.getByLabel('Class').selectOption('CSE 101');
+  await expect(page.locator('.project-grid-count')).toContainText('1 of 10 projects matches the filters');
+  await expect(page.locator('.projects-page')).toContainText('Project Title 2');
+});
+
+test('a search with no results offers to clear it or search past projects', async ({page}) => {
+  await mockSchedule(page, largePayload(3));
+  await page.goto('/current-projects', {waitUntil: 'domcontentloaded'});
+  await page.locator('.project-grid-search-input').fill('hydroponics');
+  await expect(page.getByRole('heading', {name: 'No projects match “hydroponics”'})).toBeVisible();
+  await expect(page.getByRole('link', {name: 'Search Past Projects for “hydroponics”'})).toHaveAttribute(
+    'href',
+    '/past-projects?value=hydroponics',
+  );
+  await page.getByRole('button', {name: 'Clear search'}).click();
+  await expect(page.locator('.project-grid-count')).toContainText('3 projects');
 });
 
 test('pagination advances to next page', async ({page}) => {
   // Build 15 projects to trigger pagination (default page size is 10).
   await mockSchedule(page, largePayload(15));
   await page.goto('/current-projects', {waitUntil: 'domcontentloaded'});
-  const nextButton = page.getByRole('button', {name: /next/i});
-  if (await nextButton.isVisible() && await nextButton.isEnabled()) {
-    await nextButton.click();
-  }
-  // Page should still show the projects heading.
+  await page.getByRole('button', {name: 'Next', exact: true}).click();
+  await expect(page.getByRole('button', {name: 'Page 2', exact: true})).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.project-grid-count')).toContainText('showing 11–15');
   await expect(page.getByRole('heading', {name: 'Current Projects'})).toBeVisible();
 });

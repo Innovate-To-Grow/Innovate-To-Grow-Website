@@ -14,6 +14,40 @@ describe('MaintenanceMode', () => {
     expect(screen.getByText(/temporarily down for maintenance/)).toBeInTheDocument();
   });
 
+  it('draws its own UC Merced page chrome around the message', () => {
+    render(<MaintenanceMode />);
+
+    const title = screen.getByRole('heading', {name: 'Service Unavailable', level: 1});
+    // Page head as on every site page: the title, then its italic meta line.
+    expect(title.nextElementSibling).toHaveTextContent('Scheduled maintenance');
+    expect(screen.getByAltText('UC Merced')).toBeInTheDocument();
+    expect(screen.getByText('Innovate To Grow')).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: 'What happened?'})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {name: 'What can I do?'})).toBeInTheDocument();
+  });
+
+  it('does not add a main landmark of its own inside the shell main', () => {
+    // The overlay renders inside #root, which sits in the page's <main id="main">.
+    const shellMain = document.createElement('main');
+    document.body.appendChild(shellMain);
+    const {container} = render(<MaintenanceMode />, {container: shellMain});
+
+    expect(screen.getAllByRole('main')).toEqual([shellMain]);
+    expect(container.querySelector('main main, main [role="main"]')).toBeNull();
+    expect(container.querySelector('.maintenance-content')?.tagName).toBe('DIV');
+    shellMain.remove();
+  });
+
+  it('labels the bypass field and reports its open state', () => {
+    render(<MaintenanceMode maintenance onBypass={vi.fn()} />);
+
+    const toggle = screen.getByRole('button', {name: 'Bypass with Password'});
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText('Bypass password')).toHaveAttribute('type', 'password');
+  });
+
   it('renders a custom message', () => {
     render(<MaintenanceMode message="Custom maintenance message" />);
 

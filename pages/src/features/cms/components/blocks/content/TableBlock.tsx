@@ -40,10 +40,13 @@ export const TableBlock = ({data}: {data: TableBlockData}) => {
   const columns = Array.isArray(data.columns) ? data.columns.map((column) => String(column)) : [];
   const rows = Array.isArray(data.rows) ? data.rows : [];
 
+  const heading = typeof data.heading === 'string' ? data.heading.trim() : '';
+
   return (
     <section className="cms-table-block">
-      {data.heading ? <h2 className="cms-table-block-title">{data.heading}</h2> : null}
-      <div className="cms-table-block-wrap">
+      {heading ? <h2 className="cms-table-block-title itg-section-title">{heading}</h2> : null}
+      {/* Wide tables scroll inside this region; it is focusable so keyboard users can scroll it. */}
+      <div className="cms-table-block-wrap" role="region" aria-label={heading || 'Table'} tabIndex={0}>
         <table className="cms-table-block-table">
           {columns.length > 0 ? (
             <thead>

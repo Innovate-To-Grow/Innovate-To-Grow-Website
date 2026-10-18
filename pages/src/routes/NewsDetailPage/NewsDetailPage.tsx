@@ -4,6 +4,12 @@ import { fetchNewsDetail, type NewsArticle } from '@/features/news';
 import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
 import { safeHref } from '@/lib/security';
 
+const BackToNews = () => (
+  <Link to="/news" className="itg-back-link news-detail-back">
+    <span aria-hidden="true">‹&nbsp;</span>Back to News
+  </Link>
+);
+
 export const NewsDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [article, setArticle] = useState<NewsArticle | null>(null);
@@ -39,7 +45,8 @@ export const NewsDetailPage = () => {
   if (loading) {
     return (
       <div className="news-detail">
-        <div className="news-state">Loading...</div>
+        <BackToNews />
+        <p className="news-state" role="status">Loading...</p>
       </div>
     );
   }
@@ -47,15 +54,34 @@ export const NewsDetailPage = () => {
   if (error || !article) {
     return (
       <div className="news-detail">
-        <Link to="/news" className="news-detail-back">&larr; Back to News</Link>
-        <div className="news-state news-error">{error || 'Article not found.'}</div>
+        <BackToNews />
+        <p className="news-state news-error itg-error" role="alert">{error || 'Article not found.'}</p>
       </div>
     );
   }
 
+  const publishedOn = new Date(article.published_at).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
   return (
-    <div className="news-detail">
-      <Link to="/news" className="news-detail-back">&larr; Back to News</Link>
+    <article className="news-detail">
+      <BackToNews />
+
+      <header className="news-detail-header">
+        <h1 className="itg-page-title news-detail-title">{article.title}</h1>
+        <p className="itg-page-meta news-detail-meta">
+          {article.author && (
+            <>
+              <span className="news-detail-author">{article.author}</span>
+              <span className="news-detail-meta-separator" aria-hidden="true"> · </span>
+            </>
+          )}
+          <time dateTime={article.published_at}>{publishedOn}</time>
+        </p>
+      </header>
 
       {article.hero_image_url && (
         <figure className="news-detail-hero">
@@ -72,30 +98,22 @@ export const NewsDetailPage = () => {
         </figure>
       )}
 
-      <h1 className="news-detail-title">{article.title}</h1>
-      <div className="news-detail-meta">
-        {article.author && <span className="news-detail-author">{article.author}</span>}
-        <time>
-          {new Date(article.published_at).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </time>
-      </div>
       {article.content ? (
         <SafeHtml className="news-detail-content" html={article.content} />
       ) : (
         article.summary && <p className="news-detail-content">{article.summary}</p>
       )}
-      <a
-        href={safeHref(article.source_url)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="news-detail-source"
-      >
-        View original article
-      </a>
-    </div>
+
+      <div className="news-detail-actions">
+        <a
+          href={safeHref(article.source_url)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="itg-btn itg-btn-outline news-detail-source"
+        >
+          View original article
+        </a>
+      </div>
+    </article>
   );
 };

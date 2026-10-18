@@ -28,59 +28,75 @@ export const DoneState = ({registration, showChooseAnother = false, onChooseAnot
   };
 
   return (
-    <div className="event-reg-page">
-      <div className="event-reg-done">
-        <h2>You're Registered!</h2>
-        <p className="event-reg-done-subtitle">
-          Your ticket for <strong>{registration.event.name}</strong> is confirmed.
-        </p>
+    <section className="event-reg-done" aria-labelledby="event-reg-done-title">
+      <h2 id="event-reg-done-title" className="itg-section-title event-reg-done-title">
+        You're Registered!
+      </h2>
+      <p className="event-reg-done-subtitle">
+        Your ticket for <strong>{registration.event.name}</strong> is confirmed.
+      </p>
 
-        <img src={registration.barcode_image} alt="Ticket barcode" className="event-reg-barcode" />
-
-        <div className="event-reg-ticket-code">{registration.ticket_code}</div>
+      <div className="itg-panel event-reg-ticket">
+        <div className="event-reg-ticket-pass">
+          <img src={registration.barcode_image} alt="Ticket barcode" className="event-reg-barcode" />
+          <div className="event-reg-ticket-code">{registration.ticket_code}</div>
+        </div>
 
         <div className="event-reg-done-details">
-          <p><strong>Name:</strong> {registration.attendee_name}</p>
-          <p><strong>Email:</strong> {registration.attendee_email}</p>
-          <p><strong>Ticket:</strong> {registration.ticket.name}</p>
-          <p><strong>Date:</strong> {formatEventDateRange(registration.event.date, registration.event.end_date)}</p>
-          <p><strong>Location:</strong> {registration.event.location}</p>
-          {registration.event.description ? <p style={{marginTop: '0.75rem', fontSize: '0.9rem', color: '#4b5563', lineHeight: 1.5}}>{registration.event.description}</p> : null}
-        </div>
-
-        {registration.ticket_email_sent_at ? (
-          <div className="event-reg-done-email-notice">
-            A confirmation email was sent to {registration.attendee_email}
-            {registration.attendee_secondary_email ? ` and ${registration.attendee_secondary_email}` : ''}.
-          </div>
-        ) : null}
-
-        <div style={{display: 'flex', gap: '0.75rem', marginTop: '1rem', flexWrap: 'wrap'}}>
-          {showChooseAnother ? (
-            <button
-              type="button"
-              className="event-reg-submit"
-              style={{flex: 1}}
-              onClick={onChooseAnother}
-            >
-              View Other Events
-            </button>
+          <dl className="itg-meta-box event-reg-done-meta">
+            <div className="itg-meta-item">
+              <dt className="itg-meta-label">Name</dt>
+              <dd className="itg-meta-value">{registration.attendee_name}</dd>
+            </div>
+            <div className="itg-meta-item">
+              <dt className="itg-meta-label">Email</dt>
+              <dd className="itg-meta-value">{registration.attendee_email}</dd>
+            </div>
+            <div className="itg-meta-item">
+              <dt className="itg-meta-label">Ticket</dt>
+              <dd className="itg-meta-value">{registration.ticket.name}</dd>
+            </div>
+            <div className="itg-meta-item">
+              <dt className="itg-meta-label">Date</dt>
+              <dd className="itg-meta-value">{formatEventDateRange(registration.event.date, registration.event.end_date)}</dd>
+            </div>
+            <div className="itg-meta-item">
+              <dt className="itg-meta-label">Location</dt>
+              <dd className="itg-meta-value">{registration.event.location}</dd>
+            </div>
+          </dl>
+          {registration.event.description ? (
+            <p className="event-reg-done-description">{registration.event.description}</p>
           ) : null}
-          <button
-            type="button"
-            className="event-reg-submit"
-            style={{flex: 1}}
-            onClick={handleResend}
-            disabled={resending}
-          >
-            {resending ? 'Sending...' : 'Resend Confirmation Email'}
-          </button>
-          <Link to="/account" className="event-reg-submit" style={{flex: 1, textAlign: 'center', textDecoration: 'none'}}>
-            View My Account
-          </Link>
         </div>
-        {resendMessage ? <p style={{marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280', textAlign: 'center'}}>{resendMessage}</p> : null}
       </div>
-    </div>
+
+      {registration.ticket_email_sent_at ? (
+        <div className="event-reg-done-email-notice" role="status">
+          A confirmation email was sent to {registration.attendee_email}
+          {registration.attendee_secondary_email ? ` and ${registration.attendee_secondary_email}` : ''}.
+        </div>
+      ) : null}
+
+      <div className="event-reg-done-actions">
+        <Link to="/account" className="itg-btn itg-btn-primary">
+          View My Account
+        </Link>
+        <button
+          type="button"
+          className="itg-btn itg-btn-outline"
+          onClick={handleResend}
+          disabled={resending}
+        >
+          {resending ? 'Sending...' : 'Resend Confirmation Email'}
+        </button>
+        {showChooseAnother ? (
+          <button type="button" className="itg-btn itg-btn-outline" onClick={onChooseAnother}>
+            View Other Events
+          </button>
+        ) : null}
+      </div>
+      {resendMessage ? <p className="event-reg-done-resend-message" role="status">{resendMessage}</p> : null}
+    </section>
   );
 };

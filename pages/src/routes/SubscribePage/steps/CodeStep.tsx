@@ -43,13 +43,13 @@ export const CodeStep = ({
   };
 
   return (
-    <div className="subscribe-section">
+    <div className="itg-panel subscribe-section">
       <p className="subscribe-hint">
         A verification code has been sent to <strong>{email}</strong>.
       </p>
       <form onSubmit={onSubmit}>
         <div className="subscribe-form-group">
-          <label className="subscribe-label" htmlFor="subscribe-code">
+          <label className="itg-label subscribe-label" htmlFor="subscribe-code">
             Verification Code
           </label>
           <CodeInput
@@ -61,17 +61,17 @@ export const CodeStep = ({
             required
           />
         </div>
-        <button type="submit" className="subscribe-submit" disabled={authLoading || code.length !== 6}>
+        <button type="submit" className="itg-btn itg-btn-primary subscribe-submit" disabled={authLoading || code.length !== 6}>
           {authLoading ? <><span className="subscribe-spinner" /> Verifying...</> : 'Verify Code'}
         </button>
       </form>
       <div className="subscribe-code-actions">
-        <button type="button" className="subscribe-back-link" onClick={onBack}>
+        <button type="button" className="itg-btn itg-btn-text subscribe-back-link" onClick={onBack}>
           Use a different email or phone
         </button>
         <button
           type="button"
-          className="subscribe-back-link"
+          className="itg-btn itg-btn-text subscribe-back-link"
           onClick={handleResend}
           disabled={cooldown > 0 || resending}
         >

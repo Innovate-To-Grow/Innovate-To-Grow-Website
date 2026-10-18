@@ -88,9 +88,11 @@ describe('CMSPageComponent redirects and errors', () => {
 
     renderPage();
 
-    expect(screen.getByText('Something went wrong loading this page.')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong loading this page.');
     expect(screen.queryByTestId('not-found')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    const retryButton = screen.getByRole('button', {name: 'Try again'});
+    expect(retryButton).toHaveClass('itg-btn', 'itg-btn-outline');
+    fireEvent.click(retryButton);
     expect(retry).toHaveBeenCalledOnce();
   });
 
@@ -145,6 +147,7 @@ describe('CMSPageComponent redirects and errors', () => {
     renderPage('/new');
 
     expect(screen.getByTestId('blocks')).toBeInTheDocument();
+    expect(screen.getByTestId('blocks').parentElement).toHaveClass('cms-page');
     await waitFor(() => expect(clearCMSRouteRedirectChain).toHaveBeenCalled());
   });
 
@@ -192,6 +195,7 @@ describe('CMSPageComponent redirects and errors', () => {
     renderPage('/old');
 
     expect(await screen.findByText('Something went wrong loading this page.')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
   });
 
@@ -214,7 +218,7 @@ describe('CMSPageComponent redirects and errors', () => {
 
     const {unmount, container} = renderPage('/styled');
 
-    expect(container.querySelector('.custom-page')).not.toBeNull();
+    expect(container.querySelector('.custom-page')).toHaveClass('cms-page');
     const style = document.getElementById('itg-page-css');
     expect(style).not.toBeNull();
     expect(style?.textContent).toBe('body { color: red; }');
@@ -310,6 +314,8 @@ describe('CMSPageComponent redirects and errors', () => {
 
     expect(screen.getByText('CMS Preview')).toBeInTheDocument();
     expect(screen.getByText(/Expires/)).toBeInTheDocument();
+    // The badge is a real button so keyboard users can reopen the notice.
+    expect(screen.getByRole('button', {name: /CMS Preview/})).toHaveClass('cms-live-preview-badge');
   });
 
   it('dismisses the modal when the overlay backdrop is clicked', () => {

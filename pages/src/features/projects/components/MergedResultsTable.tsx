@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useEffect, useId, useMemo, useRef, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {buildLoginPath} from '@/features/auth/api/redirects';
 import {DEFAULT_PAST_PROJECT_SHARE_NAME} from '@/features/projects/api';
@@ -21,8 +21,9 @@ import {
   sanitizePastProjectsDetailHtml,
   type PastProjectNoteInsertField,
 } from './pastProjectsDetailText';
-import {InsertProjectsIcon, InsertProjectsSettingsIcon, SharedEditIcon, SharedSaveIcon} from './shareEditorIcons';
+import {SharedEditIcon, SharedSaveIcon} from './shareEditorIcons';
 import {getExportFileBaseName, getShareErrorMessage} from './shareHelpers';
+import {pluralize} from './saveResults';
 
 interface MergedResultsTableProps {
   id?: string;
@@ -35,6 +36,8 @@ interface MergedResultsTableProps {
   sharedMode?: boolean;
   title?: string;
   note?: string;
+  /** When the shared list was created (ISO 8601), for its meta line. */
+  sharedAt?: string;
   editable?: boolean;
   onCreateShare?: (
     rows: ProjectGridRow[],
@@ -74,6 +77,14 @@ async function loadProjectRowsExporter(format: ProjectRowsExportFormat): Promise
   }
 }
 
+const formatSharedDate = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'});
+};
+
 interface ProjectNoteInsertControlProps {
   rows: ProjectGridRow[];
   excludedFields: Set<PastProjectNoteInsertField>;
@@ -88,6 +99,7 @@ const ProjectNoteInsertControl = ({
   onToggleExcludedField,
 }: ProjectNoteInsertControlProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const menuId = useId();
 
   return (
     <div
@@ -96,31 +108,23 @@ const ProjectNoteInsertControl = ({
       aria-label="Note insert tools"
     >
       <div className="project-grid-note-insert-actions">
-        <button
-          type="button"
-          className="project-grid-rich-editor-button project-grid-rich-editor-button--insert-projects"
-          aria-label="Insert projects into note"
-          title="Insert projects into note"
-          onClick={onInsert}
-          disabled={!rows.length}
-        >
-          <InsertProjectsIcon />
+        <button type="button" className="itg-btn itg-btn-text" onClick={onInsert} disabled={!rows.length}>
+          Insert projects into note
         </button>
         <button
           type="button"
-          className="project-grid-rich-editor-button project-grid-rich-editor-button--insert-settings"
-          aria-label="Project insert settings"
-          title="Project insert settings"
+          className="itg-btn itg-btn-text project-grid-note-insert-settings"
           aria-expanded={isOpen}
+          aria-controls={isOpen ? menuId : undefined}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => setIsOpen((current) => !current)}
         >
-          <InsertProjectsSettingsIcon />
+          Choose fields
         </button>
       </div>
       {isOpen ? (
-        <div className="project-grid-note-insert-menu" role="group" aria-label="Exclude inserted fields">
-          <p className="project-grid-note-insert-menu-title">Exclude</p>
+        <fieldset id={menuId} className="project-grid-note-insert-menu">
+          <legend className="project-grid-note-insert-menu-title">Leave these fields out</legend>
           {PAST_PROJECT_NOTE_INSERT_FIELDS.map((field) => (
             <label key={field.key} className="project-grid-note-insert-option">
               <input
@@ -131,7 +135,7 @@ const ProjectNoteInsertControl = ({
               <span>{field.label}</span>
             </label>
           ))}
-        </div>
+        </fieldset>
       ) : null}
     </div>
   );
@@ -146,6 +150,7 @@ export const MergedResultsTable = ({
   sharedMode = false,
   title = 'Saved Merged Results',
   note,
+  sharedAt,
   editable = false,
   onCreateShare,
   onUpdateShare,
@@ -191,7 +196,15 @@ export const MergedResultsTable = ({
   const [lastSyncedTitle, setLastSyncedTitle] = useState(title);
   const [revealedToken, setRevealedToken] = useState(recentlyAdded?.token ?? null);
   const editTitleInputRef = useRef<HTMLInputElement>(null);
+  const shareUrlInputRef = useRef<HTMLInputElement>(null);
   const isMountedRef = useRef(true);
+  const headingId = useId();
+  const shareUrlInputId = useId();
+  const nameInputId = useId();
+  const nameHintId = useId();
+  const phoneListId = useId();
+  // Phones show the saved list collapsed behind a disclosure (wider screens always show it, see projects.css).
+  const [isPhoneListOpen, setIsPhoneListOpen] = useState(false);
 
   // The shareable URL is just the current page URL in shared mode — derive it from the prop instead
   // of mirroring window.location.href into state via an effect.
@@ -493,32 +506,78 @@ export const MergedResultsTable = ({
     setPendingBulkAction(null);
   };
 
+  const exportGroup = (
+    <div className="project-grid-toolbar-cluster project-grid-export-group" role="group" aria-label="Export">
+      <span className="project-grid-group-label" aria-hidden="true">
+        Export
+      </span>
+      <button
+        type="button"
+        className="itg-btn itg-btn-outline"
+        onClick={() => void handleExport('pdf', 'PDF')}
+        disabled={!exportRows.length}
+      >
+        PDF
+      </button>
+      <button
+        type="button"
+        className="itg-btn itg-btn-outline"
+        onClick={() => void handleExport('excel', 'Excel')}
+        disabled={!exportRows.length}
+      >
+        Excel
+      </button>
+      <button
+        type="button"
+        className="itg-btn itg-btn-outline"
+        onClick={() => void handleExport('word', 'Microsoft Word')}
+        disabled={!exportRows.length}
+      >
+        <span>
+          <span className="project-grid-wide-only">Microsoft</span> Word
+        </span>
+      </button>
+    </div>
+  );
+
+  // Shared page: the link to pass on, with a Copy button and the exports beside it.
   const shareResultPanel = shareUrl ? (
-    <div className="project-grid-share-result" role="status">
-      <div className="project-grid-share-result-copy">
-        <p className="project-grid-share-result-label">Shareable link</p>
+    <div className="itg-panel project-grid-share-result">
+      <div className="itg-field project-grid-share-result-field">
+        <label className="project-grid-field-label" htmlFor={shareUrlInputId}>
+          Shareable link
+        </label>
+        <div className="project-grid-share-result-row">
+          <input
+            ref={shareUrlInputRef}
+            id={shareUrlInputId}
+            type="text"
+            className="itg-input project-grid-share-result-input"
+            value={shareUrl}
+            readOnly
+            title="Click to copy the link"
+            onFocus={(event) => {
+              void handleCopyShareUrl(event.currentTarget);
+            }}
+            onClick={(event) => {
+              void handleCopyShareUrl(event.currentTarget);
+            }}
+          />
+          <button
+            type="button"
+            className="itg-btn itg-btn-primary project-grid-share-copy"
+            onClick={() => {
+              if (shareUrlInputRef.current) void handleCopyShareUrl(shareUrlInputRef.current);
+            }}
+          >
+            Copy link
+          </button>
+        </div>
       </div>
-      <div className="project-grid-share-result-row">
-        <input
-          type="text"
-          className="project-grid-share-result-input"
-          aria-label="Shareable URL"
-          value={shareUrl}
-          readOnly
-          title="Click to copy URL"
-          onFocus={(event) => {
-            void handleCopyShareUrl(event.currentTarget);
-          }}
-          onClick={(event) => {
-            void handleCopyShareUrl(event.currentTarget);
-          }}
-        />
-      </div>
+      {exportGroup}
     </div>
   ) : null;
 
-  // Reused at the top of the curation (so it's reachable without scrolling past a long list) and in
-  // the bottom toolbar.
   const createShareButton = canShare ? (
     <button
       type="button"
@@ -529,7 +588,7 @@ export const MergedResultsTable = ({
       {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
     </button>
   ) : null;
-  // Shown beside the button rather than on a line of its own, so it does not push the tables below down.
+  // Shown beside the button rather than on a line of its own.
   const pendingSaveHint =
     canShare && pendingSaveCount > 0 ? (
       <p className="project-grid-share-pending" role="status">
@@ -541,12 +600,12 @@ export const MergedResultsTable = ({
   const shownCount = table.filteredRows.length;
   const narrowedHint =
     !sharedMode && shownCount < rows.length ? (
-      <p className="project-grid-status project-grid-narrowed-hint" role={hiddenAddedCount ? 'status' : undefined}>
+      <p className="itg-notice project-grid-narrowed-hint" role={hiddenAddedCount ? 'status' : undefined}>
         {hiddenAddedCount
           ? `${hiddenAddedCount === 1 ? '1 newly saved project is' : `${hiddenAddedCount} newly saved projects are`} hidden by your search.`
           : `Your search shows ${shownCount} of ${rows.length} saved projects.`}{' '}
         The shareable link and exports include only the {shownCount} it shows.{' '}
-        <button type="button" className="past-projects-status-action" onClick={() => table.setSearch('')}>
+        <button type="button" className="itg-btn itg-btn-text past-projects-status-action" onClick={() => table.setSearch('')}>
           Clear search
         </button>
       </p>
@@ -555,30 +614,15 @@ export const MergedResultsTable = ({
   const sharedNoteAction = (
     <button
       type="button"
-      className={`project-grid-share-editor-icon-button project-grid-share-note-action${
+      className={`itg-btn itg-btn-text project-grid-share-editor-icon-button project-grid-share-note-action${
         isEditingSharedNote ? ' is-active' : ''
       }`}
-      aria-label={isEditingSharedNote ? 'Save Curation Note' : 'Edit Curation Note'}
-      title={isEditingSharedNote ? 'Save Curation Note' : 'Edit Curation Note'}
       onClick={() => void handleSharedNoteAction()}
       disabled={isSavingShareEdit}
     >
       {isEditingSharedNote ? <SharedSaveIcon /> : <SharedEditIcon />}
+      {isEditingSharedNote ? 'Save curation note' : 'Edit curation note'}
     </button>
-  );
-
-  const sharedNoteHeaderAction = (
-    <>
-      {isEditingSharedNote ? (
-        <ProjectNoteInsertControl
-          rows={allRows}
-          excludedFields={excludedProjectNoteInsertFields}
-          onInsert={handleInsertSharedProjectsIntoNote}
-          onToggleExcludedField={handleToggleProjectNoteInsertField}
-        />
-      ) : null}
-      {sharedNoteAction}
-    </>
   );
 
   const sharedEditor = canEditShared ? (
@@ -590,66 +634,202 @@ export const MergedResultsTable = ({
         placeholder="Add a curation note (shown at the top of the shared page)."
         readOnly={!isEditingSharedNote}
         autoFocus={isEditingSharedNote}
-        headerAction={sharedNoteHeaderAction}
+        headerAction={sharedNoteAction}
         onChange={setEditNoteDraft}
       />
+      {isEditingSharedNote ? (
+        <ProjectNoteInsertControl
+          rows={allRows}
+          excludedFields={excludedProjectNoteInsertFields}
+          onInsert={handleInsertSharedProjectsIntoNote}
+          onToggleExcludedField={handleToggleProjectNoteInsertField}
+        />
+      ) : null}
     </div>
   ) : null;
 
-  return (
-    <section id={id} className={`project-grid-card${className ? ` ${className}` : ''}`}>
-      <div className={`project-grid-card-header${canEditShared ? ' project-grid-share-card-header' : ''}`}>
-        <div className="project-grid-share-title-content">
-          {canEditShared ? (
-            <div className={`project-grid-share-title-editor${isEditingSharedTitle ? ' is-editing' : ''}`}>
-              {isEditingSharedTitle ? (
-                <input
-                  ref={editTitleInputRef}
-                  type="text"
-                  className="project-grid-share-title-input"
-                  aria-label="Shared page name"
-                  value={editTitleDraft}
-                  maxLength={200}
-                  onChange={(event) => setEditTitleDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      void handleSharedTitleAction();
-                    }
-                  }}
-                />
-              ) : (
-                <h2 className="project-grid-card-title" tabIndex={-1}>
-                  {title}
-                </h2>
-              )}
-            </div>
-          ) : (
-            <h2 className="project-grid-card-title" tabIndex={-1}>
-              {title}
-            </h2>
-          )}
-          <p className="project-grid-card-copy">
-            {sharedMode
-              ? 'Browse the saved curation from this shared link.'
-              : 'Save rows from your search tables into one curation, then export it or get a shareable link.'}
-          </p>
-        </div>
-        {canEditShared ? (
+  const recoveryButtons =
+    onUndoRows || onResetRows || canEditShared || canBulkRemove ? (
+      <div className="project-grid-toolbar-cluster project-grid-edit-group" role="group" aria-label="Edit list">
+        {canBulkRemove ? (
           <button
             type="button"
-            className={`project-grid-share-editor-icon-button project-grid-share-title-action${
-              isEditingSharedTitle ? ' is-active' : ''
-            }`}
-            aria-label={isEditingSharedTitle ? 'Save Name' : 'Edit Name'}
-            title={isEditingSharedTitle ? 'Save Name' : 'Edit Name'}
-            onClick={() => void handleSharedTitleAction()}
-            disabled={isSavingShareEdit}
+            className="itg-btn itg-btn-text"
+            onClick={handleRemoveSelectedMergedRows}
+            disabled={!table.hasSelection || isSharing}
           >
-            {isEditingSharedTitle ? <SharedSaveIcon /> : <SharedEditIcon />}
+            Remove Selected
           </button>
         ) : null}
+        {onUndoRows ? (
+          <button
+            type="button"
+            className="itg-btn itg-btn-text"
+            onClick={onUndoRows}
+            disabled={!canUndoRows || isSharing}
+          >
+            Undo Merged Change
+          </button>
+        ) : null}
+        {!sharedMode && onResetRows ? (
+          <button
+            type="button"
+            className="itg-btn itg-btn-text itg-btn-danger"
+            onClick={() => setPendingBulkAction('reset-builder')}
+            disabled={!rows.length || isSharing}
+          >
+            Reset Merged Results
+          </button>
+        ) : null}
+        {canEditShared ? (
+          <>
+            <button
+              type="button"
+              className="itg-btn itg-btn-text"
+              onClick={() => void handleUndoSharedRows()}
+              disabled={!sharedRowsUndo || isSavingShareEdit}
+            >
+              Undo Shared Change
+            </button>
+            <button
+              type="button"
+              className="itg-btn itg-btn-text itg-btn-danger"
+              onClick={() => setPendingBulkAction('remove-all-shared')}
+              disabled={isSavingShareEdit}
+            >
+              Remove All
+            </button>
+          </>
+        ) : null}
       </div>
+    ) : null;
+
+  const sharedDate = formatSharedDate(sharedAt);
+  const titleEditButton = canEditShared ? (
+    <button
+      type="button"
+      className={`itg-btn itg-btn-text project-grid-share-editor-icon-button project-grid-share-title-action${
+        isEditingSharedTitle ? ' is-active' : ''
+      }`}
+      onClick={() => void handleSharedTitleAction()}
+      disabled={isSavingShareEdit}
+    >
+      {isEditingSharedTitle ? <SharedSaveIcon /> : <SharedEditIcon />}
+      {isEditingSharedTitle ? 'Save name' : 'Edit name'}
+    </button>
+  ) : null;
+
+  const header = sharedMode ? (
+    <header className="project-grid-shared-header">
+      <p className="itg-eyebrow">Shared list · Past Projects</p>
+      <div className={`project-grid-share-title-editor${isEditingSharedTitle ? ' is-editing' : ''}`}>
+        {canEditShared && isEditingSharedTitle ? (
+          <input
+            ref={editTitleInputRef}
+            type="text"
+            className="itg-input project-grid-share-title-input"
+            aria-label="Shared page name"
+            value={editTitleDraft}
+            maxLength={200}
+            onChange={(event) => setEditTitleDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void handleSharedTitleAction();
+              }
+            }}
+          />
+        ) : (
+          <h1 id={headingId} className="itg-page-title project-grid-card-title" tabIndex={-1}>
+            {title}
+          </h1>
+        )}
+        {titleEditButton}
+      </div>
+      <p className="itg-page-meta">
+        {pluralize(rows.length, 'project')}
+        {sharedDate ? ` · shared ${sharedDate}` : ''}
+      </p>
+    </header>
+  ) : (
+    <div className="project-grid-card-header">
+      <h2 id={headingId} className="project-grid-card-title" tabIndex={-1}>
+        {title}
+      </h2>
+      <p className="project-grid-card-count">
+        <strong>{pluralize(rows.length, 'project')}</strong> in this list
+      </p>
+    </div>
+  );
+
+  const shareSection =
+    !sharedMode && onCreateShare ? (
+      <div className="project-grid-share">
+        <h3 className="project-grid-share-title">Share this list</h3>
+        {isAuthenticated ? (
+          <>
+            <div className="project-grid-share-fields">
+              <div className="itg-field project-grid-share-note">
+                <label className="project-grid-share-note-label" htmlFor={nameInputId}>
+                  Shared page name <span className="project-grid-label-hint">(optional)</span>
+                </label>
+                <input
+                  id={nameInputId}
+                  type="text"
+                  className="itg-input project-grid-share-name-input"
+                  value={nameDraft}
+                  maxLength={200}
+                  placeholder={DEFAULT_PAST_PROJECT_SHARE_NAME}
+                  aria-describedby={nameHintId}
+                  onChange={(event) => setNameDraft(event.target.value)}
+                />
+                <p id={nameHintId} className="project-grid-share-name-hint">
+                  Leave it blank to use the first line of your note.
+                </p>
+              </div>
+              <div className="project-grid-share-note">
+                <RichTextDetailEditor
+                  id="past-project-share-note"
+                  label="Curation note"
+                  labelHint="(shown at the top of the shared page)"
+                  value={noteDraft}
+                  placeholder="Optional — add context for whoever opens the shareable link."
+                  onChange={setNoteDraft}
+                />
+                <ProjectNoteInsertControl
+                  rows={visibleRows}
+                  excludedFields={excludedProjectNoteInsertFields}
+                  onInsert={handleInsertVisibleProjectsIntoNote}
+                  onToggleExcludedField={handleToggleProjectNoteInsertField}
+                />
+              </div>
+            </div>
+            <div className="project-grid-share-actions">
+              {createShareButton}
+              {pendingSaveHint ?? (
+                <span className="project-grid-share-actions-note">Anyone with the link can view this list.</span>
+              )}
+            </div>
+          </>
+        ) : (
+          <p className="project-grid-share-login-hint">
+            <a href={buildLoginPath(`${window.location.pathname}${window.location.search}`)}>Sign in</a> to name this list
+            and get a shareable link.
+          </p>
+        )}
+      </div>
+    ) : null;
+
+  return (
+    <section
+      id={id}
+      className={`${sharedMode ? 'project-grid-shared-list' : 'itg-panel project-grid-card project-grid-merged'}${
+        className ? ` ${className}` : ''
+      }`}
+      aria-labelledby={sharedMode && isEditingSharedTitle ? undefined : headingId}
+      aria-label={sharedMode && isEditingSharedTitle ? 'Shared list' : undefined}
+    >
+      {header}
 
       {sharedMode ? shareResultPanel : null}
 
@@ -658,204 +838,92 @@ export const MergedResultsTable = ({
       {!sharedEditor && sharedNoteHasContent ? (
         <div className="project-grid-shared-note">
           <p className="project-grid-shared-note-label">Curation note</p>
-          <RichDetailPreview className="project-grid-shared-detail-text" html={sharedNoteHtml} />
+          <RichDetailPreview className="project-grid-shared-detail-text itg-content" html={sharedNoteHtml} />
         </div>
       ) : null}
 
-      {!sharedMode && onCreateShare ? (
-        isAuthenticated ? (
-          <>
-            <div className="project-grid-share-note">
-              <label className="project-grid-share-note-label" htmlFor="past-project-share-name">
-                Name this curation (optional)
-              </label>
-              <input
-                id="past-project-share-name"
-                type="text"
-                className="project-grid-share-name-input"
-                value={nameDraft}
-                maxLength={200}
-                placeholder="e.g. Spring 2025 finalists"
-                aria-describedby="past-project-share-name-hint"
-                onChange={(event) => setNameDraft(event.target.value)}
-              />
-              <p id="past-project-share-name-hint" className="project-grid-share-name-hint">
-                Leave blank to use the first line you write in the note (inserted project details are skipped), or
-                “{DEFAULT_PAST_PROJECT_SHARE_NAME}” if there is none.
-              </p>
-            </div>
-            <div className="project-grid-share-note">
-              <RichTextDetailEditor
-                id="past-project-share-note"
-                label="Add a curation note (shown at the top of the shared page)"
-                value={noteDraft}
-                placeholder="Optional — add context for whoever opens the shareable link."
-                headerAction={
-                  <ProjectNoteInsertControl
-                    rows={visibleRows}
-                    excludedFields={excludedProjectNoteInsertFields}
-                    onInsert={handleInsertVisibleProjectsIntoNote}
-                    onToggleExcludedField={handleToggleProjectNoteInsertField}
-                  />
-                }
-                onChange={setNoteDraft}
-              />
-            </div>
-            <div className="project-grid-share-actions project-grid-share-actions--top">
-              {pendingSaveHint}
-              {createShareButton}
-            </div>
-          </>
-        ) : (
-          <p className="project-grid-share-login-hint">
-            <a href={buildLoginPath(`${window.location.pathname}${window.location.search}`)}>Log in</a> to create a
-            shareable link.
-          </p>
-        )
-      ) : null}
-
-      {sharedMode ? null : shareResultPanel}
-
       {narrowedHint}
 
-      <ProjectGridTable
-        // Rows saved before the shared-add path hydrated them carry an id but no abstract
-        // or student names. Fetch those on expand so View is not a dead end on an existing
-        // shared page; rows that already carry their own content never request anything.
-        loadMissingDetails
-        columns={PAST_PROJECT_GRID_COLUMNS}
-        rows={rows}
-        highlightedKeys={recentlyAdded?.keys}
-        pagedRows={table.pagedRows}
-        filteredCount={table.filteredRows.length}
-        totalCount={rows.length}
-        search={table.search}
-        searchPlaceholder={sharedMode ? 'Search saved results...' : 'Search merged results...'}
-        sortField={table.sortField}
-        sortDirection={table.sortDirection}
-        onSearchChange={table.setSearch}
-        onSortChange={table.toggleSort}
-        expandedKeys={table.expandedKeys}
-        onToggleExpanded={table.toggleExpanded}
-        onToggleAllDetails={table.toggleAllDetails}
-        allDetailsExpanded={table.allDetailsExpanded}
-        page={table.page}
-        totalPages={table.totalPages}
-        onPageChange={table.setPage}
-        pageSize={table.pageSize}
-        pageSizeOptions={table.pageSizeOptions}
-        onPageSizeChange={table.setPageSize}
-        emptyMessage="No merged results saved yet."
-        countLabel="results"
-        onDeleteRow={sharedMode ? (canEditShared ? handleDeleteSharedRow : undefined) : handleDeleteMergedRow}
-        deleteDisabled={!sharedMode && isSharing}
-        selectable={canBulkRemove}
-        selectedKeys={table.selectedKeys}
-        selectAllStateRows={table.filteredRows}
-        onToggleSelected={table.toggleSelected}
-        onToggleSelectAll={() => {
-          // Select-all targets the rows currently visible (matching the active search), so a
-          // narrowed view + Remove Selected can never delete rows the user cannot see.
-          const visible = table.filteredRows;
-          const allVisibleSelected =
-            visible.length > 0 && visible.every((row) => table.selectedKeys.has(row.__key));
-          if (allVisibleSelected) {
-            table.clearSelection();
-          } else {
-            table.selectRows(visible);
+      {sharedMode ? null : (
+        <button
+          type="button"
+          className="itg-btn itg-btn-text project-grid-phone-list-toggle"
+          aria-expanded={isPhoneListOpen}
+          aria-controls={phoneListId}
+          onClick={() => setIsPhoneListOpen((current) => !current)}
+        >
+          {isPhoneListOpen ? 'Hide the saved projects' : `Show the ${pluralize(rows.length, 'saved project')}`}
+          <span aria-hidden="true">{isPhoneListOpen ? ' ▴' : ' ▾'}</span>
+        </button>
+      )}
+
+      <div id={phoneListId} className={`project-grid-phone-list${isPhoneListOpen ? ' is-open' : ''}`}>
+        <ProjectGridTable
+          // Rows saved before the shared-add path hydrated them carry an id but no abstract
+          // or student names. Fetch those on expand so Details is not a dead end on an existing
+          // shared page; rows that already carry their own content never request anything.
+          loadMissingDetails
+          linkScope="past"
+          columns={PAST_PROJECT_GRID_COLUMNS}
+          rows={rows}
+          highlightedKeys={recentlyAdded?.keys}
+          pagedRows={table.pagedRows}
+          filteredCount={table.filteredRows.length}
+          totalCount={rows.length}
+          search={table.search}
+          searchLabel="Search this list"
+          searchPlaceholder="Team, project, organization…"
+          // Under the shared list's h1, or inside the saved-results card titled with an h2.
+          noResultsHeadingLevel={sharedMode ? 2 : 3}
+          sortField={table.sortField}
+          sortDirection={table.sortDirection}
+          onSearchChange={table.setSearch}
+          onSortChange={table.toggleSort}
+          expandedKeys={table.expandedKeys}
+          onToggleExpanded={table.toggleExpanded}
+          onToggleAllDetails={table.toggleAllDetails}
+          allDetailsExpanded={table.allDetailsExpanded}
+          page={table.page}
+          totalPages={table.totalPages}
+          onPageChange={table.setPage}
+          pageSize={table.pageSize}
+          pageSizeOptions={table.pageSizeOptions}
+          onPageSizeChange={table.setPageSize}
+          emptyMessage={sharedMode ? 'This shared list has no projects.' : 'No merged results saved yet.'}
+          countLabel="projects"
+          onDeleteRow={sharedMode ? (canEditShared ? handleDeleteSharedRow : undefined) : handleDeleteMergedRow}
+          deleteDisabled={!sharedMode && isSharing}
+          selectable={canBulkRemove}
+          selectedKeys={table.selectedKeys}
+          selectAllStateRows={table.filteredRows}
+          onToggleSelected={table.toggleSelected}
+          onToggleSelectAll={() => {
+            // Select-all targets the rows currently visible (matching the active search), so a
+            // narrowed view + Remove Selected can never delete rows the user cannot see.
+            const visible = table.filteredRows;
+            const allVisibleSelected =
+              visible.length > 0 && visible.every((row) => table.selectedKeys.has(row.__key));
+            if (allVisibleSelected) {
+              table.clearSelection();
+            } else {
+              table.selectRows(visible);
+            }
+          }}
+          toolbarPlacement="bottom"
+          toolbar={
+            sharedMode ? (
+              recoveryButtons
+            ) : (
+              <div className="project-grid-inline-actions">
+                {exportGroup}
+                {recoveryButtons}
+              </div>
+            )
           }
-        }}
-        toolbarPlacement="bottom"
-        toolbar={
-          <div className="project-grid-inline-actions project-grid-inline-actions--clustered">
-            <div className="project-grid-toolbar-cluster" role="group" aria-label="Export">
-              <button
-                type="button"
-                className="itg-btn itg-btn-outline"
-                onClick={() => void handleExport('pdf', 'PDF')}
-                disabled={!exportRows.length}
-              >
-                PDF
-              </button>
-              <button
-                type="button"
-                className="itg-btn itg-btn-outline"
-                onClick={() => void handleExport('excel', 'Excel')}
-                disabled={!exportRows.length}
-              >
-                Excel
-              </button>
-              <button
-                type="button"
-                className="itg-btn itg-btn-outline"
-                onClick={() => void handleExport('word', 'Microsoft Word')}
-                disabled={!exportRows.length}
-              >
-                Microsoft Word
-              </button>
-            </div>
-            {onUndoRows || onResetRows || canEditShared || canBulkRemove ? (
-              <div className="project-grid-toolbar-cluster" role="group" aria-label="Recovery">
-                {canBulkRemove ? (
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={handleRemoveSelectedMergedRows}
-                    disabled={!table.hasSelection || isSharing}
-                  >
-                    Remove Selected
-                  </button>
-                ) : null}
-                {onUndoRows ? (
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={onUndoRows}
-                    disabled={!canUndoRows || isSharing}
-                  >
-                    Undo Merged Change
-                  </button>
-                ) : null}
-                {!sharedMode && onResetRows ? (
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-outline"
-                    onClick={() => setPendingBulkAction('reset-builder')}
-                    disabled={!rows.length || isSharing}
-                  >
-                    Reset Merged Results
-                  </button>
-                ) : null}
-                {canEditShared ? (
-                  <>
-                    <button
-                      type="button"
-                      className="itg-btn itg-btn-outline"
-                      onClick={() => void handleUndoSharedRows()}
-                      disabled={!sharedRowsUndo || isSavingShareEdit}
-                    >
-                      Undo Shared Change
-                    </button>
-                    <button
-                      type="button"
-                      className="itg-btn itg-btn-outline"
-                      onClick={() => setPendingBulkAction('remove-all-shared')}
-                      disabled={isSavingShareEdit}
-                    >
-                      Remove All
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-            {canShare ? (
-              <div className="project-grid-toolbar-cluster" role="group" aria-label="Share link">
-                {createShareButton}
-              </div>
-            ) : null}
-          </div>
-        }
-      />
+        />
+      </div>
+
+      {shareSection}
 
       {pendingBulkAction ? (
         <PastProjectsDialog
@@ -876,7 +944,11 @@ export const MergedResultsTable = ({
         </PastProjectsDialog>
       ) : null}
 
-      {statusMessage ? <p className="project-grid-status">{statusMessage}</p> : null}
+      {statusMessage ? (
+        <p className="project-grid-status" role="status">
+          {statusMessage}
+        </p>
+      ) : null}
     </section>
   );
 };

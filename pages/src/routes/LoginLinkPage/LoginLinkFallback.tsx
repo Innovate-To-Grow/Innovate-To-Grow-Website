@@ -1,7 +1,6 @@
 import {useEffect, useRef, useState, type FormEvent} from 'react';
 
 import {Icon} from '@/components/Icon/Icon';
-import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
 import {useAuth} from '@/features/auth';
 import type {LoginLinkFailureKind} from '@/features/auth/api';
 import {clearAuthCallbackParams} from '@/features/auth/api/callbackParams';
@@ -146,11 +145,10 @@ export function LoginLinkFallback({kind, returnTo, onRetry}: LoginLinkFallbackPr
 
   return (
     <div className="auth-page">
-      <div className="auth-page-card">
-        <div className="auth-page-header">
-          <ResponsiveBrandImage brand="i2g" alt="I2G" className="auth-page-logo" sizes="160px" />
-          <h1 className="auth-page-title">Sign in to I2G</h1>
-        </div>
+      <header className="auth-page-header">
+        <h1 className="itg-page-title auth-page-title">Sign in to I2G</h1>
+      </header>
+      <div className="itg-panel auth-page-card">
 
         <div className="auth-alert-wrapper">
           <div className="auth-alert info" role="status">
@@ -161,7 +159,7 @@ export function LoginLinkFallback({kind, returnTo, onRetry}: LoginLinkFallbackPr
 
         {onRetry && (
           <div className="auth-alert-wrapper">
-            <button type="button" className="auth-text-link" onClick={onRetry} disabled={isLoading}>
+            <button type="button" className="itg-btn itg-btn-text auth-text-link" onClick={onRetry} disabled={isLoading}>
               Try the link again
             </button>
           </div>
@@ -178,14 +176,14 @@ export function LoginLinkFallback({kind, returnTo, onRetry}: LoginLinkFallbackPr
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <div className="auth-form-group">
-            <label className="auth-form-label" htmlFor="login-link-fallback-email">
+            <label className="itg-label auth-form-label" htmlFor="login-link-fallback-email">
               Email address
             </label>
             <input
               ref={emailInputRef}
               id="login-link-fallback-email"
               type="email"
-              className="auth-form-input"
+              className="itg-input auth-form-input"
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
@@ -210,7 +208,7 @@ export function LoginLinkFallback({kind, returnTo, onRetry}: LoginLinkFallbackPr
 
           <PrivacyLegalNotice />
 
-          <button type="submit" className="auth-form-submit" disabled={isLoading}>
+          <button type="submit" className="itg-btn itg-btn-primary auth-form-submit" disabled={isLoading}>
             {isLoading ? (
               <>
                 <span className="auth-spinner" />

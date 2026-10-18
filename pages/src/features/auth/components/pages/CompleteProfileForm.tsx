@@ -41,13 +41,13 @@ export const CompleteProfileForm = ({
     <form className="auth-form" onSubmit={onSubmit}>
       <div className="auth-form-row">
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="complete-profile-first-name">
+          <label className="itg-label auth-form-label" htmlFor="complete-profile-first-name">
             First Name
           </label>
           <input
             id="complete-profile-first-name"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={firstName}
             onChange={(event) => {
               setFirstName(event.target.value);
@@ -60,13 +60,13 @@ export const CompleteProfileForm = ({
         </div>
 
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="complete-profile-middle-name">
-            Middle Name <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+          <label className="itg-label auth-form-label" htmlFor="complete-profile-middle-name">
+            Middle Name <span className="auth-label-hint">(optional)</span>
           </label>
           <input
             id="complete-profile-middle-name"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={middleName}
             onChange={(event) => {
               setMiddleName(event.target.value);
@@ -78,13 +78,13 @@ export const CompleteProfileForm = ({
         </div>
 
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="complete-profile-last-name">
+          <label className="itg-label auth-form-label" htmlFor="complete-profile-last-name">
             Last Name
           </label>
           <input
             id="complete-profile-last-name"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={lastName}
             onChange={(event) => {
               setLastName(event.target.value);
@@ -98,11 +98,12 @@ export const CompleteProfileForm = ({
       </div>
 
       <div className="auth-form-group">
-        <label className="auth-form-label">Organization</label>
+        <label className="itg-label auth-form-label">Organization</label>
         <div className="auth-org-toggle">
           <button
             type="button"
             className={`auth-org-toggle-btn ${organizationType === 'organization' ? 'is-active' : ''}`}
+            aria-pressed={organizationType === 'organization'}
             onClick={() => {
               onOrganizationTypeChange('organization');
               clearError();
@@ -113,6 +114,7 @@ export const CompleteProfileForm = ({
           <button
             type="button"
             className={`auth-org-toggle-btn ${organizationType === 'individual' ? 'is-active' : ''}`}
+            aria-pressed={organizationType === 'individual'}
             onClick={() => {
               onOrganizationTypeChange('individual');
               clearError();
@@ -125,7 +127,7 @@ export const CompleteProfileForm = ({
           <input
             id="complete-profile-organization"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={organization}
             onChange={(event) => {
               setOrganization(event.target.value);
@@ -140,13 +142,13 @@ export const CompleteProfileForm = ({
 
       {organizationType === 'organization' && (
         <div className="auth-form-group">
-          <label className="auth-form-label" htmlFor="complete-profile-title">
-            Title <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional)</span>
+          <label className="itg-label auth-form-label" htmlFor="complete-profile-title">
+            Title <span className="auth-label-hint">(optional)</span>
           </label>
           <input
             id="complete-profile-title"
             type="text"
-            className="auth-form-input"
+            className="itg-input auth-form-input"
             value={title}
             onChange={(event) => {
               setTitle(event.target.value);
@@ -158,7 +160,7 @@ export const CompleteProfileForm = ({
         </div>
       )}
 
-      <button type="submit" className="auth-form-submit" disabled={isSaving || !firstName.trim() || !lastName.trim() || (organizationType === 'organization' && !organization.trim())}>
+      <button type="submit" className="itg-btn itg-btn-primary auth-form-submit" disabled={isSaving || !firstName.trim() || !lastName.trim() || (organizationType === 'organization' && !organization.trim())}>
         {isSaving ? (
           <>
             <span className="auth-spinner" />

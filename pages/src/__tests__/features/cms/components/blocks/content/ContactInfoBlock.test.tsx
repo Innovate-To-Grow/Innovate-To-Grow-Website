@@ -21,6 +21,9 @@ describe('ContactInfoBlock', () => {
       <ContactInfoBlock data={{heading: 'Contact Us', items: []}} />,
     );
     expect(container.querySelector('h1')?.textContent).toBe('Contact Us');
+    expect(container.querySelector('h1')).toHaveClass('itg-page-title', 'cms-page-title');
+    // As on the reference site, the page title has no rule under it.
+    expect(container.querySelector('h1')).not.toHaveClass('itg-page-title-ruled');
 
     const {container: noHeading} = render(<ContactInfoBlock data={{items: []}} />);
     expect(noHeading.querySelector('h1')).toBeNull();
@@ -71,13 +74,20 @@ describe('ContactInfoBlock', () => {
     expect(container.textContent).toContain('SE2 123');
   });
 
-  it('renders each label inside a <strong> element', () => {
+  it('renders the items as a definition list of label/value pairs', () => {
     const {container} = render(
       <ContactInfoBlock
         data={{items: [{label: 'Email', value: 'a@b.com', type: 'email'}]}}
       />,
     );
-    const strong = container.querySelector('strong');
-    expect(strong?.textContent).toBe('Email:');
+    const list = container.querySelector('dl');
+    expect(list).toHaveClass('itg-meta-box', 'cms-contact-info-list');
+    expect(list?.querySelector('dt.itg-meta-label')?.textContent).toBe('Email');
+    expect(list?.querySelector('dd.itg-meta-value a')?.textContent).toBe('a@b.com');
+  });
+
+  it('omits the definition list when there are no items', () => {
+    const {container} = render(<ContactInfoBlock data={{items: []}} />);
+    expect(container.querySelector('dl')).toBeNull();
   });
 });
