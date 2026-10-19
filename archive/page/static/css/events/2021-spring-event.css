@@ -47,12 +47,12 @@
 
 /* ── block 2 (originally before the schedule/look-up table) — details-control, #schedule, #awards, #projects, #CAP/#CSE/#ESL ── */
 td.details-control {
-    background: url('https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/images/details_open.png') no-repeat center center;
+    background: url('/static/images/details-open.svg') no-repeat center center;
     cursor: pointer;
 }
 
 tr.shown td.details-control {
-    background: url('https://innovatetogrow.ucmerced.edu/sites/innovatetogrow.ucmerced.edu/files/images/details_close.png') no-repeat center center;
+    background: url('/static/images/details-close.svg') no-repeat center center;
 }
 
 #schedule table {
