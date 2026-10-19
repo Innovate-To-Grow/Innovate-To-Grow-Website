@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from xml.etree import ElementTree
 
@@ -113,6 +114,19 @@ class Custom404Test(TestCase):
         request = factory.get("/nonexistent")
         response = custom_404(request, exception=None)
         self.assertEqual(response.status_code, 404)
+
+    def test_unknown_api_path_returns_json(self):
+        request = RequestFactory().get("/projects/no-such-endpoint/")
+        response = custom_404(request, exception=None)
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(json.loads(response.content), {"detail": "Not found."})
+
+    def test_unknown_admin_path_keeps_the_admin_page(self):
+        request = RequestFactory().get("/admin/no-such-page/")
+        response = custom_404(request, exception=None)
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("text/html", response["Content-Type"])
 
 
 class RootIndexTest(TestCase):

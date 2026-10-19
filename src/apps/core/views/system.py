@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.db.models import Max
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -74,7 +74,13 @@ def root_index(request):
     return render(request, "index.html", status=200)
 
 
+# Paths whose 404 is a page a person reads in the browser; every other path is an API client's.
+_HTML_404_PREFIXES = ("/admin/", "/legacy-view/")
+
+
 # noinspection PyUnusedLocal
 def custom_404(request, exception):
-    """Custom 404 page using the admin theme."""
-    return render(request, "404.html", status=404)
+    """404 for unknown paths: the admin-themed page inside the admin, JSON like DRF's everywhere else."""
+    if request.path.startswith(_HTML_404_PREFIXES):
+        return render(request, "404.html", status=404)
+    return JsonResponse({"detail": "Not found."}, status=404)
