@@ -3,11 +3,13 @@ import {useParams, Link} from 'react-router';
 import {usePastProjectsData} from '@/features/projects/hooks/usePastProjectsData';
 import {ScheduleGrid} from '@/features/events/components/ScheduleGrid';
 import {SheetsDataTable} from '@/components/SheetsDataTable';
+import {usePageTitle} from '@/hooks/usePageTitle';
 import {EVENT_CONFIGS} from './eventConfigs';
 
 export const EventArchivePage = () => {
     const {eventSlug} = useParams<{ eventSlug: string }>();
     const config = eventSlug ? EVENT_CONFIGS[eventSlug] : undefined;
+    usePageTitle(config?.title ?? 'Event Not Found');
 
     const archiveQuery = useMemo(() => {
         const match = eventSlug?.match(/^(\d{4})-(spring|fall)$/i);

@@ -5,6 +5,7 @@ import {formatTermForProse, splitStudentNames} from '@/features/projects/compone
 import {useCopyLink} from '@/features/projects/hooks/useCopyLink';
 import {useProjectDetail} from '@/features/projects/hooks/useProjectDetail';
 import {formatSemesterLabel} from '@/lib/format';
+import {usePageTitle} from '@/hooks/usePageTitle';
 import './ProjectDetailPage.css';
 
 export const ProjectDetailPage = () => {
@@ -20,6 +21,7 @@ export const ProjectDetailPage = () => {
   // /projects/:id is linked from Current Projects and Presenting Teams by this semester's schedule ids, and by
   // older links to archive projects: it looks in the current schedule first. Past-project pages read the archive.
   const {result, loading, error, retry} = useProjectDetail(id, !isPastProjectDetail);
+  usePageTitle(result?.project.project_title || (isPastProjectDetail ? 'Past Projects' : 'Current Projects'));
 
   useEffect(() => {
     window.scrollTo(0, 0);

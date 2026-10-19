@@ -61,6 +61,25 @@ describe('SafeHtml iframe allowlist', () => {
     expect(fetchCMSEmbedHosts).toHaveBeenCalledTimes(1);
   });
 
+  it('titles untitled iframes after the closest heading before them, else their host', async () => {
+    const {container} = render(
+      <SafeHtml
+        html={[
+          '<iframe src="https://player.vimeo.com/video/1"></iframe>',
+          '<h4>Message from the Dean</h4><div><iframe src="https://www.youtube.com/embed/a"></iframe></div>',
+          '<iframe src="https://www.youtube.com/embed/b" title="Team pitch"></iframe>',
+        ].join('')}
+      />,
+    );
+    await waitFor(() => expect(container.querySelectorAll('iframe')).toHaveLength(3));
+
+    const [first, second, third] = container.querySelectorAll('iframe');
+    expect(first).toHaveAttribute('title', 'Embedded content from player.vimeo.com');
+    expect(second).toHaveAttribute('title', 'Message from the Dean');
+    // An editor's own title is kept.
+    expect(third).toHaveAttribute('title', 'Team pitch');
+  });
+
   it('matches exact and wildcard hosts with wildcard subdomains only', async () => {
     const {container} = render(
       <SafeHtml

@@ -1,6 +1,8 @@
 import {Link} from 'react-router';
+import {usePageTitle} from '@/hooks/usePageTitle';
 
 export function NotFoundPage() {
+  usePageTitle('Page Not Found');
   return (
     <section className="itg-empty-state not-found-page" aria-labelledby="not-found-title">
       <h1 id="not-found-title" className="itg-page-title not-found-title">

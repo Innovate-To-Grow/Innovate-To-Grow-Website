@@ -105,6 +105,22 @@ describe('NewsPage', () => {
     expect(container.querySelector('.news-pagination')).toBeNull();
   });
 
+  it('swaps a thumbnail that fails to load for the placeholder', async () => {
+    vi.mocked(fetchNews).mockResolvedValue(pageOf([article()]));
+
+    const {container} = render(
+      <MemoryRouter>
+        <NewsPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('heading', {name: 'First Article'});
+    fireEvent.error(container.querySelector('img.news-card-image') as HTMLImageElement);
+
+    expect(container.querySelector('img.news-card-image')).toBeNull();
+    expect(container.querySelector('.news-card-placeholder')).toBeInTheDocument();
+  });
+
   it('renders a placeholder image and omits the summary when missing', async () => {
     vi.mocked(fetchNews).mockResolvedValue(
       pageOf([article({image_url: '', summary: ''})]),

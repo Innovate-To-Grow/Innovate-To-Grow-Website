@@ -1,4 +1,4 @@
-import {act, cleanup, render, screen, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
@@ -129,6 +129,36 @@ describe('NewsDetailPage', () => {
     expect(document.querySelector('.news-detail-meta-separator')).toBeNull();
     expect(screen.queryByTestId('safe-html')).toBeNull();
     expect(screen.getByText('A summary.')).toBeInTheDocument();
+  });
+
+  it('leaves out an author that is an account name rather than a byline', async () => {
+    vi.mocked(fetchNewsDetail).mockResolvedValue(article({author: 'jdoe3'}));
+
+    renderPage('/news/11111111-1111-4111-8111-111111111111');
+
+    expect(await screen.findByRole('heading', {name: 'Detail Article'})).toBeInTheDocument();
+    expect(screen.queryByText('jdoe3')).toBeNull();
+    expect(document.querySelector('.news-detail-meta-separator')).toBeNull();
+  });
+
+  it('drops the hero figure when its image fails to load', async () => {
+    vi.mocked(fetchNewsDetail).mockResolvedValue(article());
+
+    renderPage('/news/11111111-1111-4111-8111-111111111111');
+
+    fireEvent.error(await screen.findByAltText('Detail Article'));
+
+    expect(screen.queryByAltText('Detail Article')).toBeNull();
+    expect(screen.queryByText('Hero caption')).toBeNull();
+  });
+
+  it('names the tab after the article', async () => {
+    vi.mocked(fetchNewsDetail).mockResolvedValue(article());
+
+    renderPage('/news/11111111-1111-4111-8111-111111111111');
+
+    await screen.findByRole('heading', {name: 'Detail Article'});
+    expect(document.title).toBe('Detail Article | Innovate to Grow');
   });
 
   it('aborts the in-flight request on unmount and ignores the resolved result', async () => {

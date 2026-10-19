@@ -151,15 +151,35 @@ const stripDisallowedIframes = (
   return template.innerHTML;
 };
 
+const iframeHostLabel = (src: string | null) => {
+  try {
+    return `Embedded content from ${new URL(src ?? "").hostname}`;
+  } catch {
+    return "Embedded content";
+  }
+};
+
 const prepareAllowedIframes = (sanitizedHtml: string) => {
   const template = document.createElement("template");
   template.innerHTML = sanitizedHtml;
-  for (const iframe of template.content.querySelectorAll("iframe")) {
+  // Screen readers announce an iframe by its title. One the editor left untitled
+  // takes the text of the closest heading before it in the same content (as in
+  // "Message from the Dean" above a video), else the site it comes from.
+  let lastHeading = "";
+  for (const element of template.content.querySelectorAll("h1, h2, h3, h4, h5, h6, iframe")) {
+    if (element.tagName !== "IFRAME") {
+      lastHeading = element.textContent?.trim() ?? "";
+      continue;
+    }
+    const iframe = element as HTMLIFrameElement;
     // Keep the original element in the DOM so CMS rules such as
     // `.video-container iframe` apply before the embed loads. Replacing the
     // element with a button breaks responsive wrappers that reserve their
     // aspect ratio with padding and absolutely position the iframe.
     iframe.setAttribute("loading", "lazy");
+    if (!iframe.getAttribute("title")?.trim()) {
+      iframe.setAttribute("title", lastHeading || iframeHostLabel(iframe.getAttribute("src")));
+    }
   }
   return template.innerHTML;
 };

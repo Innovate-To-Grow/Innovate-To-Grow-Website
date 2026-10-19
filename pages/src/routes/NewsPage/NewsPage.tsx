@@ -33,26 +33,38 @@ function formatDate(value: string): string {
   });
 }
 
-const NewsCard = ({ article }: { article: NewsArticle }) => (
-  <li className="news-card">
-    {article.image_url ? (
-      <img src={article.image_url} alt="" className="news-card-image" loading="lazy" />
-    ) : (
-      <div className="news-card-image news-card-placeholder" aria-hidden="true" />
-    )}
-    <div className="news-card-body">
-      <h2 className="news-card-title">
-        <Link to={`/news/${article.id}`} className="news-card-link">
-          {article.title}
-        </Link>
-      </h2>
-      <p className="itg-page-meta news-card-date">
-        <time dateTime={article.published_at}>{formatDate(article.published_at)}</time>
-      </p>
-      {article.summary && <p className="news-card-summary">{article.summary}</p>}
-    </div>
-  </li>
-);
+const NewsCard = ({ article }: { article: NewsArticle }) => {
+  // Images are hot-linked from the news source; one that fails to load falls back to the placeholder.
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const showImage = Boolean(article.image_url) && failedImage !== article.image_url;
+
+  return (
+    <li className="news-card">
+      {showImage ? (
+        <img
+          src={article.image_url}
+          alt=""
+          className="news-card-image"
+          loading="lazy"
+          onError={() => setFailedImage(article.image_url)}
+        />
+      ) : (
+        <div className="news-card-image news-card-placeholder" aria-hidden="true" />
+      )}
+      <div className="news-card-body">
+        <h2 className="news-card-title">
+          <Link to={`/news/${article.id}`} className="news-card-link">
+            {article.title}
+          </Link>
+        </h2>
+        <p className="itg-page-meta news-card-date">
+          <time dateTime={article.published_at}>{formatDate(article.published_at)}</time>
+        </p>
+        {article.summary && <p className="news-card-summary">{article.summary}</p>}
+      </div>
+    </li>
+  );
+};
 
 export const NewsPage = () => {
   const [data, setData] = useState<PaginatedResponse<NewsArticle> | null>(null);

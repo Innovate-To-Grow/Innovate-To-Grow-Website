@@ -430,7 +430,7 @@ describe('LoginLinkFallback', () => {
       expect(status).toHaveTextContent(GENERIC_ACK);
       expect(screen.getByText(HINT)).toHaveClass('auth-help-text');
       // Alongside, not instead of, the address block.
-      expect(screen.getByText('Sending to')).toBeInTheDocument();
+      expect(screen.getByText('Code sent to')).toBeInTheDocument();
       expect(screen.getAllByText('ada@example.com')).toHaveLength(1);
       expect(screen.queryByRole('alert')).toBeNull();
     });

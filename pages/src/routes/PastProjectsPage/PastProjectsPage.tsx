@@ -17,6 +17,7 @@ import {
   type PastProjectShare,
   type ProjectGridRow,
 } from '@/features/projects/api';
+import {usePageTitle} from '@/hooks/usePageTitle';
 
 type PastProjectSharePatch = Partial<
   Pick<PastProjectShare, 'name' | 'rows' | 'note'>
@@ -253,6 +254,8 @@ export const PastProjectsPage = () => {
     setEditableShare(share);
   }
   const activeShare = editableShare?.id === shareId ? editableShare : share;
+  // A shared list is named after the share; the plain page keeps its route title.
+  usePageTitle(sharedMode && activeShare ? shareDisplayTitle(activeShare) : null);
   const [shareConflict, setShareConflict] = useState<{
     shareId: string;
     message: string;

@@ -20,11 +20,18 @@
   margin: 12px 0 24px;
 }
 
+/* Three wide columns rather than four narrow ones, so an organization name stays on one line. */
+.project-detail .project-detail-meta {
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+}
+
 .project-detail-section {
   margin-bottom: 12px;
 }
 
+/* A readable line length for the abstract (the prose-width design token, about 75 characters). */
 .project-detail-abstract {
+  max-width: var(--itg-prose-max-width, 75ch);
   margin: 0 0 12px;
 }
 
