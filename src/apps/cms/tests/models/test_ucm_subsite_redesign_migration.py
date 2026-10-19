@@ -10,14 +10,16 @@ from apps.cms.models import SiteSettings, StyleSheet
 from apps.cms.models.content.layout.site_settings import default_design_tokens
 
 migration = importlib.import_module("apps.cms.migrations.0021_ucm_subsite_redesign")
+audit_fixes_migration = importlib.import_module("apps.cms.migrations.0022_audit_fixes_styles")
 
 STYLESHEETS_JSON = Path(migration.__file__).resolve().parent / "data" / "stylesheets.json"
 
 
 class MergeTokensTests(SimpleTestCase):
     def test_new_defaults_match_the_model_defaults(self):
-        # The migration embeds a literal copy so it stays stable; it must agree with the model today.
-        self.assertEqual(migration.NEW_DEFAULT_TOKENS, default_design_tokens())
+        # The migration embeds a literal copy so it stays stable; with the tokens later migrations
+        # add, it must agree with the model today.
+        self.assertEqual(audit_fixes_migration.add_tokens(migration.NEW_DEFAULT_TOKENS), default_design_tokens())
 
     def test_replaces_tokens_that_still_hold_the_previous_default(self):
         merged = migration.merge_tokens(migration.PREVIOUS_DEFAULT_TOKENS)
