@@ -128,6 +128,21 @@ describe('useMainMenuState', () => {
     expect(document.body.style.overflow).toBe('');
   });
 
+  it('marks the root element while the mobile menu is open', () => {
+    const {result, unmount} = renderHook(() => useMainMenuState(), {wrapper});
+    expect(document.documentElement).not.toHaveClass('is-mobile-menu-open');
+
+    act(() => result.current.setIsMobileOpen(true));
+    expect(document.documentElement).toHaveClass('is-mobile-menu-open');
+
+    act(() => result.current.setIsMobileOpen(false));
+    expect(document.documentElement).not.toHaveClass('is-mobile-menu-open');
+
+    act(() => result.current.setIsMobileOpen(true));
+    unmount();
+    expect(document.documentElement).not.toHaveClass('is-mobile-menu-open');
+  });
+
   it('refreshes the member profile once when authenticated without a profile image', () => {
     const refreshProfile = vi.fn();
     useAuth.mockReturnValue({

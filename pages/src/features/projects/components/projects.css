@@ -1461,6 +1461,25 @@ a.project-grid-title-link:focus {
     display: none;
   }
 
+  /* "More table actions": the table-tidying buttons, folded away until opened. */
+  .search-table-more-actions {
+    border-top: 1px solid var(--itg-color-border);
+  }
+
+  .search-table-more-actions-summary {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--itg-color-primary);
+    font-size: var(--itg-font-size-small);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .search-table-more-actions[open] > .search-table-action-group {
+    padding-bottom: 0.5rem;
+  }
+
   /* On phones the text buttons become 44px outlined buttons (2px navy, like .itg-btn-outline). */
   .search-table-action-group .itg-btn-text {
     min-height: 2.75rem;

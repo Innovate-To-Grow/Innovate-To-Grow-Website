@@ -96,7 +96,7 @@ test('newsletter email-code flow completes profile and manages subscription', {t
   const textMessagePreferences = page.getByRole('region', {name: 'Text Messages'});
   await expect(emailPreferences.getByText(email, {exact: true})).toBeVisible();
   await expect(emailPreferences.getByText('secondary@example.com', {exact: true})).toBeVisible();
-  await expect(textMessagePreferences.getByText('(415)555-0132', {exact: true})).toBeVisible();
+  await expect(textMessagePreferences.getByText('(415) 555-0132', {exact: true})).toBeVisible();
   expect(patchPayloads[0]).toEqual({
     first_name: 'Ada',
     middle_name: '',
@@ -106,15 +106,15 @@ test('newsletter email-code flow completes profile and manages subscription', {t
     email_subscribe: true,
   });
 
-  await page.getByRole('button', {name: 'Turn off newsletter subscription'}).click();
+  await page.getByRole('switch', {name: `Newsletters for ${email}`}).click();
   await expect(page.getByText('Newsletters disabled.')).toBeVisible();
   expect(patchPayloads[1]).toEqual({email_subscribe: false});
 
-  await page.getByRole('button', {name: 'Turn on newsletter subscription for secondary@example.com'}).click();
+  await page.getByRole('switch', {name: 'Newsletters for secondary@example.com'}).click();
   await expect(page.getByText('Newsletters enabled.')).toBeVisible();
   expect(contactEmailPatchPayloads[0]).toEqual({subscribe: true});
 
-  await page.getByRole('button', {name: 'Turn off text messages for (415)555-0132'}).click();
+  await page.getByRole('switch', {name: 'Text messages for (415) 555-0132'}).click();
   await expect(page.getByText('Text Messages disabled.')).toBeVisible();
   expect(contactPhonePatchPayloads[0]).toEqual({subscribe: false});
 });

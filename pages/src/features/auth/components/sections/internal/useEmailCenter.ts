@@ -28,7 +28,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
   const [showAddForm, setShowAddForm] = useState(false);
   const [addEmail, setAddEmail] = useState('');
   const [addType, setAddType] = useState<'secondary' | 'other'>('secondary');
-  const [addSubscribe, setAddSubscribe] = useState(true);
+  const [addSubscribe, setAddSubscribe] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -120,7 +120,7 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
       setContactEmails((current) => [created, ...current]);
       setAddEmail('');
       setAddType('secondary');
-      setAddSubscribe(true);
+      setAddSubscribe(false);
       setShowAddForm(false);
       setVerifyingId(created.id);
       setVerifyCode('');
@@ -239,6 +239,9 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
   };
 
   const handleMakePrimary = async (contactId: string) => {
+    const contact = contactEmails.find((item) => item.id === contactId);
+    const address = contact?.email_address ?? 'this address';
+    if (!window.confirm(`Make ${address} your primary email? Your current primary email stays on your account as a connected email.`)) return;
     clearMessages();
     setMakePrimaryLoadingId(contactId);
     try {

@@ -35,9 +35,7 @@ export const PhoneAddForm = ({
 }: PhoneAddFormProps) => {
   const phoneDisplay = formatNationalInputDisplay(addPhoneNumber);
   const phonePlaceholder = '(555) 123-4567';
-  const hasPhoneNumber = addPhoneNumber.length > 0;
-  const canSubmitPhone = !hasPhoneNumber || canSubmitNationalPhone(addPhoneNumber);
-  const canSubmitForm = addTermsAccepted && canSubmitPhone;
+  const canSubmitForm = addTermsAccepted && canSubmitNationalPhone(addPhoneNumber);
 
   return (
     <div className="email-center-add-form">
@@ -59,9 +57,13 @@ export const PhoneAddForm = ({
             }
             placeholder={phonePlaceholder}
             aria-invalid={!canSubmitNationalPhone(addPhoneNumber) && addPhoneNumber.length > 0}
+            aria-describedby="add-phone-number-help"
+            required
             disabled={addLoading}
           />
-          <p className="auth-help-text phone-add-optional-help">The phone number field is optional.</p>
+          <p id="add-phone-number-help" className="auth-help-text phone-add-number-help">
+            US numbers only. We text a code to this number to verify it.
+          </p>
         </div>
         <PhoneConsentFields
           idPrefix="add-phone"
@@ -81,10 +83,8 @@ export const PhoneAddForm = ({
               <>
                 <span className="auth-spinner" /> Adding...
               </>
-            ) : hasPhoneNumber ? (
-              'Add Phone'
             ) : (
-              'Save Preferences'
+              'Add & Send Code'
             )}
           </button>
           <button type="button" className="itg-btn itg-btn-outline account-action-secondary" onClick={onCancel}>

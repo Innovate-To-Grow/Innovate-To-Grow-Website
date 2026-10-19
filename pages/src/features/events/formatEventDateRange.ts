@@ -39,3 +39,13 @@ export const formatEventDateRange = (startDate: string, endDate?: string | null)
 
   return `${FULL_DATE_FORMATTER.format(start)} – ${FULL_DATE_FORMATTER.format(end)}`;
 };
+
+/**
+ * True once the last day of an all-day event is over in the viewer's time zone. The event's
+ * own day still counts as upcoming, so a ticket stays usable until midnight after it ends.
+ */
+export const isEventPast = (startDate: string, endDate?: string | null, now: Date = new Date()): boolean => {
+  const lastDay = parseLocalDate(endDate || startDate);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return lastDay < today;
+};

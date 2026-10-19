@@ -88,7 +88,7 @@ export const DoneState = ({registration, showChooseAnother = false, onChooseAnot
           onClick={handleResend}
           disabled={resending}
         >
-          {resending ? 'Sending...' : 'Resend Confirmation Email'}
+          {resending ? 'Sending...' : 'Resend Ticket Email'}
         </button>
         {showChooseAnother ? (
           <button type="button" className="itg-btn itg-btn-outline" onClick={onChooseAnother}>

@@ -56,7 +56,7 @@ export const PastProjectCurationSharedLinksPage = () => {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name, note, URL, ID, result count, or date"
+            placeholder="Name, note, date or link"
           />
           {!loading ? (
             <p className="account-status-text account-shared-links-count">

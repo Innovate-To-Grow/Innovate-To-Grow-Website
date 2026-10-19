@@ -33,6 +33,19 @@ describe('MySharedLinksSection', () => {
         cleanup();
     });
 
+    it('copies a share link and announces it', async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal('navigator', {...window.navigator, clipboard: {writeText}});
+        mockListMyShares.mockResolvedValue([share()]);
+        render(<MySharedLinksSection/>);
+
+        fireEvent.click(await screen.findByRole('button', {name: /^Copy the link to Spring finalists/}));
+
+        await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://example.test/past-projects/share-1'));
+        expect(await screen.findByRole('status')).toHaveTextContent('Link copied.');
+        vi.unstubAllGlobals();
+    });
+
     it('renders the list with open + delete only when the user has shares', async () => {
         mockListMyShares.mockResolvedValue([share()]);
         render(<MySharedLinksSection/>);

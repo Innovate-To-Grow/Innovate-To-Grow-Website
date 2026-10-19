@@ -289,7 +289,7 @@ describe('SubscribePage', () => {
 
     expect(await screen.findByText('No email addresses are connected to this account.')).toBeInTheDocument();
     expect(screen.queryByText('Primary email - Unverified')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', {name: 'Turn on newsletter subscription'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch', {name: /^Newsletters for/})).not.toBeInTheDocument();
   });
 
   it('opens directly on the profile step when the query requests it', async () => {
@@ -492,7 +492,9 @@ describe('SubscribePage', () => {
     });
 
     // Wait for the toggle button to appear
-    const toggleButtons = await screen.findAllByRole('button', {name: 'Turn off newsletter subscription'});
+    const toggleButtons = await screen.findAllByRole('switch', {name: 'Newsletters for member@example.com'});
+    // The state is announced from aria-checked; the name stays the same either way.
+    expect(toggleButtons[0]).toHaveAttribute('aria-checked', 'true');
     fireEvent.click(toggleButtons[0]);
 
     await waitFor(() => {
@@ -554,14 +556,14 @@ describe('SubscribePage', () => {
     );
 
     expect(await screen.findByText('secondary@example.com')).toBeInTheDocument();
-    expect(await screen.findByText('(415)555-0132')).toBeInTheDocument();
+    expect(await screen.findByText('(415) 555-0132')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', {name: 'Turn on newsletter subscription for secondary@example.com'}));
+    fireEvent.click(screen.getByRole('switch', {name: 'Newsletters for secondary@example.com'}));
     await waitFor(() => {
       expect(mockUpdateContactEmail).toHaveBeenCalledWith('email-2', {subscribe: true});
     });
 
-    fireEvent.click(screen.getByRole('button', {name: 'Turn off text messages for (415)555-0132'}));
+    fireEvent.click(screen.getByRole('switch', {name: 'Text messages for (415) 555-0132'}));
     await waitFor(() => {
       expect(mockUpdateContactPhone).toHaveBeenCalledWith('phone-1', {subscribe: false});
     });
@@ -857,7 +859,7 @@ describe('SubscribePage', () => {
     );
 
     await screen.findByText('member@example.com');
-    fireEvent.click(screen.getByRole('button', {name: 'Turn off newsletter subscription'}));
+    fireEvent.click(screen.getByRole('switch', {name: 'Newsletters for member@example.com'}));
 
     expect(await screen.findByText('Toggle failed.')).toBeInTheDocument();
   });
@@ -889,7 +891,7 @@ describe('SubscribePage', () => {
 
     await screen.findByText('secondary@example.com');
     fireEvent.click(
-      screen.getByRole('button', {name: 'Turn on newsletter subscription for secondary@example.com'}),
+      screen.getByRole('switch', {name: 'Newsletters for secondary@example.com'}),
     );
 
     expect(await screen.findByText('Email toggle failed.')).toBeInTheDocument();
@@ -921,9 +923,9 @@ describe('SubscribePage', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText('(415)555-0132');
+    await screen.findByText('(415) 555-0132');
     fireEvent.click(
-      screen.getByRole('button', {name: 'Turn off text messages for (415)555-0132'}),
+      screen.getByRole('switch', {name: 'Text messages for (415) 555-0132'}),
     );
 
     expect(await screen.findByText('Phone toggle failed.')).toBeInTheDocument();

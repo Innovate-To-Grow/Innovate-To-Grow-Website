@@ -152,14 +152,13 @@ describe('AccountPage', () => {
 
     expect(screen.getByRole('heading', {name: 'Account Dashboard'})).toBeInTheDocument();
 
-    // ProfileSection receives the editable field values.
-    expect(screen.getByDisplayValue('Ada')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Lovelace')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Acme Corp')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('CEO')).toBeInTheDocument();
+    // ProfileSection summarises the profile fields until editing starts.
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+    expect(screen.getByText('CEO')).toBeInTheDocument();
 
-    // DetailsSection receives the display email and joined date.
-    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    // DetailsSection shows the joined date; the email cards already show the address.
+    expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
     expect(screen.getByText('Member Since')).toBeInTheDocument();
 
     // Password / delete sections render their headers.
@@ -218,7 +217,7 @@ describe('AccountPage', () => {
           ticket_email_error: '',
           barcode_format: 'PDF417',
           barcode_image: 'data:image/png;base64,test',
-          event: {id: 'event-1', name: 'Spring Showcase', slug: 'spring', date: '2026-05-01', location: 'Campus', description: ''},
+          event: {id: 'event-1', name: 'Spring Showcase', slug: 'spring', date: '2099-05-01', location: 'Campus', description: ''},
           ticket: {id: 'ticket-1', name: 'General Admission'},
           answers: [],
         },

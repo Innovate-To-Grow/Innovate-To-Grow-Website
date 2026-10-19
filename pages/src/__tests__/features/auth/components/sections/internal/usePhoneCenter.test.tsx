@@ -106,7 +106,7 @@ describe('usePhoneCenter', () => {
       await result.current.handleAddSubmit(formEvent());
     });
 
-    expect(result.current.addError).toBe('Please accept Terms of Service & Privacy Policy to continue.');
+    expect(result.current.addError).toBe('Please accept the Privacy/Legal Notice and Privacy Statement to continue.');
     expect(mocks.createContactPhone).not.toHaveBeenCalled();
   });
 
@@ -193,7 +193,7 @@ describe('usePhoneCenter', () => {
       await result.current.handleVerifySubmit(formEvent());
     });
 
-    expect(result.current.verifyError).toBe('Please accept Terms of Service & Privacy Policy to continue.');
+    expect(result.current.verifyError).toBe('Please accept the Privacy/Legal Notice and Privacy Statement to continue.');
     expect(mocks.verifyContactPhoneCode).not.toHaveBeenCalled();
   });
 
@@ -475,7 +475,7 @@ describe('usePhoneCenter', () => {
     expect(result.current.addError).toBeNull();
   });
 
-  it('resets the form when submitting without a phone number', async () => {
+  it('keeps the form open with an error when submitting without a phone number', async () => {
     const {result} = renderHook(() => usePhoneCenter());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -489,9 +489,8 @@ describe('usePhoneCenter', () => {
       await result.current.handleAddSubmit(formEvent());
     });
 
-    expect(result.current.showAddForm).toBe(false);
-    expect(result.current.addSubscribe).toBe(false);
-    expect(result.current.addTermsAccepted).toBe(false);
+    expect(result.current.showAddForm).toBe(true);
+    expect(result.current.addError).toBe('Enter a 10-digit US phone number.');
     expect(mocks.createContactPhone).not.toHaveBeenCalled();
   });
 

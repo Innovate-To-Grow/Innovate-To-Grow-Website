@@ -21,14 +21,17 @@ interface ToggleButtonProps {
   onToggle: () => void;
 }
 
+// A switch with a fixed name: screen readers announce its on/off state from aria-checked,
+// so the name must not change with the state as well.
 const ToggleButton = ({active, disabled, label, onToggle}: ToggleButtonProps) => (
   <button
     type="button"
+    role="switch"
     className={`subscribe-toggle ${active ? 'is-active' : ''}`}
     onClick={onToggle}
     disabled={disabled}
     aria-label={label}
-    aria-pressed={active}
+    aria-checked={active}
   >
     <span className="subscribe-toggle-knob" />
   </button>
@@ -51,7 +54,7 @@ export const ManageStep = ({
   return (
     <div className="itg-panel subscribe-section">
       <section className="subscribe-preference-group" aria-labelledby="subscribe-email-preferences">
-        <h3 id="subscribe-email-preferences" className="subscribe-preference-heading">Email Newsletters</h3>
+        <h2 id="subscribe-email-preferences" className="subscribe-preference-heading">Email Newsletters</h2>
         <div className="subscribe-preference-list">
           {primaryEmail ? (
             <div className="subscribe-preference-item">
@@ -62,15 +65,13 @@ export const ManageStep = ({
                 </span>
               </div>
               <div className="subscribe-manage-status">
-                <span className="subscribe-manage-status-label">Newsletters</span>
                 <ToggleButton
                   active={profile.email_subscribe}
                   disabled={savingId !== null}
-                  label={
-                    profile.email_subscribe ? 'Turn off newsletter subscription' : 'Turn on newsletter subscription'
-                  }
+                  label={`Newsletters for ${primaryEmail}`}
                   onToggle={() => void onPrimaryEmailToggle(!profile.email_subscribe)}
                 />
+                <span className="subscribe-manage-status-label" aria-hidden="true">Newsletters</span>
               </div>
             </div>
           ) : null}
@@ -84,17 +85,13 @@ export const ManageStep = ({
                 </span>
               </div>
               <div className="subscribe-manage-status">
-                <span className="subscribe-manage-status-label">Newsletters</span>
                 <ToggleButton
                   active={contact.subscribe}
                   disabled={savingId !== null}
-                  label={
-                    contact.subscribe
-                      ? `Turn off newsletter subscription for ${contact.email_address}`
-                      : `Turn on newsletter subscription for ${contact.email_address}`
-                  }
+                  label={`Newsletters for ${contact.email_address}`}
                   onToggle={() => void onContactEmailToggle(contact, !contact.subscribe)}
                 />
+                <span className="subscribe-manage-status-label" aria-hidden="true">Newsletters</span>
               </div>
             </div>
           ))}
@@ -106,7 +103,7 @@ export const ManageStep = ({
       </section>
 
       <section className="subscribe-preference-group" aria-labelledby="subscribe-phone-preferences">
-        <h3 id="subscribe-phone-preferences" className="subscribe-preference-heading">Text Messages</h3>
+        <h2 id="subscribe-phone-preferences" className="subscribe-preference-heading">Text Messages</h2>
         {contactPhones.length > 0 ? (
           <div className="subscribe-preference-list">
             {contactPhones.map((phone) => {
@@ -120,17 +117,13 @@ export const ManageStep = ({
                     </span>
                   </div>
                   <div className="subscribe-manage-status">
-                    <span className="subscribe-manage-status-label">Text Messages</span>
                     <ToggleButton
                       active={phone.subscribe}
                       disabled={savingId !== null}
-                      label={
-                        phone.subscribe
-                          ? `Turn off text messages for ${phoneDisplay}`
-                          : `Turn on text messages for ${phoneDisplay}`
-                      }
+                      label={`Text messages for ${phoneDisplay}`}
                       onToggle={() => void onContactPhoneToggle(phone, !phone.subscribe)}
                     />
+                    <span className="subscribe-manage-status-label" aria-hidden="true">Text Messages</span>
                   </div>
                 </div>
               );

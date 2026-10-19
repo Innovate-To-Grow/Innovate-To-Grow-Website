@@ -7,7 +7,7 @@ export function formatPhoneDisplay(phoneNumber: string): string {
     national = phoneNumber.slice(1);
   }
 
-  if (national.length === 10) return `(${national.slice(0, 3)})${national.slice(3, 6)}-${national.slice(6)}`;
+  if (national.length === 10) return `(${national.slice(0, 3)}) ${national.slice(3, 6)}-${national.slice(6)}`;
   if (national.length === 7) return `${national.slice(0, 3)}-${national.slice(3)}`;
   return national.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
 }

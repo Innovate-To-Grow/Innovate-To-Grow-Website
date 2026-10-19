@@ -14,17 +14,17 @@ export function parsePhoneInputToNationalDigits(raw: string): string {
   return digits.slice(0, 10);
 }
 
-/** Display string for a controlled tel input: (XXX)XXX-XXXX. */
+/** Display string for a controlled tel input: (XXX) XXX-XXXX. */
 export function formatNationalInputDisplay(nationalDigits: string): string {
   const d = nationalDigits.slice(0, 10);
   if (d.length === 0) return '';
   if (d.length <= 3) return `(${d}`;
-  if (d.length <= 6) return `(${d.slice(0, 3)})${d.slice(3)}`;
-  return `(${d.slice(0, 3)})${d.slice(3, 6)}-${d.slice(6)}`;
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
 export function nationalInputMaxLength(): number {
-  return 13;
+  return 14;
 }
 
 export function canSubmitNationalPhone(digits: string): boolean {
@@ -32,7 +32,7 @@ export function canSubmitNationalPhone(digits: string): boolean {
   return digits.length === 10;
 }
 
-/** Human-readable display for an E.164 (or any) phone string, e.g. "+12025550123" → "(202)555-0123". */
+/** Human-readable display for an E.164 (or any) phone string, e.g. "+12025550123" → "(202) 555-0123". */
 export function formatE164ForDisplay(value: string): string {
   if (!value) return '';
   const national = parsePhoneInputToNationalDigits(value);

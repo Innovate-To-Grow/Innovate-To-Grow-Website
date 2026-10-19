@@ -53,39 +53,44 @@ export const ContactEmailCard = ({
         </div>
 
         <div className="email-center-actions">
-          <select
-            className="itg-select email-center-type-select"
-            value={contact.email_type}
-            disabled={makePrimaryLoadingId === contact.id}
-            onChange={(event) => {
-              const value = event.target.value;
-              if (value === 'primary') {
-                void onMakePrimary(contact.id);
-                return;
-              }
-              onContactTypeChange(contact, value as 'secondary' | 'other');
-            }}
-            aria-label="Email role"
-          >
-            <option
-              value="secondary"
-              disabled={secondaryDisabled && contact.email_type !== 'secondary'}
-              title={
-                secondaryDisabled && contact.email_type !== 'secondary'
-                  ? 'Another address is already set as secondary.'
-                  : undefined
-              }
+          <label className="email-center-type-field" htmlFor={`email-role-${contact.id}`}>
+            <span className="email-center-type-label">Role</span>
+            <select
+              id={`email-role-${contact.id}`}
+              className="itg-select email-center-type-select"
+              value={contact.email_type}
+              disabled={makePrimaryLoadingId === contact.id}
+              onChange={(event) => onContactTypeChange(contact, event.target.value as 'secondary' | 'other')}
             >
-              Secondary
-            </option>
-            <option value="other">Other</option>
-            {contact.verified ? <option value="primary">Primary</option> : null}
-          </select>
-          <label className="email-center-toggle" aria-label="Newsletters">
+              <option
+                value="secondary"
+                disabled={secondaryDisabled && contact.email_type !== 'secondary'}
+                title={
+                  secondaryDisabled && contact.email_type !== 'secondary'
+                    ? 'Another address is already set as secondary.'
+                    : undefined
+                }
+              >
+                Secondary
+              </option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label className="email-center-toggle">
             <input type="checkbox" checked={contact.subscribe} onChange={() => onContactSubscribeToggle(contact)} />
             <span className="email-center-toggle-slider" />
             <span className="email-center-toggle-label">Newsletters</span>
           </label>
+          {contact.verified ? (
+            <button
+              type="button"
+              className="itg-btn itg-btn-outline email-center-btn make-primary"
+              disabled={makePrimaryLoadingId === contact.id}
+              onClick={() => onMakePrimary(contact.id)}
+            >
+              {makePrimaryLoadingId === contact.id ? 'Updating...' : 'Make Primary'}
+            </button>
+          ) : null}
           {!contact.verified && verifyingId !== contact.id ? (
             <button
               type="button"

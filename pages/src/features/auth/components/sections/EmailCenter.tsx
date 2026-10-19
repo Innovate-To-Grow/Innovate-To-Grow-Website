@@ -20,6 +20,10 @@ export const EmailCenter = ({profile, onProfileUpdate}: EmailCenterProps) => {
     return (
         <div className="itg-panel account-section">
             <h2 className="account-section-title">Account Emails & Newsletters</h2>
+            <p className="auth-help-text email-center-roles-help">
+                Primary is your main account address. A secondary email is offered as the second ticket recipient
+                when you register for an event. Other emails are only kept on your account.
+            </p>
 
             {emailCenter.successMessage ? <StatusAlert tone="success" message={emailCenter.successMessage} /> : null}
             {emailCenter.error ? <StatusAlert tone="error" message={emailCenter.error} /> : null}

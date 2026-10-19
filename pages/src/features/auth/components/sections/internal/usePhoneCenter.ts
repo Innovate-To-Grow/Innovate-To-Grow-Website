@@ -80,17 +80,13 @@ export const usePhoneCenter = () => {
     const handleAddSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!addTermsAccepted) {
-            setAddError('Please accept Terms of Service & Privacy Policy to continue.');
+            setAddError('Please accept the Privacy/Legal Notice and Privacy Statement to continue.');
             return;
         }
-        if (!addPhoneNumber) {
-            setShowAddForm(false);
-            setAddSubscribe(false);
-            setAddTermsAccepted(false);
-            setAddError(null);
+        if (!canSubmitNationalPhone(addPhoneNumber)) {
+            setAddError('Enter a 10-digit US phone number.');
             return;
         }
-        if (!canSubmitNationalPhone(addPhoneNumber)) return;
         setAddLoading(true);
         setAddError(null);
         clearMessages();
@@ -140,7 +136,7 @@ export const usePhoneCenter = () => {
         const targetId = verifyingId;
         const wasPendingAdd = pendingNewPhone?.id === targetId;
         if (wasPendingAdd && !addTermsAccepted) {
-            setVerifyError('Please accept Terms of Service & Privacy Policy to continue.');
+            setVerifyError('Please accept the Privacy/Legal Notice and Privacy Statement to continue.');
             return;
         }
         setVerifyLoading(true);

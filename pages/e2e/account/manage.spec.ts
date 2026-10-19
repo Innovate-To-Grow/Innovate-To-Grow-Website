@@ -64,7 +64,7 @@ test('PhoneCenter: add a contact phone', async ({page}) => {
   // required before the form can submit (PhoneAddForm.tsx).
   await page.locator('#add-phone-number').fill('2065551234');
   await page.locator('#add-phone-terms').check();
-  await page.getByRole('button', {name: 'Add Phone', exact: true}).click();
+  await page.getByRole('button', {name: 'Add & Send Code'}).click();
   await expect.poll(() => created.length).toBeGreaterThan(0);
 });
 
@@ -122,7 +122,7 @@ test('TicketsSection: renders tickets from API', async ({page}) => {
     myTicket({
       id: 'ticket-1',
       ticket_code: 'ITG-E2E-001',
-      event: {id: 'ev-1', name: 'Spring Showcase', slug: 'spring-showcase', date: '2026-05-01T18:00:00Z', location: 'Main Hall', description: ''},
+      event: {id: 'ev-1', name: 'Spring Showcase', slug: 'spring-showcase', date: '2099-05-01T18:00:00Z', location: 'Main Hall', description: ''},
     }),
   ]);
   await page.goto('/account', {waitUntil: 'domcontentloaded'});
