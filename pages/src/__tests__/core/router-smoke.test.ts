@@ -11,22 +11,13 @@ describe('Router', () => {
         expect(router.routes.length).toBeGreaterThan(0);
     });
 
-    it('keeps acknowledgement on a dedicated route instead of CMSPageComponent', async () => {
-        const {createAppRouter} = await import('@/app/router');
-        const router = createAppRouter();
-        const rootRoute = router.routes.find((route) => route.path === '/');
-        const acknowledgementRoute = rootRoute?.children?.find((route) => route.path === 'acknowledgement');
-
-        expect(acknowledgementRoute).toBeDefined();
-        // The route exists as a dedicated (non-catch-all) route, confirming it's not handled by the CMS catch-all
-        expect(acknowledgementRoute?.path).toBe('acknowledgement');
-    });
-
     it.each([
         ['/past-projects/project/project-123', 'past-projects/project/:id'],
         ['/past-projects/share-123', 'past-projects/:shareId'],
         ['/account/past-project-curation-shared-links', 'account/past-project-curation-shared-links'],
         ['/news/article-123', 'news/:id'],
+        // A CMS page, copy and sponsors edited in the CMS.
+        ['/acknowledgement', '*'],
         ['/an-unregistered-cms-path', '*'],
     ])('matches %s to the most specific route before the CMS catch-all', async (pathname, expectedPath) => {
         const {createAppRouter} = await import('@/app/router');
@@ -54,7 +45,6 @@ describe('Router', () => {
         'past-projects',
         'projects/:id',
         'schedule',
-        'acknowledgement',
         'events/:eventSlug',
         'event-registration',
         'membership/events',

@@ -18,6 +18,8 @@ class BuildContextTests(TestCase):
         # build_public_context caches its result; clear so each test (which
         # sets up different DB rows) sees a fresh build, not a bled-over one.
         cache.clear()
+        # Migration cms.0023 seeds the /acknowledgement page; these tests start from no CMS pages.
+        CMSPage.objects.all().delete()
 
     def test_empty_when_no_data(self):
         self.assertEqual(context.build_public_context(), "")

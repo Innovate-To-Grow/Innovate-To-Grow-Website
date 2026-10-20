@@ -26,6 +26,10 @@ class RobotsTxtTest(TestCase):
 
 @override_settings(FRONTEND_URL="https://i2g.ucmerced.edu")
 class SitemapXmlTest(TestCase):
+    def setUp(self):
+        # Migration cms.0023 seeds the /acknowledgement page; these tests start from no CMS pages.
+        CMSPage.objects.all().delete()
+
     def sitemap_locations(self, response):
         root = ElementTree.fromstring(response.content)
         return [node.text for node in root.findall(f"{SITEMAP_NS}url/{SITEMAP_NS}loc")]

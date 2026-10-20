@@ -55,7 +55,6 @@ PUBLIC_APP_ROUTES = [
     {"url": "/past-projects", "title": "Past Projects"},
     {"url": "/event-registration", "title": "Event Registration"},
     {"url": "/schedule", "title": "Event Schedule"},
-    {"url": "/acknowledgement", "title": "Partners & Sponsors"},
     {"url": "/subscribe", "title": "Subscribe"},
     {"url": "/login-link", "title": "Login Link"},
     {"url": "/magic-login", "title": "Legacy Magic Login"},

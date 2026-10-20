@@ -51,7 +51,6 @@ const PastProjectsPage = React.lazy(() => import('@/routes/PastProjectsPage').th
 const PresentingTeamsPage = React.lazy(() => import('@/routes/PresentingTeamsPage').then(m => ({default: m.PresentingTeamsPage})));
 const ProjectDetailPage = React.lazy(() => import('@/routes/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
 const SchedulePage = React.lazy(() => import('@/routes/SchedulePage').then(m => ({default: m.SchedulePage})));
-const AcknowledgementPage = React.lazy(() => import('@/routes/AcknowledgementPage').then(m => ({default: m.AcknowledgementPage})));
 const EventArchivePage = React.lazy(() => import('@/routes/EventArchivePage').then(m => ({default: m.EventArchivePage})));
 const EventRegistrationPage = React.lazy(() => import('@/routes/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
 const SubscribePage = React.lazy(() => import('@/routes/SubscribePage').then(m => ({default: m.SubscribePage})));
@@ -97,7 +96,6 @@ export const createAppRouter = () => createBrowserRouter([
             {path: 'event-registration', element: lazyRoute(<EventRegistrationPage/>), ...titled('Event Registration')},
             {path: 'events/:eventSlug', element: lazyRoute(<EventArchivePage/>)},
             {path: 'schedule', element: lazyRoute(<SchedulePage/>), ...titled('Event Schedule')},
-            {path: 'acknowledgement', element: lazyRoute(<AcknowledgementPage/>), ...titled('Partners & Sponsors')},
 
             // Subscribe
             {path: 'subscribe', element: lazyRoute(<SubscribePage/>), ...titled('Subscriptions')},

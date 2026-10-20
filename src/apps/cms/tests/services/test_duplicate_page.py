@@ -10,6 +10,8 @@ class DuplicatePageTests(TestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
+        # Migration cms.0023 seeds the /acknowledgement page; these tests count pages from zero.
+        CMSPage.objects.all().delete()
         self.page = CMSPage.objects.create(
             slug="fall-event",
             route="/fall-event",

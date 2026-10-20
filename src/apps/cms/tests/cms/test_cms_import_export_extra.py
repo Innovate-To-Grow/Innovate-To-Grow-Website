@@ -88,6 +88,8 @@ class ProcessPageDataTests(TestCase):
 
 class CMSPageImportViewTests(TestCase):
     def setUp(self):
+        # Migration cms.0023 seeds the /acknowledgement page; these tests count pages from zero.
+        CMSPage.objects.all().delete()
         self.staff = Member.objects.create_superuser(password="testpass123", first_name="Imp", last_name="Admin")
         ContactEmail.objects.create(
             member=self.staff, email_address="imp-admin@example.com", email_type="primary", verified=True

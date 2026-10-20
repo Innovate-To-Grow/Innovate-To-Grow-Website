@@ -93,6 +93,8 @@ class CMSExportViewTest(TestCase):
     # noinspection PyPep8Naming
     def setUp(self):
         cache.clear()
+        # Migration cms.0023 seeds the /acknowledgement page; these tests count pages from zero.
+        CMSPage.objects.all().delete()
         self.staff = Member.objects.create_superuser(
             password="testpass123",
             first_name="Export",
