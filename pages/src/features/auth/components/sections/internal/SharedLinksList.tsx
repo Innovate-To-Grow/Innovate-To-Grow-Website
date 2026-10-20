@@ -21,7 +21,7 @@ export const SharedLinksList = ({shares, onDelete}: SharedLinksListProps) => {
       <ul className="account-shares-list">
         {shares.map((share) => {
           const name = getSharedLinkDisplayName(share);
-          const details = `${getSharedLinkResultsLabel(share)} · ${formatSharedLinkDate(share.created_at)}`;
+          const details = `${getSharedLinkResultsLabel(share)} · ${formatSharedLinkDate(share.updated_at || share.created_at)}`;
           // Unnamed shares all read "Past Project Curation", so the controls name the row they act on.
           const rowLabel = `${name} (${details})`;
           return (

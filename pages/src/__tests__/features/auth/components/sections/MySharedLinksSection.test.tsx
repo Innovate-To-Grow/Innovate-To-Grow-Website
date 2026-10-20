@@ -76,6 +76,19 @@ describe('MySharedLinksSection', () => {
         expect(screen.getByRole('button', {name: /^Delete Past Project Curation \(3 results · /})).toBeInTheDocument();
     });
 
+    it('dates each share by its last change when the server sends one', async () => {
+        mockListMyShares.mockResolvedValue([
+            share({id: 'edited', name: 'Edited list', updated_at: '2026-10-18T12:00:00Z'}),
+            share({id: 'legacy', name: 'Legacy list'}),
+        ]);
+        render(<MySharedLinksSection/>);
+
+        const edited = new Date('2026-10-18T12:00:00Z').toLocaleDateString();
+        const created = new Date('2026-06-05T00:00:00Z').toLocaleDateString();
+        expect(await screen.findByText(`3 results · ${edited}`)).toBeInTheDocument();
+        expect(screen.getByText(`3 results · ${created}`)).toBeInTheDocument();
+    });
+
     it('deletes a share after confirmation and removes it from the list', async () => {
         mockListMyShares.mockResolvedValue([share()]);
         mockDeleteShare.mockResolvedValue(undefined);

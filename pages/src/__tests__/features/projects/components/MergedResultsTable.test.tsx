@@ -105,12 +105,12 @@ describe('MergedResultsTable', () => {
 
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
-    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'Spring finalists'}});
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'Spring finalists'}});
     setRichTextEditorHtml(
       screen.getByRole('textbox', {name: /curation note/i}),
       'Review these with the team',
     );
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     expect(onCreateShare).toHaveBeenCalledTimes(1);
     const [rowsArg, nameArg, noteArg] = onCreateShare.mock.calls[0];
@@ -118,7 +118,7 @@ describe('MergedResultsTable', () => {
     expect(nameArg).toBe('Spring finalists');
     expect(noteArg).toBe('Review these with the team');
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
-    expect(await screen.findByText('Opening shareable link...')).toBeInTheDocument();
+    expect(await screen.findByText('Saved. Opening your curation...')).toBeInTheDocument();
   });
 
   it('select-all + Remove Selected only removes rows matching the active search, never hidden rows', async () => {
@@ -167,8 +167,8 @@ describe('MergedResultsTable', () => {
     const insertedLink = noteEditor.querySelector('a');
     expect(insertedLink?.getAttribute('href')).toBe(expectedIndividualHref);
 
-    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'Spring finalists'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'Spring finalists'}});
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
     const noteArg = onCreateShare.mock.calls[0][2];
@@ -229,13 +229,13 @@ describe('MergedResultsTable', () => {
     expect(noteEditor.querySelectorAll('[data-past-project-note-curation="project-summary"]')).toHaveLength(1);
   });
 
-  it('enables the share button with rows even when the name is blank', () => {
+  it('enables Save Curation with rows even when the name is blank', () => {
     // The curation name is optional now — the backend derives one from the content. So the share
     // button is enabled whenever there are rows, and a blank name is passed through as an empty string.
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
-    const button = screen.getAllByRole('button', {name: /get shareable url/i})[0];
+    const button = screen.getAllByRole('button', {name: /save curation/i})[0];
     expect(button).toBeEnabled();
 
     fireEvent.click(button);
@@ -262,7 +262,7 @@ describe('MergedResultsTable', () => {
   it('exports with the typed name and note so the PDF matches the page it will share', async () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
-    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'CSE capstones for Bob'}});
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'CSE capstones for Bob'}});
     setRichTextEditorHtml(screen.getByRole('textbox', {name: /curation note/i}), 'Hello Bob');
     const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
     fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
@@ -276,14 +276,41 @@ describe('MergedResultsTable', () => {
   it('explains how an unnamed curation will be titled', () => {
     render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
-    const name = screen.getByLabelText(/shared page name/i);
-    expect(name).toHaveAccessibleName('Shared page name (optional)');
+    const name = screen.getByLabelText(/curation name/i);
+    expect(name).toHaveAccessibleName('Curation name (optional)');
     expect(name).toHaveAttribute('placeholder', 'Past Project Curation');
     expect(name).toHaveAccessibleDescription('Leave it blank to use the first line of your note.');
   });
 
-  it('lays out the saved list as a panel with its count, the table, the export and edit groups, and sharing', () => {
-    const {container} = render(
+  it('leaves the name and note to the builder when it keeps them', () => {
+    const onNameDraftChange = vi.fn();
+    const onNoteDraftChange = vi.fn();
+    const onCreateShare = vi.fn().mockResolvedValue('share-1');
+    render(
+      <MergedResultsTable
+        rows={makeItems([rowWithId])}
+        onCreateShare={onCreateShare}
+        nameDraft="Kept name"
+        noteDraft="Kept note"
+        onNameDraftChange={onNameDraftChange}
+        onNoteDraftChange={onNoteDraftChange}
+      />,
+    );
+
+    expect(screen.getByLabelText(/curation name/i)).toHaveValue('Kept name');
+    expect(screen.getByRole('textbox', {name: /curation note/i})).toHaveTextContent('Kept note');
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'New name'}});
+    expect(onNameDraftChange).toHaveBeenCalledWith('New name');
+    fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
+    expect(onNoteDraftChange).toHaveBeenLastCalledWith(expect.stringContaining('Kept note'));
+    expect(onNoteDraftChange).toHaveBeenLastCalledWith(expect.stringContaining('<strong>Project Title:</strong> Shared Project'));
+
+    fireEvent.click(screen.getAllByRole('button', {name: 'Save Curation'})[0]);
+    expect(onCreateShare).toHaveBeenCalledWith(expect.any(Array), 'Kept name', 'Kept note');
+  });
+
+  it('lays out the saved list as a panel with its count, the table, the export and edit groups, and saving', () => {
+    render(
       <MergedResultsTable
         id="saved"
         rows={makeItems([baseRow, addedRow])}
@@ -306,11 +333,16 @@ describe('MergedResultsTable', () => {
     ]);
     expect(within(editGroup).getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
     expect(within(editGroup).getByRole('button', {name: 'Reset Merged Results'})).toHaveClass('itg-btn-danger');
-    expect(within(section).getByRole('heading', {level: 3, name: 'Share this list'})).toBeInTheDocument();
-    expect(within(section).getByText('Anyone with the link can view this list.')).toBeInTheDocument();
-    // The share button lives only in the share section.
-    expect(within(section).getAllByRole('button', {name: /get shareable url/i})).toHaveLength(1);
-    expect(container.querySelector('.project-grid-share-actions')).not.toBeNull();
+    expect(within(section).getByRole('heading', {level: 3, name: 'Save this curation'})).toBeInTheDocument();
+    expect(
+      within(section).getByText('Saved curations are listed under My Curations, each with a link anyone can view.'),
+    ).toBeInTheDocument();
+    // Saving is offered at the top of the card, with a line saying the list is not saved yet, and again under
+    // the note.
+    const [headerSave, sectionSave] = within(section).getAllByRole('button', {name: 'Save Curation'});
+    expect(headerSave.closest('.project-grid-card-header')).not.toBeNull();
+    expect(within(section).getByText(/Not saved yet\. This browser keeps the list until you save it\./)).toBeInTheDocument();
+    expect(sectionSave.closest('.project-grid-share-actions')).not.toBeNull();
   });
 
   it('pages to and highlights the rows the latest save added', () => {
@@ -359,18 +391,18 @@ describe('MergedResultsTable', () => {
     expect(screen.getAllByText('Irrigation Sensor').length).toBeGreaterThan(0);
   });
 
-  it('waits for saves still loading before a shareable link can be created', () => {
+  it('waits for saves still loading before the curation can be saved', () => {
     const onCreateShare = vi.fn();
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} pendingSaveCount={1} />);
 
-    screen.getAllByRole('button', {name: /get shareable url/i}).forEach((button) => expect(button).toBeDisabled());
+    screen.getAllByRole('button', {name: /save curation/i}).forEach((button) => expect(button).toBeDisabled());
     const pending = screen.getByText(/Waiting for projects to finish saving/);
     expect(pending).toHaveAttribute('role', 'status');
     // Beside the button, not on a line of its own.
     expect(pending.closest('.project-grid-share-actions')).not.toBeNull();
   });
 
-  it('keeps the saved rows as they are while a shareable link is being created', async () => {
+  it('keeps the saved rows as they are while the curation is being saved', async () => {
     let finishShare!: (value: string) => void;
     const onCreateShare = vi.fn(() => new Promise<string>((resolve) => { finishShare = resolve; }));
     const onDeleteRows = vi.fn();
@@ -385,7 +417,7 @@ describe('MergedResultsTable', () => {
       />,
     );
     fireEvent.click(screen.getAllByLabelText(/^Select /)[1]);
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     expect(screen.getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
     expect(screen.getByRole('button', {name: 'Undo Merged Change'})).toBeDisabled();
@@ -397,14 +429,14 @@ describe('MergedResultsTable', () => {
     expect(onDeleteRows).not.toHaveBeenCalled();
   });
 
-  it('says when its search narrows what the shareable link and exports include', async () => {
+  it('says when its search narrows what saving and exports include', async () => {
     render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={vi.fn()} />);
 
     fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Irrigation'}});
 
     expect(
       await screen.findByText(
-        /Your search shows 1 of 2 saved projects\. The shareable link and exports include only the 1 it shows\./,
+        /Your search shows 1 of 2 saved projects\. Saving and exports include only the 1 it shows\./,
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
@@ -430,10 +462,10 @@ describe('MergedResultsTable', () => {
       </StrictMode>,
     );
 
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
-    expect(await screen.findByText('Unable to create a shareable URL. Please try again.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', {name: 'Creating URL...'})).toBeNull();
+    expect(await screen.findByText('Unable to save this curation. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Saving...'})).toBeNull();
   });
 
   it('surfaces an error message when an export fails', async () => {
@@ -464,8 +496,8 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={onCreateShare} />);
 
     fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Irrigation'}});
-    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'Filtered'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'Filtered'}});
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
     const rowsArg = onCreateShare.mock.calls[0][0];
@@ -502,9 +534,10 @@ describe('MergedResultsTable', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
     render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
-    expect(screen.queryByRole('button', {name: /get shareable url/i})).toBeNull();
-    expect(screen.queryByLabelText(/shared page name/i)).toBeNull();
-    expect(screen.getByText(/to name this list and get a shareable link/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: /save curation/i})).toBeNull();
+    expect(screen.queryByLabelText(/curation name/i)).toBeNull();
+    expect(screen.getByText(/to save this curation and get a link to share it/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', {name: 'Sign in to save'}).getAttribute('href')).toMatch(/^\/login\?returnTo=/);
     // The sign-in link carries a returnTo so sign-in brings the visitor back to this page.
     const loginLink = screen.getByRole('link', {name: 'Sign in'});
     expect(loginLink.getAttribute('href')).toMatch(/^\/login\?returnTo=/);
@@ -530,7 +563,7 @@ describe('MergedResultsTable', () => {
     expect(headerBlocks[1]).toBe(noteBlock);
 
     // No create controls and no combined "Past Projects Detail" editor in shared mode.
-    expect(screen.queryByRole('button', {name: /get shareable url/i})).toBeNull();
+    expect(screen.queryByRole('button', {name: /save curation/i})).toBeNull();
     expect(screen.queryByRole('textbox', {name: 'Past Projects Detail'})).toBeNull();
     expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Microsoft Word']);
   });
@@ -916,7 +949,7 @@ describe('MergedResultsTable', () => {
 
     render(<MergedResultsTable rows={createProjectGridItems(manyRows, 'test')} onCreateShare={onCreateShare} />);
 
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     expect(await screen.findByText(/at most 1000 projects/i)).toBeInTheDocument();
     expect(onCreateShare).not.toHaveBeenCalled();
@@ -929,7 +962,7 @@ describe('MergedResultsTable', () => {
 
     render(<MergedResultsTable rows={makeItems()} onCreateShare={onCreateShare} />);
 
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     expect(await screen.findByText('Name is too long.')).toBeInTheDocument();
   });

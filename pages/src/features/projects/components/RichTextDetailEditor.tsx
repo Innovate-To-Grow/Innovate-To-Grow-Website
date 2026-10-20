@@ -349,14 +349,19 @@ export function RichTextDetailEditor({
                 </button>
                 <button
                   type="button"
-                  className="project-grid-rich-editor-button"
+                  className="project-grid-rich-editor-button project-grid-rich-editor-size-button"
                   aria-label={isExpanded ? 'Collapse note editor' : 'Expand note editor'}
                   aria-pressed={isExpanded}
                   title={isExpanded ? 'Collapse note editor' : 'Expand note editor'}
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => setIsExpanded((current) => !current)}
+                  onClick={() => {
+                    // A height the user dragged the box to would override the expanded/collapsed size.
+                    editorRef.current?.style.removeProperty('height');
+                    setIsExpanded((current) => !current);
+                  }}
                 >
                   {isExpanded ? <CollapseEditorIcon /> : <ExpandEditorIcon />}
+                  <span aria-hidden="true">{isExpanded ? 'Collapse' : 'Expand'}</span>
                 </button>
               </div>
             ) : null}

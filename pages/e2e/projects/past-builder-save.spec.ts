@@ -158,7 +158,7 @@ test('a save that lands while the user names the curation does not move the page
   // Same first page as WD Project 0: the table sorts by semester, newest first.
   await rowCheckbox('WD Project 6').check();
   await table.getByRole('button', {name: 'Save Selected'}).first().click();
-  const name = page.getByLabel('Shared page name (optional)');
+  const name = page.getByLabel('Curation name (optional)');
   await name.click();
   await name.pressSequentially('Spring picks');
   const before = (await name.boundingBox())?.y ?? 0;
