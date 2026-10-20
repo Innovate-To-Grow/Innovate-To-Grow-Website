@@ -288,8 +288,13 @@ export function cmsAcknowledgementPage(overrides: Partial<CMSPageResponse> = {})
     meta_description: '',
     blocks: [
       {
-        block_type: 'sponsor_year',
+        block_type: 'rich_text',
         sort_order: 0,
+        data: {heading: 'Partners & Sponsors', heading_level: 1, body_html: '<p>Thank you to our sponsors.</p>'},
+      },
+      {
+        block_type: 'sponsor_year',
+        sort_order: 10,
         data: {
           year: '2025',
           sponsors: [{name: 'Acme Corp', logo_url: ''}],

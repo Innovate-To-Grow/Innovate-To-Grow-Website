@@ -10,118 +10,62 @@ vi.mock('@/features/cms/components/useCMSPage', () => ({
   useCMSPage: (...args: unknown[]) => mockUseCMSPage(...args),
 }));
 
+const cmsPage = {
+  slug: 'acknowledgement',
+  route: '/acknowledgement',
+  title: 'Partners & Sponsors',
+  page_css_class: '',
+  page_css: '',
+  meta_description: '',
+  blocks: [
+    {
+      block_type: 'rich_text',
+      sort_order: 0,
+      data: {heading: 'Partners & Sponsors', heading_level: 1, body_html: '<p>Thank you to our sponsors.</p>'},
+    },
+    {
+      block_type: 'sponsor_year',
+      sort_order: 10,
+      data: {year: '2025', sponsors: [{name: 'Acme Labs', logo_url: 'https://example.com/acme.svg'}]},
+    },
+  ],
+};
+
 describe('AcknowledgementPage', () => {
   beforeEach(() => {
     mockUseCMSPage.mockReset();
     mockUseCMSPage.mockReturnValue({
-      page: null,
+      page: cmsPage,
+      redirectTo: null,
       loading: false,
       error: null,
       isLivePreview: false,
+      retry: vi.fn(),
     });
   });
 
-  it('renders sponsor years from CMS page data', () => {
-    mockUseCMSPage.mockReturnValue({
-      page: {
-        slug: 'acknowledgement',
-        route: '/acknowledgement',
-        title: 'Partners & Sponsors',
-        page_css_class: 'ack-page',
-        meta_description: '',
-        blocks: [
-          {
-            block_type: 'sponsor_year',
-            sort_order: 0,
-            data: {
-              year: '2025',
-              sponsors: [
-                {
-                  name: 'Acme Labs',
-                  logo_url: 'https://example.com/acme.svg',
-                  website: 'https://acme.example.com',
-                },
-              ],
-            },
-          },
-        ],
-      },
-      loading: false,
-      error: null,
-      isLivePreview: false,
-    });
-
+  it('renders the /acknowledgement CMS page whatever the current path, as in an embed', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/_embed/sponsors']}>
         <AcknowledgementPage />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', {name: 'Partners & Sponsors'})).toBeInTheDocument();
+    expect(mockUseCMSPage).toHaveBeenCalledWith('/acknowledgement', false);
+    expect(screen.getByRole('heading', {level: 1, name: 'Partners & Sponsors'})).toBeInTheDocument();
+    expect(screen.getByText('Thank you to our sponsors.')).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: '2025 Sponsors'})).toBeInTheDocument();
-    expect(screen.getByText('Acme Labs')).toBeInTheDocument();
     expect(screen.getByAltText('Acme Labs')).toHaveAttribute('src', 'https://example.com/acme.svg');
   });
 
-  it('leaves out the sponsors section when CMS has no sponsor blocks', () => {
+  it('has no copy of its own', () => {
     mockUseCMSPage.mockReturnValue({
-      page: {
-        slug: 'acknowledgement',
-        route: '/acknowledgement',
-        title: 'Partners & Sponsors',
-        page_css_class: 'ack-page',
-        meta_description: '',
-        blocks: [
-          {
-            block_type: 'rich_text',
-            sort_order: 0,
-            data: {body_html: '<p>Ignored</p>'},
-          },
-        ],
-      },
+      page: {...cmsPage, blocks: []},
+      redirectTo: null,
       loading: false,
       error: null,
       isLivePreview: false,
-    });
-
-    render(
-      <MemoryRouter>
-        <AcknowledgementPage />
-      </MemoryRouter>,
-    );
-
-    expect(screen.queryByRole('heading', {name: 'Our Sponsors'})).toBeNull();
-    expect(screen.queryByText('Sponsor logos and acknowledgements will be updated for each event.')).toBeNull();
-    expect(screen.queryByText('Ignored')).toBeNull();
-  });
-
-  it('shows placeholder initials when a sponsor has no logo', () => {
-    mockUseCMSPage.mockReturnValue({
-      page: {
-        slug: 'acknowledgement',
-        route: '/acknowledgement',
-        title: 'Partners & Sponsors',
-        page_css_class: 'ack-page',
-        meta_description: '',
-        blocks: [
-          {
-            block_type: 'sponsor_year',
-            sort_order: 0,
-            data: {
-              year: '2024',
-              sponsors: [
-                {
-                  name: 'Beta Works',
-                  website: '',
-                },
-              ],
-            },
-          },
-        ],
-      },
-      loading: false,
-      error: null,
-      isLivePreview: false,
+      retry: vi.fn(),
     });
 
     const {container} = render(
@@ -130,8 +74,6 @@ describe('AcknowledgementPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByAltText('Beta Works')).not.toBeInTheDocument();
-    expect(screen.getByText('Beta Works')).toBeInTheDocument();
-    expect(container.querySelector('.cms-sponsor-card-placeholder')?.textContent).toBe('B');
+    expect(container.textContent).not.toMatch(/i2g@ucmerced\.edu|Become a Sponsor|View Sponsorship Information|generous support/);
   });
 });
