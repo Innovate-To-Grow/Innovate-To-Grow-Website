@@ -63,7 +63,7 @@ describe('AcknowledgementPage', () => {
     expect(screen.getByAltText('Acme Labs')).toHaveAttribute('src', 'https://example.com/acme.svg');
   });
 
-  it('shows placeholder copy when CMS has no sponsor blocks', () => {
+  it('leaves out the sponsors section when CMS has no sponsor blocks', () => {
     mockUseCMSPage.mockReturnValue({
       page: {
         slug: 'acknowledgement',
@@ -90,10 +90,9 @@ describe('AcknowledgementPage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', {name: 'Our Sponsors'})).toBeInTheDocument();
-    expect(
-      screen.getByText('Sponsor logos and acknowledgements will be updated for each event.'),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', {name: 'Our Sponsors'})).toBeNull();
+    expect(screen.queryByText('Sponsor logos and acknowledgements will be updated for each event.')).toBeNull();
+    expect(screen.queryByText('Ignored')).toBeNull();
   });
 
   it('shows placeholder initials when a sponsor has no logo', () => {

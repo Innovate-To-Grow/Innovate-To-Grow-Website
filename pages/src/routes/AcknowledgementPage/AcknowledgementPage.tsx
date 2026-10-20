@@ -43,19 +43,13 @@ export const AcknowledgementPage = () => {
         </p>
       </div>
 
+      {/* Sponsors come from the CMS page's sponsor-year blocks; with none there is nothing to list. */}
       {loading ? (
         <p className="ack-page-loading" role="status">Loading sponsors...</p>
-      ) : sponsorBlocks.length > 0 ? (
+      ) : (
         sponsorBlocks.map((block) => (
           <SponsorYearBlock key={`${block.sort_order}-${block.data.year}`} data={block.data} />
         ))
-      ) : (
-        <section className="ack-page-section" aria-labelledby="ack-our-sponsors">
-          <h2 id="ack-our-sponsors" className="itg-section-title ack-page-section-title">Our Sponsors</h2>
-          <p className="itg-well ack-page-placeholder">
-            Sponsor logos and acknowledgements will be updated for each event.
-          </p>
-        </section>
       )}
 
       <section className="itg-panel ack-page-section ack-page-cta" aria-labelledby="ack-become-sponsor">
