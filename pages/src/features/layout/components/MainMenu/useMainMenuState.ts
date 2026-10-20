@@ -54,8 +54,11 @@ export const useMainMenuState = () => {
 
   useEffect(() => {
     document.body.style.overflow = isMobileOpen ? 'hidden' : '';
+    // Lets page-level sheets hide floating widgets (the UserWay button) behind the open phone menu.
+    document.documentElement.classList.toggle('is-mobile-menu-open', isMobileOpen);
     return () => {
       document.body.style.overflow = '';
+      document.documentElement.classList.remove('is-mobile-menu-open');
     };
   }, [isMobileOpen]);
 

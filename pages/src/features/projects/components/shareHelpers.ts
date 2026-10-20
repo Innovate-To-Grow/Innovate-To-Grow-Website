@@ -12,7 +12,7 @@ export const getShareErrorMessage = (error: unknown): string => {
       }
     }
   }
-  return 'Unable to create a shareable URL. Please try again.';
+  return 'Unable to save this curation. Please try again.';
 };
 
 export const getExportFileBaseName = (title: string) => {

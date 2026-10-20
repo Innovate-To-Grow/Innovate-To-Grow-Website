@@ -30,7 +30,7 @@ export function validatePhoneDigits(digits: string): string | null {
 
 /**
  * Format raw national digits for display.
- * US: (206)333-8881
+ * US: (206) 333-8881
  */
 export function formatPhoneDisplay(digits: string): string {
   if (!digits) return '';
@@ -39,8 +39,8 @@ export function formatPhoneDisplay(digits: string): string {
   const mid = digits.slice(3, 6);
   const last = digits.slice(6, 10);
   if (digits.length <= 3) return `(${area}`;
-  if (digits.length <= 6) return `(${area})${mid}`;
-  return `(${area})${mid}-${last}`;
+  if (digits.length <= 6) return `(${area}) ${mid}`;
+  return `(${area}) ${mid}-${last}`;
 }
 
 /** Strip formatting characters, returning only digits. */

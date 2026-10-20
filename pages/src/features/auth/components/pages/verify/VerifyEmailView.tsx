@@ -73,7 +73,7 @@ export const VerifyEmailView = ({
     <div className="itg-panel auth-page-card">
 
       <div className="auth-verification-intro">
-        <span className="auth-verification-label">Sending to</span>
+        <span className="auth-verification-label">Code sent to</span>
         <strong>{email}</strong>
       </div>
 

@@ -96,6 +96,25 @@ describe('SearchTableCard', () => {
         within(tidy).getAllByRole('button').forEach((button) => expect(button).toHaveClass('itg-btn-text'));
     });
 
+    it('folds the table-tidying buttons into "More table actions" on phones', () => {
+        vi.stubGlobal('matchMedia', (query: string) => ({
+            matches: query === '(max-width: 768px)',
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        }));
+        const {container} = renderCard({onRefresh: vi.fn()});
+        const toolbar = container.querySelector('.project-grid-toolbar') as HTMLElement;
+
+        const more = within(toolbar).getByText('More table actions').closest('details') as HTMLElement;
+        expect(more).not.toHaveAttribute('open');
+        expect(within(more).getByRole('group', {name: 'Tidy this table'})).toBeInTheDocument();
+        // Save and the selection buttons stay in view.
+        expect(within(toolbar).getByRole('button', {name: 'Save Selected'})).toBeVisible();
+        expect(within(toolbar).getByRole('group', {name: 'Selection'}).closest('details')).toBeNull();
+        vi.unstubAllGlobals();
+    });
+
     it('counts the checked rows in the Save button for phones without changing its name', () => {
         renderCard();
 

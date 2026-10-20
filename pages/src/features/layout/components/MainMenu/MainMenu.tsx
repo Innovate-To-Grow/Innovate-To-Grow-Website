@@ -49,6 +49,9 @@ export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMe
   const isBandHidden = useHeaderBandHidden(headerRef);
   useHeaderMetrics(headerRef);
   const [today] = useState(() => formatMenuDate(new Date()));
+  // Set while the account menu is open only because the pointer is over it. The click that
+  // follows that hover then keeps the menu open instead of toggling it shut again.
+  const memberMenuHoverOpenRef = useRef(false);
 
   const toggleMobileMenu = useCallback(
     () => setIsMobileOpen((prev) => !prev),
@@ -199,16 +202,32 @@ export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMe
               user={user}
               hasMemberIdentity={hasMemberIdentity}
               isOpen={isMemberDropdownOpen}
-              onMouseEnter={() => hasMemberIdentity && setIsMemberDropdownOpen(true)}
-              onMouseLeave={() => setIsMemberDropdownOpen(false)}
-              onToggle={() => setIsMemberDropdownOpen((prev) => !prev)}
-              onClose={() => setIsMemberDropdownOpen(false)}
+              onMouseEnter={() => {
+                if (!hasMemberIdentity || isMemberDropdownOpen) return;
+                memberMenuHoverOpenRef.current = true;
+                setIsMemberDropdownOpen(true);
+              }}
+              onMouseLeave={() => {
+                memberMenuHoverOpenRef.current = false;
+                setIsMemberDropdownOpen(false);
+              }}
+              onToggle={() => {
+                const openedByHover = memberMenuHoverOpenRef.current;
+                memberMenuHoverOpenRef.current = false;
+                setIsMemberDropdownOpen((prev) => openedByHover || !prev);
+              }}
+              onClose={() => {
+                memberMenuHoverOpenRef.current = false;
+                setIsMemberDropdownOpen(false);
+              }}
               onAccountClick={() => {
+                memberMenuHoverOpenRef.current = false;
                 setIsMemberDropdownOpen(false);
                 navigate('/account');
               }}
               onLoginClick={() => navigate('/login')}
               onLogoutClick={() => {
+                memberMenuHoverOpenRef.current = false;
                 setIsMemberDropdownOpen(false);
                 logout();
               }}

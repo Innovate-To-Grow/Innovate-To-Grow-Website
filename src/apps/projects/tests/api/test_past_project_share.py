@@ -603,6 +603,22 @@ class PastProjectShareAPIViewTests(TestCase):
         self.assertEqual(item["row_count"], 2)
         self.assertNotIn("rows", item)
 
+    def test_mine_lists_the_most_recently_changed_first(self):
+        older = PastProjectShare.objects.create(name="Created first", rows=[sample_row()], created_by=self.member)
+        PastProjectShare.objects.create(name="Created second", rows=[sample_row()], created_by=self.member)
+        # Editing the first share makes it the most recently changed.
+        response = self.client.patch(
+            f"/projects/past-shares/{older.pk}/", {"note": "Edited", "version": older.version}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/projects/past-shares/mine/")
+
+        self.assertEqual([item["name"] for item in response.data], ["Created first", "Created second"])
+        older.refresh_from_db()
+        self.assertIn("updated_at", response.data[0])
+        self.assertGreater(older.updated_at, older.created_at)
+
     def test_mine_requires_auth_returns_401(self):
         anon = APIClient()
         response = anon.get("/projects/past-shares/mine/")

@@ -22,13 +22,13 @@ class PastProjectShareCreateAPIView(CreateAPIView):
 
 
 class PastProjectShareMineAPIView(ListAPIView):
-    """List the shares created by the current user (newest first)."""
+    """List the shares created by the current user, the most recently changed first."""
 
     permission_classes = [IsAuthenticated]
     serializer_class = PastProjectShareListSerializer
 
     def get_queryset(self):
-        return PastProjectShare.objects.filter(created_by=self.request.user)
+        return PastProjectShare.objects.filter(created_by=self.request.user).order_by("-updated_at", "-created_at")
 
 
 _WRITE_METHODS = {"DELETE", "PATCH", "PUT"}

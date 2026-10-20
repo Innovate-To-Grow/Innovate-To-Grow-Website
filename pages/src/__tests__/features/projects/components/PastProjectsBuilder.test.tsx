@@ -89,7 +89,8 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     mockSearchPastProjectsWithAI.mockReset();
     mockBuildLoginPath.mockReset();
     mockHydrateProjectGridRowsSettled.mockReset();
-    // The builder persists merged rows to sessionStorage; clear it so drafts don't leak between tests.
+    // The builder keeps its draft in localStorage; clear it so drafts don't leak between tests.
+    localStorage.clear();
     sessionStorage.clear();
     vi.spyOn(window, 'confirm').mockImplementation(() => {
       throw new Error('Past projects should use an in-page confirmation dialog.');
@@ -435,35 +436,71 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(screen.getAllByRole('heading', {level: 3, name: /ai search table/i})).toHaveLength(1);
   });
 
-  // The login button reloads the page (window.location), so the merged results must survive a
-  // full reload via sessionStorage — otherwise signing in to share wipes the user's work.
-  const MERGED_ROWS_STORAGE_KEY = 'past-projects:builder:merged-rows';
+  // The draft (saved projects, name and note) is kept in localStorage: the login button reloads the page, and a
+  // visitor who closes the tab must find the curation they were building when they come back.
+  const DRAFT_STORAGE_KEY = 'past-projects:builder:draft';
+  const LEGACY_MERGED_ROWS_STORAGE_KEY = 'past-projects:builder:merged-rows';
+  const storeDraft = (rows: ProjectGridRow[], extra: {owner?: string | null; name?: string; note?: string} = {}) =>
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({owner: null, rows, name: '', note: '', ...extra}));
+  const storedDraft = () => {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as {owner: string | null; rows: ProjectGridRow[]; name: string; note: string}) : null;
+  };
 
-  it('restores merged results persisted before a login reload', () => {
-    sessionStorage.setItem(
-      MERGED_ROWS_STORAGE_KEY,
-      JSON.stringify([makeRow({team_number: 'T09', project_title: 'Persisted Project'})]),
-    );
+  it('restores the draft kept from an earlier visit, with its name and note', () => {
+    storeDraft([makeRow({team_number: 'T09', project_title: 'Persisted Project'})], {
+      owner: 'member-1',
+      name: 'Water picks',
+      note: 'For the board',
+    });
 
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     const merged = getMergedSection();
     expect(merged).not.toBeNull();
     expect(within(merged as HTMLElement).getAllByText('Persisted Project').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/curation name/i)).toHaveValue('Water picks');
+    expect(screen.getByRole('textbox', {name: /curation note/i})).toHaveTextContent('For the board');
   });
 
-  it('persists merged results to sessionStorage so a login reload can restore them', () => {
+  it('keeps the draft in localStorage, owned by the member, so closing the tab does not lose it', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(storedDraft()).toBeNull();
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
+    const note = screen.getByRole('textbox', {name: /curation note/i});
+    note.innerHTML = 'Why these';
+    fireEvent.input(note);
 
-    const stored = sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY);
-    expect(stored).not.toBeNull();
-    const parsed = JSON.parse(stored as string) as Array<{project_title: string}>;
-    expect(parsed).toHaveLength(1);
-    expect(parsed[0].project_title).toBe('Bravo Project');
+    const draft = storedDraft();
+    expect(draft?.owner).toBe('member-1');
+    expect(draft?.rows.map((row) => row.project_title)).toEqual(['Bravo Project']);
+    expect(draft?.name).toBe('My picks');
+    expect(draft?.note).toBe('Why these');
+  });
+
+  it("does not restore another member's draft and drops it", () => {
+    storeDraft([makeRow({team_number: 'T09', project_title: 'Persisted Project'})], {owner: 'member-2'});
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(getMergedSection()).toBeNull();
+    expect(storedDraft()).toBeNull();
+  });
+
+  it('picks up projects kept in sessionStorage by the earlier version, once', () => {
+    sessionStorage.setItem(
+      LEGACY_MERGED_ROWS_STORAGE_KEY,
+      JSON.stringify([makeRow({team_number: 'T09', project_title: 'Persisted Project'})]),
+    );
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Persisted Project').length).toBeGreaterThan(0);
+    expect(sessionStorage.getItem(LEGACY_MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(storedDraft()?.rows.map((row) => row.project_title)).toEqual(['Persisted Project']);
   });
 
   it('can reset merged results and undo the reset', () => {
@@ -488,47 +525,44 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(screen.getByText('Merged results restored.')).toBeInTheDocument();
   });
 
-  it('clears the persisted draft once a share is created successfully', async () => {
+  it('clears the kept draft once the curation is saved', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
+    expect(storedDraft()).not.toBeNull();
 
-    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'My picks'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull());
+    expect(onCreateShare.mock.calls[0][1]).toBe('My picks');
+    await waitFor(() => expect(storedDraft()).toBeNull());
   });
 
-  it('keeps the persisted draft when share creation fails', async () => {
-    // The whole point of persistence is to not lose the user's merged rows; a failed share
+  it('keeps the draft when saving the curation fails', async () => {
+    // The whole point of persistence is to not lose the user's merged rows; a failed save
     // (network error, 4xx/5xx) must leave the draft intact so they can retry.
     const onCreateShare = vi.fn().mockRejectedValue(new Error('boom'));
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
+    expect(storedDraft()).not.toBeNull();
 
-    fireEvent.change(screen.getByLabelText(/shared page name/i), {target: {value: 'My picks'}});
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
     // Draft retained after the rejection — the clear runs only after a successful await.
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).not.toBeNull();
+    expect(storedDraft()?.name).toBe('My picks');
   });
 
-  it('drops the persisted draft when the user logs out in the same tab', () => {
-    // sessionStorage survives a tab session, so without this a second user signing in on a shared
-    // machine (tab never closed) would inherit the first user's merged selection.
+  it('drops the draft when the user logs out in the same tab', () => {
+    // Without this the next person on a shared computer would get the first member's curation.
     mockUseAuth.mockReturnValue(authenticatedAuth);
-    sessionStorage.setItem(
-      MERGED_ROWS_STORAGE_KEY,
-      JSON.stringify([makeRow({team_number: 'T09', project_title: 'Persisted Project'})]),
-    );
+    storeDraft([makeRow({team_number: 'T09', project_title: 'Persisted Project'})], {owner: 'member-1'});
 
     const {rerender} = render(
       <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
@@ -538,7 +572,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
     rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(storedDraft()).toBeNull();
     expect(getMergedSection()).toBeNull();
   });
 
@@ -547,54 +581,55 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     const {rerender} = render(builder);
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
-    const draft = sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY);
+    const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
 
     for (const isInitializing of [true, false]) {
       mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, unverified: true, isInitializing});
       rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-      expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBe(draft);
+      expect(localStorage.getItem(DRAFT_STORAGE_KEY)).toBe(draft);
       expect(within(getMergedSection() as HTMLElement).getAllByText('Bravo Project').length).toBeGreaterThan(0);
     }
 
     mockUseAuth.mockReturnValue(authenticatedAuth);
     rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBe(draft);
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).toBe(draft);
   });
 
   it('keeps a guest draft when the guest signs in', () => {
     mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
-    sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, JSON.stringify([ROWS[1]]));
+    storeDraft([ROWS[1]]);
     const {rerender} = render(
       <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
     );
-    const draft = sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY);
+    const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
+    expect(draft).not.toBeNull();
     mockUseAuth.mockReturnValue(authenticatedAuth);
     rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBe(draft);
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).toBe(draft);
     expect(getMergedSection()).not.toBeNull();
   });
 
   it('clears the draft when switching directly to another member', () => {
-    sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, JSON.stringify([ROWS[1]]));
+    storeDraft([ROWS[1]], {owner: 'member-1', note: 'Private note'});
     const {rerender} = render(
       <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
     );
     mockUseAuth.mockReturnValue({...authenticatedAuth, user: {...authenticatedAuth.user, member_uuid: 'member-2'}});
     rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(storedDraft()).toBeNull();
     expect(getMergedSection()).toBeNull();
   });
 
   it('clears a restored member draft when initial session verification confirms logout', () => {
     mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, isInitializing: true, unverified: true});
-    sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, JSON.stringify([ROWS[1]]));
+    storeDraft([ROWS[1]], {owner: 'member-1'});
     const {rerender} = render(
       <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />,
     );
     expect(getMergedSection()).not.toBeNull();
     mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
     rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(storedDraft()).toBeNull();
     expect(getMergedSection()).toBeNull();
   });
 
@@ -613,7 +648,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
     rerender(<PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />);
     await act(async () => resolveDetails({rows: [{...rows[0], abstract: 'Loaded details'}], failedIndexes: [], unavailableIndexes: []}));
-    expect(sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY)).toBeNull();
+    expect(storedDraft()).toBeNull();
     expect(getMergedSection()).toBeNull();
     // The dropped save says so where it was started, and keeps the checkbox for a retry.
     expect(screen.getByRole('alert')).toHaveTextContent('Your sign-in changed while saving, so nothing was saved.');
@@ -667,8 +702,8 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(await screen.findByText('Try later.')).toBeInTheDocument();
   });
 
-  it('ignores malformed persisted merged rows', () => {
-    sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, '{not valid json');
+  it('ignores a malformed kept draft', () => {
+    localStorage.setItem(DRAFT_STORAGE_KEY, '{not valid json');
 
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
@@ -712,7 +747,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalledTimes(1);
 
     await act(async () => { resolvers[0]({rows: [hydrated], failedIndexes: [], unavailableIndexes: []}); });
-    const persisted = JSON.parse(sessionStorage.getItem('past-projects:builder:merged-rows') ?? '[]');
+    const persisted = (storedDraft()?.rows ?? []);
     expect(persisted).toHaveLength(1);
   });
 
@@ -737,7 +772,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     await act(async () => { resolvers[0]({rows: [hydrated], failedIndexes: [], unavailableIndexes: []}); });
     await act(async () => { resolvers[1]({rows: [hydrated], failedIndexes: [], unavailableIndexes: []}); });
 
-    const persisted = JSON.parse(sessionStorage.getItem('past-projects:builder:merged-rows') ?? '[]');
+    const persisted = (storedDraft()?.rows ?? []);
     expect(persisted).toHaveLength(1);
     expect(within(table('Search Table 1')).getByRole('status')).toHaveTextContent(
       '1 project added to Saved Merged Results (1 in total).',
@@ -852,12 +887,12 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
 
     // A link created now would leave out the project that is still loading.
-    const shareButtons = screen.getAllByRole('button', {name: /get shareable url/i});
+    const shareButtons = screen.getAllByRole('button', {name: /save curation/i});
     shareButtons.forEach((button) => expect(button).toBeDisabled());
     expect(screen.getByText(/Waiting for projects to finish saving/)).toBeInTheDocument();
 
     await act(async () => resolveDetails({rows: [{...compact, abstract: 'Loaded'}], failedIndexes: [], unavailableIndexes: []}));
-    screen.getAllByRole('button', {name: /get shareable url/i}).forEach((button) => expect(button).toBeEnabled());
+    screen.getAllByRole('button', {name: /save curation/i}).forEach((button) => expect(button).toBeEnabled());
     expect(screen.queryByText(/Waiting for projects to finish saving/)).toBeNull();
   });
 
@@ -980,7 +1015,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
 
     await act(async () => resolveDetails({rows: [{...later, abstract: 'Later abstract'}], failedIndexes: [], unavailableIndexes: []}));
 
-    const persisted = JSON.parse(sessionStorage.getItem('past-projects:builder:merged-rows') ?? '[]') as ProjectGridRow[];
+    const persisted = (storedDraft()?.rows ?? []);
     expect(persisted.map((row) => [row.project_title, row.abstract])).toEqual([['Saved Later', 'Later abstract']]);
     expect(within(searchTable).getByRole('status')).toHaveTextContent(
       '1 project added to Saved Merged Results (1 in total). ' +
@@ -1017,7 +1052,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(within(searchTable).getAllByLabelText('Select Id Only')[0]).toBeChecked();
   });
 
-  it('waits for a shareable link being created before saving more projects', async () => {
+  it('waits for the curation being saved before saving more projects', async () => {
     let finishShare!: (value: string) => void;
     const onCreateShare = vi.fn(() => new Promise<string>((resolve) => { finishShare = resolve; }));
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
@@ -1025,7 +1060,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     fireEvent.click(within(searchTable).getAllByLabelText('Select Alpha Project')[0]);
     fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
 
-    fireEvent.click(screen.getAllByRole('button', {name: /get shareable url/i})[0]);
+    fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
     expect(onCreateShare).toHaveBeenCalledTimes(1);
     // The link is made from the rows saved at the click, and the draft is dropped once it exists.
     fireEvent.click(within(searchTable).getAllByLabelText('Select Bravo Project')[0]);
@@ -1086,7 +1121,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
       scrollBy.mockReset();
 
-      screen.getByLabelText(/shared page name/i).focus();
+      screen.getByLabelText(/curation name/i).focus();
       fireEvent.click(within(searchTable).getAllByLabelText('Select Bravo Project')[0]);
       fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
 
@@ -1101,7 +1136,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));
       scrollBy.mockReset();
 
-      screen.getByLabelText(/shared page name/i).focus();
+      screen.getByLabelText(/curation name/i).focus();
       tops = [120, 300];
       fireEvent.click(within(searchTable).getAllByLabelText('Select Bravo Project')[0]);
       fireEvent.click(within(searchTable).getByRole('button', {name: /save selected/i}));

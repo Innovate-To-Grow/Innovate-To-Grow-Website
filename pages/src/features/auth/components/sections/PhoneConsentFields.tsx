@@ -1,3 +1,5 @@
+import {Link} from 'react-router';
+
 interface PhoneConsentFieldsProps {
   idPrefix: string;
   smsConsent: boolean;
@@ -25,8 +27,9 @@ export const PhoneConsentFields = ({
         disabled={disabled}
       />
       <span>
-        By checking, you consent to receive course updates and educational reminders from University of California,
-        Merced. Message frequency may vary. Message and data rates may apply, reply HELP for help or STOP to opt-out.
+        By checking, you agree to receive text messages from Innovate to Grow at UC Merced: event updates and
+        reminders, and program announcements. Message frequency varies. Message and data rates may apply. Reply HELP
+        for help or STOP to opt out.
       </span>
     </label>
     <label className="phone-add-consent-option" htmlFor={`${idPrefix}-terms`}>
@@ -39,17 +42,17 @@ export const PhoneConsentFields = ({
         required
       />
       <span>
-        By checking, I accept{' '}
-        <a
-          href="https://i2g.ucmerced.edu/privacy"
+        By checking, I accept the Innovate to Grow{' '}
+        <Link
+          to="/privacy"
           className="phone-add-consent-link"
           target="_blank"
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
         >
-          Terms of Service
-        </a>{' '}
-        &amp;{' '}
+          Privacy/Legal Notice
+        </Link>{' '}
+        and the UC Merced{' '}
         <a
           href="https://www.ucmerced.edu/privacy-statement"
           className="phone-add-consent-link"
@@ -57,7 +60,7 @@ export const PhoneConsentFields = ({
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
         >
-          Privacy Policy
+          Privacy Statement
         </a>
         .
       </span>

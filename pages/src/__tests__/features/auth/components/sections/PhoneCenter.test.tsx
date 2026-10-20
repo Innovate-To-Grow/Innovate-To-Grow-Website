@@ -1,4 +1,5 @@
 import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {MemoryRouter} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {PhoneCenter} from '@/features/auth/components/sections/PhoneCenter';
@@ -21,6 +22,13 @@ vi.mock('@/features/auth/api', () => ({
   verifyContactPhoneCode: (id: string, code: string) => mocks.verifyContactPhoneCode(id, code),
 }));
 
+const renderPhoneCenter = () =>
+  render(
+    <MemoryRouter>
+      <PhoneCenter />
+    </MemoryRouter>,
+  );
+
 describe('PhoneCenter add form', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -31,32 +39,34 @@ describe('PhoneCenter add form', () => {
     cleanup();
   });
 
-  it('renders optional phone copy with separate unchecked consent checkboxes', async () => {
-    render(<PhoneCenter />);
+  it('renders a required phone field with separate unchecked consent checkboxes', async () => {
+    renderPhoneCenter();
 
     fireEvent.click(screen.getByRole('button', {name: 'Add Phone'}));
 
-    expect(await screen.findByText('The phone number field is optional.')).toBeInTheDocument();
-    expect(screen.getByLabelText(/receive course updates and educational reminders/i)).not.toBeChecked();
-    expect(screen.getByLabelText(/accept Terms of Service & Privacy Policy/i)).not.toBeChecked();
-    expect(screen.getByRole('link', {name: 'Terms of Service'})).toHaveAttribute(
-      'href',
-      'https://i2g.ucmerced.edu/privacy',
-    );
-    expect(screen.getByRole('link', {name: 'Privacy Policy'})).toHaveAttribute(
+    expect(await screen.findByLabelText('Phone Number')).toBeRequired();
+    expect(screen.queryByText(/optional/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/receive text messages from Innovate to Grow/i)).not.toBeChecked();
+    expect(screen.getByLabelText(/I accept the Innovate to Grow/i)).not.toBeChecked();
+    expect(screen.getByRole('link', {name: 'Privacy/Legal Notice'})).toHaveAttribute('href', '/privacy');
+    expect(screen.getByRole('link', {name: 'Privacy Statement'})).toHaveAttribute(
       'href',
       'https://www.ucmerced.edu/privacy-statement',
     );
   });
 
-  it('allows submission without a phone number or SMS consent after terms acceptance', async () => {
-    render(<PhoneCenter />);
+  it('keeps the submit button disabled until a full phone number is entered', async () => {
+    renderPhoneCenter();
 
     fireEvent.click(screen.getByRole('button', {name: 'Add Phone'}));
-    fireEvent.click(await screen.findByLabelText(/accept Terms of Service & Privacy Policy/i));
-    fireEvent.click(screen.getByRole('button', {name: 'Save Preferences'}));
+    fireEvent.click(await screen.findByLabelText(/I accept the Innovate to Grow/i));
+    expect(screen.getByRole('button', {name: 'Add & Send Code'})).toBeDisabled();
 
-    await waitFor(() => expect(screen.queryByText('The phone number field is optional.')).toBeNull());
+    fireEvent.change(screen.getByLabelText('Phone Number'), {target: {value: '555123'}});
+    expect(screen.getByRole('button', {name: 'Add & Send Code'})).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Phone Number'), {target: {value: '5551234567'}});
+    expect(screen.getByRole('button', {name: 'Add & Send Code'})).toBeEnabled();
     expect(mocks.createContactPhone).not.toHaveBeenCalled();
   });
 
@@ -70,13 +80,13 @@ describe('PhoneCenter add form', () => {
       verified: false,
     });
     mocks.requestContactPhoneVerification.mockResolvedValue({message: 'sent'});
-    render(<PhoneCenter />);
+    renderPhoneCenter();
 
     fireEvent.click(screen.getByRole('button', {name: 'Add Phone'}));
     fireEvent.change(await screen.findByLabelText('Phone Number'), {target: {value: '5551234567'}});
-    fireEvent.click(screen.getByLabelText(/receive course updates and educational reminders/i));
-    fireEvent.click(screen.getByLabelText(/accept Terms of Service & Privacy Policy/i));
-    fireEvent.click(screen.getByRole('button', {name: 'Add Phone'}));
+    fireEvent.click(screen.getByLabelText(/receive text messages from Innovate to Grow/i));
+    fireEvent.click(screen.getByLabelText(/I accept the Innovate to Grow/i));
+    fireEvent.click(screen.getByRole('button', {name: 'Add & Send Code'}));
 
     await waitFor(() =>
       expect(mocks.createContactPhone).toHaveBeenCalledWith({
@@ -114,32 +124,29 @@ describe('PhoneCenter add form', () => {
       subscribe: false,
       verified: true,
     });
-    render(<PhoneCenter />);
+    renderPhoneCenter();
 
     fireEvent.click(screen.getByRole('button', {name: 'Add Phone'}));
     fireEvent.change(await screen.findByLabelText('Phone Number'), {target: {value: '5551234567'}});
-    fireEvent.click(screen.getByLabelText(/receive course updates and educational reminders/i));
-    fireEvent.click(screen.getByLabelText(/accept Terms of Service & Privacy Policy/i));
-    fireEvent.click(screen.getByRole('button', {name: 'Add Phone'}));
+    fireEvent.click(screen.getByLabelText(/receive text messages from Innovate to Grow/i));
+    fireEvent.click(screen.getByLabelText(/I accept the Innovate to Grow/i));
+    fireEvent.click(screen.getByRole('button', {name: 'Add & Send Code'}));
 
     expect(await screen.findByText('Verify phone number')).toBeInTheDocument();
-    expect(screen.getByLabelText(/receive course updates and educational reminders/i)).toBeChecked();
-    expect(screen.getByLabelText(/accept Terms of Service & Privacy Policy/i)).toBeChecked();
-    expect(screen.getByRole('link', {name: 'Terms of Service'})).toHaveAttribute(
-      'href',
-      'https://i2g.ucmerced.edu/privacy',
-    );
-    expect(screen.getByRole('link', {name: 'Privacy Policy'})).toHaveAttribute(
+    expect(screen.getByLabelText(/receive text messages from Innovate to Grow/i)).toBeChecked();
+    expect(screen.getByLabelText(/I accept the Innovate to Grow/i)).toBeChecked();
+    expect(screen.getByRole('link', {name: 'Privacy/Legal Notice'})).toHaveAttribute('href', '/privacy');
+    expect(screen.getByRole('link', {name: 'Privacy Statement'})).toHaveAttribute(
       'href',
       'https://www.ucmerced.edu/privacy-statement',
     );
 
     fireEvent.change(screen.getByLabelText('6-digit verification code'), {target: {value: '123456'}});
-    fireEvent.click(screen.getByLabelText(/accept Terms of Service & Privacy Policy/i));
+    fireEvent.click(screen.getByLabelText(/I accept the Innovate to Grow/i));
     expect(screen.getByRole('button', {name: 'Submit code'})).toBeDisabled();
 
-    fireEvent.click(screen.getByLabelText(/accept Terms of Service & Privacy Policy/i));
-    fireEvent.click(screen.getByLabelText(/receive course updates and educational reminders/i));
+    fireEvent.click(screen.getByLabelText(/I accept the Innovate to Grow/i));
+    fireEvent.click(screen.getByLabelText(/receive text messages from Innovate to Grow/i));
     fireEvent.click(screen.getByRole('button', {name: 'Submit code'}));
 
     await waitFor(() => expect(mocks.updateContactPhone).toHaveBeenCalledWith('phone-1', {subscribe: false}));
@@ -167,7 +174,7 @@ describe('PhoneCenter add form', () => {
       verified: true,
     });
 
-    render(<PhoneCenter />);
+    renderPhoneCenter();
     fireEvent.click(await screen.findByRole('button', {name: 'Verify'}));
     fireEvent.change(
       await screen.findByLabelText('6-digit verification code'),

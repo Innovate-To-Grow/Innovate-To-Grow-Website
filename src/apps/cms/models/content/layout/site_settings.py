@@ -81,6 +81,7 @@ def default_design_tokens():
             "sidebar_width": "270px",
             "section_gap": "2rem",
             "list_indent": "1.5625rem",
+            "prose_max_width": "75ch",
         },
         "borders": {
             "radius_card": "0",

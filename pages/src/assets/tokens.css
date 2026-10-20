@@ -75,6 +75,7 @@
     --itg-sidebar-width: 270px;
     --itg-section-gap: 2rem;
     --itg-list-indent: 1.5625rem;
+    --itg-prose-max-width: 75ch;
 
     --itg-radius-card: 0;
     --itg-radius-button: 0;

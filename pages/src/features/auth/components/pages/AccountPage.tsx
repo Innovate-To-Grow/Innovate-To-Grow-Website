@@ -75,7 +75,11 @@ export const AccountPage = () => {
                     {account.profile ? <EmailCenter profile={account.profile} onProfileUpdate={account.setProfile}/> : null}
                     {account.profile ? <PhoneCenter/> : null}
                     <MySharedLinksSection/>
-                    <DetailsSection displayEmail={account.displayEmail} dateJoined={account.profile?.date_joined}/>
+                    {/* The email cards above already show the address; repeat it only when they cannot load. */}
+                    <DetailsSection
+                        displayEmail={account.profile ? null : account.displayEmail}
+                        dateJoined={account.profile?.date_joined}
+                    />
                     <PasswordSection
                         passwordCodeRequested={account.passwordCodeRequested}
                         passwordCode={account.passwordCode}

@@ -123,7 +123,10 @@ test('a successful token refresh preserves saved merged projects', async ({page,
   const {email, unexpectedRequests, pageErrors} = await mockStableSession(context, page);
   const row = {...pastProjectRows()[0], is_presenting: 'Yes'};
   await page.addInitScript((draft) => {
-    sessionStorage.setItem('past-projects:builder:merged-rows', JSON.stringify([draft]));
+    localStorage.setItem(
+      'past-projects:builder:draft',
+      JSON.stringify({owner: 'member-two-tabs', rows: [draft], name: 'Kept name', note: ''}),
+    );
   }, row);
   await mockPastProjects(page, pastProjectRows());
 
@@ -150,7 +153,8 @@ test('a successful token refresh preserves saved merged projects', async ({page,
     has: page.getByRole('heading', {name: 'Saved Merged Results', exact: true}),
   });
   await expect(savedResults.getByText(row.project_title, {exact: true}).first()).toBeVisible();
-  const originalDraft = await page.evaluate(() => sessionStorage.getItem('past-projects:builder:merged-rows'));
+  const originalDraft = await page.evaluate(() => localStorage.getItem('past-projects:builder:draft'));
+  expect(originalDraft).toContain(row.project_title);
 
   await page.getByRole('button', {name: '+ AI Search Table'}).click();
   const searchForm = page.locator('.past-projects-ai-search');
@@ -169,7 +173,7 @@ test('a successful token refresh preserves saved merged projects', async ({page,
   await expectSignedInAs(page, email);
   await expect(page).toHaveURL(/\/past-projects$/);
   await expect(savedResults.getByText(row.project_title, {exact: true}).first()).toBeVisible();
-  expect(await page.evaluate(() => sessionStorage.getItem('past-projects:builder:merged-rows'))).toBe(originalDraft);
+  expect(await page.evaluate(() => localStorage.getItem('past-projects:builder:draft'))).toBe(originalDraft);
   expect(unexpectedRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });

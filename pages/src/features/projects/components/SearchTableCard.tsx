@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode} from 'react';
+import {useMediaQuery} from '@/features/layout';
 import {ProjectGridTable} from './ProjectGridTable';
 import {useProjectGridTable} from './useProjectGridTable';
 import {PastProjectsAIStatus, type PastProjectsStatusTone} from './builder/PastProjectsAIStatus';
@@ -132,6 +133,8 @@ export function SearchTableCard({
   const [pendingLargeSave, setPendingLargeSave] = useState<{rows: ProjectGridItem[]; origin: SaveOrigin} | null>(null);
   // Rows submitted by the save in flight: still checked, but no longer waiting for the user to save them.
   const [inFlightKeys, setInFlightKeys] = useState<ReadonlySet<string>>(() => new Set());
+  // Same breakpoint as the stacked table actions in projects.css.
+  const isPhone = useMediaQuery('(max-width: 768px)');
   const isSavingRef = useRef(false);
   // The rows and reset count as last rendered, for a save that finishes after a reload replaced the rows.
   const rowsRef = useRef(rows);
@@ -374,6 +377,52 @@ export function SearchTableCard({
   const statusFor = (origin: SaveOrigin) =>
     visibleStatus && statusOrigin === origin ? <div className="search-table-save-status">{visibleStatus}</div> : null;
 
+  const tidyActions = (
+    <div
+      className="project-grid-toolbar-cluster search-table-action-group"
+      role="group"
+      aria-label="Tidy this table"
+    >
+      <span className="search-table-group-label" aria-hidden="true">
+        Tidy this table
+      </span>
+      <button
+        type="button"
+        className="itg-btn itg-btn-text"
+        onClick={handleDeleteSelectedRows}
+        disabled={!table.hasSelection || isSaving}
+      >
+        Remove from Table
+      </button>
+      <button
+        type="button"
+        className="itg-btn itg-btn-text"
+        onClick={handleKeepSelectedRows}
+        disabled={!table.hasSelection || isSaving}
+      >
+        Keep Only Selected
+      </button>
+      <button
+        type="button"
+        className="itg-btn itg-btn-text"
+        onClick={handleUndoLastRowAction}
+        disabled={!undoRows || isSaving}
+      >
+        Undo Row Change
+      </button>
+      {onRefresh ? (
+        <button
+          type="button"
+          className="itg-btn itg-btn-text"
+          onClick={() => onRefresh(tableId)}
+          disabled={isSaving}
+        >
+          Refresh Search Table
+        </button>
+      ) : null}
+    </div>
+  );
+
   return (
     <section
       className={`project-grid-card search-table-card${className ? ` ${className}` : ''}`}
@@ -483,50 +532,19 @@ export function SearchTableCard({
                     Deselect
                   </button>
                 </div>
-                <span className="search-table-group-divider" aria-hidden="true" />
-                <div
-                  className="project-grid-toolbar-cluster search-table-action-group"
-                  role="group"
-                  aria-label="Tidy this table"
-                >
-                  <span className="search-table-group-label" aria-hidden="true">
-                    Tidy this table
-                  </span>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-text"
-                    onClick={handleDeleteSelectedRows}
-                    disabled={!table.hasSelection || isSaving}
-                  >
-                    Remove from Table
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-text"
-                    onClick={handleKeepSelectedRows}
-                    disabled={!table.hasSelection || isSaving}
-                  >
-                    Keep Only Selected
-                  </button>
-                  <button
-                    type="button"
-                    className="itg-btn itg-btn-text"
-                    onClick={handleUndoLastRowAction}
-                    disabled={!undoRows || isSaving}
-                  >
-                    Undo Row Change
-                  </button>
-                  {onRefresh ? (
-                    <button
-                      type="button"
-                      className="itg-btn itg-btn-text"
-                      onClick={() => onRefresh(tableId)}
-                      disabled={isSaving}
-                    >
-                      Refresh Search Table
-                    </button>
-                  ) : null}
-                </div>
+                {isPhone ? (
+                  // Seven buttons, most of them disabled until rows are checked, would push the results
+                  // a full screen down on a phone; the table-tidying ones fold away here.
+                  <details className="search-table-more-actions">
+                    <summary className="search-table-more-actions-summary">More table actions</summary>
+                    {tidyActions}
+                  </details>
+                ) : (
+                  <>
+                    <span className="search-table-group-divider" aria-hidden="true" />
+                    {tidyActions}
+                  </>
+                )}
               </div>
             </div>
           }

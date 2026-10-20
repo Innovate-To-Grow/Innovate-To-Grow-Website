@@ -43,7 +43,7 @@ test('phone-only account does not render empty email placeholders', async ({page
     has: page.getByRole('heading', {name: 'Account Details'}),
   });
   await expect(detailsSection).toBeVisible();
-  await expect(detailsSection).not.toContainText('(206)333-8881');
+  await expect(detailsSection).not.toContainText('(206) 333-8881');
   await expect(detailsSection.getByText('Email')).toHaveCount(0);
   await expect(detailsSection.getByText('Member Since')).toBeVisible();
 });

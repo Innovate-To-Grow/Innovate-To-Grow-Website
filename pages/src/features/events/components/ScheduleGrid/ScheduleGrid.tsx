@@ -95,7 +95,9 @@ export const ScheduleGrid = ({
                     })}
                   </tr>
                   <tr>
-                    <th className="sg-th sg-th-time" />
+                    <th className="sg-th sg-th-time">
+                      <span className="sr-only">Track</span>
+                    </th>
                     {cls.trackLabels.map((label, ti) => (
                       <th key={ti} className={`sg-th sg-th-track ${scheduleToneClass(cls.code, ti)}`}>
                         {label}

@@ -89,13 +89,25 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 20px;
+  gap: 8px 12px;
 }
 
 .account-shares-actions .account-outline-btn {
   min-height: 32px;
   padding: 2px 12px;
   font-size: var(--itg-font-size-small);
+}
+
+/* "Link copied." under the list; empty (and no height) until a copy. */
+.account-shares-copy-status:empty {
+  display: none;
+}
+
+.account-shares-copy-status {
+  margin: 8px 0 0;
+  color: var(--itg-color-success);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
 }
 
 @media (max-width: 992px) {

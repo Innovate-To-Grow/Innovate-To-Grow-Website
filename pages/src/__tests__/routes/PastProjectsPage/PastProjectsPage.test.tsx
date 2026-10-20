@@ -219,6 +219,7 @@ vi.mock('@/features/projects', () => ({
             </div>
         );
     },
+    MyCurationsPanel: () => <section aria-label="My Curations (mocked)"/>,
     SharedPastProjectMergeSearch: ({
                                        onAddRows,
                                    }: {
@@ -315,8 +316,10 @@ describe('PastProjectsPage', () => {
                 'Spring finalists',
                 'Review note',
             );
+            // The curation's page says it was saved.
             expect(mockNavigate).toHaveBeenCalledWith(
                 '/past-projects/share-abc',
+                {state: {curationSaved: true}},
             );
         });
     });
@@ -763,6 +766,44 @@ describe('PastProjectsPage', () => {
         expect(screen.getByRole('heading', {level: 1, name: 'Past Projects'})).toBeInTheDocument();
         expect(screen.getByText('1 project since 2025')).toHaveClass('itg-page-meta');
         expect(screen.getByText(/^Search past Innovate to Grow projects, check the ones you want/)).toHaveClass('itg-lead');
+    });
+
+    it("lists the member's saved curations above the builder", () => {
+        renderPage();
+
+        const curations = screen.getByRole('region', {name: 'My Curations (mocked)'});
+        const builder = screen.getByRole('button', {name: 'Create mocked share'});
+        expect(curations.compareDocumentPosition(builder) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('confirms a curation the owner just saved, and only then', () => {
+        sharedState.share = shareFixture();
+        const saved = render(
+            <MemoryRouter initialEntries={[{pathname: '/past-projects/share-abc', state: {curationSaved: true}}]}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Curation saved. It is listed under My Curations on the Past Projects page, and you can keep editing it here.',
+        );
+        expect(screen.getByRole('link', {name: 'Past Projects'})).toHaveAttribute('href', '/past-projects');
+        saved.unmount();
+
+        // Opened from a link, or by someone who cannot edit it: no confirmation.
+        const opened = render(
+            <MemoryRouter initialEntries={['/past-projects/share-abc']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(screen.queryByText(/Curation saved/)).toBeNull();
+        opened.unmount();
+        sharedState.share = shareFixture({can_edit: false});
+        render(
+            <MemoryRouter initialEntries={[{pathname: '/past-projects/share-abc', state: {curationSaved: true}}]}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(screen.queryByText(/Curation saved/)).toBeNull();
     });
 
     it('passes the ?value= search on to the builder', () => {

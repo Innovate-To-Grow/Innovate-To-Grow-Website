@@ -1,6 +1,7 @@
 import './projects.css';
 
 export {MergedResultsTable} from './MergedResultsTable';
+export {MyCurationsPanel} from './MyCurationsPanel';
 export {PastProjectsBuilder} from './PastProjectsBuilder';
 export {ProjectGridTable} from './ProjectGridTable';
 export {SharedPastProjectMergeSearch} from './SharedPastProjectMergeSearch';

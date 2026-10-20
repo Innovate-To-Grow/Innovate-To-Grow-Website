@@ -129,6 +129,8 @@ export interface PastProjectShareSummary {
     share_url: string;
     row_count: number;
     created_at: string;
+    /** When the curation last changed. Absent from servers that predate it. */
+    updated_at?: string;
 }
 
 export interface PastProjectAISearchResponse {

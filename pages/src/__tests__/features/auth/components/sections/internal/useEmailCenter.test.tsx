@@ -75,6 +75,8 @@ describe('useEmailCenter', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.contactEmails).toEqual([contactEmail()]);
+    // Newsletters are opt-in for a newly added address.
+    expect(result.current.addSubscribe).toBe(false);
   });
 
   it('stays empty and silent when the initial fetch fails', async () => {
@@ -559,6 +561,7 @@ describe('useEmailCenter', () => {
   });
 
   it('makes a contact primary and refreshes the list', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     mocks.makeContactEmailPrimary.mockResolvedValue({message: 'done'});
     mocks.getProfile.mockResolvedValue(baseProfile({email: 'secondary@example.com', primary_email_id: 'e-1'}));
     mocks.getContactEmails.mockResolvedValue([]);
@@ -572,6 +575,7 @@ describe('useEmailCenter', () => {
       await result.current.handleMakePrimary('e-1');
     });
 
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('your primary email?'));
     expect(mocks.makeContactEmailPrimary).toHaveBeenCalledWith('e-1');
     expect(mocks.getProfile).toHaveBeenCalled();
     expect(mocks.getContactEmails).toHaveBeenCalled();
@@ -580,7 +584,24 @@ describe('useEmailCenter', () => {
     );
   });
 
+  it('does not change the primary email when the confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    const {result} = renderHook(() =>
+      useEmailCenter({profile: baseProfile(), onProfileUpdate: vi.fn()}),
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleMakePrimary('e-1');
+    });
+
+    expect(mocks.makeContactEmailPrimary).not.toHaveBeenCalled();
+    expect(result.current.makePrimaryLoadingId).toBeNull();
+  });
+
   it('surfaces a make-primary error', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mocks.makeContactEmailPrimary.mockRejectedValue({response: {data: {detail: 'Make primary failed'}}});
 
     const {result} = renderHook(() =>

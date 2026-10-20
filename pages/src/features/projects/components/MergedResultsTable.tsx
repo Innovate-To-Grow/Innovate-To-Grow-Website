@@ -45,6 +45,11 @@ interface MergedResultsTableProps {
     note: string,
   ) => Promise<PastProjectShareCreationResult>;
   onUpdateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<void>;
+  /** The builder's unsaved curation name and note. Left out, the card keeps them itself. */
+  nameDraft?: string;
+  noteDraft?: string;
+  onNameDraftChange?: (name: string) => void;
+  onNoteDraftChange?: (note: string) => void;
   onDeleteRow?: (row: ProjectGridItem) => void;
   onDeleteRows?: (rows: ProjectGridItem[]) => void;
   canUndoRows?: boolean;
@@ -154,6 +159,10 @@ export const MergedResultsTable = ({
   editable = false,
   onCreateShare,
   onUpdateShare,
+  nameDraft: controlledNameDraft,
+  noteDraft: controlledNoteDraft,
+  onNameDraftChange,
+  onNoteDraftChange,
   onDeleteRow,
   onDeleteRows,
   canUndoRows = false,
@@ -176,8 +185,12 @@ export const MergedResultsTable = ({
   });
   const [statusMessage, setStatusMessage] = useState('');
   const [isSharing, setIsSharing] = useState(false);
-  const [nameDraft, setNameDraft] = useState('');
-  const [noteDraft, setNoteDraft] = useState('');
+  const [localNameDraft, setLocalNameDraft] = useState('');
+  const [localNoteDraft, setLocalNoteDraft] = useState('');
+  const nameDraft = controlledNameDraft ?? localNameDraft;
+  const noteDraft = controlledNoteDraft ?? localNoteDraft;
+  const setNameDraft = onNameDraftChange ?? setLocalNameDraft;
+  const setNoteDraft = onNoteDraftChange ?? setLocalNoteDraft;
   const [editTitleDraft, setEditTitleDraft] = useState(title);
   const [editNoteDraft, setEditNoteDraft] = useState(note ?? '');
   const [isSavingShareEdit, setIsSavingShareEdit] = useState(false);
@@ -312,7 +325,7 @@ export const MergedResultsTable = ({
     // Mirror the backend cap (serializer rejects >1000 rows) with a specific message instead
     // of letting the request fail with the generic error below.
     if (visibleRows.length > 1000) {
-      setStatusMessage('A shared page can include at most 1000 projects. Remove some rows and try again.');
+      setStatusMessage('A curation can include at most 1000 projects. Remove some rows and try again.');
       return;
     }
 
@@ -321,7 +334,7 @@ export const MergedResultsTable = ({
     try {
       await onCreateShare(visibleRows, trimmedName, prepareNoteForSave(noteDraft));
       if (isMountedRef.current) {
-        setStatusMessage('Opening shareable link...');
+        setStatusMessage('Saved. Opening your curation...');
       }
     } catch (error) {
       if (isMountedRef.current) {
@@ -335,8 +348,8 @@ export const MergedResultsTable = ({
   };
 
   const handleInsertVisibleProjectsIntoNote = () => {
-    setNoteDraft((current) =>
-      appendPastProjectsNoteInsertHtml(current, visibleRows, {excludedFields: excludedProjectNoteInsertFieldList}),
+    setNoteDraft(
+      appendPastProjectsNoteInsertHtml(noteDraft, visibleRows, {excludedFields: excludedProjectNoteInsertFieldList}),
     );
   };
 
@@ -578,14 +591,16 @@ export const MergedResultsTable = ({
     </div>
   ) : null;
 
-  const createShareButton = canShare ? (
+  // Saving creates the curation's page: it is listed under My Curations, and its link can be passed on. The
+  // button is at the top of the card and again under the note.
+  const saveButton = canShare ? (
     <button
       type="button"
       className="itg-btn itg-btn-primary"
       onClick={() => void handleCreateShare()}
       disabled={!visibleRows.length || isSharing || pendingSaveCount > 0}
     >
-      {isSharing ? 'Creating URL...' : 'Get Shareable URL'}
+      {isSharing ? 'Saving...' : 'Save Curation'}
     </button>
   ) : null;
   // Shown beside the button rather than on a line of its own.
@@ -604,7 +619,7 @@ export const MergedResultsTable = ({
         {hiddenAddedCount
           ? `${hiddenAddedCount === 1 ? '1 newly saved project is' : `${hiddenAddedCount} newly saved projects are`} hidden by your search.`
           : `Your search shows ${shownCount} of ${rows.length} saved projects.`}{' '}
-        The shareable link and exports include only the {shownCount} it shows.{' '}
+        Saving and exports include only the {shownCount} it shows.{' '}
         <button type="button" className="itg-btn itg-btn-text past-projects-status-action" onClick={() => table.setSearch('')}>
           Clear search
         </button>
@@ -753,25 +768,37 @@ export const MergedResultsTable = ({
     </header>
   ) : (
     <div className="project-grid-card-header">
-      <h2 id={headingId} className="project-grid-card-title" tabIndex={-1}>
-        {title}
-      </h2>
-      <p className="project-grid-card-count">
-        <strong>{pluralize(rows.length, 'project')}</strong> in this list
-      </p>
+      <div className="project-grid-card-heading">
+        <h2 id={headingId} className="project-grid-card-title" tabIndex={-1}>
+          {title}
+        </h2>
+        <p className="project-grid-card-count">
+          <strong>{pluralize(rows.length, 'project')}</strong> in this list
+        </p>
+      </div>
+      {onCreateShare ? (
+        <div className="project-grid-save-status">
+          {isAuthenticated ? saveButton : (
+            <a className="itg-btn itg-btn-primary" href={buildLoginPath(`${window.location.pathname}${window.location.search}`)}>
+              Sign in to save
+            </a>
+          )}
+          <p className="project-grid-draft-note">Not saved yet. This browser keeps the list until you save it.</p>
+        </div>
+      ) : null}
     </div>
   );
 
   const shareSection =
     !sharedMode && onCreateShare ? (
       <div className="project-grid-share">
-        <h3 className="project-grid-share-title">Share this list</h3>
+        <h3 className="project-grid-share-title">Save this curation</h3>
         {isAuthenticated ? (
           <>
             <div className="project-grid-share-fields">
-              <div className="itg-field project-grid-share-note">
+              <div className="itg-field project-grid-share-note project-grid-share-name">
                 <label className="project-grid-share-note-label" htmlFor={nameInputId}>
-                  Shared page name <span className="project-grid-label-hint">(optional)</span>
+                  Curation name <span className="project-grid-label-hint">(optional)</span>
                 </label>
                 <input
                   id={nameInputId}
@@ -791,9 +818,9 @@ export const MergedResultsTable = ({
                 <RichTextDetailEditor
                   id="past-project-share-note"
                   label="Curation note"
-                  labelHint="(shown at the top of the shared page)"
+                  labelHint="(shown at the top of the curation's page)"
                   value={noteDraft}
-                  placeholder="Optional — add context for whoever opens the shareable link."
+                  placeholder="Optional — add context for whoever opens the link."
                   onChange={setNoteDraft}
                 />
                 <ProjectNoteInsertControl
@@ -805,16 +832,18 @@ export const MergedResultsTable = ({
               </div>
             </div>
             <div className="project-grid-share-actions">
-              {createShareButton}
+              {saveButton}
               {pendingSaveHint ?? (
-                <span className="project-grid-share-actions-note">Anyone with the link can view this list.</span>
+                <span className="project-grid-share-actions-note">
+                  Saved curations are listed under My Curations, each with a link anyone can view.
+                </span>
               )}
             </div>
           </>
         ) : (
           <p className="project-grid-share-login-hint">
-            <a href={buildLoginPath(`${window.location.pathname}${window.location.search}`)}>Sign in</a> to name this list
-            and get a shareable link.
+            <a href={buildLoginPath(`${window.location.pathname}${window.location.search}`)}>Sign in</a> to save this
+            curation and get a link to share it.
           </p>
         )}
       </div>

@@ -55,6 +55,78 @@
   border-top: 1px solid var(--itg-color-border);
 }
 
+.past-projects-saved-notice {
+  margin: 0;
+}
+
+/* ---- My Curations: the member's saved curations, above the builder -------- */
+
+.past-projects-my-curations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.past-projects-my-curations-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+/* h3 size: a panel above the builder's own h2 sections, not one of them. */
+.past-projects-my-curations-title {
+  margin: 0;
+  font-size: var(--itg-font-size-h3);
+}
+
+.past-projects-my-curations-hint,
+.past-projects-my-curations-status {
+  margin: 0;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
+.past-projects-my-curations-status:empty {
+  display: none;
+}
+
+.past-projects-my-curations-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.past-projects-my-curation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--itg-color-border);
+}
+
+.past-projects-my-curation-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.past-projects-my-curation-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.past-projects-my-curation-sub {
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
 /* ---- Filter well ---------------------------------------------------------- */
 
 .project-grid-table-shell {
@@ -905,6 +977,32 @@ a.project-grid-title-link:focus {
   margin: 0;
 }
 
+.project-grid-card-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+}
+
+/* The builder's save at the top of the card, with a line saying the list is not saved yet. */
+.project-grid-save-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.project-grid-draft-note {
+  margin: 0;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-merged > .project-grid-card-header {
+  align-items: flex-start;
+}
+
 .project-grid-merged .project-grid-controls.itg-well {
   padding: 0;
   border: 0;
@@ -953,10 +1051,14 @@ a.project-grid-title-link:focus {
   color: var(--itg-color-primary);
 }
 
+/* The name on its own row, the note under it at the card's full width. */
 .project-grid-share-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(17.5rem, 100%), 1fr));
-  gap: 1rem 1.5rem;
+  gap: 1rem;
+}
+
+.project-grid-share-name {
+  max-width: 40rem;
 }
 
 .project-grid-share-note {
@@ -1083,6 +1185,10 @@ a.project-grid-title-link:focus {
   cursor: pointer;
 }
 
+.project-grid-rich-editor-size-button {
+  gap: 0.375rem;
+}
+
 .project-grid-rich-editor-button:hover,
 .project-grid-rich-copy-button:hover,
 .project-grid-rich-editor-button[aria-pressed='true'] {
@@ -1101,11 +1207,13 @@ a.project-grid-title-link:focus {
   stroke-linejoin: round;
 }
 
-/* The reference's textarea: #f2f2f2, 1px #ccc, 4px radius, inset shadow, blue glow on focus. */
+/* The reference's textarea: #f2f2f2, 1px #ccc, 4px radius, inset shadow, blue glow on focus. It opens about
+   eight lines tall; the corner handle drags it taller (or shorter), and Expand gives it most of the screen. */
 .project-grid-rich-detail-input {
-  min-height: 5.25rem;
-  max-height: 16rem;
+  height: 13.5rem;
+  min-height: 6rem;
   overflow-y: auto;
+  resize: vertical;
   padding: 4px 6px;
   border: 1px solid var(--itg-color-border-input);
   border-radius: var(--itg-radius-input);
@@ -1129,11 +1237,15 @@ a.project-grid-title-link:focus {
 }
 
 .project-grid-rich-detail-input.is-expanded {
-  min-height: 22rem;
-  max-height: none;
+  height: min(40rem, 75vh);
 }
 
+/* Not being edited: as tall as the note, up to a limit. */
 .project-grid-rich-detail-input[contenteditable='false'] {
+  height: auto;
+  min-height: 5.25rem;
+  max-height: 24rem;
+  resize: none;
   background: var(--itg-color-disabled-bg);
   color: var(--itg-color-disabled-text);
 }
@@ -1334,6 +1446,11 @@ a.project-grid-title-link:focus {
     display: none;
   }
 
+  /* The save goes under the title instead of beside it. */
+  .project-grid-save-status {
+    align-items: flex-start;
+  }
+
   .project-grid-mobile-cards {
     display: block;
   }
@@ -1459,6 +1576,25 @@ a.project-grid-title-link:focus {
   .search-table-group-label,
   .search-table-group-divider {
     display: none;
+  }
+
+  /* "More table actions": the table-tidying buttons, folded away until opened. */
+  .search-table-more-actions {
+    border-top: 1px solid var(--itg-color-border);
+  }
+
+  .search-table-more-actions-summary {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--itg-color-primary);
+    font-size: var(--itg-font-size-small);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .search-table-more-actions[open] > .search-table-action-group {
+    padding-bottom: 0.5rem;
   }
 
   /* On phones the text buttons become 44px outlined buttons (2px navy, like .itg-btn-outline). */

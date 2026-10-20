@@ -13,8 +13,12 @@ vi.mock('@/features/cms/components/cmsRouteRedirect', () => ({
 
 vi.mock('@/features/cms/components/useCMSPage', () => ({useCMSPage}));
 
+const blockHeading = vi.hoisted(() => ({text: null as string | null}));
+
 vi.mock('@/features/cms/components/BlockRenderer', () => ({
-  BlockRenderer: () => <div data-testid="blocks" />,
+  BlockRenderer: () => (
+    <div data-testid="blocks">{blockHeading.text ? <h1>{blockHeading.text}</h1> : null}</div>
+  ),
 }));
 
 vi.mock('@/routes/NotFoundPage', () => ({
@@ -369,5 +373,45 @@ describe('CMSPageComponent redirects and errors', () => {
         'Previewing This Page With Content Management System with Admin Permission',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('CMSPageComponent page title', () => {
+  const page = {
+    id: 'page-1',
+    title: 'Fall 2020 Event',
+    route: '/2020-fall-event',
+    blocks: [],
+    page_css: '',
+    page_css_class: '',
+  };
+
+  beforeEach(() => {
+    useCMSPage.mockReset();
+    blockHeading.text = null;
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('adds a visually hidden h1 from the CMS title when no block renders one', async () => {
+    useCMSPage.mockReturnValue({page, redirectTo: null, loading: false, error: null, isLivePreview: false});
+
+    renderPage('/2020-fall-event');
+
+    const heading = await screen.findByRole('heading', {level: 1, name: 'Fall 2020 Event'});
+    expect(heading).toHaveClass('sr-only');
+    expect(document.title).toBe('Fall 2020 Event | Innovate to Grow');
+  });
+
+  it('adds no extra h1 when a block already renders one', async () => {
+    blockHeading.text = 'About Us';
+    useCMSPage.mockReturnValue({page, redirectTo: null, loading: false, error: null, isLivePreview: false});
+
+    renderPage('/about');
+
+    await waitFor(() => expect(screen.getAllByRole('heading', {level: 1})).toHaveLength(1));
+    expect(screen.getByRole('heading', {level: 1})).toHaveTextContent('About Us');
   });
 });

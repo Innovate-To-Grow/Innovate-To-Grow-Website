@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 
 import { NotFoundPage } from '@/routes/NotFoundPage';
+import { formatDocumentTitle } from '@/hooks/usePageTitle';
 import { BlockRenderer } from './BlockRenderer';
 import { cmsPageClassName } from './pageClassName';
 import {
@@ -27,6 +28,10 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   const hasPreviewToken = searchParams.has('cms_preview_token');
 
   const { page, redirectTo, loading, error, isLivePreview, retry } = useCMSPage(route, preview);
+  const contentRef = useRef<HTMLDivElement>(null);
+  // A page whose blocks render no h1 (an embedded archive page, a home page of cards) still needs one
+  // for screen readers and search engines: its CMS title, visually hidden.
+  const [needsFallbackTitle, setNeedsFallbackTitle] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(isLivePreview);
   const [redirectFailure, setRedirectFailure] = useState<{
     key: string;
@@ -50,7 +55,7 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   useEffect(() => {
     if (page?.title) {
       const suffix = isLivePreview ? ' [Live Preview]' : '';
-      document.title = `${page.title}${suffix} | Innovate to Grow`;
+      document.title = formatDocumentTitle(`${page.title}${suffix}`);
     }
   }, [page?.title, isLivePreview]);
 
@@ -104,6 +109,17 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
       clearCMSRouteRedirectChain();
     }
   }, [page, redirectTo, preview, hasPreviewToken, isLivePreview]);
+
+  // Blocks can render (and lazy-load) after this effect, so keep checking as the content changes.
+  useEffect(() => {
+    const root = contentRef.current;
+    if (!root || !page) return;
+    const check = () => setNeedsFallbackTitle(!root.querySelector('h1'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(root, {childList: true, subtree: true});
+    return () => observer.disconnect();
+  }, [page]);
 
   // Inject per-page CSS from the backend
   useEffect(() => {
@@ -199,7 +215,8 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
           )}
         </button>
       )}
-      <div className={cmsPageClassName(page?.page_css_class)}>
+      {page && needsFallbackTitle ? <h1 className="sr-only">{page.title}</h1> : null}
+      <div ref={contentRef} className={cmsPageClassName(page?.page_css_class)}>
         {page && (
           <BlockRenderer
             blocks={page.blocks}

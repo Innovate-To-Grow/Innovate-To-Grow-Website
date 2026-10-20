@@ -65,15 +65,11 @@ export const EmailAddForm = ({
         </select>
       </div>
       <div className="auth-form-group email-add-newsletters-group">
-        <div className="email-add-newsletters-row">
-          <span className="itg-label auth-form-label email-add-newsletters-label" id="add-email-newsletters-heading">
-            Newsletters
-          </span>
-          <label className="email-center-toggle email-add-newsletters-toggle" aria-labelledby="add-email-newsletters-heading">
-            <input type="checkbox" checked={addSubscribe} onChange={(event) => onSubscribeChange(event.target.checked)} disabled={addLoading} />
-            <span className="email-center-toggle-slider" />
-          </label>
-        </div>
+        <label className="email-center-toggle">
+          <input type="checkbox" checked={addSubscribe} onChange={(event) => onSubscribeChange(event.target.checked)} disabled={addLoading} />
+          <span className="email-center-toggle-slider" />
+          <span className="email-center-toggle-label">Newsletters</span>
+        </label>
       </div>
       <div className="email-add-form-actions">
         <button type="submit" className="itg-btn itg-btn-primary email-add-form-submit" disabled={addLoading || !addEmail.trim()}>

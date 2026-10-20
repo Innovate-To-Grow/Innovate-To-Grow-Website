@@ -26,40 +26,71 @@ const INITIAL_SEARCH_TABLE: SearchTableState = {id: 'search-table-1', type: 'sta
 
 const AI_SEARCH_LIMIT = 10;
 
-// The merged results live in component state, but creating a share requires signing in, and the
-// login button navigates away with a full-page reload (window.location) — which would wipe an
-// in-progress merge. Persist the merged rows in sessionStorage so they survive the login
-// round-trip (and any reload) within the tab; they are restored on mount and dropped once a share
-// is successfully created. sessionStorage (not localStorage) keeps the draft scoped to the tab
-// session, so it does not leak into a later, unrelated visit.
-const MERGED_ROWS_STORAGE_KEY = 'past-projects:builder:merged-rows';
+// The curation being built (its saved projects, name and note) is a draft until it is saved, which needs signing
+// in — and the login button reloads the page. Keep the draft in localStorage so it survives that reload, closing
+// the tab and coming back later; it is dropped once it is saved. The draft records whose it is: a member's draft is
+// only restored for that member, so the next person on a shared computer does not get it, while a guest's draft
+// carries over when the guest signs in.
+const DRAFT_STORAGE_KEY = 'past-projects:builder:draft';
+// Before drafts outlived the tab, the projects alone were kept in sessionStorage. Picked up once; the first write
+// of the new draft removes it.
+const LEGACY_MERGED_ROWS_STORAGE_KEY = 'past-projects:builder:merged-rows';
 
-const readPersistedMergedRows = (): ProjectGridRow[] => {
+interface CurationDraft {
+    owner: string | null;
+    rows: ProjectGridRow[];
+    name: string;
+    note: string;
+}
+
+const EMPTY_DRAFT: CurationDraft = {owner: null, rows: [], name: '', note: ''};
+
+const readLegacyDraft = (): CurationDraft => {
     try {
-        const raw = sessionStorage.getItem(MERGED_ROWS_STORAGE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? (parsed as ProjectGridRow[]) : [];
+        const raw = sessionStorage.getItem(LEGACY_MERGED_ROWS_STORAGE_KEY);
+        const rows = raw ? JSON.parse(raw) : [];
+        return Array.isArray(rows) ? {...EMPTY_DRAFT, rows: rows as ProjectGridRow[]} : EMPTY_DRAFT;
     } catch {
-        return [];
+        return EMPTY_DRAFT;
     }
 };
 
-const writePersistedMergedRows = (rows: ProjectGridRow[]) => {
+const readPersistedDraft = (memberId: string | null): CurationDraft => {
     try {
-        if (rows.length) {
-            sessionStorage.setItem(MERGED_ROWS_STORAGE_KEY, JSON.stringify(rows));
+        const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (!raw) return readLegacyDraft();
+        const parsed = JSON.parse(raw) as Partial<CurationDraft> | null;
+        const owner = typeof parsed?.owner === 'string' ? parsed.owner : null;
+        if (!parsed || !Array.isArray(parsed.rows) || (owner && owner !== memberId)) {
+            return EMPTY_DRAFT;
+        }
+        return {
+            owner,
+            rows: parsed.rows,
+            name: typeof parsed.name === 'string' ? parsed.name : '',
+            note: typeof parsed.note === 'string' ? parsed.note : '',
+        };
+    } catch {
+        return EMPTY_DRAFT;
+    }
+};
+
+const writePersistedDraft = (draft: CurationDraft) => {
+    try {
+        sessionStorage.removeItem(LEGACY_MERGED_ROWS_STORAGE_KEY);
+        if (draft.rows.length) {
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
         } else {
-            sessionStorage.removeItem(MERGED_ROWS_STORAGE_KEY);
+            localStorage.removeItem(DRAFT_STORAGE_KEY);
         }
     } catch {
-        // sessionStorage can throw (private mode / quota / disabled) — degrade to in-memory only.
+        // localStorage can throw (private mode / quota / disabled) — degrade to in-memory only.
     }
 };
 
-const clearPersistedMergedRows = () => {
+const clearPersistedDraft = () => {
     try {
-        sessionStorage.removeItem(MERGED_ROWS_STORAGE_KEY);
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
     } catch {
         // ignore — nothing to clean up if storage is unavailable.
     }
@@ -159,10 +190,15 @@ export const PastProjectsBuilder = ({
     const {isAuthenticated, isInitializing, unverified, user} = useAuth();
     const memberId = user?.member_uuid ?? null;
     const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
-    // Seed from any draft persisted before a login reload so the merged results survive the round-trip.
+    // Seed from the draft kept from an earlier visit (or the login reload).
+    const [restoredDraft] = useState(() => readPersistedDraft(memberId));
     const [mergedRows, setMergedRows] = useState<ProjectGridItem[]>(() =>
-        createProjectGridItems(readPersistedMergedRows(), 'restored'),
+        createProjectGridItems(restoredDraft.rows, 'restored'),
     );
+    const [nameDraft, setNameDraft] = useState(restoredDraft.name);
+    const [noteDraft, setNoteDraft] = useState(restoredDraft.note);
+    // The member the draft belongs to (null for a guest's).
+    const draftMemberRef = useRef(memberId);
     // A save resolves after its detail requests, so it must dedup against the merged rows as they are
     // then, not as they were when Save was clicked. Every change goes through commitMergedRows, which
     // keeps this ref equal to the latest list.
@@ -199,11 +235,16 @@ export const PastProjectsBuilder = ({
     const standardSearchTableIds = searchTables.filter((table) => table.type === 'standard').map((table) => table.id);
     const standardSearchTableCount = standardSearchTableIds.length;
 
-    // Mirror the merged results into sessionStorage on every change so however the visitor leaves
-    // (the login reload, a manual refresh, SPA navigation), the draft can be restored on return.
+    // Mirror the draft into localStorage on every change so however the visitor leaves (the login reload, a
+    // refresh, closing the tab, SPA navigation), it can be restored on return.
     useEffect(() => {
-        writePersistedMergedRows(mergedRows.map(stripProjectGridItem));
-    }, [mergedRows]);
+        writePersistedDraft({
+            owner: draftMemberRef.current,
+            rows: mergedRows.map(stripProjectGridItem),
+            name: nameDraft,
+            note: noteDraft,
+        });
+    }, [mergedRows, nameDraft, noteDraft]);
 
     // Leaving the page cancels the detail requests of saves still in flight.
     useEffect(() => {
@@ -232,15 +273,16 @@ export const PastProjectsBuilder = ({
 
     // Revalidation is not a logout. Keep the draft while identity is being checked, and clear it
     // only when a known member actually logs out or changes accounts. Guest drafts survive login.
-    const draftMemberRef = useRef(memberId);
     useEffect(() => {
         if (isInitializing || unverified) return;
         if (draftMemberRef.current && draftMemberRef.current !== memberId) {
             draftAccountSequence.current += 1;
-            clearPersistedMergedRows();
+            clearPersistedDraft();
             commitMergedRows(() => []);
             setMergedRowsUndo(null);
             setRecentlyAdded(null);
+            setNameDraft('');
+            setNoteDraft('');
         }
         draftMemberRef.current = memberId;
     }, [commitMergedRows, isInitializing, unverified, memberId]);
@@ -253,7 +295,7 @@ export const PastProjectsBuilder = ({
             setIsCreatingShare(true);
             try {
                 const result = await onCreateShare(shareRows, name, note);
-                clearPersistedMergedRows();
+                clearPersistedDraft();
                 return result;
             } finally {
                 setIsCreatingShare(false);
@@ -587,6 +629,10 @@ export const PastProjectsBuilder = ({
                     recentlyAdded={recentlyAdded}
                     pendingSaveCount={savesInFlight}
                     onCreateShare={handleCreateShare}
+                    nameDraft={nameDraft}
+                    noteDraft={noteDraft}
+                    onNameDraftChange={setNameDraft}
+                    onNoteDraftChange={setNoteDraft}
                     onDeleteRow={handleDeleteMergedRow}
                     onDeleteRows={handleDeleteMergedRows}
                     canUndoRows={Boolean(mergedRowsUndo)}

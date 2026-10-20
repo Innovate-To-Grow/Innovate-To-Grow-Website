@@ -38,29 +38,29 @@ const baseProps = (overrides: Record<string, unknown> = {}) => ({
 describe('ContactEmailCard', () => {
   afterEach(cleanup);
 
-  it('renders a verified contact with a Primary role option', () => {
+  it('renders a verified contact with a labelled role select and a Make Primary button', () => {
     render(<ContactEmailCard {...baseProps()} />);
 
     expect(screen.getByText('secondary@example.com')).toBeInTheDocument();
     expect(screen.getByText('Verified')).toBeInTheDocument();
-    expect(screen.getByRole('combobox', {name: 'Email role'})).toHaveValue('secondary');
-    expect(screen.getByRole('option', {name: 'Primary'})).toBeInTheDocument();
+    expect(screen.getByRole('combobox', {name: 'Role'})).toHaveValue('secondary');
+    // Becoming primary is its own confirmed action, never a role you pick by accident.
+    expect(screen.queryByRole('option', {name: 'Primary'})).not.toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Make Primary'})).toBeInTheDocument();
   });
 
-  it('renders an unverified contact without a Primary role option', () => {
+  it('renders an unverified contact without a Make Primary button', () => {
     render(<ContactEmailCard {...baseProps({contact: contact({verified: false})})} />);
 
     expect(screen.getByText('Unverified')).toBeInTheDocument();
-    expect(screen.queryByRole('option', {name: 'Primary'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Make Primary'})).not.toBeInTheDocument();
   });
 
-  it('calls onMakePrimary when the Primary option is selected', () => {
+  it('calls onMakePrimary when Make Primary is clicked', () => {
     const onMakePrimary = vi.fn();
     render(<ContactEmailCard {...baseProps({onMakePrimary})} />);
 
-    fireEvent.change(screen.getByRole('combobox', {name: 'Email role'}), {
-      target: {value: 'primary'},
-    });
+    fireEvent.click(screen.getByRole('button', {name: 'Make Primary'}));
 
     expect(onMakePrimary).toHaveBeenCalledWith('e-1');
   });
@@ -69,7 +69,7 @@ describe('ContactEmailCard', () => {
     const onContactTypeChange = vi.fn();
     render(<ContactEmailCard {...baseProps({onContactTypeChange})} />);
 
-    fireEvent.change(screen.getByRole('combobox', {name: 'Email role'}), {
+    fireEvent.change(screen.getByRole('combobox', {name: 'Role'}), {
       target: {value: 'other'},
     });
 
@@ -194,13 +194,14 @@ describe('ContactEmailCard', () => {
   it('disables the role select while that contact is being made primary', () => {
     render(<ContactEmailCard {...baseProps({makePrimaryLoadingId: 'e-1'})} />);
 
-    expect(screen.getByRole('combobox', {name: 'Email role'})).toBeDisabled();
+    expect(screen.getByRole('combobox', {name: 'Role'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Updating...'})).toBeDisabled();
   });
 
   it('does not disable the role select for a different contact', () => {
     render(<ContactEmailCard {...baseProps({makePrimaryLoadingId: 'e-2'})} />);
 
-    expect(screen.getByRole('combobox', {name: 'Email role'})).not.toBeDisabled();
+    expect(screen.getByRole('combobox', {name: 'Role'})).not.toBeDisabled();
   });
 
   it('renders the resending state on the resend button', () => {

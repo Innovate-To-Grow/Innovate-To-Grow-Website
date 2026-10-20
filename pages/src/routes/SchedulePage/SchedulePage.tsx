@@ -340,7 +340,9 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
                           ))}
                         </tr>
                         <tr>
-                          <th className="schedule-presentation-corner" />
+                          <th className="schedule-presentation-corner">
+                            <span className="sr-only">Track</span>
+                          </th>
                           {orderedTracks.map((track) => (
                             <th key={`${track.id}-label`} className="schedule-presentation-track">
                               Track {track.track_number}
@@ -349,7 +351,9 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
                         </tr>
                         {showTopicRow && (
                           <tr>
-                            <th className="schedule-presentation-corner" />
+                            <th className="schedule-presentation-corner">
+                              <span className="sr-only">Topic</span>
+                            </th>
                             {orderedTracks.map((track, index) => (
                               <td
                                 key={`${track.id}-topic`}

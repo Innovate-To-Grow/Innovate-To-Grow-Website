@@ -776,13 +776,7 @@ li.sfHover > span.nolink > .sf-sub-indicator {
     -webkit-border-bottom-left-radius: 0;
 }
 
-@font-face {
-    font-family: 'FontAwesome';
-    src: url(../fonts/fonts-fontawesome-webfont.eot);
-    src: url(../fonts/fonts-fontawesome-webfont.eot) format('embedded-opentype'), url(../fonts/fonts-fontawesome-webfont.woff2) format('woff2'), url(../fonts/fonts-fontawesome-webfont.woff) format('woff'), url(../fonts/fonts-fontawesome-webfont.ttf) format('truetype'), url(../fonts/fonts-fontawesome-webfont.svg) format('svg');
-    font-weight: normal;
-    font-style: normal
-}
+/* The FontAwesome @font-face comes from the Font Awesome 4.7 stylesheet in base.html. */
 
 .fa {
     display: inline-block;
@@ -11202,15 +11196,6 @@ a.badge:focus {
     }
 }
 
-@font-face {
-    font-family: 'weather';
-    src: url("../fonts/93-artill_clean_icons-webfont.eot");
-    src: url("../fonts/93-artill_clean_icons-webfont.eot?#iefix") format("embedded-opentype"), url("../fonts/93-artill_clean_icons-webfont.woff") format("woff"), url("../fonts/93-artill_clean_icons-webfont.ttf") format("truetype"), url("https://s3-us-west-2.amazonaws.com/s.cdpn.io/93/artill_clean_icons-webfont.svg#artill_clean_weather_iconsRg") format("svg");
-    font-display: swap;
-    font-weight: normal;
-    font-style: normal;
-}
-
 #weather i {
     font-family: weather;
     font-size: 1.35em;
@@ -11230,7 +11215,6 @@ a.badge:focus {
 }
 
 .no-weather {
-    background-image: url(../fonts/images-sculpture.svg);
     background-size: contain;
     height: 1.8rem;
     width: 1.8rem;
@@ -12566,7 +12550,7 @@ span.nolink > .sf-sub-indicator {
 }
 
 ul {
-    list-style-image: url(../images/images-gray-bullet.png);
+    list-style-image: url(../images/gray-bullet.svg);
     position: relative;
 }
 

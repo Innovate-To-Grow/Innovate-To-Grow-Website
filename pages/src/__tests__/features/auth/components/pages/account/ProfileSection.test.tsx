@@ -114,14 +114,30 @@ describe('ProfileSection', () => {
     expect(props.onCancelEditing).toHaveBeenCalled();
   });
 
-  it('disables the name and organization inputs while not editing', () => {
-    renderSection();
+  it('shows a read-only summary instead of inputs until editing starts', () => {
+    renderSection({middleName: 'King'});
 
-    expect(screen.getByLabelText('First Name')).toBeDisabled();
-    expect(screen.getByLabelText('Middle Name')).toBeDisabled();
-    expect(screen.getByLabelText('Last Name')).toBeDisabled();
-    expect(screen.getByPlaceholderText('Company or organization name')).toBeDisabled();
-    expect(screen.getByLabelText(/Title/)).toBeDisabled();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.getByText('Name').nextElementSibling).toHaveTextContent('Ada King Lovelace');
+    expect(screen.getByText('Organization').nextElementSibling).toHaveTextContent('Acme Corp');
+    expect(screen.getByText('Title').nextElementSibling).toHaveTextContent('CEO');
+    expect(screen.queryByRole('button', {name: 'Save Profile'})).not.toBeInTheDocument();
+  });
+
+  it('summarises an individual account without organization or title rows', () => {
+    renderSection({organizationType: 'individual', organization: '', title: ''});
+
+    expect(screen.getByText('Organization').nextElementSibling).toHaveTextContent('Individual');
+    expect(screen.queryByText('Title')).not.toBeInTheDocument();
+  });
+
+  it('offers a labelled photo button in both views', () => {
+    renderSection();
+    expect(screen.getByText('Change photo').closest('label')).toHaveAttribute('for', 'profile-image-upload');
+    cleanup();
+
+    renderSection({isEditingProfile: true});
+    expect(screen.getByText('Change photo')).toBeInTheDocument();
   });
 
   it('switches organization type through the toggle buttons', () => {
@@ -135,7 +151,7 @@ describe('ProfileSection', () => {
   });
 
   it('hides the organization and title inputs for individual accounts', () => {
-    renderSection({organizationType: 'individual', organization: '', title: ''});
+    renderSection({isEditingProfile: true, organizationType: 'individual', organization: '', title: ''});
 
     expect(screen.queryByPlaceholderText('Company or organization name')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Title/)).not.toBeInTheDocument();

@@ -315,7 +315,7 @@ $(document).ready(function () {
     if (totalTrackForCSE > 0) {
         var html = '<div class= "span10" style= "margin-left: 18px; margin-top:0px; padding: unset;">' +
             '<div style= "text-align: center; color: #002856;">' +
-            '<strong>Sofware Engineering Capstone (CSE)</strong>' +
+            '<strong>Software Engineering Capstone (CSE)</strong>' +
             '</div>' +
             '<section class="center">' +
             '<div class="table__wrapper">' +

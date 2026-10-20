@@ -33,6 +33,19 @@ describe('MySharedLinksSection', () => {
         cleanup();
     });
 
+    it('copies a share link and announces it', async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        vi.stubGlobal('navigator', {...window.navigator, clipboard: {writeText}});
+        mockListMyShares.mockResolvedValue([share()]);
+        render(<MySharedLinksSection/>);
+
+        fireEvent.click(await screen.findByRole('button', {name: /^Copy the link to Spring finalists/}));
+
+        await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://example.test/past-projects/share-1'));
+        expect(await screen.findByRole('status')).toHaveTextContent('Link copied.');
+        vi.unstubAllGlobals();
+    });
+
     it('renders the list with open + delete only when the user has shares', async () => {
         mockListMyShares.mockResolvedValue([share()]);
         render(<MySharedLinksSection/>);
@@ -61,6 +74,19 @@ describe('MySharedLinksSection', () => {
         // Several unnamed shares look alike, so each control names the row it acts on.
         expect(screen.getByRole('link', {name: /^Open Past Project Curation \(3 results · /})).toBeInTheDocument();
         expect(screen.getByRole('button', {name: /^Delete Past Project Curation \(3 results · /})).toBeInTheDocument();
+    });
+
+    it('dates each share by its last change when the server sends one', async () => {
+        mockListMyShares.mockResolvedValue([
+            share({id: 'edited', name: 'Edited list', updated_at: '2026-10-18T12:00:00Z'}),
+            share({id: 'legacy', name: 'Legacy list'}),
+        ]);
+        render(<MySharedLinksSection/>);
+
+        const edited = new Date('2026-10-18T12:00:00Z').toLocaleDateString();
+        const created = new Date('2026-06-05T00:00:00Z').toLocaleDateString();
+        expect(await screen.findByText(`3 results · ${edited}`)).toBeInTheDocument();
+        expect(screen.getByText(`3 results · ${created}`)).toBeInTheDocument();
     });
 
     it('deletes a share after confirmation and removes it from the list', async () => {

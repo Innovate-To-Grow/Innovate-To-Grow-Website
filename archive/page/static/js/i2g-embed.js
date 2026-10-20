@@ -71,6 +71,10 @@
   //      percentage-based `.row-fluid` spans, so they reflow to fill the frame.
   //      Standalone pages keep their centered layout — this only runs when
   //      framed (the early `return` above).
+  //   3. Cancel the main row's -20px gutter margin, which pulled the column 5px
+  //      past the frame's left edge and cut off the first letter of each line,
+  //      and centre the content column: pages built on fixed-width spans (940px)
+  //      sit in the middle of a wider frame instead of hugging its left side.
   function applyFramedLayout() {
     var style = document.createElement('style');
     style.id = 'i2g-embed-style';
@@ -82,7 +86,10 @@
       '.navbar-fixed-top .container,' +
       '.navbar-fixed-bottom .container {' +
       ' width: 100% !important; max-width: 100% !important;' +
-      ' box-sizing: border-box; padding-left: 15px; padding-right: 15px; }';
+      ' box-sizing: border-box; padding-left: 15px; padding-right: 15px; }' +
+      '#main-content.row { display: flex; justify-content: center; margin-left: 0; margin-right: 0; }' +
+      '#main-content.row::before, #main-content.row::after { display: none; }' +
+      '#content { float: none; margin-left: 0; min-width: 0; max-width: 100%; }';
     (document.head || document.documentElement).appendChild(style);
   }
 

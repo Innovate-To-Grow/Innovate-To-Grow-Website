@@ -57,6 +57,19 @@ describe('RichTextDetailEditor', () => {
         expect(editor).not.toHaveClass('is-expanded');
     });
 
+    it('says Expand on its size button and drops a dragged height when it is used', () => {
+        const {editor} = renderEditor('Draft note');
+        const expandButton = screen.getByRole('button', {name: 'Expand note editor'});
+        expect(expandButton).toHaveTextContent('Expand');
+
+        // The corner handle leaves the height it was dragged to on the element.
+        editor.style.height = '420px';
+        fireEvent.click(expandButton);
+
+        expect(editor.style.height).toBe('');
+        expect(screen.getByRole('button', {name: 'Collapse note editor'})).toHaveTextContent('Collapse');
+    });
+
     it('applies bold formatting to selected text without document.execCommand', () => {
         const {boldButton, editor, onChange} = renderEditor('Bold keep');
         const textNode = editor.firstChild;

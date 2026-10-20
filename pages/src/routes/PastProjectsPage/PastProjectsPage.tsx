@@ -1,7 +1,8 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {Link, useNavigate, useParams, useSearchParams} from 'react-router';
+import {Link, useLocation, useNavigate, useParams, useSearchParams} from 'react-router';
 import {
   MergedResultsTable,
+  MyCurationsPanel,
   PastProjectsBuilder,
   SharedPastProjectMergeSearch,
   createProjectGridItems,
@@ -17,6 +18,7 @@ import {
   type PastProjectShare,
   type ProjectGridRow,
 } from '@/features/projects/api';
+import {usePageTitle} from '@/hooks/usePageTitle';
 
 type PastProjectSharePatch = Partial<
   Pick<PastProjectShare, 'name' | 'rows' | 'note'>
@@ -232,6 +234,8 @@ const SharedListLoadFailed = ({onRetry}: {onRetry: () => void}) => (
 export const PastProjectsPage = () => {
   const {shareId} = useParams<{shareId: string}>();
   const navigate = useNavigate();
+  // Set by the builder's save, which opens the new curation's page.
+  const justSaved = Boolean((useLocation().state as {curationSaved?: boolean} | null)?.curationSaved);
   const [searchParams] = useSearchParams();
   const sharedMode = Boolean(shareId);
   const {
@@ -253,6 +257,8 @@ export const PastProjectsPage = () => {
     setEditableShare(share);
   }
   const activeShare = editableShare?.id === shareId ? editableShare : share;
+  // A shared list is named after the share; the plain page keeps its route title.
+  usePageTitle(sharedMode && activeShare ? shareDisplayTitle(activeShare) : null);
   const [shareConflict, setShareConflict] = useState<{
     shareId: string;
     message: string;
@@ -290,7 +296,7 @@ export const PastProjectsPage = () => {
   const handleCreateShare = async (shareRows: typeof rows, name: string, note: string) => {
     const nextShare = await createPastProjectShare(shareRows, name, note);
     setEditableShare(nextShare);
-    navigate(`/past-projects/${nextShare.id}`);
+    navigate(`/past-projects/${nextShare.id}`, {state: {curationSaved: true}});
     return nextShare;
   };
 
@@ -448,6 +454,12 @@ export const PastProjectsPage = () => {
         ) : null}
         {!shareLoading && !shareError ? (
           <>
+            {justSaved && activeShare?.can_edit ? (
+              <p className="itg-notice past-projects-saved-notice" role="status">
+                Curation saved. It is listed under My Curations on the{' '}
+                <Link to="/past-projects">Past Projects</Link> page, and you can keep editing it here.
+              </p>
+            ) : null}
             <MergedResultsTable
               rows={sharedItems}
               sharedMode
@@ -482,10 +494,12 @@ export const PastProjectsPage = () => {
         <h1 className="itg-page-title">Past Projects</h1>
         {archiveMeta ? <p className="itg-page-meta">{archiveMeta}</p> : null}
         <p className="itg-lead">
-          Search past Innovate to Grow projects, check the ones you want, and save them into one list. Export the list
-          or share it with a link.
+          Search past Innovate to Grow projects, check the ones you want, and collect them into a curation. Save it to
+          keep it and share it with a link, or export it.
         </p>
       </header>
+
+      <MyCurationsPanel />
 
       <PastProjectsBuilder
         rows={rows}

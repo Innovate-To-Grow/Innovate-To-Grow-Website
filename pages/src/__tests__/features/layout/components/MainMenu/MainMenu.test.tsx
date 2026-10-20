@@ -318,6 +318,44 @@ describe('MainMenu', () => {
     expect(setIsMemberDropdownOpen).toHaveBeenCalledWith(false);
   });
 
+  it('keeps the member dropdown open on the click that follows a hover', () => {
+    const setIsMemberDropdownOpen = vi.fn();
+    useMainMenuState.mockReturnValue(
+      makeState({isAuthenticated: true, hasMemberIdentity: true, setIsMemberDropdownOpen}),
+    );
+    render(<MainMenu navigate={vi.fn()} />);
+
+    childProps.memberMenu.onMouseEnter();
+    childProps.memberMenu.onToggle();
+    const afterHover = setIsMemberDropdownOpen.mock.calls.at(-1)![0] as (prev: boolean) => boolean;
+    expect(afterHover(true)).toBe(true);
+
+    // A second click toggles as usual.
+    childProps.memberMenu.onToggle();
+    const secondClick = setIsMemberDropdownOpen.mock.calls.at(-1)![0] as (prev: boolean) => boolean;
+    expect(secondClick(true)).toBe(false);
+  });
+
+  it('does not reopen the member dropdown on mouse enter while it is open', () => {
+    const setIsMemberDropdownOpen = vi.fn();
+    useMainMenuState.mockReturnValue(
+      makeState({
+        isAuthenticated: true,
+        hasMemberIdentity: true,
+        isMemberDropdownOpen: true,
+        setIsMemberDropdownOpen,
+      }),
+    );
+    render(<MainMenu navigate={vi.fn()} />);
+
+    // Opened by a click: the pointer arriving afterwards must not turn the next click into a no-op.
+    childProps.memberMenu.onMouseEnter();
+    expect(setIsMemberDropdownOpen).not.toHaveBeenCalled();
+    childProps.memberMenu.onToggle();
+    const toggle = setIsMemberDropdownOpen.mock.calls.at(-1)![0] as (prev: boolean) => boolean;
+    expect(toggle(true)).toBe(false);
+  });
+
   it('does not open the member dropdown on mouse enter when anonymous', () => {
     const setIsMemberDropdownOpen = vi.fn();
     useMainMenuState.mockReturnValue(

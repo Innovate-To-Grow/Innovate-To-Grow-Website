@@ -81,7 +81,7 @@ describe('MemberMenu', () => {
     const user = makeUser({email: '', phone: '+12025550123'});
     render(<MemberMenu {...makeProps({user, isOpen: true})} />);
 
-    expect(screen.getByText('(202)555-0123')).toBeInTheDocument();
+    expect(screen.getByText('(202) 555-0123')).toBeInTheDocument();
   });
 
   it('falls back to "Member" when there is no email or phone', () => {

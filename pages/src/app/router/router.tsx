@@ -5,6 +5,7 @@ import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';
 import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
 import {LegacyLoginLinkRedirect} from './LegacyLoginLinkRedirect';
+import {RouteDocumentTitle, type RouteHandle} from './RouteDocumentTitle';
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
 
 // Matches the inline spinner in pages/index.html (#root:empty::before) so
@@ -29,6 +30,8 @@ const routeFallback = (
 const lazyRoute = (element: ReactElement): ReactElement => (
     <Suspense fallback={routeFallback}>{element}</Suspense>
 );
+
+const titled = (title: string): {handle: RouteHandle} => ({handle: {title}});
 
 // Auth pages (lazy)
 const LoginPage = React.lazy(() => import('@/features/auth/components/pages/LoginPage').then(m => ({default: m.LoginPage})));
@@ -63,39 +66,44 @@ export const createAppRouter = () => createBrowserRouter([
     {path: '/_embed/:embedSlug', element: <EmbedBlockPage/>},
     {
         path: '/',
-        element: <Layout/>,
+        element: (
+            <>
+                <RouteDocumentTitle/>
+                <Layout/>
+            </>
+        ),
         children: [
 
             // support rout pointer for support old url
-            {path: 'membership/events', element: lazyRoute(<EventRegistrationPage/>)},
+            {path: 'membership/events', element: lazyRoute(<EventRegistrationPage/>), ...titled('Event Registration')},
 
             // homepage — resolved dynamically from SiteSettings.homepage_route
             {index: true, element: <HomepageResolver/>},
 
             // news pages
-            {path: 'news', element: lazyRoute(<NewsPage/>)},
+            {path: 'news', element: lazyRoute(<NewsPage/>), ...titled('News')},
             {path: 'news/:id', element: lazyRoute(<NewsDetailPage/>)},
 
             // project pages (plain CMS routes like /projects, /sample-proposals
-            {path: 'current-projects', element: lazyRoute(<ProjectsPage/>)},
-            {path: 'presenting-teams', element: lazyRoute(<PresentingTeamsPage/>)},
-            {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>)},
+            {path: 'current-projects', element: lazyRoute(<ProjectsPage/>), ...titled('Current Projects')},
+            {path: 'presenting-teams', element: lazyRoute(<PresentingTeamsPage/>), ...titled('Presenting Teams')},
+            {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>), ...titled('Past Projects')},
             {path: 'past-projects/project/:id', element: lazyRoute(<ProjectDetailPage/>)},
-            {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>)},
+            {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>), ...titled('Past Projects')},
             {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
 
             // event pages (plain CMS routes like /event, /past-events are served
             // by the catch-all CMS route below)
-            {path: 'event-registration', element: lazyRoute(<EventRegistrationPage/>)},
+            {path: 'event-registration', element: lazyRoute(<EventRegistrationPage/>), ...titled('Event Registration')},
             {path: 'events/:eventSlug', element: lazyRoute(<EventArchivePage/>)},
-            {path: 'schedule', element: lazyRoute(<SchedulePage/>)},
-            {path: 'acknowledgement', element: lazyRoute(<AcknowledgementPage/>)},
+            {path: 'schedule', element: lazyRoute(<SchedulePage/>), ...titled('Event Schedule')},
+            {path: 'acknowledgement', element: lazyRoute(<AcknowledgementPage/>), ...titled('Partners & Sponsors')},
 
             // Subscribe
-            {path: 'subscribe', element: lazyRoute(<SubscribePage/>)},
+            {path: 'subscribe', element: lazyRoute(<SubscribePage/>), ...titled('Subscriptions')},
 
             // Auto-login from email links
-            {path: 'login-link', element: lazyRoute(<LoginLinkPage/>)},
+            {path: 'login-link', element: lazyRoute(<LoginLinkPage/>), ...titled('Sign In')},
             // Legacy aliases: previously-sent emails point at /magic-login (still
             // valid tokens) and /ticket-login (tokens already invalidated).
             {path: 'magic-login', element: <LegacyLoginLinkRedirect/>},
@@ -104,23 +112,27 @@ export const createAppRouter = () => createBrowserRouter([
             // tokens have all expired. Their email preferences live on /account;
             // the redirect drops the stale token instead of forwarding it.
             {path: 'unsubscribe-login', element: <Navigate to="/account" replace/>},
-            {path: 'email-auth-link', element: lazyRoute(<EmailAuthLinkPage/>)},
-            {path: 'impersonate-login', element: lazyRoute(<ImpersonateLoginPage/>)},
+            {path: 'email-auth-link', element: lazyRoute(<EmailAuthLinkPage/>), ...titled('Sign In')},
+            {path: 'impersonate-login', element: lazyRoute(<ImpersonateLoginPage/>), ...titled('Sign In')},
 
             // Convenience redirects
             {path: 'profile', element: <Navigate to="/account" replace/>},
 
             // Auth pages
-            {path: 'login', element: lazyRoute(<LoginPage/>)},
+            {path: 'login', element: lazyRoute(<LoginPage/>), ...titled('Sign In')},
             {path: 'register', element: lazyRoute(<RegisterPage/>)},
-            {path: 'forgot-password', element: lazyRoute(<ForgotPasswordPage/>)},
-            {path: 'verify-email', element: lazyRoute(<VerifyEmailPage/>)},
-            {path: 'verify-phone', element: lazyRoute(<VerifyPhonePage/>)},
-            {path: 'complete-profile', element: lazyRoute(<CompleteProfilePage/>)},
+            {path: 'forgot-password', element: lazyRoute(<ForgotPasswordPage/>), ...titled('Forgot Password')},
+            {path: 'verify-email', element: lazyRoute(<VerifyEmailPage/>), ...titled('Verify Your Email')},
+            {path: 'verify-phone', element: lazyRoute(<VerifyPhonePage/>), ...titled('Verify Your Phone')},
+            {path: 'complete-profile', element: lazyRoute(<CompleteProfilePage/>), ...titled('Complete Your Profile')},
 
             // Account management
-            {path: 'account', element: lazyRoute(<AccountPage/>)},
-            {path: 'account/past-project-curation-shared-links', element: lazyRoute(<PastProjectCurationSharedLinksPage/>)},
+            {path: 'account', element: lazyRoute(<AccountPage/>), ...titled('Account Dashboard')},
+            {
+                path: 'account/past-project-curation-shared-links',
+                element: lazyRoute(<PastProjectCurationSharedLinksPage/>),
+                ...titled('Past Project Curation Shared Links'),
+            },
 
             // Catch-all CMS route
             {path: '*', element: <CMSPageComponent/>},
