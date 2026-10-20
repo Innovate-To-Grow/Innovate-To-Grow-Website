@@ -50,6 +50,38 @@ describe('profile API', () => {
       expect(mocks.patch).toHaveBeenCalledWith('/authn/profile/', updated);
       expect(result.first_name).toBe('Bob');
     });
+
+    it('stores the saved name for the header and tells the other roots', async () => {
+      mocks.patch.mockResolvedValue({data: {first_name: 'Bob', last_name: 'Smith'}});
+      mocks.updateStoredUser.mockReturnValue({member_uuid: 'm', email: 'b@example.com'});
+      const listener = vi.fn();
+      window.addEventListener('i2g-auth-state-change', listener);
+
+      await updateProfileFields({first_name: 'Bob'});
+
+      window.removeEventListener('i2g-auth-state-change', listener);
+      expect(mocks.updateStoredUser).toHaveBeenCalledWith(expect.any(Function), 'generation-a');
+      const updater = mocks.updateStoredUser.mock.calls[0][0] as (user: object) => object;
+      expect(updater({member_uuid: 'm', email: 'b@example.com', first_name: 'Old'})).toEqual({
+        member_uuid: 'm',
+        email: 'b@example.com',
+        first_name: 'Bob',
+        last_name: 'Smith',
+      });
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves the stored session alone when the account changed meanwhile', async () => {
+      mocks.patch.mockResolvedValue({data: {first_name: 'Bob', last_name: 'Smith'}});
+      mocks.updateStoredUser.mockReturnValue(null);
+      const listener = vi.fn();
+      window.addEventListener('i2g-auth-state-change', listener);
+
+      await updateProfileFields({first_name: 'Bob'});
+
+      window.removeEventListener('i2g-auth-state-change', listener);
+      expect(listener).not.toHaveBeenCalled();
+    });
   });
 
   describe('uploadProfileImage', () => {

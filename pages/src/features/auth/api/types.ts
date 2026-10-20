@@ -7,6 +7,9 @@ export interface User {
   phone?: string;
   profile_image?: string;
   is_staff?: boolean;
+  /** Optional: sessions stored before names were carried have none until the next session check. */
+  first_name?: string;
+  last_name?: string;
 }
 
 export interface AuthTokens {

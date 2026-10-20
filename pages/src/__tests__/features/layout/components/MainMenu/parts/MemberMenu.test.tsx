@@ -49,16 +49,34 @@ describe('MemberMenu', () => {
     expect(props.onLoginClick).not.toHaveBeenCalled();
   });
 
-  it('renders the "My Account" menu button for a member, without an avatar by default', () => {
+  it("labels the menu button with the member's email when there is no name, without an avatar by default", () => {
     render(<MemberMenu {...makeProps({user: makeUser()})} />);
 
-    const button = screen.getByRole('button', {name: 'My Account'});
+    const button = screen.getByRole('button', {name: 'member@example.com'});
     expect(button).toHaveClass('member-button', 'authenticated');
     expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveAttribute('title', 'member@example.com');
     expect(document.querySelector('img.member-avatar')).toBeNull();
     expect(document.querySelector('.member-arrow')).not.toBeNull();
-    // The identity is only listed inside the open menu.
+    expect(screen.queryByText('My Account')).toBeNull();
+  });
+
+  it("labels the menu button with the member's name when there is one", () => {
+    render(<MemberMenu {...makeProps({user: makeUser({first_name: ' Ada ', last_name: 'Lovelace'})})} />);
+
+    expect(screen.getByRole('button', {name: 'Ada Lovelace'})).toBeInTheDocument();
     expect(screen.queryByText('member@example.com')).toBeNull();
+  });
+
+  it('falls back to the phone, then to "My Account"', () => {
+    const {unmount} = render(
+      <MemberMenu {...makeProps({user: makeUser({email: '', phone: '+12095551234', first_name: '', last_name: ''})})} />,
+    );
+    expect(screen.getByRole('button', {name: '(209) 555-1234'})).toBeInTheDocument();
+    unmount();
+
+    render(<MemberMenu {...makeProps({user: null})} />);
+    expect(screen.getByRole('button', {name: 'My Account'})).toBeInTheDocument();
   });
 
   it('renders the profile image when available', () => {
@@ -72,16 +90,16 @@ describe('MemberMenu', () => {
   });
 
   it('lists who is signed in inside the open menu', () => {
-    render(<MemberMenu {...makeProps({isOpen: true})} />);
+    const {container} = render(<MemberMenu {...makeProps({isOpen: true})} />);
     expect(screen.getByText('Signed in as')).toBeInTheDocument();
-    expect(screen.getByText('member@example.com')).toHaveClass('member-name');
+    expect(container.querySelector('.member-dropdown .member-name')).toHaveTextContent('member@example.com');
   });
 
   it('falls back to the formatted phone number when there is no email', () => {
     const user = makeUser({email: '', phone: '+12025550123'});
-    render(<MemberMenu {...makeProps({user, isOpen: true})} />);
+    const {container} = render(<MemberMenu {...makeProps({user, isOpen: true})} />);
 
-    expect(screen.getByText('(202) 555-0123')).toBeInTheDocument();
+    expect(container.querySelector('.member-dropdown .member-name')).toHaveTextContent('(202) 555-0123');
   });
 
   it('falls back to "Member" when there is no email or phone', () => {
@@ -114,7 +132,7 @@ describe('MemberMenu', () => {
       'is-open',
     );
 
-    const button = screen.getByRole('button', {name: 'My Account'});
+    const button = screen.getByRole('button', {name: 'member@example.com'});
     expect(button).toHaveAttribute('aria-expanded', 'true');
     expect(button).toHaveAttribute('aria-controls', 'member-dropdown');
     fireEvent.click(button);
@@ -130,7 +148,7 @@ describe('MemberMenu', () => {
     fireEvent.keyDown(account, {key: 'Escape'});
 
     expect(props.onClose).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', {name: 'My Account'})).toHaveFocus();
+    expect(screen.getByRole('button', {name: 'member@example.com'})).toHaveFocus();
   });
 
   it('closes when focus leaves the member area', () => {

@@ -50,6 +50,8 @@ class PhoneAuthLoginTests(APITestCase):
         self.assertEqual(response.data["message"], "Login successful.")
         self.assertEqual(response.data["user"]["member_uuid"], str(self.member.id))
         self.assertEqual(response.data["user"]["phone"], "+12025550123")
+        # The site header labels the account menu with the name.
+        self.assertEqual((response.data["user"]["first_name"], response.data["user"]["last_name"]), ("Jo", "Doe"))
         self.assertEqual(Member.objects.count(), before)
         # Member already has a name, so no profile completion is required.
         self.assertFalse(response.data["requires_profile_completion"])

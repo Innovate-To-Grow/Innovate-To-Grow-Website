@@ -15,7 +15,19 @@ export const updateProfileFields = async (data: {
   title?: string;
   email_subscribe?: boolean;
 }): Promise<ProfileResponse> => {
+  const session = getStoredSession();
   const response = await authApi.patch<ProfileResponse>('/authn/profile/', data);
+  // The header's account button shows the member's name; keep the stored copy current and tell
+  // the other React roots (the menu) to re-read it.
+  if (
+    session &&
+    updateStoredUser(
+      (user) => ({...user, first_name: response.data.first_name, last_name: response.data.last_name}),
+      session.generation,
+    )
+  ) {
+    window.dispatchEvent(new Event('i2g-auth-state-change'));
+  }
   return response.data;
 };
 

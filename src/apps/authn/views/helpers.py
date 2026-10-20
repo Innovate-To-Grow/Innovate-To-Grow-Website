@@ -75,6 +75,9 @@ def build_auth_success_payload(
             "email": member.get_primary_email(),
             "phone": member.get_primary_phone(),
             "is_staff": member.is_staff,
+            # The site header labels the account menu with the member's name.
+            "first_name": member.first_name,
+            "last_name": member.last_name,
         },
         "next_step": resolved_next_step,
         "requires_profile_completion": resolved_requires_profile_completion,
