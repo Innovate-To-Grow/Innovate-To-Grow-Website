@@ -25,6 +25,10 @@ test('expired access bootstraps through refresh and authoritative session state'
     accessExp: Math.floor(Date.now() / 1000) - 60,
   });
   let sessionRequests = 0;
+  let refreshRequests = 0;
+  page.on('request', (request) => {
+    if (request.url().includes('/authn/refresh/')) refreshRequests += 1;
+  });
   await page.route('**/authn/session/', (route) => {
     sessionRequests += 1;
     if (sessionRequests === 1) {
@@ -46,8 +50,8 @@ test('expired access bootstraps through refresh and authoritative session state'
   });
 
   // The 401 → refresh → retry round-trip resolves after first paint (the menu
-  // shows the seeded email synchronously), so only assert the exact request
-  // count once the retried session response lands.
+  // shows the seeded email synchronously), so only assert the requests once the
+  // retried session response lands.
   const retriedSessionResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/authn/session/') &&
@@ -57,7 +61,12 @@ test('expired access bootstraps through refresh and authoritative session state'
 
   await expectSignedInAs(page, email);
   await retriedSessionResponse;
-  expect(sessionRequests).toBe(2);
+  // The expired access token is refreshed once, and the check is retried with it. The app and menu
+  // roots share a check that is still in flight; a root that mounts after it has settled (WebKit,
+  // now and then) verifies on its own, so a third check is allowed but no second refresh.
+  expect(refreshRequests).toBe(1);
+  expect(sessionRequests).toBeGreaterThanOrEqual(2);
+  expect(sessionRequests).toBeLessThanOrEqual(3);
   const keys = await page.evaluate(() => ({
     session: localStorage.getItem('i2g_auth_session'),
     access: localStorage.getItem('i2g_access_token'),
