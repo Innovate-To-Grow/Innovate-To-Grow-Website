@@ -271,7 +271,7 @@ class PastProjectShareListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PastProjectShare
-        fields = ["id", "name", "note", "version", "share_url", "row_count", "created_at"]
+        fields = ["id", "name", "note", "version", "share_url", "row_count", "created_at", "updated_at"]
 
     def get_share_url(self, obj):
         return _share_url(obj, self.context.get("request"))
