@@ -2,7 +2,7 @@ import {type FocusEvent, type KeyboardEvent, type MouseEvent} from 'react';
 import {type User} from '@/features/auth/api/types';
 import {formatE164ForDisplay} from '@/features/auth/components/sections/internal/phoneInput';
 import {Icon} from '@/components/Icon/Icon';
-import {memberDisplayName} from './shared';
+import {memberButtonLabel, memberDisplayName} from './shared';
 
 interface MemberMenuProps {
   user: User | null;
@@ -49,6 +49,8 @@ export const MemberMenu = ({
     }
   };
 
+  const label = memberButtonLabel(user, formatE164ForDisplay);
+
   return (
     <div
       className={`site-header-member${hasMemberIdentity ? ' is-authenticated' : ''}${isOpen ? ' is-open' : ''}`}
@@ -64,10 +66,11 @@ export const MemberMenu = ({
             className="member-button authenticated"
             aria-expanded={isOpen}
             aria-controls="member-dropdown"
+            title={label}
             onClick={onToggle}
           >
             {user?.profile_image ? <img src={user.profile_image} alt="" className="member-avatar" /> : null}
-            <span className="member-label">My Account</span>
+            <span className="member-label">{label}</span>
             <Icon name="angle-down" className="member-arrow" />
           </button>
           {isOpen && (

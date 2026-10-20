@@ -175,6 +175,8 @@ const normalizeSessionUser = (
       typeof candidate.is_staff === 'boolean'
         ? candidate.is_staff
         : fallback.is_staff,
+    first_name: readOptionalString(candidate, 'first_name', fallback.first_name),
+    last_name: readOptionalString(candidate, 'last_name', fallback.last_name),
   };
 
   const nestedRequires = candidate.requires_profile_completion;

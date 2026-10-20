@@ -35,3 +35,15 @@ export const memberDisplayName = (
   user: {email?: string | null; phone?: string | null} | null,
   formatPhone: (phone: string) => string,
 ) => user?.email || formatPhone(user?.phone ?? '') || 'Member';
+
+/**
+ * The header's account button: the member's name, else their email (or phone), as the menu's
+ * "Signed in as" line reads.
+ */
+export const memberButtonLabel = (
+  user: {first_name?: string; last_name?: string; email?: string | null; phone?: string | null} | null,
+  formatPhone: (phone: string) => string,
+) => {
+  const name = [user?.first_name, user?.last_name].map((part) => part?.trim()).filter(Boolean).join(' ');
+  return name || user?.email || formatPhone(user?.phone ?? '') || 'My Account';
+};

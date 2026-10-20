@@ -453,7 +453,8 @@ describe('auth session lifecycle', () => {
 
     expect(updateStoredSessionProfile).toHaveBeenCalledWith(
       {generation: 'generation-a', refresh: 'refresh-token'},
-      expect.objectContaining({member_uuid: 'member-a'}),
+      // The header's account button shows the name, so the stored user carries it.
+      expect.objectContaining({member_uuid: 'member-a', first_name: 'Ada', last_name: 'Lovelace'}),
       false,
     );
     expect(result).toMatchObject({status: 'verified'});
