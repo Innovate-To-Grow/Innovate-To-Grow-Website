@@ -1,0 +1,70 @@
+/* My Curations: the member's saved curations, above the builder.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- My Curations: the member's saved curations, above the builder -------- */
+
+.past-projects-my-curations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.past-projects-my-curations-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+/* h3 size: a panel above the builder's own h2 sections, not one of them. */
+.past-projects-my-curations-title {
+  margin: 0;
+  font-size: var(--itg-font-size-h3);
+}
+
+.past-projects-my-curations-hint,
+.past-projects-my-curations-status {
+  margin: 0;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
+.past-projects-my-curations-status:empty {
+  display: none;
+}
+
+.past-projects-my-curations-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.past-projects-my-curation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--itg-color-border);
+}
+
+.past-projects-my-curation-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.past-projects-my-curation-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.past-projects-my-curation-sub {
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}

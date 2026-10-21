@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import {createProjectGridFingerprint, getPastProjectDetailUrl, type ProjectGridRow} from './projectGrid';
+import {createProjectGridFingerprint, getPastProjectDetailUrl, type ProjectGridRow} from '../projectGrid';
 
 const RICH_DETAIL_ALLOWED_TAGS = ['br', 'div', 'p', 'b', 'strong', 'i', 'em', 'u', 'mark', 'a'];
 // The per-project marker attribute lets a re-insert append only projects not already present

@@ -1,0 +1,177 @@
+/* Saved Merged Results and its "Share this list" panel.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Saved Merged Results ---------------------------------------------------- */
+
+.project-grid-merged {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.project-grid-card-count {
+  margin: 0;
+}
+
+.project-grid-card-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+}
+
+/* The builder's save at the top of the card, with a line saying the list is not saved yet. */
+.project-grid-save-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.project-grid-draft-note {
+  margin: 0;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-merged > .project-grid-card-header {
+  align-items: flex-start;
+}
+
+.project-grid-merged .project-grid-controls.itg-well {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.project-grid-merged .project-grid-table-wrap {
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-page);
+}
+
+.project-grid-merged .project-grid-mobile-cards {
+  background: var(--itg-color-bg-page);
+}
+
+/* The disclosure that folds the saved list away on phones; wider screens always show the list. */
+.project-grid-phone-list-toggle {
+  display: none;
+}
+
+.project-grid-narrowed-hint {
+  margin: 0;
+}
+
+.project-grid-status {
+  margin: 0;
+  color: var(--itg-color-primary);
+}
+
+/* ---- Share this list -------------------------------------------------------- */
+
+.project-grid-share {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+/* h3: 24px navy, like every h3 on the reference. */
+.project-grid-share-title {
+  margin: 0;
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+  color: var(--itg-color-primary);
+}
+
+/* The name on its own row, the note under it at the card's full width. */
+.project-grid-share-fields {
+  display: grid;
+  gap: 1rem;
+}
+
+.project-grid-share-name {
+  max-width: 40rem;
+}
+
+.project-grid-share-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+/* Field labels as on the reference's forms: 16px, normal weight, body colour. */
+.project-grid-share-note-label {
+  font-weight: 400;
+  color: var(--itg-color-text);
+}
+
+.project-grid-label-hint {
+  font-weight: 400;
+  color: var(--itg-color-text-secondary);
+}
+
+/* Field hints (.itg-field-hint): 14px / 21px grey. */
+.project-grid-share-name-hint {
+  margin: 0;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 1rem;
+}
+
+.project-grid-share-actions-note,
+.project-grid-share-pending {
+  margin: 0;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-share-login-hint {
+  margin: 0;
+}
+
+/* Note insert tools under the curation note. */
+.project-grid-note-insert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+}
+
+.project-grid-note-insert-menu {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-page);
+}
+
+.project-grid-note-insert-menu-title {
+  padding: 0 0.25rem;
+  font-weight: 700;
+  color: var(--itg-color-text);
+}
+
+.project-grid-note-insert-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+}
+
+.project-grid-note-insert-option input {
+  accent-color: var(--itg-color-primary);
+}

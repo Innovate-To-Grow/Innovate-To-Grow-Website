@@ -11,7 +11,7 @@ import {
   replaceRangeWithoutMatchingFormatting,
   unwrapMatchingElements,
   wrapRangeWithFormatting,
-} from '@/features/projects/components/richTextEditorDom';
+} from '@/features/projects/components/richText/richTextEditorDom';
 
 function makeEditor(html: string): HTMLElement {
   const editor = document.createElement('div');

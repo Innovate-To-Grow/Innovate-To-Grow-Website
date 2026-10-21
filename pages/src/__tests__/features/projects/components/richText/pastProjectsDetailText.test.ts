@@ -9,7 +9,7 @@ import {
     plainTextToPastProjectsDetailHtml,
     sanitizePastProjectsDetailHtml,
     stripPastProjectsDetailMarkup,
-} from '@/features/projects/components/pastProjectsDetailText';
+} from '@/features/projects/components/richText/pastProjectsDetailText';
 import type {ProjectGridRow} from '@/features/projects/components/projectGrid';
 
 const makeRow = (overrides: Partial<ProjectGridRow> = {}): ProjectGridRow => ({

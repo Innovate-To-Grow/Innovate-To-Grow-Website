@@ -1,4 +1,4 @@
-import {useCopyLink} from '../../hooks/useCopyLink';
+import {useCopyLink} from '@/hooks/useCopyLink';
 import {useProjectGridDetails} from '../../hooks/useProjectGridDetails';
 import {getProjectGridRowHref, type ProjectGridLinkScope, type ProjectGridRow} from '../projectGrid';
 import {ProjectPageLink} from './ProjectTitleWithChips';

@@ -22,32 +22,42 @@ interface SaveWording {
   retryLabel: string;
 }
 
+const wasWere = (count: number) => (count === 1 ? 'was' : 'were');
+const isAre = (count: number) => (count === 1 ? 'is' : 'are');
+
+const alreadySavedSentence = ({added, alreadySaved, failed, unavailable}: SaveCounts, wording: SaveWording) =>
+  added || failed || unavailable
+    ? `${pluralize(alreadySaved, 'project')} ${wasWere(alreadySaved)} already ${wording.already}.`
+    : `${alreadySaved === 1 ? 'That project is' : 'Those projects are'} already ${wording.place}.`;
+
+const saveTone = ({added, failed, unavailable}: SaveCounts): SearchTableSaveResult['tone'] => {
+  if (failed || (unavailable && !added)) return 'error';
+  return added ? 'success' : 'info';
+};
+
 export const describeSaveResult = (
-  {added, alreadySaved, failed, unavailable}: SaveCounts,
-  {added: addedText, already, place, retryLabel}: SaveWording,
+  counts: SaveCounts,
+  wording: SaveWording,
 ): Pick<SearchTableSaveResult, 'tone' | 'message'> => {
+  const {added, alreadySaved, failed, unavailable} = counts;
   const parts: string[] = [];
   if (added) {
-    parts.push(`${pluralize(added, 'project')} ${addedText}`);
+    parts.push(`${pluralize(added, 'project')} ${wording.added}`);
   }
   if (alreadySaved) {
-    parts.push(
-      added || failed || unavailable
-        ? `${pluralize(alreadySaved, 'project')} ${alreadySaved === 1 ? 'was' : 'were'} already ${already}.`
-        : `${alreadySaved === 1 ? 'That project is' : 'Those projects are'} already ${place}.`,
-    );
+    parts.push(alreadySavedSentence(counts, wording));
   }
   if (unavailable) {
     parts.push(
-      `${pluralize(unavailable, 'project')} ${unavailable === 1 ? 'is' : 'are'} no longer in the archive ` +
-        `and ${unavailable === 1 ? 'was' : 'were'} skipped.`,
+      `${pluralize(unavailable, 'project')} ${isAre(unavailable)} no longer in the archive ` +
+        `and ${wasWere(unavailable)} skipped.`,
     );
   }
   if (failed) {
     parts.push(
-      `${pluralize(failed, 'project')} could not be loaded and ${failed === 1 ? 'is' : 'are'} still selected. ` +
-        `Click ${retryLabel} to try again.`,
+      `${pluralize(failed, 'project')} could not be loaded and ${isAre(failed)} still selected. ` +
+        `Click ${wording.retryLabel} to try again.`,
     );
   }
-  return {tone: failed || (unavailable && !added) ? 'error' : added ? 'success' : 'info', message: parts.join(' ')};
+  return {tone: saveTone(counts), message: parts.join(' ')};
 };

@@ -219,6 +219,21 @@ export const getProjectGridSearchValue = (row: ProjectGridRow) =>
     .join(' ')
     .toLowerCase();
 
+const compareText = (left: string, right: string) =>
+  left.localeCompare(right, undefined, {numeric: true, sensitivity: 'base'});
+
+/** Chronological (year, then season) when both labels parse, else as text. */
+const compareSemesters = (left: string, right: string) => {
+  const leftSemester = semesterSortKey(left);
+  const rightSemester = semesterSortKey(right);
+  if (!leftSemester || !rightSemester) return compareText(left, right);
+  return (
+    leftSemester.year - rightSemester.year ||
+    leftSemester.seasonRank - rightSemester.seasonRank ||
+    compareText(left, right)
+  );
+};
+
 export const sortProjectGridItems = (
   rows: ProjectGridItem[],
   sortField: ProjectGridColumnKey,
@@ -229,30 +244,14 @@ export const sortProjectGridItems = (
     const leftValue = left[sortField] || '';
     const rightValue = right[sortField] || '';
     let comparison: number;
-
     if (sortField === 'class_code') {
       // "Team number" order: class code, then team number within the class.
-      comparison =
-        leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'}) ||
-        (left.team_number || '').localeCompare(right.team_number || '', undefined, {
-          numeric: true,
-          sensitivity: 'base',
-        });
+      comparison = compareText(leftValue, rightValue) || compareText(left.team_number || '', right.team_number || '');
     } else if (sortField === 'semester_label') {
-      const leftSemester = semesterSortKey(leftValue);
-      const rightSemester = semesterSortKey(rightValue);
-      if (leftSemester && rightSemester) {
-        comparison =
-          leftSemester.year - rightSemester.year ||
-          leftSemester.seasonRank - rightSemester.seasonRank ||
-          leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'});
-      } else {
-        comparison = leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'});
-      }
+      comparison = compareSemesters(leftValue, rightValue);
     } else {
-      comparison = leftValue.localeCompare(rightValue, undefined, {numeric: true, sensitivity: 'base'});
+      comparison = compareText(leftValue, rightValue);
     }
-
     return sortDirection === 'asc' ? comparison : -comparison;
   });
   return sorted;

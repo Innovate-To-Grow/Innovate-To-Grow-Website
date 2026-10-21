@@ -1,7 +1,7 @@
 import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {RichTextDetailEditor} from '@/features/projects/components/RichTextDetailEditor';
+import {RichTextDetailEditor} from '@/features/projects/components/richText/RichTextDetailEditor';
 
 const renderEditor = (value: string, onChange = vi.fn()) => {
     render(<RichTextDetailEditor id="note-editor" label="Note" value={value} onChange={onChange}/>);

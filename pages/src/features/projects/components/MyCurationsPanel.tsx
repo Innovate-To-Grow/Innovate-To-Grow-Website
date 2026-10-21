@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react';
 import {Link} from 'react-router';
 import {PAST_PROJECT_CURATION_SHARED_LINKS_PATH, useAuth} from '@/features/auth';
 import {DEFAULT_PAST_PROJECT_SHARE_NAME, listMyShares, type PastProjectShareSummary} from '@/features/projects/api';
-import {useCopyLink} from '@/features/projects/hooks/useCopyLink';
+import {useCopyLink} from '@/hooks/useCopyLink';
 import {pluralize} from './saveResults';
 
 // The most recently changed curations listed here; the account page lists them all.

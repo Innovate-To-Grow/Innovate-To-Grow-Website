@@ -39,6 +39,67 @@ const concatBytes = (parts: Uint8Array[]) => {
   return output;
 };
 
+// ZIP record signatures, and "version 2.0" (the lowest that supports folders) for made-by / needed-to-extract.
+const LOCAL_FILE_SIGNATURE = 0x04034b50;
+const CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50;
+const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
+const ZIP_VERSION = 20;
+
+/** Local file header: stored (no compression), no timestamp, no extra field. */
+const localFileHeader = (nameBytes: Uint8Array, crc: number, size: number) => {
+  const header = new Uint8Array(30 + nameBytes.length);
+  writeUint32(header, 0, LOCAL_FILE_SIGNATURE);
+  writeUint16(header, 4, ZIP_VERSION);
+  writeUint16(header, 6, 0);
+  writeUint16(header, 8, 0);
+  writeUint16(header, 10, 0);
+  writeUint16(header, 12, 0);
+  writeUint32(header, 14, crc);
+  writeUint32(header, 18, size);
+  writeUint32(header, 22, size);
+  writeUint16(header, 26, nameBytes.length);
+  writeUint16(header, 28, 0);
+  header.set(nameBytes, 30);
+  return header;
+};
+
+/** Central directory entry pointing at the local header written at ``offset``. */
+const centralDirectoryHeader = (nameBytes: Uint8Array, crc: number, size: number, offset: number) => {
+  const header = new Uint8Array(46 + nameBytes.length);
+  writeUint32(header, 0, CENTRAL_DIRECTORY_SIGNATURE);
+  writeUint16(header, 4, ZIP_VERSION);
+  writeUint16(header, 6, ZIP_VERSION);
+  writeUint16(header, 8, 0);
+  writeUint16(header, 10, 0);
+  writeUint16(header, 12, 0);
+  writeUint16(header, 14, 0);
+  writeUint32(header, 16, crc);
+  writeUint32(header, 20, size);
+  writeUint32(header, 24, size);
+  writeUint16(header, 28, nameBytes.length);
+  writeUint16(header, 30, 0);
+  writeUint16(header, 32, 0);
+  writeUint16(header, 34, 0);
+  writeUint16(header, 36, 0);
+  writeUint32(header, 38, 0);
+  writeUint32(header, 42, offset);
+  header.set(nameBytes, 46);
+  return header;
+};
+
+const endOfCentralDirectory = (fileCount: number, directorySize: number, directoryOffset: number) => {
+  const record = new Uint8Array(22);
+  writeUint32(record, 0, END_OF_CENTRAL_DIRECTORY_SIGNATURE);
+  writeUint16(record, 4, 0);
+  writeUint16(record, 6, 0);
+  writeUint16(record, 8, fileCount);
+  writeUint16(record, 10, fileCount);
+  writeUint32(record, 12, directorySize);
+  writeUint32(record, 16, directoryOffset);
+  writeUint16(record, 20, 0);
+  return record;
+};
+
 /** Build a minimal stored (uncompressed) ZIP — enough for a valid .docx OOXML package. */
 export const createStoredZip = (files: Array<{name: string; content: string | Uint8Array}>) => {
   const localParts: Uint8Array[] = [];
@@ -49,57 +110,12 @@ export const createStoredZip = (files: Array<{name: string; content: string | Ui
     const nameBytes = textEncoder.encode(file.name);
     const contentBytes = typeof file.content === 'string' ? textEncoder.encode(file.content) : file.content;
     const crc = getCrc32(contentBytes);
-
-    const localHeader = new Uint8Array(30 + nameBytes.length);
-    writeUint32(localHeader, 0, 0x04034b50);
-    writeUint16(localHeader, 4, 20);
-    writeUint16(localHeader, 6, 0);
-    writeUint16(localHeader, 8, 0);
-    writeUint16(localHeader, 10, 0);
-    writeUint16(localHeader, 12, 0);
-    writeUint32(localHeader, 14, crc);
-    writeUint32(localHeader, 18, contentBytes.length);
-    writeUint32(localHeader, 22, contentBytes.length);
-    writeUint16(localHeader, 26, nameBytes.length);
-    writeUint16(localHeader, 28, 0);
-    localHeader.set(nameBytes, 30);
-
+    const localHeader = localFileHeader(nameBytes, crc, contentBytes.length);
     localParts.push(localHeader, contentBytes);
-
-    const centralHeader = new Uint8Array(46 + nameBytes.length);
-    writeUint32(centralHeader, 0, 0x02014b50);
-    writeUint16(centralHeader, 4, 20);
-    writeUint16(centralHeader, 6, 20);
-    writeUint16(centralHeader, 8, 0);
-    writeUint16(centralHeader, 10, 0);
-    writeUint16(centralHeader, 12, 0);
-    writeUint16(centralHeader, 14, 0);
-    writeUint32(centralHeader, 16, crc);
-    writeUint32(centralHeader, 20, contentBytes.length);
-    writeUint32(centralHeader, 24, contentBytes.length);
-    writeUint16(centralHeader, 28, nameBytes.length);
-    writeUint16(centralHeader, 30, 0);
-    writeUint16(centralHeader, 32, 0);
-    writeUint16(centralHeader, 34, 0);
-    writeUint16(centralHeader, 36, 0);
-    writeUint32(centralHeader, 38, 0);
-    writeUint32(centralHeader, 42, offset);
-    centralHeader.set(nameBytes, 46);
-    centralParts.push(centralHeader);
-
+    centralParts.push(centralDirectoryHeader(nameBytes, crc, contentBytes.length, offset));
     offset += localHeader.length + contentBytes.length;
   });
 
   const centralDirectory = concatBytes(centralParts);
-  const endRecord = new Uint8Array(22);
-  writeUint32(endRecord, 0, 0x06054b50);
-  writeUint16(endRecord, 4, 0);
-  writeUint16(endRecord, 6, 0);
-  writeUint16(endRecord, 8, files.length);
-  writeUint16(endRecord, 10, files.length);
-  writeUint32(endRecord, 12, centralDirectory.length);
-  writeUint32(endRecord, 16, offset);
-  writeUint16(endRecord, 20, 0);
-
-  return concatBytes([...localParts, centralDirectory, endRecord]);
+  return concatBytes([...localParts, centralDirectory, endOfCentralDirectory(files.length, centralDirectory.length, offset)]);
 };

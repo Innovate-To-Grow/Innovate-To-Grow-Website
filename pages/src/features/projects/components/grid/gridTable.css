@@ -1,0 +1,271 @@
+/* The desktop project table: sortable headers, row shading, detail buttons, open-row details.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Desktop table ------------------------------------------------------------ */
+
+.project-grid-table-wrap {
+  overflow-x: auto;
+}
+
+.project-grid-table {
+  min-width: 40rem;
+}
+
+.project-grid-table thead th {
+  white-space: nowrap;
+}
+
+/* Sortable headers: DataTables' 19px sort_both / sort_asc / sort_desc images redrawn as SVG (#dcdcdc double
+   arrow; the sorted column's one arrow in #7a80dd) at the right edge. The whole header cell is the sort button. */
+.project-grid-table thead th.project-grid-sortable {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9zM5 10l4.5 6.5 4.5-6.5z' fill='%23dcdcdc'/%3E%3C/svg%3E");
+  background-position: right center;
+  background-repeat: no-repeat;
+}
+
+.project-grid-table thead th.is-sorted-asc {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9z' fill='%237a80dd'/%3E%3C/svg%3E");
+}
+
+.project-grid-table thead th.is-sorted-desc {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 10l4.5 6.5 4.5-6.5z' fill='%237a80dd'/%3E%3C/svg%3E");
+}
+
+.project-grid-sort-button {
+  display: block;
+  box-sizing: content-box;
+  width: 100%;
+  margin: -10px -18px;
+  padding: 10px 18px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Row shading, as DataTables does it: the stripes count the project rows only (an open row's details do not
+   shift them), the sorted column is shaded ("sorting_1": #f1f1f1 on striped rows, #fafafa on the others), an
+   open row is the reference's "shown" row (bold #162d4f on #f6f6f6, sorted column #eaeaea, a 1px #ccc rule
+   under it) with its details on white below, and a checked row is #fff6db. */
+.project-grid-table tbody > tr.project-grid-row > td {
+  background: transparent;
+}
+
+.project-grid-table tbody > tr.project-grid-row.is-odd > td {
+  background: #f9f9f9;
+}
+
+.project-grid-table tbody > tr.project-grid-row > td.is-sorted-col {
+  background: #fafafa;
+}
+
+.project-grid-table tbody > tr.project-grid-row.is-odd > td.is-sorted-col {
+  background: #f1f1f1;
+}
+
+.project-grid-table tbody > tr.project-grid-row.is-expanded > td {
+  border-bottom: 1px solid #cccccc;
+  background: #f6f6f6;
+  color: #162d4f;
+  font-weight: 700;
+}
+
+.project-grid-table tbody > tr.project-grid-row.is-expanded > td.is-sorted-col {
+  background: #eaeaea;
+}
+
+.project-grid-table tbody > tr.project-grid-detail-row > td {
+  background: var(--itg-color-white);
+}
+
+.project-grid-table tbody > tr.project-grid-row.is-selected > td,
+.project-grid-table tbody > tr.project-grid-row.is-selected > td.is-sorted-col {
+  background: var(--itg-color-highlight);
+}
+
+.project-grid-table .project-grid-select-col {
+  width: 2.75rem;
+}
+
+.project-grid-table th.project-grid-select-col,
+.project-grid-table td.project-grid-select-col {
+  padding: 8px 10px;
+}
+
+.project-grid-table .project-grid-select-col input,
+.project-grid-mobile-card-select input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  vertical-align: middle;
+  accent-color: var(--itg-color-primary);
+}
+
+.project-grid-table .project-grid-col-class_code {
+  width: 5.75rem;
+  white-space: nowrap;
+}
+
+.project-grid-table .project-grid-col-semester_label {
+  width: 7.5rem;
+}
+
+.project-grid-table .project-grid-col-organization {
+  width: 22%;
+}
+
+.project-grid-table .project-grid-col-industry {
+  width: 15%;
+}
+
+/* "Details" column: a plain header, the navy square button centred under it (and "Remove" in curated lists). */
+.project-grid-table .project-grid-actions-col {
+  width: 6.25rem;
+}
+
+.project-grid-table.has-remove .project-grid-actions-col {
+  width: 8.5rem;
+}
+
+.project-grid-table td.project-grid-actions-col {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.project-grid-table td.project-grid-actions-col .project-grid-delete-button {
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* The reference's details_open.png / details_close.png: a 35px #162d4f square with a 2px bevel (lighter top and
+   left edge, darker bottom and right edge) and a light hollow arrow, down to open and up to close. */
+.project-grid-detail-icon-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 35px;
+  height: 35px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #162d4f;
+  box-shadow: inset 2px 2px 0 #48566c, inset -2px -2px 0 #041329;
+  color: #e3e5ea;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast) ease-in-out;
+}
+
+.project-grid-detail-icon-button:hover,
+.project-grid-detail-icon-button:focus-visible {
+  background: var(--itg-color-primary-hover);
+}
+
+.project-grid-detail-icon {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin-left: -1px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.project-grid-detail-icon-button[aria-expanded='true'] .project-grid-detail-icon {
+  transform: rotate(180deg);
+}
+
+.project-grid-term,
+.project-grid-team-code {
+  display: block;
+}
+
+td.project-grid-col-semester_label {
+  white-space: nowrap;
+}
+
+.project-grid-title-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+/* Titles read as the reference's content links: navy, underlined, normal weight; hover #005487 without the
+   underline. A title without a page is plain text. */
+.project-grid-title {
+  font-weight: 400;
+}
+
+/* The open row is bold throughout, its title included. */
+.project-grid-row.is-expanded .project-grid-title {
+  font-weight: 700;
+}
+
+a.project-grid-title-link {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+a.project-grid-title-link:hover,
+a.project-grid-title-link:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.project-grid-team-name {
+  display: block;
+  font-style: italic;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-no-details {
+  font-size: var(--itg-font-size-small);
+  color: var(--itg-color-disabled-text);
+}
+
+/* The details under an open row: on white, below the open row's #ccc rule, spaced like the reference's child
+   row (its 8px cell padding plus the 8px padding of the table inside it). */
+.project-grid-table .project-grid-detail-row > td {
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-top: 0;
+}
+
+.project-grid-detail-content,
+.project-grid-mobile-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  line-height: var(--itg-line-height-body);
+}
+
+.project-grid-detail-content p,
+.project-grid-mobile-card-details p {
+  margin: 0;
+}
+
+.project-grid-detail-state {
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-detail-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 1.25rem;
+}
+
+.project-grid-copy-status {
+  color: var(--itg-color-success);
+}
+
+/* Tags after a title: "New" (just saved) and "Saved" (already in the list). */
+.project-grid-row-chip {
+  white-space: nowrap;
+}

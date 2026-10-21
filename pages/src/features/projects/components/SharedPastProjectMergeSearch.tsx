@@ -1,36 +1,13 @@
-import {useCallback, useEffect, useId, useMemo, useRef, useState} from 'react';
+import {useId, useMemo, useState} from 'react';
 import {useAuth} from '@/features/auth';
-import {buildLoginPath} from '@/features/auth/api/redirects';
-import {
-  hydrateProjectGridRowsSettled,
-  needsProjectGridHydration,
-  searchPastProjectsWithAI,
-  toProjectGridRow,
-} from '@/features/projects/api';
-import {PastProjectsAIStatus} from './builder/PastProjectsAIStatus';
-import {PastProjectsAISearchForm} from './builder/PastProjectsAISearchForm';
+import {AISearchLoginDialog} from './builder/AISearchLoginDialog';
 import {PastProjectsActionBar} from './builder/PastProjectsActionBar';
-import {PastProjectsDialog} from './builder/PastProjectsDialog';
-import {SearchTableCard, type SearchTableSaveHelpers, type SearchTableSaveResult} from './SearchTableCard';
 import {createProjectGridRowMatcher, type ProjectGridRow} from './projectGrid';
-import {describeSaveResult} from './saveResults';
+import {SearchTableStack} from './search/SearchTableStack';
+import {useSearchTables} from './search/useSearchTables';
+import {useAddToShare} from './shared/useAddToShare';
 
-const INITIAL_SEARCH_TABLE: SearchTableState = {id: 'shared-search-table-1', type: 'standard'};
-const AI_SEARCH_LIMIT = 10;
-
-const createAISearchTableTitle = (query: string) => {
-  const normalized = query.trim().replace(/\s+/g, ' ');
-  const clipped = normalized.length > 54 ? `${normalized.slice(0, 51).trim()}...` : normalized;
-  return `AI Search Table: ${clipped}`;
-};
-
-// The share API refuses more rows than this (PastProjectShareSerializer.validate_rows).
-const MAX_SHARED_ROWS = 1000;
-
-const getAISearchErrorMessage = (error: unknown) => {
-  const payload = (error as {response?: {data?: {detail?: string; message?: string}}}).response?.data;
-  return payload?.detail || payload?.message || 'AI search is unavailable right now. Please try again.';
-};
+const TABLE_ID_PREFIX = 'shared-search-table';
 
 interface SharedPastProjectMergeSearchProps {
   currentRows: ProjectGridRow[];
@@ -42,17 +19,7 @@ interface SharedPastProjectMergeSearchProps {
   onRefreshRows?: () => void;
 }
 
-interface SearchTableState {
-  id: string;
-  initialRows?: ProjectGridRow[];
-  isLoading?: boolean;
-  message?: string;
-  messageTone?: 'error' | 'loading' | 'success';
-  rowsResetKey?: number;
-  title?: string;
-  type: 'standard' | 'ai';
-}
-
+/** On a shared page its owner can edit: search the full archive and add more projects to it. */
 export const SharedPastProjectMergeSearch = ({
   currentRows,
   error,
@@ -63,233 +30,24 @@ export const SharedPastProjectMergeSearch = ({
 }: SharedPastProjectMergeSearchProps) => {
   const {isAuthenticated} = useAuth();
   const headingId = useId();
-  const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [INITIAL_SEARCH_TABLE]);
   const [builderMessage, setBuilderMessage] = useState('');
   const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const saveControllers = useRef(new Set<AbortController>());
-  const tableSequence = useRef(1);
-  const pendingRefreshTableId = useRef<string | null>(null);
-  const lastSeenRows = useRef(rows);
 
   // Matches on project id as well as content: a compact archive row never has the fingerprint of the hydrated
   // copy of the same project already in this share, which would otherwise be offered (and added) again.
   const isAlreadyShared = useMemo(() => createProjectGridRowMatcher(currentRows).has, [currentRows]);
-  const availableRows = useMemo(
-    () => rows.filter((row) => !isAlreadyShared(row)),
-    [isAlreadyShared, rows],
-  );
-  const hasAISearchTable = searchTables.some((table) => table.type === 'ai');
-  const standardSearchTableIds = searchTables.filter((table) => table.type === 'standard').map((table) => table.id);
-  const standardSearchTableCount = standardSearchTableIds.length;
-
-  const handleAddSearchTable = () => {
-    tableSequence.current += 1;
-    const id = `shared-search-table-${tableSequence.current}`;
-    setSearchTables((current) => [...current, {id, type: 'standard'}]);
-    setBuilderMessage('');
-  };
-
-  const handleAddAISearchTable = () => {
-    if (!isAuthenticated) {
-      setIsAISearchLoginDialogOpen(true);
-      return;
-    }
-
-    if (hasAISearchTable) {
-      return;
-    }
-
-    tableSequence.current += 1;
-    const id = `shared-search-table-${tableSequence.current}`;
-    setSearchTables((current) => [
-      ...current,
-      {
-        id,
-        initialRows: [],
-        rowsResetKey: 0,
-        title: 'AI Search Table',
-        type: 'ai',
-      },
-    ]);
-    setBuilderMessage('');
-  };
-
-  const updateSearchTable = (tableId: string, update: (table: SearchTableState) => SearchTableState) => {
-    setSearchTables((current) => current.map((table) => (table.id === tableId ? update(table) : table)));
-  };
-
-  const handleAISearch = async (tableId: string, query: string) => {
-    if (!isAuthenticated) {
-      return;
-    }
-
-    updateSearchTable(tableId, (table) => ({
-      ...table,
-      isLoading: true,
-      message: 'Searching past projects with AI...',
-      messageTone: 'loading',
-    }));
-    try {
-      const response = await searchPastProjectsWithAI(query, AI_SEARCH_LIMIT);
-      if (!response.available) {
-        updateSearchTable(tableId, (table) => ({
-          ...table,
-          isLoading: false,
-          message: response.message || 'AI search is unavailable right now.',
-          messageTone: 'error',
-        }));
-        return;
-      }
-
-      const aiRows = response.results
-        .map(toProjectGridRow)
-        .filter((row) => !isAlreadyShared(row));
-
-      if (!aiRows.length) {
-        updateSearchTable(tableId, (table) => ({
-          ...table,
-          isLoading: false,
-          message: response.results.length
-            ? 'AI found projects that are already in this shared result.'
-            : 'AI search did not find matching past projects.',
-          messageTone: 'error',
-        }));
-        return;
-      }
-
-      updateSearchTable(tableId, (table) => ({
-        ...table,
-        initialRows: aiRows,
-        isLoading: false,
-        message: `${aiRows.length} AI result${aiRows.length === 1 ? '' : 's'} loaded into this table.`,
-        messageTone: 'success',
-        rowsResetKey: (table.rowsResetKey ?? 0) + 1,
-        title: createAISearchTableTitle(response.query || query),
-      }));
-      setBuilderMessage('');
-    } catch (err) {
-      updateSearchTable(tableId, (table) => ({
-        ...table,
-        isLoading: false,
-        message: getAISearchErrorMessage(err),
-        messageTone: 'error',
-      }));
-    }
-  };
-
-  const handleRemoveSearchTable = (tableId: string) => {
-    setSearchTables((current) => current.filter((table) => table.id !== tableId));
-  };
-
-  // Refresh is per-table: the refetch keeps serving stale rows (so the stack stays mounted and
-  // every other table keeps its local curation), and once the fresh archive lands as a new `rows`
-  // array, only the table that asked is reset — via its resetKey — with the new data. The card stays
-  // mounted, so an add it has running still reports its outcome there.
-  useEffect(() => {
-    if (rows === lastSeenRows.current) {
-      return;
-    }
-    lastSeenRows.current = rows;
-    const tableId = pendingRefreshTableId.current;
-    if (!tableId) {
-      return;
-    }
-    pendingRefreshTableId.current = null;
-    setSearchTables((current) =>
-      current.map((table) =>
-        table.id === tableId ? {...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1} : table,
-      ),
-    );
-    setBuilderMessage('Search table refreshed from the latest past-project archive.');
-  }, [rows]);
-
-  const handleRefreshSearchTable = useCallback(
-    (tableId: string) => {
-      pendingRefreshTableId.current = tableId;
-      onRefreshRows?.();
-      setBuilderMessage('Refreshing this full-archive search table from the latest past-project data...');
-    },
-    [onRefreshRows],
-  );
-
-  // Leaving the page cancels the detail requests of an add still in flight.
-  useEffect(() => {
-    const controllers = saveControllers.current;
-    return () => {
-      controllers.forEach((controller) => controller.abort());
-      controllers.clear();
-    };
-  }, []);
-
-  // Save = add a single search table's checked rows into the shared result. Projects already in the
-  // shared result (by id or fingerprint) are skipped so each project is stored once. The outcome is
-  // reported inside the table that added them.
-  const handleMergeSelected = useCallback(
-    async (selected: ProjectGridRow[], {reportProgress}: SearchTableSaveHelpers): Promise<SearchTableSaveResult> => {
-      // Projects already shared need no detail request.
-      const toAdd = selected.flatMap((row, index) => (isAlreadyShared(row) ? [] : [index]));
-      if (currentRows.length + toAdd.length > MAX_SHARED_ROWS) {
-        return {
-          tone: 'error',
-          message: `A shared page can include at most ${MAX_SHARED_ROWS} projects. Select fewer projects and try again.`,
-        };
-      }
-
-      const controller = new AbortController();
-      saveControllers.current.add(controller);
-      setIsSaving(true);
-      setBuilderMessage('');
-      try {
-        // Archive rows arrive compact, with no abstract or student names. Saving them as they are
-        // would write those fields away as blank for everyone who opens the share, and the detail
-        // endpoint is the only place that content lives. Fill them in first, as the builder does.
-        const pendingRows = toAdd.map((index) => selected[index]);
-        const {rows: loadedRows, failedIndexes, unavailableIndexes} = pendingRows.some(needsProjectGridHydration)
-          ? await hydrateProjectGridRowsSettled(pendingRows, {signal: controller.signal, onProgress: reportProgress})
-          : {rows: pendingRows, failedIndexes: [] as number[], unavailableIndexes: [] as number[]};
-
-        const skipped = new Set([...failedIndexes, ...unavailableIndexes]);
-        const shared = createProjectGridRowMatcher(currentRows);
-        const rowsToAppend: ProjectGridRow[] = [];
-        let alreadyAdded = selected.length - toAdd.length;
-        loadedRows.forEach((row, index) => {
-          if (skipped.has(index)) {
-            return;
-          }
-          if (shared.has(row)) {
-            alreadyAdded += 1;
-            return;
-          }
-          shared.add(row);
-          rowsToAppend.push(row);
-        });
-
-        const appended = rowsToAppend.length ? await onAddRows(rowsToAppend) : 0;
-        const added = typeof appended === 'number' ? appended : rowsToAppend.length;
-        const result = describeSaveResult(
-          {
-            added,
-            alreadySaved: alreadyAdded + (rowsToAppend.length - added),
-            failed: failedIndexes.length,
-            unavailable: unavailableIndexes.length,
-          },
-          {added: 'added.', already: 'in this shared result', place: 'in this shared result', retryLabel: 'Add Selected'},
-        );
-        return {...result, retainedIndexes: failedIndexes.map((index) => toAdd[index])};
-      } catch {
-        // Keep the user's selection so they can retry without re-checking rows.
-        return {
-          tone: 'error',
-          message: 'Unable to add selected projects. They are still selected, so you can try again.',
-        };
-      } finally {
-        saveControllers.current.delete(controller);
-        setIsSaving(false);
-      }
-    },
-    [currentRows, isAlreadyShared, onAddRows],
-  );
+  const availableRows = useMemo(() => rows.filter((row) => !isAlreadyShared(row)), [isAlreadyShared, rows]);
+  const tables = useSearchTables({
+    idPrefix: TABLE_ID_PREFIX,
+    isAuthenticated,
+    rows,
+    onRefreshRows,
+    onMessage: setBuilderMessage,
+    filterAIRows: (aiRows) => aiRows.filter((row) => !isAlreadyShared(row)),
+    allAIRowsFilteredMessage: 'AI found projects that are already in this shared result.',
+    refreshingMessage: 'Refreshing this full-archive search table from the latest past-project data...',
+  });
+  const {isSaving, addSelected} = useAddToShare({currentRows, isAlreadyShared, onAddRows, onMessage: setBuilderMessage});
 
   return (
     <section className="shared-past-project-merge-search past-projects-search-tables" aria-labelledby={headingId}>
@@ -302,25 +60,15 @@ export const SharedPastProjectMergeSearch = ({
         saveLabel="Add Selected"
         saveTarget="this shared page"
         savedLabel="Added"
-        aiSearchDisabled={hasAISearchTable}
+        aiSearchDisabled={tables.hasAISearchTable}
         aiSearchLoginRequired={!isAuthenticated}
-        onAddAISearchTable={handleAddAISearchTable}
-        onAddSearchTable={handleAddSearchTable}
+        onAddAISearchTable={() => {
+          if (!tables.addAISearchTable()) setIsAISearchLoginDialogOpen(true);
+        }}
+        onAddSearchTable={tables.addSearchTable}
       />
 
-      {isAISearchLoginDialogOpen ? (
-        <PastProjectsDialog
-          title="Sign in required"
-          cancelLabel="Close"
-          confirmLabel="Sign In"
-          onCancel={() => setIsAISearchLoginDialogOpen(false)}
-          onConfirm={() => {
-            window.location.href = buildLoginPath(`${window.location.pathname}${window.location.search}`);
-          }}
-        >
-          <p>You need to sign in before using AI search.</p>
-        </PastProjectsDialog>
-      ) : null}
+      {isAISearchLoginDialogOpen ? <AISearchLoginDialog onClose={() => setIsAISearchLoginDialogOpen(false)} /> : null}
 
       {loading ? <p className="project-grid-state">Loading past projects...</p> : null}
       {error ? (
@@ -330,74 +78,29 @@ export const SharedPastProjectMergeSearch = ({
       ) : null}
 
       {!loading && !error ? (
-        <div className="search-table-stack">
-          {searchTables.map((table) => {
-            const isAISearchTable = table.type === 'ai';
-            const title =
-              table.title ??
-              (isAISearchTable
-                ? 'AI Search Table'
-                : standardSearchTableCount === 1
-                  ? 'Search Table'
-                  : `Search Table ${standardSearchTableIds.indexOf(table.id) + 1}`);
-
-            return (
-              <SearchTableCard
-                key={table.id}
-                resetKey={table.rowsResetKey}
-                canRemove={searchTables.length > 1}
-                mergeLabel="Add Selected"
-                mergeVerb="Add"
-                mergingVerb="Adding"
-                mergeDisabled={isSaving}
-                isRowSaved={isAlreadyShared}
-                savedRowLabel="Added"
-                description={
-                  isAISearchTable
-                    ? 'Use AI to load matching past projects into this table, then check the projects you want and click Add Selected.'
-                    : 'Search the full past-project archive for additional projects to add to this shared result.'
-                }
-                emptyMessage={
-                  isAISearchTable
-                    ? 'Run AI search to load projects into this table.'
-                    : undefined
-                }
-                initialRows={table.initialRows ?? availableRows}
-                controlsStatus={
-                  table.message && table.messageTone && table.messageTone !== 'loading' ? (
-                    <PastProjectsAIStatus message={table.message} tone={table.messageTone} />
-                  ) : undefined
-                }
-                searchControl={
-                  isAISearchTable ? (
-                    <PastProjectsAISearchForm
-                      isAuthenticated={isAuthenticated}
-                      loading={Boolean(table.isLoading)}
-                      onSearch={(query) => handleAISearch(table.id, query)}
-                    />
-                  ) : undefined
-                }
-                tableId={table.id}
-                title={title}
-                className={
-                  isAISearchTable
-                    ? `is-ai-search-table${table.rowsResetKey ? ' has-ai-results' : ''}`
-                    : undefined
-                }
-                resultsMotionKey={isAISearchTable ? table.rowsResetKey : undefined}
-                onRemove={handleRemoveSearchTable}
-                onRefresh={isAISearchTable || !onRefreshRows ? undefined : handleRefreshSearchTable}
-                onMergeSelected={handleMergeSelected}
-              />
-            );
-          })}
-
-          {!searchTables.length ? (
-            <p className="project-grid-empty project-grid-empty-shell">
-              No search tables are open. Add a new table to search for more projects.
-            </p>
-          ) : null}
-        </div>
+        <SearchTableStack
+          tables={tables}
+          idPrefix={TABLE_ID_PREFIX}
+          rows={availableRows}
+          isAuthenticated={isAuthenticated}
+          canRefresh={Boolean(onRefreshRows)}
+          cardProps={{
+            mergeLabel: 'Add Selected',
+            mergeVerb: 'Add',
+            mergingVerb: 'Adding',
+            mergeDisabled: isSaving,
+            isRowSaved: isAlreadyShared,
+            savedRowLabel: 'Added',
+            onMergeSelected: addSelected,
+          }}
+          copy={{
+            aiDescription:
+              'Use AI to load matching past projects into this table, then check the projects you want and click Add Selected.',
+            standardDescription:
+              'Search the full past-project archive for additional projects to add to this shared result.',
+            noTablesMessage: 'No search tables are open. Add a new table to search for more projects.',
+          }}
+        />
       ) : null}
     </section>
   );
