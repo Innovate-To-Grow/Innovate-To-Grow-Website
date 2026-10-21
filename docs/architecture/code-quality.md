@@ -184,7 +184,6 @@ types, assets  <  lib  <  hooks, components  <  features  <  routes  <  app (+ m
 
 | Where | Finding | Reason |
 |---|---|---|
-| `python_quality.toml` | `function-lines` `scripts/ci/validate_status_infrastructure.py::validate_observability_and_iam` (121) | This status-page validator was untracked, in-progress work in the tree when these checks landed. It is left to its author, and the entry goes once the function is split. |
 | `python_dependencies.toml` | 5 boundary exceptions, no cycles | See the `reason` of each entry. |
 
 ESLint has no `eslint-disable` exception for a quality rule. The frontend has no directory exception and
@@ -197,15 +196,17 @@ Measured with the counting rules above at the start of the refactor (base `378df
 | Python (advisory / hard) | Before | After |
 |---|---|---|
 | file-lines | 16 / 6 | 1 / 0 |
-| function-lines | 61 / 11 | 1 / 1 (the documented exception) |
+| function-lines | 61 / 11 | 1 / 1 |
 | nesting | 32 / 7 | 1 / 0 |
 | complexity | 33 / 10 | 1 / 0 |
 | directory-files | 4 / 2 | 0 / 0 |
 | app boundary violations / import cycles | 59 / 5 | 0 / 0 unlisted (5 exceptions, no cycles) |
 
-Every Python finding left in the "After" column is in the untracked, in-progress status-page work
-(`scripts/ci/validate_status_infrastructure.py`, `src/apps/core/services/status/client.py`), which is left
-to its author.
+Every Python finding left in the "After" column is in in-progress status-page work that was untracked
+when these checks landed (`scripts/ci/validate_status_infrastructure.py`, `src/apps/core/services/status/`)
+and is not part of the committed tree. `python_quality.toml` has no exception for it, so the hard
+`function-lines` finding (`validate_observability_and_iam`, 121 lines) must be split, or given an
+exception, in the change that commits that work.
 
 | TypeScript (advisory unless noted) | Before | After |
 |---|---|---|

@@ -47,9 +47,3 @@ complexity = [10, 15]
 
 # One entry per accepted hard-limit violation. `key` is printed by the check;
 # `reason` must say why splitting would not make the code easier to maintain.
-
-[[exceptions]]
-key = "function-lines:scripts/ci/validate_status_infrastructure.py::validate_observability_and_iam"
-reason = """In-progress status-page infrastructure validator that was untracked work in the tree when these \
-checks landed; it is left to its author rather than restructured here. Remove this entry once the function \
-is split (one check per alarm / IAM statement group) or the file lands under the limit."""
