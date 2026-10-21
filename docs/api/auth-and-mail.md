@@ -163,7 +163,7 @@ Registration creates or updates an inactive member, sends a registration challen
 - Email must not conflict with an existing active/claimed account; the matching inactive pending registration may be resumed
 - Both password fields are decrypted server-side using the matching RSA key ID, validated, and required to match
 
-**Serializer:** `src/apps/authn/serializers/register.py` (`RegisterSerializer`)
+**Serializer:** `src/apps/authn/serializers/auth/register.py` (`RegisterSerializer`)
 
 ## Login
 

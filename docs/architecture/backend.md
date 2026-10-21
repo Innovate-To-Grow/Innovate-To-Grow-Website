@@ -12,7 +12,10 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 | `event` | Event registration, ticketing, schedule, check-in | `Event`, `EventRegistration`, `Ticket`, `Question`, `CheckIn`, `CheckInRecord`, `CurrentProjectSchedule`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` |
 | `projects` | Past project archives and sharing | `Semester`, `Project`, `PastProjectShare` |
 | `mail` | Email campaigns and delivery | `EmailCampaign`, `RecipientLog`, `LoginLinkToken` |
-| `sponsors` | Sponsor management | Sponsor models |
+| `system_intelligence` | Admin AI assistant (agents, actions, exports), the public assistant and AI search, and the AI platform other apps use (Bedrock client, token budgets, usage log) | `SystemIntelligenceConfig`, `AssistantConversationLog`, `AssistantMessageLog`, `PublicAssistantTokenBudget` |
+| `cli_admin` | OAuth2 + PKCE CRUD API for the `i2g-admin` CLI, built on `core`'s read-only `safe_orm` | `CliAuthorizationCode`, `CliAccessToken`, `CliAuditLog` |
+
+Allowed imports between these apps, and the registration hooks that keep `core` free of business-app imports, are in [Code Quality Rules](code-quality.md#dependency-directions).
 
 ## Base model: ProjectControlModel
 
@@ -26,7 +29,7 @@ ProjectControlModel (abstract)
 └── objects       — ProjectControlManager
 ```
 
-**Manager behavior:** The default `objects` manager uses `ProjectControlQuerySet`. Some models layer additional filtering (e.g., soft-delete exclusion).
+**Manager behavior:** The default `objects` manager uses `ProjectControlQuerySet`. There is no soft delete and no version tracking: deletes are hard.
 
 ### Model mixins
 
@@ -91,7 +94,7 @@ Detailed in [API: Auth & Mail](../api/auth-and-mail.md). Summary:
 ## Assistant, AI search and page-view limits
 
 - **Actors** (`system_intelligence/services/public_assistant/actors.py`): the public assistant and the past-project AI search key every limit on a member, on an anonymous visitor (a server-signed, stateless `visitor_token` issued by `GET /assistant/config/` and returned in the chat body), or on one shared `legacy` bucket for requests without a valid token. A bad token is never rejected.
-- **Token budgets** (`services/public_assistant/budget.py`): each model call reserves estimated input plus maximum output against the actor's budget and that feature's global budget (the public assistant and AI search each have their own global row) in a single transaction, then reconciles to actual usage. Rows of `PublicAssistantTokenBudget` in PostgreSQL (Redis when `REDIS_URL` is set). The global limit, `SystemIntelligenceConfig.public_assistant_global_token_limit`, is the per-feature ceiling per window (so the worst case is twice that value across both features) and is set in Django admin, which also shows each feature's usage in the current window. See [Assistant and AI search limits](../integrations/assistant-limits.md).
+- **Token budgets** (`services/public_assistant/budget/`: limits, usage accounting, and the database and cache stores): each model call reserves estimated input plus maximum output against the actor's budget and that feature's global budget (the public assistant and AI search each have their own global row) in a single transaction, then reconciles to actual usage. Rows of `PublicAssistantTokenBudget` in PostgreSQL (Redis when `REDIS_URL` is set). The global limit, `SystemIntelligenceConfig.public_assistant_global_token_limit`, is the per-feature ceiling per window (so the worst case is twice that value across both features) and is set in Django admin, which also shows each feature's usage in the current window. See [Assistant and AI search limits](../integrations/assistant-limits.md).
 - **Page views** (`cms/views/analytics.py`): `POST /analytics/pageview/` is throttled per browser `visitor_id` (a random id the frontend keeps in `localStorage`), with one shared bucket for requests without one. `PageView.visitor_id` is stored, and the admin dashboard counts unique visitors by it, falling back to `ip_address` for rows without an id.
 
 ## Middleware stack
@@ -112,7 +115,7 @@ Defined in `src/config/settings/components/framework/django.py`:
 
 ### HealthCheckMiddleware
 
-`src/apps/core/middleware/__init__.py` provides three health endpoints:
+`src/apps/core/middleware/health.py` provides three health endpoints:
 
 | Path | Purpose | Database check |
 |------|---------|----------------|

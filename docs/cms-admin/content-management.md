@@ -85,7 +85,7 @@ The React frontend's catch-all route (`*`) loads `CMSPageComponent`:
 2. Calls `GET /cms/pages/{path}/`
 3. Renders each block by type using component mapping
 
-CMS-specific styles live in `pages/src/components/CMS/styles/` and `pages/src/components/CMS/page-styles/`.
+CMS page styles are not bundled with the SPA: they are CMS-managed stylesheets (`src/apps/cms/models/content/layout/style_sheet.py`) served with the design tokens from `/layout/styles.css` (`src/apps/cms/views/layout.py`).
 
 ## Route redirects
 
