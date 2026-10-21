@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from django.db.models import Q, QuerySet
 
 from apps.core.models import AWSCredentialConfig
-from apps.core.services.bedrock import BedrockError, normalize_bedrock_model_id
 from apps.projects.models import Project
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.agents import run_tool_free_agent
+from apps.system_intelligence.services.bedrock import BedrockError, normalize_bedrock_model_id
 from apps.system_intelligence.services.public_assistant import estimate_prompt_input_tokens
 
 logger = logging.getLogger(__name__)
