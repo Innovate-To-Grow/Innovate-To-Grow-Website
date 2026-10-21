@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import logging
 import queue
 import threading
@@ -103,17 +104,18 @@ async def invoke_system_intelligence_stream_async(
     include_temperature = model_id not in TEMPERATURE_DEPRECATED_MODEL_IDS
     emitted_event = False
     context_tokens = system_intelligence_actions.set_action_context(conversation_id, effective_user_id)
+    invoke = functools.partial(
+        run_agent_invocation,
+        previous_messages,
+        user_message,
+        chat_config=chat_config,
+        aws_config=aws_config,
+        model_id=model_id,
+        user_id=effective_user_id,
+        mode=mode,
+    )
     try:
-        async for event in run_agent_invocation(
-            previous_messages,
-            user_message,
-            chat_config=chat_config,
-            aws_config=aws_config,
-            model_id=model_id,
-            user_id=effective_user_id,
-            include_temperature=include_temperature,
-            mode=mode,
-        ):
+        async for event in invoke(include_temperature=include_temperature):
             emitted_event = True
             yield event
     except Exception as exc:
@@ -121,16 +123,7 @@ async def invoke_system_intelligence_stream_async(
             raise
         TEMPERATURE_DEPRECATED_MODEL_IDS.add(model_id)
         logger.info("Retrying System Intelligence agent call without temperature for model '%s'.", model_id)
-        async for event in run_agent_invocation(
-            previous_messages,
-            user_message,
-            chat_config=chat_config,
-            aws_config=aws_config,
-            model_id=model_id,
-            user_id=effective_user_id,
-            include_temperature=False,
-            mode=mode,
-        ):
+        async for event in invoke(include_temperature=False):
             yield event
     finally:
         system_intelligence_actions.reset_action_context(context_tokens)

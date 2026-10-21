@@ -2,7 +2,7 @@ import logging
 
 from botocore.exceptions import ClientError
 
-from apps.core.services.db_tools import execute_tool
+from apps.system_intelligence.services.query_tools import execute_tool
 
 from ..clients.prepare import prepare
 from ..constants import MAX_TOOL_ROUNDS

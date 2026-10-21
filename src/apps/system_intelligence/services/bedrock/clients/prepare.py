@@ -1,5 +1,5 @@
-from apps.core.services.db_tools import get_tool_definitions
 from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.services.query_tools import get_tool_definitions
 
 from ..exceptions import BedrockError
 from ._aws import get_client

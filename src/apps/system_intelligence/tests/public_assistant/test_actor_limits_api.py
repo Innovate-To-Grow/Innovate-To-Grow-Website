@@ -333,7 +333,7 @@ class GlobalBudgetTests(ActorLimitsTestBase):
         self.assertEqual(self.config.public_assistant_global_token_limit, 2_000_000)
 
     def test_budget_backend_failure_is_a_503_never_a_500(self):
-        with patch.object(budget, "_locked_database_budget", side_effect=RuntimeError("db down")):
+        with patch.object(budget.database_store, "_locked_database_budget", side_effect=RuntimeError("db down")):
             response = self.ask(self.new_visitor())
 
         self.assertEqual(response.status_code, 503)

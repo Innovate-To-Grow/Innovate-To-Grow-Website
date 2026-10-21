@@ -2,7 +2,7 @@ import logging
 import os
 
 from apps.core.models import AWSCredentialConfig
-from apps.core.services.bedrock import normalize_bedrock_model_id
+from apps.system_intelligence.services.bedrock import normalize_bedrock_model_id
 
 from .errors import SystemIntelligenceAgentError
 

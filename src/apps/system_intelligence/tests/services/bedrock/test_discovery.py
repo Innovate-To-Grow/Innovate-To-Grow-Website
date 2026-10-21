@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from django.core.cache import cache
 from django.test import SimpleTestCase
 
-from apps.core.services.bedrock.models.catalog import (
+from apps.system_intelligence.services.bedrock.models.catalog import (
     MODEL_CACHE_KEY,
     fetch_inference_profiles,
     fetch_models_from_aws,
@@ -14,7 +14,7 @@ from apps.core.services.bedrock.models.catalog import (
     is_available_bedrock_model_id,
     normalize_bedrock_model_id,
 )
-from apps.core.services.bedrock.models.discovery import (
+from apps.system_intelligence.services.bedrock.models.discovery import (
     fetch_foundation_models,
     profile_base_model_ids,
     provider_from_id,
@@ -38,7 +38,7 @@ class FetchFoundationModelsTest(SimpleTestCase):
     def test_swallows_aws_failure(self):
         mgmt = MagicMock()
         mgmt.list_foundation_models.side_effect = RuntimeError("boom")
-        with patch("apps.core.services.bedrock.models.discovery.logger.warning") as warn:
+        with patch("apps.system_intelligence.services.bedrock.models.discovery.logger.warning") as warn:
             result = fetch_foundation_models(mgmt)
         self.assertEqual(result, {})
         warn.assert_called_once_with("list_foundation_models failed")
@@ -101,7 +101,7 @@ class FetchInferenceProfilesTest(SimpleTestCase):
     def test_swallows_paginator_failure(self):
         mgmt = MagicMock()
         mgmt.get_paginator.side_effect = RuntimeError("no access")
-        with patch("apps.core.services.bedrock.models.catalog.logger.warning") as warn:
+        with patch("apps.system_intelligence.services.bedrock.models.catalog.logger.warning") as warn:
             result = fetch_inference_profiles(mgmt)
         self.assertEqual(result, {})
         warn.assert_called_once()
@@ -110,9 +110,9 @@ class FetchInferenceProfilesTest(SimpleTestCase):
 class FetchModelsFromAwsTest(SimpleTestCase):
     def test_empty_when_no_providers(self):
         with (
-            patch("apps.core.services.bedrock.models.catalog.get_management_client"),
-            patch("apps.core.services.bedrock.models.catalog.fetch_inference_profiles", return_value={}),
-            patch("apps.core.services.bedrock.models.catalog.fetch_foundation_models", return_value={}),
+            patch("apps.system_intelligence.services.bedrock.models.catalog.get_management_client"),
+            patch("apps.system_intelligence.services.bedrock.models.catalog.fetch_inference_profiles", return_value={}),
+            patch("apps.system_intelligence.services.bedrock.models.catalog.fetch_foundation_models", return_value={}),
         ):
             self.assertEqual(fetch_models_from_aws(), [])
 
@@ -126,13 +126,13 @@ class FetchModelsFromAwsTest(SimpleTestCase):
             ]
         }
         with (
-            patch("apps.core.services.bedrock.models.catalog.get_management_client"),
+            patch("apps.system_intelligence.services.bedrock.models.catalog.get_management_client"),
             patch(
-                "apps.core.services.bedrock.models.catalog.fetch_inference_profiles",
+                "apps.system_intelligence.services.bedrock.models.catalog.fetch_inference_profiles",
                 return_value=profiles,
             ),
             patch(
-                "apps.core.services.bedrock.models.catalog.fetch_foundation_models",
+                "apps.system_intelligence.services.bedrock.models.catalog.fetch_foundation_models",
                 return_value=fms,
             ),
         ):
@@ -149,13 +149,13 @@ class FetchModelsFromAwsTest(SimpleTestCase):
         # Provider exists only in foundation models but all are filtered out
         # (cannot happen via dedupe here) — instead test an empty provider list.
         with (
-            patch("apps.core.services.bedrock.models.catalog.get_management_client"),
+            patch("apps.system_intelligence.services.bedrock.models.catalog.get_management_client"),
             patch(
-                "apps.core.services.bedrock.models.catalog.fetch_inference_profiles",
+                "apps.system_intelligence.services.bedrock.models.catalog.fetch_inference_profiles",
                 return_value={"Empty": []},
             ),
             patch(
-                "apps.core.services.bedrock.models.catalog.fetch_foundation_models",
+                "apps.system_intelligence.services.bedrock.models.catalog.fetch_foundation_models",
                 return_value={"Empty": []},
             ),
         ):
@@ -173,7 +173,7 @@ class GetAvailableModelsCacheTest(SimpleTestCase):
     def test_returns_cached_value_without_refetch(self):
         cached = [("Cached", [("c.model", "Cached Model")])]
         cache.set(MODEL_CACHE_KEY, cached)
-        with patch("apps.core.services.bedrock.models.catalog.fetch_models_from_aws") as fetch:
+        with patch("apps.system_intelligence.services.bedrock.models.catalog.fetch_models_from_aws") as fetch:
             result = get_available_models()
         self.assertEqual(result, cached)
         fetch.assert_not_called()
@@ -181,7 +181,7 @@ class GetAvailableModelsCacheTest(SimpleTestCase):
     def test_get_available_model_ids_normalizes(self):
         grouped = [("P", [("bedrock/anthropic.claude", "C"), ("amazon.titan", "T")])]
         with patch(
-            "apps.core.services.bedrock.models.catalog.get_available_models",
+            "apps.system_intelligence.services.bedrock.models.catalog.get_available_models",
             return_value=grouped,
         ):
             ids = get_available_model_ids()
@@ -192,7 +192,7 @@ class GetAvailableModelsCacheTest(SimpleTestCase):
 
     def test_is_available_true_when_in_first_lookup(self):
         with patch(
-            "apps.core.services.bedrock.models.catalog.get_available_model_ids",
+            "apps.system_intelligence.services.bedrock.models.catalog.get_available_model_ids",
             return_value={"anthropic.claude"},
         ) as ids:
             self.assertTrue(is_available_bedrock_model_id("anthropic.claude"))

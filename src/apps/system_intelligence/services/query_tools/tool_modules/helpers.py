@@ -4,9 +4,10 @@ import json
 import logging
 from datetime import datetime
 
+from apps.core.services.db_tools.safe_orm.constants import MAX_ROWS
+
 logger = logging.getLogger(__name__)
 
-MAX_ROWS = 50
 MAX_RESULT_CHARS = 4000
 
 

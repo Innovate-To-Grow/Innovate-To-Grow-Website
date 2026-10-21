@@ -3,8 +3,8 @@ from typing import Any
 from django.db import transaction
 
 from apps.cms.models import CMSBlock, CMSPage
-from apps.core.services.db_tools.tool_modules.helpers import _truncate
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
+from apps.system_intelligence.services.query_tools.tool_modules.helpers import _truncate
 
 from ..comparison import build_cms_comparison, build_diff
 from ..context import current_conversation, current_user_id

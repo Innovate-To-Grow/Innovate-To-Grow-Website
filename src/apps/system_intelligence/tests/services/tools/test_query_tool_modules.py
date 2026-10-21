@@ -5,10 +5,10 @@ import json
 from django.test import TestCase
 from django.utils import timezone
 
-from apps.core.services.db_tools import execute_tool, get_tool_definitions
-from apps.core.services.db_tools.tool_modules.analytics import get_page_views
-from apps.core.services.db_tools.tool_modules.cms import search_cms_pages, search_news
-from apps.core.services.db_tools.tool_modules.custom.query import (
+from apps.system_intelligence.services.query_tools import execute_tool, get_tool_definitions
+from apps.system_intelligence.services.query_tools.tool_modules.analytics import get_page_views
+from apps.system_intelligence.services.query_tools.tool_modules.cms import search_cms_pages, search_news
+from apps.system_intelligence.services.query_tools.tool_modules.custom.query import (
     allowed_output_fields,
     apply_filters,
     apply_ordering,
@@ -17,15 +17,15 @@ from apps.core.services.db_tools.tool_modules.custom.query import (
     serialize_custom_rows,
     validate_output_fields,
 )
-from apps.core.services.db_tools.tool_modules.events import (
+from apps.system_intelligence.services.query_tools.tool_modules.events import (
     get_checkin_stats,
     get_event_registrations,
     search_events,
 )
-from apps.core.services.db_tools.tool_modules.helpers import _serialize_rows, _truncate
-from apps.core.services.db_tools.tool_modules.mail import get_campaign_stats, search_email_campaigns
-from apps.core.services.db_tools.tool_modules.members import count_members, search_members
-from apps.core.services.db_tools.tool_modules.projects import search_projects, search_semesters
+from apps.system_intelligence.services.query_tools.tool_modules.helpers import _serialize_rows, _truncate
+from apps.system_intelligence.services.query_tools.tool_modules.mail import get_campaign_stats, search_email_campaigns
+from apps.system_intelligence.services.query_tools.tool_modules.members import count_members, search_members
+from apps.system_intelligence.services.query_tools.tool_modules.projects import search_projects, search_semesters
 
 # ---------- helpers ----------
 
@@ -76,7 +76,7 @@ class ExecuteToolTest(TestCase):
             raise ValueError("kaboom")
 
         with patch.dict(
-            "apps.core.services.db_tools.tool_modules.executor.TOOL_REGISTRY",
+            "apps.system_intelligence.services.query_tools.tool_modules.executor.TOOL_REGISTRY",
             {"boomtool": boom},
         ):
             result = execute_tool({"name": "boomtool", "input": {}})

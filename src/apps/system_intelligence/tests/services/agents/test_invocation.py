@@ -177,7 +177,9 @@ class SystemIntelligenceAgentInvocationTests(TestCase):
         )
 
     def test_litellm_model_adapter_normalizes_without_catalog_lookup(self):
-        with patch("apps.core.services.bedrock.models.catalog.fetch_models_from_aws", side_effect=AssertionError):
+        with patch(
+            "apps.system_intelligence.services.bedrock.models.catalog.fetch_models_from_aws", side_effect=AssertionError
+        ):
             self.assertEqual(
                 _to_litellm_bedrock_model("us.anthropic.claude-sonnet-4-20250514-v1:0"),
                 "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0",

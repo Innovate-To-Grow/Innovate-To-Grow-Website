@@ -41,6 +41,63 @@ class ExportError(Exception):
     pass
 
 
+def _selected_fields(model, fields, safe_names) -> list[str]:
+    try:
+        selected = validate_selected_fields(fields, safe_names) if fields else sorted(safe_names)
+    except ActionRequestError as exc:
+        raise ExportError(str(exc)) from exc
+    if not selected:
+        raise ExportError(f"No exportable fields configured for {model._meta.label}.")
+    return selected
+
+
+def _validate_query_keys(keys, safe_names) -> None:
+    try:
+        for key in keys:
+            validate_query_key(key, safe_names)
+    except ActionRequestError as exc:
+        raise ExportError(str(exc)) from exc
+
+
+def _export_queryset(model, filters, ordering, safe_names):
+    """The model's rows, filtered and ordered by keys the safe-field allowlist accepts."""
+    qs = model.objects.all()
+    filters = filters or {}
+    if not isinstance(filters, dict):
+        raise ExportError("filters must be an object.")
+    _validate_query_keys(filters, safe_names)
+    if filters:
+        qs = qs.filter(**filters)
+    if ordering:
+        ordering_list = [ordering] if isinstance(ordering, str) else list(ordering)
+        _validate_query_keys(ordering_list, safe_names)
+        qs = qs.order_by(*ordering_list)
+    return qs
+
+
+def _saved_export(model, *, conversation, user_id, title, selected, rows) -> SystemIntelligenceExport:
+    headers = [_header_label(model, name) for name in selected]
+    workbook = _build_workbook(model._meta.label, headers, selected, rows)
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+
+    filename = _build_filename(model)
+    safe_title = (title or f"{model._meta.verbose_name_plural.title()} export").strip()[:200]
+    export = SystemIntelligenceExport(
+        conversation=conversation,
+        created_by_id=user_id,
+        title=safe_title,
+        filename=filename,
+        model_label=model._meta.label,
+        field_names=list(selected),
+        row_count=len(rows),
+    )
+    export.file.save(filename, ContentFile(buffer.getvalue()), save=False)
+    export.save()
+    return export
+
+
 def create_export(
     *,
     app_label: str,
@@ -67,61 +124,14 @@ def create_export(
     except ActionRequestError as exc:
         raise ExportError(str(exc)) from exc
 
-    safe_fields = safe_model_fields(model, write=False)
-    safe_names = {field_output_name(field) for field in safe_fields}
-    try:
-        selected = validate_selected_fields(fields, safe_names) if fields else sorted(safe_names)
-    except ActionRequestError as exc:
-        raise ExportError(str(exc)) from exc
-    if not selected:
-        raise ExportError(f"No exportable fields configured for {model._meta.label}.")
-
-    qs = model.objects.all()
-    filters = filters or {}
-    if not isinstance(filters, dict):
-        raise ExportError("filters must be an object.")
-    try:
-        for key in filters:
-            validate_query_key(key, safe_names)
-    except ActionRequestError as exc:
-        raise ExportError(str(exc)) from exc
-    if filters:
-        qs = qs.filter(**filters)
-
-    if ordering:
-        ordering_list = [ordering] if isinstance(ordering, str) else list(ordering)
-        try:
-            for key in ordering_list:
-                validate_query_key(key, safe_names)
-        except ActionRequestError as exc:
-            raise ExportError(str(exc)) from exc
-        qs = qs.order_by(*ordering_list)
-
+    safe_names = {field_output_name(field) for field in safe_model_fields(model, write=False)}
+    selected = _selected_fields(model, fields, safe_names)
+    qs = _export_queryset(model, filters, ordering, safe_names)
     capped_limit = min(int(limit or EXPORT_DEFAULT_LIMIT), EXPORT_HARD_LIMIT)
     rows = list(qs.values(*selected)[:capped_limit])
     if not rows:
         raise ExportError("No rows match the requested filters; nothing to export.")
-
-    headers = [_header_label(model, name) for name in selected]
-    workbook = _build_workbook(model._meta.label, headers, selected, rows)
-    buffer = io.BytesIO()
-    workbook.save(buffer)
-    buffer.seek(0)
-
-    filename = _build_filename(model)
-    safe_title = (title or f"{model._meta.verbose_name_plural.title()} export").strip()[:200]
-    export = SystemIntelligenceExport(
-        conversation=conversation,
-        created_by_id=user_id,
-        title=safe_title,
-        filename=filename,
-        model_label=model._meta.label,
-        field_names=list(selected),
-        row_count=len(rows),
-    )
-    export.file.save(filename, ContentFile(buffer.getvalue()), save=False)
-    export.save()
-    return export
+    return _saved_export(model, conversation=conversation, user_id=user_id, title=title, selected=selected, rows=rows)
 
 
 def _build_workbook(label: str, headers: list[str], selected: list[str], rows: list[dict]) -> Workbook:

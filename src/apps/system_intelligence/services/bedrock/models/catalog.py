@@ -46,15 +46,19 @@ def fetch_models_from_aws():
     return grouped
 
 
+def _system_defined_profiles(mgmt):
+    for page in mgmt.get_paginator("list_inference_profiles").paginate():
+        for profile in page.get("inferenceProfileSummaries", []):
+            if profile.get("type") == "SYSTEM_DEFINED":
+                yield profile
+
+
 def fetch_inference_profiles(mgmt):
     profiles = {}
     try:
-        for page in mgmt.get_paginator("list_inference_profiles").paginate():
-            for profile in page.get("inferenceProfileSummaries", []):
-                if profile.get("type") != "SYSTEM_DEFINED":
-                    continue
-                pid = profile["inferenceProfileId"]
-                profiles.setdefault(provider_from_id(pid), []).append((pid, profile.get("inferenceProfileName", pid)))
+        for profile in _system_defined_profiles(mgmt):
+            pid = profile["inferenceProfileId"]
+            profiles.setdefault(provider_from_id(pid), []).append((pid, profile.get("inferenceProfileName", pid)))
     except Exception:
         logger.warning("list_inference_profiles failed, will use foundation models only")
     return profiles

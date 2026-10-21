@@ -1,7 +1,7 @@
 import json as jsonlib
 import logging
 
-from apps.core.services.db_tools import execute_tool
+from apps.system_intelligence.services.query_tools import execute_tool
 
 logger = logging.getLogger(__name__)
 

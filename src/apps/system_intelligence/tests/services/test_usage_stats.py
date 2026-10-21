@@ -12,13 +12,13 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
-from apps.core.services.bedrock.exceptions import BedrockError
 from apps.system_intelligence.models import (
     AssistantConversationLog,
     AssistantMessageLog,
     ChatConversation,
     ChatMessage,
 )
+from apps.system_intelligence.services.bedrock.exceptions import BedrockError
 from apps.system_intelligence.services.usage_stats import (
     compute_local_aggregates,
     fetch_bedrock_metrics,

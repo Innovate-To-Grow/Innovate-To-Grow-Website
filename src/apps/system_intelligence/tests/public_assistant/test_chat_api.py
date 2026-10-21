@@ -288,7 +288,7 @@ class BudgetTests(PublicAssistantChatTestBase):
 
     @override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="redis://configured")
     @patch(
-        "apps.system_intelligence.services.public_assistant.budget._shared_redis_client",
+        "apps.system_intelligence.services.public_assistant.budget.cache_store._shared_redis_client",
         side_effect=budget.BudgetBackendUnavailable("redis down"),
     )
     def test_redis_failure_returns_graceful_503(self, _redis):

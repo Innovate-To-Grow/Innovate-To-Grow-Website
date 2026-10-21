@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
-from apps.core.services.bedrock import BedrockError
 from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.services.bedrock import BedrockError
 from apps.system_intelligence.services.public_assistant import invoke
 
 

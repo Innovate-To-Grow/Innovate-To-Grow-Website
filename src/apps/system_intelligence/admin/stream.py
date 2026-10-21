@@ -1,5 +1,7 @@
 import asyncio
 import json
+from contextlib import aclosing
+from dataclasses import dataclass, field
 
 from asgiref.sync import sync_to_async
 from django.core.exceptions import PermissionDenied
@@ -112,6 +114,11 @@ def build_stream_response(request, convo):
     return response
 
 
+async def _finished_within(task, timeout) -> bool:
+    done, _pending = await asyncio.wait({task}, timeout=timeout)
+    return bool(done)
+
+
 async def _with_heartbeats(event_stream, *, heartbeat_seconds=STREAM_HEARTBEAT_SECONDS):
     """Yield async provider events while keeping idle SSE connections alive."""
     iterator = aiter(event_stream)
@@ -119,14 +126,11 @@ async def _with_heartbeats(event_stream, *, heartbeat_seconds=STREAM_HEARTBEAT_S
     try:
         while True:
             pending_item = asyncio.create_task(anext(iterator, _STREAM_END))
-            while True:
-                done, _pending = await asyncio.wait({pending_item}, timeout=heartbeat_seconds)
-                if done:
-                    # Calling result() preserves provider exceptions (including
-                    # TimeoutError) instead of confusing them with a heartbeat.
-                    item = pending_item.result()
-                    break
+            while not await _finished_within(pending_item, heartbeat_seconds):
                 yield _STREAM_HEARTBEAT
+            # Calling result() preserves provider exceptions (including
+            # TimeoutError) instead of confusing them with a heartbeat.
+            item = pending_item.result()
             pending_item = None
             if item is _STREAM_END:
                 return
@@ -146,98 +150,130 @@ async def _awaitable_stream(awaitable):
     yield await awaitable
 
 
-async def _async_event_stream(request, convo, messages, chat_config, aws_config, model_id, *, mode="normal"):
-    """Run the native async agent stream used by the production ASGI server."""
-    full_text = ""
-    tool_calls = []
-    action_ids = []
-    action_requests = []
-    total_usage = {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}
-    context_usage = {}
-    try:
-        yield _sse("start", {"model_id": model_id})
-        # Context preparation runs ORM queries (and may save a summary), so it
-        # must stay on the request's thread-sensitive executor like the rest of
-        # the request's DB work: a default-pool thread would use a separate
-        # connection that never sees uncommitted writes and is never closed by
-        # Django's request_finished cleanup. Heartbeats still flow meanwhile.
-        context_events = _with_heartbeats(
-            _awaitable_stream(
-                sync_to_async(prepare_conversation_context, thread_sensitive=True)(
-                    convo,
-                    messages,
-                    chat_config=chat_config,
-                    aws_config=aws_config,
-                    model_id=model_id,
-                    user_id=str(request.user.pk),
-                )
-            )
-        )
-        prepared_context = None
-        try:
-            async for prepared_item in context_events:
-                if prepared_item is _STREAM_HEARTBEAT:
-                    yield ": keep-alive\n\n"
-                else:
-                    prepared_context = prepared_item
-        finally:
-            await context_events.aclose()
-        if prepared_context is None:
-            raise RuntimeError("Conversation context preparation did not return a result.")
-        context_usage = prepared_context.usage
-        if context_usage:
-            yield _sse("context", context_usage)
-        if prepared_context.error:
-            yield _sse("error", {"error": prepared_context.error})
-            return
+@dataclass
+class _StreamState:
+    """What one assistant turn has produced so far."""
 
-        provider_events = _with_heartbeats(
-            _async_stream_callable()(
-                prepared_context.messages,
+    full_text: str = ""
+    tool_calls: list = field(default_factory=list)
+    action_ids: list = field(default_factory=list)
+    action_requests: list = field(default_factory=list)
+    total_usage: dict = field(default_factory=lambda: {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0})
+    context_usage: dict = field(default_factory=dict)
+    prepared_context: object = None
+    stopped: bool = False
+
+
+async def _prepared_context_events(state: _StreamState, request, convo, messages, chat_config, aws_config, model_id):
+    """Keep-alive comments while the conversation context is prepared; stores it on ``state.prepared_context``."""
+    # Context preparation runs ORM queries (and may save a summary), so it
+    # must stay on the request's thread-sensitive executor like the rest of
+    # the request's DB work: a default-pool thread would use a separate
+    # connection that never sees uncommitted writes and is never closed by
+    # Django's request_finished cleanup. Heartbeats still flow meanwhile.
+    context_events = _with_heartbeats(
+        _awaitable_stream(
+            sync_to_async(prepare_conversation_context, thread_sensitive=True)(
+                convo,
+                messages,
                 chat_config=chat_config,
                 aws_config=aws_config,
                 model_id=model_id,
                 user_id=str(request.user.pk),
-                conversation_id=str(convo.pk),
-                mode=mode,
             )
         )
-        try:
-            async for event in provider_events:
-                if event is _STREAM_HEARTBEAT:
-                    yield ": keep-alive\n\n"
-                    continue
-                chunk = _handle_stream_event(
-                    event,
-                    aws_config,
-                    full_text,
-                    tool_calls,
-                    action_ids,
-                    action_requests,
-                    total_usage,
-                )
-                if chunk["stop"]:
-                    yield chunk["payload"]
-                    return
-                full_text = chunk["full_text"]
-                if chunk["payload"]:
-                    yield chunk["payload"]
-        finally:
-            await provider_events.aclose()
+    )
+    try:
+        async for prepared_item in context_events:
+            if prepared_item is _STREAM_HEARTBEAT:
+                yield ": keep-alive\n\n"
+            else:
+                state.prepared_context = prepared_item
+    finally:
+        await context_events.aclose()
+
+
+async def _provider_payloads(
+    state: _StreamState, request, convo, prepared_context, chat_config, aws_config, model_id, mode
+):
+    """SSE payloads for the model's events (and keep-alives); sets ``state.stopped`` when the turn ends early."""
+    provider_events = _with_heartbeats(
+        _async_stream_callable()(
+            prepared_context.messages,
+            chat_config=chat_config,
+            aws_config=aws_config,
+            model_id=model_id,
+            user_id=str(request.user.pk),
+            conversation_id=str(convo.pk),
+            mode=mode,
+        )
+    )
+    try:
+        async for event in provider_events:
+            if event is _STREAM_HEARTBEAT:
+                yield ": keep-alive\n\n"
+                continue
+            chunk = _handle_stream_event(
+                event,
+                aws_config,
+                state.full_text,
+                state.tool_calls,
+                state.action_ids,
+                state.action_requests,
+                state.total_usage,
+            )
+            if chunk["stop"]:
+                state.stopped = True
+                yield chunk["payload"]
+                return
+            state.full_text = chunk["full_text"]
+            if chunk["payload"]:
+                yield chunk["payload"]
+    finally:
+        await provider_events.aclose()
+
+
+async def _async_event_stream(request, convo, messages, chat_config, aws_config, model_id, *, mode="normal"):
+    """Run the native async agent stream used by the production ASGI server."""
+    state = _StreamState()
+    try:
+        yield _sse("start", {"model_id": model_id})
+        context_stream = _prepared_context_events(state, request, convo, messages, chat_config, aws_config, model_id)
+        async with aclosing(context_stream) as keep_alives:
+            async for keep_alive in keep_alives:
+                yield keep_alive
+        prepared_context = state.prepared_context
+        if prepared_context is None:
+            raise RuntimeError("Conversation context preparation did not return a result.")
+        state.context_usage = prepared_context.usage
+        if state.context_usage:
+            yield _sse("context", state.context_usage)
+        if prepared_context.error:
+            yield _sse("error", {"error": prepared_context.error})
+            return
+
+        payloads = _provider_payloads(state, request, convo, prepared_context, chat_config, aws_config, model_id, mode)
+        async with aclosing(payloads) as provider_payloads:
+            async for payload in provider_payloads:
+                yield payload
+        if state.stopped:
+            return
     except Exception as exc:
         yield _stream_exception(convo.id, exc, aws_config)
         return
 
     assistant = await sync_to_async(_create_assistant_message, thread_sensitive=True)(
         convo,
-        full_text,
+        state.full_text,
         model_id,
-        tool_calls,
-        total_usage,
-        action_ids,
-        context_usage,
+        state.tool_calls,
+        state.total_usage,
+        state.action_ids,
+        state.context_usage,
     )
-    yield _done_event(convo, assistant, model_id, tool_calls, action_requests, total_usage, context_usage)
+    yield _done_event(
+        convo, assistant, model_id, state.tool_calls, state.action_requests, state.total_usage, state.context_usage
+    )
 
 
 def _done_event(convo, assistant, model_id, tool_calls, action_requests, total_usage, context_usage):

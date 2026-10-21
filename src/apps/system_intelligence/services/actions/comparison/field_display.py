@@ -43,6 +43,26 @@ def field_type_name(model: type[models.Model], name: str) -> str:
     return field.__class__.__name__
 
 
+def _display_typed(field, raw: Any) -> str | None:
+    """The display for field types with their own rendering; None to fall back to the plain string."""
+    if isinstance(field, models.BooleanField):
+        return "Yes" if raw is True else "No" if raw is False else EM_DASH
+    flatchoices = getattr(field, "flatchoices", None)
+    if flatchoices:
+        return str(dict(flatchoices).get(raw, raw))
+    if getattr(field, "many_to_one", False):
+        return _resolve_fk_display(field, raw)
+    if isinstance(field, models.DateTimeField):
+        return _format_datetime(raw)
+    if isinstance(field, models.DateField):
+        return _format_date(raw)
+    if isinstance(field, models.JSONField):
+        return _format_json(raw)
+    if isinstance(field, models.TextField) and isinstance(raw, str):
+        return limit_comparison_text(raw)
+    return None
+
+
 def display_value(model: type[models.Model], name: str, raw: Any) -> str:
     """Render a snapshot value for human display.
 
@@ -54,35 +74,8 @@ def display_value(model: type[models.Model], name: str, raw: Any) -> str:
     if raw is None:
         return EM_DASH
     field = _get_field(model, name)
-    if field is None:
-        return _truncate(_stringify(raw))
-
-    if isinstance(field, models.BooleanField):
-        if raw is True:
-            return "Yes"
-        if raw is False:
-            return "No"
-        return EM_DASH
-
-    flatchoices = getattr(field, "flatchoices", None)
-    if flatchoices:
-        return str(dict(flatchoices).get(raw, raw))
-
-    if getattr(field, "many_to_one", False):
-        return _resolve_fk_display(field, raw)
-
-    if isinstance(field, models.DateTimeField):
-        return _format_datetime(raw)
-    if isinstance(field, models.DateField):
-        return _format_date(raw)
-
-    if isinstance(field, models.JSONField):
-        return _format_json(raw)
-
-    if isinstance(field, models.TextField) and isinstance(raw, str):
-        return limit_comparison_text(raw)
-
-    return _truncate(_stringify(raw))
+    typed = _display_typed(field, raw) if field is not None else None
+    return typed if typed is not None else _truncate(_stringify(raw))
 
 
 # ---- internals ----
