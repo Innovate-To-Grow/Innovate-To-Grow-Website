@@ -19,7 +19,7 @@ from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign import dispatch
 from apps.mail.services.ses_events import process_sns_envelope
 from apps.mail.services.ses_events.handlers import apply_delivery
-from apps.mail.tests.services.test_campaign_event_races import event_envelope
+from apps.mail.tests.services.campaign.test_campaign_event_races import event_envelope
 
 
 class SesJobReconciliationTests(TestCase):
@@ -33,7 +33,9 @@ class SesJobReconciliationTests(TestCase):
             source_address="sender@example.com",
             ses_configuration_set_name="campaign-events",
         )
-        load_config = patch("apps.mail.services.campaign.dispatch.EmailServiceConfig.load", return_value=config)
+        load_config = patch(
+            "apps.mail.services.campaign.dispatch.email_job.EmailServiceConfig.load", return_value=config
+        )
         load_config.start()
         self.addCleanup(load_config.stop)
 
@@ -113,7 +115,7 @@ class SesJobReconciliationTests(TestCase):
     def test_delivery_between_result_decision_and_worker_failure_wins(self):
         campaign, log = self.queued_campaign()
         job = claim_jobs(batch_size=1)[0]
-        real_record = dispatch._record_email_job_result
+        real_record = dispatch.email_job._record_email_job_result
 
         def record_then_callback(recipient, snapshot, result):
             try:
@@ -124,7 +126,10 @@ class SesJobReconciliationTests(TestCase):
 
         with (
             patch("apps.mail.services.send_campaign.transport.deliver_email", side_effect=self.timeout_provider),
-            patch("apps.mail.services.campaign.dispatch._record_email_job_result", side_effect=record_then_callback),
+            patch(
+                "apps.mail.services.campaign.dispatch.email_job._record_email_job_result",
+                side_effect=record_then_callback,
+            ),
         ):
             process_claimed_job(job)
 
@@ -180,7 +185,7 @@ class SesJobReconciliationTests(TestCase):
         old_attempt = log.attempts
         self.assertTrue(retry_job(job))
         newer = claim_jobs(batch_size=1)[0]
-        self.assertTrue(dispatch._mark_email_processing(log, newer))
+        self.assertTrue(dispatch.channels.mark_log_processing(dispatch.channels.EMAIL, log, newer))
         token = newer.claim_token
 
         process_sns_envelope(self.callback(log, attempt=old_attempt))
@@ -313,7 +318,7 @@ class SesJobReconciliationConcurrencyTests(TransactionTestCase):
         dispatch.queue_email_campaign(campaign, sent_by=make_superuser())
         log = campaign.recipient_logs.get()
         job = claim_jobs(batch_size=1)[0]
-        self.assertTrue(dispatch._mark_email_processing(log, job))
+        self.assertTrue(dispatch.channels.mark_log_processing(dispatch.channels.EMAIL, log, job))
         self.assertTrue(job.begin_provider_call())
         callback_has_locks = Event()
         release_callback = Event()

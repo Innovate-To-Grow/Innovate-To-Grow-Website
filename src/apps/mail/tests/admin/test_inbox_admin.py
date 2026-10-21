@@ -13,7 +13,7 @@ class InboxAdminFragmentTest(TestCase):
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
 
-    @patch("apps.mail.admin.inbox.list_inbox_messages")
+    @patch("apps.mail.admin.inbox.services.list_inbox_messages")
     def test_inbox_fragment_force_refreshes_and_returns_html(self, mock_list):
         mock_list.return_value = [
             {
@@ -38,7 +38,7 @@ class InboxAdminFragmentTest(TestCase):
         self.assertIn(b"Hi", response.content)
         self.assertIn(b"data-inbox-refresh", response.content)
 
-    @patch("apps.mail.admin.inbox.list_inbox_messages")
+    @patch("apps.mail.admin.inbox.services.list_inbox_messages")
     def test_inbox_fragment_uses_cache_without_refresh_param(self, mock_list):
         mock_list.return_value = []
 
@@ -47,7 +47,7 @@ class InboxAdminFragmentTest(TestCase):
         self.assertEqual(response.status_code, 200)
         mock_list.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX")
 
-    @patch("apps.mail.admin.inbox.list_inbox_messages")
+    @patch("apps.mail.admin.inbox.services.list_inbox_messages")
     def test_inbox_fragment_sent_folder_lists_recipients(self, mock_list):
         mock_list.return_value = [
             {
@@ -87,8 +87,8 @@ class InboxAdminFragmentTest(TestCase):
             "references": "",
         }
 
-    @patch("apps.mail.admin.inbox.analyze_email")
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.analyze_email")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_detail_escapes_plain_text_body_fallback(self, mock_fetch, mock_analyze):
         mock_fetch.return_value = self._plain_text_message()
         mock_analyze.return_value = {
@@ -109,8 +109,8 @@ class InboxAdminFragmentTest(TestCase):
         self.assertNotIn(b"</pre><script>alert", response.content)
         self.assertNotIn(b"<script>alert", response.content)
 
-    @patch("apps.mail.admin.inbox.analyze_email")
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.analyze_email")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_detail_fragment_escapes_plain_text_body_fallback(self, mock_fetch, mock_analyze):
         mock_fetch.return_value = self._plain_text_message()
         mock_analyze.return_value = {
@@ -131,7 +131,7 @@ class InboxAdminFragmentTest(TestCase):
         self.assertNotIn(b"</pre><script>alert", response.content)
         self.assertNotIn(b"<script>alert", response.content)
 
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_detail_fragment_renders_security_analysis_panel(self, mock_fetch):
         message = self._plain_text_message()
         message["text"] = ""
@@ -160,7 +160,7 @@ class InboxAdminFragmentTest(TestCase):
         message["html"] = "<p>Hello team, see you at the Monday standup.</p>"
         return message
 
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_detail_fragment_low_risk_shows_calm_panel(self, mock_fetch):
         mock_fetch.return_value = self._benign_message()
 
@@ -173,7 +173,7 @@ class InboxAdminFragmentTest(TestCase):
         self.assertContains(response, "Security analysis")
         self.assertNotContains(response, "Review this message before clicking")
 
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_detail_fragment_inbox_folder_shows_reply(self, mock_fetch):
         mock_fetch.return_value = self._benign_message()
 
@@ -182,7 +182,7 @@ class InboxAdminFragmentTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-inbox-reply-link")
 
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_detail_fragment_sent_folder_hides_reply(self, mock_fetch):
         mock_fetch.return_value = self._benign_message()
 
@@ -192,8 +192,8 @@ class InboxAdminFragmentTest(TestCase):
         mock_fetch.assert_called_once_with("42", folder="SENT")
         self.assertNotContains(response, "data-inbox-reply-link")
 
-    @patch("apps.mail.admin.inbox.assess_email")
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.assess_email")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_detail_fragment_renders_ai_review_section(self, mock_fetch, mock_assess):
         mock_fetch.return_value = self._benign_message()
         mock_assess.return_value = {

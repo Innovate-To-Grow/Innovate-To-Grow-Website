@@ -6,11 +6,40 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
-import apps.mail.admin.inbox as inbox_api
 from apps.core.models import EmailServiceConfig
 from apps.core.utils.access import user_can_access_app
 
+from . import services as inbox_api
 from .helpers import build_original_from, build_reply_references, build_reply_subject
+
+
+def _send_reply_from_post(request, msg, *, reply_subject, reply_references, original_from, reply_url, detail_url):
+    reply_body = request.POST.get("reply_body", "").strip()
+    subject = request.POST.get("subject", reply_subject).strip()
+    to_email = request.POST.get("to_email", msg["from_email"]).strip()
+    cc_email = request.POST.get("cc_email", "").strip()
+
+    if not reply_body:
+        messages.error(request, "Reply body cannot be empty.")
+        return HttpResponseRedirect(reply_url)
+
+    error = inbox_api.send_reply(
+        to_email=to_email,
+        subject=subject,
+        reply_body=reply_body,
+        in_reply_to=msg.get("message_id", ""),
+        references=reply_references,
+        original_from=original_from,
+        original_date=msg.get("date", ""),
+        quoted_text=msg.get("text", ""),
+        cc_email=cc_email,
+    )
+    if error:
+        messages.error(request, error)
+        return HttpResponseRedirect(reply_url)
+
+    messages.success(request, f"Reply sent to {to_email}.")
+    return HttpResponseRedirect(detail_url)
 
 
 def inbox_reply_view(request, uid):
@@ -33,37 +62,17 @@ def inbox_reply_view(request, uid):
     email_config = EmailServiceConfig.load()
     original_subject = msg["subject"]
     reply_subject = build_reply_subject(original_subject)
-    reply_references = build_reply_references(msg)
-    original_from = build_original_from(msg)
 
     if request.method == "POST":
-        reply_body = request.POST.get("reply_body", "").strip()
-        subject = request.POST.get("subject", reply_subject).strip()
-        to_email = request.POST.get("to_email", msg["from_email"]).strip()
-        cc_email = request.POST.get("cc_email", "").strip()
-
-        if not reply_body:
-            messages.error(request, "Reply body cannot be empty.")
-            return HttpResponseRedirect(reply_url)
-
-        error = inbox_api.send_reply(
-            to_email=to_email,
-            subject=subject,
-            reply_body=reply_body,
-            in_reply_to=msg.get("message_id", ""),
-            references=reply_references,
-            original_from=original_from,
-            original_date=msg.get("date", ""),
-            quoted_text=msg.get("text", ""),
-            cc_email=cc_email,
+        return _send_reply_from_post(
+            request,
+            msg,
+            reply_subject=reply_subject,
+            reply_references=build_reply_references(msg),
+            original_from=build_original_from(msg),
+            reply_url=reply_url,
+            detail_url=detail_url,
         )
-
-        if error:
-            messages.error(request, error)
-            return HttpResponseRedirect(reply_url)
-
-        messages.success(request, f"Reply sent to {to_email}.")
-        return HttpResponseRedirect(detail_url)
 
     context = {
         **admin.site.each_context(request),

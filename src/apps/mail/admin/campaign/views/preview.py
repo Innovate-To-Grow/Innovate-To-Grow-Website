@@ -6,11 +6,12 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from unfold.decorators import action
 
-import apps.mail.admin.campaign as campaign_api
 from apps.core.utils.json_helpers import safe_json
 from apps.mail.models import EmailCampaign
 from apps.mail.services.campaign.personalize import personalize
 from apps.mail.services.campaign.preview import HTML_MARKER, SAMPLE_CONTEXT, build_email_render_context
+
+from .. import services as campaign_api
 
 _PREVIEW_CSP = (
     "sandbox; default-src 'none'; img-src 'self' data: https:; "

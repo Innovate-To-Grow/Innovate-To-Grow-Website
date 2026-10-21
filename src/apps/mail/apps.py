@@ -10,6 +10,8 @@ class MailConfig(AppConfig):
     def ready(self):
         from django.contrib import admin
 
+        register_background_jobs()
+
         from .admin.delivery_dashboard import get_delivery_dashboard_urls
         from .admin.inbox import get_inbox_urls
         from .admin.settings import get_mail_settings_urls
@@ -30,3 +32,19 @@ class MailConfig(AppConfig):
 
             admin.AdminSite.get_urls = patched_get_urls
             admin.AdminSite._mail_urls_patched = True
+
+
+def register_background_jobs():
+    from apps.core.services.background_jobs import register_job_kind
+
+    dispatch = "apps.mail.services.campaign.dispatch"
+    for kind, handler in (
+        ("mail.email_recipient", "send_email_recipient_job"),
+        ("mail.sms_recipient", "send_sms_recipient_job"),
+    ):
+        register_job_kind(
+            kind,
+            handler=f"{dispatch}.{handler}",
+            state_handler=f"{dispatch}.sync_delivery_job_state",
+            stale_resolver=f"{dispatch}.resolve_stale_delivery_job",
+        )
