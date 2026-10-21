@@ -5,13 +5,13 @@ import json
 from django.http import HttpResponse
 from django.utils import timezone
 
-import apps.cms.admin.layout.import_export as import_export_api
+STYLESHEET_BUNDLE_VERSION = 1
 
 
 def export_stylesheets_response(queryset):
     content = json.dumps(
         {
-            "version": import_export_api.STYLESHEET_BUNDLE_VERSION,
+            "version": STYLESHEET_BUNDLE_VERSION,
             "exported_at": timezone.now().isoformat(),
             "stylesheets": [serialize_stylesheet(sheet) for sheet in queryset.order_by("sort_order", "name")],
         },

@@ -132,6 +132,25 @@ class CMSLivePreviewView(APIView):
         return Response({"ok": True})
 
 
+def _legacy_route_response(request, raw_route: str):
+    """The cached page or redirect for a legacy (pre-CMS) URL, or None to resolve it as a CMS route."""
+    try:
+        legacy_route = normalize_and_validate_legacy_source(raw_route)
+    except ValidationError:
+        return None
+    if legacy_route is None:
+        return None
+    cached = cache.get(f"cms:page:{legacy_route}")
+    if cached is not None:
+        return public_json_response(request, cached)
+    redirect = RouteRedirect.objects.filter(source_path=legacy_route, is_active=True).only("destination_path").first()
+    if redirect is None:
+        return None
+    data = {"redirect_to": redirect.destination_path, "permanent": True}
+    cache.set(f"cms:page:{legacy_route}", data, timeout=CMS_PAGE_CACHE_TIMEOUT)
+    return public_json_response(request, data)
+
+
 class CMSPageView(APIView):
     """Serve a published CMS page by its route path."""
 
@@ -147,25 +166,9 @@ class CMSPageView(APIView):
         is_preview = request.query_params.get("preview") == "true"
 
         if not is_preview:
-            try:
-                legacy_route = normalize_and_validate_legacy_source(raw_route)
-            except ValidationError:
-                legacy_route = None
-
-            if legacy_route is not None:
-                cached = cache.get(f"cms:page:{legacy_route}")
-                if cached is not None:
-                    return public_json_response(request, cached)
-
-                redirect = (
-                    RouteRedirect.objects.filter(source_path=legacy_route, is_active=True)
-                    .only("destination_path")
-                    .first()
-                )
-                if redirect is not None:
-                    data = {"redirect_to": redirect.destination_path, "permanent": True}
-                    cache.set(f"cms:page:{legacy_route}", data, timeout=CMS_PAGE_CACHE_TIMEOUT)
-                    return public_json_response(request, data)
+            legacy_response = _legacy_route_response(request, raw_route)
+            if legacy_response is not None:
+                return legacy_response
 
         try:
             route = normalize_and_validate_cms_page_route(raw_route)

@@ -1,12 +1,10 @@
 """Stylesheet import/export admin helpers."""
 
-from .export import export_stylesheets_response, serialize_stylesheet
+from .export import STYLESHEET_BUNDLE_VERSION, export_stylesheets_response, serialize_stylesheet
 from .persistence import clear_layout_caches, sync_stylesheets
 from .preview import mark_results_executed, preview_stylesheet_import
 from .rows import normalize_stylesheet_row
 from .view import load_uploaded_stylesheets, render_stylesheet_import
-
-STYLESHEET_BUNDLE_VERSION = 1
 
 __all__ = [
     "STYLESHEET_BUNDLE_VERSION",

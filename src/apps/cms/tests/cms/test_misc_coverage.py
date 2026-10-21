@@ -1,6 +1,7 @@
 """Coverage for small leftover branches: asset admin display, host admin deletes,
 app config ready(), the cms.urls stub, and a few model __str__ / validation paths."""
 
+import builtins
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
@@ -70,10 +71,22 @@ class CMSEmbedAllowedHostAdminTests(TestCase):
 class CmsConfigReadyTests(TestCase):
     def test_ready_swallows_import_error(self):
         config = CmsConfig.create("apps.cms")
-        # Force the admin import to fail so the defensive except branch executes.
-        with patch("builtins.__import__", side_effect=ImportError("boom")):
+        real_import = builtins.__import__
+
+        def failing_relative_import(name, globals=None, locals=None, fromlist=(), level=0):
+            # Fail only ready()'s own `from . import admin / signals`; the job-kind
+            # registration that follows must still run.
+            if level > 0:
+                raise ImportError("boom")
+            return real_import(name, globals, locals, fromlist, level)
+
+        with (
+            patch("builtins.__import__", side_effect=failing_relative_import),
+            patch("apps.cms.apps.register_background_jobs") as register,
+        ):
             # Should not raise despite the import failure.
             config.ready()
+        register.assert_called_once_with()
 
 
 class CmsUrlsStubTests(TestCase):
