@@ -14,7 +14,7 @@ from apps.core.services.db_tools.safe_orm import (
     validate_query_key,
     validate_selected_fields,
 )
-from apps.core.services.db_tools.tool_modules.helpers import MAX_ROWS
+from apps.core.services.db_tools.safe_orm.constants import MAX_ROWS
 
 from ..auth.throttles import CliReadThrottle, CliWriteThrottle
 from ..services.audit import write_audit

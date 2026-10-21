@@ -22,6 +22,24 @@ from django.db.models import NOT_PROVIDED
 from apps.core.services.db_tools.safe_orm import field_schema
 
 
+def _choice_pairs(entry: Any) -> list[tuple[Any, Any]]:
+    """``(value, label)`` pairs of one choices entry: itself, or a group's members; malformed ones dropped."""
+    try:
+        value, label = entry
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(label, list | tuple):
+        return [(value, label)]
+    pairs = []
+    for inner in label:
+        try:
+            inner_value, inner_label = inner
+        except (TypeError, ValueError):
+            continue
+        pairs.append((inner_value, inner_label))
+    return pairs
+
+
 def _flatten_choices(raw_choices: Any) -> list[dict[str, Any]]:
     """Defensively flatten Django ``choices`` into ``[{value, label}]``.
 
@@ -31,22 +49,7 @@ def _flatten_choices(raw_choices: Any) -> list[dict[str, Any]]:
     everything else is read as a flat ``(value, label)`` pair. Any malformed entry
     is skipped so this never raises (the caller relies on "never raises").
     """
-    flattened: list[dict[str, Any]] = []
-    for entry in raw_choices:
-        try:
-            value, label = entry
-        except (TypeError, ValueError):
-            continue
-        if isinstance(label, list | tuple):
-            for inner in label:
-                try:
-                    inner_value, inner_label = inner
-                except (TypeError, ValueError):
-                    continue
-                flattened.append({"value": inner_value, "label": str(inner_label)})
-        else:
-            flattened.append({"value": value, "label": str(label)})
-    return flattened
+    return [{"value": value, "label": str(label)} for entry in raw_choices for value, label in _choice_pairs(entry)]
 
 
 def field_schema_verbose(field: models.Field) -> dict[str, Any]:

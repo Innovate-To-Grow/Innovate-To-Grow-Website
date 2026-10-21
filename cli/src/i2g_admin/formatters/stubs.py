@@ -79,11 +79,8 @@ def _format_csv_with(data: Any, render_cell) -> str:
     buffer = io.StringIO()
     if isinstance(data, list):
         if data and all(isinstance(row, dict) for row in data):
-            columns: list[str] = []
-            for row in data:
-                for key in row:
-                    if key not in columns:
-                        columns.append(key)
+            # Union of every row's keys, in first-seen order.
+            columns = list(dict.fromkeys(key for row in data for key in row))
             writer = csv.writer(buffer)
             writer.writerow([render_cell(column) for column in columns])
             for row in data:
