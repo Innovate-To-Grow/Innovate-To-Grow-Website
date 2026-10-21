@@ -299,7 +299,7 @@ class CampaignGmailViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("admin:mail_emailcampaign_change", args=[self.campaign.pk]))
 
-    @patch("apps.mail.admin.campaign.list_recent_sent_messages", side_effect=GmailImportError("imap down"))
+    @patch("apps.mail.admin.campaign.services.list_recent_sent_messages", side_effect=GmailImportError("imap down"))
     def test_import_view_handles_gmail_import_error(self, mock_list):
         response = self.client.get(
             reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk]), follow=True
@@ -337,7 +337,7 @@ class CampaignGmailViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk]))
 
-    @patch("apps.mail.admin.campaign.import_message_into_campaign", side_effect=GmailImportError("no html"))
+    @patch("apps.mail.admin.campaign.services.import_message_into_campaign", side_effect=GmailImportError("no html"))
     def test_import_confirm_handles_import_error(self, mock_import):
         response = self.client.post(
             reverse("admin:mail_emailcampaign_import_gmail_html_confirm", args=[self.campaign.pk]),
@@ -348,7 +348,7 @@ class CampaignGmailViewTests(TestCase):
         self.assertEqual(response.url, reverse("admin:mail_emailcampaign_import_gmail_html", args=[self.campaign.pk]))
         mock_import.assert_called_once()
 
-    @patch("apps.mail.admin.campaign.import_message_into_campaign")
+    @patch("apps.mail.admin.campaign.services.import_message_into_campaign")
     def test_import_confirm_success(self, mock_import):
         def _do_import(campaign, message_id, mailbox):
             campaign.body = HTML_MARKER + "<p>Imported</p>"

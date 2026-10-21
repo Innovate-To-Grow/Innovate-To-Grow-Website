@@ -1,4 +1,5 @@
-import {DEFAULT_PAST_PROJECT_SHARE_NAME, type PastProjectShareSummary} from '@/features/projects/api';
+import type {PastProjectShareSummary} from '@/features/projects/api';
+import {DEFAULT_PAST_PROJECT_SHARE_NAME} from '@/features/projects/api/constants';
 
 export const PAST_PROJECT_CURATION_SHARED_LINKS_PATH = '/account/past-project-curation-shared-links';
 export const PAST_PROJECT_CURATION_SHARED_LINKS_TITLE = 'Past Project Curation Shared Links';

@@ -21,7 +21,7 @@ vi.mock('@/features/cms/components/BlockRenderer', () => ({
   ),
 }));
 
-vi.mock('@/routes/NotFoundPage', () => ({
+vi.mock('@/components/NotFoundPage', () => ({
   NotFoundPage: () => <div data-testid="not-found" />,
 }));
 

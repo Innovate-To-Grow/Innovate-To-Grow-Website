@@ -62,3 +62,6 @@ __all__ = [
     "SAFE_LOOKUPS",
     "SENSITIVE_FIELD_RE",
 ]
+
+# Most rows any record listing (assistant tool or CLI admin API) returns in one call.
+MAX_ROWS = 50

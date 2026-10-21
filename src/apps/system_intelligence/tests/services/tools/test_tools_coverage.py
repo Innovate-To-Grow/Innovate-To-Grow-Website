@@ -25,7 +25,6 @@ from apps.cms.models import (
     SiteSettings,
     StyleSheet,
 )
-from apps.core.services.db_tools.tool_modules.helpers import MAX_ROWS
 from apps.event.models import CurrentProject, CurrentProjectSchedule
 from apps.event.tests.helpers import (
     make_event,
@@ -43,6 +42,7 @@ from apps.system_intelligence.models import (
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services import tools as si_tools
 from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.query_tools.tool_modules.helpers import MAX_ROWS
 from apps.system_intelligence.services.tools import exports as exports_module
 from apps.system_intelligence.services.tools.cms import layout as layout_module
 from apps.system_intelligence.services.tools.cms import news as news_module

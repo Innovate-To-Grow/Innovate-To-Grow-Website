@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import DOMPurify from 'dompurify';
-import {fetchCMSEmbedHosts} from '@/features/cms/api';
+import {fetchCMSEmbedHosts} from '@/lib/api/embedHosts';
 
 const SANITIZE_OPTIONS = {
   USE_PROFILES: {html: true},

@@ -1,27 +1,22 @@
+import {collectFieldMessages} from '@/lib/api/errorMessages';
+
 export type SubscribeStep = 'email' | 'code' | 'profile' | 'done';
 
+const MAX_MESSAGE_LENGTH = 300;
+const isShortMessage = (value: unknown): value is string =>
+  typeof value === 'string' && value.length <= MAX_MESSAGE_LENGTH;
+
+/** `detail`, else `message`, else every field message joined; long (non-user-facing) text is skipped. */
 export function getSubscribeErrorMessage(err: unknown): string {
-  if (typeof err === 'object' && err !== null) {
-    const axiosError = err as {response?: {data?: Record<string, unknown>}};
-    if (axiosError.response?.data) {
-      const data = axiosError.response.data;
-      if (typeof data.detail === 'string' && data.detail.length <= 300) return data.detail;
-      if (typeof data.message === 'string' && data.message.length <= 300) return data.message;
-
-      const messages: string[] = [];
-      for (const value of Object.values(data)) {
-        if (Array.isArray(value)) {
-          for (const item of value) {
-            if (typeof item === 'string' && item.length <= 300) messages.push(item);
-          }
-        } else if (typeof value === 'string' && value.length <= 300) {
-          messages.push(value);
-        }
-      }
-
-      if (messages.length > 0) return messages.join(' ');
-    }
+  const data =
+    typeof err === 'object' && err !== null
+      ? (err as {response?: {data?: Record<string, unknown>}}).response?.data
+      : undefined;
+  if (data) {
+    if (isShortMessage(data.detail)) return data.detail;
+    if (isShortMessage(data.message)) return data.message;
+    const messages = collectFieldMessages(data, isShortMessage);
+    if (messages.length > 0) return messages.join(' ');
   }
-
   return 'An unexpected error occurred. Please try again.';
 }

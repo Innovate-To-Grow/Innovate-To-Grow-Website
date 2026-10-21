@@ -21,9 +21,7 @@ from apps.cms.app_routes import (
 )
 from apps.cms.services.embed.embed_sections import ROUTE_HIDDEN_SECTION_PRESETS
 
-EMBED_REGISTRY_PATH = (
-    Path(settings.BASE_DIR).parent / "pages" / "src" / "features" / "cms" / "components" / "embedAppRoutes.ts"
-)
+EMBED_REGISTRY_PATH = Path(settings.BASE_DIR).parent / "pages" / "src" / "app" / "router" / "embedAppRoutes.ts"
 
 # Matches lines like "  '/schedule': React.lazy(...)" inside the registry object.
 # Accepts both single and double quotes so the test stays stable across

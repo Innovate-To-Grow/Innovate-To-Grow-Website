@@ -9,7 +9,7 @@ Used for event registration data sync and schedule/project data import.
 | Integration | Direction | Service file |
 |-------------|-----------|-------------|
 | Registration sheet sync | PostgreSQL outbox worker → Google Sheets (managed-cell reconciliation) | `src/apps/event/services/registration_sheet_sync/` |
-| Schedule sync | Google Sheets → Django (import tracks, projects) | `src/apps/event/services/schedule_sync.py` |
+| Schedule sync | Google Sheets → Django (import tracks, projects) | `src/apps/event/services/schedule_sync/` |
 
 **Authentication**: Google service account credentials are stored in
 `GoogleCredentialConfig`
@@ -47,7 +47,7 @@ There is no per-message routing or automatic failover.
 | Provider layer | `src/apps/core/services/email/` |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
-| Ticket confirmation | `src/apps/event/services/ticket_mail.py` |
+| Ticket confirmation | `src/apps/event/services/ticket/mail.py` |
 
 Delivery fails closed unless the selected provider and sender are structurally
 configured. A failed or uncertain request is never retried through the other
@@ -74,7 +74,7 @@ Used for phone number verification during event registration and contact managem
 |---------|---------------|
 | SMS settings | Shared `AWSCredentialConfig` IAM key + `default_region` + optional `sms_from_number` override + OTP template |
 | Origination resolution | `src/apps/core/services/aws/sms.py` (`describe_phone_numbers`, cached) |
-| Send verification | `src/apps/authn/services/sms/sns_verify.py` |
+| Send verification | `src/apps/authn/services/sms/` (`sns_verify.py` is the public entry point; `checks.py` holds the code checks, `errors.py` the error types) |
 | Event phone verify | `src/apps/event/views/registration/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
 
 OTP codes are generated locally, stored only as hashes in
@@ -93,7 +93,7 @@ manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
 | AI behavior | `SystemIntelligenceConfig` (`src/apps/system_intelligence/models/config.py`) |
 | Public spend limits | Per-visitor/member and global token budgets in PostgreSQL, set on the same config; see [Assistant and AI search limits](../integrations/assistant-limits.md) |
 | AWS credentials | Shared `AWSCredentialConfig` IAM key + `default_region` |
-| Runtime | `src/apps/core/services/bedrock/` |
+| Runtime | `src/apps/system_intelligence/services/bedrock/` |
 
 ## AWS S3 / Cloudflare R2
 

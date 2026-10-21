@@ -112,12 +112,12 @@ def normalize_and_validate_route(route: str | None) -> str:
     return normalize_and_validate_cms_page_route(raw_route)
 
 
-def normalize_and_validate_legacy_source(route: str | None) -> str:
-    """Normalize a safe legacy path while allowing common URL punctuation."""
+def _has_control_characters(value: str) -> bool:
+    return any(ord(char) < 32 or ord(char) == 127 for char in value)
 
-    raw_route = route or ""
-    trimmed = raw_route.strip()
-    if any(ord(char) < 32 or ord(char) == 127 for char in raw_route):
+
+def _check_legacy_path_shape(raw_route: str, trimmed: str) -> None:
+    if _has_control_characters(raw_route):
         raise ValidationError("Paths cannot contain control characters.")
     if URL_SCHEME_RE.match(trimmed):
         raise ValidationError("Use a site-relative path, not a full URL.")
@@ -128,27 +128,95 @@ def normalize_and_validate_legacy_source(route: str | None) -> str:
     if "\\" in trimmed:
         raise ValidationError("Paths cannot contain backslashes.")
 
-    segments: list[str] = []
-    for encoded_segment in (segment for segment in trimmed.split("/") if segment):
-        if INVALID_PERCENT_ENCODING_RE.search(encoded_segment):
-            raise ValidationError("Path contains invalid percent encoding.")
-        try:
-            segment = unquote(encoded_segment, errors="strict")
-        except UnicodeDecodeError:
-            raise ValidationError("Path contains invalid percent encoding.")
-        if segment in {".", ".."}:
-            raise ValidationError("Dot path segments are not allowed.")
-        if "/" in segment or "\\" in segment:
-            raise ValidationError("Encoded slash or backslash characters are not allowed.")
-        if any(ord(char) < 32 or ord(char) == 127 for char in segment):
-            raise ValidationError("Paths cannot contain control characters.")
-        if not LEGACY_ROUTE_SEGMENT_RE.fullmatch(segment):
-            raise ValidationError(
-                "Legacy path segments may use letters, numbers, dots, hyphens, underscores, tildes, or plus signs."
-            )
-        segments.append(segment)
 
+def _decode_legacy_segment(encoded_segment: str) -> str:
+    if INVALID_PERCENT_ENCODING_RE.search(encoded_segment):
+        raise ValidationError("Path contains invalid percent encoding.")
+    try:
+        segment = unquote(encoded_segment, errors="strict")
+    except UnicodeDecodeError:
+        raise ValidationError("Path contains invalid percent encoding.")
+    if segment in {".", ".."}:
+        raise ValidationError("Dot path segments are not allowed.")
+    if "/" in segment or "\\" in segment:
+        raise ValidationError("Encoded slash or backslash characters are not allowed.")
+    if _has_control_characters(segment):
+        raise ValidationError("Paths cannot contain control characters.")
+    if not LEGACY_ROUTE_SEGMENT_RE.fullmatch(segment):
+        raise ValidationError(
+            "Legacy path segments may use letters, numbers, dots, hyphens, underscores, tildes, or plus signs."
+        )
+    return segment
+
+
+def normalize_and_validate_legacy_source(route: str | None) -> str:
+    """Normalize a safe legacy path while allowing common URL punctuation."""
+
+    raw_route = route or ""
+    trimmed = raw_route.strip()
+    _check_legacy_path_shape(raw_route, trimmed)
+    segments = [_decode_legacy_segment(segment) for segment in trimmed.split("/") if segment]
     return "/" + "/".join(segments) if segments else "/"
+
+
+def _reserved_route_conflicts(normalized: str, *, allow_root: bool) -> list[RouteConflict]:
+    """The root, system prefixes and public application routes cannot be taken over."""
+    conflicts: list[RouteConflict] = []
+    if normalized == "/" and not allow_root:
+        conflicts.append(
+            RouteConflict("root_redirect_source", "source_path", "The site root cannot be used as a redirect source.")
+        )
+    reserved = next((prefix for prefix in RESERVED_ROUTE_PREFIXES if _matches_prefix(normalized, prefix)), None)
+    if reserved:
+        conflicts.append(
+            RouteConflict(
+                "reserved_route", "source_path", f'Path "{normalized}" is reserved for system route "{reserved}".'
+            )
+        )
+    app_route = match_public_app_route(normalized)
+    if app_route:
+        conflicts.append(
+            RouteConflict(
+                "application_route", "source_path", f'Path "{normalized}" is owned by application route "{app_route}".'
+            )
+        )
+    return conflicts
+
+
+def _owner_conflicts(normalized: str, *, exclude_page_id, exclude_redirect_id) -> list[RouteConflict]:
+    """A CMS page or another redirect that already owns ``normalized``."""
+    # Local imports keep model import order acyclic: RouteRedirect.clean() uses
+    # this service after Django has finished constructing the model classes.
+    from apps.cms.models import CMSPage, RouteRedirect
+
+    conflicts: list[RouteConflict] = []
+    page_qs = CMSPage.objects.filter(route=normalized)
+    page_id = _safe_uuid(exclude_page_id)
+    if page_id:
+        page_qs = page_qs.exclude(pk=page_id)
+    page = page_qs.only("title", "status").first()
+    if page:
+        conflicts.append(
+            RouteConflict(
+                "cms_page", "source_path", f'Path "{normalized}" is already used by "{page.title}" ({page.status}).'
+            )
+        )
+
+    redirect_qs = RouteRedirect.objects.filter(source_path=normalized)
+    redirect_id = _safe_uuid(exclude_redirect_id)
+    if redirect_id:
+        redirect_qs = redirect_qs.exclude(pk=redirect_id)
+    redirect = redirect_qs.only("destination_path", "is_active").first()
+    if redirect:
+        state = "active" if redirect.is_active else "inactive"
+        conflicts.append(
+            RouteConflict(
+                "redirect_source",
+                "source_path",
+                f'Path "{normalized}" is already a {state} redirect to "{redirect.destination_path}".',
+            )
+        )
+    return conflicts
 
 
 def source_route_conflicts(
@@ -169,69 +237,45 @@ def source_route_conflicts(
     except ValidationError as exc:
         return normalize_cms_route(route), [RouteConflict("invalid", "source_path", exc.messages[0])]
 
+    conflicts = _reserved_route_conflicts(normalized, allow_root=allow_root)
+    conflicts.extend(
+        _owner_conflicts(normalized, exclude_page_id=exclude_page_id, exclude_redirect_id=exclude_redirect_id)
+    )
+    return normalized, conflicts
+
+
+def _redirect_chain_conflicts(source: str, destination: str, *, exclude_redirect_id) -> list[RouteConflict]:
+    """Redirects may not chain or cycle: the destination is no redirect source, nothing points at the source."""
+    from apps.cms.models import RouteRedirect
+
     conflicts: list[RouteConflict] = []
-    if normalized == "/" and not allow_root:
-        conflicts.append(
-            RouteConflict(
-                "root_redirect_source",
-                "source_path",
-                "The site root cannot be used as a redirect source.",
-            )
-        )
-    reserved = next((prefix for prefix in RESERVED_ROUTE_PREFIXES if _matches_prefix(normalized, prefix)), None)
-    if reserved:
-        conflicts.append(
-            RouteConflict(
-                "reserved_route",
-                "source_path",
-                f'Path "{normalized}" is reserved for system route "{reserved}".',
-            )
-        )
-
-    app_route = match_public_app_route(normalized)
-    if app_route:
-        conflicts.append(
-            RouteConflict(
-                "application_route",
-                "source_path",
-                f'Path "{normalized}" is owned by application route "{app_route}".',
-            )
-        )
-
-    # Local imports keep model import order acyclic: RouteRedirect.clean() uses
-    # this service after Django has finished constructing the model classes.
-    from apps.cms.models import CMSPage, RouteRedirect
-
-    page_qs = CMSPage.objects.filter(route=normalized)
-    page_id = _safe_uuid(exclude_page_id)
-    if page_id:
-        page_qs = page_qs.exclude(pk=page_id)
-    page = page_qs.only("title", "status").first()
-    if page:
-        conflicts.append(
-            RouteConflict(
-                "cms_page",
-                "source_path",
-                f'Path "{normalized}" is already used by "{page.title}" ({page.status}).',
-            )
-        )
-
-    redirect_qs = RouteRedirect.objects.filter(source_path=normalized)
+    destination_redirects = RouteRedirect.objects.filter(source_path=destination)
+    inbound_redirects = RouteRedirect.objects.filter(destination_path=source)
     redirect_id = _safe_uuid(exclude_redirect_id)
     if redirect_id:
-        redirect_qs = redirect_qs.exclude(pk=redirect_id)
-    redirect = redirect_qs.only("destination_path", "is_active").first()
-    if redirect:
-        state = "active" if redirect.is_active else "inactive"
+        destination_redirects = destination_redirects.exclude(pk=redirect_id)
+        inbound_redirects = inbound_redirects.exclude(pk=redirect_id)
+
+    destination_redirect = destination_redirects.only("destination_path").first()
+    if destination_redirect:
+        code = "redirect_cycle" if destination_redirect.destination_path == source else "redirect_chain"
+        message = (
+            f'Redirect would create a cycle through "{destination}".'
+            if code == "redirect_cycle"
+            else f'Destination "{destination}" is itself a redirect source; redirect chains are not allowed.'
+        )
+        conflicts.append(RouteConflict(code, "destination_path", message))
+
+    inbound_redirect = inbound_redirects.only("source_path").first()
+    if inbound_redirect:
         conflicts.append(
             RouteConflict(
-                "redirect_source",
+                "redirect_chain",
                 "source_path",
-                f'Path "{normalized}" is already a {state} redirect to "{redirect.destination_path}".',
+                f'Source "{source}" is already the destination of redirect "{inbound_redirect.source_path}".',
             )
         )
-
-    return normalized, conflicts
+    return conflicts
 
 
 def redirect_mapping_conflicts(
@@ -263,34 +307,9 @@ def redirect_mapping_conflicts(
             )
         )
 
-    from apps.cms.models import CMSPage, RouteRedirect
+    conflicts.extend(_redirect_chain_conflicts(source, destination, exclude_redirect_id=exclude_redirect_id))
 
-    destination_redirects = RouteRedirect.objects.filter(source_path=destination)
-    inbound_redirects = RouteRedirect.objects.filter(destination_path=source)
-    redirect_id = _safe_uuid(exclude_redirect_id)
-    if redirect_id:
-        destination_redirects = destination_redirects.exclude(pk=redirect_id)
-        inbound_redirects = inbound_redirects.exclude(pk=redirect_id)
-
-    destination_redirect = destination_redirects.only("destination_path").first()
-    if destination_redirect:
-        code = "redirect_cycle" if destination_redirect.destination_path == source else "redirect_chain"
-        message = (
-            f'Redirect would create a cycle through "{destination}".'
-            if code == "redirect_cycle"
-            else f'Destination "{destination}" is itself a redirect source; redirect chains are not allowed.'
-        )
-        conflicts.append(RouteConflict(code, "destination_path", message))
-
-    inbound_redirect = inbound_redirects.only("source_path").first()
-    if inbound_redirect:
-        conflicts.append(
-            RouteConflict(
-                "redirect_chain",
-                "source_path",
-                f'Source "{source}" is already the destination of redirect "{inbound_redirect.source_path}".',
-            )
-        )
+    from apps.cms.models import CMSPage
 
     published_page_exists = CMSPage.objects.filter(route=destination, status="published").exists()
     # Dynamic application paths may still 404 for an unknown object ID. Only

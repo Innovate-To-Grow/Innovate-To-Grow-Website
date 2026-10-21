@@ -1,5 +1,5 @@
 import type {PastProjectShareSummary} from '@/features/projects/api';
-import {useCopyLink} from '@/features/projects/hooks/useCopyLink';
+import {useCopyLink} from '@/hooks/useCopyLink';
 import {formatSharedLinkDate, getSharedLinkDisplayName, getSharedLinkResultsLabel} from './sharedLinkUtils';
 
 interface SharedLinksListProps {

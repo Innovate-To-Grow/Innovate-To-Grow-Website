@@ -42,6 +42,66 @@ def _csp_report_rate_limited(request) -> bool:
         return False
 
 
+def _redact_url(value: str) -> str:
+    """Keep an http(s) URL's origin and path (sensitive segments redacted); drop credentials, query, fragment.
+
+    Reports can include signed or callback URLs. Keep the route useful for
+    diagnostics but never log credentials, query parameters, or fragments.
+    """
+    try:
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            return value
+        host = parsed.hostname
+        if ":" in host:
+            host = f"[{host}]"
+        try:
+            parsed_port = parsed.port
+        except ValueError:
+            parsed_port = None
+        port = f":{parsed_port}" if parsed_port is not None else ""
+        path = _SENSITIVE_CSP_PATH_SEGMENT.sub(r"\g<prefix><redacted>", parsed.path)
+        return f"{parsed.scheme}://{host}{port}{path}"
+    except (TypeError, ValueError):
+        return value
+
+
+def _clean_report_value(value: object) -> str:
+    # Drop control chars (including newlines) so an attacker can't
+    # forge extra log lines. 256-char cap per field keeps log volume
+    # bounded even under spray. Two-step strip: explicit `\r` / `\n`
+    # removal is the pattern CodeQL recognizes as a log-injection
+    # sanitizer; the printable-char filter follows to also catch
+    # ANSI escapes and other control bytes.
+    s = str(value) if value is not None else ""
+    s = s.replace("\r", " ").replace("\n", " ")
+    s = "".join(ch for ch in s if ch.isprintable())
+    return _redact_url(s)[:256]
+
+
+def _read_report(request):
+    """The ``csp-report`` object, or an ``HttpResponse`` to answer with instead (too large / unusable)."""
+    try:
+        content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+    except (TypeError, ValueError):
+        content_length = 0
+    if content_length > 4096:
+        return HttpResponse(status=413)
+
+    raw = request.body[:4096]
+    try:
+        payload = json.loads(raw.decode("utf-8", errors="replace"))
+    except (ValueError, UnicodeDecodeError):
+        logger.warning("CSP report with unparseable body (%d bytes)", len(raw))
+        return HttpResponse(status=204)
+
+    report = payload.get("csp-report") if isinstance(payload, dict) else None
+    if not isinstance(report, dict):
+        logger.warning("CSP report missing 'csp-report' object")
+        return HttpResponse(status=204)
+    return report
+
+
 @require_POST
 @csrf_exempt
 def csp_report(request):
@@ -59,69 +119,15 @@ def csp_report(request):
     try:
         if _csp_report_rate_limited(request):
             return HttpResponse(status=204)
-
-        try:
-            content_length = int(request.META.get("CONTENT_LENGTH") or 0)
-        except (TypeError, ValueError):
-            content_length = 0
-        if content_length > 4096:
-            return HttpResponse(status=413)
-
-        raw = request.body[:4096]
-        try:
-            payload = json.loads(raw.decode("utf-8", errors="replace"))
-        except (ValueError, UnicodeDecodeError):
-            logger.warning("CSP report with unparseable body (%d bytes)", len(raw))
-            return HttpResponse(status=204)
-
-        report = payload.get("csp-report") if isinstance(payload, dict) else None
-        if not isinstance(report, dict):
-            logger.warning("CSP report missing 'csp-report' object")
-            return HttpResponse(status=204)
-
-        def _clean(value: object) -> str:
-            # Drop control chars (including newlines) so an attacker can't
-            # forge extra log lines. 256-char cap per field keeps log volume
-            # bounded even under spray. Two-step strip: explicit `\r` / `\n`
-            # removal is the pattern CodeQL recognizes as a log-injection
-            # sanitizer; the printable-char filter follows to also catch
-            # ANSI escapes and other control bytes.
-            s = str(value) if value is not None else ""
-            s = s.replace("\r", " ").replace("\n", " ")
-            s = "".join(ch for ch in s if ch.isprintable())
-            try:
-                parsed = urlsplit(s)
-                if parsed.scheme in {"http", "https"} and parsed.hostname:
-                    # Reports can include signed or callback URLs. Keep the
-                    # route useful for diagnostics but never log credentials,
-                    # query parameters, or fragments.
-                    host = parsed.hostname
-                    if ":" in host:
-                        host = f"[{host}]"
-                    try:
-                        parsed_port = parsed.port
-                    except ValueError:
-                        parsed_port = None
-                    port = f":{parsed_port}" if parsed_port is not None else ""
-                    path = _SENSITIVE_CSP_PATH_SEGMENT.sub(
-                        r"\g<prefix><redacted>",
-                        parsed.path,
-                    )
-                    s = f"{parsed.scheme}://{host}{port}{path}"
-            except (TypeError, ValueError):
-                pass
-            return s[:256]
-
-        directive = _clean(report.get("violated-directive") or report.get("effective-directive"))
-        blocked = _clean(report.get("blocked-uri"))
-        document = _clean(report.get("document-uri"))
-        source = _clean(report.get("source-file"))
+        report = _read_report(request)
+        if isinstance(report, HttpResponse):
+            return report
         logger.warning(
             "CSP violation: directive=%s blocked=%s document=%s source=%s",
-            directive,
-            blocked,
-            document,
-            source,
+            _clean_report_value(report.get("violated-directive") or report.get("effective-directive")),
+            _clean_report_value(report.get("blocked-uri")),
+            _clean_report_value(report.get("document-uri")),
+            _clean_report_value(report.get("source-file")),
         )
     except Exception:
         logger.exception("Unexpected error processing CSP violation report")

@@ -2,7 +2,7 @@
 
 from html import escape
 
-import apps.mail.admin.inbox as inbox_api
+from . import services as inbox_api
 
 
 def parse_limit(request) -> int:

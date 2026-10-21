@@ -92,7 +92,7 @@ class RouteRedirectAdminTests(TestCase):
             )
             self.assertTrue(form.is_valid(), form.errors)
 
-    @patch("apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync")
+    @patch("apps.cms.services.amplify.jobs.schedule_amplify_redirect_sync")
     def test_retry_action_marks_pending_and_schedules_global_sync(self, schedule):
         schedule.return_value = object()
         redirect = RouteRedirect.objects.create(
@@ -110,7 +110,7 @@ class RouteRedirectAdminTests(TestCase):
         self.assertEqual(redirect.edge_sync_error, "")
         schedule.assert_called_once_with(immediate=True, redirect_ids=[redirect.pk])
 
-    @patch("apps.cms.services.amplify.amplify_redirects.schedule_amplify_redirect_sync")
+    @patch("apps.cms.services.amplify.jobs.schedule_amplify_redirect_sync")
     def test_retry_action_ignores_inactive_unmanaged_redirect(self, schedule):
         redirect = RouteRedirect.objects.create(
             source_path="/legacy-inactive-retry",

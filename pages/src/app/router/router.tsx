@@ -7,6 +7,7 @@ import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
 import {LegacyLoginLinkRedirect} from './LegacyLoginLinkRedirect';
 import {RouteDocumentTitle, type RouteHandle} from './RouteDocumentTitle';
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
+import {EMBED_APP_ROUTES} from './embedAppRoutes';
 
 // Matches the inline spinner in pages/index.html (#root:empty::before) so
 // lazy-route fallbacks and the initial-load spinner share one visual language.
@@ -62,7 +63,7 @@ export const createAppRouter = () => createBrowserRouter([
     // Block preview route — rendered in iframe for admin live preview, no menu/footer
     {path: '/_block-preview', element: <BlockPreviewPage/>},
     // Public embed widget — rendered in third-party iframe, no menu/footer
-    {path: '/_embed/:embedSlug', element: <EmbedBlockPage/>},
+    {path: '/_embed/:embedSlug', element: <EmbedBlockPage appRoutes={EMBED_APP_ROUTES}/>},
     {
         path: '/',
         element: (

@@ -6,6 +6,7 @@ Organized into modules by functionality:
 - member: Member and MemberProfile admin
 - contact: ContactEmail, ContactPhone admin
 - security: RSAKeypair admin
+- send_verification: SendVerificationConfig admin (a core model owned by this feature)
 """
 
 from django.contrib import admin
@@ -17,6 +18,7 @@ from .members.contact import ContactEmailAdmin, ContactPhoneAdmin
 from .members.invitation import AdminInvitationAdmin
 from .members.member import MemberAdmin
 from .security import RSAKeypairAdmin
+from .send_verification import SendVerificationConfigAdmin
 
 admin.site.unregister(Group)
 
@@ -30,6 +32,7 @@ __all__ = [
     "AdminInvitationAdmin",
     # Security
     "RSAKeypairAdmin",
+    "SendVerificationConfigAdmin",
     # Sheet Sync
     "MemberSheetSyncConfigAdmin",
     "MemberSheetSyncLogAdmin",

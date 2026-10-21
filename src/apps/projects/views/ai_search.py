@@ -1,5 +1,6 @@
 import logging
 import time
+from dataclasses import dataclass
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -7,7 +8,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.models import AWSCredentialConfig
-from apps.core.services.bedrock import normalize_bedrock_model_id
 from apps.projects.serializers import PastProjectAISearchSerializer, ProjectTableSerializer
 from apps.projects.services.ai_search import (
     past_project_ai_queryset,
@@ -16,6 +16,7 @@ from apps.projects.services.ai_search import (
 )
 from apps.projects.throttles import PastProjectAISearchRateThrottle
 from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog, SystemIntelligenceConfig
+from apps.system_intelligence.services.bedrock import normalize_bedrock_model_id
 from apps.system_intelligence.services.public_assistant import (
     FEATURE_AI_SEARCH,
     BudgetBackendUnavailable,
@@ -54,6 +55,106 @@ def _unavailable_response(config: SystemIntelligenceConfig, query: str = "") -> 
     )
 
 
+@dataclass
+class _SearchTurn:
+    """One AI-search request: what every audit-log entry for it records."""
+
+    request: object
+    config: SystemIntelligenceConfig
+    query: str
+    ip_hash: str
+    model_id: str
+
+    def log(self, status_value, **extra) -> None:
+        log_assistant_turn(
+            source=AssistantConversationLog.SOURCE_AI_SEARCH,
+            session_id=None,
+            ip_hash=self.ip_hash,
+            user=self.request.user,
+            prompt=self.query,
+            status=status_value,
+            model_id=self.model_id,
+            config=self.config,
+            **extra,
+        )
+
+    def error_response(self, started_at: float) -> Response:
+        self.log(AssistantMessageLog.STATUS_ERROR, latency_ms=int((time.monotonic() - started_at) * 1000))
+        return Response({"detail": _ERROR_MESSAGE, "code": "ai_search_error"}, status=status.HTTP_502_BAD_GATEWAY)
+
+
+def _reserve_search_budget(actor, prepared, config):
+    """Reserve estimated input + the output cap against the member's and AI search's global budget.
+
+    Returns the reservation, or a refusal ``Response`` (budget exhausted or its backend unreachable).
+    """
+    try:
+        reservation = reserve_budget(
+            actor.key,
+            estimated_input_tokens=prepared.estimated_input_tokens,
+            maximum_output_tokens=prepared.max_tokens,
+            limit=config.public_assistant_ip_token_limit,
+            window_seconds=config.public_assistant_ip_token_window_seconds,
+            global_limit=config.public_assistant_global_token_limit,
+            feature=FEATURE_AI_SEARCH,
+        )
+    except BudgetBackendUnavailable:
+        logger.exception("Past project AI search budget is unavailable")
+        return Response(
+            {"detail": _BUDGET_UNAVAILABLE_MESSAGE, "code": "budget_unavailable"},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    return reservation
+
+
+def _run_and_settle(turn: _SearchTurn, *, limit, prepared, reservation):
+    """Invoke the model and settle the reservation; returns (outcome, latency_ms) or an error ``Response``."""
+    started = time.monotonic()
+    outcome = {"project_ids": [], "usage": {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}}
+    if reservation is not None:
+        try:
+            outcome = run_past_project_ai_search(query=turn.query, limit=limit, config=turn.config, prepared=prepared)
+        except Exception:
+            logger.exception("Past project AI search invocation failed")
+            # Nothing was (successfully) spent: give the whole reservation back.
+            try:
+                release_budget(reservation)
+            except BudgetBackendUnavailable:
+                logger.exception("Could not release failed AI-search reservation")
+            return turn.error_response(started)
+    latency_ms = int((time.monotonic() - started) * 1000)
+    if reservation is not None:
+        # Replace the reservation with what the provider actually charged.
+        try:
+            reconcile_budget(reservation, reported_total_tokens(outcome.get("usage")))
+        except BudgetBackendUnavailable:
+            logger.exception("Could not reconcile AI-search reservation")
+    return outcome, latency_ms
+
+
+def _results_response(turn: _SearchTurn, outcome, latency_ms) -> Response:
+    # Only plausible integers are stored and returned: the raw block is provider-controlled.
+    usage = sanitized_usage(outcome.get("usage"))
+    project_ids = outcome.get("project_ids") or []
+    projects_by_id = {str(project.id): project for project in past_project_ai_queryset().filter(id__in=project_ids)}
+    ordered_projects = [projects_by_id[project_id] for project_id in project_ids if project_id in projects_by_id]
+    turn.log(
+        AssistantMessageLog.STATUS_OK,
+        results=[{"id": str(p.id), "project_title": p.project_title} for p in ordered_projects],
+        token_usage=usage,
+        latency_ms=latency_ms,
+    )
+    return Response(
+        {
+            "available": True,
+            "query": turn.query,
+            "results": ProjectTableSerializer(ordered_projects, many=True).data,
+            "usage": usage,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 class PastProjectAISearchAPIView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [PastProjectAISearchRateThrottle]
@@ -71,133 +172,39 @@ class PastProjectAISearchAPIView(APIView):
         # Token budgets are keyed on the MEMBER, never on the client IP (the
         # whole campus shares one). ip_hash is recorded in the audit log only.
         actor = member_actor(request.user.pk)
-        ip_hash = hash_ip(client_ip(request) or "")
-        model_id = normalize_bedrock_model_id(config.public_model_id) or ""
-
-        aws_config = AWSCredentialConfig.load()
-        if not aws_config.is_configured or not model_id:
-            log_assistant_turn(
-                source=AssistantConversationLog.SOURCE_AI_SEARCH,
-                session_id=None,
-                ip_hash=ip_hash,
-                user=request.user,
-                prompt=query,
-                status=AssistantMessageLog.STATUS_UNAVAILABLE,
-                model_id=model_id,
-                config=config,
-            )
+        turn = _SearchTurn(
+            request=request,
+            config=config,
+            query=query,
+            ip_hash=hash_ip(client_ip(request) or ""),
+            model_id=normalize_bedrock_model_id(config.public_model_id) or "",
+        )
+        if not AWSCredentialConfig.load().is_configured or not turn.model_id:
+            turn.log(AssistantMessageLog.STATUS_UNAVAILABLE)
             return _unavailable_response(config, query)
 
-        def error_response(started_at: float) -> Response:
-            log_assistant_turn(
-                source=AssistantConversationLog.SOURCE_AI_SEARCH,
-                session_id=None,
-                ip_hash=ip_hash,
-                user=request.user,
-                prompt=query,
-                status=AssistantMessageLog.STATUS_ERROR,
-                model_id=model_id,
-                latency_ms=int((time.monotonic() - started_at) * 1000),
-                config=config,
-            )
-            return Response(
-                {"detail": _ERROR_MESSAGE, "code": "ai_search_error"},
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        # Build the prompt first so its size is known, then reserve estimated
-        # input + the output cap against the member's budget AND AI search's
-        # own global budget before spending anything. No candidates -> no model
-        # call and nothing to reserve.
+        # Build the prompt first so its size is known, then reserve before spending
+        # anything. No candidates -> no model call and nothing to reserve.
         started = time.monotonic()
         try:
             prepared = prepare_past_project_ai_search(query=query, limit=limit, config=config)
         except Exception:
             logger.exception("Past project AI search preparation failed")
-            return error_response(started)
+            return turn.error_response(started)
         reservation = None
         if prepared is not None:
-            try:
-                reservation = reserve_budget(
-                    actor.key,
-                    estimated_input_tokens=prepared.estimated_input_tokens,
-                    maximum_output_tokens=prepared.max_tokens,
-                    limit=config.public_assistant_ip_token_limit,
-                    window_seconds=config.public_assistant_ip_token_window_seconds,
-                    global_limit=config.public_assistant_global_token_limit,
-                    feature=FEATURE_AI_SEARCH,
-                )
-            except BudgetBackendUnavailable:
-                logger.exception("Past project AI search budget is unavailable")
+            reservation = _reserve_search_budget(actor, prepared, config)
+            if isinstance(reservation, Response):
+                return reservation
+            if reservation is None:
+                turn.log(AssistantMessageLog.STATUS_BUDGET)
                 return Response(
-                    {"detail": _BUDGET_UNAVAILABLE_MESSAGE, "code": "budget_unavailable"},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    {"detail": _BUDGET_MESSAGE, "code": "budget_exceeded"},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
                 )
-        if prepared is not None and reservation is None:
-            log_assistant_turn(
-                source=AssistantConversationLog.SOURCE_AI_SEARCH,
-                session_id=None,
-                ip_hash=ip_hash,
-                user=request.user,
-                prompt=query,
-                status=AssistantMessageLog.STATUS_BUDGET,
-                model_id=model_id,
-                config=config,
-            )
-            return Response(
-                {"detail": _BUDGET_MESSAGE, "code": "budget_exceeded"},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
 
-        started = time.monotonic()
-        outcome = {"project_ids": [], "usage": {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}}
-        if reservation is not None:
-            try:
-                outcome = run_past_project_ai_search(query=query, limit=limit, config=config, prepared=prepared)
-            except Exception:
-                logger.exception("Past project AI search invocation failed")
-                # Nothing was (successfully) spent: give the whole reservation back.
-                try:
-                    release_budget(reservation)
-                except BudgetBackendUnavailable:
-                    logger.exception("Could not release failed AI-search reservation")
-                return error_response(started)
-        latency_ms = int((time.monotonic() - started) * 1000)
-
-        raw_usage = outcome.get("usage")
-        if reservation is not None:
-            # Replace the reservation with what the provider actually charged.
-            try:
-                reconcile_budget(reservation, reported_total_tokens(raw_usage))
-            except BudgetBackendUnavailable:
-                logger.exception("Could not reconcile AI-search reservation")
-        # Only plausible integers are stored and returned: the raw block is provider-controlled.
-        usage = sanitized_usage(raw_usage)
-
-        project_ids = outcome.get("project_ids") or []
-        projects_by_id = {str(project.id): project for project in past_project_ai_queryset().filter(id__in=project_ids)}
-        ordered_projects = [projects_by_id[project_id] for project_id in project_ids if project_id in projects_by_id]
-
-        log_assistant_turn(
-            source=AssistantConversationLog.SOURCE_AI_SEARCH,
-            session_id=None,
-            ip_hash=ip_hash,
-            user=request.user,
-            prompt=query,
-            results=[{"id": str(p.id), "project_title": p.project_title} for p in ordered_projects],
-            status=AssistantMessageLog.STATUS_OK,
-            model_id=model_id,
-            token_usage=usage,
-            latency_ms=latency_ms,
-            config=config,
-        )
-
-        return Response(
-            {
-                "available": True,
-                "query": query,
-                "results": ProjectTableSerializer(ordered_projects, many=True).data,
-                "usage": usage,
-            },
-            status=status.HTTP_200_OK,
-        )
+        settled = _run_and_settle(turn, limit=limit, prepared=prepared, reservation=reservation)
+        if isinstance(settled, Response):
+            return settled
+        outcome, latency_ms = settled
+        return _results_response(turn, outcome, latency_ms)

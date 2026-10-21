@@ -1,9 +1,26 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
-import { getPostAuthPath, getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
+import { getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
 import { useAuth } from '../AuthContext';
 import { VerifyEmailView } from './verify/VerifyEmailView';
 import { FLOW_META, isVerifyFlow, type VerifyFlow } from './verify/shared';
+import { useVerifyEmailFlow } from './verify/useVerifyEmailFlow';
+
+const SIGN_IN_FLOWS = new Set<string | null>(['auth', 'login', 'register']);
+
+/** Where the visitor belongs instead of this step, or null to show it. */
+const verifyRedirect = (
+  flow: VerifyFlow,
+  isAuthenticated: boolean,
+  requiresProfileCompletion: boolean,
+  returnTo: string | null,
+): string | null => {
+  if (flow === 'change' && !isAuthenticated) return '/login';
+  if (SIGN_IN_FLOWS.has(flow) && isAuthenticated) {
+    return returnTo ?? (requiresProfileCompletion ? '/complete-profile' : '/account');
+  }
+  return null;
+};
 
 export const VerifyEmailPage = () => {
   const { isAuthenticated, requiresProfileCompletion } = useAuth();
@@ -13,21 +30,14 @@ export const VerifyEmailPage = () => {
   const email = searchParams.get('email')?.trim().toLowerCase() ?? '';
   // returnTo is honored for the sign-in flows (auth/login) and registration, so a login
   // started from a gated page (e.g. Past Projects) lands the user back where they began.
-  const returnTo =
-    flowParam === 'register' || flowParam === 'auth' || flowParam === 'login'
-      ? getSafeInternalRedirectPath(searchParams.get('returnTo'))
-      : null;
+  const returnTo = SIGN_IN_FLOWS.has(flowParam) ? getSafeInternalRedirectPath(searchParams.get('returnTo')) : null;
 
   if (!isVerifyFlow(flowParam) || !email) {
     return <Navigate to="/login" replace />;
   }
-
-  if (flowParam === 'change' && !isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if ((flowParam === 'auth' || flowParam === 'login' || flowParam === 'register') && isAuthenticated) {
-    return <Navigate to={returnTo ?? (requiresProfileCompletion ? '/complete-profile' : '/account')} replace />;
+  const redirect = verifyRedirect(flowParam, isAuthenticated, requiresProfileCompletion, returnTo);
+  if (redirect) {
+    return <Navigate to={redirect} replace />;
   }
 
   return <VerifyEmailPageContent key={`${flowParam}:${email}:${returnTo ?? ''}`} flow={flowParam} email={email} returnTo={returnTo} />;
@@ -75,128 +85,16 @@ export const VerifyEmailPageContent = ({
   initialMessage = null,
   hint = null,
 }: VerifyEmailPageContentProps) => {
-  const {
-    error,
-    isLoading,
-    requestEmailAuthCode,
-    verifyEmailAuthCode,
-    clearError,
-    verifyLoginCode,
-    verifyRegistrationCode,
-    resendRegistrationCode,
-    requestLoginCode,
-    requestPasswordReset,
-    verifyPasswordResetCode,
-    confirmPasswordReset,
-    requestPasswordChangeCode,
-    verifyPasswordChangeCode,
-    confirmPasswordChange,
-  } = useAuth();
+  const { error, isLoading, clearError } = useAuth();
   const navigate = useNavigate();
-
-  const [code, setCode] = useState('');
-  const [verificationToken, setVerificationToken] = useState<string | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [localMessage, setLocalMessage] = useState<string | null>(initialMessage);
-  const [localSuccess, setLocalSuccess] = useState<string | null>(null);
+  const step = useVerifyEmailFlow({ flow, email, returnTo, initialMessage, onSignedIn });
 
   useEffect(() => {
     clearError();
   }, [clearError]);
 
   const meta = FLOW_META[flow];
-
-  const handleVerify = async (event: FormEvent) => {
-    event.preventDefault();
-    setLocalMessage(null);
-    setLocalSuccess(null);
-    try {
-      if (flow === 'auth') {
-        const response = await verifyEmailAuthCode(email, code);
-        onSignedIn?.();
-        navigate(getPostAuthPath(response, returnTo), { replace: true });
-        return;
-      }
-      if (flow === 'login') {
-        const response = await verifyLoginCode(email, code);
-        onSignedIn?.();
-        navigate(getPostAuthPath(response, returnTo), { replace: true });
-        return;
-      }
-      if (flow === 'register') {
-        const response = await verifyRegistrationCode(email, code);
-        onSignedIn?.();
-        navigate(
-          response.next_step === 'complete_profile' ? getPostAuthPath(response) : (returnTo ?? getPostAuthPath(response)),
-          { replace: true },
-        );
-        return;
-      }
-      if (flow === 'reset') {
-        const response = await verifyPasswordResetCode(email, code);
-        setVerificationToken(response.verification_token);
-        setLocalMessage('Code verified. Set your new password below.');
-        return;
-      }
-      const response = await verifyPasswordChangeCode(email, code);
-      setVerificationToken(response.verification_token);
-      setLocalMessage('Code verified. Set your new password below.');
-    } catch {
-      // handled by context
-    }
-  };
-
-  const handleResend = async () => {
-    setLocalMessage(null);
-    setLocalSuccess(null);
-    try {
-      if (flow === 'auth') {
-        const response = await requestEmailAuthCode(email, 'login');
-        setLocalMessage(response.message);
-        return;
-      }
-      if (flow === 'login') {
-        const response = await requestLoginCode(email);
-        setLocalMessage(response.message);
-        return;
-      }
-      if (flow === 'register') {
-        const response = await resendRegistrationCode(email);
-        setLocalMessage(response.message);
-        return;
-      }
-      if (flow === 'reset') {
-        const response = await requestPasswordReset(email);
-        setLocalMessage(response.message);
-        return;
-      }
-      const response = await requestPasswordChangeCode(email);
-      setLocalMessage(response.message);
-    } catch {
-      // handled by context
-    }
-  };
-
-  const handlePasswordSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!verificationToken) return;
-    setLocalMessage(null);
-    setLocalSuccess(null);
-    try {
-      if (flow === 'reset') {
-        const response = await confirmPasswordReset(email, verificationToken, newPassword, confirmPassword);
-        setLocalSuccess(response.message);
-        window.setTimeout(() => navigate('/login', { replace: true }), 900);
-        return;
-      }
-      const response = await confirmPasswordChange(verificationToken, newPassword, confirmPassword);
-      setLocalSuccess(response.message);
-      window.setTimeout(() => navigate('/account', { replace: true }), 900);
-    } catch {
-      // handled by context
-    }
-  };
+  const backPath = flow === 'change' ? '/account' : flow === 'reset' ? '/forgot-password' : '/login';
 
   return (
     <VerifyEmailView
@@ -205,32 +103,32 @@ export const VerifyEmailPageContent = ({
       title={meta.title}
       subtitle={meta.subtitle}
       buttonLabel={meta.buttonLabel}
-      code={code}
-      verificationToken={verificationToken}
-      newPassword={newPassword}
-      confirmPassword={confirmPassword}
-      localMessage={localMessage}
-      localSuccess={localSuccess}
+      code={step.code}
+      verificationToken={step.verificationToken}
+      newPassword={step.newPassword}
+      confirmPassword={step.confirmPassword}
+      localMessage={step.localMessage}
+      localSuccess={step.localSuccess}
       error={error}
       isLoading={isLoading}
       autoFocus={autoFocus}
       hint={hint}
       onCodeChange={(value) => {
-        setCode(value);
+        step.setCode(value);
         clearError();
       }}
       onNewPasswordChange={(value) => {
-        setNewPassword(value);
+        step.setNewPassword(value);
         clearError();
       }}
       onConfirmPasswordChange={(value) => {
-        setConfirmPassword(value);
+        step.setConfirmPassword(value);
         clearError();
       }}
-      onVerifySubmit={handleVerify}
-      onPasswordSubmit={handlePasswordSubmit}
-      onResend={handleResend}
-      onBack={onBack ?? (() => navigate(flow === 'change' ? '/account' : flow === 'reset' ? '/forgot-password' : '/login'))}
+      onVerifySubmit={step.handleVerify}
+      onPasswordSubmit={step.handlePasswordSubmit}
+      onResend={step.handleResend}
+      onBack={onBack ?? (() => navigate(backPath))}
     />
   );
 };

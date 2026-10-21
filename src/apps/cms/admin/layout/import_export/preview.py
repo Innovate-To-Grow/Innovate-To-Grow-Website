@@ -5,6 +5,26 @@ from apps.cms.models import StyleSheet
 from .rows import normalize_stylesheet_row
 
 
+def _preview_row(row, index, existing_by_name, seen_names):
+    """One row's preview result, and its normalized data when it can be imported (else None)."""
+    result = {"name": "", "display_name": "", "action": "create", "errors": [], "success": False}
+    normalized = normalize_stylesheet_row(row, index=index)
+    if normalized["errors"]:
+        result.update(name=normalized["name"], display_name=normalized["display_name"], errors=normalized["errors"])
+        return result, None
+
+    name = normalized["data"]["name"]
+    result.update(
+        name=name,
+        display_name=normalized["data"]["display_name"],
+        action="update" if name in existing_by_name else "create",
+    )
+    if name in seen_names:
+        result["errors"] = [f"Duplicate stylesheet name '{name}' in import file."]
+        return result, None
+    return result, normalized["data"]
+
+
 def preview_stylesheet_import(stylesheets_data):
     existing_by_name = {sheet.name: sheet for sheet in StyleSheet.objects.all()}
     seen_names = set()
@@ -12,44 +32,11 @@ def preview_stylesheet_import(stylesheets_data):
     results = []
 
     for index, row in enumerate(stylesheets_data):
-        result = {"name": "", "display_name": "", "action": "create", "errors": [], "success": False}
-        normalized = normalize_stylesheet_row(row, index=index)
-        if normalized["errors"]:
-            result.update(
-                {
-                    "name": normalized["name"],
-                    "display_name": normalized["display_name"],
-                    "errors": normalized["errors"],
-                    "action": "create",
-                }
-            )
-            results.append(result)
-            continue
-
-        name = normalized["data"]["name"]
-        if name in seen_names:
-            result.update(
-                {
-                    "name": name,
-                    "display_name": normalized["data"]["display_name"],
-                    "errors": [f"Duplicate stylesheet name '{name}' in import file."],
-                    "action": "update" if name in existing_by_name else "create",
-                }
-            )
-            results.append(result)
-            continue
-
-        seen_names.add(name)
-        existing = existing_by_name.get(name)
-        result.update(
-            {
-                "name": name,
-                "display_name": normalized["data"]["display_name"],
-                "action": "update" if existing else "create",
-            }
-        )
+        result, data = _preview_row(row, index, existing_by_name, seen_names)
         results.append(result)
-        normalized_rows.append(normalized["data"])
+        if data is not None:
+            seen_names.add(data["name"])
+            normalized_rows.append(data)
 
     for sheet in StyleSheet.objects.exclude(name__in=seen_names).order_by("sort_order", "name"):
         results.append(

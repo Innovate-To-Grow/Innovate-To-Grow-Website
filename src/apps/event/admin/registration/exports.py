@@ -21,41 +21,9 @@ class RegistrationExportMixin:
         return columns or list(self.get_export_fields())
 
     def get_export_value(self, obj, field_name):
-        member = obj.member
-        if field_name == "event_name":
-            return obj.event.name
-        if field_name == "event_slug":
-            return obj.event.slug
-        if field_name in {"event_date", "event_start_date"}:
-            return obj.event.date
-        if field_name == "event_end_date":
-            return obj.event.effective_end_date
-        if field_name == "ticket_name":
-            return obj.ticket.name
-        if field_name == "attendee_name":
-            return obj.attendee_name
-        if field_name == "member_id":
-            return str(member.pk)
-        if field_name == "member_full_name":
-            return member.get_full_name()
-        if field_name == "member_first_name":
-            return member.first_name
-        if field_name == "member_middle_name":
-            return member.middle_name or ""
-        if field_name == "member_last_name":
-            return member.last_name
-        if field_name == "member_title":
-            return member.title or ""
-        if field_name == "member_organization":
-            return member.organization or ""
-        if field_name == "member_primary_email":
-            return self._member_emails(member, "primary")
-        if field_name == "member_secondary_emails":
-            return self._member_emails(member, "secondary")
-        if field_name == "member_other_emails":
-            return self._member_emails(member, "other")
-        if field_name == "member_phone_numbers":
-            return self._member_phone_numbers(member)
+        getter = _REGISTRATION_EXPORT_VALUES.get(field_name)
+        if getter is not None:
+            return getter(self, obj)
         return super().get_export_value(obj, field_name)
 
     # noinspection PyMethodMayBeStatic
@@ -74,3 +42,27 @@ class RegistrationExportMixin:
             key=lambda phone: (not phone.verified, phone.created_at),
         )
         return "; ".join(phone.get_formatted_number() for phone in phones)
+
+
+# Computed export columns: field name -> (admin, registration) -> value. Other fields
+# fall back to the model attribute.
+_REGISTRATION_EXPORT_VALUES = {
+    "event_name": lambda admin, obj: obj.event.name,
+    "event_slug": lambda admin, obj: obj.event.slug,
+    "event_date": lambda admin, obj: obj.event.date,
+    "event_start_date": lambda admin, obj: obj.event.date,
+    "event_end_date": lambda admin, obj: obj.event.effective_end_date,
+    "ticket_name": lambda admin, obj: obj.ticket.name,
+    "attendee_name": lambda admin, obj: obj.attendee_name,
+    "member_id": lambda admin, obj: str(obj.member.pk),
+    "member_full_name": lambda admin, obj: obj.member.get_full_name(),
+    "member_first_name": lambda admin, obj: obj.member.first_name,
+    "member_middle_name": lambda admin, obj: obj.member.middle_name or "",
+    "member_last_name": lambda admin, obj: obj.member.last_name,
+    "member_title": lambda admin, obj: obj.member.title or "",
+    "member_organization": lambda admin, obj: obj.member.organization or "",
+    "member_primary_email": lambda admin, obj: admin._member_emails(obj.member, "primary"),
+    "member_secondary_emails": lambda admin, obj: admin._member_emails(obj.member, "secondary"),
+    "member_other_emails": lambda admin, obj: admin._member_emails(obj.member, "other"),
+    "member_phone_numbers": lambda admin, obj: admin._member_phone_numbers(obj.member),
+}

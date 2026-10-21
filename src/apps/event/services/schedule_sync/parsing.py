@@ -90,56 +90,53 @@ def build_grand_winners(records: list[dict[str, Any]]) -> list[dict[str, str]]:
     return winners
 
 
+def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
+    """One schedule slot from a normalized sheet record; None for rows that are neither a slot nor a break."""
+    track_raw = get_record_value(normalized, ["Track"])
+    order_raw = get_record_value(normalized, ["Order"])
+    track_number = coerce_int(track_raw)
+    slot_order = coerce_int(order_raw)
+    is_fall = track_raw.strip().lower() == "(fall)" or order_raw.strip().lower() == "(fall)"
+    if not is_fall and (track_number is None or slot_order is None):
+        return None
+
+    team_number = get_record_value(normalized, ["Team#", "Team #", "Team Number", "Team"])
+    team_name = get_record_value(normalized, ["TeamName", "Team Name"])
+    project_title = get_record_value(normalized, ["Project Title", "Title"])
+    organization = get_record_value(normalized, ["Organization", "Partner Organization", "Partner"])
+    class_code = normalize_section_code(
+        get_record_value(normalized, ["Class"]),
+        team_number,
+        team_name,
+        project_title,
+    )
+    is_break = _is_break_slot(is_fall, team_name, project_title, organization)
+    if not is_break and not team_number:
+        return None
+    return {
+        "track_number": track_number,
+        "slot_order": slot_order,
+        "year_semester": get_record_value(normalized, ["Year-Semester", "Year Semester", "Semester"]),
+        "class_code": class_code,
+        "team_number": team_number,
+        "team_name": team_name,
+        "project_title": project_title,
+        "organization": organization,
+        "industry": get_record_value(normalized, ["Industry"]),
+        "abstract": get_record_value(normalized, ["Abstract", "Project Abstract"]),
+        "student_names": get_record_value(normalized, ["Student Names", "Students"]),
+        "name_title": get_record_value(
+            normalized,
+            ["NameTitle", "Name Title", "Name: - Title:", "Contact Name Title"],
+        ),
+        "is_break": is_break,
+        "is_presenting": not is_fall,
+        "display_text": _display_text(team_number, team_name, project_title, is_break),
+    }
+
+
 def build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    slots: list[dict[str, Any]] = []
-    for record in records:
-        normalized = normalize_record(record)
-        track_raw = get_record_value(normalized, ["Track"])
-        order_raw = get_record_value(normalized, ["Order"])
-        track_number = coerce_int(track_raw)
-        slot_order = coerce_int(order_raw)
-        is_fall = track_raw.strip().lower() == "(fall)"
-        is_fall = is_fall or order_raw.strip().lower() == "(fall)"
-
-        if not is_fall and (track_number is None or slot_order is None):
-            continue
-
-        team_number = get_record_value(normalized, ["Team#", "Team #", "Team Number", "Team"])
-        team_name = get_record_value(normalized, ["TeamName", "Team Name"])
-        project_title = get_record_value(normalized, ["Project Title", "Title"])
-        organization = get_record_value(normalized, ["Organization", "Partner Organization", "Partner"])
-        class_code = normalize_section_code(
-            get_record_value(normalized, ["Class"]),
-            team_number,
-            team_name,
-            project_title,
-        )
-        is_break = _is_break_slot(is_fall, team_name, project_title, organization)
-        if not is_break and not team_number:
-            continue
-
-        slots.append(
-            {
-                "track_number": track_number,
-                "slot_order": slot_order,
-                "year_semester": get_record_value(normalized, ["Year-Semester", "Year Semester", "Semester"]),
-                "class_code": class_code,
-                "team_number": team_number,
-                "team_name": team_name,
-                "project_title": project_title,
-                "organization": organization,
-                "industry": get_record_value(normalized, ["Industry"]),
-                "abstract": get_record_value(normalized, ["Abstract", "Project Abstract"]),
-                "student_names": get_record_value(normalized, ["Student Names", "Students"]),
-                "name_title": get_record_value(
-                    normalized,
-                    ["NameTitle", "Name Title", "Name: - Title:", "Contact Name Title"],
-                ),
-                "is_break": is_break,
-                "is_presenting": not is_fall,
-                "display_text": _display_text(team_number, team_name, project_title, is_break),
-            }
-        )
+    slots = [slot for slot in (_slot_row(normalize_record(record)) for record in records) if slot is not None]
     return sorted(
         slots,
         key=lambda item: (

@@ -80,6 +80,54 @@ const readFragmentParams = () => {
   return raw.includes('=') ? new URLSearchParams(raw) : new URLSearchParams();
 };
 
+/**
+ * Keep the captured params for the route: in sessionStorage, or (when storage
+ * is refused) on the window.
+ */
+const storeHandoff = (
+  route: AuthCallbackRoute,
+  handoff: StoredCallbackParams,
+) => {
+  try {
+    sessionStorage.setItem(storageKey(route), JSON.stringify(handoff));
+    return;
+  } catch {
+    // Storage refused (private mode, quota): fall back to window memory below.
+  }
+  const memoryWindow = window as CallbackMemoryWindow;
+  const memory = memoryWindow.__i2gCallbackHandoff ?? {};
+  memory[route] = handoff;
+  try {
+    Object.defineProperty(memoryWindow, '__i2gCallbackHandoff', {
+      configurable: true,
+      enumerable: false,
+      value: memory,
+      writable: true,
+    });
+  } catch {
+    memoryWindow.__i2gCallbackHandoff = memory;
+  }
+};
+
+/** Remove each field from the query and fragment, returning the values found. */
+const takeFields = (
+  fields: readonly string[],
+  query: URLSearchParams,
+  fragment: URLSearchParams,
+): Record<string, string> => {
+  const captured: Record<string, string> = {};
+  for (const field of fields) {
+    const value = query.get(field) ?? fragment.get(field);
+    if (value !== null) captured[field] = value;
+    query.delete(field);
+    fragment.delete(field);
+  }
+  return captured;
+};
+
+const scrubbedUrl = (pathname: string, query: string, hash: string) =>
+  pathname + (query ? `?${query}` : '') + (hash ? `#${hash}` : '');
+
 export const captureAuthCallbackParams = (): void => {
   if (typeof window === 'undefined') return;
   const config = CALLBACK_ROUTES[window.location.pathname];
@@ -92,46 +140,17 @@ export const captureAuthCallbackParams = (): void => {
   const fragment = hashLooksLikeParams
     ? new URLSearchParams(rawHash)
     : new URLSearchParams();
-  const captured: Record<string, string> = {};
-
-  for (const field of config.fields) {
-    const value = query.get(field) ?? fragment.get(field);
-    if (value !== null) captured[field] = value;
-    query.delete(field);
-    fragment.delete(field);
-  }
-
+  const captured = takeFields(config.fields, query, fragment);
   if (Object.keys(captured).length > 0) {
-    const handoff: StoredCallbackParams = {
-      capturedAt: Date.now(),
-      params: captured,
-    };
-    try {
-      sessionStorage.setItem(storageKey(config.route), JSON.stringify(handoff));
-    } catch {
-      const memoryWindow = window as CallbackMemoryWindow;
-      const memory = memoryWindow.__i2gCallbackHandoff ?? {};
-      memory[config.route] = handoff;
-      try {
-        Object.defineProperty(memoryWindow, '__i2gCallbackHandoff', {
-          configurable: true,
-          enumerable: false,
-          value: memory,
-          writable: true,
-        });
-      } catch {
-        memoryWindow.__i2gCallbackHandoff = memory;
-      }
-    }
+    storeHandoff(config.route, {capturedAt: Date.now(), params: captured});
   }
 
-  const nextQuery = query.toString();
   const nextHash = hashLooksLikeParams ? fragment.toString() : rawHash;
-  const scrubbed =
-    window.location.pathname +
-    (nextQuery ? `?${nextQuery}` : '') +
-    (nextHash ? `#${nextHash}` : '');
-  window.history.replaceState(window.history.state, '', scrubbed);
+  window.history.replaceState(
+    window.history.state,
+    '',
+    scrubbedUrl(window.location.pathname, query.toString(), nextHash),
+  );
 };
 
 export const readAuthCallbackParams = (

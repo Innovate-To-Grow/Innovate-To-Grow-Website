@@ -13,10 +13,10 @@ The CMS serves dynamic pages built from ordered content blocks. News articles ar
 | CMS views | `src/apps/cms/views/` |
 | CMS models | `src/apps/cms/models/` |
 | CMS serializers | `src/apps/cms/serializers/` |
-| CMS URLs | `src/apps/cms/cms_urls.py` |
-| News URLs | `src/apps/cms/news_urls.py` |
-| Analytics URLs | `src/apps/cms/analytics_urls.py` |
-| Layout view | `src/apps/core/urls.py` (inline) or `src/apps/cms/views/` |
+| CMS URLs | `src/apps/cms/urls/cms.py` |
+| News URLs | `src/apps/cms/urls/news.py` |
+| Analytics URLs | `src/apps/cms/urls/analytics.py` |
+| Layout view | `src/apps/cms/views/layout.py` (routed in `src/config/routing/urls.py`) |
 
 ## CMS pages
 

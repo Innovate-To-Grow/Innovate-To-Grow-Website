@@ -127,7 +127,7 @@ triggered from the Semester admin page.
 
 ## Relationship to events
 
-Projects displayed in the event schedule are linked via `CurrentProjectSchedule` → `Semester` → `Project`. The schedule sync service (`src/apps/event/services/schedule_sync.py`) can also create/update Project records from Google Sheets.
+Projects displayed in the event schedule are linked via `CurrentProjectSchedule` → `Semester` → `Project`. The schedule sync service (`src/apps/event/services/schedule_sync/`) can also create/update Project records from Google Sheets.
 
 ## Related pages
 

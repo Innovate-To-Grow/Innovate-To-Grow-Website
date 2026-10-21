@@ -20,10 +20,12 @@ const mockIsDefinitiveAuthFailure = vi.hoisted(() =>
 );
 
 vi.mock('@/lib/api', () => ({api: apiMock}));
-vi.mock('@/features/auth', () => ({
+vi.mock('@/features/auth', async () => ({
   authApi: authApiMock,
   getStoredSession: mockGetStoredSession,
   isDefinitiveAuthFailure: mockIsDefinitiveAuthFailure,
+  // The send-verification flow is replaced for every test by src/__tests__/core/setup.ts.
+  withVerifiedSend: (await import('@/features/auth/verification')).withVerifiedSend,
 }));
 
 import {

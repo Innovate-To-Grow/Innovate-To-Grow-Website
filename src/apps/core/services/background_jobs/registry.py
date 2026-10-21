@@ -1,64 +1,71 @@
-def _core_handlers():
-    from apps.core.services.background_jobs import handlers
+"""Job-kind registry.
 
-    return handlers
+Each app that owns a job kind registers its handlers from ``AppConfig.ready()``
+with dotted paths, which are imported only when a job of that kind runs — the
+worker never imports a domain app it does not need, and ``core`` imports none.
+"""
 
+from dataclasses import dataclass
 
-def _mail_handlers():
-    from apps.mail.services.campaign import dispatch as background_jobs
-
-    return background_jobs
-
-
-def _cms_handlers():
-    from apps.cms.services.amplify import amplify_redirects
-
-    return amplify_redirects
+from django.core.exceptions import ImproperlyConfigured
+from django.utils.module_loading import import_string
 
 
-_HANDLER_LOADERS = {
-    "authn.member_sheet_sync": lambda: _core_handlers().sync_member_sheet_job,
-    "authn.notification_email": lambda: _core_handlers().send_notification_email_job,
-    "cms.amplify_redirects": lambda: _cms_handlers().sync_amplify_redirects_job,
-    "event.registration_sheet_sync": lambda: _core_handlers().sync_registration_sheet_job,
-    "event.ticket_email": lambda: _core_handlers().send_ticket_email_job,
-    "mail.email_recipient": lambda: _mail_handlers().send_email_recipient_job,
-    "mail.sms_recipient": lambda: _mail_handlers().send_sms_recipient_job,
-}
+@dataclass(frozen=True)
+class JobKind:
+    handler: str
+    state_handler: str | None = None
+    stale_resolver: str | None = None
 
-_STATE_HANDLER_LOADERS = {
-    "event.registration_sheet_sync": lambda: _core_handlers().sync_registration_sheet_job_state,
-    "cms.amplify_redirects": lambda: _cms_handlers().sync_amplify_redirect_job_state,
-    "mail.email_recipient": lambda: _mail_handlers().sync_delivery_job_state,
-    "mail.sms_recipient": lambda: _mail_handlers().sync_delivery_job_state,
-}
 
-_STALE_RESOLVER_LOADERS = {
-    "mail.email_recipient": lambda: _mail_handlers().resolve_stale_delivery_job,
-    "mail.sms_recipient": lambda: _mail_handlers().resolve_stale_delivery_job,
-}
+_KINDS: dict[str, JobKind] = {}
+
+
+def register_job_kind(
+    kind: str,
+    *,
+    handler: str,
+    state_handler: str | None = None,
+    stale_resolver: str | None = None,
+) -> None:
+    """Register the dotted-path callables that process ``kind``.
+
+    ``handler(job)`` runs the job. ``state_handler(job)`` mirrors each outbox
+    state change into a domain record. ``stale_resolver(job)`` may prove a stale
+    provider job completed (returning the resolved state) before it is quarantined.
+    Registering the same kind again is allowed only with identical paths.
+    """
+    entry = JobKind(handler, state_handler, stale_resolver)
+    existing = _KINDS.get(kind)
+    if existing is not None and existing != entry:
+        raise ImproperlyConfigured(f"Background job kind {kind!r} is already registered with other handlers.")
+    _KINDS[kind] = entry
+
+
+def registered_job_kinds() -> dict[str, JobKind]:
+    return dict(_KINDS)
 
 
 def get_handler(kind: str):
-    loader = _HANDLER_LOADERS.get(kind)
-    if loader is None:
+    entry = _KINDS.get(kind)
+    if entry is None:
         raise LookupError(f"No background job handler is registered for {kind!r}.")
-    return loader()
+    return import_string(entry.handler)
 
 
 def notify_job_state(job) -> None:
     """Mirror a generic outbox state into an optional domain-specific record."""
 
-    loader = _STATE_HANDLER_LOADERS.get(job.kind)
-    if loader is None:
+    entry = _KINDS.get(job.kind)
+    if entry is None or entry.state_handler is None:
         return
-    loader()(job)
+    import_string(entry.state_handler)(job)
 
 
 def resolve_stale_job_state(job) -> str | None:
     """Let a handler prove a stale provider job completed before quarantining it."""
 
-    loader = _STALE_RESOLVER_LOADERS.get(job.kind)
-    if loader is None:
+    entry = _KINDS.get(job.kind)
+    if entry is None or entry.stale_resolver is None:
         return None
-    return loader()(job)
+    return import_string(entry.stale_resolver)(job)

@@ -1,0 +1,50 @@
+/* The builder's dialogs.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Dialog -------------------------------------------------------------------- */
+
+.past-projects-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 45, 82, 0.45);
+  background: color-mix(in srgb, var(--itg-color-primary) 45%, transparent);
+}
+
+/* The theme's panel: an 8px #0f5479 top rule. */
+.past-projects-dialog {
+  width: min(100%, 27.5rem);
+  border-top: 8px solid var(--itg-color-sidebar-rule);
+  background: var(--itg-color-bg-page);
+}
+
+.past-projects-dialog-header {
+  padding: 1.25rem 1.5rem 0;
+}
+
+.past-projects-dialog-title {
+  margin: 0;
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  color: var(--itg-color-primary);
+}
+
+.past-projects-dialog-body {
+  padding: 0.75rem 1.5rem 1rem;
+}
+
+.past-projects-dialog-body p {
+  margin: 0;
+}
+
+.past-projects-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  padding: 0 1.5rem 1.5rem;
+}

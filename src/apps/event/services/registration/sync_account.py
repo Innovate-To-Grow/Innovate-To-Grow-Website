@@ -33,6 +33,17 @@ def sync_name_to_account(member, first_name: str, last_name: str) -> None:
         logger.info("Synced registration name fields to member %s.", member.pk)
 
 
+def _mark_phone_verified(existing, member, national: str, region: str) -> None:
+    updated = ContactPhone.objects.filter(
+        pk=existing.pk,
+        member=member,
+        phone_number=national,
+        region=region,
+    ).update(verified=True, updated_at=timezone.now())
+    if updated:
+        logger.info("Marked registration phone as verified for member %s.", member.pk)
+
+
 def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", verified: bool = False) -> None:
     """Sync event registration phone to the member's ContactPhone.
 
@@ -50,18 +61,10 @@ def sync_phone_to_account(member, phone_number: str, *, region: str = "1-US", ve
 
     existing = ContactPhone.objects.filter(phone_number=national).first()
     if existing:
-        if existing.member_id == member.pk:
-            if verified and not existing.verified:
-                updated = ContactPhone.objects.filter(
-                    pk=existing.pk,
-                    member=member,
-                    phone_number=national,
-                    region=region,
-                ).update(verified=True, updated_at=timezone.now())
-                if updated:
-                    logger.info("Marked registration phone as verified for member %s.", member.pk)
-        else:
+        if existing.member_id != member.pk:
             logger.info("Registration phone belongs to another member; not syncing to member %s.", member.pk)
+        elif verified and not existing.verified:
+            _mark_phone_verified(existing, member, national, region)
         return
 
     try:

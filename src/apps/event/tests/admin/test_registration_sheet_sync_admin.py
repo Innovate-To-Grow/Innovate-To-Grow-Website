@@ -7,7 +7,8 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from apps.event.admin.registration.sheet_sync import REVIEW_SALT, RegistrationSheetSyncForm
+from apps.event.admin.registration.sheet_sync import REVIEW_SALT
+from apps.event.admin.registration.sheet_sync_form import RegistrationSheetSyncForm
 from apps.event.models import RegistrationSheetSyncConfig
 from apps.event.services import registration_sheet_sync as sync_api
 from apps.event.tests.helpers import make_admin, make_event, make_superuser

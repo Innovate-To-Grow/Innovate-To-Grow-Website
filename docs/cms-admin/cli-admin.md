@@ -164,7 +164,7 @@ Reachability is decided by a shared denylist (used by both this CLI and the AI a
 
 **Fields that are never writable** (even on otherwise-writable models): `password`, `*secret*`, `*token*`, `*api_key*`, `is_staff`, `is_superuser`, `groups`, `permissions`, plus primary keys and non-editable / auto-timestamp fields.
 
-> The denylist lives in `src/apps/core/services/db_tools/safe_orm/`; the CLI's extra app/model denylist is `CLI_EXTRA_DENIED_APP_LABELS` / `CLI_EXTRA_DENIED_MODEL_LABELS` in `src/apps/cli_admin/constants.py`.
+> The denylist lives in `src/apps/core/services/db_tools/safe_orm/`; the CLI's extra app/model denylist is `CLI_EXTRA_DENIED_APP_LABELS` / `CLI_EXTRA_DENIED_MODEL_LABELS` in `src/apps/cli_admin/auth/constants.py`.
 
 ## Writes, cascades, and concurrency
 

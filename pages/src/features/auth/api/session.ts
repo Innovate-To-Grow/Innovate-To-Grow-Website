@@ -17,22 +17,28 @@ import type {LoginResponse, User} from './types';
  * confusing TypeError or store a session that cannot be read back. The check
  * mirrors what `storage.ts` requires of a stored user.
  */
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : null;
+
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value !== '';
+
+const hasLoginTokens = (candidate: Record<string, unknown>) =>
+  isNonEmptyString(candidate.access) && isNonEmptyString(candidate.refresh);
+
+const hasStoredUserFields = (user: Record<string, unknown>) =>
+  typeof user.member_uuid === 'string' && typeof user.email === 'string';
+
 const readLoginResponse = (data: unknown): LoginResponse => {
-  const candidate =
-    data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
-  const user =
-    candidate?.user && typeof candidate.user === 'object'
-      ? (candidate.user as Record<string, unknown>)
-      : null;
+  const candidate = asRecord(data);
+  const user = asRecord(candidate?.user);
   if (
     !candidate ||
-    typeof candidate.access !== 'string' ||
-    !candidate.access ||
-    typeof candidate.refresh !== 'string' ||
-    !candidate.refresh ||
     !user ||
-    typeof user.member_uuid !== 'string' ||
-    typeof user.email !== 'string'
+    !hasLoginTokens(candidate) ||
+    !hasStoredUserFields(user)
   ) {
     throw new MalformedLoginResponseError();
   }
@@ -149,6 +155,56 @@ const readOptionalString = (
   return typeof value === 'string' ? value : undefined;
 };
 
+const readSessionUser = (
+  candidate: Record<string, unknown>,
+  memberUuid: string,
+  fallback: User,
+): User => ({
+  ...fallback,
+  member_uuid: memberUuid,
+  email: readString(candidate, 'email', fallback.email),
+  phone: readOptionalString(candidate, 'phone', fallback.phone),
+  profile_image: readOptionalString(
+    candidate,
+    'profile_image',
+    fallback.profile_image,
+  ),
+  is_staff:
+    typeof candidate.is_staff === 'boolean'
+      ? candidate.is_staff
+      : fallback.is_staff,
+  first_name: readOptionalString(candidate, 'first_name', fallback.first_name),
+  last_name: readOptionalString(candidate, 'last_name', fallback.last_name),
+});
+
+/**
+ * The explicit flag (top-level, then on the user), else derived from the
+ * profile fields the payload carries; undefined when it carries neither, so
+ * the stored flag is kept.
+ */
+const readRequiresProfileCompletion = (
+  payload: SessionPayload,
+  candidate: Record<string, unknown>,
+): boolean | undefined => {
+  if (typeof payload.requires_profile_completion === 'boolean')
+    return payload.requires_profile_completion;
+  const nestedRequires = candidate.requires_profile_completion;
+  if (typeof nestedRequires === 'boolean') return nestedRequires;
+  if (
+    !(
+      'first_name' in candidate ||
+      'last_name' in candidate ||
+      'organization' in candidate
+    )
+  )
+    return undefined;
+  return !(
+    readString(candidate, 'first_name', '').trim() &&
+    readString(candidate, 'last_name', '').trim() &&
+    readString(candidate, 'organization', '').trim()
+  );
+};
+
 const normalizeSessionUser = (
   payload: SessionPayload,
   fallback: User,
@@ -161,50 +217,11 @@ const normalizeSessionUser = (
   const memberUuid = readString(candidate, 'member_uuid', fallback.member_uuid);
   if (!memberUuid) return null;
 
-  const user: User = {
-    ...fallback,
-    member_uuid: memberUuid,
-    email: readString(candidate, 'email', fallback.email),
-    phone: readOptionalString(candidate, 'phone', fallback.phone),
-    profile_image: readOptionalString(
-      candidate,
-      'profile_image',
-      fallback.profile_image,
-    ),
-    is_staff:
-      typeof candidate.is_staff === 'boolean'
-        ? candidate.is_staff
-        : fallback.is_staff,
-    first_name: readOptionalString(candidate, 'first_name', fallback.first_name),
-    last_name: readOptionalString(candidate, 'last_name', fallback.last_name),
-  };
-
-  const nestedRequires = candidate.requires_profile_completion;
-  const explicitRequires =
-    typeof payload.requires_profile_completion === 'boolean'
-      ? payload.requires_profile_completion
-      : typeof nestedRequires === 'boolean'
-        ? nestedRequires
-        : undefined;
-
-  let requiresProfileCompletion = explicitRequires;
-  if (
-    requiresProfileCompletion === undefined &&
-    ('first_name' in candidate ||
-      'last_name' in candidate ||
-      'organization' in candidate)
-  ) {
-    requiresProfileCompletion = !(
-      readString(candidate, 'first_name', '').trim() &&
-      readString(candidate, 'last_name', '').trim() &&
-      readString(candidate, 'organization', '').trim()
-    );
-  }
-
   return {
-    user,
+    user: readSessionUser(candidate, memberUuid, fallback),
     requiresProfileCompletion:
-      requiresProfileCompletion ?? fallbackRequiresProfileCompletion,
+      readRequiresProfileCompletion(payload, candidate) ??
+      fallbackRequiresProfileCompletion,
   };
 };
 
@@ -224,6 +241,62 @@ const dispatchAuthStateChange = () => {
   window.dispatchEvent(new Event('i2g-auth-state-change'));
 };
 
+const ANONYMOUS: BootstrapAuthResult = {status: 'anonymous', session: null};
+
+/**
+ * When the stored session is no longer the one being verified, report it as
+ * it is (or anonymous).
+ */
+const supersededResult = (
+  current: StoredAuthSession | null,
+  snapshot: StoredAuthSession,
+): BootstrapAuthResult | null => {
+  if (current && current.generation === snapshot.generation) return null;
+  return current ? {status: 'unverified', session: current} : ANONYMOUS;
+};
+
+const applySessionPayload = (
+  current: StoredAuthSession,
+  data: SessionPayload,
+): BootstrapAuthResult => {
+  if (data.authenticated === false) {
+    if (
+      clearTokens({generation: current.generation, refresh: current.refresh})
+    ) {
+      dispatchAuthStateChange();
+    }
+    return ANONYMOUS;
+  }
+  const normalized = normalizeSessionUser(
+    data,
+    current.user,
+    current.requires_profile_completion,
+  );
+  if (!normalized) return {status: 'verified', session: current};
+  const session = updateStoredSessionProfile(
+    {generation: current.generation, refresh: current.refresh},
+    normalized.user,
+    normalized.requiresProfileCompletion,
+  );
+  return session ? {status: 'verified', session} : ANONYMOUS;
+};
+
+const bootstrapFailureResult = (
+  current: StoredAuthSession,
+  error: unknown,
+): BootstrapAuthResult => {
+  if (
+    isDefinitiveAuthFailure(error) &&
+    clearTokens({generation: current.generation, refresh: current.refresh})
+  ) {
+    dispatchAuthStateChange();
+    return ANONYMOUS;
+  }
+  // A transient failure preserves display identity, but never establishes
+  // authoritative authentication for protected client behavior.
+  return {status: 'unverified', session: current};
+};
+
 /**
  * Verify the locally persisted generation against the backend and replace its
  * user/profile flags with the authoritative session payload. The auth client
@@ -241,58 +314,17 @@ export const bootstrapAuthSession =
       .get<SessionPayload>('/authn/session/')
       .then<BootstrapAuthResult>((response) => {
         const current = getStoredSession();
-        if (!current || current.generation !== snapshot.generation) {
-          return current
-            ? {status: 'unverified', session: current}
-            : {status: 'anonymous', session: null};
-        }
-        if (response.data.authenticated === false) {
-          if (
-            clearTokens({
-              generation: current.generation,
-              refresh: current.refresh,
-            })
-          ) {
-            dispatchAuthStateChange();
-          }
-          return {status: 'anonymous', session: null};
-        }
-
-        const normalized = normalizeSessionUser(
-          response.data,
-          current.user,
-          current.requires_profile_completion,
+        return (
+          supersededResult(current, snapshot) ??
+          applySessionPayload(current as StoredAuthSession, response.data)
         );
-        if (!normalized) return {status: 'verified', session: current};
-        const session = updateStoredSessionProfile(
-          {generation: current.generation, refresh: current.refresh},
-          normalized.user,
-          normalized.requiresProfileCompletion,
-        );
-        return session
-          ? {status: 'verified', session}
-          : {status: 'anonymous', session: null};
       })
       .catch((error: unknown): BootstrapAuthResult => {
         const current = getStoredSession();
-        if (!current || current.generation !== snapshot.generation) {
-          return current
-            ? {status: 'unverified', session: current}
-            : {status: 'anonymous', session: null};
-        }
-        if (
-          isDefinitiveAuthFailure(error) &&
-          clearTokens({
-            generation: current.generation,
-            refresh: current.refresh,
-          })
-        ) {
-          dispatchAuthStateChange();
-          return {status: 'anonymous', session: null};
-        }
-        // A transient failure preserves display identity, but never establishes
-        // authoritative authentication for protected client behavior.
-        return {status: 'unverified', session: current};
+        return (
+          supersededResult(current, snapshot) ??
+          bootstrapFailureResult(current as StoredAuthSession, error)
+        );
       })
       .finally(() => {
         if (bootstrapInFlight?.generation === snapshot.generation) {

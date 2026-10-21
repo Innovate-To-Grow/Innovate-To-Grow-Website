@@ -85,7 +85,7 @@ class SitemapXmlTest(TestCase):
 
 class CanonicalFrontendBaseTest(TestCase):
     def test_falls_back_to_request_host_when_no_frontend_url(self):
-        from apps.core.views import _canonical_frontend_base
+        from apps.cms.views.sitemap import _canonical_frontend_base
 
         request = RequestFactory().get("/sitemap.xml")
         with override_settings(FRONTEND_URL=""):
@@ -102,7 +102,7 @@ class CanonicalFrontendBaseTest(TestCase):
 
 class SitemapLastmodTest(TestCase):
     def test_returns_empty_when_no_timestamps(self):
-        from apps.core.views import _sitemap_lastmod
+        from apps.cms.views.sitemap import _sitemap_lastmod
 
         class _FakePage:
             updated_at = None

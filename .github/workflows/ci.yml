@@ -767,6 +767,11 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      # Layer boundaries, import cycles and directory sizes (ESLint enforces the
+      # per-file / per-function hard limits above). See docs/architecture/code-quality.md.
+      - name: Check frontend structure
+        run: npm run check:structure
+
   frontend-typecheck:
     name: Frontend TypeScript Type Check
     runs-on: ubuntu-latest

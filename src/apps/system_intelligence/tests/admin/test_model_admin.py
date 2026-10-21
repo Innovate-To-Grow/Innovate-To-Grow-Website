@@ -22,7 +22,7 @@ from apps.system_intelligence.models import (
 )
 from apps.system_intelligence.services.public_assistant import budget
 
-BEDROCK = "apps.core.services.bedrock.get_available_models"
+BEDROCK = "apps.system_intelligence.services.bedrock.get_available_models"
 USAGE_FIELD = "public_assistant_global_usage"
 USAGE_LABEL = "Global Tokens Used (current window)"
 GROUPED = [("Anthropic", [("claude-1", "Claude One"), ("claude-2", "Claude Two")])]

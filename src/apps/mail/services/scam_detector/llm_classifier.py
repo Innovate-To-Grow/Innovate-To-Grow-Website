@@ -13,8 +13,8 @@ from copy import copy
 from typing import Any
 
 from apps.core.models import AWSCredentialConfig
-from apps.core.services.bedrock import invoke_bedrock
 from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.services.bedrock import invoke_bedrock
 
 logger = logging.getLogger(__name__)
 

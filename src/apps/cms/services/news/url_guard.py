@@ -51,6 +51,18 @@ def _resolve_ips(host: str, port: int) -> list[ipaddress.IPv4Address | ipaddress
     return [ipaddress.ip_address(info[4][0]) for info in infos]
 
 
+def _target_ips(host: str, port: int) -> list:
+    """The host itself when it is an IP literal, else every address it resolves to."""
+    try:
+        return [ipaddress.ip_address(host)]
+    except ValueError:
+        pass
+    try:
+        return _resolve_ips(host, port)
+    except OSError as exc:
+        raise UnsafeUrlError(f"Could not resolve host: {host}") from exc
+
+
 def validate_public_http_url(url: str) -> str:
     """Return ``url`` unchanged if it is safe to fetch, else raise ``UnsafeUrlError``.
 
@@ -75,19 +87,7 @@ def validate_public_http_url(url: str) -> str:
     except ValueError as exc:  # malformed port
         raise UnsafeUrlError("URL has an invalid port.") from exc
 
-    try:
-        literal_ip = ipaddress.ip_address(host)
-    except ValueError:
-        literal_ip = None
-
-    if literal_ip is not None:
-        ips = [literal_ip]
-    else:
-        try:
-            ips = _resolve_ips(host, port)
-        except OSError as exc:
-            raise UnsafeUrlError(f"Could not resolve host: {host}") from exc
-
+    ips = _target_ips(host, port)
     if not ips:
         raise UnsafeUrlError(f"Could not resolve host: {host}")
     for ip in ips:

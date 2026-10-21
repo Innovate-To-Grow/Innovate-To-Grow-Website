@@ -28,6 +28,82 @@ def _verification_context(event_slug: str | None) -> str | None:
     return None
 
 
+def _send_registration_code(member, phone: str, verification_context: str):
+    """Start the phone challenge; the guarded send's ``(payload, status)`` or ``SendOutcome``."""
+    from apps.authn.services.send_verification.outcomes import SendOutcome, failure_status
+    from apps.authn.services.sms import (
+        PhoneVerificationDeliveryError,
+        PhoneVerificationInvalid,
+        start_phone_verification,
+    )
+
+    try:
+        challenge = start_phone_verification(
+            phone,
+            purpose="event_registration",
+            member=member,
+            context_identifier=verification_context,
+        )
+    except PhoneVerificationInvalid:
+        return (
+            {"detail": "Invalid phone number."},
+            status.HTTP_400_BAD_REQUEST,
+        )
+    except PhoneVerificationDeliveryError as exc:
+        return SendOutcome(
+            {"detail": "Failed to send verification code. Please try again later."},
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            failure_status(exc),
+            str(exc.challenge_id or ""),
+        )
+    return (
+        {
+            "detail": "Verification code sent.",
+            "phone": phone,
+            "challenge_id": challenge["challenge_id"],
+        },
+        status.HTTP_200_OK,
+    )
+
+
+def _verify_registration_code(member, phone: str, code: str, challenge_id, verification_context: str):
+    """The verified challenge (kept for the registration submit), or the error ``Response``."""
+    import apps.event.views.registration as registration_api
+
+    try:
+        from apps.authn.services.sms import (
+            PhoneVerificationInvalid,
+            PhoneVerificationThrottled,
+            check_phone_verification,
+        )
+
+        return check_phone_verification(
+            phone,
+            code,
+            challenge_id=challenge_id,
+            purpose="event_registration",
+            member=member,
+            context_identifier=verification_context,
+            consume=False,
+        )
+    except PhoneVerificationThrottled:
+        return Response(
+            {"detail": "Too many failed attempts. Please request a new code."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+    except PhoneVerificationInvalid:
+        return Response(
+            {"detail": "Invalid or expired verification code."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception:
+        registration_api.logger.warning("Phone verification failed", exc_info=True)
+        return Response(
+            {"detail": "Verification service is unavailable. Please try again later."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
 class SendPhoneCodeView(APIView):
     """Send a verification SMS to a phone number (pre-registration, inline)."""
 
@@ -62,41 +138,6 @@ class SendPhoneCodeView(APIView):
         phone = registration_api._normalize_phone(phone, region)
         from apps.authn.services.send_verification import OP_EVENT_SEND_PHONE_CODE, fingerprint_payload, guarded_send
         from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
-        from apps.authn.services.send_verification.outcomes import SendOutcome, failure_status
-        from apps.authn.services.sms import (
-            PhoneVerificationDeliveryError,
-            PhoneVerificationInvalid,
-            start_phone_verification,
-        )
-
-        def perform():
-            try:
-                challenge = start_phone_verification(
-                    phone,
-                    purpose="event_registration",
-                    member=request.user,
-                    context_identifier=verification_context,
-                )
-            except PhoneVerificationInvalid:
-                return (
-                    {"detail": "Invalid phone number."},
-                    status.HTTP_400_BAD_REQUEST,
-                )
-            except PhoneVerificationDeliveryError as exc:
-                return SendOutcome(
-                    {"detail": "Failed to send verification code. Please try again later."},
-                    status.HTTP_503_SERVICE_UNAVAILABLE,
-                    failure_status(exc),
-                    str(exc.challenge_id or ""),
-                )
-            return (
-                {
-                    "detail": "Verification code sent.",
-                    "phone": phone,
-                    "challenge_id": challenge["challenge_id"],
-                },
-                status.HTTP_200_OK,
-            )
 
         return guarded_send(
             request,
@@ -105,7 +146,7 @@ class SendPhoneCodeView(APIView):
             destination_normalized=phone,
             fingerprint=fingerprint_payload({"phone": phone, "event": verification_context}),
             channel=SMS_CHANNEL,
-            perform=perform,
+            perform=lambda: _send_registration_code(request.user, phone, verification_context),
         )
 
 
@@ -137,39 +178,9 @@ class VerifyPhoneCodeView(APIView):
             )
 
         phone = registration_api._normalize_phone(phone, region)
-        try:
-            from apps.authn.services.sms import (
-                PhoneVerificationInvalid,
-                PhoneVerificationThrottled,
-                check_phone_verification,
-            )
-
-            challenge = check_phone_verification(
-                phone,
-                code,
-                challenge_id=challenge_id,
-                purpose="event_registration",
-                member=request.user,
-                context_identifier=verification_context,
-                consume=False,
-            )
-        except PhoneVerificationThrottled:
-            return Response(
-                {"detail": "Too many failed attempts. Please request a new code."},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
-        except PhoneVerificationInvalid:
-            return Response(
-                {"detail": "Invalid or expired verification code."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        except Exception:
-            registration_api.logger.warning("Phone verification failed", exc_info=True)
-            return Response(
-                {"detail": "Verification service is unavailable. Please try again later."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
+        challenge = _verify_registration_code(request.user, phone, code, challenge_id, verification_context)
+        if isinstance(challenge, Response):
+            return challenge
         return Response(
             {
                 "detail": "Phone verified.",

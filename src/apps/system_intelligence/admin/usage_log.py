@@ -64,6 +64,71 @@ class AssistantMessageLogInline(TabularInline):
         return (obj.token_usage or {}).get("totalTokens") or 0
 
 
+def _turn_meta(index: int, message) -> list[str]:
+    usage = message.token_usage or {}
+    meta = [
+        f"Turn {index}",
+        message.get_status_display(),
+        f"Total: {_token_value(usage, 'totalTokens'):,}",
+        f"Input: {_token_value(usage, 'inputTokens'):,}",
+        f"Output: {_token_value(usage, 'outputTokens'):,}",
+        f"Latency: {message.latency_ms:,} ms",
+    ]
+    if message.model_id:
+        meta.append(message.model_id)
+    if message.created_at:
+        meta.append(timezone.localtime(message.created_at).strftime("%Y-%m-%d %H:%M:%S %Z"))
+    return meta
+
+
+def _transcript_turn(index: int, message):
+    meta_html = format_html_join(
+        "", '<span class="si-transcript-chip">{}</span>', ((item,) for item in _turn_meta(index, message))
+    )
+    reply_html = (
+        format_html(
+            """
+            <div class="si-transcript-block si-transcript-block--assistant">
+              <div class="si-transcript-label">Assistant</div>
+              <div class="si-transcript-text">{}</div>
+            </div>
+            """,
+            _linebreaks(message.reply),
+        )
+        if message.reply
+        else ""
+    )
+    results_html = (
+        format_html(
+            """
+            <div class="si-transcript-block">
+              <div class="si-transcript-label">Results</div>
+              <pre class="si-transcript-json">{}</pre>
+            </div>
+            """,
+            _pretty_json(message.results),
+        )
+        if message.results
+        else ""
+    )
+    return format_html(
+        """
+        <article class="si-transcript-turn">
+          <div class="si-transcript-meta">{}</div>
+          <div class="si-transcript-block si-transcript-block--user">
+            <div class="si-transcript-label">User</div>
+            <div class="si-transcript-text">{}</div>
+          </div>
+          {}{}
+        </article>
+        """,
+        meta_html,
+        _linebreaks(message.prompt),
+        reply_html,
+        results_html,
+    )
+
+
 @admin.register(AssistantConversationLog)
 class AssistantConversationLogAdmin(ReadOnlyModelAdmin):
     """Read-only, conversation-grouped audit of assistant turns."""
@@ -137,68 +202,7 @@ class AssistantConversationLogAdmin(ReadOnlyModelAdmin):
                 "No messages recorded for this conversation.",
             )
 
-        turns = []
-        for index, message in enumerate(messages, start=1):
-            usage = message.token_usage or {}
-            meta = [
-                f"Turn {index}",
-                message.get_status_display(),
-                f"Total: {_token_value(usage, 'totalTokens'):,}",
-                f"Input: {_token_value(usage, 'inputTokens'):,}",
-                f"Output: {_token_value(usage, 'outputTokens'):,}",
-                f"Latency: {message.latency_ms:,} ms",
-            ]
-            if message.model_id:
-                meta.append(message.model_id)
-            if message.created_at:
-                meta.append(timezone.localtime(message.created_at).strftime("%Y-%m-%d %H:%M:%S %Z"))
-
-            meta_html = format_html_join("", '<span class="si-transcript-chip">{}</span>', ((item,) for item in meta))
-            reply_html = (
-                format_html(
-                    """
-                    <div class="si-transcript-block si-transcript-block--assistant">
-                      <div class="si-transcript-label">Assistant</div>
-                      <div class="si-transcript-text">{}</div>
-                    </div>
-                    """,
-                    _linebreaks(message.reply),
-                )
-                if message.reply
-                else ""
-            )
-            results_html = (
-                format_html(
-                    """
-                    <div class="si-transcript-block">
-                      <div class="si-transcript-label">Results</div>
-                      <pre class="si-transcript-json">{}</pre>
-                    </div>
-                    """,
-                    _pretty_json(message.results),
-                )
-                if message.results
-                else ""
-            )
-            turns.append(
-                format_html(
-                    """
-                    <article class="si-transcript-turn">
-                      <div class="si-transcript-meta">{}</div>
-                      <div class="si-transcript-block si-transcript-block--user">
-                        <div class="si-transcript-label">User</div>
-                        <div class="si-transcript-text">{}</div>
-                      </div>
-                      {}{}
-                    </article>
-                    """,
-                    meta_html,
-                    _linebreaks(message.prompt),
-                    reply_html,
-                    results_html,
-                )
-            )
-
+        turns = [_transcript_turn(index, message) for index, message in enumerate(messages, start=1)]
         transcript = format_html_join("", "{}", ((turn,) for turn in turns))
         return format_html('<div class="si-transcript">{}</div>', transcript)
 

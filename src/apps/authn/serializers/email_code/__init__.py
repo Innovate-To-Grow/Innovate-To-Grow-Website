@@ -1,6 +1,11 @@
 """Serializers for email-code auth flows."""
 
 from .account import AccountEmailsSerializer
+from .account_deletion import (
+    DeleteAccountCodeConfirmSerializer,
+    DeleteAccountCodeRequestSerializer,
+    DeleteAccountCodeVerifySerializer,
+)
 from .auth import (
     LoginCodeRequestSerializer,
     LoginCodeVerifySerializer,
@@ -13,9 +18,6 @@ from .passwords import (
     ChangePasswordCodeConfirmSerializer,
     ChangePasswordCodeRequestSerializer,
     ChangePasswordCodeVerifySerializer,
-    DeleteAccountCodeConfirmSerializer,
-    DeleteAccountCodeRequestSerializer,
-    DeleteAccountCodeVerifySerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     PasswordResetVerifySerializer,

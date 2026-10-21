@@ -43,35 +43,41 @@ function comparablePath(pathname: string): string {
   return decoded === '/' ? decoded : decoded.replace(/\/+$/, '');
 }
 
-function destinationPath(redirectTo: string, location: RedirectLocation): string | null {
-  const target = redirectTo.trim();
-  if (
+/** A redirect target must be a plain same-site path: no scheme-relative URL, query, fragment or escapes. */
+function isUnsafeTarget(target: string): boolean {
+  return (
     !target.startsWith('/')
     || target.startsWith('//')
     || target.includes('\\')
     || target.includes('?')
     || target.includes('#')
     || hasControlCharacter(target)
-  ) {
-    return null;
-  }
+  );
+}
 
-  for (const rawSegment of target.split('/').filter(Boolean)) {
+/** A path segment that decodes to a traversal, a separator or a control character (or does not decode). */
+function hasUnsafeSegment(target: string): boolean {
+  return target.split('/').filter(Boolean).some((rawSegment) => {
     let segment: string;
     try {
       segment = decodeURIComponent(rawSegment);
     } catch {
-      return null;
+      return true;
     }
-    if (
+    return (
       segment === '.'
       || segment === '..'
       || segment.includes('/')
       || segment.includes('\\')
       || hasControlCharacter(segment)
-    ) {
-      return null;
-    }
+    );
+  });
+}
+
+function destinationPath(redirectTo: string, location: RedirectLocation): string | null {
+  const target = redirectTo.trim();
+  if (isUnsafeTarget(target) || hasUnsafeSegment(target)) {
+    return null;
   }
 
   try {
@@ -134,6 +140,15 @@ export function clearCMSRouteRedirectChain(): void {
   removeRedirectChain(getSessionStorage());
 }
 
+function saveRedirectChain(storage: Storage | null, chain: RedirectChain): void {
+  if (!storage) return;
+  try {
+    storage.setItem(REDIRECT_CHAIN_STORAGE_KEY, JSON.stringify(chain));
+  } catch {
+    // Continue without the cross-load loop guard when storage is unavailable.
+  }
+}
+
 export function performCMSRouteRedirect(
   redirectTo: string,
   location: RedirectLocation = window.location,
@@ -168,17 +183,7 @@ export function performCMSRouteRedirect(
   }
 
   const targetHref = `${pathname}${location.search}${location.hash}`;
-  if (storage) {
-    try {
-      storage.setItem(REDIRECT_CHAIN_STORAGE_KEY, JSON.stringify({
-        expectedHref: targetHref,
-        visitedPaths,
-        updatedAt: now,
-      } satisfies RedirectChain));
-    } catch {
-      // Continue without the cross-load loop guard when storage is unavailable.
-    }
-  }
+  saveRedirectChain(storage, {expectedHref: targetHref, visitedPaths, updatedAt: now});
 
   try {
     location.replace(targetHref);

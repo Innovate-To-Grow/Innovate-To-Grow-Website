@@ -4,10 +4,13 @@ from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from apps.cms.models import CMSPage, NewsArticle, PageView
-from apps.core.services.db_tools.tool_modules.analytics import get_page_views
-from apps.core.services.db_tools.tool_modules.cms import search_cms_pages, search_news
-from apps.core.services.db_tools.tool_modules.custom.query import is_allowed_query_key, run_custom_query
 from apps.projects.models import Semester
+from apps.system_intelligence.services.query_tools.tool_modules.analytics import get_page_views
+from apps.system_intelligence.services.query_tools.tool_modules.cms import search_cms_pages, search_news
+from apps.system_intelligence.services.query_tools.tool_modules.custom.query import (
+    is_allowed_query_key,
+    run_custom_query,
+)
 
 
 class SearchCmsPagesToolTests(TestCase):

@@ -50,6 +50,46 @@ const FilterSelect = ({label, allLabel, value, options, onChange}: FilterSelectP
   );
 };
 
+interface CurrentProjectsFiltersProps {
+  filters: ReturnType<typeof useProjectGridFilters>;
+  changeFilter: (setter: (value: string) => void) => (value: string) => void;
+}
+
+/** The Class and Industry selects. */
+const CurrentProjectsFilters = ({filters, changeFilter}: CurrentProjectsFiltersProps) => (
+  <>
+    <FilterSelect
+      label="Class"
+      allLabel="All classes"
+      value={filters.classCode}
+      options={filters.classOptions}
+      onChange={changeFilter(filters.setClassCode)}
+    />
+    <FilterSelect
+      label="Industry"
+      allLabel="All industries"
+      value={filters.industry}
+      options={filters.industryOptions}
+      onChange={changeFilter(filters.setIndustry)}
+    />
+  </>
+);
+
+/** The line under the title: the term, the count, and how many teams present. */
+const metaLine = (rows: ProjectGridRow[], countLabel: 'projects' | 'teams') => {
+  const term = formatTermForProse(getPredominantTerm(rows));
+  const presentingCount = rows.filter((row) => row.is_presenting === 'Yes').length;
+  const meta =
+    countLabel === 'teams'
+      ? [term, `${pluralize(rows.length, 'team')} presenting`]
+      : [
+          term,
+          pluralize(rows.length, 'project'),
+          presentingCount ? `${pluralize(presentingCount, 'team')} presenting at the showcase` : '',
+        ];
+  return meta.filter(Boolean).join(' · ');
+};
+
 interface CurrentProjectsViewProps {
   title: string;
   lede: string;
@@ -88,16 +128,6 @@ export const CurrentProjectsView = ({
     filterRow: filters.filterRow,
   });
 
-  const term = formatTermForProse(getPredominantTerm(rows));
-  const presentingCount = rows.filter((row) => row.is_presenting === 'Yes').length;
-  const meta =
-    countLabel === 'teams'
-      ? [term, `${pluralize(rows.length, 'team')} presenting`]
-      : [
-          term,
-          pluralize(rows.length, 'project'),
-          presentingCount ? `${pluralize(presentingCount, 'team')} presenting at the showcase` : '',
-        ];
   const query = table.search.trim();
 
   const changeFilter = (setter: (value: string) => void) => (value: string) => {
@@ -109,7 +139,7 @@ export const CurrentProjectsView = ({
     <div className="projects-page">
       <h1 className="itg-page-title">{title}</h1>
       {!loading && !error && rows.length ? (
-        <p className="itg-page-meta">{meta.filter(Boolean).join(' · ')}</p>
+        <p className="itg-page-meta">{metaLine(rows, countLabel)}</p>
       ) : null}
       <p className="itg-lead">{lede}</p>
 
@@ -121,24 +151,7 @@ export const CurrentProjectsView = ({
         totalCount={items.length}
         search={table.search}
         searchPlaceholder="Team, project, organization…"
-        filterControls={
-          <>
-            <FilterSelect
-              label="Class"
-              allLabel="All classes"
-              value={filters.classCode}
-              options={filters.classOptions}
-              onChange={changeFilter(filters.setClassCode)}
-            />
-            <FilterSelect
-              label="Industry"
-              allLabel="All industries"
-              value={filters.industry}
-              options={filters.industryOptions}
-              onChange={changeFilter(filters.setIndustry)}
-            />
-          </>
-        }
+        filterControls={<CurrentProjectsFilters filters={filters} changeFilter={changeFilter} />}
         sortOptions={CURRENT_SORT_OPTIONS}
         sortField={table.sortField}
         sortDirection={table.sortDirection}

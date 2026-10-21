@@ -52,7 +52,7 @@ class SystemIntelligenceConfigForm(forms.ModelForm):
         """Populate a model-id field with the live Bedrock catalog, grouped by provider."""
         current = self.initial.get(field_name, "") or getattr(self.instance, field_name, "") or ""
         try:
-            from apps.core.services.bedrock import get_available_models
+            from apps.system_intelligence.services.bedrock import get_available_models
 
             grouped = get_available_models()
             choices = [("", empty_label)]
@@ -174,12 +174,19 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         if not obj.default_model_id:
             return "—"
         try:
-            from apps.core.services.bedrock import get_available_models
+            from apps.system_intelligence.services.bedrock import get_available_models
 
-            for _group, models in get_available_models():
-                for mid, name in models:
-                    if mid == obj.default_model_id:
-                        return name
+            match = next(
+                (
+                    name
+                    for _group, models in get_available_models()
+                    for mid, name in models
+                    if mid == obj.default_model_id
+                ),
+                None,
+            )
+            if match is not None:
+                return match
         except Exception:
             logger.exception(
                 "Failed to resolve default model display name for System Intelligence config '%s'.", obj.pk

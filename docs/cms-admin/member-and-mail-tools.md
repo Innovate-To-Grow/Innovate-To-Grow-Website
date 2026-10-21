@@ -6,7 +6,7 @@ Member management, email campaigns, and contact administration.
 
 ### Member model
 
-`Member` (`src/apps/authn/models/member.py`) extends Django's `AbstractUser` with `ProjectControlModel` (UUID PK). Key fields:
+`Member` (`src/apps/authn/models/members/member.py`) extends Django's `AbstractUser` with `ProjectControlModel` (UUID PK). Key fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -188,7 +188,7 @@ Resending a ticket email revokes the registration's previous link before issuing
 
 ### Gmail import
 
-The campaign admin includes a Gmail import feature (`src/apps/mail/services/gmail_import.py`) that can fetch email templates from a Gmail account for use as campaign bodies.
+The campaign admin includes a Gmail import feature (`src/apps/mail/services/gmail_import/`) that can fetch email templates from a Gmail account for use as campaign bodies.
 
 ### Recipient logs
 

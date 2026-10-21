@@ -1,18 +1,17 @@
-"""Email campaign admin package with patch-compatible service aliases."""
-
-from apps.mail.services.audience import get_recipients
-from apps.mail.services.campaign.preview import render_preview
-from apps.mail.services.gmail_import import (
-    GMAIL_FOLDER_DISPLAY,
-    GmailImportError,
-    import_message_into_campaign,
-    list_recent_sent_messages,
-    resolve_gmail_mailbox,
-)
+"""Email campaign admin. View services live in ``campaign.services`` (patch them there)."""
 
 from .admin import EmailCampaignAdmin
 from .forms import EmailCampaignForm
 from .inlines import AudienceTypeFilter, RecipientLogInline
+from .services import (
+    GMAIL_FOLDER_DISPLAY,
+    GmailImportError,
+    get_recipients,
+    import_message_into_campaign,
+    list_recent_sent_messages,
+    render_preview,
+    resolve_gmail_mailbox,
+)
 from .widgets import BODY_FORMAT_CHOICES, ManualEmailsWidget, PersonalizationTextInput, TicketSelectWidget
 
 __all__ = [

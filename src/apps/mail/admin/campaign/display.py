@@ -5,8 +5,9 @@ import base64
 from django.utils.html import escape, format_html
 from unfold.decorators import display
 
-import apps.mail.admin.campaign as campaign_api
 from apps.core.models import EmailServiceConfig, GmailAccessAccount
+
+from . import services as campaign_api
 
 
 class CampaignDisplayMixin:

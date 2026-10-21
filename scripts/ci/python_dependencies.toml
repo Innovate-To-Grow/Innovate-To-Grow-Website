@@ -1,0 +1,61 @@
+# Dependency rules for scripts/ci/check_python_dependencies.py.
+# Policy: docs/architecture/code-quality.md#dependency-directions.
+
+# Composition roots: project-wide entry points that wire apps together.
+# - core management commands are the project's operational CLI (the background
+#   worker and its maintenance list, dev/E2E seeding, service-config checks).
+composition = ["apps.core.management.commands.*"]
+
+# What each app may import besides itself. An entry is an app label or a
+# module path inside that app (its public interface). Layers, lowest first:
+#   core < authn < event < cms < mail ; projects (content) ; system_intelligence
+# system_intelligence sits on top (its admin assistant reads every app), but it
+# also owns the AI platform other apps use: its config model, the Bedrock
+# client, the public-assistant budget/actors, agents and the usage log.
+[allowed]
+core = []
+authn = ["core"]
+event = ["core", "authn"]
+cms = ["core", "authn", "event"]
+projects = [
+    "core",
+    "authn",
+    "system_intelligence.models",
+    "system_intelligence.services.agents",
+    "system_intelligence.services.bedrock",
+    "system_intelligence.services.public_assistant",
+    "system_intelligence.services.usage_log",
+]
+mail = ["core", "authn", "cms", "event", "system_intelligence.models", "system_intelligence.services.bedrock"]
+system_intelligence = ["core", "authn", "cms", "event", "mail", "projects"]
+cli_admin = ["core"]
+
+# Individually justified cross-app imports. `from` is an fnmatch pattern of the
+# importing module, `to` a module (prefix) it may import.
+[[exceptions]]
+from = "apps.core.admin.service_credentials.aws"
+to = "apps.system_intelligence.models"
+reason = "The AWS credentials page's 'Test Bedrock API' action reads the default model id; imported lazily inside the action."
+
+[[exceptions]]
+from = "apps.core.admin.service_credentials.helpers"
+to = "apps.authn.services.sms"
+reason = "Admin 'send test SMS' (core AWS page and mail settings) reuses authn's one SMS publisher and its error classification; imported lazily inside the call."
+
+[[exceptions]]
+from = "apps.authn.admin.members.contact.normalization"
+to = "apps.event.models"
+reason = "The phone-normalization admin tool also normalizes attendee phones stored on event registrations, in the same transaction."
+
+[[exceptions]]
+from = "apps.event.*"
+to = "apps.mail.services.tokens.login_links"
+reason = "Ticket emails and the registration admin issue magic login links, whose token model lives in mail (moving it would change its app label); imported lazily."
+
+[[exceptions]]
+from = "apps.event.admin.registration.admin"
+to = "apps.mail.models"
+reason = "The registration admin's 'send login link' action records the mail LoginLinkToken it issues; imported lazily inside the action."
+
+# Import-time cycles accepted until refactored, as
+# [[cycles]] modules = [...] reason = "...". None today.

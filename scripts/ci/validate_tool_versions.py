@@ -41,15 +41,13 @@ def ruff_pre_commit_version() -> str:
 
 def local_bandit_version() -> str:
     config = yaml.safe_load(read(PRE_COMMIT))
-    for repo in config.get("repos", []):
-        if repo.get("repo") != "local":
-            continue
-        for hook in repo.get("hooks", []):
-            deps = hook.get("additional_dependencies", [])
-            for dep in deps:
-                match = re.search(r"bandit(?:\[toml\])?==([0-9.]+)", dep)
-                if match:
-                    return match.group(1)
+    local_hooks = (
+        hook for repo in config.get("repos", []) if repo.get("repo") == "local" for hook in repo.get("hooks", [])
+    )
+    for dep in (dep for hook in local_hooks for dep in hook.get("additional_dependencies", [])):
+        match = re.search(r"bandit(?:\[toml\])?==([0-9.]+)", dep)
+        if match:
+            return match.group(1)
     raise SystemExit("Could not find local Bandit hook pin.")
 
 

@@ -72,3 +72,25 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+      - id: frontend-structure
+        name: Frontend layer boundaries, cycles and directory sizes
+        entry: bash -c 'cd pages && npm run check:structure'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      # Both need the dev environment's ruff on PATH (complexity is ruff's C901).
+      - id: python-quality
+        name: Python size / complexity / nesting limits
+        entry: python scripts/ci/check_python_quality.py --quiet
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: python-dependencies
+        name: Python app dependency boundaries
+        entry: python scripts/ci/check_python_dependencies.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

@@ -5,6 +5,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+import { qualityConfigs } from './eslint.quality.js'
+
 export default defineConfig([
   globalIgnores(['dist', 'coverage', 'playwright-report']),
   {
@@ -19,7 +21,15 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    linterOptions: {
+      // A suppression that no longer suppresses anything must be deleted, so
+      // documented exceptions to the quality limits cannot go stale.
+      reportUnusedDisableDirectives: 'error',
+    },
   },
+  // Hard size/complexity limits (eslint.quality.js); advisory levels are only
+  // reported by `npm run quality:report`.
+  ...qualityConfigs('hard'),
   {
     // Route configuration module: defines lazy-loaded route components inline
     // alongside the (non-component) `router` export. It is not a fast-refresh

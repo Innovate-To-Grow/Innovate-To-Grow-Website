@@ -9,6 +9,7 @@
  * Relative paths (`/foo`, `./bar`, `#section`) are accepted as-is.
  */
 const SAFE_SCHEMES = ['http:', 'https:', 'mailto:', 'tel:'];
+const RELATIVE_PREFIXES = ['#', '/', './', '../'];
 
 export const safeHref = (url: unknown): string => {
   if (typeof url !== 'string') return '#';
@@ -21,7 +22,7 @@ export const safeHref = (url: unknown): string => {
   if (trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
     return '#';
   }
-  if (trimmed.startsWith('#') || trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) {
+  if (RELATIVE_PREFIXES.some((prefix) => trimmed.startsWith(prefix))) {
     return trimmed;
   }
 

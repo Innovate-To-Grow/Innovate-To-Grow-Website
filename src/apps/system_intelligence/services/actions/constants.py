@@ -11,7 +11,7 @@ from apps.core.services.db_tools.safe_orm.constants import (
     SAFE_LOOKUPS,
     SENSITIVE_FIELD_RE,
 )
-from apps.core.services.db_tools.tool_modules.helpers import MAX_ROWS
+from apps.system_intelligence.services.query_tools.tool_modules.helpers import MAX_ROWS
 
 PREVIEW_TTL_SECONDS = 600
 COMPARISON_MAX_BLOCKS = 8

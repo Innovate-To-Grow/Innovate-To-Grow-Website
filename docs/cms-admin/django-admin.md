@@ -37,7 +37,7 @@ Related models are grouped into tabs in the admin interface. Tab configuration i
 
 ### Admin login
 
-`AdminLoginView` (`src/apps/authn/views/admin/login.py`) replaces the default Django admin login at `/admin/login/`. It integrates with the platform's auth system.
+`AdminLoginView` (`src/apps/authn/views/admin/login/view.py`) replaces the default Django admin login at `/admin/login/`. It integrates with the platform's auth system.
 
 Password guessing is bounded per account by the same lockout as member sign-in (`apps.authn.services.login_guard`: 10 failures per 15 minutes or 30 per UTC day, counted in PostgreSQL), never per client IP, so one admin's typos cannot lock out other staff on the campus network. The two password forms count separately:
 
@@ -67,7 +67,7 @@ added (a leading-wildcard `icontains` can't use a btree index, but the contact t
 
 ### Email campaign admin
 
-`EmailCampaignAdmin` (`src/apps/mail/admin/campaign.py`) provides:
+`EmailCampaignAdmin` (`src/apps/mail/admin/campaign/admin.py`) provides:
 - Inline recipient logs
 - Campaign status display
 - Gmail template import action

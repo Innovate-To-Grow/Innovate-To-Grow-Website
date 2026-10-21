@@ -289,14 +289,12 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj))
-        if not request.user.is_superuser:
-            for field in self.superuser_only_fields:
-                if field not in readonly:
-                    readonly.append(field)
-            if obj is not None and not self.can_manage_target(request, obj):
-                for field in self.protected_target_fields:
-                    if field not in readonly:
-                        readonly.append(field)
+        if request.user.is_superuser:
+            return readonly
+        locked = list(self.superuser_only_fields)
+        if obj is not None and not self.can_manage_target(request, obj):
+            locked.extend(self.protected_target_fields)
+        readonly.extend(field for field in dict.fromkeys(locked) if field not in readonly)
         return readonly
 
     def get_search_results(self, request, queryset, search_term):

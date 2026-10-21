@@ -3,7 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const fetchCMSEmbedHosts = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/cms/api', () => ({
+vi.mock('@/lib/api/embedHosts', () => ({
   fetchCMSEmbedHosts,
 }));
 

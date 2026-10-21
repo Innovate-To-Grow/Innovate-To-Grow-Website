@@ -1,0 +1,52 @@
+/* Page scaffolding shared by every projects page.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Page scaffolding ---------------------------------------------------- */
+
+.projects-page,
+.past-projects-page,
+.past-projects-builder,
+.past-projects-search-tables,
+.project-grid-shared-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.past-projects-page {
+  gap: 2.25rem;
+}
+
+.past-projects-header > :last-child {
+  margin-bottom: 0;
+}
+
+.past-projects-builder {
+  gap: 2.25rem;
+}
+
+.past-projects-page--shared {
+  gap: 1.5rem;
+}
+
+.past-projects-state,
+.project-grid-state {
+  margin: 0;
+  padding: 1rem 0;
+  color: var(--itg-color-text-secondary);
+}
+
+.past-projects-state-error,
+.project-grid-state-error {
+  color: var(--itg-color-error);
+}
+
+.past-projects-shared-closing {
+  margin: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.past-projects-saved-notice {
+  margin: 0;
+}

@@ -23,133 +23,166 @@ interface ContactEmailCardProps {
   secondaryDisabled: boolean;
 }
 
-export const ContactEmailCard = ({
+type ContactEmailActionsProps = Pick<
+  ContactEmailCardProps,
+  | 'contact'
+  | 'verifyingId'
+  | 'resendLoading'
+  | 'onContactTypeChange'
+  | 'onContactSubscribeToggle'
+  | 'onToggleVerify'
+  | 'onDelete'
+  | 'onMakePrimary'
+  | 'makePrimaryLoadingId'
+  | 'secondaryDisabled'
+>;
+
+/** Role (secondary / other), newsletters, and make-primary / verify / remove for one address. */
+const ContactEmailActions = ({
   contact,
   verifyingId,
-  verifyCode,
-  verifyLoading,
-  verifyError,
   resendLoading,
   onContactTypeChange,
   onContactSubscribeToggle,
   onToggleVerify,
-  onVerifyCodeChange,
-  onVerifySubmit,
-  onResend,
   onDelete,
-  onCancelVerify,
   onMakePrimary,
   makePrimaryLoadingId,
   secondaryDisabled,
-}: ContactEmailCardProps) => (
-  <div className="email-center-card">
-    <div className="email-center-row">
-      <div className="email-center-card-main">
-        <div className="email-center-card-heading">
-          <span className="email-center-card-title">{contact.email_address}</span>
-          <span className={`itg-tag email-center-badge ${contact.verified ? 'itg-tag-saved verified' : 'itg-tag-new unverified'}`}>
-            {contact.verified ? 'Verified' : 'Unverified'}
-          </span>
-        </div>
+}: ContactEmailActionsProps) => (
+  <div className="email-center-actions">
+    <label className="email-center-type-field" htmlFor={`email-role-${contact.id}`}>
+      <span className="email-center-type-label">Role</span>
+      <select
+        id={`email-role-${contact.id}`}
+        className="itg-select email-center-type-select"
+        value={contact.email_type}
+        disabled={makePrimaryLoadingId === contact.id}
+        onChange={(event) => onContactTypeChange(contact, event.target.value as 'secondary' | 'other')}
+      >
+        <option
+          value="secondary"
+          disabled={secondaryDisabled && contact.email_type !== 'secondary'}
+          title={
+            secondaryDisabled && contact.email_type !== 'secondary'
+              ? 'Another address is already set as secondary.'
+              : undefined
+          }
+        >
+          Secondary
+        </option>
+        <option value="other">Other</option>
+      </select>
+    </label>
+    <label className="email-center-toggle">
+      <input type="checkbox" checked={contact.subscribe} onChange={() => onContactSubscribeToggle(contact)} />
+      <span className="email-center-toggle-slider" />
+      <span className="email-center-toggle-label">Newsletters</span>
+    </label>
+    {contact.verified ? (
+      <button
+        type="button"
+        className="itg-btn itg-btn-outline email-center-btn make-primary"
+        disabled={makePrimaryLoadingId === contact.id}
+        onClick={() => onMakePrimary(contact.id)}
+      >
+        {makePrimaryLoadingId === contact.id ? 'Updating...' : 'Make Primary'}
+      </button>
+    ) : null}
+    {!contact.verified && verifyingId !== contact.id ? (
+      <button
+        type="button"
+        className="itg-btn itg-btn-outline email-center-btn verify"
+        disabled={resendLoading}
+        onClick={() => onToggleVerify(contact.id)}
+      >
+        Verify
+      </button>
+    ) : null}
+    <button type="button" className="itg-btn itg-btn-danger email-center-btn delete" onClick={() => onDelete(contact.id)}>
+      Remove
+    </button>
+  </div>
+);
 
-        <div className="email-center-actions">
-          <label className="email-center-type-field" htmlFor={`email-role-${contact.id}`}>
-            <span className="email-center-type-label">Role</span>
-            <select
-              id={`email-role-${contact.id}`}
-              className="itg-select email-center-type-select"
-              value={contact.email_type}
-              disabled={makePrimaryLoadingId === contact.id}
-              onChange={(event) => onContactTypeChange(contact, event.target.value as 'secondary' | 'other')}
-            >
-              <option
-                value="secondary"
-                disabled={secondaryDisabled && contact.email_type !== 'secondary'}
-                title={
-                  secondaryDisabled && contact.email_type !== 'secondary'
-                    ? 'Another address is already set as secondary.'
-                    : undefined
-                }
-              >
-                Secondary
-              </option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label className="email-center-toggle">
-            <input type="checkbox" checked={contact.subscribe} onChange={() => onContactSubscribeToggle(contact)} />
-            <span className="email-center-toggle-slider" />
-            <span className="email-center-toggle-label">Newsletters</span>
-          </label>
-          {contact.verified ? (
-            <button
-              type="button"
-              className="itg-btn itg-btn-outline email-center-btn make-primary"
-              disabled={makePrimaryLoadingId === contact.id}
-              onClick={() => onMakePrimary(contact.id)}
-            >
-              {makePrimaryLoadingId === contact.id ? 'Updating...' : 'Make Primary'}
-            </button>
-          ) : null}
-          {!contact.verified && verifyingId !== contact.id ? (
-            <button
-              type="button"
-              className="itg-btn itg-btn-outline email-center-btn verify"
-              disabled={resendLoading}
-              onClick={() => onToggleVerify(contact.id)}
-            >
-              Verify
-            </button>
-          ) : null}
-          <button type="button" className="itg-btn itg-btn-danger email-center-btn delete" onClick={() => onDelete(contact.id)}>
-            Remove
+type ContactEmailCodeFormProps = Pick<
+  ContactEmailCardProps,
+  'contact' | 'verifyCode' | 'verifyLoading' | 'verifyError' | 'resendLoading' | 'onVerifyCodeChange' | 'onVerifySubmit' | 'onResend' | 'onCancelVerify'
+>;
+
+/** Entering the code sent to this address. */
+const ContactEmailCodeForm = ({
+  contact,
+  verifyCode,
+  verifyLoading,
+  verifyError,
+  resendLoading,
+  onVerifyCodeChange,
+  onVerifySubmit,
+  onResend,
+  onCancelVerify,
+}: ContactEmailCodeFormProps) => (
+  <div className="email-center-verify-inline">
+    <p className="email-center-verify-hint">
+      Enter the 6-digit code we sent to this address, then tap Submit code.
+    </p>
+    <form onSubmit={onVerifySubmit} className="email-center-verify-form">
+      <div className="email-center-verify-code-wrap">
+        <CodeInput value={verifyCode} onChange={onVerifyCodeChange} disabled={verifyLoading} />
+      </div>
+      <div className="email-center-verify-actions">
+        <button
+          type="submit"
+          className="itg-btn itg-btn-primary email-center-verify-submit"
+          disabled={verifyLoading || verifyCode.length !== 6}
+        >
+          {verifyLoading ? <><span className="auth-spinner" /> Submitting...</> : 'Submit code'}
+        </button>
+        <div className="email-center-verify-secondary-row">
+          <button
+            type="button"
+            className="itg-btn itg-btn-outline email-center-btn verify email-center-verify-secondary-btn"
+            disabled={resendLoading}
+            onClick={() => onResend(contact.id)}
+          >
+            {resendLoading ? 'Sending...' : 'Resend Code'}
+          </button>
+          <button
+            type="button"
+            className="itg-btn itg-btn-text email-center-btn cancel email-center-verify-secondary-btn"
+            onClick={onCancelVerify}
+          >
+            Cancel
           </button>
         </div>
       </div>
-    </div>
-
-    {verifyingId === contact.id && !contact.verified ? (
-      <div className="email-center-verify-inline">
-        <p className="email-center-verify-hint">
-          Enter the 6-digit code we sent to this address, then tap Submit code.
-        </p>
-        <form onSubmit={onVerifySubmit} className="email-center-verify-form">
-          <div className="email-center-verify-code-wrap">
-            <CodeInput value={verifyCode} onChange={onVerifyCodeChange} disabled={verifyLoading} />
-          </div>
-          <div className="email-center-verify-actions">
-            <button
-              type="submit"
-              className="itg-btn itg-btn-primary email-center-verify-submit"
-              disabled={verifyLoading || verifyCode.length !== 6}
-            >
-              {verifyLoading ? <><span className="auth-spinner" /> Submitting...</> : 'Submit code'}
-            </button>
-            <div className="email-center-verify-secondary-row">
-              <button
-                type="button"
-                className="itg-btn itg-btn-outline email-center-btn verify email-center-verify-secondary-btn"
-                disabled={resendLoading}
-                onClick={() => onResend(contact.id)}
-              >
-                {resendLoading ? 'Sending...' : 'Resend Code'}
-              </button>
-              <button
-                type="button"
-                className="itg-btn itg-btn-text email-center-btn cancel email-center-verify-secondary-btn"
-                onClick={onCancelVerify}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </form>
-        {verifyError ? (
-          <div className="email-center-verify-alert">
-            <StatusAlert tone="error" message={verifyError} />
-          </div>
-        ) : null}
+    </form>
+    {verifyError ? (
+      <div className="email-center-verify-alert">
+        <StatusAlert tone="error" message={verifyError} />
       </div>
     ) : null}
   </div>
 );
+
+export const ContactEmailCard = (props: ContactEmailCardProps) => {
+  const {contact, verifyingId} = props;
+  return (
+    <div className="email-center-card">
+      <div className="email-center-row">
+        <div className="email-center-card-main">
+          <div className="email-center-card-heading">
+            <span className="email-center-card-title">{contact.email_address}</span>
+            <span className={`itg-tag email-center-badge ${contact.verified ? 'itg-tag-saved verified' : 'itg-tag-new unverified'}`}>
+              {contact.verified ? 'Verified' : 'Unverified'}
+            </span>
+          </div>
+
+          <ContactEmailActions {...props} />
+        </div>
+      </div>
+
+      {verifyingId === contact.id && !contact.verified ? <ContactEmailCodeForm {...props} /> : null}
+    </div>
+  );
+};

@@ -42,6 +42,17 @@ jobs:
       - name: Run Ruff formatter check
         run: ruff format --check .
 
+      # Size / complexity / nesting limits and app dependency boundaries. Hard
+      # limits fail; advisory findings are printed only. Rules and exceptions:
+      # docs/architecture/code-quality.md.
+      - name: Check Python quality limits
+        working-directory: .
+        run: python scripts/ci/check_python_quality.py
+
+      - name: Check Python app dependency boundaries
+        working-directory: .
+        run: python scripts/ci/check_python_dependencies.py
+
       # Bandit SAST — config lives in pyproject.toml [tool.bandit]. The
       # baseline pins pre-existing findings so only *new* issues break CI.
       # Update the baseline with `bandit -r src -c pyproject.toml -f json

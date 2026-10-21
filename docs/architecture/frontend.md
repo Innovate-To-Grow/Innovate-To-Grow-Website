@@ -52,7 +52,7 @@ Every request, refresh, bootstrap, logout, and session update is guarded by the 
 
 ## Router
 
-Defined in `pages/src/app/router.tsx`. All page components are lazy-loaded with `React.lazy()`.
+Defined in `pages/src/app/router/router.tsx`. All page components are lazy-loaded with `React.lazy()`. The app routes a CMS embed may render (`EMBED_APP_ROUTES`, `app/router/embedAppRoutes.ts`) are passed to the CMS feature as a prop, so `features/cms` never imports the router.
 
 ### Route groups
 
@@ -138,6 +138,26 @@ Campus users share one public IP, so the backend tells browsers apart by two val
 
 ## Shared modules
 
+Layer rules (what may import what, and how features expose a public interface) are in [Code Quality Rules](code-quality.md#frontend-layers). Page-only hooks and sections live beside their route (for example `routes/EventRegistrationPage/registration/` and `routes/SubscribePage/subscription/`). Pure formatting helpers shared across features live in `lib/format/` (`eventDates.ts`, `phoneInput.ts`), and form error collection lives in `lib/api/errorMessages.ts`.
+
+Large components keep rendering in the component and move state into a hook beside it, one hook per
+concern. For example:
+
+- **Projects builder** (`features/projects/components/`). `PastProjectsBuilder` composes
+  `builder/useCurationDraft` (the localStorage draft), `search/useSearchTables` (the table stack and AI
+  search) and `builder/useSaveSelectedRows`. Each `SearchTableCard` composes `search/useSearchTableRows`,
+  `search/useSearchTableSelection` and `search/useSearchTableSave`. `useProjectGridTable` builds on
+  `grid/useRowKeySet` and `grid/useGridPagination`. The rich-text editor's DOM work is in
+  `richText/richTextEditorDom.ts` and `richText/editorSelection.ts`.
+- **Event registration** (`routes/EventRegistrationPage/registration/`). `useRegistrationEvents` (which
+  event and step) loads options through `useEventOptionsLoader`. The phone and secondary-email hooks
+  share `contactChallenge.ts`: a challenge's state, and `runLatestRequest`, which lets only the newest
+  send or verify apply its result.
+- **Shared list edits** (`routes/PastProjectsPage/useSharedListMutations.ts`). Edits are queued and
+  rebased onto the latest version, and a stale-snapshot conflict reloads the list. The pure parts
+  (`editPatch`, `runnableBaseline`) sit above the hook, and the queue's bookkeeping is
+  `useMutationQueueState`.
+
 ### API client (`lib/api/api-client.ts`)
 
 - Plain Axios instance with `/api` base URL for public requests.
@@ -189,6 +209,7 @@ CSS custom properties define the design vocabulary:
 - `src/assets/` — Global: tokens, layout, responsive, utilities, rich-content
 - `src/index.css` — Imports shared styles, sets up body and app-layout
 - Component-scoped `.css` files alongside each component
+- `features/projects/components/projects.css` is an ordered list of `@import`s of the projects pages' co-located sheets (`grid/`, `search/`, `merged/`, `richText/`, `builder/`, ...). The order is the cascade order and `projectsResponsive.css` must stay last, so add rules to the file that owns them rather than reordering the list.
 
 ## Testing
 

@@ -10,6 +10,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings=0",
+    "check:structure": "node scripts/check-structure.mjs",
+    "quality:report": "node scripts/quality-report.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

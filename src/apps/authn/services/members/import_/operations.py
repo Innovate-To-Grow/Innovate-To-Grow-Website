@@ -71,13 +71,8 @@ def bulk_update_members(
             result.errors.append(f"Row {parsed['row']}: {exc}")
 
 
-def update_single_member(
-    member,
-    parsed,
-    claimed_contact_emails,
-    claimed_phones,
-    allow_privilege_fields: bool = False,
-):
+def _apply_profile_fields(member, parsed, allow_privilege_fields: bool) -> None:
+    """Overwrite the profile fields the row fills in; blank cells keep the current value."""
     if parsed["first_name"]:
         member.first_name = parsed["first_name"]
     if parsed["last_name"]:
@@ -97,6 +92,8 @@ def update_single_member(
         member.is_staff = parsed["is_staff"]
     member.save()
 
+
+def _sync_primary_email(member, parsed, claimed_contact_emails) -> None:
     primary_contact = member.contact_emails.filter(email_type="primary").first()
     primary_email = primary_contact.email_address if primary_contact else parsed["primary_email"]
     email_key = primary_email.lower()
@@ -124,6 +121,8 @@ def update_single_member(
             current.subscribe = _flag(parsed["primary_subscribed"], current.subscribe, _EMAIL_DEFAULTS["subscribe"])
             current.save(update_fields=["email_type", "verified", "subscribe", "updated_at"])
 
+
+def _sync_secondary_email(member, parsed, claimed_contact_emails) -> None:
     if parsed["secondary_email"]:
         secondary_key = parsed["secondary_email"].lower()
         member.contact_emails.filter(email_type="secondary").exclude(
@@ -156,6 +155,8 @@ def update_single_member(
         # must not delete anything; deletes here are hard and unrecoverable.
         member.contact_emails.filter(email_type="secondary").delete()
 
+
+def _sync_phone(member, parsed, claimed_phones) -> None:
     if parsed["phone_number"]:
         region = infer_region_from_e164(parsed["phone_number"])
         national = normalize_to_national(parsed["phone_number"], region)
@@ -182,3 +183,16 @@ def update_single_member(
             claimed_phones.add(national)
     elif parsed.get("has_phone_column"):
         member.contact_phones.all().delete()
+
+
+def update_single_member(
+    member,
+    parsed,
+    claimed_contact_emails,
+    claimed_phones,
+    allow_privilege_fields: bool = False,
+):
+    _apply_profile_fields(member, parsed, allow_privilege_fields)
+    _sync_primary_email(member, parsed, claimed_contact_emails)
+    _sync_secondary_email(member, parsed, claimed_contact_emails)
+    _sync_phone(member, parsed, claimed_phones)

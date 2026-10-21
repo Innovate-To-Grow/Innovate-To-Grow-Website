@@ -61,6 +61,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# Hosts CMS content may embed in iframes; the CSP middleware allows them as
+# frame sources. Each entry is a dotted path to a zero-argument callable.
+CSP_FRAME_HOST_PROVIDERS = ("apps.cms.services.sanitization.embed_hosts.get_allowed_hosts",)
+
 # ---------------------------------------------------------------------------
 # URL / WSGI
 # ---------------------------------------------------------------------------

@@ -10,8 +10,9 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from unfold.decorators import action
 
-import apps.mail.admin.campaign as campaign_api
 from apps.mail.models import EmailCampaign
+
+from .. import services as campaign_api
 
 
 class CampaignSendMixin:

@@ -17,6 +17,7 @@ bucket, and its response carries a ``visitor_token`` for the client to store.
 
 import logging
 import time
+from dataclasses import dataclass
 
 from django.conf import settings
 from rest_framework import status
@@ -28,10 +29,10 @@ from rest_framework.views import APIView
 
 from apps.authn.security import SoftJWTAuthentication
 from apps.core.models import AWSCredentialConfig
-from apps.core.services.bedrock import normalize_bedrock_model_id
 from apps.core.utils.throttle_cache import throttle_cache
 from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog, SystemIntelligenceConfig
 from apps.system_intelligence.serializers import PublicAssistantChatSerializer
+from apps.system_intelligence.services.bedrock import normalize_bedrock_model_id
 from apps.system_intelligence.services.public_assistant import (
     FEATURE_ASSISTANT,
     KIND_LEGACY,
@@ -186,147 +187,148 @@ class PublicAssistantChatView(APIView):
             max_history_chars=config.public_assistant_max_history_chars,
         )
         serializer.is_valid(raise_exception=True)
-        message = serializer.validated_data["message"]
-        session_id = serializer.validated_data.get("session_id", "")
         history = serializer.validated_data.get("history", [])
         history_limit = config.public_assistant_max_history_messages
-        # history[-0:] is the whole list, so handle a zero limit explicitly.
-        history = history[-history_limit:] if history_limit else []
-
-        # The actor (visitor / member / shared legacy bucket) keys every limit.
-        actor = resolve_chat_actor(request)
-        # ip_hash is recorded in the audit log only; it keys no limit. It is
-        # computed up front so every terminal branch can audit it.
-        ip_hash = hash_ip(client_ip(request) or "")
-        model_id = normalize_bedrock_model_id(config.public_model_id) or ""
+        # The actor (visitor / member / shared legacy bucket) keys every limit. ip_hash is
+        # recorded in the audit log only; it keys no limit. Both are resolved up front so
+        # every terminal branch can audit and answer with them.
+        turn = _ChatTurn(
+            config=config,
+            actor=resolve_chat_actor(request),
+            message=serializer.validated_data["message"],
+            session_id=serializer.validated_data.get("session_id", ""),
+            # history[-0:] is the whole list, so handle a zero limit explicitly.
+            history=history[-history_limit:] if history_limit else [],
+            ip_hash=hash_ip(client_ip(request) or ""),
+            model_id=normalize_bedrock_model_id(config.public_model_id) or "",
+        )
 
         # 3. AWS / model not configured -> graceful unavailable.
-        aws_config = AWSCredentialConfig.load()
-        if not aws_config.is_configured or not model_id:
-            log_assistant_turn(
-                source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
-                session_id=session_id,
-                ip_hash=ip_hash,
-                prompt=message,
-                status=AssistantMessageLog.STATUS_UNAVAILABLE,
-                model_id=model_id,
-                config=config,
-            )
-            return _unavailable_response(config, actor)
+        if not AWSCredentialConfig.load().is_configured or not turn.model_id:
+            turn.log(AssistantMessageLog.STATUS_UNAVAILABLE)
+            return _unavailable_response(config, turn.actor)
 
-        try:
-            context = build_public_context(
-                char_cap=config.public_assistant_max_context_chars,
-            )
-        except Exception:
-            logger.exception("Public assistant context cache is unavailable")
-            return Response(
-                _body({"detail": _BUDGET_UNAVAILABLE_MESSAGE, "code": "budget_unavailable"}, actor),
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-        estimated_input = estimate_public_input_tokens(
-            message=message,
-            history=history,
-            config=config,
-            context=context,
-        )
-        input_limit = config.public_assistant_max_estimated_input_tokens
-        if input_limit > 0 and estimated_input > input_limit:
-            return Response(
-                _body(
-                    {"detail": "The request is too large for the public assistant.", "code": "input_too_large"},
-                    actor,
-                ),
-                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            )
+        prepared = _prepare_chat_input(turn)
+        if isinstance(prepared, Response):
+            return prepared
+        context, estimated_input = prepared
 
         # 4. Atomically reserve estimated input + maximum output against BOTH
         #    the actor's budget and the assistant's global budget (the spend
         #    ceiling). The shared legacy actor has no per-actor token limit.
-        try:
-            reservation = reserve_budget(
-                actor.key,
-                estimated_input_tokens=estimated_input,
-                maximum_output_tokens=config.public_assistant_max_response_tokens,
-                limit=actor_token_limit(actor, config.public_assistant_ip_token_limit),
-                window_seconds=config.public_assistant_ip_token_window_seconds,
-                global_limit=config.public_assistant_global_token_limit,
-                feature=FEATURE_ASSISTANT,
-            )
-        except BudgetBackendUnavailable:
-            logger.exception("Public assistant shared budget is unavailable")
-            return Response(
-                _body({"detail": _BUDGET_UNAVAILABLE_MESSAGE, "code": "budget_unavailable"}, actor),
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-        if reservation is None:
-            log_assistant_turn(
-                source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
-                session_id=session_id,
-                ip_hash=ip_hash,
-                prompt=message,
-                status=AssistantMessageLog.STATUS_BUDGET,
-                model_id=model_id,
-                config=config,
-            )
-            return Response(
-                _body({"detail": _BUDGET_MESSAGE, "code": "budget_exceeded"}, actor),
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
+        reservation = _reserve_chat_budget(turn, estimated_input)
+        if isinstance(reservation, Response):
+            return reservation
 
-        # 5. Invoke the tool-free model.
-        started = time.monotonic()
-        try:
-            result = answer_public_question(
-                message=message,
-                history=history,
-                config=config,
-                context=context,
-            )
-        except Exception:
-            logger.exception("Public assistant invocation failed")
-            try:
-                release_budget(reservation)
-            except BudgetBackendUnavailable:
-                logger.exception("Could not release failed public-assistant reservation")
-            log_assistant_turn(
-                source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
-                session_id=session_id,
-                ip_hash=ip_hash,
-                prompt=message,
-                status=AssistantMessageLog.STATUS_ERROR,
-                model_id=model_id,
-                latency_ms=int((time.monotonic() - started) * 1000),
-                config=config,
-            )
-            return Response(
-                _body({"detail": _ERROR_MESSAGE, "code": "assistant_error"}, actor),
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-        latency_ms = int((time.monotonic() - started) * 1000)
+        # 5. Invoke the tool-free model; 6. record usage and return.
+        return _answer_and_settle(turn, context, reservation)
 
-        # 6. Record usage and return.
-        raw_usage = result.get("usage")
-        try:
-            reconcile_budget(reservation, reported_total_tokens(raw_usage))
-        except BudgetBackendUnavailable:
-            logger.exception("Could not reconcile public-assistant reservation")
-        # Only plausible integers are stored and returned: the raw block is provider-controlled.
-        usage = sanitized_usage(raw_usage)
-        reply = result.get("text", "")
+
+@dataclass
+class _ChatTurn:
+    """One chat request: what every audit-log entry and response body for it needs."""
+
+    config: SystemIntelligenceConfig
+    actor: object
+    message: str
+    session_id: str
+    history: list
+    ip_hash: str
+    model_id: str
+
+    def log(self, status_value, **extra) -> None:
         log_assistant_turn(
             source=AssistantConversationLog.SOURCE_PUBLIC_CHAT,
-            session_id=session_id,
-            ip_hash=ip_hash,
-            prompt=message,
-            reply=reply,
-            status=AssistantMessageLog.STATUS_OK,
-            model_id=model_id,
-            token_usage=usage,
-            latency_ms=latency_ms,
-            config=config,
+            session_id=self.session_id,
+            ip_hash=self.ip_hash,
+            prompt=self.message,
+            status=status_value,
+            model_id=self.model_id,
+            config=self.config,
+            **extra,
         )
-        return Response(
-            _body({"available": True, "reply": reply, "usage": usage}, actor),
-            status=status.HTTP_200_OK,
+
+    def respond(self, payload: dict, status_code: int) -> Response:
+        return Response(_body(payload, self.actor), status=status_code)
+
+
+def _prepare_chat_input(turn: _ChatTurn):
+    """The public context and the estimated input size; or a refusal ``Response``."""
+    config = turn.config
+    try:
+        context = build_public_context(char_cap=config.public_assistant_max_context_chars)
+    except Exception:
+        logger.exception("Public assistant context cache is unavailable")
+        return turn.respond(
+            {"detail": _BUDGET_UNAVAILABLE_MESSAGE, "code": "budget_unavailable"},
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+    estimated_input = estimate_public_input_tokens(
+        message=turn.message,
+        history=turn.history,
+        config=config,
+        context=context,
+    )
+    input_limit = config.public_assistant_max_estimated_input_tokens
+    if input_limit > 0 and estimated_input > input_limit:
+        return turn.respond(
+            {"detail": "The request is too large for the public assistant.", "code": "input_too_large"},
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        )
+    return context, estimated_input
+
+
+def _reserve_chat_budget(turn: _ChatTurn, estimated_input: int):
+    """The budget reservation, or a refusal ``Response`` (budget exhausted or its backend unreachable)."""
+    config = turn.config
+    try:
+        reservation = reserve_budget(
+            turn.actor.key,
+            estimated_input_tokens=estimated_input,
+            maximum_output_tokens=config.public_assistant_max_response_tokens,
+            limit=actor_token_limit(turn.actor, config.public_assistant_ip_token_limit),
+            window_seconds=config.public_assistant_ip_token_window_seconds,
+            global_limit=config.public_assistant_global_token_limit,
+            feature=FEATURE_ASSISTANT,
+        )
+    except BudgetBackendUnavailable:
+        logger.exception("Public assistant shared budget is unavailable")
+        return turn.respond(
+            {"detail": _BUDGET_UNAVAILABLE_MESSAGE, "code": "budget_unavailable"},
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    if reservation is None:
+        turn.log(AssistantMessageLog.STATUS_BUDGET)
+        return turn.respond({"detail": _BUDGET_MESSAGE, "code": "budget_exceeded"}, status.HTTP_429_TOO_MANY_REQUESTS)
+    return reservation
+
+
+def _answer_and_settle(turn: _ChatTurn, context, reservation) -> Response:
+    started = time.monotonic()
+    try:
+        result = answer_public_question(
+            message=turn.message,
+            history=turn.history,
+            config=turn.config,
+            context=context,
+        )
+    except Exception:
+        logger.exception("Public assistant invocation failed")
+        try:
+            release_budget(reservation)
+        except BudgetBackendUnavailable:
+            logger.exception("Could not release failed public-assistant reservation")
+        turn.log(AssistantMessageLog.STATUS_ERROR, latency_ms=int((time.monotonic() - started) * 1000))
+        return turn.respond({"detail": _ERROR_MESSAGE, "code": "assistant_error"}, status.HTTP_502_BAD_GATEWAY)
+    latency_ms = int((time.monotonic() - started) * 1000)
+
+    raw_usage = result.get("usage")
+    try:
+        reconcile_budget(reservation, reported_total_tokens(raw_usage))
+    except BudgetBackendUnavailable:
+        logger.exception("Could not reconcile public-assistant reservation")
+    # Only plausible integers are stored and returned: the raw block is provider-controlled.
+    usage = sanitized_usage(raw_usage)
+    reply = result.get("text", "")
+    turn.log(AssistantMessageLog.STATUS_OK, reply=reply, token_usage=usage, latency_ms=latency_ms)
+    return turn.respond({"available": True, "reply": reply, "usage": usage}, status.HTTP_200_OK)

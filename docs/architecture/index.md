@@ -9,6 +9,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 - [Frontend](frontend.md) — React roots, router, features, shared modules, and styling
 - [Request Flow](request-flow.md) — How requests move from browser through Vite/CDN to Django and back
 - [Integrations](integrations.md) — External services: Google Sheets, AWS SES/End User Messaging/Bedrock, S3
+- [Code Quality Rules](code-quality.md) — Size, complexity and nesting limits, dependency directions, check commands, exceptions
 
 ## Who this is for
 
@@ -19,9 +20,10 @@ Engineers who need to understand how the system is organized before making chang
 | Decision | Rationale |
 |----------|-----------|
 | Three independent React roots | Menu and footer update without full-page navigation; auth syncs via custom events |
-| UUID primary keys on all domain models | `ProjectControlModel` base class provides UUIDs, timestamps, and soft delete |
+| UUID primary keys on all domain models | `ProjectControlModel` base class provides a UUID `id` plus `created_at` / `updated_at` only (no soft delete; deletes are hard) |
 | Block-based CMS | `CMSPage` + ordered `CMSBlock` records with JSON schemas replace the older GrapesJS system |
 | Service layer pattern | Business logic lives in `services/` modules, not in views or serializers |
+| Enforced dependency directions | `core` imports no business app; apps plug into shared machinery (jobs, CSP) through registration hooks — see [Code Quality Rules](code-quality.md) |
 | Modular Django settings | `base.py` assembles shared components; `local.py`, `test.py`, and `production.py` apply environment-specific overrides |
 | Per-endpoint throttling | Throttle classes applied per-view, not globally (global setting breaks test suite) |
 | Client-side RSA password encryption | Passwords are encrypted with Web Crypto API; active keys rotate daily and retired key IDs remain decryptable for a bounded two-day window |

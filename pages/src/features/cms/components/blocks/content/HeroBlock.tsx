@@ -12,6 +12,25 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** The hero image: a local responsive variant when there is one; eager and high priority when it is the LCP. */
+const HeroImage = ({imageUrl, alt, priority}: {imageUrl: string; alt: string; priority: boolean}) => {
+  const localImage = localImageVariant(imageUrl);
+  return (
+    <img
+      src={localImage?.src ?? imageUrl}
+      srcSet={localImage?.srcSet}
+      sizes={localImage ? LOCAL_IMAGE_SIZES : undefined}
+      width={localImage?.width}
+      height={localImage?.height}
+      alt={alt}
+      className="cms-hero-image"
+      loading={priority ? 'eager' : 'lazy'}
+      decoding="async"
+      fetchPriority={priority ? 'high' : undefined}
+    />
+  );
+};
+
 /**
  * Page opener in the main column: the page title (h1), an optional lead
  * paragraph and an optional image under it. There is no full-bleed band; the
@@ -29,7 +48,6 @@ export const HeroBlock = ({
   const imageUrl = text(data.image_url);
   if (!heading && !subheading && !imageUrl) return null;
 
-  const localImage = localImageVariant(imageUrl);
   // A lead (the theme's .lead, closed by a navy rule) follows the title directly;
   // without one the title keeps the CMS page-title spacing.
   const titleClass = subheading ? 'itg-page-title cms-hero-title' : `${CMS_PAGE_TITLE_CLASS} cms-hero-title`;
@@ -38,20 +56,7 @@ export const HeroBlock = ({
     <section className="cms-hero">
       {heading && <h1 className={titleClass}>{heading}</h1>}
       {subheading && <p className="itg-lead cms-hero-lead">{subheading}</p>}
-      {imageUrl && (
-        <img
-          src={localImage?.src ?? imageUrl}
-          srcSet={localImage?.srcSet}
-          sizes={localImage ? LOCAL_IMAGE_SIZES : undefined}
-          width={localImage?.width}
-          height={localImage?.height}
-          alt={text(data.image_alt)}
-          className="cms-hero-image"
-          loading={priority ? 'eager' : 'lazy'}
-          decoding="async"
-          fetchPriority={priority ? 'high' : undefined}
-        />
-      )}
+      {imageUrl && <HeroImage imageUrl={imageUrl} alt={text(data.image_alt)} priority={priority} />}
     </section>
   );
 };

@@ -174,8 +174,8 @@ class EmailCampaignAdminAuthzTest(MailAdminAuthzTestBase):
         response = self.assert_allowed_for_superuser(url, method="post", data={"body": "hi", "body_format": "plain"})
         self.assertEqual(response.status_code, 200)
 
-    @patch("apps.mail.admin.campaign.list_recent_sent_messages")
-    @patch("apps.mail.admin.campaign.resolve_gmail_mailbox")
+    @patch("apps.mail.admin.campaign.services.list_recent_sent_messages")
+    @patch("apps.mail.admin.campaign.services.resolve_gmail_mailbox")
     def test_import_gmail_html_denied_for_grantless_allowed_for_superuser(self, mock_mailbox, mock_list):
         mock_mailbox.return_value = "inbox@example.com"
         mock_list.return_value = []
@@ -196,7 +196,7 @@ class InboxAdminAuthzTest(MailAdminAuthzTestBase):
         self.assert_denied_for_grantless(url)
         self.assert_allowed_for_superuser(url)
 
-    @patch("apps.mail.admin.inbox.list_inbox_messages")
+    @patch("apps.mail.admin.inbox.services.list_inbox_messages")
     def test_inbox_fragment_denied_for_grantless_allowed_for_superuser(self, mock_list):
         mock_list.return_value = []
         url = reverse("admin:mail_inbox_fragment")
@@ -205,39 +205,39 @@ class InboxAdminAuthzTest(MailAdminAuthzTestBase):
         mock_list.assert_not_called()
         self.assert_allowed_for_superuser(url)
 
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_inbox_detail_denied_for_grantless(self, mock_fetch):
         url = reverse("admin:mail_inbox_detail", args=["42"])
         self.assert_denied_for_grantless(url)
         mock_fetch.assert_not_called()
 
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_inbox_detail_fragment_denied_for_grantless(self, mock_fetch):
         url = reverse("admin:mail_inbox_detail_fragment", args=["42"])
         self.assert_denied_for_grantless(url)
         mock_fetch.assert_not_called()
 
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_inbox_reply_get_denied_for_grantless(self, mock_fetch):
         url = reverse("admin:mail_inbox_reply", args=["42"])
         self.assert_denied_for_grantless(url)
         mock_fetch.assert_not_called()
 
-    @patch("apps.mail.admin.inbox.send_reply")
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.send_reply")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_inbox_reply_post_denied_for_grantless(self, mock_fetch, mock_send):
         url = reverse("admin:mail_inbox_reply", args=["42"])
         self.assert_denied_for_grantless(url, method="post", data={"reply_body": "hi", "to_email": "x@example.com"})
         mock_send.assert_not_called()
 
-    @patch("apps.mail.admin.inbox.send_reply")
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.send_reply")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_inbox_reply_fragment_post_denied_for_grantless(self, mock_fetch, mock_send):
         url = reverse("admin:mail_inbox_reply_fragment", args=["42"])
         self.assert_denied_for_grantless(url, method="post", data={"reply_body": "hi", "to_email": "x@example.com"})
         mock_send.assert_not_called()
 
-    @patch("apps.mail.admin.inbox.fetch_inbox_message")
+    @patch("apps.mail.admin.inbox.services.fetch_inbox_message")
     def test_inbox_detail_allowed_for_superuser(self, mock_fetch):
         mock_fetch.return_value = {
             "uid": "42",

@@ -1,0 +1,128 @@
+/* Project grid controls: filter well, results bar (count, sort) and toolbars.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Filter well ---------------------------------------------------------- */
+
+.project-grid-table-shell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.project-grid-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.875rem 1rem;
+}
+
+.project-grid-controls-row > .project-grid-search-field {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+/* Current projects: Search spans two columns, Class and Industry share the rest. */
+.project-grid-controls-row.has-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(10.625rem, 100%), 1fr));
+}
+
+.project-grid-controls-row.has-filters > .project-grid-search-field {
+  grid-column: span 2;
+}
+
+.project-grid-search-input,
+.project-grid-select {
+  width: 100%;
+}
+
+.project-grid-page-size .project-grid-select {
+  min-width: 5.5rem;
+}
+
+.project-grid-controls-status {
+  margin-top: 0.875rem;
+}
+
+/* ---- Results bar (count, sort) ------------------------------------------- */
+
+.project-grid-results-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 1.375rem 0 0.5rem;
+  font-size: var(--itg-font-size-meta);
+}
+
+.project-grid-count {
+  margin: 0;
+  color: var(--itg-color-text);
+}
+
+.project-grid-count strong {
+  color: var(--itg-color-text-dark);
+}
+
+.project-grid-results-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+
+.project-grid-sort,
+.project-grid-results-controls .project-grid-page-size {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.project-grid-results-controls .project-grid-field-label,
+.project-grid-sort label {
+  font-size: var(--itg-font-size-meta);
+  font-weight: 400;
+  color: var(--itg-color-text);
+}
+
+.project-grid-results-controls .project-grid-select {
+  width: auto;
+  min-height: 2.125rem;
+  height: 2.125rem;
+}
+
+/* ---- Toolbars -------------------------------------------------------------- */
+
+.project-grid-toolbar {
+  margin-top: 1.25rem;
+}
+
+.project-grid-toolbar--bottom {
+  margin-top: 1.25rem;
+}
+
+.project-grid-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 1.5rem;
+}
+
+.project-grid-toolbar-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.project-grid-group-label,
+.search-table-group-label {
+  font-weight: 700;
+  color: var(--itg-color-text);
+}
+
+.project-grid-edit-group {
+  gap: 0.25rem 1.125rem;
+}

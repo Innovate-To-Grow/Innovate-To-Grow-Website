@@ -1,0 +1,143 @@
+/* The phone list, the pager and the empty / no-results states.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Phone list ------------------------------------------------------------- */
+
+/* The phone list keeps the table's look: 1px #111 rules above and below, #ddd row separators, striped rows. */
+.project-grid-mobile-cards {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid #111111;
+  border-bottom: 1px solid #111111;
+}
+
+.project-grid-mobile-card {
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.project-grid-mobile-card:first-child {
+  border-top: 0;
+}
+
+.project-grid-mobile-card:nth-child(odd) {
+  background: #f9f9f9;
+}
+
+/* An open phone row takes the shade of the table's open row. */
+.project-grid-mobile-card.is-expanded {
+  background: #f6f6f6;
+}
+
+.project-grid-mobile-card.is-selected {
+  background: var(--itg-color-highlight);
+}
+
+.project-grid-mobile-card-select {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  width: 3rem;
+  min-height: 3rem;
+  font-size: 0.75rem;
+  color: var(--itg-color-text-secondary);
+  cursor: pointer;
+}
+
+.project-grid-mobile-card-select input {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.project-grid-mobile-card.is-selected .project-grid-mobile-card-select {
+  color: var(--itg-color-text-dark);
+}
+
+.project-grid-mobile-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.project-grid-mobile-card-meta {
+  margin: 0;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-mobile-card-byline {
+  margin: 0;
+  font-style: italic;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-mobile-card-details {
+  margin-top: 12px;
+}
+
+.project-grid-mobile-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+}
+
+.project-grid-mobile-card-actions .itg-btn-text {
+  min-height: 2.75rem;
+}
+
+/* ---- Pager ------------------------------------------------------------------- */
+
+/* The pager sits right under the table, right-aligned (.itg-pagination); its numbers are a plain list. */
+.project-grid-pager-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-grid-pager-status {
+  display: none;
+  font-size: var(--itg-font-size-meta);
+}
+
+/* ---- Empty and no-results states ------------------------------------------ */
+
+.project-grid-empty {
+  margin: 12px 0;
+  color: var(--itg-color-text);
+}
+
+.project-grid-no-results {
+  margin-top: 12px;
+}
+
+/* Page-level states (unavailable share link, project not found) stand alone: no rule above them. */
+.projects-message-page {
+  gap: 12px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.projects-message-page > .itg-back-link {
+  margin-bottom: 0;
+}
+
+.projects-message-page .itg-page-title {
+  margin: 0;
+}
+
+.projects-message-page .itg-empty-state-text p {
+  margin: 0;
+}
