@@ -82,6 +82,14 @@ const HEADER_PARTS = [
  * #menu-root (desktop: only the menu row stays), the phone header spacer, and
  * scroll-padding-top so focused/anchored content is never hidden under the
  * sticky header. The sheet carries fallbacks for the first paint.
+ *
+ * The first measurement is written before paint. Later ones, reported by a
+ * ResizeObserver, are written on the next animation frame: the sheet feeds
+ * these properties back into the header's own box (#menu-root's height and
+ * sticky offset), so writing them inside the observer callback resizes an
+ * observed part in the same frame, which WebKit reports as the page error
+ * "ResizeObserver loop completed with undelivered notifications". Unchanged
+ * heights are not rewritten.
  */
 export const useHeaderMetrics = (headerRef: RefObject<HTMLElement | null>) => {
   useLayoutEffect(() => {
@@ -91,11 +99,16 @@ export const useHeaderMetrics = (headerRef: RefObject<HTMLElement | null>) => {
     const parts = HEADER_PARTS.map(([selector, property]) => ({
       element: header.querySelector<HTMLElement>(selector),
       property,
+      published: '',
     }));
 
     const apply = () => {
-      for (const {element, property} of parts) {
-        if (element) root.style.setProperty(property, `${element.getBoundingClientRect().height}px`);
+      for (const part of parts) {
+        if (!part.element) continue;
+        const height = `${part.element.getBoundingClientRect().height}px`;
+        if (height === part.published) continue;
+        part.published = height;
+        root.style.setProperty(part.property, height);
       }
     };
     apply();
@@ -104,10 +117,20 @@ export const useHeaderMetrics = (headerRef: RefObject<HTMLElement | null>) => {
       window.addEventListener('resize', apply);
       return () => window.removeEventListener('resize', apply);
     }
-    const observer = new ResizeObserver(apply);
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        apply();
+      });
+    });
     for (const {element} of parts) {
       if (element) observer.observe(element);
     }
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, [headerRef]);
 };

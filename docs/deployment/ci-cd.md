@@ -67,6 +67,10 @@ Uses SQLite (dev settings) for fast test execution.
   engines + 7 mobile/tablet devices), each as its own matrix leg
 - Gates `CI Result` through the `E2E Required Result` aggregator, so a failing
   device leg blocks the merge and stops the deploy chain
+- Retries a failed test up to twice within its leg (`retries` in
+  `pages/playwright.config.ts`, CI only). A pass on retry is reported as flaky
+  in the merged report and does not fail the leg; a test that fails all three
+  attempts does. The required Chromium smoke runs with `--retries=0` on purpose.
 - `E2E Report` (the merged HTML/JUnit report) stays `continue-on-error`: a flaky
   artifact download must not be able to block a merge
 
