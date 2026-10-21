@@ -1,6 +1,6 @@
 # Routing Overview
 
-URL organization for the Django backend, defined in `src/config/urls.py` with delegation to app-level routers.
+URL organization for the Django backend, defined in `src/config/routing/urls.py` with delegation to app-level routers.
 
 ## Root URL patterns
 
@@ -99,7 +99,7 @@ Generic, denylist-gated CRUD for the `i2g-admin` terminal CLI, authenticated by 
 
 ## Frontend route mapping
 
-The frontend router (`pages/src/app/router.tsx`) maps browser URLs to React components. Most frontend routes call one or more API endpoints:
+The frontend router (`pages/src/app/router/router.tsx`) maps browser URLs to React components. Most frontend routes call one or more API endpoints:
 
 | Frontend route | Primary API call |
 |---------------|-----------------|
@@ -123,7 +123,7 @@ When adding a new API endpoint:
 
 1. Create views and serializers in the appropriate app
 2. Add URL patterns in the app's `urls.py`
-3. If it's a new top-level path, register it in `src/config/urls.py`
+3. If it's a new top-level path, register it in `src/config/routing/urls.py`
 4. Apply appropriate permission classes and throttles per-view
 5. Update the frontend feature API module if the frontend will consume it
 

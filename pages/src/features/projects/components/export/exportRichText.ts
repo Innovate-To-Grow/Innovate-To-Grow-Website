@@ -1,4 +1,4 @@
-import {sanitizePastProjectsDetailHtml, stripPastProjectsDetailMarkup} from '../pastProjectsDetailText';
+import {sanitizePastProjectsDetailHtml, stripPastProjectsDetailMarkup} from '../richText/pastProjectsDetailText';
 
 /** A run of text carrying the inline emphasis the rich editor supports. */
 export interface StyledRun {
@@ -27,30 +27,26 @@ const EMPHASIS_TAGS: Record<string, keyof ActiveStyle> = {
 
 const BLOCK_TAGS = new Set(['div', 'p']);
 
+const STYLE_KEYS = ['bold', 'italic', 'underline', 'highlight'] as const;
+
+const hasStyle = (run: StyledRun, style: ActiveStyle) =>
+  STYLE_KEYS.every((key) => Boolean(run[key]) === style[key]);
+
+/** Only the styles that are on, so plain runs carry no flags. */
+const styleFlags = (style: ActiveStyle): Partial<StyledRun> =>
+  Object.fromEntries(STYLE_KEYS.filter((key) => style[key]).map((key) => [key, true]));
+
 const pushText = (runs: StyledRun[], text: string, style: ActiveStyle) => {
   if (!text) {
     return;
   }
   const previous = runs.at(-1);
   // Merge consecutive runs that share styling so downstream formats emit fewer nodes.
-  if (
-    previous &&
-    !previous.text.endsWith('\n') &&
-    Boolean(previous.bold) === style.bold &&
-    Boolean(previous.italic) === style.italic &&
-    Boolean(previous.underline) === style.underline &&
-    Boolean(previous.highlight) === style.highlight
-  ) {
+  if (previous && !previous.text.endsWith('\n') && hasStyle(previous, style)) {
     previous.text += text;
     return;
   }
-  runs.push({
-    text,
-    ...(style.bold ? {bold: true} : {}),
-    ...(style.italic ? {italic: true} : {}),
-    ...(style.underline ? {underline: true} : {}),
-    ...(style.highlight ? {highlight: true} : {}),
-  });
+  runs.push({text, ...styleFlags(style)});
 };
 
 const pushLineBreak = (runs: StyledRun[]) => {
@@ -59,6 +55,12 @@ const pushLineBreak = (runs: StyledRun[]) => {
     previous.text += '\n';
   } else {
     runs.push({text: '\n'});
+  }
+};
+
+const breakLineAfterContent = (runs: StyledRun[]) => {
+  if (runs.length && !(runs.at(-1)?.text.endsWith('\n') ?? false)) {
+    pushLineBreak(runs);
   }
 };
 
@@ -84,16 +86,10 @@ const walk = (node: Node, style: ActiveStyle, runs: StyledRun[]) => {
   const emphasis = EMPHASIS_TAGS[tag];
   const nextStyle: ActiveStyle = emphasis ? {...style, [emphasis]: true} : style;
 
-  // A block element starts on its own line when it follows existing content.
-  if (BLOCK_TAGS.has(tag) && runs.length && !(runs.at(-1)?.text.endsWith('\n') ?? false)) {
-    pushLineBreak(runs);
-  }
-
+  // A block element starts on its own line when it follows existing content, and ends its line.
+  if (BLOCK_TAGS.has(tag)) breakLineAfterContent(runs);
   Array.from(element.childNodes).forEach((child) => walk(child, nextStyle, runs));
-
-  if (BLOCK_TAGS.has(tag) && runs.length && !(runs.at(-1)?.text.endsWith('\n') ?? false)) {
-    pushLineBreak(runs);
-  }
+  if (BLOCK_TAGS.has(tag)) breakLineAfterContent(runs);
 };
 
 const collapseTrailingBlankRuns = (runs: StyledRun[]): StyledRun[] => {

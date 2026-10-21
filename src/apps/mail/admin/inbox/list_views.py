@@ -5,10 +5,10 @@ from django.core.exceptions import PermissionDenied
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
-import apps.mail.admin.inbox as inbox_api
 from apps.core.models import GmailAccessAccount
 from apps.core.utils.access import user_can_access_app
 
+from . import services as inbox_api
 from .helpers import parse_folder, parse_limit
 
 

@@ -39,11 +39,18 @@ def resolve_mailbox(mailbox: str | None = None) -> str:
     return resolve_gmail_mailbox(mailbox)
 
 
-@contextmanager
-def _open_inbox(mailbox: str | None = None, folder: str = INBOX_FOLDER):
-    # Imported lazily (like resolve_mailbox) to avoid an inbox -> gmail_import cycle.
+def _select_sent_folder(client) -> None:
     from apps.mail.services.gmail_import.connection import GmailImportError, select_sent_folder
 
+    try:
+        select_sent_folder(client)
+    except GmailImportError as exc:
+        raise InboxError(str(exc)) from exc
+
+
+@contextmanager
+def _open_inbox(mailbox: str | None = None, folder: str = INBOX_FOLDER):
+    # gmail_import is imported lazily (like resolve_mailbox) to avoid an inbox -> gmail_import cycle.
     config = get_gmail_config()
     resolved_mailbox = resolve_mailbox(mailbox or config.mailbox)
     # parse_folder already enforces the {INBOX, SENT} allowlist; any non-SENT value
@@ -58,10 +65,7 @@ def _open_inbox(mailbox: str | None = None, folder: str = INBOX_FOLDER):
             initial_folder=None if use_sent else INBOX_FOLDER,
         ) as client:
             if use_sent:
-                try:
-                    select_sent_folder(client)
-                except GmailImportError as exc:
-                    raise InboxError(str(exc)) from exc
+                _select_sent_folder(client)
             yield client
     except InboxError:
         raise

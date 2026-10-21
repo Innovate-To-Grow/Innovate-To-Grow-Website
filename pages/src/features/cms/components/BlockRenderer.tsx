@@ -59,79 +59,28 @@ function isPresentBlock(block: CMSBlock | null | undefined): block is CMSBlock {
   return Boolean(block);
 }
 
-function renderKnownBlock(block: CMSKnownBlock, previewMode: boolean, priority: boolean) {
-  const key = `${block.block_type}-${block.sort_order}`;
+/** Block types that take the LCP `priority` hint, and those rendered differently in the admin preview. */
+const PRIORITY_BLOCK_TYPES = new Set<CMSKnownBlockType>(['hero', 'image_text']);
+const PREVIEW_AWARE_BLOCK_TYPES = new Set<CMSKnownBlockType>(['embed', 'embed_widget']);
 
-  switch (block.block_type) {
-    case 'hero': {
-      const Component = BLOCK_COMPONENTS.hero;
-      return <Component key={key} data={block.data} priority={priority} />;
-    }
-    case 'rich_text': {
-      const Component = BLOCK_COMPONENTS.rich_text;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'contact_info': {
-      const Component = BLOCK_COMPONENTS.contact_info;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'navigation_grid': {
-      const Component = BLOCK_COMPONENTS.navigation_grid;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'link_list': {
-      const Component = BLOCK_COMPONENTS.link_list;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'cta_group': {
-      const Component = BLOCK_COMPONENTS.cta_group;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'faq_list': {
-      const Component = BLOCK_COMPONENTS.faq_list;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'image_text': {
-      const Component = BLOCK_COMPONENTS.image_text;
-      return <Component key={key} data={block.data} priority={priority} />;
-    }
-    case 'notice': {
-      const Component = BLOCK_COMPONENTS.notice;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'section_group': {
-      const Component = BLOCK_COMPONENTS.section_group;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'proposal_cards': {
-      const Component = BLOCK_COMPONENTS.proposal_cards;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'table': {
-      const Component = BLOCK_COMPONENTS.table;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'numbered_list': {
-      const Component = BLOCK_COMPONENTS.numbered_list;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'sponsor_year': {
-      const Component = BLOCK_COMPONENTS.sponsor_year;
-      return <Component key={key} data={block.data} />;
-    }
-    case 'embed': {
-      const Component = BLOCK_COMPONENTS.embed;
-      return <Component key={key} data={block.data} previewMode={previewMode} />;
-    }
-    case 'embed_widget': {
-      const Component = BLOCK_COMPONENTS.embed_widget;
-      return <Component key={key} data={block.data} previewMode={previewMode} />;
-    }
-    default: {
-      const exhaustive: never = block;
-      return exhaustive;
-    }
-  }
+type AnyBlockComponent = (props: {
+  data: CMSKnownBlock['data'];
+  previewMode?: boolean;
+  priority?: boolean;
+}) => ReactNode;
+
+function renderKnownBlock(block: CMSKnownBlock, previewMode: boolean, priority: boolean) {
+  const type = block.block_type;
+  // Sound by construction: the component is looked up by the same block's type, so its data matches.
+  const Component = BLOCK_COMPONENTS[type] as AnyBlockComponent;
+  return (
+    <Component
+      key={`${type}-${block.sort_order}`}
+      data={block.data}
+      {...(PRIORITY_BLOCK_TYPES.has(type) ? {priority} : {})}
+      {...(PREVIEW_AWARE_BLOCK_TYPES.has(type) ? {previewMode} : {})}
+    />
+  );
 }
 
 export const BlockRenderer = memo(

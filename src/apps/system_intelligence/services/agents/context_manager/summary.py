@@ -20,6 +20,29 @@ from .tokens import (
 logger = logging.getLogger(__name__)
 
 
+def _summarize_or_fall_back(conversation, existing_summary, source_text, meta, **invocation) -> str:
+    try:
+        return summarize_context(existing_summary=existing_summary, new_context=source_text, **invocation)
+    except Exception:
+        logger.exception("System Intelligence context summarization failed for conversation %s", conversation.pk)
+        meta["summary_failed"] = True
+        return fallback_context_summary(existing_summary, source_text)
+
+
+def _store_summary(conversation: ChatConversation, summary_text: str, through_message: ChatMessage) -> None:
+    conversation.context_summary = trim_text_to_token_budget(summary_text, SUMMARY_TARGET_TOKENS)
+    conversation.context_summary_updated_at = timezone.now()
+    conversation.context_summary_through_message = through_message
+    conversation.save(
+        update_fields=[
+            "context_summary",
+            "context_summary_updated_at",
+            "context_summary_through_message",
+            "updated_at",
+        ]
+    )
+
+
 def ensure_context_summary(
     conversation: ChatConversation,
     compact_candidates: list[ChatMessage],
@@ -49,32 +72,18 @@ def ensure_context_summary(
         new_candidates = compact_candidates
 
     source_text = trim_text_to_token_budget(format_messages_for_summary(new_candidates), SUMMARY_INPUT_TOKEN_LIMIT)
-    try:
-        summary_text = summarize_context(
-            existing_summary=existing_summary,
-            new_context=source_text,
-            chat_config=chat_config,
-            aws_config=aws_config,
-            model_id=model_id,
-            user_id=user_id,
-        )
-    except Exception:
-        logger.exception("System Intelligence context summarization failed for conversation %s", conversation.pk)
-        summary_text = fallback_context_summary(existing_summary, source_text)
-        meta["summary_failed"] = True
-
-    through_message = compact_candidates[-1]
-    conversation.context_summary = trim_text_to_token_budget(summary_text, SUMMARY_TARGET_TOKENS)
-    conversation.context_summary_updated_at = timezone.now()
-    conversation.context_summary_through_message = through_message
-    conversation.save(
-        update_fields=[
-            "context_summary",
-            "context_summary_updated_at",
-            "context_summary_through_message",
-            "updated_at",
-        ]
+    summary_text = _summarize_or_fall_back(
+        conversation,
+        existing_summary,
+        source_text,
+        meta,
+        chat_config=chat_config,
+        aws_config=aws_config,
+        model_id=model_id,
+        user_id=user_id,
     )
+    through_message = compact_candidates[-1]
+    _store_summary(conversation, summary_text, through_message)
     meta.update(
         {
             "summary_used": bool(conversation.context_summary),

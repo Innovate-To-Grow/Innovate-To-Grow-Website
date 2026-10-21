@@ -6,15 +6,28 @@ interface MaintenanceModeProps {
   onBypass?: (password: string) => Promise<boolean>;
 }
 
-/**
- * Full-screen maintenance page. It replaces the whole app (menu, footer and the
- * layout data may be unavailable), so it carries its own UC Merced chrome: the
- * navy bar with the gold rule, the site-name band, and a footer.
- */
-export const MaintenanceMode = ({ message, maintenance, onBypass }: MaintenanceModeProps) => {
-  const displayMessage = message || 'The system is currently temporarily down for maintenance. We apologize for the inconvenience and appreciate your patience.';
+/** The UC Merced navy bar with the gold rule, and the site-name band. */
+const MaintenanceHeader = () => (
+  <>
+    <header className="maintenance-bar">
+      <div className="maintenance-bar-inner">
+        <a href="https://www.ucmerced.edu" className="maintenance-ucm-link">
+          <img src="/assets/images/ucmlogo.png" alt="UC Merced" className="maintenance-ucm-logo" width={138} height={34} />
+        </a>
+      </div>
+    </header>
 
-  const [showForm, setShowForm] = useState(false);
+    <div className="maintenance-band">
+      <div className="maintenance-band-inner">
+        <p className="maintenance-site-name">Innovate To Grow</p>
+        <p className="maintenance-site-school">School of Engineering</p>
+      </div>
+    </div>
+  </>
+);
+
+/** The staff bypass state; kept by the page so the typed password survives hiding the form. */
+const useBypassForm = (onBypass: MaintenanceModeProps['onBypass']) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,24 +50,53 @@ export const MaintenanceMode = ({ message, maintenance, onBypass }: MaintenanceM
     }
   };
 
+  return { password, setPassword, error, loading, handleSubmit };
+};
+
+/** The staff bypass: a password that, when accepted, lets this browser past maintenance. */
+const BypassForm = ({ form }: { form: ReturnType<typeof useBypassForm> }) => {
+  const { password, setPassword, error, loading, handleSubmit } = form;
+  return (
+    <form className="bypass-form" onSubmit={handleSubmit}>
+      <label className="itg-label bypass-label" htmlFor="maintenance-bypass-password">
+        Bypass password
+      </label>
+      <div className="bypass-row">
+        <input
+          id="maintenance-bypass-password"
+          type="password"
+          className="itg-input bypass-input"
+          placeholder="Enter bypass password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoFocus
+          disabled={loading}
+        />
+        <button type="submit" className="itg-btn itg-btn-primary bypass-submit" disabled={loading || !password.trim()}>
+          {loading ? 'Verifying...' : 'Enter'}
+        </button>
+      </div>
+      {error && <p className="itg-error bypass-error" role="alert">{error}</p>}
+    </form>
+  );
+};
+
+/**
+ * Full-screen maintenance page. It replaces the whole app (menu, footer and the
+ * layout data may be unavailable), so it carries its own UC Merced chrome: the
+ * navy bar with the gold rule, the site-name band, and a footer.
+ */
+export const MaintenanceMode = ({ message, maintenance, onBypass }: MaintenanceModeProps) => {
+  const displayMessage = message || 'The system is currently temporarily down for maintenance. We apologize for the inconvenience and appreciate your patience.';
+
+  const [showForm, setShowForm] = useState(false);
+  const bypassForm = useBypassForm(onBypass);
+
   const canBypass = Boolean(maintenance && onBypass);
 
   return (
     <div className="maintenance-container">
-      <header className="maintenance-bar">
-        <div className="maintenance-bar-inner">
-          <a href="https://www.ucmerced.edu" className="maintenance-ucm-link">
-            <img src="/assets/images/ucmlogo.png" alt="UC Merced" className="maintenance-ucm-logo" width={138} height={34} />
-          </a>
-        </div>
-      </header>
-
-      <div className="maintenance-band">
-        <div className="maintenance-band-inner">
-          <p className="maintenance-site-name">Innovate To Grow</p>
-          <p className="maintenance-site-school">School of Engineering</p>
-        </div>
-      </div>
+      <MaintenanceHeader />
 
       {/* A div, not <main>: this page renders inside the shell's own <main id="main">, and
           a second main landmark nested in it is an accessibility error. */}
@@ -92,29 +134,7 @@ export const MaintenanceMode = ({ message, maintenance, onBypass }: MaintenanceM
             )}
           </nav>
 
-          {showForm && canBypass && (
-            <form className="bypass-form" onSubmit={handleSubmit}>
-              <label className="itg-label bypass-label" htmlFor="maintenance-bypass-password">
-                Bypass password
-              </label>
-              <div className="bypass-row">
-                <input
-                  id="maintenance-bypass-password"
-                  type="password"
-                  className="itg-input bypass-input"
-                  placeholder="Enter bypass password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoFocus
-                  disabled={loading}
-                />
-                <button type="submit" className="itg-btn itg-btn-primary bypass-submit" disabled={loading || !password.trim()}>
-                  {loading ? 'Verifying...' : 'Enter'}
-                </button>
-              </div>
-              {error && <p className="itg-error bypass-error" role="alert">{error}</p>}
-            </form>
-          )}
+          {showForm && canBypass ? <BypassForm form={bypassForm} /> : null}
         </div>
 
         <div className="maintenance-footer-bottom">

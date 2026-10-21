@@ -18,18 +18,16 @@ def client_ip(request) -> str | None:
     no XFF entry and uses ``REMOTE_ADDR`` (DRF semantics). Without ``NUM_PROXIES`` (dev / tests)
     fall back to the leftmost entry, then to ``REMOTE_ADDR``.
     """
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-    if forwarded:
-        parts = [part.strip() for part in forwarded.split(",") if part.strip()]
-        if parts:
-            num_proxies = getattr(settings, "NUM_PROXIES", None)
-            if num_proxies is not None:
-                if num_proxies == 0:
-                    return request.META.get("REMOTE_ADDR")
-                index = max(0, len(parts) - num_proxies)
-                return parts[index]
-            return parts[0]
-    return request.META.get("REMOTE_ADDR")
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR") or ""
+    parts = [part.strip() for part in forwarded.split(",") if part.strip()]
+    if not parts:
+        return request.META.get("REMOTE_ADDR")
+    num_proxies = getattr(settings, "NUM_PROXIES", None)
+    if num_proxies is None:
+        return parts[0]
+    if num_proxies == 0:
+        return request.META.get("REMOTE_ADDR")
+    return parts[max(0, len(parts) - num_proxies)]
 
 
 def hash_ip(ip: str) -> str:

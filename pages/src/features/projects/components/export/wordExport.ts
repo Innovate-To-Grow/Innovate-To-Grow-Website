@@ -143,17 +143,16 @@ const projectTableRow = (row: ProjectGridRow) => {
   return `<w:tr>${cells}</w:tr>`;
 };
 
-export const createProjectRowsWordBlob = (
+const buildDocumentXml = (
   rows: ProjectGridRow[],
-  context: ProjectRowsExportContext = {},
-  logo: ExportLogoAsset | null = null,
+  exportContext: ReturnType<typeof normalizeProjectRowsExportContext>,
+  logo: ExportLogoAsset | null,
 ) => {
-  const exportContext = normalizeProjectRowsExportContext(context);
   const headerRow = `<w:tr>${EXPORT_COLUMNS.map((label, index) => headerCell(label, COLUMN_PCT[index])).join('')}</w:tr>`;
   const bodyRows = rows.map(projectTableRow).join('');
   const noteRuns = parseRichTextRuns(exportContext.note);
 
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
   <w:body>
     ${logo ? wordLogoParagraph('rIdLogo') : ''}
@@ -189,64 +188,64 @@ export const createProjectRowsWordBlob = (
     </w:sectPr>
   </w:body>
 </w:document>`;
+};
 
-  const packageBytes = createStoredZip([
-    {
-      name: '[Content_Types].xml',
-      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+const contentTypesXml = (hasLogo: boolean) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
-  ${logo ? '<Default Extension="png" ContentType="image/png"/>' : ''}
+  ${hasLogo ? '<Default Extension="png" ContentType="image/png"/>' : ''}
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`,
-    },
-    {
-      name: '_rels/.rels',
-      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+</Types>`;
+
+const PACKAGE_RELS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>`,
-    },
-    {
-      name: 'docProps/app.xml',
-      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+</Relationships>`;
+
+const APP_PROPERTIES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
   <Application>Innovate to Grow Website</Application>
-</Properties>`,
-    },
-    {
-      name: 'docProps/core.xml',
-      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+</Properties>`;
+
+const coreProperties = (title: string) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>${escapeXml(exportContext.title)}</dc:title>
+  <dc:title>${escapeXml(title)}</dc:title>
   <dc:creator>Innovate to Grow Website</dc:creator>
-</cp:coreProperties>`,
-    },
-    {
-      name: 'word/document.xml',
-      content: documentXml,
-    },
-    ...(logo
-      ? [
-          {
-            name: 'word/_rels/document.xml.rels',
-            content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+</cp:coreProperties>`;
+
+const LOGO_RELS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/i2g-logo.png"/>
-</Relationships>`,
-          },
-          {
-            name: 'word/media/i2g-logo.png',
-            content: logo.bytes,
-          },
-        ]
-      : []),
-  ]);
+</Relationships>`;
+
+/** The .docx package parts around the document: content types, relationships, properties, the logo. */
+const packageParts = (documentXml: string, title: string, logo: ExportLogoAsset | null) => [
+  {name: '[Content_Types].xml', content: contentTypesXml(Boolean(logo))},
+  {name: '_rels/.rels', content: PACKAGE_RELS_XML},
+  {name: 'docProps/app.xml', content: APP_PROPERTIES_XML},
+  {name: 'docProps/core.xml', content: coreProperties(title)},
+  {name: 'word/document.xml', content: documentXml},
+  ...(logo
+    ? [
+        {name: 'word/_rels/document.xml.rels', content: LOGO_RELS_XML},
+        {name: 'word/media/i2g-logo.png', content: logo.bytes},
+      ]
+    : []),
+];
+
+export const createProjectRowsWordBlob = (
+  rows: ProjectGridRow[],
+  context: ProjectRowsExportContext = {},
+  logo: ExportLogoAsset | null = null,
+) => {
+  const exportContext = normalizeProjectRowsExportContext(context);
+  const documentXml = buildDocumentXml(rows, exportContext, logo);
+  const packageBytes = createStoredZip(packageParts(documentXml, exportContext.title, logo));
 
   return new Blob([packageBytes], {
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

@@ -91,6 +91,48 @@ const dispatchAuthStateChange = () => {
 };
 
 /**
+ * Store the refreshed tokens for the guarded generation, keeping its refresh
+ * token when none came back.
+ */
+function storeRefreshedTokens(
+  data: {access?: unknown; refresh?: unknown} | undefined,
+  guard: SessionGuard,
+  currentRefresh: string,
+): RefreshAttempt {
+  const access = data?.access;
+  if (typeof access !== 'string' || !access) {
+    // A malformed success response is not proof that the refresh
+    // credential is invalid. Keep the guarded session so a transient
+    // deploy/proxy fault cannot log out the user.
+    return {result: null, failure: 'transient'};
+  }
+  const refresh =
+    typeof data?.refresh === 'string' && data.refresh
+      ? data.refresh
+      : currentRefresh;
+  const updated = updateSessionTokens(guard, {access, refresh});
+  if (!updated) return {result: null, failure: 'session_changed'};
+  dispatchAuthStateChange();
+  return {result: {access: updated.access, generation: updated.generation}};
+}
+
+/**
+ * A rejected refresh (400/401) ends the guarded session; anything else is
+ * transient.
+ */
+function refreshFailure(error: unknown, guard: SessionGuard): RefreshAttempt {
+  const status = responseStatus(error);
+  if (status !== 400 && status !== 401) {
+    return {result: null, failure: 'transient'};
+  }
+  if (clearTokens(guard)) {
+    dispatchAuthStateChange();
+    return {result: null, failure: 'definitive'};
+  }
+  return {result: null, failure: 'session_changed'};
+}
+
+/**
  * Refresh the current generation only. If another tab logs out or replaces the
  * account while the request is in flight, the response is discarded.
  */
@@ -117,49 +159,10 @@ async function refreshAccessTokenAttempt(
     .post(`${API_BASE_URL}/authn/refresh/`, {
       refresh: snapshot.refresh,
     })
-    .then((response) => {
-      const access = response.data?.access;
-      if (typeof access !== 'string' || !access) {
-        // A malformed success response is not proof that the refresh
-        // credential is invalid. Keep the guarded session so a transient
-        // deploy/proxy fault cannot log out the user.
-        return {result: null, failure: 'transient'} as RefreshAttempt;
-      }
-
-      const refresh =
-        typeof response.data?.refresh === 'string' && response.data.refresh
-          ? response.data.refresh
-          : snapshot.refresh;
-      const updated = updateSessionTokens(guard, {access, refresh});
-      if (!updated) {
-        return {
-          result: null,
-          failure: 'session_changed',
-        } as RefreshAttempt;
-      }
-
-      dispatchAuthStateChange();
-      return {
-        result: {access: updated.access, generation: updated.generation},
-      } as RefreshAttempt;
-    })
-    .catch((error: unknown) => {
-      const status = responseStatus(error);
-      if (status === 400 || status === 401) {
-        if (clearTokens(guard)) {
-          dispatchAuthStateChange();
-          return {
-            result: null,
-            failure: 'definitive',
-          } as RefreshAttempt;
-        }
-        return {
-          result: null,
-          failure: 'session_changed',
-        } as RefreshAttempt;
-      }
-      return {result: null, failure: 'transient'} as RefreshAttempt;
-    })
+    .then((response) =>
+      storeRefreshedTokens(response.data, guard, snapshot.refresh),
+    )
+    .catch((error: unknown) => refreshFailure(error, guard))
     .finally(() => {
       if (refreshInFlight?.key === key) refreshInFlight = null;
     });
@@ -252,6 +255,82 @@ authApi.interceptors.request.use((config) => {
   return attachStoredSession(config);
 });
 
+type RetriableRequest = InternalAxiosRequestConfig & {[AUTH_RETRY_MARKER]?: boolean};
+type StoredSession = NonNullable<ReturnType<typeof getStoredSession>>;
+
+const retryWithAccess = (request: RetriableRequest, access: string) => {
+  request.headers.Authorization = `Bearer ${access}`;
+  return authApi(request);
+};
+
+/**
+ * A fresh token was still rejected. Clear only the exact generation and access token used for that
+ * retry; a parallel refresh, login, or account switch must survive this stale response.
+ */
+const clearRejectedSession = (
+  error: unknown,
+  requestSession: RequestSession | undefined,
+  current: StoredSession | null,
+) => {
+  if (
+    requestSession &&
+    current &&
+    current.generation === requestSession.generation &&
+    current.access === requestSession.access &&
+    clearTokens({generation: current.generation, refresh: current.refresh})
+  ) {
+    dispatchAuthStateChange();
+    markDefinitiveAuthFailure(error);
+  }
+};
+
+const refreshAndRetry = async (error: unknown, request: RetriableRequest, requestSession: RequestSession) => {
+  const attempt = await refreshAccessTokenAttempt(requestSession.generation);
+  if (attempt.result?.generation === requestSession.generation) {
+    return retryWithAccess(request, attempt.result.access);
+  }
+
+  // Another tab may have rotated this generation's tokens while our
+  // refresh was in flight. Reuse that newer token; never clear or retry
+  // under a different account generation.
+  const latest = getStoredSession();
+  if (latest && latest.generation === requestSession.generation && latest.access !== requestSession.access) {
+    return retryWithAccess(request, latest.access);
+  }
+
+  if (attempt.failure === 'definitive') {
+    markDefinitiveAuthFailure(error);
+  }
+  return Promise.reject(error);
+};
+
+/** A 401: retry once with a refreshed (or a parallel request's newer) token of the same session. */
+const retryUnauthorized = async (error: unknown, request: RetriableRequest) => {
+  const requestSession = requestSessions.get(request);
+  const current = getStoredSession();
+
+  if (request[AUTH_RETRY_MARKER]) {
+    clearRejectedSession(error, requestSession, current);
+    return Promise.reject(error);
+  }
+
+  // Never retry a request under another account, or turn a request that was
+  // originally anonymous into an authenticated one.
+  if (!requestSession || !current || current.generation !== requestSession.generation) {
+    return Promise.reject(error);
+  }
+
+  // Axios preserves unknown config fields when it merges a retry config, so
+  // this marker follows the request and prevents a second refresh loop.
+  request[AUTH_RETRY_MARKER] = true;
+
+  // A parallel request may already have refreshed this generation.
+  if (current.access !== requestSession.access) {
+    return retryWithAccess(request, current.access);
+  }
+  return refreshAndRetry(error, request, requestSession);
+};
+
 authApi.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -262,77 +341,8 @@ authApi.interceptors.response.use(
     if (originalRequest?.skipAuth) return Promise.reject(error);
 
     if (error.response?.status === 401 && originalRequest) {
-      const requestSession = requestSessions.get(originalRequest);
-      const current = getStoredSession();
-      const alreadyRetried = Boolean(originalRequest[AUTH_RETRY_MARKER]);
-
-      if (alreadyRetried) {
-        // A fresh token was still rejected. Clear only the exact generation
-        // and access token used for that retry; a parallel refresh, login, or
-        // account switch must survive this stale response.
-        if (
-          requestSession &&
-          current &&
-          current.generation === requestSession.generation &&
-          current.access === requestSession.access &&
-          clearTokens({
-            generation: current.generation,
-            refresh: current.refresh,
-          })
-        ) {
-          dispatchAuthStateChange();
-          markDefinitiveAuthFailure(error);
-        }
-        return Promise.reject(error);
-      }
-
-      // Never retry a request under another account, or turn a request that was
-      // originally anonymous into an authenticated one.
-      if (
-        !requestSession ||
-        !current ||
-        current.generation !== requestSession.generation
-      ) {
-        return Promise.reject(error);
-      }
-
-      // Axios preserves unknown config fields when it merges a retry config, so
-      // this marker follows the request and prevents a second refresh loop.
-      originalRequest[AUTH_RETRY_MARKER] = true;
-
-      // A parallel request may already have refreshed this generation.
-      if (current.access !== requestSession.access) {
-        originalRequest.headers.Authorization = `Bearer ${current.access}`;
-        return authApi(originalRequest);
-      }
-
-      const attempt = await refreshAccessTokenAttempt(
-        requestSession.generation,
-      );
-      if (attempt.result?.generation === requestSession.generation) {
-        originalRequest.headers.Authorization =
-          `Bearer ${attempt.result.access}`;
-        return authApi(originalRequest);
-      }
-
-      // Another tab may have rotated this generation's tokens while our
-      // refresh was in flight. Reuse that newer token; never clear or retry
-      // under a different account generation.
-      const latest = getStoredSession();
-      if (
-        latest &&
-        latest.generation === requestSession.generation &&
-        latest.access !== requestSession.access
-      ) {
-        originalRequest.headers.Authorization = `Bearer ${latest.access}`;
-        return authApi(originalRequest);
-      }
-
-      if (attempt.failure === 'definitive') {
-        markDefinitiveAuthFailure(error);
-      }
+      return retryUnauthorized(error, originalRequest);
     }
-
     return Promise.reject(error);
   },
 );

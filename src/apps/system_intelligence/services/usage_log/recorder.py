@@ -34,6 +34,53 @@ def _coerce_session_uuid(session_id) -> uuid.UUID | None:
         return None
 
 
+def _conversation_for_turn(*, source, session_uuid, ip_hash, user, spent, now):
+    """The conversation this turn belongs to and whether it was just created.
+
+    New conversations are created with this turn's counters baked in (single
+    INSERT); only reused conversations need the follow-up counter update.
+    """
+    if session_uuid is None:
+        conversation = AssistantConversationLog.objects.create(
+            source=source,
+            session_id=None,
+            ip_hash=ip_hash,
+            user=user,
+            message_count=1,
+            total_tokens=spent,
+            last_activity_at=now,
+        )
+        return conversation, True
+    return AssistantConversationLog.objects.get_or_create(
+        source=source,
+        session_id=session_uuid,
+        defaults={
+            "ip_hash": ip_hash,
+            "user": user,
+            "message_count": 1,
+            "total_tokens": spent,
+            "last_activity_at": now,
+        },
+    )
+
+
+def _count_turn(conversation, *, ip_hash, user, spent, now) -> None:
+    # F() expressions so concurrent turns on the same session
+    # increment atomically in the database (no lost updates from
+    # read-modify-write races).
+    update_fields = ["message_count", "total_tokens", "last_activity_at", "updated_at"]
+    conversation.message_count = F("message_count") + 1
+    conversation.total_tokens = F("total_tokens") + spent
+    conversation.last_activity_at = now
+    if not conversation.ip_hash and ip_hash:
+        conversation.ip_hash = ip_hash
+        update_fields.append("ip_hash")
+    if conversation.user is None and user is not None:
+        conversation.user = user
+        update_fields.append("user")
+    conversation.save(update_fields=update_fields)
+
+
 def log_assistant_turn(
     *,
     source,
@@ -62,65 +109,25 @@ def log_assistant_turn(
             return
 
         token_usage = token_usage or {}
-        results = results if results is not None else []
         now = timezone.now()
-        session_uuid = _coerce_session_uuid(session_id)
         spent = token_usage.get("totalTokens") or 0
-
+        counters = {"ip_hash": ip_hash, "user": user, "spent": spent, "now": now}
         with transaction.atomic():
-            # New conversations are created with this turn's counters baked in
-            # (single INSERT); only reused conversations need the follow-up
-            # UPDATE below.
-            created = True
-            if session_uuid is not None:
-                conversation, created = AssistantConversationLog.objects.get_or_create(
-                    source=source,
-                    session_id=session_uuid,
-                    defaults={
-                        "ip_hash": ip_hash,
-                        "user": user,
-                        "message_count": 1,
-                        "total_tokens": spent,
-                        "last_activity_at": now,
-                    },
-                )
-            else:
-                conversation = AssistantConversationLog.objects.create(
-                    source=source,
-                    session_id=None,
-                    ip_hash=ip_hash,
-                    user=user,
-                    message_count=1,
-                    total_tokens=spent,
-                    last_activity_at=now,
-                )
-
+            conversation, created = _conversation_for_turn(
+                source=source, session_uuid=_coerce_session_uuid(session_id), **counters
+            )
             AssistantMessageLog.objects.create(
                 conversation=conversation,
                 prompt=prompt,
                 reply=reply or "",
-                results=results,
+                results=results if results is not None else [],
                 status=status,
                 model_id=model_id or "",
                 token_usage=token_usage,
                 latency_ms=latency_ms,
             )
-
             if not created:
-                # F() expressions so concurrent turns on the same session
-                # increment atomically in the database (no lost updates from
-                # read-modify-write races).
-                update_fields = ["message_count", "total_tokens", "last_activity_at", "updated_at"]
-                conversation.message_count = F("message_count") + 1
-                conversation.total_tokens = F("total_tokens") + spent
-                conversation.last_activity_at = now
-                if not conversation.ip_hash and ip_hash:
-                    conversation.ip_hash = ip_hash
-                    update_fields.append("ip_hash")
-                if conversation.user is None and user is not None:
-                    conversation.user = user
-                    update_fields.append("user")
-                conversation.save(update_fields=update_fields)
+                _count_turn(conversation, **counters)
     except Exception:
         try:
             logger.exception("Failed to record assistant turn for audit (source=%s)", source)

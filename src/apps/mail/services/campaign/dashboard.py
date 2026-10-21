@@ -13,20 +13,16 @@ from django.utils import timezone
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
-NAMESPACE = "AWS/SES"
-PERIOD_SECONDS = 86400
+from .delivery_metrics import (
+    _build_metric_payload,
+    _discover_dimension_sets,
+    _empty_metric_payload,
+    _get_metric_data,
+    _has_values,
+)
+
 DEFAULT_WINDOW_DAYS = 183
 
-METRICS = (
-    ("Send", "attempts", "Sent"),
-    ("Delivery", "success", "Delivered"),
-    ("Bounce", "bounces", "Bounced"),
-    ("Complaint", "complaints", "Complained"),
-    ("Reject", "rejected", "Rejected"),
-    ("RenderingFailure", "failed", "Rendering failures"),
-    ("DeliveryDelay", "delayed", "Delivery delays"),
-)
-ERROR_KEYS = ("bounces", "complaints", "rejected", "failed")
 SUPPRESSION_REASONS = ("BOUNCE", "COMPLAINT")
 RECIPIENT_DETAIL_ACTIONS = ("ses:ListSuppressedDestinations", "ses:GetSuppressedDestination")
 PERMISSION_ERROR_CODES = {
@@ -114,6 +110,38 @@ def fetch_ses_cloudwatch_metrics(*, days: int = DEFAULT_WINDOW_DAYS, now=None) -
     )
 
 
+def _list_suppressed_rows(client, start, end) -> list[dict]:
+    rows = []
+    kwargs = {
+        "Reasons": list(SUPPRESSION_REASONS),
+        "StartDate": start,
+        "EndDate": end,
+        "PageSize": 100,
+    }
+    while True:
+        page = client.list_suppressed_destinations(**kwargs)
+        rows.extend(_suppressed_destination_row(item) for item in page.get("SuppressedDestinationSummaries", []))
+        next_token = page.get("NextToken")
+        if not next_token:
+            return rows
+        kwargs["NextToken"] = next_token
+
+
+def _suppression_error_meta(exc: Exception) -> dict:
+    """The unavailable-state metadata for a failed suppression-list read (details go to the log only)."""
+    if isinstance(exc, ClientError):
+        logger.warning("Reading the SES suppression list failed: %s", exc)
+        reason = _client_error_reason(exc)
+        error_code = _PUBLIC_ERROR_CODES.get(_client_error_code(exc), "AwsError")
+    elif isinstance(exc, BotoCoreError):
+        logger.warning("Reading the SES suppression list failed: %s", exc)
+        reason, error_code = "aws_error", "AwsError"
+    else:
+        logger.exception("Unexpected error reading the SES suppression list")
+        reason, error_code = "error", "InternalError"
+    return _recipient_details_meta(False, reason, error_code=error_code, required_actions=RECIPIENT_DETAIL_ACTIONS)
+
+
 def fetch_suppressed_destinations(*, days: int = DEFAULT_WINDOW_DAYS, limit: int | None = None, now=None):
     """Return AWS SES account-level suppressed recipients.
 
@@ -132,54 +160,15 @@ def fetch_suppressed_destinations(*, days: int = DEFAULT_WINDOW_DAYS, limit: int
         return [], _recipient_details_meta(False, "error")
 
     try:
-        rows = []
-        kwargs = {
-            "Reasons": list(SUPPRESSION_REASONS),
-            "StartDate": start,
-            "EndDate": now,
-            "PageSize": 100,
-        }
-        while True:
-            page = client.list_suppressed_destinations(**kwargs)
-            for item in page.get("SuppressedDestinationSummaries", []):
-                rows.append(_suppressed_destination_row(item))
-            next_token = page.get("NextToken")
-            if not next_token:
-                break
-            kwargs["NextToken"] = next_token
-    except ClientError as exc:
-        logger.warning("Reading the SES suppression list failed: %s", exc)
-        return [], _recipient_details_meta(
-            False,
-            _client_error_reason(exc),
-            error_code=_PUBLIC_ERROR_CODES.get(_client_error_code(exc), "AwsError"),
-            required_actions=RECIPIENT_DETAIL_ACTIONS,
-        )
-    except BotoCoreError as exc:
-        logger.warning("Reading the SES suppression list failed: %s", exc)
-        return [], _recipient_details_meta(
-            False,
-            "aws_error",
-            error_code="AwsError",
-            required_actions=RECIPIENT_DETAIL_ACTIONS,
-        )
-    except Exception:  # noqa: BLE001
-        logger.exception("Unexpected error reading the SES suppression list")
-        return [], _recipient_details_meta(
-            False,
-            "error",
-            error_code="InternalError",
-            required_actions=RECIPIENT_DETAIL_ACTIONS,
-        )
+        rows = _list_suppressed_rows(client, start, now)
+    except Exception as exc:  # noqa: BLE001 - every failure becomes an unavailable state.
+        return [], _suppression_error_meta(exc)
 
     rows.sort(key=lambda row: row["_last_seen_sort"], reverse=True)
     total_count = len(rows)
     reason_counts = _recipient_reason_counts(rows)
     latest_seen = _display_dt(rows[0]["_last_seen_sort"]) if rows else "-"
-    limited_rows = rows
-    if limit is not None:
-        limited_rows = rows[: max(limit, 0)]
-
+    limited_rows = rows if limit is None else rows[: max(limit, 0)]
     for row in limited_rows:
         row.pop("_last_seen_sort", None)
 
@@ -234,167 +223,6 @@ def _preferred_dimension_groups():
 
 def _configuration_set_name() -> str:
     return (getattr(settings, "SES_CONFIGURATION_SET_NAME", "") or "").strip()
-
-
-def _discover_dimension_sets(client):
-    discovered = []
-    seen = set()
-    paginator = client.get_paginator("list_metrics")
-    for metric_name, _key, _label in METRICS:
-        for page in paginator.paginate(Namespace=NAMESPACE, MetricName=metric_name):
-            for metric in page.get("Metrics", []):
-                dimensions = metric.get("Dimensions", [])
-                key = tuple(sorted((dim.get("Name", ""), dim.get("Value", "")) for dim in dimensions))
-                if key not in seen:
-                    seen.add(key)
-                    discovered.append([{"Name": name, "Value": value} for name, value in key if name and value])
-    return discovered
-
-
-def _get_metric_data(client, dimension_sets, start, end):
-    queries = _metric_queries(dimension_sets)
-    series = {}
-    next_token = None
-    while True:
-        kwargs = {
-            "MetricDataQueries": queries,
-            "StartTime": start,
-            "EndTime": end,
-            "ScanBy": "TimestampAscending",
-        }
-        if next_token:
-            kwargs["NextToken"] = next_token
-        response = client.get_metric_data(**kwargs)
-        for result in response.get("MetricDataResults", []):
-            entry = series.setdefault(result["Id"], {"timestamps": [], "values": []})
-            entry["timestamps"].extend(result.get("Timestamps", []))
-            entry["values"].extend(result.get("Values", []))
-        next_token = response.get("NextToken")
-        if not next_token:
-            break
-    return {"dimension_sets": dimension_sets, "series": series}
-
-
-def _metric_queries(dimension_sets):
-    queries = []
-    for dim_index, dimensions in enumerate(dimension_sets):
-        for metric_name, key, _label in METRICS:
-            queries.append(
-                {
-                    "Id": f"d{dim_index}_{key}",
-                    "MetricStat": {
-                        "Metric": {
-                            "Namespace": NAMESPACE,
-                            "MetricName": metric_name,
-                            "Dimensions": dimensions,
-                        },
-                        "Period": PERIOD_SECONDS,
-                        "Stat": "Sum",
-                    },
-                    "ReturnData": True,
-                }
-            )
-    return queries
-
-
-def _has_values(results) -> bool:
-    return any(value for entry in results["series"].values() for value in entry.get("values", []))
-
-
-def _build_metric_payload(results, *, days: int, now, source: str) -> dict:
-    summary = _zero_summary()
-    daily_map = _empty_daily_map(days, now)
-
-    for dim_index, _dimensions in enumerate(results["dimension_sets"]):
-        for _metric_name, key, _label in METRICS:
-            entry = results["series"].get(f"d{dim_index}_{key}")
-            if not entry:
-                continue
-            for ts, value in zip(entry["timestamps"], entry["values"], strict=False):
-                amount = int(round(value or 0))
-                summary[key] += amount
-                day = _local_day(ts).isoformat()
-                if day in daily_map:
-                    daily_map[day][key] += amount
-
-    summary["problems"] = sum(summary[key] for key in ERROR_KEYS)
-    if summary["attempts"] < summary["success"] + summary["problems"]:
-        summary["attempts"] = summary["success"] + summary["problems"]
-    summary["failure_rate"] = round((summary["problems"] / summary["attempts"]) * 100, 1) if summary["attempts"] else 0
-
-    daily = []
-    for date, counters in daily_map.items():
-        daily_problems = sum(counters[key] for key in ERROR_KEYS)
-        daily_attempts = counters["attempts"]
-        if daily_attempts < counters["success"] + daily_problems:
-            daily_attempts = counters["success"] + daily_problems
-        daily.append({"date": date, "attempts": daily_attempts, "problems": daily_problems})
-
-    return {
-        "summary": summary,
-        "daily": daily,
-        "status_breakdown": _status_breakdown(summary),
-        "metrics": {
-            "available": True,
-            "reason": "",
-            "source": source,
-            "namespace": NAMESPACE,
-            "dimension_count": len(results["dimension_sets"]),
-        },
-    }
-
-
-def _empty_metric_payload(*, days: int, now, reason: str) -> dict:
-    payload = _build_metric_payload(
-        {"dimension_sets": [[]], "series": {}},
-        days=days,
-        now=now,
-        source="CloudWatch account SES metrics",
-    )
-    payload["metrics"].update({"available": False, "reason": reason})
-    return payload
-
-
-def _zero_summary() -> dict:
-    return {
-        "attempts": 0,
-        "success": 0,
-        "problems": 0,
-        "failure_rate": 0,
-        "campaign_attempts": 0,
-        "campaign_errors": 0,
-        "ticket_sent": 0,
-        "ticket_errors": 0,
-        "pending": 0,
-        "bounces": 0,
-        "complaints": 0,
-        "rejected": 0,
-        "failed": 0,
-        "delayed": 0,
-    }
-
-
-def _empty_daily_map(days: int, now):
-    today = timezone.localdate(now)
-    return {
-        (today - timedelta(days=offset)).isoformat(): {key: 0 for _metric_name, key, _label in METRICS}
-        for offset in range(days - 1, -1, -1)
-    }
-
-
-def _status_breakdown(summary: dict) -> list[dict]:
-    mapping = (
-        ("bounces", "bounced", "Bounced"),
-        ("complaints", "complained", "Complained"),
-        ("rejected", "rejected", "Rejected"),
-        ("failed", "failed", "Rendering failures"),
-        ("delayed", "delayed", "Delivery delays"),
-        ("success", "delivered", "Delivered"),
-        ("attempts", "sent", "Sent"),
-    )
-    return [
-        {"status": status, "label": label, "count": summary[key]} for key, status, label in mapping if summary.get(key)
-    ]
 
 
 def _suppressed_destination_row(item: dict) -> dict:
@@ -472,10 +300,6 @@ def _aws_meta(metric_payload: dict, recipient_details: dict) -> dict:
         "recipient_details_error_message": recipient_details.get("error_message", ""),
         "recipient_details_required_actions": recipient_details.get("required_actions", []),
     }
-
-
-def _local_day(value):
-    return timezone.localtime(value).date()
 
 
 def _display_dt(value) -> str:

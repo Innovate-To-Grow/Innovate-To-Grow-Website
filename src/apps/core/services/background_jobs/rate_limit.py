@@ -17,6 +17,20 @@ def configured_ses_rate(config) -> float:
     return rate if isfinite(rate) and rate > 0 else 0.0
 
 
+def _locked_limiter(provider: str, initial_time) -> DeliveryRateLimit:
+    """Lock the provider's limiter row, creating it first if no worker has yet."""
+    try:
+        return DeliveryRateLimit.objects.select_for_update().get(provider=provider)
+    except DeliveryRateLimit.DoesNotExist:
+        pass
+    try:
+        with transaction.atomic():
+            DeliveryRateLimit.objects.create(provider=provider, next_available_at=initial_time)
+    except IntegrityError:
+        pass
+    return DeliveryRateLimit.objects.select_for_update().get(provider=provider)
+
+
 def reserve_delivery_slot(
     provider: str,
     sends_per_second: float,
@@ -29,19 +43,7 @@ def reserve_delivery_slot(
     initial_time = now or timezone.now()
     interval = timedelta(seconds=1 / sends_per_second)
     with transaction.atomic():
-        try:
-            limiter = DeliveryRateLimit.objects.select_for_update().get(provider=provider)
-        except DeliveryRateLimit.DoesNotExist:
-            try:
-                with transaction.atomic():
-                    DeliveryRateLimit.objects.create(
-                        provider=provider,
-                        next_available_at=initial_time,
-                    )
-            except IntegrityError:
-                pass
-            limiter = DeliveryRateLimit.objects.select_for_update().get(provider=provider)
-
+        limiter = _locked_limiter(provider, initial_time)
         # A competing worker may have held the row lock for a meaningful amount
         # of time. Re-read the clock after acquiring it so expired reservations
         # do not turn into an unintended burst. ``now`` remains a deterministic

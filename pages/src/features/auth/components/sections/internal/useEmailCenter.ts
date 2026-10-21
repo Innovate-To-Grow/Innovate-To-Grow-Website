@@ -1,50 +1,48 @@
-import {useEffect, useState, type FormEvent} from 'react';
+import {useEffect, useState} from 'react';
 import {
-  createContactEmail,
   deleteContactEmail,
   getContactEmails,
-  getProfile,
-  makeContactEmailPrimary,
   requestContactEmailVerification,
   updateContactEmail,
-  updateProfileFields,
   verifyContactEmailCode,
   type ContactEmail,
   type ProfileResponse,
 } from '@/features/auth/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
+import {useContactCodeVerification} from './useContactCodeVerification';
+import {useAddEmailForm} from './useAddEmailForm';
+import {usePrimaryEmailActions} from './usePrimaryEmailActions';
+import {usePrimaryEmailVerification} from './usePrimaryEmailVerification';
 
 interface UseEmailCenterOptions {
   profile: ProfileResponse;
   onProfileUpdate: (updated: ProfileResponse) => void;
 }
 
+/**
+ * The account's email addresses: the primary one (subscribe, verify, remove) and connected ones (add,
+ * verify, change type, make primary, remove). Verification flows live in their own hooks.
+ */
+/** The connected-address code verification, under the names the email center's views use. */
+const connectedEmailVerification = (verification: ReturnType<typeof useContactCodeVerification<ContactEmail>>) => ({
+  resendLoading: verification.resendLoading,
+  verifyCode: verification.verifyCode,
+  verifyError: verification.verifyError,
+  verifyLoading: verification.verifyLoading,
+  verifyingId: verification.verifyingId,
+  setVerifyCode: verification.setVerifyCode,
+  setVerifyError: verification.setVerifyError,
+  setVerifyingId: verification.setVerifyingId,
+  handleResend: verification.resend,
+  handleContactRequestVerification: verification.requestVerification,
+  handleVerifySubmit: verification.submit,
+});
+
 export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions) => {
   const [contactEmails, setContactEmails] = useState<ContactEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [subscribeSaving, setSubscribeSaving] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [addEmail, setAddEmail] = useState('');
-  const [addType, setAddType] = useState<'secondary' | 'other'>('secondary');
-  const [addSubscribe, setAddSubscribe] = useState(false);
-  const [addLoading, setAddLoading] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const [verifyCode, setVerifyCode] = useState('');
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [resendLoading, setResendLoading] = useState(false);
-
-  // Primary email verification state
-  const [primaryVerifying, setPrimaryVerifying] = useState(false);
-  const [primaryVerifyCode, setPrimaryVerifyCode] = useState('');
-  const [primaryVerifyLoading, setPrimaryVerifyLoading] = useState(false);
-  const [primaryVerifyError, setPrimaryVerifyError] = useState<string | null>(null);
-  const [primaryResendLoading, setPrimaryResendLoading] = useState(false);
-  const [makePrimaryLoadingId, setMakePrimaryLoadingId] = useState<string | null>(null);
-  const [primaryDeleteLoading, setPrimaryDeleteLoading] = useState(false);
 
   useEffect(() => {
     const fetchEmails = async () => {
@@ -63,38 +61,40 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     setError(null);
     setSuccessMessage(null);
   };
+  const messages = {clear: clearMessages, setError, setSuccess: setSuccessMessage};
+  const replaceContact = (updated: ContactEmail) =>
+    setContactEmails((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+  const verification = useContactCodeVerification({
+    requestCode: requestContactEmailVerification,
+    verifyCode: verifyContactEmailCode,
+    onVerified: (updated: ContactEmail, contactId) =>
+      setContactEmails((current) => current.map((item) => (item.id === contactId ? updated : item))),
+    verifiedMessage: 'Email verified successfully.',
+    errorMessage: getAuthApiErrorMessage,
+    messages,
+  });
+  const primaryVerification = usePrimaryEmailVerification({profile, onProfileUpdate, messages});
+  const primaryActions = usePrimaryEmailActions({profile, onProfileUpdate, contactEmails, setContactEmails, messages});
 
-  const handlePrimarySubscribeToggle = async () => {
-    const newValue = !profile.email_subscribe;
-    setSubscribeSaving(true);
-    clearMessages();
-    try {
-      onProfileUpdate(await updateProfileFields({email_subscribe: newValue}));
-      setSuccessMessage(`Primary email ${newValue ? 'subscribed' : 'unsubscribed'}.`);
-    } catch (err) {
-      setError(getAuthApiErrorMessage(err));
-    } finally {
-      setSubscribeSaving(false);
-    }
-  };
+  const hasSecondaryEmail = contactEmails.some((e) => e.email_type === 'secondary');
+  const addForm = useAddEmailForm({
+    hasSecondaryEmail,
+    clearMessages,
+    onCreated: (created) => {
+      setContactEmails((current) => [created, ...current]);
+      verification.begin(created.id);
+      setSuccessMessage('Email added. Please enter the verification code sent to your email.');
+    },
+  });
 
   const handleContactSubscribeToggle = async (contact: ContactEmail) => {
     clearMessages();
     try {
-      const updated = await updateContactEmail(contact.id, {subscribe: !contact.subscribe});
-      setContactEmails((current) => current.map((item) => (item.id === contact.id ? updated : item)));
+      replaceContact(await updateContactEmail(contact.id, {subscribe: !contact.subscribe}));
     } catch (err) {
       setError(getAuthApiErrorMessage(err));
     }
   };
-
-  const hasSecondaryEmail = contactEmails.some((e) => e.email_type === 'secondary');
-
-  // Derive the effective add type during render instead of correcting it in an effect:
-  // when a secondary email already exists, a 'secondary' selection is coerced to 'other'.
-  // The 'secondary' <option> is disabled in that state, so this only ever fixes up the
-  // default/reset value, never a user choice.
-  const effectiveAddType: 'secondary' | 'other' = hasSecondaryEmail && addType === 'secondary' ? 'other' : addType;
 
   const handleContactTypeChange = async (contact: ContactEmail, newType: 'secondary' | 'other') => {
     clearMessages();
@@ -103,156 +103,9 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
       return;
     }
     try {
-      const updated = await updateContactEmail(contact.id, {email_type: newType});
-      setContactEmails((current) => current.map((item) => (item.id === contact.id ? updated : item)));
+      replaceContact(await updateContactEmail(contact.id, {email_type: newType}));
     } catch (err) {
       setError(getAuthApiErrorMessage(err));
-    }
-  };
-
-  const handleAddSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setAddLoading(true);
-    setAddError(null);
-    clearMessages();
-    try {
-      const created = await createContactEmail({email_address: addEmail.trim(), email_type: effectiveAddType, subscribe: addSubscribe});
-      setContactEmails((current) => [created, ...current]);
-      setAddEmail('');
-      setAddType('secondary');
-      setAddSubscribe(false);
-      setShowAddForm(false);
-      setVerifyingId(created.id);
-      setVerifyCode('');
-      setSuccessMessage('Email added. Please enter the verification code sent to your email.');
-    } catch (err) {
-      setAddError(getAuthApiErrorMessage(err));
-    } finally {
-      setAddLoading(false);
-    }
-  };
-
-  const handleVerifySubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!verifyingId || verifyCode.length !== 6) return;
-    setVerifyLoading(true);
-    setVerifyError(null);
-    clearMessages();
-    try {
-      const updated = await verifyContactEmailCode(verifyingId, verifyCode);
-      setContactEmails((current) => current.map((item) => (item.id === verifyingId ? updated : item)));
-      setVerifyingId(null);
-      setVerifyCode('');
-      setSuccessMessage('Email verified successfully.');
-    } catch (err) {
-      setVerifyError(getAuthApiErrorMessage(err));
-    } finally {
-      setVerifyLoading(false);
-    }
-  };
-
-  const handleResend = async (contactId: string) => {
-    setResendLoading(true);
-    setVerifyError(null);
-    try {
-      await requestContactEmailVerification(contactId);
-      setSuccessMessage('New code sent. Enter it below and tap Submit code.');
-    } catch (err) {
-      setVerifyError(getAuthApiErrorMessage(err));
-    } finally {
-      setResendLoading(false);
-    }
-  };
-
-  const handleContactRequestVerification = async (contactId: string) => {
-    clearMessages();
-    setVerifyError(null);
-    setVerifyCode('');
-    setResendLoading(true);
-    try {
-      await requestContactEmailVerification(contactId);
-      setVerifyingId(contactId);
-      setSuccessMessage('Code sent. Enter it below and tap Submit code.');
-    } catch (err) {
-      setError(getAuthApiErrorMessage(err));
-    } finally {
-      setResendLoading(false);
-    }
-  };
-
-  const handlePrimaryToggleVerify = async () => {
-    if (!profile.primary_email_id) return;
-    clearMessages();
-    setPrimaryVerifyError(null);
-    setPrimaryVerifyCode('');
-    setPrimaryResendLoading(true);
-    try {
-      await requestContactEmailVerification(profile.primary_email_id);
-      setPrimaryVerifying(true);
-      setSuccessMessage('Verification code sent to your primary email.');
-    } catch (err) {
-      setError(getAuthApiErrorMessage(err));
-    } finally {
-      setPrimaryResendLoading(false);
-    }
-  };
-
-  const handlePrimaryVerifySubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!profile.primary_email_id || primaryVerifyCode.length !== 6) return;
-    setPrimaryVerifyLoading(true);
-    setPrimaryVerifyError(null);
-    clearMessages();
-    try {
-      await verifyContactEmailCode(profile.primary_email_id, primaryVerifyCode);
-      setPrimaryVerifying(false);
-      setPrimaryVerifyCode('');
-      // Refresh profile to pick up the updated verified status
-      const updated = await getProfile();
-      onProfileUpdate(updated);
-      setSuccessMessage('Primary email verified successfully.');
-    } catch (err) {
-      setPrimaryVerifyError(getAuthApiErrorMessage(err));
-    } finally {
-      setPrimaryVerifyLoading(false);
-    }
-  };
-
-  const handlePrimaryResend = async () => {
-    if (!profile.primary_email_id) return;
-    setPrimaryResendLoading(true);
-    setPrimaryVerifyError(null);
-    try {
-      await requestContactEmailVerification(profile.primary_email_id);
-      setSuccessMessage('Verification code resent.');
-    } catch (err) {
-      setPrimaryVerifyError(getAuthApiErrorMessage(err));
-    } finally {
-      setPrimaryResendLoading(false);
-    }
-  };
-
-  const handlePrimaryCancelVerify = () => {
-    setPrimaryVerifying(false);
-    setPrimaryVerifyCode('');
-    setPrimaryVerifyError(null);
-  };
-
-  const handleMakePrimary = async (contactId: string) => {
-    const contact = contactEmails.find((item) => item.id === contactId);
-    const address = contact?.email_address ?? 'this address';
-    if (!window.confirm(`Make ${address} your primary email? Your current primary email stays on your account as a connected email.`)) return;
-    clearMessages();
-    setMakePrimaryLoadingId(contactId);
-    try {
-      await makeContactEmailPrimary(contactId);
-      onProfileUpdate(await getProfile());
-      setContactEmails(await getContactEmails());
-      setSuccessMessage('Primary email updated. Your previous primary address is now listed as a connected email.');
-    } catch (err) {
-      setError(getAuthApiErrorMessage(err));
-    } finally {
-      setMakePrimaryLoadingId(null);
     }
   };
 
@@ -262,85 +115,26 @@ export const useEmailCenter = ({profile, onProfileUpdate}: UseEmailCenterOptions
     try {
       await deleteContactEmail(contactId);
       setContactEmails((current) => current.filter((item) => item.id !== contactId));
-      if (verifyingId === contactId) {
-        setVerifyingId(null);
-        setVerifyCode('');
-      }
+      verification.forget(contactId);
       setSuccessMessage('Email removed.');
     } catch (err) {
       setError(getAuthApiErrorMessage(err));
-    }
-  };
-
-  const handlePrimaryDelete = async () => {
-    if (!profile.primary_email_id) return;
-    if (!window.confirm('Are you sure you want to remove your primary email?')) return;
-    clearMessages();
-    setPrimaryDeleteLoading(true);
-    try {
-      await deleteContactEmail(profile.primary_email_id);
-      // The backend promotes another email to primary (or leaves none for a
-      // phone-only account), so refresh both the profile and the connected list.
-      onProfileUpdate(await getProfile());
-      setContactEmails(await getContactEmails());
-      setSuccessMessage('Email removed.');
-    } catch (err) {
-      // Backend returns a 409 with an actionable message when this would remove
-      // the member's last verified recovery contact.
-      setError(getAuthApiErrorMessage(err));
-    } finally {
-      setPrimaryDeleteLoading(false);
     }
   };
 
   return {
-    addEmail,
-    addError,
-    addLoading,
-    addSubscribe,
-    addType: effectiveAddType,
+    ...addForm,
     contactEmails,
     hasSecondaryEmail,
     error,
     loading,
-    resendLoading,
-    showAddForm,
-    subscribeSaving,
     successMessage,
-    verifyCode,
-    verifyError,
-    verifyLoading,
-    verifyingId,
-    primaryVerifying,
-    primaryVerifyCode,
-    primaryVerifyLoading,
-    primaryVerifyError,
-    primaryResendLoading,
-    makePrimaryLoadingId,
-    primaryDeleteLoading,
-    setAddEmail,
-    setAddError,
-    setAddSubscribe,
-    setAddType,
-    setShowAddForm,
-    setVerifyCode,
-    setVerifyError,
-    setVerifyingId,
+    ...connectedEmailVerification(verification),
+    ...primaryVerification,
+    ...primaryActions,
     clearMessages,
-    handleAddSubmit,
     handleContactSubscribeToggle,
     handleContactTypeChange,
     handleDelete,
-    handlePrimaryDelete,
-    handlePrimarySubscribeToggle,
-    handlePrimaryToggleVerify,
-    handlePrimaryVerifySubmit,
-    handlePrimaryResend,
-    handlePrimaryCancelVerify,
-    setPrimaryVerifyCode,
-    handleResend,
-    handleContactRequestVerification,
-    handleVerifySubmit,
-    handleMakePrimary,
   };
 };

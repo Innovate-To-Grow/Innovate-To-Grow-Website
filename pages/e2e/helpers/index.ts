@@ -3,4 +3,9 @@
 export * from './shell';
 export * from './auth';
 export * from './factories';
-export * from './mocks';
+// `page.route` installers, by area (each stubs one flow's endpoints).
+export * from './mocks/authFlows';
+export * from './mocks/account';
+export * from './mocks/events';
+export * from './mocks/projects';
+export * from './mocks/content';

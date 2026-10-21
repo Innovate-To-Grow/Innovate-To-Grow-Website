@@ -1,17 +1,12 @@
 """System Intelligence action admin views."""
 
-# ruff: noqa: E402
-
-import logging
-
-from apps.system_intelligence.services import actions as system_intelligence_actions
-
-logger = logging.getLogger(__name__)
-
-GENERIC_ACTION_ERROR = "Could not process this action request."
-GENERIC_PERMISSION_ERROR = "Action request not found."
-GENERIC_VALIDATION_ERROR = "Validation failed for the proposed change."
-
+from .common import (
+    GENERIC_ACTION_ERROR,
+    GENERIC_PERMISSION_ERROR,
+    GENERIC_VALIDATION_ERROR,
+    logger,
+    system_intelligence_actions,
+)
 from .lookup import _changed_preview_blocks, _cms_preview_page, _get_user_action_request
 from .rendering import (
     _heading_level,

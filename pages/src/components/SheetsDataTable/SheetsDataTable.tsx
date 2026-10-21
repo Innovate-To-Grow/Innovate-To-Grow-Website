@@ -1,6 +1,7 @@
-import {Fragment, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router';
+import {SheetsTableRow} from './SheetsTableRow';
 import type {SheetRow} from './types';
+import {useSheetsTable, type SortField} from './useSheetsTable';
 import './SheetsDataTable.css';
 
 interface ColumnDef {
@@ -16,15 +17,6 @@ interface SheetsDataTableProps {
   initialSearch?: string;
 }
 
-type SortField = keyof SheetRow;
-type SortDir = 'asc' | 'desc';
-
-interface IdentifiedRow {
-  key: string;
-  detailId: string;
-  row: SheetRow;
-}
-
 const DEFAULT_COLUMNS: ColumnDef[] = [
   {key: 'Order', label: '#'},
   {key: 'Track', label: 'Track'},
@@ -37,131 +29,45 @@ const DEFAULT_COLUMNS: ColumnDef[] = [
   {key: 'Industry', label: 'Industry'},
 ];
 
-const normalizeIdentityValue = (value: string) =>
-  value.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  setPage: (update: (current: number) => number) => void;
+}
 
-const rowIdentityBase = (row: SheetRow) =>
-  [
-    row['Year-Semester'],
-    row.Class,
-    row['Team#'],
-    row.TeamName,
-    row['Project Title'],
-  ].map(normalizeIdentityValue).join('\u001f');
+const SheetsPagination = ({currentPage, totalPages, setPage}: PaginationProps) => (
+  <nav className="itg-pagination sdt-pagination" aria-label="Project pages">
+    <button
+      type="button"
+      className="itg-pagination-link sdt-page-btn"
+      disabled={currentPage === 0}
+      onClick={() => setPage((current) => Math.max(0, current - 1))}
+    >
+      Previous
+    </button>
+    <span className="itg-pagination-info sdt-page-info">
+      Page {currentPage + 1} of {totalPages}
+    </span>
+    <button
+      type="button"
+      className="itg-pagination-link sdt-page-btn"
+      disabled={currentPage >= totalPages - 1}
+      onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
+    >
+      Next
+    </button>
+  </nav>
+);
 
-const rowIdentity = (row: SheetRow) => {
-  const fullFingerprint = Object.keys(row)
-    .sort()
-    .map((field) => normalizeIdentityValue(row[field as keyof SheetRow]))
-    .join('\u001f');
-  return `${rowIdentityBase(row)}\u001e${fullFingerprint}`;
-};
-
-const stableDomToken = (value: string) => {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
-};
-
-export const SheetsDataTable = ({
-  rows,
-  loading,
-  error,
-  columns: columnsProp,
-  initialSearch,
-}: SheetsDataTableProps) => {
+/** A searchable, sortable, paged table of project rows from a Google Sheet (event archive pages). */
+export const SheetsDataTable = ({rows, loading, error, columns: columnsProp, initialSearch}: SheetsDataTableProps) => {
   const columns = columnsProp || DEFAULT_COLUMNS;
   const [searchParams] = useSearchParams();
-  const [search, setSearch] = useState(
-    () => initialSearch ?? (searchParams.get('value') || ''),
-  );
-  const [sortField, setSortField] = useState<SortField>(
-    columns[0]?.key || 'Track',
-  );
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const pageSize = 10;
+  const table = useSheetsTable(rows, initialSearch ?? (searchParams.get('value') || ''), columns[0]?.key || 'Track');
+  const {sortField, sortDir} = table;
+  const handleSort = table.sortBy;
 
-  const identifiedRows = useMemo<IdentifiedRow[]>(
-    () => {
-      const occurrences = new Map<string, number>();
-      return rows.map((row) => {
-        const identity = rowIdentity(row);
-        const occurrence = occurrences.get(identity) ?? 0;
-        occurrences.set(identity, occurrence + 1);
-        // The occurrence suffix is used only for byte-for-byte duplicate rows,
-        // which have no domain distinction. All meaningful row identity remains
-        // stable across insertion, refresh, and reordering.
-        const key = occurrence ? `${identity}\u001d${occurrence}` : identity;
-        return {
-          key,
-          detailId: `sdt-detail-${stableDomToken(key)}`,
-          row,
-        };
-      });
-    },
-    [rows],
-  );
-
-  const filtered = useMemo(() => {
-    if (!search) return identifiedRows;
-    const q = search.toLowerCase();
-    return identifiedRows.filter(({row}) =>
-      [
-        row['Team#'],
-        row.TeamName,
-        row['Project Title'],
-        row.Organization,
-        row.Industry,
-        row.Class,
-        row.Track,
-        row['Year-Semester'],
-      ].some((value) => value.toLowerCase().includes(q)),
-    );
-  }, [identifiedRows, search]);
-
-  const sorted = useMemo(() => {
-    const copy = [...filtered];
-    copy.sort((a, b) => {
-      const av = a.row[sortField] || '';
-      const bv = b.row[sortField] || '';
-      const cmp = av.localeCompare(bv, undefined, {numeric: true});
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-    return copy;
-  }, [filtered, sortField, sortDir]);
-
-  const totalPages = Math.ceil(sorted.length / pageSize);
-  const currentPage = Math.min(page, Math.max(totalPages - 1, 0));
-  const paged = sorted.slice(
-    currentPage * pageSize,
-    (currentPage + 1) * pageSize,
-  );
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir((direction) =>
-        direction === 'asc' ? 'desc' : 'asc',
-      );
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
-    setPage(0);
-  };
-
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    setPage(0);
-    setExpandedKey(null);
-  };
-
-  if (loading)
-    return <div className="sdt-loading">Loading project data...</div>;
+  if (loading) return <div className="sdt-loading">Loading project data...</div>;
   if (error) return <div className="sdt-error">{error}</div>;
 
   return (
@@ -172,11 +78,11 @@ export const SheetsDataTable = ({
           type="search"
           aria-label="Search projects"
           placeholder="Search projects..."
-          value={search}
-          onChange={(event) => handleSearch(event.target.value)}
+          value={table.search}
+          onChange={(event) => table.searchFor(event.target.value)}
         />
         <span className="sdt-count" aria-live="polite">
-          {filtered.length} of {rows.length} projects
+          {table.filteredCount} of {rows.length} projects
         </span>
       </div>
 
@@ -215,111 +121,30 @@ export const SheetsDataTable = ({
             </tr>
           </thead>
           <tbody>
-            {paged.length === 0 ? (
+            {table.paged.length === 0 ? (
               <tr className="sdt-empty-row">
                 <td colSpan={columns.length + 1}>
-                  {rows.length === 0
-                    ? 'No data available in table'
-                    : 'No matching records found'}
+                  {rows.length === 0 ? 'No data available in table' : 'No matching records found'}
                 </td>
               </tr>
             ) : null}
-            {paged.map(({key, detailId, row}, index) => {
-              const isExpanded = expandedKey === key;
-              const hasDetails = Boolean(
-                row.Abstract || row['Student Names'],
-              );
-              return (
-                <Fragment key={key}>
-                  <tr
-                    className={[
-                      'sdt-row',
-                      // Striped over the project rows only, so an open row's details do not shift the stripes.
-                      index % 2 === 0 ? 'is-odd' : '',
-                      isExpanded ? 'sdt-row-expanded is-expanded' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    {columns.map((column) => (
-                      <td
-                        key={column.key}
-                        className={`sdt-td${column.key === sortField ? ' is-sorted-col' : ''}`}
-                      >
-                        {row[column.key]}
-                      </td>
-                    ))}
-                    <td className="sdt-td sdt-td-expand">
-                      {hasDetails ? (
-                        <button
-                          type="button"
-                          className="sdt-expand-button"
-                          aria-label={`${
-                            isExpanded ? 'Hide' : 'Show'
-                          } details for ${row['Project Title'] || row.TeamName}`}
-                          aria-expanded={isExpanded}
-                          aria-controls={detailId}
-                          onClick={() =>
-                            setExpandedKey(isExpanded ? null : key)
-                          }
-                        >
-                          <span className="sdt-expand-icon" aria-hidden="true" />
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
-                  {isExpanded ? (
-                    <tr className="sdt-detail-row is-expanded">
-                      <td
-                        id={detailId}
-                        colSpan={columns.length + 1}
-                        className="sdt-detail-cell"
-                      >
-                        {row.Abstract ? (
-                          <p className="sdt-detail-section">{row.Abstract}</p>
-                        ) : null}
-                        {row['Student Names'] ? (
-                          <p className="sdt-detail-section">
-                            <strong>Team members:</strong>{' '}
-                            {row['Student Names']}
-                          </p>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ) : null}
-                </Fragment>
-              );
-            })}
+            {table.paged.map((item, index) => (
+              <SheetsTableRow
+                key={item.key}
+                item={item}
+                index={index}
+                columns={columns}
+                sortField={sortField}
+                isExpanded={table.expandedKey === item.key}
+                onToggle={() => table.setExpandedKey(table.expandedKey === item.key ? null : item.key)}
+              />
+            ))}
           </tbody>
         </table>
       </div>
 
-      {totalPages > 1 ? (
-        <nav className="itg-pagination sdt-pagination" aria-label="Project pages">
-          <button
-            type="button"
-            className="itg-pagination-link sdt-page-btn"
-            disabled={currentPage === 0}
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
-          >
-            Previous
-          </button>
-          <span className="itg-pagination-info sdt-page-info">
-            Page {currentPage + 1} of {totalPages}
-          </span>
-          <button
-            type="button"
-            className="itg-pagination-link sdt-page-btn"
-            disabled={currentPage >= totalPages - 1}
-            onClick={() =>
-              setPage((current) =>
-                Math.min(totalPages - 1, current + 1),
-              )
-            }
-          >
-            Next
-          </button>
-        </nav>
+      {table.totalPages > 1 ? (
+        <SheetsPagination currentPage={table.currentPage} totalPages={table.totalPages} setPage={table.setPage} />
       ) : null}
     </div>
   );

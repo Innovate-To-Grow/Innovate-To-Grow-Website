@@ -107,14 +107,61 @@ async function reconcile<T>(key: string, requestId: string): Promise<T> {
   throw new VerificationFlowError(unresolvedMessage);
 }
 
-export async function withVerifiedSend<T>(options: {
+interface VerifiedSendOptions<T> {
   operation: SendVerificationOperation;
   destinationKind: DestinationKind;
   destination: string;
   extraChallenge?: Record<string, string | undefined>;
   signal?: AbortSignal;
   execute: (verification: SendVerificationFields) => Promise<T>;
-}): Promise<T> {
+}
+
+/** Solve a new challenge and send with it; a send that may have gone out is reconciled, never repeated. */
+async function sendWithFreshChallenge<T>(
+  options: VerifiedSendOptions<T>,
+  key: string,
+  signal: AbortSignal,
+  checkIdentity: () => void,
+): Promise<T> {
+  const sendRequestId = newRequestId();
+  setVerifiedSendStatus({phase: 'challenging', message: 'Preparing verification…'});
+  const challenge = await createSendChallenge({
+    operation: options.operation,
+    destination: options.destination,
+    destination_kind: options.destinationKind,
+    ...options.extraChallenge,
+  }, signal);
+  checkIdentity();
+  signal.throwIfAborted();
+  setVerifiedSendStatus({phase: 'solving', message: 'Verifying this request…'});
+  const payload = await solveAltchaChallenge(challenge.challenge, signal);
+  checkIdentity();
+  signal.throwIfAborted();
+  const verification: SendVerificationFields = {
+    verification_challenge_id: challenge.challenge_id,
+    verification_payload: payload,
+    send_request_id: sendRequestId,
+  };
+  setVerifiedSendStatus({phase: 'sending', message: 'Sending verification code…'});
+  // Save before dispatch: a reload or navigation must not start another send.
+  savePending(key, sendRequestId);
+  try {
+    const result = await options.execute(verification);
+    savePending(key, null);
+    setVerifiedSendStatus({phase: 'idle', message: ''});
+    return result;
+  } catch (error) {
+    if (mayHaveSent(error)) {
+      const result = await reconcile<T>(key, sendRequestId);
+      setVerifiedSendStatus({phase: 'idle', message: ''});
+      return result;
+    }
+    savePending(key, null);
+    throw error;
+  }
+}
+
+export async function withVerifiedSend<T>(options: VerifiedSendOptions<T>): Promise<T> {
   const startedIdentity = identity(options.operation);
   const context = Object.entries(options.extraChallenge ?? {}).sort(([left], [right]) => left.localeCompare(right));
   const flightKey = JSON.stringify([startedIdentity, options.operation, options.destinationKind, options.destination, context]);
@@ -143,42 +190,7 @@ export async function withVerifiedSend<T>(options: {
         setVerifiedSendStatus({phase: 'idle', message: ''});
         return result;
       }
-      const sendRequestId = newRequestId();
-      setVerifiedSendStatus({phase: 'challenging', message: 'Preparing verification…'});
-      const challenge = await createSendChallenge({
-        operation: options.operation,
-        destination: options.destination,
-        destination_kind: options.destinationKind,
-        ...options.extraChallenge,
-      }, controller.signal);
-      checkIdentity();
-      controller.signal.throwIfAborted();
-      setVerifiedSendStatus({phase: 'solving', message: 'Verifying this request…'});
-      const payload = await solveAltchaChallenge(challenge.challenge, controller.signal);
-      checkIdentity();
-      controller.signal.throwIfAborted();
-      const verification: SendVerificationFields = {
-        verification_challenge_id: challenge.challenge_id,
-        verification_payload: payload,
-        send_request_id: sendRequestId,
-      };
-      setVerifiedSendStatus({phase: 'sending', message: 'Sending verification code…'});
-      // Save before dispatch: a reload or navigation must not start another send.
-      savePending(key, sendRequestId);
-      try {
-        const result = await options.execute(verification);
-        savePending(key, null);
-        setVerifiedSendStatus({phase: 'idle', message: ''});
-        return result;
-      } catch (error) {
-        if (mayHaveSent(error)) {
-          const result = await reconcile<T>(key, sendRequestId);
-          setVerifiedSendStatus({phase: 'idle', message: ''});
-          return result;
-        }
-        savePending(key, null);
-        throw error;
-      }
+      return await sendWithFreshChallenge(options, key, controller.signal, checkIdentity);
     } catch (error) {
       // The caller shows the server's actionable error beside the form. Clear
       // progress here so a transport error is never left in the global status.

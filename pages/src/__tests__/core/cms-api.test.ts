@@ -8,6 +8,10 @@ vi.mock('@/lib/api', () => ({
   api: {get: getMock},
   default: {get: getMock},
 }));
+// fetchCMSEmbedHosts lives in lib/api/embedHosts.ts, which uses the client module directly.
+vi.mock('@/lib/api/api-client', () => ({
+  api: {get: getMock},
+}));
 
 import {
   fetchCMSEmbed,

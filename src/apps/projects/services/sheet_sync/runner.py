@@ -69,6 +69,75 @@ def sync_past_projects(
         raise SheetSyncError(str(exc)) from exc
 
 
+def _importable_row(raw: dict[str, Any]) -> dict[str, Any] | None:
+    """Map one sheet record to project fields; None when it cannot be imported."""
+    # Normalize header whitespace before mapping: the live sheet has headers
+    # like "Project Title " (trailing space), and get_all_records() keys rows
+    # by the exact header text, so a strict lookup would silently miss them.
+    row = {str(key).strip(): value for key, value in raw.items()}
+    mapped = {field: str(row.get(header, "")).strip() for header, field in COLUMN_MAP.items()}
+    mapped["Year-Semester"] = str(row.get("Year-Semester", "")).strip()
+    resolved = resolve_project_row(mapped, sheet_link=None)
+    if resolved is None or resolved["semester"].season not in _VALID_SEASONS or not resolved.get("project_title"):
+        return None
+    return resolved
+
+
+def _parse_records(records, stats: PastProjectSyncStats):
+    """Importable rows (first occurrence of each project), the keys seen, and the semesters touched."""
+    parsed: list[dict[str, Any]] = []
+    touched_semester_pks: set[Any] = set()
+    seen: set[tuple] = set()
+    for raw in records:
+        resolved = _importable_row(raw)
+        if resolved is None:
+            stats.rows_skipped += 1
+            continue
+        dup_key = _project_sync_key(resolved)
+        if dup_key in seen:
+            stats.rows_skipped += 1
+            continue
+        seen.add(dup_key)
+        touched_semester_pks.add(resolved["semester"].pk)
+        parsed.append(resolved)
+    return parsed, seen, touched_semester_pks
+
+
+def _existing_sheet_projects():
+    """Sheet-sourced projects by sync key, plus the ids of any duplicates of a key (oldest wins)."""
+    existing_by_key: dict[tuple, Project] = {}
+    duplicate_existing_ids = []
+    for project in Project.objects.filter(source=Project.Source.SHEET).select_related("semester").order_by("pk"):
+        key = _project_sync_key(project)
+        if key in existing_by_key:
+            duplicate_existing_ids.append(project.pk)
+            continue
+        existing_by_key[key] = project
+    return existing_by_key, duplicate_existing_ids
+
+
+def _diff_projects(parsed, existing_by_key):
+    """Projects to create, and existing ones whose mutable fields changed (already updated in memory)."""
+    to_create = []
+    to_update = []
+    now = timezone.now()
+    for fields in parsed:
+        existing = existing_by_key.get(_project_sync_key(fields))
+        if existing is None:
+            to_create.append(Project(source=Project.Source.SHEET, **fields))
+            continue
+        changed = False
+        for field in _MUTABLE_PROJECT_FIELDS:
+            new_value = fields.get(field, "")
+            if getattr(existing, field) != new_value:
+                setattr(existing, field, new_value)
+                changed = True
+        if changed:
+            existing.updated_at = now
+            to_update.append(existing)
+    return to_create, to_update
+
+
 def _sync_past_projects(
     config: PastProjectsSheetConfig,
     *,
@@ -83,69 +152,12 @@ def _sync_past_projects(
     # Parse + upsert inside one transaction so the semester auto-publish done by
     # resolve_project_row rolls back if the project write phase fails.
     with transaction.atomic():
-        parsed: list[dict[str, Any]] = []
-        touched_semester_pks: set[Any] = set()
-        seen: set[tuple] = set()
-
-        for raw in records:
-            # Normalize header whitespace before mapping: the live sheet has headers
-            # like "Project Title " (trailing space), and get_all_records() keys rows
-            # by the exact header text, so a strict lookup would silently miss them.
-            row = {str(key).strip(): value for key, value in raw.items()}
-            mapped = {field: str(row.get(header, "")).strip() for header, field in COLUMN_MAP.items()}
-            mapped["Year-Semester"] = str(row.get("Year-Semester", "")).strip()
-
-            resolved = resolve_project_row(mapped, sheet_link=None)
-            if resolved is None:
-                stats.rows_skipped += 1
-                continue
-            if resolved["semester"].season not in _VALID_SEASONS:
-                stats.rows_skipped += 1
-                continue
-            if not resolved.get("project_title"):
-                stats.rows_skipped += 1
-                continue
-
-            dup_key = _project_sync_key(resolved)
-            if dup_key in seen:
-                stats.rows_skipped += 1
-                continue
-            seen.add(dup_key)
-
-            touched_semester_pks.add(resolved["semester"].pk)
-            parsed.append(resolved)
-
+        parsed, seen, touched_semester_pks = _parse_records(records, stats)
         if not parsed:
             raise SheetSyncError("The configured sheet contained no importable past-project rows.")
 
-        existing_by_key: dict[tuple, Project] = {}
-        duplicate_existing_ids = []
-        for project in Project.objects.filter(source=Project.Source.SHEET).select_related("semester").order_by("pk"):
-            key = _project_sync_key(project)
-            if key in existing_by_key:
-                duplicate_existing_ids.append(project.pk)
-                continue
-            existing_by_key[key] = project
-
-        to_create = []
-        to_update = []
-        now = timezone.now()
-        for fields in parsed:
-            key = _project_sync_key(fields)
-            existing = existing_by_key.get(key)
-            if existing is None:
-                to_create.append(Project(source=Project.Source.SHEET, **fields))
-                continue
-
-            changed = False
-            for field in _MUTABLE_PROJECT_FIELDS:
-                new_value = fields.get(field, "")
-                if getattr(existing, field) != new_value:
-                    setattr(existing, field, new_value)
-                    changed = True
-            if changed:
-                existing.updated_at = now
-                to_update.append(existing)
+        existing_by_key, duplicate_existing_ids = _existing_sheet_projects()
+        to_create, to_update = _diff_projects(parsed, existing_by_key)
 
         stale_ids = duplicate_existing_ids + [project.pk for key, project in existing_by_key.items() if key not in seen]
         if stale_ids:

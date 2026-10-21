@@ -4,6 +4,7 @@ import secrets
 from urllib.parse import urlsplit
 
 from django.conf import settings
+from django.utils.module_loading import import_string
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,40 @@ class ContentSecurityPolicyMiddleware:
                 origins.append(origin)
         return list(dict.fromkeys(origins))
 
+    # Directive -> (setting that overrides it, default sources).
+    _CONFIGURABLE_SOURCES = {
+        "script": ("CSP_SCRIPT_SOURCES", ("'self'", "https://cdn.jsdelivr.net")),
+        "style": ("CSP_STYLE_SOURCES", ("'self'", "https://fonts.googleapis.com")),
+        "font": ("CSP_FONT_SOURCES", ("'self'", "data:", "https://fonts.gstatic.com")),
+        "image": ("CSP_IMAGE_SOURCES", ("'self'", "data:", "blob:")),
+        "connect": ("CSP_CONNECT_SOURCES", ("'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com")),
+    }
+
+    def _configured_source_lists(self) -> dict[str, list[str]]:
+        return {
+            directive: self._configured_sources(setting, default)
+            for directive, (setting, default) in self._CONFIGURABLE_SOURCES.items()
+        }
+
+    def _embed_frame_sources(self) -> list[str]:
+        """``https://`` origins of the embeddable iframe hosts the apps register (see CSP_FRAME_HOST_PROVIDERS)."""
+        try:
+            # Apps contribute embeddable iframe hosts through CSP_FRAME_HOST_PROVIDERS
+            # (dotted paths to zero-argument callables), so core imports no app.
+            hosts = [
+                host
+                for provider in getattr(settings, "CSP_FRAME_HOST_PROVIDERS", ())
+                for host in import_string(provider)()
+            ]
+            normalized_hosts = (host.strip().lower() for host in hosts)
+            return [f"https://{host}" for host in normalized_hosts if self._HOST_PATTERN.fullmatch(host)]
+        except Exception:
+            # A policy lookup must never take the application down. Failing
+            # closed leaves only same-origin frames until the cache/database
+            # becomes healthy again.
+            logger.exception("Unable to load CMS embed hosts for CSP; using same-origin only")
+            return []
+
     def _build_policy(
         self,
         nonce: str,
@@ -98,43 +133,15 @@ class ContentSecurityPolicyMiddleware:
         form_action_origins: list[str] | None = None,
     ) -> str:
         storage_origins = self._storage_origins()
-        script_sources = self._configured_sources(
-            "CSP_SCRIPT_SOURCES",
-            ("'self'", "https://cdn.jsdelivr.net"),
-        )
-        style_sources = self._configured_sources(
-            "CSP_STYLE_SOURCES",
-            ("'self'", "https://fonts.googleapis.com"),
-        )
-        font_sources = self._configured_sources(
-            "CSP_FONT_SOURCES",
-            ("'self'", "data:", "https://fonts.gstatic.com"),
-        )
-        image_sources = self._configured_sources(
-            "CSP_IMAGE_SOURCES",
-            ("'self'", "data:", "blob:"),
-        )
-        connect_sources = self._configured_sources(
-            "CSP_CONNECT_SOURCES",
-            ("'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"),
-        )
+        sources = self._configured_source_lists()
+        script_sources, style_sources = sources["script"], sources["style"]
+        font_sources, image_sources, connect_sources = sources["font"], sources["image"], sources["connect"]
         frame_sources = ["'self'"]
         frontend_origin = self._url_origin(getattr(settings, "FRONTEND_URL", ""))
         if frontend_origin:
             frame_sources.append(frontend_origin)
             connect_sources.append(frontend_origin)
-        try:
-            from apps.cms.services.sanitization.embed_hosts import get_allowed_hosts
-
-            for host in get_allowed_hosts():
-                normalized = host.strip().lower()
-                if self._HOST_PATTERN.fullmatch(normalized):
-                    frame_sources.append(f"https://{normalized}")
-        except Exception:
-            # A policy lookup must never take the application down. Failing
-            # closed leaves only same-origin frames until the cache/database
-            # becomes healthy again.
-            logger.exception("Unable to load CMS embed hosts for CSP; using same-origin only")
+        frame_sources.extend(self._embed_frame_sources())
 
         nonce_source = f"'nonce-{nonce}'"
         media_sources = list(dict.fromkeys(["'self'", "blob:", *storage_origins]))

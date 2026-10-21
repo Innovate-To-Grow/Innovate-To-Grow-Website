@@ -9,82 +9,45 @@ from .dashboard import usage_dashboard_data_view, usage_dashboard_view
 from .exports import export_download_view
 from .stream import chat_send_view
 
+# (path, view, URL name), in match order.
+_ROUTES = (
+    ("system-intelligence/", chat_list_view, "system_intelligence"),
+    ("system-intelligence/conversations/", conversations_fragment, "system_intelligence_conversations"),
+    ("system-intelligence/new/", new_conversation_view, "system_intelligence_new"),
+    # Registered before the "<uuid:conversation_id>/" catch-all below: "usage"
+    # is not a UUID so it could never match that converter, but keep static
+    # segments ahead of the dynamic one for clear, predictable ordering.
+    ("system-intelligence/usage/", usage_dashboard_view, "system_intelligence_usage_dashboard"),
+    ("system-intelligence/usage/data/", usage_dashboard_data_view, "system_intelligence_usage_data"),
+    ("system-intelligence/<uuid:conversation_id>/", chat_view, "system_intelligence_detail"),
+    ("system-intelligence/<uuid:conversation_id>/send/", chat_send_view, "system_intelligence_send"),
+    ("system-intelligence/<uuid:conversation_id>/command/", chat_command_view, "system_intelligence_command"),
+    ("system-intelligence/<uuid:conversation_id>/delete/", chat_delete_view, "system_intelligence_delete"),
+    ("system-intelligence/<uuid:conversation_id>/rename/", chat_rename_view, "system_intelligence_rename"),
+    (
+        "system-intelligence/actions/<uuid:action_id>/approve/",
+        action_approve_view,
+        "system_intelligence_action_approve",
+    ),
+    ("system-intelligence/actions/<uuid:action_id>/reject/", action_reject_view, "system_intelligence_action_reject"),
+    (
+        "system-intelligence/actions/<uuid:action_id>/preview/",
+        action_preview_view,
+        "system_intelligence_action_preview",
+    ),
+    (
+        "system-intelligence/actions/<uuid:action_id>/preview/full/",
+        action_full_preview_view,
+        "system_intelligence_action_full_preview",
+    ),
+    (
+        "system-intelligence/exports/<uuid:export_id>/download/",
+        export_download_view,
+        "system_intelligence_export_download",
+    ),
+)
+
 
 def get_system_intelligence_urls():
     """Return URL patterns for the System Intelligence admin views."""
-    return [
-        path("system-intelligence/", admin.site.admin_view(chat_list_view), name="system_intelligence"),
-        path(
-            "system-intelligence/conversations/",
-            admin.site.admin_view(conversations_fragment),
-            name="system_intelligence_conversations",
-        ),
-        path(
-            "system-intelligence/new/",
-            admin.site.admin_view(new_conversation_view),
-            name="system_intelligence_new",
-        ),
-        # Registered before the "<uuid:conversation_id>/" catch-all below: "usage"
-        # is not a UUID so it could never match that converter, but keep static
-        # segments ahead of the dynamic one for clear, predictable ordering.
-        path(
-            "system-intelligence/usage/",
-            admin.site.admin_view(usage_dashboard_view),
-            name="system_intelligence_usage_dashboard",
-        ),
-        path(
-            "system-intelligence/usage/data/",
-            admin.site.admin_view(usage_dashboard_data_view),
-            name="system_intelligence_usage_data",
-        ),
-        path(
-            "system-intelligence/<uuid:conversation_id>/",
-            admin.site.admin_view(chat_view),
-            name="system_intelligence_detail",
-        ),
-        path(
-            "system-intelligence/<uuid:conversation_id>/send/",
-            admin.site.admin_view(chat_send_view),
-            name="system_intelligence_send",
-        ),
-        path(
-            "system-intelligence/<uuid:conversation_id>/command/",
-            admin.site.admin_view(chat_command_view),
-            name="system_intelligence_command",
-        ),
-        path(
-            "system-intelligence/<uuid:conversation_id>/delete/",
-            admin.site.admin_view(chat_delete_view),
-            name="system_intelligence_delete",
-        ),
-        path(
-            "system-intelligence/<uuid:conversation_id>/rename/",
-            admin.site.admin_view(chat_rename_view),
-            name="system_intelligence_rename",
-        ),
-        path(
-            "system-intelligence/actions/<uuid:action_id>/approve/",
-            admin.site.admin_view(action_approve_view),
-            name="system_intelligence_action_approve",
-        ),
-        path(
-            "system-intelligence/actions/<uuid:action_id>/reject/",
-            admin.site.admin_view(action_reject_view),
-            name="system_intelligence_action_reject",
-        ),
-        path(
-            "system-intelligence/actions/<uuid:action_id>/preview/",
-            admin.site.admin_view(action_preview_view),
-            name="system_intelligence_action_preview",
-        ),
-        path(
-            "system-intelligence/actions/<uuid:action_id>/preview/full/",
-            admin.site.admin_view(action_full_preview_view),
-            name="system_intelligence_action_full_preview",
-        ),
-        path(
-            "system-intelligence/exports/<uuid:export_id>/download/",
-            admin.site.admin_view(export_download_view),
-            name="system_intelligence_export_download",
-        ),
-    ]
+    return [path(route, admin.site.admin_view(view), name=name) for route, view, name in _ROUTES]

@@ -36,34 +36,10 @@ class Command(BaseCommand):
         last_name = options.get("last_name") or ""
 
         if interactive:
-            while not email:
-                email = input("Email address: ").strip()
-                if not email:
-                    self.stderr.write("Error: Email address cannot be blank.")
-                    email = None
-                    continue
-                if ContactEmail.objects.filter(email_address__iexact=email).exists():
-                    self.stderr.write(f"Error: A contact email with address '{email}' already exists.")
-                    email = None
-
-            while not password:
-                import getpass
-
-                password = getpass.getpass("Password: ")
-                password2 = getpass.getpass("Password (again): ")
-                if password != password2:
-                    self.stderr.write("Error: Passwords do not match.")
-                    password = None
-
-            while not first_name.strip():
-                first_name = input("First name: ").strip()
-                if not first_name:
-                    self.stderr.write("Error: First name cannot be blank.")
-
-            while not last_name.strip():
-                last_name = input("Last name: ").strip()
-                if not last_name:
-                    self.stderr.write("Error: Last name cannot be blank.")
+            email = email or self._prompt_email()
+            password = password or self._prompt_password()
+            first_name = self._prompt_name("First name", first_name)
+            last_name = self._prompt_name("Last name", last_name)
         else:
             if not email or not password or not first_name.strip() or not last_name.strip():
                 raise CommandError(
@@ -87,3 +63,33 @@ class Command(BaseCommand):
         )
 
         self.stdout.write(self.style.SUCCESS(f"Superuser created with email '{email}' (UUID: {member.id})."))
+
+    def _prompt_email(self) -> str:
+        while True:
+            email = input("Email address: ").strip()
+            if not email:
+                self.stderr.write("Error: Email address cannot be blank.")
+            elif ContactEmail.objects.filter(email_address__iexact=email).exists():
+                self.stderr.write(f"Error: A contact email with address '{email}' already exists.")
+            else:
+                return email
+
+    def _prompt_password(self) -> str:
+        import getpass
+
+        while True:
+            password = getpass.getpass("Password: ")
+            password2 = getpass.getpass("Password (again): ")
+            if password != password2:
+                self.stderr.write("Error: Passwords do not match.")
+            elif password:
+                return password
+
+    def _prompt_name(self, label: str, current: str) -> str:
+        """Keep a name given on the command line; otherwise ask until one is entered."""
+        name = current
+        while not name.strip():
+            name = input(f"{label}: ").strip()
+            if not name:
+                self.stderr.write(f"Error: {label} cannot be blank.")
+        return name

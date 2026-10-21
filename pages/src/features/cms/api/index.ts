@@ -79,6 +79,20 @@ export type CMSPageFetchResponse = CMSPageResponse | CMSPageRedirectResponse;
 const RETRYABLE_GET_STATUSES = new Set([408, 429, 502, 503, 504]);
 const MAX_RETRY_DELAY_MS = 2000;
 
+/** Retry-After (seconds or an HTTP date) in milliseconds, capped; null when absent or unusable. */
+function retryAfterDelay(retryAfter: string | undefined): number | null {
+  if (!retryAfter) return null;
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, MAX_RETRY_DELAY_MS);
+  }
+  const dateDelay = Date.parse(retryAfter) - Date.now();
+  if (Number.isFinite(dateDelay) && dateDelay >= 0) {
+    return Math.min(dateDelay, MAX_RETRY_DELAY_MS);
+  }
+  return null;
+}
+
 function retryDelay(error: unknown): number | null {
   const candidate = error as {
     code?: string;
@@ -88,18 +102,8 @@ function retryDelay(error: unknown): number | null {
   const status = candidate.response?.status;
   if (status !== undefined && !RETRYABLE_GET_STATUSES.has(status)) return null;
 
-  const retryAfter = candidate.response?.headers?.['retry-after'];
-  if (retryAfter) {
-    const seconds = Number(retryAfter);
-    if (Number.isFinite(seconds) && seconds >= 0) {
-      return Math.min(seconds * 1000, MAX_RETRY_DELAY_MS);
-    }
-    const dateDelay = Date.parse(retryAfter) - Date.now();
-    if (Number.isFinite(dateDelay) && dateDelay >= 0) {
-      return Math.min(dateDelay, MAX_RETRY_DELAY_MS);
-    }
-  }
-  return 150 + Math.floor(Math.random() * 151);
+  const requested = retryAfterDelay(candidate.response?.headers?.['retry-after']);
+  return requested ?? 150 + Math.floor(Math.random() * 151);
 }
 
 async function getWithOneRetry<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
@@ -263,15 +267,8 @@ export interface CMSEmbedResponse {
   schedule_id?: string | null;
 }
 
-export interface CMSEmbedHostsResponse {
-  hosts: string[];
-  revision: string;
-}
-
-export async function fetchCMSEmbedHosts(): Promise<CMSEmbedHostsResponse> {
-  const response = await api.get<CMSEmbedHostsResponse>('/cms/embed-hosts/');
-  return response.data;
-}
+// The embed-host allowlist is read by the shared HTML sanitizer, so it lives in lib/api.
+export {fetchCMSEmbedHosts, type CMSEmbedHostsResponse} from '@/lib/api/embedHosts';
 
 export async function fetchCMSEmbed(
   embedSlug: string,

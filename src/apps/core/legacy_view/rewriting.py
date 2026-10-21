@@ -172,24 +172,18 @@ def _is_read_only_control(control, current_path: str) -> bool:
     )
 
 
-def rewrite_legacy_html(html: str, current_path: str, origin_host: str, viewer_base_url: str) -> str:
-    """Make the old document visibly and mechanically read-only."""
+def _strip_event_handlers(tag) -> None:
+    for event_attribute in [attribute for attribute in tag.attrs if attribute.lower().startswith("on")]:
+        del tag[event_attribute]
 
-    soup = BeautifulSoup(html, "html.parser")
 
-    for base_tag in soup.find_all("base"):
-        base_tag.decompose()
-    for meta_tag in soup.find_all("meta"):
-        if str(meta_tag.get("http-equiv", "")).lower() == "refresh":
-            meta_tag.decompose()
-
+def _disable_forms(soup, current_path: str) -> None:
     for form in soup.find_all("form"):
         form["action"] = "#"
         form["method"] = "get"
         form["inert"] = ""
         form["aria-disabled"] = "true"
-        for event_attribute in [attribute for attribute in form.attrs if attribute.lower().startswith("on")]:
-            del form[event_attribute]
+        _strip_event_handlers(form)
 
     for control in soup.find_all(list(_FORM_CONTROL_TAGS)):
         if _is_read_only_control(control, current_path):
@@ -197,45 +191,43 @@ def rewrite_legacy_html(html: str, current_path: str, origin_host: str, viewer_b
         control["disabled"] = ""
         control["aria-disabled"] = "true"
 
-    for tag in list(soup.find_all(True)):
-        if tag.parent is None:
-            continue
-        removed = False
-        for attribute in _URL_ATTRIBUTES.get(tag.name, ()):
-            if attribute not in tag.attrs:
-                continue
-            rewritten = rewrite_document_url(str(tag.get(attribute, "")), current_path, origin_host, viewer_base_url)
-            if rewritten.blocked:
-                if tag.name == "a":
-                    tag[attribute] = "#"
-                    tag["aria-disabled"] = "true"
-                    tag["data-legacy-write-disabled"] = "true"
-                    tag["tabindex"] = "-1"
-                    for event_attribute in [
-                        current_attribute
-                        for current_attribute in tag.attrs
-                        if current_attribute.lower().startswith("on")
-                    ]:
-                        del tag[event_attribute]
-                elif tag.name == "script":
-                    # Removing only src could make fallback inline text execute,
-                    # even though browsers ignore it when src is present.
-                    tag.decompose()
-                    removed = True
-                    break
-                else:
-                    del tag[attribute]
-            else:
-                tag[attribute] = rewritten.value
-        if removed:
-            continue
-        if "srcset" in tag.attrs:
-            rewritten_srcset = _rewrite_srcset(str(tag["srcset"]), current_path, origin_host, viewer_base_url)
-            if rewritten_srcset:
-                tag["srcset"] = rewritten_srcset
-            else:
-                del tag["srcset"]
 
+def _block_url_attribute(tag, attribute) -> bool:
+    """Neutralize a URL that would write to the old site; True when the whole tag was removed."""
+    if tag.name == "a":
+        tag[attribute] = "#"
+        tag["aria-disabled"] = "true"
+        tag["data-legacy-write-disabled"] = "true"
+        tag["tabindex"] = "-1"
+        _strip_event_handlers(tag)
+        return False
+    if tag.name == "script":
+        # Removing only src could make fallback inline text execute,
+        # even though browsers ignore it when src is present.
+        tag.decompose()
+        return True
+    del tag[attribute]
+    return False
+
+
+def _rewrite_tag_urls(tag, current_path: str, origin_host: str, viewer_base_url: str) -> None:
+    for attribute in _URL_ATTRIBUTES.get(tag.name, ()):
+        if attribute not in tag.attrs:
+            continue
+        rewritten = rewrite_document_url(str(tag.get(attribute, "")), current_path, origin_host, viewer_base_url)
+        if not rewritten.blocked:
+            tag[attribute] = rewritten.value
+        elif _block_url_attribute(tag, attribute):
+            return
+    if "srcset" in tag.attrs:
+        rewritten_srcset = _rewrite_srcset(str(tag["srcset"]), current_path, origin_host, viewer_base_url)
+        if rewritten_srcset:
+            tag["srcset"] = rewritten_srcset
+        else:
+            del tag["srcset"]
+
+
+def _add_read_only_banner(soup) -> None:
     banner = soup.new_tag("div", id="i2g-legacy-read-only-banner")
     banner["role"] = "status"
     banner["style"] = (
@@ -247,4 +239,22 @@ def rewrite_legacy_html(html: str, current_path: str, origin_host: str, viewer_b
         soup.body.insert(0, banner)
     else:
         soup.insert(0, banner)
+
+
+def rewrite_legacy_html(html: str, current_path: str, origin_host: str, viewer_base_url: str) -> str:
+    """Make the old document visibly and mechanically read-only."""
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    for base_tag in soup.find_all("base"):
+        base_tag.decompose()
+    for meta_tag in soup.find_all("meta"):
+        if str(meta_tag.get("http-equiv", "")).lower() == "refresh":
+            meta_tag.decompose()
+
+    _disable_forms(soup, current_path)
+    for tag in list(soup.find_all(True)):
+        if tag.parent is not None:
+            _rewrite_tag_urls(tag, current_path, origin_host, viewer_base_url)
+    _add_read_only_banner(soup)
     return str(soup)

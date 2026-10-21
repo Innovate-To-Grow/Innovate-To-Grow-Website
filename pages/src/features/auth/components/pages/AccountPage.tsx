@@ -11,6 +11,102 @@ import {PhoneCenter} from '../sections/PhoneCenter';
 
 import './account/accountSharedLinks.css';
 
+type AccountDashboard = ReturnType<typeof useAccountDashboard>;
+
+const AccountPrimaryColumn = ({account}: {account: AccountDashboard}) => (
+    <div className="account-column account-column--primary">
+        <ProfileSection
+            firstName={account.firstName}
+            middleName={account.middleName}
+            lastName={account.lastName}
+            organizationType={account.organizationType}
+            organization={account.organization}
+            title={account.title}
+            profileImage={account.profileImage}
+            imageUploading={account.imageUploading}
+            imageError={account.imageError}
+            profileSaving={account.profileSaving}
+            profileMessage={account.profileMessage}
+            profileError={account.profileError}
+            isEditingProfile={account.isEditingProfile}
+            onImageChange={account.handleImageChange}
+            onSubmit={account.handleProfileSubmit}
+            onFirstNameChange={account.setFirstName}
+            onMiddleNameChange={account.setMiddleName}
+            onLastNameChange={account.setLastName}
+            onOrganizationTypeChange={(value) => {
+                account.setOrganizationType(value);
+                account.setOrganization('');
+                account.setTitle('');
+            }}
+            onOrganizationChange={account.setOrganization}
+            onTitleChange={account.setTitle}
+            onRetryProfile={() => void account.loadProfile()}
+            onStartEditing={() => account.setIsEditingProfile(true)}
+            onCancelEditing={account.handleCancelEditing}
+        />
+        <TicketsSection
+            tickets={account.tickets}
+            openEvents={account.registrationEvents}
+            ticketsLoading={account.ticketsLoading}
+            registrationEventsLoading={account.registrationEventsLoading}
+            resendingId={account.resendingId}
+            onResendTicketEmail={(registrationId) => void account.handleResendTicketEmail(registrationId)}
+        />
+    </div>
+);
+
+const AccountSecondaryColumn = ({account}: {account: AccountDashboard}) => (
+    <div className="account-column account-column--secondary">
+        {account.profile ? <EmailCenter profile={account.profile} onProfileUpdate={account.setProfile}/> : null}
+        {account.profile ? <PhoneCenter/> : null}
+        <MySharedLinksSection/>
+        {/* The email cards above already show the address; repeat it only when they cannot load. */}
+        <DetailsSection
+            displayEmail={account.profile ? null : account.displayEmail}
+            dateJoined={account.profile?.date_joined}
+        />
+        <PasswordSection
+            passwordCodeRequested={account.passwordCodeRequested}
+            passwordCode={account.passwordCode}
+            passwordVerificationToken={account.passwordVerificationToken}
+            newPassword={account.newPassword}
+            confirmPassword={account.confirmPassword}
+            passwordLoading={account.passwordLoading}
+            passwordMessage={account.passwordMessage}
+            passwordError={account.passwordError}
+            onPasswordRequestCode={account.handlePasswordRequestCode}
+            onPasswordVerifyCode={account.handlePasswordVerifyCode}
+            onPasswordConfirm={account.handlePasswordConfirm}
+            onPasswordCodeChange={account.setPasswordCode}
+            onNewPasswordChange={account.setNewPassword}
+            onConfirmPasswordChange={account.setConfirmPassword}
+        />
+        <div className="account-signout-row">
+            <button
+                type="button"
+                className="itg-btn itg-btn-outline profile-logout"
+                onClick={account.logout}
+            >
+                <Icon name="sign-out" />
+                Sign Out
+            </button>
+        </div>
+        <DeleteAccountSection
+            deleteCodeRequested={account.deleteCodeRequested}
+            deleteCode={account.deleteCode}
+            deleteVerificationToken={account.deleteVerificationToken}
+            deleteLoading={account.deleteLoading}
+            deleteMessage={account.deleteMessage}
+            deleteError={account.deleteError}
+            onDeleteRequestCode={account.handleDeleteRequestCode}
+            onDeleteVerifyCode={account.handleDeleteVerifyCode}
+            onDeleteConfirm={account.handleDeleteConfirm}
+            onDeleteCodeChange={account.setDeleteCode}
+        />
+    </div>
+);
+
 export const AccountPage = () => {
     const account = useAccountDashboard();
 
@@ -30,95 +126,8 @@ export const AccountPage = () => {
             <h1 className="itg-page-title account-page-title">Account Dashboard</h1>
 
             <div className="account-grid">
-                <div className="account-column account-column--primary">
-                    <ProfileSection
-                        firstName={account.firstName}
-                        middleName={account.middleName}
-                        lastName={account.lastName}
-                        organizationType={account.organizationType}
-                        organization={account.organization}
-                        title={account.title}
-                        profileImage={account.profileImage}
-                        imageUploading={account.imageUploading}
-                        imageError={account.imageError}
-                        profileSaving={account.profileSaving}
-                        profileMessage={account.profileMessage}
-                        profileError={account.profileError}
-                        isEditingProfile={account.isEditingProfile}
-                        onImageChange={account.handleImageChange}
-                        onSubmit={account.handleProfileSubmit}
-                        onFirstNameChange={account.setFirstName}
-                        onMiddleNameChange={account.setMiddleName}
-                        onLastNameChange={account.setLastName}
-                        onOrganizationTypeChange={(value) => {
-                            account.setOrganizationType(value);
-                            account.setOrganization('');
-                            account.setTitle('');
-                        }}
-                        onOrganizationChange={account.setOrganization}
-                        onTitleChange={account.setTitle}
-                        onRetryProfile={() => void account.loadProfile()}
-                        onStartEditing={() => account.setIsEditingProfile(true)}
-                        onCancelEditing={account.handleCancelEditing}
-                    />
-                    <TicketsSection
-                        tickets={account.tickets}
-                        openEvents={account.registrationEvents}
-                        ticketsLoading={account.ticketsLoading}
-                        registrationEventsLoading={account.registrationEventsLoading}
-                        resendingId={account.resendingId}
-                        onResendTicketEmail={(registrationId) => void account.handleResendTicketEmail(registrationId)}
-                    />
-                </div>
-
-                <div className="account-column account-column--secondary">
-                    {account.profile ? <EmailCenter profile={account.profile} onProfileUpdate={account.setProfile}/> : null}
-                    {account.profile ? <PhoneCenter/> : null}
-                    <MySharedLinksSection/>
-                    {/* The email cards above already show the address; repeat it only when they cannot load. */}
-                    <DetailsSection
-                        displayEmail={account.profile ? null : account.displayEmail}
-                        dateJoined={account.profile?.date_joined}
-                    />
-                    <PasswordSection
-                        passwordCodeRequested={account.passwordCodeRequested}
-                        passwordCode={account.passwordCode}
-                        passwordVerificationToken={account.passwordVerificationToken}
-                        newPassword={account.newPassword}
-                        confirmPassword={account.confirmPassword}
-                        passwordLoading={account.passwordLoading}
-                        passwordMessage={account.passwordMessage}
-                        passwordError={account.passwordError}
-                        onPasswordRequestCode={account.handlePasswordRequestCode}
-                        onPasswordVerifyCode={account.handlePasswordVerifyCode}
-                        onPasswordConfirm={account.handlePasswordConfirm}
-                        onPasswordCodeChange={account.setPasswordCode}
-                        onNewPasswordChange={account.setNewPassword}
-                        onConfirmPasswordChange={account.setConfirmPassword}
-                    />
-                    <div className="account-signout-row">
-                        <button
-                            type="button"
-                            className="itg-btn itg-btn-outline profile-logout"
-                            onClick={account.logout}
-                        >
-                            <Icon name="sign-out" />
-                            Sign Out
-                        </button>
-                    </div>
-                    <DeleteAccountSection
-                        deleteCodeRequested={account.deleteCodeRequested}
-                        deleteCode={account.deleteCode}
-                        deleteVerificationToken={account.deleteVerificationToken}
-                        deleteLoading={account.deleteLoading}
-                        deleteMessage={account.deleteMessage}
-                        deleteError={account.deleteError}
-                        onDeleteRequestCode={account.handleDeleteRequestCode}
-                        onDeleteVerifyCode={account.handleDeleteVerifyCode}
-                        onDeleteConfirm={account.handleDeleteConfirm}
-                        onDeleteCodeChange={account.setDeleteCode}
-                    />
-                </div>
+                <AccountPrimaryColumn account={account} />
+                <AccountSecondaryColumn account={account} />
             </div>
         </div>
     );

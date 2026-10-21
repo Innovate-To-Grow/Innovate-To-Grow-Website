@@ -206,14 +206,14 @@ class SendTicketEmailTest(TestCase):
             [previous.pk],
         )
 
-    @patch("apps.core.services.background_jobs.handlers._wait_for_email_slot")
+    @patch("apps.event.services.ticket.jobs.wait_for_email_slot")
     @patch("apps.event.services.ticket.mail.send_ticket_email")
     def test_ticket_job_fences_login_link_mutation_with_current_claim(self, mock_send, _wait_for_slot):
         from django.db import transaction
 
         from apps.core.models import BackgroundJob
         from apps.core.services.background_jobs import JobClaimLost
-        from apps.core.services.background_jobs.handlers import send_ticket_email_job
+        from apps.event.services.ticket.jobs import send_ticket_email_job
 
         stale_claim = BackgroundJob.new_claim_token()
         job = BackgroundJob.objects.create(

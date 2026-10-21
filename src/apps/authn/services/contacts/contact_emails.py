@@ -50,7 +50,7 @@ def _notify_email_owner_in_background(email: str):
 
     if getattr(settings, "BACKGROUND_JOBS_ENABLED", False):
         try:
-            from apps.core.services.background_jobs import enqueue_notification_email
+            from apps.authn.services.email.notification_jobs import enqueue_notification_email
 
             enqueue_notification_email(**notification)
         except Exception:

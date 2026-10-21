@@ -43,13 +43,8 @@ export const normalizePath = (path: string): string => {
   return collapsed.length > 1 ? collapsed.replace(/\/+$/, '') || '/' : '/';
 };
 
-/** Normalised same-origin path of a menu item, or null for off-site / empty URLs. */
-export const menuItemPath = (item: Pick<MenuItem, 'url'>): string | null => {
-  const url = typeof item.url === 'string' ? item.url.trim() : '';
-  if (!url || url.startsWith('#')) return null;
-  if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\')) {
-    return normalizePath(url);
-  }
+/** The normalised path of an absolute http(s) URL on this site's origin, else null. */
+const sameOriginPath = (url: string): string | null => {
   if (!/^https?:\/\//i.test(url) || typeof window === 'undefined') return null;
   try {
     const parsed = new URL(url);
@@ -57,6 +52,16 @@ export const menuItemPath = (item: Pick<MenuItem, 'url'>): string | null => {
   } catch {
     return null;
   }
+};
+
+/** Normalised same-origin path of a menu item, or null for off-site / empty URLs. */
+export const menuItemPath = (item: Pick<MenuItem, 'url'>): string | null => {
+  const url = typeof item.url === 'string' ? item.url.trim() : '';
+  if (!url || url.startsWith('#')) return null;
+  if (url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\')) {
+    return normalizePath(url);
+  }
+  return sameOriginPath(url);
 };
 
 const hasDescendantPath = (items: MenuItem[] | undefined, path: string): boolean =>

@@ -79,6 +79,31 @@ def backup_legacy_sheet_if_needed(
     )
 
 
+def _id_column_protections(spreadsheet, worksheet_id, id_column_index: int) -> tuple[bool, list[int]]:
+    """Whether the ID column already carries our protection, and our protections that now cover the wrong column."""
+    metadata = spreadsheet.fetch_sheet_metadata(params={"fields": "sheets(properties(sheetId),protectedRanges)"})
+    if not isinstance(metadata, dict):
+        return False, []
+    matching_protection = False
+    stale_protection_ids: list[int] = []
+    sheets = (
+        sheet for sheet in metadata.get("sheets", []) if sheet.get("properties", {}).get("sheetId") == worksheet_id
+    )
+    for sheet in sheets:
+        for protected_range in sheet.get("protectedRanges", []):
+            if protected_range.get("description") != _ID_PROTECTION_DESCRIPTION:
+                continue
+            grid_range = protected_range.get("range", {})
+            if (
+                grid_range.get("startColumnIndex") == id_column_index
+                and grid_range.get("endColumnIndex") == id_column_index + 1
+            ):
+                matching_protection = True
+            elif protected_range.get("protectedRangeId") is not None:
+                stale_protection_ids.append(protected_range["protectedRangeId"])
+    return matching_protection, stale_protection_ids
+
+
 def ensure_registration_id_protected(
     worksheet,
     header: list[str],
@@ -96,25 +121,7 @@ def ensure_registration_id_protected(
         raise RegistrationSyncError("Registration ID column could not be protected.")
 
     id_column_index = len(header) - 1
-    metadata = spreadsheet.fetch_sheet_metadata(params={"fields": "sheets(properties(sheetId),protectedRanges)"})
-    matching_protection = False
-    stale_protection_ids: list[int] = []
-    if isinstance(metadata, dict):
-        for sheet in metadata.get("sheets", []):
-            if sheet.get("properties", {}).get("sheetId") != worksheet_id:
-                continue
-            for protected_range in sheet.get("protectedRanges", []):
-                if protected_range.get("description") != _ID_PROTECTION_DESCRIPTION:
-                    continue
-                grid_range = protected_range.get("range", {})
-                if (
-                    grid_range.get("startColumnIndex") == id_column_index
-                    and grid_range.get("endColumnIndex") == id_column_index + 1
-                ):
-                    matching_protection = True
-                elif protected_range.get("protectedRangeId") is not None:
-                    stale_protection_ids.append(protected_range["protectedRangeId"])
-
+    matching_protection, stale_protection_ids = _id_column_protections(spreadsheet, worksheet_id, id_column_index)
     for protected_range_id in stale_protection_ids:
         worksheet.delete_protected_range(protected_range_id)
     if matching_protection:

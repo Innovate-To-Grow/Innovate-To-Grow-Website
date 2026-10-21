@@ -71,41 +71,60 @@ def _integer(name: str, value, *, minimum: int = 1) -> int:
     return result
 
 
-def load_settings() -> SendVerificationSettings:
-    from apps.core.models import SendVerificationConfig
+class _SettingResolver:
+    """Each setting from a Django setting override, else the active database row, else its default.
 
-    db = SendVerificationConfig.load()
-    active = bool(db.pk and db.is_active)
-    sources: dict[str, str] = {}
+    ``sources`` records where every resolved value came from (shown in the admin).
+    """
 
-    def resolve(name: str, default, *, db_field: str | None = None):
+    def __init__(self, db):
+        self.db = db
+        self.active = bool(db.pk and db.is_active)
+        self.sources: dict[str, str] = {}
+
+    def __call__(self, name: str, default, *, db_field: str | None = None):
         setting_name = f"SEND_VERIFICATION_{name.upper()}"
         override = getattr(settings, setting_name, None)
         if override is not None:
             origin = "Environment" if os.environ.get(setting_name) == override else "Django settings"
-            sources[name] = f"{origin}: {setting_name}"
+            self.sources[name] = f"{origin}: {setting_name}"
             return override
-        if active and db_field:
-            sources[name] = f"Active database configuration: {db_field}"
-            return getattr(db, db_field)
-        sources[name] = "Default"
+        if self.active and db_field:
+            self.sources[name] = f"Active database configuration: {db_field}"
+            return getattr(self.db, db_field)
+        self.sources[name] = "Default"
         return default
 
+
+def _resolve_mode(resolve: _SettingResolver) -> str:
     mode = str(resolve("mode", MODE_OBSERVE, db_field="mode")).strip().lower()
     # An active database pause must remain an emergency stop even when an
     # environment or test setting explicitly requests enforce/observe.
-    if active and str(db.mode).strip().lower() == MODE_PAUSE:
+    if resolve.active and str(resolve.db.mode).strip().lower() == MODE_PAUSE:
         mode = MODE_PAUSE
-        sources["mode"] = "Active database configuration: mode (pause takes precedence)"
+        resolve.sources["mode"] = "Active database configuration: mode (pause takes precedence)"
     if mode not in ALLOWED_MODES:
         raise SendVerificationUnavailable("Invalid send verification setting: mode.")
+    return mode
 
+
+def _resolve_secrets(resolve: _SettingResolver) -> dict[str, str]:
     secrets = {}
     for name in ("hmac_secret", "hmac_key_secret", "hmac_secret_previous", "hmac_key_secret_previous"):
         value = resolve(name, "", db_field=name)
         if not isinstance(value, str):
             raise SendVerificationUnavailable(f"Invalid send verification setting: {name}.")
         secrets[name] = value.strip()
+    return secrets
+
+
+def load_settings() -> SendVerificationSettings:
+    from apps.core.models import SendVerificationConfig
+
+    resolve = _SettingResolver(SendVerificationConfig.load())
+    sources = resolve.sources
+    mode = _resolve_mode(resolve)
+    secrets = _resolve_secrets(resolve)
 
     algorithm = str(resolve("algorithm", ALGORITHM_PBKDF2_SHA256, db_field="algorithm")).strip()
     if algorithm not in ALLOWED_ALGORITHMS:

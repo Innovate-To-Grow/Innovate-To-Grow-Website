@@ -192,7 +192,7 @@ class ContactEmailServiceTests(TestCase):
         self.assertTrue(start_task.call_args.kwargs["best_effort_start"])
 
     @override_settings(FRONTEND_URL="https://example.com", BACKGROUND_JOBS_ENABLED=True)
-    @patch("apps.core.services.background_jobs.enqueue_notification_email")
+    @patch("apps.authn.services.email.notification_jobs.enqueue_notification_email")
     def test_notify_email_owner_uses_durable_queue_when_enabled(self, mock_enqueue):
         from apps.authn.services.contacts import contact_emails as svc
 

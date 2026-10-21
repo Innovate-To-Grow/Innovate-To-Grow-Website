@@ -70,49 +70,55 @@ class SMTPProvider:
         return DeliveryResult(provider=self.name, message_id=str(mime["Message-ID"]))
 
 
+# SMTP reply-code errors with dedicated wording: (types, temporary 4xx message, permanent message), in order.
+_SMTP_CODE_MESSAGES = (
+    (
+        (smtplib.SMTPSenderRefused, smtplib.SMTPAuthenticationError),
+        "SMTP temporarily rejected the sender or authentication.",
+        "SMTP rejected the sender or authentication settings.",
+    ),
+    ((smtplib.SMTPDataError,), "SMTP temporarily rejected the message.", "SMTP rejected the message."),
+)
+
+
+def _connection_lost_error(submitted: bool) -> Exception:
+    if submitted:
+        return UncertainEmailDeliveryError("SMTP connection was lost after message submission began.")
+    return TransientEmailDeliveryError("SMTP server could not be reached.")
+
+
+def _reply_code_error(exc: smtplib.SMTPResponseException) -> Exception:
+    temporary, permanent = next(
+        ((temp, perm) for types, temp, perm in _SMTP_CODE_MESSAGES if isinstance(exc, types)),
+        ("SMTP temporarily rejected the request.", "SMTP rejected the request."),
+    )
+    if 400 <= exc.smtp_code < 500:
+        return TransientEmailDeliveryError(temporary)
+    return PermanentEmailDeliveryError(permanent)
+
+
+def _classify_smtp_error(exc: OSError, *, submitted: bool) -> Exception:
+    """The delivery error for an SMTP or socket failure (every smtplib error is an ``OSError``)."""
+    if isinstance(exc, smtplib.SMTPRecipientsRefused):
+        codes = [response[0] for response in exc.recipients.values()]
+        temporary = codes and all(400 <= code < 500 for code in codes)
+        error = TransientEmailDeliveryError if temporary else PermanentEmailDeliveryError
+        return error("SMTP rejected all recipients.")
+    if isinstance(exc, smtplib.SMTPNotSupportedError):
+        return PermanentEmailDeliveryError("SMTP does not support a required operation.")
+    if isinstance(exc, smtplib.SMTPServerDisconnected) or not isinstance(exc, smtplib.SMTPException):
+        return _connection_lost_error(submitted)
+    if isinstance(exc, smtplib.SMTPResponseException):
+        return _reply_code_error(exc)
+    if submitted:
+        return UncertainEmailDeliveryError("SMTP request outcome could not be confirmed.")
+    return PermanentEmailDeliveryError("SMTP request failed.")
+
+
 @contextmanager
 def _smtp_errors(*, submitted: bool):
     """Classify only SMTP operations, leaving caller callbacks untouched."""
     try:
         yield
-    except smtplib.SMTPRecipientsRefused as exc:
-        codes = [response[0] for response in exc.recipients.values()]
-        error = (
-            TransientEmailDeliveryError
-            if codes and all(400 <= code < 500 for code in codes)
-            else PermanentEmailDeliveryError
-        )
-        raise error("SMTP rejected all recipients.") from exc
-    except (smtplib.SMTPSenderRefused, smtplib.SMTPAuthenticationError) as exc:
-        if 400 <= exc.smtp_code < 500:
-            raise TransientEmailDeliveryError("SMTP temporarily rejected the sender or authentication.") from exc
-        raise PermanentEmailDeliveryError("SMTP rejected the sender or authentication settings.") from exc
-    except smtplib.SMTPNotSupportedError as exc:
-        raise PermanentEmailDeliveryError("SMTP does not support a required operation.") from exc
-    except smtplib.SMTPDataError as exc:
-        if 400 <= exc.smtp_code < 500:
-            raise TransientEmailDeliveryError("SMTP temporarily rejected the message.") from exc
-        raise PermanentEmailDeliveryError("SMTP rejected the message.") from exc
-    except smtplib.SMTPServerDisconnected as exc:
-        error = UncertainEmailDeliveryError if submitted else TransientEmailDeliveryError
-        detail = (
-            "SMTP connection was lost after message submission began."
-            if submitted
-            else "SMTP server could not be reached."
-        )
-        raise error(detail) from exc
-    except smtplib.SMTPResponseException as exc:
-        if 400 <= exc.smtp_code < 500:
-            raise TransientEmailDeliveryError("SMTP temporarily rejected the request.") from exc
-        raise PermanentEmailDeliveryError("SMTP rejected the request.") from exc
-    except smtplib.SMTPException as exc:
-        error = UncertainEmailDeliveryError if submitted else PermanentEmailDeliveryError
-        raise error("SMTP request outcome could not be confirmed." if submitted else "SMTP request failed.") from exc
-    except (TimeoutError, ConnectionError, OSError) as exc:
-        error = UncertainEmailDeliveryError if submitted else TransientEmailDeliveryError
-        detail = (
-            "SMTP connection was lost after message submission began."
-            if submitted
-            else "SMTP server could not be reached."
-        )
-        raise error(detail) from exc
+    except OSError as exc:
+        raise _classify_smtp_error(exc, submitted=submitted) from exc

@@ -6,7 +6,7 @@ import {
   formatNationalInputDisplay,
   nationalInputMaxLength,
   parsePhoneInputToNationalDigits,
-} from './internal/phoneInput';
+} from '@/lib/format/phoneInput';
 
 interface PhoneAddFormProps {
   addPhoneNumber: string;

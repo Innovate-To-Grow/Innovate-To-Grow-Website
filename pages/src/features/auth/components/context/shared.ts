@@ -14,6 +14,7 @@ import type {
   VerificationTokenResponse,
 } from '@/features/auth/api';
 import {VerificationFlowError} from '@/features/auth/verification/errors';
+import {collectFieldMessages} from '@/lib/api/errorMessages';
 
 export const AUTH_STATE_CHANGE_EVENT = 'i2g-auth-state-change';
 
@@ -116,6 +117,9 @@ function statusFallbackMessage(status?: number): string {
   return 'An unexpected error occurred. Please try again.';
 }
 
+// Fields of an auth error body that carry data, not a sentence for the user.
+const NON_MESSAGE_FIELDS = ['code', 'retry_after', 'request_id', 'challenge_id'] as const;
+
 export function getAuthErrorMessage(err: unknown): string {
   if (err instanceof VerificationFlowError && isSafeMessage(err.message)) return err.message;
   if (typeof err !== 'object' || err === null) {
@@ -131,30 +135,22 @@ export function getAuthErrorMessage(err: unknown): string {
   if (typeof body !== 'object' || body === null) {
     return statusFallbackMessage(axiosError.response.status);
   }
-  const data = body as Record<string, unknown>;
+  return messageFromErrorBody(body as Record<string, unknown>, axiosError.response.status);
+}
+
+function messageFromErrorBody(data: Record<string, unknown>, status: number | undefined): string {
   // The machine-readable code decides, as for the login link: the server's own
   // sentence is shown (it already points to the email-code sign-in), and the
   // way out is never lost to an unusable `detail`. Every other 429 keeps the
   // generic mapping below.
-  if (axiosError.response.status === 429 && data.code === LOGIN_LOCKED_CODE) {
-    return typeof data.detail === 'string' && isSafeMessage(data.detail)
-      ? data.detail
-      : LOGIN_LOCKED_FALLBACK_MESSAGE;
+  const safeDetail = typeof data.detail === 'string' && isSafeMessage(data.detail) ? data.detail : null;
+  if (status === 429 && data.code === LOGIN_LOCKED_CODE) {
+    return safeDetail ?? LOGIN_LOCKED_FALLBACK_MESSAGE;
   }
-  if (typeof data.detail === 'string' && isSafeMessage(data.detail)) {
-    return data.detail;
+  if (safeDetail) {
+    return safeDetail;
   }
-  const messages: string[] = [];
-  for (const [key, value] of Object.entries(data)) {
-    if (['code', 'retry_after', 'request_id', 'challenge_id'].includes(key)) continue;
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        if (typeof item === 'string' && isSafeMessage(item)) messages.push(item);
-      }
-    } else if (typeof value === 'string' && isSafeMessage(value)) {
-      messages.push(value);
-    }
-  }
+  const messages = collectFieldMessages(data, isSafeMessage, NON_MESSAGE_FIELDS);
   if (messages.length > 0) return messages.join(' ');
-  return statusFallbackMessage(axiosError.response.status);
+  return statusFallbackMessage(status);
 }

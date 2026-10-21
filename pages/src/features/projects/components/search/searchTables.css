@@ -1,0 +1,304 @@
+/* Search Tables: the section, each search table, status lines and the AI search form.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Search Tables section ------------------------------------------------- */
+
+.past-projects-search-tables {
+  gap: 1rem;
+}
+
+.past-projects-action-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.past-projects-action-bar-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem 1rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--itg-color-primary);
+}
+
+.past-projects-action-bar-title {
+  margin: 0;
+}
+
+.past-projects-action-bar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.past-projects-ai-table-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.past-projects-lock-icon {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.past-projects-action-bar-note {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+}
+
+/* The help disclosure reads as a content link. */
+.past-projects-help-summary {
+  width: fit-content;
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  cursor: pointer;
+}
+
+.past-projects-help-summary:hover {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.past-projects-help-intro {
+  margin: 12px 0 0;
+}
+
+.past-projects-help-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1.5rem;
+  margin: 0.5rem 0 0;
+}
+
+.project-grid-help-card {
+  padding: 8px 0;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.project-grid-help-card dt {
+  font-weight: 700;
+  color: var(--itg-color-primary);
+}
+
+.project-grid-help-card dd {
+  margin: 0.25rem 0 0;
+  color: var(--itg-color-text);
+}
+
+.project-grid-help-card--wide {
+  grid-column: 1 / -1;
+}
+
+.past-projects-builder-message {
+  margin: 0;
+  color: var(--itg-color-primary);
+}
+
+.search-table-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.project-grid-empty-shell {
+  border-top: 0;
+}
+
+/* ---- One search table -------------------------------------------------------- */
+
+.search-table-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-page);
+}
+
+.project-grid-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.project-grid-card-title:not(.itg-page-title) {
+  margin: 0;
+  font-size: var(--itg-font-size-h2);
+  line-height: var(--itg-line-height-heading);
+  font-weight: 600;
+  color: var(--itg-color-primary);
+}
+
+/* Each search table is titled with an h3 (24px), under the "Search Tables" h2. */
+.search-table-card .project-grid-card-title {
+  font-size: var(--itg-font-size-h3);
+}
+
+.project-grid-card-copy {
+  margin: 0;
+}
+
+.search-table-card .search-table-remove-button {
+  color: var(--itg-color-text-secondary);
+}
+
+.search-table-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.search-table-save-row,
+.search-table-bottom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 1rem;
+}
+
+.search-table-bottom-actions {
+  margin-top: 1.25rem;
+}
+
+.search-table-save-group {
+  gap: 0.5rem 0.875rem;
+}
+
+.search-table-save-count {
+  display: none;
+}
+
+.search-table-selection-count {
+  color: var(--itg-color-text-secondary);
+}
+
+/* "Selection" and "Tidy this table": one labelled line each (the pair does not fit one line in the
+   main column), as text buttons. */
+.search-table-secondary-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+
+.search-table-action-group {
+  gap: 0 1.125rem;
+}
+
+.search-table-group-label {
+  min-width: 7.5rem;
+}
+
+.search-table-group-divider {
+  display: none;
+}
+
+.search-table-save-status {
+  min-width: 0;
+}
+
+/* AI results fade in once, calmly. */
+.search-table-results-motion {
+  animation: search-table-results-enter 0.3s ease-out;
+}
+
+@keyframes search-table-results-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- Status lines (AI search, per-table saves) ------------------------------- */
+
+.past-projects-ai-search-message {
+  color: var(--itg-color-text);
+}
+
+.past-projects-ai-search-message-content {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+
+.past-projects-ai-search-message.is-error {
+  color: var(--itg-color-error);
+}
+
+.past-projects-ai-search-message.is-loading {
+  color: var(--itg-color-text-secondary);
+}
+
+.past-projects-status-icon {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.125rem;
+  fill: none;
+  stroke: var(--itg-color-success);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.search-table-save-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
+/* ---- AI search form ---------------------------------------------------------- */
+
+.past-projects-ai-search {
+  display: grid;
+  flex: 1 1 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+.past-projects-ai-search-input-frame {
+  display: block;
+}
+
+.past-projects-ai-search-status {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+}
+
+/* A plain spinner beside the progress text. */
+.past-projects-ai-search-status::before {
+  content: '';
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid var(--itg-color-border);
+  border-top-color: var(--itg-color-primary);
+  border-radius: 50%;
+  animation: past-projects-spin 0.9s linear infinite;
+}
+
+@keyframes past-projects-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

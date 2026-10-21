@@ -1,7 +1,6 @@
 import json
 import threading
 from datetime import timedelta
-from types import SimpleNamespace
 from unittest import skipUnless
 from unittest.mock import patch
 
@@ -12,16 +11,11 @@ from gspread.exceptions import APIError as GspreadAPIError
 from requests import Response
 
 from apps.core.models import BackgroundJob, DeliveryRateLimit
-from apps.core.services.aws.provider_outcomes import (
-    PROVIDER_OUTCOME_TRANSIENT,
-    ProviderDeliveryError,
-)
 from apps.core.services.background_jobs import (
     PermanentJobError,
     TransientJobError,
     claim_jobs,
     enqueue_job,
-    enqueue_notification_email,
     process_claimed_job,
     recover_stale_jobs,
     reserve_delivery_slot,
@@ -62,20 +56,6 @@ class BackgroundJobQueueTests(TestCase):
         self.assertFalse(created_again)
         self.assertEqual(first.pk, second.pk)
         self.assertEqual(second.payload, {"value": 1})
-
-    def test_identical_notification_events_are_distinct_jobs(self):
-        notification = {
-            "recipient": "owner@example.com",
-            "subject": "Security notice",
-            "template": "notice.html",
-            "context": {"account_url": "https://example.com/account"},
-        }
-
-        first, _created = enqueue_notification_email(**notification)
-        second, _created = enqueue_notification_email(**notification)
-
-        self.assertNotEqual(first.pk, second.pk)
-        self.assertNotEqual(first.dedupe_key, second.dedupe_key)
 
     def test_claim_sets_token_attempt_and_processing_state(self):
         job, _created = enqueue_job(kind="test.echo", dedupe_key="claim", payload={})
@@ -407,68 +387,6 @@ class BackgroundJobQueueTests(TestCase):
             limiter.next_available_at,
             current_time + timedelta(milliseconds=100),
         )
-
-    @patch("apps.authn.services.members.sheet_sync._flush_pending_sync")
-    def test_member_sheet_handler_cancels_only_pre_claim_duplicates(self, flush):
-        from apps.core.services.background_jobs.handlers import sync_member_sheet_job
-
-        claimed_at = timezone.now()
-        current, _created = enqueue_job(
-            kind="authn.member_sheet_sync",
-            dedupe_key="current",
-            payload={},
-        )
-        older, _created = enqueue_job(
-            kind="authn.member_sheet_sync",
-            dedupe_key="older",
-            payload={},
-        )
-        newer, _created = enqueue_job(
-            kind="authn.member_sheet_sync",
-            dedupe_key="newer",
-            payload={},
-        )
-        BackgroundJob.objects.filter(pk=older.pk).update(created_at=claimed_at - timedelta(seconds=1))
-        BackgroundJob.objects.filter(pk=newer.pk).update(created_at=claimed_at + timedelta(seconds=1))
-
-        sync_member_sheet_job(SimpleNamespace(pk=current.pk, claimed_at=claimed_at))
-
-        older.refresh_from_db()
-        newer.refresh_from_db()
-        self.assertEqual(older.status, BackgroundJob.Status.CANCELLED)
-        self.assertEqual(newer.status, BackgroundJob.Status.PENDING)
-        flush.assert_called_once_with(raise_errors=True)
-
-    @patch("apps.core.services.background_jobs.handlers._wait_for_email_slot")
-    @patch(
-        "apps.authn.services.email.send_email.send_notification_email",
-        side_effect=ProviderDeliveryError(
-            "SES temporarily rejected the request.",
-            outcome=PROVIDER_OUTCOME_TRANSIENT,
-        ),
-    )
-    def test_notification_handler_preserves_definitive_transient_outcome(
-        self,
-        send_notification,
-        wait_for_slot,
-    ):
-        from apps.core.services.background_jobs.handlers import send_notification_email_job
-
-        job = SimpleNamespace(
-            payload={
-                "recipient": "owner@example.com",
-                "subject": "Security notice",
-                "template": "notice.html",
-                "context": {},
-            },
-            begin_provider_call=lambda: True,
-        )
-
-        with self.assertRaises(TransientJobError):
-            send_notification_email_job(job)
-
-        wait_for_slot.assert_called_once_with()
-        self.assertTrue(send_notification.call_args.kwargs["raise_provider_errors"])
 
 
 @skipUnless(connection.vendor == "postgresql", "PostgreSQL row locking required")

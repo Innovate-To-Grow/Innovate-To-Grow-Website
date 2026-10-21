@@ -117,6 +117,146 @@ def _prepare_ticket_login_link(registration: EventRegistration):
     )
 
 
+def _build_ticket_message(registration: EventRegistration, *, config, login_url: str):
+    """The ticket email: confirmation body, inline barcode and calendar invite, to both attendee addresses."""
+    event = registration.event
+    google_cal_url = build_google_calendar_url(
+        event_name=event.name,
+        event_start_date=event.date,
+        event_end_date=event.effective_end_date,
+        event_location=event.location,
+        event_description=event.description,
+    )
+    html_body = render_to_string(
+        "event/email/ticket_confirmation.html",
+        {
+            "attendee_name": registration.attendee_name or registration.attendee_email,
+            "event_name": event.name,
+            "event_date_range": format_event_date_range(event.date, event.effective_end_date),
+            "event_location": event.location,
+            "ticket_name": registration.ticket.name,
+            "ticket_code": registration.ticket_code,
+            "event_description": event.description,
+            "login_url": login_url,
+            "google_calendar_url": google_cal_url,
+        },
+    )
+
+    barcode_bytes = generate_ticket_barcode_png_bytes(registration)
+    ics_data = generate_ics(
+        event_uid=str(event.pk),
+        event_name=event.name,
+        event_start_date=event.date,
+        event_end_date=event.effective_end_date,
+        event_location=event.location,
+        event_description=event.description,
+    )
+
+    recipients = [registration.attendee_email]
+    if registration.attendee_secondary_email:
+        recipients.append(registration.attendee_secondary_email)
+
+    subject = f"Your Ticket: {event.name} - Innovate to Grow"
+    return _build_mime_message(
+        subject=subject,
+        from_address=config.source_address,
+        recipients=recipients,
+        html_body=html_body,
+        barcode_bytes=barcode_bytes,
+        ics_data=ics_data,
+    )
+
+
+class _TicketDelivery:
+    """What one send has done so far, which decides how a failure is recorded."""
+
+    def __init__(self, registration: EventRegistration, before_provider_call):
+        self.registration = registration
+        self.before_provider_call = before_provider_call
+        self.issued_login_link = None
+        self.provider_accepted = False
+        self.provider_boundary_entered = False
+
+    def enter_provider_boundary(self) -> None:
+        if self.before_provider_call is not None:
+            self.before_provider_call()
+        self.provider_boundary_entered = True
+
+    def may_have_delivered(self, exc: Exception) -> bool:
+        from apps.core.services.aws.provider_outcomes import (
+            PROVIDER_OUTCOME_PERMANENT,
+            PROVIDER_OUTCOME_TRANSIENT,
+            ProviderDeliveryError,
+        )
+        from apps.core.services.background_jobs import JobClaimLost
+
+        definitive_provider_error = isinstance(exc, ProviderDeliveryError) and exc.outcome in {
+            PROVIDER_OUTCOME_PERMANENT,
+            PROVIDER_OUTCOME_TRANSIENT,
+        }
+        return self.provider_accepted or (
+            self.provider_boundary_entered and not definitive_provider_error and not isinstance(exc, JobClaimLost)
+        )
+
+
+def _deliver_ticket(delivery: _TicketDelivery, *, before_token_mutation) -> None:
+    registration = delivery.registration
+    config = _load_config()
+    if not config.delivery_configured:
+        raise RuntimeError("Ticket email delivery provider failed or is not configured.")
+
+    # The callback locks and verifies a durable-job claim. Keeping it in the
+    # same transaction as token creation prevents recovery from replacing
+    # the claim between the fence and this side effect.
+    with transaction.atomic():
+        if before_token_mutation is not None:
+            before_token_mutation()
+        login_url, delivery.issued_login_link = _prepare_ticket_login_link(registration)
+
+    mime_message = _build_ticket_message(registration, config=config, login_url=login_url)
+    send_kwargs = {
+        "config": config,
+        "mime_message": mime_message,
+        "before_provider_call": delivery.enter_provider_boundary,
+        # Always classify the result so a lost provider response can keep
+        # its provisional link valid even for a direct/admin resend.
+        "raise_provider_errors": True,
+    }
+    if not _send_via_ses(**send_kwargs):
+        raise RuntimeError("Ticket email delivery provider failed or is not configured.")
+    delivery.provider_accepted = True
+    logger.info("Ticket email accepted for registration %s", registration.pk)
+
+    from apps.mail.services.tokens.login_links import revoke_login_links
+
+    with transaction.atomic():
+        if delivery.issued_login_link is not None:
+            revoke_login_links(registration.login_tokens.exclude(pk=delivery.issued_login_link.pk))
+        registration.ticket_email_sent_at = timezone.now()
+        registration.ticket_email_error = ""
+        registration.save(update_fields=["ticket_email_sent_at", "ticket_email_error"])
+
+
+def _record_ticket_failure(delivery: _TicketDelivery, exc: Exception, reported_exc: Exception) -> None:
+    """Discard a provisional login link that cannot have been delivered, and store the error."""
+    from apps.core.services.background_jobs import JobClaimLost
+
+    registration = delivery.registration
+    issued_login_link = delivery.issued_login_link
+    if issued_login_link is not None and not delivery.may_have_delivered(exc):
+        try:
+            type(issued_login_link).objects.filter(pk=issued_login_link.pk).delete()
+        except Exception:  # noqa: BLE001 - preserve the original delivery error.
+            logger.exception("Unable to discard provisional ticket login link")
+
+    if isinstance(exc, JobClaimLost):
+        logger.info("Ticket email job claim was lost for registration %s", registration.pk)
+    else:
+        logger.exception("Failed to send ticket email for registration %s", registration.pk)
+        registration.ticket_email_error = str(reported_exc)
+        registration.save(update_fields=["ticket_email_error"])
+
+
 def send_ticket_email(
     registration: EventRegistration,
     *,
@@ -130,129 +270,18 @@ def send_ticket_email(
     Updates registration.ticket_email_sent_at on success or
     registration.ticket_email_error on failure.
     """
-    issued_login_link = None
-    provider_accepted = False
-    provider_boundary_entered = False
+    delivery = _TicketDelivery(registration, before_provider_call)
     try:
-        config = _load_config()
-        if not config.delivery_configured:
-            raise RuntimeError("Ticket email delivery provider failed or is not configured.")
-
-        # The callback locks and verifies a durable-job claim. Keeping it in the
-        # same transaction as token creation prevents recovery from replacing
-        # the claim between the fence and this side effect.
-        with transaction.atomic():
-            if before_token_mutation is not None:
-                before_token_mutation()
-            login_url, issued_login_link = _prepare_ticket_login_link(registration)
-
-        event = registration.event
-        google_cal_url = build_google_calendar_url(
-            event_name=event.name,
-            event_start_date=event.date,
-            event_end_date=event.effective_end_date,
-            event_location=event.location,
-            event_description=event.description,
-        )
-        html_body = render_to_string(
-            "event/email/ticket_confirmation.html",
-            {
-                "attendee_name": registration.attendee_name or registration.attendee_email,
-                "event_name": event.name,
-                "event_date_range": format_event_date_range(event.date, event.effective_end_date),
-                "event_location": event.location,
-                "ticket_name": registration.ticket.name,
-                "ticket_code": registration.ticket_code,
-                "event_description": event.description,
-                "login_url": login_url,
-                "google_calendar_url": google_cal_url,
-            },
-        )
-
-        barcode_bytes = generate_ticket_barcode_png_bytes(registration)
-        ics_data = generate_ics(
-            event_uid=str(event.pk),
-            event_name=event.name,
-            event_start_date=event.date,
-            event_end_date=event.effective_end_date,
-            event_location=event.location,
-            event_description=event.description,
-        )
-
-        recipients = [registration.attendee_email]
-        if registration.attendee_secondary_email:
-            recipients.append(registration.attendee_secondary_email)
-
-        subject = f"Your Ticket: {event.name} - Innovate to Grow"
-        mime_message = _build_mime_message(
-            subject=subject,
-            from_address=config.source_address,
-            recipients=recipients,
-            html_body=html_body,
-            barcode_bytes=barcode_bytes,
-            ics_data=ics_data,
-        )
-
-        def enter_provider_boundary():
-            nonlocal provider_boundary_entered
-            if before_provider_call is not None:
-                before_provider_call()
-            provider_boundary_entered = True
-
-        send_kwargs = {
-            "config": config,
-            "mime_message": mime_message,
-            "before_provider_call": enter_provider_boundary,
-            # Always classify the result so a lost provider response can keep
-            # its provisional link valid even for a direct/admin resend.
-            "raise_provider_errors": True,
-        }
-        if _send_via_ses(**send_kwargs):
-            provider_accepted = True
-            logger.info("Ticket email accepted for registration %s", registration.pk)
-        else:
-            raise RuntimeError("Ticket email delivery provider failed or is not configured.")
-
-        from apps.mail.services.tokens.login_links import revoke_login_links
-
-        with transaction.atomic():
-            if issued_login_link is not None:
-                revoke_login_links(registration.login_tokens.exclude(pk=issued_login_link.pk))
-            registration.ticket_email_sent_at = timezone.now()
-            registration.ticket_email_error = ""
-            registration.save(update_fields=["ticket_email_sent_at", "ticket_email_error"])
+        _deliver_ticket(delivery, before_token_mutation=before_token_mutation)
     except Exception as exc:
-        from apps.core.services.aws.provider_outcomes import (
-            PROVIDER_OUTCOME_PERMANENT,
-            PROVIDER_OUTCOME_TRANSIENT,
-            ProviderDeliveryError,
-        )
-        from apps.core.services.background_jobs import JobClaimLost
+        from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
 
-        definitive_provider_error = isinstance(exc, ProviderDeliveryError) and exc.outcome in {
-            PROVIDER_OUTCOME_PERMANENT,
-            PROVIDER_OUTCOME_TRANSIENT,
-        }
-        delivery_may_have_occurred = provider_accepted or (
-            provider_boundary_entered and not definitive_provider_error and not isinstance(exc, JobClaimLost)
-        )
         reported_exc = (
             RuntimeError("Ticket email delivery provider failed.")
             if isinstance(exc, ProviderDeliveryError) and not raise_provider_errors
             else exc
         )
-        if issued_login_link is not None and not delivery_may_have_occurred:
-            try:
-                type(issued_login_link).objects.filter(pk=issued_login_link.pk).delete()
-            except Exception:  # noqa: BLE001 - preserve the original delivery error.
-                logger.exception("Unable to discard provisional ticket login link")
-
-        if isinstance(exc, JobClaimLost):
-            logger.info("Ticket email job claim was lost for registration %s", registration.pk)
-        else:
-            logger.exception("Failed to send ticket email for registration %s", registration.pk)
-            registration.ticket_email_error = str(reported_exc)
-            registration.save(update_fields=["ticket_email_error"])
+        _record_ticket_failure(delivery, exc, reported_exc)
         if reported_exc is not exc:
             raise reported_exc from exc
         raise

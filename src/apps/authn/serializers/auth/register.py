@@ -118,6 +118,37 @@ class RegisterSerializer(serializers.Serializer):
         )
         return attrs
 
+    def _create_pending_member(self, email, password, first_name, last_name) -> Member:
+        """Create an inactive member owning ``email``, or reuse the pending registration that already does.
+
+        Claiming the address can race another registration for it; the loser deletes its new row and
+        continues with the winner's pending member (or refuses when the address belongs to an account).
+        """
+        from apps.authn.models import ContactEmail
+
+        member = Member.objects.create_user(
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            is_active=False,
+            registration_pending=True,
+        )
+        if claim_unclaimed_contact_email(email, member=member) is not None:
+            return member
+        pending_member = get_pending_registration_member(email)
+        if pending_member is not None:
+            member.delete()
+            return pending_member
+        try:
+            ContactEmail.objects.create(member=member, email_address=email, email_type="primary", verified=False)
+        except IntegrityError as exc:
+            pending_member = get_pending_registration_member(email)
+            member.delete()
+            if pending_member is None:
+                raise serializers.ValidationError({"email": "Unable to register with this email address."}) from exc
+            return pending_member
+        return member
+
     def create(self, validated_data: dict) -> Member:
         """
         Create a new user with the validated data.
@@ -141,38 +172,9 @@ class RegisterSerializer(serializers.Serializer):
         except DjangoValidationError as exc:
             raise serializers.ValidationError({"password": list(exc.messages)}) from exc
 
-        from apps.authn.models import ContactEmail
-
         member = getattr(self, "_pending_member", None)
         if member is None:
-            member = Member.objects.create_user(
-                password=password,
-                first_name=first_name,
-                last_name=last_name,
-                is_active=False,
-                registration_pending=True,
-            )
-            if claim_unclaimed_contact_email(email, member=member) is None:
-                pending_member = get_pending_registration_member(email)
-                if pending_member is not None:
-                    member.delete()
-                    member = pending_member
-                else:
-                    try:
-                        ContactEmail.objects.create(
-                            member=member,
-                            email_address=email,
-                            email_type="primary",
-                            verified=False,
-                        )
-                    except IntegrityError as exc:
-                        pending_member = get_pending_registration_member(email)
-                        member.delete()
-                        if pending_member is None:
-                            raise serializers.ValidationError(
-                                {"email": "Unable to register with this email address."}
-                            ) from exc
-                        member = pending_member
+            member = self._create_pending_member(email, password, first_name, last_name)
 
         member.first_name = first_name
         member.last_name = last_name

@@ -86,6 +86,16 @@ def load_uploaded_pages(request, context, template_name):
     return bundle["pages"]
 
 
+def _import_page(page_data, existing, blocks_data, default_status) -> None:
+    """Write one page and replace its blocks atomically, locking an existing page and its blocks first."""
+    with transaction.atomic():
+        if existing is not None:
+            existing = CMSPage.objects.select_for_update().get(pk=existing.pk)
+            list(CMSBlock.objects.select_for_update().filter(page=existing))
+        page = upsert_page(page_data, existing, default_status)
+        replace_page_blocks(page, blocks_data)
+
+
 def process_page_data(pages_data, *, action, default_status, validate_required):
     block_type_keys = {choice[0] for choice in BLOCK_TYPE_CHOICES}
     results = []
@@ -98,17 +108,40 @@ def process_page_data(pages_data, *, action, default_status, validate_required):
         )
         if not result["errors"] and action == "execute":
             try:
-                with transaction.atomic():
-                    if existing is not None:
-                        existing = CMSPage.objects.select_for_update().get(pk=existing.pk)
-                        list(CMSBlock.objects.select_for_update().filter(page=existing))
-                    page = upsert_page(page_data, existing, default_status)
-                    replace_page_blocks(page, blocks_data)
+                _import_page(page_data, existing, blocks_data, default_status)
                 result["success"] = True
             except Exception as exc:  # noqa: BLE001
                 result["errors"].append(str(exc))
         results.append(result)
     return results
+
+
+def _block_errors(blocks, block_type_keys) -> list[str]:
+    errors = []
+    for index, block_data in enumerate(blocks):
+        block_type = block_data.get("block_type", "")
+        if block_type not in block_type_keys:
+            errors.append(f"Block #{index + 1}: unknown type '{block_type}'.")
+            continue
+        try:
+            validate_block_data(block_type, block_data.get("data", {}))
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"Block #{index + 1} ({block_type}): {exc}")
+    return errors
+
+
+def _model_errors(candidate) -> list[str]:
+    try:
+        candidate.full_clean()
+    except ValidationError as exc:
+        if hasattr(exc, "message_dict"):
+            return [
+                f"{field}: {message}"
+                for field, field_messages in exc.message_dict.items()
+                for message in field_messages
+            ]
+        return list(exc.messages)
+    return []
 
 
 def validate_page_data(page_data, block_type_keys, validate_required, default_status="draft"):
@@ -117,38 +150,17 @@ def validate_page_data(page_data, block_type_keys, validate_required, default_st
     route = page_data.get("route", "")
     result = {"slug": slug, "title": title, "errors": [], "action": "", "block_count": len(page_data.get("blocks", []))}
     if validate_required:
-        if not slug:
-            result["errors"].append("Missing 'slug'.")
-        if not route:
-            result["errors"].append("Missing 'route'.")
-        if not title:
-            result["errors"].append("Missing 'title'.")
-    for index, block_data in enumerate(page_data.get("blocks", [])):
-        block_type = block_data.get("block_type", "")
-        if block_type not in block_type_keys:
-            result["errors"].append(f"Block #{index + 1}: unknown type '{block_type}'.")
-            continue
-        try:
-            validate_block_data(block_type, block_data.get("data", {}))
-        except Exception as exc:  # noqa: BLE001
-            result["errors"].append(f"Block #{index + 1} ({block_type}): {exc}")
+        result["errors"].extend(
+            f"Missing '{name}'." for name, value in (("slug", slug), ("route", route), ("title", title)) if not value
+        )
+    result["errors"].extend(_block_errors(page_data.get("blocks", []), block_type_keys))
     existing = CMSPage.objects.filter(slug=slug).first() if slug else None
     result["action"] = "update" if existing else "create"
     if slug and route and title:
         candidate = CMSPage.objects.get(pk=existing.pk) if existing else CMSPage()
         for field, value in _page_payload(page_data, default_status).items():
             setattr(candidate, field, value)
-        try:
-            candidate.full_clean()
-        except ValidationError as exc:
-            if hasattr(exc, "message_dict"):
-                result["errors"].extend(
-                    f"{field}: {message}"
-                    for field, field_messages in exc.message_dict.items()
-                    for message in field_messages
-                )
-            else:
-                result["errors"].extend(exc.messages)
+        result["errors"].extend(_model_errors(candidate))
     return result, page_data.get("blocks", []), existing
 
 

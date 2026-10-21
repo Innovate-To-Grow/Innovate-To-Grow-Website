@@ -84,6 +84,47 @@ def _count(summary: dict[str, Any], key: str, filename: str) -> int:
     return value
 
 
+def _app_totals(app: str, files: dict[str, Any]) -> dict[str, int] | None:
+    """Summed coverage counters of the app's files, or None when the report has none of them."""
+    prefixes = (f"apps/{app}/", f"src/apps/{app}/")
+    matched = [
+        (name.replace("\\", "/"), data) for name, data in files.items() if name.replace("\\", "/").startswith(prefixes)
+    ]
+    if not matched:
+        return None
+    totals = dict.fromkeys(("covered_lines", "num_statements", "covered_branches", "num_branches"), 0)
+    for filename, data in matched:
+        if not isinstance(data, dict) or not isinstance(data.get("summary"), dict):
+            raise ConfigurationError(f"coverage entry for {filename!r} must contain a summary object")
+        counts = _counts(data["summary"], filename)
+        for key in totals:
+            totals[key] += counts[key]
+    return totals
+
+
+def _floor_failures(app: str, totals: dict[str, int], line_floor: float, branch_floor: float) -> list[str]:
+    failures = []
+    statements = totals["num_statements"]
+    branches = totals["num_branches"]
+    if statements == 0:
+        failures.append(f"{app}: no executable lines (line floor {line_floor:.2f}%)")
+    else:
+        actual = totals["covered_lines"] * 100 / statements
+        if actual + 1e-12 < line_floor:
+            failures.append(
+                f"{app}: line {actual:.2f}% is below {line_floor:.2f}% ({totals['covered_lines']}/{statements})"
+            )
+    if branches == 0:
+        failures.append(f"{app}: zero branches; cannot enforce branch floor {branch_floor:.2f}%")
+    else:
+        actual = totals["covered_branches"] * 100 / branches
+        if actual + 1e-12 < branch_floor:
+            failures.append(
+                f"{app}: branch {actual:.2f}% is below {branch_floor:.2f}% ({totals['covered_branches']}/{branches})"
+            )
+    return failures
+
+
 def check_coverage(report: dict[str, Any], floors: dict[str, tuple[float, float]]) -> list[str]:
     meta = report.get("meta")
     if not isinstance(meta, dict) or meta.get("branch_coverage") is not True:
@@ -93,40 +134,11 @@ def check_coverage(report: dict[str, Any], floors: dict[str, tuple[float, float]
         raise ConfigurationError("coverage report must contain a 'files' object")
     failures = []
     for app, (line_floor, branch_floor) in floors.items():
-        prefixes = (f"apps/{app}/", f"src/apps/{app}/")
-        matched = [
-            (name.replace("\\", "/"), data)
-            for name, data in files.items()
-            if name.replace("\\", "/").startswith(prefixes)
-        ]
-        if not matched:
+        totals = _app_totals(app, files)
+        if totals is None:
             failures.append(f"{app}: no coverage files found under apps/{app}/")
-            continue
-        totals = dict.fromkeys(("covered_lines", "num_statements", "covered_branches", "num_branches"), 0)
-        for filename, data in matched:
-            if not isinstance(data, dict) or not isinstance(data.get("summary"), dict):
-                raise ConfigurationError(f"coverage entry for {filename!r} must contain a summary object")
-            counts = _counts(data["summary"], filename)
-            for key in totals:
-                totals[key] += counts[key]
-        statements = totals["num_statements"]
-        branches = totals["num_branches"]
-        if statements == 0:
-            failures.append(f"{app}: no executable lines (line floor {line_floor:.2f}%)")
         else:
-            actual = totals["covered_lines"] * 100 / statements
-            if actual + 1e-12 < line_floor:
-                failures.append(
-                    f"{app}: line {actual:.2f}% is below {line_floor:.2f}% ({totals['covered_lines']}/{statements})"
-                )
-        if branches == 0:
-            failures.append(f"{app}: zero branches; cannot enforce branch floor {branch_floor:.2f}%")
-        else:
-            actual = totals["covered_branches"] * 100 / branches
-            if actual + 1e-12 < branch_floor:
-                failures.append(
-                    f"{app}: branch {actual:.2f}% is below {branch_floor:.2f}% ({totals['covered_branches']}/{branches})"
-                )
+            failures.extend(_floor_failures(app, totals, line_floor, branch_floor))
     return failures
 
 

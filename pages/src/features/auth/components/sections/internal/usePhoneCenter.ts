@@ -1,39 +1,24 @@
-import {useState, useEffect, type FormEvent} from 'react';
+import {useState, useEffect} from 'react';
 import {
-    getContactPhones,
-    createContactPhone,
-    updateContactPhone,
-    deleteContactPhone,
-    requestContactPhoneVerification,
-    verifyContactPhoneCode,
-    type ContactPhone,
+  getContactPhones,
+  updateContactPhone,
+  deleteContactPhone,
+  type ContactPhone,
 } from '@/features/auth/api';
 import {USER_FACING_GENERIC_ERROR} from '../../shared/apiErrors';
-import {canSubmitNationalPhone} from './phoneInput';
+import {phoneVerificationOptions, useAddPhoneActions, useAddPhoneForm} from './useAddPhoneForm';
+import {useContactCodeVerification} from './useContactCodeVerification';
 
+/**
+ * The account's phone numbers. A new number is created on the server but stays out of the list (as
+ * `pendingNewPhone`) until its SMS code is verified; abandoning it deletes it again.
+ */
 export const usePhoneCenter = () => {
     const [phones, setPhones] = useState<ContactPhone[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-    // Add form state
-    const [showAddForm, setShowAddForm] = useState(false);
-    const [addPhoneNumber, setAddPhoneNumber] = useState('');
-    const [addSubscribe, setAddSubscribe] = useState(false);
-    const [addTermsAccepted, setAddTermsAccepted] = useState(false);
-    const [addLoading, setAddLoading] = useState(false);
-    const [addError, setAddError] = useState<string | null>(null);
-    /** Created on server but not yet shown in the list until SMS verification succeeds. */
-    const [pendingNewPhone, setPendingNewPhone] = useState<ContactPhone | null>(null);
-    const [abandonPendingLoading, setAbandonPendingLoading] = useState(false);
-
-    // Verification state
-    const [verifyingId, setVerifyingId] = useState<string | null>(null);
-    const [verifyCode, setVerifyCode] = useState('');
-    const [verifyLoading, setVerifyLoading] = useState(false);
-    const [verifyError, setVerifyError] = useState<string | null>(null);
-    const [resendLoading, setResendLoading] = useState(false);
+    const form = useAddPhoneForm();
 
     useEffect(() => {
         const fetchPhones = async () => {
@@ -53,19 +38,9 @@ export const usePhoneCenter = () => {
         setError(null);
         setSuccessMessage(null);
     };
-
-    const beginAddPhoneFlow = () => {
-        clearMessages();
-        setShowAddForm(true);
-        setPendingNewPhone(null);
-        setVerifyingId(null);
-        setVerifyCode('');
-        setVerifyError(null);
-        setAddPhoneNumber('');
-        setAddSubscribe(false);
-        setAddTermsAccepted(false);
-        setAddError(null);
-    };
+    const messages = {clear: clearMessages, setError, setSuccess: setSuccessMessage};
+    const verification = useContactCodeVerification(phoneVerificationOptions(form, setPhones, messages));
+    const addActions = useAddPhoneActions(form, verification, messages);
 
     const handleSubscribeToggle = async (phone: ContactPhone) => {
         clearMessages();
@@ -77,148 +52,13 @@ export const usePhoneCenter = () => {
         }
     };
 
-    const handleAddSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        if (!addTermsAccepted) {
-            setAddError('Please accept the Privacy/Legal Notice and Privacy Statement to continue.');
-            return;
-        }
-        if (!canSubmitNationalPhone(addPhoneNumber)) {
-            setAddError('Enter a 10-digit US phone number.');
-            return;
-        }
-        setAddLoading(true);
-        setAddError(null);
-        clearMessages();
-        try {
-            const created = await createContactPhone({
-                phone_number: addPhoneNumber,
-                region: '1-US',
-                subscribe: addSubscribe,
-            });
-            setAddPhoneNumber('');
-            setPendingNewPhone(created);
-            setVerifyingId(created.id);
-            setVerifyCode('');
-            setVerifyError(null);
-
-            try {
-                await requestContactPhoneVerification(created.id);
-            } catch {
-                setError('SMS could not be sent. Tap Resend Code.');
-            }
-        } catch {
-            setAddError(USER_FACING_GENERIC_ERROR);
-        } finally {
-            setAddLoading(false);
-        }
-    };
-
-    const handleToggleVerify = async (phoneId: string) => {
-        clearMessages();
-        setVerifyError(null);
-        setVerifyCode('');
-        setResendLoading(true);
-        try {
-            await requestContactPhoneVerification(phoneId);
-            setVerifyingId(phoneId);
-            setSuccessMessage('Code sent. Enter it below and tap Submit code.');
-        } catch {
-            setError(USER_FACING_GENERIC_ERROR);
-        } finally {
-            setResendLoading(false);
-        }
-    };
-
-    const handleVerifySubmit = async (event: FormEvent) => {
-        event.preventDefault();
-        if (!verifyingId || verifyCode.length !== 6) return;
-        const targetId = verifyingId;
-        const wasPendingAdd = pendingNewPhone?.id === targetId;
-        if (wasPendingAdd && !addTermsAccepted) {
-            setVerifyError('Please accept the Privacy/Legal Notice and Privacy Statement to continue.');
-            return;
-        }
-        setVerifyLoading(true);
-        setVerifyError(null);
-        clearMessages();
-        try {
-            if (wasPendingAdd && pendingNewPhone.subscribe !== addSubscribe) {
-                await updateContactPhone(targetId, {subscribe: addSubscribe});
-            }
-            const updated = await verifyContactPhoneCode(targetId, verifyCode);
-            setPhones((prev) => (wasPendingAdd ? [updated, ...prev] : prev.map((p) => (p.id === targetId ? updated : p))));
-            setVerifyingId(null);
-            setVerifyCode('');
-            if (wasPendingAdd) {
-                setPendingNewPhone(null);
-                setShowAddForm(false);
-                setAddSubscribe(false);
-                setAddTermsAccepted(false);
-            }
-            setSuccessMessage('Phone number verified successfully.');
-        } catch {
-            setVerifyError(USER_FACING_GENERIC_ERROR);
-        } finally {
-            setVerifyLoading(false);
-        }
-    };
-
-    const handleResend = async (phoneId: string) => {
-        setResendLoading(true);
-        setVerifyError(null);
-        try {
-            await requestContactPhoneVerification(phoneId);
-            if (pendingNewPhone?.id !== phoneId) {
-                setSuccessMessage('New code sent. Enter it below and tap Submit code.');
-            }
-        } catch {
-            setVerifyError(USER_FACING_GENERIC_ERROR);
-        } finally {
-            setResendLoading(false);
-        }
-    };
-
-    const handleResendPendingPhone = () => {
-        if (pendingNewPhone) void handleResend(pendingNewPhone.id);
-    };
-
-    const handleCancelVerify = () => {
-        setVerifyingId(null);
-        setVerifyCode('');
-        setVerifyError(null);
-    };
-
-    const handleAbandonPendingPhone = async () => {
-        if (!pendingNewPhone) return;
-        if (!window.confirm('Discard this number? It will be removed until you add it again.')) return;
-        setAbandonPendingLoading(true);
-        setError(null);
-        try {
-            await deleteContactPhone(pendingNewPhone.id);
-            setPendingNewPhone(null);
-            setVerifyingId(null);
-            setVerifyCode('');
-            setVerifyError(null);
-            setAddSubscribe(false);
-            setAddTermsAccepted(false);
-        } catch {
-            setError(USER_FACING_GENERIC_ERROR);
-        } finally {
-            setAbandonPendingLoading(false);
-        }
-    };
-
     const handleDelete = async (phoneId: string) => {
         if (!window.confirm('Are you sure you want to remove this phone number?')) return;
         clearMessages();
         try {
             await deleteContactPhone(phoneId);
             setPhones((prev) => prev.filter((p) => p.id !== phoneId));
-            if (verifyingId === phoneId) {
-                setVerifyingId(null);
-                setVerifyCode('');
-            }
+            verification.forget(phoneId);
             setSuccessMessage('Phone number removed.');
         } catch {
             setError(USER_FACING_GENERIC_ERROR);
@@ -230,35 +70,32 @@ export const usePhoneCenter = () => {
         loading,
         error,
         successMessage,
-        showAddForm,
-        setShowAddForm,
-        pendingNewPhone,
-        addPhoneNumber,
-        setAddPhoneNumber,
-        addSubscribe,
-        setAddSubscribe,
-        addTermsAccepted,
-        setAddTermsAccepted,
-        addLoading,
-        addError,
-        setAddError,
-        verifyingId,
-        verifyCode,
-        setVerifyCode,
-        verifyLoading,
-        verifyError,
-        resendLoading,
-        abandonPendingLoading,
+        showAddForm: form.showAddForm,
+        setShowAddForm: form.setShowAddForm,
+        pendingNewPhone: form.pendingNewPhone,
+        addPhoneNumber: form.addPhoneNumber,
+        setAddPhoneNumber: form.setAddPhoneNumber,
+        addSubscribe: form.addSubscribe,
+        setAddSubscribe: form.setAddSubscribe,
+        addTermsAccepted: form.addTermsAccepted,
+        setAddTermsAccepted: form.setAddTermsAccepted,
+        addLoading: form.addLoading,
+        addError: form.addError,
+        setAddError: form.setAddError,
+        verifyingId: verification.verifyingId,
+        verifyCode: verification.verifyCode,
+        setVerifyCode: verification.setVerifyCode,
+        verifyLoading: verification.verifyLoading,
+        verifyError: verification.verifyError,
+        resendLoading: verification.resendLoading,
+        abandonPendingLoading: form.abandonPendingLoading,
         clearMessages,
-        beginAddPhoneFlow,
+        ...addActions,
         handleSubscribeToggle,
-        handleAddSubmit,
-        handleToggleVerify,
-        handleVerifySubmit,
-        handleResend,
-        handleResendPendingPhone,
-        handleCancelVerify,
-        handleAbandonPendingPhone,
+        handleToggleVerify: verification.requestVerification,
+        handleVerifySubmit: verification.submit,
+        handleResend: verification.resend,
+        handleCancelVerify: verification.cancel,
         handleDelete,
     };
 };

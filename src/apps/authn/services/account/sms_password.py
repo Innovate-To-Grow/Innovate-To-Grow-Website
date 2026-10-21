@@ -20,7 +20,7 @@ from apps.authn.services.sms import (
     PhoneVerificationThrottled,
     start_phone_verification,
 )
-from apps.authn.services.sms.sns_verify import _check_phone_verification
+from apps.authn.services.sms.checks import _check_phone_verification
 
 
 def _password_context(*, member, purpose: str) -> str:

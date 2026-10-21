@@ -1,0 +1,276 @@
+/* Responsive rules for every section above. Kept last and together: they override the
+   base rules of all the files before them, so they must follow every one of them.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Utilities ----------------------------------------------------------------- */
+
+.project-grid-wide-only {
+  display: inline;
+}
+
+/* ---- Narrow screens ------------------------------------------------------------ */
+
+@media (max-width: 992px) {
+  /* 44px targets on touch screens. */
+  .project-grid-results-controls .project-grid-select {
+    height: 2.75rem;
+  }
+
+  .project-grid-detail-icon-button {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 900px) {
+  .past-projects-help-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  /* The table becomes a list of rows. */
+  .project-grid-table-wrap {
+    display: none;
+  }
+
+  /* The save goes under the title instead of beside it. */
+  .project-grid-save-status {
+    align-items: flex-start;
+  }
+
+  .project-grid-mobile-cards {
+    display: block;
+  }
+
+  .project-grid-results-bar {
+    margin-top: 1rem;
+  }
+
+  .project-grid-results-controls {
+    width: 100%;
+  }
+
+  .project-grid-controls-row,
+  .project-grid-controls-row.has-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 0.625rem;
+  }
+
+  .project-grid-controls-row > .project-grid-search-field,
+  .project-grid-controls-row.has-filters > .project-grid-search-field,
+  .project-grid-controls-row > .past-projects-ai-search {
+    grid-column: 1 / -1;
+  }
+
+  .project-grid-controls-row > .project-grid-toggle-details:only-child,
+  .project-grid-controls-row > .project-grid-page-size + .project-grid-toggle-details {
+    align-self: end;
+  }
+
+  /* Previous / Page x of y / Next. */
+  .project-grid-pagination {
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+
+  .project-grid-pager-pages {
+    display: none;
+  }
+
+  .project-grid-pager-status {
+    display: inline;
+  }
+
+  .project-grid-pager-step {
+    min-height: 2.75rem;
+  }
+
+  /* Search tables: full-width Save, a two-column grid of the other actions. */
+  .past-projects-action-bar-header {
+    display: block;
+  }
+
+  .past-projects-action-bar-title {
+    margin-bottom: 0.75rem;
+  }
+
+  .past-projects-action-bar-header {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .past-projects-action-bar-title {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--itg-color-primary);
+  }
+
+  .past-projects-action-bar-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .past-projects-action-bar-group .itg-btn {
+    padding: 0 0.5rem;
+  }
+
+  /* Half-width "View All Details": the footer CTA's 14px keeps it on one line. */
+  .project-grid-controls-row > .project-grid-toggle-details {
+    padding: 0 0.5rem;
+    font-size: var(--itg-font-size-small);
+  }
+
+  .search-table-card {
+    padding: 14px;
+  }
+
+  .search-table-save-group,
+  .search-table-save-group .search-table-save-button {
+    width: 100%;
+  }
+
+  .search-table-save-button {
+    min-height: 3rem;
+    font-size: var(--itg-font-size-meta);
+  }
+
+  .search-table-save-count {
+    display: inline;
+  }
+
+  .search-table-save-group .search-table-selection-count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .search-table-secondary-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .search-table-action-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .search-table-group-label,
+  .search-table-group-divider {
+    display: none;
+  }
+
+  /* "More table actions": the table-tidying buttons, folded away until opened. */
+  .search-table-more-actions {
+    border-top: 1px solid var(--itg-color-border);
+  }
+
+  .search-table-more-actions-summary {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--itg-color-primary);
+    font-size: var(--itg-font-size-small);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .search-table-more-actions[open] > .search-table-action-group {
+    padding-bottom: 0.5rem;
+  }
+
+  /* On phones the text buttons become 44px outlined buttons (2px navy, like .itg-btn-outline). */
+  .search-table-action-group .itg-btn-text {
+    min-height: 2.75rem;
+    padding: 0 0.25rem;
+    border: 2px solid var(--itg-color-primary);
+    background: var(--itg-color-white);
+    color: var(--itg-color-primary);
+    font-size: var(--itg-font-size-small);
+    text-decoration: none;
+  }
+
+  .search-table-action-group .itg-btn-text:hover,
+  .search-table-action-group .itg-btn-text:focus-visible {
+    background: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
+
+  .search-table-action-group .itg-btn-text:disabled {
+    border-color: var(--itg-color-disabled-border);
+    background: var(--itg-color-disabled-bg);
+    color: var(--itg-color-disabled-text);
+  }
+
+  /* Saved Merged Results and shared lists. */
+  .project-grid-merged .project-grid-phone-list-toggle {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--itg-color-border);
+    background: var(--itg-color-bg-page);
+    text-decoration: none;
+  }
+
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-controls,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-results-bar,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-mobile-cards,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-pagination,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-empty,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-no-results,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-edit-group {
+    display: none;
+  }
+
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-toolbar--bottom {
+    margin-top: 0;
+  }
+
+  .project-grid-merged .project-grid-inline-actions,
+  .project-grid-export-group {
+    width: 100%;
+  }
+
+  .project-grid-export-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .project-grid-export-group .project-grid-group-label {
+    grid-column: 1 / -1;
+  }
+
+  .project-grid-wide-only {
+    display: none;
+  }
+
+  .project-grid-share-result-row {
+    flex-direction: column;
+  }
+
+  .project-grid-share-result-input {
+    flex: none;
+  }
+
+  .past-projects-dialog-actions .itg-btn {
+    flex: 1 1 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-table-results-motion {
+    animation: none;
+  }
+
+  .past-projects-ai-search-status::before {
+    animation-duration: 3s;
+  }
+}

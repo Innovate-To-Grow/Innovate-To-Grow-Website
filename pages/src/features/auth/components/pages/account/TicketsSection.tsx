@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {Link} from 'react-router';
 import type {EventRegistrationSummary, Registration} from '@/features/events/api';
-import {formatEventDateRange, isEventPast} from '@/features/events/formatEventDateRange';
+import {formatEventDateRange, isEventPast} from '@/lib/format/eventDates';
 
 interface TicketsSectionProps {
   tickets: Registration[];

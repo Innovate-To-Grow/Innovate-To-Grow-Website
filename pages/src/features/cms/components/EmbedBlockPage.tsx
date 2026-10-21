@@ -1,9 +1,9 @@
-import { createElement, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { createElement, Suspense, useMemo, useRef, type ComponentType } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { BlockRenderer } from './BlockRenderer';
 import { cmsPageClassName } from './pageClassName';
-import { fetchCMSEmbed, type CMSEmbedResponse } from '@/features/cms/api';
-import { embedRouteSupportsSchedule, resolveEmbedAppRoute } from './embedAppRoutes';
+import type { CMSEmbedResponse } from '@/features/cms/api';
+import { EMBED_BODY_CSS, useBaseTargetBlank, useEmbedData, useHeadStyle, useReportHeightToParent } from './embed/useEmbedDocument';
 import { normalizeScheduleId } from './embedScheduleId';
 import {
   SECTION_TITLES_KEY,
@@ -26,17 +26,21 @@ import {
  *   preventing users from getting stuck in the chromeless iframe view.
  */
 
-// Wildcard is deliberate: the embed is designed to render inside arbitrary
-// third-party pages and the payload ({type, slug, height}) is non-sensitive.
-// Do not add sensitive fields to the postMessage payload without also
-// narrowing `POST_TARGET` to `document.referrer`.
-const POST_TARGET = '*';
+export interface EmbedAppRouteProps {
+  scheduleId?: string | null;
+}
 
-export const EmbedBlockPage = () => {
+/** The app routes a CMS embed widget may render; supplied by the app layer, which owns the route pages. */
+export interface EmbedAppRoutes {
+  resolve: (route: string | undefined | null) => ComponentType<EmbedAppRouteProps> | null;
+  /** Routes whose component accepts a pinned `CurrentProjectSchedule` (`scheduleId` prop). */
+  supportsSchedule: (route: string | undefined | null) => boolean;
+}
+
+export const EmbedBlockPage = ({appRoutes}: {appRoutes: EmbedAppRoutes}) => {
   const { embedSlug } = useParams<{ embedSlug: string }>();
   const [searchParams] = useSearchParams();
-  const [data, setData] = useState<CMSEmbedResponse | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data, notFound } = useEmbedData(embedSlug);
 
   const hideTitlesFromQuery = isTruthyParam(searchParams.get('hide-titles'));
   const hideSectionsParam = searchParams.get('hide-sections');
@@ -56,105 +60,14 @@ export const EmbedBlockPage = () => {
     [hiddenSections],
   );
 
-  // Fetch block data
-  useEffect(() => {
-    if (!embedSlug) return;
-    let cancelled = false;
-    fetchCMSEmbed(embedSlug)
-      .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .catch(() => {
-        if (!cancelled) setNotFound(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [embedSlug]);
-
-  // Inject <base target="_blank"> so block links pop out of the iframe
-  useEffect(() => {
-    const existing = document.head.querySelector('base');
-    if (existing) return;
-    const base = document.createElement('base');
-    base.target = '_blank';
-    document.head.appendChild(base);
-    return () => {
-      base.remove();
-    };
-  }, []);
-
-  // Inject embed-specific body styles (transparent background, no margins)
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.id = 'itg-embed-body';
-    style.textContent = `
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: transparent !important;
-      }
-      body {
-        overflow-x: hidden;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      style.remove();
-    };
-  }, []);
-
-  // Inject page_css (from the parent CMS page)
-  useEffect(() => {
-    if (!data?.page_css) return;
-    const style = document.createElement('style');
-    style.id = 'itg-embed-page-css';
-    style.textContent = data.page_css;
-    document.head.appendChild(style);
-    return () => {
-      style.remove();
-    };
-  }, [data?.page_css]);
-
+  useBaseTargetBlank();
+  useHeadStyle('itg-embed-body', EMBED_BODY_CSS);
+  // page_css comes from the parent CMS page.
+  useHeadStyle('itg-embed-page-css', data?.page_css);
   // Hide safe preset sections when requested by widget config or preview query params.
-  useEffect(() => {
-    if (!hiddenSectionsCss) return;
-    const style = document.createElement('style');
-    style.id = 'itg-embed-hide-sections';
-    style.textContent = hiddenSectionsCss;
-    document.head.appendChild(style);
-    return () => {
-      style.remove();
-    };
-  }, [hiddenSectionsCss]);
-
-  // Report height to parent (once data is rendered, and on any size change)
-  useEffect(() => {
-    if (!data || !embedSlug) return;
-    if (window.parent === window) return; // not inside an iframe — no-op
-
-    const reportHeight = () => {
-      const height = Math.max(
-        document.documentElement.scrollHeight,
-        document.body ? document.body.scrollHeight : 0,
-      );
-      window.parent.postMessage(
-        { type: 'i2g-embed-resize', slug: embedSlug, height },
-        POST_TARGET,
-      );
-    };
-
-    // Initial report + observe future changes on <html>, which reflows for
-    // both content changes and container-width changes.
-    reportHeight();
-    const ro = new ResizeObserver(reportHeight);
-    ro.observe(document.documentElement);
-    window.addEventListener('load', reportHeight);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('load', reportHeight);
-    };
-  }, [data, embedSlug]);
+  useHeadStyle('itg-embed-hide-sections', hiddenSectionsCss);
+  // Report height to parent (once data is rendered, and on any size change).
+  useReportHeightToParent(embedSlug, Boolean(data));
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -168,7 +81,7 @@ export const EmbedBlockPage = () => {
   if (!data) return null;
 
   return (
-    <EmbedBody data={data} containerRef={containerRef} scheduleIdOverride={scheduleIdFromQuery} />
+    <EmbedBody data={data} containerRef={containerRef} scheduleIdOverride={scheduleIdFromQuery} appRoutes={appRoutes} />
   );
 };
 
@@ -176,12 +89,13 @@ interface EmbedBodyProps {
   data: CMSEmbedResponse;
   containerRef: React.RefObject<HTMLDivElement | null>;
   scheduleIdOverride?: string | null;
+  appRoutes: EmbedAppRoutes;
 }
 
-const EmbedBody = ({ data, containerRef, scheduleIdOverride = null }: EmbedBodyProps) => {
+const EmbedBody = ({ data, containerRef, scheduleIdOverride = null, appRoutes }: EmbedBodyProps) => {
   const appRouteComponent = useMemo(
-    () => (data.widget_type === 'app_route' ? resolveEmbedAppRoute(data.app_route) : null),
-    [data.widget_type, data.app_route],
+    () => (data.widget_type === 'app_route' ? appRoutes.resolve(data.app_route) : null),
+    [appRoutes, data.widget_type, data.app_route],
   );
 
   if (data.widget_type === 'app_route') {
@@ -193,7 +107,7 @@ const EmbedBody = ({ data, containerRef, scheduleIdOverride = null }: EmbedBodyP
       );
     }
     // Precedence: block override (iframe query) > widget default (embed payload) > active schedule.
-    const appRouteProps = embedRouteSupportsSchedule(data.app_route)
+    const appRouteProps = appRoutes.supportsSchedule(data.app_route)
       ? {scheduleId: scheduleIdOverride || data.schedule_id || null}
       : undefined;
     return (

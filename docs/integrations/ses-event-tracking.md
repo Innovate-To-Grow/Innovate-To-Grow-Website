@@ -30,7 +30,7 @@ Code entry points:
   `src/apps/mail/services/send_campaign/transport.py::_send_via_ses`
 - Webhook: `src/apps/mail/views/ses_webhook.py::SesEventWebhookView` mounted
   at `/mail/ses/events/`
-- Signature verifier: `src/apps/mail/services/sns_signature.py`
+- Signature verifier: `src/apps/mail/services/sns/signature.py`
 - Event dispatcher: `src/apps/mail/services/ses_events/`
 
 ## AWS setup — one-time per environment

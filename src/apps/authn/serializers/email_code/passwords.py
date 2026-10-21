@@ -1,4 +1,4 @@
-"""Password reset and password change serializers."""
+"""Password reset and password change serializers (account deletion: ``account_deletion.py``)."""
 
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ from apps.authn.services import (
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
     consume_verification_token,
-    delete_member_account,
     get_member_auth_emails,
     issue_email_challenge,
     normalize_email,
@@ -30,7 +29,7 @@ from apps.authn.services import (
 )
 
 from ..helpers import decrypt_password_pair
-from .base import PURPOSE, BaseCodeVerifySerializer
+from .base import PURPOSE
 
 logger = logging.getLogger(__name__)
 
@@ -74,27 +73,14 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     def save(self):
         from apps.authn.models import SendVerificationRequest
         from apps.authn.services.send_verification.exceptions import SendVerificationError
-        from apps.authn.services.send_verification.outcomes import SendOutcome, failure_status, public_reset_payload
+        from apps.authn.services.send_verification.outcomes import SendOutcome, public_reset_payload
 
         challenge_id = str(uuid.uuid4())
         resolved = self.validated_data["resolved"]
         outcome = SendVerificationRequest.Status.DEFINITELY_FAILED
         try:
             if resolved is not None:
-                if resolved.via == "email":
-                    issue_email_challenge(
-                        member=resolved.member,
-                        purpose=PURPOSE.PASSWORD_RESET,
-                        target_email=resolved.email,
-                    )
-                else:
-                    issued_challenge_id = request_sms_password_code(
-                        member=resolved.member,
-                        e164=resolved.e164,
-                        purpose=PURPOSE.PASSWORD_RESET,
-                    )
-                    if issued_challenge_id:
-                        challenge_id = issued_challenge_id
+                challenge_id = _send_reset_code(resolved) or challenge_id
                 outcome = SendVerificationRequest.Status.PROVIDER_ACCEPTED
         except (
             AuthChallengeDeliveryError,
@@ -106,17 +92,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             # the caller still gets the neutral answer below, exactly as for a number without an account. A 429
             # would only ever be seen for a number that HAS an account.
             challenge_id = str(getattr(exc, "challenge_id", "") or challenge_id)
-            definitely_failed = (
-                AuthChallengeThrottled,
-                PhoneVerificationThrottled,
-                PhoneVerificationInvalid,
-                SendVerificationError,
-            )
-            outcome = (
-                SendVerificationRequest.Status.DEFINITELY_FAILED
-                if isinstance(exc, definitely_failed)
-                else failure_status(exc)
-            )
+            outcome = _reset_failure_outcome(exc)
             logger.warning("Password-reset delivery did not complete", exc_info=True)
         payload = public_reset_payload(challenge_id)
         self.send_outcome = SendOutcome(
@@ -126,6 +102,31 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             challenge_id if resolved is not None and resolved.via == "phone" else "",
         )
         return payload
+
+
+def _send_reset_code(resolved) -> str | None:
+    """Send the reset code over the resolved channel; the SMS challenge id when one was issued."""
+    if resolved.via == "email":
+        issue_email_challenge(member=resolved.member, purpose=PURPOSE.PASSWORD_RESET, target_email=resolved.email)
+        return None
+    return request_sms_password_code(member=resolved.member, e164=resolved.e164, purpose=PURPOSE.PASSWORD_RESET)
+
+
+def _reset_failure_outcome(exc: Exception):
+    """Throttles, invalid numbers and a spent SMS budget sent nothing; other errors are classified."""
+    from apps.authn.models import SendVerificationRequest
+    from apps.authn.services.send_verification.exceptions import SendVerificationError
+    from apps.authn.services.send_verification.outcomes import failure_status
+
+    definitely_failed = (
+        AuthChallengeThrottled,
+        PhoneVerificationThrottled,
+        PhoneVerificationInvalid,
+        SendVerificationError,
+    )
+    if isinstance(exc, definitely_failed):
+        return SendVerificationRequest.Status.DEFINITELY_FAILED
+    return failure_status(exc)
 
 
 class PasswordResetVerifySerializer(serializers.Serializer):
@@ -352,76 +353,3 @@ class ChangePasswordCodeConfirmSerializer(serializers.Serializer):
         member.set_password(new_password)
         member.save(update_fields=["password"])
         return {"message": "Password changed successfully."}
-
-
-class DeleteAccountCodeRequestSerializer(serializers.Serializer):
-    def validate(self, attrs):
-        member = self.context["request"].user
-        email = member.get_primary_email()
-        if not email:
-            raise serializers.ValidationError(
-                {"detail": "No verified email is available for account deletion. Add and verify an email first."}
-            )
-        attrs["target_email"] = normalize_email(email)
-        return attrs
-
-    def save(self):
-        member = self.context["request"].user
-        issue_email_challenge(
-            member=member,
-            purpose=PURPOSE.ACCOUNT_DELETE,
-            target_email=self.validated_data["target_email"],
-        )
-        return {"message": "Deletion verification code sent."}
-
-
-class DeleteAccountCodeVerifySerializer(serializers.Serializer):
-    code = serializers.CharField(required=True, max_length=6, min_length=6)
-
-    def validate_code(self, value: str) -> str:
-        return BaseCodeVerifySerializer().validate_code(value)
-
-    def validate(self, attrs: dict) -> dict:
-        member = self.context["request"].user
-        email = member.get_primary_email()
-        if not email:
-            raise serializers.ValidationError(
-                {"detail": "No verified email is available for account deletion. Add and verify an email first."}
-            )
-
-        try:
-            challenge, verification_token = verify_email_code_and_mint_token(
-                purpose=PURPOSE.ACCOUNT_DELETE,
-                target_email=email,
-                code=attrs["code"],
-                member=member,
-            )
-        except AuthChallengeInvalid:
-            raise serializers.ValidationError({"detail": VERIFICATION_INVALID}) from None
-
-        if challenge.member != member:
-            raise serializers.ValidationError({"detail": VERIFICATION_INVALID})
-
-        attrs["challenge"] = challenge
-        attrs["verification_token"] = verification_token
-        return attrs
-
-    def save(self):
-        return {
-            "message": "Deletion verification code accepted.",
-            "verification_token": self.validated_data["verification_token"],
-        }
-
-
-class DeleteAccountCodeConfirmSerializer(serializers.Serializer):
-    verification_token = serializers.CharField(required=True)
-
-    def save(self):
-        member = self.context["request"].user
-        consume_verification_token(
-            purpose=PURPOSE.ACCOUNT_DELETE,
-            verification_token=self.validated_data["verification_token"],
-            member=member,
-        )
-        delete_member_account(member=member)
-        return {"message": "Account deleted successfully."}

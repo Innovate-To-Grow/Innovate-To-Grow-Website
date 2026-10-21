@@ -60,7 +60,7 @@ Known from the repository:
   proxy on that path.
 - **Through Amplify.** The demo frontend's default API base is
   `https://demo.i2g.ucmerced.edu/api`: Amplify Hosting (CloudFront) rewrites
-  `/api/<*>` to the backend origin (`amplify_redirects.py`, target
+  `/api/<*>` to the backend origin (`apps/cms/services/amplify/rules.py`, target
   `AMPLIFY_BACKEND_PROXY_URL`). The worker reconciles the same rewrite onto the
   production Amplify app, so `https://i2g.ucmerced.edu/api/...` also reaches
   production that way. Admin paths are proxied the same way on demo

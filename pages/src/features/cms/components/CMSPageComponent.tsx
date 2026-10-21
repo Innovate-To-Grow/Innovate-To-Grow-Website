@@ -1,25 +1,41 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router';
+import {useState} from 'react';
+import {useLocation} from 'react-router';
 
-import { NotFoundPage } from '@/routes/NotFoundPage';
-import { formatDocumentTitle } from '@/hooks/usePageTitle';
-import { BlockRenderer } from './BlockRenderer';
-import { cmsPageClassName } from './pageClassName';
-import {
-  clearCMSRouteRedirectChain,
-  performCMSRouteRedirect,
-} from './cmsRouteRedirect';
-import { useCMSPage } from './useCMSPage';
+import {NotFoundPage} from '@/components/NotFoundPage';
+import {BlockRenderer} from './BlockRenderer';
+import {CMSPageError, CMSPageLoading} from './page/CMSPageStatus';
+import {LivePreviewNotice} from './page/LivePreviewNotice';
+import {useCMSPageDocument} from './page/useCMSPageDocument';
+import {useCMSRouteRedirect} from './page/useCMSRouteRedirect';
+import {cmsPageClassName} from './pageClassName';
+import {useCMSPage} from './useCMSPage';
 
-function formatExpiryTime(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+interface FallbackState {
+  redirectFailure: ReturnType<typeof useCMSRouteRedirect>;
+  redirectTo: string | null | undefined;
+  error: ReturnType<typeof useCMSPage>['error'];
+  page: ReturnType<typeof useCMSPage>['page'];
+  retry: () => void;
 }
+
+/** What a published page shows instead of its blocks: a redirect in flight, not-found, or an error. */
+const nonPreviewFallback = ({redirectFailure, redirectTo, error, page, retry}: FallbackState) => {
+  if (redirectFailure === 'error') return <CMSPageError />;
+  if (redirectFailure === 'not_found') return <NotFoundPage />;
+  if (redirectTo) return <div className="cms-page-loading" />;
+  if (error === 'not_found' || (!error && !page)) return <NotFoundPage />;
+  if (error) return <CMSPageError onRetry={retry} />;
+  return null;
+};
 
 interface CMSPageComponentProps {
   routeOverride?: string;
 }
 
+/**
+ * Renders the CMS page for the current route: follows its redirect, shows its blocks, and — in an admin
+ * live preview — the preview notice (preview pages never redirect and render even while erroring).
+ */
 export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   const location = useLocation();
   const route = routeOverride || location.pathname;
@@ -27,194 +43,25 @@ export const CMSPageComponent = ({routeOverride}: CMSPageComponentProps) => {
   const preview = searchParams.has('cms_preview');
   const hasPreviewToken = searchParams.has('cms_preview_token');
 
-  const { page, redirectTo, loading, error, isLivePreview, retry } = useCMSPage(route, preview);
-  const contentRef = useRef<HTMLDivElement>(null);
-  // A page whose blocks render no h1 (an embedded archive page, a home page of cards) still needs one
-  // for screen readers and search engines: its CMS title, visually hidden.
-  const [needsFallbackTitle, setNeedsFallbackTitle] = useState(false);
+  const {page, redirectTo, loading, error, isLivePreview, retry} = useCMSPage(route, preview);
   const [showPreviewModal, setShowPreviewModal] = useState(isLivePreview);
-  const [redirectFailure, setRedirectFailure] = useState<{
-    key: string;
-    kind: 'not_found' | 'error';
-  } | null>(null);
-  const redirectAttemptRef = useRef<{
-    key: string;
-    failure: 'not_found' | 'error' | null;
-  } | null>(null);
-  const redirectKey = redirectTo ? `${route}\n${redirectTo}` : null;
-  const currentRedirectFailure = redirectFailure?.key === redirectKey
-    ? redirectFailure.kind
-    : null;
-
-  const expiresAt = page?.expires_at;
-  const expiryDisplay = useMemo(() => {
-    if (!expiresAt) return null;
-    return formatExpiryTime(expiresAt);
-  }, [expiresAt]);
-
-  useEffect(() => {
-    if (page?.title) {
-      const suffix = isLivePreview ? ' [Live Preview]' : '';
-      document.title = formatDocumentTitle(`${page.title}${suffix}`);
-    }
-  }, [page?.title, isLivePreview]);
-
-  useEffect(() => {
-    if (
-      !redirectTo
-      || !redirectKey
-      || preview
-      || hasPreviewToken
-      || isLivePreview
-    ) {
-      return;
-    }
-
-    let cancelled = false;
-    const publishFailure = (kind: 'not_found' | 'error') => {
-      queueMicrotask(() => {
-        if (!cancelled) {
-          setRedirectFailure({key: redirectKey, kind});
-        }
-      });
-    };
-
-    const previousAttempt = redirectAttemptRef.current;
-    if (previousAttempt?.key === redirectKey) {
-      if (previousAttempt.failure) {
-        publishFailure(previousAttempt.failure);
-      }
-    } else {
-      try {
-        const result = performCMSRouteRedirect(redirectTo);
-        const failure = result === 'redirected' ? null : 'not_found';
-        redirectAttemptRef.current = {key: redirectKey, failure};
-        if (failure) publishFailure(failure);
-      } catch {
-        redirectAttemptRef.current = {key: redirectKey, failure: 'error'};
-        publishFailure('error');
-      }
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [redirectTo, redirectKey, preview, hasPreviewToken, isLivePreview]);
-
-  // A successfully loaded destination ends the tab-scoped redirect chain. A
-  // later, independent visit to the same legacy URL must be allowed to start a
-  // fresh redirect.
-  useEffect(() => {
-    if (page && !redirectTo && !preview && !hasPreviewToken && !isLivePreview) {
-      clearCMSRouteRedirectChain();
-    }
-  }, [page, redirectTo, preview, hasPreviewToken, isLivePreview]);
-
-  // Blocks can render (and lazy-load) after this effect, so keep checking as the content changes.
-  useEffect(() => {
-    const root = contentRef.current;
-    if (!root || !page) return;
-    const check = () => setNeedsFallbackTitle(!root.querySelector('h1'));
-    check();
-    const observer = new MutationObserver(check);
-    observer.observe(root, {childList: true, subtree: true});
-    return () => observer.disconnect();
-  }, [page]);
-
-  // Inject per-page CSS from the backend
-  useEffect(() => {
-    if (!page?.page_css) return;
-    let el = document.getElementById('itg-page-css');
-    if (!el) {
-      el = document.createElement('style');
-      el.id = 'itg-page-css';
-      document.head.appendChild(el);
-    }
-    el.textContent = page.page_css;
-    return () => {
-      if (el) el.textContent = '';
-    };
-  }, [page?.page_css]);
+  const redirectFailure = useCMSRouteRedirect(route, redirectTo, {
+    previewing: preview || hasPreviewToken || isLivePreview,
+    page,
+  });
+  const {contentRef, needsFallbackTitle} = useCMSPageDocument(page, isLivePreview);
 
   if (loading) {
-    return (
-      <div className="cms-page-shell cms-page-loading" aria-busy="true">
-        <div role="status" aria-label="Loading page content" className="cms-page-status">
-          <span className="cms-page-status-text">Loading page content</span>
-        </div>
-        <div className="cms-page-skeleton cms-page-skeleton-hero" aria-hidden="true" />
-        <div className="cms-page-skeleton" aria-hidden="true" />
-        <div className="cms-page-skeleton" aria-hidden="true" />
-      </div>
-    );
+    return <CMSPageLoading />;
   }
-
-  if (!isLivePreview && currentRedirectFailure === 'not_found') {
-    return <NotFoundPage />;
-  }
-
-  if (!isLivePreview && currentRedirectFailure === 'error') {
-    return (
-      <div className="cms-page-error" role="alert">
-        <p className="cms-page-error-text">Something went wrong loading this page.</p>
-      </div>
-    );
-  }
-
-  if (!isLivePreview && redirectTo) {
-    return <div className="cms-page-loading" />;
-  }
-
-  if (!isLivePreview && error === 'not_found') {
-    return <NotFoundPage />;
-  }
-
-  if (!isLivePreview && error) {
-    return (
-      <div className="cms-page-error" role="alert">
-        <p className="cms-page-error-text">Something went wrong loading this page.</p>
-        <div className="cms-page-error-actions">
-          <button type="button" className="itg-btn itg-btn-outline" onClick={retry}>Try again</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isLivePreview && !page) {
-    return <NotFoundPage />;
-  }
+  const fallback = isLivePreview ? null : nonPreviewFallback({redirectFailure, redirectTo, error, page, retry});
+  if (fallback) return fallback;
 
   return (
     <>
-      {isLivePreview && showPreviewModal && (
-        <div className="cms-live-preview-overlay" onClick={() => setShowPreviewModal(false)}>
-          <div className="cms-live-preview-modal" onClick={(e) => e.stopPropagation()}>
-            <span className="cms-live-preview-modal-dot" aria-hidden="true" />
-            <p className="cms-live-preview-modal-text">
-              Previewing This Page With Content Management System with Admin Permission
-            </p>
-            {expiryDisplay && (
-              <p className="cms-live-preview-modal-expiry">Expires at {expiryDisplay}</p>
-            )}
-            <button
-              type="button"
-              className="itg-btn itg-btn-primary cms-live-preview-modal-close"
-              onClick={() => setShowPreviewModal(false)}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
-      {isLivePreview && !showPreviewModal && (
-        <button type="button" className="cms-live-preview-badge" onClick={() => setShowPreviewModal(true)}>
-          <span className="cms-live-preview-modal-dot" aria-hidden="true" />
-          <span>CMS Preview</span>
-          {expiryDisplay && (
-            <span className="cms-live-preview-badge-expiry">Expires {expiryDisplay}</span>
-          )}
-        </button>
-      )}
+      {isLivePreview ? (
+        <LivePreviewNotice expiresAt={page?.expires_at} open={showPreviewModal} onOpenChange={setShowPreviewModal} />
+      ) : null}
       {page && needsFallbackTitle ? <h1 className="sr-only">{page.title}</h1> : null}
       <div ref={contentRef} className={cmsPageClassName(page?.page_css_class)}>
         {page && (

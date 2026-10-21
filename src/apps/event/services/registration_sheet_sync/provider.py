@@ -88,39 +88,42 @@ def backup_worksheet(worksheet):
     return spreadsheet_for(worksheet).duplicate_sheet(source_sheet_id=worksheet.id, new_sheet_name=title)
 
 
-def build_requests(plan, snapshot, *, event_id, header_row=1, editor_email=""):
-    requests = []
-    cells = plan.cells
-    highest_row = max([snapshot.row_count, *[row for row, _ in cells]])
-    highest_column = max([snapshot.column_count, *plan.bindings.values()])
-    for dimension, current, target in (
-        ("ROWS", snapshot.row_count, highest_row),
-        ("COLUMNS", snapshot.column_count, highest_column),
-    ):
-        if target > current:
-            requests.append(
-                {"appendDimension": {"sheetId": snapshot.sheet_id, "dimension": dimension, "length": target - current}}
-            )
-    for key, column in plan.new_bindings.items():
-        requests.append(
-            {
-                "createDeveloperMetadata": {
-                    "developerMetadata": {
-                        "metadataKey": f"{METADATA_PREFIX}{event_id}",
-                        "metadataValue": key,
-                        "visibility": "DOCUMENT",
-                        "location": {
-                            "dimensionRange": {
-                                "sheetId": snapshot.sheet_id,
-                                "dimension": "COLUMNS",
-                                "startIndex": column - 1,
-                                "endIndex": column,
-                            }
-                        },
+def _metadata_request(snapshot, key, value, dimension, start):
+    """Create developer metadata on one row or column (0-based ``start``)."""
+    return {
+        "createDeveloperMetadata": {
+            "developerMetadata": {
+                "metadataKey": key,
+                "metadataValue": value,
+                "visibility": "DOCUMENT",
+                "location": {
+                    "dimensionRange": {
+                        "sheetId": snapshot.sheet_id,
+                        "dimension": dimension,
+                        "startIndex": start,
+                        "endIndex": start + 1,
                     }
-                }
+                },
             }
+        }
+    }
+
+
+def _grid_growth_requests(plan, snapshot):
+    highest_row = max([snapshot.row_count, *[row for row, _ in plan.cells]])
+    highest_column = max([snapshot.column_count, *plan.bindings.values()])
+    return [
+        {"appendDimension": {"sheetId": snapshot.sheet_id, "dimension": dimension, "length": target - current}}
+        for dimension, current, target in (
+            ("ROWS", snapshot.row_count, highest_row),
+            ("COLUMNS", snapshot.column_count, highest_column),
         )
+        if target > current
+    ]
+
+
+def _label_requests(plan, snapshot, event_id):
+    requests = []
     for label in plan.label_changes:
         value = json.dumps({"key": label["key"], "label": label["label"]})
         if label["metadata_id"] is not None:
@@ -135,74 +138,46 @@ def build_requests(plan, snapshot, *, event_id, header_row=1, editor_email=""):
             )
         else:
             requests.append(
-                {
-                    "createDeveloperMetadata": {
-                        "developerMetadata": {
-                            "metadataKey": f"i2g.registration-label.v1:{event_id}",
-                            "metadataValue": value,
-                            "visibility": "DOCUMENT",
-                            "location": {
-                                "dimensionRange": {
-                                    "sheetId": snapshot.sheet_id,
-                                    "dimension": "COLUMNS",
-                                    "startIndex": label["column"] - 1,
-                                    "endIndex": label["column"],
-                                }
-                            },
-                        }
-                    }
-                }
+                _metadata_request(
+                    snapshot, f"i2g.registration-label.v1:{event_id}", value, "COLUMNS", label["column"] - 1
+                )
             )
-    if not any(
-        entry.get("metadataKey") == f"{METADATA_PREFIX}{event_id}" and entry.get("metadataValue") == "__header__"
-        for entry in snapshot.metadata
-    ):
-        requests.append(
-            {
-                "createDeveloperMetadata": {
-                    "developerMetadata": {
-                        "metadataKey": f"{METADATA_PREFIX}{event_id}",
-                        "metadataValue": "__header__",
-                        "visibility": "DOCUMENT",
-                        "location": {
-                            "dimensionRange": {
-                                "sheetId": snapshot.sheet_id,
-                                "dimension": "ROWS",
-                                "startIndex": header_row - 1,
-                                "endIndex": header_row,
-                            }
-                        },
-                    }
-                }
-            }
-        )
+    return requests
+
+
+def _cell_update_requests(plan, snapshot):
     # Separate managed columns ensure custom cells/formulas/styles are never part of the write mask.
+    cells = plan.cells
+    requests = []
     for column in sorted({column for _, column in cells}):
-        rows = sorted(row for row, col in cells if col == column)
         groups = []
-        for row in rows:
+        for row in sorted(row for row, col in cells if col == column):
             if not groups or row != groups[-1][-1] + 1:
                 groups.append([])
             groups[-1].append(row)
-        for group in groups:
-            requests.append(
-                {
-                    "updateCells": {
-                        "range": {
-                            "sheetId": snapshot.sheet_id,
-                            "startRowIndex": group[0] - 1,
-                            "endRowIndex": group[-1],
-                            "startColumnIndex": column - 1,
-                            "endColumnIndex": column,
-                        },
-                        "rows": [
-                            {"values": [{"userEnteredValue": {"stringValue": cells[(row, column)]}}]} for row in group
-                        ],
-                        "fields": "userEnteredValue",
-                    }
+        requests.extend(
+            {
+                "updateCells": {
+                    "range": {
+                        "sheetId": snapshot.sheet_id,
+                        "startRowIndex": group[0] - 1,
+                        "endRowIndex": group[-1],
+                        "startColumnIndex": column - 1,
+                        "endColumnIndex": column,
+                    },
+                    "rows": [
+                        {"values": [{"userEnteredValue": {"stringValue": cells[(row, column)]}}]} for row in group
+                    ],
+                    "fields": "userEnteredValue",
                 }
-            )
-    id_column = plan.bindings["registration_id"]
+            }
+            for group in groups
+        )
+    return requests
+
+
+def _id_protection_requests(snapshot, id_column, event_id, editor_email):
+    """Keep exactly one non-warning protection on the Registration ID column, editable only by ``editor_email``."""
     id_range = {"sheetId": snapshot.sheet_id, "startColumnIndex": id_column - 1, "endColumnIndex": id_column}
     description = f"Innovate to Grow Registration ID {event_id}"
     own = [
@@ -211,26 +186,44 @@ def build_requests(plan, snapshot, *, event_id, header_row=1, editor_email=""):
         if item.get("description") in {description, "Innovate to Grow application-managed Registration ID"}
     ]
     desired_editors = {"users": [editor_email]} if editor_email else {}
-    if len(own) != 1 or not any(
+    if len(own) == 1 and any(
         item.get("range") == id_range
         and not item.get("warningOnly", False)
         and item.get("editors", {}) == desired_editors
         for item in own
     ):
-        for item in own:
-            requests.append({"deleteProtectedRange": {"protectedRangeId": item["protectedRangeId"]}})
-        requests.append(
-            {
-                "addProtectedRange": {
-                    "protectedRange": {
-                        "range": id_range,
-                        "description": description,
-                        "warningOnly": False,
-                        "editors": desired_editors,
-                    }
+        return []
+    return [
+        *({"deleteProtectedRange": {"protectedRangeId": item["protectedRangeId"]}} for item in own),
+        {
+            "addProtectedRange": {
+                "protectedRange": {
+                    "range": id_range,
+                    "description": description,
+                    "warningOnly": False,
+                    "editors": desired_editors,
                 }
             }
-        )
+        },
+    ]
+
+
+def build_requests(plan, snapshot, *, event_id, header_row=1, editor_email=""):
+    """The batchUpdate that applies ``plan``: grid growth, ownership metadata, cell values, ID protection."""
+    own_key = f"{METADATA_PREFIX}{event_id}"
+    requests = _grid_growth_requests(plan, snapshot)
+    requests.extend(
+        _metadata_request(snapshot, own_key, key, "COLUMNS", column - 1) for key, column in plan.new_bindings.items()
+    )
+    requests.extend(_label_requests(plan, snapshot, event_id))
+    if not any(
+        entry.get("metadataKey") == own_key and entry.get("metadataValue") == "__header__"
+        for entry in snapshot.metadata
+    ):
+        requests.append(_metadata_request(snapshot, own_key, "__header__", "ROWS", header_row - 1))
+    requests.extend(_cell_update_requests(plan, snapshot))
+    id_column = plan.bindings["registration_id"]
+    requests.extend(_id_protection_requests(snapshot, id_column, event_id, editor_email))
     requests.append(
         {
             "updateDimensionProperties": {

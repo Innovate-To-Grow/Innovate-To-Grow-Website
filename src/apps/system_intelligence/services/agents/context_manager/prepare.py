@@ -20,6 +20,58 @@ from .tokens import (
 from .usage import PreparedContext, base_usage, context_usage
 
 
+def _compacted_context(
+    conversation,
+    messages,
+    *,
+    budget,
+    raw_tokens,
+    action_message,
+    action_tokens,
+    chat_config,
+    aws_config,
+    model_id,
+    user_id,
+) -> PreparedContext:
+    """Summarize older turns and keep the recent ones, trimmed to the hard limit."""
+    context_window, compact_threshold, hard_limit, system_tokens = budget
+    previous_messages = messages[:-1]
+    recent_messages = previous_messages[-RECENT_TARGET_TURNS * 2 :]
+    compact_candidates = previous_messages[: max(0, len(previous_messages) - len(recent_messages))]
+    summary_text, summary_meta = ensure_context_summary(
+        conversation,
+        compact_candidates,
+        chat_config=chat_config,
+        aws_config=aws_config,
+        model_id=model_id,
+        user_id=user_id,
+    )
+    summary_message = summary_context_message(summary_text) if summary_text else None
+    prepared_messages, trim_meta = enforce_hard_limit(
+        summary_message=summary_message,
+        action_message=action_message,
+        recent_messages=[serialize_message(message) for message in recent_messages],
+        current_message=serialize_message(messages[-1]),
+        system_tokens=system_tokens,
+        hard_limit=hard_limit,
+        minimum_recent_count=MINIMUM_RECENT_TURNS * 2,
+    )
+    usage = _usage(
+        context_window,
+        compact_threshold,
+        hard_limit,
+        system_tokens,
+        raw_tokens,
+        prepared_messages,
+        messages,
+        action_tokens,
+        summary_meta=summary_meta,
+        trim_meta=trim_meta,
+        compacted=True,
+    )
+    return PreparedContext(prepared_messages, usage, trim_meta["error"])
+
+
 def prepare_conversation_context(
     conversation: ChatConversation,
     messages: list[ChatMessage],
@@ -41,6 +93,7 @@ def prepare_conversation_context(
     compact_threshold = math.floor(context_window * COMPACT_TRIGGER_RATIO)
     hard_limit = math.floor(context_window * HARD_LIMIT_RATIO)
     system_tokens = estimate_text_tokens((chat_config.system_prompt or "") + APPROVAL_INSTRUCTION)
+    budget = (context_window, compact_threshold, hard_limit, system_tokens)
     current_tokens = estimate_messages_tokens([serialize_message(current_message)])
     if system_tokens + current_tokens > hard_limit:
         return PreparedContext(
@@ -53,59 +106,25 @@ def prepare_conversation_context(
     raw_tokens = system_tokens + estimate_messages_tokens(serialized_all)
     action_message = pending_action_context_message(conversation)
     action_tokens = estimate_messages_tokens([action_message]) if action_message else 0
-    should_compact = raw_tokens + action_tokens > compact_threshold
-
-    if not should_compact:
-        prepared_messages = ([action_message] if action_message else []) + serialized_all
-        return PreparedContext(
-            prepared_messages,
-            _usage(
-                context_window,
-                compact_threshold,
-                hard_limit,
-                system_tokens,
-                raw_tokens,
-                prepared_messages,
-                messages,
-                action_tokens,
-            ),
+    if raw_tokens + action_tokens > compact_threshold:
+        return _compacted_context(
+            conversation,
+            messages,
+            budget=budget,
+            raw_tokens=raw_tokens,
+            action_message=action_message,
+            action_tokens=action_tokens,
+            chat_config=chat_config,
+            aws_config=aws_config,
+            model_id=model_id,
+            user_id=user_id,
         )
 
-    previous_messages = messages[:-1]
-    recent_messages = previous_messages[-RECENT_TARGET_TURNS * 2 :]
-    compact_candidates = previous_messages[: max(0, len(previous_messages) - len(recent_messages))]
-    summary_text, summary_meta = ensure_context_summary(
-        conversation,
-        compact_candidates,
-        chat_config=chat_config,
-        aws_config=aws_config,
-        model_id=model_id,
-        user_id=user_id,
-    )
-    summary_message = summary_context_message(summary_text) if summary_text else None
-    prepared_messages, trim_meta = enforce_hard_limit(
-        summary_message=summary_message,
-        action_message=action_message,
-        recent_messages=[serialize_message(message) for message in recent_messages],
-        current_message=serialize_message(current_message),
-        system_tokens=system_tokens,
-        hard_limit=hard_limit,
-        minimum_recent_count=MINIMUM_RECENT_TURNS * 2,
-    )
-    usage = _usage(
-        context_window,
-        compact_threshold,
-        hard_limit,
-        system_tokens,
-        raw_tokens,
+    prepared_messages = ([action_message] if action_message else []) + serialized_all
+    return PreparedContext(
         prepared_messages,
-        messages,
-        action_tokens,
-        summary_meta=summary_meta,
-        trim_meta=trim_meta,
-        compacted=True,
+        _usage(*budget, raw_tokens, prepared_messages, messages, action_tokens),
     )
-    return PreparedContext(prepared_messages, usage, trim_meta["error"])
 
 
 def _usage(

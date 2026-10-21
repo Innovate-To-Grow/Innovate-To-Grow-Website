@@ -24,10 +24,10 @@ from django.views.static import serve as static_serve
 
 from apps.authn.views.admin.login import AdminLoginView
 from apps.authn.views.admin.send_verification import AdminSendVerificationChallengeView
-from apps.cms.views import LayoutAPIView, LayoutStylesheetView
+from apps.cms.views import LayoutAPIView, LayoutStylesheetView, sitemap_xml
 from apps.core.legacy_view import get_legacy_view_urls
 from apps.core.middleware import csp_report
-from apps.core.views import MaintenanceBypassView, robots_txt, root_index, sitemap_xml
+from apps.core.views import MaintenanceBypassView, robots_txt, root_index
 
 # Customize Django Admin
 admin.site.site_header = "Innovate To Grow Admin"

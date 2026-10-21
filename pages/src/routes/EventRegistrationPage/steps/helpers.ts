@@ -13,20 +13,27 @@ export function getRegistrationStepIndex(step: EventRegistrationStep): number | 
   return STEP_INDEX[step] ?? null;
 }
 
+const isShortMessage = (value: unknown): value is string => typeof value === 'string' && value.length <= 300;
+
+/** The first field's message: a short string, or the first string of its list. */
+const firstFieldMessage = (data: Record<string, unknown>): string | null => {
+  const firstKey = Object.keys(data)[0];
+  if (!firstKey) return null;
+  const value = data[firstKey];
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return isShortMessage(candidate) ? candidate : null;
+};
+
 export function getRegistrationErrorMessage(err: unknown): string {
-  if (typeof err === 'object' && err !== null) {
-    const axiosError = err as {response?: {data?: Record<string, unknown>}};
-    if (axiosError.response?.data) {
-      const data = axiosError.response.data;
-      if (typeof data.detail === 'string' && data.detail.length <= 300) return data.detail;
-      if (typeof data.message === 'string' && data.message.length <= 300) return data.message;
-      const firstKey = Object.keys(data)[0];
-      if (firstKey) {
-        const value = data[firstKey];
-        if (Array.isArray(value) && typeof value[0] === 'string' && value[0].length <= 300) return value[0];
-        if (typeof value === 'string' && value.length <= 300) return value;
-      }
-    }
+  const data =
+    typeof err === 'object' && err !== null
+      ? (err as {response?: {data?: Record<string, unknown>}}).response?.data
+      : undefined;
+  if (data) {
+    if (isShortMessage(data.detail)) return data.detail;
+    if (isShortMessage(data.message)) return data.message;
+    const message = firstFieldMessage(data);
+    if (message) return message;
   }
 
   return 'An unexpected error occurred. Please try again.';

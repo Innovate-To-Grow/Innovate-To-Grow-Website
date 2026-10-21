@@ -119,6 +119,26 @@ def mail_settings_view(request):
     return TemplateResponse(request, "admin/mail/settings.html", context)
 
 
+def _save_delivery_forms(email_form, aws_form, smtp_form, smtp_enabled) -> bool:
+    """Save every delivery form together; False (with errors on the email form) if any is invalid."""
+    if not all([email_form.is_valid(), aws_form.is_valid(), not smtp_enabled or smtp_form.is_valid()]):
+        return False
+    try:
+        with transaction.atomic():
+            aws_form.save()
+            if smtp_enabled:
+                smtp_form.save()
+            email_form.instance.validate_activation()
+            email_form.save()
+    except ValidationError as exc:
+        for field, errors in exc.message_dict.items():
+            target = field if field in email_form.fields else None
+            for error in errors:
+                email_form.add_error(target, error)
+        return False
+    return True
+
+
 def mail_settings_edit_view(request):
     _require_mail_access(request)
     email_config = EmailServiceConfig.load()
@@ -133,24 +153,9 @@ def mail_settings_edit_view(request):
     smtp_form = SMTPDeliveryForm(
         form_data if smtp_enabled else None, instance=smtp_config, prefix="smtp", enabled=smtp_enabled
     )
-    if request.method == "POST":
-        forms_valid = all([email_form.is_valid(), aws_form.is_valid(), not smtp_enabled or smtp_form.is_valid()])
-        if forms_valid:
-            try:
-                with transaction.atomic():
-                    aws_form.save()
-                    if smtp_enabled:
-                        smtp_form.save()
-                    email_form.instance.validate_activation()
-                    email_form.save()
-            except ValidationError as exc:
-                for field, errors in exc.message_dict.items():
-                    target = field if field in email_form.fields else None
-                    for error in errors:
-                        email_form.add_error(target, error)
-            else:
-                messages.success(request, "Notification delivery settings saved.")
-                return HttpResponseRedirect(reverse("admin:mail_settings"))
+    if request.method == "POST" and _save_delivery_forms(email_form, aws_form, smtp_form, smtp_enabled):
+        messages.success(request, "Notification delivery settings saved.")
+        return HttpResponseRedirect(reverse("admin:mail_settings"))
     context = _notification_delivery_context(request, email_config, aws_config, smtp_config)
     context.update(
         {

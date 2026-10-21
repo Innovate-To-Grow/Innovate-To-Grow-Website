@@ -6,10 +6,10 @@ from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
-import apps.mail.admin.inbox as inbox_api
 from apps.core.utils.access import user_can_access_app
 from apps.core.utils.json_helpers import safe_json
 
+from . import services as inbox_api
 from .helpers import message_body_html, parse_folder
 
 

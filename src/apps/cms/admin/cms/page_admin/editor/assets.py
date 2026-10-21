@@ -1,14 +1,17 @@
 """Asset manager responses for the CMS page editor."""
 
+import logging
 import os
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import JsonResponse
 
-import apps.cms.admin.cms.page_admin.editor as editor_api
 from apps.cms.models import CMSAsset
 from apps.cms.models.media import IMAGE_ASSET_EXTENSIONS
+
+# The editor package's logger, so its records keep the name they always had.
+logger = logging.getLogger("apps.cms.admin.cms.page_admin.editor")
 
 
 def _asset_extension(asset):
@@ -109,10 +112,10 @@ def assets_upload_response(request):
             msgs = exc.messages
             errors = msgs
         detail = msgs[0] if msgs else "Validation error."
-        editor_api.logger.info("Asset upload failed validation: %s", detail)
+        logger.info("Asset upload failed validation: %s", detail)
         return JsonResponse(_validation_error_payload(detail, errors), status=400)
     except Exception:
-        editor_api.logger.exception("Unexpected error during asset validation")
+        logger.exception("Unexpected error during asset validation")
         return JsonResponse({"detail": "An unexpected error occurred."}, status=500)
     if not _asset_matches_type(asset, asset_type):
         return JsonResponse({"detail": "Select an image asset for this field."}, status=400)
@@ -120,6 +123,6 @@ def assets_upload_response(request):
     try:
         asset.save()
     except Exception:
-        editor_api.logger.exception("Unexpected error saving asset")
+        logger.exception("Unexpected error saving asset")
         return JsonResponse({"detail": "An unexpected error occurred."}, status=500)
     return JsonResponse({"asset": serialize_asset(asset)}, status=201)

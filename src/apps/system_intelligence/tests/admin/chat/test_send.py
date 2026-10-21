@@ -100,6 +100,26 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
         self.assertEqual(assistant.content, "Hello from ASGI")
         self.assertEqual(assistant.token_usage["totalTokens"], 5)
 
+    def test_asgi_provider_error_ends_the_stream_without_persisting_an_assistant(self):
+        ChatMessage.objects.create(conversation=self.conversation, role="user", content="Hello")
+        request = _asgi_send_request(self.admin_user)
+        later_event_seen = []
+
+        async def fake_stream(*_args, **_kwargs):
+            yield {"type": "text", "chunk": "partial"}
+            yield {"type": "error", "error": "boom"}
+            later_event_seen.append(True)
+            yield {"type": "text", "chunk": "never sent"}
+
+        with patch("apps.system_intelligence.admin.stream._async_stream_callable", return_value=fake_stream):
+            body = async_to_sync(_consume_stream)(build_stream_response(request, self.conversation))
+
+        self.assertIn("event: error", body)
+        self.assertNotIn("never sent", body)
+        self.assertNotIn("event: done", body)
+        self.assertEqual(later_event_seen, [])
+        self.assertFalse(ChatMessage.objects.filter(conversation=self.conversation, role="assistant").exists())
+
     def test_asgi_context_preparation_shares_the_request_database_connection(self):
         # The pending action is written on this thread's connection and not
         # committed yet. Context preparation must run on the same connection

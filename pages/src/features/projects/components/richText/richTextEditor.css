@@ -1,0 +1,131 @@
+/* The curation note rich text editor.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Rich text editor (curation note) -------------------------------------- */
+
+.project-grid-rich-detail-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.project-grid-rich-detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.375rem 0.75rem;
+}
+
+.project-grid-rich-detail-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+}
+
+.project-grid-rich-detail-toolbar {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.project-grid-rich-editor-button,
+.project-grid-rich-copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--itg-color-border-input);
+  border-radius: var(--itg-radius-button);
+  background: var(--itg-color-bg-page);
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: var(--itg-font-size-small);
+  cursor: pointer;
+}
+
+.project-grid-rich-editor-size-button {
+  gap: 0.375rem;
+}
+
+.project-grid-rich-editor-button:hover,
+.project-grid-rich-copy-button:hover,
+.project-grid-rich-editor-button[aria-pressed='true'] {
+  border-color: var(--itg-color-primary);
+  background: var(--itg-color-bg-light);
+}
+
+.project-grid-rich-editor-icon,
+.project-grid-share-editor-icon {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The reference's textarea: #f2f2f2, 1px #ccc, 4px radius, inset shadow, blue glow on focus. It opens about
+   eight lines tall; the corner handle drags it taller (or shorter), and Expand gives it most of the screen. */
+.project-grid-rich-detail-input {
+  height: 13.5rem;
+  min-height: 6rem;
+  overflow-y: auto;
+  resize: vertical;
+  padding: 4px 6px;
+  border: 1px solid var(--itg-color-border-input);
+  border-radius: var(--itg-radius-input);
+  background: var(--itg-color-bg-light);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  transition: border-color 0.2s linear, box-shadow 0.2s linear;
+}
+
+.project-grid-rich-detail-input:focus {
+  border-color: rgba(82, 168, 236, 0.8);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6);
+}
+
+.project-grid-rich-detail-input.is-large-detail-set {
+  min-height: 9rem;
+}
+
+.project-grid-rich-detail-input.is-expanded {
+  height: min(40rem, 75vh);
+}
+
+/* Not being edited: as tall as the note, up to a limit. */
+.project-grid-rich-detail-input[contenteditable='false'] {
+  height: auto;
+  min-height: 5.25rem;
+  max-height: 24rem;
+  resize: none;
+  background: var(--itg-color-disabled-bg);
+  color: var(--itg-color-disabled-text);
+}
+
+.project-grid-rich-detail-input:empty::before {
+  content: attr(data-placeholder);
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-rich-detail-input mark,
+.project-grid-shared-detail-text mark {
+  padding: 0 0.125rem;
+  background: var(--itg-color-tag-new);
+  color: inherit;
+}
+
+.project-grid-rich-detail-input a,
+.project-grid-shared-detail-text a {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}

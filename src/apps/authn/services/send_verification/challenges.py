@@ -6,10 +6,27 @@ from django.utils import timezone
 
 from .config import SendVerificationSettings, require_ready
 from .constants import ALL_OPERATIONS, KIND_EMAIL, KIND_PHONE, SMS_OPERATIONS
-from .exceptions import SendVerificationInvalid
+from .exceptions import (
+    SendVerificationConsumed,
+    SendVerificationContextMismatch,
+    SendVerificationExpired,
+    SendVerificationInvalid,
+)
 from .hashing import fingerprint_payload
 from .metrics import emit
-from .principal import principal_from_request
+from .principal import principal_from_request, principals_match
+
+
+def _validate_issue_input(operation: str, destination_kind: str, destination_normalized) -> None:
+    if operation not in ALL_OPERATIONS:
+        raise SendVerificationInvalid("Unknown verification operation.")
+    if (
+        destination_kind not in {KIND_EMAIL, KIND_PHONE}
+        or not isinstance(destination_normalized, str)
+        or not destination_normalized
+        or len(destination_normalized) > 254
+    ):
+        raise SendVerificationInvalid("Invalid verification destination.")
 
 
 def issue_challenge(
@@ -24,16 +41,7 @@ def issue_challenge(
 
     from apps.authn.models import SendVerificationChallenge
 
-    if operation not in ALL_OPERATIONS:
-        raise SendVerificationInvalid("Unknown verification operation.")
-    if (
-        destination_kind not in {KIND_EMAIL, KIND_PHONE}
-        or not isinstance(destination_normalized, str)
-        or not destination_normalized
-        or len(destination_normalized) > 254
-    ):
-        raise SendVerificationInvalid("Invalid verification destination.")
-
+    _validate_issue_input(operation, destination_kind, destination_normalized)
     # No per-IP limit on issuance (campus users share one IP); sending stays capped per destination.
     config = require_ready(for_sms=destination_kind == KIND_PHONE or operation in SMS_OPERATIONS)
     principal_type, principal_key = principal_from_request(request, operation=operation)
@@ -78,3 +86,29 @@ def serialize_challenge(row, config: SendVerificationSettings, challenge_dict: d
         "cost": config.cost,
         "challenge": challenge_dict,
     }
+
+
+def check_challenge_usable(
+    challenge,
+    *,
+    now,
+    operation: str,
+    destination_kind: str,
+    destination_normalized: str,
+    principal_type: str,
+    principal_key: str,
+    channel: str = "",
+) -> None:
+    """A locked challenge may be spent only while pending, unexpired, and issued for this exact send."""
+    from apps.authn.models import SendVerificationChallenge
+
+    if challenge.status == SendVerificationChallenge.Status.CONSUMED:
+        raise SendVerificationConsumed()
+    if challenge.status != SendVerificationChallenge.Status.PENDING or challenge.expires_at <= now:
+        raise SendVerificationExpired()
+    if challenge.operation != operation:
+        raise SendVerificationContextMismatch()
+    if challenge.destination_kind != destination_kind or challenge.destination_normalized != destination_normalized:
+        raise SendVerificationContextMismatch()
+    if not principals_match(challenge.principal_type, challenge.principal_key, principal_type, principal_key):
+        raise SendVerificationContextMismatch()

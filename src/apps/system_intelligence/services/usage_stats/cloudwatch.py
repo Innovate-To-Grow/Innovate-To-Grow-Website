@@ -15,8 +15,8 @@ from datetime import timedelta
 from botocore.exceptions import BotoCoreError, ClientError
 from django.utils import timezone
 
-from apps.core.services.bedrock.clients import get_cloudwatch_client
-from apps.core.services.bedrock.exceptions import BedrockError
+from apps.system_intelligence.services.bedrock.clients import get_cloudwatch_client
+from apps.system_intelligence.services.bedrock.exceptions import BedrockError
 
 NAMESPACE = "AWS/Bedrock"
 # One point per day. CloudWatch Sum over the daily period gives daily totals.
@@ -151,34 +151,45 @@ def _get_metric_data(client, model_ids, start, end):
     return {"model_ids": model_ids, "series": series}
 
 
+def _zero_counters() -> dict:
+    return {"input_tokens": 0, "output_tokens": 0, "invocations": 0}
+
+
+def _fold_model_series(series, model_index, *, totals, today, daily_map, today_cutoff) -> dict:
+    """Add one model's datapoints to the running totals; return that model's own totals."""
+    model_totals = _zero_counters()
+    for _metric_name, key in _METRICS:
+        entry = series.get(f"m{model_index}_{key}") or {"timestamps": [], "values": []}
+        for ts, value in zip(entry["timestamps"], entry["values"], strict=False):
+            amount = int(round(value))
+            model_totals[key] += amount
+            totals[key] += amount
+            daily_map.setdefault(ts.date().isoformat(), _zero_counters())[key] += amount
+            if ts >= today_cutoff:
+                today[key] += amount
+    return model_totals
+
+
 def _build_payload(results, now):
     """Fold the raw per-query series into by_model / daily / totals / today."""
-    model_ids = results["model_ids"]
-    series = results["series"]
-
     daily_map = {}  # ISO date string -> counters
-    by_model = []
-    totals = {"input_tokens": 0, "output_tokens": 0, "invocations": 0}
-    today = {"input_tokens": 0, "output_tokens": 0, "invocations": 0}
+    totals = _zero_counters()
+    today = _zero_counters()
     today_cutoff = now - timedelta(hours=24)
-
-    for model_index, model_id in enumerate(model_ids):
-        model_totals = {"input_tokens": 0, "output_tokens": 0, "invocations": 0}
-        for _metric_name, key in _METRICS:
-            entry = series.get(f"m{model_index}_{key}")
-            if not entry:
-                continue
-            for ts, value in zip(entry["timestamps"], entry["values"], strict=False):
-                amount = int(round(value))
-                model_totals[key] += amount
-                totals[key] += amount
-                date_key = ts.date().isoformat()
-                bucket = daily_map.setdefault(date_key, {"input_tokens": 0, "output_tokens": 0, "invocations": 0})
-                bucket[key] += amount
-                if ts >= today_cutoff:
-                    today[key] += amount
-        by_model.append({"model_id": model_id or "(all models)", **model_totals})
-
+    by_model = [
+        {
+            "model_id": model_id or "(all models)",
+            **_fold_model_series(
+                results["series"],
+                model_index,
+                totals=totals,
+                today=today,
+                daily_map=daily_map,
+                today_cutoff=today_cutoff,
+            ),
+        }
+        for model_index, model_id in enumerate(results["model_ids"])
+    ]
     daily = [{"date": date, **counters} for date, counters in sorted(daily_map.items())]
     by_model.sort(key=lambda row: row["input_tokens"] + row["output_tokens"], reverse=True)
 

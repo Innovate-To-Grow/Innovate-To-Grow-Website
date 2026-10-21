@@ -20,7 +20,7 @@ Thanks for your interest in helping build the UC Merced Innovate to Grow (ITG) w
 - **Bug reports:** Open an issue with reproduction steps, expected vs. actual behavior, screenshots, and relevant server logs.
 - **Feature proposals:** Outline the problem, the proposed solution, and any alternatives considered. Link design assets when available.
 - **Code contributions:** Pick up an open issue or propose a new one. Keep pull requests narrowly scoped and well tested.
-- **Documentation:** Improve README, this guide, in-code comments, or admin/editor docs under `doc/`.
+- **Documentation:** Improve README, this guide, in-code comments, or admin/editor docs under `docs/`.
 
 ---
 
@@ -28,7 +28,7 @@ Thanks for your interest in helping build the UC Merced Innovate to Grow (ITG) w
 
 | Tool | Recommended Version | Notes |
 | --- | --- | --- |
-| Python | 3.11+ | Matches Django 4.2 support window. |
+| Python | 3.11 | CI, the Docker image, and Ruff all target 3.11 (Django 5.2). |
 | Node.js | 22.22.2 | Other supported releases are listed in `pages/package.json`. |
 | npm | 10+ | Ships with Node LTS installers. |
 | SQLite | 3.35+ | Used for local dev database. |
@@ -112,9 +112,17 @@ ruff format .          # Format code
 
 # Frontend
 cd pages
-npm run lint           # Run ESLint
-npx tsc --noEmit       # Type check
+npm run lint             # ESLint (includes the hard size / complexity limits)
+npx tsc --noEmit         # Type check
+npm run check:structure  # Layer boundaries, import cycles, directory sizes
+
+# Size / complexity / dependency rules (from the project root, venv active)
+python scripts/ci/check_python_quality.py
+python scripts/ci/check_python_dependencies.py
 ```
+The rules, how lines and complexity are counted, and how to record a justified exception are in
+[docs/architecture/code-quality.md](docs/architecture/code-quality.md). `npm run quality:report` lists the
+advisory (non-blocking) findings.
 
 ---
 
@@ -124,16 +132,17 @@ npx tsc --noEmit       # Type check
 - Follow PEP 8 style and leverage type hints where possible.
 - Run `ruff check .` and `ruff format .` before committing.
 - Keep business logic in `services/` modules when it does not belong directly in a model or serializer.
-- Favor Django REST Framework serializers and viewsets/CBVs over ad-hoc responses.
+- Use DRF `APIView` classes with explicit method handlers and serializers (no ViewSets, generic views, or routers); set `permission_classes` on every view and throttle per view, never globally.
 - When touching authentication, remember the custom `authn.Member` model (UUIDs, custom fields).
-- Use `settings.base` for shared configuration, `settings.dev` for local overrides, and `settings.prod` for deployment-specific values.
-- Keep the API contract in sync with the frontend TypeScript interfaces (`pages/src/services/api.ts`).
+- Settings live in `src/config/settings/`: `base.py` assembles `components/`; use `config.settings.local` for development, `config.settings.test` in CI, and `config.settings.production` in deployment.
+- Keep the API contract in sync with the frontend TypeScript interfaces in each feature's `api/` module (`pages/src/features/<domain>/api/`). Payloads stay snake_case.
+- Respect the app dependency directions in [docs/architecture/code-quality.md](docs/architecture/code-quality.md#dependency-directions): `core` never imports a business app; register with shared machinery (e.g. `register_job_kind` in `AppConfig.ready()`) instead.
 
 ### Frontend (React + TypeScript)
 - All components should be functional components with hooks; avoid class components.
-- Rely on the shared layout primitives (`src/components/Layout`, `MainMenu`, `Footer`) to keep the UI consistent.
-- Keep API calls centralized in `pages/src/services/api.ts`. Add corresponding TypeScript interfaces when backend payloads change.
-- Co-locate CSS modules with components (`Component.css`). Prefer CSS variables and Flexbox/Grid already used in the project.
+- Follow the feature-based layout (`app/`, `routes/`, `features/<domain>/`, `components/`, `hooks/`, `lib/`): import another feature only through its `index.ts` barrel or its `api/` modules, and use `@/...` imports. The shared header, menu, and footer live in `features/layout`.
+- Components never call Axios directly: go through the feature's `api/` module (or `@/lib/api`). Add corresponding TypeScript interfaces when backend payloads change.
+- Co-locate plain CSS files with components (`Component.css`; no CSS-in-JS or Tailwind) and use the `--itg-` design tokens.
 - Run `npm run lint` before submitting—ESLint enforces React hooks and TypeScript best practices.
 
 ### General
@@ -147,7 +156,7 @@ npx tsc --noEmit       # Type check
 
 | Area | Command | Notes |
 | --- | --- | --- |
-| Backend unit/functional tests | `cd src && python manage.py test` | You can scope tests with dotted paths (`python manage.py test pages.tests.test_views`). |
+| Backend unit/functional tests | `cd src && python manage.py test --settings=config.settings.local` | You can scope tests with dotted paths (`python manage.py test apps.event.tests.api --settings=config.settings.local`). |
 | Backend migrations | `python manage.py makemigrations && python manage.py migrate` | Required whenever models change. Commit the generated migration files. |
 | Frontend linting | `cd pages && npm run lint` | Ensures TypeScript + React hooks compliance. |
 | Frontend unit tests | `cd pages && npm run test:coverage` | Runs the same unit suite and coverage checks as CI. |
@@ -167,7 +176,7 @@ For asynchronous frontend tests, wait for the behavior being asserted. A `findBy
 ## Database & Migrations
 - Never edit an existing migration that has already landed on `main`. Create a new migration instead.
 - Keep migrations deterministic (no reliance on runtime data).
-- Use fixtures in `src/pages/fixtures/` sparingly; document how to load them in the PR if they are required (`python manage.py loaddata pages/fixtures/footer_content.json`).
+- The project ships no data fixtures. Seed service credentials with `python manage.py seed_service_configs` (from `src/.env`); tests build their own data.
 - If your change requires seeded admin data, explain the manual steps in the PR description and update the docs if needed.
 
 ---
@@ -175,7 +184,7 @@ For asynchronous frontend tests, wait for the behavior being asserted. A `findBy
 ## Documentation & Changelogs
 - Update `README.md` when setup steps or project overview change.
 - Inline code comments should explain *why* rather than *what*.
-- For large features, consider adding a short design note inside `doc/` and link it from the PR.
+- For large features, consider adding a short design note inside `docs/` and link it from the PR.
 
 ---
 
@@ -183,11 +192,11 @@ For asynchronous frontend tests, wait for the behavior being asserted. A `findBy
 - [ ] PR references related issue(s) and describes the change, motivation, and testing.
 - [ ] Code follows the guidelines above and is scoped to a single concern.
 - [ ] **CI checks pass:** All GitHub Actions workflows (linting, type checks) succeed.
-- [ ] Backend: `ruff check .` and `ruff format --check .` pass, migrations added (if models changed), and `python manage.py test` passes.
-- [ ] Frontend: `npm run lint` and `npm run build` succeed locally.
+- [ ] Backend: `ruff check .` and `ruff format --check .` pass, migrations added (if models changed), and `python manage.py test --settings=config.settings.local` passes; `python scripts/ci/check_python_quality.py` and `python scripts/ci/check_python_dependencies.py` pass.
+- [ ] Frontend: `npm run lint`, `npm run check:structure`, and `npm run build` succeed locally.
 - [ ] API contracts updated in both backend serializers and frontend TypeScript types.
 - [ ] Screenshots or GIFs attached when UI changes are visible.
-- [ ] Documentation updated (README, CLAUDE.md, `doc/`, or inline comments) when behavior changes.
+- [ ] Documentation updated (README, CLAUDE.md, `docs/`, or inline comments) when behavior changes.
 
 ---
 

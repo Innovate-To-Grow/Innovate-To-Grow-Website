@@ -124,6 +124,34 @@ def compute_change_diff(model_class, object_id, form):
     return diff
 
 
+def _inline_row_diff(formset, form, label: str) -> dict | None:
+    """The diff row for one inline form, or None when it adds, changes and removes nothing."""
+    if form.cleaned_data.get("DELETE"):
+        if not form.instance.pk or form.instance._state.adding:
+            return None
+        return {
+            "field": f"{formset.prefix}-delete",
+            "label": f"{label} (removed)",
+            "old_value": str(form.instance),
+            "new_value": "-",
+        }
+    if form.instance._state.adding:
+        return {
+            "field": f"{formset.prefix}-add",
+            "label": f"{label} (added)",
+            "old_value": "-",
+            "new_value": _describe_inline_row(form),
+        }
+    if form.changed_data:
+        return {
+            "field": f"{formset.prefix}-change",
+            "label": f"{label} ({str(form.instance)})",
+            "old_value": ", ".join(sorted(form.changed_data)),
+            "new_value": _describe_inline_row(form, only=form.changed_data),
+        }
+    return None
+
+
 def compute_formsets_diff(formsets):
     """Summarize added, changed and deleted inline rows across validated ``formsets``.
 
@@ -137,35 +165,9 @@ def compute_formsets_diff(formsets):
         for form in formset.forms:
             if not hasattr(form, "cleaned_data") or not form.cleaned_data:
                 continue
-            if form.cleaned_data.get("DELETE"):
-                if form.instance.pk and not form.instance._state.adding:
-                    diff.append(
-                        {
-                            "field": f"{formset.prefix}-delete",
-                            "label": f"{label} (removed)",
-                            "old_value": str(form.instance),
-                            "new_value": "-",
-                        }
-                    )
-                continue
-            if form.instance._state.adding:
-                diff.append(
-                    {
-                        "field": f"{formset.prefix}-add",
-                        "label": f"{label} (added)",
-                        "old_value": "-",
-                        "new_value": _describe_inline_row(form),
-                    }
-                )
-            elif form.changed_data:
-                diff.append(
-                    {
-                        "field": f"{formset.prefix}-change",
-                        "label": f"{label} ({str(form.instance)})",
-                        "old_value": ", ".join(sorted(form.changed_data)),
-                        "new_value": _describe_inline_row(form, only=form.changed_data),
-                    }
-                )
+            row = _inline_row_diff(formset, form, label)
+            if row is not None:
+                diff.append(row)
     return diff
 
 
@@ -225,6 +227,22 @@ def summarize_large_value(value):
     return format_field_value(value)
 
 
+def _format_structured(value) -> str:
+    import json
+
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str)[:200]
+    except (TypeError, ValueError):
+        return str(value)[:200]
+
+
+def _format_datetime(value: datetime) -> str:
+    fmt = "%Y-%m-%d %H:%M:%S"
+    if is_aware(value):
+        fmt += " %Z"
+    return value.strftime(fmt)
+
+
 def format_field_value(value):
     """Format a field value for human-readable display."""
     if value is None:
@@ -232,23 +250,13 @@ def format_field_value(value):
     if isinstance(value, bool):
         return "Yes" if value else "No"
     if isinstance(value, datetime):
-        fmt = "%Y-%m-%d %H:%M:%S"
-        if is_aware(value):
-            fmt += " %Z"
-        return value.strftime(fmt)
+        return _format_datetime(value)
     if isinstance(value, date):
         return value.strftime("%Y-%m-%d")
-    if isinstance(value, uuid.UUID):
-        return str(value)
-    if isinstance(value, models.Model):
+    if isinstance(value, uuid.UUID | models.Model):
         return str(value)
     if isinstance(value, list | dict):
-        import json
-
-        try:
-            return json.dumps(value, ensure_ascii=False, default=str)[:200]
-        except (TypeError, ValueError):
-            return str(value)[:200]
+        return _format_structured(value)
     if isinstance(value, models.QuerySet):
         return ", ".join(str(v) for v in value[:10])
     value_str = str(value)

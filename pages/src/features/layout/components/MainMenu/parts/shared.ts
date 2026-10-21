@@ -47,3 +47,6 @@ export const memberButtonLabel = (
   const name = [user?.first_name, user?.last_name].map((part) => part?.trim()).filter(Boolean).join(' ');
   return name || user?.email || formatPhone(user?.phone ?? '') || 'My Account';
 };
+
+/** Same breakpoint as the layout-menu sheet: at or below it the phone header is shown. */
+export const PHONE_MAX_WIDTH = 992;

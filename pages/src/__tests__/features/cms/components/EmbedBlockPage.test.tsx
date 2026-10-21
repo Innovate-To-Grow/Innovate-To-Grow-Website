@@ -35,9 +35,9 @@ vi.mock('@/features/cms/components/BlockRenderer', () => ({
   ),
 }));
 
-vi.mock('@/features/cms/components/embedAppRoutes', () => ({
-  embedRouteSupportsSchedule: (route?: string | null) => route === '/schedule',
-  resolveEmbedAppRoute: (route?: string | null) =>
+const appRoutes = {
+  supportsSchedule: (route?: string | null) => route === '/schedule',
+  resolve: (route?: string | null) =>
     route === '/schedule'
       ? ({scheduleId}: {scheduleId?: string | null}) => (
           <div data-testid="embedded-schedule-route">
@@ -45,13 +45,13 @@ vi.mock('@/features/cms/components/embedAppRoutes', () => ({
           </div>
         )
       : null,
-}));
+};
 
 const renderAtSlug = (slug: string) =>
   render(
     <MemoryRouter initialEntries={[`/_embed/${slug}`]}>
       <Routes>
-        <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+        <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -240,7 +240,7 @@ describe('EmbedBlockPage', () => {
     render(
       <MemoryRouter initialEntries={['/_embed/widget?hide-titles=1']}>
         <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -282,7 +282,7 @@ describe('EmbedBlockPage', () => {
     render(
       <MemoryRouter initialEntries={['/_embed/widget?hide-sections=schedule_header,schedule_awards']}>
         <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -307,7 +307,7 @@ describe('EmbedBlockPage', () => {
     render(
       <MemoryRouter initialEntries={['/_embed/widget?hide-sections=also-bad']}>
         <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -329,7 +329,7 @@ describe('EmbedBlockPage', () => {
       render(
         <MemoryRouter initialEntries={[`/_embed/widget?hide-titles=${value}`]}>
           <Routes>
-            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
           </Routes>
         </MemoryRouter>,
       );
@@ -353,7 +353,7 @@ describe('EmbedBlockPage', () => {
       render(
         <MemoryRouter initialEntries={[`/_embed/widget?hide-titles=${value}`]}>
           <Routes>
-            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
           </Routes>
         </MemoryRouter>,
       );
@@ -374,7 +374,7 @@ describe('EmbedBlockPage', () => {
     render(
       <MemoryRouter initialEntries={['/_embed/widget?hide-titles=false']}>
         <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -445,7 +445,7 @@ describe('EmbedBlockPage', () => {
         initialEntries={['/_embed/schedule-widget?schedule_id=6F1D2C3B-4A5E-4F60-8A9B-0C1D2E3F4A5B']}
       >
         <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -470,7 +470,7 @@ describe('EmbedBlockPage', () => {
     render(
       <MemoryRouter initialEntries={['/_embed/schedule-widget?schedule_id=../../etc']}>
         <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage />} />
+          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
         </Routes>
       </MemoryRouter>,
     );
