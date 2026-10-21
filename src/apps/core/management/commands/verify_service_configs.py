@@ -55,65 +55,65 @@ class Command(BaseCommand):
         failures: list[str] = []
         warnings: list[str] = []
 
-        if options["send_verification_only"]:
-            self._check_send_verification(require_sms=options["require_sms"], failures=failures, warnings=warnings)
-            self._report_results(strict=strict, failures=failures, warnings=warnings)
-            return
+        if not options["send_verification_only"]:
+            email = EmailServiceConfig.load()
+            aws = AWSCredentialConfig.load()
+            aws_ok = self._check_aws(aws, options["require_aws"] or email.provider == "ses", failures, warnings)
+            smtp = SMTPProviderConfig.load()
+            smtp_ok = bool(smtp.pk) and smtp.is_configured
+            self._check_email(email, aws_ok=aws_ok, smtp_ok=smtp_ok, failures=failures)
+            smtp_required = email.provider == "smtp"
+            self._report("SMTPProviderConfig", smtp, smtp_ok, required=smtp_required)
+            if not smtp_ok:
+                (failures if smtp_required else warnings).append("SMTPProviderConfig is not configured.")
+            self._check_sms(aws, options["require_sms"], failures, warnings)
+            self._check_google(options["require_google"], failures, warnings)
 
-        email = EmailServiceConfig.load()
-        aws = AWSCredentialConfig.load()
+        self._check_send_verification(require_sms=options["require_sms"], failures=failures, warnings=warnings)
+        self._report_results(strict=strict, failures=failures, warnings=warnings)
+
+    def _check_aws(self, aws, required: bool, failures: list[str], warnings: list[str]) -> bool:
         aws_ok = bool(aws.pk) and aws.is_configured
-        aws_required = options["require_aws"] or email.provider == "ses"
-        self._report("AWSCredentialConfig", aws, aws_ok, required=aws_required)
+        self._report("AWSCredentialConfig", aws, aws_ok, required=required)
         if not aws_ok:
-            (failures if aws_required else warnings).append(
+            (failures if required else warnings).append(
                 "AWSCredentialConfig is not configured (SES, SNS, and Bedrock all depend on it)."
             )
+        return aws_ok
 
+    def _check_email(self, email, *, aws_ok: bool, smtp_ok: bool, failures: list[str]) -> None:
         sender_ok = self._valid_email(email.from_email)
-        smtp = SMTPProviderConfig.load()
-        smtp_ok = bool(smtp.pk) and smtp.is_configured
-        if email.provider == "ses":
-            provider_ok = aws_ok
-        elif email.provider == "smtp":
-            provider_ok = smtp_ok
-        else:
-            provider_ok = False
+        provider_ok = {"ses": aws_ok, "smtp": smtp_ok}.get(email.provider, False)
         email_ok = bool(email.pk) and email.is_active and sender_ok and provider_ok
         self._report("EmailServiceConfig", email, email_ok, required=True)
-        if not email_ok:
-            if not sender_ok:
-                failures.append("EmailServiceConfig From address is empty or invalid.")
-            elif email.provider == "smtp":
-                failures.append("EmailServiceConfig selects SMTP, but SMTPProviderConfig is not configured.")
-            elif email.provider == "ses":
-                failures.append(
-                    "EmailServiceConfig selects SES, but its active sender or AWS Credentials are not configured."
-                )
-            else:
-                failures.append(f"EmailServiceConfig selects unsupported provider {email.provider!r}.")
+        if email_ok:
+            return
+        if not sender_ok:
+            failures.append("EmailServiceConfig From address is empty or invalid.")
+        elif email.provider == "smtp":
+            failures.append("EmailServiceConfig selects SMTP, but SMTPProviderConfig is not configured.")
+        elif email.provider == "ses":
+            failures.append(
+                "EmailServiceConfig selects SES, but its active sender or AWS Credentials are not configured."
+            )
+        else:
+            failures.append(f"EmailServiceConfig selects unsupported provider {email.provider!r}.")
 
-        smtp_required = email.provider == "smtp"
-        self._report("SMTPProviderConfig", smtp, smtp_ok, required=smtp_required)
-        if not smtp_ok:
-            (failures if smtp_required else warnings).append("SMTPProviderConfig is not configured.")
-
+    def _check_sms(self, aws, required: bool, failures: list[str], warnings: list[str]) -> None:
         sms_ok = bool(aws.pk) and aws.sns_configured
-        self._report("AWS SNS SMS", aws, sms_ok, required=options["require_sms"])
+        self._report("AWS SNS SMS", aws, sms_ok, required=required)
         if not sms_ok:
-            (failures if options["require_sms"] else warnings).append(
+            (failures if required else warnings).append(
                 "AWS SNS SMS is not configured (no active SMS origination number found for the AWS "
                 "account; register one in SNS/Pinpoint, or set a manual override on AWS Credentials)."
             )
 
+    def _check_google(self, required: bool, failures: list[str], warnings: list[str]) -> None:
         google = GoogleCredentialConfig.load()
         google_ok = bool(google.pk) and google.is_configured
-        self._report("GoogleCredentialConfig", google, google_ok, required=options["require_google"])
+        self._report("GoogleCredentialConfig", google, google_ok, required=required)
         if not google_ok:
-            (failures if options["require_google"] else warnings).append("GoogleCredentialConfig is not configured.")
-
-        self._check_send_verification(require_sms=options["require_sms"], failures=failures, warnings=warnings)
-        self._report_results(strict=strict, failures=failures, warnings=warnings)
+            (failures if required else warnings).append("GoogleCredentialConfig is not configured.")
 
     def _check_send_verification(self, *, require_sms: bool, failures: list[str], warnings: list[str]) -> None:
         # The browser requests a signed challenge in observe mode too. Check

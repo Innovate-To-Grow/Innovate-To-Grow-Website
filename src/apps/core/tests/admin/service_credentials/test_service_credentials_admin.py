@@ -83,7 +83,9 @@ class AWSCredentialConfigAdminTests(TestCase):
         mock_boto_client.return_value = mock_runtime
         model_admin = AWSCredentialConfigAdmin(AWSCredentialConfig, AdminSite())
 
-        with patch("apps.core.services.bedrock.models.catalog.fetch_models_from_aws", side_effect=AssertionError):
+        with patch(
+            "apps.system_intelligence.services.bedrock.models.catalog.fetch_models_from_aws", side_effect=AssertionError
+        ):
             response = model_admin.test_bedrock_api(self._request(), str(self.config.pk))
 
         self.assertEqual(response.status_code, 302)
@@ -92,7 +94,7 @@ class AWSCredentialConfigAdminTests(TestCase):
 
     def test_default_model_is_managed_on_system_intelligence_config(self):
         aws_response = self.client.get(reverse("admin:core_awscredentialconfig_change", args=[self.config.pk]))
-        with patch("apps.core.services.bedrock.get_available_models", return_value=[]):
+        with patch("apps.system_intelligence.services.bedrock.get_available_models", return_value=[]):
             system_response = self.client.get(
                 reverse("admin:system_intelligence_systemintelligenceconfig_change", args=[self.chat_config.pk])
             )

@@ -2,6 +2,7 @@ import json
 import logging
 import signal
 import time
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -99,7 +100,7 @@ def schedule_startup_reconciliation() -> bool:
     try:
         # Local import keeps the generic queue reusable without making the core
         # app import CMS models during Django startup.
-        from apps.cms.services.amplify.amplify_redirects import schedule_amplify_redirect_sync
+        from apps.cms.services.amplify.jobs import schedule_amplify_redirect_sync
 
         job = schedule_amplify_redirect_sync(immediate=True)
     except Exception:  # noqa: BLE001 - startup scheduling must not stop delivery.
@@ -130,11 +131,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        stopping = False
+        self._stopping = False
 
         def request_stop(_signum, _frame):
-            nonlocal stopping
-            stopping = True
+            self._stopping = True
 
         signal.signal(signal.SIGTERM, request_stop)
         signal.signal(signal.SIGINT, request_stop)
@@ -143,55 +143,61 @@ class Command(BaseCommand):
         maintenance_seconds = max(
             MIN_MAINTENANCE_SECONDS, options.get("key_purge_seconds", DEFAULT_MAINTENANCE_SECONDS)
         )
+        stale_after = timedelta(minutes=max(1, options["stale_minutes"]))
         next_maintenance_at = 0.0
         schedule_startup_reconciliation()
 
-        while not stopping:
-            from datetime import timedelta
-
+        while not self._stopping:
             now_monotonic = time.monotonic()
             if now_monotonic >= next_maintenance_at:
                 try:
-                    run_maintenance(should_stop=lambda: stopping)
+                    run_maintenance(should_stop=lambda: self._stopping)
                 finally:
                     next_maintenance_at = now_monotonic + maintenance_seconds
 
-            processed_jobs = 0
-            try:
-                recover_stale_jobs(stale_after=timedelta(minutes=max(1, options["stale_minutes"])))
-            except Exception:  # noqa: BLE001 - one maintenance failure must not terminate the worker.
-                logger.exception("Background worker maintenance/claim cycle failed")
-            else:
-                # Claim immediately before execution instead of reserving a whole
-                # batch. If a shutdown signal arrives while one job is running,
-                # later jobs remain pending and do not consume an attempt merely
-                # because this worker is stopping.
-                for _index in range(batch_size):
-                    if stopping:
-                        break
-                    try:
-                        jobs = claim_jobs(batch_size=1)
-                    except Exception:  # noqa: BLE001 - retry the claim on the next cycle.
-                        logger.exception("Background worker maintenance/claim cycle failed")
-                        break
-                    if not jobs:
-                        break
-                    job = jobs[0]
-                    processed_jobs += 1
-                    try:
-                        process_claimed_job(job)
-                    except Exception:  # noqa: BLE001 - final per-job containment boundary.
-                        logger.exception("Unhandled background job boundary failure for %s", job.pk)
-
-            try:
-                metrics = worker_metrics()
-                publish_worker_metrics(metrics)
-                self.stdout.write(json.dumps(metrics, sort_keys=True))
-            except Exception:  # noqa: BLE001 - observability must not terminate delivery.
-                logger.exception("Background worker metrics cycle failed")
+            processed_jobs = self._process_jobs(batch_size=batch_size, stale_after=stale_after)
+            self._publish_metrics()
 
             if options["once"]:
                 return
             # No idle wait once a stop was requested: the loop condition ends the worker right away.
-            if not processed_jobs and not stopping:
+            if not processed_jobs and not self._stopping:
                 time.sleep(poll_seconds)
+
+    def _process_jobs(self, *, batch_size: int, stale_after) -> int:
+        """Recover stale jobs, then claim and run up to ``batch_size`` jobs one at a time; how many ran."""
+        try:
+            recover_stale_jobs(stale_after=stale_after)
+        except Exception:  # noqa: BLE001 - one maintenance failure must not terminate the worker.
+            logger.exception("Background worker maintenance/claim cycle failed")
+            return 0
+        # Claim immediately before execution instead of reserving a whole
+        # batch. If a shutdown signal arrives while one job is running,
+        # later jobs remain pending and do not consume an attempt merely
+        # because this worker is stopping.
+        processed_jobs = 0
+        for _index in range(batch_size):
+            if self._stopping:
+                break
+            try:
+                jobs = claim_jobs(batch_size=1)
+            except Exception:  # noqa: BLE001 - retry the claim on the next cycle.
+                logger.exception("Background worker maintenance/claim cycle failed")
+                break
+            if not jobs:
+                break
+            job = jobs[0]
+            processed_jobs += 1
+            try:
+                process_claimed_job(job)
+            except Exception:  # noqa: BLE001 - final per-job containment boundary.
+                logger.exception("Unhandled background job boundary failure for %s", job.pk)
+        return processed_jobs
+
+    def _publish_metrics(self) -> None:
+        try:
+            metrics = worker_metrics()
+            publish_worker_metrics(metrics)
+            self.stdout.write(json.dumps(metrics, sort_keys=True))
+        except Exception:  # noqa: BLE001 - observability must not terminate delivery.
+            logger.exception("Background worker metrics cycle failed")

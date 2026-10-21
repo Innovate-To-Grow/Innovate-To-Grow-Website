@@ -1,4 +1,3 @@
-import uuid
 from collections.abc import Mapping
 
 from django.conf import settings
@@ -37,31 +36,6 @@ def enqueue_job(
                 "available_at": available_at or timezone.now(),
             },
         )
-
-
-def enqueue_notification_email(
-    *,
-    recipient: str,
-    subject: str,
-    template: str,
-    context: dict,
-    dedupe_key: str | None = None,
-):
-    """Queue a fire-and-forget notification email without exposing its body in logs."""
-    payload = {
-        "recipient": recipient,
-        "subject": subject,
-        "template": template,
-        "context": context,
-    }
-    return enqueue_job(
-        kind="authn.notification_email",
-        # A job is idempotent across worker retries, but two identical security
-        # events at different times must each notify the owner.
-        dedupe_key=dedupe_key or str(uuid.uuid4()),
-        payload=payload,
-        can_retry_after_claim=False,
-    )
 
 
 def retry_job(job: BackgroundJob) -> bool:

@@ -1,8 +1,6 @@
-from .tool_definitions import get_tool_definitions
-from .tool_modules import TOOL_REGISTRY, execute_tool
+"""Shared ORM sandbox (``safe_orm``): model/field denylists, safe record reads and writes.
 
-__all__ = [
-    "TOOL_REGISTRY",
-    "execute_tool",
-    "get_tool_definitions",
-]
+Used by the admin assistant (``apps.system_intelligence``) and the CLI admin API
+(``apps.cli_admin``). The assistant's query tools live in
+``apps.system_intelligence.services.query_tools``.
+"""
