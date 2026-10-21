@@ -8,8 +8,8 @@ install, prefer the built-in ``i2g-admin --install-completion``.
 import typer
 from click.shell_completion import get_completion_class
 
-from .. import runtime
-from ..errors import CliError
+from ..core import runtime
+from ..core.errors import CliError
 
 # AWS-CLI-style supported shells. We validate against this fixed set rather than
 # the global Click registry alone, because Typer mutates that registry (adding

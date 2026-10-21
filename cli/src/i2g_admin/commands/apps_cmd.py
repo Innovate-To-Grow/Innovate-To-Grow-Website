@@ -2,8 +2,8 @@
 
 import typer
 
-from .. import runtime
-from ..errors import CliError
+from ..core import runtime
+from ..core.errors import CliError
 
 
 def register(app: typer.Typer) -> None:

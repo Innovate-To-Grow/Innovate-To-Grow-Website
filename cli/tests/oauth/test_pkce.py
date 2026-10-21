@@ -1,4 +1,4 @@
-from i2g_admin.pkce import challenge_s256, generate_verifier
+from i2g_admin.auth.pkce import challenge_s256, generate_verifier
 
 # RFC 7636 Appendix B reference vector — shared with the backend's verify_pkce_s256 test.
 RFC_VERIFIER = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"

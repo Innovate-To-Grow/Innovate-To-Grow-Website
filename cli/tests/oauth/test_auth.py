@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 import responses
 from i2g_admin import auth, config
-from i2g_admin.errors import AuthError, CliError
+from i2g_admin.core.errors import AuthError, CliError
 
 
 class FakeServer:
