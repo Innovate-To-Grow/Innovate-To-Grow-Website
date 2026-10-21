@@ -1,3 +1,5 @@
+"""Admin for the send-verification config (a ``core`` model; the feature itself is ``authn.services.send_verification``)."""
+
 from django import forms
 from django.contrib import admin
 from django.utils.html import format_html, format_html_join
@@ -6,9 +8,8 @@ from unfold.widgets import UnfoldAdminPasswordToggleWidget
 from apps.authn.services.send_verification.config import load_settings
 from apps.authn.services.send_verification.constants import ALLOWED_ALGORITHMS
 from apps.authn.services.send_verification.exceptions import SendVerificationUnavailable
+from apps.core.admin import BaseModelAdmin
 from apps.core.models import SendVerificationConfig
-
-from ..common.base import BaseModelAdmin
 
 
 class SendVerificationConfigForm(forms.ModelForm):

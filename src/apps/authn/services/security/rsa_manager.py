@@ -149,6 +149,18 @@ def get_public_key_pem() -> tuple[str, str]:
     return keypair.public_key_pem, str(keypair.key_id)
 
 
+def _decryption_keypair(key_id: str) -> RSAKeypair:
+    """The named key: active, or retired within the decryption grace period."""
+    keypair = RSAKeypair.objects.filter(key_id=key_id, name=AUTH_KEY_NAME).first()
+    if not keypair:
+        raise RSADecryptionError("Unknown RSA key identifier.")
+    if not keypair.is_active:
+        retired_at = keypair.rotated_at
+        if retired_at is None or retired_at <= timezone.now() - KEY_DECRYPTION_GRACE_PERIOD:
+            raise RSADecryptionError("RSA key identifier has expired.")
+    return keypair
+
+
 def decrypt_password(encrypted_password_b64: str, key_id: str | None = None) -> str:
     """
     Decrypt a password that was encrypted with the public key.
@@ -164,20 +176,7 @@ def decrypt_password(encrypted_password_b64: str, key_id: str | None = None) -> 
         RSADecryptionError: If decryption fails
     """
     try:
-        now = timezone.now()
-        if key_id:
-            keypair = RSAKeypair.objects.filter(
-                key_id=key_id,
-                name=AUTH_KEY_NAME,
-            ).first()
-            if not keypair:
-                raise RSADecryptionError("Unknown RSA key identifier.")
-            if not keypair.is_active:
-                retired_at = keypair.rotated_at
-                if retired_at is None or retired_at <= now - KEY_DECRYPTION_GRACE_PERIOD:
-                    raise RSADecryptionError("RSA key identifier has expired.")
-        else:
-            keypair = get_or_create_auth_keypair()
+        keypair = _decryption_keypair(key_id) if key_id else get_or_create_auth_keypair()
 
         # Load private key (decrypted from Fernet-encrypted DB storage; parsed once per stored material)
         private_key = _load_private_key(keypair)

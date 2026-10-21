@@ -67,6 +67,16 @@ def _ensure_session(request):
         request.session.save()
 
 
+def _restore_login_state(request, previous_state, *, keep_code_step: bool) -> None:
+    """A refused send leaves the login where it was: the earlier code step, or cleared (unless a code is usable)."""
+    previous_step, previous_email, previous_member_id = previous_state
+    request.session.pop("admin_send_unresolved_request_id", None)
+    if previous_step == "code":
+        set_admin_login_state(request, step=previous_step, email=previous_email, member_id=previous_member_id)
+    elif not keep_code_step:
+        clear_admin_login_session(request)
+
+
 def _admin_send_code(
     request, *, operation: str, member, email: str, hide_email: bool | None = None
 ) -> AdminSendRefused | None:
@@ -84,7 +94,7 @@ def _admin_send_code(
         return AdminSendRefused(
             "The previous send request is still unresolved. Check your messages and reload this page before sending again."
         )
-    previous_step, previous_email, previous_member_id = get_admin_login_state(request)
+    previous_state = get_admin_login_state(request)
 
     def perform():
         request.session["admin_send_unresolved_request_id"] = active_send_request_id()
@@ -119,16 +129,7 @@ def _admin_send_code(
         return None
     recent_code = response.status_code == 429 and _usable_admin_code_exists(email)
     if response.data.get("code") != "send_unknown":
-        request.session.pop("admin_send_unresolved_request_id", None)
-        if previous_step == "code":
-            set_admin_login_state(
-                request,
-                step=previous_step,
-                email=previous_email,
-                member_id=previous_member_id,
-            )
-        elif not recent_code:
-            clear_admin_login_session(request)
+        _restore_login_state(request, previous_state, keep_code_step=recent_code)
     if response.status_code >= 500:
         return AdminSendRefused("Failed to send verification code. Please try again later.")
     detail = response.data.get("detail") or "Failed to send verification code. Please try again later."

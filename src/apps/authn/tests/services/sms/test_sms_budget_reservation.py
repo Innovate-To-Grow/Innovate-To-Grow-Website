@@ -1,7 +1,7 @@
 """Where and how the global SMS daily budget is reserved (``send_verification.quotas`` and ``sns_verify``).
 
 The budget is reserved at dispatch, in the transaction that stores the code, and nowhere else. The API-level
-behaviour is in ``apps.authn.tests.api.test_sms_daily_budget``; real row-lock contention is in
+behaviour is in ``apps.authn.tests.api.send_verification.test_sms_daily_budget``; real row-lock contention is in
 ``test_send_verification_concurrency`` (PostgreSQL only).
 """
 

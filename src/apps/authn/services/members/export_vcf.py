@@ -41,6 +41,39 @@ def export_members_to_vcard(queryset) -> bytes:
     return payload.encode("utf-8")
 
 
+def _display_name(member, primary_email) -> str:
+    full_name = (member.get_full_name() or "").strip()
+    if full_name:
+        return full_name
+    return (primary_email.email_address if primary_email else f"Member {str(member.id)[:8]}").strip()
+
+
+def _contact_lines(primary_email, secondary_email, phone) -> list[str]:
+    lines = []
+    if primary_email and primary_email.email_address:
+        lines.append(_fold(f"EMAIL;TYPE=INTERNET,PREF:{_escape(primary_email.email_address)}"))
+    if secondary_email and secondary_email.email_address:
+        lines.append(_fold(f"EMAIL;TYPE=INTERNET:{_escape(secondary_email.email_address)}"))
+    if phone:
+        try:
+            tel = phone.to_e164()
+        except Exception:
+            tel = ""
+        if tel:
+            lines.append(_fold(f"TEL;TYPE=CELL:{_escape(tel)}"))
+    return lines
+
+
+def _photo_lines(member) -> list[str]:
+    photo_b64, photo_type = _profile_image(member.profile_image)
+    if not photo_b64:
+        return []
+    photo_params = "PHOTO;ENCODING=b"
+    if photo_type:
+        photo_params += f";TYPE={photo_type}"
+    return [_fold(f"{photo_params}:{photo_b64}")]
+
+
 def _build_vcard(member) -> str:
     contact_emails = list(member.contact_emails.all())
     primary_email = next((ce for ce in contact_emails if ce.email_type == "primary"), None)
@@ -51,39 +84,15 @@ def _build_vcard(member) -> str:
     middle = (member.middle_name or "").strip()
     last = (member.last_name or "").strip()
 
-    full_name = (member.get_full_name() or "").strip()
-    if not full_name:
-        full_name = (primary_email.email_address if primary_email else f"Member {str(member.id)[:8]}").strip()
-
     lines: list[str] = ["BEGIN:VCARD", "VERSION:3.0"]
-    lines.append(_fold(f"FN:{_escape(full_name)}"))
+    lines.append(_fold(f"FN:{_escape(_display_name(member, primary_email))}"))
     lines.append(_fold(f"N:{_escape(last)};{_escape(first)};{_escape(middle)};;"))
-
     if member.organization:
         lines.append(_fold(f"ORG:{_escape(member.organization)}"))
     if member.title:
         lines.append(_fold(f"TITLE:{_escape(member.title)}"))
-
-    if primary_email and primary_email.email_address:
-        lines.append(_fold(f"EMAIL;TYPE=INTERNET,PREF:{_escape(primary_email.email_address)}"))
-    if secondary_email and secondary_email.email_address:
-        lines.append(_fold(f"EMAIL;TYPE=INTERNET:{_escape(secondary_email.email_address)}"))
-
-    if phone:
-        try:
-            tel = phone.to_e164()
-        except Exception:
-            tel = ""
-        if tel:
-            lines.append(_fold(f"TEL;TYPE=CELL:{_escape(tel)}"))
-
-    photo_b64, photo_type = _profile_image(member.profile_image)
-    if photo_b64:
-        photo_params = "PHOTO;ENCODING=b"
-        if photo_type:
-            photo_params += f";TYPE={photo_type}"
-        lines.append(_fold(f"{photo_params}:{photo_b64}"))
-
+    lines.extend(_contact_lines(primary_email, secondary_email, phone))
+    lines.extend(_photo_lines(member))
     lines.append(f"UID:urn:uuid:{member.id}")
     lines.append("END:VCARD")
     return CRLF.join(lines)

@@ -6,6 +6,10 @@ from django.db import IntegrityError, transaction
 from apps.authn.models import ContactEmail, Member
 
 
+def _failure(error: str) -> dict[str, Any]:
+    return {"success": False, "member": None, "member_uuid": None, "error": error}
+
+
 class CreateMemberService:
     """Service for creating new member accounts."""
 
@@ -46,38 +50,18 @@ class CreateMemberService:
             ValueError: If required fields are missing or invalid
         """
         if not password or not password.strip():
-            return {
-                "success": False,
-                "member": None,
-                "member_uuid": None,
-                "error": "Password is required",
-            }
+            return _failure("Password is required")
 
         if not first_name or not first_name.strip():
-            return {
-                "success": False,
-                "member": None,
-                "member_uuid": None,
-                "error": "First name is required",
-            }
+            return _failure("First name is required")
 
         if not last_name or not last_name.strip():
-            return {
-                "success": False,
-                "member": None,
-                "member_uuid": None,
-                "error": "Last name is required",
-            }
+            return _failure("Last name is required")
 
         try:
             # Check if email already exists (if provided)
             if email and ContactEmail.objects.filter(email_address__iexact=email.strip()).exists():
-                return {
-                    "success": False,
-                    "member": None,
-                    "member_uuid": None,
-                    "error": f"Email '{email}' already exists",
-                }
+                return _failure(f"Email '{email}' already exists")
 
             # Create the member using create_user which handles password hashing
             member = Member.objects.create_user(
@@ -107,25 +91,10 @@ class CreateMemberService:
             }
 
         except IntegrityError as e:
-            return {
-                "success": False,
-                "member": None,
-                "member_uuid": None,
-                "error": f"Database integrity error: {str(e)}",
-            }
+            return _failure(f"Database integrity error: {str(e)}")
 
         except ValidationError as e:
-            return {
-                "success": False,
-                "member": None,
-                "member_uuid": None,
-                "error": f"Validation error: {str(e)}",
-            }
+            return _failure(f"Validation error: {str(e)}")
 
         except Exception as e:
-            return {
-                "success": False,
-                "member": None,
-                "member_uuid": None,
-                "error": f"Unexpected error: {str(e)}",
-            }
+            return _failure(f"Unexpected error: {str(e)}")

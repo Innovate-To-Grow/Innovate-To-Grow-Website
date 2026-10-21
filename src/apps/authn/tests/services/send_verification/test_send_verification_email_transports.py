@@ -12,7 +12,7 @@ from django.test import TestCase, override_settings
 from apps.authn.models import Member, SendVerificationRequest
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email.challenges import issue_email_challenge, verify_email_code
-from apps.authn.tests.services.test_send_verification_concurrency import send, verified_request
+from apps.authn.tests.services.send_verification.test_send_verification_concurrency import send, verified_request
 
 
 @override_settings(

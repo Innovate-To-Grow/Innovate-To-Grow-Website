@@ -72,13 +72,16 @@ def infer_region_from_e164(phone: str, current_region: str = "") -> str:
 
     for cc, region_code in lookup:
         if digits.startswith(cc):
-            if cc == "1":
-                if current_region and current_region not in ("1-US", "1-CA"):
-                    return current_region
-                return current_region if current_region == "1-CA" else "1-US"
-            return region_code
+            return _north_american_region(current_region) if cc == "1" else region_code
 
     return current_region or "1-US"
+
+
+def _north_american_region(current_region: str) -> str:
+    """``+1``: keep 1-CA, keep a non-US/CA legacy region, otherwise 1-US."""
+    if current_region and current_region not in ("1-US", "1-CA"):
+        return current_region
+    return current_region if current_region == "1-CA" else "1-US"
 
 
 def _to_national_digits(phone_number: str, region: str) -> str:

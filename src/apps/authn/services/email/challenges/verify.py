@@ -93,6 +93,30 @@ def verify_email_code_and_mint_token(
     return challenge, verification_token
 
 
+def _record_wrong_guess(challenge: EmailAuthChallenge) -> None:
+    challenge.attempts += 1
+    if challenge.attempts >= challenge.max_attempts:
+        challenge.status = EmailAuthChallenge.Status.EXPIRED
+    challenge.save(update_fields=["attempts", "status", "updated_at"])
+
+
+def _transition_values(target_status: str, now) -> tuple[dict, str | None]:
+    """Column values for the pending -> ``target_status`` update, and the new token when verifying."""
+    update_values = {"status": target_status, "verified_at": now, "updated_at": now}
+    if target_status == EmailAuthChallenge.Status.CONSUMED:
+        return update_values, None
+    if target_status != EmailAuthChallenge.Status.VERIFIED:
+        raise ValueError(f"Unsupported email challenge target status: {target_status}")
+    import apps.authn.services.email.challenges as api
+
+    verification_token = api._random_token()
+    update_values.update(
+        verification_token_hash=make_password(verification_token),
+        expires_at=now + api.CHALLENGE_TTL,
+    )
+    return update_values, verification_token
+
+
 @transaction.atomic
 def _verify_and_transition_email_code(
     *,
@@ -129,30 +153,11 @@ def _verify_and_transition_email_code(
         return None, None, "Verification code is invalid or has expired."
 
     if not check_password(code, challenge.code_hash):
-        challenge.attempts += 1
-        if challenge.attempts >= challenge.max_attempts:
-            challenge.status = EmailAuthChallenge.Status.EXPIRED
-        challenge.save(update_fields=["attempts", "status", "updated_at"])
+        _record_wrong_guess(challenge)
         return None, None, "Verification code is invalid or has expired."
 
     now = timezone.now()
-    update_values = {
-        "status": target_status,
-        "verified_at": now,
-        "updated_at": now,
-    }
-    verification_token = None
-    if target_status == EmailAuthChallenge.Status.VERIFIED:
-        import apps.authn.services.email.challenges as api
-
-        verification_token = api._random_token()
-        update_values.update(
-            verification_token_hash=make_password(verification_token),
-            expires_at=now + api.CHALLENGE_TTL,
-        )
-    elif target_status != EmailAuthChallenge.Status.CONSUMED:
-        raise ValueError(f"Unsupported email challenge target status: {target_status}")
-
+    update_values, verification_token = _transition_values(target_status, now)
     updated = EmailAuthChallenge.objects.filter(
         pk=challenge.pk,
         status=EmailAuthChallenge.Status.PENDING,

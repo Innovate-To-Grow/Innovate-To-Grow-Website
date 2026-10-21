@@ -129,7 +129,7 @@ class DeleteAccountCodeViewEdgeTests(APITestCase):
     def test_request_code_throttled_returns_429(self, _code, _send):
         """save() raising AuthChallengeThrottled -> challenge_error_response -> 429 (lines 96-97)."""
         with patch(
-            "apps.authn.serializers.email_code.passwords.issue_email_challenge",
+            "apps.authn.serializers.email_code.account_deletion.issue_email_challenge",
             side_effect=AuthChallengeThrottled("slow down"),
         ):
             resp = self.client.post("/authn/delete-account/request-code/", {}, format="json")

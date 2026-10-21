@@ -127,21 +127,7 @@ def guarded_send(
     try:
         with delivery_context(lease.record):
             result = perform()
-        if isinstance(result, SendOutcome):
-            outcome = result
-        else:
-            payload, http_status = result
-            payload = payload if isinstance(payload, dict) else {"detail": payload}
-            outcome = SendOutcome(
-                payload,
-                http_status,
-                SendVerificationRequest.Status.PROVIDER_ACCEPTED
-                if 200 <= http_status < 300
-                else SendVerificationRequest.Status.UNKNOWN
-                if http_status >= 500
-                else SendVerificationRequest.Status.DEFINITELY_FAILED,
-                str(payload.get("challenge_id") or ""),
-            )
+        outcome = result if isinstance(result, SendOutcome) else _outcome_from_response(*result)
     except SendVerificationError as exc:
         # Raised before anything reached a provider (for an SMS: the daily budget was spent), so definitely failed.
         outcome = SendOutcome(
@@ -150,32 +136,7 @@ def guarded_send(
             SendVerificationRequest.Status.DEFINITELY_FAILED,
         )
     except Exception as exc:  # noqa: BLE001
-        from apps.authn.views.helpers import challenge_error_response
-
-        try:
-            mapped = (
-                Response(exc.detail, status=exc.status_code)
-                if isinstance(exc, APIException)
-                else challenge_error_response(exc)
-            )
-            payload = mapped.data if isinstance(mapped.data, dict) else {"detail": mapped.data}
-            outcome_status = (
-                SendVerificationRequest.Status.DEFINITELY_FAILED if mapped.status_code < 500 else failure_status(exc)
-            )
-            outcome = SendOutcome(
-                payload,
-                mapped.status_code,
-                outcome_status,
-                str(getattr(exc, "challenge_id", "") or lease.record.otp_challenge_id),
-            )
-        except Exception:  # noqa: BLE001 - a post-claim unclassified failure is ambiguous.
-            logger.exception("Protected send outcome could not be confirmed for %s", lease.record.request_id)
-            outcome = SendOutcome(
-                {"code": "send_unknown", "detail": "The send request outcome could not be confirmed."},
-                status.HTTP_409_CONFLICT,
-                SendVerificationRequest.Status.UNKNOWN,
-                str(getattr(exc, "challenge_id", "") or lease.record.otp_challenge_id),
-            )
+        outcome = _outcome_from_exception(exc, lease.record)
 
     _finalize(lease.record, outcome)
     return replay_response(lease.record)
@@ -192,3 +153,41 @@ def serialize_request_status(record: SendVerificationRequest) -> dict:
         "challenge_id": response.data.get("challenge_id") if is_reset else record.otp_challenge_id or None,
         "http_status": response.status_code,
     }
+
+
+def _outcome_from_response(payload, http_status: int) -> SendOutcome:
+    """A plain ``(payload, status)`` result: 2xx was accepted, 5xx is unknown, anything else definitely failed."""
+    payload = payload if isinstance(payload, dict) else {"detail": payload}
+    if 200 <= http_status < 300:
+        delivery = SendVerificationRequest.Status.PROVIDER_ACCEPTED
+    elif http_status >= 500:
+        delivery = SendVerificationRequest.Status.UNKNOWN
+    else:
+        delivery = SendVerificationRequest.Status.DEFINITELY_FAILED
+    return SendOutcome(payload, http_status, delivery, str(payload.get("challenge_id") or ""))
+
+
+def _outcome_from_exception(exc: Exception, record) -> SendOutcome:
+    """Map a send that raised to the response the caller sees and what is known about delivery."""
+    from apps.authn.views.helpers import challenge_error_response
+
+    challenge_id = str(getattr(exc, "challenge_id", "") or record.otp_challenge_id)
+    try:
+        mapped = (
+            Response(exc.detail, status=exc.status_code)
+            if isinstance(exc, APIException)
+            else challenge_error_response(exc)
+        )
+        payload = mapped.data if isinstance(mapped.data, dict) else {"detail": mapped.data}
+        outcome_status = (
+            SendVerificationRequest.Status.DEFINITELY_FAILED if mapped.status_code < 500 else failure_status(exc)
+        )
+        return SendOutcome(payload, mapped.status_code, outcome_status, challenge_id)
+    except Exception:  # noqa: BLE001 - a post-claim unclassified failure is ambiguous.
+        logger.exception("Protected send outcome could not be confirmed for %s", record.request_id)
+        return SendOutcome(
+            {"code": "send_unknown", "detail": "The send request outcome could not be confirmed."},
+            status.HTTP_409_CONFLICT,
+            SendVerificationRequest.Status.UNKNOWN,
+            challenge_id,
+        )

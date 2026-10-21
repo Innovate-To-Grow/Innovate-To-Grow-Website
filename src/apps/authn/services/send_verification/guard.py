@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.authn.models import SendVerificationChallenge, SendVerificationRequest
 
+from .challenges import check_challenge_usable
 from .config import load_settings, require_ready
 from .constants import (
     FIELD_CHALLENGE_ID,
@@ -23,13 +24,12 @@ from .exceptions import (
     SendRequestConflict,
     SendVerificationConsumed,
     SendVerificationContextMismatch,
-    SendVerificationExpired,
     SendVerificationInvalid,
     SendVerificationRequired,
 )
 from .metrics import emit
 from .principal import principal_from_request, principals_match
-from .proofs import verify_payload
+from .proofs import check_signed_challenge, verify_payload
 from .quotas import reserve_send_quotas
 
 
@@ -110,32 +110,29 @@ def consume_and_reserve(
     # cooldown are used. Password reset is not: it sends only when the number has an account, so its answer must not
     # depend on the budget (it answers its neutral 202 and the SMS is quietly not sent).
     refuse_spent_sms_budget = channel == SMS_CHANNEL and operation != OP_PASSWORD_RESET_REQUEST_CODE
-
-    if config.mode == MODE_OBSERVE and not (challenge_id and payload and request_id):
-        emit("observe_missing_proof", operation=operation, destination=destination_normalized)
-        # Observation still reserves destination quotas so rollout does not
-        # silently drop abuse controls. A synthetic request id is not reused.
-        return _observe_without_proof(
-            operation=operation,
-            destination_kind=destination_kind,
-            destination_normalized=destination_normalized,
-            fingerprint=fingerprint,
-            channel=channel,
-            principal_type=principal_type,
-            principal_key=principal_key,
-            refuse_spent_sms_budget=refuse_spent_sms_budget,
-        )
-
-    config = require_ready(for_sms=channel == SMS_CHANNEL or operation in SMS_OPERATIONS)
-    if not challenge_id or not payload or not request_id:
-        raise SendVerificationRequired()
-
     context = {
         "operation": operation,
         "channel": channel,
         "destination_kind": destination_kind,
         "destination_normalized": destination_normalized,
     }
+
+    if config.mode == MODE_OBSERVE and not (challenge_id and payload and request_id):
+        emit("observe_missing_proof", operation=operation, destination=destination_normalized)
+        # Observation still reserves destination quotas so rollout does not
+        # silently drop abuse controls. A synthetic request id is not reused.
+        return _observe_without_proof(
+            fingerprint=fingerprint,
+            principal_type=principal_type,
+            principal_key=principal_key,
+            refuse_spent_sms_budget=refuse_spent_sms_budget,
+            **context,
+        )
+
+    config = require_ready(for_sms=channel == SMS_CHANNEL or operation in SMS_OPERATIONS)
+    if not challenge_id or not payload or not request_id:
+        raise SendVerificationRequired()
+
     try:
         return _consume_transaction(
             request_id=request_id,
@@ -145,17 +142,21 @@ def consume_and_reserve(
             principal_key=principal_key,
             fingerprint=fingerprint,
             config=config,
+            context=context,
             refuse_spent_sms_budget=refuse_spent_sms_budget,
-            **context,
         )
     except IntegrityError as exc:
-        # The entire attempted consumption/reservation has rolled back before
-        # reading a competing winner. Never query inside a broken transaction.
-        with transaction.atomic():
-            existing = _load_existing_request(request_id, principal_type, principal_key, fingerprint, **context)
-            if existing is None:
-                raise SendRequestConflict() from exc
-            return _replay(existing)
+        return _replay_competing_request(exc, request_id, principal_type, principal_key, fingerprint, context)
+
+
+def _replay_competing_request(exc, request_id, principal_type, principal_key, fingerprint, context) -> ProtectedSend:
+    # The entire attempted consumption/reservation has rolled back before
+    # reading a competing winner. Never query inside a broken transaction.
+    with transaction.atomic():
+        existing = _load_existing_request(request_id, principal_type, principal_key, fingerprint, **context)
+        if existing is None:
+            raise SendRequestConflict() from exc
+        return _replay(existing)
 
 
 def _consume_transaction(
@@ -167,18 +168,13 @@ def _consume_transaction(
     principal_key,
     fingerprint,
     config,
-    operation,
-    channel,
-    destination_kind,
-    destination_normalized,
+    context: dict,
     refuse_spent_sms_budget=False,
 ):
-    context = {
-        "operation": operation,
-        "channel": channel,
-        "destination_kind": destination_kind,
-        "destination_normalized": destination_normalized,
-    }
+    """Spend the challenge and create the reserved request in one transaction (or replay a finished one).
+
+    ``context`` holds the send's ``operation``, ``channel``, ``destination_kind`` and ``destination_normalized``.
+    """
     with transaction.atomic():
         existing = _load_existing_request(request_id, principal_type, principal_key, fingerprint, **context)
         if existing is not None:
@@ -193,68 +189,63 @@ def _consume_transaction(
         if existing is not None:
             return _replay(existing)
         now = timezone.now()
-        if challenge.status == SendVerificationChallenge.Status.CONSUMED:
-            raise SendVerificationConsumed()
-        if challenge.status != SendVerificationChallenge.Status.PENDING or challenge.expires_at <= now:
-            raise SendVerificationExpired()
-        if challenge.operation != operation:
-            raise SendVerificationContextMismatch()
-        if challenge.destination_kind != destination_kind or challenge.destination_normalized != destination_normalized:
-            raise SendVerificationContextMismatch()
-        if not principals_match(challenge.principal_type, challenge.principal_key, principal_type, principal_key):
-            raise SendVerificationContextMismatch()
-
-        verify_payload(payload, config, algorithm=challenge.algorithm, cost=challenge.cost)
-        from .proofs import payload_parameters
-
-        signed_data = payload_parameters(payload).get("data") or {}
-        if not isinstance(signed_data, dict):
-            raise SendVerificationInvalid()
-        if str(signed_data.get("challenge_id") or "") != str(challenge.id):
-            raise SendVerificationContextMismatch()
-        if str(signed_data.get("operation") or "") != operation:
-            raise SendVerificationContextMismatch()
-
-        updated = SendVerificationChallenge.objects.filter(
-            pk=challenge.pk,
-            status=SendVerificationChallenge.Status.PENDING,
-            expires_at__gt=now,
-        ).update(
-            status=SendVerificationChallenge.Status.CONSUMED,
-            consumed_at=now,
-            updated_at=now,
+        check_challenge_usable(
+            challenge, now=now, principal_type=principal_type, principal_key=principal_key, **context
         )
-        if not updated:
-            raise SendVerificationConsumed()
+        verify_payload(payload, config, algorithm=challenge.algorithm, cost=challenge.cost)
+        check_signed_challenge(payload, challenge, operation=context["operation"])
+        _mark_consumed(challenge, now=now)
 
         record = SendVerificationRequest.objects.create(
             request_id=request_id,
             challenge=challenge,
-            operation=operation,
-            channel=channel,
-            destination_kind=destination_kind,
-            destination_normalized=destination_normalized,
             principal_type=principal_type,
             principal_key=principal_key,
             request_fingerprint=fingerprint,
             status=SendVerificationRequest.Status.PENDING,
             quota_reserved=False,
             idempotency_expires_at=now + timedelta(seconds=config.idempotency_ttl_seconds),
+            **context,
         )
-        reserve_send_quotas(
-            config=config,
-            channel=channel,
-            destination_kind=destination_kind,
-            destination_normalized=destination_normalized,
-            now=now,
-            refuse_spent_sms_budget=refuse_spent_sms_budget,
-        )
-        record.quota_reserved = True
-        record.reserved_at = now
-        record.save(update_fields=["quota_reserved", "reserved_at", "updated_at"])
+        _reserve_for(record, config=config, now=now, refuse_spent_sms_budget=refuse_spent_sms_budget)
 
-    emit("challenge_consumed", operation=operation, request_id=str(request_id), destination=destination_normalized)
+    emit(
+        "challenge_consumed",
+        operation=context["operation"],
+        request_id=str(request_id),
+        destination=context["destination_normalized"],
+    )
     return ProtectedSend(record=record, is_replay=False)
+
+
+def _mark_consumed(challenge, *, now) -> None:
+    """Conditionally move the locked challenge from pending to consumed; it can be spent only once."""
+    updated = SendVerificationChallenge.objects.filter(
+        pk=challenge.pk,
+        status=SendVerificationChallenge.Status.PENDING,
+        expires_at__gt=now,
+    ).update(
+        status=SendVerificationChallenge.Status.CONSUMED,
+        consumed_at=now,
+        updated_at=now,
+    )
+    if not updated:
+        raise SendVerificationConsumed()
+
+
+def _reserve_for(record, *, config, now, refuse_spent_sms_budget) -> None:
+    """Reserve the destination (and SMS) quotas for a new request and mark it reserved."""
+    reserve_send_quotas(
+        config=config,
+        channel=record.channel,
+        destination_kind=record.destination_kind,
+        destination_normalized=record.destination_normalized,
+        now=now,
+        refuse_spent_sms_budget=refuse_spent_sms_budget,
+    )
+    record.quota_reserved = True
+    record.reserved_at = now
+    record.save(update_fields=["quota_reserved", "reserved_at", "updated_at"])
 
 
 def _observe_without_proof(

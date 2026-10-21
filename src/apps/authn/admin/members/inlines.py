@@ -127,6 +127,72 @@ class UUIDInlineMixin:
         return formfield
 
 
+def _check_new_email_row(form, member_has_primary) -> None:
+    # A brand-new row. ProjectControlModel gives every unsaved instance a UUID, so
+    # "no persisted row" — not "no pk" — is what identifies one. email_type defaults
+    # to "primary", so without this a new row silently became the member's primary
+    # while unverified, a state make_contact_email_primary explicitly refuses.
+    if form.cleaned_data.get("DELETE", False):
+        return
+    if form.cleaned_data.get("email_type") == "primary":
+        if member_has_primary:
+            raise ValidationError(PRIMARY_EMAIL_INLINE_PROMOTION_ERROR)
+        if not form.cleaned_data.get("verified", False):
+            raise ValidationError(PRIMARY_EMAIL_INLINE_UNVERIFIED_ERROR)
+
+
+def _check_persisted_email_row(form, persisted) -> None:
+    """The primary email is changed only through the dedicated actions, never inline."""
+    delete_requested = form.cleaned_data.get("DELETE", False)
+    requested_type = form.cleaned_data.get("email_type")
+    if requested_type is None and form.is_bound:
+        requested_type = form.data.get(form.add_prefix("email_type"))
+    requested_type = requested_type or persisted.email_type
+    protected_changes = {"email_address", "email_type"}.intersection(form.changed_data)
+
+    if persisted.email_type == "primary":
+        if delete_requested:
+            raise ValidationError(PRIMARY_EMAIL_INLINE_DELETE_ERROR)
+        if protected_changes:
+            raise ValidationError(PRIMARY_EMAIL_INLINE_EDIT_ERROR)
+    elif requested_type == "primary":
+        raise ValidationError(PRIMARY_EMAIL_INLINE_PROMOTION_ERROR)
+
+
+def _validate_contact_email_rows(formset) -> None:
+    # Member is the shared mutex used by the contact-email services.
+    # The admin change view already owns an outer transaction, so this
+    # lock remains held through save_formset() and prevents a concurrent
+    # primary swap from invalidating the checks below.
+    member = formset.instance
+    if member.pk and not member._state.adding and transaction.get_connection().in_atomic_block:
+        Member.objects.select_for_update().get(pk=member.pk)
+
+    persisted_emails = ContactEmail.objects.in_bulk(form.instance.pk for form in formset.forms if form.instance.pk)
+    member_has_primary = member.pk and ContactEmail.objects.filter(member=member, email_type="primary").exists()
+
+    for form in formset.forms:
+        if not hasattr(form, "cleaned_data"):
+            continue
+        persisted = persisted_emails.get(form.instance.pk)
+        if persisted is None:
+            _check_new_email_row(form, member_has_primary)
+        else:
+            _check_persisted_email_row(form, persisted)
+
+    primary_count = sum(
+        1
+        for form in formset.forms
+        # A form whose own validation failed has no cleaned_data; the loop above already
+        # guards for it, so guard here too rather than raising AttributeError.
+        if hasattr(form, "cleaned_data")
+        and not form.cleaned_data.get("DELETE", False)
+        and form.cleaned_data.get("email_type") == "primary"
+    )
+    if primary_count > 1:
+        raise ValidationError("A member may only have one primary email.")
+
+
 class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
     """Inline admin for contact email records."""
 
@@ -143,70 +209,7 @@ class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInl
 
         def clean(self_fs):
             original_clean(self_fs)
-            # Member is the shared mutex used by the contact-email services.
-            # The admin change view already owns an outer transaction, so this
-            # lock remains held through save_formset() and prevents a concurrent
-            # primary swap from invalidating the checks below.
-            if (
-                self_fs.instance.pk
-                and not self_fs.instance._state.adding
-                and transaction.get_connection().in_atomic_block
-            ):
-                Member.objects.select_for_update().get(pk=self_fs.instance.pk)
-
-            persisted_emails = ContactEmail.objects.in_bulk(
-                form.instance.pk for form in self_fs.forms if form.instance.pk
-            )
-
-            member_has_primary = (
-                self_fs.instance.pk
-                and ContactEmail.objects.filter(member=self_fs.instance, email_type="primary").exists()
-            )
-
-            for form in self_fs.forms:
-                if not hasattr(form, "cleaned_data"):
-                    continue
-                persisted = persisted_emails.get(form.instance.pk)
-                if persisted is None:
-                    # A brand-new row. ProjectControlModel gives every unsaved instance a UUID, so
-                    # "no persisted row" — not "no pk" — is what identifies one. email_type defaults
-                    # to "primary", so without this a new row silently became the member's primary
-                    # while unverified, a state make_contact_email_primary explicitly refuses.
-                    if form.cleaned_data.get("DELETE", False):
-                        continue
-                    if form.cleaned_data.get("email_type") == "primary":
-                        if member_has_primary:
-                            raise ValidationError(PRIMARY_EMAIL_INLINE_PROMOTION_ERROR)
-                        if not form.cleaned_data.get("verified", False):
-                            raise ValidationError(PRIMARY_EMAIL_INLINE_UNVERIFIED_ERROR)
-                    continue
-
-                delete_requested = form.cleaned_data.get("DELETE", False)
-                requested_type = form.cleaned_data.get("email_type")
-                if requested_type is None and form.is_bound:
-                    requested_type = form.data.get(form.add_prefix("email_type"))
-                requested_type = requested_type or persisted.email_type
-                protected_changes = {"email_address", "email_type"}.intersection(form.changed_data)
-
-                if persisted.email_type == "primary":
-                    if delete_requested:
-                        raise ValidationError(PRIMARY_EMAIL_INLINE_DELETE_ERROR)
-                    if protected_changes:
-                        raise ValidationError(PRIMARY_EMAIL_INLINE_EDIT_ERROR)
-                elif requested_type == "primary":
-                    raise ValidationError(PRIMARY_EMAIL_INLINE_PROMOTION_ERROR)
-
-            primary_count = sum(
-                1
-                for form in self_fs.forms
-                # A form whose own validation failed has no cleaned_data; the loop above already
-                # guards for it, so guard here too rather than raising AttributeError.
-                if hasattr(form, "cleaned_data")
-                and not form.cleaned_data.get("DELETE", False)
-                and form.cleaned_data.get("email_type") == "primary"
-            )
-            if primary_count > 1:
-                raise ValidationError("A member may only have one primary email.")
+            _validate_contact_email_rows(self_fs)
 
         formset_class.clean = clean
         return formset_class

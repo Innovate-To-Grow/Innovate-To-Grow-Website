@@ -53,28 +53,31 @@ def resolve_operation_destination(request, *, operation: str, data: dict) -> tup
         return _resolve_password_reset(data)
     if operation == OP_CHANGE_PASSWORD_REQUEST_CODE:
         return _resolve_change_password(request, data)
+    return KIND_EMAIL, _resolve_email_operation(request, user, operation, data)
+
+
+def _resolve_email_operation(request, user, operation: str, data: dict) -> str:
+    """The normalized email for account deletion, contact emails, and the email sign-in operations."""
     if operation == OP_DELETE_ACCOUNT_REQUEST_CODE:
         email = user.get_primary_email()
         if not email:
             raise ValidationError({"detail": "No verified email is available for account deletion."})
         from apps.authn.services.email.auth_email import normalize_email
 
-        return KIND_EMAIL, normalize_email(email)
+        return normalize_email(email)
     if operation == OP_CONTACT_EMAIL_REQUEST_VERIFICATION:
-        return KIND_EMAIL, _resolve_contact_email(request, data)
+        return _resolve_contact_email(request, data)
     if operation == OP_CONTACT_EMAIL_CREATE:
         from apps.authn.services.email.auth_email import normalize_email
 
-        return KIND_EMAIL, normalize_email(
-            str(data.get("destination") or data.get("email_address") or data.get("email") or "")
-        )
+        return normalize_email(str(data.get("destination") or data.get("email_address") or data.get("email") or ""))
     email = str(data.get("destination") or data.get("email") or data.get("identifier") or "")
     from apps.authn.services.email.auth_email import normalize_email
 
     normalized = normalize_email(email)
     if not normalized:
         raise ValidationError({"destination": "A destination is required."})
-    return KIND_EMAIL, normalized
+    return normalized
 
 
 def _resolve_phone(request, operation: str, data: dict) -> str:

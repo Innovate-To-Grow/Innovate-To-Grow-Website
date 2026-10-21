@@ -14,7 +14,7 @@ from apps.authn.services.send_verification.constants import OP_PASSWORD_RESET_RE
 from apps.authn.services.send_verification.http import serialize_request_status
 from apps.authn.services.sms import PhoneVerificationDeliveryError
 from apps.authn.tests.send_verification import mint_send_verification
-from apps.authn.tests.services.test_send_verification_concurrency import verified_request
+from apps.authn.tests.services.send_verification.test_send_verification_concurrency import verified_request
 from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
 
 

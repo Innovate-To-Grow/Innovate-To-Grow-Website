@@ -196,7 +196,7 @@ class AccountEmailCodeViewEdgeTests(APITestCase):
         resp = self.client.post("/authn/delete-account/verify-code/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    @patch("apps.authn.serializers.email_code.passwords.DeleteAccountCodeRequestSerializer.save")
+    @patch("apps.authn.serializers.email_code.account_deletion.DeleteAccountCodeRequestSerializer.save")
     def test_delete_account_request_delivery_error_returns_503(self, mock_save):
         mock_save.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         resp = self.client.post("/authn/delete-account/request-code/", {}, format="json")
