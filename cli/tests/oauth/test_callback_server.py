@@ -1,7 +1,7 @@
 import threading
 
 import requests
-from i2g_admin.callback_server import CallbackServer
+from i2g_admin.auth.callback_server import CallbackServer
 
 
 def test_callback_captures_query():

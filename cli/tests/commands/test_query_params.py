@@ -1,6 +1,6 @@
 """Tests for the shared ``records`` query-parameter builders (#12)."""
 
-from i2g_admin.commands.query_params import filter_params, list_query_params
+from i2g_admin.commands.records.query_params import filter_params, list_query_params
 
 
 # ---- filter_params --------------------------------------------------------

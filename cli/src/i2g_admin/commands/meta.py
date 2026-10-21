@@ -2,7 +2,7 @@
 
 import typer
 
-from .. import runtime
+from ..core import runtime
 
 
 def register(app: typer.Typer) -> None:

@@ -2,3 +2,24 @@
 .env
 .env.*
 !.env.example
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build / packaging artifacts
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+.venv/
+
+# OS junk
+.DS_Store
