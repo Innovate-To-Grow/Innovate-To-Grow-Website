@@ -1,8 +1,6 @@
-from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.http import Http404
-from unfold.admin import TabularInline
 from unfold.decorators import display
 
 from apps.core.admin import BaseModelAdmin
@@ -13,110 +11,10 @@ from ...models import Event, Question, Ticket
 from ...services.template.copy import EventCopyTemplate, build_event_copy_template
 from ...services.ticket.date_ranges import format_event_date_range
 from ..registration.sheet_sync import RegistrationSheetSyncAdminMixin
+from .forms import EventAdminForm
+from .inlines import COPY_INLINE_INITIAL_ATTR, QuestionInline, TicketInline
 
 COPY_TEMPLATE_ATTR = "_event_admin_copy_template"
-COPY_INLINE_INITIAL_ATTR = "_event_admin_copy_inline_initial"
-
-
-class EventRelatedInlineMixin:
-    """Delegate inline permissions to the registered Event ModelAdmin.
-
-    Default Django inlines require ``event.add_ticket`` / ``change_ticket`` / etc.
-    This project grants Event access via :class:`BaseModelAdmin` (typically ``is_staff``),
-    so staff without those Ticket codenames would otherwise miss Tickets/Questions blocks.
-    """
-
-    def _event_model_admin(self):
-        return self.admin_site._registry.get(Event)
-
-    def has_view_permission(self, request, obj=None):
-        ma = self._event_model_admin()
-        if ma is None:
-            return super().has_view_permission(request, obj)
-        return ma.has_view_permission(request, obj)
-
-    def has_add_permission(self, request, obj=None):
-        ma = self._event_model_admin()
-        if ma is None:
-            return super().has_add_permission(request, obj)
-        if obj is None:
-            return ma.has_add_permission(request)
-        return ma.has_change_permission(request, obj)
-
-    def has_change_permission(self, request, obj=None):
-        ma = self._event_model_admin()
-        if ma is None:
-            return super().has_change_permission(request, obj)
-        if obj is None:
-            return ma.has_add_permission(request)
-        return ma.has_change_permission(request, obj)
-
-    def has_delete_permission(self, request, obj=None):
-        ma = self._event_model_admin()
-        if ma is None:
-            return super().has_delete_permission(request, obj)
-        if obj is None:
-            return ma.has_add_permission(request)
-        return ma.has_change_permission(request, obj)
-
-    def get_extra(self, request, obj=None, **kwargs):
-        initial_by_model = getattr(request, COPY_INLINE_INITIAL_ATTR, {})
-        if (obj is None or obj._state.adding) and self.model in initial_by_model:
-            return len(initial_by_model[self.model])
-        return super().get_extra(request, obj, **kwargs)
-
-
-class TicketInline(EventRelatedInlineMixin, TabularInline):
-    model = Ticket
-    extra = 0
-    fields = ("name", "order")
-
-
-class QuestionInline(EventRelatedInlineMixin, TabularInline):
-    model = Question
-    extra = 0
-    fields = ("text", "is_required", "order")
-
-
-class EventAdminForm(forms.ModelForm):
-    contact_dependency_hints = {
-        "verify_phone": "event-phone-dependency-hint",
-        "require_phone": "event-phone-dependency-hint",
-        "verify_secondary_email": "event-secondary-email-dependency-hint",
-        "require_secondary_email": "event-secondary-email-dependency-hint",
-    }
-
-    class Meta:
-        model = Event
-        fields = "__all__"
-        labels = {
-            "collect_phone": "Collect",
-            "verify_phone": "Verify if provided",
-            "require_phone": "Required",
-            "allow_secondary_email": "Collect",
-            "verify_secondary_email": "Verify if provided",
-            "require_secondary_email": "Required",
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if (
-            not self.is_bound
-            and not self.instance._state.adding
-            and self.instance.end_date is None
-            and self.instance.date is not None
-        ):
-            self.initial["end_date"] = self.instance.date
-        for field_name, hint_id in self.contact_dependency_hints.items():
-            widget = self.fields[field_name].widget
-            described_by = str(widget.attrs.get("aria-describedby") or "").split()
-            if hint_id not in described_by:
-                described_by.append(hint_id)
-            widget.attrs["aria-describedby"] = " ".join(described_by)
-
-    class Media:
-        css = {"all": ("event/css/event_admin.css",)}
-        js = ("event/js/event_admin.js",)
 
 
 @admin.register(Event)
