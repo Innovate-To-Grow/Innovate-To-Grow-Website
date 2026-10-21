@@ -1,0 +1,55 @@
+# Thresholds for scripts/ci/check_python_quality.py.
+# Policy and counting rules: docs/architecture/code-quality.md.
+#
+# Every pair is [advisory, hard]: a value above `advisory` is reported, a value
+# above `hard` fails the check unless it has an [[exceptions]] entry below.
+# Patterns are fnmatch-style (`*` also matches `/`); the first matching profile
+# wins and the last profile is the default.
+
+roots = ["src", "cli", "archive/page", "scripts"]
+
+# Never measured: generated / third-party / historical code.
+exclude = [
+    "*/migrations/*",
+    "*/__pycache__/*",
+    "*/.venv/*",
+    "*/node_modules/*",
+    "src/assets/vendor/*",
+    "src/static/*",
+    "src/staticfiles/*",
+    "src/media/*",
+]
+
+# `.py` files directly inside one directory (`__init__.py` not counted).
+directory_files = [15, 25]
+
+[profiles.tests]
+# Tests are flat sequences of arrange/act/assert: function length, nesting and
+# complexity limits do not apply. Very long test modules are still flagged.
+patterns = ["*/tests/*", "*/test_*.py", "*/tests.py", "*/conftest.py"]
+file_lines = [600, 1200]
+
+[profiles.settings]
+# Declarative Django settings and the admin sidebar: long literal tables are
+# expected, so only the file limit is relaxed.
+patterns = ["src/config/settings/*"]
+file_lines = [400, 700]
+function_lines = [50, 100]
+nesting = [3, 4]
+complexity = [10, 15]
+
+[profiles.application]
+patterns = ["*"]
+file_lines = [300, 500]
+function_lines = [50, 100]
+nesting = [3, 4]
+complexity = [10, 15]
+
+# One entry per accepted hard-limit violation. `key` is printed by the check;
+# `reason` must say why splitting would not make the code easier to maintain.
+
+[[exceptions]]
+key = "function-lines:scripts/ci/validate_status_infrastructure.py::validate_observability_and_iam"
+reason = """In-progress status-page infrastructure validator that was untracked work in the tree when these \
+checks landed; it is left to its author rather than restructured here. Remove this entry once the function \
+is split (one check per alarm / IAM statement group) or the file lands under the limit."""

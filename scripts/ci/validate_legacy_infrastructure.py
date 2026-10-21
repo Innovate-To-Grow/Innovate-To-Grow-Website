@@ -105,7 +105,7 @@ def validate_secret(template: dict[str, Any]) -> None:
     require(generation.get("ExcludePunctuation") is True, "shared header must be safe in an HTTP field value")
 
 
-def validate_cloudfront(template: dict[str, Any]) -> None:
+def _validate_no_alarms_and_no_cache(template: dict[str, Any]) -> None:
     require(
         not any(item.get("Type") == "AWS::CloudWatch::Alarm" for item in template.get("Resources", {}).values()),
         "CloudFront alarms must be deployed by the separate us-east-1 monitoring stack",
@@ -117,6 +117,8 @@ def validate_cloudfront(template: dict[str, Any]) -> None:
         "legacy responses must not be cached",
     )
 
+
+def _validate_origin_request_policy(template: dict[str, Any]) -> None:
     request_policy = resource(template, "LegacyOriginRequestPolicy", "AWS::CloudFront::OriginRequestPolicy")
     request_config = request_policy["Properties"]["OriginRequestPolicyConfig"]
     require(len(request_config.get("Comment", "")) <= 128, "origin-request policy comment exceeds AWS limit")
@@ -138,6 +140,9 @@ def validate_cloudfront(template: dict[str, Any]) -> None:
         "historical read-only navigation query strings must reach the fixed Django gateway",
     )
 
+
+def _validate_distribution_origin(template: dict[str, Any]) -> dict[str, Any]:
+    """Check the single fixed origin; return the distribution config for the behavior checks."""
     distribution = resource(template, "LegacyDistribution", "AWS::CloudFront::Distribution")
     config = distribution["Properties"]["DistributionConfig"]
     require(config.get("ViewerCertificate") == {"CloudFrontDefaultCertificate": True}, "use the AWS default cert")
@@ -158,7 +163,10 @@ def validate_cloudfront(template: dict[str, Any]) -> None:
     )
     header_value = str(custom_headers[0].get("HeaderValue", {}))
     require("resolve:secretsmanager:" in header_value, "the origin header value must resolve from Secrets Manager")
+    return config
 
+
+def _validate_default_behavior(config: dict[str, Any]) -> None:
     behavior = config.get("DefaultCacheBehavior", {})
     require(behavior.get("ViewerProtocolPolicy") == "https-only", "the viewer endpoint must reject HTTP")
     require(
@@ -171,6 +179,12 @@ def validate_cloudfront(template: dict[str, Any]) -> None:
         "the restricted origin-request policy is required",
     )
     require(behavior.get("Compress") is False, "CloudFront compression must not alter Range response semantics")
+
+
+def validate_cloudfront(template: dict[str, Any]) -> None:
+    _validate_no_alarms_and_no_cache(template)
+    _validate_origin_request_policy(template)
+    _validate_default_behavior(_validate_distribution_origin(template))
 
 
 def validate_outputs(template: dict[str, Any]) -> None:
@@ -232,10 +246,7 @@ def _nginx_alternatives_after_marker(server_config: str, marker: str, prefix: st
     return {f"{prefix}{item}".lower() for item in alternatives}
 
 
-def validate_nginx_policy() -> None:
-    server_config = NGINX_SERVER_PATH.read_text(encoding="utf-8")
-    uwsgi_config = NGINX_UWSGI_PATH.read_text(encoding="utf-8")
-
+def _validate_private_server(server_config: str) -> None:
     for required in (
         "listen 172.31.69.63:8080;",
         "server 127.0.0.1:5001;",
@@ -260,6 +271,8 @@ def validate_nginx_policy() -> None:
         "private Nginx error log must not record request lines or query strings",
     )
 
+
+def _validate_uwsgi_snippet(uwsgi_config: str) -> None:
     for required in (
         "uwsgi_pass i2g_legacy_application;",
         'uwsgi_param HTTP_AUTHORIZATION "";',
@@ -268,6 +281,9 @@ def validate_nginx_policy() -> None:
     ):
         require(required in uwsgi_config, f"uWSGI snippet is missing {required}")
 
+
+def _validate_route_parity(server_config: str) -> None:
+    """The Nginx route lists must match the Django policy exactly."""
     information = _nginx_alternatives_after_marker(server_config, "I2G_LEGACY_INFORMATION_PATHS")
     require(
         information == _policy_string_set("_INFORMATION_PATHS") - {"/"},
@@ -290,6 +306,14 @@ def validate_nginx_policy() -> None:
     require("location ~* ^/static/.+" in server_config, "reviewed pages require their non-admin static assets")
     require("location = /" in server_config, "the audited information root must be allowed explicitly")
     require("^/past-projects/[0-9a-f]{8}" in server_config, "the audited UUID detail route is missing")
+
+
+def validate_nginx_policy() -> None:
+    server_config = NGINX_SERVER_PATH.read_text(encoding="utf-8")
+    uwsgi_config = NGINX_UWSGI_PATH.read_text(encoding="utf-8")
+    _validate_private_server(server_config)
+    _validate_uwsgi_snippet(uwsgi_config)
+    _validate_route_parity(server_config)
 
 
 def main() -> int:
