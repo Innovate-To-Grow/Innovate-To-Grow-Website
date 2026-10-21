@@ -31,7 +31,10 @@ export default defineConfig({
     timeout: 10_000,
   },
   fullyParallel: true,
-  retries: isCI ? 1 : 0,
+  // In CI a failed test is retried up to twice within its matrix leg; a pass on
+  // retry is reported as flaky and does not fail the leg, so a one-off browser
+  // hiccup needs no manual re-run. Locally a failure stays red to be debugged.
+  retries: isCI ? 2 : 0,
   // In CI each project runs in its own matrix leg and emits a uniquely-named
   // blob report (PW_PROJECT set per leg) for the downstream merge job; `list`
   // alongside it keeps per-leg failures readable in the job log. Locally `list`.
