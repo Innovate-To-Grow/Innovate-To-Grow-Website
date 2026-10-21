@@ -55,4 +55,13 @@ describe('getSubscribeErrorMessage', () => {
     expect(getSubscribeErrorMessage({response: {data: {email: [], code: 42}}})).toBe(FALLBACK);
     expect(getSubscribeErrorMessage({response: {data: {email: ['x'.repeat(301)]}}})).toBe(FALLBACK);
   });
+
+  it('falls back for a non-JSON body instead of spelling it out', () => {
+    expect(getSubscribeErrorMessage({response: {data: 'Bad Gateway'}})).toBe(FALLBACK);
+    expect(getSubscribeErrorMessage({response: {data: '<html><body>502</body></html>'}})).toBe(FALLBACK);
+  });
+
+  it('reads a DRF array body (a non-field ValidationError)', () => {
+    expect(getSubscribeErrorMessage({response: {data: ['Invalid code.']}})).toBe('Invalid code.');
+  });
 });

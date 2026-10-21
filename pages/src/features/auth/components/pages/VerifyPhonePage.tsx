@@ -7,7 +7,7 @@ import {
   canSubmitNationalPhone,
   formatNationalInputDisplay,
   parsePhoneInputToNationalDigits,
-} from '../sections/internal/phoneInput';
+} from '@/lib/format/phoneInput';
 
 export const VerifyPhonePage = () => {
   const { isAuthenticated, requiresProfileCompletion } = useAuth();

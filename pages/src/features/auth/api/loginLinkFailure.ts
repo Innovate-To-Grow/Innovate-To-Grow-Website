@@ -54,6 +54,27 @@ function readReason(code: unknown, detail: unknown): BodyReason {
 }
 
 /**
+ * The failure an HTTP status decides on its own; null for a 400, whose body
+ * says why.
+ */
+function classifyByStatus(status: number | undefined): LoginLinkFailure | null {
+  // No response: offline, DNS, CORS, or timeout.
+  if (status === undefined) return failure('unavailable');
+  // The exchange is not throttled by client IP (a whole campus shares one), so
+  // this is an edge proxy or WAF answering in its own words: the body, JSON or
+  // not, is never read, and a later try can succeed.
+  if (status === 429) return failure('rate_limited');
+  // 408 is a server-side request timeout: transient, like a 5xx.
+  if (status === 408 || status >= 500) return failure('unavailable');
+  // Everything else that is not a 400 is terminal on purpose. 401 is never a
+  // used or expired link, and a retry cannot change a 403 (a WAF or CDN block)
+  // or a 404 (a missing route). The visitor is not stranded either way: every
+  // terminal failure offers the email-code sign-in.
+  if (status !== 400) return failure('invalid');
+  return null;
+}
+
+/**
  * Sort a failed login-link exchange into what the visitor can do about it.
  * Pure: it reads the error and nothing else, so callers outside the API layer
  * never need Axios.
@@ -70,20 +91,8 @@ export function classifyLoginLinkFailure(error: unknown): LoginLinkFailure {
   // worst spent, and a retry then reports it as used.
   if (!isAxiosError(error)) return failure('unavailable');
 
-  const status = error.response?.status;
-  // No response: offline, DNS, CORS, or timeout.
-  if (status === undefined) return failure('unavailable');
-  // The exchange is not throttled by client IP (a whole campus shares one), so
-  // this is an edge proxy or WAF answering in its own words: the body, JSON or
-  // not, is never read, and a later try can succeed.
-  if (status === 429) return failure('rate_limited');
-  // 408 is a server-side request timeout: transient, like a 5xx.
-  if (status === 408 || status >= 500) return failure('unavailable');
-  // Everything else that is not a 400 is terminal on purpose. 401 is never a
-  // used or expired link, and a retry cannot change a 403 (a WAF or CDN block)
-  // or a 404 (a missing route). The visitor is not stranded either way: every
-  // terminal failure offers the email-code sign-in.
-  if (status !== 400) return failure('invalid');
+  const byStatus = classifyByStatus(error.response?.status);
+  if (byStatus) return byStatus;
 
   const body: unknown = error.response?.data;
   const {code, detail, redirect_to} =

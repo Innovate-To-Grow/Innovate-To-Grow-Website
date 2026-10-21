@@ -3,7 +3,7 @@
  * number, so one "Email or phone number" input can drive either passwordless
  * flow (email code vs SMS code).
  */
-import { canSubmitNationalPhone, parsePhoneInputToNationalDigits } from './phoneInput';
+import { canSubmitNationalPhone, parsePhoneInputToNationalDigits } from '@/lib/format/phoneInput';
 
 /** Same shape the register form uses — requires a dotted domain. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
