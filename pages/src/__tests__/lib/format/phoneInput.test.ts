@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {formatE164ForDisplay, formatNationalInputDisplay} from '@/features/auth/components/sections/internal/phoneInput';
+import {formatE164ForDisplay, formatNationalInputDisplay} from '@/lib/format/phoneInput';
 
 describe('formatE164ForDisplay', () => {
   it('returns an empty string for an empty value', () => {

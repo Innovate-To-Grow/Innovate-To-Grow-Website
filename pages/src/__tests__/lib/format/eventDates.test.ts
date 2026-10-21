@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {formatEventDateRange, isEventPast} from '@/features/events/formatEventDateRange';
+import {formatEventDateRange, isEventPast} from '@/lib/format/eventDates';
 
 describe('formatEventDateRange', () => {
   it('keeps old payloads without end_date as a single-day event', () => {

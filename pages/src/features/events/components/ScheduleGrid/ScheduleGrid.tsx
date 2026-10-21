@@ -29,6 +29,99 @@ interface ScheduleGridProps {
   onTeamClick?: (teamNum: string) => void;
 }
 
+/** The start time of each of the class's slots. */
+const slotTimes = (cls: ClassConfig): string[] => {
+  const times: string[] = [];
+  let t = cls.startTime;
+  for (let i = 0; i < cls.orderCount; i++) {
+    times.push(t);
+    t = addMinutes(t, cls.slotMinutes);
+  }
+  return times;
+};
+
+const ScheduleCell = ({cell, toneClass, onTeamClick}: {
+  cell: SheetRow | undefined;
+  toneClass: string;
+  onTeamClick?: (teamNum: string) => void;
+}) => (
+  <td className={`sg-td-cell ${toneClass}`} title={cell?.NameTitle || ''}>
+    {cell ? (
+      <>
+        <button
+          type="button"
+          className="sg-team-btn"
+          onClick={() => onTeamClick?.(cell['Team#'].substring(0, 3))}
+        >
+          {cell['Team#']}
+        </button>
+        <span className="sg-org">{cell.Organization}</span>
+      </>
+    ) : null}
+  </td>
+);
+
+interface ScheduleClassSectionProps {
+  cls: ClassConfig;
+  /** Index of the class's first track among all tracks (``trackInfos`` and the sheet's Track numbers). */
+  startOffset: number;
+  trackInfos: TrackInfo[];
+  /** The class's rows by `${order}-${track}`. */
+  cells: Record<string, SheetRow> | undefined;
+  onTeamClick?: (teamNum: string) => void;
+}
+
+/** One class: its rooms and tracks across the top, a row per time slot. */
+const ScheduleClassSection = ({cls, startOffset, trackInfos, cells, onTeamClick}: ScheduleClassSectionProps) => (
+  <section className="sg-class-section">
+    <h3 className="sg-class-title">
+      {cls.label} ({cls.code})
+    </h3>
+    <div className="sg-table-wrap">
+      <table className="sg-table">
+        <thead>
+          <tr>
+            <th className="sg-th sg-th-time">Room:</th>
+            {Array.from({length: cls.trackCount}, (_, ti) => (
+              <th key={ti} className="sg-th sg-th-room">
+                {trackInfos[startOffset + ti]?.room || ''}
+              </th>
+            ))}
+          </tr>
+          <tr>
+            <th className="sg-th sg-th-time">
+              <span className="sr-only">Track</span>
+            </th>
+            {cls.trackLabels.map((label, ti) => (
+              <th key={ti} className={`sg-th sg-th-track ${scheduleToneClass(cls.code, ti)}`}>
+                {label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {slotTimes(cls).map((time, orderIdx) => {
+            const order = orderIdx + 1;
+            return (
+              <tr key={order}>
+                <th className="sg-td-time">{time}</th>
+                {Array.from({length: cls.trackCount}, (_, ti) => (
+                  <ScheduleCell
+                    key={ti}
+                    cell={cells?.[`${order}-${startOffset + ti + 1}`]}
+                    toneClass={scheduleToneClass(cls.code, ti)}
+                    onTeamClick={onTeamClick}
+                  />
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </section>
+);
+
 export const ScheduleGrid = ({
   classes,
   rows,
@@ -66,84 +159,16 @@ export const ScheduleGrid = ({
 
   return (
     <div className="sg-container">
-      {classes.map((cls, classIndex) => {
-        const startOffset = classOffsets[classIndex] ?? 0;
-        const times: string[] = [];
-        let t = cls.startTime;
-        for (let i = 0; i < cls.orderCount; i++) {
-          times.push(t);
-          t = addMinutes(t, cls.slotMinutes);
-        }
-
-        return (
-          <section key={cls.code} className="sg-class-section">
-            <h3 className="sg-class-title">
-              {cls.label} ({cls.code})
-            </h3>
-            <div className="sg-table-wrap">
-              <table className="sg-table">
-                <thead>
-                  <tr>
-                    <th className="sg-th sg-th-time">Room:</th>
-                    {Array.from({length: cls.trackCount}, (_, ti) => {
-                      const info = trackInfos[startOffset + ti];
-                      return (
-                        <th key={ti} className="sg-th sg-th-room">
-                          {info?.room || ''}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                  <tr>
-                    <th className="sg-th sg-th-time">
-                      <span className="sr-only">Track</span>
-                    </th>
-                    {cls.trackLabels.map((label, ti) => (
-                      <th key={ti} className={`sg-th sg-th-track ${scheduleToneClass(cls.code, ti)}`}>
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {times.map((time, orderIdx) => {
-                    const order = orderIdx + 1;
-                    return (
-                      <tr key={order}>
-                        <th className="sg-td-time">{time}</th>
-                        {Array.from({length: cls.trackCount}, (_, ti) => {
-                          const track = startOffset + ti + 1;
-                          const cell = cellMap[cls.code]?.[`${order}-${track}`];
-                          return (
-                            <td
-                              key={ti}
-                              className={`sg-td-cell ${scheduleToneClass(cls.code, ti)}`}
-                              title={cell?.NameTitle || ''}
-                            >
-                              {cell ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="sg-team-btn"
-                                    onClick={() => onTeamClick?.(cell['Team#'].substring(0, 3))}
-                                  >
-                                    {cell['Team#']}
-                                  </button>
-                                  <span className="sg-org">{cell.Organization}</span>
-                                </>
-                              ) : null}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        );
-      })}
+      {classes.map((cls, classIndex) => (
+        <ScheduleClassSection
+          key={cls.code}
+          cls={cls}
+          startOffset={classOffsets[classIndex] ?? 0}
+          trackInfos={trackInfos}
+          cells={cellMap[cls.code]}
+          onTeamClick={onTeamClick}
+        />
+      ))}
     </div>
   );
 };

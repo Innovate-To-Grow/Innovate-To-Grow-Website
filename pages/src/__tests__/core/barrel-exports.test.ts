@@ -61,6 +61,11 @@ describe('Component barrel exports', () => {
     expect(mod.ScheduleGrid).toBeDefined();
   });
 
+  it('@/components/NotFoundPage exports resolve', async () => {
+    const mod = await import('@/components/NotFoundPage');
+    expect(mod.NotFoundPage).toBeDefined();
+  });
+
   it('@/components/SheetsDataTable exports resolve', async () => {
     const mod = await import('@/components/SheetsDataTable');
     expect(mod.SheetsDataTable).toBeDefined();
@@ -75,7 +80,6 @@ describe('Page barrel exports', () => {
     ['LoginLinkPage', 'LoginLinkPage'],
     ['NewsDetailPage', 'NewsDetailPage'],
     ['NewsPage', 'NewsPage'],
-    ['NotFoundPage', 'NotFoundPage'],
     ['PastProjectsPage', 'PastProjectsPage'],
     ['PresentingTeamsPage', 'PresentingTeamsPage'],
     ['ProjectDetailPage', 'ProjectDetailPage'],

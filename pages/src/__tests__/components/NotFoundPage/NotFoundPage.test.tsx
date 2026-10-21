@@ -2,7 +2,7 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {NotFoundPage} from '@/routes/NotFoundPage/NotFoundPage';
+import {NotFoundPage} from '@/components/NotFoundPage/NotFoundPage';
 
 describe('NotFoundPage', () => {
   afterEach(() => {

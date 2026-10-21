@@ -1,13 +1,11 @@
 import React, {type LazyExoticComponent, type ComponentType} from 'react';
-
-export interface EmbedAppRouteProps {
-  scheduleId?: string | null;
-}
+import type {EmbedAppRouteProps, EmbedAppRoutes} from '@/features/cms/components/EmbedBlockPage';
 
 /**
  * Registry of app routes that can be rendered inside a CMS Embed Widget iframe.
  *
- * Keys must match the entries in `src/cms/app_routes.py` on the backend.
+ * Keys must match the entries in `src/apps/cms/app_routes.py` on the backend. It lives in the app layer
+ * because it composes route pages; the router hands it to the CMS `EmbedBlockPage`.
  * Each component is rendered standalone inside `/_embed/:embedSlug` — it must
  * therefore not depend on the main site Layout (menu / footer / etc.).
  */
@@ -37,3 +35,8 @@ export function resolveEmbedAppRoute(route: string | undefined | null): LazyExot
 export function embedRouteSupportsSchedule(route: string | undefined | null): boolean {
   return Boolean(route && SCHEDULE_SELECTABLE_EMBED_ROUTES.has(route));
 }
+
+export const EMBED_APP_ROUTES: EmbedAppRoutes = {
+  resolve: resolveEmbedAppRoute,
+  supportsSchedule: embedRouteSupportsSchedule,
+};

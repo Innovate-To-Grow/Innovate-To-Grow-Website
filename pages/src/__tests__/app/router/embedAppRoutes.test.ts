@@ -3,7 +3,7 @@ import {createElement, Suspense} from 'react';
 import {MemoryRouter} from 'react-router';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {resolveEmbedAppRoute} from '@/features/cms/components/embedAppRoutes';
+import {resolveEmbedAppRoute} from '@/app/router/embedAppRoutes';
 
 describe('resolveEmbedAppRoute', () => {
   it('returns null for null, undefined, and empty strings', () => {
