@@ -65,6 +65,19 @@ class RetireComponentStylesheetsMigrationTests(TestCase):
         after = {sheet.name: (sheet.is_active, sheet.description) for sheet in StyleSheet.objects.all()}
         self.assertEqual(after, before)
 
+    def test_reverse_accepts_the_note_saved_with_any_line_ending(self):
+        migration.retire(global_apps, None)
+        sheet = StyleSheet.objects.get(name="auth")
+        note, original = sheet.description.split("\n", 1)
+        for stored in (f"{note}\r\n{original}", f"{note}{original}" if not original else f"{note}\r{original}"):
+            with self.subTest(stored=stored[-20:]):
+                StyleSheet.objects.filter(pk=sheet.pk).update(is_active=False, description=stored)
+                migration.restore(global_apps, None)
+
+                sheet.refresh_from_db()
+                self.assertTrue(sheet.is_active)
+                self.assertEqual(sheet.description, original)
+
     def test_a_missing_sheet_is_skipped(self):
         StyleSheet.objects.filter(name="maintenance").delete()
         migration.retire(global_apps, None)

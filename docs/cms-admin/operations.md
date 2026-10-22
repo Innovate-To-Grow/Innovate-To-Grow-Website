@@ -390,6 +390,11 @@ before the bundle, which then wins wherever both set the same property. The cont
 [CSS contract](css-contract.md)). Their rows stay active until a migration retires them; the bundle loads after
 `/api/layout/styles.css`, so at equal specificity it wins over an admin edit to one of those rows.
 
+A migration that retires stylesheet rows ships in a release *after* the frontend that bundles their CSS is live
+in production. Deploy Production updates the backend first, so a run that carried both would leave the live
+frontend without those rules until its own deploy finished. Do not cancel the run that carries the frontend in
+favour of a later run that carries the migration.
+
 ### Drift report
 
 ```bash
@@ -416,7 +421,7 @@ change what the site serves:
 
 - an active sheet whose CSS differs from the seed or is not in it;
 - a seed sheet whose active flag or order was changed (deactivating a seed sheet counts);
-- a retired sheet that was switched back on (reported as `settings_changed`);
+- a retired sheet that was switched back on (reported as `settings_changed`, or `edited` when its CSS changed too);
 - an active seed sheet that was deleted (a re-sync creates it again and serves it).
 
 Sheets that are inactive in both the seed and the database, inactive unmanaged sheets, inactive backup
