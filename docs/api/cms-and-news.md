@@ -97,7 +97,7 @@ frontend strips every iframe.
 ### `GET /cms/embed/{slug}/`
 
 Public payload for a `CMSEmbedWidget`, rendered by the SPA at `/_embed/{slug}` inside an iframe (CORS `*`,
-`X-Frame-Options` exempt). `widget_type` is `blocks` (a subset of a published page's blocks plus `page_css`) or
+`X-Frame-Options` exempt). `widget_type` is `blocks` (a subset of a published page's blocks and its `page_css_class`) or
 `app_route` (an interactive route such as `/schedule`). For `/schedule` widgets the payload includes
 `schedule_id` — the widget's default `CurrentProjectSchedule`, or `null` for the active schedule. A CMS
 `embed_widget` block can override it per block by adding `?schedule_id=<uuid>` to the iframe URL; the SPA

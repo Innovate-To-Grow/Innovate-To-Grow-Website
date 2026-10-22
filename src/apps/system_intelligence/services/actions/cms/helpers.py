@@ -31,7 +31,6 @@ def serialize_cms_page(page: CMSPage | None) -> dict[str, Any]:
         "title": page.title,
         "meta_description": page.meta_description,
         "page_css_class": page.page_css_class,
-        "page_css": page.page_css,
         "status": page.status,
         "sort_order": page.sort_order,
         "blocks": [
@@ -97,6 +96,5 @@ def assign_cms_page_fields(page: CMSPage, payload: dict[str, Any]) -> None:
     page.title = payload.get("title", "")
     page.meta_description = payload.get("meta_description", "")
     page.page_css_class = payload.get("page_css_class", "")
-    page.page_css = payload.get("page_css", "")
     page.status = payload.get("status", "draft")
     page.sort_order = int(payload.get("sort_order") or 0)
