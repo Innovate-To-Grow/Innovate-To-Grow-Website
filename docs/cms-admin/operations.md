@@ -386,7 +386,9 @@ frontend bundle, in CSS files next to the components that render them under `pag
 `cms.0026` switched those rows off (their description says where the CSS lives now), so editing them in the
 admin changes nothing: change the CSS file in the repository instead. Switching one back on serves it again
 before the bundle, which then wins wherever both set the same property. The content sheets (`global`,
-`cms-blocks`, `cms-pages`, `page-home`) are still served only by the backend.
+`cms-blocks`, `cms-pages`, `page-home`) ship with the bundle too, in `pages/src/styles/contract/` (see
+[CSS contract](css-contract.md)). Their rows stay active until a migration retires them; the bundle loads after
+`/api/layout/styles.css`, so at equal specificity it wins over an admin edit to one of those rows.
 
 ### Drift report
 

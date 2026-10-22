@@ -1,0 +1,168 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Rich content (CMS rich text and page prose): the reference's #content
+   ========================================================================== */
+
+.itg-content {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.itg-content p {
+  margin: 0 0 12px;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* A readable line length for running text (the prose_max_width design token). */
+.itg-content :where(p, ul, ol, dl, blockquote) {
+  max-width: var(--itg-prose-max-width, 75ch);
+}
+
+.itg-content strong,
+.itg-content b {
+  color: inherit;
+  font-weight: 700;
+}
+
+.itg-content ul,
+.itg-content ol {
+  margin: 0 0 12px var(--itg-list-indent, 25px);
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.itg-content ul {
+  list-style-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='7'%3E%3Crect width='5' height='5' fill='%23cccccc'/%3E%3C/svg%3E");
+}
+
+.itg-content li {
+  margin: 0;
+  line-height: 24px;
+}
+
+.itg-content li > ul,
+.itg-content li > ol {
+  margin: 0 0 0 var(--itg-list-indent, 25px);
+}
+
+.itg-content a {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.itg-content a:hover,
+.itg-content a:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.itg-content h2 {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+.itg-content h3 {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+.itg-content h4 {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+.itg-content h3 a {
+  text-decoration: none;
+}
+
+.itg-content > :first-child {
+  margin-top: 0;
+}
+
+.itg-content > :last-child {
+  margin-bottom: 0;
+}
+
+.itg-content blockquote {
+  margin: 0 0 24px;
+  padding: 0 0 0 15px;
+  border-left: 5px solid #cfcfcf;
+}
+
+.itg-content blockquote p {
+  margin-bottom: 0;
+  font-size: 1.25rem;
+  font-weight: 300;
+  line-height: 1.75;
+}
+
+.itg-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.itg-content hr {
+  margin: 24px 0;
+  border: 0;
+  border-top: 1px solid #cfcfcf;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+/* Tables in prose: the theme's .table (8px cells, 1px #ddd rules) */
+.itg-content table {
+  width: 100%;
+  margin: 0 0 24px;
+  border-collapse: collapse;
+  font-size: inherit;
+  line-height: 24px;
+}
+
+.itg-content th,
+.itg-content td {
+  padding: 8px;
+  border: 0;
+  border-top: 1px solid var(--itg-color-border);
+  color: var(--itg-color-text);
+  text-align: left;
+  vertical-align: top;
+}
+
+.itg-content th {
+  font-weight: 700;
+}
+
+.itg-content thead th {
+  vertical-align: bottom;
+}
+
+.itg-content thead:first-child tr:first-child > th,
+.itg-content thead:first-child tr:first-child > td,
+.itg-content table > tbody:first-child > tr:first-child > th,
+.itg-content table > tbody:first-child > tr:first-child > td {
+  border-top: 0;
+}
+
+.itg-content table ul {
+  margin: 0 0 0 1.25rem;
+  padding: 0;
+}
+
+.itg-content table li {
+  margin-bottom: 0;
+}

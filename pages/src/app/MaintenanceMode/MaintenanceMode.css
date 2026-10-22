@@ -8,9 +8,12 @@
 
    The global rules are copies scoped to the page with :where(), so they never
    reach the rest of the site, and they sit in the itg-maintenance-fallback
-   cascade layer: layered rules lose to the unlayered CMS "global" sheet, so
-   they only apply when /api/layout/styles.css cannot load. The --itg-* values
-   then come from the bundled fallback tokens (src/assets/tokens.css).
+   cascade layer, so the bundled global rules (styles/contract/global/) win
+   wherever both set a property. They date from when the global rules came
+   only from /api/layout/styles.css; drop them once a computed-style
+   comparison shows they change nothing. The --itg-* values come from the
+   bundled fallback tokens (src/assets/tokens.css) when the server sheet is
+   missing.
 
    The maintenance rules themselves are unlayered, like every other component
    stylesheet in the bundle. Migration cms.0026 switched the CMS "maintenance"

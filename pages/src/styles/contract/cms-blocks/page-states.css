@@ -1,0 +1,68 @@
+/* Moved verbatim from the CMS "cms-blocks" stylesheet. */
+
+/* ==========================================================================
+   Page states: loading skeleton, errors
+   ========================================================================== */
+
+.cms-page-loading {
+  min-height: 200px;
+}
+
+.cms-page-shell {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+/* The status text is for assistive technology; the skeleton is the visual. */
+.cms-page-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.cms-page-skeleton {
+  height: 16px;
+  background: var(--itg-color-bg-light);
+  animation: cms-skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+.cms-page-skeleton:last-child {
+  max-width: 60%;
+}
+
+.cms-page-skeleton-hero {
+  width: min(420px, 70%);
+  height: 44px;
+  margin: 12px 0;
+}
+
+@keyframes cms-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.cms-page-error {
+  display: grid;
+  gap: 12px;
+  padding: 12px 0;
+  color: var(--itg-color-text);
+}
+
+.cms-page-error-text {
+  margin: 0;
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.cms-page-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}

@@ -1,0 +1,77 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Global design system: the UC Merced Drupal subsite theme of
+   innovatetogrow.ucmerced.edu (the reference site).
+   Open Sans 16px / 24px #323336; navy #0f2d52 headings (h1 36px, h2 28px,
+   h3 24px, all 600, line-height 1.5, margin 12px 0); paragraphs 0 0 12px;
+   underlined navy content links (hover #005487, no underline); 5px #ccc
+   square bullets; DataTables-style tables; navy rectangular buttons and
+   outlined uppercase CTA buttons; #f2f2f2 form controls with a #ccc border.
+   Every page uses these classes instead of inventing new global ones.
+   ========================================================================== */
+
+/* ---- Base elements (zero specificity, so any component rule wins) ---- */
+:where(a) {
+  color: var(--itg-color-primary);
+  text-underline-offset: 0.12em;
+}
+
+:where(a:hover) {
+  color: var(--itg-color-primary-hover);
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-family: var(--itg-font-family-body);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+:where(h1) { font-size: var(--itg-font-size-h1); }
+:where(h2) { font-size: var(--itg-font-size-h2); }
+:where(h3) { font-size: var(--itg-font-size-h3); }
+:where(h4) { font-size: var(--itg-font-size-h4); }
+:where(h5) { font-size: 1rem; }
+:where(h6) { font-size: 0.85rem; }
+
+:where(button, input, select, textarea) {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--itg-color-secondary);
+  outline-offset: 2px;
+}
+
+/* Page content (the reference's #content): paragraphs, lists and links */
+:where(.app-layout-main) :where(p) {
+  margin: 0 0 12px;
+}
+
+:where(.app-layout-main) :where(a) {
+  text-decoration: underline;
+}
+
+:where(.app-layout-main) :where(a:hover, a:focus) {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+:where(.app-layout-main) :where(ul, ol) {
+  margin: 0 0 12px var(--itg-list-indent, 25px);
+  padding: 0;
+}
+
+:where(.app-layout-main) :where(ul) {
+  list-style-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='7'%3E%3Crect width='5' height='5' fill='%23cccccc'/%3E%3C/svg%3E");
+}
+
+:where(.app-layout-main) :where(ul ul, ul ol, ol ol, ol ul) {
+  margin-bottom: 0;
+}
+
+:where(.app-layout-main) :where(li) {
+  line-height: 24px;
+}

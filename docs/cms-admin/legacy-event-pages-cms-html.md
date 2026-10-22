@@ -7,7 +7,7 @@ This document contains CMS page fields and copy-paste HTML for migrating the leg
 - Use `page_css_class = event-page` on every CMS page.
 - Use `Rich Text` blocks for static HTML. The frontend wraps them in `.cms-rich-text`, so base typography and table styles come from the existing CMS styles.
 - Use `Embed` blocks for YouTube videos instead of hand-written iframe HTML.
-- Use `.ea-*`, `.event-btn-*`, `.schedule-page-agenda-*`, and `.cms-table-block-*` classes the site styles on every page: the `.ea-*` and `.schedule-page-agenda-*` rules ship with the frontend in `pages/src/styles/contract/legacy-content.css`, the others are in the CMS `cms-blocks` and `cms-pages` stylesheets.
+- Use `.ea-*`, `.event-btn-*`, `.schedule-page-agenda-*`, and `.cms-table-block-*` classes the site styles on every page (see [CSS contract](css-contract.md)). `ea-back-link`, `ea-subtitle`, `ea-text`, `event-btn-blue` and `event-buttons` below have no style of their own and render as plain prose.
 - Do not paste `<style>`, `<script>`, `style="..."`, `row-fluid`, `span*`, `i2gTable`, `table__wrapper`, `display`, `iframe-container`, or `responsive-iframe`.
 - Some legacy schedule cells were filled by JavaScript. The static CMS version keeps available table content and links to the existing interactive `/events/YYYY-season` archive for searchable schedules/projects.
 

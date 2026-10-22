@@ -1,0 +1,55 @@
+/* Moved verbatim from the CMS "cms-blocks" stylesheet. */
+
+/* ==========================================================================
+   CMS blocks: the reference theme's page content (innovatetogrow.ucmerced.edu)
+   Blocks render inside .cms-page (CMS pages, admin block preview, embeds).
+   The layout shell owns the page width, sidebar and outer padding, so nothing
+   here sets a page width or centres content. Type follows the UC Merced
+   theme's #content: Open Sans 16px / 24px #323336, paragraphs 0 0 12px,
+   navy headings (h1 36px, h2 28px, h3 24px, h4 20px; 600, line-height 1.5,
+   margin 12px 0), underlined navy links (600 inside paragraphs; hover #005487
+   without underline), 5px #ccc square bullets. Prose spans the full column.
+   ========================================================================== */
+
+/* ---- Page frame: blocks stack with one rhythm ---- */
+.cms-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  row-gap: 24px;
+}
+
+.cms-page > * {
+  margin: 0;
+  min-width: 0;
+}
+
+/* Page title (h1, the global .itg-page-title: 36px / 54px, 12px above it).
+   No rule under it, as on the reference; 24px to the content below. */
+.cms-page-title {
+  margin: 12px 0 24px;
+}
+
+/* Block-level h2-h6 headings sit 12px above the content they introduce. */
+.cms-rich-text > .section-title:not(.cms-page-title),
+.cms-section-group-section > .section-title:not(.cms-page-title) {
+  margin: 0 0 12px;
+}
+
+/* Level 4-6 block headings: the theme's h4 (20px / 30px navy). */
+.cms-minor-title {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: 30px;
+}
+
+/* A heading-only block (empty body) adds no trailing space. */
+.cms-rich-text > .section-title:has(+ .cms-rich-text-body:empty) {
+  margin-bottom: 0;
+}
+
+.cms-rich-text-body:empty {
+  display: none;
+}

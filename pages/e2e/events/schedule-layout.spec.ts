@@ -1,4 +1,4 @@
-// /schedule with the CMS content sheets: the presentation grids fit the full-width
+// /schedule with the site's real CSS: the presentation grids fit the full-width
 // content column, schedule text meets WCAG AA contrast, long winner
 // names stay inside their cards, and phone team buttons are 44px touch targets.
 import AxeBuilder from '@axe-core/playwright';
@@ -7,7 +7,6 @@ import type {Page} from '@playwright/test';
 import type {ScheduleSection, ScheduleSlot, ScheduleTrack} from '../../src/features/events/api';
 import {mockSchedule, schedulePayload} from '../helpers';
 import {test, expect} from '../helpers/fixtures';
-import {serveSeedStylesheets} from '../helpers/stylesheets';
 
 const LONG_ORGANIZATIONS = [
   'University of California Agriculture and Natural Resources (UC ANR)',
@@ -119,7 +118,6 @@ async function mockEventsSection(page: Page) {
 
 async function openSchedule(page: Page, width: number, sections?: ScheduleSection[]) {
   await page.setViewportSize({width, height: 900});
-  await serveSeedStylesheets(page);
   await mockEventsSection(page);
   await mockSchedule(page, payload(sections));
   await page.goto('/schedule', {waitUntil: 'networkidle'});

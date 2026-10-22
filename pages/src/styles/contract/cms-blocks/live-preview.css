@@ -1,0 +1,98 @@
+/* Moved verbatim from the CMS "cms-blocks" stylesheet. */
+
+/* ==========================================================================
+   Live preview (admins only)
+   ========================================================================== */
+
+.cms-live-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.cms-live-preview-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+  padding: 20px;
+  border-top: 8px solid var(--itg-color-sidebar-rule);
+  border-radius: 0;
+  background: var(--itg-color-white);
+  text-align: center;
+}
+
+.cms-live-preview-modal-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--itg-color-error);
+  animation: cms-live-dot-pulse 1.5s ease-in-out infinite;
+}
+
+.cms-live-preview-modal-text {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.cms-live-preview-modal-expiry {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-style: italic;
+}
+
+.cms-live-preview-modal-close {
+  min-width: 120px;
+}
+
+.cms-live-preview-badge {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--itg-color-accent-gold);
+  border-radius: 0;
+  background: var(--itg-color-highlight);
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: var(--itg-font-size-small);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cms-live-preview-badge:hover {
+  background: var(--itg-color-tag-new);
+}
+
+.cms-live-preview-badge:focus-visible {
+  outline: 2px solid var(--itg-color-secondary);
+  outline-offset: 2px;
+}
+
+.cms-live-preview-badge-expiry {
+  color: var(--itg-color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@keyframes cms-live-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

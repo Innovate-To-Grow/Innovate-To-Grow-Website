@@ -1,0 +1,41 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Links: navy, underlined; hover #005487 without underline
+   ========================================================================== */
+
+.itg-link {
+  color: var(--itg-color-primary);
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.itg-link:hover,
+.itg-link:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+/* "‹ Back to …" (the page supplies the text, including the ‹) */
+.itg-back-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin: 0 0 12px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.itg-back-link:hover,
+.itg-back-link:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.itg-required {
+  color: #a63737;
+}

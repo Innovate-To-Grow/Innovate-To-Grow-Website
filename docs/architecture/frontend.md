@@ -208,10 +208,10 @@ CSS custom properties define the design vocabulary:
 - `src/components/` — Shared presentational components (SafeHtml, SheetsDataTable)
 - `src/assets/` — `tokens.css` (fallback design tokens) and `shared.css` (auth legal notice and phone-consent rules)
 - `src/index.css` — Imports shared styles, sets up body and app-layout
-- `src/styles/contract/legacy-content.css` — classes editors use in CMS content HTML (`.ea-*`, `.schedule-page-agenda-*`); imported by `index.css` because CMS pages load no route CSS
+- `src/styles/contract/` — the content contract: the design system (`global/`), CMS block styles (`cms-blocks/`), the page classes editors store in content HTML (`cms-pages.css`, `page-home.css`, `legacy-content.css`) and `contract-classes.json`. `index.css` imports `contract/index.css` first, so these rules come before every other stylesheet; `css-contract.test.ts` keeps a rule for every listed class ([CSS contract](../cms-admin/css-contract.md))
 - Component-scoped `.css` files alongside each component. The shell (`features/layout/components/{Container,MainMenu,Footer}`, `app/MaintenanceMode`, `app/ErrorBoundary`) lands in the entry bundle; route CSS (`routes/*`, `features/auth/components/auth.css`) loads with its lazy route chunk. A file that every renderer of a class imports is the rule: a lazy route's CSS is not there when a visitor lands on another route first.
 - One stylesheet owns each selector (`src/__tests__/core/css-ownership.test.ts`): chunk CSS loads in navigation order, so a selector defined in two files would get whichever loaded last. Files that one stylesheet `@import`s count as that stylesheet.
-- The CMS still serves the content stylesheets (`global`, `cms-blocks`, `cms-pages`, `page-home`) and the design tokens from `/api/layout/styles.css`, linked before the bundle.
+- The backend still serves the design tokens from `/api/layout/styles.css`, linked before the bundle.
 - `features/projects/components/projects.css` is an ordered list of `@import`s of the projects pages' co-located sheets (`grid/`, `search/`, `merged/`, `richText/`, `builder/`, ...). The order is the cascade order and `projectsResponsive.css` must stay last, so add rules to the file that owns them rather than reordering the list.
 
 ## Testing

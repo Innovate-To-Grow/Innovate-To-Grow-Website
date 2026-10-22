@@ -1,0 +1,43 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Meta box: definition list with a gold top rule (detail pages)
+   <dl class="itg-meta-box"><div class="itg-meta-item"><dt class="itg-meta-label">…
+   ========================================================================== */
+
+.itg-meta-box {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+  column-gap: 28px;
+  margin: 0 0 24px;
+  padding: 0;
+  border-top: 3px solid var(--itg-color-accent-gold);
+  font-size: var(--itg-font-size-body);
+}
+
+.itg-meta-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--itg-color-border);
+}
+
+.itg-meta-label {
+  flex: none;
+  width: 110px;
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: inherit;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.itg-meta-value {
+  min-width: 0;
+  margin: 0;
+  color: var(--itg-color-text);
+  font-size: inherit;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
