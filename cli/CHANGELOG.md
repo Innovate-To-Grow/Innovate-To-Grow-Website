@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `admin_apps` grants; superusers retain full visibility.
 - Typer 0.18.0 and Click 8.3.3 are pinned as the tested callback-compatible
   pair used by the 0.2 command layout.
+- The package is split into focused subpackages — `config/` (constants,
+  dotenv, store, profiles, credentials, urls; the package re-exports the public
+  API), `auth/`, `client/`, `core/` (errors, context, runtime), `output/`, and
+  `commands/records/` — and `tests/` mirrors that layout. Commands, options,
+  output, config files, and the `i2g-admin` entry point are unchanged.
 
 ### Security
 

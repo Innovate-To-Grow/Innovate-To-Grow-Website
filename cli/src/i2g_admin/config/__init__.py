@@ -1,9 +1,11 @@
 """Configuration: profiles, credentials, dotenv, and base-URL resolution.
 
 The implementation is split into focused submodules; this package ``__init__``
-re-exports the public API so callers keep using ``config.<name>``. Tests that
-patch internals should target the defining submodule (``config.dotenv``,
-``config.store``, ``config.profiles``, ``config.credentials``, ``config.urls``).
+re-exports the public API so callers keep using ``config.<name>``. The submodules
+call each other directly (``credentials.load_credentials``, ``store._read_json``),
+so a name can have two lookup paths: patch it on the module the caller looks it
+up on — the submodule for calls made inside this package, ``config.<name>`` for
+callers outside it.
 """
 
 from .constants import (  # noqa: F401

@@ -91,3 +91,30 @@ See [`CHANGELOG.md`](CHANGELOG.md) for release notes and [`docs/cms-admin/cli-ad
 cd cli && pip install -e ".[test]"
 pytest --cov=i2g_admin --cov-report=term-missing
 ```
+
+### Package layout
+
+`src/i2g_admin/` is split into focused subpackages, and `tests/` mirrors them.
+Each directory holds at most 8 `.py` files and each file at most 200 lines.
+
+```text
+src/i2g_admin/
+├── __main__.py, app.py   entry point; Typer root + global options
+├── core/                 errors · context (per-invocation options) · runtime (glue every command imports)
+├── config/               constants · dotenv (cli/.env) · store · profiles · credentials · urls (base URL)
+├── auth/                 OAuth2 Authorization Code + PKCE login · pkce · callback_server
+├── client/               ApiClient: bearer session, idempotent-only retries, status → error mapping
+├── output/               emit pipeline · query (--query) · formatters/ (--output)
+└── commands/             one module per command group; records/ holds the records subcommands + helpers
+```
+
+`config/__init__.py` re-exports the public API, so a config function can have two
+lookup paths: `auth` and `commands` call `config.<name>`, while the `config/`
+submodules call each other directly (`credentials.load_credentials`,
+`store._read_json`, `dotenv._dotenv_paths`). Patch a name on the module the caller
+looks it up on; for a function used on both sides (e.g. `load_credentials`), seed
+real state in the temp config dir instead of patching it.
+
+`tests/app/` covers the Typer app (commands and global options through
+`CliRunner`, plus the glue `app.py` re-exports), and `tests/oauth/` covers the
+`auth` package.
