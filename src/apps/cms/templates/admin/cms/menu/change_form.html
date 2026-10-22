@@ -42,13 +42,11 @@
 
 {% block after_related_objects %}
     {{ block.super }}
-    {% static 'vendor/font-awesome/4.7.0/css/font-awesome.min.css' as font_awesome_css %}
 
     <script nonce="{{ request.csp_nonce }}">
-        window.ITG_FONT_AWESOME_CSS = "{{ font_awesome_css|escapejs }}";
         window.APP_ROUTES = {{ app_routes_json|safe }};
         window.CMS_ROUTES = {{ cms_routes_json|safe }};
     </script>
-    <script src="{% static 'layout/js/menu/editor/render.js' %}?v=2"></script>
-    <script src="{% static 'layout/js/menu/menu-editor.js' %}?v=7"></script>
+    <script src="{% static 'layout/js/menu/editor/render.js' %}?v=3"></script>
+    <script src="{% static 'layout/js/menu/menu-editor.js' %}?v=8"></script>
 {% endblock %}
