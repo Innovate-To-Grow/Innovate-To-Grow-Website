@@ -4,6 +4,7 @@ from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 
 from apps.cms.admin.layout.import_export import export_stylesheets_response, render_stylesheet_import
+from apps.cms.services.styles.drift import seed_status_label
 from apps.core.admin import BaseModelAdmin
 
 from ...models import StyleSheet
@@ -37,11 +38,18 @@ class StyleSheetForm(forms.ModelForm):
         css = {"all": ("admin/css/style-sheet-code-editor.css",)}
 
 
+SEED_STATUS_NOTE = (
+    "The repo seed (migrations/data/stylesheets.json) is re-applied by data migrations, which overwrite "
+    "edits made here without warning. Before a release, run `manage.py stylesheet_drift --diff` and move any "
+    "edit worth keeping into the repository."
+)
+
+
 @admin.register(StyleSheet)
 class StyleSheetAdmin(BaseModelAdmin):
     form = StyleSheetForm
     change_list_template = "admin/cms/stylesheet/change_list.html"
-    list_display = ("display_name", "name", "is_active", "sort_order")
+    list_display = ("display_name", "name", "is_active", "sort_order", "seed_status")
     list_filter = ("is_active",)
     list_editable = ("is_active", "sort_order")
     search_fields = ("name", "display_name")
@@ -62,7 +70,17 @@ class StyleSheetAdmin(BaseModelAdmin):
         return custom_urls + super().get_urls()
 
     def changelist_view(self, request, extra_context=None):
-        return super().changelist_view(request, {**(extra_context or {}), "show_import_buttons": True})
+        context = {
+            **(extra_context or {}),
+            "show_import_buttons": True,
+            "seed_status_note": SEED_STATUS_NOTE,
+        }
+        return super().changelist_view(request, context)
+
+    @admin.display(description="Repo seed")
+    def seed_status(self, obj):
+        """How this row compares with migrations/data/stylesheets.json (see ``stylesheet_drift``)."""
+        return seed_status_label(obj)
 
     def export_all_view(self, request):
         # ``admin_view`` only enforces is_staff, so re-check per-app access before

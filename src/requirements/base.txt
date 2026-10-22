@@ -1,8 +1,8 @@
 # Django Backend Dependencies — base (shared across all environments)
 
 # Core Framework
-Django>=5.2.17,<5.3
-djangorestframework==3.18.2
+Django>=5.2.18,<5.3
+djangorestframework==3.18.3
 djangorestframework-simplejwt>=5.5.1
 
 # Environment Variables
@@ -48,6 +48,9 @@ defusedxml>=0.7.1,<1.0
 
 # HTML Sanitization
 bleach>=6.4.0
+
+# CSS parsing (stylesheet class audit; later CSS validation)
+tinycss2>=1.4.0,<2
 
 # CORS (needed in every environment so the API is reachable from the SPA)
 django-cors-headers>=4.9.0
