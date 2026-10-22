@@ -49,5 +49,8 @@ defusedxml>=0.7.1,<1.0
 # HTML Sanitization
 bleach>=6.4.0
 
+# CSS parsing (stylesheet class audit; later CSS validation)
+tinycss2>=1.4.0,<2
+
 # CORS (needed in every environment so the API is reachable from the SPA)
 django-cors-headers>=4.9.0

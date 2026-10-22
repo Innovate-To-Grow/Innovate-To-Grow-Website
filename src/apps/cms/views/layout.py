@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.cms.app_routes import widget_supports_schedule
+from apps.cms.services.styles.tokens import render_tokens_css
 from apps.core.utils.http_cache import public_json_response
 
 from ..models import CMSBlock, CMSEmbedWidget, FooterContent, Menu, SiteSettings, StyleSheet
@@ -25,33 +26,9 @@ LAYOUT_CACHE_KEY = "layout:data"
 LAYOUT_STYLESHEET_CACHE_KEY = "layout:stylesheet:v8"
 LAYOUT_CACHE_TIMEOUT = 600
 
-# Mirrors GROUP_PREFIX in pages/src/features/layout/components/LayoutProvider/LayoutProvider.tsx —
-# both must agree so the CSS variables emitted server-side match the names JS sets.
-_DESIGN_TOKEN_GROUP_PREFIX = {
-    "colors": "color",
-    "typography": "",
-    "typography_mobile": "",
-    "layout": "",
-    "borders": "",
-    "effects": "",
-}
-
-
-def _design_tokens_to_css(tokens):
-    if not isinstance(tokens, dict):
-        return ""
-    lines = []
-    for group, values in tokens.items():
-        if not isinstance(values, dict):
-            continue
-        prefix = _DESIGN_TOKEN_GROUP_PREFIX.get(group, "")
-        for key, value in values.items():
-            kebab = key.replace("_", "-")
-            var_name = f"--itg-{prefix}-{kebab}" if prefix else f"--itg-{kebab}"
-            lines.append(f"  {var_name}: {value};")
-    if not lines:
-        return ""
-    return ":root {\n" + "\n".join(lines) + "\n}\n"
+# Test-only alias: existing tests import the historical name. Remove it once they import
+# render_tokens_css from apps.cms.services.styles.tokens.
+_design_tokens_to_css = render_tokens_css
 
 
 class LayoutAPIView(APIView):
@@ -98,7 +75,7 @@ class LayoutStylesheetView(View):
         css = cache.get(LAYOUT_STYLESHEET_CACHE_KEY)
         if css is None:
             settings = SiteSettings.load()
-            tokens_css = _design_tokens_to_css(settings.design_tokens)
+            tokens_css = render_tokens_css(settings.design_tokens)
             sheets = StyleSheet.objects.filter(is_active=True).values_list("css", flat=True)
             sheets_css = "\n".join(c for c in sheets if c)
             css = (tokens_css + "\n" + sheets_css).strip() + "\n"

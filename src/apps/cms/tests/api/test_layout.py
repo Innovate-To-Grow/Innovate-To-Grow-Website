@@ -1,6 +1,9 @@
 """Tests for LayoutAPIView: menu filtering, serializer logic, edge cases."""
 
+from unittest import skipUnless
+
 from django.core.cache import cache
+from django.db import connection
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -313,3 +316,95 @@ class DesignTokensToCssTests(TestCase):
         css = _design_tokens_to_css({"colors": {"primary": "#fff"}})
         self.assertIn("--itg-color-primary: #fff;", css)
         self.assertTrue(css.startswith(":root {"))
+
+
+class LayoutStylesheetTokenInjectionTests(TestCase):
+    """Unsafe design-token keys and values never reach the served stylesheet."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        # The migrated seed sheets contain ordinary "body {" rules; serve only the tokens.
+        StyleSheet.objects.all().delete()
+
+    def _set_tokens(self, tokens):
+        settings = SiteSettings.load()
+        settings.design_tokens = tokens
+        settings.save()
+        cache.clear()
+
+    def test_injected_value_and_key_are_left_out_of_styles_css(self):
+        self._set_tokens(
+            {
+                "colors": {"primary": "red; } body { display:none", "secondary": "#005487"},
+                "layout": {"Bad-Key;x": "1px", "page_max_width": "1170px"},
+            }
+        )
+
+        with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING") as logs:
+            resp = self.client.get("/layout/styles.css")
+
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertNotIn("display:none", body)
+        self.assertNotIn("body {", body)
+        self.assertNotIn("--itg-color-primary", body)
+        self.assertNotIn("Bad-Key", body)
+        self.assertNotIn("bad-key", body)
+        self.assertIn("  --itg-color-secondary: #005487;", body)
+        self.assertIn("  --itg-page-max-width: 1170px;", body)
+        self.assertEqual(body, ":root {\n  --itg-color-secondary: #005487;\n  --itg-page-max-width: 1170px;\n}\n")
+        self.assertEqual(len(logs.records), 2)
+
+    def test_only_unsafe_tokens_still_serves_the_sheets(self):
+        StyleSheet.objects.create(name="safe", display_name="Safe", css=".safe { color: red; }", sort_order=1)
+        self._set_tokens({"colors": {"primary": "url(https://example.com/x)"}})
+
+        with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING"):
+            body = self.client.get("/layout/styles.css").content.decode()
+
+        self.assertNotIn(":root {", body)
+        self.assertNotIn("example.com", body)
+        self.assertIn(".safe { color: red; }", body)
+
+    def test_control_character_tokens_are_left_out_of_styles_css(self):
+        self._set_tokens({"colors": {"primary": "red\tblue", "secondary": "#005487", "accent": "#fff\x00"}})
+
+        with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING") as logs:
+            resp = self.client.get("/layout/styles.css")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content.decode(), ":root {\n  --itg-color-secondary: #005487;\n}\n")
+        self.assertEqual(len(logs.records), 2)
+
+    # PostgreSQL jsonb refuses a lone surrogate at save time; SQLite stores the escaped JSON text,
+    # so the value comes back as a Python str that cannot be encoded as UTF-8.
+    @skipUnless(connection.vendor == "sqlite", "only SQLite can store a lone surrogate in a JSONField")
+    def test_stored_surrogate_token_does_not_break_styles_css(self):
+        StyleSheet.objects.create(name="safe", display_name="Safe", css=".safe { color: red; }", sort_order=1)
+        self._set_tokens(
+            {
+                "colors": {"primary": "#0f2d52\ud800", "secondary": "#005487"},
+                "typography": {"font_family_body": "'Open Sans\udfff', serif", "font_size_h1": "2.25rem"},
+            }
+        )
+        self.assertEqual(SiteSettings.load().design_tokens["colors"]["primary"], "#0f2d52\ud800")
+
+        with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING") as logs:
+            resp = self.client.get("/layout/styles.css")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.content.decode("utf-8"),
+            ":root {\n  --itg-color-secondary: #005487;\n  --itg-font-size-h1: 2.25rem;\n}\n\n.safe { color: red; }\n",
+        )
+        self.assertEqual(len(logs.records), 2)
+
+    def test_design_tokens_to_css_alias_still_works(self):
+        from apps.cms.services.styles.tokens import render_tokens_css
+        from apps.cms.views.layout import _design_tokens_to_css
+
+        self.assertIs(_design_tokens_to_css, render_tokens_css)
+        with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING"):
+            css = _design_tokens_to_css({"colors": {"primary": "#fff", "evil": "red; } body {"}})
+        self.assertEqual(css, ":root {\n  --itg-color-primary: #fff;\n}\n")
