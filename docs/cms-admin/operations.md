@@ -373,6 +373,102 @@ Available through the Member admin:
 - Import from Excel (openpyxl)
 - Export to Excel
 
+## Stylesheets and design tokens
+
+The public site's CSS currently comes from the **Style Sheets** rows in Django admin (CMS → Style Sheets),
+seeded from `src/apps/cms/migrations/data/stylesheets.json`, plus the design tokens in Site Settings.
+Data migrations re-apply that seed to existing databases, and they overwrite whatever an admin changed in
+those rows without warning. Two read-only commands show where a database stands.
+
+### Drift report
+
+```bash
+cd src && python manage.py stylesheet_drift            # table: status of every sheet + pages with page_css
+cd src && python manage.py stylesheet_drift --diff     # also print a unified diff for each edited sheet
+cd src && python manage.py stylesheet_drift --json     # the full report as JSON
+cd src && python manage.py stylesheet_drift --export stylesheets-backup.json   # every sheet + every page_css
+```
+
+Each sheet gets one status. The comparison ignores line endings and trailing whitespace.
+
+| Status | Meaning |
+|--------|---------|
+| `in_sync` | CSS, active flag and order match the repo seed |
+| `edited` | the CSS differs from the seed |
+| `settings_changed` | the CSS matches, but the active flag or the order differs from the seed |
+| `unmanaged` | the sheet is not in the seed, including a `*-pre-redesign` / `*-pre-audit-fixes` copy that was switched back on |
+| `backup_copy` | an inactive `*-pre-redesign` / `*-pre-audit-fixes` copy left by a migration |
+| `missing` (table only) | a seed sheet that is not in the database |
+
+The command exits with status 1 when the site serves CSS the seed lacks, or a re-sync migration would
+change what the site serves:
+
+- an active sheet whose CSS differs from the seed or is not in it;
+- a seed sheet whose active flag or order was changed (deactivating a seed sheet counts);
+- an active seed sheet that was deleted (a re-sync creates it again and serves it).
+
+Sheets that are inactive in both the seed and the database, inactive unmanaged sheets and inactive backup
+copies do not fail it. A missing seed file is an error too. The Style Sheets changelist shows the same status
+in its **Repo seed** column.
+
+Run it in production before every release that carries a stylesheet migration. Move any edit worth keeping
+into the repository first, and keep the `--export` file as the backup.
+
+### Classes used by stored CMS content
+
+```bash
+cd src && python manage.py audit_css_classes                   # every class in stored content and what styles it
+cd src && python manage.py audit_css_classes --undefined-only  # only classes nothing styles site-wide or hooks on
+cd src && python manage.py audit_css_classes --json            # the full report, incl. the pages and footers using each class
+cd src && python manage.py audit_css_classes --no-frontend --json   # on a server without pages/src
+```
+
+The audit reads the class attributes in every `*_html` field of every CMS block (pages of any status) and of
+the active footer, and every page's `page_css_class`. For each class it lists how often and in how many
+places it is used, and what styles it:
+
+- `sheet:<name>`: an active Style Sheets row;
+- a path under `pages/src`: frontend CSS in the entry bundle, which loads on every page;
+- `route-only:<files>`: frontend CSS that loads only once a lazily loaded route using it has been opened, so
+  CMS content cannot rely on it;
+- `page_css:<routes>`: a page's own Page CSS, which applies on that page only;
+- `inactive:<names>`: inactive Style Sheets rows;
+- `scoped:<sources>`: CSS that styles the class only in context: inside another element (`.event-page .x`
+  scopes `x`), together with another class (`.btn.is-active` and `.a:is(.b)` scope both), inside `:not()`,
+  `:has()` or `:nth-child(... of S)`, in a nested rule, or inside `@scope`;
+- `hook:<sources>`: CSS that uses the class as context for other elements (`.event-page .x` makes
+  `event-page` a hook), typical for page wrapper classes.
+
+A class counts as defined when an active sheet or an entry-bundle file targets it on its own: it is the only
+class the element must have, in a selector with no ancestor or sibling part (`.x`, `.x:hover`, `a.x`,
+`.x:not(.y)`; `:is(.a, .b)` defines both; a leading `html`, `body` or `:root` followed by a space is ignored). The summary line counts the classes that are neither defined nor a
+hook as having no site-wide definition, and `--undefined-only` lists those. Stylesheets are parsed with
+tinycss2, so strings, escapes and `@media` / `@supports` / `@layer` blocks are read the way a browser reads
+them. Rich-text HTML can use any class, so this audit is how to find which CSS stored content depends on
+before a sheet is changed or removed. It never fails because of what it finds.
+
+The backend image does not contain `pages/src`. On a server, run it with `--no-frontend --json`: classes
+styled only by frontend CSS then show as undefined, so check those against a checkout (for example
+`grep -rn "\.<class>\b" pages/src --include=*.css`). Without `--no-frontend`, a missing frontend
+directory is an error rather than a silently incomplete report.
+
+### Design token values
+
+Site Settings → Design Tokens is written into a `:root { --itg-* }` block at the top of the served
+stylesheet. A token is left out, with a warning in the log, when its key is not lowercase letters, digits
+and underscores, or its value
+
+- is longer than 200 characters;
+- contains `;`, `{`, `}`, `<`, `>`, a backslash, a CSS comment or a control character (line
+  breaks, tabs);
+- has unbalanced brackets `()` / `[]` or an unclosed quote;
+- calls a function other than the colour, maths, gradient and timing ones (`rgb()`, `rgba()`, `hsl()`,
+  `color-mix()`, `var()`, `calc()`, `min()`, `max()`, `clamp()`, the gradients, `cubic-bezier()`,
+  `steps()` and a few transform and grid helpers), so `url()`, `image-set()` and similar are refused.
+
+The other tokens still render, so one bad value cannot end the token block early, swallow the next token or
+make visitors load a URL.
+
 ## Monitoring
 
 ### Health check

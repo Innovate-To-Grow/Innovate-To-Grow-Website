@@ -1,4 +1,7 @@
 import json
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -6,7 +9,18 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.authn.models import Member
+from apps.cms.admin.layout.style_sheet import SEED_STATUS_NOTE, StyleSheetAdmin
 from apps.cms.models import StyleSheet
+from apps.cms.services.styles.drift import (
+    STATUS_BACKUP_COPY,
+    STATUS_EDITED,
+    STATUS_IN_SYNC,
+    STATUS_LABELS,
+    STATUS_SETTINGS_CHANGED,
+    STATUS_UNKNOWN,
+    STATUS_UNMANAGED,
+    load_seed_sheets,
+)
 from apps.cms.views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
 
 
@@ -286,3 +300,112 @@ class StyleSheetAdminSaveModelTests(TestCase):
 
         self.assertTrue(StyleSheet.objects.filter(name="fresh").exists())
         self.assertIsNone(cache.get("layout:data"))
+
+
+class StyleSheetAdminSeedStatusTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.admin_user = Member.objects.create_superuser(
+            password="testpass123",
+            first_name="Seed",
+            last_name="Admin",
+        )
+        self.client.force_login(self.admin_user)
+        StyleSheet.objects.all().delete()
+        seeds = load_seed_sheets()
+        StyleSheet.objects.create(
+            name="global",
+            display_name="Seeded Global Row",
+            css=seeds["global"]["css"].replace("\n", "\r\n"),
+            sort_order=10,
+        )
+        StyleSheet.objects.create(
+            name="page-home",
+            display_name="Edited Home Row",
+            css=seeds["page-home"]["css"] + "\n.extra { color: red; }\n",
+            sort_order=100,
+        )
+        StyleSheet.objects.create(name="custom", display_name="Custom Unmanaged Row", css=".x {}", sort_order=200)
+
+    def tearDown(self):
+        cache.clear()
+
+    def _row(self, content, display_name):
+        """The changelist ``<tr>`` that holds ``display_name``."""
+        rows = [row for row in content.split("<tr") if display_name in row]
+        self.assertEqual(len(rows), 1, f"expected one row for {display_name!r}")
+        return rows[0]
+
+    def test_changelist_shows_repo_seed_column_with_status_labels(self):
+        response = self.client.get(reverse("admin:cms_stylesheet_changelist"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("column-seed_status", content)
+        for display_name, status in (
+            ("Seeded Global Row", STATUS_IN_SYNC),
+            ("Edited Home Row", STATUS_EDITED),
+            ("Custom Unmanaged Row", STATUS_UNMANAGED),
+        ):
+            with self.subTest(row=display_name):
+                cell = f'data-label="Repo seed">{STATUS_LABELS[status]}</td>'
+                self.assertIn(cell, self._row(content, display_name))
+
+    def test_changelist_renders_seed_note(self):
+        response = self.client.get(reverse("admin:cms_stylesheet_changelist"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["seed_status_note"], SEED_STATUS_NOTE)
+        content = response.content.decode()
+        self.assertIn('data-role="stylesheet-seed-note"', content)
+        note_start = content.index('data-role="stylesheet-seed-note"')
+        self.assertIn("stylesheet_drift --diff", content[note_start : content.index("</p>", note_start)])
+
+    def test_seed_status_method_returns_label(self):
+        from django.contrib.admin.sites import AdminSite
+
+        model_admin = StyleSheetAdmin(StyleSheet, AdminSite())
+
+        self.assertEqual(
+            model_admin.seed_status(StyleSheet.objects.get(name="page-home")), STATUS_LABELS[STATUS_EDITED]
+        )
+        backup = StyleSheet(name="global-pre-redesign", css=".old {}", is_active=False)
+        self.assertEqual(model_admin.seed_status(backup), STATUS_LABELS[STATUS_BACKUP_COPY])
+        self.assertIn("seed_status", model_admin.list_display)
+
+    def test_changelist_labels_settings_changes_and_active_backup_copies(self):
+        StyleSheet.objects.filter(name="global").update(sort_order=11)
+        StyleSheet.objects.create(
+            name="global-pre-redesign", display_name="Switched Back Copy", css=".old {}", sort_order=5
+        )
+        StyleSheet.objects.create(
+            name="page-home-pre-redesign",
+            display_name="Inactive Backup Copy",
+            css=".old {}",
+            sort_order=6,
+            is_active=False,
+        )
+
+        content = self.client.get(reverse("admin:cms_stylesheet_changelist")).content.decode()
+
+        for display_name, status in (
+            ("Seeded Global Row", STATUS_SETTINGS_CHANGED),
+            ("Switched Back Copy", STATUS_UNMANAGED),
+            ("Inactive Backup Copy", STATUS_BACKUP_COPY),
+        ):
+            with self.subTest(row=display_name):
+                cell = f'data-label="Repo seed">{STATUS_LABELS[status]}</td>'
+                self.assertIn(cell, self._row(content, display_name))
+
+    def test_changelist_shows_unknown_when_the_seed_file_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "stylesheets.json"
+            with patch("apps.cms.services.styles.drift.SEED_PATH", missing):
+                response = self.client.get(reverse("admin:cms_stylesheet_changelist"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        cell = f'data-label="Repo seed">{STATUS_LABELS[STATUS_UNKNOWN]}</td>'
+        for display_name in ("Seeded Global Row", "Edited Home Row", "Custom Unmanaged Row"):
+            with self.subTest(row=display_name):
+                self.assertIn(cell, self._row(content, display_name))

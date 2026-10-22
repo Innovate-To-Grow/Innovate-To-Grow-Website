@@ -1,0 +1,542 @@
+/* ==========================================================================
+   Maintenance page + degraded-service banner, bundled with the app.
+
+   The maintenance page is shown when /health/ says the backend is down, and
+   that same backend serves the CMS stylesheet (/api/layout/styles.css). So
+   this file carries what the page needs on its own: the few global .itg-*
+   rules it uses (scoped to the page with :where(), so they never reach the
+   rest of the site) and the CMS "maintenance" sheet, copied verbatim.
+
+   Everything sits in the itg-maintenance-fallback cascade layer. Layered rules
+   lose to the unlayered CMS sheets, so while /api/layout/styles.css is served
+   any value the CMS rows set wins, an admin's edit to the "maintenance" sheet
+   included. A declaration an admin *deletes* from that sheet is still supplied
+   by this layer, though: to drop one, override it (e.g. border-bottom: 0).
+   When the stylesheet cannot load, this layer is all there is and the page is
+   still styled; the --itg-* values then come from the bundled fallback tokens
+   (src/assets/tokens.css).
+
+   The CMS "maintenance" sheet stays active until the migration that retires
+   the component sheets; after that this file is the only copy.
+   ========================================================================== */
+
+@layer itg-maintenance-fallback {
+  /* ---- Global rules used on the page (copied from the "global" sheet) ---- */
+
+  :where(.maintenance-container) :where(a) {
+    color: var(--itg-color-primary);
+    text-underline-offset: 0.12em;
+  }
+
+  :where(.maintenance-container) :where(a:hover) {
+    color: var(--itg-color-primary-hover);
+  }
+
+  :where(.maintenance-container) :focus-visible {
+    outline: 2px solid var(--itg-color-secondary);
+    outline-offset: 2px;
+  }
+
+  :where(.maintenance-container) .itg-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 6px 20px;
+    border: 2px solid transparent;
+    border-radius: var(--itg-radius-button);
+    background: transparent;
+    color: var(--itg-color-primary);
+    font-family: inherit;
+    font-size: var(--itg-font-size-body);
+    font-weight: 400;
+    line-height: 24px;
+    letter-spacing: 0;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out,
+      border-color var(--itg-transition-fast) ease-in-out;
+  }
+
+  :where(.maintenance-container) .itg-btn:hover,
+  :where(.maintenance-container) .itg-btn:focus {
+    text-decoration: none;
+  }
+
+  :where(.maintenance-container) .itg-btn-primary {
+    background: var(--itg-color-primary);
+    border-color: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
+
+  :where(.maintenance-container) .itg-btn-primary:hover,
+  :where(.maintenance-container) .itg-btn-primary:focus-visible {
+    background: var(--itg-color-primary-hover);
+    border-color: var(--itg-color-primary-hover);
+    color: var(--itg-color-white);
+  }
+
+  :where(.maintenance-container) .itg-btn-text {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--itg-color-primary);
+    font-weight: 400;
+    letter-spacing: 0;
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+  }
+
+  :where(.maintenance-container) .itg-btn-text:hover,
+  :where(.maintenance-container) .itg-btn-text:focus-visible {
+    background: none;
+    color: var(--itg-color-primary-hover);
+    text-decoration: none;
+  }
+
+  :where(.maintenance-container) .itg-btn:disabled,
+  :where(.maintenance-container) .itg-btn[aria-disabled='true'],
+  :where(.maintenance-container) .itg-btn:disabled:hover,
+  :where(.maintenance-container) .itg-btn[aria-disabled='true']:hover {
+    background: var(--itg-color-disabled-bg);
+    border-color: var(--itg-color-disabled-border);
+    color: var(--itg-color-disabled-text);
+    text-decoration: none;
+    cursor: not-allowed;
+  }
+
+  :where(.maintenance-container) .itg-btn-text:disabled,
+  :where(.maintenance-container) .itg-btn-text:disabled:hover,
+  :where(.maintenance-container) .itg-btn-text[aria-disabled='true'],
+  :where(.maintenance-container) .itg-btn-text[aria-disabled='true']:hover {
+    background: none;
+    border-color: transparent;
+  }
+
+  :where(.maintenance-container) .itg-panel {
+    box-sizing: border-box;
+    padding: 20px;
+    background: var(--itg-color-bg-panel);
+    border-top: 8px solid var(--itg-color-sidebar-rule);
+  }
+
+  :where(.maintenance-container) .itg-panel > :first-child {
+    margin-top: 0;
+  }
+
+  :where(.maintenance-container) .itg-panel > :last-child {
+    margin-bottom: 0;
+  }
+
+  :where(.maintenance-container) .itg-label {
+    color: var(--itg-color-text);
+    font-size: var(--itg-font-size-label);
+    font-weight: 400;
+    line-height: 24px;
+  }
+
+  :where(.maintenance-container) .itg-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    padding: 4px 6px;
+    border: 1px solid var(--itg-color-border-input);
+    border-radius: var(--itg-radius-input);
+    background-color: var(--itg-color-bg-light);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+    color: var(--itg-color-text);
+    font: inherit;
+    font-size: var(--itg-font-size-body);
+    line-height: 24px;
+    transition: border-color 0.2s linear, box-shadow 0.2s linear;
+  }
+
+  :where(.maintenance-container) .itg-input::placeholder {
+    color: var(--itg-color-disabled-text);
+  }
+
+  :where(.maintenance-container) .itg-input:focus {
+    border-color: rgba(82, 168, 236, 0.8);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6);
+  }
+
+  :where(.maintenance-container) .itg-input:disabled {
+    background-color: var(--itg-color-disabled-bg);
+    border-color: var(--itg-color-disabled-border);
+    color: var(--itg-color-disabled-text);
+    cursor: not-allowed;
+  }
+
+  :where(.maintenance-container) .itg-error {
+    color: var(--itg-color-error);
+  }
+
+  @media (max-width: 992px) {
+    :where(.maintenance-container) .itg-btn {
+      min-height: 44px;
+    }
+
+    :where(.maintenance-container) .itg-btn-text {
+      min-height: 44px;
+      padding: 0;
+    }
+
+    :where(.maintenance-container) .itg-input {
+      height: 44px;
+      font-size: 16px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    :where(.maintenance-container) .itg-panel {
+      padding: 16px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where(.maintenance-container) .itg-btn,
+    :where(.maintenance-container) .itg-input {
+      transition: none;
+    }
+  }
+
+  /* ---- The CMS "maintenance" sheet, verbatim ---- */
+
+  /* ==========================================================================
+     Maintenance page + degraded-service banner.
+     The maintenance page replaces the whole app, so it draws its own UC Merced
+     chrome: navy bar with the gold rule, the site-name band, white content,
+     grey footer with a navy bottom strip. Buttons, input, label and the two
+     info panels use the global classes (.itg-btn*, .itg-input, .itg-label,
+     .itg-panel). The chrome repeats the site header's and footer's reference
+     values (innovatetogrow.ucmerced.edu): 80px navy bar + 5px #dbaa00 rule with
+     the 138x34 wordmark at the 1170px container's left edge; the band with
+     "Innovate To Grow" in Khula 300 48px and the italic 16px slogan (32px and
+     no slogan on phones) closed by the header shadow; the #e5e5e5 footer band
+     and the #142d52 copyright bar with its 3px #d9a928 rule.
+     ========================================================================== */
+
+  /* ---- layout.css ---- */
+
+  .maintenance-container {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow: auto;
+    background: var(--itg-color-bg-page);
+    color: var(--itg-color-text);
+    font-family: var(--itg-font-family-body);
+    font-size: var(--itg-font-size-body);
+    line-height: var(--itg-line-height-body);
+  }
+
+  .maintenance-bar {
+    flex-shrink: 0;
+    background: var(--itg-color-primary);
+    border-bottom: 5px solid var(--itg-color-accent-gold);
+  }
+
+  /* 1170px content box (x = 135 on a 1440 viewport), 24px gutters below that,
+     like the site header's .site-header-container. */
+  .maintenance-bar-inner,
+  .maintenance-band-inner,
+  .maintenance-content,
+  .maintenance-footer-inner {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: calc(var(--itg-page-max-width) + 2 * var(--itg-page-gutter, 24px));
+    margin: 0 auto;
+    padding-right: var(--itg-page-gutter, 24px);
+    padding-left: var(--itg-page-gutter, 24px);
+  }
+
+  .maintenance-bar-inner {
+    display: flex;
+    align-items: center;
+    height: 80px;
+  }
+
+  /* The wordmark is 34px (28px on phones) tall; the link keeps a 44px target. */
+  .maintenance-ucm-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .maintenance-ucm-logo {
+    display: block;
+    width: 138px;
+    height: auto;
+  }
+
+  /* Site-name band, as in the site header (30px above, 5px below). With no
+     menu row under it, the band carries the header shadow itself. */
+  .maintenance-band {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    background: var(--itg-color-white);
+    box-shadow: var(--itg-shadow-header, 0 6px 6px -2px rgba(121, 121, 121, 0.67));
+  }
+
+  .maintenance-band-inner {
+    padding-top: 30px;
+    padding-bottom: 5px;
+  }
+
+  .maintenance-site-name {
+    margin: 0;
+    color: var(--itg-color-primary);
+    font-family: var(--itg-font-family-display);
+    font-size: 48px;
+    font-weight: 300;
+    line-height: 1.2;
+  }
+
+  .maintenance-site-school {
+    margin: 0 0 0 5px;
+    color: var(--itg-color-text-secondary);
+    font-size: 16px;
+    font-style: italic;
+    font-weight: 600;
+    line-height: 24px;
+  }
+
+  /* ---- content.css ---- */
+  /* The page head of every site page: 16px under the chrome, h1 36px / 54px with
+     12px above, the italic meta line, then the message as the theme's .lead
+     (18px / 28px #005487 over a 1px navy rule). */
+
+  .maintenance-content {
+    flex: 1 0 auto;
+    padding-top: 16px;
+    padding-bottom: 50px;
+  }
+
+  .maintenance-title {
+    margin: 12px 0 4px;
+    color: var(--itg-color-primary);
+    font-size: var(--itg-font-size-h1);
+    font-weight: 600;
+    line-height: var(--itg-line-height-heading);
+  }
+
+  .maintenance-meta {
+    margin: 0 0 12px;
+    color: var(--itg-color-text-secondary);
+    font-size: var(--itg-font-size-meta);
+    font-style: italic;
+    line-height: 24px;
+  }
+
+  .maintenance-lead {
+    margin: 0 0 24px;
+    padding-bottom: 1.5em;
+    border-bottom: 1px solid var(--itg-color-primary);
+    color: var(--itg-color-secondary);
+    font-size: var(--itg-font-size-lead);
+    line-height: 28px;
+  }
+
+  .maintenance-info {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 30px;
+  }
+
+  .maintenance-info-block h2 {
+    margin: 0 0 12px;
+    color: var(--itg-color-primary);
+    font-size: var(--itg-font-size-h3);
+    font-weight: 600;
+    line-height: var(--itg-line-height-heading);
+  }
+
+  .maintenance-info-block p {
+    margin: 0;
+    color: var(--itg-color-text);
+    line-height: 24px;
+  }
+
+  /* ---- footer.css ---- */
+  /* The site footer's grey band (centred 14px navy links, underline on hover)
+     and its copyright bar. */
+
+  .maintenance-footer {
+    flex-shrink: 0;
+    background: var(--itg-color-footer-bg);
+    color: var(--itg-color-primary);
+  }
+
+  .maintenance-footer-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-top: 32px;
+    padding-bottom: 40px;
+    text-align: center;
+  }
+
+  .maintenance-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px 24px;
+    font-size: 14px;
+    line-height: 21px;
+  }
+
+  .maintenance-footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    color: var(--itg-color-primary);
+    font-weight: 400;
+    text-decoration: none;
+  }
+
+  .maintenance-footer-links a:hover,
+  .maintenance-footer-links a:focus-visible {
+    color: var(--itg-color-primary);
+    text-decoration: underline;
+  }
+
+  /* The bypass toggle (.itg-btn-text) sits on the same line as the links. */
+  .maintenance-footer-links .bypass-toggle-link {
+    min-height: 32px;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  .maintenance-footer-bottom {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 16px;
+    background: var(--itg-color-footer-bar, #142d52);
+    border-top: 3px solid var(--itg-color-footer-bar-rule, #d9a928);
+    text-align: center;
+  }
+
+  .maintenance-copyright {
+    margin: 0;
+    color: var(--itg-color-white);
+    font-size: 14px;
+    line-height: 21px;
+  }
+
+  /* ---- forms.css (bypass) ---- */
+
+  .bypass-form {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    max-width: 420px;
+    margin: 0;
+    text-align: left;
+  }
+
+  .bypass-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .bypass-input {
+    flex: 1 1 auto;
+  }
+
+  .bypass-submit {
+    flex-shrink: 0;
+  }
+
+  .bypass-error {
+    margin: 0;
+    font-size: var(--itg-font-size-small);
+    font-weight: 600;
+  }
+
+  .maintenance-bar a:focus-visible {
+    outline-color: var(--itg-color-white);
+  }
+
+  /* ---- responsive.css ---- */
+
+  /* Phones: the site header's phone values (2.5% gutters, the bar stays 80px
+     with the full-size wordmark, Khula 32px, slogan hidden). */
+  @media (max-width: 992px) {
+    .maintenance-bar-inner,
+    .maintenance-footer-inner {
+      padding-right: 2.5%;
+      padding-left: 2.5%;
+    }
+
+    .maintenance-band-inner {
+      padding: 20px 20px 15px;
+    }
+
+    .maintenance-content {
+      padding-right: var(--itg-page-gutter-mobile, 20px);
+      padding-left: var(--itg-page-gutter-mobile, 20px);
+    }
+
+    .maintenance-site-name {
+      font-size: 32px;
+    }
+
+    .maintenance-site-school {
+      display: none;
+    }
+
+    .maintenance-footer-links a,
+    .maintenance-footer-links .bypass-toggle-link {
+      min-height: 44px;
+    }
+  }
+
+  /* The reference's phone content column runs from x = 39 to 20px from the
+     right edge. */
+  @media (max-width: 767px) {
+    .maintenance-content {
+      padding-left: 39px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .maintenance-title {
+      font-size: var(--itg-font-size-h1-mobile);
+    }
+
+    .maintenance-lead {
+      font-size: var(--itg-font-size-lead-mobile);
+    }
+
+    .maintenance-info {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* ---- degraded-service banner (HealthCheckProvider) ---- */
+
+  .service-degraded-banner {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--itg-color-accent-gold);
+    background: var(--itg-color-highlight);
+    color: var(--itg-color-text-dark);
+    font-size: var(--itg-font-size-small);
+    line-height: 21px;
+    text-align: center;
+  }
+}
