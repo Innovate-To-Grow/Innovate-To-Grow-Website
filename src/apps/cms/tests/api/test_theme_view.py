@@ -64,12 +64,6 @@ class ThemeStylesheetViewTests(TestCase):
 
         self.assertIsNone(cache.get(THEME_CACHE_KEY))
 
-    def test_the_old_stylesheet_url_keeps_its_unlayered_tokens(self):
-        body = self.client.get("/layout/styles.css").content.decode()
-        self.assertTrue(body.startswith(":root {"))
-        self.assertNotIn("@layer", body)
-        self.assertNotIn(".site-header", body)
-
 
 class EtagMatchesTests(TestCase):
     def test_weak_comparison(self):

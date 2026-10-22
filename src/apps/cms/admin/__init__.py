@@ -14,7 +14,6 @@ from .layout.custom_css_revision import CustomCssRevisionAdmin
 from .layout.footer_content import FooterContentAdmin
 from .layout.menu import MenuAdmin
 from .layout.site_settings import SiteSettingsAdmin
-from .layout.style_sheet import StyleSheetAdmin
 from .news import NewsArticleAdmin, NewsFeedSourceAdmin, NewsSyncLogAdmin
 
 __all__ = [
@@ -23,7 +22,6 @@ __all__ = [
     "FooterContentAdmin",
     "SiteSettingsAdmin",
     "CustomCssRevisionAdmin",
-    "StyleSheetAdmin",
     # CMS
     "CMSPageAdmin",
     "RouteRedirectAdmin",

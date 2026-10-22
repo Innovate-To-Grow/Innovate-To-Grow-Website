@@ -1,18 +1,14 @@
 from django.core.cache import cache
-from django.http import HttpResponse
-from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
-from django.views import View
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.cms.app_routes import widget_supports_schedule
-from apps.cms.services.styles.tokens import render_tokens_css
 from apps.core.utils.http_cache import public_json_response
 
-from ..models import CMSBlock, CMSEmbedWidget, FooterContent, Menu, SiteSettings, StyleSheet
+from ..models import CMSBlock, CMSEmbedWidget, FooterContent, Menu
 from ..serializers import (
     CMSBlockSerializer,
     FooterContentSerializer,
@@ -20,15 +16,7 @@ from ..serializers import (
 )
 
 LAYOUT_CACHE_KEY = "layout:data"
-# Bump suffix (:v2, :v3, ...) whenever the assembled stylesheet gains or loses a
-# non-token section. This retires existing cached blobs instantly on deploy
-# instead of waiting the TTL out.
-LAYOUT_STYLESHEET_CACHE_KEY = "layout:stylesheet:v10"
 LAYOUT_CACHE_TIMEOUT = 600
-
-# Test-only alias: existing tests import the historical name. Remove it once they import
-# render_tokens_css from apps.cms.services.styles.tokens.
-_design_tokens_to_css = render_tokens_css
 
 
 class LayoutAPIView(APIView):
@@ -60,30 +48,6 @@ class LayoutAPIView(APIView):
         cache.set(LAYOUT_CACHE_KEY, data, timeout=LAYOUT_CACHE_TIMEOUT)
 
         return public_json_response(request, data)
-
-
-class LayoutStylesheetView(View):
-    """Render-blocking stylesheet served as text/css.
-
-    Linked from index.html so the browser fetches CSS in parallel with the
-    main bundle and blocks rendering until styles arrive — eliminating the
-    flash of unstyled content that occurred when CSS was injected by JS.
-    """
-
-    # noinspection PyMethodMayBeStatic
-    def get(self, request, *args, **kwargs):
-        css = cache.get(LAYOUT_STYLESHEET_CACHE_KEY)
-        if css is None:
-            settings = SiteSettings.load()
-            tokens_css = render_tokens_css(settings.design_tokens)
-            sheets = StyleSheet.objects.filter(is_active=True).values_list("css", flat=True)
-            sheets_css = "\n".join(c for c in sheets if c)
-            css = (tokens_css + "\n" + sheets_css).strip() + "\n"
-            cache.set(LAYOUT_STYLESHEET_CACHE_KEY, css, timeout=LAYOUT_CACHE_TIMEOUT)
-
-        response = HttpResponse(css, content_type="text/css; charset=utf-8")
-        patch_cache_control(response, public=True, max_age=LAYOUT_CACHE_TIMEOUT)
-        return response
 
 
 @method_decorator(xframe_options_exempt, name="dispatch")

@@ -10,7 +10,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase
 
-from apps.cms.models import CMSBlock, CMSPage, FooterContent, StyleSheet
+from apps.cms.models import CMSBlock, CMSPage, FooterContent
 from apps.cms.services.styles.audit import (
     class_tokens_in_html,
     content_class_usage,
@@ -18,7 +18,6 @@ from apps.cms.services.styles.audit import (
     frontend_css_index,
     iter_html_fields,
     page_css_index,
-    sheet_index,
 )
 
 EMPTY_MAPS = {"defined": {}, "scoped": {}, "hook": {}}
@@ -231,43 +230,6 @@ class FrontendCssIndexTests(SimpleTestCase):
         # SheetsDataTable is only reached through a lazily loaded route.
         self.assertNotIn("sdt-search", index["defined"])
         self.assertEqual(index["route"]["sdt-search"], {"components/SheetsDataTable/SheetsDataTable.css"})
-
-
-class SheetIndexTests(TestCase):
-    def setUp(self):
-        cache.clear()
-        StyleSheet.objects.all().delete()
-        StyleSheet.objects.create(name="act", display_name="Active", css=".in-active { color: red; }", sort_order=1)
-        StyleSheet.objects.create(
-            name="old", display_name="Old", css=".in-inactive {}\n.in-active {}", sort_order=2, is_active=False
-        )
-
-    def test_active_definitions_and_inactive_definitions(self):
-        index = sheet_index()
-
-        self.assertEqual(set(index), {"defined", "scoped", "hook", "inactive"})
-        self.assertEqual(dict(index["defined"]), {"in-active": {"act"}})
-        self.assertEqual(dict(index["inactive"]), {"in-inactive": {"old"}, "in-active": {"old"}})
-        self.assertEqual((dict(index["scoped"]), dict(index["hook"])), ({}, {}))
-
-    def test_scoped_and_hook_classes_come_from_active_sheets_only(self):
-        StyleSheet.objects.create(name="events", display_name="Events", css=".event-page .x {}", sort_order=3)
-        StyleSheet.objects.create(
-            name="gone", display_name="Gone", css=".p .y {}\n.q {}", sort_order=4, is_active=False
-        )
-
-        index = sheet_index()
-
-        self.assertEqual(dict(index["scoped"]), {"x": {"events"}})
-        self.assertEqual(dict(index["hook"]), {"event-page": {"events"}})
-        # An inactive sheet contributes only its definitions, under "inactive".
-        self.assertEqual(index["inactive"]["q"], {"gone"})
-        self.assertNotIn("p", index["inactive"])
-        self.assertNotIn("y", index["inactive"])
-
-    def test_no_sheets(self):
-        StyleSheet.objects.all().delete()
-        self.assertEqual(sheet_index(), {**EMPTY_MAPS, "inactive": {}})
 
 
 class PageCssIndexTests(TestCase):

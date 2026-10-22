@@ -19,10 +19,8 @@ from .cms import (
     get_menu_detail,
     get_news_source_detail,
     get_site_settings_detail,
-    get_style_sheet_detail,
     search_cms_assets,
     search_menus,
-    search_style_sheets,
 )
 from .domains.analytics import get_page_view_summary, get_page_view_trend, get_top_paths
 from .domains.mail import get_campaign_recipient_logs, get_failed_recipient_report
@@ -88,8 +86,6 @@ _AGENT_TOOLS = (
     get_menu_detail,
     get_footer_content_detail,
     get_site_settings_detail,
-    search_style_sheets,
-    get_style_sheet_detail,
     search_cms_assets,
     get_news_source_detail,
     get_page_views,

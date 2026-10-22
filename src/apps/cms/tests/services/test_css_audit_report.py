@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase
 
-from apps.cms.models import CMSBlock, CMSPage, FooterContent, StyleSheet
+from apps.cms.models import CMSBlock, CMSPage, FooterContent
 from apps.cms.services.styles.audit import audit_css_classes, default_frontend_dir, is_undefined
 from apps.cms.tests.services.test_css_audit import ENTRY_AND_ROUTE_FRONTEND, make_frontend_dir
 
@@ -25,8 +25,6 @@ ROW_KEYS = {
     "footers",
     "sources",
     "block_types",
-    "sheets",
-    "inactive_sheets",
     "frontend_files",
     "route_frontend_files",
     "page_css",
@@ -43,21 +41,16 @@ class IsUndefinedTests(SimpleTestCase):
     def test_undefined_means_no_site_wide_definition_and_no_hook(self):
         self.assertTrue(is_undefined({"defined": False, "hook_in": []}))
         self.assertFalse(is_undefined({"defined": True, "hook_in": []}))
-        self.assertFalse(is_undefined({"defined": False, "hook_in": ["sheet:events"]}))
+        self.assertFalse(is_undefined({"defined": False, "hook_in": ["styles/events.css"]}))
         self.assertFalse(is_undefined({"defined": True, "hook_in": ["page_css:/x"]}))
 
 
 class AuditCssClassesTests(TestCase):
     def setUp(self):
         cache.clear()
-        StyleSheet.objects.all().delete()
         # Migration cms.0023 seeds the /acknowledgement page (with blocks); start from no pages.
         CMSPage.objects.all().delete()
         FooterContent.objects.all().delete()
-        StyleSheet.objects.create(name="act", display_name="Active", css=".in-active { color: red; }", sort_order=1)
-        StyleSheet.objects.create(
-            name="old", display_name="Old", css=".in-inactive {}\n.in-active {}", sort_order=2, is_active=False
-        )
         self.frontend = make_frontend_dir(self, ENTRY_AND_ROUTE_FRONTEND)
         self.audit_page = CMSPage.objects.create(slug="audit", route="/audit", title="Audit")
         self.other_page = CMSPage.objects.create(slug="other", route="/other", title="Other")
@@ -67,14 +60,14 @@ class AuditCssClassesTests(TestCase):
             sort_order=0,
             data={
                 "heading": "Classes",
-                "body_html": '<p class="in-active in-inactive">a</p><p class="in-frontend nowhere in-active">b</p>',
+                "body_html": '<p class="in-frontend">a</p><p class="nowhere in-frontend">b</p>',
             },
         )
         CMSBlock.objects.create(
             page=self.other_page,
             block_type="rich_text",
             sort_order=0,
-            data={"body_html": "<div class='in-active'>c</div>"},
+            data={"body_html": "<div class='in-frontend'>c</div>"},
         )
 
     def _report(self, **kwargs):
@@ -101,48 +94,28 @@ class AuditCssClassesTests(TestCase):
         self.assertIs(report["frontend_scanned"], True)
         self.assertEqual(report["frontend_dir"], str(self.frontend))
         self.assertIs(report["frontend_import_graph"], True)
-        self.assertEqual(
-            [row["class_name"] for row in report["classes"]], ["in-active", "in-frontend", "in-inactive", "nowhere"]
-        )
-        self.assertEqual(report["total_classes"], 4)
-        # in-inactive (inactive sheet only) and nowhere.
-        self.assertEqual(report["undefined_classes"], 2)
+        self.assertEqual([row["class_name"] for row in report["classes"]], ["in-frontend", "nowhere"])
+        self.assertEqual(report["total_classes"], 2)
+        self.assertEqual(report["undefined_classes"], 1)
         self.assertEqual(report["undefined_classes"], sum(map(is_undefined, report["classes"])))
         for row in report["classes"]:
             with self.subTest(row=row["class_name"]):
                 self.assertEqual(set(row), ROW_KEYS)
         json.dumps(report)  # The command prints the report as JSON.
 
-    def test_class_in_an_active_sheet_is_defined(self):
-        row = self._rows()["in-active"]
+    def test_class_in_an_entry_bundle_file_is_defined(self):
+        row = self._rows()["in-frontend"]
 
         self.assertTrue(row["defined"])
-        self.assertEqual(row["sheets"], ["act"])
-        self.assertEqual(row["inactive_sheets"], ["old"])
-        self.assertEqual((row["frontend_files"], row["route_frontend_files"], row["page_css"]), ([], [], []))
+        self.assertFalse(is_undefined(row))
+        self.assertEqual(row["frontend_files"], ["index.css"])
+        self.assertEqual((row["route_frontend_files"], row["page_css"]), ([], []))
         # One use per block, even when the block repeats the class.
         self.assertEqual(row["usage_count"], 2)
         self.assertEqual(row["pages"], ["/audit", "/other"])
         self.assertEqual(row["block_types"], ["rich_text"])
         self.assertEqual(row["sources"], ["block:rich_text"])
         self.assertEqual((row["footers"], row["scoped_in"], row["hook_in"]), ([], [], []))
-
-    def test_class_only_in_an_inactive_sheet_is_undefined(self):
-        row = self._rows()["in-inactive"]
-
-        self.assertFalse(row["defined"])
-        self.assertTrue(is_undefined(row))
-        self.assertEqual(row["sheets"], [])
-        self.assertEqual(row["inactive_sheets"], ["old"])
-        self.assertEqual((row["usage_count"], row["pages"]), (1, ["/audit"]))
-
-    def test_class_in_an_entry_bundle_file_is_defined(self):
-        row = self._rows()["in-frontend"]
-
-        self.assertTrue(row["defined"])
-        self.assertEqual(row["frontend_files"], ["index.css"])
-        self.assertEqual(row["route_frontend_files"], [])
-        self.assertEqual((row["sheets"], row["inactive_sheets"]), ([], []))
 
     def test_class_defined_nowhere(self):
         self.assertEqual(
@@ -154,8 +127,6 @@ class AuditCssClassesTests(TestCase):
                 "footers": [],
                 "sources": ["block:rich_text"],
                 "block_types": ["rich_text"],
-                "sheets": [],
-                "inactive_sheets": [],
                 "frontend_files": [],
                 "route_frontend_files": [],
                 "page_css": [],
@@ -172,6 +143,7 @@ class AuditCssClassesTests(TestCase):
 
         route_only = rows["route-only"]
         self.assertFalse(route_only["defined"])
+        self.assertTrue(is_undefined(route_only))
         self.assertEqual((route_only["frontend_files"], route_only["route_frontend_files"]), ([], ["routes/Lazy.css"]))
         self.assertEqual(route_only["scoped_in"], [])
         route_scoped = rows["route-scoped"]
@@ -214,17 +186,13 @@ class AuditCssClassesTests(TestCase):
         self.assertEqual(row["pages"], ["/other"])
 
     def test_scoped_in_labels_and_order(self):
-        StyleSheet.objects.create(name="zeta", display_name="Zeta", css=".z .nowhere {}", sort_order=3)
-        StyleSheet.objects.create(name="events", display_name="Events", css=".event-page .nowhere {}", sort_order=4)
-        StyleSheet.objects.create(
-            name="retired", display_name="Retired", css=".old-page .nowhere {}", sort_order=5, is_active=False
-        )
         frontend = make_frontend_dir(
             self,
             {
                 **ENTRY_AND_ROUTE_FRONTEND,
                 "index.css": ".in-frontend {}\n.hero .nowhere {}",
                 "routes/Lazy.css": ".route-only {}\n.lazy-page .nowhere {}",
+                "features/Card.css": ".card .nowhere {}",
             },
         )
         self._set_page(self.other_page, page_css=".wrap .nowhere {}")
@@ -233,14 +201,11 @@ class AuditCssClassesTests(TestCase):
         row = self._rows(frontend_dir=frontend)["nowhere"]
 
         self.assertFalse(row["defined"])
-        self.assertEqual(
-            (row["sheets"], row["frontend_files"], row["route_frontend_files"], row["page_css"]), ([], [], [], [])
-        )
-        # Active sheets (sorted), then frontend files (sorted), then page_css routes (sorted).
-        # The inactive sheet is not served, so its scoped rule is not listed.
+        self.assertEqual((row["frontend_files"], row["route_frontend_files"], row["page_css"]), ([], [], []))
+        # Frontend files (sorted, entry and route alike), then page_css routes (sorted).
         self.assertEqual(
             row["scoped_in"],
-            ["sheet:events", "sheet:zeta", "index.css", "routes/Lazy.css", "page_css:/audit", "page_css:/other"],
+            ["features/Card.css", "index.css", "routes/Lazy.css", "page_css:/audit", "page_css:/other"],
         )
         self.assertEqual(row["hook_in"], [])
         self.assertTrue(is_undefined(row))
@@ -249,17 +214,13 @@ class AuditCssClassesTests(TestCase):
         # A page wrapper class nothing styles, but that rules hang on.
         self._set_page(self.audit_page, page_css_class="event-page", page_css=".event-page:hover .y {}")
         self._set_page(self.other_page, page_css=".event-page .x {}")
-        StyleSheet.objects.create(name="zeta", display_name="Zeta", css=".event-page .a {}", sort_order=3)
-        StyleSheet.objects.create(name="events", display_name="Events", css=".event-page > .b {}", sort_order=4)
-        StyleSheet.objects.create(
-            name="retired", display_name="Retired", css=".event-page .c {}", sort_order=5, is_active=False
-        )
         frontend = make_frontend_dir(
             self,
             {
                 **ENTRY_AND_ROUTE_FRONTEND,
                 "index.css": ".in-frontend {}\n.event-page h1 {}",
                 "routes/Lazy.css": ".route-only {}\n.event-page .lazy {}",
+                "features/Card.css": ".event-page > .card {}",
             },
         )
 
@@ -268,79 +229,68 @@ class AuditCssClassesTests(TestCase):
         row = {row["class_name"]: row for row in report["classes"]}["event-page"]
         self.assertEqual(
             row["hook_in"],
-            ["sheet:events", "sheet:zeta", "index.css", "routes/Lazy.css", "page_css:/audit", "page_css:/other"],
+            ["features/Card.css", "index.css", "routes/Lazy.css", "page_css:/audit", "page_css:/other"],
         )
-        self.assertEqual((row["scoped_in"], row["sheets"], row["page_css"]), ([], [], []))
+        self.assertEqual((row["scoped_in"], row["frontend_files"], row["page_css"]), ([], [], []))
         self.assertEqual((row["sources"], row["pages"]), (["page_css_class"], ["/audit"]))
         # Not defined anywhere, but a hook: it does not count as undefined.
         self.assertFalse(row["defined"])
         self.assertFalse(is_undefined(row))
-        self.assertEqual((report["total_classes"], report["undefined_classes"]), (5, 2))
-
-    def test_a_hook_in_an_inactive_sheet_still_counts_as_undefined(self):
-        self._set_page(self.audit_page, page_css_class="wrap")
-        StyleSheet.objects.create(name="gone", display_name="Gone", css=".wrap .x {}", sort_order=3, is_active=False)
-
-        report = self._report()
-
-        row = {row["class_name"]: row for row in report["classes"]}["wrap"]
-        self.assertEqual((row["hook_in"], row["inactive_sheets"]), ([], []))
-        self.assertTrue(is_undefined(row))
-        self.assertEqual((report["total_classes"], report["undefined_classes"]), (5, 3))
+        self.assertEqual((report["total_classes"], report["undefined_classes"]), (3, 1))
 
     def test_a_class_both_scoped_and_a_hook_lists_both(self):
-        StyleSheet.objects.create(
-            name="mixed", display_name="Mixed", css=".card .nowhere {}\n.nowhere .x {}", sort_order=3
+        frontend = make_frontend_dir(
+            self, {**ENTRY_AND_ROUTE_FRONTEND, "index.css": ".in-frontend {}\n.card .nowhere {}\n.nowhere .x {}"}
         )
 
-        report = self._report()
+        report = self._report(frontend_dir=frontend)
 
         row = {row["class_name"]: row for row in report["classes"]}["nowhere"]
-        self.assertEqual((row["scoped_in"], row["hook_in"]), (["sheet:mixed"], ["sheet:mixed"]))
+        self.assertEqual((row["scoped_in"], row["hook_in"]), (["index.css"], ["index.css"]))
+        self.assertFalse(row["defined"])
         self.assertFalse(is_undefined(row))
-        self.assertEqual(report["undefined_classes"], 1)
+        self.assertEqual(report["undefined_classes"], 0)
 
     def test_class_both_defined_and_scoped_lists_both(self):
-        StyleSheet.objects.create(name="events", display_name="Events", css=".event-page .in-active {}", sort_order=3)
+        self._set_page(self.other_page, page_css=".event-page .in-frontend {}")
 
-        row = self._rows()["in-active"]
+        row = self._rows()["in-frontend"]
 
         self.assertTrue(row["defined"])
-        self.assertEqual((row["sheets"], row["scoped_in"]), (["act"], ["sheet:events"]))
+        self.assertEqual((row["frontend_files"], row["scoped_in"]), (["index.css"], ["page_css:/other"]))
 
-    def test_defined_means_an_active_sheet_or_an_entry_bundle_file(self):
-        StyleSheet.objects.create(name="scoping", display_name="Scoping", css=".p .scoped-only {}", sort_order=3)
+    def test_defined_means_an_entry_bundle_file(self):
+        frontend = make_frontend_dir(
+            self, {**ENTRY_AND_ROUTE_FRONTEND, "index.css": ".in-frontend {}\n.p .scoped-only {}"}
+        )
         self._set_page(self.audit_page, page_css=".page-only {}")
         self._add_block('<p class="route-only scoped-only page-only">x</p>')
 
-        rows = self._rows()
+        report = self._report(frontend_dir=frontend)
 
         expected = {
-            "in-active": True,  # active sheet
             "in-frontend": True,  # entry-bundle file
-            "in-inactive": False,  # inactive sheet only
             "route-only": False,  # lazily loaded route file only
             "page-only": False,  # one page's page_css only
-            "scoped-only": False,  # only inside another element
+            "scoped-only": False,  # only inside another element, even in an entry-bundle file
             "nowhere": False,
         }
-        self.assertEqual({name: row["defined"] for name, row in rows.items()}, expected)
-        report = self._report()
-        self.assertEqual(report["undefined_classes"], 5)
-        self.assertEqual(report["total_classes"], 7)
+        self.assertEqual({row["class_name"]: row["defined"] for row in report["classes"]}, expected)
+        self.assertEqual((report["total_classes"], report["undefined_classes"]), (5, 4))
 
     def test_a_no_break_space_does_not_split_a_class(self):
-        self._add_block('<p class="in-active&nbsp;nowhere">x</p>', page=self.other_page)
+        self._add_block('<p class="in-frontend&nbsp;nowhere">x</p>', page=self.other_page)
 
         rows = self._rows()
 
-        self.assertIn("in-active nowhere", rows)
-        self.assertTrue(is_undefined(rows["in-active nowhere"]))
-        # The joined token is a different class: in-active and nowhere keep their own uses.
-        self.assertEqual((rows["in-active"]["usage_count"], rows["nowhere"]["usage_count"]), (2, 1))
+        self.assertIn("in-frontend nowhere", rows)
+        self.assertTrue(is_undefined(rows["in-frontend nowhere"]))
+        # The joined token is a different class: in-frontend and nowhere keep their own uses.
+        self.assertEqual((rows["in-frontend"]["usage_count"], rows["nowhere"]["usage_count"]), (2, 1))
 
     def test_scan_frontend_false_reads_no_frontend_file(self):
-        self._add_block('<p class="lazy-page">x</p>')
+        self._set_page(self.other_page, page_css=".promo {}\n.wrap .y {}")
+        self._add_block('<p class="lazy-page promo wrap">x</p>')
 
         with patch("apps.cms.services.styles.audit.frontend_css_index") as index:
             report = self._report(scan_frontend=False)
@@ -350,13 +300,17 @@ class AuditCssClassesTests(TestCase):
         self.assertIsNone(report["frontend_dir"])
         self.assertIs(report["frontend_import_graph"], False)
         rows = {row["class_name"]: row for row in report["classes"]}
+        # Usage only: no class reads as defined, but where each one is used is still reported.
+        self.assertEqual([name for name, row in rows.items() if row["defined"]], [])
         row = rows["in-frontend"]
         self.assertEqual((row["frontend_files"], row["route_frontend_files"], row["scoped_in"]), ([], [], []))
-        self.assertFalse(row["defined"])
-        self.assertTrue(rows["in-active"]["defined"])
+        self.assertEqual((row["usage_count"], row["pages"]), (2, ["/audit", "/other"]))
         # lazy-page hooks rules in routes/Lazy.css, which was not read.
         self.assertEqual(rows["lazy-page"]["hook_in"], [])
-        self.assertEqual(report["undefined_classes"], 4)
+        # Page CSS lives in the database, so it is still read.
+        self.assertEqual(rows["promo"]["page_css"], ["/other"])
+        self.assertEqual(rows["wrap"]["hook_in"], ["page_css:/other"])
+        self.assertEqual((report["total_classes"], report["undefined_classes"]), (5, 4))
 
     def test_frontend_hooks_count_when_the_frontend_is_scanned(self):
         self._add_block('<p class="lazy-page">x</p>')
@@ -366,7 +320,7 @@ class AuditCssClassesTests(TestCase):
         row = {row["class_name"]: row for row in report["classes"]}["lazy-page"]
         self.assertEqual(row["hook_in"], ["routes/Lazy.css"])
         self.assertFalse(is_undefined(row))
-        self.assertEqual(report["undefined_classes"], 2)
+        self.assertEqual(report["undefined_classes"], 1)
 
     def test_missing_frontend_dir_reports_frontend_only_classes_as_undefined(self):
         missing = self.frontend / "no-such-dir"
@@ -376,18 +330,17 @@ class AuditCssClassesTests(TestCase):
         self.assertEqual((report["frontend_scanned"], report["frontend_dir"]), (True, str(missing)))
         self.assertIs(report["frontend_import_graph"], False)
         self.assertFalse({row["class_name"]: row for row in report["classes"]}["in-frontend"]["defined"])
+        self.assertEqual(report["undefined_classes"], 2)
 
     def test_default_frontend_dir_is_pages_src(self):
         report = audit_css_classes()
 
         self.assertEqual(report["frontend_dir"], str(default_frontend_dir()))
         self.assertIs(report["frontend_import_graph"], True)
-        self.assertEqual(
-            {row["class_name"] for row in report["classes"]}, {"in-active", "in-frontend", "in-inactive", "nowhere"}
-        )
+        self.assertEqual({row["class_name"] for row in report["classes"]}, {"in-frontend", "nowhere"})
 
     def test_page_css_class_usage(self):
-        self._set_page(self.other_page, page_css_class="landing  in-active")
+        self._set_page(self.other_page, page_css_class="landing  in-frontend")
 
         rows = self._rows()
 
@@ -395,10 +348,10 @@ class AuditCssClassesTests(TestCase):
         self.assertEqual((landing["usage_count"], landing["pages"], landing["footers"]), (1, ["/other"], []))
         self.assertEqual((landing["sources"], landing["block_types"]), (["page_css_class"], []))
         self.assertFalse(landing["defined"])
-        in_active = rows["in-active"]
-        self.assertEqual(in_active["usage_count"], 3)
-        self.assertEqual(in_active["pages"], ["/audit", "/other"])
-        self.assertEqual(in_active["sources"], ["block:rich_text", "page_css_class"])
+        in_frontend = rows["in-frontend"]
+        self.assertEqual(in_frontend["usage_count"], 3)
+        self.assertEqual(in_frontend["pages"], ["/audit", "/other"])
+        self.assertEqual(in_frontend["sources"], ["block:rich_text", "page_css_class"])
 
     def test_footer_html_usage(self):
         FooterContent.objects.create(
@@ -406,7 +359,7 @@ class AuditCssClassesTests(TestCase):
             slug="main",
             is_active=True,
             content={
-                "contact_html": '<p class="footer-contact in-active">UC Merced</p>',
+                "contact_html": '<p class="footer-contact in-frontend">UC Merced</p>',
                 "columns": [{"title": "Links", "body_html": "<ul class=footer-list><li>x</li></ul>"}],
                 "copyright": '<span class="not-html-key">c</span>',
             },
@@ -419,10 +372,10 @@ class AuditCssClassesTests(TestCase):
         self.assertEqual((contact["sources"], contact["block_types"]), (["footer"], []))
         self.assertEqual((rows["footer-list"]["footers"], rows["footer-list"]["pages"]), (["footer:main"], []))
         self.assertNotIn("not-html-key", rows)
-        in_active = rows["in-active"]
-        self.assertEqual(in_active["usage_count"], 3)
-        self.assertEqual((in_active["pages"], in_active["footers"]), (["/audit", "/other"], ["footer:main"]))
-        self.assertEqual(in_active["sources"], ["block:rich_text", "footer"])
+        in_frontend = rows["in-frontend"]
+        self.assertEqual(in_frontend["usage_count"], 3)
+        self.assertEqual((in_frontend["pages"], in_frontend["footers"]), (["/audit", "/other"], ["footer:main"]))
+        self.assertEqual(in_frontend["sources"], ["block:rich_text", "footer"])
 
     def test_only_the_active_footer_is_scanned(self):
         FooterContent.objects.create(
@@ -437,7 +390,7 @@ class AuditCssClassesTests(TestCase):
         rows = {row["class_name"]: row for row in report["classes"]}
         self.assertEqual((rows["shared"]["usage_count"], rows["shared"]["footers"]), (1, ["footer:new"]))
         self.assertNotIn("only-old", rows)
-        self.assertEqual(report["total_classes"], 5)
+        self.assertEqual(report["total_classes"], 3)
 
     def test_nested_html_fields_of_other_block_types_are_scanned(self):
         CMSBlock.objects.create(

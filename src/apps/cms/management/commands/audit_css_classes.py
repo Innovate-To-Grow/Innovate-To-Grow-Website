@@ -5,11 +5,17 @@ from django.core.management.base import BaseCommand, CommandError
 
 from apps.cms.services.styles.audit import audit_css_classes, default_frontend_dir, is_undefined
 
+NO_FRONTEND_NOTICE = (
+    "Frontend CSS not scanned, so no class reads as defined: this run reports usage only "
+    "(which classes stored content uses, and where). Run it with the frontend sources (pages/src) "
+    "to see what defines each class."
+)
+
 
 class Command(BaseCommand):
     help = (
         "List the CSS classes that stored CMS content uses (block HTML, footer HTML, page_css_class) and "
-        "what styles each: active stylesheet rows, frontend CSS, a page's own page_css, or nothing. Report only."
+        "what styles each: frontend CSS in pages/src, a page's own page_css, or nothing. Report only."
     )
 
     def add_arguments(self, parser):
@@ -18,7 +24,10 @@ class Command(BaseCommand):
         parser.add_argument(
             "--no-frontend",
             action="store_true",
-            help="Do not scan frontend CSS (for a server without pages/src); frontend-only classes read as undefined.",
+            help=(
+                "Report usage only, for a server without pages/src: no frontend CSS is read, "
+                "so no class reads as defined."
+            ),
         )
         parser.add_argument(
             "--undefined-only",
@@ -32,11 +41,11 @@ class Command(BaseCommand):
         if scan_frontend and not frontend_dir.is_dir():
             raise CommandError(
                 f"Frontend CSS directory not found: {frontend_dir}. "
-                "Pass --frontend-dir PATH, or --no-frontend to report database sheets only."
+                "Pass --frontend-dir PATH, or --no-frontend to report usage only."
             )
         report = audit_css_classes(frontend_dir=frontend_dir, scan_frontend=scan_frontend)
         if not scan_frontend:
-            self.stderr.write("Frontend CSS not scanned: classes styled only in pages/src are reported as undefined.")
+            self.stderr.write(NO_FRONTEND_NOTICE)
         elif not report["frontend_import_graph"]:
             self.stderr.write(f"No main.tsx in {frontend_dir}: every frontend CSS file counts as loaded on every page.")
         if options["undefined_only"]:
@@ -66,11 +75,10 @@ class Command(BaseCommand):
 
     @staticmethod
     def _where(row):
-        where = [f"sheet:{name}" for name in row["sheets"]] + row["frontend_files"]
+        where = list(row["frontend_files"])
         labelled = (
             ("route-only", row["route_frontend_files"]),
             ("page_css", row["page_css"]),
-            ("inactive", row["inactive_sheets"]),
             ("scoped", row["scoped_in"]),
             ("hook", row["hook_in"]),
         )
