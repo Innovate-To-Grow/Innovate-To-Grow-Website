@@ -385,7 +385,12 @@ The rules of the ten component sheets (`layout-container`, `layout-menu`, `layou
 frontend bundle, in CSS files next to the components that render them under `pages/src`. Migration
 `cms.0026` switched those rows off (their description says where the CSS lives now), so editing them in the
 admin changes nothing: change the CSS file in the repository instead. Switching one back on serves it again
-before the bundle, which then wins wherever both set the same property. The content sheets (`global`,
+before the bundle, which then wins wherever both set the same property.
+
+A migration that retires stylesheet rows ships in a release *after* the frontend that bundles their CSS is live
+in production. Deploy Production updates the backend first, so a run that carried both would leave the live
+frontend without those rules until its own deploy finished. Do not cancel the run that carries the frontend in
+favour of a later run that carries the migration. The content sheets (`global`,
 `cms-blocks`, `cms-pages`, `page-home`) are still served only by the backend.
 
 ### Drift report
@@ -414,7 +419,7 @@ change what the site serves:
 
 - an active sheet whose CSS differs from the seed or is not in it;
 - a seed sheet whose active flag or order was changed (deactivating a seed sheet counts);
-- a retired sheet that was switched back on (reported as `settings_changed`);
+- a retired sheet that was switched back on (reported as `settings_changed`, or `edited` when its CSS changed too);
 - an active seed sheet that was deleted (a re-sync creates it again and serves it).
 
 Sheets that are inactive in both the seed and the database, inactive unmanaged sheets, inactive backup
