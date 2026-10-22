@@ -185,6 +185,7 @@ class CustomCssRevisionTests(TestCase):
         content = response.content.decode()
         self.assertIn("vendor/codemirror/5.65.16/mode/css/css.min.js", content)
         self.assertIn("cms/js/custom-css-editor.js", content)
+        self.assertRegex(content, r'<textarea[^>]*class="[^"]*code-editor-field[^"]*"[^>]*name="custom_css"')
         self.assertIn(reverse("admin:cms_customcssrevision_changelist"), content)
         self.assertIn("Design tokens: Colors", content)
         self.assertIn('type="color"', content)

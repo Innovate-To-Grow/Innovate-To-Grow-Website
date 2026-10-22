@@ -27,7 +27,10 @@ class SiteSettingsBaseForm(DesignTokenFormMixin, forms.ModelForm):
         # design_tokens is edited through one field per token (site_settings_tokens.py), folded back in clean().
         fields = ("homepage_page", "custom_css")
         widgets = {
-            "custom_css": forms.Textarea(attrs={"rows": 18, "spellcheck": "false", "class": "font-mono"}),
+            # code-editor-field: the admin's Material enhancer leaves the field alone (CodeMirror takes it over).
+            "custom_css": forms.Textarea(
+                attrs={"rows": 18, "spellcheck": "false", "class": "font-mono code-editor-field"}
+            ),
         }
 
     def __init__(self, *args, **kwargs):
