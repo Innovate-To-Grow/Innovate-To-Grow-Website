@@ -2,8 +2,8 @@
 
 from i2g_admin import app as appmod
 from i2g_admin import config
-from i2g_admin.core import runtime
 from i2g_admin.app import app
+from i2g_admin.core import runtime
 from i2g_admin.core.errors import ApiError
 from typer.testing import CliRunner
 
