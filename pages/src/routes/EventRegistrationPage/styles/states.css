@@ -1,0 +1,128 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* ---- registration: states.css ---- */
+
+.event-reg-done {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-reg-done-title {
+  margin: 0;
+}
+
+/* The theme's .lead: 18px / 28px secondary blue. */
+.event-reg-done-subtitle {
+  margin: 0;
+  color: var(--itg-color-secondary);
+  font-size: var(--itg-font-size-lead);
+  line-height: 28px;
+}
+
+.event-reg-done-subtitle strong {
+  color: var(--itg-color-primary);
+}
+
+/* The ticket: a feature panel (.itg-panel), barcode beside the details. */
+.event-reg-ticket {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.event-reg-ticket-pass {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.event-reg-barcode {
+  display: block;
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-white);
+}
+
+.event-reg-ticket-code {
+  color: var(--itg-color-primary);
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+.event-reg-done-details {
+  min-width: 0;
+}
+
+/* One label / value row per line: the column beside the barcode is too narrow
+   for two (an email address would break mid-word). */
+.event-reg-done-meta {
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  background: var(--itg-color-white);
+}
+
+.event-reg-done-meta .itg-meta-item {
+  padding-right: 12px;
+  padding-left: 12px;
+}
+
+.event-reg-done-description {
+  margin-top: 12px;
+  color: var(--itg-color-text);
+  line-height: 24px;
+}
+
+.event-reg-done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.event-reg-done-resend-message {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+}
+
+/* Notices: the system's .itg-notice look (#f7f7f7, 4px left rule, 16px text). */
+.event-reg-alert,
+.event-reg-done-email-notice {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 14px 18px;
+  border: 0;
+  border-left: 4px solid var(--itg-color-secondary);
+  background: var(--itg-color-bg-panel);
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.event-reg-alert.info {
+  border-left-color: var(--itg-color-secondary);
+}
+
+.event-reg-alert.error {
+  border-left-color: var(--itg-color-error);
+  color: var(--itg-color-error);
+}
+
+.event-reg-done-email-notice {
+  border-left-color: var(--itg-color-success);
+}
+
+.event-reg-loading {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-body);
+  font-style: italic;
+  line-height: 24px;
+}

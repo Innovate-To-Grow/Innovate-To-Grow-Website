@@ -1,0 +1,265 @@
+/* Moved verbatim from the CMS "auth" stylesheet. */
+
+/* ---- account.css ---- */
+
+.account-page {
+  padding: 0 0 24px;
+}
+
+.account-page-title {
+  margin: 12px 0 24px;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 30px;
+  align-items: start;
+}
+
+.account-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* Every account section is a feature panel (.itg-panel). */
+.account-section {
+  min-width: 0;
+}
+
+.account-section .account-section-title {
+  margin: 0 0 12px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+/* The theme's h4: 20px navy. */
+.account-subsection-title {
+  margin: 0 0 12px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+.account-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.account-section .account-section-header .account-section-title {
+  margin-bottom: 0;
+}
+
+.account-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  color: var(--itg-color-text-secondary);
+  user-select: none;
+}
+
+.account-status-text {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
+.account-status-text--spaced {
+  margin-top: 8px;
+}
+
+.account-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Profile form inside the profile panel (no panel of its own). */
+.account-profile-form {
+  margin-top: 0;
+}
+
+.account-profile-form > .account-edit-btn {
+  align-self: flex-start;
+}
+
+.account-profile-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.account-profile-error-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Notices at the top of a panel sit 12px above what follows. */
+.account-section > .auth-alert,
+.account-profile-section .auth-alert {
+  margin-bottom: 12px;
+}
+
+.account-section.account-shared-links-section > .auth-alert {
+  margin-bottom: 0;
+}
+
+/* Read-only details: label / value rows with hairline separators. */
+.account-details-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Label / value rows like the .itg-meta-box items: bold navy label. */
+.account-readonly-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--itg-color-border);
+  line-height: 24px;
+}
+
+.account-readonly-group:first-child {
+  padding-top: 0;
+}
+
+.account-detail-label {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+}
+
+.account-readonly-value {
+  color: var(--itg-color-text);
+  overflow-wrap: anywhere;
+}
+
+/* Profile summary (read-only view): the same label / value rows as Account Details. */
+.account-profile-summary {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 16px;
+}
+
+.account-profile-summary-row {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--itg-color-border);
+  line-height: 24px;
+}
+
+.account-profile-summary-row:first-child {
+  padding-top: 0;
+}
+
+.account-profile-summary dt {
+  color: var(--itg-color-primary);
+  font-weight: 700;
+}
+
+.account-profile-summary dd {
+  margin: 0;
+  color: var(--itg-color-text);
+  overflow-wrap: anywhere;
+}
+
+/* Password + delete flows. */
+.account-password-section,
+.account-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-password-form {
+  margin: 0;
+}
+
+.account-password-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-section .account-password-header .account-section-title {
+  margin-bottom: 4px;
+}
+
+.account-password-help {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
+.account-password-header .account-action-primary--inline {
+  margin-top: 0;
+}
+
+.account-signout-row {
+  margin: 0;
+}
+
+.account-danger-section {
+  border-top-color: var(--itg-color-error);
+}
+
+.account-danger-toggle {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+
+.account-section .account-danger-toggle .account-section-title,
+.account-danger-toggle .account-section-toggle {
+  color: var(--itg-color-error);
+}
+
+.account-danger-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.account-danger-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-danger-help,
+.account-danger-confirmation {
+  margin: 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.account-danger-confirmation {
+  color: var(--itg-color-error);
+  font-weight: 600;
+}

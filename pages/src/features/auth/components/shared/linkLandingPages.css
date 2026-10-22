@@ -1,0 +1,65 @@
+/* Moved verbatim from the CMS "page-misc" stylesheet. */
+
+/* ---- sign-in / email / impersonation link landing pages ---- */
+
+/* A narrow column on the left of main, its first line where an h1 would sit. */
+.magic-login-page,
+.impersonate-login-page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0;
+  padding: 12px 0 24px;
+}
+
+.magic-login-page > p,
+.impersonate-login-page > p {
+  margin: 0;
+}
+
+.magic-login-error,
+.impersonate-login-error {
+  box-sizing: border-box;
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* "Signing you in..." with a small progress spinner. */
+.magic-login-status,
+.impersonate-login-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-lead);
+  font-style: italic;
+  line-height: 28px;
+}
+
+.magic-login-status::before,
+.impersonate-login-status::before {
+  content: '';
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--itg-color-border);
+  border-top-color: var(--itg-color-primary);
+  border-radius: 50%;
+  animation: itg-link-spin 0.8s linear infinite;
+}
+
+@keyframes itg-link-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magic-login-status::before,
+  .impersonate-login-status::before {
+    animation: none;
+  }
+}

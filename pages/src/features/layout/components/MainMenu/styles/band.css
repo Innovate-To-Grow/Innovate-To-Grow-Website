@@ -1,0 +1,43 @@
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+/* ---------- Site-name band ---------- */
+.site-header-band {
+  position: relative;
+  z-index: 1;
+  background: var(--itg-color-white);
+}
+
+.site-header-band-inner {
+  padding-top: 30px;
+  padding-bottom: 5px;
+}
+
+.site-header-sitename {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+.site-header-sitename:hover {
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+.site-header-sitename-title {
+  font-family: var(--itg-font-family-display);
+  font-weight: 300;
+  font-size: 48px;
+  line-height: 1.2;
+  color: var(--itg-color-primary);
+}
+
+.site-header-sitename-subtitle {
+  margin-left: 5px;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--itg-color-text-secondary);
+}

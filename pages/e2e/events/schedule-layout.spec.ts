@@ -1,4 +1,4 @@
-// /schedule with the real CMS sheets: the presentation grids fit the full-width
+// /schedule with the CMS content sheets: the presentation grids fit the full-width
 // content column, schedule text meets WCAG AA contrast, long winner
 // names stay inside their cards, and phone team buttons are 44px touch targets.
 import AxeBuilder from '@axe-core/playwright';

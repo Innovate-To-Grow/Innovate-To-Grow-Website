@@ -1,0 +1,59 @@
+/* Moved verbatim from the CMS "auth" stylesheet. */
+
+/* ==========================================================================
+   Auth + account pages (UC Merced subsite style).
+   Sign-in style pages are a narrow column on the left of main, where every
+   reference page starts its content: page title + meta line on white, then
+   one feature panel (.itg-panel) holding the notices and the form. The account
+   dashboard is a grid of feature panels. Reference form rhythm: 16px labels,
+   5px to the control, 12px between fields, 14px #555 hints; notices use the
+   .itg-notice look (#f7f7f7, 4px left rule, 16px text).
+   Buttons, inputs, labels, tags and panels come from the global classes
+   (.itg-btn*, .itg-input, .itg-select, .itg-label, .itg-tag*, .itg-panel);
+   this sheet only lays the pages out and styles the auth-specific pieces
+   (notices, code input, org toggle, on/off switch, avatar, tickets).
+   ========================================================================== */
+
+/* ---- layout.css ---- */
+
+.auth-page {
+  width: 100%;
+  max-width: 480px;
+  margin: 0;
+  padding: 0 0 24px;
+}
+
+.auth-page--wide {
+  max-width: 680px;
+}
+
+.auth-page-header {
+  margin: 0 0 24px;
+}
+
+.auth-page-subtitle {
+  margin: 0;
+}
+
+/* The feature panel (.itg-panel) that holds the notices and the form. */
+.auth-page-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* "Sending to" line on the code step: a rule panel, label above value. */
+.auth-verification-intro {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0 0;
+  border-top: 3px solid var(--itg-color-accent-gold);
+  color: var(--itg-color-text);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.auth-verification-label {
+  color: var(--itg-color-primary);
+  font-weight: 700;
+}

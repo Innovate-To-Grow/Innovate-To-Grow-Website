@@ -1,0 +1,192 @@
+/* Moved verbatim from the CMS "auth" stylesheet. */
+
+/* ---- tickets.css ---- */
+
+.account-ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* A rule panel: white, gold top rule. */
+.account-ticket-card {
+  padding: 12px 16px 16px;
+  background: var(--itg-color-white);
+  border-top: 3px solid var(--itg-color-accent-gold);
+}
+
+.account-ticket-name {
+  margin-bottom: 8px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.account-ticket-detail {
+  margin-bottom: 4px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.account-ticket-detail strong {
+  color: var(--itg-color-primary);
+}
+
+.account-ticket-code {
+  margin: 12px 0 8px;
+  color: var(--itg-color-primary);
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+}
+
+/* The barcode is a button: tapping it shows the barcode full screen for the door scanner. */
+.account-ticket-barcode {
+  display: block;
+  margin: 12px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--itg-color-text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: zoom-in;
+}
+
+.account-ticket-barcode img {
+  display: block;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-white);
+}
+
+.account-ticket-barcode-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
+.account-ticket-barcode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px;
+  background: var(--itg-color-white);
+}
+
+.account-ticket-barcode-overlay img {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.account-ticket-past-title {
+  margin: 12px 0 0;
+}
+
+.account-ticket-card--past {
+  border-top-color: var(--itg-color-border);
+}
+
+.account-ticket-card--past .account-ticket-name {
+  margin-bottom: 0;
+}
+
+.account-ticket-card--past .account-open-reg-header {
+  margin-bottom: 8px;
+}
+
+.account-ticket-past-badge {
+  color: var(--itg-color-text-secondary);
+}
+
+.account-ticket-email-status {
+  margin-bottom: 12px;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-style: italic;
+  line-height: 21px;
+}
+
+.account-open-registration-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-open-reg-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.account-open-reg-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.account-open-reg-lead {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-style: italic;
+  line-height: 21px;
+}
+
+/* Label / value lines: bold navy labels, as in the .itg-meta-box. */
+.account-open-reg-details {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-open-reg-details li {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 12px;
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.account-open-reg-detail-label {
+  color: var(--itg-color-primary);
+  font-weight: 700;
+}
+
+.account-open-reg-detail-value {
+  color: var(--itg-color-text);
+  overflow-wrap: anywhere;
+}
+
+.account-open-reg-description {
+  margin: 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.account-open-reg-cta {
+  align-self: flex-start;
+}

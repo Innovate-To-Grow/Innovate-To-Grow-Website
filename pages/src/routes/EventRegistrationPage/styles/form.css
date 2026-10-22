@@ -1,0 +1,166 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* ---- registration: form.css ---- */
+
+/* Form sections are feature panels (.itg-panel). */
+.event-reg-section-card {
+  margin: 0;
+}
+
+.event-reg-section-card--spaced {
+  margin-top: 24px;
+}
+
+.event-reg-section-header {
+  margin: 0 0 12px;
+}
+
+.event-reg-section-title {
+  margin: 0 0 12px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+.event-reg-section-header .event-reg-section-title {
+  margin: 0;
+}
+
+/* The theme's form rhythm: label, 5px, control, 12px to the next field. */
+.event-reg-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  margin: 0 0 12px;
+}
+
+.event-reg-section-card > :last-child,
+.event-reg-section-card .event-reg-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.event-reg-form-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px 20px;
+  margin: 0 0 12px;
+}
+
+.event-reg-form-row .event-reg-form-group {
+  margin: 0;
+}
+
+.event-reg-label .required-mark {
+  margin-left: 0.125rem;
+  color: var(--itg-color-error);
+}
+
+.event-reg-optional {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-weight: 400;
+}
+
+.event-reg-field-hint {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
+.event-reg-field-error {
+  margin: 0;
+  color: var(--itg-color-error);
+  font-size: var(--itg-font-size-small);
+  font-weight: 600;
+  line-height: 21px;
+}
+
+.event-reg-form-group--error .event-reg-label {
+  color: var(--itg-color-error);
+}
+
+.event-reg-form-group--error .event-reg-input {
+  border-color: var(--itg-color-error);
+}
+
+.event-reg-form-group--error .event-reg-tickets {
+  outline: 1px solid var(--itg-color-error);
+}
+
+/* Ticket choice: square bordered rows, the chosen one highlighted. */
+.event-reg-tickets {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-reg-ticket-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-white);
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast);
+}
+
+.event-reg-ticket-option + .event-reg-ticket-option {
+  border-top-width: 0;
+}
+
+.event-reg-ticket-option:hover {
+  background: var(--itg-color-bg-light);
+}
+
+.event-reg-ticket-option.selected {
+  background: var(--itg-color-highlight);
+}
+
+.event-reg-ticket-option input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--itg-color-primary);
+}
+
+.event-reg-ticket-name {
+  flex: 1;
+  color: var(--itg-color-text);
+  font-weight: 400;
+}
+
+/* Secondary email / phone with an inline Send / Verify control. */
+.event-reg-phone-row,
+.event-reg-phone-code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-reg-phone-row .event-reg-input,
+.event-reg-phone-code-row .event-reg-input {
+  flex: 1 1 14rem;
+  width: auto;
+}
+
+.event-reg-phone-code-row {
+  margin-top: 8px;
+}
+
+.event-reg-phone-code-row .event-reg-input {
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.event-reg-phone-verified {
+  flex-shrink: 0;
+  padding: 0 0.25rem;
+}

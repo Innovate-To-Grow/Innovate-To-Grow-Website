@@ -78,7 +78,7 @@ const HEADER_PARTS = [
 
 /**
  * Publishes the rendered heights of the header parts as CSS custom properties
- * on <html>. The layout-menu sheet uses them for the sticky offset of
+ * on <html>. MainMenu.css uses them for the sticky offset of
  * #menu-root (desktop: only the menu row stays), the phone header spacer, and
  * scroll-padding-top so focused/anchored content is never hidden under the
  * sticky header. The sheet carries fallbacks for the first paint.

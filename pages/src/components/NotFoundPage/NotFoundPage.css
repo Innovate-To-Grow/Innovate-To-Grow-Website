@@ -1,0 +1,42 @@
+/* Moved verbatim from the CMS "page-misc" stylesheet. */
+
+/* ==========================================================================
+   Misc pages: acknowledgement, 404, app error fallback, and the sign-in /
+   email / impersonation link landing pages. UC Merced subsite style.
+   Headings, buttons, panels, wells, notices and empty states come from the
+   global classes; this sheet only places them, in the reference's rhythm
+   (innovatetogrow.ucmerced.edu): h1 12px 0, .lead 0 0 24px, paragraphs
+   0 0 12px, h2 12px 0, so headings and text land where the theme puts them.
+   ========================================================================== */
+
+/* ---- NotFoundPage.css + app error fallback (.itg-empty-state) ---- */
+/* 404: a regular page head (h1 36px / 54px at the reference's height, the
+   error code as the italic meta line), the message, then the actions. */
+
+.not-found-page {
+  gap: 0;
+  padding-bottom: 24px;
+}
+
+.not-found-page > .not-found-title {
+  margin: 12px 0 4px;
+  font-size: var(--itg-font-size-h1);
+}
+
+.not-found-page > .not-found-code {
+  margin: 0 0 12px;
+}
+
+.not-found-page > .not-found-message {
+  margin: 0 0 12px;
+}
+
+.not-found-page > .itg-empty-state-actions {
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .not-found-page > .not-found-title {
+    font-size: var(--itg-font-size-h1-mobile);
+  }
+}

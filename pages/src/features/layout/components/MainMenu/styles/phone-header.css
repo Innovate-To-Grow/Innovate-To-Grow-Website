@@ -1,0 +1,115 @@
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+/* ---------- Phone header (<= 992px) ---------- */
+@media (max-width: 992px) {
+  /* The bar and band are fixed; #menu-root keeps their room in the flow, but
+     only where the header is actually mounted. */
+  #menu-root {
+    position: relative;
+    top: auto;
+  }
+
+  html:not([data-block-preview]) #menu-root {
+    height: calc(var(--itg-header-bar-height, 85px) + var(--itg-header-band-height, 74px));
+  }
+
+  html:not([data-block-preview]) {
+    scroll-padding-top: calc(var(--itg-header-bar-height, 85px) + 12px);
+  }
+
+  .site-header-container {
+    padding: 0 2.5%;
+  }
+
+  .site-header-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    transition: box-shadow var(--itg-transition-fast) ease;
+  }
+
+  /* Wordmark at x = 2.5%, round logo centred, menu button 5px from the
+     viewport edge (as the reference's fixed button) */
+  .site-header-bar-inner {
+    height: 80px;
+    gap: 12px;
+  }
+
+  .ucm-wordmark {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .site-header-logo img {
+    width: 50px;
+    height: 50px;
+  }
+
+  .site-header-links {
+    display: none;
+  }
+
+  /* Plain three-line icon, 60 x 52 */
+  .site-header-mobile-toggle {
+    justify-self: end;
+    box-sizing: border-box;
+    width: 60px;
+    height: 52px;
+    margin-right: calc(5px - 2.5vw);
+    padding: 7px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    cursor: pointer;
+  }
+
+  .site-header-mobile-toggle-bar {
+    display: block;
+    flex: none;
+    width: 30px;
+    height: 3px;
+    margin: 3.5px 0;
+    background: var(--itg-color-white);
+  }
+
+  .site-header-band {
+    position: fixed;
+    top: var(--itg-header-bar-height, 85px);
+    left: 0;
+    right: 0;
+    z-index: 2;
+    box-shadow: var(--itg-shadow-header, 0 6px 6px -2px rgba(121, 121, 121, 0.67));
+    transition: transform 0.25s ease, visibility 0s linear 0s;
+  }
+
+  /* Site name at x = 20, band 20px + 38.4px + 15px */
+  .site-header-band .site-header-band-inner {
+    padding: 20px 20px 15px;
+  }
+
+  .site-header-sitename-title {
+    font-size: 32px;
+  }
+
+  /* The reference shows only the site name on phones. */
+  .site-header-sitename-subtitle {
+    display: none;
+  }
+
+  /* Scrolled down: the band slides up behind the bar. */
+  .site-header.is-band-hidden .site-header-band {
+    transform: translateY(-100%);
+    visibility: hidden;
+    transition: transform 0.25s ease, visibility 0s linear 0.25s;
+  }
+
+  .site-header-menu {
+    display: none;
+  }
+}

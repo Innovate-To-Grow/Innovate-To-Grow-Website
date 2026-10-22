@@ -1,0 +1,94 @@
+/* ==========================================================================
+   Classes that editors put in CMS content HTML (rich-text blocks), as listed
+   in docs/cms-admin/legacy-event-pages-cms-html.md. CMS pages load no route
+   CSS, so these rules ship in the entry bundle. The React pages that render
+   the same classes (/schedule, the event archive) get them from here too.
+
+   Removing a class here can unstyle stored content: check
+   `python manage.py audit_css_classes` in production first.
+
+   Moved verbatim from the CMS "page-events" stylesheet.
+   ========================================================================== */
+
+/* Expo / awards agenda (the reference's "Room:" tables). */
+.schedule-page-agenda-wrap,
+.schedule-page-table-wrap,
+.sg-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.schedule-page-agenda-table {
+  width: 100%;
+  border: var(--schedule-table-border);
+  border-collapse: collapse;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.schedule-page-agenda-table th,
+.schedule-page-agenda-table td {
+  padding: 8px;
+  vertical-align: top;
+}
+
+.schedule-page-agenda-table thead th {
+  border-bottom: var(--schedule-head-rule);
+  background: var(--schedule-head-bg);
+  font-weight: 700;
+  text-align: center;
+  vertical-align: bottom;
+}
+
+/* "Room:" and the times shrink to their text, like the reference's 69px column. */
+.schedule-page-agenda-table thead th:first-child,
+.schedule-page-agenda-table tbody th {
+  width: 1%;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.schedule-page-agenda-table tbody th,
+.schedule-page-agenda-table tbody td {
+  border-top: var(--schedule-row-rule);
+  font-weight: 700;
+}
+
+.schedule-page-agenda-table tbody th {
+  background: var(--schedule-head-bg);
+}
+
+.schedule-page-agenda-table tbody td {
+  background: var(--itg-color-bg-panel);
+  text-align: center;
+}
+
+.schedule-page-agenda-table tbody tr:last-child > * {
+  border-bottom: 1px solid #5b5b5b;
+}
+
+/* ---- EventArchivePage.css ---- */
+
+.ea-header > :last-child {
+  margin-bottom: 0;
+}
+
+.ea-section {
+  margin-top: 36px;
+}
+
+.ea-section-title {
+  text-align: center;
+}
+
+.ea-not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-bottom: 24px;
+}
+
+.ea-not-found .itg-empty-state {
+  align-self: stretch;
+}

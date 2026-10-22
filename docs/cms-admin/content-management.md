@@ -85,7 +85,7 @@ The React frontend's catch-all route (`*`) loads `CMSPageComponent`:
 2. Calls `GET /cms/pages/{path}/`
 3. Renders each block by type using component mapping
 
-CMS page styles are not bundled with the SPA: they are CMS-managed stylesheets (`src/apps/cms/models/content/layout/style_sheet.py`) served with the design tokens from `/layout/styles.css` (`src/apps/cms/views/layout.py`).
+The styles that CMS blocks and pasted content HTML rely on are not bundled with the SPA: they are the CMS-managed content stylesheets (`global`, `cms-blocks`, `cms-pages`, `page-home`; `src/apps/cms/models/content/layout/style_sheet.py`) served with the design tokens from `/layout/styles.css` (`src/apps/cms/views/layout.py`). The exception is the legacy event-page classes (`.ea-*`, `.schedule-page-agenda-*`), which ship with the SPA in `pages/src/styles/contract/legacy-content.css`. The CSS for the header, footer and React-rendered pages ships with the SPA, next to the components that render it.
 
 ## Route redirects
 

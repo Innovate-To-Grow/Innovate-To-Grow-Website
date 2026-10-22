@@ -1,0 +1,75 @@
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+/* ---------- Blue bar ---------- */
+.site-header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--itg-color-primary);
+  border-bottom: 5px solid var(--itg-color-accent-gold);
+}
+
+.site-header-bar-inner {
+  height: 80px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+}
+
+.site-header-bar :focus-visible {
+  outline-color: var(--itg-color-white);
+}
+
+.ucm-wordmark {
+  justify-self: start;
+  display: flex;
+  line-height: 0;
+}
+
+.ucm-wordmark img {
+  display: block;
+  width: 138px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.site-header-logo {
+  display: flex;
+  line-height: 0;
+}
+
+.site-header-logo img {
+  display: block;
+  width: 156px;
+  height: 56px;
+  object-fit: contain;
+}
+
+/* Directory / Apply / Give: 16px white, 18px 10px boxes, gold on hover.
+   (The reference's search icon is not reproduced; the links end where it did.) */
+.site-header-links {
+  justify-self: end;
+  display: flex;
+  margin-right: 10px;
+}
+
+.site-header-links a {
+  padding: 18px 10px;
+  color: var(--itg-color-white);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  text-decoration: none;
+}
+
+.site-header-links a:hover,
+.site-header-links a:focus-visible {
+  color: var(--itg-color-accent-gold);
+  text-decoration: none;
+}
+
+/* Menu button: phone only */
+.site-header-mobile-toggle {
+  display: none;
+}

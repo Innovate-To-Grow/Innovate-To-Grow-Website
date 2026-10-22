@@ -1,0 +1,37 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* ---- registration: responsive.css ---- */
+
+@media (max-width: 600px) {
+  .event-reg-step {
+    flex: 0 0 auto;
+    padding-right: 8px;
+  }
+
+  .event-reg-step.is-current {
+    flex: 1 1 auto;
+  }
+
+  /* Only the current step keeps its label on a phone (the rest stay announced). */
+  .event-reg-step:not(.is-current) .event-reg-step-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .event-reg-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .event-reg-submit,
+  .event-reg-done-actions > * {
+    width: 100%;
+  }
+
+  .event-reg-ticket {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

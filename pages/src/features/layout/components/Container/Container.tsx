@@ -1,3 +1,4 @@
+import './Container.css';
 import {Suspense, useEffect} from 'react';
 import {Outlet, useLocation} from 'react-router';
 import {usePageTracking} from '@/hooks/usePageTracking';

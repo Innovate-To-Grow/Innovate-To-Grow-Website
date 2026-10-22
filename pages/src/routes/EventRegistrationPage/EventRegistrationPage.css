@@ -1,0 +1,9 @@
+/* Styles for the event registration flow, moved verbatim from the CMS "page-events" stylesheet.
+   The sections are imported in their original cascade order (later files
+   override earlier ones at equal specificity), so do not reorder this list;
+   add new rules to the file that owns them. */
+@import './styles/layout.css';
+@import './styles/form.css';
+@import './styles/buttons.css';
+@import './styles/states.css';
+@import './styles/responsive.css';
