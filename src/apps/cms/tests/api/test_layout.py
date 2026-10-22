@@ -368,7 +368,8 @@ class LayoutStylesheetTokenInjectionTests(TestCase):
         self.assertIn(".safe { color: red; }", body)
 
     def test_control_character_tokens_are_left_out_of_styles_css(self):
-        self._set_tokens({"colors": {"primary": "red\tblue", "secondary": "#005487", "accent": "#fff\x00"}})
+        # BEL, not NUL: PostgreSQL jsonb refuses to store \u0000 at all.
+        self._set_tokens({"colors": {"primary": "red\tblue", "secondary": "#005487", "accent": "#fff\x07"}})
 
         with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING") as logs:
             resp = self.client.get("/layout/styles.css")
