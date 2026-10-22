@@ -23,7 +23,14 @@ own CSS, even a more specific one.
 
 ## Design tokens
 
-A token value that could break the sheet is left out, with a warning in the server log: keys must be
+Site Settings shows one field per token, in a collapsed section per group (colours, typography, typography on
+phones, layout, borders, effects); each field is labelled with its CSS variable and shows the default. Colours
+stored as `#rrggbb` get a colour picker. A blank field means the default value, and **Reset … to the
+defaults** puts back a whole group. Saving refuses a value that could break the sheet, on its field. Tokens
+stored under other keys (from before this form, or added by hand) are kept as they are and shown read-only
+under **Other design tokens**.
+
+The server also leaves out any stored token that could break the sheet, with a warning in its log: keys must be
 lowercase letters, digits and underscores, and values must be at most 200 characters with no `;`, braces,
 `<`, `>`, backslashes or comments, and only functions from an allowlist (colour, math, gradient, easing,
 transform and grid functions). A token that is missing or left out
@@ -32,7 +39,8 @@ falls back to the value in `pages/src/assets/tokens.css`.
 ## Custom CSS
 
 Use it for small, site-wide corrections that can't wait for a deploy; move anything lasting into the
-repository. Saving checks it and refuses CSS with:
+repository. The field is a code editor with CSS highlighting and line numbers. Saving checks it and refuses CSS
+with:
 
 - an unclosed `{` or a stray `}` (with its line and column);
 - a rule or value the parser can't read (for example a malformed `url(`);
@@ -41,6 +49,10 @@ repository. Saving checks it and refuses CSS with:
 - more than 64 KB.
 
 The check can't catch a misspelled property: the browser ignores that declaration and nothing else.
+
+Every save that changes the custom CSS keeps a revision (the last 20, with who saved it), listed under
+**CMS → Custom CSS revisions**. To go back, select one revision there and run **Restore the selected revision
+as the live custom CSS**; the restore is itself kept as a new revision.
 
 ## When changes show
 
