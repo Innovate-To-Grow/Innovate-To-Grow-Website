@@ -1,5 +1,7 @@
 """Site Settings: one field per design token, custom CSS revisions and the CodeMirror editor."""
 
+import re
+
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.cache import cache
@@ -185,7 +187,8 @@ class CustomCssRevisionTests(TestCase):
         content = response.content.decode()
         self.assertIn("vendor/codemirror/5.65.16/mode/css/css.min.js", content)
         self.assertIn("cms/js/custom-css-editor.js", content)
-        self.assertRegex(content, r'<textarea[^>]*class="[^"]*code-editor-field[^"]*"[^>]*name="custom_css"')
+        textarea = re.search(r'<textarea name="custom_css"[^>]*>', content).group(0)
+        self.assertIn("code-editor-field", textarea)
         self.assertIn(reverse("admin:cms_customcssrevision_changelist"), content)
         self.assertIn("Design tokens: Colors", content)
         self.assertIn('type="color"', content)
