@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Past Project Curation shared links: the account panel and its full page.
    Buttons, the back link and the search input use the global classes
    (.itg-btn*, .itg-back-link, .itg-input); this file only lays the list out
@@ -125,4 +126,5 @@
   .account-shares-page-link {
     width: 100%;
   }
+}
 }

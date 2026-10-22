@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-events" stylesheet. */
 
 /* ---- registration: responsive.css ---- */
@@ -34,4 +35,5 @@
   .event-reg-ticket {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 }

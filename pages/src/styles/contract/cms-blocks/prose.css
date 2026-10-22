@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-blocks" stylesheet. */
 
 /* ==========================================================================
@@ -176,4 +177,5 @@
 
 .cms-prose :where(table ul, table ol) {
   margin: 0 0 0 1.25rem;
+}
 }

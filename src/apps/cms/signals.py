@@ -28,6 +28,7 @@ from .models import (
 )
 from .services.sanitization.embed_hosts import invalidate_cache as invalidate_embed_host_cache
 from .views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
+from .views.theme import THEME_CACHE_KEY
 
 HOMEPAGE_CACHE_KEY = "cms:homepage"
 
@@ -58,6 +59,7 @@ def invalidate_layout_cache(sender, instance, **kwargs):
         _clear_layout_caches()
         if sender is SiteSettings:
             cache.delete(HOMEPAGE_CACHE_KEY)
+            cache.delete(THEME_CACHE_KEY)
 
     transaction.on_commit(_clear)
 

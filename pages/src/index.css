@@ -1,6 +1,7 @@
 @import './styles/contract/index.css';
 @import './assets/shared.css';
 
+@layer itg.components {
 * {
   box-sizing: border-box;
 }
@@ -41,4 +42,5 @@ body .sr-only {
 
 .userway_buttons_wrapper {
   margin-top: 5.5rem !important;
+}
 }

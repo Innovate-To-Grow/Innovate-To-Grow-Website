@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-events" stylesheet. */
 
 /* ---- ScheduleGrid.css (archived schedules) ---- */
@@ -31,4 +32,5 @@
   background: var(--schedule-column-bg);
   color: var(--schedule-topic-color);
   text-align: left;
+}
 }

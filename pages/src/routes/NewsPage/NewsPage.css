@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-news" stylesheet. */
 
 .news-page-title {
@@ -204,4 +205,5 @@
   .news-card {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 }

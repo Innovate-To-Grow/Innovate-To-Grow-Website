@@ -1,3 +1,4 @@
+import './styles/layers.css';
 import './index.css';
 import {captureAuthCallbackParams} from '@/features/auth/api/callbackParams';
 import {mountApp} from '@/app/providers';

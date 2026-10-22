@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {formatDocumentTitle} from '@/hooks/usePageTitle';
 import type {CMSPageResponse} from '../../api';
+import {inComponentsLayer} from '@/lib/css';
 
 /**
  * The document-level effects of showing a CMS page: its title, its per-page CSS, and a visually hidden h1
@@ -38,7 +39,7 @@ export function useCMSPageDocument(page: CMSPageResponse | null, isLivePreview: 
       el.id = 'itg-page-css';
       document.head.appendChild(el);
     }
-    el.textContent = page.page_css;
+    el.textContent = inComponentsLayer(page.page_css);
     return () => {
       if (el) el.textContent = '';
     };

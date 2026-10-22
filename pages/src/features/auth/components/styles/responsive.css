@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
 /* ---- responsive.css ---- */
@@ -83,4 +84,5 @@
   .account-action-row > * {
     flex: 1 1 100%;
   }
+}
 }

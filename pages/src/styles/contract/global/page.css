@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
@@ -112,4 +113,5 @@
   font-size: var(--itg-font-size-h3);
   font-weight: 600;
   line-height: var(--itg-line-height-heading);
+}
 }

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* The desktop project table: sortable headers, row shading, detail buttons, open-row details.
    Imported in order by projects.css; see the note there. */
 
@@ -268,4 +269,5 @@ a.project-grid-title-link:focus {
 /* Tags after a title: "New" (just saved) and "Saved" (already in the list). */
 .project-grid-row-chip {
   white-space: nowrap;
+}
 }

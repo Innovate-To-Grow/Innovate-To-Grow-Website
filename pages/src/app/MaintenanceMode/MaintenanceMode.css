@@ -7,20 +7,20 @@
    sheet, moved here verbatim, and the few global .itg-* rules the page uses.
 
    The global rules are copies scoped to the page with :where(), so they never
-   reach the rest of the site, and they sit in the itg-maintenance-fallback
-   cascade layer, so the bundled global rules (styles/contract/global/) win
-   wherever both set a property. They date from when the global rules came
+   reach the rest of the site, and they sit in itg.defaults, the lowest cascade
+   layer, so the bundled global rules (styles/contract/global/) win wherever
+   both set a property. They date from when the global rules came
    only from /api/layout/styles.css; drop them once a computed-style
    comparison shows they change nothing. The --itg-* values come from the
    bundled fallback tokens (src/assets/tokens.css) when the server sheet is
    missing.
 
-   The maintenance rules themselves are unlayered, like every other component
-   stylesheet in the bundle. Migration cms.0026 switched the CMS "maintenance"
+   The maintenance rules themselves sit in itg.components, like every other
+   component stylesheet in the bundle. Migration cms.0026 switched the CMS "maintenance"
    row off, so this file is the only copy.
    ========================================================================== */
 
-@layer itg-maintenance-fallback {
+@layer itg.defaults {
   /* ---- Global rules used on the page (copied from the "global" sheet) ---- */
 
   :where(.maintenance-container) :where(a) {
@@ -207,6 +207,7 @@
   }
 }
 
+@layer itg.components {
 /* ---- The CMS "maintenance" sheet ---- */
 /* ==========================================================================
    Maintenance page + degraded-service banner.
@@ -538,4 +539,5 @@
   font-size: var(--itg-font-size-small);
   line-height: 21px;
   text-align: center;
+}
 }

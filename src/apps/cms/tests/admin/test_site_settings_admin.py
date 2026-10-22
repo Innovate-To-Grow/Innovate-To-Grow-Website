@@ -60,6 +60,24 @@ class SiteSettingsFormTests(TestCase):
         self.assertIsNone(form.cleaned_data["homepage_page"])
 
 
+class SiteSettingsCustomCssFormTests(TestCase):
+    def test_valid_custom_css_is_kept(self):
+        css = ".site-header-band { background: #0f2d52; }"
+        form = SiteSettingsForm(data={"design_tokens": '{"colors": {}}', "custom_css": css})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["custom_css"], css)
+
+    def test_broken_custom_css_is_refused_with_every_problem(self):
+        form = SiteSettingsForm(
+            data={"design_tokens": '{"colors": {}}', "custom_css": '@import url("x.css");\n.a {\n  color: red;\n'}
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            form.errors["custom_css"],
+            ["Line 2, column 4: this { is never closed.", "Line 1, column 1: @import is not allowed in custom CSS."],
+        )
+
+
 class SiteSettingsAdminDisplayTests(TestCase):
     def setUp(self):
         self.admin = SiteSettingsAdmin(SiteSettings, AdminSite())

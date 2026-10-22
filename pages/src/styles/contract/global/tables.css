@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
@@ -62,4 +63,5 @@
 .itg-table tr.is-selected > td,
 .itg-table tr.is-selected > th {
   background: var(--itg-color-highlight);
+}
 }

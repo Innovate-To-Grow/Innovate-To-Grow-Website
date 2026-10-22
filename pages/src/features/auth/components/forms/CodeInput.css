@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
 /* The six-digit code: the theme's input (#f2f2f2, 1px #ccc, inset shadow,
@@ -40,4 +41,5 @@
 .auth-code-input {
     font-size: 1.375rem;
   }
+}
 }

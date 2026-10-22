@@ -124,6 +124,14 @@ class SiteSettings(models.Model):
         default=default_design_tokens,
         help_text="Structured design tokens (colors, typography, layout) served to the frontend as CSS custom properties.",
     )
+    custom_css = models.TextField(
+        blank=True,
+        default="",
+        help_text=(
+            "Site-wide CSS served after every bundled stylesheet (cascade layer itg.overrides), so it wins "
+            "whatever the selectors. Takes effect within five minutes, without a deploy."
+        ),
+    )
 
     class Meta:
         verbose_name = "Site Settings"

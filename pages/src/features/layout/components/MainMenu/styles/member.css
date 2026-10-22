@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
 /* ---------- Right end of the menu row: date + member link (12px uppercase) ----------
@@ -176,4 +177,5 @@
   .site-header-date + .site-header-member::before {
     content: none;
   }
+}
 }
