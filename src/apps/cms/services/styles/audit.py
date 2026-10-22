@@ -6,9 +6,8 @@ and ``CMSPage.page_css_class`` adds classes to a page wrapper. None of that show
 scanning the React code, so this audit reads the stored content and reports, per class,
 where it is used and what styles it:
 
-* ``sheets`` / ``inactive_sheets``: StyleSheet rows that define it (see ``css_selectors``
-  for what "define" means);
-* ``frontend_files``: frontend CSS in the entry bundle (loaded on every page) that defines it;
+* ``frontend_files``: frontend CSS in the entry bundle (loaded on every page) that defines it
+  (see ``css_selectors`` for what "define" means);
 * ``route_frontend_files``: frontend CSS that loads only once a lazily loaded route using it
   has been opened, so CMS content cannot rely on it;
 * ``page_css``: routes whose own ``CMSPage.page_css`` defines it (it applies on that page only);
@@ -17,8 +16,10 @@ where it is used and what styles it:
 * ``hook_in``: CSS that uses it as context for other elements (``.event-page`` in
   ``.event-page .x``), typical for page wrapper classes.
 
-``defined`` is true only for site-wide definitions: an active sheet or an entry-bundle file.
+``defined`` is true only for a site-wide definition, which means an entry-bundle file.
 A class that is neither defined nor a hook counts as having no site-wide definition.
+Without the frontend sources (``scan_frontend=False``) no class reads as defined, so the
+report then shows usage only.
 """
 
 import re
@@ -28,7 +29,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-from apps.cms.models import CMSBlock, CMSPage, FooterContent, StyleSheet
+from apps.cms.models import CMSBlock, CMSPage, FooterContent
 
 from .css_selectors import css_class_index
 from .frontend_graph import entry_css_files, iter_css_files, read_text
@@ -105,18 +106,6 @@ def frontend_css_index(frontend_dir=None) -> dict:
     return maps
 
 
-def sheet_index() -> dict:
-    """StyleSheet maps of class -> sheet names: active ``defined``/``scoped``/``hook`` and ``inactive``."""
-    maps = {**_new_maps(), "inactive": defaultdict(set)}
-    ignored = _new_maps()
-    for sheet in StyleSheet.objects.only("name", "css", "is_active"):
-        if sheet.is_active:
-            _index_into(maps, sheet.css, sheet.name)
-        else:
-            _index_into(ignored, sheet.css, sheet.name, defined_into=maps["inactive"])
-    return maps
-
-
 def page_css_index() -> dict:
     """Per-page CSS maps of class -> routes whose page_css defines, scopes or hooks on it."""
     maps = _new_maps()
@@ -149,13 +138,10 @@ def _labelled(maps_and_labels, class_name) -> list[str]:
     return labels
 
 
-def _row(class_name, uses, sheets, frontend, pages) -> dict:
-    active = sorted(sheets["defined"].get(class_name, ()))
+def _row(class_name, uses, frontend, pages) -> dict:
     entry_files = sorted(frontend["defined"].get(class_name, ()))
-    scoped_in = _labelled(
-        [(sheets, "scoped", "sheet:"), (frontend, "scoped", ""), (pages, "scoped", "page_css:")], class_name
-    )
-    hook_in = _labelled([(sheets, "hook", "sheet:"), (frontend, "hook", ""), (pages, "hook", "page_css:")], class_name)
+    scoped_in = _labelled([(frontend, "scoped", ""), (pages, "scoped", "page_css:")], class_name)
+    hook_in = _labelled([(frontend, "hook", ""), (pages, "hook", "page_css:")], class_name)
     wheres = {use["where"] for use in uses}
     return {
         "class_name": class_name,
@@ -164,14 +150,12 @@ def _row(class_name, uses, sheets, frontend, pages) -> dict:
         "footers": sorted(where for where in wheres if where.startswith("footer:")),
         "sources": sorted({use["source"] for use in uses}),
         "block_types": sorted({use["source"][6:] for use in uses if use["source"].startswith("block:")}),
-        "sheets": active,
-        "inactive_sheets": sorted(sheets["inactive"].get(class_name, ())),
         "frontend_files": entry_files,
         "route_frontend_files": sorted(frontend["route"].get(class_name, ())),
         "page_css": sorted(pages["defined"].get(class_name, ())),
         "scoped_in": scoped_in,
         "hook_in": hook_in,
-        "defined": bool(active or entry_files),
+        "defined": bool(entry_files),
     }
 
 
@@ -184,14 +168,14 @@ def audit_css_classes(frontend_dir=None, *, scan_frontend=True) -> dict:
     """The audit report: what was scanned, and one row per class used in stored CMS content.
 
     With ``scan_frontend=False`` (a server without the frontend sources) no frontend file
-    is read, so a class styled only by frontend CSS reads as undefined.
+    is read, so no class reads as defined (``page_css`` is still read, but applies to one
+    page only): the report then shows usage only.
     """
     root = Path(frontend_dir or default_frontend_dir())
     frontend = frontend_css_index(root) if scan_frontend else {**_new_maps(), "route": {}, "graph": False}
     usage = content_class_usage()
-    sheets = sheet_index()
     pages = page_css_index()
-    rows = [_row(class_name, usage[class_name], sheets, frontend, pages) for class_name in sorted(usage)]
+    rows = [_row(class_name, usage[class_name], frontend, pages) for class_name in sorted(usage)]
     return {
         "frontend_scanned": scan_frontend,
         "frontend_dir": str(root) if scan_frontend else None,

@@ -24,7 +24,7 @@ from django.views.static import serve as static_serve
 
 from apps.authn.views.admin.login import AdminLoginView
 from apps.authn.views.admin.send_verification import AdminSendVerificationChallengeView
-from apps.cms.views import LayoutAPIView, LayoutStylesheetView, ThemeStylesheetView, sitemap_xml
+from apps.cms.views import LayoutAPIView, ThemeStylesheetView, sitemap_xml
 from apps.core.legacy_view import get_legacy_view_urls
 from apps.core.middleware import csp_report
 from apps.core.views import MaintenanceBypassView, robots_txt, root_index
@@ -58,8 +58,6 @@ urlpatterns = [
     path("layout/", LayoutAPIView.as_view(), name="layout-data"),
     # Site Settings design tokens + custom CSS (render-blocking, linked from index.html)
     path("layout/theme.css", ThemeStylesheetView.as_view(), name="layout-theme"),
-    # the pre-theme stylesheet: tokens unlayered, for index.html files cached before theme.css
-    path("layout/styles.css", LayoutStylesheetView.as_view(), name="layout-styles"),
     # event
     path("event/", include("apps.event.urls")),
     # news

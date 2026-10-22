@@ -44,8 +44,6 @@ READ_TOOL_NAMES = frozenset(
         "get_menu_detail",
         "get_footer_content_detail",
         "get_site_settings_detail",
-        "search_style_sheets",
-        "get_style_sheet_detail",
         "search_cms_assets",
         "get_news_source_detail",
     }

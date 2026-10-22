@@ -63,7 +63,7 @@ export async function mockHealthyAppShell(page: Page) {
   // All of the site's CSS ships with the bundle; the backend theme adds only the Site
   // Settings tokens and custom CSS, which these specs do not need (the bundle carries
   // fallback tokens).
-  await page.route(/\/layout\/(theme|styles)\.css/, async (route) => {
+  await page.route('**/layout/theme.css*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'text/css',
