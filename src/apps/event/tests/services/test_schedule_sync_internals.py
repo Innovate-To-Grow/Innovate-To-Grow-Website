@@ -54,9 +54,12 @@ class BuildGrandWinnersTest(TestCase):
 
 
 class BuildSlotRowsTest(TestCase):
-    def test_skips_rows_with_missing_track_and_order(self):
+    def test_rows_with_missing_track_and_order_are_non_presenting(self):
         records = [{"Track": "", "Order": "", "Class": "CAP", "Team#": "CAP-1"}]
-        self.assertEqual(build_slot_rows(records), [])
+        rows = build_slot_rows(records)
+        self.assertEqual(len(rows), 1)
+        self.assertFalse(rows[0]["is_presenting"])
+        self.assertEqual(rows[0]["team_number"], "CAP-1")
 
     def test_skips_non_break_without_team_number(self):
         records = [
