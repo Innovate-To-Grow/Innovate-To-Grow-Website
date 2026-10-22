@@ -381,12 +381,12 @@ Data migrations re-apply that seed to existing databases, and they overwrite wha
 those rows without warning. Two read-only commands show where a database stands.
 
 The rules of the ten component sheets (`layout-container`, `layout-menu`, `layout-footer`, `auth`,
-`page-news`, `page-projects`, `page-events`, `page-subscribe`, `page-misc`, `maintenance`) also ship with the
-frontend bundle, in CSS files next to the components that render them under `pages/src`. The bundle loads
-after `/api/layout/styles.css`, so an admin edit to one of those rows shows only where the bundle does not set
-the same property: change the CSS file in the repository instead. The rows stay active until a migration
-retires them. The content sheets (`global`, `cms-blocks`, `cms-pages`, `page-home`) are still served only by
-the backend.
+`page-news`, `page-projects`, `page-events`, `page-subscribe`, `page-misc`, `maintenance`) ship with the
+frontend bundle, in CSS files next to the components that render them under `pages/src`. Migration
+`cms.0026` switched those rows off (their description says where the CSS lives now), so editing them in the
+admin changes nothing: change the CSS file in the repository instead. Switching one back on serves it again
+before the bundle, which then wins wherever both set the same property. The content sheets (`global`,
+`cms-blocks`, `cms-pages`, `page-home`) are still served only by the backend.
 
 ### Drift report
 
@@ -406,6 +406,7 @@ Each sheet gets one status. The comparison ignores line endings and trailing whi
 | `settings_changed` | the CSS matches, but the active flag or the order differs from the seed |
 | `unmanaged` | the sheet is not in the seed, including a `*-pre-redesign` / `*-pre-audit-fixes` copy that was switched back on |
 | `backup_copy` | an inactive `*-pre-redesign` / `*-pre-audit-fixes` copy left by a migration |
+| `retired` | a component sheet that migration `cms.0026` switched off; its CSS and order no longer matter |
 | `missing` (table only) | a seed sheet that is not in the database |
 
 The command exits with status 1 when the site serves CSS the seed lacks, or a re-sync migration would
@@ -413,10 +414,11 @@ change what the site serves:
 
 - an active sheet whose CSS differs from the seed or is not in it;
 - a seed sheet whose active flag or order was changed (deactivating a seed sheet counts);
+- a retired sheet that was switched back on (reported as `settings_changed`);
 - an active seed sheet that was deleted (a re-sync creates it again and serves it).
 
-Sheets that are inactive in both the seed and the database, inactive unmanaged sheets and inactive backup
-copies do not fail it. A missing seed file is an error too. The Style Sheets changelist shows the same status
+Sheets that are inactive in both the seed and the database, inactive unmanaged sheets, inactive backup
+copies and retired sheets that are off (or deleted) do not fail it. A missing seed file is an error too. The Style Sheets changelist shows the same status
 in its **Repo seed** column.
 
 Run it in production before every release that carries a stylesheet migration. Move any edit worth keeping

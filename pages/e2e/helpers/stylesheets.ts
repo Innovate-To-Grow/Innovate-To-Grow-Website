@@ -10,7 +10,7 @@ import type {Page} from '@playwright/test';
  * targets) serve the CMS stylesheets seeded by the migrations instead.
  *
  * Only the content sheets are served. The component sheets ship with the frontend
- * bundle now, and their DB rows are on their way out, so leaving them out proves the
+ * bundle now, and migration cms.0026 switched their DB rows off, so leaving them out proves the
  * bundle styles the shell and the React pages on its own.
  *
  * `E2E_SEED_STYLESHEETS` may point at another stylesheets.json of the same shape,

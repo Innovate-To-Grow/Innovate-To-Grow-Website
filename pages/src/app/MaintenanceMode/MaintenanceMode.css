@@ -13,9 +13,8 @@
    then come from the bundled fallback tokens (src/assets/tokens.css).
 
    The maintenance rules themselves are unlayered, like every other component
-   stylesheet in the bundle. The CMS "maintenance" row stays active until the
-   migration that retires the component sheets; the bundle loads after it, so
-   at equal specificity this file wins.
+   stylesheet in the bundle. Migration cms.0026 switched the CMS "maintenance"
+   row off, so this file is the only copy.
    ========================================================================== */
 
 @layer itg-maintenance-fallback {
