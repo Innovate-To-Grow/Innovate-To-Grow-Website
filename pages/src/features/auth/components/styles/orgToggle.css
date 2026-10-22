@@ -1,0 +1,58 @@
+/* Moved verbatim from the CMS "auth" stylesheet; the 992px rule was split out of
+   the touch-target rule there, which also covers the account page's controls. */
+
+/* The org toggle's text input sits under the toggle inside the same group. */
+.auth-org-toggle + .auth-form-input {
+  margin-top: 5px;
+}
+
+/* Organization / Individual: a square two-segment toggle. */
+.auth-org-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.auth-org-toggle-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: 0;
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: var(--itg-font-size-body);
+  font-weight: 400;
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast), color var(--itg-transition-fast);
+}
+
+.auth-org-toggle-btn + .auth-org-toggle-btn {
+  border-left-width: 0;
+}
+
+.auth-org-toggle-btn:hover:not(:disabled):not(.is-active) {
+  background: var(--itg-color-bg-light);
+}
+
+.auth-org-toggle-btn.is-active {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.auth-org-toggle-btn:disabled {
+  border-color: var(--itg-color-disabled-border);
+  background: var(--itg-color-disabled-bg);
+  color: var(--itg-color-disabled-text);
+  cursor: not-allowed;
+}
+
+.auth-org-toggle-btn.is-active:disabled {
+  background: var(--itg-color-disabled-text);
+  color: var(--itg-color-white);
+}
+
+@media (max-width: 992px) {
+  .auth-org-toggle-btn {
+    min-height: 44px;
+  }
+}

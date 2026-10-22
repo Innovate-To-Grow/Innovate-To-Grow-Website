@@ -1,4 +1,4 @@
-// CMS block layout with the real CMS stylesheets (the shell mock serves a structural stub):
+// CMS block layout with the CMS content stylesheets (the shell mock serves an empty sheet):
 // an embedded CMS widget sits on the page background, 'left' image + text puts the text in the
 // column beside the image, 'right' keeps the float the live capstone pages use, and the hero,
 // CTA, notice and numbered-list blocks render with the design system.

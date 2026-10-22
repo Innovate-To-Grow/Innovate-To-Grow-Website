@@ -4,7 +4,7 @@
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
 import {mockPastProjects, seedAuthenticatedSession} from '../helpers';
-// The e2e shell replaces /layout/styles.css with a structural stub; the layout checks below need the real sheets.
+// The e2e shell answers /layout/styles.css with an empty sheet; the layout checks below need the CMS content sheets.
 import {serveSeedStylesheets} from '../helpers/stylesheets';
 import type {ProjectTableRow} from '../../src/features/projects/api';
 

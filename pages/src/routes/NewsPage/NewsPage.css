@@ -1,0 +1,207 @@
+/* Moved verbatim from the CMS "page-news" stylesheet. */
+
+.news-page-title {
+  margin: 12px 0 24px;
+}
+
+/* ---- List: rows with a thumbnail, title, italic date and summary ---- */
+.news-list {
+  display: grid;
+  gap: 48px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.news-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 30px;
+  align-items: start;
+  margin: 0;
+  padding: 0;
+}
+
+.news-card-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  height: auto;
+  object-fit: cover;
+  border-radius: 0;
+  background: var(--itg-color-bg-light);
+}
+
+.news-card-body {
+  display: block;
+  min-width: 0;
+}
+
+.news-card-title {
+  margin: 0 0 12px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+  font-weight: 600;
+  line-height: 42px;
+}
+
+.news-card-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+/* The title link covers the whole row, so the image and summary are clickable too. */
+.news-card-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.news-card:hover .news-card-link,
+.news-card-link:focus-visible {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.news-card-link:focus-visible {
+  outline: none;
+}
+
+.news-card:focus-within {
+  outline: 2px solid var(--itg-color-secondary);
+  outline-offset: 2px;
+}
+
+.news-card-date.itg-page-meta {
+  margin: 0 0 16px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.news-card-summary {
+  margin: 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
+/* ---- Pager: the reference news view's centred pager. Links carry a 3px
+   #a29061 underline (#5b5b5b on hover), the current page is bold 20px. ---- */
+.news-pagination.itg-pagination {
+  justify-content: center;
+  gap: 0 24px;
+  margin: 24px 0 12px;
+}
+
+.news-pagination-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.news-pagination .itg-pagination-link {
+  padding: 5px 14px;
+  border: 0;
+  border-bottom: 3px solid #a29061;
+  border-radius: 1px;
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.news-pagination .itg-pagination-link:hover,
+.news-pagination .itg-pagination-link:focus-visible {
+  border-color: #5b5b5b;
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.news-pagination .itg-pagination-link[aria-current='page'],
+.news-pagination .itg-pagination-link[aria-current='page']:hover {
+  padding: 5px 0;
+  border: 0;
+  background: none;
+  color: var(--itg-color-text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.news-pagination .itg-pagination-link:disabled,
+.news-pagination .itg-pagination-link:disabled:hover {
+  border-bottom-color: transparent;
+  background: none;
+  color: var(--itg-color-disabled-text);
+  text-decoration: none;
+  cursor: default;
+}
+
+.news-pagination-info {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 768px) {
+  .news-list {
+    gap: 36px;
+  }
+
+  .news-card {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 15px;
+  }
+
+  /* Phones: Previous / Page x of y / Next */
+  .news-pagination.itg-pagination {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .news-pagination-pages {
+    display: none;
+  }
+
+  .news-pagination .news-pagination-btn {
+    min-height: 44px;
+    padding: 0 12px;
+  }
+
+  .news-pagination-info {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    font-size: var(--itg-font-size-body);
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .news-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

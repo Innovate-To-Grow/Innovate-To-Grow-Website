@@ -1,3 +1,4 @@
+import './SubscribePage.css';
 import {useEffect, useState} from 'react';
 import {useSearchParams} from 'react-router';
 import {useAuth} from '@/features/auth';

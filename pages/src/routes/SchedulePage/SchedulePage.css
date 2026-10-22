@@ -1,0 +1,299 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* ---- SchedulePage.css ---- */
+.schedule-page-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-page-header > :last-child {
+  margin-bottom: 0;
+}
+
+.schedule-page-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 24px page gap + 12px = the reference's 36px above each title, 12px below. */
+.schedule-page-section-title {
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+.schedule-page-section-text {
+  margin: 0;
+  text-align: center;
+}
+
+/* The reference leaves 48px above each class label (an empty line under the
+   PRESENTATIONS title, then the label). */
+.schedule-page-section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  margin-top: 36px;
+}
+
+/* "Engineering Capstone (CAP)": the reference's centred bold navy line. */
+.schedule-class-label {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+}
+
+/* Winners: the reference's centred bold red title, then per class a row of
+   track cells (grey "Track N" header over the track's column colour). */
+.schedule-winners-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.schedule-page .schedule-winners-title {
+  color: var(--schedule-winners-red, #c0392b);
+  font-weight: 700;
+}
+
+.schedule-winners-title-emphasis,
+.schedule-winners-title-event {
+  color: inherit;
+}
+
+.schedule-grand-winners {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+}
+
+.schedule-grand-winner-line {
+  margin: 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.schedule-grand-winner-label {
+  color: var(--itg-color-primary);
+  font-weight: 700;
+}
+
+.schedule-winners {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.schedule-winners-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-winners-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--winner-column-count, 1), minmax(0, 1fr));
+  border: var(--schedule-table-border);
+}
+
+.schedule-winner-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--schedule-column-bg);
+  color: var(--schedule-cell-text);
+}
+
+.schedule-winner-card-header {
+  padding: 8px;
+  border-bottom: var(--schedule-head-rule);
+  background: var(--schedule-head-bg);
+  color: var(--itg-color-primary);
+}
+
+.schedule-winner-track {
+  margin: 0;
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.schedule-winner-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 8px;
+}
+
+/* Five cells share the main column (about 125px each beside the sidebar at
+   1024px), so a long one-word team name must break inside its cell. */
+.schedule-winner-topic {
+  margin: 0;
+  color: var(--schedule-topic-color);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+
+.schedule-winner-name {
+  margin: 0;
+  color: var(--schedule-cell-text);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+/* Presentation grid. It fills the main column (870px beside the sidebar at
+   1440, 676px at 1024, 645px at the narrowest desktop width, 689-960px in the
+   tablet shell); the fixed layout shares the width equally between tracks and
+   the min-width only stops a track from getting narrower than
+   --schedule-track-min, so the wrapper scrolls only when a class has more
+   tracks than truly fit (SchedulePage sets --schedule-track-count). */
+.schedule-presentation-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-presentation-table {
+  --schedule-time-width: 4.5rem;
+  --schedule-track-min: 6.75rem;
+  width: 100%;
+  min-width: calc(var(--schedule-time-width) + var(--schedule-track-count, 5) * var(--schedule-track-min));
+  table-layout: fixed;
+  border: var(--schedule-table-border);
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.schedule-presentation-time-col {
+  width: var(--schedule-time-width);
+}
+
+/* Topic row: the track's colour, bold topic on the left. */
+.schedule-presentation-topic-cell {
+  background: var(--schedule-column-bg);
+  color: var(--schedule-topic-color);
+}
+
+.schedule-presentation-topic {
+  display: block;
+  color: var(--schedule-topic-color);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.schedule-presentation-break,
+.schedule-mobile-break {
+  display: block;
+  color: var(--schedule-cell-text);
+  font-size: var(--itg-font-size-small);
+  font-style: italic;
+  text-align: center;
+}
+
+.schedule-presentation-slot-break {
+  vertical-align: middle;
+}
+
+/* Phone: one card per track, in the same grey header / coloured cell language. */
+.schedule-page-mobile-grid {
+  display: none;
+}
+
+.schedule-mobile-card {
+  border: var(--schedule-table-border);
+  background: var(--itg-color-white);
+}
+
+.schedule-mobile-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px;
+  border-bottom: var(--schedule-head-rule);
+  background: var(--schedule-head-bg);
+}
+
+.schedule-mobile-track-label {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.schedule-mobile-topic {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.schedule-mobile-room {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.schedule-mobile-slots {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-mobile-slot {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  min-height: 3.5rem;
+}
+
+.schedule-mobile-slot + .schedule-mobile-slot > * {
+  border-top: var(--schedule-row-rule);
+}
+
+.schedule-mobile-time {
+  padding: 8px;
+  background: var(--schedule-head-bg);
+  color: var(--itg-color-primary);
+  font-weight: 700;
+}
+
+/* The 44px team button supplies the space above its number, so the cell's
+   top padding is dropped to keep the number level with the time. */
+.schedule-mobile-slot-content {
+  padding: 0 8px 8px;
+  background: var(--schedule-column-bg);
+}
+
+.schedule-mobile-slot-content.is-break {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .schedule-page-mobile-grid {
+    display: grid;
+    gap: 24px;
+  }
+
+  .schedule-winners-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

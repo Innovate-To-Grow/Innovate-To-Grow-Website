@@ -1,0 +1,128 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* ==========================================================================
+   Events: registration flow, schedule, event archive, archive schedule grid.
+   UC Merced subsite style. Buttons, inputs, labels, tags, panels and the
+   meta list come from the global classes (.itg-btn*, .itg-input, .itg-label,
+   .itg-tag*, .itg-panel, .itg-meta-box); headings use .itg-page-title /
+   .itg-section-title. This sheet lays the pages out and styles what is
+   specific to events: the progress row, ticket choice, the coloured schedule
+   grid and the gold-rule agenda tables.
+   Reference visual language (innovatetogrow.ucmerced.edu): 16px / 24px body
+   text, labels above controls with a 5px gap and 12px between fields, 14px
+   #555 hints, notices on #f7f7f7 with a 4px rule.
+   ========================================================================== */
+
+/* ---- registration: layout.css ---- */
+
+.event-reg-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 24px;
+}
+
+/* The shell's 16px + this 12px put the h1 where the reference's sits. */
+.event-reg-title {
+  margin: 12px 0 0;
+}
+
+/* Progress row: square numbers, navy current step on a gold rule. */
+.event-reg-steps {
+  display: flex;
+  gap: 0 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-reg-step {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 8px 8px 0;
+  border-bottom: 3px solid var(--itg-color-border);
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-weight: 400;
+  line-height: 21px;
+}
+
+.event-reg-step-number {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--itg-color-border-input);
+  background: var(--itg-color-white);
+  font-size: var(--itg-font-size-small);
+  font-weight: 700;
+}
+
+.event-reg-step-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-reg-step.is-complete {
+  border-bottom-color: var(--itg-color-primary);
+  color: var(--itg-color-primary);
+}
+
+.event-reg-step.is-complete .event-reg-step-number {
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-primary);
+}
+
+.event-reg-step.is-current {
+  border-bottom-color: var(--itg-color-accent-gold);
+  color: var(--itg-color-primary);
+  font-weight: 700;
+}
+
+.event-reg-step.is-current .event-reg-step-number {
+  border-color: var(--itg-color-primary);
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+/* Event summary: name, then a gold-ruled date / location line. */
+.event-reg-info {
+  margin: 0;
+}
+
+.event-reg-info-title {
+  margin: 0 0 12px;
+}
+
+.event-reg-info-meta {
+  margin: 0;
+}
+
+.event-reg-info-description {
+  margin: 12px 0 0;
+  color: var(--itg-color-text);
+  line-height: 24px;
+}
+
+/* Email / code step: one feature panel (.itg-panel), kept readable. */
+.event-reg-auth {
+  max-width: 560px;
+}
+
+.event-reg-auth form {
+  margin: 0;
+}
+
+.event-reg-auth-hint {
+  margin: 0 0 12px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}

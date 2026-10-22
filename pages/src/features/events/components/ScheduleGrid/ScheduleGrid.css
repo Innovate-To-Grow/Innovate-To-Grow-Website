@@ -1,0 +1,34 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* ---- ScheduleGrid.css (archived schedules) ---- */
+
+.sg-class-title {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+}
+
+.sg-table {
+  width: 100%;
+  border: var(--schedule-table-border);
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.sg-th-time {
+  width: 4.5rem;
+  white-space: nowrap;
+}
+
+/* The track-label row carries each column's colour, like the reference topic row. */
+.sg-table thead .sg-th-track {
+  background: var(--schedule-column-bg);
+  color: var(--schedule-topic-color);
+  text-align: left;
+}

@@ -1,3 +1,4 @@
+import './NotFoundPage.css';
 import {Link} from 'react-router';
 import {usePageTitle} from '@/hooks/usePageTitle';
 

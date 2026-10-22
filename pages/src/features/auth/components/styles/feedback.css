@@ -1,0 +1,67 @@
+/* Moved verbatim from the CMS "auth" stylesheet. */
+
+/* ---- feedback.css ---- */
+/* Notices: the system's .itg-notice look, a 4px left rule in the notice colour
+   on #f7f7f7 (white inside the grey feature panels, so they still stand out). */
+
+.auth-alert-wrapper {
+  margin: 0;
+}
+
+.auth-alert {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 0;
+  border-left: 4px solid var(--itg-color-secondary);
+  border-radius: 0;
+  background: var(--itg-color-bg-panel);
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.itg-panel .auth-alert {
+  background: var(--itg-color-white);
+}
+
+.auth-alert.info {
+  border-left-color: var(--itg-color-secondary);
+}
+
+.auth-alert.success {
+  border-left-color: var(--itg-color-success);
+}
+
+.auth-alert.error {
+  border-left-color: var(--itg-color-error);
+  color: var(--itg-color-error);
+}
+
+.auth-alert-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 24px;
+}
+
+.auth-alert.info .auth-alert-icon {
+  color: var(--itg-color-secondary);
+}
+
+.auth-alert.success .auth-alert-icon {
+  color: var(--itg-color-success);
+}
+
+.auth-alert.error .auth-alert-icon {
+  color: var(--itg-color-error);
+}
+
+.auth-alert span {
+  display: block;
+  min-width: 0;
+}

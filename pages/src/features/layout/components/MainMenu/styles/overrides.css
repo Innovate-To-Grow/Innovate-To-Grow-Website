@@ -1,0 +1,42 @@
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+@media (min-width: 993px) {
+  .header-mobile-menu {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header-bar,
+  .site-header-band,
+  .site-header.is-band-hidden .site-header-band,
+  .menu-dropdown,
+  .menu-dropdown-nested,
+  .member-arrow,
+  .header-mobile-expand-icon {
+    transition: none;
+  }
+
+  .site-header-nav.menu-nav-intro-fade,
+  .menu-bar-skeleton {
+    animation: none;
+  }
+}
+
+/* The open phone menu covers the page, so the floating UserWay button (injected by its
+   widget script) must not sit on top of the menu links. */
+html.is-mobile-menu-open .uwy {
+  visibility: hidden !important;
+}
+
+/* Signed-in account button: the member's name or email, not underlined; a long one ends
+   in an ellipsis (the full label is its title). */
+.member-button {
+  text-decoration: none;
+}
+
+.member-label {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

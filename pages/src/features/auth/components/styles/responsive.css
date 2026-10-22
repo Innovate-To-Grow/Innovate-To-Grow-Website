@@ -1,0 +1,86 @@
+/* Moved verbatim from the CMS "auth" stylesheet. */
+
+/* ---- responsive.css ---- */
+/* Global .itg-btn / .itg-input already grow to 44px on touch screens; these
+   restore that for the compact controls above. */
+
+@media (max-width: 992px) {
+  .email-center-toggle,
+  .email-center-card .email-center-btn,
+  .email-center-add-form .email-center-btn.verify {
+    min-height: 44px;
+  }
+
+  .email-center-type-select.itg-select {
+    height: 44px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .account-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (max-width: 600px) {
+
+  .auth-form-submit {
+    align-self: stretch;
+    width: 100%;
+  }
+
+  .auth-form-row,
+  .account-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-details-rows .account-readonly-group {
+    flex-direction: column;
+  }
+
+  .account-profile-summary-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .account-open-reg-details li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .account-ticket-barcode,
+  .account-ticket-barcode img {
+    width: 100%;
+  }
+
+  /* A fixed two-column grid, so a card looks the same whatever the length of its address. */
+  .email-center-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+
+  /* The role select takes a row of its own, so "Secondary" is never cut off. */
+  .email-center-type-field {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .email-center-type-select.itg-select {
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .email-center-actions > .itg-btn {
+    width: 100%;
+  }
+
+  .email-add-form-actions > *,
+  .account-action-row > * {
+    flex: 1 1 100%;
+  }
+}

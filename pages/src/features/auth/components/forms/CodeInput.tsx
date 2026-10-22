@@ -1,3 +1,4 @@
+import './CodeInput.css';
 import type { ChangeEvent } from 'react';
 
 /** Use for any standalone OTP field that does not render `CodeInput`, so placeholder stays consistent. */

@@ -1,6 +1,6 @@
 // Page shell around the routed page: the phone header's reserved room, the
 // mobile-menu bar, the phone empty-state targets and the main landmark.
-// These checks need the real CMS sheets, not the e2e shell's structural stub.
+// These checks need the CMS content sheets as well as the bundled shell CSS.
 import {test, expect} from '../helpers/fixtures';
 import {cmsEmbedResponse, mockCmsEmbed} from '../helpers';
 import {serveSeedStylesheets} from '../helpers/stylesheets';

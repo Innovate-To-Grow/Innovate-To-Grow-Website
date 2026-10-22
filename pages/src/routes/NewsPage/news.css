@@ -1,0 +1,30 @@
+/* Moved verbatim from the CMS "page-news" stylesheet. */
+
+/* ==========================================================================
+   News: list (/news) and article (/news/:id), in the reference news view's
+   type: 28px / 42px underlined navy titles, italic 16px dates, 14px / 21px
+   summaries, a centred pager with #a29061 underlines; articles in the
+   #content prose style with the theme's framed hero image.
+   Page title, back link and buttons come from the global sheet. No
+   page-width wrappers: the shell owns the column.
+   ========================================================================== */
+
+.news-page,
+.news-detail {
+  display: block;
+  min-width: 0;
+}
+
+.news-state {
+  margin: 0 0 12px;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-body);
+  font-style: italic;
+  line-height: 24px;
+}
+
+.news-state.news-error {
+  color: var(--itg-color-error);
+  font-style: normal;
+  font-weight: 600;
+}

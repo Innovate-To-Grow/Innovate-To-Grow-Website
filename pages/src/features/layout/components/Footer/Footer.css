@@ -1,0 +1,370 @@
+/* Moved verbatim from the CMS "layout-footer" stylesheet. */
+
+/* ==========================================================================
+   Site footer (Footer.tsx, #footer-root), as on innovatetogrow.ucmerced.edu (2026)
+   1. On white: centred row of outlined uppercase CTA buttons (gold / navy
+      2px borders) and the centred contact line.
+   2. Grey band (#e5e5e5, 50px below): four centred columns, h2 20px/30px,
+      14px links; the address block with round navy social icons.
+   3. Navy copyright bar (#142d52) with a 3px #d9a928 rule, 40px below.
+   ========================================================================== */
+
+.site-footer {
+  width: 100%;
+  margin-top: auto;
+  font-family: var(--itg-font-family-body);
+  color: var(--itg-color-primary);
+}
+
+.footer-container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(var(--itg-page-max-width) + 2 * var(--itg-page-gutter, 24px));
+  margin: 0 auto;
+  padding: 0 var(--itg-page-gutter, 24px);
+}
+
+.footer-error {
+  margin: 24px 0;
+  padding: 14px 16px;
+  border-left: 4px solid var(--itg-color-error);
+  background: var(--itg-color-bg-panel);
+  color: var(--itg-color-error);
+  font-weight: 600;
+}
+
+/* ---------- 1. CTA row + contact line (on white) ---------- */
+.site-footer-cta {
+  background: var(--itg-color-white);
+  padding: 10px 0 0;
+}
+
+.site-footer-cta-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-cta-item {
+  display: flex;
+  margin: 5px 10px 5px 5px;
+  padding-top: 16px;
+}
+
+.site-footer-cta-link {
+  box-sizing: border-box;
+  display: inline-block;
+  padding: 14px 28px;
+  border: 2px solid var(--itg-color-primary);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
+}
+
+.site-footer-cta-link.is-gold {
+  border-color: var(--itg-color-accent-bright);
+}
+
+.site-footer-cta-link:hover,
+.site-footer-cta-link:focus-visible {
+  background: var(--itg-color-primary);
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+.site-footer-cta-link.is-gold:hover,
+.site-footer-cta-link.is-gold:focus-visible {
+  background: var(--itg-color-accent-bright);
+  border-color: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+/* "For any questions or comments, please send an email to: …" */
+.site-footer-cta-contact {
+  margin-top: 36px;
+  color: var(--itg-color-text);
+  font-size: 16px;
+  line-height: 24px;
+  text-align: center;
+}
+
+.site-footer-cta-contact p {
+  margin: 0 0 12px;
+}
+
+.site-footer-cta-contact a {
+  color: var(--itg-color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.site-footer-cta-contact a:hover {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+/* Space between the white area and the grey band (the reference's #footer margin) */
+.site-footer-cta + .footer-main,
+.site-footer-cta + .footer-bottom {
+  margin-top: 50px;
+}
+
+/* ---------- 2. Grey band: centred columns ---------- */
+.footer-main {
+  background: var(--itg-color-footer-bg);
+  color: var(--itg-color-primary);
+  padding: 32px 14px 40px;
+}
+
+.footer-main-inner {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.footer-columns {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  line-height: 21px;
+  text-align: center;
+}
+
+/* 330px columns + 12px right padding, as on the reference */
+.footer-column {
+  flex: 1 1 23%;
+  max-width: 342px;
+  padding-right: 12px;
+}
+
+.footer-column-title {
+  margin: 20px 0 0;
+  padding: 0;
+  color: var(--itg-color-primary);
+  font-family: var(--itg-font-family-body);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 30px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.footer-links {
+  margin: 0;
+  padding: 0 0 12px;
+  list-style: none;
+}
+
+.footer-links li {
+  line-height: 24px;
+}
+
+.footer-links a {
+  color: var(--itg-color-primary);
+  text-decoration: none;
+}
+
+.footer-links a:hover,
+.footer-links a:focus-visible {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+}
+
+/* Address block: bold first line, 14px / 21px */
+.footer-column--address {
+  margin-top: 20px;
+}
+
+.footer-column__body {
+  color: var(--itg-color-primary);
+}
+
+.footer-column__body p {
+  margin: 0 0 12px;
+}
+
+.footer-column__body strong {
+  font-weight: 700;
+}
+
+.footer-column__body a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Round navy social icons, 40px, white glyph */
+.footer-social {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 7px 0 12px;
+  list-style: none;
+}
+
+.footer-social-link {
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  font-size: 22px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.footer-social-link svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+.footer-social-link:hover,
+.footer-social-link:focus-visible {
+  background: var(--itg-color-primary-hover);
+  color: var(--itg-color-white);
+}
+
+/* A social link without a known icon keeps its name as text. */
+.footer-social-link.is-text {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  text-decoration: underline;
+}
+
+/* ---------- 3. Copyright bar ---------- */
+.footer-bottom {
+  padding: 16px;
+  background: var(--itg-color-footer-bar);
+  border-top: 3px solid var(--itg-color-footer-bar-rule);
+  color: var(--itg-color-white);
+  font-size: 14px;
+  line-height: 21px;
+  text-align: center;
+}
+
+.footer-bottom > .footer-container {
+  padding: 0;
+}
+
+/* Navy bar: light text, whatever the global heading and link colours are. */
+.footer-bottom :where(a, h1, h2, h3, h4, h5, h6, p) {
+  color: inherit;
+}
+
+.footer-bottom :focus-visible {
+  outline-color: var(--itg-color-white);
+}
+
+.footer-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: 0 10px;
+  list-style: none;
+}
+
+.footer-meta li {
+  padding: 10px;
+  color: var(--itg-color-white);
+  line-height: 24px;
+}
+
+.footer-meta a {
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+.footer-meta a:hover,
+.footer-meta a:focus-visible {
+  color: var(--itg-color-white);
+  text-decoration: underline;
+}
+
+/* ---------- Phones: columns stacked and centred ---------- */
+@media (max-width: 979px) {
+  .footer-column {
+    flex-basis: 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer-container {
+    padding: 0 var(--itg-page-gutter-mobile, 20px);
+  }
+
+  .footer-main {
+    padding: 36px 24px 40px;
+  }
+
+  .footer-columns {
+    padding-top: 20px;
+  }
+
+  .footer-column {
+    flex: 1 1 100%;
+    max-width: 342px;
+    padding-right: 12px;
+  }
+
+  /* 44px touch targets for the stacked links */
+  .footer-links li {
+    line-height: 20px;
+  }
+
+  .footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .footer-social-link {
+    width: 44px;
+    height: 44px;
+  }
+
+  .footer-meta li {
+    padding: 0 10px;
+  }
+
+  .footer-meta a,
+  .footer-meta-copyright {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Room under the last links for the floating chat and accessibility buttons (56px + 16px). */
+  .footer-bottom {
+    padding-bottom: 88px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-footer-cta-link {
+    transition: none;
+  }
+}
