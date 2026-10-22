@@ -62,5 +62,8 @@ class RetireContentStylesheetsMigrationTests(TestCase):
         migration.retire(global_apps, None)
 
         css = self.client.get("/layout/styles.css").content.decode()
-        self.assertEqual(css, render_tokens_css(SiteSettings.load().design_tokens))
+        # PostgreSQL's jsonb does not keep the tokens' key order, so compare the declarations as a set.
+        self.assertEqual(
+            sorted(css.splitlines()), sorted(render_tokens_css(SiteSettings.load().design_tokens).splitlines())
+        )
         self.assertNotIn(".cms-rich-text", css)
