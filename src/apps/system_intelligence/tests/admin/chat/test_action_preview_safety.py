@@ -64,12 +64,14 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
         frames = re.findall(
-            r'<iframe class="si-action-preview-frame"[^>]*src="([^"]+)"\s+data-preview-nonce="([0-9a-f]+)"', html
+            r'<iframe class="si-action-preview-frame"[^>]*data-src="([^"]+)"\s+data-preview-nonce="([0-9a-f]+)"', html
         )
         self.assertEqual(len(frames), 3)
         for src, nonce in frames:
             self.assertEqual(src, f"https://frontend.example/_block-preview?nonce={nonce}")
         self.assertEqual(len({nonce for _, nonce in frames}), 3)
+        # No frame loads before action-preview.js has its listeners in place.
+        self.assertNotRegex(html, r"<iframe[^>]*\ssrc=\"")
 
         data = json.loads(re.search(r'<script id="si-action-preview-data"[^>]*>(.*?)</script>', html, re.S).group(1))
         self.assertEqual([entry["nonce"] for entry in data["blocks"]], [nonce for _, nonce in frames])
@@ -89,6 +91,7 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
         self.assertNotContains(response, '<strong onclick="alert(1)">')
         self.assertNotContains(response, "<script>alert")
         self.assertNotContains(response, "/layout/styles.css")
+        self.assertEqual(data["pageCssClass"], "")
         # The script carries the page's CSP nonce, the same one as its inline <style>.
         style_nonce = re.search(r'<style nonce="([^"]*)">', html).group(1)
         self.assertRegex(html, rf'<script src="[^"]*system_intelligence/js/action-preview\.js" nonce="{style_nonce}">')

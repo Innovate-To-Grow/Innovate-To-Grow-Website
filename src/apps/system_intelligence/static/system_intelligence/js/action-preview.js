@@ -26,7 +26,7 @@
 
     function frameOrigin(frame) {
         try {
-            return new URL(frame.getAttribute('src') || '', window.location.href).origin;
+            return new URL(frame.getAttribute('data-src') || '', window.location.href).origin;
         } catch (e) {
             return '';
         }
@@ -66,7 +66,7 @@
             }
         });
 
-        // The ready message can arrive before this listener on a cached frame.
+        // Fallback for a ready message that never arrives.
         frame.addEventListener('load', function () {
             window.setTimeout(function () {
                 if (sent) return;
@@ -74,5 +74,9 @@
                 sendBlock(frame, nonce);
             }, 300);
         });
+
+        // The frame starts loading only now, so neither its ready message nor its load event can
+        // arrive before the listeners above exist.
+        frame.setAttribute('src', frame.getAttribute('data-src') || '');
     });
 })();

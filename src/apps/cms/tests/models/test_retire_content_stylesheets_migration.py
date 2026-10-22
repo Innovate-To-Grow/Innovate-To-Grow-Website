@@ -47,6 +47,17 @@ class RetireContentStylesheetsMigrationTests(TestCase):
         self.assertEqual(after, before)
         self.assertFalse(StyleSheet.objects.get(name="page-home").is_active)
 
+    def test_reverse_accepts_the_note_saved_with_crlf(self):
+        migration.retire(global_apps, None)
+        sheet = StyleSheet.objects.get(name="cms-pages")
+        note, original = sheet.description.split("\n", 1)
+        StyleSheet.objects.filter(pk=sheet.pk).update(description=f"{note}\r\n{original}")
+        migration.restore(global_apps, None)
+
+        sheet.refresh_from_db()
+        self.assertTrue(sheet.is_active)
+        self.assertEqual(sheet.description, original)
+
     def test_the_served_stylesheet_is_only_the_design_tokens(self):
         migration.retire(global_apps, None)
 

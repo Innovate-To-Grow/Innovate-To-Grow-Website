@@ -53,14 +53,14 @@
       html[data-block-preview] #root:empty::before { display: none; }
       html[data-block-preview] .userway_buttons_wrapper { display: none !important; }
       /* Isolated routes mount no header or footer: their roots take no space,
-         whatever the CMS-managed sheets reserve for them. */
+         whatever the site stylesheets reserve for them. */
       html[data-block-preview] #menu-root,
       html[data-block-preview] #footer-root { display: none; }
       /* The wrappers above are plain blocks here, so the first heading's top margin would
          collapse up through them and push the whole page down; keep it inside #main. */
       html[data-block-preview] #main { display: flow-root; }
     </style>
-    <!-- Server-managed design tokens + stylesheets. Render-blocking so tokens
+    <!-- Server-managed design tokens (Site Settings). Render-blocking so tokens
          resolve before first paint of the styled page; the inline spinner above
          already covers the pre-stylesheet paint window. -->
     <link rel="stylesheet" href="/api/layout/styles.css?v=8">

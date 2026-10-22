@@ -135,6 +135,8 @@ def action_full_preview_view(request, action_id):
 
 def _preview_response(request, action, page, blocks, banner_text, empty_text):
     items = preview_items(blocks)
+    # A proposal can carry a non-string class (the payload keeps what the model sent); the frame wants text.
+    page_css_class = page.get("page_css_class")
     return TemplateResponse(
         request,
         "admin/system_intelligence/system_intelligence_action_preview.html",
@@ -143,7 +145,7 @@ def _preview_response(request, action, page, blocks, banner_text, empty_text):
             "page": page,
             "preview_items": items,
             "preview_payload": {
-                "pageCssClass": page.get("page_css_class") or "",
+                "pageCssClass": page_css_class if isinstance(page_css_class, str) else "",
                 "blocks": [{"nonce": item["nonce"], "block": item["block"]} for item in items],
             },
             "frontend_url": (getattr(settings, "FRONTEND_URL", "") or "").rstrip("/"),

@@ -82,7 +82,7 @@
           <section class="si-action-preview-block">
             <div class="si-action-preview-block-meta">{{ item.label }}</div>
             <iframe class="si-action-preview-frame" title="Preview: {{ item.label }}"
-                    src="{{ frontend_url }}/_block-preview?nonce={{ item.nonce }}"
+                    data-src="{{ frontend_url }}/_block-preview?nonce={{ item.nonce }}"
                     data-preview-nonce="{{ item.nonce }}"></iframe>
           </section>
         {% endfor %}
