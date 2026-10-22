@@ -110,8 +110,12 @@ def changed_settings(sheet, seed: dict | None) -> list[str]:
 def sheet_status(sheet, seeds: dict[str, dict]) -> str:
     seed = seeds.get(sheet.name)
     if seed is not None and sheet.name in RETIRED_SHEETS:
-        # Switched back on, it is served again in front of the bundle's copy.
-        return STATUS_SETTINGS_CHANGED if sheet.is_active else STATUS_RETIRED
+        if not sheet.is_active:
+            return STATUS_RETIRED
+        # Switched back on, it is served again in front of the bundle's copy; show any CSS edit too.
+        if css_checksum(sheet.css) != css_checksum(seed.get("css", "")):
+            return STATUS_EDITED
+        return STATUS_SETTINGS_CHANGED
     if seed is None:
         # A backup copy an admin re-activated (the documented way to switch back) is served
         # CSS the seed does not hold, so it counts as unmanaged.

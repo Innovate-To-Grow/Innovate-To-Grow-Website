@@ -8,6 +8,7 @@ from django.test import TestCase
 from apps.cms.models import StyleSheet
 from apps.cms.services.styles.drift import (
     RETIRED_SHEETS,
+    STATUS_EDITED,
     STATUS_IN_SYNC,
     STATUS_LABELS,
     STATUS_RETIRED,
@@ -57,6 +58,17 @@ class RetiredSheetDriftTests(TestCase):
 
         self.assertEqual(sheet_status(self.sheet, self.seeds), STATUS_SETTINGS_CHANGED)
         self.assertEqual(changed_settings(self.sheet, self.seeds["layout-menu"]), ["is_active"])
+        self.assertEqual(drifted_sheets(drift_report()), ["layout-menu"])
+
+    def test_a_retired_sheet_switched_back_on_with_edited_css_shows_the_edit(self):
+        self.sheet.is_active = True
+        self.sheet.css += "\n.admin-edit { color: red; }\n"
+        self.sheet.save()
+
+        entry = next(entry for entry in drift_report()["sheets"] if entry["name"] == "layout-menu")
+        self.assertEqual(entry["status"], STATUS_EDITED)
+        self.assertEqual(entry["changed_settings"], ["is_active"])
+        self.assertIn("+.admin-edit { color: red; }", entry["diff"])
         self.assertEqual(drifted_sheets(drift_report()), ["layout-menu"])
 
     def test_deleting_a_retired_sheet_is_not_drift(self):

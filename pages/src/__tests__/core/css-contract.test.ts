@@ -31,9 +31,12 @@ const CONTRACT_SELECTORS = listCss(CONTRACT_DIR).flatMap((file) => {
 });
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const isStyled = (className: string) => {
+// :not()/:has() arguments name an element the rule does not style (one level of nesting covers
+// :not(:has(.x))); :is()/:where() arguments do style the subject, so they stay.
+const withoutUnstyledArguments = (selector: string) => selector.replace(/:(?:not|has)\((?:[^()]|\([^()]*\))*\)/g, '');
+const isStyled = (className: string, selectors: string[] = CONTRACT_SELECTORS) => {
   const pattern = new RegExp(`\\.${escapeRegExp(className)}(?![\\w-])`);
-  return CONTRACT_SELECTORS.some((selector) => pattern.test(selector));
+  return selectors.some((selector) => pattern.test(withoutUnstyledArguments(selector)));
 };
 
 describe('content contract', () => {
@@ -51,5 +54,10 @@ describe('content contract', () => {
   it('matches a class only as a whole token', () => {
     expect(isStyled('itg-btn')).toBe(true);
     expect(isStyled('itg-bt')).toBe(false);
+  });
+
+  it('does not count a class named only inside :not() or :has()', () => {
+    const selectors = ['.a > :first-child:not(:has(.x))', '.b:has(.y)', ':is(.z) p'];
+    expect(['x', 'y', 'z', 'a', 'b'].map((name) => isStyled(name, selectors))).toEqual([false, false, true, true, true]);
   });
 });

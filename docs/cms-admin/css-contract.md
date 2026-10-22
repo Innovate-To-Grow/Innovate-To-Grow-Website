@@ -44,6 +44,6 @@ equal specificity. Add rules to the file that owns them instead of reordering th
 
 ## Classes with no style
 
-`docs/cms-admin/legacy-event-pages-cms-html.md` also uses `ea-back-link`, `ea-subtitle`, `ea-text`,
-`event-btn-blue` and `event-buttons`. The site has had no rule for them since the UC Merced subsite restyle
-(October 2026). They are harmless hooks: the text renders with the surrounding prose styles.
+`docs/cms-admin/legacy-event-pages-cms-html.md` also uses `ea-back-link`, `ea-subtitle`, `ea-text` and
+`event-btn-blue`. The site has had no rule for them since the UC Merced subsite restyle (October 2026). They
+are harmless hooks: the text renders with the surrounding prose styles.

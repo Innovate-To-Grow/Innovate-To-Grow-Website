@@ -387,6 +387,11 @@ description says where its CSS lives now. Editing a row changes nothing. Switchi
 before the bundle, which still wins wherever both set the same property. Two read-only commands show where a
 database stands.
 
+A migration that retires stylesheet rows ships in a release *after* the frontend that bundles their CSS is live
+in production. Deploy Production updates the backend first, so a run that carried both would leave the live
+frontend without those rules until its own deploy finished. Do not cancel the run that carries the frontend in
+favour of a later run that carries the migration.
+
 ### Drift report
 
 ```bash
@@ -413,7 +418,7 @@ change what the site serves:
 
 - an active sheet whose CSS differs from the seed or is not in it;
 - a seed sheet whose active flag or order was changed (deactivating a seed sheet counts);
-- a retired sheet that was switched back on (reported as `settings_changed`);
+- a retired sheet that was switched back on (reported as `settings_changed`, or `edited` when its CSS changed too);
 - an active seed sheet that was deleted (a re-sync creates it again and serves it).
 
 Sheets that are inactive in both the seed and the database, inactive unmanaged sheets, inactive backup
