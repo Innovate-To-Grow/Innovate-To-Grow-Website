@@ -8,6 +8,7 @@ from apps.cms.models import StyleSheet
 from apps.cms.services.styles.drift import load_seed_sheets
 
 migration = importlib.import_module("apps.cms.migrations.0026_retire_component_stylesheets")
+content_migration = importlib.import_module("apps.cms.migrations.0027_retire_content_stylesheets")
 
 CONTENT_SHEETS = {"global", "cms-blocks", "cms-pages", "page-home"}
 
@@ -15,7 +16,8 @@ CONTENT_SHEETS = {"global", "cms-blocks", "cms-pages", "page-home"}
 class RetireComponentStylesheetsMigrationTests(TestCase):
     def setUp(self):
         cache.clear()
-        # The migrated test database is already past 0026; start from the state before it.
+        # The migrated test database is already past 0027; start from the state before 0026.
+        content_migration.restore(global_apps, None)
         migration.restore(global_apps, None)
 
     def _active(self):

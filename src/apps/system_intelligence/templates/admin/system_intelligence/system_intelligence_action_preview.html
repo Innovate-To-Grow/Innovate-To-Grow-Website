@@ -1,10 +1,9 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page.title|default:action.title }} Preview</title>
-  <link rel="stylesheet" href="/layout/styles.css?v=8">
   <style nonce="{{ request.csp_nonce }}">
     :root {
       color-scheme: light;
@@ -54,11 +53,6 @@
       letter-spacing: 0;
       text-transform: uppercase;
     }
-    .si-action-preview-empty {
-      margin: 0;
-      color: var(--md-sys-color-on-surface-variant);
-      font-style: italic;
-    }
     .si-action-preview-empty-state {
       margin: 0;
       padding: 18px;
@@ -67,13 +61,13 @@
       color: var(--md-sys-color-on-surface-variant);
       background: var(--md-sys-color-surface-container);
     }
-    .si-action-preview-shell img,
-    .si-action-preview-shell iframe,
-    .si-action-preview-shell table {
-      max-width: 100%;
-    }
-    .si-action-preview-shell iframe {
+    /* Each block renders in the public site's /_block-preview, which reports its height. */
+    .si-action-preview-frame {
+      display: block;
+      width: 100%;
+      height: 120px;
       border: 0;
+      background: #fff;
     }
   </style>
 </head>
@@ -82,13 +76,24 @@
     <div class="si-action-preview-banner">
       {{ banner_text }}
     </div>
-    <main class="{{ page.page_css_class|default:'cms-page' }}">
+    <main>
       {% if has_preview_blocks %}
-        {{ block_html }}
+        {% for item in preview_items %}
+          <section class="si-action-preview-block">
+            <div class="si-action-preview-block-meta">{{ item.label }}</div>
+            <iframe class="si-action-preview-frame" title="Preview: {{ item.label }}"
+                    src="{{ frontend_url }}/_block-preview?nonce={{ item.nonce }}"
+                    data-preview-nonce="{{ item.nonce }}"></iframe>
+          </section>
+        {% endfor %}
       {% else %}
         <p class="si-action-preview-empty-state">{{ empty_text }}</p>
       {% endif %}
     </main>
   </div>
+  {% if has_preview_blocks %}
+    {{ preview_payload|json_script:"si-action-preview-data" }}
+    <script src="{% static 'system_intelligence/js/action-preview.js' %}" nonce="{{ request.csp_nonce }}"></script>
+  {% endif %}
 </body>
 </html>

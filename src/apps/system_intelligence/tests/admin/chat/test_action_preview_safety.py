@@ -1,3 +1,7 @@
+import json
+import re
+
+from django.test import override_settings
 from django.urls import reverse
 
 from apps.cms.models import CMSBlock, CMSPage
@@ -7,7 +11,8 @@ from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBas
 
 
 class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
-    def test_action_preview_sanitizes_html_fragments_and_escapes_labels(self):
+    @override_settings(FRONTEND_URL="https://frontend.example/")
+    def test_action_preview_frames_each_block_and_posts_sanitized_data(self):
         page = CMSPage.objects.create(slug="security", route="/security", title="Security", status="draft")
         CMSBlock.objects.create(page=page, block_type="rich_text", sort_order=0, data={"body_html": "<p>Old</p>"})
 
@@ -42,7 +47,7 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
                             "items": [
                                 {
                                     "question": "FAQ",
-                                    "answer": '<p>Answer</p><a href="javascript:evil()">bad</a>',
+                                    "answer_html": '<p>Answer</p><a href="javascript:evil()">bad</a>',
                                 }
                             ]
                         },
@@ -57,15 +62,36 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<strong>safe</strong>", html=True)
-        self.assertContains(response, "Section Body")
-        self.assertContains(response, "Answer")
-        self.assertContains(response, "&lt;strong onclick=&quot;alert(1)&quot;&gt;Unsafe Heading&lt;/strong&gt;")
+        html = response.content.decode()
+        frames = re.findall(
+            r'<iframe class="si-action-preview-frame"[^>]*src="([^"]+)"\s+data-preview-nonce="([0-9a-f]+)"', html
+        )
+        self.assertEqual(len(frames), 3)
+        for src, nonce in frames:
+            self.assertEqual(src, f"https://frontend.example/_block-preview?nonce={nonce}")
+        self.assertEqual(len({nonce for _, nonce in frames}), 3)
+
+        data = json.loads(re.search(r'<script id="si-action-preview-data"[^>]*>(.*?)</script>', html, re.S).group(1))
+        self.assertEqual([entry["nonce"] for entry in data["blocks"]], [nonce for _, nonce in frames])
+        rich_text, section_group, faq = (entry["block"] for entry in data["blocks"])
+        self.assertEqual(rich_text["block_type"], "rich_text")
+        self.assertIn("<strong>safe</strong>", rich_text["data"]["body_html"])
+        self.assertIn("Section Body", section_group["data"]["sections"][0]["body_html"])
+        self.assertIn("Answer", faq["data"]["items"][0]["answer_html"])
+        for block in (rich_text, section_group, faq):
+            serialized = json.dumps(block)
+            self.assertNotIn("<script", serialized)
+            self.assertNotIn("javascript:", serialized)
+
+        # Labels and plain-text fields never reach the markup as HTML; the frames render the blocks.
         self.assertContains(response, "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;")
-        self.assertNotContains(response, "<script")
         self.assertNotContains(response, '<img src=x onerror="alert(1)">')
         self.assertNotContains(response, '<strong onclick="alert(1)">')
-        self.assertNotContains(response, "javascript:")
+        self.assertNotContains(response, "<script>alert")
+        self.assertNotContains(response, "/layout/styles.css")
+        # The script carries the page's CSP nonce, the same one as its inline <style>.
+        style_nonce = re.search(r'<style nonce="([^"]*)">', html).group(1)
+        self.assertRegex(html, rf'<script src="[^"]*system_intelligence/js/action-preview\.js" nonce="{style_nonce}">')
 
     def test_action_preview_rejects_unsafe_link_list_hrefs(self):
         page = CMSPage.objects.create(slug="links", route="/links", title="Links", status="draft")

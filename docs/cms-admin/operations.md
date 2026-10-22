@@ -375,20 +375,17 @@ Available through the Member admin:
 
 ## Stylesheets and design tokens
 
-The public site's CSS currently comes from the **Style Sheets** rows in Django admin (CMS → Style Sheets),
-seeded from `src/apps/cms/migrations/data/stylesheets.json`, plus the design tokens in Site Settings.
-Data migrations re-apply that seed to existing databases, and they overwrite whatever an admin changed in
-those rows without warning. Two read-only commands show where a database stands.
+The public site's CSS ships with the frontend bundle: the header, footer and page styles live next to the
+components that render them under `pages/src`, and the styles CMS content relies on live in
+`pages/src/styles/contract/` (see [CSS contract](css-contract.md)). Change CSS in the repository.
+`/api/layout/styles.css` serves only the design tokens from Site Settings.
 
-The rules of the ten component sheets (`layout-container`, `layout-menu`, `layout-footer`, `auth`,
-`page-news`, `page-projects`, `page-events`, `page-subscribe`, `page-misc`, `maintenance`) ship with the
-frontend bundle, in CSS files next to the components that render them under `pages/src`. Migration
-`cms.0026` switched those rows off (their description says where the CSS lives now), so editing them in the
-admin changes nothing: change the CSS file in the repository instead. Switching one back on serves it again
-before the bundle, which then wins wherever both set the same property. The content sheets (`global`,
-`cms-blocks`, `cms-pages`, `page-home`) ship with the bundle too, in `pages/src/styles/contract/` (see
-[CSS contract](css-contract.md)). Their rows stay active until a migration retires them; the bundle loads after
-`/api/layout/styles.css`, so at equal specificity it wins over an admin edit to one of those rows.
+The **Style Sheets** rows in Django admin (CMS → Style Sheets), seeded from
+`src/apps/cms/migrations/data/stylesheets.json`, are what the site used to serve. Migrations `cms.0026` (the ten
+component sheets) and `cms.0027` (`global`, `cms-blocks`, `cms-pages`, `page-home`) switched them off; each
+description says where its CSS lives now. Editing a row changes nothing. Switching one back on serves it again
+before the bundle, which still wins wherever both set the same property. Two read-only commands show where a
+database stands.
 
 ### Drift report
 
@@ -408,7 +405,7 @@ Each sheet gets one status. The comparison ignores line endings and trailing whi
 | `settings_changed` | the CSS matches, but the active flag or the order differs from the seed |
 | `unmanaged` | the sheet is not in the seed, including a `*-pre-redesign` / `*-pre-audit-fixes` copy that was switched back on |
 | `backup_copy` | an inactive `*-pre-redesign` / `*-pre-audit-fixes` copy left by a migration |
-| `retired` | a component sheet that migration `cms.0026` switched off; its CSS and order no longer matter |
+| `retired` | a sheet that migration `cms.0026` or `cms.0027` switched off; its CSS and order no longer matter |
 | `missing` (table only) | a seed sheet that is not in the database |
 
 The command exits with status 1 when the site serves CSS the seed lacks, or a re-sync migration would

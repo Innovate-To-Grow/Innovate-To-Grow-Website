@@ -5,8 +5,8 @@ The seed is ``migrations/data/stylesheets.json``, the Django fixture that migrat
 (CRLF to LF, trailing whitespace stripped), so a textarea save that only changed line
 endings is not reported as an edit.
 
-Migration 0026 switched off the component sheets (``RETIRED_SHEETS``): the frontend bundle
-ships their CSS, so for them "off" is the expected state, whatever the seed says.
+Migrations 0026 and 0027 switched off every seed sheet (``RETIRED_SHEETS``): the frontend
+bundle ships their CSS, so for them "off" is the expected state, whatever the seed says.
 """
 
 import difflib
@@ -22,9 +22,13 @@ from apps.cms.models import CMSPage, StyleSheet
 
 SEED_PATH = Path(__file__).resolve().parents[2] / "migrations" / "data" / "stylesheets.json"
 BACKUP_SUFFIXES = ("-pre-redesign", "-pre-audit-fixes")
-# Kept equal to RETIRED_SHEETS in migration 0026 (a test checks it).
+# Kept equal to RETIRED_SHEETS in migrations 0026 and 0027 (a test checks it).
 RETIRED_SHEETS = frozenset(
     {
+        "global",
+        "cms-blocks",
+        "cms-pages",
+        "page-home",
         "layout-container",
         "layout-menu",
         "layout-footer",

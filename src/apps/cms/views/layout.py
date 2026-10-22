@@ -23,7 +23,7 @@ LAYOUT_CACHE_KEY = "layout:data"
 # Bump suffix (:v2, :v3, ...) whenever the assembled stylesheet gains or loses a
 # non-token section. This retires existing cached blobs instantly on deploy
 # instead of waiting the TTL out.
-LAYOUT_STYLESHEET_CACHE_KEY = "layout:stylesheet:v9"
+LAYOUT_STYLESHEET_CACHE_KEY = "layout:stylesheet:v10"
 LAYOUT_CACHE_TIMEOUT = 600
 
 # Test-only alias: existing tests import the historical name. Remove it once they import
