@@ -61,6 +61,18 @@ class BuildSlotRowsTest(TestCase):
         self.assertFalse(rows[0]["is_presenting"])
         self.assertEqual(rows[0]["team_number"], "CAP-1")
 
+    def test_skips_half_filled_and_non_numeric_rows(self):
+        records = [
+            {"Track": 1, "Order": "", "Class": "CAP", "Team#": "CAP-1"},
+            {"Track": "", "Order": 2, "Class": "CAP", "Team#": "CAP-2"},
+            {"Track": 1, "Order": "TBD", "Class": "CAP", "Team#": "CAP-3"},
+        ]
+        self.assertEqual(build_slot_rows(records), [])
+
+    def test_blank_track_and_order_break_row_is_dropped(self):
+        records = [{"Track": "", "Order": "", "Class": "CAP", "Team Name": "Break"}]
+        self.assertEqual(build_slot_rows(records), [])
+
     def test_skips_non_break_without_team_number(self):
         records = [
             {
