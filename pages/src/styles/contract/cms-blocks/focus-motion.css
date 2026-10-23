@@ -1,0 +1,38 @@
+/* Moved verbatim from the CMS "cms-blocks" stylesheet. */
+
+/* ==========================================================================
+   Focus and motion
+   ========================================================================== */
+
+.cms-prose :where(a):focus-visible,
+.cms-proposal-summary:focus-visible,
+.cms-navigation-grid-title a:focus-visible,
+.cms-link-list-item a:focus-visible,
+a.cms-sponsor-card:focus-visible,
+a.submission-button:focus-visible,
+.peh-btn:focus-visible,
+.event-btn:focus-visible,
+.home-btn:focus-visible,
+.capstone-nav-btn:focus-visible,
+.projects-hub-nav-btn:focus-visible,
+.submission-nav-btn:focus-visible {
+  outline: 2px solid var(--itg-color-secondary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cms-page-skeleton,
+  .cms-live-preview-modal-dot {
+    animation: none;
+  }
+
+  .peh-btn,
+  .event-btn,
+  .home-btn,
+  .capstone-nav-btn,
+  .projects-hub-nav-btn,
+  .submission-nav-btn,
+  a.submission-button {
+    transition: none;
+  }
+}

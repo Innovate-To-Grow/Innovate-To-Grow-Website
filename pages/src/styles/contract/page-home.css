@@ -1,0 +1,130 @@
+/* Moved verbatim from the CMS "page-home" stylesheet. */
+
+/* ==========================================================================
+   Home page: classes for home-page body_html blocks (.home-*)
+   The live CMS homepage uses the .peh-* layout in the cms-pages sheet; these
+   classes stay available for alternative homepage content (e.g. a pre-event
+   homepage) and use the same reference type: h4-style section headings,
+   16px / 24px text, semibold underlined links. Buttons (.home-btn) are drawn
+   by the cms-blocks sheet.
+   ========================================================================== */
+
+.home-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 40vh;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-body);
+  font-style: italic;
+}
+
+.home-loading::before {
+  content: '';
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--itg-color-border);
+  border-top-color: var(--itg-color-primary);
+  border-radius: 50%;
+  animation: itg-spin 0.8s linear infinite;
+}
+
+/* Hero: page title + subtitle (the theme's h1 and .lead) */
+.home-hero {
+  margin: 0;
+  padding: 0;
+}
+
+.home-hero-title {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.home-hero-subtitle {
+  margin: 0 0 24px;
+  padding: 0 0 1.5em;
+  border-bottom: 1px solid var(--itg-color-primary);
+  color: var(--itg-color-secondary);
+  font-size: var(--itg-font-size-lead);
+  line-height: 28px;
+}
+
+/* Quick links: a row of outlined buttons */
+.home-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 15px;
+  margin: 21px 0 0;
+  padding-left: 5px;
+}
+
+/* Sections: the theme's h4 */
+.home-section-title {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: 30px;
+}
+
+.home-text {
+  margin: 0 0 12px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.home-text a,
+.home-link,
+.home-event-links a {
+  color: var(--itg-color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.home-text a:hover,
+.home-text a:focus,
+.home-link:hover,
+.home-link:focus,
+.home-event-links a:hover,
+.home-event-links a:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.home-about,
+.home-event-info,
+.home-schedule-section,
+.home-projects-section {
+  margin: 0;
+}
+
+.home-cta-row,
+.home-event-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 15px;
+  margin-top: 21px;
+  padding-left: 5px;
+}
+
+/* Notice: the theme's block (#f7f7f7, 8px #0f5479 top rule, 20px padding) */
+.home-notice {
+  margin: 0;
+  padding: 20px;
+  border-top: 8px solid var(--itg-color-sidebar-rule);
+  border-radius: 0;
+  background: var(--itg-color-bg-panel);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-loading::before {
+    animation: none;
+  }
+}

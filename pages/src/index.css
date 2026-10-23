@@ -1,5 +1,5 @@
+@import './styles/contract/index.css';
 @import './assets/shared.css';
-@import './styles/contract/legacy-content.css';
 
 * {
   box-sizing: border-box;

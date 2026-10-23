@@ -1,0 +1,116 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Phones
+   ========================================================================== */
+
+@media (max-width: 992px) {
+  .itg-btn {
+    min-height: 44px;
+  }
+
+  .itg-btn-text,
+  .itg-btn-danger:not(.itg-btn-outline) {
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .itg-btn-cta {
+    min-height: 44px;
+  }
+
+  .itg-btn-lg {
+    min-height: 48px;
+  }
+
+  .itg-back-link {
+    min-height: 44px;
+    margin-bottom: 8px;
+  }
+
+  /* Text links next to the empty-state buttons get the same 44px target. */
+  .itg-empty-state-actions > :where(a, button):not(.itg-btn) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .itg-input,
+  .itg-select {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  textarea.itg-input {
+    height: auto;
+  }
+
+  .itg-pagination-link {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 768px) {
+  :where(h1) { font-size: var(--itg-font-size-h1-mobile); }
+  :where(h2) { font-size: var(--itg-font-size-h2-mobile); }
+  :where(h3) { font-size: var(--itg-font-size-h3-mobile); }
+
+  .itg-page-title {
+    font-size: var(--itg-font-size-h1-mobile);
+  }
+
+  .itg-section-title,
+  .itg-content h2 {
+    font-size: var(--itg-font-size-h2-mobile);
+  }
+
+  .itg-subsection-title,
+  .itg-section-header,
+  .itg-content h3 {
+    font-size: var(--itg-font-size-h3-mobile);
+  }
+
+  .itg-lead {
+    font-size: var(--itg-font-size-lead-mobile);
+  }
+
+  .itg-panel,
+  .itg-rule-panel {
+    padding: 16px;
+  }
+
+  .itg-well {
+    padding: 14px;
+  }
+
+  .itg-grid-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .itg-meta-label {
+    width: 96px;
+  }
+
+  .itg-content table {
+    font-size: var(--itg-font-size-table-mobile);
+  }
+
+  .itg-content th,
+  .itg-content td {
+    padding: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itg-btn,
+  .itg-card,
+  .itg-input,
+  .itg-select {
+    transition: none;
+  }
+
+  .itg-loading::before {
+    animation: none;
+  }
+}

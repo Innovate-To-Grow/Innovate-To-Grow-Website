@@ -4,8 +4,6 @@
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
 import {mockPastProjects, seedAuthenticatedSession} from '../helpers';
-// The e2e shell answers /layout/styles.css with an empty sheet; the layout checks below need the CMS content sheets.
-import {serveSeedStylesheets} from '../helpers/stylesheets';
 import type {ProjectTableRow} from '../../src/features/projects/api';
 
 const SEMESTERS = ['2026 Spring', '2025 Fall', '2025 Spring', '2024 Fall', '2024 Spring', '2023 Fall'];
@@ -81,7 +79,6 @@ test('saves only the rows a filtered search shows, retrying a failed detail requ
 test('a disabled Save looks disabled and the first save does not move the table being worked on', async ({page}) => {
   const rows = archiveRows();
   await page.setViewportSize({width: 1440, height: 900});
-  await serveSeedStylesheets(page);
   await seedAuthenticatedSession(page);
   await mockPastProjects(page, rows);
   await mockProjectDetails(page, rows);
@@ -122,7 +119,6 @@ test('a disabled Save looks disabled and the first save does not move the table 
 test('a save that lands while the user names the curation does not move the page under them', async ({page}) => {
   const rows = archiveRows();
   await page.setViewportSize({width: 1440, height: 900});
-  await serveSeedStylesheets(page);
   await seedAuthenticatedSession(page);
   await mockPastProjects(page, rows);
   await mockProjectDetails(page, rows, undefined, 1_500);

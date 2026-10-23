@@ -1,0 +1,262 @@
+/* Moved verbatim from the CMS "cms-pages" stylesheet. */
+
+/* ==========================================================================
+   CMS page layouts built from body_html classes, as on the reference site
+   - Event page (.event-page): two columns of h4 + bulleted list + buttons.
+   - Home page (.post-event-home-page): full-width hero photo, two-column
+     rows (text beside a video), program blurb with the logo.
+   Buttons stored in this HTML (.event-btn, .peh-btn) are drawn by the
+   cms-blocks sheet; type, links and lists come from its .cms-prose rules.
+   ========================================================================== */
+
+/* ---- Event page ----
+   Two span6 columns (30px gutter); the text keeps 20px clear of the next
+   column. Headings are the theme's h4 (20px / 30px navy). */
+.event-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 30px;
+  align-items: start;
+}
+
+.event-col {
+  min-width: 0;
+  padding-right: 20px;
+}
+
+.event-col > :first-child {
+  margin-top: 0;
+}
+
+.event-col > :last-child {
+  margin-bottom: 0;
+}
+
+.event-date,
+.event-section-title {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: 30px;
+}
+
+.event-section-title a {
+  color: inherit;
+}
+
+.event-list,
+.event-schedule-list {
+  margin: 0 0 12px var(--itg-list-indent, 25px);
+  padding: 0;
+}
+
+.event-list li,
+.event-schedule-list li {
+  margin: 0;
+}
+
+/* Button row: 21px under the list, indented 5px, 15px apart. */
+.event-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 15px;
+  margin-top: 21px;
+  padding-left: 5px;
+}
+
+.event-map-col {
+  align-items: flex-start;
+}
+
+.event-map-col > a {
+  display: block;
+  width: 100%;
+  text-decoration: none;
+}
+
+.event-map-img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+/* ---- Home page (CMS homepage, .post-event-home-page) ---- */
+.post-event-home-page {
+  row-gap: 48px;
+}
+
+/* Hero photo: full viewport width straight under the menu row, as on the
+   reference home page (the shell puts 16px between the menu and the main
+   column). */
+.post-event-home-page .peh-hero {
+  width: 100vw;
+  max-width: none;
+  margin: -16px 0 0 calc(50% - 50vw);
+}
+
+/* 28px between the photo and the first section. */
+.post-event-home-page > .cms-rich-text:has(.peh-hero) {
+  margin-bottom: -20px;
+}
+
+/* The bleed must not add a horizontal scrollbar where scrollbars take space. */
+html:has(.post-event-home-page .peh-hero) {
+  overflow-x: hidden;
+}
+
+.peh-hero {
+  margin: 0;
+}
+
+.peh-hero-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Section headings on the home page are stored as <h4>: the theme's h4. */
+.post-event-home-page h4 {
+  margin: 0 0 12px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: 30px;
+}
+
+/* Rows: two span6 columns; the text column keeps 20px clear of the video. */
+.peh-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 48px 30px;
+  align-items: start;
+}
+
+.peh-two-col > * {
+  min-width: 0;
+}
+
+.peh-two-col > :first-child:not(:has(.peh-video-container)) {
+  padding-right: 20px;
+}
+
+.peh-two-col > :last-child:not(:has(.peh-video-container)) {
+  padding-left: 20px;
+}
+
+.peh-event-details p {
+  margin: 0 0 12px;
+}
+
+.peh-video-container {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  overflow: hidden;
+  border-radius: 0;
+  background: #000000;
+}
+
+.peh-video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.peh-video-caption {
+  margin: 12px 0 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  font-style: normal;
+  line-height: 24px;
+  text-align: center;
+}
+
+/* Button rows: 15px apart, 26px between rows, indented 5px, 21px under the
+   text or heading above (the theme's .hb__buttons + .sb-col spacing). */
+.peh-btn-row,
+.peh-event-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 15px;
+  padding-left: 5px;
+}
+
+.peh-btn-row {
+  margin-top: 21px;
+}
+
+.peh-event-links {
+  margin-top: 21px;
+}
+
+/* Program blurb: the 60px logo floats left (20px either side) and the text
+   wraps around it. */
+.peh-program {
+  display: flow-root;
+}
+
+.peh-program-logo {
+  float: left;
+  width: 60px;
+  height: 60px;
+  margin: 0 20px;
+}
+
+.peh-program p {
+  margin: 0;
+}
+
+.peh-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 26px 15px;
+}
+
+.peh-contact {
+  color: var(--itg-color-text);
+  text-align: center;
+}
+
+/* Phones (<= 767px): the main column is offset (39px left, 20px right), so
+   the hero bleeds by the left padding instead of half the difference. */
+@media (max-width: 767px) {
+  .post-event-home-page .peh-hero {
+    margin-left: calc(100% + 20px - 100vw);
+  }
+}
+
+@media (max-width: 768px) {
+  .event-grid,
+  .peh-two-col {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .event-col {
+    padding-right: 0;
+  }
+
+  /* Stacked, both columns start at the page's left edge like every other block. */
+  .peh-two-col > :first-child:not(:has(.peh-video-container)) {
+    padding-right: 0;
+  }
+
+  .peh-two-col > :last-child:not(:has(.peh-video-container)) {
+    padding-left: 0;
+  }
+
+  .post-event-home-page {
+    row-gap: 36px;
+  }
+
+  .post-event-home-page > .cms-rich-text:has(.peh-hero) {
+    margin-bottom: -12px;
+  }
+}

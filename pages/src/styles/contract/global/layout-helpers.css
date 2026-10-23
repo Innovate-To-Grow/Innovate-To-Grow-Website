@@ -1,0 +1,23 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Layout helpers
+   ========================================================================== */
+
+/* Row of actions (buttons / links) */
+.itg-nav-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px 20px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.itg-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 30px;
+}

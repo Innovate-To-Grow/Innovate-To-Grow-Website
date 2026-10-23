@@ -1,0 +1,241 @@
+/* Moved verbatim from the CMS "cms-blocks" stylesheet. */
+
+/* ==========================================================================
+   Body-html classes stored in CMS content
+   ========================================================================== */
+
+/* About: the opening statement is the theme's h4 (20px / 30px navy 600). */
+.cms-prose .about-lead {
+  margin: 0 0 12px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: 30px;
+}
+
+/* These pages' reference lists hold one paragraph per item (12px apart, with
+   semibold links). */
+.cms-prose :is(.about-list, .submission-list, .student-list) > li + li,
+.cms-prose .judges-section-header:first-child + .judges-page-list > li + li {
+  margin-top: 12px;
+}
+
+.cms-prose :is(.about-list, .submission-list, .student-list) a {
+  font-weight: 600;
+}
+
+/* Judges: section headings in the theme's grey heading box. */
+.cms-prose .judges-section-header {
+  padding: 5px 10px;
+  border: 1px solid #cccccc;
+  background: #eeeeee;
+}
+
+.attendees-page-closing {
+  color: var(--itg-color-primary);
+  font-weight: 600;
+}
+
+.sponsor-ack-center {
+  text-align: center;
+}
+
+.cms-section-group .student-important,
+.itg-important {
+  color: var(--itg-color-error);
+  font-weight: 700;
+}
+
+.student-construction {
+  font-style: italic;
+}
+
+/* Link lists stored in body HTML (past events): a plain bulleted list. */
+.past-events-page-list,
+.cms-link-list-bordered {
+  margin: 0 0 12px var(--itg-list-indent, 25px);
+  padding: 0;
+}
+
+.past-events-page-list-item,
+.cms-link-list-bordered li {
+  line-height: 24px;
+}
+
+/* Student hub list (older student page body) */
+.student-hub-list {
+  display: grid;
+  gap: 12px;
+}
+
+.student-hub-item {
+  margin: 0;
+}
+
+.student-hub-link {
+  color: var(--itg-color-primary);
+  font-weight: 600;
+}
+
+/* ---- Buttons stored in CMS HTML ---- */
+
+/* The reference's navy button ("Click Here to Submit Your Project"):
+   17px / 25.5px white on navy, 16px 32px, square. */
+a.submission-button {
+  display: inline-block;
+  margin: 4px 2px;
+  padding: 16px 32px;
+  border: 0;
+  border-radius: 0;
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: 25.5px;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color var(--itg-transition-fast);
+}
+
+a.submission-button:hover,
+a.submission-button:focus {
+  background: var(--itg-color-primary-hover);
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+/* The reference's outlined uppercase buttons (.btn--invert-blue / -gold):
+   14px 600 navy on white, 14px 28px, 2px navy or #ffbf3c border; hover fills
+   navy (white text) or gold (navy text). */
+.peh-btn,
+.event-btn,
+.home-btn,
+.capstone-nav-btn,
+.projects-hub-nav-btn,
+.submission-nav-btn {
+  box-sizing: border-box;
+  display: inline-block;
+  max-width: 100%;
+  padding: 14px 28px;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: 0;
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  vertical-align: middle;
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out,
+    border-color var(--itg-transition-fast) ease-in-out;
+}
+
+.peh-btn-gold,
+.event-btn-gold,
+.home-btn-gold,
+.capstone-nav-btn-accent,
+.projects-hub-nav-btn-accent,
+.submission-nav-btn-accent {
+  border-color: var(--itg-color-accent-bright);
+}
+
+.peh-btn:hover,
+.peh-btn:focus,
+.event-btn:hover,
+.event-btn:focus,
+.home-btn:hover,
+.home-btn:focus,
+.capstone-nav-btn:hover,
+.capstone-nav-btn:focus,
+.projects-hub-nav-btn:hover,
+.projects-hub-nav-btn:focus,
+.submission-nav-btn:hover,
+.submission-nav-btn:focus {
+  border-color: var(--itg-color-primary);
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+.peh-btn-gold:hover,
+.peh-btn-gold:focus,
+.event-btn-gold:hover,
+.event-btn-gold:focus,
+.home-btn-gold:hover,
+.home-btn-gold:focus,
+.capstone-nav-btn-accent:hover,
+.capstone-nav-btn-accent:focus,
+.projects-hub-nav-btn-accent:hover,
+.projects-hub-nav-btn-accent:focus,
+.submission-nav-btn-accent:hover,
+.submission-nav-btn-accent:focus {
+  border-color: var(--itg-color-accent-bright);
+  background: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+/* Rows of those buttons: 15px apart, 26px between rows, indented 5px
+   (the theme's .sb-col margin) and 21px under the text above. */
+.projects-hub-nav,
+.submission-nav,
+.cms-image-text .capstone-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 15px;
+  margin: 21px 0 12px;
+  padding-left: 5px;
+}
+
+.projects-hub-contact,
+.submission-contact,
+.cms-image-text .capstone-contact {
+  margin-top: 12px;
+  color: var(--itg-color-text);
+}
+
+/* ---- Project Submission ----
+   The stored body opens with <h2 class="submission-section-title"> followed by
+   <a class="submission-button">. That pair is drawn as the drafts' "Submit a
+   Project" panel in the theme's block style (#f7f7f7, 8px #0f5479 top rule,
+   20px padding): the body becomes a one-column grid and a backdrop (::before)
+   spans the first two rows behind the heading and the button. */
+.cms-prose:has(> h2.submission-section-title:first-child + a.submission-button) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.cms-prose:has(> h2.submission-section-title:first-child + a.submission-button)::before {
+  content: '';
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  background: var(--itg-color-bg-panel);
+  border-top: 8px solid var(--itg-color-sidebar-rule);
+}
+
+.cms-prose > h2.submission-section-title:first-child:has(+ a.submission-button) {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+  padding: 20px 20px 0;
+}
+
+.cms-prose > h2.submission-section-title:first-child + a.submission-button {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
+  margin: 12px 20px 20px;
+}
+
+/* Grid items do not collapse margins: paragraphs and lists keep their 12px
+   bottom margin, section headings get 36px on top (48px from the text). */
+.cms-prose:has(> h2.submission-section-title:first-child + a.submission-button) > h2:nth-child(n + 3) {
+  margin: 36px 0 12px;
+}
+
+.cms-prose:has(> h2.submission-section-title:first-child + a.submission-button) > :last-child {
+  margin-bottom: 0;
+}

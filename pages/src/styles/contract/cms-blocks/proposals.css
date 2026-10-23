@@ -1,0 +1,118 @@
+/* Moved verbatim from the CMS "cms-blocks" stylesheet. */
+
+/* ==========================================================================
+   Sample proposals: one native <details> per proposal. The summary is the
+   reference's grey heading box (28px navy on #eee, 1px #ccc border); the
+   body is plain 16px / 24px text with "Background:"-style labels.
+   ========================================================================== */
+
+.cms-proposal-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-proposal-list {
+  display: grid;
+  gap: 12px;
+}
+
+.cms-proposal {
+  margin: 0;
+}
+
+.cms-proposal-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 16px;
+  align-items: end;
+  padding: 5px 10px;
+  border: 1px solid #cccccc;
+  background: #eeeeee;
+  cursor: pointer;
+  list-style: none;
+}
+
+.cms-proposal-summary::-webkit-details-marker {
+  display: none;
+}
+
+.cms-proposal-summary::marker {
+  content: '';
+}
+
+.cms-proposal-eyebrow.itg-eyebrow {
+  grid-column: 1;
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-weight: 600;
+  line-height: 21px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.cms-proposal-title {
+  grid-column: 1;
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+  font-weight: 600;
+  line-height: 42px;
+}
+
+.cms-proposal-toggle {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 600;
+  line-height: 24px;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  white-space: nowrap;
+}
+
+.cms-proposal-summary:hover .cms-proposal-toggle {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.cms-proposal-toggle-open,
+.cms-proposal[open] .cms-proposal-toggle-closed {
+  display: none;
+}
+
+.cms-proposal[open] .cms-proposal-toggle-open {
+  display: inline;
+}
+
+.cms-proposal-body {
+  padding: 24px 0 24px;
+}
+
+.cms-proposal-section + .cms-proposal-section {
+  margin-top: 48px;
+}
+
+.cms-proposal-section .proposal-section-title {
+  margin: 0 0 12px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.cms-proposal-section .proposal-section-title::after {
+  content: ':';
+}
+
+.cms-proposal-section .proposal-text {
+  margin: 0;
+  line-height: 24px;
+}
+
+/* footer_html: "Expectations and Submission" panel (.itg-panel) after the list */
+.cms-proposal-footer {
+  margin-top: 24px;
+}
