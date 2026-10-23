@@ -1,13 +1,20 @@
+from functools import cached_property
+
+from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
+from django.db.models import F, Max
+from django.forms import BaseInlineFormSet
 from django.shortcuts import redirect
 from django.urls import path, reverse
+from unfold.admin import TabularInline
 from unfold.decorators import action
 
 from apps.core.admin import BaseModelAdmin
 from apps.core.models import GoogleCredentialConfig
+from apps.core.utils.access import user_can_access_app
 
-from ...models import CurrentProject, CurrentProjectSchedule, EventScheduleTrack
+from ...models import CurrentProject, CurrentProjectSchedule, EventAgendaItem, EventScheduleTrack
 from ...services import ScheduleSyncError, sync_schedule
 
 
@@ -34,6 +41,89 @@ class CurrentProjectAdmin(BaseModelAdmin):
         return False
 
 
+MAX_DISPLAY_ORDER = 9999
+# Added to a row's display_order while a save rewrites it; above MAX_DISPLAY_ORDER, so it never meets a real row.
+PARKED_ORDER_OFFSET = 1_000_000
+
+
+class EventAgendaItemForm(forms.ModelForm):
+    class Meta:
+        model = EventAgendaItem
+        fields = ("section_type", "display_order", "time_label", "title", "location")
+        help_texts = {
+            "section_type": "Expo fills the “EXPO: POSTERS AND DEMOS” table; Awards fills “AWARDS & RECEPTION”.",
+            "display_order": "Row order within its table, lowest first. Must be unique per table.",
+            "location": "The table's “Room:” header shows the location of its first row.",
+        }
+
+    def clean_display_order(self):
+        order = self.cleaned_data["display_order"]
+        if order > MAX_DISPLAY_ORDER:
+            raise forms.ValidationError(f"Use a number up to {MAX_DISPLAY_ORDER}.")
+        return order
+
+
+class EventAgendaItemFormSet(BaseInlineFormSet):
+    """Reordering rows must not trip the per-table unique ``display_order``.
+
+    The unique constraint is checked row by row while saving, so swapping two rows (or making room for a new
+    first row) would fail on the first UPDATE even though the submitted final state is valid. Rows being
+    rewritten are first moved out of the way; they get their submitted value straight after.
+    """
+
+    @cached_property
+    def _next_display_order(self):
+        top = EventAgendaItem.objects.filter(config=self.instance).aggregate(top=Max("display_order"))["top"]
+        return 0 if top is None else top + 1
+
+    def get_form_kwargs(self, index):
+        # New rows start after the last existing one instead of at 0, which would clash with the first row.
+        kwargs = super().get_form_kwargs(index)
+        if index is None or index >= self.initial_form_count():
+            kwargs["initial"] = {**kwargs.get("initial", {}), "display_order": self._next_display_order}
+        return kwargs
+
+    def save_existing_objects(self, commit=True):
+        if commit:
+            rewritten = [form.instance.pk for form in self.initial_forms if form.has_changed()]
+            EventAgendaItem.objects.filter(pk__in=rewritten).update(
+                display_order=F("display_order") + PARKED_ORDER_OFFSET
+            )
+        return super().save_existing_objects(commit)
+
+
+class EventAgendaItemInline(TabularInline):
+    """The Expo / Awards tables on the schedule page — text the Google Sheet does not carry.
+
+    Editing here is permanent: ``sync_schedule`` seeds these rows once (first sync) and never rewrites them.
+    """
+
+    model = EventAgendaItem
+    form = EventAgendaItemForm
+    formset = EventAgendaItemFormSet
+    extra = 0
+    ordering = ("section_type", "display_order")
+    verbose_name = "Agenda item"
+    verbose_name_plural = "Agenda items (Expo and Awards tables on the schedule page)"
+
+    # Follow the per-app access rule of BaseModelAdmin instead of Django's per-model codenames,
+    # and keep deletion available even though the schedule admin itself cannot be deleted.
+    def _has_app_access(self, request):
+        return user_can_access_app(request.user, self.opts.app_label)
+
+    def has_view_permission(self, request, obj=None):
+        return self._has_app_access(request)
+
+    def has_add_permission(self, request, obj=None):
+        return self._has_app_access(request)
+
+    def has_change_permission(self, request, obj=None):
+        return self._has_app_access(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return self._has_app_access(request)
+
+
 @admin.register(CurrentProjectSchedule)
 class CurrentProjectScheduleAdmin(BaseModelAdmin):
     list_display = ("name", "is_active", "last_synced_at", "sync_error_short", "created_at")
@@ -47,6 +137,7 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
     # scoped to the overview schedule (see ``_overview_schedule``).
     actions_row = ["sync_from_google_sheets"]
     actions_detail = ["sync_from_google_sheets_detail"]
+    inlines = [EventAgendaItemInline]
 
     fieldsets = (
         (

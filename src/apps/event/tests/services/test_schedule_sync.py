@@ -10,7 +10,7 @@ from apps.event.models import (
     EventScheduleSlot,
     EventScheduleTrack,
 )
-from apps.event.services import ScheduleSyncError, sync_schedule
+from apps.event.services import ScheduleSyncError, ScheduleSyncStats, sync_schedule
 from apps.event.tests.helpers import sample_projects_records, sample_tracks_records
 
 
@@ -82,6 +82,75 @@ class ScheduleSyncServiceTest(TestCase):
         self.assertEqual(EventScheduleSection.objects.filter(config=self.config).count(), 1)
         self.assertEqual(EventScheduleSlot.objects.filter(track__section__config=self.config).count(), 1)
         self.assertEqual(EventScheduleSlot.objects.filter(track__section__config=other_config).count(), 1)
+
+    def test_first_sync_seeds_the_default_agenda(self):
+        stats = sync_schedule(
+            self.config,
+            tracks_records=sample_tracks_records(),
+            projects_records=sample_projects_records(),
+        )
+
+        self.assertEqual(stats.agenda_items_created, 4)
+        expo = EventAgendaItem.objects.filter(config=self.config, section_type=EventAgendaItem.SectionType.EXPO)
+        self.assertEqual(
+            list(expo.order_by("display_order").values_list("time_label", "title")),
+            [("9:00", "Registration and Coffee"), ("10:00", "Expo - Posters - Demos - Lunch")],
+        )
+
+    def test_later_syncs_keep_agenda_items_edited_in_admin(self):
+        sync_schedule(self.config, tracks_records=sample_tracks_records(), projects_records=sample_projects_records())
+        edited = EventAgendaItem.objects.get(config=self.config, title="Registration and Coffee")
+        edited.title = "Check-in and Breakfast"
+        edited.location = "Student Union"
+        edited.save()
+        EventAgendaItem.objects.filter(config=self.config, title="Reception").delete()
+
+        stats = sync_schedule(
+            self.config, tracks_records=sample_tracks_records(), projects_records=sample_projects_records()
+        )
+
+        self.assertEqual(stats.agenda_items_created, 0)
+        self.assertEqual(EventAgendaItem.objects.filter(config=self.config).count(), 3)
+        edited.refresh_from_db()
+        self.assertEqual((edited.title, edited.location), ("Check-in and Breakfast", "Student Union"))
+
+    def test_an_agenda_emptied_on_purpose_stays_empty(self):
+        sync_schedule(self.config, tracks_records=sample_tracks_records(), projects_records=sample_projects_records())
+        EventAgendaItem.objects.filter(config=self.config).delete()
+
+        sync_schedule(self.config, tracks_records=sample_tracks_records(), projects_records=sample_projects_records())
+
+        self.assertFalse(EventAgendaItem.objects.filter(config=self.config).exists())
+
+    def test_first_sync_does_not_add_defaults_next_to_agenda_items_entered_beforehand(self):
+        EventAgendaItem.objects.create(
+            config=self.config,
+            section_type=EventAgendaItem.SectionType.EXPO,
+            time_label="8:30",
+            title="Doors open",
+            location="Courtyard",
+            display_order=0,
+        )
+
+        stats = sync_schedule(
+            self.config, tracks_records=sample_tracks_records(), projects_records=sample_projects_records()
+        )
+
+        self.assertEqual(stats.agenda_items_created, 0)
+        self.assertEqual(
+            list(EventAgendaItem.objects.filter(config=self.config).values_list("title", flat=True)), ["Doors open"]
+        )
+
+    def test_agenda_seeding_ignores_a_stale_config_copy(self):
+        sync_schedule(self.config, tracks_records=sample_tracks_records(), projects_records=sample_projects_records())
+        EventAgendaItem.objects.filter(config=self.config).delete()
+        stale = CurrentProjectSchedule(pk=self.config.pk)  # last_synced_at unset in memory, set in the database
+
+        from apps.event.services.schedule_sync.writing import create_agenda_items
+
+        create_agenda_items(stale, ScheduleSyncStats())
+
+        self.assertFalse(EventAgendaItem.objects.filter(config=self.config).exists())
 
     def test_fall_rows_become_non_presenting_projects_without_slots(self):
         tracks = [{"Track": 1, "Room": "Granite", "Class": "CAP", "Topic": "FoodTech"}]
