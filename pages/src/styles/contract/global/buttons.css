@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
@@ -207,4 +208,5 @@
 .itg-btn-danger:not(.itg-btn-outline)[aria-disabled='true']:hover {
   background: none;
   border-color: transparent;
+}
 }

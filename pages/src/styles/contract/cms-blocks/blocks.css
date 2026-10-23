@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-blocks" stylesheet. */
 
 /* ==========================================================================
@@ -411,4 +412,5 @@ a.cms-sponsor-card:focus .cms-sponsor-name {
   font-size: var(--itg-font-size-body);
   font-style: italic;
   text-align: center;
+}
 }

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
 @media (min-width: 993px) {
@@ -39,4 +40,5 @@ html.is-mobile-menu-open .uwy {
   max-width: 16rem;
   overflow: hidden;
   text-overflow: ellipsis;
+}
 }

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-blocks" stylesheet. */
 
 /* ==========================================================================
@@ -52,4 +53,5 @@
 
 .cms-rich-text-body:empty {
   display: none;
+}
 }

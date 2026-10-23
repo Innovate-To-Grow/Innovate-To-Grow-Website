@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-events" stylesheet. */
 
 /* The reference's schedule page (innovatetogrow.ucmerced.edu/schedule):
@@ -169,4 +170,5 @@
 
 .sg-td-cell {
   min-width: 120px;
+}
 }

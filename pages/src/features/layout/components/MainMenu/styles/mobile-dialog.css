@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
 /* ---------- Phone menu dialog (#mobile-menu) ---------- */
@@ -330,4 +331,5 @@
 
 .header-mobile-university-link:hover {
   text-decoration: underline;
+}
 }

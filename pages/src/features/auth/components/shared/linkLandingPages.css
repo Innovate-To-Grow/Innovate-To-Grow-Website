@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-misc" stylesheet. */
 
 /* ---- sign-in / email / impersonation link landing pages ---- */
@@ -62,4 +63,5 @@
   .impersonate-login-status::before {
     animation: none;
   }
+}
 }

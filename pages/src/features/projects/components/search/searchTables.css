@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Search Tables: the section, each search table, status lines and the AI search form.
    Imported in order by projects.css; see the note there. */
 
@@ -301,4 +302,5 @@
   to {
     transform: rotate(360deg);
   }
+}
 }

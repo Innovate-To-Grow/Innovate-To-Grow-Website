@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-events" stylesheet. */
 
 /* ---- registration: buttons.css ---- */
@@ -36,4 +37,5 @@ form > .event-reg-submit {
   .event-reg-spinner {
     animation-duration: 2.4s;
   }
+}
 }

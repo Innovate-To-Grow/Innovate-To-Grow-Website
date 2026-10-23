@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
 /* ---------- Blue bar ---------- */
@@ -72,4 +73,5 @@
 /* Menu button: phone only */
 .site-header-mobile-toggle {
   display: none;
+}
 }

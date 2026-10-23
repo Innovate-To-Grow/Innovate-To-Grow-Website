@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-footer" stylesheet. */
 
 /* ==========================================================================
@@ -367,4 +368,5 @@
   .site-footer-cta-link {
     transition: none;
   }
+}
 }

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
 /* ---- feedback.css ---- */
@@ -64,4 +65,5 @@
 .auth-alert span {
   display: block;
   min-width: 0;
+}
 }
