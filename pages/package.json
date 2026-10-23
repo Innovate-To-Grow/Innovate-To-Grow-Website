@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --reporter=verbose",
     "size": "size-limit",
+    "check:built-css": "node scripts/check-built-css.mjs",
     "perf:homepage": "node scripts/measure-homepage-slow-3g.mjs",
     "e2e": "playwright test",
     "e2e:install": "playwright install --with-deps chromium firefox webkit"
