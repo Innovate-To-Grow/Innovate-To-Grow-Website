@@ -99,8 +99,9 @@ added schedule is visible before you activate it; with several rows only the act
   (the active row, or the only row when there is just one)
 - **Sync from Google Sheets** (per-row action, also on the change form) syncs that row from its own sheet
 - **Agenda items** (change form) are the rows of the schedule page's **Expo: Posters and Demos** and **Awards &
-  Reception** tables — time, title and location, ordered by *Display order* (unique per table). The tables' *Room:*
-  header shows the location of the first row. Syncs seed the defaults once and never overwrite your edits; delete
+  Reception** tables — time, title and location, ordered by *Display order* (unique per table). Leave it blank on a
+  new row to add the row at the end; rows can be swapped, shifted or moved to the other table in one save. The tables'
+  *Room:* header shows the location of the first row. Syncs seed the defaults once and never overwrite your edits; delete
   every row of a table to hide it
 - **Auto Sync** + interval are per row; `python manage.py sync_schedule` honours them for every row. A row that
   stops being active (you activate another schedule — a one-step change that archives the previous row — or untick
