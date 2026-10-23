@@ -1,0 +1,63 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Panels
+   ========================================================================== */
+
+/* Feature panel: the theme's sidebar block (#f7f7f7, 8px #0f5479 top rule) */
+.itg-panel {
+  box-sizing: border-box;
+  padding: 20px;
+  background: var(--itg-color-bg-panel);
+  border-top: 8px solid var(--itg-color-sidebar-rule);
+}
+
+/* Well (filters, search forms): the theme's .well */
+.itg-well {
+  box-sizing: border-box;
+  padding: 19px;
+  background: #f5f5f5;
+  border: 1px solid #e3e3e3;
+  border-radius: var(--itg-radius-input);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Rule panel: gold 3px top rule (grid tiles, definition lists) */
+.itg-rule-panel {
+  box-sizing: border-box;
+  padding: 20px;
+  background: var(--itg-color-bg-panel);
+  border-top: 3px solid var(--itg-color-accent-gold);
+}
+
+.itg-panel > :first-child,
+.itg-well > :first-child,
+.itg-rule-panel > :first-child {
+  margin-top: 0;
+}
+
+.itg-panel > :last-child,
+.itg-well > :last-child,
+.itg-rule-panel > :last-child {
+  margin-bottom: 0;
+}
+
+/* Legacy card: square, flat, bordered */
+.itg-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--itg-color-border);
+  border-top: 3px solid var(--itg-color-accent-gold);
+  border-radius: var(--itg-radius-card);
+  background: var(--itg-color-white);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--itg-transition-fast) ease;
+}
+
+.itg-card:hover {
+  border-color: var(--itg-color-primary);
+  border-top-color: var(--itg-color-accent-gold);
+  text-decoration: none;
+}

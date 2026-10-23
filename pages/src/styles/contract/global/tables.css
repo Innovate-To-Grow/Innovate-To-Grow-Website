@@ -1,0 +1,65 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Tables: the reference's DataTables look (current-projects)
+   Bold 16px header row with a 1px #111 rule, 10px 18px header cells,
+   8px 10px body cells with 1px #ddd separators and #f9f9f9 odd rows,
+   a 1px #111 rule under the last row.
+   ========================================================================== */
+
+.itg-table-wrap {
+  overflow-x: auto;
+}
+
+.itg-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-bottom: 1px solid #111111;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.itg-table thead th {
+  padding: 10px 18px;
+  border-bottom: 1px solid #111111;
+  background: var(--itg-color-white);
+  color: var(--itg-color-text);
+  font-size: inherit;
+  font-weight: 700;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.itg-table tbody td,
+.itg-table tbody th {
+  padding: 8px 10px;
+  border-top: 1px solid var(--itg-color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.itg-table tbody tr:first-child > td,
+.itg-table tbody tr:first-child > th {
+  border-top: 0;
+}
+
+.itg-table tbody > tr:nth-child(odd) > td,
+.itg-table tbody > tr:nth-child(odd) > th {
+  background: #f9f9f9;
+}
+
+.itg-table tbody th {
+  color: var(--itg-color-text);
+  font-weight: 600;
+}
+
+.itg-table tr.is-expanded > td,
+.itg-table tr.is-expanded > th {
+  background: var(--itg-color-bg-light);
+}
+
+.itg-table tr.is-selected > td,
+.itg-table tr.is-selected > th {
+  background: var(--itg-color-highlight);
+}

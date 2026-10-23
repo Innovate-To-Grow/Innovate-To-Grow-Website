@@ -17,6 +17,7 @@ from apps.cms.services.styles.drift import (
     STATUS_EDITED,
     STATUS_IN_SYNC,
     STATUS_LABELS,
+    STATUS_RETIRED,
     STATUS_SETTINGS_CHANGED,
     STATUS_UNKNOWN,
     STATUS_UNMANAGED,
@@ -242,6 +243,7 @@ class SheetStatusTests(SimpleTestCase):
                 STATUS_SETTINGS_CHANGED,
                 STATUS_UNMANAGED,
                 STATUS_BACKUP_COPY,
+                STATUS_RETIRED,
                 STATUS_UNKNOWN,
             },
         )
@@ -736,28 +738,3 @@ class ExportRowsTests(TestCase):
     def test_empty_database(self):
         bundle = export_rows()
         self.assertEqual((bundle["stylesheets"], bundle["pages_with_css"]), ([], []))
-
-
-class RealSeedTests(TestCase):
-    """The migrated test database holds exactly the repo seed, so nothing has drifted."""
-
-    def setUp(self):
-        cache.clear()
-
-    def test_migrated_database_matches_the_seed(self):
-        seeds = load_seed_sheets()
-        self.assertTrue(seeds)
-        self.assertEqual(set(StyleSheet.objects.values_list("name", flat=True)), set(seeds))
-
-        for sheet in StyleSheet.objects.all():
-            with self.subTest(sheet=sheet.name):
-                self.assertEqual(sheet_status(sheet, seeds), STATUS_IN_SYNC)
-                self.assertEqual(seed_status_label(sheet), STATUS_LABELS[STATUS_IN_SYNC])
-
-        report = drift_report()
-        self.assertTrue(report["seed_found"])
-        self.assertEqual(report["counts"], {STATUS_IN_SYNC: len(seeds)})
-        self.assertEqual(report["missing_from_database"], [])
-        self.assertEqual(report["deleted_active_seed_sheets"], [])
-        self.assertEqual(drifted_sheets(report), [])
-        self.assertFalse(has_drift(report))

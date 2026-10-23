@@ -1,0 +1,75 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Forms: 16px labels; #f2f2f2 controls, 1px #ccc border, 4px radius
+   ========================================================================== */
+
+.itg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.itg-field > label,
+.itg-label {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-label);
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.itg-field-hint {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.itg-input,
+.itg-select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 4px 6px;
+  border: 1px solid var(--itg-color-border-input);
+  border-radius: var(--itg-radius-input);
+  background-color: var(--itg-color-bg-light);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  color: var(--itg-color-text);
+  font: inherit;
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  transition: border-color 0.2s linear, box-shadow 0.2s linear;
+}
+
+textarea.itg-input {
+  height: auto;
+  min-height: 96px;
+  padding: 4px 6px;
+  resize: vertical;
+}
+
+.itg-input::placeholder {
+  color: var(--itg-color-disabled-text);
+}
+
+.itg-input:focus,
+.itg-select:focus {
+  border-color: rgba(82, 168, 236, 0.8);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6);
+}
+
+.itg-input:disabled,
+.itg-select:disabled {
+  background-color: var(--itg-color-disabled-bg);
+  border-color: var(--itg-color-disabled-border);
+  color: var(--itg-color-disabled-text);
+  cursor: not-allowed;
+}
+
+.itg-input[aria-invalid='true'],
+.itg-select[aria-invalid='true'] {
+  border-color: var(--itg-color-error);
+}

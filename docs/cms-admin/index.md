@@ -8,6 +8,7 @@ Content management, Django admin operations, and member/mail tooling for the Inn
 - [Django Admin](django-admin.md) — Admin theme, customizations, and navigation
 - [Member & Mail Tools](member-and-mail-tools.md) — Member management, email campaigns, and contact tools
 - [Operations](operations.md) — Maintenance mode, data management, and operational tasks
+- [CSS contract](css-contract.md) — Classes CMS content may use, and how to change them
 - [i2g-admin CLI](cli-admin.md) — Terminal CRUD over `/admin-api/` via OAuth2 + PKCE, riding the admin login
 
 ## Who this is for

@@ -1,0 +1,70 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Pagination: the reference's DataTables pager
+   <nav class="itg-pagination" aria-label="Pages">
+     <a class="itg-pagination-link" aria-current="page">1</a> …
+   ========================================================================== */
+
+.itg-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 0;
+  font-size: var(--itg-font-size-body);
+}
+
+.itg-pagination-link {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  padding: 0.5em 1em;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: none;
+  color: #333333;
+  font: inherit;
+  line-height: 24px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.itg-pagination-link:hover {
+  border-color: #111111;
+  background: #585858;
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+.itg-pagination-link[aria-current='page'],
+.itg-pagination-link[aria-current='page']:hover {
+  border-color: #979797;
+  background: linear-gradient(to bottom, #ffffff 0%, #dcdcdc 100%);
+  color: #333333;
+  cursor: default;
+}
+
+.itg-pagination-link:disabled,
+.itg-pagination-link[aria-disabled='true'],
+.itg-pagination-link:disabled:hover,
+.itg-pagination-link[aria-disabled='true']:hover {
+  border-color: transparent;
+  background: none;
+  color: #666666;
+  cursor: default;
+}
+
+.itg-pagination-gap {
+  padding: 0 1em;
+}
+
+.itg-pagination-info {
+  color: #333333;
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}

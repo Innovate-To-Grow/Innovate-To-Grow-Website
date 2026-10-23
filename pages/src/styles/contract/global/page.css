@@ -1,0 +1,115 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Page wrapper + headings
+   The page shell (Container) owns the width, centring and outer padding;
+   .itg-page only groups a page's content inside the main column.
+   ========================================================================== */
+
+.itg-page,
+.itg-page-narrow {
+  display: block;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* h1: 36px / 54px, margin 12px 0 (the shell adds 16px above it) */
+.itg-page-title {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h1);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+.itg-page-title:has(+ .itg-page-meta) {
+  margin-bottom: 4px;
+}
+
+/* h1 closed by a thin navy rule (pages without a lead paragraph) */
+.itg-page-title-ruled {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--itg-color-primary);
+}
+
+.itg-page-meta {
+  margin: 0 0 12px;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-meta);
+  font-style: italic;
+  line-height: var(--itg-line-height-meta);
+}
+
+.itg-eyebrow {
+  margin: 0 0 6px;
+  color: var(--itg-color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* The theme's .lead: 18px / 28px secondary blue, closed by a 1px navy rule */
+.itg-lead {
+  max-width: none;
+  margin: 0 0 24px;
+  padding: 0 0 1.5em;
+  border-bottom: 1px solid var(--itg-color-primary);
+  color: var(--itg-color-secondary);
+  font-size: var(--itg-font-size-lead);
+  font-weight: 400;
+  line-height: 28px;
+}
+
+/* h2: 28px / 42px */
+.itg-section-title {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h2);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+/* h3: 24px / 36px */
+.itg-subsection-title {
+  margin: 12px 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+.itg-section-title:first-child,
+.itg-subsection-title:first-child {
+  margin-top: 0;
+}
+
+.itg-text {
+  margin: 0 0 12px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: var(--itg-line-height-body);
+}
+
+.itg-subtitle {
+  margin: 0 0 24px;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-subtitle);
+  line-height: 28px;
+}
+
+/* Section heading (event, schedule, acknowledgement, ...): an h3 in navy */
+.itg-section-header {
+  margin: 12px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h3);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
