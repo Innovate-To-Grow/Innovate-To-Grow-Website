@@ -25,6 +25,9 @@ def get_record_value(
     return default
 
 
+NON_PRESENTING_MARKERS = {"(fall)", "(spring)"}
+
+
 def coerce_int(value: Any) -> int | None:
     normalized = str(value or "").strip()
     return int(normalized) if normalized.isdigit() else None
@@ -96,8 +99,8 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
     order_raw = get_record_value(normalized, ["Order"])
     track_number = coerce_int(track_raw)
     slot_order = coerce_int(order_raw)
-    is_fall = track_raw.strip().lower() == "(fall)" or order_raw.strip().lower() == "(fall)"
-    # Not presenting: marked "(Fall)", or (Spring convention) both Track and Order left blank.
+    is_fall = bool({track_raw.strip().lower(), order_raw.strip().lower()} & NON_PRESENTING_MARKERS)
+    # Not presenting: marked "(Fall)" / "(Spring)", or both Track and Order left blank.
     # Half-filled or non-numeric values are malformed, so the row is skipped rather than demoted.
     is_blank = not track_raw.strip() and not order_raw.strip()
     if not is_fall and not is_blank and (track_number is None or slot_order is None):

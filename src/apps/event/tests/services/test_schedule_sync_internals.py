@@ -61,6 +61,13 @@ class BuildSlotRowsTest(TestCase):
         self.assertFalse(rows[0]["is_presenting"])
         self.assertEqual(rows[0]["team_number"], "CAP-1")
 
+    def test_spring_and_fall_markers_are_non_presenting(self):
+        records = [
+            {"Track": "(Spring)", "Order": "(Spring)", "Class": "CAP", "Team#": "CAP-1"},
+            {"Track": 1, "Order": "(fall)", "Class": "CAP", "Team#": "CAP-2"},
+        ]
+        self.assertEqual([row["is_presenting"] for row in build_slot_rows(records)], [False, False])
+
     def test_skips_half_filled_and_non_numeric_rows(self):
         records = [
             {"Track": 1, "Order": "", "Class": "CAP", "Team#": "CAP-1"},
