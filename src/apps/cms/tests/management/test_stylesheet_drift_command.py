@@ -13,7 +13,7 @@ from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase
 
 from apps.cms.models import CMSPage, StyleSheet
-from apps.cms.services.styles.drift import SEED_PATH, load_seed_sheets
+from apps.cms.services.styles.drift import RETIRED_SHEETS, SEED_PATH, load_seed_sheets
 
 DRIFT_HINT = "Port the wanted changes into the repo (or restore deleted sheets) before a migration re-syncs them."
 
@@ -314,12 +314,12 @@ class StylesheetDriftCommandTests(TestCase):
         self.assertIn("2 sheet(s) differ from the repo seed: alpha, beta.", str(error))
 
     def test_default_seed_is_the_repo_seed(self):
-        # setUp deleted every sheet, so each active repo seed sheet reads as deleted.
+        # setUp deleted every sheet, so each active repo seed sheet that is not retired reads as deleted.
         out, _err, error = self._run_failing("--json")
 
         report = json.loads(out)
         seeds = load_seed_sheets()
-        active = [name for name, fields in seeds.items() if fields["is_active"]]
+        active = [name for name, fields in seeds.items() if fields["is_active"] and name not in RETIRED_SHEETS]
         self.assertTrue(active)
         self.assertEqual(report["seed_path"], str(SEED_PATH))
         self.assertTrue(report["seed_found"])
@@ -346,7 +346,7 @@ class StylesheetDriftCommandHelpTests(SimpleTestCase):
 
 
 class StylesheetDriftCommandRealSeedTests(TestCase):
-    """The migrated test database holds exactly the repo seed, so the command passes."""
+    """The migrated test database holds the repo seed with the component sheets retired, so the command passes."""
 
     def setUp(self):
         cache.clear()
@@ -357,6 +357,7 @@ class StylesheetDriftCommandRealSeedTests(TestCase):
         call_command("stylesheet_drift", stdout=out)
 
         seeds = load_seed_sheets()
-        self.assertEqual(out.getvalue().count("in_sync "), len(seeds))
+        self.assertEqual(out.getvalue().count("in_sync "), len(seeds) - len(RETIRED_SHEETS))
+        self.assertEqual(out.getvalue().count("retired "), len(RETIRED_SHEETS))
         self.assertNotIn("missing ", out.getvalue())
         self.assertNotIn("settings_changed", out.getvalue())

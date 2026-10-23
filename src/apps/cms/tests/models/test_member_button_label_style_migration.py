@@ -41,6 +41,9 @@ class MemberButtonLabelStyleMigrationTests(TestCase):
         self.assertEqual(self.sheet.css, before)
 
     def test_served_stylesheet_drops_the_underline(self):
+        # Migration 0026 switched the sheet off (the frontend bundle ships it); serve it again.
+        self.sheet.is_active = True
+        self.sheet.save()
         migration.add_block(global_apps, None)
 
         css = self.client.get("/layout/styles.css").content.decode()
