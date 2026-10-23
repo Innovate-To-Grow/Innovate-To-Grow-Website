@@ -15,7 +15,7 @@ async function mockHealth(page: Page, status: number, body: Record<string, unkno
 /** Makes the server stylesheet unavailable; returns the URLs of the requests it failed. */
 async function failServerStylesheet(page: Page): Promise<string[]> {
   const failed: string[] = [];
-  await page.route(/\/layout\/(theme|styles)\.css/, async (route) => {
+  await page.route('**/layout/theme.css*', async (route) => {
     failed.push(route.request().url());
     await route.abort();
   });

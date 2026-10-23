@@ -1,5 +1,6 @@
 """Tests for ``apps.cms.services.styles.css_selectors`` (which classes a stylesheet defines, scopes or hooks on)."""
 
+import json
 from pathlib import Path
 
 from django.conf import settings
@@ -14,9 +15,14 @@ from apps.cms.services.styles.css_selectors import (
     ClassIndex,
     css_class_index,
 )
-from apps.cms.services.styles.drift import load_seed_sheets
 
 REAL_INDEX_CSS = Path(settings.BASE_DIR).parent / "pages" / "src" / "index.css"
+# The frozen seed the stylesheet migrations read: realistic CSS for the parser.
+SEED_SHEETS = Path(settings.BASE_DIR) / "apps" / "cms" / "migrations" / "data" / "stylesheets.json"
+
+
+def load_seed_sheets():
+    return {record["fields"]["name"]: record["fields"] for record in json.loads(SEED_SHEETS.read_text("utf-8"))}
 
 
 def index_of(css):

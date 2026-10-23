@@ -21,7 +21,6 @@ from .content import (
     PageView,
     RouteRedirect,
     SiteSettings,
-    StyleSheet,
     validate_block_data,
 )
 from .media import CMSAsset
@@ -32,7 +31,6 @@ __all__ = [
     "FooterContent",
     "SiteSettings",
     "CustomCssRevision",
-    "StyleSheet",
     # CMS
     "CMSPage",
     "RouteRedirect",

@@ -138,7 +138,7 @@ describe('every stylesheet is used', () => {
 
 describe('maintenance page styles are bundled with the app', () => {
   // The maintenance page is shown when the backend is down, and the backend also serves
-  // /api/layout/styles.css, so the page must never depend on that sheet.
+  // /api/layout/theme.css, so the page must never depend on that sheet.
   const maintenanceDir = join(SRC_DIR, 'app', 'MaintenanceMode');
   const maintenanceCss = stripCssComments(readFileSync(join(maintenanceDir, 'MaintenanceMode.css'), 'utf8'));
 
