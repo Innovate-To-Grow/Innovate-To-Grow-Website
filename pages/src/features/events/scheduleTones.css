@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-events" stylesheet. */
 
 /* Column tones: one colour family per class, a lighter step per column. */
@@ -33,3 +34,4 @@
 .schedule-tone--navy.schedule-tone--col-2 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-primary) 90%, var(--itg-color-white)); }
 .schedule-tone--navy.schedule-tone--col-3 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-primary) 85%, var(--itg-color-white)); }
 .schedule-tone--navy.schedule-tone--col-4 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-primary) 80%, var(--itg-color-white)); }
+}

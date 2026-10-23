@@ -1,3 +1,4 @@
+@layer itg.components {
 /* ==========================================================================
    Classes that editors put in CMS content HTML (rich-text blocks), as listed
    in docs/cms-admin/legacy-event-pages-cms-html.md. CMS pages load no route
@@ -91,4 +92,5 @@
 
 .ea-not-found .itg-empty-state {
   align-self: stretch;
+}
 }

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* The shared list page (a curation opened from its link).
    Imported in order by projects.css; see the note there. */
 
@@ -96,4 +97,5 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
 }

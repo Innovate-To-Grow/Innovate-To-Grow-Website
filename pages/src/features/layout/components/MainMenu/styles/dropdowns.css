@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
 /* ---------- Desktop dropdowns: grey panel with a 5px gold foot ---------- */
@@ -86,4 +87,5 @@
 .menu-dropdown-item.has-children:hover > .menu-dropdown-nested {
   opacity: 1;
   visibility: visible;
+}
 }

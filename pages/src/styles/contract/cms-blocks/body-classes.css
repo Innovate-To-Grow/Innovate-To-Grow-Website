@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-blocks" stylesheet. */
 
 /* ==========================================================================
@@ -238,4 +239,5 @@ a.submission-button:focus {
 
 .cms-prose:has(> h2.submission-section-title:first-child + a.submission-button) > :last-child {
   margin-bottom: 0;
+}
 }

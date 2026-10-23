@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Open-event list on /event-registration: rows under a gold rule, separated by
    hairlines (no cards, no shadows), in the reference's 16px / 24px text with
    bold navy field labels. Buttons and tags use the global classes. */
@@ -85,4 +86,5 @@
   .event-reg-event-card .event-reg-event-action {
     width: 100%;
   }
+}
 }

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-home" stylesheet. */
 
 /* ==========================================================================
@@ -127,4 +128,5 @@
   .home-loading::before {
     animation: none;
   }
+}
 }

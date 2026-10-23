@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet; the 992px rule was split out of
    the touch-target rule there, which also covers the account page's controls. */
 
@@ -55,4 +56,5 @@
   .auth-org-toggle-btn {
     min-height: 44px;
   }
+}
 }

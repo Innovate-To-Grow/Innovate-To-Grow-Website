@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
@@ -20,4 +21,5 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 30px;
+}
 }

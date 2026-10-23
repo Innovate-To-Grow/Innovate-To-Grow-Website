@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.core.cache import cache
 
+from apps.cms.services.styles.custom_css import custom_css_errors
 from apps.core.admin import BaseModelAdmin
 
 from ...models import CMSPage, SiteSettings
@@ -18,6 +19,9 @@ class SiteSettingsForm(forms.ModelForm):
     class Meta:
         model = SiteSettings
         fields = "__all__"
+        widgets = {
+            "custom_css": forms.Textarea(attrs={"rows": 18, "spellcheck": "false", "class": "font-mono"}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -39,6 +43,13 @@ class SiteSettingsForm(forms.ModelForm):
                 )
             }
         )
+
+    def clean_custom_css(self):
+        css = self.cleaned_data.get("custom_css") or ""
+        errors = custom_css_errors(css)
+        if errors:
+            raise forms.ValidationError(errors)
+        return css
 
     def clean_homepage_page(self):
         page = self.cleaned_data.get("homepage_page")
@@ -71,6 +82,17 @@ class SiteSettingsAdmin(BaseModelAdmin):
                 "description": (
                     "Structured design tokens (colors, typography, layout) served to the frontend "
                     "as CSS custom properties (--itg-*). Changes invalidate the layout cache."
+                ),
+            },
+        ),
+        (
+            "Custom CSS",
+            {
+                "fields": ("custom_css",),
+                "description": (
+                    "Site-wide CSS added after every bundled stylesheet; see docs/cms-admin/css-contract.md. "
+                    "Saving checks it for unbalanced braces and forbidden constructs (@import, expression(), "
+                    "javascript: URLs). For lasting changes, prefer a change to the CSS in the repository."
                 ),
             },
         ),

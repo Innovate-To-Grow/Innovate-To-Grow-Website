@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
@@ -40,4 +41,5 @@
   font-size: inherit;
   font-weight: 400;
   overflow-wrap: anywhere;
+}
 }

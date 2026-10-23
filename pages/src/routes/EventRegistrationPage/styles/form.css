@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-events" stylesheet. */
 
 /* ---- registration: form.css ---- */
@@ -163,4 +164,5 @@
 .event-reg-phone-verified {
   flex-shrink: 0;
   padding: 0 0.25rem;
+}
 }

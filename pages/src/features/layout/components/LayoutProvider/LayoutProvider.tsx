@@ -20,8 +20,8 @@ interface LayoutProviderProps {
 }
 
 // Note: the site's CSS ships with the bundle (src/styles/contract and the components' own CSS);
-// the render-blocking <link rel="stylesheet" href="/api/layout/styles.css?v=8"> in index.html adds the
-// Site Settings design tokens.
+// the render-blocking <link rel="stylesheet" href="/api/layout/theme.css"> in index.html adds the
+// Site Settings design tokens and custom CSS.
 // React only handles menus/footer data — it no longer injects CSS into the DOM.
 
 function getInitialLayoutFromStorage(): { data: LayoutData | null; state: LayoutLoadState } {

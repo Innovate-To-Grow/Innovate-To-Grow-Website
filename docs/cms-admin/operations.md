@@ -378,7 +378,9 @@ Available through the Member admin:
 The public site's CSS ships with the frontend bundle: the header, footer and page styles live next to the
 components that render them under `pages/src`, and the styles CMS content relies on live in
 `pages/src/styles/contract/` (see [CSS contract](css-contract.md)). Change CSS in the repository.
-`/api/layout/styles.css` serves only the design tokens from Site Settings.
+`/api/layout/theme.css` serves the Site Settings design tokens and custom CSS (see
+[Theme: design tokens and custom CSS](theme-and-custom-css.md)); `/api/layout/styles.css` still serves the
+tokens alone, for pages cached before the theme sheet existed.
 
 The **Style Sheets** rows in Django admin (CMS → Style Sheets), seeded from
 `src/apps/cms/migrations/data/stylesheets.json`, are what the site used to serve. Migrations `cms.0026` (the ten

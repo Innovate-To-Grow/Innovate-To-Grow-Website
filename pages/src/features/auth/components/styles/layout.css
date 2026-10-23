@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
 /* ==========================================================================
@@ -56,4 +57,5 @@
 .auth-verification-label {
   color: var(--itg-color-primary);
   font-weight: 700;
+}
 }
