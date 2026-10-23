@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
 /* ---- profile-image.css ---- */
@@ -58,4 +59,5 @@
   margin: 0;
   color: var(--itg-color-error);
   font-size: var(--itg-font-size-small);
+}
 }

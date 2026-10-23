@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-events" stylesheet. */
 
 /* ---- SchedulePage.css ---- */
@@ -296,4 +297,5 @@
   .schedule-winners-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 }

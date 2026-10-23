@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
@@ -60,4 +61,5 @@
   border-color: var(--itg-color-primary);
   border-top-color: var(--itg-color-accent-gold);
   text-decoration: none;
+}
 }

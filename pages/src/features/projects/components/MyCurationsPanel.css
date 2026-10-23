@@ -1,3 +1,4 @@
+@layer itg.components {
 /* My Curations: the member's saved curations, above the builder.
    Imported in order by projects.css; see the note there. */
 
@@ -67,4 +68,5 @@
   font-size: var(--itg-font-size-small);
   line-height: 21px;
   color: var(--itg-color-text-secondary);
+}
 }

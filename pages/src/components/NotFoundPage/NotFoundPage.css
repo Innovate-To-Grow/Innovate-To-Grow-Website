@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-misc" stylesheet. */
 
 /* ==========================================================================
@@ -39,4 +40,5 @@
   .not-found-page > .not-found-title {
     font-size: var(--itg-font-size-h1-mobile);
   }
+}
 }

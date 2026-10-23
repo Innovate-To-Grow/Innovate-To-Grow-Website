@@ -85,7 +85,7 @@ The React frontend's catch-all route (`*`) loads `CMSPageComponent`:
 2. Calls `GET /cms/pages/{path}/`
 3. Renders each block by type using component mapping
 
-All CMS page styles ship with the SPA. The styles CMS blocks and pasted content HTML rely on are in `pages/src/styles/contract/`, loaded on every page; see [CSS contract](css-contract.md) for the classes content may use. The design tokens are still served from `/layout/styles.css` (`src/apps/cms/views/layout.py`).
+All CMS page styles ship with the SPA. The styles CMS blocks and pasted content HTML rely on are in `pages/src/styles/contract/`, loaded on every page; see [CSS contract](css-contract.md) for the classes content may use. The backend serves only the Site Settings design tokens and custom CSS, from `/layout/theme.css` (see [Theme: design tokens and custom CSS](theme-and-custom-css.md)).
 
 ## Route redirects
 

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-subscribe" stylesheet. */
 
 /* ==========================================================================
@@ -399,4 +400,5 @@
     width: 100%;
     min-width: 0;
   }
+}
 }

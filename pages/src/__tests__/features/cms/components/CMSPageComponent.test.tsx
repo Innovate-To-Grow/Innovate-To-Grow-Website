@@ -225,7 +225,7 @@ describe('CMSPageComponent redirects and errors', () => {
     expect(container.querySelector('.custom-page')).toHaveClass('cms-page');
     const style = document.getElementById('itg-page-css');
     expect(style).not.toBeNull();
-    expect(style?.textContent).toBe('body { color: red; }');
+    expect(style?.textContent).toBe('@layer itg.components {\nbody { color: red; }\n}');
 
     unmount();
     expect(document.getElementById('itg-page-css')?.textContent).toBe('');
@@ -261,7 +261,7 @@ describe('CMSPageComponent redirects and errors', () => {
     renderPage('/styled');
 
     const style = document.getElementById('itg-page-css');
-    expect(style?.textContent).toBe('b{}');
+    expect(style?.textContent).toBe('@layer itg.components {\nb{}\n}');
     expect(document.querySelectorAll('#itg-page-css')).toHaveLength(1);
   });
 

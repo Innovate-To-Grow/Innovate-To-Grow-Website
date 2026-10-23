@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-blocks" stylesheet. */
 
 /* ==========================================================================
@@ -35,4 +36,5 @@ a.submission-button:focus-visible,
   a.submission-button {
     transition: none;
   }
+}
 }

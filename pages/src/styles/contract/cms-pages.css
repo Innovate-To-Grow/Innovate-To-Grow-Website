@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-pages" stylesheet. */
 
 /* ==========================================================================
@@ -259,4 +260,5 @@ html:has(.post-event-home-page .peh-hero) {
   .post-event-home-page > .cms-rich-text:has(.peh-hero) {
     margin-bottom: -12px;
   }
+}
 }

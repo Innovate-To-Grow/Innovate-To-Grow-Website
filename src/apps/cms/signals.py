@@ -24,10 +24,10 @@ from .models import (
     NewsArticle,
     RouteRedirect,
     SiteSettings,
-    StyleSheet,
 )
 from .services.sanitization.embed_hosts import invalidate_cache as invalidate_embed_host_cache
-from .views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
+from .views.layout import LAYOUT_CACHE_KEY
+from .views.theme import THEME_CACHE_KEY
 
 HOMEPAGE_CACHE_KEY = "cms:homepage"
 
@@ -36,7 +36,6 @@ logger = logging.getLogger(__name__)
 
 def _clear_layout_caches():
     cache.delete(LAYOUT_CACHE_KEY)
-    cache.delete(LAYOUT_STYLESHEET_CACHE_KEY)
 
 
 @receiver([post_save, post_delete], sender=CMSEmbedAllowedHost)
@@ -58,15 +57,9 @@ def invalidate_layout_cache(sender, instance, **kwargs):
         _clear_layout_caches()
         if sender is SiteSettings:
             cache.delete(HOMEPAGE_CACHE_KEY)
+            cache.delete(THEME_CACHE_KEY)
 
     transaction.on_commit(_clear)
-
-
-@receiver([post_save, post_delete], sender=StyleSheet)
-# noinspection PyUnusedLocal
-def invalidate_stylesheet_cache(sender, instance, **kwargs):
-    """Clear layout caches when a StyleSheet is saved or deleted."""
-    transaction.on_commit(_clear_layout_caches)
 
 
 @receiver(pre_save, sender=CMSPage)

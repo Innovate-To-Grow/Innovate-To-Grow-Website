@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
@@ -72,4 +73,5 @@ textarea.itg-input {
 .itg-input[aria-invalid='true'],
 .itg-select[aria-invalid='true'] {
   border-color: var(--itg-color-error);
+}
 }

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
 /* ---------- Phone header (<= 992px) ---------- */
@@ -112,4 +113,5 @@
   .site-header-menu {
     display: none;
   }
+}
 }
