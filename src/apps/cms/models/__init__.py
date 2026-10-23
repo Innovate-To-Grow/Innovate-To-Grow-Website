@@ -12,6 +12,7 @@ from .content import (
     CMSEmbedAllowedHost,
     CMSEmbedWidget,
     CMSPage,
+    CustomCssRevision,
     FooterContent,
     Menu,
     NewsArticle,
@@ -30,6 +31,7 @@ __all__ = [
     "Menu",
     "FooterContent",
     "SiteSettings",
+    "CustomCssRevision",
     "StyleSheet",
     # CMS
     "CMSPage",

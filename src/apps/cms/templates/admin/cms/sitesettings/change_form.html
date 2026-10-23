@@ -1,0 +1,33 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+  {{ block.super }}
+  {# CodeMirror for the custom CSS field (vendored, the same build the email campaign editor uses). #}
+  <link rel="stylesheet" href="{% static 'vendor/codemirror/5.65.16/codemirror.min.css' %}">
+  <script src="{% static 'vendor/codemirror/5.65.16/codemirror.min.js' %}" nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'vendor/codemirror/5.65.16/mode/css/css.min.js' %}" nonce="{{ request.csp_nonce }}"></script>
+  <script src="{% static 'cms/js/custom-css-editor.js' %}" nonce="{{ request.csp_nonce }}" defer></script>
+  <style nonce="{{ request.csp_nonce }}">
+    .itg-custom-css-editor .CodeMirror {
+      height: 28rem;
+      border: 1px solid rgb(229, 231, 235);
+      border-radius: 0.5rem;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .dark .itg-custom-css-editor .CodeMirror {
+      border-color: rgb(55, 65, 81);
+    }
+  </style>
+{% endblock %}
+
+{% block form_before %}
+  {{ block.super }}
+  {% if custom_css_revisions_url %}
+    <p class="mb-4 text-sm text-font-subtle-light dark:text-font-subtle-dark" data-role="custom-css-revisions">
+      Every save that changes the custom CSS keeps a revision:
+      <a class="text-primary-600 underline" href="{{ custom_css_revisions_url }}">see or restore earlier versions</a>.
+    </p>
+  {% endif %}
+{% endblock %}
