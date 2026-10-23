@@ -21,6 +21,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      // The CSS needs cascade layers, so its floor is the first browsers with @layer. Vite's default
+      // target is newer: its minifier then rewrites (max-width: 768px) as (width<=768px), which Safari
+      // before 16.4 and Chrome before 104 ignore, dropping every phone layout rule.
+      cssTarget: ['chrome99', 'edge99', 'firefox97', 'safari15.4', 'ios15.4'],
       rollupOptions: {
         output: {
           manualChunks(id) {
