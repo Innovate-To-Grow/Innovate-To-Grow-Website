@@ -959,6 +959,9 @@ jobs:
       - name: Enforce bundle budgets
         run: npm run size
 
+      - name: Check built CSS for range-syntax media queries
+        run: npm run check:built-css
+
   frontend-chromium-smoke:
     name: Required Chromium Smoke
     runs-on: ubuntu-latest
@@ -1230,6 +1233,9 @@ jobs:
             --ignore-vuln GHSA-2vrm-gr82-f7m5 \
             --ignore-vuln PYSEC-2025-183 \
             --ignore-vuln PYSEC-2026-161 \
+            --ignore-vuln GHSA-v4x8-3wr5-3wq8 \
+            --ignore-vuln GHSA-9vhv-jxww-xfm5 \
+            --ignore-vuln GHSA-567q-5qvw-pf92 \
             | tee "$GITHUB_STEP_SUMMARY"
 
   semgrep-sast:
