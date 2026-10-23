@@ -149,6 +149,9 @@ synced independently — not only the one marked **Active**.
 The schedule sheet is expected to contain:
 - Track assignments (room, track name)
 - Project data (team name, project title, class code, presentation order)
+- A project row is **not presenting** when `Track` or `Order` is `(Fall)` or `(Spring)`, or when both `Track` and `Order` are
+  blank; it is kept as a non-presenting project and gets no schedule slot. A row with only one of the two filled,
+  or with a non-numeric value (e.g. `TBD`), is malformed and skipped entirely.
 - Timing information mapped to schedule sections
 
 ### `CurrentProjectSchedule` fields
