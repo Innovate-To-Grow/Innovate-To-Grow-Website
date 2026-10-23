@@ -39,9 +39,9 @@ class StyleSheetForm(forms.ModelForm):
 
 
 SEED_STATUS_NOTE = (
-    "The repo seed (migrations/data/stylesheets.json) is re-applied by data migrations, which overwrite "
-    "edits made here without warning. Before a release, run `manage.py stylesheet_drift --diff` and move any "
-    "edit worth keeping into the repository."
+    "These rows are switched off: the site's CSS ships with the frontend bundle (pages/src; see "
+    "docs/cms-admin/css-contract.md), so editing a row here changes nothing. A row switched back on is served "
+    "before the bundle; `manage.py stylesheet_drift` reports it."
 )
 
 

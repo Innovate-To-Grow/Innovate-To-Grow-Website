@@ -127,7 +127,7 @@ export const BlockPreviewPage = () => {
       });
     }
     if (msg.pageCssClass !== undefined) {
-      setPageCssClass(msg.pageCssClass || '');
+      setPageCssClass(typeof msg.pageCssClass === 'string' ? msg.pageCssClass : '');
     }
   }, [expectedNonce]);
 

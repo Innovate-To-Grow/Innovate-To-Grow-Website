@@ -245,8 +245,8 @@ class LayoutStylesheetViewTests(TestCase):
         # the expected version here forces a conscious decision if someone
         # edits the assembly without bumping the key.
         self.assertTrue(
-            LAYOUT_STYLESHEET_CACHE_KEY.endswith(":v9"),
-            f"expected cache key to end with :v9, got {LAYOUT_STYLESHEET_CACHE_KEY}",
+            LAYOUT_STYLESHEET_CACHE_KEY.endswith(":v10"),
+            f"expected cache key to end with :v10, got {LAYOUT_STYLESHEET_CACHE_KEY}",
         )
 
     def test_stylesheets_emitted_in_sort_order(self):

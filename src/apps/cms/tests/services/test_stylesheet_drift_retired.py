@@ -23,6 +23,7 @@ from apps.cms.services.styles.drift import (
 )
 
 migration = importlib.import_module("apps.cms.migrations.0026_retire_component_stylesheets")
+content_migration = importlib.import_module("apps.cms.migrations.0027_retire_content_stylesheets")
 
 
 class RetiredSheetDriftTests(TestCase):
@@ -32,7 +33,9 @@ class RetiredSheetDriftTests(TestCase):
         self.sheet = StyleSheet.objects.get(name="layout-menu")
 
     def test_the_drift_list_matches_the_migration(self):
-        self.assertEqual(RETIRED_SHEETS, frozenset(migration.RETIRED_SHEETS))
+        self.assertEqual(
+            RETIRED_SHEETS, frozenset(migration.RETIRED_SHEETS) | frozenset(content_migration.RETIRED_SHEETS)
+        )
 
     def test_a_retired_sheet_that_is_off_is_reported_as_retired(self):
         self.assertFalse(self.sheet.is_active)
@@ -76,14 +79,14 @@ class RetiredSheetDriftTests(TestCase):
         self.assertEqual(report["deleted_active_seed_sheets"], [])
         self.assertFalse(has_drift(report))
 
-    def test_deleting_a_content_sheet_still_is(self):
-        StyleSheet.objects.filter(name="global").delete()
+    def test_deleting_any_seed_sheet_is_not_drift_once_all_are_retired(self):
+        StyleSheet.objects.filter(name__in=["global", "page-home"]).delete()
 
-        self.assertEqual(drifted_sheets(drift_report()), ["global (deleted)"])
+        self.assertEqual(drifted_sheets(drift_report()), [])
 
 
 class RealSeedTests(TestCase):
-    """The migrated test database holds the repo seed with the component sheets retired, so nothing has drifted."""
+    """The migrated test database holds the repo seed with every sheet retired, so nothing has drifted."""
 
     def setUp(self):
         cache.clear()
@@ -101,10 +104,8 @@ class RealSeedTests(TestCase):
 
         report = drift_report()
         self.assertTrue(report["seed_found"])
-        self.assertEqual(
-            report["counts"],
-            {STATUS_IN_SYNC: len(seeds) - len(RETIRED_SHEETS), STATUS_RETIRED: len(RETIRED_SHEETS)},
-        )
+        self.assertEqual(set(seeds), set(RETIRED_SHEETS))
+        self.assertEqual(report["counts"], {STATUS_RETIRED: len(seeds)})
         self.assertEqual(report["missing_from_database"], [])
         self.assertEqual(report["deleted_active_seed_sheets"], [])
         self.assertEqual(drifted_sheets(report), [])

@@ -19,7 +19,6 @@ from apps.cms.services.styles.drift import (
     STATUS_SETTINGS_CHANGED,
     STATUS_UNKNOWN,
     STATUS_UNMANAGED,
-    load_seed_sheets,
 )
 from apps.cms.views.layout import LAYOUT_CACHE_KEY, LAYOUT_STYLESHEET_CACHE_KEY
 
@@ -302,6 +301,10 @@ class StyleSheetAdminSaveModelTests(TestCase):
         self.assertIsNone(cache.get("layout:data"))
 
 
+SEED_SITE = {"name": "site", "display_name": "Site", "description": "", "css": "body {\n  color: #333;\n}\n"}
+SEED_HOME = {"name": "home", "display_name": "Home", "description": "", "css": ".home-hero {\n  margin: 0;\n}\n"}
+
+
 class StyleSheetAdminSeedStatusTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -312,17 +315,32 @@ class StyleSheetAdminSeedStatusTests(TestCase):
         )
         self.client.force_login(self.admin_user)
         StyleSheet.objects.all().delete()
-        seeds = load_seed_sheets()
+        # Every repo seed sheet is retired, so the labels are checked against a seed of live sheets.
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        seed_path = Path(tmp.name) / "stylesheets.json"
+        seed_path.write_text(
+            json.dumps(
+                [
+                    {"model": "cms.stylesheet", "pk": 1, "fields": {**SEED_SITE, "is_active": True, "sort_order": 10}},
+                    {"model": "cms.stylesheet", "pk": 2, "fields": {**SEED_HOME, "is_active": True, "sort_order": 100}},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        patcher = patch("apps.cms.services.styles.drift.SEED_PATH", seed_path)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         StyleSheet.objects.create(
-            name="global",
+            name="site",
             display_name="Seeded Global Row",
-            css=seeds["global"]["css"].replace("\n", "\r\n"),
+            css=SEED_SITE["css"].replace("\n", "\r\n"),
             sort_order=10,
         )
         StyleSheet.objects.create(
-            name="page-home",
+            name="home",
             display_name="Edited Home Row",
-            css=seeds["page-home"]["css"] + "\n.extra { color: red; }\n",
+            css=SEED_HOME["css"] + "\n.extra { color: red; }\n",
             sort_order=100,
         )
         StyleSheet.objects.create(name="custom", display_name="Custom Unmanaged Row", css=".x {}", sort_order=200)
@@ -359,27 +377,25 @@ class StyleSheetAdminSeedStatusTests(TestCase):
         content = response.content.decode()
         self.assertIn('data-role="stylesheet-seed-note"', content)
         note_start = content.index('data-role="stylesheet-seed-note"')
-        self.assertIn("stylesheet_drift --diff", content[note_start : content.index("</p>", note_start)])
+        self.assertIn("manage.py stylesheet_drift", content[note_start : content.index("</p>", note_start)])
 
     def test_seed_status_method_returns_label(self):
         from django.contrib.admin.sites import AdminSite
 
         model_admin = StyleSheetAdmin(StyleSheet, AdminSite())
 
-        self.assertEqual(
-            model_admin.seed_status(StyleSheet.objects.get(name="page-home")), STATUS_LABELS[STATUS_EDITED]
-        )
-        backup = StyleSheet(name="global-pre-redesign", css=".old {}", is_active=False)
+        self.assertEqual(model_admin.seed_status(StyleSheet.objects.get(name="home")), STATUS_LABELS[STATUS_EDITED])
+        backup = StyleSheet(name="site-pre-redesign", css=".old {}", is_active=False)
         self.assertEqual(model_admin.seed_status(backup), STATUS_LABELS[STATUS_BACKUP_COPY])
         self.assertIn("seed_status", model_admin.list_display)
 
     def test_changelist_labels_settings_changes_and_active_backup_copies(self):
-        StyleSheet.objects.filter(name="global").update(sort_order=11)
+        StyleSheet.objects.filter(name="site").update(sort_order=11)
         StyleSheet.objects.create(
-            name="global-pre-redesign", display_name="Switched Back Copy", css=".old {}", sort_order=5
+            name="site-pre-redesign", display_name="Switched Back Copy", css=".old {}", sort_order=5
         )
         StyleSheet.objects.create(
-            name="page-home-pre-redesign",
+            name="home-pre-redesign",
             display_name="Inactive Backup Copy",
             css=".old {}",
             sort_order=6,

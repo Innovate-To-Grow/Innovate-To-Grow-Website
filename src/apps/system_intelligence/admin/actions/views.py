@@ -1,5 +1,6 @@
 """Approve, reject, and preview System Intelligence action requests."""
 
+from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, JsonResponse
 from django.template.response import TemplateResponse
@@ -10,7 +11,7 @@ from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
 from . import common as actions_api
 from .lookup import _changed_preview_blocks, _cms_preview_page, _get_user_action_request
-from .rendering import _render_preview_blocks
+from .preview import preview_items
 
 
 def action_approve_view(request, action_id):
@@ -133,15 +134,23 @@ def action_full_preview_view(request, action_id):
 
 
 def _preview_response(request, action, page, blocks, banner_text, empty_text):
+    items = preview_items(blocks)
+    # A proposal can carry a non-string class (the payload keeps what the model sent); the frame wants text.
+    page_css_class = page.get("page_css_class")
     return TemplateResponse(
         request,
         "admin/system_intelligence/system_intelligence_action_preview.html",
         {
             "action": action,
             "page": page,
-            "block_html": _render_preview_blocks(blocks),
-            "has_changed_blocks": bool(blocks),
-            "has_preview_blocks": bool(blocks),
+            "preview_items": items,
+            "preview_payload": {
+                "pageCssClass": page_css_class if isinstance(page_css_class, str) else "",
+                "blocks": [{"nonce": item["nonce"], "block": item["block"]} for item in items],
+            },
+            "frontend_url": (getattr(settings, "FRONTEND_URL", "") or "").rstrip("/"),
+            "has_changed_blocks": bool(items),
+            "has_preview_blocks": bool(items),
             "banner_text": banner_text,
             "empty_text": empty_text,
         },

@@ -182,19 +182,19 @@ class ChangedSettingsTests(SimpleTestCase):
 class SheetStatusTests(SimpleTestCase):
     def setUp(self):
         cache.clear()
-        self.seeds = {"global": {"name": "global", "css": "body {\n  color: red;\n}\n"}, "empty": {"name": "empty"}}
+        self.seeds = {"site": {"name": "site", "css": "body {\n  color: red;\n}\n"}, "empty": {"name": "empty"}}
 
     def test_in_sync(self):
         self.assertEqual(
-            sheet_status(StyleSheet(name="global", css="body {\n  color: red;\n}\n"), self.seeds), STATUS_IN_SYNC
+            sheet_status(StyleSheet(name="site", css="body {\n  color: red;\n}\n"), self.seeds), STATUS_IN_SYNC
         )
 
     def test_crlf_and_trailing_whitespace_only_difference_is_in_sync(self):
-        sheet = StyleSheet(name="global", css="body {  \r\n  color: red;\r\n}\r\n\r\n")
+        sheet = StyleSheet(name="site", css="body {  \r\n  color: red;\r\n}\r\n\r\n")
         self.assertEqual(sheet_status(sheet, self.seeds), STATUS_IN_SYNC)
 
     def test_edited(self):
-        sheet = StyleSheet(name="global", css="body {\n  color: blue;\n}\n")
+        sheet = StyleSheet(name="site", css="body {\n  color: blue;\n}\n")
         self.assertEqual(sheet_status(sheet, self.seeds), STATUS_EDITED)
 
     def test_seed_without_css_compares_against_empty(self):
@@ -202,7 +202,7 @@ class SheetStatusTests(SimpleTestCase):
         self.assertEqual(sheet_status(StyleSheet(name="empty", css="a {}"), self.seeds), STATUS_EDITED)
 
     def test_seed_without_settings_ignores_is_active_and_sort_order(self):
-        sheet = StyleSheet(name="global", css="body {\n  color: red;\n}\n", is_active=False, sort_order=999)
+        sheet = StyleSheet(name="site", css="body {\n  color: red;\n}\n", is_active=False, sort_order=999)
         self.assertEqual(sheet_status(sheet, self.seeds), STATUS_IN_SYNC)
 
     def test_unmanaged(self):
@@ -252,27 +252,27 @@ class SheetStatusTests(SimpleTestCase):
 class SettingsChangedStatusTests(SimpleTestCase):
     def setUp(self):
         cache.clear()
-        self.seeds = {"global": {"css": "a {}\n", "is_active": True, "sort_order": 10}}
+        self.seeds = {"site": {"css": "a {}\n", "is_active": True, "sort_order": 10}}
 
     def test_is_active_differs(self):
-        sheet = StyleSheet(name="global", css="a {}\r\n", is_active=False, sort_order=10)
+        sheet = StyleSheet(name="site", css="a {}\r\n", is_active=False, sort_order=10)
         self.assertEqual(sheet_status(sheet, self.seeds), STATUS_SETTINGS_CHANGED)
 
     def test_sort_order_differs(self):
-        sheet = StyleSheet(name="global", css="a {}", is_active=True, sort_order=15)
+        sheet = StyleSheet(name="site", css="a {}", is_active=True, sort_order=15)
         self.assertEqual(sheet_status(sheet, self.seeds), STATUS_SETTINGS_CHANGED)
 
     def test_matching_settings_are_in_sync(self):
-        sheet = StyleSheet(name="global", css="a {}", is_active=True, sort_order=10)
+        sheet = StyleSheet(name="site", css="a {}", is_active=True, sort_order=10)
         self.assertEqual(sheet_status(sheet, self.seeds), STATUS_IN_SYNC)
 
     def test_edited_css_wins_over_changed_settings(self):
-        sheet = StyleSheet(name="global", css="b {}", is_active=False, sort_order=15)
+        sheet = StyleSheet(name="site", css="b {}", is_active=False, sort_order=15)
         self.assertEqual(sheet_status(sheet, self.seeds), STATUS_EDITED)
 
     def test_inactive_seed_sheet_left_inactive_is_in_sync(self):
-        seeds = {"global": {"css": "a {}", "is_active": False, "sort_order": 10}}
-        sheet = StyleSheet(name="global", css="a {}", is_active=False, sort_order=10)
+        seeds = {"site": {"css": "a {}", "is_active": False, "sort_order": 10}}
+        sheet = StyleSheet(name="site", css="a {}", is_active=False, sort_order=10)
         self.assertEqual(sheet_status(sheet, seeds), STATUS_IN_SYNC)
 
 
@@ -305,23 +305,23 @@ class SeedStatusLabelTests(SimpleTestCase):
 
     def test_default_path_is_the_repo_seed(self):
         seed = load_seed_sheets()["global"]
-        sheet = StyleSheet(name="global", css=seed["css"], is_active=seed["is_active"], sort_order=seed["sort_order"])
+        sheet = StyleSheet(name="global", css=seed["css"], is_active=False, sort_order=seed["sort_order"])
 
-        self.assertEqual(seed_status_label(sheet), STATUS_LABELS[STATUS_IN_SYNC])
+        self.assertEqual(seed_status_label(sheet), STATUS_LABELS[STATUS_RETIRED])
 
 
 class DescribeSheetTests(SimpleTestCase):
     def setUp(self):
         cache.clear()
-        self.seeds = {"global": {"css": "a {}\nb {}\nc {}\n"}}
+        self.seeds = {"site": {"css": "a {}\nb {}\nc {}\n"}}
 
     def test_in_sync_sheet_has_no_diff(self):
-        sheet = StyleSheet(name="global", display_name="Global", css="a {}\r\nb {}\r\nc {}", sort_order=10)
+        sheet = StyleSheet(name="site", display_name="Global", css="a {}\r\nb {}\r\nc {}", sort_order=10)
 
         self.assertEqual(
             describe_sheet(sheet, self.seeds),
             {
-                "name": "global",
+                "name": "site",
                 "display_name": "Global",
                 "is_active": True,
                 "sort_order": 10,
@@ -334,7 +334,7 @@ class DescribeSheetTests(SimpleTestCase):
         )
 
     def test_edited_sheet_counts_lines_and_carries_a_unified_diff(self):
-        sheet = StyleSheet(name="global", display_name="Global", css="a {}\nB {}\nc {}\nd {}\n", is_active=False)
+        sheet = StyleSheet(name="site", display_name="Global", css="a {}\nB {}\nc {}\nd {}\n", is_active=False)
 
         entry = describe_sheet(sheet, self.seeds)
 
@@ -342,14 +342,14 @@ class DescribeSheetTests(SimpleTestCase):
         self.assertFalse(entry["is_active"])
         self.assertEqual(entry["added_lines"], 2)
         self.assertEqual(entry["removed_lines"], 1)
-        self.assertTrue(entry["diff"].startswith("--- seed/global.css\n+++ database/global.css\n"))
+        self.assertTrue(entry["diff"].startswith("--- seed/site.css\n+++ database/site.css\n"))
         self.assertIn("\n-b {}\n", entry["diff"])
         self.assertIn("\n+B {}\n", entry["diff"])
         self.assertIn("\n+d {}\n", entry["diff"])
 
     def test_settings_changed_sheet_lists_the_fields_and_has_no_diff(self):
-        seeds = {"global": {"css": "a {}\n", "is_active": True, "sort_order": 10}}
-        sheet = StyleSheet(name="global", display_name="Global", css="a {}", is_active=False, sort_order=12)
+        seeds = {"site": {"css": "a {}\n", "is_active": True, "sort_order": 10}}
+        sheet = StyleSheet(name="site", display_name="Global", css="a {}", is_active=False, sort_order=12)
 
         entry = describe_sheet(sheet, seeds)
 
@@ -358,8 +358,8 @@ class DescribeSheetTests(SimpleTestCase):
         self.assertEqual((entry["diff"], entry["added_lines"], entry["removed_lines"]), ("", 0, 0))
 
     def test_edited_sheet_also_lists_changed_settings(self):
-        seeds = {"global": {"css": "a {}\n", "is_active": True, "sort_order": 10}}
-        sheet = StyleSheet(name="global", css="b {}\n", is_active=True, sort_order=12)
+        seeds = {"site": {"css": "a {}\n", "is_active": True, "sort_order": 10}}
+        sheet = StyleSheet(name="site", css="b {}\n", is_active=True, sort_order=12)
 
         entry = describe_sheet(sheet, seeds)
 
@@ -374,24 +374,24 @@ class DescribeSheetTests(SimpleTestCase):
                 self.assertEqual(entry["changed_settings"], [])
 
     def test_sheet_diff_ignores_line_ending_noise(self):
-        self.assertEqual(sheet_diff(StyleSheet(name="global", css="a {}\r\n"), "a {}\n"), "")
+        self.assertEqual(sheet_diff(StyleSheet(name="site", css="a {}\r\n"), "a {}\n"), "")
 
     def test_removed_custom_property_line_is_counted(self):
         # The diff line of a removed "--x: 1;" starts with "---", like the file header.
-        sheet = StyleSheet(name="global", css=":root {\n--x: 2;\n}\n")
-        entry = describe_sheet(sheet, {"global": {"css": ":root {\n--x: 1;\n}\n"}})
+        sheet = StyleSheet(name="site", css=":root {\n--x: 2;\n}\n")
+        entry = describe_sheet(sheet, {"site": {"css": ":root {\n--x: 1;\n}\n"}})
         self.assertIn("\n---x: 1;\n", entry["diff"])
         self.assertEqual((entry["added_lines"], entry["removed_lines"]), (1, 1))
 
     def test_only_removed_custom_properties(self):
-        sheet = StyleSheet(name="global", css=":root {\n}\n")
-        entry = describe_sheet(sheet, {"global": {"css": ":root {\n--x: 1;\n--y: 2;\n}\n"}})
+        sheet = StyleSheet(name="site", css=":root {\n}\n")
+        entry = describe_sheet(sheet, {"site": {"css": ":root {\n--x: 1;\n--y: 2;\n}\n"}})
         self.assertEqual((entry["added_lines"], entry["removed_lines"]), (0, 2))
 
     def test_changes_in_several_hunks_are_summed(self):
         seed_css = "".join(f"r{index} {{}}\n" for index in range(20))
         db_css = seed_css.replace("r1 {}", "R1 {}").replace("r18 {}\n", "")
-        entry = describe_sheet(StyleSheet(name="global", css=db_css), {"global": {"css": seed_css}})
+        entry = describe_sheet(StyleSheet(name="site", css=db_css), {"site": {"css": seed_css}})
 
         self.assertEqual(entry["diff"].count("\n@@ "), 2)
         self.assertEqual((entry["added_lines"], entry["removed_lines"]), (1, 2))

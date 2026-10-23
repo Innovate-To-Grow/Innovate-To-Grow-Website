@@ -314,19 +314,17 @@ class StylesheetDriftCommandTests(TestCase):
         self.assertIn("2 sheet(s) differ from the repo seed: alpha, beta.", str(error))
 
     def test_default_seed_is_the_repo_seed(self):
-        # setUp deleted every sheet, so each active repo seed sheet that is not retired reads as deleted.
-        out, _err, error = self._run_failing("--json")
+        # setUp deleted every sheet. Every repo seed sheet is retired, so none of them reads as deleted.
+        out, _err = self._run("--json")
 
         report = json.loads(out)
         seeds = load_seed_sheets()
-        active = [name for name, fields in seeds.items() if fields["is_active"] and name not in RETIRED_SHEETS]
-        self.assertTrue(active)
+        self.assertTrue(seeds)
+        self.assertEqual(set(seeds), set(RETIRED_SHEETS))
         self.assertEqual(report["seed_path"], str(SEED_PATH))
         self.assertTrue(report["seed_found"])
         self.assertEqual(report["missing_from_database"], list(seeds))
-        self.assertEqual(report["deleted_active_seed_sheets"], active)
-        deleted = ", ".join(f"{name} (deleted)" for name in active)
-        self.assertEqual(str(error), f"{len(active)} sheet(s) differ from the repo seed: {deleted}. {DRIFT_HINT}")
+        self.assertEqual(report["deleted_active_seed_sheets"], [])
 
 
 class StylesheetDriftCommandHelpTests(SimpleTestCase):
