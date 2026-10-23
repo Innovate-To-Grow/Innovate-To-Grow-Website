@@ -1,0 +1,210 @@
+/* Moved verbatim from the CMS "global" stylesheet. */
+
+/* ==========================================================================
+   Buttons
+   .itg-btn-primary: navy rectangle, white 16px text (the reference's
+   "Click Here to Submit Your Project"; .itg-btn-lg gives its 17px / 16px 32px
+   size). .itg-btn-outline: 2px navy outline. .itg-btn-cta (+ .itg-btn-cta-gold):
+   the footer's outlined uppercase CTA buttons.
+   ========================================================================== */
+
+.itg-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 20px;
+  border: 2px solid transparent;
+  border-radius: var(--itg-radius-button);
+  background: transparent;
+  color: var(--itg-color-primary);
+  font-family: inherit;
+  font-size: var(--itg-font-size-body);
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out,
+    border-color var(--itg-transition-fast) ease-in-out;
+}
+
+.itg-btn:hover,
+.itg-btn:focus {
+  text-decoration: none;
+}
+
+.itg-btn-primary {
+  background: var(--itg-color-primary);
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.itg-btn-primary:hover,
+.itg-btn-primary:focus-visible {
+  background: var(--itg-color-primary-hover);
+  border-color: var(--itg-color-primary-hover);
+  color: var(--itg-color-white);
+}
+
+.itg-btn-outline {
+  background: var(--itg-color-white);
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-primary);
+}
+
+.itg-btn-outline:hover,
+.itg-btn-outline:focus-visible {
+  background: var(--itg-color-primary);
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+/* Outlined uppercase CTA (footer row): 14px 600, 14px 28px, 2px border */
+.itg-btn-cta {
+  min-height: 0;
+  padding: 14px 28px;
+  border-color: var(--itg-color-primary);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.itg-btn-cta:hover,
+.itg-btn-cta:focus-visible {
+  background: var(--itg-color-primary);
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.itg-btn-cta.itg-btn-cta-gold {
+  border-color: var(--itg-color-accent-bright);
+}
+
+.itg-btn-cta.itg-btn-cta-gold:hover,
+.itg-btn-cta.itg-btn-cta-gold:focus-visible {
+  background: var(--itg-color-accent-bright);
+  border-color: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+/* Text button: looks like a content link */
+.itg-btn-text {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.itg-btn-text:hover,
+.itg-btn-text:focus-visible {
+  background: none;
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+/* Destructive action shown as text (e.g. "Remove", "Delete list") */
+.itg-btn-danger {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--itg-color-error);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.itg-btn-danger:hover,
+.itg-btn-danger:focus-visible {
+  background: none;
+  color: var(--itg-color-error-light);
+  text-decoration: none;
+}
+
+/* Boxed destructive button: .itg-btn-outline.itg-btn-danger */
+.itg-btn-outline.itg-btn-danger {
+  min-height: 40px;
+  padding: 6px 20px;
+  border: 2px solid var(--itg-color-error);
+  background: var(--itg-color-white);
+  text-decoration: none;
+}
+
+.itg-btn-outline.itg-btn-danger:hover,
+.itg-btn-outline.itg-btn-danger:focus-visible {
+  background: var(--itg-color-error);
+  color: var(--itg-color-white);
+}
+
+/* Gold fill (navy text keeps the contrast) */
+.itg-btn-accent {
+  background: var(--itg-color-accent-bright);
+  border-color: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+.itg-btn-accent:hover,
+.itg-btn-accent:focus-visible {
+  background: var(--itg-color-primary);
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.itg-btn-bright {
+  background: var(--itg-color-accent-bright);
+  border-color: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+.itg-btn-bright:hover,
+.itg-btn-bright:focus-visible {
+  background: var(--itg-color-primary);
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+/* The reference's large button: 17px text, 16px 32px padding */
+.itg-btn-lg {
+  min-height: 48px;
+  padding: 14px 30px;
+  font-size: 1.0625rem;
+  line-height: 25.5px;
+}
+
+/* Disabled must look disabled, whatever the variant */
+.itg-btn:disabled,
+.itg-btn[aria-disabled='true'],
+.itg-btn:disabled:hover,
+.itg-btn[aria-disabled='true']:hover {
+  background: var(--itg-color-disabled-bg);
+  border-color: var(--itg-color-disabled-border);
+  color: var(--itg-color-disabled-text);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+.itg-btn-text:disabled,
+.itg-btn-text:disabled:hover,
+.itg-btn-text[aria-disabled='true'],
+.itg-btn-text[aria-disabled='true']:hover,
+.itg-btn-danger:not(.itg-btn-outline):disabled,
+.itg-btn-danger:not(.itg-btn-outline):disabled:hover,
+.itg-btn-danger:not(.itg-btn-outline)[aria-disabled='true'],
+.itg-btn-danger:not(.itg-btn-outline)[aria-disabled='true']:hover {
+  background: none;
+  border-color: transparent;
+}

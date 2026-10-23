@@ -1,0 +1,414 @@
+/* Moved verbatim from the CMS "cms-blocks" stylesheet. */
+
+/* ==========================================================================
+   Other blocks
+   ========================================================================== */
+
+/* ---- Rich text / section group ---- */
+.cms-rich-text,
+.cms-section-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-section-group {
+  row-gap: 24px;
+}
+
+.cms-section-group > .cms-page-title {
+  margin-bottom: 0;
+}
+
+.cms-section-group-section {
+  margin: 0;
+}
+
+/* ---- FAQ list: questions are the theme's bold italic h3 (24px / 36px) ---- */
+.cms-faq-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-faq-items {
+  display: flow-root;
+}
+
+.cms-faq-item {
+  margin: 0;
+}
+
+.cms-faq-question.itg-section-title {
+  margin: 12px 0;
+  font-size: var(--itg-font-size-h3);
+  font-style: italic;
+  font-weight: 700;
+  line-height: 36px;
+}
+
+.cms-faq-item:first-child > .cms-faq-question {
+  margin-top: 0;
+}
+
+/* Run-in labels inside an answer ("Fall + Spring (Teams CAP-1xx):") are bold
+   body text on the reference, not 20px headings. */
+.cms-faq-answer :where(h4, h5, h6) {
+  margin: 0 0 12px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+/* ---- Contact info ---- */
+.cms-contact-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-contact-info-intro {
+  margin: 0 0 12px;
+  line-height: 24px;
+}
+
+/* Contact details as the theme's bold label over its value
+   ("External Links:" on the reference news pages), 12px apart. */
+.cms-contact-info .cms-contact-info-list {
+  display: block;
+  margin: 0;
+  border-top: 0;
+}
+
+.cms-contact-info .itg-meta-item {
+  display: block;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.cms-contact-info .itg-meta-label {
+  width: auto;
+  color: var(--itg-color-text);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.cms-contact-info .itg-meta-label::after {
+  content: ':';
+}
+
+.cms-contact-info .itg-meta-value {
+  margin: 0;
+  line-height: 24px;
+}
+
+.cms-contact-info a {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.cms-contact-info a:hover,
+.cms-contact-info a:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+/* ---- Link list: the theme's bulleted list ---- */
+.cms-link-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 12px;
+}
+
+.cms-link-list > .section-title {
+  margin: 0;
+}
+
+.cms-link-list-items {
+  margin: 0 0 0 var(--itg-list-indent, 25px);
+  padding: 0;
+  list-style-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='7'%3E%3Crect width='5' height='5' fill='%23cccccc'/%3E%3C/svg%3E");
+}
+
+.cms-link-list-item {
+  margin: 0;
+  color: var(--itg-color-text);
+  line-height: 24px;
+}
+
+.cms-link-list-items--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: 0 30px;
+  margin-left: 0;
+  list-style: none;
+}
+
+.cms-link-list-items--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+  margin-left: 0;
+  list-style: none;
+}
+
+.cms-link-list-item a {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.cms-link-list-item a:hover,
+.cms-link-list-item a:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.cms-link-list-description {
+  color: var(--itg-color-text);
+}
+
+/* ---- Image + text (capstone pages): the image floats beside the text ---- */
+.cms-image-text {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-image-text .capstone-content {
+  display: flow-root;
+}
+
+.cms-image-text .capstone-hero-image {
+  float: right;
+  width: 50%;
+  max-width: 50%;
+  height: auto;
+  margin: 0 0 12px 15px;
+  border-radius: 0;
+}
+
+.cms-image-text--left .capstone-hero-image {
+  float: left;
+  margin: 0 15px 12px 0;
+}
+
+.cms-image-text--top .capstone-hero-image {
+  float: none;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 12px;
+}
+
+/* Image left: two columns instead of a float, so the text column takes all
+   the space beside the image. 'right' keeps the float above: the live
+   capstone pages wrap their long body under the image. Phones stack. */
+@media (min-width: 769px) {
+  .cms-image-text .cms-image-text--left:has(> .capstone-hero-image) {
+    display: grid;
+    grid-template-columns: 50% minmax(0, 1fr);
+    column-gap: 30px;
+    align-items: start;
+  }
+
+  .cms-image-text--left:has(> .capstone-hero-image) > .capstone-hero-image {
+    float: none;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 12px;
+  }
+}
+
+/* ---- Hero: page title, lead and image in the main column (no band) ---- */
+.cms-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-hero > :last-child {
+  margin-bottom: 0;
+}
+
+.cms-hero-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 480px;
+  border-radius: 0;
+  object-fit: cover;
+}
+
+/* ---- CTA buttons: a row of .itg-btn links ---- */
+.cms-cta-group-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 26px 15px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cms-cta-group-item {
+  margin: 0;
+}
+
+/* ---- Notice / callout: the global .itg-notice box ---- */
+.cms-notice-title {
+  margin: 0 0 12px;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: 30px;
+}
+
+/* ---- Numbered list: intro HTML, then a decimal list in the prose style ---- */
+.cms-numbered-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-numbered-list > .section-title {
+  margin: 0 0 12px;
+}
+
+.cms-numbered-list-preamble {
+  margin: 0 0 12px;
+}
+
+.cms-numbered-list-preamble > :last-child {
+  margin-bottom: 0;
+}
+
+.cms-prose .cms-numbered-list-items {
+  list-style: decimal;
+}
+
+/* ---- Table block ---- */
+.cms-table-block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 12px;
+}
+
+.cms-table-block-title {
+  margin: 0;
+}
+
+.cms-table-block-wrap {
+  overflow-x: auto;
+}
+
+.cms-table-block-wrap:focus-visible {
+  outline: 2px solid var(--itg-color-secondary);
+  outline-offset: 2px;
+}
+
+.cms-table-block-table {
+  margin: 0;
+}
+
+/* ---- Sponsors by year: logos centred in a borderless grid (the
+   acknowledgement page's logo table, 15px cell padding) ---- */
+.cms-sponsor-year {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 12px;
+}
+
+.cms-sponsor-year-title {
+  margin: 0;
+}
+
+.cms-sponsor-year-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
+  gap: 0;
+}
+
+.cms-sponsor-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100%;
+  padding: 15px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--itg-color-text);
+  text-align: center;
+  text-decoration: none;
+}
+
+a.cms-sponsor-card:hover .cms-sponsor-name,
+a.cms-sponsor-card:focus .cms-sponsor-name {
+  color: var(--itg-color-primary-hover);
+}
+
+.cms-sponsor-logo {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+}
+
+.cms-sponsor-card-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 0;
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.cms-sponsor-name {
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 600;
+  line-height: 24px;
+}
+
+/* ---- Embeds ---- */
+.cms-embed,
+.cms-embed-widget {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 12px;
+}
+
+.cms-embed > .section-title,
+.cms-embed-widget > .section-title {
+  margin: 0;
+}
+
+/* A third-party iframe (YouTube, Google Forms) shows a grey placeholder while
+   it loads. A CMS widget iframe stays transparent: /_embed/:slug paints no
+   background, so the embedded blocks sit on the page like any other block. */
+.cms-embed__frame {
+  background: var(--itg-color-bg-light);
+}
+
+.cms-embed-widget__frame {
+  background: transparent;
+}
+
+.cms-embed--invalid p,
+.cms-embed-widget--invalid p {
+  margin: 0;
+}
+
+.cms-embed-message,
+.cms-block-preview-waiting {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-body);
+  font-style: italic;
+  text-align: center;
+}

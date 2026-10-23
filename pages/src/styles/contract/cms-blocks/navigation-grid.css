@@ -1,0 +1,75 @@
+/* Moved verbatim from the CMS "cms-blocks" stylesheet. */
+
+/* ==========================================================================
+   Navigation grid (/projects, /students): tiles keep the grid; titles are
+   the reference's underlined semibold links and descriptions body text
+   (16px / 24px as on /students; 18px / 27px on the /projects hub).
+   ========================================================================== */
+
+.cms-navigation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cms-navigation-grid-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Panel look (grey, gold top rule, padding) comes from .itg-rule-panel. */
+.cms-navigation-grid-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.cms-navigation-grid-title {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.cms-navigation-grid-title a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.cms-navigation-grid-title a:hover,
+.cms-navigation-grid-title a:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+/* The title link covers its tile, so the whole tile is the touch target. */
+.cms-navigation-grid-title a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.cms-navigation-grid-item:hover .cms-navigation-grid-title a {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.cms-navigation-grid-description {
+  margin: 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.projects-hub-page .cms-navigation-grid-title,
+.projects-hub-page .cms-navigation-grid-description {
+  font-size: var(--itg-font-size-lead);
+  line-height: 27px;
+}

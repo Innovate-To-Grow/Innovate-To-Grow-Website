@@ -152,6 +152,41 @@ class ScheduleSyncServiceTest(TestCase):
 
         self.assertFalse(EventAgendaItem.objects.filter(config=self.config).exists())
 
+    def test_rows_with_blank_track_and_order_are_non_presenting(self):
+        tracks = [{"Track": 1, "Room": "Granite", "Class": "CAP", "Topic": "FoodTech"}]
+        projects = [
+            {"Track": 1, "Order": 1, "Class": "CAP", "Team#": "CAP-101", "Team Name": "Alpha", "Project Title": "A"},
+            {"Track": "", "Order": "", "Class": "CAP", "Team#": "CAP-201", "Team Name": "Beta", "Project Title": "B"},
+            {"Track": 1, "Order": "", "Class": "CAP", "Team#": "CAP-301", "Team Name": "Gamma", "Project Title": "C"},
+            {
+                "Track": 1,
+                "Order": "TBD",
+                "Class": "CAP",
+                "Team#": "CAP-401",
+                "Team Name": "Delta",
+                "Project Title": "D",
+            },
+        ]
+
+        stats = sync_schedule(self.config, tracks_records=tracks, projects_records=projects)
+
+        self.assertEqual(stats.slots_created, 1)
+        self.assertTrue(CurrentProject.objects.get(team_number="CAP-101").is_presenting)
+        self.assertFalse(CurrentProject.objects.get(team_number="CAP-201").is_presenting)
+        # Half-filled / non-numeric rows are malformed: skipped, not demoted.
+        self.assertFalse(CurrentProject.objects.filter(team_number__in=["CAP-301", "CAP-401"]).exists())
+
+    def test_resync_with_blank_order_drops_slot_and_marks_non_presenting(self):
+        tracks = [{"Track": 1, "Room": "Granite", "Class": "CAP", "Topic": "FoodTech"}]
+        row = {"Track": 1, "Order": 1, "Class": "CAP", "Team#": "CAP-101", "Team Name": "Alpha", "Project Title": "A"}
+        sync_schedule(self.config, tracks_records=tracks, projects_records=[row])
+        self.assertEqual(EventScheduleSlot.objects.count(), 1)
+
+        sync_schedule(self.config, tracks_records=tracks, projects_records=[{**row, "Track": "", "Order": ""}])
+
+        self.assertEqual(EventScheduleSlot.objects.count(), 0)
+        self.assertFalse(CurrentProject.objects.get(team_number="CAP-101").is_presenting)
+
     def test_fall_rows_become_non_presenting_projects_without_slots(self):
         tracks = [{"Track": 1, "Room": "Granite", "Class": "CAP", "Topic": "FoodTech"}]
         projects = [

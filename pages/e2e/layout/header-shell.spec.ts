@@ -1,15 +1,10 @@
 // Page shell around the routed page: the phone header's reserved room, the
 // mobile-menu bar, the phone empty-state targets and the main landmark.
-// These checks need the CMS content sheets as well as the bundled shell CSS.
+// The bundle carries all of the site's CSS, so the shell mock's empty /layout/styles.css is enough.
 import {test, expect} from '../helpers/fixtures';
 import {cmsEmbedResponse, mockCmsEmbed} from '../helpers';
-import {serveSeedStylesheets} from '../helpers/stylesheets';
 
 const PHONE = {width: 390, height: 844};
-
-test.beforeEach(async ({page}) => {
-  await serveSeedStylesheets(page);
-});
 
 test('isolated routes reserve no room for the header that they do not mount', async ({page}) => {
   await page.setViewportSize(PHONE);

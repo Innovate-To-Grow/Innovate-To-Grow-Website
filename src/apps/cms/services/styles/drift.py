@@ -4,6 +4,9 @@ The seed is ``migrations/data/stylesheets.json``, the Django fixture that migrat
 0004 loads and later migrations re-sync from. Sheets are compared on *normalised* CSS
 (CRLF to LF, trailing whitespace stripped), so a textarea save that only changed line
 endings is not reported as an edit.
+
+Migration 0026 switched off the component sheets (``RETIRED_SHEETS``): the frontend bundle
+ships their CSS, so for them "off" is the expected state, whatever the seed says.
 """
 
 import difflib
@@ -19,12 +22,28 @@ from apps.cms.models import CMSPage, StyleSheet
 
 SEED_PATH = Path(__file__).resolve().parents[2] / "migrations" / "data" / "stylesheets.json"
 BACKUP_SUFFIXES = ("-pre-redesign", "-pre-audit-fixes")
+# Kept equal to RETIRED_SHEETS in migration 0026 (a test checks it).
+RETIRED_SHEETS = frozenset(
+    {
+        "layout-container",
+        "layout-menu",
+        "layout-footer",
+        "auth",
+        "page-news",
+        "page-projects",
+        "page-events",
+        "page-subscribe",
+        "page-misc",
+        "maintenance",
+    }
+)
 
 STATUS_IN_SYNC = "in_sync"
 STATUS_EDITED = "edited"
 STATUS_SETTINGS_CHANGED = "settings_changed"
 STATUS_UNMANAGED = "unmanaged"
 STATUS_BACKUP_COPY = "backup_copy"
+STATUS_RETIRED = "retired"
 STATUS_UNKNOWN = "unknown"
 STATUS_LABELS = {
     STATUS_IN_SYNC: "In sync with the repo seed",
@@ -32,6 +51,7 @@ STATUS_LABELS = {
     STATUS_SETTINGS_CHANGED: "Active / order differ from the repo seed",
     STATUS_UNMANAGED: "Unmanaged (not in the repo seed)",
     STATUS_BACKUP_COPY: "Inactive backup copy left by a migration",
+    STATUS_RETIRED: "Retired (the frontend bundle ships this CSS)",
     STATUS_UNKNOWN: "Unknown (repo seed file not found)",
 }
 # Fields the re-sync migrations overwrite besides the CSS itself.
@@ -72,14 +92,26 @@ def is_backup_copy(name: str) -> bool:
 
 
 def changed_settings(sheet, seed: dict | None) -> list[str]:
-    """The seed-managed fields other than ``css`` whose database value differs from the seed."""
+    """The seed-managed fields other than ``css`` whose database value differs from the seed.
+
+    A retired sheet is expected to be off, and its order no longer matters while it is.
+    """
     if seed is None:
         return []
+    if sheet.name in RETIRED_SHEETS:
+        return ["is_active"] if sheet.is_active else []
     return [field for field in SEED_SETTINGS_FIELDS if field in seed and getattr(sheet, field) != seed[field]]
 
 
 def sheet_status(sheet, seeds: dict[str, dict]) -> str:
     seed = seeds.get(sheet.name)
+    if seed is not None and sheet.name in RETIRED_SHEETS:
+        if not sheet.is_active:
+            return STATUS_RETIRED
+        # Switched back on, it is served again in front of the bundle's copy; show any CSS edit too.
+        if css_checksum(sheet.css) != css_checksum(seed.get("css", "")):
+            return STATUS_EDITED
+        return STATUS_SETTINGS_CHANGED
     if seed is None:
         # A backup copy an admin re-activated (the documented way to switch back) is served
         # CSS the seed does not hold, so it counts as unmanaged.
@@ -170,7 +202,9 @@ def drift_report(seed_path=None) -> dict:
         "sheets": sheets,
         "missing_from_database": missing,
         # A re-sync migration recreates these with update_or_create and serves them again.
-        "deleted_active_seed_sheets": [name for name in missing if seeds[name].get("is_active", True)],
+        "deleted_active_seed_sheets": [
+            name for name in missing if seeds[name].get("is_active", True) and name not in RETIRED_SHEETS
+        ],
         "pages_with_css": pages_with_css(),
         "counts": dict(Counter(entry["status"] for entry in sheets)),
     }
@@ -179,10 +213,10 @@ def drift_report(seed_path=None) -> dict:
 def is_drifted(entry: dict) -> bool:
     """Would a re-sync migration change what this sheet serves, or is it served CSS the seed lacks?
 
-    True for an active sheet whose CSS differs from the seed or is not in it, and for any seed
-    sheet whose ``is_active`` or ``sort_order`` changed (deactivating a seed sheet counts). False
-    for a sheet that is inactive in the seed and in the database, an inactive unmanaged sheet
-    and an inactive backup copy.
+    True for an active sheet whose CSS differs from the seed or is not in it, for any seed sheet
+    whose ``is_active`` or ``sort_order`` changed (deactivating a seed sheet counts), and for a
+    retired sheet switched back on. False for a sheet that is inactive in the seed and in the
+    database, an inactive unmanaged sheet, an inactive backup copy and a retired sheet that is off.
     """
     if entry["changed_settings"]:
         return True

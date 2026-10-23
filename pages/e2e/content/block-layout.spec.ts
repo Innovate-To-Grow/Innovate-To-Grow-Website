@@ -1,11 +1,10 @@
-// CMS block layout with the CMS content stylesheets (the shell mock serves an empty sheet):
+// CMS block layout with the site's real CSS, which the bundle carries:
 // an embedded CMS widget sits on the page background, 'left' image + text puts the text in the
 // column beside the image, 'right' keeps the float the live capstone pages use, and the hero,
 // CTA, notice and numbered-list blocks render with the design system.
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
 import {cmsEmbedResponse, cmsPageResponse, mockCmsEmbed, mockCmsPage} from '../helpers';
-import {serveSeedStylesheets} from '../helpers/stylesheets';
 
 const PARAGRAPH =
   'Teams of UC Merced engineering students partner with organisations to design, build and test systems ' +
@@ -22,7 +21,6 @@ async function box(page: Page, selector: string): Promise<Box> {
 }
 
 async function openImageTextPage(page: Page, position: 'left' | 'right') {
-  await serveSeedStylesheets(page);
   await mockCmsPage(page, 'image-text-layout', cmsPageResponse({
     slug: 'image-text-layout', route: '/image-text-layout', title: 'Image + text',
     blocks: [{block_type: 'image_text', sort_order: 0, data: {
@@ -39,7 +37,6 @@ async function openImageTextPage(page: Page, position: 'left' | 'right') {
 
 test('an embedded CMS widget sits on the page background; a third-party embed keeps its placeholder', async ({page}) => {
   await page.setViewportSize({width: 1280, height: 900});
-  await serveSeedStylesheets(page);
   await page.route('https://www.youtube-nocookie.com/**', (route) =>
     route.fulfill({status: 200, contentType: 'text/html', body: '<!doctype html><title>video</title>'}),
   );
@@ -109,7 +106,6 @@ test("'left' image + text stacks the image above the text on phones", async ({pa
 
 test('hero, CTA, notice and numbered-list blocks render with the design system', async ({page}) => {
   await page.setViewportSize({width: 1280, height: 900});
-  await serveSeedStylesheets(page);
   await mockCmsPage(page, 'new-blocks', cmsPageResponse({
     slug: 'new-blocks', route: '/new-blocks', title: 'New blocks',
     blocks: [
