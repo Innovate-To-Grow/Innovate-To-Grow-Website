@@ -1,3 +1,4 @@
+import '../../../styles/orgToggle.css';
 import type {ProfileSectionProps} from './types';
 
 type ProfileEditFormProps = Pick<

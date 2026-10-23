@@ -1,3 +1,4 @@
+import '../auth.css';
 import {Icon} from '@/components/Icon/Icon';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';

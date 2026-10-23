@@ -1,0 +1,35 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* Column tones: one colour family per class, a lighter step per column. */
+.schedule-tone {
+  --schedule-column-bg: var(--itg-color-bg-panel);
+  --schedule-cell-text: var(--itg-color-primary);
+  --schedule-org-color: var(--itg-color-primary);
+  --schedule-topic-color: var(--itg-color-primary);
+}
+
+/* rgba(218, 169, 0, .9) fading to .5, as on the reference. */
+.schedule-tone--gold.schedule-tone--col-0 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-accent-gold) 90%, var(--itg-color-white)); }
+.schedule-tone--gold.schedule-tone--col-1 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-accent-gold) 80%, var(--itg-color-white)); }
+.schedule-tone--gold.schedule-tone--col-2 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-accent-gold) 70%, var(--itg-color-white)); }
+.schedule-tone--gold.schedule-tone--col-3 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-accent-gold) 60%, var(--itg-color-white)); }
+.schedule-tone--gold.schedule-tone--col-4 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-accent-gold) 50%, var(--itg-color-white)); }
+
+/* Civil & Environmental / Service Learning: the reference's flat #99d9d9. */
+.schedule-tone--teal {
+  --schedule-column-bg: var(--schedule-teal, #99d9d9);
+}
+
+.schedule-tone--navy {
+  --schedule-cell-text: var(--itg-color-accent-bright);
+  --schedule-org-color: var(--itg-color-accent-bright);
+  --schedule-topic-color: var(--itg-color-accent-bright);
+}
+
+/* Gold text stays at WCAG AA (4.5:1) only while the navy is at least 80% strong
+   (#ffbf3c on the 80% tint is 4.8:1), so the lightest column stops at 80%. */
+.schedule-tone--navy.schedule-tone--col-0 { --schedule-column-bg: var(--itg-color-primary); }
+.schedule-tone--navy.schedule-tone--col-1 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-primary) 95%, var(--itg-color-white)); }
+.schedule-tone--navy.schedule-tone--col-2 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-primary) 90%, var(--itg-color-white)); }
+.schedule-tone--navy.schedule-tone--col-3 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-primary) 85%, var(--itg-color-white)); }
+.schedule-tone--navy.schedule-tone--col-4 { --schedule-column-bg: color-mix(in srgb, var(--itg-color-primary) 80%, var(--itg-color-white)); }

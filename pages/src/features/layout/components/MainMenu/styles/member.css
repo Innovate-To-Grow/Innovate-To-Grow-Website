@@ -1,0 +1,179 @@
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+/* ---------- Right end of the menu row: date + member link (12px uppercase) ----------
+   The date's text sits ~2px above the menu labels, its right edge 21px inside
+   the container, as on the reference. */
+.site-header-utility {
+  flex: 0 0 auto;
+  align-self: stretch;
+  margin-left: auto;
+  margin-right: 21px;
+  display: flex;
+  align-items: stretch;
+  gap: 0 12px;
+  min-height: 36px;
+  padding: 0 0 4px;
+  color: var(--itg-color-primary);
+  font-size: 12px;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.site-header-date {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* Thin divider between the date and the member link */
+.site-header-date + .site-header-member {
+  padding-left: 12px;
+}
+
+.site-header-date + .site-header-member::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 18px;
+  margin-top: -9px;
+  border-left: 1px solid var(--itg-color-border-table);
+}
+
+.site-header-member {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.member-signin,
+.member-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-transform: uppercase;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.member-signin:hover,
+.member-button:hover,
+.site-header-member.is-open .member-button {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.member-avatar {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.member-arrow {
+  font-size: 12px;
+  transition: transform var(--itg-transition-fast) ease;
+}
+
+.site-header-member.is-open .member-arrow {
+  transform: rotate(180deg);
+}
+
+/* Account menu: the same grey panel as the menu dropdowns, opening at the
+   bottom of the menu row (the utility box stops 4px above it) */
+.member-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1100;
+  box-sizing: border-box;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 20px 0;
+  background: var(--itg-color-bg-light);
+  border-bottom: 5px solid var(--itg-color-accent-menu);
+  text-transform: none;
+}
+
+/* Keeps the pointer inside the member area between the trigger and the panel */
+.member-dropdown::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 12px;
+}
+
+.member-dropdown-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding: 0 21px 10px;
+  border-bottom: 1px solid var(--itg-color-border-table);
+  color: var(--itg-color-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.member-name {
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.member-dropdown-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 21px;
+  border: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 28px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.member-dropdown-item:hover {
+  text-decoration: underline;
+}
+
+.member-dropdown-item.logout {
+  color: var(--itg-color-error);
+}
+
+/* The reference hides the date below 1200px; the member link stays. */
+@media (max-width: 1199px) {
+  .site-header-date {
+    display: none;
+  }
+
+  .site-header-date + .site-header-member {
+    padding-left: 0;
+  }
+
+  .site-header-date + .site-header-member::before {
+    content: none;
+  }
+}

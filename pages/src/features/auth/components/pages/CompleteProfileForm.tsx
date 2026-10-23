@@ -1,3 +1,4 @@
+import '../styles/orgToggle.css';
 import type { FormEvent } from 'react';
 
 type OrganizationType = 'individual' | 'organization';

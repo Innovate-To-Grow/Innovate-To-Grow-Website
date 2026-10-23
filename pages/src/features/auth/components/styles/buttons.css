@@ -1,0 +1,52 @@
+/* Moved verbatim from the CMS "auth" stylesheet. */
+
+/* ---- buttons.css ---- */
+/* Visuals come from .itg-btn / .itg-btn-primary / -outline / -text / -danger. */
+
+.auth-form-submit {
+  align-self: flex-start;
+}
+
+.account-action-primary--inline {
+  margin-top: 12px;
+}
+
+/* Compact buttons inside a contact card (desktop): every action in a card is the same height. */
+.email-center-card .email-center-btn,
+.email-center-add-form .email-center-btn.verify {
+  min-height: 32px;
+  padding: 2px 12px;
+  font-size: var(--itg-font-size-small);
+}
+
+.auth-inline-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 20px;
+}
+
+/* Inline spinner inside a busy button (inherits the button text colour). */
+.auth-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: auth-spin 0.8s linear infinite;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-spinner {
+    animation-duration: 2.4s;
+  }
+}

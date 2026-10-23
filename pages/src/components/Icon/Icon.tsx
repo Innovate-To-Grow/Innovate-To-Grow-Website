@@ -26,7 +26,7 @@ export function Icon({name, className, ...props}: SVGProps<SVGSVGElement> & {nam
   const normalizedName = normalizeName(name);
   const brandIcon = SOCIAL_BRAND_ICONS[normalizedName];
   const path = brandIcon?.path ?? PATHS[normalizedName] ?? 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20';
-  // CMS-managed layout styles still use .fa for icon sizing and spacing.
+  // The header styles still use .fa for icon sizing and spacing.
   const classes = className ? `fa ${className}` : 'fa';
 
   return (

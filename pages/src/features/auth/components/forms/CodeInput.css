@@ -1,0 +1,43 @@
+/* Moved verbatim from the CMS "auth" stylesheet. */
+
+/* The six-digit code: the theme's input (#f2f2f2, 1px #ccc, inset shadow,
+   blue glow on focus) at a size that reads as a code. */
+.auth-code-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 52px;
+  padding: 0 12px;
+  border: 1px solid var(--itg-color-border-input);
+  border-radius: var(--itg-radius-input);
+  background: var(--itg-color-bg-light);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5em;
+  text-align: center;
+  transition: border-color 0.2s linear, box-shadow 0.2s linear;
+}
+
+.auth-code-input:focus {
+  border-color: rgba(82, 168, 236, 0.8);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6);
+}
+
+.auth-code-input::placeholder {
+  color: var(--itg-color-disabled-text);
+}
+
+.auth-code-input:disabled {
+  background: var(--itg-color-disabled-bg);
+  color: var(--itg-color-disabled-text);
+  cursor: not-allowed;
+}
+
+@media (max-width: 992px) {
+.auth-code-input {
+    font-size: 1.375rem;
+  }
+}

@@ -1,3 +1,4 @@
+import '../auth.css';
 import { Navigate, useSearchParams } from 'react-router';
 import { buildCompleteProfilePath, getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
 import { useAuth } from '../AuthContext';

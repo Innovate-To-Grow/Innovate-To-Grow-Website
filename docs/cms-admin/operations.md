@@ -380,6 +380,14 @@ seeded from `src/apps/cms/migrations/data/stylesheets.json`, plus the design tok
 Data migrations re-apply that seed to existing databases, and they overwrite whatever an admin changed in
 those rows without warning. Two read-only commands show where a database stands.
 
+The rules of the ten component sheets (`layout-container`, `layout-menu`, `layout-footer`, `auth`,
+`page-news`, `page-projects`, `page-events`, `page-subscribe`, `page-misc`, `maintenance`) also ship with the
+frontend bundle, in CSS files next to the components that render them under `pages/src`. The bundle loads
+after `/api/layout/styles.css`, so an admin edit to one of those rows shows only where the bundle does not set
+the same property: change the CSS file in the repository instead. The rows stay active until a migration
+retires them. The content sheets (`global`, `cms-blocks`, `cms-pages`, `page-home`) are still served only by
+the backend.
+
 ### Drift report
 
 ```bash

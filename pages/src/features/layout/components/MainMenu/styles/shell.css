@@ -1,0 +1,82 @@
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+/* ==========================================================================
+   Site header: the UC Merced Drupal subsite header of innovatetogrow.ucmerced.edu
+   - Blue bar: 80px navy + 5px gold rule (UC Merced wordmark, centred i2G logo,
+     Directory / Apply / Give)
+   - Site-name band: "Innovate To Grow" (Khula 300 48px) / "School of Engineering"
+   - White menu row: CMS menu, grey dropdowns with a gold foot, the current
+     date and the member link at the right end
+   Desktop: the blue bar stays at the top, the band scrolls away under it and
+   the menu row then sticks right under the bar (as on the reference site).
+   Phone (<= 992px): the blue bar is fixed at the top, the band tucks away
+   behind it once the page has scrolled past the band's reserved space, and
+   comes back as soon as that space scrolls into view again (.is-band-hidden,
+   set by MainMenu), so no empty strip is ever left under the bar. The menu
+   row is replaced by the menu button + #mobile-menu dialog.
+   The --itg-header-*-height properties are measured by MainMenu
+   (useHeaderMetrics); the values after the comma are first-paint fallbacks.
+   Isolated routes (html[data-block-preview]: admin block preview, embeds,
+   ?_isolated) mount no header, so nothing here may reserve space for it.
+   ========================================================================== */
+
+/* #menu-root sticks once the band has scrolled away; inside it the blue bar
+   sticks at the very top, so the bar and then the menu row stay visible. */
+#menu-root {
+  position: sticky;
+  top: calc(-1 * var(--itg-header-band-height, 117px));
+  z-index: 1000;
+}
+
+#menu-root:has(.site-header.is-mobile-open) {
+  z-index: 1200;
+}
+
+html:not([data-block-preview]) {
+  scroll-padding-top: calc(var(--itg-header-bar-height, 85px) + var(--itg-header-menu-height, 40px) + 12px);
+}
+
+.site-header {
+  font-family: var(--itg-font-family-body);
+  color: var(--itg-color-text);
+  background: var(--itg-color-white);
+}
+
+/* Dark surfaces (blue bars): light text, whatever the global heading and
+   link colours are. */
+.site-header-bar,
+.header-mobile-top {
+  color: var(--itg-color-white);
+}
+
+.site-header-bar :where(a, h1, h2, h3, h4, h5, h6),
+.header-mobile-top :where(a, h1, h2, h3, h4, h5, h6) {
+  color: inherit;
+}
+
+/* Skip link: off-screen until focused */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 30;
+  padding: 10px 16px;
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font-weight: 700;
+  text-decoration: underline;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* 1170px content box (x = 135 on a 1440 viewport), 24px gutters below that */
+.site-header-container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(var(--itg-page-max-width) + 2 * var(--itg-page-gutter, 24px));
+  margin: 0 auto;
+  padding: 0 var(--itg-page-gutter, 24px);
+}

@@ -1,0 +1,333 @@
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+/* ---------- Phone menu dialog (#mobile-menu) ---------- */
+.header-mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--itg-color-white);
+  font-family: var(--itg-font-family-body);
+}
+
+.header-mobile-menu[hidden] {
+  display: none;
+}
+
+/* Same bar as the phone site header: 80px + the 5px gold rule. */
+.header-mobile-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  box-sizing: border-box;
+  height: calc(80px + 5px);
+  padding: 0 2.5%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  background: var(--itg-color-primary);
+  border-bottom: 5px solid var(--itg-color-accent-gold);
+}
+
+.header-mobile-top :focus-visible {
+  outline-color: var(--itg-color-white);
+}
+
+.header-mobile-ucm {
+  justify-self: start;
+  line-height: 0;
+}
+
+.header-mobile-ucm img {
+  display: block;
+  width: 138px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.header-mobile-brand {
+  display: flex;
+  line-height: 0;
+}
+
+.header-mobile-logo {
+  display: block;
+  width: 50px;
+  height: 50px;
+}
+
+/* Close control in the menu button's place, drawn the same (three white bars),
+   5px from the viewport edge */
+.header-mobile-close {
+  justify-self: end;
+  box-sizing: border-box;
+  width: 60px;
+  height: 52px;
+  margin-right: calc(5px - 2.5vw);
+  padding: 7px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.header-mobile-close-bar {
+  display: block;
+  flex: none;
+  width: 30px;
+  height: 3px;
+  margin: 3.5px 0;
+  background: var(--itg-color-white);
+}
+
+/* "Innovate To Grow" row under the bar (81.4px with its #ccc rule) */
+.header-mobile-sitename {
+  flex: none;
+  padding: 26px 16px 16px;
+  border-bottom: 1px solid var(--itg-color-border-table);
+  color: var(--itg-color-primary);
+  font-family: var(--itg-font-family-display);
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1.2;
+}
+
+.header-mobile-nav {
+  flex: none;
+}
+
+.header-mobile-nav-skeleton {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.header-mobile-nav-skeleton-row {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--itg-color-border-table);
+  pointer-events: none;
+}
+
+.header-mobile-nav-skeleton .menu-bar-skeleton {
+  height: 18px;
+}
+
+.header-mobile-nav-message {
+  margin: 0;
+  padding: 18px 20px;
+  color: var(--itg-color-error);
+  font-weight: 600;
+}
+
+.header-mobile-list,
+.header-mobile-sublist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Rows: 18px bold navy, 58px with the 1px #ccc separator (the 44px link
+   target takes 7px of the reference's 10px row padding) */
+.header-mobile-item {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--itg-color-border-table);
+}
+
+.header-mobile-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.header-mobile-link {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 20px 5px;
+  box-sizing: border-box;
+  color: var(--itg-color-primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  text-decoration: none;
+}
+
+.header-mobile-link:hover {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+}
+
+.header-mobile-expand {
+  flex: none;
+  width: 52px;
+  min-height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.header-mobile-expand-icon {
+  transition: transform var(--itg-transition-fast) ease;
+}
+
+.header-mobile-item.is-expanded .header-mobile-expand-icon {
+  transform: rotate(180deg);
+}
+
+/* Children: 14px italic navy, indented, no separators */
+.header-mobile-children {
+  padding: 0 0 5px 14px;
+}
+
+.header-mobile-sublink {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 10px 10px 20px;
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 20px;
+  text-decoration: none;
+}
+
+.header-mobile-sublink:hover {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+}
+
+.header-mobile-sublink[aria-current='page'],
+.header-mobile-link[aria-current='page'] {
+  text-decoration: underline;
+}
+
+.header-mobile-sublist .header-mobile-sublist {
+  padding-left: 14px;
+}
+
+.header-mobile-sublist .header-mobile-sublist .header-mobile-sublink {
+  font-style: normal;
+}
+
+/* Member rows at the bottom of the menu, same look as the menu rows */
+.header-mobile-member {
+  border-bottom: 1px solid var(--itg-color-border-table);
+}
+
+.header-mobile-member-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px 4px;
+  color: var(--itg-color-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.header-mobile-member-info .fa {
+  flex: none;
+  font-size: 22px;
+  color: var(--itg-color-primary);
+}
+
+.header-mobile-member-avatar {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.header-mobile-member-actions {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 10px;
+}
+
+.header-mobile-action {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 20px 5px;
+  display: flex;
+  align-items: center;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.header-mobile-member > .header-mobile-action {
+  margin: 10px 0;
+}
+
+.header-mobile-action:hover {
+  text-decoration: underline;
+}
+
+/* Directory / Apply / Give strip: grey, three columns, 18px bold uppercase */
+.header-mobile-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 25px 5px;
+  list-style: none;
+  background: var(--itg-color-bg-light);
+  border-bottom: 1px solid var(--itg-color-border-table);
+}
+
+.header-mobile-actions li {
+  display: flex;
+  justify-content: center;
+  border-right: 1px solid var(--itg-color-border-table);
+}
+
+.header-mobile-actions li:last-child {
+  border-right: 0;
+}
+
+.header-mobile-university-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  color: var(--itg-color-primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.header-mobile-university-link:hover {
+  text-decoration: underline;
+}

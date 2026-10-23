@@ -1,0 +1,402 @@
+/* Moved verbatim from the CMS "page-subscribe" stylesheet. */
+
+/* ==========================================================================
+   Subscribe page (/subscribe): page title + lede, then one feature panel
+   (.itg-panel) per step (email, code, profile, manage). Buttons, inputs and
+   labels use the global classes; this sheet lays the steps out and styles the
+   org toggle, notices, preference rows and the on/off switch.
+   Reference rhythm (innovatetogrow.ucmerced.edu): the page flows like the
+   theme's #content, so the global margins apply (h1 12px 0, .lead 0 0 24px,
+   16px / 24px text); 16px labels 5px above their control, 12px between
+   fields; notices in the .itg-notice look (#f7f7f7, 4px left rule).
+   ========================================================================== */
+
+/* ---- base.css ---- */
+
+/* Block flow: every part of the page sits 24px above the next. */
+.subscribe-page {
+  padding-bottom: 24px;
+}
+
+.subscribe-page > * {
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+.subscribe-page > :last-child {
+  margin-bottom: 0;
+}
+
+/* The shell's 16px + this 12px put the h1 where the reference's sits; the
+   lead follows 12px below it. */
+.subscribe-page > .subscribe-title {
+  margin: 12px 0;
+}
+
+.subscribe-lead {
+  margin: 0;
+}
+
+.subscribe-info-note {
+  margin: 12px 0 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-body);
+  font-style: italic;
+  line-height: 24px;
+}
+
+/* Each step is a feature panel (.itg-panel). */
+.subscribe-section {
+  max-width: 680px;
+}
+
+.subscribe-section form {
+  margin: 0;
+}
+
+.subscribe-hint {
+  margin: 0 0 12px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.subscribe-section > .subscribe-hint:last-child {
+  margin-bottom: 0;
+}
+
+/* The theme's form rhythm: label, 5px, control, 12px to the next field. */
+.subscribe-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  margin: 0 0 12px;
+}
+
+.subscribe-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0 20px;
+}
+
+.subscribe-form-group--full-width {
+  grid-column: 1 / -1;
+}
+
+.subscribe-required {
+  margin-left: 0.125rem;
+  color: var(--itg-color-error);
+}
+
+.subscribe-optional {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-weight: 400;
+}
+
+/* Organization / Individual: square two-segment toggle. */
+.subscribe-org-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.subscribe-org-toggle + .subscribe-input {
+  margin-top: 5px;
+}
+
+/* Segments drawn like the system's outline buttons (2px navy, 16px 400). */
+.subscribe-org-toggle-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: 0;
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: var(--itg-font-size-body);
+  font-weight: 400;
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast), color var(--itg-transition-fast);
+}
+
+.subscribe-org-toggle-btn + .subscribe-org-toggle-btn {
+  border-left-width: 0;
+}
+
+.subscribe-org-toggle-btn:hover:not(:disabled):not(.is-active) {
+  background: var(--itg-color-bg-light);
+}
+
+.subscribe-org-toggle-btn.is-active {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.subscribe-org-toggle-btn:disabled {
+  border-color: var(--itg-color-disabled-border);
+  background: var(--itg-color-disabled-bg);
+  color: var(--itg-color-disabled-text);
+  cursor: not-allowed;
+}
+
+.subscribe-org-toggle-btn.is-active:disabled {
+  background: var(--itg-color-disabled-text);
+  color: var(--itg-color-white);
+}
+
+/* ---- buttons.css ---- */
+/* Visuals come from .itg-btn / -primary / -outline / -text. */
+
+.subscribe-submit {
+  margin-top: 0;
+}
+
+.subscribe-link {
+  margin-top: 24px;
+}
+
+.subscribe-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 20px;
+  margin-top: 12px;
+}
+
+.subscribe-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: subscribe-spin 0.8s linear infinite;
+}
+
+@keyframes subscribe-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subscribe-spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+/* ---- feedback.css ---- */
+/* Notices: the system's .itg-notice look (#f7f7f7, 4px left rule, 16px text);
+   white inside the grey feature panels so they still stand out. */
+
+.subscribe-alert {
+  box-sizing: border-box;
+  max-width: 680px;
+  padding: 14px 18px;
+  border: 0;
+  border-left: 4px solid var(--itg-color-secondary);
+  background: var(--itg-color-bg-panel);
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.itg-panel .subscribe-alert {
+  background: var(--itg-color-white);
+}
+
+.subscribe-alert.info {
+  border-left-color: var(--itg-color-secondary);
+}
+
+.subscribe-alert.success {
+  border-left-color: var(--itg-color-success);
+}
+
+.subscribe-alert.error {
+  border-left-color: var(--itg-color-error);
+  color: var(--itg-color-error);
+}
+
+.subscribe-section .subscribe-alert {
+  margin-top: 12px;
+}
+
+/* ---- manage.css (preference rows) ---- */
+/* The theme's h4 (20px navy) over rows with 1px #ddd separators under a gold
+   rule, like the account dashboard's lists. */
+
+.subscribe-preference-group {
+  display: grid;
+  gap: 12px;
+}
+
+.subscribe-preference-group + .subscribe-preference-group {
+  margin-top: 24px;
+}
+
+.subscribe-preference-heading {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-h4);
+  font-weight: 600;
+  line-height: var(--itg-line-height-heading);
+}
+
+.subscribe-preference-list {
+  display: grid;
+  border-top: 3px solid var(--itg-color-accent-gold);
+  background: var(--itg-color-white);
+}
+
+.subscribe-preference-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 20px;
+  min-height: 4rem;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--itg-color-border);
+  background: var(--itg-color-white);
+}
+
+.subscribe-preference-copy {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.subscribe-manage-email-value {
+  color: var(--itg-color-text);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.subscribe-preference-meta,
+.subscribe-empty {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-style: italic;
+  line-height: 21px;
+}
+
+.subscribe-preference-meta {
+  display: block;
+}
+
+.subscribe-empty {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--itg-color-white);
+}
+
+.subscribe-manage-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 9rem;
+}
+
+.subscribe-manage-status-label {
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-small);
+  font-weight: 400;
+  line-height: 21px;
+  white-space: nowrap;
+}
+
+/* On / off switch: square track and knob, navy when on. Same size as the account page switch
+   (.email-center-toggle-slider in the auth sheet). */
+.subscribe-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--itg-color-border-input);
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast);
+}
+
+.subscribe-toggle.is-active {
+  background: var(--itg-color-primary);
+}
+
+.subscribe-toggle:disabled {
+  background: var(--itg-color-disabled-border);
+  cursor: not-allowed;
+}
+
+.subscribe-toggle.is-active:disabled {
+  background: var(--itg-color-disabled-text);
+}
+
+.subscribe-toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: var(--itg-color-white);
+  transition: transform var(--itg-transition-fast);
+}
+
+.subscribe-toggle.is-active .subscribe-toggle-knob {
+  transform: translateX(18px);
+}
+
+.subscribe-toggle:focus-visible {
+  outline: 2px solid var(--itg-color-secondary);
+  outline-offset: 2px;
+}
+
+/* ---- responsive.css ---- */
+
+@media (max-width: 992px) {
+  .subscribe-org-toggle-btn {
+    min-height: 44px;
+  }
+
+  /* Grow the switch's hit area to 44px without changing how it looks. */
+  .subscribe-toggle::before {
+    content: '';
+    position: absolute;
+    inset: -10px 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .subscribe-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .subscribe-code-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .subscribe-submit {
+    width: 100%;
+  }
+
+  .subscribe-preference-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .subscribe-manage-status {
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+  }
+}

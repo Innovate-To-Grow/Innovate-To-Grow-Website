@@ -1,0 +1,40 @@
+/* Moved verbatim from the CMS "auth" stylesheet. */
+
+/* ---- forms.css ---- */
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.auth-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.auth-form-group--full-width {
+  grid-column: 1 / -1;
+}
+
+.auth-form-row,
+.account-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.auth-label-hint,
+.account-label-hint {
+  color: var(--itg-color-text-secondary);
+  font-weight: 400;
+}
+
+.auth-help-text {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}

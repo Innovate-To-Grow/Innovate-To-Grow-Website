@@ -1,0 +1,89 @@
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+/* ---------- Desktop dropdowns: grey panel with a 5px gold foot ---------- */
+/* Starts under the item's 3px foot, flush with its left edge */
+.menu-dropdown {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  z-index: 1100;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 100%;
+  max-width: 362px;
+  padding: 28px 0;
+  background: var(--itg-color-bg-light);
+  border-bottom: 5px solid var(--itg-color-accent-menu);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--itg-transition-fast) ease, visibility var(--itg-transition-fast) ease;
+}
+
+.menu-dropdown.is-open,
+.menu-bar-item:focus-within > .menu-dropdown,
+.menu-bar-item:hover > .menu-dropdown {
+  opacity: 1;
+  visibility: visible;
+}
+
+.menu-dropdown-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu-dropdown-item {
+  position: relative;
+}
+
+.menu-dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 21px;
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 28px;
+  text-decoration: none;
+}
+
+.menu-dropdown-link:hover,
+.menu-dropdown-link:focus {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+}
+
+.menu-dropdown-arrow {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+/* Third level (rare): same panel, upright regular items, opening to the right */
+.menu-dropdown-nested {
+  position: absolute;
+  top: -28px;
+  left: 100%;
+  z-index: 1101;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 288px;
+  padding: 28px 0;
+  background: var(--itg-color-bg-light);
+  border-bottom: 5px solid var(--itg-color-accent-menu);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--itg-transition-fast) ease, visibility var(--itg-transition-fast) ease;
+}
+
+.menu-dropdown-nested .menu-dropdown-link {
+  font-style: normal;
+  font-weight: 400;
+}
+
+.menu-dropdown-item.has-children:focus-within > .menu-dropdown-nested,
+.menu-dropdown-item.has-children:hover > .menu-dropdown-nested {
+  opacity: 1;
+  visibility: visible;
+}

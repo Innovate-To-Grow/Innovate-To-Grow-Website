@@ -1,3 +1,5 @@
+import '../../scheduleShared.css';
+import './ScheduleGrid.css';
 import {useMemo} from 'react';
 import type {SheetRow, TrackInfo} from '@/components/SheetsDataTable';
 import {addMinutes} from '@/lib/format';

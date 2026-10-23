@@ -1,0 +1,39 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* ---- registration: buttons.css ---- */
+/* Visuals come from .itg-btn / -primary / -outline / -text (+ -lg on Register). */
+
+form > .event-reg-submit {
+  margin-top: 24px;
+}
+
+.event-reg-auth form > .event-reg-submit {
+  margin-top: 0;
+}
+
+.event-reg-auth .event-reg-text-button {
+  margin-top: 12px;
+}
+
+/* Inline spinner inside a busy button. */
+.event-reg-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: event-reg-spin 0.8s linear infinite;
+}
+
+@keyframes event-reg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-reg-spinner {
+    animation-duration: 2.4s;
+  }
+}

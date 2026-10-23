@@ -1,0 +1,172 @@
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* The reference's schedule page (innovatetogrow.ucmerced.edu/schedule):
+   centred 28px section titles, centred bold 16px class labels and tables in
+   16px text with 8px cells: #efefef header rows and time column, a 3px #ccc
+   rule under each header row and 1px #ddd between body rows, #f7f7f7 agenda
+   cells with centred bold navy text, and coloured track columns (gold for the
+   Engineering Capstone, teal for Civil & Environmental, navy with gold text
+   for Software Engineering). The archived schedules (.sg-*) share the look. */
+
+.schedule-page,
+.sg-container {
+  --schedule-head-bg: #efefef;
+  --schedule-head-rule: 3px solid var(--itg-color-border-table);
+  --schedule-row-rule: 1px solid var(--itg-color-border);
+  --schedule-table-border: 1px solid #f0f0f0;
+  --schedule-teal: #99d9d9;
+  --schedule-winners-red: #c0392b;
+}
+
+.schedule-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 24px;
+}
+
+.schedule-presentation-table th,
+.schedule-presentation-table td,
+.sg-table th,
+.sg-table td {
+  min-width: 0;
+  padding: 8px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+/* Header rows: grey, bold, centred, each closed by the 3px #ccc rule. */
+.schedule-presentation-table thead th,
+.sg-table thead th {
+  background: var(--schedule-head-bg);
+  color: var(--itg-color-primary);
+  font-weight: 700;
+  text-align: center;
+  vertical-align: bottom;
+}
+
+.schedule-presentation-table thead tr:nth-child(-n + 2) > th,
+.sg-table thead tr:first-child > th {
+  border-bottom: var(--schedule-head-rule);
+}
+
+.schedule-presentation-table thead .schedule-presentation-room,
+.sg-table thead .sg-th-room {
+  font-weight: 400;
+}
+
+/* The time column stays in view while a wide grid scrolls sideways. */
+.schedule-presentation-corner,
+.schedule-presentation-time {
+  position: sticky;
+  left: 0;
+  background: var(--schedule-head-bg);
+}
+
+.schedule-presentation-corner {
+  z-index: 2;
+}
+
+.schedule-presentation-time,
+.sg-td-time {
+  z-index: 1;
+  border-top: var(--schedule-row-rule);
+  background: var(--schedule-head-bg);
+  color: var(--itg-color-primary);
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.schedule-presentation-slot,
+.sg-td-cell {
+  border-top: var(--schedule-row-rule);
+  background: var(--schedule-column-bg, var(--itg-color-bg-panel));
+  color: var(--schedule-cell-text, var(--itg-color-primary));
+  text-align: left;
+}
+
+/* Team numbers are the reference's underlined 15px links, as buttons: at least
+   24px tall everywhere (WCAG 2.5.8) and 44x44px on phones and touch screens. */
+.schedule-presentation-team,
+.schedule-mobile-team,
+.sg-team-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0 6px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--schedule-cell-text, var(--itg-color-primary));
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 22.5px;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  cursor: pointer;
+}
+
+.schedule-mobile-team {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@media (pointer: coarse) {
+  .schedule-presentation-team,
+  .sg-team-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+.schedule-presentation-team:hover,
+.schedule-mobile-team:hover,
+.sg-team-btn:hover {
+  text-decoration: none;
+}
+
+.schedule-presentation-team:focus-visible,
+.schedule-mobile-team:focus-visible,
+.sg-team-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Organisation under the team number (the reference's .companyName). */
+.schedule-presentation-org,
+.schedule-mobile-org,
+.sg-org {
+  display: block;
+  color: var(--schedule-org-color, var(--itg-color-primary));
+  font-size: 0.75rem;
+  line-height: 18px;
+}
+
+.schedule-page-state,
+.sg-loading,
+.sg-error {
+  margin: 0;
+  padding: 14px 18px;
+  border-left: 4px solid var(--itg-color-secondary);
+  background: var(--itg-color-bg-panel);
+  color: var(--itg-color-text);
+  line-height: 24px;
+}
+
+.schedule-page-state-error,
+.sg-error {
+  border-left-color: var(--itg-color-error);
+  color: var(--itg-color-error);
+}
+
+.sg-container {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+.sg-td-cell {
+  min-width: 120px;
+}
