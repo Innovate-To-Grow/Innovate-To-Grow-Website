@@ -31,23 +31,18 @@ test('homepage YouTube embeds load without changing responsive wrapper geometry'
     route: '/',
     slug: '',
     title: 'Innovate to Grow',
-    page_css: [
-      '.video-column { width: min(100%, 320px); }',
-      '.video-shell { position: relative; width: 100%; padding-top: 56.25%; }',
-      '.video-shell iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }',
-    ].join('\n'),
     blocks: [{
       block_type: 'rich_text',
       sort_order: 0,
       data: {
-        body_html: '<div class="video-column"><div class="video-shell"><iframe src="https://www.youtube.com/embed/demo" title="Demo"></iframe></div></div>',
+        body_html: '<div class="peh-video-container"><iframe src="https://www.youtube.com/embed/demo" title="Demo"></iframe></div>',
       },
     }],
   }));
 
   await page.goto('/', {waitUntil: 'networkidle'});
 
-  const wrapper = page.locator('.video-shell');
+  const wrapper = page.locator('.peh-video-container');
   const iframe = wrapper.locator('iframe');
   await expect(iframe).toBeVisible();
   await expect(iframe).toHaveAttribute('loading', 'lazy');

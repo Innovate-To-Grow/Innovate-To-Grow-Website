@@ -27,7 +27,6 @@ ROW_KEYS = {
     "block_types",
     "frontend_files",
     "route_frontend_files",
-    "page_css",
     "scoped_in",
     "hook_in",
     "defined",
@@ -42,7 +41,7 @@ class IsUndefinedTests(SimpleTestCase):
         self.assertTrue(is_undefined({"defined": False, "hook_in": []}))
         self.assertFalse(is_undefined({"defined": True, "hook_in": []}))
         self.assertFalse(is_undefined({"defined": False, "hook_in": ["styles/events.css"]}))
-        self.assertFalse(is_undefined({"defined": True, "hook_in": ["page_css:/x"]}))
+        self.assertFalse(is_undefined({"defined": True, "hook_in": ["index.css"]}))
 
 
 class AuditCssClassesTests(TestCase):
@@ -109,7 +108,7 @@ class AuditCssClassesTests(TestCase):
         self.assertTrue(row["defined"])
         self.assertFalse(is_undefined(row))
         self.assertEqual(row["frontend_files"], ["index.css"])
-        self.assertEqual((row["route_frontend_files"], row["page_css"]), ([], []))
+        self.assertEqual(row["route_frontend_files"], [])
         # One use per block, even when the block repeats the class.
         self.assertEqual(row["usage_count"], 2)
         self.assertEqual(row["pages"], ["/audit", "/other"])
@@ -129,7 +128,6 @@ class AuditCssClassesTests(TestCase):
                 "block_types": ["rich_text"],
                 "frontend_files": [],
                 "route_frontend_files": [],
-                "page_css": [],
                 "scoped_in": [],
                 "hook_in": [],
                 "defined": False,
@@ -172,19 +170,6 @@ class AuditCssClassesTests(TestCase):
         self.assertTrue(row["defined"])
         self.assertEqual((row["frontend_files"], row["route_frontend_files"]), (["routes/Lazy.css"], []))
 
-    def test_page_css_defines_a_class_for_its_route_only(self):
-        self._set_page(self.audit_page, page_css=".promo { color: red; }")
-        self._set_page(self.other_page, page_css=".landing .promo { }")
-        self._add_block('<p class="promo">p</p>', page=self.other_page)
-
-        row = self._rows()["promo"]
-
-        self.assertFalse(row["defined"])
-        self.assertTrue(is_undefined(row))
-        self.assertEqual(row["page_css"], ["/audit"])
-        self.assertEqual(row["scoped_in"], ["page_css:/other"])
-        self.assertEqual(row["pages"], ["/other"])
-
     def test_scoped_in_labels_and_order(self):
         frontend = make_frontend_dir(
             self,
@@ -195,25 +180,19 @@ class AuditCssClassesTests(TestCase):
                 "features/Card.css": ".card .nowhere {}",
             },
         )
-        self._set_page(self.other_page, page_css=".wrap .nowhere {}")
-        self._set_page(self.audit_page, page_css=".x > .nowhere {}")
 
         row = self._rows(frontend_dir=frontend)["nowhere"]
 
         self.assertFalse(row["defined"])
-        self.assertEqual((row["frontend_files"], row["route_frontend_files"], row["page_css"]), ([], [], []))
-        # Frontend files (sorted, entry and route alike), then page_css routes (sorted).
-        self.assertEqual(
-            row["scoped_in"],
-            ["features/Card.css", "index.css", "routes/Lazy.css", "page_css:/audit", "page_css:/other"],
-        )
+        self.assertEqual((row["frontend_files"], row["route_frontend_files"]), ([], []))
+        # Frontend files, sorted, entry and route alike.
+        self.assertEqual(row["scoped_in"], ["features/Card.css", "index.css", "routes/Lazy.css"])
         self.assertEqual(row["hook_in"], [])
         self.assertTrue(is_undefined(row))
 
     def test_hook_in_labels_and_order(self):
         # A page wrapper class nothing styles, but that rules hang on.
-        self._set_page(self.audit_page, page_css_class="event-page", page_css=".event-page:hover .y {}")
-        self._set_page(self.other_page, page_css=".event-page .x {}")
+        self._set_page(self.audit_page, page_css_class="event-page")
         frontend = make_frontend_dir(
             self,
             {
@@ -227,11 +206,8 @@ class AuditCssClassesTests(TestCase):
         report = self._report(frontend_dir=frontend)
 
         row = {row["class_name"]: row for row in report["classes"]}["event-page"]
-        self.assertEqual(
-            row["hook_in"],
-            ["features/Card.css", "index.css", "routes/Lazy.css", "page_css:/audit", "page_css:/other"],
-        )
-        self.assertEqual((row["scoped_in"], row["frontend_files"], row["page_css"]), ([], [], []))
+        self.assertEqual(row["hook_in"], ["features/Card.css", "index.css", "routes/Lazy.css"])
+        self.assertEqual((row["scoped_in"], row["frontend_files"]), ([], []))
         self.assertEqual((row["sources"], row["pages"]), (["page_css_class"], ["/audit"]))
         # Not defined anywhere, but a hook: it does not count as undefined.
         self.assertFalse(row["defined"])
@@ -252,31 +228,31 @@ class AuditCssClassesTests(TestCase):
         self.assertEqual(report["undefined_classes"], 0)
 
     def test_class_both_defined_and_scoped_lists_both(self):
-        self._set_page(self.other_page, page_css=".event-page .in-frontend {}")
+        frontend = make_frontend_dir(
+            self, {**ENTRY_AND_ROUTE_FRONTEND, "features/Card.css": ".event-page .in-frontend {}"}
+        )
 
-        row = self._rows()["in-frontend"]
+        row = self._rows(frontend_dir=frontend)["in-frontend"]
 
         self.assertTrue(row["defined"])
-        self.assertEqual((row["frontend_files"], row["scoped_in"]), (["index.css"], ["page_css:/other"]))
+        self.assertEqual((row["frontend_files"], row["scoped_in"]), (["index.css"], ["features/Card.css"]))
 
     def test_defined_means_an_entry_bundle_file(self):
         frontend = make_frontend_dir(
             self, {**ENTRY_AND_ROUTE_FRONTEND, "index.css": ".in-frontend {}\n.p .scoped-only {}"}
         )
-        self._set_page(self.audit_page, page_css=".page-only {}")
-        self._add_block('<p class="route-only scoped-only page-only">x</p>')
+        self._add_block('<p class="route-only scoped-only">x</p>')
 
         report = self._report(frontend_dir=frontend)
 
         expected = {
             "in-frontend": True,  # entry-bundle file
             "route-only": False,  # lazily loaded route file only
-            "page-only": False,  # one page's page_css only
             "scoped-only": False,  # only inside another element, even in an entry-bundle file
             "nowhere": False,
         }
         self.assertEqual({row["class_name"]: row["defined"] for row in report["classes"]}, expected)
-        self.assertEqual((report["total_classes"], report["undefined_classes"]), (5, 4))
+        self.assertEqual((report["total_classes"], report["undefined_classes"]), (4, 3))
 
     def test_a_no_break_space_does_not_split_a_class(self):
         self._add_block('<p class="in-frontend&nbsp;nowhere">x</p>', page=self.other_page)
@@ -289,8 +265,7 @@ class AuditCssClassesTests(TestCase):
         self.assertEqual((rows["in-frontend"]["usage_count"], rows["nowhere"]["usage_count"]), (2, 1))
 
     def test_scan_frontend_false_reads_no_frontend_file(self):
-        self._set_page(self.other_page, page_css=".promo {}\n.wrap .y {}")
-        self._add_block('<p class="lazy-page promo wrap">x</p>')
+        self._add_block('<p class="lazy-page">x</p>')
 
         with patch("apps.cms.services.styles.audit.frontend_css_index") as index:
             report = self._report(scan_frontend=False)
@@ -307,10 +282,7 @@ class AuditCssClassesTests(TestCase):
         self.assertEqual((row["usage_count"], row["pages"]), (2, ["/audit", "/other"]))
         # lazy-page hooks rules in routes/Lazy.css, which was not read.
         self.assertEqual(rows["lazy-page"]["hook_in"], [])
-        # Page CSS lives in the database, so it is still read.
-        self.assertEqual(rows["promo"]["page_css"], ["/other"])
-        self.assertEqual(rows["wrap"]["hook_in"], ["page_css:/other"])
-        self.assertEqual((report["total_classes"], report["undefined_classes"]), (5, 4))
+        self.assertEqual((report["total_classes"], report["undefined_classes"]), (3, 3))
 
     def test_frontend_hooks_count_when_the_frontend_is_scanned(self):
         self._add_block('<p class="lazy-page">x</p>')

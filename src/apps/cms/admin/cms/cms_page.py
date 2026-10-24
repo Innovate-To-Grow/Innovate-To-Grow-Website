@@ -119,14 +119,6 @@ class CMSPageAdmin(BaseModelAdmin):
                 )
             },
         ),
-        (
-            "Page CSS",
-            {
-                "fields": ("page_css",),
-                "classes": ("collapse",),
-                "description": "Custom CSS injected when this page is loaded. Scoped to the page wrapper.",
-            },
-        ),
         ("Timestamps", {"fields": ("published_at", "created_at", "updated_at"), "classes": ("collapse",)}),
     )
 

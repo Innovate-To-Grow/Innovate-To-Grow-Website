@@ -10,7 +10,6 @@ where it is used and what styles it:
   (see ``css_selectors`` for what "define" means);
 * ``route_frontend_files``: frontend CSS that loads only once a lazily loaded route using it
   has been opened, so CMS content cannot rely on it;
-* ``page_css``: routes whose own ``CMSPage.page_css`` defines it (it applies on that page only);
 * ``scoped_in``: CSS that styles it only in context (inside another element, together with
   another class, in a nested rule);
 * ``hook_in``: CSS that uses it as context for other elements (``.event-page`` in
@@ -106,14 +105,6 @@ def frontend_css_index(frontend_dir=None) -> dict:
     return maps
 
 
-def page_css_index() -> dict:
-    """Per-page CSS maps of class -> routes whose page_css defines, scopes or hooks on it."""
-    maps = _new_maps()
-    for page in CMSPage.objects.exclude(page_css="").only("route", "page_css"):
-        _index_into(maps, page.page_css, page.route)
-    return maps
-
-
 def content_class_usage() -> dict[str, list[dict]]:
     """Class name -> one entry per block (any page status), page wrapper or active footer using it."""
     usage = defaultdict(list)
@@ -131,17 +122,8 @@ def content_class_usage() -> dict[str, list[dict]]:
     return usage
 
 
-def _labelled(maps_and_labels, class_name) -> list[str]:
-    labels = []
-    for maps, key, prefix in maps_and_labels:
-        labels += [f"{prefix}{value}" for value in sorted(maps[key].get(class_name, ()))]
-    return labels
-
-
-def _row(class_name, uses, frontend, pages) -> dict:
+def _row(class_name, uses, frontend) -> dict:
     entry_files = sorted(frontend["defined"].get(class_name, ()))
-    scoped_in = _labelled([(frontend, "scoped", ""), (pages, "scoped", "page_css:")], class_name)
-    hook_in = _labelled([(frontend, "hook", ""), (pages, "hook", "page_css:")], class_name)
     wheres = {use["where"] for use in uses}
     return {
         "class_name": class_name,
@@ -152,9 +134,8 @@ def _row(class_name, uses, frontend, pages) -> dict:
         "block_types": sorted({use["source"][6:] for use in uses if use["source"].startswith("block:")}),
         "frontend_files": entry_files,
         "route_frontend_files": sorted(frontend["route"].get(class_name, ())),
-        "page_css": sorted(pages["defined"].get(class_name, ())),
-        "scoped_in": scoped_in,
-        "hook_in": hook_in,
+        "scoped_in": sorted(frontend["scoped"].get(class_name, ())),
+        "hook_in": sorted(frontend["hook"].get(class_name, ())),
         "defined": bool(entry_files),
     }
 
@@ -168,14 +149,12 @@ def audit_css_classes(frontend_dir=None, *, scan_frontend=True) -> dict:
     """The audit report: what was scanned, and one row per class used in stored CMS content.
 
     With ``scan_frontend=False`` (a server without the frontend sources) no frontend file
-    is read, so no class reads as defined (``page_css`` is still read, but applies to one
-    page only): the report then shows usage only.
+    is read, so no class reads as defined: the report then shows usage only.
     """
     root = Path(frontend_dir or default_frontend_dir())
     frontend = frontend_css_index(root) if scan_frontend else {**_new_maps(), "route": {}, "graph": False}
     usage = content_class_usage()
-    pages = page_css_index()
-    rows = [_row(class_name, usage[class_name], frontend, pages) for class_name in sorted(usage)]
+    rows = [_row(class_name, usage[class_name], frontend) for class_name in sorted(usage)]
     return {
         "frontend_scanned": scan_frontend,
         "frontend_dir": str(root) if scan_frontend else None,

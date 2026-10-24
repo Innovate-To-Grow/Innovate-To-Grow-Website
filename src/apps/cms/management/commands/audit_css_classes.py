@@ -15,7 +15,7 @@ NO_FRONTEND_NOTICE = (
 class Command(BaseCommand):
     help = (
         "List the CSS classes that stored CMS content uses (block HTML, footer HTML, page_css_class) and "
-        "what styles each: frontend CSS in pages/src, a page's own page_css, or nothing. Report only."
+        "what styles each: frontend CSS in pages/src, or nothing. Report only."
     )
 
     def add_arguments(self, parser):
@@ -78,7 +78,6 @@ class Command(BaseCommand):
         where = list(row["frontend_files"])
         labelled = (
             ("route-only", row["route_frontend_files"]),
-            ("page_css", row["page_css"]),
             ("scoped", row["scoped_in"]),
             ("hook", row["hook_in"]),
         )
