@@ -343,7 +343,9 @@ Google Sheet):
   refreshed without activating them
 - `python manage.py sync_schedule` syncs every row whose auto-sync is enabled and due; `--schedule <uuid>` syncs
   one row now regardless of its auto-sync settings; `--force` syncs the active row now regardless of its interval
-- A sync replaces that row's `CurrentProject`, schedule sections/tracks/slots and agenda items only
+- A sync replaces that row's `CurrentProject` and schedule sections/tracks/slots only. Agenda items (the Expo and
+  Awards tables) are seeded with defaults on the row's first sync and are then maintained in the **Agenda items**
+  block of the row's change form; later syncs leave them untouched
 
 ### Check-in
 

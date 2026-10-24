@@ -140,8 +140,10 @@ synced independently — not only the one marked **Active**.
 2. `fetch_schedule_sheet_records(config)` opens **that row's** `sheet_id` and reads the tracks and projects
    worksheets by `tracks_gid` / `projects_gid`
 3. Parses rows into track and project records
-4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` and
-   `EventAgendaItem` rows inside one transaction (other schedules are untouched)
+4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack` and `EventScheduleSlot`
+   rows inside one transaction (other schedules are untouched). `EventAgendaItem` rows (the Expo and Awards
+   tables) are **not** replaced: the first sync of a schedule seeds the defaults from `defaults.py`, and from then
+   on they are edited in the schedule's admin change form and never rewritten by a sync
 5. Records grand winners on the schedule and writes a `ScheduleSyncLog` entry
 
 ### Sheet structure
