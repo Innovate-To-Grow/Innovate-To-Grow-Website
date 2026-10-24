@@ -18,9 +18,9 @@
   line-height: inherit;
 }
 
-/* A readable line length for running text (the prose_max_width design token). */
+/* Running text spans the column unless the prose_max_width design token caps its line length. */
 .itg-content :where(p, ul, ol, dl, blockquote) {
-  max-width: var(--itg-prose-max-width, 75ch);
+  max-width: var(--itg-prose-max-width, none);
 }
 
 .itg-content strong,

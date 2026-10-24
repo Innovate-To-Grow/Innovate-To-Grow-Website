@@ -158,7 +158,8 @@ describe('NewsDetailPage', () => {
     renderPage('/news/11111111-1111-4111-8111-111111111111');
 
     await screen.findByRole('heading', {name: 'Detail Article'});
-    expect(document.title).toBe('Detail Article | Innovate to Grow');
+    // usePageTitle sets the title in an effect, which can run after the heading is on screen.
+    await waitFor(() => expect(document.title).toBe('Detail Article | Innovate to Grow'));
   });
 
   it('aborts the in-flight request on unmount and ignores the resolved result', async () => {
