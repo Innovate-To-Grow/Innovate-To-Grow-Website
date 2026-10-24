@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-blocks" stylesheet. */
 
 /* ==========================================================================
@@ -65,4 +66,5 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px 20px;
+}
 }

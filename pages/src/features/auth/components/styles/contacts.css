@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
 /* ---- contacts.css (emails + phones) ---- */
@@ -231,4 +232,5 @@
 
 .email-center-pending-verify-intro {
   line-height: 24px;
+}
 }

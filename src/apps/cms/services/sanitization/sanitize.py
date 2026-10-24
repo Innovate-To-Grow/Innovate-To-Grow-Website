@@ -103,6 +103,20 @@ def sanitize_html(html: str) -> str:
     return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
 
 
+def sanitize_block_data(data):
+    """Recursively sanitize every ``*_html`` string in a block's JSON data, as the public API serves it."""
+    if isinstance(data, dict):
+        return {
+            key: (
+                sanitize_html(value) if isinstance(value, str) and key.endswith("_html") else sanitize_block_data(value)
+            )
+            for key, value in data.items()
+        }
+    if isinstance(data, list):
+        return [sanitize_block_data(item) for item in data]
+    return data
+
+
 class _SanitizedHTML(str):
     """HTML string trusted only after passing through the CMS sanitizer."""
 

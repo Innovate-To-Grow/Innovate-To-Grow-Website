@@ -18,7 +18,6 @@ class DuplicatePageTests(TestCase):
             title="Fall Event",
             meta_description="Fall event details",
             page_css_class="event-page",
-            page_css=".event-page h1 { color: red; }",
             sort_order=7,
             status="published",
         )
@@ -46,7 +45,6 @@ class DuplicatePageTests(TestCase):
         self.assertEqual(copy.title, "Fall Event (Copy)")
         self.assertEqual(copy.meta_description, self.page.meta_description)
         self.assertEqual(copy.page_css_class, self.page.page_css_class)
-        self.assertEqual(copy.page_css, self.page.page_css)
         self.assertEqual(copy.sort_order, self.page.sort_order)
         self.assertEqual(copy.status, "draft")
         self.assertIsNone(copy.published_at)

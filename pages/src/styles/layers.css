@@ -1,0 +1,17 @@
+/* ==========================================================================
+   Cascade layer order, lowest first. A later layer wins over an earlier one
+   whatever the selectors' specificity; inside a layer the usual rules apply.
+
+   itg.defaults    fallback tokens and last-resort defaults
+   itg.tokens      the design tokens from Site Settings (/api/layout/theme.css)
+   itg.base        reserved for element defaults
+   itg.components  every bundled stylesheet and the runtime-injected styles
+   itg.overrides   Site Settings custom CSS (/api/layout/theme.css)
+   itg.page        reserved
+
+   The first statement that names the layers fixes their order, so the same
+   statement opens the inline <style> in index.html, this file (main.tsx imports
+   it first) and /api/layout/theme.css; layers.test.ts keeps the three equal.
+   ========================================================================== */
+
+@layer itg.defaults, itg.tokens, itg.base, itg.components, itg.overrides, itg.page;

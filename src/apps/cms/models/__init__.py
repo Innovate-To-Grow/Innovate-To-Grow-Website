@@ -12,6 +12,7 @@ from .content import (
     CMSEmbedAllowedHost,
     CMSEmbedWidget,
     CMSPage,
+    CustomCssRevision,
     FooterContent,
     Menu,
     NewsArticle,
@@ -20,7 +21,6 @@ from .content import (
     PageView,
     RouteRedirect,
     SiteSettings,
-    StyleSheet,
     validate_block_data,
 )
 from .media import CMSAsset
@@ -30,7 +30,7 @@ __all__ = [
     "Menu",
     "FooterContent",
     "SiteSettings",
-    "StyleSheet",
+    "CustomCssRevision",
     # CMS
     "CMSPage",
     "RouteRedirect",

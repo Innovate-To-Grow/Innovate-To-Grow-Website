@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
 /* ---------- Menu row (40px: 37px links + the items' 3px foot) ---------- */
@@ -99,4 +100,5 @@ a.menu-bar-link:focus {
   max-width: 100%;
   background: var(--itg-color-disabled-bg);
   animation: menu-bar-skeleton-pulse 1.2s ease-in-out infinite;
+}
 }

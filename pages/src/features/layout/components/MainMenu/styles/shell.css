@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
 /* ==========================================================================
@@ -79,4 +80,5 @@ html:not([data-block-preview]) {
   max-width: calc(var(--itg-page-max-width) + 2 * var(--itg-page-gutter, 24px));
   margin: 0 auto;
   padding: 0 var(--itg-page-gutter, 24px);
+}
 }

@@ -1,5 +1,5 @@
 // The maintenance page and the degraded-service banner show when the backend is down, and that
-// backend also serves /api/layout/styles.css. Both must stay styled from what ships in the bundle:
+// backend also serves /api/layout/theme.css. Both must stay styled from what ships in the bundle:
 // src/app/MaintenanceMode/MaintenanceMode.css plus the fallback tokens in src/assets/tokens.css.
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
@@ -15,7 +15,7 @@ async function mockHealth(page: Page, status: number, body: Record<string, unkno
 /** Makes the server stylesheet unavailable; returns the URLs of the requests it failed. */
 async function failServerStylesheet(page: Page): Promise<string[]> {
   const failed: string[] = [];
-  await page.route('**/layout/styles.css*', async (route) => {
+  await page.route('**/layout/theme.css*', async (route) => {
     failed.push(route.request().url());
     await route.abort();
   });

@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
 /* ---- account.css ---- */
@@ -262,4 +263,5 @@
 .account-danger-confirmation {
   color: var(--itg-color-error);
   font-weight: 600;
+}
 }

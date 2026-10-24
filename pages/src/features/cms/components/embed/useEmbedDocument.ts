@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '@/features/cms/api';
+import {inComponentsLayer} from '@/lib/css';
 
 // Wildcard is deliberate: the embed is designed to render inside arbitrary
 // third-party pages and the payload ({type, slug, height}) is non-sensitive.
@@ -46,7 +47,7 @@ export function useHeadStyle(id: string, css: string | null | undefined) {
     if (!css) return;
     const style = document.createElement('style');
     style.id = id;
-    style.textContent = css;
+    style.textContent = inComponentsLayer(css);
     document.head.appendChild(style);
     return () => {
       style.remove();

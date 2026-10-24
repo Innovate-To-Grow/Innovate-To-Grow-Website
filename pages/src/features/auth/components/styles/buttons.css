@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
 /* ---- buttons.css ---- */
@@ -49,4 +50,5 @@
   .auth-spinner {
     animation-duration: 2.4s;
   }
+}
 }

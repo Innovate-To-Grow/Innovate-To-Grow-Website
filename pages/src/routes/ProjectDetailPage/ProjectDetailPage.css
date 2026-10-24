@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Project detail (/projects/:id, /past-projects/project/:id). Headings, the meta list and links use the
    global class contract; this file only spaces the page and lays out its closing actions. The page flows like
    the reference's #content: h1 / h2 with 12px margins, 16px / 24px paragraphs across the whole column, grey
@@ -124,4 +125,5 @@
   .project-detail-wide-only {
     display: none;
   }
+}
 }

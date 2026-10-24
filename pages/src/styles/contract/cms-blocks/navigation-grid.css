@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-blocks" stylesheet. */
 
 /* ==========================================================================
@@ -72,4 +73,5 @@
 .projects-hub-page .cms-navigation-grid-description {
   font-size: var(--itg-font-size-lead);
   line-height: 27px;
+}
 }

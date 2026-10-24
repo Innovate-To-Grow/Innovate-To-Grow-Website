@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "page-news" stylesheet. */
 
 /* ---- Article ---- */
@@ -159,4 +160,5 @@ p.news-detail-content,
   align-items: center;
   gap: 12px 24px;
   margin-top: 24px;
+}
 }

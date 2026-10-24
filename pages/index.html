@@ -12,33 +12,40 @@
          sync with _INIT_LOADER_CSS in src/cms/views/views.py (server no longer
          emits this block). -->
     <style>
-      html { background: #fff; }
-      body { font-family: "Open Sans", "Segoe UI", Arial, sans-serif; margin: 0; }
+      /* Cascade layer order (src/styles/layers.css); this statement comes first so it fixes the order. */
+      @layer itg.defaults, itg.tokens, itg.base, itg.components, itg.overrides, itg.page;
 
-      /* ---- init loader ---- */
-      @keyframes itg-init-loader-spin { to { transform: rotate(360deg); } }
-      @keyframes itg-init-loader-fade-in { from { opacity: 0; } to { opacity: 1; } }
-      #root:empty::before {
-        content: "";
-        display: block;
-        width: 44px;
-        height: 44px;
-        margin: 96px auto;
-        border: 3px solid rgba(15, 45, 82, 0.15);
-        border-top-color: var(--itg-color-primary, #0f2d52);
-        border-radius: 50%;
-        animation:
-          itg-init-loader-spin 0.9s linear infinite,
-          itg-init-loader-fade-in 0.25s ease-out;
-      }
-      @media (prefers-reduced-motion: reduce) {
+      /* First-paint defaults: in the lowest layer, so the bundle's own html/body rules win. */
+      @layer itg.defaults {
+        html { background: #fff; }
+        body { font-family: "Open Sans", "Segoe UI", Arial, sans-serif; margin: 0; }
+
+        /* ---- init loader ---- */
+        @keyframes itg-init-loader-spin { to { transform: rotate(360deg); } }
+        @keyframes itg-init-loader-fade-in { from { opacity: 0; } to { opacity: 1; } }
         #root:empty::before {
-          animation: itg-init-loader-fade-in 0.25s ease-out;
-          opacity: 0.7;
+          content: "";
+          display: block;
+          width: 44px;
+          height: 44px;
+          margin: 96px auto;
+          border: 3px solid rgba(15, 45, 82, 0.15);
+          border-top-color: var(--itg-color-primary, #0f2d52);
+          border-radius: 50%;
+          animation:
+            itg-init-loader-spin 0.9s linear infinite,
+            itg-init-loader-fade-in 0.25s ease-out;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          #root:empty::before {
+            animation: itg-init-loader-fade-in 0.25s ease-out;
+            opacity: 0.7;
+          }
         }
       }
 
-      /* Block preview iframe: strip all page chrome so only the block content renders. */
+      /* Block preview iframe: strip all page chrome so only the block content renders. These rules
+         stay unlayered, so they win over every layer of the bundle. */
       html[data-block-preview] { background: transparent; }
       html[data-block-preview] body { background: transparent; }
       html[data-block-preview] #root,
@@ -53,17 +60,17 @@
       html[data-block-preview] #root:empty::before { display: none; }
       html[data-block-preview] .userway_buttons_wrapper { display: none !important; }
       /* Isolated routes mount no header or footer: their roots take no space,
-         whatever the CMS-managed sheets reserve for them. */
+         whatever the site stylesheets reserve for them. */
       html[data-block-preview] #menu-root,
       html[data-block-preview] #footer-root { display: none; }
       /* The wrappers above are plain blocks here, so the first heading's top margin would
          collapse up through them and push the whole page down; keep it inside #main. */
       html[data-block-preview] #main { display: flow-root; }
     </style>
-    <!-- Server-managed design tokens + stylesheets. Render-blocking so tokens
-         resolve before first paint of the styled page; the inline spinner above
-         already covers the pre-stylesheet paint window. -->
-    <link rel="stylesheet" href="/api/layout/styles.css?v=8">
+    <!-- Site Settings design tokens and custom CSS (layers itg.tokens and itg.overrides).
+         Render-blocking so the tokens resolve before the first styled paint; the inline
+         spinner above covers the window before it. -->
+    <link rel="stylesheet" href="/api/layout/theme.css">
     <!-- UC Merced subsite typefaces: Open Sans (text) and Khula (site name). -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

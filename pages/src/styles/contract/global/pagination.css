@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
@@ -67,4 +68,5 @@
   color: #333333;
   font-size: var(--itg-font-size-body);
   line-height: 24px;
+}
 }

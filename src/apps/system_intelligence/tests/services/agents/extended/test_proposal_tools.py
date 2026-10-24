@@ -14,7 +14,6 @@ from apps.cms.models import (
     NewsFeedSource,
     PageView,
     SiteSettings,
-    StyleSheet,
 )
 from apps.event.models import CheckIn, CheckInRecord, CurrentProject, CurrentProjectSchedule, Question
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
@@ -156,10 +155,6 @@ class SystemIntelligenceExtendedToolTests(TransactionTestCase):
         menu = Menu.objects.create(name="main", display_name="Main", items=[{"title": "Home", "url": "/"}])
         FooterContent.objects.create(slug="main-footer", name="Main Footer", is_active=True, content={"columns": []})
         SiteSettings.load()
-        StyleSheet.objects.update_or_create(
-            name="tool-global",
-            defaults={"display_name": "Tool Global", "css": "body { color: #123; }", "is_active": True},
-        )
         CMSAsset.objects.create(name="Map", file="cms/assets/map.pdf")
         source = NewsFeedSource.objects.create(
             name="UC Merced", source_key="ucm", feed_url="https://example.com/feed.xml", is_active=True

@@ -7,8 +7,9 @@ from django.db import connection
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.cms.models import FooterContent, Menu, SiteSettings, StyleSheet
-from apps.cms.views.layout import LAYOUT_CACHE_TIMEOUT, LAYOUT_STYLESHEET_CACHE_KEY
+from apps.cms.models import FooterContent, Menu, SiteSettings
+from apps.cms.services.styles.theme import LAYER_ORDER_STATEMENT
+from apps.cms.services.styles.tokens import render_tokens_css
 
 
 class LayoutMenuFilteringTests(TestCase):
@@ -162,170 +163,33 @@ class LayoutFooterTests(TestCase):
         self.assertIsNone(resp.json()["footer"])
 
 
-class LayoutStylesheetViewTests(TestCase):
-    def setUp(self):
-        cache.clear()
-        self.client = APIClient()
-
-    def test_returns_text_css_content_type(self):
-        resp = self.client.get("/layout/styles.css")
-        self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp["Content-Type"].startswith("text/css"))
-
-    def test_active_stylesheets_concatenated(self):
-        StyleSheet.objects.create(name="a", display_name="A", css="body { color: red; }", sort_order=1)
-        StyleSheet.objects.create(name="b", display_name="B", css=".x { margin: 0; }", sort_order=2)
-        StyleSheet.objects.create(name="c", display_name="C", css=".never { display: none; }", is_active=False)
-
-        resp = self.client.get("/layout/styles.css")
-        body = resp.content.decode()
-        self.assertIn("body { color: red; }", body)
-        self.assertIn(".x { margin: 0; }", body)
-        self.assertNotIn(".never", body)
-
-    def test_design_tokens_emitted_as_css_variables(self):
-        # SiteSettings.load() seeds the default design tokens on first call.
-        SiteSettings.load()
-        resp = self.client.get("/layout/styles.css")
-        body = resp.content.decode()
-        # colors group → --itg-color-* prefix
-        self.assertIn("--itg-color-primary:", body)
-        # typography group → no prefix
-        self.assertIn("--itg-font-size-h1:", body)
-        self.assertIn(":root {", body)
-
-    def test_response_is_cached(self):
-        StyleSheet.objects.create(name="cached", display_name="Cached", css="/* v1 */")
-        first = self.client.get("/layout/styles.css").content.decode()
-        # Mutate via raw queryset update so signals don't fire and bust the cache.
-        StyleSheet.objects.filter(name="cached").update(css="/* v2 */")
-        second = self.client.get("/layout/styles.css").content.decode()
-        self.assertEqual(first, second)
-        self.assertIn("/* v1 */", second)
-
-    def test_save_invalidates_cache(self):
-        # The invalidate signal uses transaction.on_commit(...) which is deferred
-        # until the outer transaction commits. TestCase rolls its transaction
-        # back for isolation, so we must capture & execute the callbacks
-        # synchronously here or the cache stays stale.
-        with self.captureOnCommitCallbacks(execute=True):
-            sheet = StyleSheet.objects.create(name="live", display_name="Live", css="/* original */")
-        self.client.get("/layout/styles.css")  # populate cache
-
-        sheet.css = "/* updated */"
-        with self.captureOnCommitCallbacks(execute=True):
-            sheet.save()
-
-        body = self.client.get("/layout/styles.css").content.decode()
-        self.assertIn("/* updated */", body)
-        self.assertNotIn("/* original */", body)
-
-    def test_init_loader_css_not_in_backend_response(self):
-        # The initial-load spinner now lives inline in pages/index.html so it
-        # paints before this stylesheet arrives. Guard against the backend
-        # re-adding it (which would duplicate the rules and break the cache-key
-        # invariant documented on LAYOUT_STYLESHEET_CACHE_KEY).
-        resp = self.client.get("/layout/styles.css")
-        body = resp.content.decode()
-        self.assertNotIn("#root:empty::before", body)
-        self.assertNotIn("itg-init-loader-spin", body)
-
-    def test_cache_control_header_enables_browser_caching(self):
-        # The stylesheet is render-blocking, so browser caching is how we keep
-        # the first-paint blank window short on repeat visits. Losing this
-        # header would silently double first-paint time.
-        resp = self.client.get("/layout/styles.css")
-        cache_control = resp["Cache-Control"]
-        self.assertIn("public", cache_control)
-        self.assertIn(f"max-age={LAYOUT_CACHE_TIMEOUT}", cache_control)
-
-    def test_cache_key_version_suffix_current(self):
-        # The :vN suffix on the cache key is how we retire stale cached blobs
-        # at deploy time when the assembled stylesheet shape changes. Pinning
-        # the expected version here forces a conscious decision if someone
-        # edits the assembly without bumping the key.
-        self.assertTrue(
-            LAYOUT_STYLESHEET_CACHE_KEY.endswith(":v9"),
-            f"expected cache key to end with :v9, got {LAYOUT_STYLESHEET_CACHE_KEY}",
-        )
-
-    def test_stylesheets_emitted_in_sort_order(self):
-        StyleSheet.objects.create(name="z", display_name="Z", css="/* LAST */", sort_order=99)
-        StyleSheet.objects.create(name="a", display_name="A", css="/* FIRST */", sort_order=1)
-        StyleSheet.objects.create(name="m", display_name="M", css="/* MIDDLE */", sort_order=50)
-
-        body = self.client.get("/layout/styles.css").content.decode()
-
-        self.assertLess(body.index("/* FIRST */"), body.index("/* MIDDLE */"))
-        self.assertLess(body.index("/* MIDDLE */"), body.index("/* LAST */"))
-
-    def test_empty_stylesheets_still_emits_design_tokens(self):
-        # With zero StyleSheet rows the response should still be valid CSS
-        # containing the design-token :root block — otherwise the inline
-        # spinner in index.html falls back to its hard-coded color instead of
-        # picking up the current theme.
-        StyleSheet.objects.all().delete()
-        SiteSettings.load()
-        cache.clear()
-
-        resp = self.client.get("/layout/styles.css")
-        body = resp.content.decode()
-
-        self.assertEqual(resp.status_code, 200)
-        self.assertIn(":root {", body)
-        self.assertIn("--itg-color-primary:", body)
-
-    def test_response_populates_cache_under_expected_key(self):
-        # Ties the view implementation to the public cache-key constant, so
-        # the signal at cms.signals can reliably invalidate the entry.
-        cache.delete(LAYOUT_STYLESHEET_CACHE_KEY)
-        self.assertIsNone(cache.get(LAYOUT_STYLESHEET_CACHE_KEY))
-
-        self.client.get("/layout/styles.css")
-
-        self.assertIsNotNone(cache.get(LAYOUT_STYLESHEET_CACHE_KEY))
-
-
 class DesignTokensToCssTests(TestCase):
-    """Direct unit tests for the _design_tokens_to_css helper edge cases."""
+    """Direct unit tests for render_tokens_css edge cases."""
 
     def test_non_dict_tokens_returns_empty(self):
-        from apps.cms.views.layout import _design_tokens_to_css
-
-        self.assertEqual(_design_tokens_to_css(None), "")
-        self.assertEqual(_design_tokens_to_css("not a dict"), "")
-        self.assertEqual(_design_tokens_to_css([1, 2, 3]), "")
+        self.assertEqual(render_tokens_css(None), "")
+        self.assertEqual(render_tokens_css("not a dict"), "")
+        self.assertEqual(render_tokens_css([1, 2, 3]), "")
 
     def test_non_dict_group_values_are_skipped(self):
-        from apps.cms.views.layout import _design_tokens_to_css
-
-        # 'layout' has dict values (emitted); 'broken' is a string (skipped).
-        css = _design_tokens_to_css({"layout": {"max_width": "1200px"}, "broken": "ignored"})
+        css = render_tokens_css({"layout": {"max_width": "1200px"}, "broken": "ignored"})
         self.assertIn("--itg-max-width: 1200px;", css)
         self.assertNotIn("broken", css)
 
     def test_all_groups_non_dict_returns_empty(self):
-        from apps.cms.views.layout import _design_tokens_to_css
-
-        # No group has dict values -> no lines -> empty string.
-        self.assertEqual(_design_tokens_to_css({"colors": "x", "layout": 5}), "")
+        self.assertEqual(render_tokens_css({"colors": "x", "layout": 5}), "")
 
     def test_colors_group_uses_color_prefix(self):
-        from apps.cms.views.layout import _design_tokens_to_css
-
-        css = _design_tokens_to_css({"colors": {"primary": "#fff"}})
+        css = render_tokens_css({"colors": {"primary": "#fff"}})
         self.assertIn("--itg-color-primary: #fff;", css)
-        self.assertTrue(css.startswith(":root {"))
 
 
-class LayoutStylesheetTokenInjectionTests(TestCase):
-    """Unsafe design-token keys and values never reach the served stylesheet."""
+class ThemeTokenInjectionTests(TestCase):
+    """Unsafe design-token keys and values never reach the served theme sheet."""
 
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        # The migrated seed sheets contain ordinary "body {" rules; serve only the tokens.
-        StyleSheet.objects.all().delete()
 
     def _set_tokens(self, tokens):
         settings = SiteSettings.load()
@@ -333,7 +197,13 @@ class LayoutStylesheetTokenInjectionTests(TestCase):
         settings.save()
         cache.clear()
 
-    def test_injected_value_and_key_are_left_out_of_styles_css(self):
+    @staticmethod
+    def _theme(tokens_css=""):
+        if not tokens_css:
+            return f"{LAYER_ORDER_STATEMENT}\n"
+        return f"{LAYER_ORDER_STATEMENT}\n\n@layer itg.tokens {{\n{tokens_css}}}\n"
+
+    def test_injected_value_and_key_are_left_out_of_the_theme(self):
         self._set_tokens(
             {
                 "colors": {"primary": "red; } body { display:none", "secondary": "#005487"},
@@ -342,47 +212,41 @@ class LayoutStylesheetTokenInjectionTests(TestCase):
         )
 
         with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING") as logs:
-            resp = self.client.get("/layout/styles.css")
+            resp = self.client.get("/layout/theme.css")
 
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
         self.assertNotIn("display:none", body)
-        self.assertNotIn("body {", body)
-        self.assertNotIn("--itg-color-primary", body)
         self.assertNotIn("Bad-Key", body)
         self.assertNotIn("bad-key", body)
-        self.assertIn("  --itg-color-secondary: #005487;", body)
-        self.assertIn("  --itg-page-max-width: 1170px;", body)
-        self.assertEqual(body, ":root {\n  --itg-color-secondary: #005487;\n  --itg-page-max-width: 1170px;\n}\n")
+        self.assertEqual(
+            body, self._theme(":root {\n  --itg-color-secondary: #005487;\n  --itg-page-max-width: 1170px;\n}\n")
+        )
         self.assertEqual(len(logs.records), 2)
 
-    def test_only_unsafe_tokens_still_serves_the_sheets(self):
-        StyleSheet.objects.create(name="safe", display_name="Safe", css=".safe { color: red; }", sort_order=1)
+    def test_only_unsafe_tokens_leave_just_the_layer_order(self):
         self._set_tokens({"colors": {"primary": "url(https://example.com/x)"}})
 
         with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING"):
-            body = self.client.get("/layout/styles.css").content.decode()
+            body = self.client.get("/layout/theme.css").content.decode()
 
-        self.assertNotIn(":root {", body)
-        self.assertNotIn("example.com", body)
-        self.assertIn(".safe { color: red; }", body)
+        self.assertEqual(body, self._theme())
 
-    def test_control_character_tokens_are_left_out_of_styles_css(self):
+    def test_control_character_tokens_are_left_out_of_the_theme(self):
         # BEL, not NUL: PostgreSQL jsonb refuses to store \u0000 at all.
         self._set_tokens({"colors": {"primary": "red\tblue", "secondary": "#005487", "accent": "#fff\x07"}})
 
         with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING") as logs:
-            resp = self.client.get("/layout/styles.css")
+            resp = self.client.get("/layout/theme.css")
 
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.content.decode(), ":root {\n  --itg-color-secondary: #005487;\n}\n")
+        self.assertEqual(resp.content.decode(), self._theme(":root {\n  --itg-color-secondary: #005487;\n}\n"))
         self.assertEqual(len(logs.records), 2)
 
     # PostgreSQL jsonb refuses a lone surrogate at save time; SQLite stores the escaped JSON text,
     # so the value comes back as a Python str that cannot be encoded as UTF-8.
     @skipUnless(connection.vendor == "sqlite", "only SQLite can store a lone surrogate in a JSONField")
-    def test_stored_surrogate_token_does_not_break_styles_css(self):
-        StyleSheet.objects.create(name="safe", display_name="Safe", css=".safe { color: red; }", sort_order=1)
+    def test_stored_surrogate_token_does_not_break_the_theme(self):
         self._set_tokens(
             {
                 "colors": {"primary": "#0f2d52\ud800", "secondary": "#005487"},
@@ -392,20 +256,11 @@ class LayoutStylesheetTokenInjectionTests(TestCase):
         self.assertEqual(SiteSettings.load().design_tokens["colors"]["primary"], "#0f2d52\ud800")
 
         with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING") as logs:
-            resp = self.client.get("/layout/styles.css")
+            resp = self.client.get("/layout/theme.css")
 
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
             resp.content.decode("utf-8"),
-            ":root {\n  --itg-color-secondary: #005487;\n  --itg-font-size-h1: 2.25rem;\n}\n\n.safe { color: red; }\n",
+            self._theme(":root {\n  --itg-color-secondary: #005487;\n  --itg-font-size-h1: 2.25rem;\n}\n"),
         )
         self.assertEqual(len(logs.records), 2)
-
-    def test_design_tokens_to_css_alias_still_works(self):
-        from apps.cms.services.styles.tokens import render_tokens_css
-        from apps.cms.views.layout import _design_tokens_to_css
-
-        self.assertIs(_design_tokens_to_css, render_tokens_css)
-        with self.assertLogs("apps.cms.services.styles.tokens", level="WARNING"):
-            css = _design_tokens_to_css({"colors": {"primary": "#fff", "evil": "red; } body {"}})
-        self.assertEqual(css, ":root {\n  --itg-color-primary: #fff;\n}\n")

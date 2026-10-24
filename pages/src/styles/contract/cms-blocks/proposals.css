@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Moved verbatim from the CMS "cms-blocks" stylesheet. */
 
 /* ==========================================================================
@@ -115,4 +116,5 @@
 /* footer_html: "Expectations and Submission" panel (.itg-panel) after the list */
 .cms-proposal-footer {
   margin-top: 24px;
+}
 }

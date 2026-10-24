@@ -23,7 +23,6 @@ from apps.cms.models import (
     NewsFeedSource,
     PageView,
     SiteSettings,
-    StyleSheet,
 )
 from apps.event.models import CurrentProject, CurrentProjectSchedule
 from apps.event.tests.helpers import (
@@ -46,7 +45,6 @@ from apps.system_intelligence.services.query_tools.tool_modules.helpers import M
 from apps.system_intelligence.services.tools import exports as exports_module
 from apps.system_intelligence.services.tools.cms import layout as layout_module
 from apps.system_intelligence.services.tools.cms import news as news_module
-from apps.system_intelligence.services.tools.cms import styles as styles_module
 from apps.system_intelligence.services.tools.domains import mail as mail_module
 from apps.system_intelligence.services.tools.domains import members as members_module
 from apps.system_intelligence.services.tools.domains import projects as projects_module
@@ -432,41 +430,6 @@ class NewsSourceToolTests(TransactionTestCase):
         self.assertIn("Provide source_id, source_key, or name", result["result"])
 
 
-class StyleSheetToolTests(TransactionTestCase):
-    def setUp(self):
-        cache.clear()
-        # cms migrations seed a "global" sheet. A TransactionTestCase sees it until some earlier test flushes the
-        # database, so this class failed when it ran first (alone, or early in a shuffled order).
-        StyleSheet.objects.filter(name__in=("global", "hidden")).delete()
-        self.sheet = StyleSheet.objects.create(
-            name="global", display_name="Global", css="body { color: #000; }", is_active=True
-        )
-        StyleSheet.objects.create(name="hidden", display_name="Hidden", css="", is_active=False)
-
-    def test_search_style_sheets_filters_inactive(self):
-        # styles.py line 28: is_active filter branch.
-        result = asyncio.run(si_tools.search_style_sheets(is_active=False))
-        names = {row["name"] for row in result["rows"]}
-        self.assertIn("hidden", names)
-        self.assertNotIn("global", names)
-
-    def test_style_sheet_detail_by_id(self):
-        # styles.py line 41: sheet_id branch.
-        result = asyncio.run(si_tools.get_style_sheet_detail(sheet_id=str(self.sheet.pk)))
-        self.assertEqual(result["style_sheet"]["name"], "global")
-
-    def test_style_sheet_detail_by_name(self):
-        # styles.py lines 43-47: name branch + css_length computation.
-        result = asyncio.run(si_tools.get_style_sheet_detail(name="global"))
-        self.assertEqual(result["style_sheet"]["name"], "global")
-        self.assertGreater(result["style_sheet"]["css_length"], 0)
-
-    def test_style_sheet_detail_without_args_returns_tool_error(self):
-        # styles.py line 45: ActionRequestError surfaced.
-        result = asyncio.run(si_tools.get_style_sheet_detail())
-        self.assertIn("Provide sheet_id or name", result["result"])
-
-
 class LegacyToolWrapperTests(TransactionTestCase):
     """Each legacy wrapper dispatches through the local TOOL_REGISTRY."""
 
@@ -720,7 +683,6 @@ class DirectHelperReferenceTests(SimpleTestCase):
             projects_module,
             layout_module,
             news_module,
-            styles_module,
             mail_module,
             lookup_module,
             registrations_module,

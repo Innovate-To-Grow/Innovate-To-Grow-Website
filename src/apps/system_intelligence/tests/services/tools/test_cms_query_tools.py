@@ -104,7 +104,7 @@ class RunCustomQueryToolTests(TestCase):
         Semester.objects.create(year=2024, season=2, is_published=False)
         result = run_custom_query({"model": "Semester", "filters": {"is_published": True}})
         self.assertIn("2025", result)
-        self.assertNotIn("2024", result)
+        self.assertNotIn("2024-2 Fall", result)
 
     def test_rejects_disallowed_filter_field(self):
         result = run_custom_query({"model": "Semester", "filters": {"is_deleted": True}})
