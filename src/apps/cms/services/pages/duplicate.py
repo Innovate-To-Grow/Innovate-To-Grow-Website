@@ -32,7 +32,6 @@ def duplicate_page(page: CMSPage) -> CMSPage:
             title=title,
             meta_description=page.meta_description,
             page_css_class=page.page_css_class,
-            page_css=page.page_css,
             sort_order=page.sort_order,
             status="draft",
         )

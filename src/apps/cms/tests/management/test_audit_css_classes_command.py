@@ -100,31 +100,26 @@ class AuditCssClassesCommandTests(TestCase):
         self._write("styles/a.css", ".fe:hover {}")
         self._write("styles/y.css", ".hero .fe {}")
         self._write("routes/Lazy.css", ".lazy {}\n.fe {}")
-        self.page.page_css = ".fe { color: red; }"
-        self.page.save()
-        CMSPage.objects.create(slug="other", route="/other", title="Other", page_css=".hero .fe {}")
-        CMSPage.objects.create(slug="third", route="/third", title="Third", page_css=".fe .inner {}")
+        self._write("styles/z.css", ".fe .inner {}")
 
         out = self._out("--frontend-dir", str(self.frontend))
 
-        # Entry-bundle files, route-only, page_css, scoped, hook; each group sorted, frontend before page_css.
+        # Entry-bundle files, route-only, scoped, hook; each group sorted.
         self.assertRegex(
             out,
-            r"(?m)^fe\s+1\s+1\s+styles/a\.css, styles/x\.css, route-only:routes/Lazy\.css, page_css:/audit, "
-            r"scoped:styles/y\.css,page_css:/other, hook:page_css:/third$",
+            r"(?m)^fe\s+1\s+1\s+styles/a\.css, styles/x\.css, route-only:routes/Lazy\.css, "
+            r"scoped:styles/y\.css, hook:styles/z\.css$",
         )
 
     def test_hook_label_lists_css_that_hangs_rules_on_a_class(self):
-        # A page wrapper class: nothing styles it, but frontend files and page_css style elements
-        # inside it. Hooks come last, as frontend files, then page_css:.
+        # A page wrapper class: nothing styles it, but frontend files style elements inside it.
         self.page.page_css_class = "wrap"
-        self.page.page_css = ".wrap > p {}"
         self.page.save()
         self._write("routes/Lazy.css", ".lazy {}\n.wrap a {}")
 
         out = self._out("--frontend-dir", str(self.frontend))
 
-        self.assertRegex(out, r"(?m)^wrap\s+1\s+1\s+hook:routes/Lazy\.css,styles/x\.css,page_css:/audit$")
+        self.assertRegex(out, r"(?m)^wrap\s+1\s+1\s+hook:routes/Lazy\.css,styles/x\.css$")
         # A hook is not counted as missing a definition.
         self.assertIn("4 class(es) used in stored CMS content, 2 with no site-wide definition.", out)
 
@@ -161,17 +156,6 @@ class AuditCssClassesCommandTests(TestCase):
         self.assertRegex(out, r"(?m)^lazy\s+1\s+1\s+route-only:routes/Lazy\.css$")
         # A route-only class has no site-wide definition.
         self.assertIn("4 class(es) used in stored CMS content, 3 with no site-wide definition.", out)
-
-    def test_page_css_label_for_a_class_one_page_styles(self):
-        self.page.page_css = ".nowhere { margin: 0; }"
-        self.page.save()
-        CMSPage.objects.create(slug="b", route="/b", title="B", page_css=".nowhere:hover {}")
-
-        out = self._out("--frontend-dir", str(self.frontend))
-
-        self.assertRegex(out, r"(?m)^nowhere\s+1\s+1\s+page_css:/audit,/b$")
-        # Page CSS applies on one page only, so it is not a site-wide definition.
-        self.assertIn("3 class(es) used in stored CMS content, 2 with no site-wide definition.", out)
 
     def test_undefined_only_lists_classes_with_no_site_wide_definition(self):
         out = self._out("--frontend-dir", str(self.frontend), "--undefined-only")
@@ -219,7 +203,7 @@ class AuditCssClassesCommandTests(TestCase):
         self.assertEqual(by_name["nowhere"]["pages"], ["/audit"])
         self.assertEqual(by_name["nowhere"]["footers"], [])
         self.assertEqual(by_name["nowhere"]["sources"], ["block:rich_text"])
-        self.assertEqual((by_name["nowhere"]["route_frontend_files"], by_name["nowhere"]["page_css"]), ([], []))
+        self.assertEqual(by_name["nowhere"]["route_frontend_files"], [])
         self.assertEqual(err, "")
 
     def test_json_with_undefined_only_filters_rows_but_not_totals(self):
@@ -299,8 +283,6 @@ class AuditCssClassesCommandTests(TestCase):
                 self._run()
 
     def test_no_frontend_writes_a_notice_and_does_not_fail(self):
-        self.page.page_css = ".nowhere { margin: 0; }"
-        self.page.save()
         missing = self.tmp / "pages" / "src"
         with patch("apps.cms.management.commands.audit_css_classes.default_frontend_dir", return_value=missing):
             out, err = self._run("--no-frontend")
@@ -309,8 +291,7 @@ class AuditCssClassesCommandTests(TestCase):
         # Frontend CSS was not read: fe and scoped-only are styled only there.
         self.assertRegex(out, r"(?m)^fe\s+1\s+1\s+NOWHERE$")
         self.assertRegex(out, r"(?m)^scoped-only\s+1\s+1\s+NOWHERE$")
-        # Page CSS is stored in the database, so it is still listed.
-        self.assertRegex(out, r"(?m)^nowhere\s+1\s+1\s+page_css:/audit$")
+        self.assertRegex(out, r"(?m)^nowhere\s+1\s+1\s+NOWHERE$")
         self.assertIn("3 class(es) used in stored CMS content, 3 with no site-wide definition.", out)
 
     def test_no_frontend_ignores_a_given_frontend_dir(self):

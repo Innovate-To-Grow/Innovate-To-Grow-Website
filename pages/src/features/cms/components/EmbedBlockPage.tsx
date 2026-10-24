@@ -19,7 +19,6 @@ import {
  * - Fetches a single embeddable block by slug from /cms/embed/<slug>/.
  * - Renders it inside the correct `page_css_class` wrapper so block styles
  *   (which cascade from `.cms-page ...` selectors) apply.
- * - Injects page_css scoped to the page.
  * - Reports its own height to the parent window via postMessage so the iframe
  *   can auto-resize (message type `i2g-embed-resize`).
  * - Adds <base target="_blank"> so any internal links open in a new window,
@@ -62,8 +61,6 @@ export const EmbedBlockPage = ({appRoutes}: {appRoutes: EmbedAppRoutes}) => {
 
   useBaseTargetBlank();
   useHeadStyle('itg-embed-body', EMBED_BODY_CSS);
-  // page_css comes from the parent CMS page.
-  useHeadStyle('itg-embed-page-css', data?.page_css);
   // Hide safe preset sections when requested by widget config or preview query params.
   useHeadStyle('itg-embed-hide-sections', hiddenSectionsCss);
   // Report height to parent (once data is rendered, and on any size change).
