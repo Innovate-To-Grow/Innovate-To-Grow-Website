@@ -87,4 +87,4 @@ PUBLIC_APP_ROUTE_PATTERNS = [
 
 # React-only utility routes that must never be claimed as CMS pages or legacy
 # redirect sources, but are not valid public redirect destinations.
-PROTECTED_APP_ROUTES = ["/_block-preview"]
+PROTECTED_APP_ROUTES = ["/_block-preview", "/_footer-preview"]

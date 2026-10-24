@@ -4,6 +4,7 @@ import {Layout} from '@/features/layout';
 import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';
 import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
+import {FooterPreviewPage} from '@/features/layout/components/FooterPreview/FooterPreviewPage';
 import {LegacyLoginLinkRedirect} from './LegacyLoginLinkRedirect';
 import {RouteDocumentTitle, type RouteHandle} from './RouteDocumentTitle';
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
@@ -62,6 +63,7 @@ const ImpersonateLoginPage = React.lazy(() => import('@/routes/ImpersonateLoginP
 export const createAppRouter = () => createBrowserRouter([
     // Block preview route — rendered in iframe for admin live preview, no menu/footer
     {path: '/_block-preview', element: <BlockPreviewPage/>},
+    {path: '/_footer-preview', element: <FooterPreviewPage/>},
     // Public embed widget — rendered in third-party iframe, no menu/footer
     {path: '/_embed/:embedSlug', element: <EmbedBlockPage appRoutes={EMBED_APP_ROUTES}/>},
     {
