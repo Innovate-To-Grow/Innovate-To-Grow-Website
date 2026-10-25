@@ -73,10 +73,10 @@
   margin: 0 0 12px;
 }
 
-/* A readable line length for the story text (the prose_max_width design token). */
+/* The story text spans the column unless the prose_max_width design token caps its line length. */
 p.news-detail-content,
 .news-detail-content :where(p, ul, ol, dl, blockquote) {
-  max-width: var(--itg-prose-max-width, 75ch);
+  max-width: var(--itg-prose-max-width, none);
 }
 
 .news-detail-content :is(h2, h3, h4) {

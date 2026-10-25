@@ -74,7 +74,7 @@ _DEFAULT_DESIGN_TOKENS = {
         "sidebar_width": "270px",
         "section_gap": "2rem",
         "list_indent": "1.5625rem",
-        "prose_max_width": "75ch",
+        "prose_max_width": "none",
     },
     "borders": {
         "radius_card": "0",

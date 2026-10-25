@@ -26,10 +26,10 @@
   margin: 0 0 12px;
 }
 
-/* Running text keeps a readable line length (about 75 characters: the prose_max_width design
-   token) across the full-width column; tables, images, embeds and card grids still span it. */
+/* Running text spans the column like its headings. The prose_max_width design token can cap its
+   line length (e.g. 75ch); tables, images, embeds and card grids span the column either way. */
 .cms-prose :where(p, ul, ol, dl, blockquote) {
-  max-width: var(--itg-prose-max-width, 75ch);
+  max-width: var(--itg-prose-max-width, none);
 }
 
 .cms-prose :where(ul, ol) {
