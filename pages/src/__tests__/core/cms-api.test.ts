@@ -76,7 +76,6 @@ describe('isCMSPageRedirectResponse', () => {
       route: '/faqs',
       title: 'FAQs',
       page_css_class: '',
-      page_css: '',
       meta_description: '',
       blocks: [],
     })).toBe(false);

@@ -253,7 +253,7 @@ The command is read-only and prints one line per flagged code (times in UTC) wit
 ## News sync
 
 ```bash
-cd src && python manage.py sync_news --settings=config.settings.local
+cd src && python manage.py sync_news --settings=config.settings.environments.local
 ```
 
 Fetches articles from all configured `NewsFeedSource` records. Results logged in `NewsSyncLog`.
@@ -275,7 +275,7 @@ same database and environment configuration as the Web service. Production and
 demo run it as the no-port `itg-background-worker` sidecar:
 
 ```bash
-python manage.py run_background_worker --settings=config.settings.production
+python manage.py run_background_worker --settings=config.settings.environments.production
 ```
 
 The sidecar overrides the Docker entrypoint and waits for the Web container to
@@ -343,7 +343,9 @@ Google Sheet):
   refreshed without activating them
 - `python manage.py sync_schedule` syncs every row whose auto-sync is enabled and due; `--schedule <uuid>` syncs
   one row now regardless of its auto-sync settings; `--force` syncs the active row now regardless of its interval
-- A sync replaces that row's `CurrentProject`, schedule sections/tracks/slots and agenda items only
+- A sync replaces that row's `CurrentProject` and schedule sections/tracks/slots only. Agenda items (the Expo and
+  Awards tables) are seeded with defaults on the row's first sync and are then maintained in the **Agenda items**
+  block of the row's change form; later syncs leave them untouched
 
 ### Check-in
 
@@ -386,6 +388,12 @@ switched them off once the frontend shipped their rules, and `cms.0030` deleted 
 `src/apps/cms/migrations/data/stylesheets.json` stays, frozen: the earlier migrations read it on every new
 database.
 
+Pages used to carry their own **Page CSS** as well. `cms.0031` removed the field, and it refuses to delete
+anyone's CSS: if a page (published or draft) still has some, the migration stops before changing anything
+and names the pages. The container entrypoint runs migrations, so the new tasks then fail to start and the
+deploy does not finish (ECS's default rolling update keeps the running tasks on the previous release). Move
+the rules those pages still need into the repository, clear their Page CSS in the admin, and deploy again.
+
 ### Classes used by stored CMS content
 
 ```bash
@@ -402,7 +410,6 @@ places it is used, and what styles it:
 - a path under `pages/src`: frontend CSS in the entry bundle, which loads on every page;
 - `route-only:<files>`: frontend CSS that loads only once a lazily loaded route using it has been opened, so
   CMS content cannot rely on it;
-- `page_css:<routes>`: a page's own Page CSS, which applies on that page only;
 - `scoped:<sources>`: CSS that styles the class only in context: inside another element (`.event-page .x`
   scopes `x`), together with another class (`.btn.is-active` and `.a:is(.b)` scope both), inside `:not()`,
   `:has()` or `:nth-child(... of S)`, in a nested rule, or inside `@scope`;
@@ -420,9 +427,9 @@ to find which CSS stored content depends on before a class in `pages/src` is ren
 fails because of what it finds.
 
 The backend image does not contain `pages/src`, so in production run it with `--no-frontend --json`. That
-reports usage only: which classes stored content uses and where, plus any `page_css` that styles them. No
-frontend CSS is read, so no class counts as defined. Definitions need a run with the frontend sources: run the
-audit locally from a checkout, or check the classes the production report lists against one (for example
+reports usage only: which classes stored content uses and where. No frontend CSS is read, so no class counts
+as defined. Definitions need a run with the frontend sources: run the audit locally from a checkout, or check
+the classes the production report lists against one (for example
 `grep -rn "\.<class>\b" pages/src --include=*.css`). Without `--no-frontend`, a missing frontend directory is
 an error rather than a silently incomplete report.
 

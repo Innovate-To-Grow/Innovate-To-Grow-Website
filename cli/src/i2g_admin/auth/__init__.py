@@ -6,8 +6,8 @@ from urllib.parse import urlencode
 import requests
 
 from .. import config
-from .callback_server import CallbackServer
 from ..core.errors import AuthError
+from .callback_server import CallbackServer
 from .pkce import challenge_s256, generate_verifier
 
 CLIENT_ID = "i2g-admin-cli"

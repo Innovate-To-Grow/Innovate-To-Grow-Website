@@ -6,11 +6,11 @@ Configuration differences across development, CI, and production.
 
 | Environment | Settings module | Database | Triggered by |
 |-------------|----------------|----------|-------------|
-| Local development | `config.settings.local` | SQLite | `manage.py runserver` (default) |
-| CI | `config.settings.test` | PostgreSQL 16 (GH Actions service) | GitHub Actions workflow |
-| Production | `config.settings.production` | PostgreSQL + SSL | ECS task environment variables |
+| Local development | `config.settings.environments.local` | SQLite | `manage.py runserver` (default) |
+| CI | `config.settings.environments.test` | PostgreSQL 16 (GH Actions service) | GitHub Actions workflow |
+| Production | `config.settings.environments.production` | PostgreSQL + SSL | ECS task environment variables |
 
-All three extend `config.settings.base`, which wildcard-imports from `config/settings/components/`.
+All three extend `config.settings.base`, which wildcard-imports from `config/settings/base/framework/` and `config/settings/base/integrations/`. Production then applies `config/settings/production/`.
 
 ## Environment variable reference
 
@@ -83,7 +83,7 @@ Verified from the GitHub deploy configuration: production has **no Redis**.
 variable or secret, so `deploy-backend.yml` drops the `REDIS_URL` secret when it
 renders `aws/task-definition.json` (the repository variable `REDIS_URL` holds
 only the placeholder `__EMPTY__` and is not read by the deploy), and
-`config/settings/components/production.py` selects Django's `FileBasedCache`
+`config/settings/production/cache.py` selects Django's `FileBasedCache`
 under the container's temp directory (`MAX_ENTRIES` 2,000, kept small on purpose: see below). That cache is
 **per container**: the Uvicorn workers in one `itg-backend` container
 (`WEB_CONCURRENCY`, default 2) share it, the `itg-background-worker` container
@@ -122,7 +122,7 @@ needed for the lockout, send verification or the token budgets.
 #### The `throttle` cache alias
 
 Every settings module defines a second cache alias, `throttle`
-(`THROTTLE_CACHE` in `config/settings/components/framework/cache.py`): a
+(`THROTTLE_CACHE` in `config/settings/base/framework/cache.py`): a
 `LocMemCache` with `MAX_ENTRIES` 50,000 and `CULL_FREQUENCY` 3, the same in
 development, CI and production, with or without `REDIS_URL`. It holds the
 history of the throttles whose **key an anonymous caller mints**, and of the

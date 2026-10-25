@@ -30,9 +30,9 @@
   margin-bottom: 12px;
 }
 
-/* A readable line length for the abstract (the prose-width design token, about 75 characters). */
+/* The abstract spans the column unless the prose_max_width design token caps its line length. */
 .project-detail-abstract {
-  max-width: var(--itg-prose-max-width, 75ch);
+  max-width: var(--itg-prose-max-width, none);
   margin: 0 0 12px;
 }
 

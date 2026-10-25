@@ -63,7 +63,6 @@ export interface CMSPageResponse {
   route: string;
   title: string;
   page_css_class: string;
-  page_css: string;
   meta_description: string;
   blocks: CMSBlock[];
   expires_at?: string;
@@ -261,7 +260,6 @@ export interface CMSEmbedResponse {
   app_route?: string;
   blocks: CMSBlock[];
   page_css_class: string;
-  page_css: string;
   hidden_sections?: string[];
   hide_section_titles?: boolean;
   schedule_id?: string | null;

@@ -8,7 +8,7 @@ throwaway credentials.
 
 import os
 
-from .base import *  # noqa: F403
+from ..base import *  # noqa: F403
 
 SECRET_KEY = "ci-secret-key"
 DEBUG = False

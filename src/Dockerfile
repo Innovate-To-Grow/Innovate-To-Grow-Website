@@ -80,10 +80,10 @@ RUN pip install "pip==26.2.0" "setuptools==83.0.0" "wheel==0.46.3" \
 COPY --chown=app:app . .
 
 # Bake static assets into the image instead of running collectstatic at boot.
-# config.settings.local points at SQLite + local FS, which is enough for the
+# config.settings.environments.local points at SQLite + local FS, which is enough for the
 # build-time staticfiles pass (no DB or S3 credentials needed). entrypoint.sh
 # is made executable in the same layer so there's one RUN for app setup.
-ENV DJANGO_SETTINGS_MODULE=config.settings.local
+ENV DJANGO_SETTINGS_MODULE=config.settings.environments.local
 RUN chmod +x entrypoint.sh \
  && mkdir -p data \
  && chown app:app data \

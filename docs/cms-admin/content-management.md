@@ -15,7 +15,7 @@ Each page represents a frontend-routable URL. Key fields:
 | `title` | Page title |
 | `meta_description` | SEO meta description |
 | `status` | `draft`, `published`, or `archived` |
-| `page_css_class` | Optional CSS class applied to the page container |
+| `page_css_class` | Optional CSS classes on the page container; the rules for them live in the repository (`pages/src`) |
 | `published_at` | Automatically set when status changes to `published` |
 
 **Route validation**: Route segments must contain only alphanumeric characters, hyphens, and underscores. Multi-segment routes (e.g., `about/team`) are supported.
@@ -115,7 +115,7 @@ News articles are imported from external RSS feeds, not created manually in admi
 
 **Sync command:**
 ```bash
-cd src && python manage.py sync_news --settings=config.settings.local
+cd src && python manage.py sync_news --settings=config.settings.environments.local
 ```
 
 **Admin workflow:**

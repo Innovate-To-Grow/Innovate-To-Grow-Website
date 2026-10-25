@@ -17,7 +17,6 @@ from apps.cms.services.styles.audit import (
     default_frontend_dir,
     frontend_css_index,
     iter_html_fields,
-    page_css_index,
 )
 
 EMPTY_MAPS = {"defined": {}, "scoped": {}, "hook": {}}
@@ -230,30 +229,6 @@ class FrontendCssIndexTests(SimpleTestCase):
         # SheetsDataTable is only reached through a lazily loaded route.
         self.assertNotIn("sdt-search", index["defined"])
         self.assertEqual(index["route"]["sdt-search"], {"components/SheetsDataTable/SheetsDataTable.css"})
-
-
-class PageCssIndexTests(TestCase):
-    def setUp(self):
-        cache.clear()
-        # Migration cms.0023 seeds the /acknowledgement page; start from no pages.
-        CMSPage.objects.all().delete()
-
-    def test_defined_scoped_and_hook_classes_per_route(self):
-        CMSPage.objects.create(slug="landing", route="/landing", title="Landing", page_css=".promo {}\n.hero .cta {}")
-        CMSPage.objects.create(slug="other", route="/other", title="Other", page_css=".promo:hover {}\n.promo.big {}")
-        CMSPage.objects.create(slug="plain", route="/plain", title="Plain")
-
-        index = page_css_index()
-
-        self.assertEqual(set(index), {"defined", "scoped", "hook"})
-        self.assertEqual(dict(index["defined"]), {"promo": {"/landing", "/other"}})
-        # /other defines promo, so only big is listed as scoped there.
-        self.assertEqual(dict(index["scoped"]), {"cta": {"/landing"}, "big": {"/other"}})
-        self.assertEqual(dict(index["hook"]), {"hero": {"/landing"}})
-
-    def test_no_page_css(self):
-        CMSPage.objects.create(slug="plain", route="/plain", title="Plain")
-        self.assertEqual(page_css_index(), EMPTY_MAPS)
 
 
 class ContentClassUsageTests(TestCase):

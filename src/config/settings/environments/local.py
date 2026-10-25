@@ -1,14 +1,14 @@
 """
 Local development settings.
 
-Usage: ``--settings=config.settings.local`` (or DJANGO_SETTINGS_MODULE).
-Inherits everything from base.py and overrides only what differs locally.
+Usage: ``--settings=config.settings.environments.local`` (or DJANGO_SETTINGS_MODULE).
+Inherits everything from config.settings.base and overrides only what differs locally.
 """
 
 import os
 import sys
 
-from .base import *  # noqa: F403
+from ..base import *  # noqa: F403
 
 # ---------------------------------------------------------------------------
 # Core overrides
@@ -70,7 +70,7 @@ DATABASES = {
 # ---------------------------------------------------------------------------
 CACHES = {
     "default": {
-        # LocMemCache whose clear() also empties the throttle alias (see components/framework/cache.py).
+        # LocMemCache whose clear() also empties the throttle alias (see base/framework/cache.py).
         "BACKEND": "apps.core.utils.throttle_cache.DevelopmentLocMemCache",
         "LOCATION": "innovate-to-grow-dev",
     },

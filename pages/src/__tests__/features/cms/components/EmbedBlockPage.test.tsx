@@ -10,7 +10,6 @@ import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
  * Contract:
  *   - Fetches /cms/embed/<slug>/ on mount via fetchCMSEmbed()
  *   - Renders the returned block inside a wrapper div using page_css_class
- *   - Injects page_css as <style id="itg-embed-page-css">
  *   - Injects <base target="_blank"> so internal links pop out of the iframe
  *   - Posts {type: 'i2g-embed-resize', slug, height} to parent on content resize
  *   - Shows "Embed not found." on 404 / fetch error
@@ -75,7 +74,7 @@ describe('EmbedBlockPage', () => {
     cleanup();
     // Strip any <base> / <style id="itg-embed-*"> tags the component left on <head>
     document
-      .querySelectorAll('base, style#itg-embed-body, style#itg-embed-page-css, style#itg-embed-hide-sections')
+      .querySelectorAll('base, style#itg-embed-body, style#itg-embed-hide-sections')
       .forEach((n) => n.remove());
     vi.restoreAllMocks();
   });
@@ -84,7 +83,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {heading: 'Embedded'}}],
       page_css_class: '',
-      page_css: '',
     });
 
     renderAtSlug('contact-widget');
@@ -97,7 +95,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: 'special-wrapper',
-      page_css: '',
     });
 
     const {container} = renderAtSlug('c');
@@ -108,33 +105,30 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
     });
 
     const {container} = renderAtSlug('c');
     await waitFor(() => expect(container.querySelector('.cms-page')).toBeInTheDocument());
   });
 
-  it('injects page_css into <head> as a scoped style tag', async () => {
+  it('ignores page_css if an older API still sends it', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
       page_css: '.mine { color: red; }',
     });
 
-    renderAtSlug('c');
-    await waitFor(() => {
-      const tag = document.getElementById('itg-embed-page-css');
-      expect(tag).not.toBeNull();
-      expect(tag?.textContent).toContain('.mine { color: red; }');
-    });
+    const {container} = renderAtSlug('c');
+    await waitFor(() => expect(container.querySelector('.cms-page')).toBeInTheDocument());
+
+    expect(document.getElementById('itg-embed-page-css')).toBeNull();
+    expect(document.head.textContent).not.toContain('.mine');
   });
 
   it('injects <base target="_blank"> so links pop out of the iframe', async () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
     });
 
     renderAtSlug('c');
@@ -170,7 +164,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
     });
 
     renderAtSlug('widget');
@@ -194,7 +187,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
     });
 
     renderAtSlug('widget');
@@ -216,7 +208,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
       hide_section_titles: true,
     });
 
@@ -233,7 +224,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
       hide_section_titles: false,
     });
 
@@ -255,7 +245,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
       hidden_sections: ['schedule_projects', 'section_titles'],
       hide_section_titles: false,
     });
@@ -274,7 +263,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
       hidden_sections: [],
       hide_section_titles: false,
     });
@@ -299,7 +287,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
       hidden_sections: ['not-a-preset'],
       hide_section_titles: false,
     });
@@ -322,7 +309,6 @@ describe('EmbedBlockPage', () => {
       fetchCMSEmbedMock.mockResolvedValue({
         blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
         page_css_class: '',
-        page_css: '',
         hide_section_titles: false,
       });
 
@@ -346,7 +332,6 @@ describe('EmbedBlockPage', () => {
       fetchCMSEmbedMock.mockResolvedValue({
         blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
         page_css_class: '',
-        page_css: '',
         hide_section_titles: false,
       });
 
@@ -367,7 +352,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
       hide_section_titles: true,
     });
 
@@ -388,7 +372,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
       hide_section_titles: true,
     });
 
@@ -404,7 +387,6 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '',
       hide_section_titles: false,
     });
 
@@ -420,7 +402,6 @@ describe('EmbedBlockPage', () => {
       schedule_id: 'schedule-123',
       blocks: [],
       page_css_class: '',
-      page_css: '',
     });
 
     renderAtSlug('schedule-widget');
@@ -437,7 +418,6 @@ describe('EmbedBlockPage', () => {
       schedule_id: 'schedule-123',
       blocks: [],
       page_css_class: '',
-      page_css: '',
     });
 
     render(
@@ -464,7 +444,6 @@ describe('EmbedBlockPage', () => {
       schedule_id: 'schedule-123',
       blocks: [],
       page_css_class: '',
-      page_css: '',
     });
 
     render(
@@ -487,7 +466,6 @@ describe('EmbedBlockPage', () => {
       schedule_id: null,
       blocks: [],
       page_css_class: '',
-      page_css: '',
     });
 
     renderAtSlug('schedule-widget');
@@ -501,17 +479,16 @@ describe('EmbedBlockPage', () => {
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
       page_css_class: '',
-      page_css: '.x{}',
     });
 
     const {unmount} = renderAtSlug('c');
     await waitFor(() => {
-      expect(document.getElementById('itg-embed-page-css')).not.toBeNull();
+      expect(document.getElementById('itg-embed-body')).not.toBeNull();
       expect(document.head.querySelector('base')).not.toBeNull();
     });
 
     unmount();
-    expect(document.getElementById('itg-embed-page-css')).toBeNull();
+    expect(document.getElementById('itg-embed-body')).toBeNull();
     expect(document.head.querySelector('base')).toBeNull();
   });
 });

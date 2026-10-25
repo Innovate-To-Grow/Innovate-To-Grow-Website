@@ -30,7 +30,7 @@ The event system manages the Innovate To Grow showcase event lifecycle: registra
 | `EventScheduleSection` | Time blocks within the schedule |
 | `EventScheduleTrack` | Parallel presentation tracks (by room) |
 | `EventScheduleSlot` | Individual presentation or break slots |
-| `EventAgendaItem` | Agenda items (keynotes, networking, etc.) |
+| `EventAgendaItem` | Expo / Awards agenda rows shown on the schedule page (edited in the schedule admin) |
 
 Event-bearing registration and ticket responses expose `date` as the inclusive start date and `end_date` as the inclusive end date. For a single-day event the values are equal. Calendar downloads convert the inclusive end date to the next day when emitting the exclusive end required for an all-day calendar event.
 
@@ -140,7 +140,7 @@ Ticket confirmation emails no longer use a dedicated `/event/ticket-login/` endp
 
 #### `GET /event/schedule/`
 
-Returns the selected `CurrentProjectSchedule` (or the active/default schedule when no `schedule_id` is supplied): sections (time blocks), tracks (rooms), slots (presentations), and agenda items.
+Returns the selected `CurrentProjectSchedule` (or the active/default schedule when no `schedule_id` is supplied): sections (time blocks), tracks (rooms), slots (presentations), and the `expo` / `awards` agenda tables.
 
 **Query parameters:** `schedule_id` (optional UUID) — any `CurrentProjectSchedule` row, active or not (e.g. a previous year). An unknown id returns `404 {"detail": "No schedule configured."}`; a schedule that has never been synced returns `404 {"detail": "No schedule available."}`. CMS embed widgets and their page blocks use this to show different years side by side.
 
@@ -169,9 +169,16 @@ Returns the selected `CurrentProjectSchedule` (or the active/default schedule wh
       ]
     }
   ],
-  "agenda": [...]
+  "expo": {
+    "title": "EXPO: POSTERS AND DEMOS",
+    "location": "Gym",
+    "items": [{ "id": "<uuid>", "time": "9:00", "title": "Registration and Coffee", "location": "Gym" }]
+  },
+  "awards": { "title": "AWARDS & RECEPTION", "location": "Gym", "items": [...] }
 }
 ```
+
+`expo` and `awards` come from the schedule's `EventAgendaItem` rows, which editors maintain in the schedule's admin change form (a sync only seeds them on a schedule's first run). Each table's `location` is the location of its first item, and a table with no items is not rendered by the SPA.
 
 #### `GET /event/projects/`
 
