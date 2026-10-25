@@ -31,7 +31,7 @@ openai-agents[litellm]>=0.20.0,<0.21.0
 litellm>=1.103.2,<2.0
 
 # Email
-imap-tools>=1.15.0
+imap-tools>=1.16.0
 
 # Cryptography (RSA key generation) — floor raised from 41.x to 43.x to pull
 # in CVE fixes to the Rust bindings.
