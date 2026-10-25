@@ -23,7 +23,6 @@ class EmbedBlockViewTest(TestCase):
             route="/embed-host",
             title="Embed Host Page",
             page_css_class="host-wrapper",
-            page_css="/* scoped */",
             status="published",
         )
         CMSBlock.objects.create(
@@ -63,11 +62,10 @@ class EmbedBlockViewTest(TestCase):
         self.assertEqual(blocks[1]["sort_order"], 2)
         self.assertEqual(blocks[1]["data"]["body_html"], "<p>Block C</p>")
 
-    def test_returns_page_css_class_and_css(self):
+    def test_returns_the_page_class(self):
         response = self.client.get("/cms/embed/contact-widget/")
         data = response.json()
         self.assertEqual(data["page_css_class"], "host-wrapper")
-        self.assertEqual(data["page_css"], "/* scoped */")
 
     def test_preserves_declared_order_even_if_reversed(self):
         self.widget.block_sort_orders = [2, 0]
@@ -178,7 +176,6 @@ class EmbedBlockViewTest(TestCase):
                 "app_route",
                 "blocks",
                 "page_css_class",
-                "page_css",
                 "hidden_sections",
                 "hide_section_titles",
             },
@@ -232,7 +229,6 @@ class EmbedAppRouteWidgetViewTest(TestCase):
         self.assertEqual(data["app_route"], "/schedule")
         self.assertEqual(data["blocks"], [])
         self.assertEqual(data["page_css_class"], "")
-        self.assertEqual(data["page_css"], "")
         self.assertEqual(data["hidden_sections"], [])
         self.assertIsNone(data["schedule_id"])
 
@@ -347,7 +343,6 @@ class EmbedAppRouteWidgetViewTest(TestCase):
                 "app_route",
                 "blocks",
                 "page_css_class",
-                "page_css",
                 "hidden_sections",
                 "hide_section_titles",
                 "schedule_id",

@@ -140,8 +140,10 @@ synced independently — not only the one marked **Active**.
 2. `fetch_schedule_sheet_records(config)` opens **that row's** `sheet_id` and reads the tracks and projects
    worksheets by `tracks_gid` / `projects_gid`
 3. Parses rows into track and project records
-4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` and
-   `EventAgendaItem` rows inside one transaction (other schedules are untouched)
+4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack` and `EventScheduleSlot`
+   rows inside one transaction (other schedules are untouched). `EventAgendaItem` rows (the Expo and Awards
+   tables) are **not** replaced: the first sync of a schedule seeds the defaults from `defaults.py`, and from then
+   on they are edited in the schedule's admin change form and never rewritten by a sync
 5. Records grand winners on the schedule and writes a `ScheduleSyncLog` entry
 
 ### Sheet structure
@@ -149,6 +151,9 @@ synced independently — not only the one marked **Active**.
 The schedule sheet is expected to contain:
 - Track assignments (room, track name)
 - Project data (team name, project title, class code, presentation order)
+- A project row is **not presenting** when `Track` or `Order` is `(Fall)` or `(Spring)`, or when both `Track` and `Order` are
+  blank; it is kept as a non-presenting project and gets no schedule slot. A row with only one of the two filled,
+  or with a non-numeric value (e.g. `TBD`), is malformed and skipped entirely.
 - Timing information mapped to schedule sections
 
 ### `CurrentProjectSchedule` fields

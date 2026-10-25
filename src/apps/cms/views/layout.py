@@ -1,8 +1,5 @@
 from django.core.cache import cache
-from django.http import HttpResponse
-from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
-from django.views import View
 from django.views.decorators.clickjacking import xframe_options_exempt
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -11,7 +8,7 @@ from rest_framework.views import APIView
 from apps.cms.app_routes import widget_supports_schedule
 from apps.core.utils.http_cache import public_json_response
 
-from ..models import CMSBlock, CMSEmbedWidget, FooterContent, Menu, SiteSettings, StyleSheet
+from ..models import CMSBlock, CMSEmbedWidget, FooterContent, Menu
 from ..serializers import (
     CMSBlockSerializer,
     FooterContentSerializer,
@@ -19,39 +16,7 @@ from ..serializers import (
 )
 
 LAYOUT_CACHE_KEY = "layout:data"
-# Bump suffix (:v2, :v3, ...) whenever the assembled stylesheet gains or loses a
-# non-token section. This retires existing cached blobs instantly on deploy
-# instead of waiting the TTL out.
-LAYOUT_STYLESHEET_CACHE_KEY = "layout:stylesheet:v8"
 LAYOUT_CACHE_TIMEOUT = 600
-
-# Mirrors GROUP_PREFIX in pages/src/features/layout/components/LayoutProvider/LayoutProvider.tsx —
-# both must agree so the CSS variables emitted server-side match the names JS sets.
-_DESIGN_TOKEN_GROUP_PREFIX = {
-    "colors": "color",
-    "typography": "",
-    "typography_mobile": "",
-    "layout": "",
-    "borders": "",
-    "effects": "",
-}
-
-
-def _design_tokens_to_css(tokens):
-    if not isinstance(tokens, dict):
-        return ""
-    lines = []
-    for group, values in tokens.items():
-        if not isinstance(values, dict):
-            continue
-        prefix = _DESIGN_TOKEN_GROUP_PREFIX.get(group, "")
-        for key, value in values.items():
-            kebab = key.replace("_", "-")
-            var_name = f"--itg-{prefix}-{kebab}" if prefix else f"--itg-{kebab}"
-            lines.append(f"  {var_name}: {value};")
-    if not lines:
-        return ""
-    return ":root {\n" + "\n".join(lines) + "\n}\n"
 
 
 class LayoutAPIView(APIView):
@@ -85,36 +50,12 @@ class LayoutAPIView(APIView):
         return public_json_response(request, data)
 
 
-class LayoutStylesheetView(View):
-    """Render-blocking stylesheet served as text/css.
-
-    Linked from index.html so the browser fetches CSS in parallel with the
-    main bundle and blocks rendering until styles arrive — eliminating the
-    flash of unstyled content that occurred when CSS was injected by JS.
-    """
-
-    # noinspection PyMethodMayBeStatic
-    def get(self, request, *args, **kwargs):
-        css = cache.get(LAYOUT_STYLESHEET_CACHE_KEY)
-        if css is None:
-            settings = SiteSettings.load()
-            tokens_css = _design_tokens_to_css(settings.design_tokens)
-            sheets = StyleSheet.objects.filter(is_active=True).values_list("css", flat=True)
-            sheets_css = "\n".join(c for c in sheets if c)
-            css = (tokens_css + "\n" + sheets_css).strip() + "\n"
-            cache.set(LAYOUT_STYLESHEET_CACHE_KEY, css, timeout=LAYOUT_CACHE_TIMEOUT)
-
-        response = HttpResponse(css, content_type="text/css; charset=utf-8")
-        patch_cache_control(response, public=True, max_age=LAYOUT_CACHE_TIMEOUT)
-        return response
-
-
 @method_decorator(xframe_options_exempt, name="dispatch")
 class EmbedBlockView(APIView):
     """Public endpoint returning an embed widget's payload.
 
     Two widget types:
-      - ``blocks`` — returns a subset of the source page's blocks plus page_css.
+      - ``blocks`` — returns a subset of the source page's blocks and its page class.
       - ``app_route`` — returns an interactive app-route identifier (e.g. "/schedule")
         the frontend mounts inside the embed iframe.
 
@@ -142,7 +83,6 @@ class EmbedBlockView(APIView):
                 "app_route": widget.app_route,
                 "blocks": [],
                 "page_css_class": "",
-                "page_css": "",
                 "hidden_sections": hidden_sections,
                 "hide_section_titles": "section_titles" in hidden_sections,
                 "schedule_id": str(widget.schedule_id)
@@ -160,7 +100,6 @@ class EmbedBlockView(APIView):
                 "app_route": "",
                 "blocks": CMSBlockSerializer(ordered_blocks, many=True).data,
                 "page_css_class": widget.page.page_css_class or "",
-                "page_css": widget.page.page_css or "",
                 "hidden_sections": hidden_sections,
                 "hide_section_titles": "section_titles" in hidden_sections,
             }

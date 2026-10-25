@@ -1,3 +1,4 @@
+import './Footer.css';
 import {
   type FooterColumn,
   type FooterContentData,

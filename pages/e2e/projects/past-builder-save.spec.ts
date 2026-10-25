@@ -1,9 +1,6 @@
 // /past-projects builder: saving checked rows from a search table. Covers the filtered select-all
 // (it used to select every archive row), the in-flight state, retried detail requests, the outcome
 // shown next to Save, and that the table being worked on does not jump when the saved results appear.
-import {readFileSync} from 'node:fs';
-import {dirname, resolve} from 'node:path';
-import {fileURLToPath} from 'node:url';
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
 import {mockPastProjects, seedAuthenticatedSession} from '../helpers';
@@ -79,28 +76,9 @@ test('saves only the rows a filtered search shows, retrying a failed detail requ
   await expect(table.locator('.project-grid-table-wrap .project-grid-row-chip.is-saved').first()).toBeVisible();
 });
 
-// The e2e shell replaces /layout/styles.css with a structural stub; these checks need the real sheets.
-const SEED_STYLESHEETS = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  '../../../src/apps/cms/migrations/data/stylesheets.json',
-);
-
-async function serveSeedStylesheets(page: Page) {
-  const sheets = JSON.parse(readFileSync(SEED_STYLESHEETS, 'utf8')) as Array<{
-    fields: {css: string; is_active: boolean; sort_order: number};
-  }>;
-  const css = sheets
-    .filter((sheet) => sheet.fields.is_active)
-    .sort((left, right) => left.fields.sort_order - right.fields.sort_order)
-    .map((sheet) => sheet.fields.css)
-    .join('\n');
-  await page.route('**/layout/styles.css*', (route) => route.fulfill({status: 200, contentType: 'text/css', body: css}));
-}
-
 test('a disabled Save looks disabled and the first save does not move the table being worked on', async ({page}) => {
   const rows = archiveRows();
   await page.setViewportSize({width: 1440, height: 900});
-  await serveSeedStylesheets(page);
   await seedAuthenticatedSession(page);
   await mockPastProjects(page, rows);
   await mockProjectDetails(page, rows);
@@ -141,7 +119,6 @@ test('a disabled Save looks disabled and the first save does not move the table 
 test('a save that lands while the user names the curation does not move the page under them', async ({page}) => {
   const rows = archiveRows();
   await page.setViewportSize({width: 1440, height: 900});
-  await serveSeedStylesheets(page);
   await seedAuthenticatedSession(page);
   await mockPastProjects(page, rows);
   await mockProjectDetails(page, rows, undefined, 1_500);

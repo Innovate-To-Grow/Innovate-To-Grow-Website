@@ -1,3 +1,4 @@
+import './EventRegistrationPage.css';
 import {CodeVerificationStep} from './steps/CodeVerificationStep';
 import {DoneState} from './steps/DoneState';
 import {EmailAuthStep} from './steps/EmailAuthStep';

@@ -10,7 +10,7 @@ from .cms import (
     RouteRedirect,
     validate_block_data,
 )
-from .layout import FooterContent, Menu, SiteSettings, StyleSheet
+from .layout import CustomCssRevision, FooterContent, Menu, SiteSettings
 from .news import NewsArticle, NewsFeedSource, NewsSyncLog
 
 __all__ = [
@@ -18,7 +18,7 @@ __all__ = [
     "FooterContent",
     "Menu",
     "SiteSettings",
-    "StyleSheet",
+    "CustomCssRevision",
     # CMS
     "CMSPage",
     "RouteRedirect",

@@ -1,5 +1,7 @@
 """Tests for the Menu and FooterContent admin: editor context, items_count, save_model defaults."""
 
+import re
+
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase, override_settings
@@ -90,6 +92,10 @@ class FooterContentAdminUnitTests(TestCase):
         self.assertIn("app_routes_json", context)
         self.assertIn("cms_routes_json", context)
 
+    @override_settings(FRONTEND_URL="https://frontend.example/")
+    def test_editor_context_names_the_frontend_for_the_preview(self):
+        self.assertEqual(self.admin._get_editor_context()["frontend_url"], "https://frontend.example")
+
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class FooterContentAdminViewTests(TestCase):
@@ -112,3 +118,16 @@ class FooterContentAdminViewTests(TestCase):
         response = self.client.get(reverse("admin:cms_footercontent_change", args=[footer.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertIn("cms_routes_json", response.context)
+
+    @override_settings(FRONTEND_URL="https://frontend.example")
+    def test_the_preview_frames_the_frontend_footer(self):
+        footer = FooterContent.objects.create(name="Main Footer", slug="main-footer", content={}, is_active=True)
+        response = self.client.get(reverse("admin:cms_footercontent_change", args=[footer.pk]))
+
+        content = response.content.decode()
+        iframe = re.search(r'<iframe id="footer-preview-iframe"[^>]*>', content).group(0)
+        self.assertIn('data-preview-base="https://frontend.example"', iframe)
+        # The frame runs the SPA, so it is not sandboxed; it starts loading from preview.js.
+        self.assertNotIn("sandbox", iframe)
+        self.assertNotIn(" src=", iframe)
+        self.assertIn("layout/js/footer/editor/preview.js?v=2", content)

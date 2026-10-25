@@ -1,5 +1,4 @@
 (function () {
-    const iframe = document.getElementById('menu-preview-iframe');
     const renderApi = window.ITGMenuEditorRender;
     const routes = {
         appRoutes: window.APP_ROUTES || [],
@@ -15,12 +14,10 @@
             catch (e) { console.error('Failed to parse initial JSON:', e); menuItems = []; }
         }
         renderAll();
-        updatePreview();
     }
 
     function renderAll() { renderApi.renderAll(document.getElementById('menu-items-container'), document.getElementById('json-editor'), menuItems, routes); }
-    function updatePreview() { renderApi.updatePreview(iframe, menuItems); }
-    function syncToJson() { if (jsonInput) jsonInput.value = JSON.stringify(menuItems); document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2); updatePreview(); }
+    function syncToJson() { if (jsonInput) jsonInput.value = JSON.stringify(menuItems); document.getElementById('json-editor').value = JSON.stringify(menuItems, null, 2); }
     function getItemByPath(path) {
         if (typeof path !== 'string' || !/^menuItems(?:(?:\[\d+\])|(?:\.children))*$/.test(path)) return null;
         let current = menuItems;
