@@ -4,6 +4,7 @@ export function isIsolatedRoute(
 ): boolean {
   return (
     pathname === '/_block-preview' ||
+    pathname === '/_footer-preview' ||
     pathname.startsWith('/_embed/') ||
     new URLSearchParams(search).has('_isolated')
   );

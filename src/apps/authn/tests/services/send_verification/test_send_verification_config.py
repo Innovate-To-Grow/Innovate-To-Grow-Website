@@ -1,6 +1,6 @@
 """Regression coverage for runtime/admin send policy precedence and fail-closed parsing."""
 
-import runpy
+import importlib
 from unittest.mock import patch
 
 from django.contrib.admin import AdminSite
@@ -15,7 +15,7 @@ from apps.authn.admin.send_verification import (
 from apps.authn.services.send_verification.config import load_settings, require_ready
 from apps.authn.services.send_verification.exceptions import SendPaused, SendVerificationUnavailable
 from apps.core.models import SendVerificationConfig
-from config.settings.components.integrations import api
+from config.settings.base.integrations import api
 
 INHERIT_SETTINGS = {name: None for name in vars(api) if name.startswith("SEND_VERIFICATION_")} | {
     "SEND_VERIFICATION_TEST_AUTOSOLVE": False
@@ -160,7 +160,8 @@ class SendVerificationConfigTests(TestCase):
             "AWS_STORAGE_BUCKET_NAME": "unused-test-bucket",
         } | overrides
         with patch.dict("os.environ", environment, clear=True):
-            values = runpy.run_module("config.settings.components.production", run_name="__config_regression__")
+            verification = importlib.import_module("config.settings.production.verification")
+            values = vars(importlib.reload(verification))
         return {name: value for name, value in values.items() if name.startswith("SEND_VERIFICATION_")}
 
     def test_production_without_env_inherits_admin_policy(self):

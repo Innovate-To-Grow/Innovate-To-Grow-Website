@@ -27,7 +27,7 @@ DRF authenticates a request *before* it checks permissions, and the SPA's axios 
 
 An endpoint that needs the token for authorization is not `AllowAny` and keeps the strict class, so a bad token there is still a 401 the client can refresh and retry (this includes `PATCH`/`PUT`/`DELETE` on `/projects/past-shares/<id>/`). `apps.authn.tests.security` fails if a public view runs the strict class.
 
-JWT configuration (from `src/config/settings/components/integrations/api.py`):
+JWT configuration (from `src/config/settings/base/integrations/api/__init__.py`):
 - Access token lifetime: 1 hour
 - Refresh token lifetime: 7 days
 - Rotation: enabled (new refresh token on each refresh)

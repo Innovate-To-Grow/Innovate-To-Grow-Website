@@ -1,8 +1,8 @@
 """
 Environment bootstrap and shared constants.
 
-Loaded first by ``base.py`` so that every other component can reference
-BASE_DIR and environment variables.  Values here come from ``src/.env``
+Loaded first by ``config.settings.base`` so that every other base module can
+reference BASE_DIR and environment variables. Values here come from ``src/.env``
 (via python-dotenv) or from the process environment.
 """
 
@@ -15,14 +15,14 @@ from dotenv import load_dotenv
 # Paths
 # ---------------------------------------------------------------------------
 # BASE_DIR points to the ``src/`` directory (four parents up from this file).
-# framework/environment.py → framework/ → components/ → settings/ → config/ → src/
+# framework/environment.py → framework/ → base/ → settings/ → config/ → src/
 BASE_DIR = Path(__file__).resolve().parents[4]
 
 load_dotenv(BASE_DIR / ".env")
 
 # ---------------------------------------------------------------------------
 # Application URLs (set per environment; empty defaults are overridden in
-# local.py / production.py as needed)
+# environments/local.py / environments/production.py as needed)
 # ---------------------------------------------------------------------------
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "")

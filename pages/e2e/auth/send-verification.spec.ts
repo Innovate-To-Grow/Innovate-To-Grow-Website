@@ -103,7 +103,7 @@ test('Python-issued ALTCHA challenge is solved by the browser widget and verifie
   ].join('\n');
   await execFileAsync(python, ['-c', verify, sends[0].verification_payload], {
     cwd: backendDir,
-    env: {...process.env, DJANGO_SETTINGS_MODULE: 'config.settings.test'},
+    env: {...process.env, DJANGO_SETTINGS_MODULE: 'config.settings.environments.test'},
   });
 });
 

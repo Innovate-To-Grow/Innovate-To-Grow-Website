@@ -55,7 +55,7 @@ class EmbedBlockView(APIView):
     """Public endpoint returning an embed widget's payload.
 
     Two widget types:
-      - ``blocks`` — returns a subset of the source page's blocks plus page_css.
+      - ``blocks`` — returns a subset of the source page's blocks and its page class.
       - ``app_route`` — returns an interactive app-route identifier (e.g. "/schedule")
         the frontend mounts inside the embed iframe.
 
@@ -83,7 +83,6 @@ class EmbedBlockView(APIView):
                 "app_route": widget.app_route,
                 "blocks": [],
                 "page_css_class": "",
-                "page_css": "",
                 "hidden_sections": hidden_sections,
                 "hide_section_titles": "section_titles" in hidden_sections,
                 "schedule_id": str(widget.schedule_id)
@@ -101,7 +100,6 @@ class EmbedBlockView(APIView):
                 "app_route": "",
                 "blocks": CMSBlockSerializer(ordered_blocks, many=True).data,
                 "page_css_class": widget.page.page_css_class or "",
-                "page_css": widget.page.page_css or "",
                 "hidden_sections": hidden_sections,
                 "hide_section_titles": "section_titles" in hidden_sections,
             }

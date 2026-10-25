@@ -192,7 +192,6 @@ class CMSPageAdminViewMethodTests(TestCase):
                 "title": "Save Related",
                 "meta_description": "",
                 "page_css_class": "",
-                "page_css": "",
                 "status": "draft",
                 "sort_order": 0,
                 "published_at": "",

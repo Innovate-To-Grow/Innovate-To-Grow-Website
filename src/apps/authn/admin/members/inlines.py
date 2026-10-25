@@ -4,7 +4,8 @@ from django.db import transaction
 from django.forms.models import BaseInlineFormSet, InlineForeignKeyField
 from unfold.admin import TabularInline
 
-from apps.core.utils.access import user_can_access_app, user_can_manage_member
+from apps.core.admin import AppAccessInlineMixin
+from apps.core.utils.access import user_can_manage_member
 
 from ...models import ContactEmail, ContactPhone, Member
 
@@ -81,7 +82,7 @@ class NoneSafeUUIDInlineFormSet(BaseInlineFormSet):
             parent_field.__class__ = NoneSafeInlineForeignKeyField
 
 
-class StaffPermissionInlineMixin:
+class StaffPermissionInlineMixin(AppAccessInlineMixin):
     """Grant inline permissions per-app, matching BaseModelAdmin.
 
     These inlines belong to the Member admin, so access is gated on the ``authn`` app
@@ -92,18 +93,12 @@ class StaffPermissionInlineMixin:
     holder) may add or change contacts on a staff/superuser account.
     """
 
-    def _has_app_access(self, request):
-        return user_can_access_app(request.user, self.model._meta.app_label)
-
     def _may_write(self, request, obj):
         if not self._has_app_access(request):
             return False
         if obj is None:
             return True  # Add view: there is no target account to protect yet.
         return user_can_manage_member(request.user, obj)
-
-    def has_view_permission(self, request, obj=None):
-        return self._has_app_access(request)
 
     def has_add_permission(self, request, obj=None):
         return self._may_write(request, obj)

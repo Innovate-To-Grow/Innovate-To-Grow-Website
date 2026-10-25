@@ -22,11 +22,11 @@ Safety properties:
 * ``core`` split its project-config modules (``settings``/``urls``/``wsgi``/
   ``asgi``) out to the ``config`` package; those names are never aliased, so a
   stray ``import core.urls`` fails loudly instead of silently misresolving.
-* Installation is idempotent — importing this module repeatedly (settings
-  files do ``from .base import *``) never stacks duplicate finders.
+* Installation is idempotent — importing this module repeatedly (environment
+  entrypoints import ``config.settings.base``) never stacks duplicate finders.
 
 This module installs the finder as an import side effect; import it before any
-first-party app or migration import (``base.py`` does so on its first line).
+first-party app or migration import (``config.settings.base`` does so first).
 """
 
 import importlib
@@ -50,10 +50,9 @@ _LEGACY_ROOTS = (
 # never be aliased to ``apps.core.*`` (they do not exist there).
 _CORE_CONFIG_DENY = ("core.settings", "core.urls", "core.wsgi", "core.asgi")
 
-# This file lives at ``<src>/<config-package>/settings/_legacy_imports.py`` both
-# before (``core/settings/``) and after (``config/settings/``) the config split,
-# so ``parents[2]`` is always ``<src>`` and the apps package sits beside it.
-_APPS_DIR = Path(__file__).resolve().parents[2] / "apps"
+# <src>/config/settings/base/framework/legacy_imports.py: parents[4] is
+# <src>, and the apps package sits beside the config package.
+_APPS_DIR = Path(__file__).resolve().parents[4] / "apps"
 
 
 class _LegacyAppLoader(Loader):

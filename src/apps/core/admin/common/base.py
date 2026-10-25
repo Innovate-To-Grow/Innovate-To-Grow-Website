@@ -60,6 +60,31 @@ class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin,
         return readonly
 
 
+class AppAccessInlineMixin:
+    """Per-app access for inlines — the inline counterpart of ``BaseModelAdmin``'s rule.
+
+    Django's stock inline permissions need per-model codenames (``event.change_eventagendaitem``) that staff
+    here do not carry; a staff member holds an app label in ``Member.admin_apps`` instead
+    (see ``apps.core.utils.access.user_can_access_app``). Inlines that follow their own app's access rule
+    mix this in; ones that need more (an ownership check on the parent) override the write methods.
+    """
+
+    def _has_app_access(self, request) -> bool:
+        return user_can_access_app(request.user, self.opts.app_label)
+
+    def has_view_permission(self, request, obj=None):
+        return self._has_app_access(request)
+
+    def has_add_permission(self, request, obj=None):
+        return self._has_app_access(request)
+
+    def has_change_permission(self, request, obj=None):
+        return self._has_app_access(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return self._has_app_access(request)
+
+
 class ReadOnlyModelAdmin(BaseModelAdmin):
     """
     Admin class for read-only models.

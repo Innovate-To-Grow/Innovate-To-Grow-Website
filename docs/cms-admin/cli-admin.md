@@ -190,7 +190,7 @@ All endpoints except the OAuth pair require `Authorization: Bearer <token>`. A S
 
 Status codes: `400` invalid input / denied model / bad filter value, `401` missing/expired/revoked token, `404` unknown record, `409` integrity error or stale snapshot, `429` throttled.
 
-Per-view scoped throttles (rates in `src/config/settings/components/integrations/api.py`):
+Per-view scoped throttles (rates in `src/config/settings/base/integrations/api/__init__.py`):
 
 | Scope | Rate | Applies to |
 |---|---|---|

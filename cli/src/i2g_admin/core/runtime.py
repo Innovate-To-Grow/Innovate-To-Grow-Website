@@ -18,9 +18,9 @@ import typer
 
 from .. import auth, config  # noqa: F401  (auth/config re-exported for command modules + tests)
 from ..client import ApiClient
+from ..output import emit
 from .context import Context, build_client
 from .errors import CliError
-from ..output import emit
 
 
 def _current_context() -> Context | None:

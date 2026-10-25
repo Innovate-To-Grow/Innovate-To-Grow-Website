@@ -127,36 +127,19 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
         finally:
             actions.reset_action_context(tokens)
 
-    def test_action_preview_does_not_render_ai_controlled_page_css(self):
+    def test_cms_page_proposals_cannot_carry_page_css(self):
         page = CMSPage.objects.create(slug="css", route="/css", title="CSS", status="draft")
-        CMSBlock.objects.create(page=page, block_type="rich_text", sort_order=0, data={"body_html": "<p>Old</p>"})
 
         tokens = actions.set_action_context(str(self.conversation.pk), str(self.admin_user.pk))
         try:
-            payload = actions.propose_cms_page_update(
-                page_id=str(page.pk),
-                page_fields={
-                    "page_css": '@import url("https://attacker.example/style.css"); '
-                    'body { background: url("https://attacker.example/x"); }'
-                },
-                blocks=[
-                    {
-                        "block_type": "rich_text",
-                        "data": {"heading": "Updated", "body_html": "<p>New Copy</p>"},
-                    }
-                ],
-            )
+            with self.assertRaises(ActionRequestError) as ctx:
+                actions.propose_cms_page_update(
+                    page_id=str(page.pk),
+                    page_fields={"page_css": '@import url("https://attacker.example/style.css");'},
+                )
+            self.assertEqual(str(ctx.exception), "Unsupported CMS page field: page_css")
         finally:
             actions.reset_action_context(tokens)
-
-        response = self.client.get(
-            reverse("admin:system_intelligence_action_preview", args=[payload["action_request"]["id"]])
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "New Copy")
-        self.assertNotContains(response, "attacker.example")
-        self.assertNotContains(response, "@import")
 
     def _propose_cms_update(self):
         page = CMSPage.objects.create(slug="about", route="/about", title="About", status="draft")

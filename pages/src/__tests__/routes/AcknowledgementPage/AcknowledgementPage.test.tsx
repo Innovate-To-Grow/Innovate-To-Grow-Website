@@ -15,7 +15,6 @@ const cmsPage = {
   route: '/acknowledgement',
   title: 'Partners & Sponsors',
   page_css_class: '',
-  page_css: '',
   meta_description: '',
   blocks: [
     {

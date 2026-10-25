@@ -4,7 +4,7 @@ Admin interface customization, theme configuration, and extension patterns.
 
 ## Unfold theme
 
-The admin uses the [Unfold](https://github.com/unfoldadmin/django-unfold) theme with a custom OKLch color palette (purple primary). Configuration is in `src/config/settings/components/integrations/admin.py`.
+The admin uses the [Unfold](https://github.com/unfoldadmin/django-unfold) theme with a custom OKLch color palette (purple primary). Configuration is in `src/config/settings/base/integrations/admin/theme.py`.
 
 ### Base classes
 
@@ -31,7 +31,7 @@ The admin sidebar is organized into five sections:
 
 ### Tab groups
 
-Related models are grouped into tabs in the admin interface. Tab configuration is in `src/config/settings/components/integrations/admin.py`. For example, event-related models appear as tabs when viewing an event.
+Related models are grouped into tabs in the admin interface. Tab configuration is in `src/config/settings/base/integrations/admin/tabs.py`. For example, event-related models appear as tabs when viewing an event.
 
 ## Custom admin views
 
@@ -98,6 +98,11 @@ added schedule is visible before you activate it; with several rows only the act
 - **Pull Current Projects & Schedule** (changelist button) syncs the row shown in the overview from its sheet
   (the active row, or the only row when there is just one)
 - **Sync from Google Sheets** (per-row action, also on the change form) syncs that row from its own sheet
+- **Agenda items** (change form) are the rows of the schedule page's **Expo: Posters and Demos** and **Awards &
+  Reception** tables — time, title and location, ordered by *Display order* (unique per table). Leave it blank on a
+  new row to add the row at the end; rows can be swapped, shifted or moved to the other table in one save. The tables'
+  *Room:* header shows the location of the first row. Syncs seed the defaults once and never overwrite your edits; delete
+  every row of a table to hide it
 - **Auto Sync** + interval are per row; `python manage.py sync_schedule` honours them for every row. A row that
   stops being active (you activate another schedule — a one-step change that archives the previous row — or untick
   **Active**) has Auto Sync switched off; re-enable it per row on purpose
@@ -114,7 +119,7 @@ Semester admin includes:
 
 Rich text editing for CMS block content and email campaign bodies.
 
-**Configuration:** `src/config/settings/components/integrations/editor.py`
+**Configuration:** `src/config/settings/base/integrations/editor/__init__.py`
 
 - Toolbar: heading, bold, italic, link, list, image, table, blockquote, code, alignment
 - File uploads: `/ckeditor5/` endpoint, restricted to staff users
@@ -124,8 +129,8 @@ Rich text editing for CMS block content and email campaign bodies.
 
 1. Create an admin class inheriting from `apps.core.admin.BaseModelAdmin`
 2. Register it in the app's `admin.py`
-3. Add it to the appropriate sidebar section in `config/settings/components/integrations/admin.py`
-4. If it should appear in a tab group with related models, add it to the tab configuration
+3. Add it to the appropriate sidebar section in `config/settings/base/integrations/admin/navigation.py`
+4. If it should appear in a tab group with related models, add it to `config/settings/base/integrations/admin/tabs.py`
 
 ## Related pages
 
