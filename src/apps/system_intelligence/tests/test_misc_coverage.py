@@ -1,7 +1,7 @@
 """Coverage for the system_intelligence "misc" batch: admin/ + models/ + apps.py.
 
 Targets the specific uncovered branches in admin/stream.py, admin/stream_helpers.py,
-admin/commands/__init__.py, admin/actions/lookup.py, admin/actions/rendering.py,
+admin/commands/__init__.py, admin/actions/lookup.py,
 apps.py, and the model __str__/property helpers.
 """
 

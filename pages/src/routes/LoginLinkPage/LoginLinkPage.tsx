@@ -1,3 +1,4 @@
+import '@/features/auth/components/shared/linkLandingPages.css';
 import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router';
 import {

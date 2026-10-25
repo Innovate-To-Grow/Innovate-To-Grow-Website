@@ -1,3 +1,4 @@
+import '@/features/auth/components/shared/linkLandingPages.css';
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useSearchParams} from 'react-router';
 import {dispatchAuthStateChange, getAuthErrorMessage} from '@/features/auth/components/context/shared';

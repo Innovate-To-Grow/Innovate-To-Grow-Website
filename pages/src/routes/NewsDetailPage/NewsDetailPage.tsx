@@ -1,3 +1,5 @@
+import '@/routes/NewsPage/news.css';
+import './NewsDetailPage.css';
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
 import { fetchNewsDetail, type NewsArticle } from '@/features/news';

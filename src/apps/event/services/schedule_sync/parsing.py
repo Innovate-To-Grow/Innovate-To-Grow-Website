@@ -25,6 +25,9 @@ def get_record_value(
     return default
 
 
+NON_PRESENTING_MARKERS = {"(fall)", "(spring)"}
+
+
 def coerce_int(value: Any) -> int | None:
     normalized = str(value or "").strip()
     return int(normalized) if normalized.isdigit() else None
@@ -96,9 +99,13 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
     order_raw = get_record_value(normalized, ["Order"])
     track_number = coerce_int(track_raw)
     slot_order = coerce_int(order_raw)
-    is_fall = track_raw.strip().lower() == "(fall)" or order_raw.strip().lower() == "(fall)"
-    if not is_fall and (track_number is None or slot_order is None):
+    is_fall = bool({track_raw.strip().lower(), order_raw.strip().lower()} & NON_PRESENTING_MARKERS)
+    # Not presenting: marked "(Fall)" / "(Spring)", or both Track and Order left blank.
+    # Half-filled or non-numeric values are malformed, so the row is skipped rather than demoted.
+    is_blank = not track_raw.strip() and not order_raw.strip()
+    if not is_fall and not is_blank and (track_number is None or slot_order is None):
         return None
+    is_presenting = not is_fall and not is_blank
 
     team_number = get_record_value(normalized, ["Team#", "Team #", "Team Number", "Team"])
     team_name = get_record_value(normalized, ["TeamName", "Team Name"])
@@ -110,7 +117,7 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
         team_name,
         project_title,
     )
-    is_break = _is_break_slot(is_fall, team_name, project_title, organization)
+    is_break = _is_break_slot(is_presenting, team_name, project_title, organization)
     if not is_break and not team_number:
         return None
     return {
@@ -130,7 +137,7 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
             ["NameTitle", "Name Title", "Name: - Title:", "Contact Name Title"],
         ),
         "is_break": is_break,
-        "is_presenting": not is_fall,
+        "is_presenting": is_presenting,
         "display_text": _display_text(team_number, team_name, project_title, is_break),
     }
 
@@ -148,8 +155,8 @@ def build_slot_rows(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     )
 
 
-def _is_break_slot(is_fall: bool, *values: str) -> bool:
-    return (not is_fall) and any(value.lower() == "break" for value in values)
+def _is_break_slot(is_presenting: bool, *values: str) -> bool:
+    return is_presenting and any(value.lower() == "break" for value in values)
 
 
 def _display_text(

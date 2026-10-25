@@ -74,7 +74,7 @@ _DEFAULT_DESIGN_TOKENS = {
         "sidebar_width": "270px",
         "section_gap": "2rem",
         "list_indent": "1.5625rem",
-        "prose_max_width": "75ch",
+        "prose_max_width": "none",
     },
     "borders": {
         "radius_card": "0",
@@ -123,6 +123,14 @@ class SiteSettings(models.Model):
     design_tokens = models.JSONField(
         default=default_design_tokens,
         help_text="Structured design tokens (colors, typography, layout) served to the frontend as CSS custom properties.",
+    )
+    custom_css = models.TextField(
+        blank=True,
+        default="",
+        help_text=(
+            "Site-wide CSS served after every bundled stylesheet (cascade layer itg.overrides), so it wins "
+            "whatever the selectors. Takes effect within five minutes, without a deploy."
+        ),
     )
 
     class Meta:

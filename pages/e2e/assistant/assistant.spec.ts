@@ -9,7 +9,6 @@ import {
   mockAssistantChat,
   mockAssistantConfig,
 } from '../helpers';
-import {serveSeedStylesheets} from '../helpers/stylesheets';
 
 test('widget launcher button is visible on page load', async ({page}) => {
   await mockAssistantConfig(page, assistantConfig());
@@ -28,8 +27,7 @@ test('click launcher opens the chat panel', async ({page}) => {
 });
 
 test('panel title stays readable on the navy header under the site stylesheets', async ({page}) => {
-  // The real sheets paint every h1-h6 navy; the title must keep its own light colour.
-  await serveSeedStylesheets(page);
+  // The site's element styles paint every h1-h6 navy; the title must keep its own light colour.
   await mockAssistantConfig(page, assistantConfig());
   await mockAssistantChat(page);
   await page.goto('/', {waitUntil: 'domcontentloaded'});

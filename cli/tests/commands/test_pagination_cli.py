@@ -1,8 +1,8 @@
 """CLI-level tests for U4 auto-pagination wiring into ``records list``."""
 
 import pytest
-from i2g_admin.core import runtime
 from i2g_admin.app import app
+from i2g_admin.core import runtime
 from test_pagination import _params_map
 from typer.testing import CliRunner
 

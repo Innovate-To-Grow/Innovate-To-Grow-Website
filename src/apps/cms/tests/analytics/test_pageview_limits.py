@@ -40,7 +40,7 @@ from apps.cms.views.analytics import (
     PageViewVisitorThrottle,
 )
 from apps.core.utils.throttle_cache import throttle_cache
-from config.settings.components.framework.cache import THROTTLE_CACHE
+from config.settings.base.framework.cache import THROTTLE_CACHE
 
 from .test_pageview_visitor import CAMPUS_IP, LEGACY_RATE, URL, VISITOR_RATE, PageViewVisitorTestCase
 

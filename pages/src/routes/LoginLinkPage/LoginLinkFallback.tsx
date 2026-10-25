@@ -1,3 +1,4 @@
+import '@/features/auth/components/auth.css';
 import {useEffect, useRef, useState, type FormEvent, type RefObject} from 'react';
 
 import {Icon} from '@/components/Icon/Icon';

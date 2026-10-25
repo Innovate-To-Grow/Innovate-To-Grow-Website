@@ -76,7 +76,7 @@ class ECSTaskDefinitionTopologyTests(SimpleTestCase):
         web = next(c for c in taskdef["containerDefinitions"] if c["name"] == validator.WEB_CONTAINER)
         worker = next(c for c in taskdef["containerDefinitions"] if c["name"] == validator.WORKER_CONTAINER)
         values = {
-            "DJANGO_SETTINGS_MODULE": "config.settings.production",
+            "DJANGO_SETTINGS_MODULE": "config.settings.environments.production",
             "AMPLIFY_CONFIG_REVISION": "1.1",
             "LEGACY_VIEW_ENABLED": "false",
             "LEGACY_ORIGIN_URL": "",
@@ -157,7 +157,7 @@ class ECSRenderedLegacyViewerTests(SimpleTestCase):
         web = containers[validator.WEB_CONTAINER]
         worker = containers[validator.WORKER_CONTAINER]
         overrides = {
-            "DJANGO_SETTINGS_MODULE": "config.settings.production",
+            "DJANGO_SETTINGS_MODULE": "config.settings.environments.production",
             "AMPLIFY_CONFIG_REVISION": "1.1",
             "NUM_PROXIES": "1",
             "LEGACY_VIEW_ENABLED": "false",

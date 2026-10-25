@@ -1,3 +1,4 @@
+@layer itg.components {
 /* The phone list, the pager and the empty / no-results states.
    Imported in order by projects.css; see the note there. */
 
@@ -140,4 +141,5 @@
 
 .projects-message-page .itg-empty-state-text p {
   margin: 0;
+}
 }

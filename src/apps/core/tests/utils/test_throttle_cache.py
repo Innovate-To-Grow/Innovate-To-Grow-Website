@@ -12,8 +12,8 @@ from django.core.cache.backends.locmem import LocMemCache
 from django.test import SimpleTestCase, override_settings
 
 from apps.core.utils.throttle_cache import THROTTLE_CACHE_ALIAS, DevelopmentLocMemCache, throttle_cache
-from config.settings.components.framework.cache import CACHES as BASE_CACHES
-from config.settings.components.framework.cache import THROTTLE_CACHE
+from config.settings.base.framework.cache import CACHES as BASE_CACHES
+from config.settings.base.framework.cache import THROTTLE_CACHE
 
 LOCMEM = "django.core.cache.backends.locmem.LocMemCache"
 DEVELOPMENT = "apps.core.utils.throttle_cache.DevelopmentLocMemCache"
@@ -51,7 +51,11 @@ class ThrottleCacheSettingsTests(SimpleTestCase):
 
     def test_base_local_and_ci_settings_all_define_it(self):
         self.assertEqual(BASE_CACHES["throttle"], THROTTLE_CACHE)
-        for module_name in ("config.settings.base", "config.settings.local", "config.settings.test"):
+        for module_name in (
+            "config.settings.base",
+            "config.settings.environments.local",
+            "config.settings.environments.test",
+        ):
             with self.subTest(settings=module_name):
                 module = importlib.import_module(module_name)
                 self.assertEqual(module.CACHES["throttle"], THROTTLE_CACHE)

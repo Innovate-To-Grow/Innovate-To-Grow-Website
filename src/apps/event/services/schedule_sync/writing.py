@@ -23,7 +23,6 @@ def clear_schedule(
     EventScheduleSlot.objects.filter(track__section__config=config).delete()
     EventScheduleTrack.objects.filter(section__config=config).delete()
     EventScheduleSection.objects.filter(config=config).delete()
-    EventAgendaItem.objects.filter(config=config).delete()
     CurrentProject.objects.filter(schedule=config).exclude(pk__in=touched_project_pks).delete()
 
 
@@ -99,6 +98,17 @@ def create_agenda_items(
     config: CurrentProjectSchedule,
     stats: ScheduleSyncStats,
 ) -> None:
+    """Seed the default Expo/Awards agenda the first time a schedule is synced.
+
+    Agenda items carry no sheet data — editors maintain them in the schedule's admin
+    change form — so a sync never replaces them, and an agenda emptied on purpose
+    stays empty (the page then hides the section).
+    """
+    if config.agenda_items.exists():
+        return
+    # Read the DB, not ``config``: a caller may hold a copy loaded before an earlier sync.
+    if CurrentProjectSchedule.objects.filter(pk=config.pk, last_synced_at__isnull=False).exists():
+        return
     for agenda_item in DEFAULT_AGENDA_ITEMS:
         EventAgendaItem.objects.create(config=config, **agenda_item)
         stats.agenda_items_created += 1

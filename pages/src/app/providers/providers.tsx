@@ -14,6 +14,7 @@ import {
   normalizeHiddenSections,
   parseHiddenSectionsParam,
 } from '@/features/cms/components/hiddenSections';
+import {inComponentsLayer} from '@/lib/css';
 
 function injectIsolatedHiddenSections(searchParams: URLSearchParams) {
   const hiddenSections = normalizeHiddenSections([
@@ -24,7 +25,7 @@ function injectIsolatedHiddenSections(searchParams: URLSearchParams) {
   if (!css) return;
   const style = document.createElement('style');
   style.id = 'itg-isolated-hide-sections';
-  style.textContent = css;
+  style.textContent = inComponentsLayer(css);
   document.head.appendChild(style);
 }
 

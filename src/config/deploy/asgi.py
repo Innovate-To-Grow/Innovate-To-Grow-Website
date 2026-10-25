@@ -13,7 +13,7 @@ from django.core.asgi import get_asgi_application
 
 # Deployment always sets DJANGO_SETTINGS_MODULE explicitly (ECS task definition /
 # entrypoint). This default is only a fallback for a bare ``python`` invocation.
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.environments.production")
 
 django_application = get_asgi_application()
 

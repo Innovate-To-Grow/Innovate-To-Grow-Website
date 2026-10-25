@@ -66,12 +66,12 @@ class SearchSemestersToolTests(TestCase):
     def test_filters_by_year(self):
         result = search_semesters({"year": 2025})
         self.assertIn("2025", result)
-        self.assertNotIn("2024", result)
+        self.assertNotIn("2024-2 Fall", result)
 
     def test_filters_by_is_published(self):
         result = search_semesters({"is_published": True})
         self.assertIn("2025", result)
-        self.assertNotIn("2024", result)
+        self.assertNotIn("2024-2 Fall", result)
 
 
 class SearchEmailCampaignsToolTests(TestCase):

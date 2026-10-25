@@ -90,19 +90,6 @@ class CMSCustomViewPerAppAccessTests(TestCase):
         self._assert_denied_for_other_app(url, method="post", data={})
         self._assert_allowed_for(self.cms_staff, url)
 
-    # --- StyleSheetAdmin custom views ------------------------------------
-
-    def test_stylesheet_export_all_view(self):
-        url = reverse("admin:cms_stylesheet_export")
-        self._assert_denied_for_other_app(url)
-        self._assert_allowed_for(self.cms_staff, url)
-
-    def test_stylesheet_import_view(self):
-        url = reverse("admin:cms_stylesheet_import")
-        self._assert_denied_for_other_app(url)
-        self._assert_denied_for_other_app(url, method="post", data={})
-        self._assert_allowed_for(self.cms_staff, url)
-
     # --- CMSEmbedWidgetAdmin custom views --------------------------------
 
     def test_embed_widget_app_routes_view(self):

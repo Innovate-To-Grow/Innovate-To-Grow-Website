@@ -4,7 +4,7 @@ from django.contrib.staticfiles import finders
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.cms.models import StyleSheet
+from apps.cms.models import SiteSettings
 from apps.core.models import SiteMaintenanceControl
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign
@@ -64,10 +64,10 @@ class MaterialWebAdminEnhancerTests(TestCase):
         self.assertIn('field.classList.contains("admin-autocomplete")', source)
         self.assertIn('field.tagName === "SELECT" && field.multiple', source)
 
-    def test_stylesheet_code_editor_page_keeps_code_textarea_available(self):
-        stylesheet = StyleSheet.objects.create(name="admin-test", display_name="Admin Test", css="body { color: red; }")
+    def test_custom_css_editor_page_keeps_code_textarea_available(self):
+        settings = SiteSettings.load()
 
-        response = self.client.get(reverse("admin:cms_stylesheet_change", args=[stylesheet.pk]))
+        response = self.client.get(reverse("admin:cms_sitesettings_change", args=[settings.pk]))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "code-editor-field")
