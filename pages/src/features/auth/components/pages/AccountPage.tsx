@@ -1,3 +1,4 @@
+import '../auth.css';
 import {DeleteAccountSection} from './account/DeleteAccountSection';
 import {DetailsSection} from './account/DetailsSection';
 import {PasswordSection} from './account/PasswordSection';

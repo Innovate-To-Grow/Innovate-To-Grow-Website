@@ -6,7 +6,7 @@ production cache, a per-container ``FileBasedCache``, every entry is a file: Dja
 each write, so every cache write in the container slows down with the file count, and at ``MAX_ENTRIES`` a random
 third of all entries is deleted. Such throttles therefore set ``cache = throttle_cache``: a ``LocMemCache`` with a
 hard entry ceiling and least-recently-used culling (``THROTTLE_CACHE`` in
-``config/settings/components/framework/cache.py``), where a minted key costs a few hundred bytes and evicts only
+``config/settings/base/framework/cache.py``), where a minted key costs a few hundred bytes and evicts only
 other stale keys.
 
 The alias is per PROCESS: each Uvicorn worker has its own history and a restart forgets it, so the effective rate

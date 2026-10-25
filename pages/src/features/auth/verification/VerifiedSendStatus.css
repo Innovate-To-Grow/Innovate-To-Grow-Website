@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Progress note for a verified send (solving the challenge, sending the code).
    A square toast with the gold rule, bottom centre. */
 .verified-send-status {
@@ -25,4 +26,5 @@
 .verified-send-status--challenging,
 .verified-send-status--sending {
   color: var(--itg-color-text, #323336);
+}
 }

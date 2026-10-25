@@ -14,7 +14,7 @@ pre-push hooks run the same commands.
 | TypeScript size / complexity / nesting (hard limits) | `cd pages && npm run lint` | any ESLint error (the hard limits are ESLint errors) |
 | TypeScript advisory report | `cd pages && npm run quality:report` (`-- --json out.json`) | never (always exits 0) |
 | Frontend layer boundaries, cycles, directory size | `cd pages && npm run check:structure` | a boundary violation, a new cycle, or a directory over the hard limit |
-| `core/services` structure (existing, stricter) | `cd src && python manage.py test apps.core.tests.services.test_core_services_structure --settings=config.settings.local` | a file over 200 physical lines, or more than 10 `.py` files in one directory |
+| `core/services` structure (existing, stricter) | `cd src && python manage.py test apps.core.tests.services.test_core_services_structure --settings=config.settings.environments.local` | a file over 200 physical lines, or more than 10 `.py` files in one directory |
 
 Run both Python checks from the repository root with the dev virtualenv active: complexity comes from
 `ruff` on `PATH` (the version pinned in `src/requirements/local.txt`). Where they run:

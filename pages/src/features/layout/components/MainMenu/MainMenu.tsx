@@ -1,3 +1,4 @@
+import './MainMenu.css';
 import {useCallback, useMemo, useRef, useState, type MouseEvent} from 'react';
 import {useCurrentPathname} from '@/features/layout/hooks/useCurrentPathname';
 import {resolveSection} from '@/features/layout/sections';

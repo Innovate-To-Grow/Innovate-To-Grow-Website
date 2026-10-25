@@ -14,7 +14,6 @@ from apps.cms.models import (
     NewsFeedSource,
     PageView,
     SiteSettings,
-    StyleSheet,
 )
 from apps.event.models import CheckIn, CheckInRecord, CurrentProject, CurrentProjectSchedule, Question
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
@@ -88,16 +87,6 @@ class SystemIntelligenceExtendedToolTests(TransactionTestCase):
 
         site_settings = asyncio.run(system_intelligence_tools.get_site_settings_detail())
         self.assertIn("colors", site_settings["design_token_groups"])
-
-        style_sheets = asyncio.run(system_intelligence_tools.search_style_sheets(name="tool-global"))
-        self.assertEqual(style_sheets["total"], 1)
-
-        style_sheet = asyncio.run(system_intelligence_tools.get_style_sheet_detail(name="tool-global"))
-        self.assertGreater(style_sheet["style_sheet"]["css_length"], 0)
-
-        StyleSheet.objects.create(name="tool-aaa-inactive", display_name="Inactive", is_active=False, sort_order=-1)
-        listed = asyncio.run(system_intelligence_tools.search_style_sheets(name="tool-", limit=1))
-        self.assertEqual(listed["rows"][0]["name"], "tool-global")
 
         assets = asyncio.run(system_intelligence_tools.search_cms_assets(name="Map"))
         self.assertEqual(assets["total"], 1)
@@ -173,10 +162,6 @@ class SystemIntelligenceExtendedToolTests(TransactionTestCase):
         menu = Menu.objects.create(name="main", display_name="Main", items=[{"title": "Home", "url": "/"}])
         FooterContent.objects.create(slug="main-footer", name="Main Footer", is_active=True, content={"columns": []})
         SiteSettings.load()
-        StyleSheet.objects.update_or_create(
-            name="tool-global",
-            defaults={"display_name": "Tool Global", "css": "body { color: #123; }", "is_active": True},
-        )
         CMSAsset.objects.create(name="Map", file="cms/assets/map.pdf")
         source = NewsFeedSource.objects.create(
             name="UC Merced", source_key="ucm", feed_url="https://example.com/feed.xml", is_active=True

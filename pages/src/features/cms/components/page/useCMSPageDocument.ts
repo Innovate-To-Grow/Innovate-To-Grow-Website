@@ -3,9 +3,9 @@ import {formatDocumentTitle} from '@/hooks/usePageTitle';
 import type {CMSPageResponse} from '../../api';
 
 /**
- * The document-level effects of showing a CMS page: its title, its per-page CSS, and a visually hidden h1
- * fallback for pages whose blocks render none (an embedded archive page, a home page of cards) — screen
- * readers and search engines still need one. Returns the content ref to attach and whether the h1 is needed.
+ * The document-level effects of showing a CMS page: its title and a visually hidden h1 fallback for pages
+ * whose blocks render none (an embedded archive page, a home page of cards) — screen readers and search
+ * engines still need one. Returns the content ref to attach and whether the h1 is needed.
  */
 export function useCMSPageDocument(page: CMSPageResponse | null, isLivePreview: boolean) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -28,21 +28,6 @@ export function useCMSPageDocument(page: CMSPageResponse | null, isLivePreview: 
     observer.observe(root, {childList: true, subtree: true});
     return () => observer.disconnect();
   }, [page]);
-
-  // Inject per-page CSS from the backend
-  useEffect(() => {
-    if (!page?.page_css) return;
-    let el = document.getElementById('itg-page-css');
-    if (!el) {
-      el = document.createElement('style');
-      el.id = 'itg-page-css';
-      document.head.appendChild(el);
-    }
-    el.textContent = page.page_css;
-    return () => {
-      if (el) el.textContent = '';
-    };
-  }, [page?.page_css]);
 
   return {contentRef, needsFallbackTitle};
 }

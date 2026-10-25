@@ -23,7 +23,6 @@ CMS_PAGE_FIELDS = {
     "title",
     "meta_description",
     "page_css_class",
-    "page_css",
     "status",
     "sort_order",
 }

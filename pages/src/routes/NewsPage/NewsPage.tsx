@@ -1,3 +1,5 @@
+import './news.css';
+import './NewsPage.css';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { fetchNews, type NewsArticle, type PaginatedResponse } from '@/features/news';

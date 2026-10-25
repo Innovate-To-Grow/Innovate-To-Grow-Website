@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Saved Merged Results and its "Share this list" panel.
    Imported in order by projects.css; see the note there. */
 
@@ -174,4 +175,5 @@
 
 .project-grid-note-insert-option input {
   accent-color: var(--itg-color-primary);
+}
 }

@@ -284,7 +284,6 @@ export function cmsAcknowledgementPage(overrides: Partial<CMSPageResponse> = {})
     route: '/acknowledgement',
     title: 'Partners & Sponsors',
     page_css_class: '',
-    page_css: '',
     meta_description: '',
     blocks: [
       {
@@ -356,7 +355,6 @@ export function cmsEmbedResponse(overrides: Partial<CMSEmbedResponse> = {}): CMS
       },
     ],
     page_css_class: '',
-    page_css: ':root {}',
     ...overrides,
   };
 }
@@ -414,7 +412,6 @@ export function cmsPageResponse(overrides: Partial<CMSPageResponse> = {}): CMSPa
     route: '/about',
     title: 'About Us',
     page_css_class: '',
-    page_css: '',
     meta_description: '',
     blocks: [
       {

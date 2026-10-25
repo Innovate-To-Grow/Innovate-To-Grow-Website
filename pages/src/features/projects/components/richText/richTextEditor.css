@@ -1,3 +1,4 @@
+@layer itg.components {
 /* The curation note rich text editor.
    Imported in order by projects.css; see the note there. */
 
@@ -128,4 +129,5 @@
   color: var(--itg-color-primary);
   text-decoration: underline;
   text-underline-offset: 0.12em;
+}
 }

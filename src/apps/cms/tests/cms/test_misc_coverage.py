@@ -18,7 +18,6 @@ from apps.cms.models import (
     CMSEmbedWidget,
     NewsFeedSource,
     PageView,
-    StyleSheet,
 )
 from apps.cms.models.content.cms.block_types.embed import validate_embed_widget_block
 
@@ -101,12 +100,6 @@ class ModelStrAndValidationTests(TestCase):
     def test_page_view_str(self):
         pv = PageView(path="/about")
         self.assertIn("/about", str(pv))
-
-    def test_style_sheet_str_prefers_display_name(self):
-        self.assertEqual(str(StyleSheet(name="base", display_name="Base Styles")), "Base Styles")
-
-    def test_style_sheet_str_falls_back_to_name(self):
-        self.assertEqual(str(StyleSheet(name="base", display_name="")), "base")
 
     def test_news_feed_source_str(self):
         source = NewsFeedSource(name="UC Merced", source_key="ucm", feed_url="https://x/feed")

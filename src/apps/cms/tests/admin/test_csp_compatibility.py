@@ -58,17 +58,16 @@ class CMSAdminCSPSourceTests(SimpleTestCase):
 
         self.assertEqual(violations, [])
 
-    def test_generated_srcdoc_styles_receive_the_response_nonce(self):
-        preview_sources = (
+    def test_layout_editors_build_no_srcdoc_previews(self):
+        # The footer preview frames the frontend's /_footer-preview; the menu editor has no preview.
+        editor_sources = (
             settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "menu" / "editor" / "render.js",
             settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "footer" / "editor" / "preview.js",
         )
 
-        for path in preview_sources:
+        for path in editor_sources:
             with self.subTest(path=path.name):
-                source = path.read_text()
-                self.assertIn("window.I2G_CSP_NONCE", source)
-                self.assertIn('<style nonce="${nonce}">', source)
+                self.assertNotIn("srcdoc", path.read_text())
 
     def test_material_web_receives_the_response_nonce(self):
         source = (settings.BASE_DIR / "apps" / "core" / "static" / "admin" / "js" / "csp-actions.js").read_text()
@@ -96,13 +95,17 @@ class CMSAdminCSPSourceTests(SimpleTestCase):
         self.assertEqual(source.count('integrity="sha384-'), 2)
         self.assertEqual(source.count('crossorigin="anonymous"'), 2)
 
-    def test_srcdoc_preview_is_sandboxed_without_script_permission(self):
-        template = (
-            settings.BASE_DIR / "apps" / "cms" / "templates" / "admin" / "cms" / "footer_content" / "change_form.html"
+    def test_footer_preview_only_trusts_its_own_frame(self):
+        source = (
+            settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "footer" / "editor" / "preview.js"
         ).read_text()
 
-        self.assertIn('sandbox="allow-same-origin"', template)
-        self.assertNotIn('sandbox="allow-same-origin allow-scripts"', template)
+        # Messages count only from the frame's window, at the frame's origin, with the frame's nonce,
+        # and content goes only to the frame's origin.
+        self.assertIn("event.source !== iframe.contentWindow || event.origin !== frameOrigin(iframe)", source)
+        self.assertIn("message.nonce !== state.nonce", source)
+        self.assertIn("window.crypto.getRandomValues", source)
+        self.assertIn("frameOrigin(iframe)\n        );", source)
 
     def test_every_editor_action_is_allowlisted_by_the_csp_dispatcher(self):
         # csp-actions.js dispatches ``data-admin-call`` names through a hard-coded

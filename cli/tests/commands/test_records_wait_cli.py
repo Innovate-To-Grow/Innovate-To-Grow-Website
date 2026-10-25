@@ -1,9 +1,9 @@
 """CLI-level tests for the ``records wait`` polling command."""
 
 import pytest
-from i2g_admin.core import runtime
 from i2g_admin.app import app
 from i2g_admin.commands.records import wait as records_wait
+from i2g_admin.core import runtime
 from typer.testing import CliRunner
 
 runner = CliRunner()

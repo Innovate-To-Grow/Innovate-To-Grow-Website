@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Project grid controls: filter well, results bar (count, sort) and toolbars.
    Imported in order by projects.css; see the note there. */
 
@@ -125,4 +126,5 @@
 
 .project-grid-edit-group {
   gap: 0.25rem 1.125rem;
+}
 }

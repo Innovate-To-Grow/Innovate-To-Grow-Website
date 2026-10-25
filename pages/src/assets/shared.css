@@ -1,6 +1,7 @@
-/* Fallback tokens only; the live tokens and sheets are served at /api/layout/styles.css */
+/* Fallback tokens only; the live tokens are served at /api/layout/theme.css */
 @import "./tokens.css";
 
+@layer itg.components {
 /* Shared by the auth forms, the account phone panel and the subscribe page.
    UC Merced subsite system: square, --itg- tokens only. Links are the
    reference's content links (innovatetogrow.ucmerced.edu): navy, underlined,
@@ -57,4 +58,5 @@
 .phone-add-consent-option input:focus-visible {
   outline: 2px solid var(--itg-color-secondary);
   outline-offset: 2px;
+}
 }

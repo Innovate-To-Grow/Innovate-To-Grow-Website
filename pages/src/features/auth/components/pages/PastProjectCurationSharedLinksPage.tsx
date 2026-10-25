@@ -1,3 +1,4 @@
+import '../auth.css';
 import {useMemo, useState} from 'react';
 import {Navigate} from 'react-router';
 import {buildCompleteProfilePath, buildLoginPath} from '@/features/auth/api/redirects';

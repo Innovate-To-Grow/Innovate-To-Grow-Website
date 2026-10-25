@@ -1,9 +1,9 @@
 import json
 
 import pytest
-from i2g_admin.core import runtime
 from i2g_admin.app import app
 from i2g_admin.commands.records.skeleton import build_skeleton
+from i2g_admin.core import runtime
 from typer.testing import CliRunner
 
 runner = CliRunner()
