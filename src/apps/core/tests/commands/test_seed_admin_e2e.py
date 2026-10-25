@@ -17,7 +17,7 @@ class SeedAdminE2ECommandTests(TestCase):
             call_command("seed_admin_e2e")
 
     def test_refuses_production_settings(self):
-        with patch.dict("os.environ", {"DJANGO_SETTINGS_MODULE": "config.settings.production"}):
+        with patch.dict("os.environ", {"DJANGO_SETTINGS_MODULE": "config.settings.environments.production"}):
             with self.assertRaisesMessage(CommandError, "production settings"):
                 call_command("seed_admin_e2e", "--yes")
 

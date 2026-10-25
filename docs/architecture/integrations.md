@@ -107,7 +107,7 @@ File storage in production. Configured via `django-storages` with boto3.
 | Region | `AWS_S3_REGION_NAME` env var |
 | Custom endpoint | `AWS_S3_ENDPOINT_URL` (for R2 compatibility) |
 
-Configuration in `src/config/settings/components/production.py`.
+Configuration in `src/config/settings/production/storage.py`.
 
 ## CKEditor 5
 
@@ -115,7 +115,7 @@ Rich text editing in Django admin for CMS blocks and email campaign bodies.
 
 | Concern | Implementation |
 |---------|---------------|
-| Toolbar config | `src/config/settings/components/integrations/editor.py` |
+| Toolbar config | `src/config/settings/base/integrations/editor/__init__.py` |
 | File uploads | `/ckeditor5/` URL path, staff-only permission |
 | Storage | Uses the active file storage backend (local or S3) |
 

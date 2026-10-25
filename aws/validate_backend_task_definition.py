@@ -17,7 +17,7 @@ WORKER_ENTRYPOINT = ["python"]
 WORKER_COMMAND = [
     "manage.py",
     "run_background_worker",
-    "--settings=config.settings.production",
+    "--settings=config.settings.environments.production",
 ]
 REQUIRED_SHARED_ENV = {
     "DJANGO_SETTINGS_MODULE",
@@ -228,7 +228,7 @@ def validate_task_definition(taskdef: dict[str, Any], *, rendered: bool) -> None
             "Rendered worker secret references must exactly match Web, minus Web-only secrets.",
         )
         _require(
-            web_env["DJANGO_SETTINGS_MODULE"] == "config.settings.production",
+            web_env["DJANGO_SETTINGS_MODULE"] == "config.settings.environments.production",
             "Rendered containers must use production Django settings.",
         )
         if web_env["AMPLIFY_APP_ID"].strip():

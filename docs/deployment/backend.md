@@ -48,7 +48,7 @@ SSM references, task role, database, and cache configuration. Without
 worker explicitly replaces the image entrypoint with:
 
 ```text
-python manage.py run_background_worker --settings=config.settings.production
+python manage.py run_background_worker --settings=config.settings.environments.production
 ```
 
 It therefore does not run startup migrations, create the demo administrator,
@@ -142,7 +142,7 @@ right is the client.
 | | |
 |---|---|
 | Env var | `NUM_PROXIES` (integer ≥ 1, default `1`; startup fails on anything else). Not a secret. |
-| Where it is applied | `settings.NUM_PROXIES` (used by `apps.core.utils.client_ip`) **and** `REST_FRAMEWORK["NUM_PROXIES"]` (used by DRF's throttle `get_ident()`, which ignores the top-level setting). Both are set once in `config/settings/production.py`. |
+| Where it is applied | `settings.NUM_PROXIES` (used by `apps.core.utils.client_ip`) **and** `REST_FRAMEWORK["NUM_PROXIES"]` (used by DRF's throttle `get_ident()`, which ignores the top-level setting). Both are set once in `config/settings/environments/production.py`. |
 | Deployment | `aws/task-definition.json` carries `__NUM_PROXIES__`; `deploy-backend.yml` renders it from the `NUM_PROXIES` GitHub Environment variable (default `1`) and `aws/validate_backend_task_definition.py` rejects a rendered value that is not a positive integer. |
 | Local / CI | Unset (no proxy): DRF falls back to the full header / `REMOTE_ADDR`. |
 
@@ -177,7 +177,7 @@ and is not affected.
 
 ## Production settings
 
-`config.settings.production` applies security hardening:
+`config.settings.environments.production` applies security hardening:
 
 - `DEBUG = False`
 - `SECURE_HSTS_SECONDS` enabled

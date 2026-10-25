@@ -134,7 +134,7 @@ advisory (non-blocking) findings.
 - Keep business logic in `services/` modules when it does not belong directly in a model or serializer.
 - Use DRF `APIView` classes with explicit method handlers and serializers (no ViewSets, generic views, or routers); set `permission_classes` on every view and throttle per view, never globally.
 - When touching authentication, remember the custom `authn.Member` model (UUIDs, custom fields).
-- Settings live in `src/config/settings/`: `base.py` assembles `components/`; use `config.settings.local` for development, `config.settings.test` in CI, and `config.settings.production` in deployment.
+- Settings live in `src/config/settings/`: `base/` contains shared configuration, `production/` contains production overrides, and `environments/` contains the entrypoints; use `config.settings.environments.local` for development, `config.settings.environments.test` in CI, and `config.settings.environments.production` in deployment.
 - Keep the API contract in sync with the frontend TypeScript interfaces in each feature's `api/` module (`pages/src/features/<domain>/api/`). Payloads stay snake_case.
 - Respect the app dependency directions in [docs/architecture/code-quality.md](docs/architecture/code-quality.md#dependency-directions): `core` never imports a business app; register with shared machinery (e.g. `register_job_kind` in `AppConfig.ready()`) instead.
 
@@ -156,7 +156,7 @@ advisory (non-blocking) findings.
 
 | Area | Command | Notes |
 | --- | --- | --- |
-| Backend unit/functional tests | `cd src && python manage.py test --settings=config.settings.local` | You can scope tests with dotted paths (`python manage.py test apps.event.tests.api --settings=config.settings.local`). |
+| Backend unit/functional tests | `cd src && python manage.py test --settings=config.settings.environments.local` | You can scope tests with dotted paths (`python manage.py test apps.event.tests.api --settings=config.settings.environments.local`). |
 | Backend migrations | `python manage.py makemigrations && python manage.py migrate` | Required whenever models change. Commit the generated migration files. |
 | Frontend linting | `cd pages && npm run lint` | Ensures TypeScript + React hooks compliance. |
 | Frontend unit tests | `cd pages && npm run test:coverage` | Runs the same unit suite and coverage checks as CI. |
@@ -192,7 +192,7 @@ For asynchronous frontend tests, wait for the behavior being asserted. A `findBy
 - [ ] PR references related issue(s) and describes the change, motivation, and testing.
 - [ ] Code follows the guidelines above and is scoped to a single concern.
 - [ ] **CI checks pass:** All GitHub Actions workflows (linting, type checks) succeed.
-- [ ] Backend: `ruff check .` and `ruff format --check .` pass, migrations added (if models changed), and `python manage.py test --settings=config.settings.local` passes; `python scripts/ci/check_python_quality.py` and `python scripts/ci/check_python_dependencies.py` pass.
+- [ ] Backend: `ruff check .` and `ruff format --check .` pass, migrations added (if models changed), and `python manage.py test --settings=config.settings.environments.local` passes; `python scripts/ci/check_python_quality.py` and `python scripts/ci/check_python_dependencies.py` pass.
 - [ ] Frontend: `npm run lint`, `npm run check:structure`, and `npm run build` succeed locally.
 - [ ] API contracts updated in both backend serializers and frontend TypeScript types.
 - [ ] Screenshots or GIFs attached when UI changes are visible.

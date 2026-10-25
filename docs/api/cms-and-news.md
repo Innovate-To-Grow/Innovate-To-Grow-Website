@@ -142,7 +142,7 @@ Single article detail.
 Articles are imported from RSS feeds via the `sync_news` management command:
 
 ```bash
-cd src && python manage.py sync_news --settings=config.settings.local
+cd src && python manage.py sync_news --settings=config.settings.environments.local
 ```
 
 **Models:**

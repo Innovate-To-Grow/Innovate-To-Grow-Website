@@ -16,11 +16,21 @@ PROD_ENV = {
 }
 
 
-def reload_prod_settings():
-    import config.settings.components.production as production_settings
-    import config.settings.production as prod_settings
+PRODUCTION_SETTING_MODULES = (
+    "config.settings.production.env",
+    "config.settings.production.django",
+    "config.settings.production.security",
+    "config.settings.production.storage",
+    "config.settings.production.verification",
+    "config.settings.production.cache",
+)
 
-    importlib.reload(production_settings)
+
+def reload_prod_settings():
+    import config.settings.environments.production as prod_settings
+
+    for module_name in PRODUCTION_SETTING_MODULES:
+        importlib.reload(importlib.import_module(module_name))
     return importlib.reload(prod_settings)
 
 
@@ -63,7 +73,7 @@ class ProductionCacheSettingsTests(SimpleTestCase):
 
     def test_prod_defines_the_bounded_throttle_alias_with_and_without_redis(self):
         """Throttles keyed on a caller-minted value must never land in ``default`` (a file per key without Redis)."""
-        from config.settings.components.framework.cache import THROTTLE_CACHE
+        from config.settings.base.framework.cache import THROTTLE_CACHE
 
         for redis_url in ("", "redis://cache.example.com:6379/0"):
             with self.subTest(redis_url=redis_url):
