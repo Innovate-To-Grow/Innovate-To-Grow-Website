@@ -8,7 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from apps.authn.models import Member
-from apps.core.admin.common.base import BaseModelAdmin, ReadOnlyModelAdmin
+from apps.core.admin.common.base import AppAccessInlineMixin, BaseModelAdmin, ReadOnlyModelAdmin
 from apps.core.admin.registrations.log_entry import LogEntryAdmin
 from apps.event.tests.helpers import make_superuser
 
@@ -99,3 +99,36 @@ class LogEntryAdminTest(TestCase):
         )
         self.assertEqual(self.admin.action_flag_display(entry), entry.get_action_flag_display())
         self.assertEqual(self.admin.action_flag_display(entry), "Addition")
+
+
+class AppAccessInlineMixinTest(TestCase):
+    """Inlines follow the same per-app rule as BaseModelAdmin: the member's admin_apps must list the model's app."""
+
+    class _Inline(AppAccessInlineMixin):
+        opts = LogEntry._meta
+
+    def setUp(self):
+        self.inline = self._Inline()
+        self.request = MagicMock()
+
+    def _checks(self):
+        return [
+            self.inline.has_view_permission(self.request),
+            self.inline.has_add_permission(self.request, None),
+            self.inline.has_change_permission(self.request, None),
+            self.inline.has_delete_permission(self.request, None),
+        ]
+
+    def test_staff_without_the_apps_grant_is_denied(self):
+        self.request.user = Member.objects.create_user(password="testpass123", is_staff=True, admin_apps=["cms"])
+        self.assertEqual(self._checks(), [False] * 4)
+
+    def test_staff_with_the_apps_grant_is_allowed(self):
+        self.request.user = Member.objects.create_user(
+            password="testpass123", is_staff=True, admin_apps=[LogEntry._meta.app_label]
+        )
+        self.assertEqual(self._checks(), [True] * 4)
+
+    def test_superuser_is_allowed(self):
+        self.request.user = make_superuser(email="inline-master@example.com")
+        self.assertEqual(self._checks(), [True] * 4)

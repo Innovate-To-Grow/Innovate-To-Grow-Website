@@ -253,7 +253,7 @@ The command is read-only and prints one line per flagged code (times in UTC) wit
 ## News sync
 
 ```bash
-cd src && python manage.py sync_news --settings=config.settings.local
+cd src && python manage.py sync_news --settings=config.settings.environments.local
 ```
 
 Fetches articles from all configured `NewsFeedSource` records. Results logged in `NewsSyncLog`.
@@ -275,7 +275,7 @@ same database and environment configuration as the Web service. Production and
 demo run it as the no-port `itg-background-worker` sidecar:
 
 ```bash
-python manage.py run_background_worker --settings=config.settings.production
+python manage.py run_background_worker --settings=config.settings.environments.production
 ```
 
 The sidecar overrides the Docker entrypoint and waits for the Web container to
@@ -343,7 +343,9 @@ Google Sheet):
   refreshed without activating them
 - `python manage.py sync_schedule` syncs every row whose auto-sync is enabled and due; `--schedule <uuid>` syncs
   one row now regardless of its auto-sync settings; `--force` syncs the active row now regardless of its interval
-- A sync replaces that row's `CurrentProject`, schedule sections/tracks/slots and agenda items only
+- A sync replaces that row's `CurrentProject` and schedule sections/tracks/slots only. Agenda items (the Expo and
+  Awards tables) are seeded with defaults on the row's first sync and are then maintained in the **Agenda items**
+  block of the row's change form; later syncs leave them untouched
 
 ### Check-in
 
@@ -375,44 +377,22 @@ Available through the Member admin:
 
 ## Stylesheets and design tokens
 
-The public site's CSS currently comes from the **Style Sheets** rows in Django admin (CMS → Style Sheets),
-seeded from `src/apps/cms/migrations/data/stylesheets.json`, plus the design tokens in Site Settings.
-Data migrations re-apply that seed to existing databases, and they overwrite whatever an admin changed in
-those rows without warning. Two read-only commands show where a database stands.
+The public site's CSS ships with the frontend bundle: the header, footer and page styles live next to the
+components that render them under `pages/src`, and the styles CMS content relies on live in
+`pages/src/styles/contract/` (see [CSS contract](css-contract.md)). Change CSS in the repository.
+`/api/layout/theme.css` serves the Site Settings design tokens and custom CSS (see
+[Theme: design tokens and custom CSS](theme-and-custom-css.md)).
 
-### Drift report
+The site used to serve CSS from **Style Sheets** rows in the database. Migrations `cms.0026` and `cms.0027`
+switched them off once the frontend shipped their rules, and `cms.0030` deleted the table.
+`src/apps/cms/migrations/data/stylesheets.json` stays, frozen: the earlier migrations read it on every new
+database.
 
-```bash
-cd src && python manage.py stylesheet_drift            # table: status of every sheet + pages with page_css
-cd src && python manage.py stylesheet_drift --diff     # also print a unified diff for each edited sheet
-cd src && python manage.py stylesheet_drift --json     # the full report as JSON
-cd src && python manage.py stylesheet_drift --export stylesheets-backup.json   # every sheet + every page_css
-```
-
-Each sheet gets one status. The comparison ignores line endings and trailing whitespace.
-
-| Status | Meaning |
-|--------|---------|
-| `in_sync` | CSS, active flag and order match the repo seed |
-| `edited` | the CSS differs from the seed |
-| `settings_changed` | the CSS matches, but the active flag or the order differs from the seed |
-| `unmanaged` | the sheet is not in the seed, including a `*-pre-redesign` / `*-pre-audit-fixes` copy that was switched back on |
-| `backup_copy` | an inactive `*-pre-redesign` / `*-pre-audit-fixes` copy left by a migration |
-| `missing` (table only) | a seed sheet that is not in the database |
-
-The command exits with status 1 when the site serves CSS the seed lacks, or a re-sync migration would
-change what the site serves:
-
-- an active sheet whose CSS differs from the seed or is not in it;
-- a seed sheet whose active flag or order was changed (deactivating a seed sheet counts);
-- an active seed sheet that was deleted (a re-sync creates it again and serves it).
-
-Sheets that are inactive in both the seed and the database, inactive unmanaged sheets and inactive backup
-copies do not fail it. A missing seed file is an error too. The Style Sheets changelist shows the same status
-in its **Repo seed** column.
-
-Run it in production before every release that carries a stylesheet migration. Move any edit worth keeping
-into the repository first, and keep the `--export` file as the backup.
+Pages used to carry their own **Page CSS** as well. `cms.0031` removed the field, and it refuses to delete
+anyone's CSS: if a page (published or draft) still has some, the migration stops before changing anything
+and names the pages. The container entrypoint runs migrations, so the new tasks then fail to start and the
+deploy does not finish (ECS's default rolling update keeps the running tasks on the previous release). Move
+the rules those pages still need into the repository, clear their Page CSS in the admin, and deploy again.
 
 ### Classes used by stored CMS content
 
@@ -420,42 +400,43 @@ into the repository first, and keep the `--export` file as the backup.
 cd src && python manage.py audit_css_classes                   # every class in stored content and what styles it
 cd src && python manage.py audit_css_classes --undefined-only  # only classes nothing styles site-wide or hooks on
 cd src && python manage.py audit_css_classes --json            # the full report, incl. the pages and footers using each class
-cd src && python manage.py audit_css_classes --no-frontend --json   # on a server without pages/src
+cd src && python manage.py audit_css_classes --no-frontend --json   # on a server without pages/src: usage only
 ```
 
 The audit reads the class attributes in every `*_html` field of every CMS block (pages of any status) and of
 the active footer, and every page's `page_css_class`. For each class it lists how often and in how many
 places it is used, and what styles it:
 
-- `sheet:<name>`: an active Style Sheets row;
 - a path under `pages/src`: frontend CSS in the entry bundle, which loads on every page;
 - `route-only:<files>`: frontend CSS that loads only once a lazily loaded route using it has been opened, so
   CMS content cannot rely on it;
-- `page_css:<routes>`: a page's own Page CSS, which applies on that page only;
-- `inactive:<names>`: inactive Style Sheets rows;
 - `scoped:<sources>`: CSS that styles the class only in context: inside another element (`.event-page .x`
   scopes `x`), together with another class (`.btn.is-active` and `.a:is(.b)` scope both), inside `:not()`,
   `:has()` or `:nth-child(... of S)`, in a nested rule, or inside `@scope`;
 - `hook:<sources>`: CSS that uses the class as context for other elements (`.event-page .x` makes
-  `event-page` a hook), typical for page wrapper classes.
+  `event-page` a hook), typical for page wrapper classes;
+- `NOWHERE`: none of the above.
 
-A class counts as defined when an active sheet or an entry-bundle file targets it on its own: it is the only
-class the element must have, in a selector with no ancestor or sibling part (`.x`, `.x:hover`, `a.x`,
-`.x:not(.y)`; `:is(.a, .b)` defines both; a leading `html`, `body` or `:root` followed by a space is ignored). The summary line counts the classes that are neither defined nor a
-hook as having no site-wide definition, and `--undefined-only` lists those. Stylesheets are parsed with
-tinycss2, so strings, escapes and `@media` / `@supports` / `@layer` blocks are read the way a browser reads
-them. Rich-text HTML can use any class, so this audit is how to find which CSS stored content depends on
-before a sheet is changed or removed. It never fails because of what it finds.
+A class counts as defined when an entry-bundle file targets it on its own: it is the only class the element
+must have, in a selector with no ancestor or sibling part (`.x`, `.x:hover`, `a.x`, `.x:not(.y)`;
+`:is(.a, .b)` defines both; a leading `html`, `body` or `:root` followed by a space is ignored). The summary
+line counts the classes that are neither defined nor a hook as having no site-wide definition, and
+`--undefined-only` lists those. CSS is parsed with tinycss2, so strings, escapes and `@media` / `@supports` /
+`@layer` blocks are read the way a browser reads them. Rich-text HTML can use any class, so this audit is how
+to find which CSS stored content depends on before a class in `pages/src` is renamed or removed. It never
+fails because of what it finds.
 
-The backend image does not contain `pages/src`. On a server, run it with `--no-frontend --json`: classes
-styled only by frontend CSS then show as undefined, so check those against a checkout (for example
-`grep -rn "\.<class>\b" pages/src --include=*.css`). Without `--no-frontend`, a missing frontend
-directory is an error rather than a silently incomplete report.
+The backend image does not contain `pages/src`, so in production run it with `--no-frontend --json`. That
+reports usage only: which classes stored content uses and where. No frontend CSS is read, so no class counts
+as defined. Definitions need a run with the frontend sources: run the audit locally from a checkout, or check
+the classes the production report lists against one (for example
+`grep -rn "\.<class>\b" pages/src --include=*.css`). Without `--no-frontend`, a missing frontend directory is
+an error rather than a silently incomplete report.
 
 ### Design token values
 
-Site Settings → Design Tokens is written into a `:root { --itg-* }` block at the top of the served
-stylesheet. A token is left out, with a warning in the log, when its key is not lowercase letters, digits
+Site Settings → Design Tokens is written into a `:root { --itg-* }` block in the `itg.tokens` layer of
+`/api/layout/theme.css`. A token is left out, with a warning in the log, when its key is not lowercase letters, digits
 and underscores, or its value
 
 - is longer than 200 characters;

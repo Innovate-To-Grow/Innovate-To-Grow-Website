@@ -1,3 +1,4 @@
+import '../auth.css';
 import { useEffect } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { getSafeInternalRedirectPath } from '@/features/auth/api/redirects';

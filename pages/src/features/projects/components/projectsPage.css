@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Page scaffolding shared by every projects page.
    Imported in order by projects.css; see the note there. */
 
@@ -49,4 +50,5 @@
 
 .past-projects-saved-notice {
   margin: 0;
+}
 }

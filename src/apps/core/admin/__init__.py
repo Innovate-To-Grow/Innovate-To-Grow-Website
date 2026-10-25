@@ -5,6 +5,7 @@ Provides shared functionality for admin interfaces across all apps.
 """
 
 from .common import (
+    AppAccessInlineMixin,
     BaseModelAdmin,
     ReadOnlyModelAdmin,
     admin_url,
@@ -33,6 +34,7 @@ from .service_credentials import (  # noqa: F401 - register admin
 
 __all__ = [
     # Base classes
+    "AppAccessInlineMixin",
     "BaseModelAdmin",
     "ReadOnlyModelAdmin",
     # Mixins

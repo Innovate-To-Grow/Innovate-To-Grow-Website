@@ -1,3 +1,4 @@
+@layer itg.components {
 /* The builder's dialogs.
    Imported in order by projects.css; see the note there. */
 
@@ -47,4 +48,5 @@
   justify-content: flex-end;
   gap: 0.625rem;
   padding: 0 1.5rem 1.5rem;
+}
 }

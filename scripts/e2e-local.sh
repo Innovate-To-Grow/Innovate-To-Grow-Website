@@ -7,14 +7,14 @@
 # pages/e2e/smoke/live.spec.ts and the Django-admin flow in pages/e2e/admin/
 # — talk to a real backend. They only pass when that backend is configured the
 # way CI configures it:
-#   * config.settings.test  — its CORS allowlist includes the :4173 preview
-#     origin (config.settings.local only allows the :5173 dev server)
+#   * config.settings.environments.test  — its CORS allowlist includes the :4173 preview
+#     origin (config.settings.environments.local only allows the :5173 dev server)
 #   * a migrated DB seeded with deterministic admin E2E data
 #     (manage.py seed_admin_e2e --yes)
 #   * `runserver --insecure` — serves the admin/Unfold statics that DEBUG=False
 #     would otherwise 404
 #
-# This script points config.settings.test at a throwaway SQLite DB under src/
+# This script points config.settings.environments.test at a throwaway SQLite DB under src/
 # (gitignored) so your dev database is untouched, and avoids the PostgreSQL
 # service container CI uses.
 #
@@ -71,7 +71,7 @@ if [[ ! -d "$PAGES_DIR/node_modules" ]]; then
 fi
 
 backend_env=(
-  "DJANGO_SETTINGS_MODULE=config.settings.test"
+  "DJANGO_SETTINGS_MODULE=config.settings.environments.test"
   "DB_ENGINE=django.db.backends.sqlite3"
   "DB_NAME=$E2E_DB"
   "ADMIN_REQUIRE_CONFIRMATION=true"
@@ -82,7 +82,7 @@ if [[ "$FRESH" == 1 ]]; then
   rm -f "$E2E_DB"
 fi
 
-echo "==> Migrating and seeding $E2E_DB (config.settings.test)"
+echo "==> Migrating and seeding $E2E_DB (config.settings.environments.test)"
 (cd "$SRC_DIR" && env "${backend_env[@]}" "$PYTHON" manage.py migrate --noinput)
 (cd "$SRC_DIR" && env "${backend_env[@]}" "$PYTHON" manage.py seed_admin_e2e --yes)
 

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 
 from apps.core.admin import BaseModelAdmin
@@ -23,7 +24,9 @@ class FooterContentAdmin(BaseModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def _get_editor_context(self):
-        return build_route_editor_context()
+        # The preview frames the frontend's /_footer-preview (layout/js/footer/editor/preview.js).
+        frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").rstrip("/")
+        return {**build_route_editor_context(), "frontend_url": frontend_url}
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = {**(extra_context or {}), **self._get_editor_context()}

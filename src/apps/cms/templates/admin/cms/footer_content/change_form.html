@@ -93,24 +93,22 @@
 
 {% block after_related_objects %}
     {{ block.super }}
-    {% static 'vendor/font-awesome/4.7.0/css/font-awesome.min.css' as font_awesome_css %}
 
-    <!-- Preview -->
+    <!-- Preview: the site's real footer, rendered by the frontend at /_footer-preview (preview.js). -->
     <div class="preview-wrapper footer-preview-wrapper">
         <p class="preview-title">Footer Preview</p>
         <div id="footer-preview-error" class="preview-error"></div>
         <iframe id="footer-preview-iframe"
                 class="preview-iframe footer-preview-iframe"
-                sandbox="allow-same-origin"
+                data-preview-base="{{ frontend_url }}"
                 title="Footer preview"></iframe>
     </div>
 
     <script nonce="{{ request.csp_nonce }}">
-        window.ITG_FONT_AWESOME_CSS = "{{ font_awesome_css|escapejs }}";
         window.APP_ROUTES = {{ app_routes_json|safe }};
         window.CMS_ROUTES = {{ cms_routes_json|safe }};
     </script>
     <script src="{% static 'layout/js/footer/editor/sections.js' %}?v=2"></script>
-    <script src="{% static 'layout/js/footer/editor/preview.js' %}?v=1"></script>
+    <script src="{% static 'layout/js/footer/editor/preview.js' %}?v=2"></script>
     <script src="{% static 'layout/js/footer/footer-editor.js' %}?v=3"></script>
 {% endblock %}

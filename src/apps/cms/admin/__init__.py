@@ -10,10 +10,10 @@ Organized into modules by feature:
 
 from .analytics import PageViewAdmin
 from .cms import CMSAssetAdmin, CMSEmbedAllowedHostAdmin, CMSEmbedWidgetAdmin, CMSPageAdmin, RouteRedirectAdmin
+from .layout.custom_css_revision import CustomCssRevisionAdmin
 from .layout.footer_content import FooterContentAdmin
 from .layout.menu import MenuAdmin
 from .layout.site_settings import SiteSettingsAdmin
-from .layout.style_sheet import StyleSheetAdmin
 from .news import NewsArticleAdmin, NewsFeedSourceAdmin, NewsSyncLogAdmin
 
 __all__ = [
@@ -21,7 +21,7 @@ __all__ = [
     "MenuAdmin",
     "FooterContentAdmin",
     "SiteSettingsAdmin",
-    "StyleSheetAdmin",
+    "CustomCssRevisionAdmin",
     # CMS
     "CMSPageAdmin",
     "RouteRedirectAdmin",

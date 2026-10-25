@@ -47,23 +47,40 @@ Settings live in `src/config/settings/` with a modular import pattern:
 
 ```
 config/settings/
-├── base.py                          # Wildcard imports from components/
-├── local.py                         # DEBUG=True, SQLite, console email
-├── test.py                          # PostgreSQL container, test credentials
-├── production.py                    # Loads production component overrides
-└── components/
-    ├── framework/
-    │   ├── environment.py           # BASE_DIR, .env loading, AWS SES, timezone
-    │   ├── django.py               # INSTALLED_APPS, MIDDLEWARE, templates, auth
-    │   └── cache.py                # Dev/CI default cache and the in-process `throttle` alias
-    ├── integrations/
-    │   ├── api.py                   # DRF config, JWT (1h access, 7d refresh)
-    │   ├── admin.py                 # Unfold theme, sidebar, tab groups
-    │   └── editor.py               # CKEditor 5 toolbar and uploads
-    └── production.py                # S3 storage, CORS, logging, Redis or file cache
+├── __init__.py                       # Package marker; no flat settings modules
+├── base/
+│   ├── __init__.py                   # Shared settings assembly
+│   ├── framework/
+│   │   ├── environment.py            # BASE_DIR, .env loading, AWS SES, timezone
+│   │   ├── django.py                 # INSTALLED_APPS, MIDDLEWARE, templates, auth
+│   │   ├── cache.py                  # Dev/CI cache and the in-process `throttle` alias
+│   │   └── legacy_imports.py         # Legacy app-import support for migrations
+│   └── integrations/
+│       ├── api/
+│       │   └── __init__.py           # DRF config, JWT (1h access, 7d refresh)
+│       ├── admin/                    # Unfold admin configuration
+│       │   ├── __init__.py           # Assembles and exports UNFOLD
+│       │   ├── theme.py              # Branding, colors, styles, and scripts
+│       │   ├── tabs.py               # Model and custom-page tab groups
+│       │   └── navigation.py         # Sidebar links and permission callbacks
+│       └── editor/
+│           └── __init__.py           # CKEditor 5 toolbar and uploads
+├── production/                       # Production-only overrides
+│   ├── __init__.py                   # Side-effect-free package initializer
+│   ├── env.py                        # Environment parsing helpers
+│   ├── django.py                     # Core, database, email, and logging
+│   ├── security.py                   # HTTP/cookie, proxy, CORS/CSRF, and CSP
+│   ├── storage.py                    # S3 and static/media storage
+│   ├── verification.py               # Send-verification policy overrides
+│   └── cache.py                      # Redis or per-container file cache
+└── environments/
+    ├── __init__.py                   # No eager environment imports
+    ├── local.py                      # DEBUG=True, SQLite, console email
+    ├── test.py                       # PostgreSQL container, test credentials
+    └── production.py                 # Loads base and production overrides
 ```
 
-**Import order matters:** `base.py` installs the legacy import shim, then imports `environment` → `django` → `cache` → `admin` → `api` → `editor`. `production.py` loads `base` before applying `components/production.py`. Later files may reference variables defined by earlier imports.
+**Import order matters:** `config.settings.base` installs the legacy import shim from `base/framework/legacy_imports.py`, then imports `environment` → `django` → `cache` → `admin` → `api` → `editor`. `config.settings.environments.production` loads base before applying `config/settings/production/` in `django` → `security` → `storage` → `verification` → `cache` order. The production and environment package initializers stay side-effect-free because unittest discovery imports packages.
 
 ### Environment differences
 
@@ -99,7 +116,7 @@ Detailed in [API: Auth & Mail](../api/auth-and-mail.md). Summary:
 
 ## Middleware stack
 
-Defined in `src/config/settings/components/framework/django.py`:
+Defined in `src/config/settings/base/framework/django.py`:
 
 1. `GZipMiddleware` — Response compression
 2. `CorsMiddleware` — Cross-origin headers (django-cors-headers)

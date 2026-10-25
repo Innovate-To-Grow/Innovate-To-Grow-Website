@@ -20,7 +20,7 @@ from apps.core.utils.throttle_cache import throttle_cache
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.public_assistant import actors
 from apps.system_intelligence.views.public_assistant import PublicAssistantActorThrottle
-from config.settings.components.framework.cache import THROTTLE_CACHE
+from config.settings.base.framework.cache import THROTTLE_CACHE
 
 Member = get_user_model()
 

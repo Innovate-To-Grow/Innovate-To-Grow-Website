@@ -1,0 +1,44 @@
+/* ==========================================================================
+   The content contract: the design system, the CMS block styles and the
+   classes editors store in CMS content HTML, moved verbatim from the CMS
+   "global", "cms-blocks", "cms-pages", "page-home" and (for the legacy event
+   pages) "page-events" stylesheets.
+
+   index.css imports this file first, so these rules keep the place the backend
+   stylesheet gave them: before every other stylesheet in the bundle. The files
+   are imported in their original cascade order (later files override earlier
+   ones at equal specificity), so do not reorder this list; add new rules to
+   the file that owns them.
+
+   Stored content uses many of these classes, so removing or renaming one can
+   unstyle published pages: check `python manage.py audit_css_classes` in
+   production first. contract-classes.json lists the classes editors are told
+   to use, and css-contract.test.ts keeps a rule for each of them.
+   ========================================================================== */
+@import './global/elements.css';
+@import './global/page.css';
+@import './global/links.css';
+@import './global/buttons.css';
+@import './global/panels.css';
+@import './global/meta-box.css';
+@import './global/tables.css';
+@import './global/forms.css';
+@import './global/pagination.css';
+@import './global/tags.css';
+@import './global/notices.css';
+@import './global/rich-content.css';
+@import './global/layout-helpers.css';
+@import './global/phones.css';
+@import './cms-blocks/frame.css';
+@import './cms-blocks/prose.css';
+@import './cms-blocks/body-classes.css';
+@import './cms-blocks/navigation-grid.css';
+@import './cms-blocks/proposals.css';
+@import './cms-blocks/blocks.css';
+@import './cms-blocks/page-states.css';
+@import './cms-blocks/live-preview.css';
+@import './cms-blocks/focus-motion.css';
+@import './cms-blocks/phones.css';
+@import './cms-pages.css';
+@import './page-home.css';
+@import './legacy-content.css';

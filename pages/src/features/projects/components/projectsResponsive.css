@@ -1,3 +1,4 @@
+@layer itg.components {
 /* Responsive rules for every section above. Kept last and together: they override the
    base rules of all the files before them, so they must follow every one of them.
    Imported in order by projects.css; see the note there. */
@@ -273,4 +274,5 @@
   .past-projects-ai-search-status::before {
     animation-duration: 3s;
   }
+}
 }

@@ -138,7 +138,6 @@ describe('CMSPageComponent redirects and errors', () => {
         route: '/new',
         title: 'New page',
         page_css_class: '',
-        page_css: '',
         meta_description: '',
         blocks: [],
       },
@@ -203,7 +202,7 @@ describe('CMSPageComponent redirects and errors', () => {
     expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
   });
 
-  it('injects per-page CSS and clears it on unmount', () => {
+  it('adds no style element of its own, even if the API still sends page_css', () => {
     useCMSPage.mockReturnValue({
       page: {
         slug: 'styled',
@@ -219,50 +218,13 @@ describe('CMSPageComponent redirects and errors', () => {
       error: null,
       isLivePreview: false,
     });
+    const stylesBefore = document.head.querySelectorAll('style').length;
 
-    const {unmount, container} = renderPage('/styled');
+    const {container} = renderPage('/styled');
 
     expect(container.querySelector('.custom-page')).toHaveClass('cms-page');
-    const style = document.getElementById('itg-page-css');
-    expect(style).not.toBeNull();
-    expect(style?.textContent).toBe('body { color: red; }');
-
-    unmount();
-    expect(document.getElementById('itg-page-css')?.textContent).toBe('');
-  });
-
-  it('reuses the existing style element for subsequent pages', () => {
-    const base = {
-      slug: 'styled',
-      route: '/styled',
-      title: 'Styled page',
-      page_css_class: 'custom-page',
-      meta_description: '',
-      blocks: [],
-    };
-    useCMSPage.mockReturnValue({
-      page: {...base, page_css: 'a{}'},
-      redirectTo: null,
-      loading: false,
-      error: null,
-      isLivePreview: false,
-    });
-
-    const first = renderPage('/styled');
-    first.unmount();
-
-    useCMSPage.mockReturnValue({
-      page: {...base, page_css: 'b{}'},
-      redirectTo: null,
-      loading: false,
-      error: null,
-      isLivePreview: false,
-    });
-    renderPage('/styled');
-
-    const style = document.getElementById('itg-page-css');
-    expect(style?.textContent).toBe('b{}');
-    expect(document.querySelectorAll('#itg-page-css')).toHaveLength(1);
+    expect(document.getElementById('itg-page-css')).toBeNull();
+    expect(document.head.querySelectorAll('style')).toHaveLength(stylesBefore);
   });
 
   it('shows the live preview modal with expiry and a title suffix', () => {
@@ -272,7 +234,6 @@ describe('CMSPageComponent redirects and errors', () => {
         route: '/live',
         title: 'Draft page',
         page_css_class: '',
-        page_css: '',
         meta_description: '',
         blocks: [],
         expires_at: '2026-08-24T23:00:00Z',
@@ -301,7 +262,6 @@ describe('CMSPageComponent redirects and errors', () => {
         route: '/live',
         title: 'Draft page',
         page_css_class: '',
-        page_css: '',
         meta_description: '',
         blocks: [],
         expires_at: '2026-08-24T23:00:00Z',
@@ -329,7 +289,6 @@ describe('CMSPageComponent redirects and errors', () => {
         route: '/live',
         title: 'Draft page',
         page_css_class: '',
-        page_css: '',
         meta_description: '',
         blocks: [],
       },
@@ -353,7 +312,6 @@ describe('CMSPageComponent redirects and errors', () => {
         route: '/live',
         title: 'Draft page',
         page_css_class: '',
-        page_css: '',
         meta_description: '',
         blocks: [],
       },
@@ -382,7 +340,6 @@ describe('CMSPageComponent page title', () => {
     title: 'Fall 2020 Event',
     route: '/2020-fall-event',
     blocks: [],
-    page_css: '',
     page_css_class: '',
   };
 
