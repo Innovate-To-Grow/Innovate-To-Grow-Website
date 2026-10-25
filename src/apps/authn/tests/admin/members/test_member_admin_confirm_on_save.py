@@ -1,7 +1,7 @@
 """Member admin saves with the confirm-on-save interstitial ENABLED.
 
 Every other Member admin POST test sets ``ADMIN_REQUIRE_CONFIRMATION=False``, and
-``config.settings.test`` defaults it off — but ``config.settings.local`` sets it True and production
+``config.settings.environments.test`` defaults it off — but ``config.settings.environments.local`` sets it True and production
 falls through to ``getattr(settings, "ADMIN_REQUIRE_CONFIRMATION", True)``. So the flow real operators
 use had no coverage, which is how two defects shipped:
 

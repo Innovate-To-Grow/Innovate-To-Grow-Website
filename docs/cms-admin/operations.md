@@ -253,7 +253,7 @@ The command is read-only and prints one line per flagged code (times in UTC) wit
 ## News sync
 
 ```bash
-cd src && python manage.py sync_news --settings=config.settings.local
+cd src && python manage.py sync_news --settings=config.settings.environments.local
 ```
 
 Fetches articles from all configured `NewsFeedSource` records. Results logged in `NewsSyncLog`.
@@ -275,7 +275,7 @@ same database and environment configuration as the Web service. Production and
 demo run it as the no-port `itg-background-worker` sidecar:
 
 ```bash
-python manage.py run_background_worker --settings=config.settings.production
+python manage.py run_background_worker --settings=config.settings.environments.production
 ```
 
 The sidecar overrides the Docker entrypoint and waits for the Web container to

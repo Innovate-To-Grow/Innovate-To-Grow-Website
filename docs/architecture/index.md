@@ -24,7 +24,7 @@ Engineers who need to understand how the system is organized before making chang
 | Block-based CMS | `CMSPage` + ordered `CMSBlock` records with JSON schemas replace the older GrapesJS system |
 | Service layer pattern | Business logic lives in `services/` modules, not in views or serializers |
 | Enforced dependency directions | `core` imports no business app; apps plug into shared machinery (jobs, CSP) through registration hooks — see [Code Quality Rules](code-quality.md) |
-| Modular Django settings | `base.py` assembles shared components; `local.py`, `test.py`, and `production.py` apply environment-specific overrides |
+| Modular Django settings | `base/` assembles shared configuration, `production/` holds production overrides, and `environments/` provides the local, test, and production entrypoints |
 | Per-endpoint throttling | Throttle classes applied per-view, not globally (global setting breaks test suite) |
 | Client-side RSA password encryption | Passwords are encrypted with Web Crypto API; active keys rotate daily and retired key IDs remain decryptable for a bounded two-day window |
 | Server-authoritative auth bootstrap | Persisted tokens identify a local session generation, while `/authn/session/` supplies the current member/profile state |

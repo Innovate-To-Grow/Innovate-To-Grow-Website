@@ -57,7 +57,7 @@ env:
   # Match the interpreter used by the production Docker image.
   BACKEND_PYTHON_VERSION: "3.14"
   NODE_VERSION: "22.22.2"
-  DJANGO_SETTINGS_MODULE: config.settings.test
+  DJANGO_SETTINGS_MODULE: config.settings.environments.test
   COVERAGE_VERSION: "7.16.1"
   CLI_COVERAGE_LINES: "99"
   CLI_COVERAGE_BRANCHES: "98"
@@ -390,13 +390,13 @@ jobs:
           .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
 
       - name: Import production settings
-        run: DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python -c "import django; django.setup()"
+        run: DJANGO_SETTINGS_MODULE=config.settings.environments.production .venv/bin/python -c "import django; django.setup()"
 
       - name: Run Django deploy checks
-        run: DJANGO_SETTINGS_MODULE=config.settings.production .venv/bin/python manage.py check --deploy
+        run: DJANGO_SETTINGS_MODULE=config.settings.environments.production .venv/bin/python manage.py check --deploy
 
       - name: Dry-run collectstatic with CI settings
-        run: .venv/bin/python manage.py collectstatic --dry-run --noinput --settings=config.settings.test
+        run: .venv/bin/python manage.py collectstatic --dry-run --noinput --settings=config.settings.environments.test
 
   django-test-plan:
     name: Plan Django Test Matrix
@@ -1360,7 +1360,7 @@ jobs:
           docker exec "$postgres" pg_isready -U itg_ci_user -d itg_ci
 
           docker run -d --name "$backend" --network "$network" -p 127.0.0.1:8000:8000 \
-            -e DJANGO_SETTINGS_MODULE=config.settings.test \
+            -e DJANGO_SETTINGS_MODULE=config.settings.environments.test \
             -e DB_NAME=itg_ci \
             -e DB_USER=itg_ci_user \
             -e DB_PASSWORD=itg_ci_pass \

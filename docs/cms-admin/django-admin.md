@@ -4,7 +4,7 @@ Admin interface customization, theme configuration, and extension patterns.
 
 ## Unfold theme
 
-The admin uses the [Unfold](https://github.com/unfoldadmin/django-unfold) theme with a custom OKLch color palette (purple primary). Configuration is in `src/config/settings/components/integrations/admin.py`.
+The admin uses the [Unfold](https://github.com/unfoldadmin/django-unfold) theme with a custom OKLch color palette (purple primary). Configuration is in `src/config/settings/base/integrations/admin/theme.py`.
 
 ### Base classes
 
@@ -31,7 +31,7 @@ The admin sidebar is organized into five sections:
 
 ### Tab groups
 
-Related models are grouped into tabs in the admin interface. Tab configuration is in `src/config/settings/components/integrations/admin.py`. For example, event-related models appear as tabs when viewing an event.
+Related models are grouped into tabs in the admin interface. Tab configuration is in `src/config/settings/base/integrations/admin/tabs.py`. For example, event-related models appear as tabs when viewing an event.
 
 ## Custom admin views
 
@@ -119,7 +119,7 @@ Semester admin includes:
 
 Rich text editing for CMS block content and email campaign bodies.
 
-**Configuration:** `src/config/settings/components/integrations/editor.py`
+**Configuration:** `src/config/settings/base/integrations/editor/__init__.py`
 
 - Toolbar: heading, bold, italic, link, list, image, table, blockquote, code, alignment
 - File uploads: `/ckeditor5/` endpoint, restricted to staff users
@@ -129,8 +129,8 @@ Rich text editing for CMS block content and email campaign bodies.
 
 1. Create an admin class inheriting from `apps.core.admin.BaseModelAdmin`
 2. Register it in the app's `admin.py`
-3. Add it to the appropriate sidebar section in `config/settings/components/integrations/admin.py`
-4. If it should appear in a tab group with related models, add it to the tab configuration
+3. Add it to the appropriate sidebar section in `config/settings/base/integrations/admin/navigation.py`
+4. If it should appear in a tab group with related models, add it to `config/settings/base/integrations/admin/tabs.py`
 
 ## Related pages
 

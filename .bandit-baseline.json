@@ -7724,7 +7724,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./config/settings/local.py": {
+    "./config/settings/environments/local.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 2,
@@ -7750,7 +7750,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./config/settings/test.py": {
+    "./config/settings/environments/test.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 1,
@@ -8243,7 +8243,7 @@
       "code": "14 # ---------------------------------------------------------------------------\n15 SECRET_KEY = \"django-insecure-p+tt4i0o$9t!o1707ibkya=&-vlid7@88cz=gcc$*7h$$l1*ai\"\n16 DEBUG = True\n",
       "col_offset": 13,
       "end_col_offset": 81,
-      "filename": "./config/settings/local.py",
+      "filename": "./config/settings/environments/local.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
@@ -8263,7 +8263,7 @@
       "code": "17 \n18 ALLOWED_HOSTS = [\"localhost\", \"127.0.0.1\", \"0.0.0.0\"]\n19 extra = os.environ.get(\"EXTRA_ALLOWED_HOSTS\", \"\")\n",
       "col_offset": 43,
       "end_col_offset": 52,
-      "filename": "./config/settings/local.py",
+      "filename": "./config/settings/environments/local.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 605,
@@ -8283,7 +8283,7 @@
       "code": "12 \n13 SECRET_KEY = \"ci-secret-key\"\n14 DEBUG = False\n",
       "col_offset": 13,
       "end_col_offset": 28,
-      "filename": "./config/settings/test.py",
+      "filename": "./config/settings/environments/test.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {
         "id": 259,
