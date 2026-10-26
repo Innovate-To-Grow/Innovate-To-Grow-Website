@@ -1,5 +1,5 @@
 import {Link} from 'react-router';
-import {ProjectsMessagePage} from '@/features/projects/components/ProjectsMessagePage';
+import {ProjectsMessagePage} from '@/features/projects/components/views/pages/ProjectsMessagePage';
 
 export const SharedListUnavailable = () => (
   <ProjectsMessagePage

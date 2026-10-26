@@ -1,7 +1,7 @@
 import {useMemo} from 'react';
 import {useLocation, useNavigate, useParams, useSearchParams} from 'react-router';
 import {MyCurationsPanel, PastProjectsBuilder, createProjectGridItems} from '@/features/projects';
-import {getEarliestTermYear} from '@/features/projects/components/projectGrid';
+import {getEarliestTermYear} from '@/features/projects/components/grid/contracts/projectGrid';
 import {usePastProjectGridData, usePastProjectShareData} from '@/features/projects/hooks/useProjectGridData';
 import {createPastProjectShare} from '@/features/projects/api';
 import {usePageTitle} from '@/hooks/usePageTitle';
