@@ -1,7 +1,7 @@
 import {useEffect, type ReactNode} from 'react';
 import {Link, useLocation, useParams} from 'react-router';
-import {ProjectsMessagePage} from '@/features/projects/components/ProjectsMessagePage';
-import {formatTermForProse, splitStudentNames} from '@/features/projects/components/projectGrid';
+import {ProjectsMessagePage} from '@/features/projects/components/views/pages/ProjectsMessagePage';
+import {formatTermForProse, splitStudentNames} from '@/features/projects/components/grid/contracts/projectGrid';
 import {useCopyLink} from '@/hooks/useCopyLink';
 import {useProjectDetail} from '@/features/projects/hooks/useProjectDetail';
 import {formatSemesterLabel} from '@/lib/format';

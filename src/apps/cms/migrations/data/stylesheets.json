@@ -114,7 +114,7 @@
       "name": "page-projects",
       "display_name": "Project Pages",
       "description": "Current/past projects listing, project detail page, project grid tables with search/sort/pagination, mobile cards, sheets data table, and responsive breakpoints.",
-      "css": "/* ---- Projects pages ---- */\n/* The project pages (current projects, presenting teams, past projects, shared lists, project detail) and\n   the project data table used on event archive pages are styled by their co-located CSS in the frontend\n   (features/projects/components/projects.css, routes/ProjectDetailPage/ProjectDetailPage.css and\n   components/SheetsDataTable/SheetsDataTable.css), on top of the global class contract in the \"global\"\n   sheet. Keep this sheet for admin-tunable overrides of those pages only, so each element is styled in one\n   place. */\n",
+      "css": "/* ---- Projects pages ---- */\n/* The project pages (current projects, presenting teams, past projects, shared lists, project detail) and\n   the project data table used on event archive pages are styled by their co-located CSS in the frontend\n   (features/projects/components/styles/projects.css, routes/ProjectDetailPage/ProjectDetailPage.css and\n   components/SheetsDataTable/SheetsDataTable.css), on top of the global class contract in the \"global\"\n   sheet. Keep this sheet for admin-tunable overrides of those pages only, so each element is styled in one\n   place. */\n",
       "is_active": true,
       "sort_order": 120
     }
