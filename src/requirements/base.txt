@@ -6,7 +6,7 @@ djangorestframework==3.18.3
 djangorestframework-simplejwt>=5.5.1
 
 # Environment Variables
-python-dotenv>=1.2.3
+python-dotenv>=1.2.4
 
 # Admin Theme
 django-unfold>=0.91.0,<0.92  # Keep the current Unfold minor until its upgrade is reviewed.
