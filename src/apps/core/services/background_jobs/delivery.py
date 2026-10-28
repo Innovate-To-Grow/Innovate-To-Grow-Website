@@ -24,7 +24,7 @@ def wait_for_email_slot() -> None:
 def provider_job_error(exc):
     """Map a provider's delivery outcome to the job error that drives retry and quarantine."""
     if exc.outcome == PROVIDER_OUTCOME_TRANSIENT:
-        return TransientJobError(str(exc))
+        return TransientJobError(str(exc), retry_after=getattr(exc, "retry_after", None))
     if exc.outcome == PROVIDER_OUTCOME_PERMANENT:
         return PermanentJobError(str(exc))
     return UncertainJobError(str(exc))

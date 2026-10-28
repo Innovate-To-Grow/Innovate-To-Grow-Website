@@ -69,7 +69,7 @@ def _send_via_ses(
     except EmailDeliveryError as exc:
         logger.exception("Ticket email delivery failed")
         if raise_provider_errors:
-            raise ProviderDeliveryError(str(exc), outcome=exc.outcome) from exc
+            raise ProviderDeliveryError(str(exc), outcome=exc.outcome, retry_after=exc.retry_after) from exc
         return False
 
 

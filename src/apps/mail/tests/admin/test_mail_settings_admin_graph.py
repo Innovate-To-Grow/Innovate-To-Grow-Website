@@ -579,6 +579,22 @@ class SummaryChipTests(GraphSettingsTestCase):
                 self.assertNotIn("Microsoft Graph", response.context["email_provider"])
 
 
+class SummaryRateTests(GraphSettingsTestCase):
+    def test_graph_shows_its_ceiling_per_minute(self):
+        self.make_graph(messages_per_minute=24)
+        self.use_provider("graph")
+
+        response = self.client.get(self.summary_url)
+
+        self.assertContains(response, "Campaign Send Rate")
+        self.assertContains(response, "24 emails/min")
+
+    def test_ses_still_shows_the_cap_per_second(self):
+        response = self.client.get(self.summary_url)
+
+        self.assertContains(response, "12 emails/sec")
+
+
 class SendTestEmailTests(GraphSettingsTestCase):
     def setUp(self):
         super().setUp()

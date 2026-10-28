@@ -1,6 +1,7 @@
 """Starting a campaign send: queued per recipient for the worker, or the legacy in-process run."""
 
 import logging
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -130,33 +131,13 @@ def _queue_campaign(channel: DeliveryChannel, campaign, *, sent_by) -> dict[str,
     """Create (or reset) one recipient log and one outbox job per recipient, atomically."""
     recipients = channel.recipients(campaign)
     now = timezone.now()
+    spacing = timedelta(seconds=channel.job_spacing())
     with transaction.atomic():
         campaign = channel.campaign_model.objects.select_for_update().get(pk=campaign.pk)
         if campaign.status != "draft":
             raise ValueError(channel.not_draft_message)
-        for recipient in recipients:
-            log, _created = channel.log_model.objects.update_or_create(
-                campaign=campaign,
-                **{channel.address_field: recipient[channel.recipient_address_key]},
-                defaults={
-                    "member_id": recipient["member_id"],
-                    "recipient_name": recipient["full_name"],
-                    "status": "pending",
-                    "provider": channel.queued_provider,
-                    "error_message": "",
-                    "attempts": 0,
-                    "available_at": now,
-                    "claim_token": None,
-                    "claimed_at": None,
-                    "uncertain_at": None,
-                },
-            )
-            enqueue_job(
-                kind=channel.job_kind,
-                dedupe_key=f"{campaign.pk}:{log.pk}",
-                payload={"recipient_log_id": str(log.pk)},
-                can_retry_after_claim=False,
-            )
+        for index, recipient in enumerate(recipients):
+            _queue_recipient(channel, campaign, recipient, available_at=now + index * spacing)
         campaign.status = "queued" if recipients else "sent"
         campaign.sent_by = sent_by
         campaign.total_recipients = len(recipients)
@@ -177,6 +158,33 @@ def _queue_campaign(channel: DeliveryChannel, campaign, *, sent_by) -> dict[str,
             ]
         )
     return {"total": len(recipients), "sent": 0, "failed": 0}
+
+
+def _queue_recipient(channel: DeliveryChannel, campaign, recipient, *, available_at) -> None:
+    """Create (or reset) one recipient log and its outbox job, both due at ``available_at``."""
+    log, _created = channel.log_model.objects.update_or_create(
+        campaign=campaign,
+        **{channel.address_field: recipient[channel.recipient_address_key]},
+        defaults={
+            "member_id": recipient["member_id"],
+            "recipient_name": recipient["full_name"],
+            "status": "pending",
+            "provider": channel.queued_provider,
+            "error_message": "",
+            "attempts": 0,
+            "available_at": available_at,
+            "claim_token": None,
+            "claimed_at": None,
+            "uncertain_at": None,
+        },
+    )
+    enqueue_job(
+        kind=channel.job_kind,
+        dedupe_key=f"{campaign.pk}:{log.pk}",
+        payload={"recipient_log_id": str(log.pk)},
+        can_retry_after_claim=False,
+        available_at=available_at,
+    )
 
 
 def queue_email_campaign(campaign: EmailCampaign, *, sent_by) -> dict[str, int]:

@@ -15,7 +15,10 @@ from apps.mail.services.send_campaign.transport import SES_OUTCOME_PERMANENT, SE
 
 def _job_error_for_ses_result(result):
     if result.outcome == SES_OUTCOME_TRANSIENT:
-        return TransientJobError(result.error or "SES temporarily rejected the request.")
+        return TransientJobError(
+            result.error or "SES temporarily rejected the request.",
+            retry_after=getattr(result, "retry_after", None),
+        )
     if result.outcome == SES_OUTCOME_PERMANENT:
         return PermanentJobError(result.error or "SES rejected the request.")
     return UncertainJobError(result.error or "SES request outcome could not be confirmed.")

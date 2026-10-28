@@ -5,13 +5,14 @@ from math import isfinite
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.core.models import DeliveryRateLimit
+from apps.core.models import DeliveryRateLimit, EmailServiceConfig
 
 
 def configured_ses_rate(config) -> float:
-    """Return the configured finite non-negative email delivery rate."""
+    """Return the configured finite non-negative email delivery rate in sends per second (0 = unlimited)."""
     try:
-        rate = float(config.max_send_rate or 0)
+        send_rate = config.effective_send_rate if isinstance(config, EmailServiceConfig) else config.max_send_rate
+        rate = float(send_rate or 0)
     except (AttributeError, TypeError, ValueError):
         return 0.0
     return rate if isfinite(rate) and rate > 0 else 0.0

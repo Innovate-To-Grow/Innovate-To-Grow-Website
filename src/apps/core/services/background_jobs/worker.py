@@ -1,4 +1,5 @@
 import logging
+import math
 import re
 from datetime import timedelta
 
@@ -18,6 +19,11 @@ _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 class TransientJobError(RuntimeError):
     """A known temporary failure that is safe to retry."""
+
+    def __init__(self, message: str = "", *, retry_after: float | None = None):
+        super().__init__(message)
+        # Seconds the provider asked us to wait (an HTTP Retry-After); the retry is never scheduled sooner.
+        self.retry_after = retry_after
 
 
 class PermanentJobError(RuntimeError):
@@ -44,6 +50,16 @@ def _exception_chain(exc: BaseException):
         seen.add(id(current))
         yield current
         current = current.__cause__ or current.__context__
+
+
+_MAX_RETRY_DELAY_SECONDS = 3600
+
+
+def _retry_delay(attempts: int, chain) -> int:
+    """Exponential backoff, stretched to any Retry-After the provider asked for (never beyond an hour)."""
+    backoff = min(_MAX_RETRY_DELAY_SECONDS, 2 ** max(0, attempts - 1) * 15)
+    hinted = max((item.retry_after or 0 for item in chain if isinstance(item, TransientJobError)), default=0)
+    return min(_MAX_RETRY_DELAY_SECONDS, max(backoff, math.ceil(hinted)))
 
 
 def _is_known_transient(exc: BaseException) -> bool:
@@ -136,8 +152,7 @@ def _fail(job: BackgroundJob, exc: BaseException) -> None:
     if explicitly_transient:
         if job.attempts < job.max_attempts:
             status = BackgroundJob.Status.RETRY
-            delay = min(3600, 2 ** max(0, job.attempts - 1) * 15)
-            available_at = now + timedelta(seconds=delay)
+            available_at = now + timedelta(seconds=_retry_delay(job.attempts, chain))
         else:
             status = BackgroundJob.Status.FAILED
             available_at = job.available_at
@@ -149,8 +164,7 @@ def _fail(job: BackgroundJob, exc: BaseException) -> None:
         available_at = job.available_at
     elif _is_known_transient(exc) and job.attempts < job.max_attempts:
         status = BackgroundJob.Status.RETRY
-        delay = min(3600, 2 ** max(0, job.attempts - 1) * 15)
-        available_at = now + timedelta(seconds=delay)
+        available_at = now + timedelta(seconds=_retry_delay(job.attempts, chain))
     else:
         status = BackgroundJob.Status.FAILED
         available_at = job.available_at

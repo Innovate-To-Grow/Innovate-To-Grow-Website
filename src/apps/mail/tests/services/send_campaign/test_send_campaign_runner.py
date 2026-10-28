@@ -6,7 +6,7 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, LoginLinkToken, RecipientLog
 from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
-from apps.mail.services.send_campaign.runner import SendTiming, send_campaign
+from apps.mail.services.send_campaign.runner import send_campaign
 from apps.mail.services.send_campaign.transport import SesSendResult
 
 
@@ -425,23 +425,3 @@ class SendCampaignPeriodicSaveTests(TestCase):
         self.assertEqual(campaign.total_recipients, 11)
         self.assertEqual(campaign.sent_count, 11)
         self.assertEqual(campaign.status, "sent")
-
-
-class SendTimingTests(TestCase):
-    def test_no_rate_limit_when_send_rate_zero(self):
-        timing = SendTiming(0)
-        self.assertEqual(timing.min_interval, 0)
-
-    def test_min_interval_calculated_from_rate(self):
-        timing = SendTiming(10)
-        self.assertAlmostEqual(timing.min_interval, 0.1)
-
-    def test_first_send_does_not_block(self):
-        timing = SendTiming(10)
-        timing.wait_if_needed()
-
-    @patch("time.sleep")
-    def test_sleep_when_sends_too_fast(self, mock_sleep):
-        timing = SendTiming(1)
-        timing.mark_sent()
-        timing.wait_if_needed()

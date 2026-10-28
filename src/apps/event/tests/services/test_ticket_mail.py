@@ -5,12 +5,16 @@ from unittest.mock import MagicMock, patch
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
+from apps.core.services.background_jobs import TransientJobError
 from apps.core.services.email import (
     DeliveryResult,
     PermanentEmailDeliveryError,
+    TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
 from apps.event.models import EventRegistration, Ticket
+from apps.event.services.ticket.jobs import send_ticket_email_job
 from apps.event.services.ticket.mail import (
     _build_mime_message,
     _issue_ticket_login_link,
@@ -458,3 +462,58 @@ class TicketLoginLinkIssuanceTest(TestCase):
         registration_id = self.registration.pk
         self.registration.delete()
         self.assertEqual(LoginLinkToken.objects.filter(registration_id=registration_id).count(), 0)
+
+
+class TicketSendRetryAfterTest(TestCase):
+    @patch("apps.event.services.ticket.mail.deliver_email")
+    def test_the_provider_error_keeps_the_retry_after_hint(self, deliver):
+        deliver.side_effect = TransientEmailDeliveryError("throttled", retry_after=45.0)
+
+        with self.assertRaises(ProviderDeliveryError) as caught:
+            _send_via_ses(config=_mock_config(), mime_message=MagicMock(), raise_provider_errors=True)
+
+        self.assertEqual((caught.exception.outcome, caught.exception.retry_after), ("transient", 45.0))
+        self.assertIsInstance(caught.exception.__cause__, TransientEmailDeliveryError)
+
+    @patch("apps.event.services.ticket.mail.deliver_email")
+    def test_errors_without_a_hint_stay_without_one(self, deliver):
+        deliver.side_effect = PermanentEmailDeliveryError("rejected")
+
+        with self.assertRaises(ProviderDeliveryError) as caught:
+            _send_via_ses(config=_mock_config(), mime_message=MagicMock(), raise_provider_errors=True)
+
+        self.assertEqual(caught.exception.outcome, "permanent")
+        self.assertIsNone(caught.exception.retry_after)
+
+
+class TicketJobRetryAfterTest(TestCase):
+    def setUp(self):
+        event = make_event()
+        ticket = Ticket.objects.create(event=event, name="GA")
+        self.registration = EventRegistration.objects.create(member=make_member(), event=event, ticket=ticket)
+
+    @patch("apps.event.services.ticket.jobs.wait_for_email_slot")
+    @patch("apps.event.services.ticket.mail.deliver_email")
+    @patch("apps.event.services.ticket.mail._load_config", return_value=_mock_config())
+    def test_a_throttled_ticket_job_retries_no_sooner_than_the_provider_asked(self, _config, deliver, _slot):
+        deliver.side_effect = TransientEmailDeliveryError("throttled", retry_after=120.0)
+        job = MagicMock(payload={"registration_id": str(self.registration.pk)})
+
+        with patch("apps.core.models.BackgroundJob.objects") as jobs:
+            jobs.select_for_update.return_value.filter.return_value.exists.return_value = True
+            with self.assertRaises(TransientJobError) as caught:
+                send_ticket_email_job(job)
+
+        self.assertEqual(caught.exception.retry_after, 120.0)
+
+    @patch("apps.event.services.ticket.mail.deliver_email")
+    @patch("apps.event.services.ticket.mail._load_config", return_value=_mock_config())
+    def test_a_direct_send_still_reports_a_generic_failure(self, _config, deliver):
+        deliver.side_effect = TransientEmailDeliveryError("throttled", retry_after=30.0)
+
+        with self.assertRaises(RuntimeError) as caught:
+            send_ticket_email(self.registration)
+
+        self.assertNotIsInstance(caught.exception, ProviderDeliveryError)
+        self.registration.refresh_from_db()
+        self.assertNotEqual(self.registration.ticket_email_error, "")

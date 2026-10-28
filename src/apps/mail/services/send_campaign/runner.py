@@ -1,9 +1,9 @@
 import logging
-import time
 
 from django.utils import timezone
 
 from apps.core.models import EmailServiceConfig
+from apps.core.services.background_jobs import configured_ses_rate, wait_for_delivery_slot
 from apps.mail.models import RecipientLog
 from apps.mail.services.tokens.login_links import issue_login_link
 
@@ -40,7 +40,7 @@ def send_campaign(campaign, sent_by):
     if ses_client is None:
         _fail_campaign_for_missing_delivery_config(campaign, recipients)
 
-    send_timing = SendTiming(config.max_send_rate or 0)
+    send_rate = configured_ses_rate(config)
     configuration_set = _get_configuration_set_name(config)
     if ses_client is not None and config.provider == "ses" and not configuration_set:
         logger.warning(
@@ -49,9 +49,9 @@ def send_campaign(campaign, sent_by):
         )
 
     for index, (recipient, log) in enumerate(zip(recipients, logs, strict=True), start=1):
-        send_timing.wait_if_needed()
+        # One provider-wide schedule, shared with other campaign threads and the outbox workers.
+        wait_for_delivery_slot(config.provider, send_rate)
         _send_one_recipient(campaign, config, ses_client, configuration_set, recipient, log=log)
-        send_timing.mark_sent()
         if index % 10 == 0:
             _refresh_campaign_progress(campaign)
 
@@ -76,22 +76,6 @@ def _refresh_campaign_progress(campaign):
     campaign.refresh_from_db(
         fields=["status", "total_recipients", "sent_count", "failed_count", "sent_at", "error_message"]
     )
-
-
-class SendTiming:
-    def __init__(self, send_rate: float):
-        self.min_interval = (1.0 / send_rate) if send_rate > 0 else 0
-        self.last_send_time = 0.0
-
-    def wait_if_needed(self):
-        if self.min_interval <= 0 or self.last_send_time <= 0:
-            return
-        elapsed = time.monotonic() - self.last_send_time
-        if elapsed < self.min_interval:
-            time.sleep(self.min_interval - elapsed)
-
-    def mark_sent(self):
-        self.last_send_time = time.monotonic()
 
 
 def _send_one_recipient(campaign, config, ses_client, configuration_set, recipient, *, log=None):

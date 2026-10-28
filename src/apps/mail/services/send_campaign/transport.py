@@ -28,6 +28,8 @@ class SesSendResult:
     error: str = ""
     provider: str = "ses"
     outcome: str = ""
+    # Seconds the provider asked us to wait before retrying (a transient outcome only).
+    retry_after: float | None = None
 
     def __post_init__(self):
         if not self.outcome:
@@ -99,7 +101,12 @@ def _send_via_ses(
         )
         return SesSendResult(message_id=result.message_id, provider=result.provider, outcome=result.outcome)
     except EmailDeliveryError as exc:
-        return SesSendResult(error=str(exc), provider=getattr(ses_client, "provider", ""), outcome=exc.outcome)
+        return SesSendResult(
+            error=str(exc),
+            provider=getattr(ses_client, "provider", ""),
+            outcome=exc.outcome,
+            retry_after=getattr(exc, "retry_after", None),
+        )
 
 
 def _classify_ses_failure(exc: Exception) -> tuple[str, str]:

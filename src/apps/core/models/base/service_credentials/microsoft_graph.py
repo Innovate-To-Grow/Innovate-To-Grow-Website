@@ -9,6 +9,9 @@ from ..control import ProjectControlModel
 # Exchange Online limits for one sender mailbox (Microsoft Learn: "Exchange Online limits").
 GRAPH_MAX_MESSAGES_PER_MINUTE = 30
 GRAPH_DEFAULT_MESSAGES_PER_MINUTE = 24
+GRAPH_DAILY_RECIPIENT_LIMIT = 10_000
+# Emails one admin request may send inline (outside the paced queue) while Graph is the provider.
+GRAPH_INLINE_BATCH_LIMIT = 20
 
 
 class MicrosoftGraphProviderConfig(ProjectControlModel):
