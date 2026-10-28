@@ -21,6 +21,7 @@ DENIED_MODEL_LABELS = {
     "core.emailserviceconfig",
     "core.gmailaccessaccount",
     "core.googlecredentialconfig",
+    "core.microsoftgraphproviderconfig",
     "system_intelligence.chatconversation",
     "system_intelligence.chatmessage",
     "system_intelligence.systemintelligenceactionrequest",

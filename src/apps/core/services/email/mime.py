@@ -15,7 +15,8 @@ def _set_headers(mime: MimeMessage, message: EmailMessage, *, from_email: str, f
     for header, addresses in (("To", message.to), ("Cc", message.cc), ("Reply-To", message.reply_to)):
         if addresses:
             mime[header] = ", ".join(addresses)
-    mime["Message-ID"] = make_msgid()
+    # Without a domain make_msgid() uses this host's FQDN, which would publish the server's internal name.
+    mime["Message-ID"] = make_msgid(domain=from_email.rpartition("@")[2] or None)
     for name, value in message.headers.items():
         if name.lower() in _PROTECTED_HEADERS:
             raise PermanentEmailDeliveryError(f"Email header {name!r} is managed by the delivery service.")

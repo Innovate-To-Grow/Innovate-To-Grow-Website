@@ -3,6 +3,7 @@ from django.core.validators import validate_email
 from django.db import models, transaction
 
 from ..control import ProjectControlModel
+from .microsoft_graph import MicrosoftGraphProviderConfig
 
 
 class EmailServiceConfig(models.Model):
@@ -18,6 +19,7 @@ class EmailServiceConfig(models.Model):
     class Provider(models.TextChoices):
         SES = "ses", "AWS SES"
         SMTP = "smtp", "SMTP"
+        GRAPH = "graph", "Microsoft Graph"
 
     name = models.CharField(
         max_length=128,
@@ -54,7 +56,10 @@ class EmailServiceConfig(models.Model):
     max_send_rate = models.PositiveIntegerField(
         default=10,
         verbose_name="Campaign Send Rate (emails/sec)",
-        help_text="Max emails per second for bulk campaigns. Keep below SES account limit to leave room for transactional mail.",
+        help_text=(
+            "Max emails per second for bulk campaigns. Keep below your provider's sending limit to leave room for "
+            "transactional mail."
+        ),
     )
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -92,6 +97,10 @@ class EmailServiceConfig(models.Model):
                 raise ValidationError({"provider": "Active AWS SES credentials are required before activation."})
         elif self.provider == self.Provider.SMTP and not SMTPProviderConfig.load().is_configured:
             raise ValidationError({"provider": "An active SMTP configuration is required before activation."})
+        elif self.provider == self.Provider.GRAPH and not MicrosoftGraphProviderConfig.load().is_configured:
+            raise ValidationError(
+                {"provider": "An active Microsoft Graph configuration is required before activation."}
+            )
 
     def save(self, *args, **kwargs):
         if self.is_active:
@@ -137,6 +146,21 @@ class EmailServiceConfig(models.Model):
         )
 
     @property
+    def delivery_summary(self):
+        """Where mail goes right now, for admin panels: ``AWS SES (us-west-2)``, ``SMTP (host:587)``, ..."""
+        if not self.delivery_configured:
+            return "Not configured"
+        if self.provider == self.Provider.SMTP:
+            smtp = SMTPProviderConfig.load()
+            return f"SMTP ({smtp.host}:{smtp.port})"
+        if self.provider == self.Provider.GRAPH:
+            graph = MicrosoftGraphProviderConfig.load()
+            return f"Microsoft Graph ({graph.mailbox or self.from_email})"
+        from apps.core.models import AWSCredentialConfig
+
+        return f"AWS SES ({AWSCredentialConfig.load().region or 'us-west-2'})"
+
+    @property
     def delivery_configured(self):
         """Return whether the selected provider is structurally ready."""
         if not (self.pk and self.is_active and self.from_email):
@@ -149,6 +173,8 @@ class EmailServiceConfig(models.Model):
             return self.ses_configured
         if self.provider == self.Provider.SMTP:
             return SMTPProviderConfig.load().is_configured
+        if self.provider == self.Provider.GRAPH:
+            return MicrosoftGraphProviderConfig.load().is_configured
         return False
 
 

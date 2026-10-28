@@ -35,9 +35,11 @@ _TRANSIENT_ERROR_CODES = {
 class ProviderDeliveryError(RuntimeError):
     """Sanitized provider failure with a retry-safety classification."""
 
-    def __init__(self, message: str, *, outcome: str):
+    def __init__(self, message: str, *, outcome: str, retry_after: float | None = None):
         super().__init__(message)
         self.outcome = outcome
+        # Seconds the provider asked callers to wait before retrying (for example an HTTP Retry-After header).
+        self.retry_after = retry_after
 
 
 def classify_aws_send_failure(exc: Exception, *, provider: str) -> tuple[str, str]:

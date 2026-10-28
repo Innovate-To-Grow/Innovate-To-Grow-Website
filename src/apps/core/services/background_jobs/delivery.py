@@ -8,7 +8,7 @@ from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_PERMANENT,
 
 from .worker import JobClaimLost, PermanentJobError, TransientJobError, UncertainJobError
 
-PROVIDER_CLAIM_LOST_MESSAGE = "Background job claim was lost before SES invocation."
+PROVIDER_CLAIM_LOST_MESSAGE = "Background job claim was lost before the email provider call."
 
 
 def wait_for_email_slot() -> None:

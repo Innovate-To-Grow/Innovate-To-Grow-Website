@@ -16,6 +16,7 @@ from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
     GoogleCredentialConfig,
+    MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
 
@@ -61,7 +62,8 @@ class Command(BaseCommand):
             aws_ok = self._check_aws(aws, options["require_aws"] or email.provider == "ses", failures, warnings)
             smtp = SMTPProviderConfig.load()
             smtp_ok = bool(smtp.pk) and smtp.is_configured
-            self._check_email(email, aws_ok=aws_ok, smtp_ok=smtp_ok, failures=failures)
+            graph_ok = self._check_graph(email)
+            self._check_email(email, aws_ok=aws_ok, smtp_ok=smtp_ok, graph_ok=graph_ok, failures=failures)
             smtp_required = email.provider == "smtp"
             self._report("SMTPProviderConfig", smtp, smtp_ok, required=smtp_required)
             if not smtp_ok:
@@ -81,9 +83,18 @@ class Command(BaseCommand):
             )
         return aws_ok
 
-    def _check_email(self, email, *, aws_ok: bool, smtp_ok: bool, failures: list[str]) -> None:
+    def _check_graph(self, email) -> bool:
+        """Report Microsoft Graph only when it is selected or configured, so other setups stay quiet."""
+        graph = MicrosoftGraphProviderConfig.load()
+        graph_ok = bool(graph.pk) and graph.is_configured
+        required = email.provider == "graph"
+        if required or graph_ok:
+            self._report("MicrosoftGraphProviderConfig", graph, graph_ok, required=required)
+        return graph_ok
+
+    def _check_email(self, email, *, aws_ok: bool, smtp_ok: bool, graph_ok: bool, failures: list[str]) -> None:
         sender_ok = self._valid_email(email.from_email)
-        provider_ok = {"ses": aws_ok, "smtp": smtp_ok}.get(email.provider, False)
+        provider_ok = {"ses": aws_ok, "smtp": smtp_ok, "graph": graph_ok}.get(email.provider, False)
         email_ok = bool(email.pk) and email.is_active and sender_ok and provider_ok
         self._report("EmailServiceConfig", email, email_ok, required=True)
         if email_ok:
@@ -92,6 +103,10 @@ class Command(BaseCommand):
             failures.append("EmailServiceConfig From address is empty or invalid.")
         elif email.provider == "smtp":
             failures.append("EmailServiceConfig selects SMTP, but SMTPProviderConfig is not configured.")
+        elif email.provider == "graph":
+            failures.append(
+                "EmailServiceConfig selects Microsoft Graph, but MicrosoftGraphProviderConfig is not configured."
+            )
         elif email.provider == "ses":
             failures.append(
                 "EmailServiceConfig selects SES, but its active sender or AWS Credentials are not configured."

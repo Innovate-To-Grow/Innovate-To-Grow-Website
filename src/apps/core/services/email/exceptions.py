@@ -15,8 +15,8 @@ class EmailDeliveryError(ProviderDeliveryError):
 class TransientEmailDeliveryError(EmailDeliveryError):
     """A confirmed pre-acceptance failure that is safe to retry."""
 
-    def __init__(self, message: str):
-        super().__init__(message, outcome=PROVIDER_OUTCOME_TRANSIENT)
+    def __init__(self, message: str, *, retry_after: float | None = None):
+        super().__init__(message, outcome=PROVIDER_OUTCOME_TRANSIENT, retry_after=retry_after)
 
 
 class PermanentEmailDeliveryError(EmailDeliveryError):

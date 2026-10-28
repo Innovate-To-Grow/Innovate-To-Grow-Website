@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from urllib.parse import urlparse, urlunparse
+
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 
 
 class SecurityValidationError(ValueError):
@@ -39,3 +43,35 @@ def validate_aws_sns_https_url(url: str) -> str:
     if not _is_allowed_sns_host(host):
         raise SecurityValidationError("SNS URL host is not allowed")
     return urlunparse(("https", parsed.netloc, parsed.path, parsed.params, parsed.query, ""))
+
+
+_GUID_RE = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
+_DNS_LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+_DNS_NAME_RE = re.compile(r"(?=.{3,253}$)" + _DNS_LABEL + r"(?:\." + _DNS_LABEL + r")+")
+
+
+def is_guid(value: str) -> bool:
+    """Whether *value* is a canonical GUID (Entra application, tenant and object IDs)."""
+    return bool(_GUID_RE.fullmatch(str(value or "")))
+
+
+def is_entra_tenant(value: str) -> bool:
+    """Whether *value* is a tenant GUID or a verified domain such as ``contoso.onmicrosoft.com``.
+
+    ``common``, ``organizations`` and ``consumers`` have no dot and are not valid for app-only tokens.
+    The value becomes a URL path segment, so anything beyond a GUID or a DNS name is rejected.
+    """
+    text = str(value or "")
+    return is_guid(text) or bool(_DNS_NAME_RE.fullmatch(text))
+
+
+def is_exchange_mailbox(value: str) -> bool:
+    """Whether *value* is a mailbox address / user principal name, or a user object-id GUID."""
+    text = str(value or "")
+    if is_guid(text):
+        return True
+    try:
+        validate_email(text)
+    except ValidationError:
+        return False
+    return True

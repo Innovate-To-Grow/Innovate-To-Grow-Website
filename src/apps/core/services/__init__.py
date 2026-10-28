@@ -20,7 +20,7 @@ Subsystem               What it is                                            Im
                         with ``register_job_kind`` (dotted handler paths).
 ``db_tools/``           ``safe_orm``: the read-only ORM sandbox (field /       ``cli_admin``, ``system_intelligence``
                         filter allowlists, ``MAX_ROWS``)
-``email/``              Provider-neutral MIME + SES/SMTP email delivery        ``authn``, ``event``, ``mail``
+``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery        ``authn``, ``event``, ``mail``
 ``helpers/``            In-process task runner + sheet formula safety         ``authn``, ``event``, ``mail``, ``system_intelligence``
 ``legacy_access/``      Signed access to the read-only legacy site viewer      ``core`` only (legacy_view, admin, views)
 ``status/``             Infrastructure status dashboard client                 ``core`` only (admin infrastructure status)

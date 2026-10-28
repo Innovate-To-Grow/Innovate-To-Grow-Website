@@ -42,7 +42,7 @@ def send_campaign(campaign, sent_by):
 
     send_timing = SendTiming(config.max_send_rate or 0)
     configuration_set = _get_configuration_set_name(config)
-    if ses_client is not None and not configuration_set:
+    if ses_client is not None and config.provider == "ses" and not configuration_set:
         logger.warning(
             "No SES configuration set configured; bounce/complaint tracking disabled for campaign %s",
             campaign.pk,

@@ -55,6 +55,10 @@ class EmailProvider(Protocol):
 
     name: str
 
-    def send(self, message: EmailMessage) -> DeliveryResult:
-        """Submit a message or raise a classified delivery exception."""
+    def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
+        """Submit a message or raise a classified delivery exception.
+
+        ``before_provider_call`` runs once every pre-submission step has succeeded and immediately before the
+        message is handed to the provider; an exception it raises must propagate unclassified.
+        """
         ...

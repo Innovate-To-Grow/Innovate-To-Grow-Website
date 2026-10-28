@@ -36,7 +36,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 "Created skeleton active EmailServiceConfig 'Production'. "
-                "Fill in SES or SMTP credentials in Django admin."
+                "Fill in SES, SMTP, or Microsoft Graph credentials in Django admin."
             )
         )
 

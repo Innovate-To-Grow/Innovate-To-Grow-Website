@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from .contracts import EmailProvider
 from .exceptions import PermanentEmailDeliveryError
+from .graph import GraphProvider
 from .ses import SESProvider
 from .smtp import SMTPProvider
 
@@ -62,5 +63,23 @@ def _smtp_factory(config: object, **provider_options) -> SMTPProvider:
     )
 
 
+def _graph_factory(config: object, **provider_options) -> GraphProvider:
+    del provider_options
+    from apps.core.models import MicrosoftGraphProviderConfig
+
+    graph = MicrosoftGraphProviderConfig.load()
+    if not graph.is_configured:
+        raise PermanentEmailDeliveryError("Active Microsoft Graph provider configuration is missing or invalid.")
+    return GraphProvider(
+        tenant_id=graph.tenant_id,
+        client_id=graph.client_id,
+        client_secret=graph.client_secret,
+        mailbox=graph.mailbox or config.from_email,
+        from_email=config.from_email,
+        from_name=config.from_name,
+    )
+
+
 register_provider("ses", _ses_factory)
 register_provider("smtp", _smtp_factory)
+register_provider("graph", _graph_factory)

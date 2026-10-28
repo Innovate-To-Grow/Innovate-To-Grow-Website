@@ -4,6 +4,7 @@ from .service_credentials import (
     EmailServiceConfig,
     GmailAccessAccount,
     GoogleCredentialConfig,
+    MicrosoftGraphProviderConfig,
     SendVerificationConfig,
     SMTPProviderConfig,
 )
@@ -15,6 +16,7 @@ __all__ = [
     "EmailServiceConfig",
     "GmailAccessAccount",
     "GoogleCredentialConfig",
+    "MicrosoftGraphProviderConfig",
     "SendVerificationConfig",
     "SMTPProviderConfig",
     "ProjectControlModel",
