@@ -60,12 +60,18 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 
 ### AWS services (SES, SNS, Bedrock)
 
-A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/service_credentials/aws.py) drives SES, SNS, and Bedrock. It also stores the shared AWS region, SNS origination number, and SMS OTP template. SES sender identity lives in [`EmailServiceConfig`](../../src/apps/core/models/base/service_credentials/email.py).
+A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/service_credentials/aws.py) drives SES, SNS, and Bedrock. It also stores the shared AWS region, SNS origination number, and SMS OTP template. The email sender identity and the selected email provider (AWS SES, SMTP, or Microsoft Graph) live in [`EmailServiceConfig`](../../src/apps/core/models/base/service_credentials/email.py).
+
+The SES variables below matter only while AWS SES is the selected email provider.
 
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
 | `SES_CONFIGURATION_SET_NAME` | Optional SES configuration set name for campaign tagging | No |
 | `SES_SNS_TOPIC_ARN` | SNS topic ARN used to validate SES bounce/complaint webhook | If using bounce webhook |
+
+### Microsoft Graph (email)
+
+The Microsoft Graph email provider has no environment variables. Its Entra tenant ID, client ID, client secret, and sender mailbox live in [`MicrosoftGraphProviderConfig`](../../src/apps/core/models/base/service_credentials/microsoft_graph.py) and are entered under Mail → Notification Delivery, like the SMTP settings. The only deployment requirement is outbound HTTPS (port 443) from the backend and background-worker containers to `login.microsoftonline.com` and `graph.microsoft.com`; the provider connects to them directly and ignores proxy environment variables. Setup and limits: [Microsoft Graph email](../integrations/microsoft-graph-email.md).
 
 ### Cache
 
@@ -281,12 +287,14 @@ Google service-account credentials live in [`GoogleCredentialConfig`](../../src/
 
 ### Database-managed credentials
 
-These integrations read credentials from Django admin → Site Settings at runtime, **not** from process env:
+These integrations read credentials from Django admin at runtime (Site Settings, or Mail → Notification Delivery for the email sender and its provider), **not** from process env:
 
 | Model | Purpose |
 |-------|---------|
 | `AWSCredentialConfig` | Shared AWS IAM key + region + SMS origination number + OTP template |
-| `EmailServiceConfig` | Sender identity, campaign rate, SMTP fallback |
+| `EmailServiceConfig` | Sender identity, campaign rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph); there is no fallback between providers |
+| `SMTPProviderConfig` | SMTP host, port, TLS/SSL, optional username and password |
+| `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, client secret, optional sender mailbox, messages per minute |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
 
 Before removing legacy env vars from a deployed environment, run `python manage.py verify_service_configs --strict` against the prod DB to confirm active rows exist. See [CMS & Admin → Operations](../cms-admin/operations.md#service-configuration).
@@ -305,7 +313,7 @@ Before removing legacy env vars from a deployed environment, run `python manage.
 |---------|-----|-----|------|
 | Database | SQLite | PostgreSQL 16 | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis if `REDIS_URL` is set, else per-container file cache (production today); plus the in-process `throttle` alias in every environment |
-| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP |
+| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP / Microsoft Graph |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Password hashers | Plain text OK | Plain text OK | Argon2/bcrypt required |
 | Debug mode | True | False | False |

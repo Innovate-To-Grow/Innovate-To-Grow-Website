@@ -56,7 +56,7 @@ After the new revision is fully deployed and every old task has drained, add a f
 cd src && python manage.py seed_service_configs
 ```
 
-Creates an empty active `EmailServiceConfig` row for backend defaults. AWS credentials, region, End User Messaging origination number, and SMS OTP template are entered through the AWS Credentials admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
+Creates an empty active `EmailServiceConfig` row for backend defaults; it selects AWS SES until you choose SMTP or Microsoft Graph under Mail → Notification Delivery. SMTP and Microsoft Graph credentials are entered there and are never seeded from the environment. AWS credentials, region, End User Messaging origination number, and SMS OTP template are entered through the AWS Credentials admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
 
 ### Verifying configs before deploy
 
@@ -64,7 +64,7 @@ Creates an empty active `EmailServiceConfig` row for backend defaults. AWS crede
 cd src && python manage.py verify_service_configs --strict
 ```
 
-Confirms an active `EmailServiceConfig` and AWS credentials are configured for SES. Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
+Confirms the active `EmailServiceConfig` has a valid From address and that the provider it selects is configured: AWS credentials for SES, an active `SMTPProviderConfig` for SMTP, or an active `MicrosoftGraphProviderConfig` (tenant ID, client ID, and client secret) for Microsoft Graph. Providers that are not selected only produce warnings, and `MicrosoftGraphProviderConfig` is reported only when Graph is selected or configured. The Graph check reads the stored settings and does not contact Microsoft; use **Send Test Email** under Mail → Notification Delivery to prove the credentials ([Microsoft Graph email](../integrations/microsoft-graph-email.md)). Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
 
 ### Managing via admin
 
@@ -73,7 +73,9 @@ Configuration models are available in Django admin:
 | Model | Admin area | Purpose |
 |-------|------------|---------|
 | `AWSCredentialConfig` | Site Settings | Shared AWS IAM key, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
-| `EmailServiceConfig` | Site Settings | Sender identity and campaign send rate |
+| `EmailServiceConfig` | Mail → Notification Delivery | Sender identity, campaign send rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph) |
+| `SMTPProviderConfig` | Mail → Notification Delivery | SMTP host, port, TLS/SSL, optional authentication, and timeout |
+| `MicrosoftGraphProviderConfig` | Mail → Notification Delivery | Entra tenant ID, client ID, client secret, optional sender mailbox, and messages per minute for Microsoft Graph; also at `/admin/core/microsoftgraphproviderconfig/` (not in the sidebar) |
 | `GoogleCredentialConfig` | Site Settings | Google service-account JSON |
 | `GmailAccessAccount` | Site Settings | Gmail IMAP import account |
 | `MemberSheetSyncConfig` | Members & Auth | Member-to-Sheets selection |
@@ -88,17 +90,17 @@ The selector models permit only one active/enabled row in their scope; saving a 
 
 Active selection is fail-closed. Runtime `load()` methods never fall back to an inactive row:
 
-- AWS, email, Google, Gmail, system-intelligence, current-schedule, and past-project selectors permit at most one active row.
+- AWS, email, SMTP, Microsoft Graph, Google, Gmail, system-intelligence, current-schedule, and past-project selectors permit at most one active row.
 - Member Sheet Sync permits at most one enabled row.
 - RSA permits at most one active row per key name.
-- AWS, Google, and Gmail loaders return an unsaved, unconfigured default; Email returns unsaved sender defaults; Member Sheet Sync returns an unsaved disabled default; System Intelligence returns unsaved defaults; schedule/project loaders return `None`.
+- AWS, SMTP, Microsoft Graph, Google, and Gmail loaders return an unsaved, unconfigured default; Email returns unsaved sender defaults; Member Sheet Sync returns an unsaved disabled default; System Intelligence returns unsaved defaults; schedule/project loaders return `None`.
 - An unexpected duplicate raises instead of letting `.load()` choose a row. The database constraints should make that state impossible after the invariant migrations.
 
 Check active-row counts without printing credentials:
 
 ```bash
 cd src
-python manage.py shell -c "from apps.core.models import AWSCredentialConfig as A, EmailServiceConfig as E, GoogleCredentialConfig as G, GmailAccessAccount as M; print({'aws': A.objects.filter(is_active=True).count(), 'email': E.objects.filter(is_active=True).count(), 'google': G.objects.filter(is_active=True).count(), 'gmail': M.objects.filter(is_active=True).count()})"
+python manage.py shell -c "from apps.core.models import AWSCredentialConfig as A, EmailServiceConfig as E, GoogleCredentialConfig as G, GmailAccessAccount as M, SMTPProviderConfig as S, MicrosoftGraphProviderConfig as H; print({'aws': A.objects.filter(is_active=True).count(), 'email': E.objects.filter(is_active=True).count(), 'smtp': S.objects.filter(is_active=True).count(), 'graph': H.objects.filter(is_active=True).count(), 'google': G.objects.filter(is_active=True).count(), 'gmail': M.objects.filter(is_active=True).count()})"
 python manage.py shell -c "from apps.authn.models import MemberSheetSyncConfig as M, RSAKeypair as R; print({'member_sync': M.objects.filter(is_enabled=True).count(), 'auth_rsa': R.objects.filter(name='auth-encryption', is_active=True).count()})"
 python manage.py shell -c "from apps.event.models import CurrentProjectSchedule as E; from apps.projects.models import PastProjectsSheetConfig as P; from apps.system_intelligence.models import SystemIntelligenceConfig as S; print({'schedule': E.objects.filter(is_active=True).count(), 'past_projects': P.objects.filter(is_active=True).count(), 'system_intelligence': S.objects.filter(is_active=True).count()})"
 ```

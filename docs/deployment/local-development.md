@@ -33,7 +33,8 @@ python manage.py createsuperuser
 # Seed skeleton service configs (optional)
 python manage.py seed_service_configs
 
-# Enter SES, SMTP, SNS, or Google credentials via Django admin → Site Settings.
+# Enter SES, SMTP, Microsoft Graph, SNS, or Google credentials via Django admin
+# (Site Settings; the email provider and its credentials are under Mail → Notification Delivery).
 # Verify configs before deploying to prod:
 # python manage.py verify_service_configs --strict
 

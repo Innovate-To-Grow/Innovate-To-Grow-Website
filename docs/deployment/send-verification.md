@@ -273,7 +273,8 @@ per-IP limit (the campus network is one IP). Also intentional:
   `send_verification.quota_sms_daily` (see [Monitoring](#monitoring)).
 - **There is no global email or SMS hourly budget yet.** Email sends are capped
   per destination (60 s cooldown, 10/hour) but not in total, so rotating
-  destinations can still spend SES budget; SMS has only the daily reservation. A
+  destinations can still spend the provider's allowance (SES budget, or the Graph
+  mailbox's per-minute and daily limits); SMS has only the daily reservation. A
   global cap needs production volume numbers to size, and a constant-key cap is a
   lever for one attacker to lock everyone out, so none was added.
 - Challenge issuance is unthrottled and writes one `SendVerificationChallenge`

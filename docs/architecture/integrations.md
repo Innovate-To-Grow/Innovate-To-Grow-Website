@@ -32,22 +32,30 @@ A single IAM access key and AWS region power SES, SMS (End User Messaging), and 
 | `default_region` | Shared AWS region for SES, SMS, and Bedrock |
 | `sms_from_number` | SMS origination number for OTP SMS (optional override; auto-detected from End User Messaging when blank) |
 
-## Email delivery (AWS SES or SMTP)
+## Email delivery (AWS SES, SMTP, or Microsoft Graph)
 
 The application has one globally active email provider at a time. Administrators
-select AWS SES or SMTP under **Mail → Notification Delivery**; authentication,
-tickets, campaigns, inbox replies, and test messages all use that selection.
-There is no per-message routing or automatic failover.
+select AWS SES, SMTP, or Microsoft Graph under **Mail → Notification Delivery**;
+authentication, tickets, campaigns, inbox replies, and test messages all use that
+selection. There is no per-message routing or automatic failover.
 
 | Concern | Implementation |
 |---------|---------------|
-| Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — active sender identity and campaign send rate |
+| Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — active sender identity, selected provider, and campaign send rate |
 | AWS credentials | Shared `AWSCredentialConfig` IAM key + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
-| Provider layer | `src/apps/core/services/email/` |
+| Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph.py`) — Entra tenant ID, client ID, client secret, optional sender mailbox, and messages per minute |
+| Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`) |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
 | Ticket confirmation | `src/apps/event/services/ticket/mail.py` |
+
+Microsoft Graph sends each message as base64 MIME with `POST /users/{mailbox}/sendMail`,
+authenticated by an app-only access token (OAuth 2.0 client-credentials flow).
+Tokens are cached in process memory only, never in the database or the shared cache.
+Graph answers `202 Accepted` with no message ID, so the MIME `Message-ID` is recorded
+instead. See [Microsoft Graph email](../integrations/microsoft-graph-email.md) for the
+Entra setup, mailbox scoping, limits, and error reference.
 
 Delivery fails closed unless the selected provider and sender are structurally
 configured. A failed or uncertain request is never retried through the other
@@ -63,8 +71,10 @@ SES Configuration Set and SNS delivery-event tracking remain SES-specific.
 Campaigns include recipient and attempt tags so configuration-set events can
 be recorded even before the send response returns. Older untagged messages
 continue to match by their saved provider message ID.
-SMTP records successful submission acceptance only; it does not claim delivered,
-bounced, or complained status without a future SMTP feedback integration.
+SMTP and Microsoft Graph record successful submission acceptance only (for Graph,
+an HTTP 202); they do not claim delivered, bounced, or complained status without a
+future feedback integration. Graph's later non-delivery reports arrive in the
+sender mailbox, which the application does not read.
 
 ## AWS End User Messaging (SMS)
 
@@ -142,5 +152,6 @@ Loaded via `<script>` tags in `pages/index.html`:
 ## Related pages
 
 - [Google Sheets Integration](../integrations/google-sheets/index.md) — Detailed sync documentation
+- [Microsoft Graph email](../integrations/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
 - [Deployment: Environments](../deployment/environments.md) — Environment variable reference
 - [CMS & Admin: Member & Mail Tools](../cms-admin/member-and-mail-tools.md) — Email campaign operations
