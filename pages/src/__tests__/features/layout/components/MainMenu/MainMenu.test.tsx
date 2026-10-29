@@ -96,7 +96,7 @@ describe('MainMenu', () => {
     vi.useRealTimers();
   });
 
-  it('renders the blue bar, the site-name band and the menu row with the date, without a badge', () => {
+  it('renders the blue bar and then the menu row with the date, without a site-name band or a badge', () => {
     vi.useFakeTimers({toFake: ['Date']});
     vi.setSystemTime(new Date(2026, 8, 20, 10, 30));
     useMainMenuState.mockReturnValue(makeState());
@@ -115,10 +115,9 @@ describe('MainMenu', () => {
       'Give',
     ]);
 
-    const siteName = screen.getByRole('link', {name: 'Innovate To Grow School of Engineering'});
-    expect(siteName).toHaveAttribute('href', '/');
-    expect(siteName.querySelector('.site-header-sitename-title')).toHaveTextContent(/^Innovate To Grow$/);
-    expect(siteName.querySelector('.site-header-sitename-subtitle')).toHaveTextContent(/^School of Engineering$/);
+    // No site-name band: the menu row follows the blue bar directly.
+    expect(bar.nextElementSibling).toBe(container.querySelector('.site-header-menu'));
+    expect(screen.queryByText('School of Engineering')).toBeNull();
 
     expect(container.querySelector('.site-header-menu')).toContainElement(
       screen.getByRole('navigation', {name: 'Main menu'}),

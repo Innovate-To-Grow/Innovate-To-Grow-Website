@@ -14,24 +14,22 @@ const isPhoneLayout = () =>
 /**
  * Next condensed state of the desktop header.
  *
- * The blue bar and the site-name band scroll away with the page; once both
- * have gone (`pinAtPx`, their combined height) only the white menu row is
- * left, pinned at the top, and the header turns condensed: the round i2G logo
- * joins the front of the row. It leaves that state CONDENSE_HYSTERESIS_PX
- * before the row unpins. Without a measured height (phones, jsdom) it never
- * condenses.
+ * The blue bar scrolls away with the page; once it has gone (`pinAtPx`, its
+ * height) only the white menu row is left, pinned at the top, and the header
+ * turns condensed: the round i2G logo joins the front of the row. It leaves
+ * that state CONDENSE_HYSTERESIS_PX before the row unpins. Without a measured
+ * height (phones, jsdom) it never condenses.
  */
 export const nextCondensed = (wasCondensed: boolean, scrollY: number, pinAtPx: number): boolean => {
   if (!Number.isFinite(pinAtPx) || pinAtPx <= 0) return false;
   return wasCondensed ? scrollY >= pinAtPx - CONDENSE_HYSTERESIS_PX : scrollY >= pinAtPx;
 };
 
-/** Combined height of the parts above the menu row; 0 on phones, whose one bar never changes. */
+/** Height of the blue bar above the menu row; 0 on phones, whose one bar never changes. */
 const readPinAtPx = (headerRef: RefObject<HTMLElement | null>): number => {
   const header = headerRef.current;
   if (!header || isPhoneLayout()) return 0;
-  const height = (selector: string) => header.querySelector<HTMLElement>(selector)?.getBoundingClientRect().height ?? 0;
-  return height('.site-header-bar') + height('.site-header-band');
+  return header.querySelector<HTMLElement>('.site-header-bar')?.getBoundingClientRect().height ?? 0;
 };
 
 /**
@@ -66,7 +64,7 @@ export const useHeaderCondensed = (headerRef: RefObject<HTMLElement | null>) => 
       motionFrame = window.requestAnimationFrame(() => setHasMotion(true));
     });
     window.addEventListener('scroll', schedule, {passive: true});
-    // The bar and band heights change with the breakpoint and when the web fonts load.
+    // The bar's height changes with the breakpoint.
     window.addEventListener('resize', schedule);
     return () => {
       window.removeEventListener('scroll', schedule);
@@ -81,7 +79,6 @@ export const useHeaderCondensed = (headerRef: RefObject<HTMLElement | null>) => 
 
 const HEADER_PARTS = [
   ['.site-header-bar', '--itg-header-bar-height'],
-  ['.site-header-band', '--itg-header-band-height'],
   ['.site-header-menu', '--itg-header-menu-height'],
 ] as const;
 

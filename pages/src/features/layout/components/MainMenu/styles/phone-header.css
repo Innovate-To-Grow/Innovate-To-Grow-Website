@@ -2,7 +2,7 @@
 /* ---------- Phone header (<= 992px) ----------
    One fixed blue bar, the same at every scroll position: 56px + the 5px gold
    rule, the round i2G logo at the front and the menu button at the end. The
-   UC Merced wordmark, the site-name band and the menu row are not shown. */
+   UC Merced wordmark and the menu row are not shown. */
 @media (max-width: 992px) {
   /* The bar is fixed; #menu-root keeps its room in the flow, but only where
      the header is actually mounted. */
@@ -44,7 +44,6 @@
 
   .ucm-wordmark,
   .site-header-links,
-  .site-header-band,
   .site-header-menu {
     display: none;
   }

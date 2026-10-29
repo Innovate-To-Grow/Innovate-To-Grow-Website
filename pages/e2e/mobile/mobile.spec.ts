@@ -40,7 +40,7 @@ test('phone and tablet header: one blue bar, a cross while open, a one-size-smal
   const viewport = page.viewportSize()!;
   const bar = await page.locator('.site-header-bar').boundingBox();
   expect(bar).toEqual({x: 0, y: 0, width: viewport.width, height: 61});
-  await expect(page.locator('.site-header-band')).toBeHidden();
+  await expect(page.locator('.site-header-band')).toHaveCount(0);
   await expect(page.locator('.site-header-bar').getByRole('link', {name: 'UC Merced'})).toBeHidden();
 
   const toggle = page.locator('#menu-root').getByRole('button', {name: 'Toggle menu'});

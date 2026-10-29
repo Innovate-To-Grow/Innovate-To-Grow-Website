@@ -25,17 +25,6 @@ const skipToMain = (event: MouseEvent<HTMLAnchorElement>) => {
   main.focus();
 };
 
-const SiteNameBand = () => (
-  <div className="site-header-band">
-    <div className="site-header-container site-header-band-inner">
-      <a className="site-header-sitename" href="/">
-        <span className="site-header-sitename-title">Innovate To Grow</span>{' '}
-        <span className="site-header-sitename-subtitle">School of Engineering</span>
-      </a>
-    </div>
-  </div>
-);
-
 /** The round i2G logo at the front of the menu row: shown only while the condensed row is pinned (menu-row.css). */
 const MenuRowLogo = () => (
   <a className="site-header-menu-logo" href="/" aria-label="Innovate To Grow home">
@@ -153,8 +142,6 @@ export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMe
         mobileMenuTriggerRef={mobileMenuTriggerRef}
         onToggleMobileMenu={toggleMobileMenu}
       />
-
-      <SiteNameBand />
 
       <div className="site-header-menu">
         <div className="site-header-container site-header-menu-inner">

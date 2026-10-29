@@ -1,5 +1,5 @@
-// Desktop header on scroll: the blue bar and the site-name band scroll away,
-// only the white menu row stays pinned, and the round i2G logo joins its front.
+// Desktop header on scroll: the blue bar scrolls away, only the white menu
+// row stays pinned, and the round i2G logo joins its front.
 // The menu row's date shows whenever it fits, the same at the top and pinned.
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
@@ -108,7 +108,8 @@ test('scrolling pins only the white menu row, with the round i2G logo at its fro
   const top = await rowState(page);
   expect(top.condensed).toBe(false);
   expect(top.logoShown).toBe(false);
-  expect(top.rowTop).toBeGreaterThan(200);
+  // The menu row follows the blue bar directly (no site-name band).
+  expect(top.rowTop).toBe(top.barBottom);
 
   await scrollTo(page, SCROLLED_Y);
   await expect.poll(async () => (await rowState(page)).logoShown).toBe(true);
@@ -134,9 +135,7 @@ test('scrolling pins only the white menu row, with the round i2G logo at its fro
 
 test('the row condenses exactly when it pins, and lets go 8px before it unpins', async ({page}) => {
   await openPage(page, 1280);
-  const pinAt = await page.evaluate(() =>
-    ['.site-header-bar', '.site-header-band'].reduce((sum, selector) => sum + document.querySelector(selector)!.getBoundingClientRect().height, 0),
-  );
+  const pinAt = await page.evaluate(() => document.querySelector('.site-header-bar')!.getBoundingClientRect().height);
   const condensedAt = async (y: number) => {
     await scrollTo(page, y);
     await page.waitForTimeout(150);
@@ -243,10 +242,10 @@ test('focusing the pinned row does not scroll the page, and Shift+Tab out of it 
   await expect(page.locator('.site-header-nav .menu-bar-link').first()).toBeFocused();
   expect(await page.evaluate(() => window.scrollY)).toBe(SCROLLED_Y);
 
-  // Back past the logo: the site name has scrolled away, so focusing it brings it back on screen.
+  // Back past the logo: the blue bar's last link has scrolled away, so focusing it brings it back on screen.
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Shift+Tab');
-  await expect(page.locator('.site-header-sitename')).toBeFocused();
+  await expect(page.locator('.site-header-bar').getByRole('link', {name: 'Give'})).toBeFocused();
   await expect
     .poll(() =>
       page.evaluate(() => {

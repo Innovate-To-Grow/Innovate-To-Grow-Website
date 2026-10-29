@@ -37,7 +37,7 @@ test('the phone header is one blue bar with the logo and the menu button, the sa
   await expect(bar.getByRole('link', {name: 'Innovate To Grow home'})).toBeVisible();
   await expect(bar.getByRole('button', {name: 'Toggle menu'})).toBeVisible();
   await expect(bar.getByRole('link', {name: 'UC Merced'})).toBeHidden();
-  await expect(page.locator('.site-header-band')).toBeHidden();
+  await expect(page.locator('.site-header-band')).toHaveCount(0);
 
   const scrollTo = (y: number) => page.evaluate((top) => window.scrollTo(0, top), y);
   const barState = () =>

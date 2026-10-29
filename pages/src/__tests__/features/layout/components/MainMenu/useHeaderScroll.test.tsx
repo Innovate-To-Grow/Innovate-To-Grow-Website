@@ -12,7 +12,7 @@ const setScrollY = (value: number) => {
   Object.defineProperty(window, 'scrollY', {configurable: true, value});
 };
 
-const HEIGHT_PROPERTIES = ['--itg-header-bar-height', '--itg-header-band-height', '--itg-header-menu-height'];
+const HEIGHT_PROPERTIES = ['--itg-header-bar-height', '--itg-header-menu-height'];
 
 const publishedHeights = () => HEIGHT_PROPERTIES.map((property) => document.documentElement.style.getPropertyValue(property));
 
@@ -21,14 +21,13 @@ const setHeight = (element: HTMLElement, height: number) => {
     ({height, width: 0, top: 0, left: 0, right: 0, bottom: height, x: 0, y: 0, toJSON: () => ({})}) as DOMRect;
 };
 
-/** A header with its bar, band and menu row, each a known height. */
+/** A header with its bar and menu row, each a known height. */
 const makeMeasuredHeader = () => {
   const header = document.createElement('header');
   const parts = Object.fromEntries(
     (
       [
         ['bar', 'site-header-bar', 85],
-        ['band', 'site-header-band', 74],
         ['menu', 'site-header-menu', 40],
       ] as const
     ).map(([key, className, height]) => {
@@ -38,7 +37,7 @@ const makeMeasuredHeader = () => {
       header.appendChild(element);
       return [key, element];
     }),
-  ) as Record<'bar' | 'band' | 'menu', HTMLDivElement>;
+  ) as Record<'bar' | 'menu', HTMLDivElement>;
   return {ref: {current: header}, ...parts};
 };
 
@@ -111,14 +110,14 @@ afterEach(() => {
 });
 
 describe('nextCondensed', () => {
-  it('condenses once the bar and band have scrolled away, and lets go just before the row unpins', () => {
-    expect(nextCondensed(false, 158, 159)).toBe(false);
-    expect(nextCondensed(false, 159, 159)).toBe(true);
-    expect(nextCondensed(true, 159 - CONDENSE_HYSTERESIS_PX, 159)).toBe(true);
-    expect(nextCondensed(true, 159 - CONDENSE_HYSTERESIS_PX - 1, 159)).toBe(false);
+  it('condenses once the bar has scrolled away, and lets go just before the row unpins', () => {
+    expect(nextCondensed(false, 84, 85)).toBe(false);
+    expect(nextCondensed(false, 85, 85)).toBe(true);
+    expect(nextCondensed(true, 85 - CONDENSE_HYSTERESIS_PX, 85)).toBe(true);
+    expect(nextCondensed(true, 85 - CONDENSE_HYSTERESIS_PX - 1, 85)).toBe(false);
     // Inside the hysteresis band the state depends on where it came from.
-    expect(nextCondensed(false, 155, 159)).toBe(false);
-    expect(nextCondensed(true, 155, 159)).toBe(true);
+    expect(nextCondensed(false, 81, 85)).toBe(false);
+    expect(nextCondensed(true, 81, 85)).toBe(true);
   });
 
   it('never condenses without a measured height', () => {
@@ -129,7 +128,7 @@ describe('nextCondensed', () => {
 });
 
 describe('useHeaderCondensed', () => {
-  it('starts condensed when the page loads already scrolled past the bar and band', () => {
+  it('starts condensed when the page loads already scrolled past the bar', () => {
     setScrollY(300);
     const {ref} = makeMeasuredHeader();
     const {result} = renderHook(() => useHeaderCondensed(ref));
@@ -139,17 +138,17 @@ describe('useHeaderCondensed', () => {
   it('condenses when the menu row pins and goes back near the top', () => {
     runFramesImmediately();
     const {ref} = makeMeasuredHeader();
-    // bar 85 + band 74: the row pins at 159px.
+    // The 85px bar is above the row: it pins at 85px.
     const {result} = renderHook(() => useHeaderCondensed(ref));
     expect(result.current.isCondensed).toBe(false);
 
-    scrollTo(120);
+    scrollTo(60);
     expect(result.current.isCondensed).toBe(false);
-    scrollTo(159);
+    scrollTo(85);
     expect(result.current.isCondensed).toBe(true);
-    scrollTo(155);
+    scrollTo(81);
     expect(result.current.isCondensed).toBe(true);
-    scrollTo(150);
+    scrollTo(76);
     expect(result.current.isCondensed).toBe(false);
   });
 
@@ -164,32 +163,29 @@ describe('useHeaderCondensed', () => {
     expect(result.current.isCondensed).toBe(false);
   });
 
-  it('counts a missing part as 0px, and never condenses without a mounted header', () => {
+  it('never condenses without a bar above the row, or without a mounted header', () => {
     runFramesImmediately();
-    const {ref, band} = makeMeasuredHeader();
-    band.remove();
-    // Only the 85px bar is above the row.
+    const {ref, bar} = makeMeasuredHeader();
+    bar.remove();
     const {result} = renderHook(() => useHeaderCondensed(ref));
-    scrollTo(84);
+    scrollTo(900);
     expect(result.current.isCondensed).toBe(false);
-    scrollTo(85);
-    expect(result.current.isCondensed).toBe(true);
 
     const {result: unmounted} = renderHook(() => useHeaderCondensed({current: null}));
     scrollTo(900);
     expect(unmounted.current.isCondensed).toBe(false);
   });
 
-  it('re-checks on resize, when the bar and band heights change', () => {
+  it('re-checks on resize, when the bar height changes', () => {
     runFramesImmediately();
     stubPhoneLayout(false);
-    setScrollY(170);
-    const {ref, band} = makeMeasuredHeader();
+    setScrollY(100);
+    const {ref, bar} = makeMeasuredHeader();
     const {result} = renderHook(() => useHeaderCondensed(ref));
     expect(result.current.isCondensed).toBe(true);
 
-    // The band grows past the scroll offset: the row is no longer pinned.
-    setHeight(band, 117);
+    // The bar grows past the scroll offset: the row is no longer pinned.
+    setHeight(bar, 117);
     act(() => {
       window.dispatchEvent(new Event('resize'));
     });
@@ -246,12 +242,12 @@ describe('useHeaderCondensed', () => {
 describe('useHeaderMetrics', () => {
   it('publishes the measured heights before paint and watches each header part', () => {
     installResizeObserverStub();
-    const {ref, bar, band, menu} = makeMeasuredHeader();
+    const {ref, bar, menu} = makeMeasuredHeader();
     renderHook(() => useHeaderMetrics(ref));
 
-    expect(publishedHeights()).toEqual(['85px', '74px', '40px']);
+    expect(publishedHeights()).toEqual(['85px', '40px']);
     expect(ResizeObserverStub.instances).toHaveLength(1);
-    expect(ResizeObserverStub.instances[0].observed).toEqual([bar, band, menu]);
+    expect(ResizeObserverStub.instances[0].observed).toEqual([bar, menu]);
   });
 
   it('writes a reported resize on the next animation frame, once for any number of notifications', () => {
@@ -269,11 +265,11 @@ describe('useHeaderMetrics', () => {
     setHeight(bar, 96);
     observer.notify();
     observer.notify();
-    expect(publishedHeights()).toEqual(['85px', '74px', '40px']);
+    expect(publishedHeights()).toEqual(['85px', '40px']);
     expect(frames).toHaveLength(1);
 
     act(() => frames[0](0));
-    expect(publishedHeights()).toEqual(['96px', '74px', '40px']);
+    expect(publishedHeights()).toEqual(['96px', '40px']);
 
     // Converged: the next notification schedules a frame that rewrites nothing.
     const setProperty = vi.spyOn(document.documentElement.style, 'setProperty');
@@ -286,20 +282,20 @@ describe('useHeaderMetrics', () => {
     vi.stubGlobal('ResizeObserver', undefined);
     const {ref, menu} = makeMeasuredHeader();
     const {unmount} = renderHook(() => useHeaderMetrics(ref));
-    expect(publishedHeights()).toEqual(['85px', '74px', '40px']);
+    expect(publishedHeights()).toEqual(['85px', '40px']);
 
     setHeight(menu, 48);
     act(() => {
       window.dispatchEvent(new Event('resize'));
     });
-    expect(publishedHeights()).toEqual(['85px', '74px', '48px']);
+    expect(publishedHeights()).toEqual(['85px', '48px']);
 
     unmount();
     setHeight(menu, 60);
     act(() => {
       window.dispatchEvent(new Event('resize'));
     });
-    expect(publishedHeights()).toEqual(['85px', '74px', '48px']);
+    expect(publishedHeights()).toEqual(['85px', '48px']);
   });
 
   it('stops observing and drops a pending frame on unmount', () => {
@@ -319,7 +315,7 @@ describe('useHeaderMetrics', () => {
   it('does nothing without a mounted header', () => {
     installResizeObserverStub();
     renderHook(() => useHeaderMetrics({current: null}));
-    expect(publishedHeights()).toEqual(['', '', '']);
+    expect(publishedHeights()).toEqual(['', '']);
     expect(ResizeObserverStub.instances).toHaveLength(0);
   });
 });

@@ -30,7 +30,7 @@ vi.mock('@/components/ResponsiveBrandImage', () => ({
   ),
 }));
 
-const HEIGHT_PROPERTIES = ['--itg-header-bar-height', '--itg-header-band-height', '--itg-header-menu-height'];
+const HEIGHT_PROPERTIES = ['--itg-header-bar-height', '--itg-header-menu-height'];
 
 const setScrollY = (value: number) => {
   Object.defineProperty(window, 'scrollY', {configurable: true, value});
@@ -50,8 +50,8 @@ const stubPartHeights = (heights: Record<string, number>) =>
     return {height, width: 0, top: 0, left: 0, right: 0, bottom: height, x: 0, y: 0, toJSON: () => ({})} as DOMRect;
   });
 
-/** The desktop header: bar 85 + band 117, so the menu row pins at 202px. */
-const stubDesktopHeader = () => stubPartHeights({'site-header-bar': 85, 'site-header-band': 117, 'site-header-menu': 40});
+/** The desktop header: the 85px bar above the menu row, so the row pins at 85px. */
+const stubDesktopHeader = () => stubPartHeights({'site-header-bar': 85, 'site-header-menu': 40});
 
 /** Runs each requested animation frame straight away. */
 const runFramesImmediately = () =>
@@ -93,25 +93,25 @@ describe('MainMenu header state', () => {
   });
 
   describe('condensed menu row', () => {
-    it('condenses the banner once the menu row pins at 202px, and lets go only below 194px', () => {
+    it('condenses the banner once the menu row pins at 85px, and lets go only below 77px', () => {
       runFramesImmediately();
       stubDesktopHeader();
       const {header} = renderMenu();
       expect(header).not.toHaveClass('is-condensed');
 
-      scrollTo(201);
+      scrollTo(84);
       expect(header).not.toHaveClass('is-condensed');
-      scrollTo(202);
+      scrollTo(85);
       expect(header).toHaveClass('is-condensed');
 
       // 8px of hysteresis: scroll jitter at the threshold cannot flicker.
-      scrollTo(194);
+      scrollTo(77);
       expect(header).toHaveClass('is-condensed');
-      scrollTo(193);
+      scrollTo(76);
       expect(header).not.toHaveClass('is-condensed');
 
       // Coming back down, it waits for the row to pin again.
-      scrollTo(197);
+      scrollTo(80);
       expect(header).not.toHaveClass('is-condensed');
       scrollTo(260);
       expect(header).toHaveClass('is-condensed');
@@ -119,7 +119,7 @@ describe('MainMenu header state', () => {
       expect(header).not.toHaveClass('is-condensed');
     });
 
-    it('starts condensed, without motion, when the page loads already scrolled past the bar and band', () => {
+    it('starts condensed, without motion, when the page loads already scrolled past the bar', () => {
       collectFrames();
       stubDesktopHeader();
       setScrollY(300);
@@ -219,12 +219,11 @@ describe('MainMenu header state', () => {
     });
 
     it('publishes the header part heights as CSS custom properties', () => {
-      stubPartHeights({'site-header-bar': 85, 'site-header-band': 109.6, 'site-header-menu': 44});
+      stubPartHeights({'site-header-bar': 85, 'site-header-menu': 44});
       renderMenu();
 
       const style = document.documentElement.style;
       expect(style.getPropertyValue('--itg-header-bar-height')).toBe('85px');
-      expect(style.getPropertyValue('--itg-header-band-height')).toBe('109.6px');
       expect(style.getPropertyValue('--itg-header-menu-height')).toBe('44px');
     });
   });

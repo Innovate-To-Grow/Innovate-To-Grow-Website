@@ -5,16 +5,15 @@
    Site header: the UC Merced Drupal subsite header of innovatetogrow.ucmerced.edu
    - Blue bar: 80px navy + 5px gold rule (UC Merced wordmark, centred i2G logo,
      Directory / Apply / Give)
-   - Site-name band: "Innovate To Grow" (Khula 300 48px) / "School of Engineering"
    - White menu row: CMS menu, grey dropdowns with a gold foot, the current
      date (shown whenever it fits, .is-date-hidden otherwise) and the member
      link at the right end
-   Desktop: the blue bar and the band scroll away with the page and only the
-   menu row stays, pinned at the top. Pinned, the header is condensed
-   (.is-condensed, set by MainMenu): the round i2G logo joins the front of the
-   row and the menu items move aside for it.
+   Desktop: the blue bar scrolls away with the page and only the menu row
+   stays, pinned at the top. Pinned, the header is condensed (.is-condensed,
+   set by MainMenu): the round i2G logo joins the front of the row and the
+   menu items move aside for it.
    Phone (<= 992px): one fixed blue bar, the same at every scroll position,
-   with the round logo and the menu button; no wordmark, band or menu row.
+   with the round logo and the menu button; no wordmark or menu row.
    The menu button opens #mobile-menu right under the bar.
    The --itg-header-*-height properties are measured by MainMenu
    (useHeaderMetrics); the values after the comma are first-paint fallbacks.
@@ -22,11 +21,11 @@
    ?_isolated) mount no header, so nothing here may reserve space for it.
    ========================================================================== */
 
-/* #menu-root sticks once the bar and the band have scrolled away, so the menu
-   row stays at the very top. */
+/* #menu-root sticks once the bar has scrolled away, so the menu row stays at
+   the very top. */
 #menu-root {
   position: sticky;
-  top: calc(-1 * (var(--itg-header-bar-height, 85px) + var(--itg-header-band-height, 117px)));
+  top: calc(-1 * var(--itg-header-bar-height, 85px));
   z-index: 1000;
 }
 
@@ -42,16 +41,20 @@ html:not([data-block-preview]) {
   /* Keep the header's room before React mounts it, so the page does not jump
      down when it appears. */
   html:not([data-block-preview]) #menu-root {
-    min-height: calc(
-      var(--itg-header-bar-height, 85px) + var(--itg-header-band-height, 117px) + var(--itg-header-menu-height, 40px)
-    );
+    min-height: calc(var(--itg-header-bar-height, 85px) + var(--itg-header-menu-height, 40px));
   }
 
   /* The menu row's own links sit inside that scroll padding while it is
-     pinned; focusing one must not scroll the page. (The bar's and band's
-     links keep the padding: focusing them scrolls them back into view.) */
+     pinned; focusing one must not scroll the page. */
   .site-header-menu :where(a, button) {
     scroll-margin-top: calc(-1 * (var(--itg-header-menu-height, 40px) + 12px));
+  }
+
+  /* The blue bar scrolls away inside the sticky #menu-root, so a bar link that
+     gets focus (Shift+Tab out of the pinned row) only comes back into view at
+     the top of the page, where the bar lives: scroll all the way there. */
+  .site-header-bar :where(a, button) {
+    scroll-margin-top: 100vh;
   }
 }
 
