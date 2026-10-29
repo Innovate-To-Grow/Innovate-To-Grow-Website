@@ -90,8 +90,14 @@ async function mockArchiveWithout(page: Page): Promise<void> {
   );
 }
 
-// Titles render in the desktop table and in the phone cards; only the layout for this viewport is visible.
-const visibleLink = (page: Page, name: string) => page.getByRole('link', {name, exact: true}).filter({visible: true});
+// Titles render in the desktop table and in the phone cards, and cards replace the table at the projects CSS
+// breakpoint (max-width: 768px). Pick the layout from the viewport rather than sampling visibility: a mobile
+// engine can briefly lay the page out wider while it applies the viewport meta tag, so both show for an instant.
+const visibleLink = (page: Page, name: string) => {
+  const isDesktop = (page.viewportSize()?.width ?? Number.POSITIVE_INFINITY) > 768;
+  const layout = page.locator(isDesktop ? '.project-grid-table-wrap' : '.project-grid-mobile-cards');
+  return layout.getByRole('link', {name, exact: true});
+};
 
 test('a Current Projects title opens its populated project page', {tag: '@core'}, async ({page}) => {
   await mockArchiveWithout(page);
