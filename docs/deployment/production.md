@@ -5,12 +5,12 @@ operator can also start that workflow manually on `main` to redeploy its
 current commit. Both paths pause once on the protected `Production Deployments`
 environment. Approving that single gate releases the complete deployment set:
 
-- backend production and demo on ECS;
-- frontend production and demo on Amplify;
+- backend production on ECS;
+- frontend production on Amplify;
 - archive production on ECS.
 
-The frontend starts only after both backend targets have finished. It still
-ships if a backend target fails, because new backend tasks run migrations at boot
+The frontend starts only after the backend deployment has finished. It still
+ships if the backend deployment fails, because new backend tasks run migrations at boot
 and may already have moved the database on. The SPA links backend endpoints a
 release may only just have added (such as `/api/layout/theme.css`), so the backend
 goes first; a migration that retires backend CSS ships one release after the
@@ -28,11 +28,11 @@ disabled because it would bypass the shared gate.
 The workflow uses these environments:
 
 - `Production Deployments` — the single approval gate;
-- `AWS ECS - Prod` and `AWS ECS(DEMO) - Prod` — backend configuration;
-- `AWS Amplify - Prod` and `AWS Amplify(DEMO) - Prod` — frontend configuration;
+- `AWS ECS - Prod` — backend configuration;
+- `AWS Amplify - Prod` — frontend configuration;
 - `AWS ECS - Archive Prod` — archive configuration.
 
-Configure required reviewers on `Production Deployments`. The five target
+Configure required reviewers on `Production Deployments`. The three target
 environments continue to hold their target-specific variables, secrets, URLs,
 and deployment history, but they must not also require reviewers after the
 shared gate is verified. Otherwise GitHub will request a second round of
@@ -43,7 +43,7 @@ Migrate protection in this order:
 1. Create `Production Deployments` and configure its required reviewers.
 2. Merge the unified workflow and confirm its approval job waits correctly.
 3. Approve the first unified run and complete any existing target approvals.
-4. Remove only the required-reviewer rules from the five target environments.
+4. Remove only the required-reviewer rules from the three target environments.
    Keep their variables, secrets, URLs, and other protection settings intact.
 5. Re-run a deployment and verify that only the shared approval is requested.
 

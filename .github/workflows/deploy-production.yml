@@ -141,7 +141,7 @@ jobs:
             echo
             printf -- '%s\n' "- Commit: \`$DEPLOY_SHA\`"
             printf -- '%s\n' "- Verified CI run: \`$CI_RUN_ID\`"
-            echo "- Targets: backend prod/demo, frontend prod/demo, archive prod"
+            echo "- Targets: backend prod, frontend prod, archive prod"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-backend:
@@ -158,7 +158,7 @@ jobs:
     # The SPA links backend endpoints a new release may only just have added (e.g.
     # /api/layout/theme.css), so the backend goes first. A migration that retires
     # backend CSS therefore ships one release after the frontend that replaces it.
-    # Only the order changes: a failed backend leg (prod or demo) does not hold
+    # Only the order changes: a failed backend deployment does not hold
     # back the frontend, since new backend tasks may already have migrated the
     # database to match it.
     needs: [approve, deploy-backend]
