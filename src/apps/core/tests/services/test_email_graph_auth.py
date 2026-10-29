@@ -31,9 +31,12 @@ class FakeClock:
 
 
 class TokenTestCase(GraphFixtureMixin, SimpleTestCase):
-    def get_token(self, **overrides):
+    def get_token(self, timeout=None, **overrides):
         values = {"tenant_id": TENANT_ID, "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET}
-        return auth.get_access_token(**{**values, **overrides})
+        credential = auth.GraphCredential(**{**values, **overrides})
+        if timeout is None:
+            return auth.get_access_token(credential)
+        return auth.get_access_token(credential, timeout=timeout)
 
 
 class GraphTokenRequestTests(TokenTestCase):
@@ -184,13 +187,13 @@ class GraphTokenCacheTests(TokenTestCase):
         self.assertEqual(self.get_token(client_secret="secret-a"), "token-a1")
         self.assertEqual(self.get_token(client_secret="secret-b"), "token-b1")
 
-        auth.forget_access_token(TENANT_ID, CLIENT_ID, "secret-a")
+        auth.forget_access_token(auth.GraphCredential(TENANT_ID, CLIENT_ID, "secret-a"))
 
         self.assertEqual(self.get_token(client_secret="secret-b"), "token-b1")
         self.assertEqual(self.get_token(client_secret="secret-a"), "token-a2")
 
     def test_forgetting_a_credential_that_was_never_cached_is_harmless(self):
-        auth.forget_access_token(TENANT_ID, CLIENT_ID, "never-used-secret")
+        auth.forget_access_token(auth.GraphCredential(TENANT_ID, CLIENT_ID, "never-used-secret"))
 
         self.assertEqual(self.get_token(), ACCESS_TOKEN)
 

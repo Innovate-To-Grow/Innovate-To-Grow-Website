@@ -14,6 +14,7 @@ from django.urls import reverse
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
+from apps.core.tests.graph_helpers import create_graph_config
 from apps.event.tests.helpers import make_admin, make_superuser
 
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
@@ -21,9 +22,14 @@ CLIENT_ID = "66666666-7777-8888-9999-000000000000"
 OBJECT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 STORED_SECRET = "stored-not-a-real-secret"
 NEW_SECRET = "new-not-a-real-secret"
+# The senders these tests submit; the mailbox scope itself is edited on the Graph config admin page.
+GRAPH_SCOPE = ("mailer@example.com", "updated@example.com", "old@example.com", "admin@example.com", OBJECT_ID)
 FAKE_TOKEN = "not-a-real-token"
 GRAPH_FIELDS = ("name", "is_active", "tenant_id", "client_id", "client_secret", "mailbox", "messages_per_minute")
-PROVIDER_ERROR = "An active Microsoft Graph configuration is required before activation."
+PROVIDER_ERROR = (
+    "An active Microsoft Graph configuration whose mailbox scope lets the sender mailbox and the From address "
+    "send is required before activation."
+)
 CHIP_COLOURS = {"success": "bg-green-50", "warning": "bg-yellow-50"}
 
 
@@ -114,7 +120,7 @@ class GraphSettingsTestCase(TestCase):
             "mailbox": "mailer@example.com",
             "messages_per_minute": 24,
         }
-        return MicrosoftGraphProviderConfig.objects.create(**{**values, **overrides})
+        return create_graph_config(scope=GRAPH_SCOPE, **{**values, **overrides})
 
     def use_provider(self, provider):
         self.config.provider = provider
@@ -156,6 +162,9 @@ class GraphSettingsTestCase(TestCase):
                     "graph-is_active": "on",
                     "graph-tenant_id": TENANT_ID,
                     "graph-client_id": CLIENT_ID,
+                    "graph-auth_method": "client_secret",
+                    "graph-certificate": "",
+                    "graph-private_key": "",
                     "graph-client_secret": NEW_SECRET,
                     "graph-mailbox": "mailer@example.com",
                     "graph-messages_per_minute": "20",
@@ -264,7 +273,21 @@ class EditPageRenderingTests(GraphSettingsTestCase):
 
 
 class SelectingGraphTests(GraphSettingsTestCase):
-    def test_selecting_graph_creates_the_graph_config_and_activates_the_provider(self):
+    def test_a_new_graph_config_cannot_be_activated_here_without_a_mailbox_scope(self):
+        # The scope is a list of mailboxes, edited on the Graph config's own admin page; this page links there.
+        response = self.client.post(self.edit_url, self.post_data("graph"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["email_form"].errors["provider"], [PROVIDER_ERROR])
+        self.assertContains(response, "Edit the mailbox scope and permission levels")
+        self.assertContains(response, reverse("admin:core_microsoftgraphproviderconfig_add"))
+        self.assertFalse(MicrosoftGraphProviderConfig.objects.exists())
+        self.config.refresh_from_db()
+        self.assertNotEqual(self.config.provider, "graph")
+
+    def test_selecting_graph_activates_the_provider_with_a_scoped_graph_config(self):
+        self.make_graph()
+
         response = self.client.post(self.edit_url, self.post_data("graph"))
 
         self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
@@ -281,6 +304,7 @@ class SelectingGraphTests(GraphSettingsTestCase):
         self.assertEqual(EmailServiceConfig.objects.count(), 1)
 
     def test_saving_reports_success_and_the_summary_names_the_graph_mailbox(self):
+        self.make_graph()
         response = self.client.post(self.edit_url, self.post_data("graph"), follow=True)
 
         self.assertContains(response, "Notification delivery settings saved.")
@@ -348,6 +372,7 @@ class SelectingGraphTests(GraphSettingsTestCase):
         self.assertEqual((graph.client_id, graph.client_secret), (other_client_id, NEW_SECRET))
 
     def test_messages_per_minute_accepts_the_documented_limits(self):
+        self.make_graph()
         for limit in ("1", "30"):
             with self.subTest(limit=limit):
                 response = self.client.post(self.edit_url, self.post_data("graph", messages_per_minute=limit))
@@ -356,6 +381,7 @@ class SelectingGraphTests(GraphSettingsTestCase):
                 self.assertEqual(MicrosoftGraphProviderConfig.objects.get().messages_per_minute, int(limit))
 
     def test_verified_domain_tenant_and_object_id_mailbox_are_accepted(self):
+        self.make_graph()
         data = self.post_data("graph", tenant_id="contoso.onmicrosoft.com", mailbox=OBJECT_ID)
 
         response = self.client.post(self.edit_url, data)
@@ -365,6 +391,7 @@ class SelectingGraphTests(GraphSettingsTestCase):
         self.assertEqual((graph.tenant_id, graph.mailbox), ("contoso.onmicrosoft.com", OBJECT_ID))
 
     def test_graph_without_a_mailbox_is_accepted_and_the_summary_falls_back_to_the_from_email(self):
+        self.make_graph()
         response = self.client.post(self.edit_url, self.post_data("graph", mailbox=""), follow=True)
 
         self.assertEqual(MicrosoftGraphProviderConfig.objects.get().mailbox, "")

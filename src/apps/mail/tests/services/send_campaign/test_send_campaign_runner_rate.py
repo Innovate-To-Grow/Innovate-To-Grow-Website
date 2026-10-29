@@ -4,11 +4,15 @@ from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig
+from apps.core.models import AWSCredentialConfig, EmailServiceConfig
+from apps.core.tests.graph_helpers import create_graph_config
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign
 from apps.mail.services.send_campaign.runner import send_campaign
 from apps.mail.services.send_campaign.transport import SesSendResult
+
+# Graph senders used in this module; the mailbox scope rules have their own tests.
+GRAPH_TEST_SCOPE = ("noreply@example.com", "admin@example.com")
 
 TENANT_ID = "1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -49,7 +53,8 @@ class RunnerSendRateTests(TestCase):
         self.assertEqual({call.args for call in slot.call_args_list}, {("ses", 0.0)})
 
     def use_graph(self, max_send_rate):
-        MicrosoftGraphProviderConfig.objects.create(
+        create_graph_config(
+            scope=GRAPH_TEST_SCOPE,
             name="Graph",
             is_active=True,
             tenant_id=TENANT_ID,

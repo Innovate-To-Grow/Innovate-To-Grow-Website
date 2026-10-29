@@ -27,6 +27,9 @@ _TOKEN_REJECTED_STATUSES = (401, 403)
 class GraphProvider:
     """Deliver base64 MIME messages with Graph ``sendMail`` using an app-only (client-credentials) token.
 
+    The caller (the registry) has already checked that *mailbox* and the From address are inside the configured
+    mailbox scope with send permission; this class only re-checks that the values are well formed.
+
     Graph answers ``202 Accepted`` with an empty body, so it returns no message id; the MIME ``Message-ID`` is
     reported instead (as SMTP does). A 202 only means the message was queued: later transport or recipient failures
     are delivered as non-delivery reports to the sender mailbox, which this provider cannot observe.
@@ -39,22 +42,31 @@ class GraphProvider:
         *,
         tenant_id: str,
         client_id: str,
-        client_secret: str,
         mailbox: str,
         from_email: str,
         from_name: str = "",
+        client_secret: str = "",
+        private_key_pem: str = "",
+        certificate_thumbprint: str = "",
         timeout: float = auth.REQUEST_TIMEOUT,
     ):
         # Tenant and mailbox become URL path segments, so rows created outside the validated admin are re-checked.
-        valid = is_entra_tenant(tenant_id) and is_guid(client_id) and is_exchange_mailbox(mailbox) and client_secret
+        has_secret = bool(client_secret or (private_key_pem and certificate_thumbprint))
+        valid = is_entra_tenant(tenant_id) and is_guid(client_id) and is_exchange_mailbox(mailbox) and has_secret
         if not valid:
             raise PermanentEmailDeliveryError("Microsoft Graph configuration is invalid.")
-        self.tenant_id, self.client_id, self.client_secret = tenant_id, client_id, client_secret
+        self.credential = auth.GraphCredential(
+            tenant_id=tenant_id,
+            client_id=client_id,
+            client_secret=client_secret,
+            private_key_pem=private_key_pem,
+            certificate_thumbprint=certificate_thumbprint,
+        )
         self.mailbox, self.from_email, self.from_name, self.timeout = mailbox, from_email, from_name, timeout
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         mime_id, payload = self._encode(message)
-        access_token = auth.get_access_token(self.tenant_id, self.client_id, self.client_secret, timeout=self.timeout)
+        access_token = auth.get_access_token(self.credential, timeout=self.timeout)
         if before_provider_call is not None:
             before_provider_call()
         return self._submit(access_token, payload, mime_id)
@@ -68,7 +80,7 @@ class GraphProvider:
             self._log_failure(response)
             if response.status in _TOKEN_REJECTED_STATUSES:
                 # A fresh token also picks up consent or role changes made after this one was issued.
-                auth.forget_access_token(self.tenant_id, self.client_id, self.client_secret)
+                auth.forget_access_token(self.credential)
             raise send_mail_error(response)
         except EmailDeliveryError:
             raise

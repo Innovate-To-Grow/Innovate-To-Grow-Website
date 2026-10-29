@@ -10,8 +10,12 @@ from django.urls import reverse
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
 from apps.core.services.aws.credentials import AwsCredentialsError
+from apps.core.tests.graph_helpers import create_graph_config
 from apps.event.tests.helpers import make_event, make_superuser
 from apps.mail.services.campaign.dashboard import get_delivery_dashboard_data
+
+# Graph senders used in this module; the mailbox scope rules have their own tests.
+GRAPH_TEST_SCOPE = ("mailer@example.com", "campaigns@ucmerced.edu", "admin@example.com")
 
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "66666666-7777-8888-9999-000000000000"
@@ -44,7 +48,8 @@ class ProviderFixtureMixin:
             sms_from_number="+12065550000",
         )
         SMTPProviderConfig.objects.create(name="Backup SMTP", is_active=True, host="smtp.example.com", port=587)
-        MicrosoftGraphProviderConfig.objects.create(
+        create_graph_config(
+            scope=GRAPH_TEST_SCOPE,
             name="Outlook Sender",
             is_active=True,
             tenant_id=TENANT_ID,

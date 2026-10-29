@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
-from apps.core.models import BackgroundJob, EmailServiceConfig, MicrosoftGraphProviderConfig
+from apps.core.models import BackgroundJob, EmailServiceConfig
 from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
 from apps.core.services.background_jobs import (
     PermanentJobError,
@@ -25,6 +25,10 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
+from apps.core.tests.graph_helpers import create_graph_config
+
+# Graph senders used in this module; the mailbox scope rules have their own tests.
+GRAPH_TEST_SCOPE = ()
 
 TENANT_ID = "1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -36,8 +40,13 @@ class ConfiguredRateTest(TestCase):
         return EmailServiceConfig.objects.create(**values | overrides)
 
     def test_a_graph_config_is_paced_at_its_ceiling(self):
-        MicrosoftGraphProviderConfig.objects.create(
-            name="Graph", is_active=True, tenant_id=TENANT_ID, client_id=CLIENT_ID, client_secret="not-a-real-secret"
+        create_graph_config(
+            scope=GRAPH_TEST_SCOPE,
+            name="Graph",
+            is_active=True,
+            tenant_id=TENANT_ID,
+            client_id=CLIENT_ID,
+            client_secret="not-a-real-secret",
         )
 
         self.assertAlmostEqual(configured_ses_rate(self.email("graph", max_send_rate=10)), 0.4)

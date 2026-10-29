@@ -23,6 +23,7 @@ from apps.core.services.email import (
 )
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
+from apps.core.tests.graph_helpers import create_graph_config
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.send_campaign.runner import _configured_provider, send_campaign
@@ -34,6 +35,9 @@ from apps.mail.services.send_campaign.transport import (
     SesSendResult,
     _send_via_ses,
 )
+
+# Graph senders used in this module; the mailbox scope rules have their own tests.
+GRAPH_TEST_SCOPE = ("mailer@example.com", "from@example.com", "admin@example.com")
 
 POST = "apps.core.services.email.graph.transport.post"
 RUNNER_LOGGER = "apps.mail.services.send_campaign.runner"
@@ -76,7 +80,8 @@ def posted_mime(call):
 
 
 def create_graph_sender():
-    MicrosoftGraphProviderConfig.objects.create(
+    create_graph_config(
+        scope=GRAPH_TEST_SCOPE,
         name="Outlook Sender",
         is_active=True,
         tenant_id=TENANT_ID,

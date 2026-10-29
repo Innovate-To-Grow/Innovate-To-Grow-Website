@@ -91,8 +91,12 @@ class ProtectedEmailTransportTests(TestCase):
             is_configured=True,
             tenant_id=GRAPH_TENANT_ID,
             client_id=GRAPH_CLIENT_ID,
+            uses_certificate=False,
             client_secret=GRAPH_SECRET,
             mailbox="",
+            # A scope that admits the sender; the scope rules have their own tests in apps.core.
+            sender_mailbox=lambda from_email: from_email.lower(),
+            allows=lambda mailbox, permission: True,
         )
         request = verified_request()
 

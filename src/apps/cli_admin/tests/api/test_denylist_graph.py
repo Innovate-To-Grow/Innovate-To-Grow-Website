@@ -1,6 +1,10 @@
 from apps.cli_admin.models import CliAuditLog
 from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff, make_superuser
 from apps.core.models import MicrosoftGraphProviderConfig
+from apps.core.tests.graph_helpers import create_graph_config
+
+# Graph senders used in this module; the mailbox scope rules have their own tests.
+GRAPH_TEST_SCOPE = ("sender@example.com",)
 
 SECRET = "not-a-real-graph-secret"
 ATTACKER_VALUE = "attacker-chosen"
@@ -15,7 +19,8 @@ class GraphDenylistTests(CliApiTestCase):
 
     def setUp(self):
         super().setUp()
-        self.config = MicrosoftGraphProviderConfig.objects.create(
+        self.config = create_graph_config(
+            scope=GRAPH_TEST_SCOPE,
             name="Mail",
             is_active=True,
             tenant_id="11111111-2222-3333-4444-555555555555",

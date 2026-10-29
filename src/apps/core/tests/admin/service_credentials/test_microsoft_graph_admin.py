@@ -39,6 +39,7 @@ def config_values(**overrides):
         "name": "Mail",
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
+        "auth_method": MicrosoftGraphProviderConfig.AuthMethod.CLIENT_SECRET,
         "client_secret": STORED_SECRET,
         "mailbox": MAILBOX,
     }
@@ -51,9 +52,17 @@ def form_data(**overrides):
         "name": "Mail",
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
+        "auth_method": "client_secret",
+        "certificate": "",
+        "private_key": "",
         "client_secret": "",
         "mailbox": MAILBOX,
         "messages_per_minute": "24",
+        # The mailbox scope inline's management form, submitted with no rows.
+        "mailbox_scopes-TOTAL_FORMS": "0",
+        "mailbox_scopes-INITIAL_FORMS": "0",
+        "mailbox_scopes-MIN_NUM_FORMS": "0",
+        "mailbox_scopes-MAX_NUM_FORMS": "1000",
     }
     return data | overrides
 

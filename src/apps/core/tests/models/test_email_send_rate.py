@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.core.models import EmailServiceConfig, MicrosoftGraphProviderConfig
+from apps.core.models import EmailServiceConfig
+from apps.core.tests.graph_helpers import create_graph_config
 
 TENANT_ID = "1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -23,7 +24,7 @@ def make_graph(**overrides):
         "client_id": CLIENT_ID,
         "client_secret": "not-a-real-secret",
     }
-    return MicrosoftGraphProviderConfig.objects.create(**values | overrides)
+    return create_graph_config(**values | overrides)
 
 
 class EffectiveSendRateTest(TestCase):

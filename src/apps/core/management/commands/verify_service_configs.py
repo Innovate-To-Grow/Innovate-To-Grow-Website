@@ -9,6 +9,7 @@ the effective policy, including settings and environment overrides.
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.core.validators import validate_email
+from django.utils import timezone
 
 from apps.authn.services.send_verification.config import require_ready
 from apps.authn.services.send_verification.exceptions import SendPaused, SendVerificationError
@@ -19,6 +20,8 @@ from apps.core.models import (
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
+
+GRAPH_CERTIFICATE_WARNING_DAYS = 30
 
 
 class Command(BaseCommand):
@@ -62,7 +65,7 @@ class Command(BaseCommand):
             aws_ok = self._check_aws(aws, options["require_aws"] or email.provider == "ses", failures, warnings)
             smtp = SMTPProviderConfig.load()
             smtp_ok = bool(smtp.pk) and smtp.is_configured
-            graph_ok = self._check_graph(email)
+            graph_ok = self._check_graph(email, failures, warnings)
             self._check_email(email, aws_ok=aws_ok, smtp_ok=smtp_ok, graph_ok=graph_ok, failures=failures)
             smtp_required = email.provider == "smtp"
             self._report("SMTPProviderConfig", smtp, smtp_ok, required=smtp_required)
@@ -83,14 +86,38 @@ class Command(BaseCommand):
             )
         return aws_ok
 
-    def _check_graph(self, email) -> bool:
+    def _check_graph(self, email, failures: list[str], warnings: list[str]) -> bool:
         """Report Microsoft Graph only when it is selected or configured, so other setups stay quiet."""
         graph = MicrosoftGraphProviderConfig.load()
-        graph_ok = bool(graph.pk) and graph.is_configured
+        graph_ok = bool(graph.pk) and graph.sending_ready(email.from_email)
         required = email.provider == "graph"
-        if required or graph_ok:
+        if required or (graph.pk and graph.is_configured):
             self._report("MicrosoftGraphProviderConfig", graph, graph_ok, required=required)
+        if graph.pk and graph.is_active:
+            self._check_graph_scope_and_certificate(graph, email, required, failures, warnings)
         return graph_ok
+
+    def _check_graph_scope_and_certificate(self, graph, email, required, failures, warnings) -> None:
+        problems = failures if required else warnings
+        if not graph.mailbox_scopes.exists():
+            problems.append("MicrosoftGraphProviderConfig has no mailbox scope; Graph refuses every mailbox.")
+        elif graph.is_configured and not graph.sending_ready(email.from_email):
+            problems.append(
+                "The Graph sending mailbox or the From address is not in the mailbox scope with send permission."
+            )
+        if not graph.uses_certificate:
+            warnings.append("MicrosoftGraphProviderConfig authenticates with a client secret, not a certificate.")
+            return
+        expires_at = graph.certificate_expires_at
+        if expires_at is None:
+            return
+        days_left = (expires_at - timezone.now()).days
+        if days_left < 0:
+            problems.append(f"The Microsoft Graph certificate expired on {expires_at:%Y-%m-%d}.")
+        elif days_left < GRAPH_CERTIFICATE_WARNING_DAYS:
+            warnings.append(
+                f"The Microsoft Graph certificate expires on {expires_at:%Y-%m-%d} ({days_left} days); rotate it."
+            )
 
     def _check_email(self, email, *, aws_ok: bool, smtp_ok: bool, graph_ok: bool, failures: list[str]) -> None:
         sender_ok = self._valid_email(email.from_email)

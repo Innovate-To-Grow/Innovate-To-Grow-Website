@@ -85,7 +85,9 @@ class GraphTransportPostTests(SimpleTestCase):
         response = do_post()
 
         self.assertEqual(len(response.body), MAX_RESPONSE_BYTES)
-        connection.getresponse.return_value.read.assert_called_once_with(MAX_RESPONSE_BYTES)
+        self.assertTrue(response.truncated)
+        # One byte past the limit tells a complete body from a cut-off one.
+        connection.getresponse.return_value.read.assert_called_once_with(MAX_RESPONSE_BYTES + 1)
         self.assertLessEqual(MAX_RESPONSE_BYTES, 1024 * 1024, "the limit must keep memory use small")
 
     @patch(CONNECTION)

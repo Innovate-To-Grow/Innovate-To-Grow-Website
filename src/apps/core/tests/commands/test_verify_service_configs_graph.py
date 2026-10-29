@@ -13,6 +13,7 @@ from apps.core.models import (
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
+from apps.core.tests.graph_helpers import create_graph_config
 
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -50,12 +51,17 @@ class VerifyServiceConfigsGraphTest(TestCase):
             "client_secret": SECRET,
             "mailbox": "i2g@g.ucmerced.edu",
         }
-        return MicrosoftGraphProviderConfig.objects.create(**values | overrides)
+        return create_graph_config(scope=("i2g@g.ucmerced.edu",), **values | overrides)
 
     def _create_unvalidated_graph(self, **overrides):
         """An active row that save() would refuse, as a script or an older release could leave behind."""
         row = MicrosoftGraphProviderConfig(
-            name="Broken", is_active=True, tenant_id=TENANT_ID, client_id=CLIENT_ID, client_secret=SECRET
+            name="Broken",
+            is_active=True,
+            tenant_id=TENANT_ID,
+            client_id=CLIENT_ID,
+            auth_method=MicrosoftGraphProviderConfig.AuthMethod.CLIENT_SECRET,
+            client_secret=SECRET,
         )
         for field, value in overrides.items():
             setattr(row, field, value)

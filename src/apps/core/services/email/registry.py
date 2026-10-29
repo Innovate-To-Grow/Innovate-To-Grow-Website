@@ -67,14 +67,22 @@ def _graph_factory(config: object, **provider_options) -> GraphProvider:
     del provider_options
     from apps.core.models import MicrosoftGraphProviderConfig
 
+    from .graph.access import SEND, credential_for, require_mailbox
+
     graph = MicrosoftGraphProviderConfig.load()
     if not graph.is_configured:
         raise PermanentEmailDeliveryError("Active Microsoft Graph provider configuration is missing or invalid.")
+    # Graph sends as the URL mailbox and Exchange checks Send As for the From address, so both must be in scope.
+    mailbox = require_mailbox(graph, graph.sender_mailbox(config.from_email), SEND)
+    require_mailbox(graph, config.from_email, SEND)
+    credential = credential_for(graph)
     return GraphProvider(
-        tenant_id=graph.tenant_id,
-        client_id=graph.client_id,
-        client_secret=graph.client_secret,
-        mailbox=graph.mailbox or config.from_email,
+        tenant_id=credential.tenant_id,
+        client_id=credential.client_id,
+        client_secret=credential.client_secret,
+        private_key_pem=credential.private_key_pem,
+        certificate_thumbprint=credential.certificate_thumbprint,
+        mailbox=mailbox,
         from_email=config.from_email,
         from_name=config.from_name,
     )

@@ -1,6 +1,7 @@
-"""Microsoft Graph (Outlook / Exchange Online) email provider."""
+"""Microsoft Graph (Outlook / Exchange Online) email provider and mailbox reader."""
 
-from .auth import clear_access_token_cache
+from .access import GraphScopeError
+from .auth import GraphCredential, clear_access_token_cache
 from .provider import GraphProvider
 
-__all__ = ["GraphProvider", "clear_access_token_cache"]
+__all__ = ["GraphCredential", "GraphProvider", "GraphScopeError", "clear_access_token_cache"]

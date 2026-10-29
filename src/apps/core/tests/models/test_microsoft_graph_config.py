@@ -12,12 +12,15 @@ from apps.core.models import (
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
+from apps.core.tests.graph_helpers import create_graph_config, grant
 
 TENANT_ID = "1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 OBJECT_ID = "99999999-8888-7777-6666-555555555555"
 MAILBOX = "sender@example.com"
 SECRET = "not-a-real-graph-secret"
+# Every sender these tests use is in scope; the scope rules have their own tests.
+SCOPE = (MAILBOX, "shared@example.com", "noreply@example.com", OBJECT_ID)
 
 
 def graph_fields(**overrides):
@@ -26,6 +29,7 @@ def graph_fields(**overrides):
         "name": "Mail",
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
+        "auth_method": MicrosoftGraphProviderConfig.AuthMethod.CLIENT_SECRET,
         "client_secret": SECRET,
         "mailbox": MAILBOX,
     }
@@ -34,22 +38,21 @@ def graph_fields(**overrides):
 
 def make_graph(**overrides):
     """Persist a Graph configuration through save(), so it passes the validation the admin applies."""
-    return MicrosoftGraphProviderConfig.objects.create(**graph_fields(**overrides))
+    return create_graph_config(scope=SCOPE, **graph_fields(**overrides))
 
 
 def store_graph_unvalidated(**overrides):
     """Replace every Graph row with one written without save() or validation, as a script could."""
     MicrosoftGraphProviderConfig.objects.all().delete()
-    return MicrosoftGraphProviderConfig.objects.bulk_create(
-        [MicrosoftGraphProviderConfig(**graph_fields(**overrides))]
-    )[0]
+    row = MicrosoftGraphProviderConfig.objects.bulk_create([MicrosoftGraphProviderConfig(**graph_fields(**overrides))])[
+        0
+    ]
+    return grant(row, *SCOPE)
 
 
 def loaded(**overrides):
-    """An active in-memory configuration that looks as if it had been read from the database."""
-    config = MicrosoftGraphProviderConfig(**graph_fields(is_active=True) | overrides)
-    config._state.adding = False
-    return config
+    """An active stored configuration (with its mailbox scope) written without validation, as a script could."""
+    return store_graph_unvalidated(**{"is_active": True, **overrides})
 
 
 class GraphConfigDefaultsTest(SimpleTestCase):
@@ -283,7 +286,7 @@ class GraphConfigLoadTest(TestCase):
         self.assertEqual(MicrosoftGraphProviderConfig.objects.count(), 1)
 
 
-class GraphConfigIsConfiguredTest(SimpleTestCase):
+class GraphConfigIsConfiguredTest(TestCase):
     def test_requires_an_active_saved_config_with_every_credential(self):
         cases = (
             ("every credential present", {}, True),

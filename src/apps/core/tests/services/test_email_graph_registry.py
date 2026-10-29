@@ -17,6 +17,7 @@ from apps.core.services.email import (
     resolve_provider,
 )
 from apps.core.services.email.registry import register_provider
+from apps.core.tests import graph_helpers
 from apps.core.tests.services.test_email_graph import (
     CLIENT_ID,
     CLIENT_SECRET,
@@ -28,6 +29,9 @@ from apps.core.tests.services.test_email_graph import (
     simple_message,
 )
 
+# Every sender these tests use is in scope; the scope rules have their own tests.
+SCOPE = ("noreply@ucmerced.edu", "shared@contoso.com")
+
 
 def create_graph_config(**overrides):
     values = {
@@ -37,7 +41,7 @@ def create_graph_config(**overrides):
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
     }
-    return MicrosoftGraphProviderConfig.objects.create(**{**values, **overrides})
+    return graph_helpers.create_graph_config(scope=SCOPE, **{**values, **overrides})
 
 
 class GraphProviderFactoryTests(GraphFixtureMixin, TestCase):
@@ -54,8 +58,8 @@ class GraphProviderFactoryTests(GraphFixtureMixin, TestCase):
 
         self.assertIsInstance(provider, GraphProvider)
         self.assertEqual(provider.name, "graph")
-        self.assertEqual((provider.tenant_id, provider.client_id), (TENANT_ID, CLIENT_ID))
-        self.assertEqual(provider.client_secret, CLIENT_SECRET)
+        self.assertEqual((provider.credential.tenant_id, provider.credential.client_id), (TENANT_ID, CLIENT_ID))
+        self.assertEqual(provider.credential.client_secret, CLIENT_SECRET)
         self.assertEqual((provider.from_email, provider.from_name), ("noreply@ucmerced.edu", "Innovate to Grow"))
 
     def test_mailbox_falls_back_to_the_from_email(self):
@@ -122,7 +126,8 @@ class GraphProviderFactoryTests(GraphFixtureMixin, TestCase):
     def test_an_invalid_from_email_fallback_is_rejected(self):
         create_graph_config(mailbox="")
 
-        with self.assertRaisesMessage(PermanentEmailDeliveryError, "configuration is invalid"):
+        # The scope check refuses it first: an address that is not a mailbox can never be in scope.
+        with self.assertRaisesMessage(PermanentEmailDeliveryError, "not in the configured mailbox scope"):
             resolve_provider(SimpleNamespace(provider="graph", from_email="not-an-address", from_name=""))
 
     def test_the_graph_provider_cannot_be_registered_twice(self):

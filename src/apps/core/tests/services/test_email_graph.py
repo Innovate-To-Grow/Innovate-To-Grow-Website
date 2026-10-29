@@ -172,7 +172,7 @@ class GraphProviderConfigurationTests(SimpleTestCase):
     def test_accepts_domain_tenants_and_mailbox_object_ids(self):
         provider = make_provider(tenant_id="contoso.onmicrosoft.com", mailbox="72f988bf-86f1-41af-91ab-2d7cd011db47")
 
-        self.assertEqual(provider.tenant_id, "contoso.onmicrosoft.com")
+        self.assertEqual(provider.credential.tenant_id, "contoso.onmicrosoft.com")
         self.assertEqual(provider.mailbox, "72f988bf-86f1-41af-91ab-2d7cd011db47")
 
     def test_rejects_invalid_configuration_without_echoing_the_secret(self):

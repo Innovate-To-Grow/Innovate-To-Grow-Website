@@ -5,13 +5,17 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
-from apps.core.models import BackgroundJob, EmailServiceConfig, MicrosoftGraphProviderConfig
+from apps.core.models import BackgroundJob, EmailServiceConfig
 from apps.core.services.background_jobs import claim_jobs, enqueue_job
+from apps.core.tests.graph_helpers import create_graph_config
 from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign import pacing
 from apps.mail.services.campaign.dispatch import queue_email_campaign
 from apps.mail.services.campaign.pacing import campaign_job_spacing, delivery_pacing_notice, format_duration
+
+# Graph senders used in this module; the mailbox scope rules have their own tests.
+GRAPH_TEST_SCOPE = ("sender@example.com", "admin@example.com")
 
 TENANT_ID = "1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -47,7 +51,7 @@ class DeliveryPacingNoticeTests(TestCase):
             "client_id": CLIENT_ID,
             "client_secret": "not-a-real-secret",
         }
-        return MicrosoftGraphProviderConfig.objects.create(**values | overrides)
+        return create_graph_config(scope=GRAPH_TEST_SCOPE, **values | overrides)
 
     def test_providers_without_extra_limits_get_no_notice(self):
         for provider in ("ses", "smtp"):
@@ -92,7 +96,8 @@ class ConfirmPageNoticeTests(TestCase):
         self.url = reverse("admin:mail_emailcampaign_send_confirm", args=[self.campaign.pk])
 
     def use_graph(self):
-        MicrosoftGraphProviderConfig.objects.create(
+        create_graph_config(
+            scope=GRAPH_TEST_SCOPE,
             name="Graph",
             is_active=True,
             tenant_id=TENANT_ID,
@@ -141,7 +146,8 @@ class ConfirmPageNoticeTests(TestCase):
 
 
 def make_graph_sender(messages_per_minute=24):
-    MicrosoftGraphProviderConfig.objects.create(
+    create_graph_config(
+        scope=GRAPH_TEST_SCOPE,
         name="Graph",
         is_active=True,
         tenant_id=TENANT_ID,

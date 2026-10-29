@@ -8,6 +8,7 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
 from apps.core.admin.service_credentials.helpers import _normalize_phone_number, _send_test_email, _send_test_sms
+from apps.core.admin.service_credentials.microsoft_graph import GRAPH_FORM_FIELDS
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
 from apps.core.utils.access import user_can_access_app
 
@@ -84,10 +85,7 @@ _EDIT_FIELD_LISTS = {
         "smtp_form",
         ("name", "is_active", "host", "port", "username", "password", "use_tls", "use_ssl", "timeout"),
     ),
-    "graph_fields": (
-        "graph_form",
-        ("name", "is_active", "tenant_id", "client_id", "client_secret", "mailbox", "messages_per_minute"),
-    ),
+    "graph_fields": ("graph_form", GRAPH_FORM_FIELDS),
     "sms_fields": ("aws_form", ("sms_message_template",)),
 }
 
@@ -139,6 +137,18 @@ def mail_settings_edit_view(request):
     return TemplateResponse(request, "admin/mail/settings_edit.html", context)
 
 
+def _graph_scope_context(graph_config) -> dict:
+    """The mailbox scope is edited on the Graph config's own admin page (an inline), so this page links there."""
+    # Ask the database: a rejected save rolls back the row but leaves the in-memory instance marked as saved.
+    saved = MicrosoftGraphProviderConfig.objects.filter(pk=graph_config.pk).exists()
+    return {
+        "graph_scopes": list(graph_config.mailbox_scopes.all()) if saved else [],
+        "graph_scope_url": reverse("admin:core_microsoftgraphproviderconfig_change", args=[graph_config.pk])
+        if saved
+        else reverse("admin:core_microsoftgraphproviderconfig_add"),
+    }
+
+
 def _notification_delivery_context(request, email_config, aws_config, smtp_config, graph_config):
     email_provider, email_provider_color = _email_provider_state(email_config, aws_config, smtp_config, graph_config)
     sms_provider, sms_provider_color = _sms_provider_state(aws_config)
@@ -149,6 +159,7 @@ def _notification_delivery_context(request, email_config, aws_config, smtp_confi
         "aws_config": aws_config,
         "smtp_config": smtp_config,
         "graph_config": graph_config,
+        **_graph_scope_context(graph_config),
         "email_status": "Active" if email_config.is_active else "Inactive",
         "aws_status": "Active" if aws_config.is_active else "Inactive",
         "masked_access_key": _mask_key(aws_config.access_key_id),

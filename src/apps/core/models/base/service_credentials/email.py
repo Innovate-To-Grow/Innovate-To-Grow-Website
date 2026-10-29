@@ -97,9 +97,14 @@ class EmailServiceConfig(models.Model):
                 raise ValidationError({"provider": "Active AWS SES credentials are required before activation."})
         elif self.provider == self.Provider.SMTP and not SMTPProviderConfig.load().is_configured:
             raise ValidationError({"provider": "An active SMTP configuration is required before activation."})
-        elif self.provider == self.Provider.GRAPH and not MicrosoftGraphProviderConfig.load().is_configured:
+        elif self.provider == self.Provider.GRAPH and not MicrosoftGraphProviderConfig.load().sending_ready(
+            self.from_email
+        ):
             raise ValidationError(
-                {"provider": "An active Microsoft Graph configuration is required before activation."}
+                {
+                    "provider": "An active Microsoft Graph configuration whose mailbox scope lets the sender "
+                    "mailbox and the From address send is required before activation."
+                }
             )
 
     def save(self, *args, **kwargs):
@@ -201,7 +206,7 @@ class EmailServiceConfig(models.Model):
         if self.provider == self.Provider.SMTP:
             return SMTPProviderConfig.load().is_configured
         if self.provider == self.Provider.GRAPH:
-            return MicrosoftGraphProviderConfig.load().is_configured
+            return MicrosoftGraphProviderConfig.load().sending_ready(self.from_email)
         return False
 
 

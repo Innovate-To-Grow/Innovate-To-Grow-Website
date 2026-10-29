@@ -3,7 +3,7 @@
 from django import forms
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
-from apps.core.admin.service_credentials.microsoft_graph import GraphSecretFormMixin
+from apps.core.admin.service_credentials.microsoft_graph import GRAPH_FORM_FIELDS, GraphSecretFormMixin
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
 
 
@@ -66,13 +66,11 @@ class SMTPDeliveryForm(forms.ModelForm):
 class GraphDeliveryForm(GraphSecretFormMixin, forms.ModelForm):
     class Meta:
         model = MicrosoftGraphProviderConfig
-        fields = ("name", "is_active", "tenant_id", "client_id", "client_secret", "mailbox", "messages_per_minute")
-        widgets = {"client_secret": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=False)}
+        fields = GRAPH_FORM_FIELDS
 
     def __init__(self, *args, enabled=True, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["client_secret"].required = False
-        self.fields["client_secret"].help_text = "Leave blank to keep the existing client secret."
+        self.setup_write_only_fields()
         for field in self.fields.values():
             field.widget.attrs["data-graph-required"] = "true" if field.required else "false"
             field.disabled = not enabled
