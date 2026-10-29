@@ -102,6 +102,13 @@ const rowState = (page: Page) =>
     };
   });
 
+
+/** Waits until the pinned row shows its logo and every transition has finished (positions are final). */
+const waitForPinnedRow = async (page: Page) => {
+  await expect.poll(async () => (await rowState(page)).logoShown).toBe(true);
+  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'));
+};
+
 test('scrolling pins only the white menu row, with the round i2G logo at its front', async ({page}) => {
   await openPage(page, 1440);
 
@@ -112,7 +119,7 @@ test('scrolling pins only the white menu row, with the round i2G logo at its fro
   expect(top.rowTop).toBe(top.barBottom);
 
   await scrollTo(page, SCROLLED_Y);
-  await expect.poll(async () => (await rowState(page)).logoShown).toBe(true);
+  await waitForPinnedRow(page);
   const pinned = await rowState(page);
   expect(pinned.condensed).toBe(true);
   expect(pinned.rowTop).toBe(0);
@@ -151,7 +158,7 @@ test('with reduced motion the logo and the items switch without transitions', as
   await page.emulateMedia({reducedMotion: 'reduce'});
   await openPage(page, 1440);
   await scrollTo(page, SCROLLED_Y);
-  await expect.poll(async () => (await rowState(page)).logoShown).toBe(true);
+  await waitForPinnedRow(page);
   const durations = await page.evaluate(() =>
     ['.menu-bar-list', '.site-header-menu-logo'].map((selector) => getComputedStyle(document.querySelector(selector)!).transitionDuration),
   );
@@ -170,7 +177,7 @@ for (const width of [1440, 1200, 1100, 993]) {
 
     const top = await rowState(page);
     await scrollTo(page, SCROLLED_Y);
-    await expect.poll(async () => (await rowState(page)).logoShown).toBe(true);
+    await waitForPinnedRow(page);
     const pinned = await rowState(page);
 
     expect(top.rows).toBe(1);
@@ -188,7 +195,7 @@ test('signed out, the date shows wherever it fits beside "Sign in"', async ({pag
   await expect.poll(async () => (await rowState(page)).dateShown).toBe(true);
   await expect(page.locator('.member-signin')).toHaveText(/^sign in$/i);
   await scrollTo(page, SCROLLED_Y);
-  await expect.poll(async () => (await rowState(page)).logoShown).toBe(true);
+  await waitForPinnedRow(page);
   expect((await rowState(page)).dateShown).toBe(true);
 });
 
@@ -221,7 +228,7 @@ test('a longer CMS menu shortens the member name before it wraps, the same way a
   await openPage(page, 993, longer);
   const top = await rowState(page);
   await scrollTo(page, SCROLLED_Y);
-  await expect.poll(async () => (await rowState(page)).logoShown).toBe(true);
+  await waitForPinnedRow(page);
   const pinned = await rowState(page);
 
   // The member link never collapses, and pinning changes nothing in the row's layout.
@@ -235,7 +242,7 @@ test('a longer CMS menu shortens the member name before it wraps, the same way a
 test('focusing the pinned row does not scroll the page, and Shift+Tab out of it scrolls back to what gets focus', async ({page}) => {
   await openPage(page, 1200);
   await scrollTo(page, SCROLLED_Y);
-  await expect.poll(async () => (await rowState(page)).logoShown).toBe(true);
+  await waitForPinnedRow(page);
 
   await page.locator('.site-header-menu-logo').focus();
   await page.keyboard.press('Tab');

@@ -63,6 +63,9 @@ test('the phone bar shows the UC Merced wordmark at the top and the i2G logo onc
   await expect(wordmark).toBeVisible();
   await expect(logo).toBeHidden();
   const front = (await wordmark.boundingBox())!.x;
+  // Smaller than the desktop wordmark (138 x 34).
+  const wordmarkImage = await wordmark.locator('img').boundingBox();
+  expect([wordmarkImage!.width, wordmarkImage!.height]).toEqual([97, 24]);
 
   // Scrolled by the bar's height: the round logo takes the wordmark's place.
   for (const y of [30, 200, 600]) {

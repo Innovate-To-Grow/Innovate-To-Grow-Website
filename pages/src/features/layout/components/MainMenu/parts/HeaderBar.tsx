@@ -22,7 +22,7 @@ export const HeaderBar = ({isMobileOpen, mobileMenuTriggerRef, onToggleMobileMen
         rel="noopener noreferrer"
         aria-label="UC Merced"
       >
-        <ResponsiveBrandImage brand="ucm" alt="" sizes="138px" />
+        <ResponsiveBrandImage brand="ucm" alt="" sizes={`(max-width: ${PHONE_MAX_WIDTH}px) 97px, 138px`} />
       </a>
 
       <a className="site-header-logo" href="/" aria-label="Innovate To Grow home">

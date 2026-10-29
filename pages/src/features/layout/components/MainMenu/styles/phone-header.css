@@ -56,6 +56,12 @@
     min-height: 44px;
   }
 
+  /* Smaller than on desktop (138 x 34), so it sits quietly in the 56px bar. */
+  .ucm-wordmark img {
+    width: 97px;
+    height: 24px;
+  }
+
   .site-header-logo {
     position: absolute;
     top: 8px;
