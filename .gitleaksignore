@@ -1,0 +1,3 @@
+# Findings reviewed and accepted. Each line is a gitleaks fingerprint: <commit>:<file>:<rule>:<line>.
+# A fake PEM string in a test (the body is "not-real-key-material"); the test now assembles it at runtime.
+e06818c3e86688d03d78bf2e61e6c2b9ee2d1f73:src/apps/core/tests/services/test_graph_credential.py:private-key:99
