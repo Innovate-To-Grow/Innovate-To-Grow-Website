@@ -145,18 +145,17 @@ describe('MainMenu header state', () => {
       expect(header).not.toHaveClass('is-condensed');
     });
 
-    it('never condenses the phone header', () => {
+    it('condenses the phone header once the page has scrolled by its 61px bar (the wordmark gives way to the logo)', () => {
       runFramesImmediately();
-      stubDesktopHeader();
-      vi.stubGlobal(
-        'matchMedia',
-        (query: string) => ({matches: query === '(max-width: 992px)', media: query}) as MediaQueryList,
-      );
-      setScrollY(600);
+      stubPartHeights({'site-header-bar': 61});
       const {header} = renderMenu();
       expect(header).not.toHaveClass('is-condensed');
 
-      scrollTo(900);
+      scrollTo(60);
+      expect(header).not.toHaveClass('is-condensed');
+      scrollTo(61);
+      expect(header).toHaveClass('is-condensed');
+      scrollTo(0);
       expect(header).not.toHaveClass('is-condensed');
     });
 

@@ -1,42 +1,33 @@
 import {useLayoutEffect, useState, type RefObject} from 'react';
-import {PHONE_MAX_WIDTH} from './parts/shared';
 
-/** The condensed row lets go this far (px) before it would unpin, so scroll jitter at the threshold cannot flicker. */
+/** The condensed state lets go this far (px) before its threshold, so scroll jitter there cannot flicker. */
 export const CONDENSE_HYSTERESIS_PX = 8;
 
 const readScrollY = () => (typeof window === 'undefined' ? 0 : window.scrollY || 0);
 
-const isPhoneLayout = () =>
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia(`(max-width: ${PHONE_MAX_WIDTH}px)`).matches;
-
 /**
- * Next condensed state of the desktop header.
+ * Next condensed state of the header: condensed once the page has scrolled by
+ * the blue bar's height (`pinAtPx`), and back CONDENSE_HYSTERESIS_PX before
+ * that. Without a measured height (jsdom) it never condenses.
  *
- * The blue bar scrolls away with the page; once it has gone (`pinAtPx`, its
- * height) only the white menu row is left, pinned at the top, and the header
- * turns condensed: the round i2G logo joins the front of the row. It leaves
- * that state CONDENSE_HYSTERESIS_PX before the row unpins. Without a measured
- * height (phones, jsdom) it never condenses.
+ * Desktop: the bar has scrolled away, so only the white menu row is left,
+ * pinned at the top, and the round i2G logo joins its front.
+ * Phone: the fixed bar stays, and its UC Merced wordmark gives way to the
+ * round i2G logo.
  */
 export const nextCondensed = (wasCondensed: boolean, scrollY: number, pinAtPx: number): boolean => {
   if (!Number.isFinite(pinAtPx) || pinAtPx <= 0) return false;
   return wasCondensed ? scrollY >= pinAtPx - CONDENSE_HYSTERESIS_PX : scrollY >= pinAtPx;
 };
 
-/** Height of the blue bar above the menu row; 0 on phones, whose one bar never changes. */
-const readPinAtPx = (headerRef: RefObject<HTMLElement | null>): number => {
-  const header = headerRef.current;
-  if (!header || isPhoneLayout()) return 0;
-  return header.querySelector<HTMLElement>('.site-header-bar')?.getBoundingClientRect().height ?? 0;
-};
+/** Height of the blue bar: what has to scroll by before the header condenses. */
+const readPinAtPx = (headerRef: RefObject<HTMLElement | null>): number =>
+  headerRef.current?.querySelector<HTMLElement>('.site-header-bar')?.getBoundingClientRect().height ?? 0;
 
 /**
- * Whether the desktop header is condensed (only the pinned menu row with the
- * logo shows), and whether its transitions may run yet. Motion is switched on
- * only after the first state is in place, so a reload that restores a
- * scrolled position does not play the condense animation.
+ * Whether the header is condensed (nextCondensed), and whether its transitions
+ * may run yet. Motion is switched on only after the first state is in place,
+ * so a reload that restores a scrolled position does not play the animation.
  */
 export const useHeaderCondensed = (headerRef: RefObject<HTMLElement | null>) => {
   const [isCondensed, setIsCondensed] = useState(false);

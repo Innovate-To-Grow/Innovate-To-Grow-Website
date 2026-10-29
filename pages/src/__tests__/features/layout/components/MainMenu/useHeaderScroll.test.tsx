@@ -91,10 +91,6 @@ const collectFrames = () => {
   return frames;
 };
 
-/** The phone header breakpoint matches (`true`) or not. */
-const stubPhoneLayout = (matches: boolean) =>
-  vi.stubGlobal('matchMedia', (query: string) => ({matches, media: query}) as MediaQueryList);
-
 const scrollTo = (value: number) =>
   act(() => {
     setScrollY(value);
@@ -152,14 +148,18 @@ describe('useHeaderCondensed', () => {
     expect(result.current.isCondensed).toBe(false);
   });
 
-  it('never condenses the phone header, whose one bar stays the same', () => {
+  it('condenses the phone header too, once the page has scrolled by its 61px bar', () => {
     runFramesImmediately();
-    stubPhoneLayout(true);
-    setScrollY(600);
-    const {ref} = makeMeasuredHeader();
+    const {ref, bar} = makeMeasuredHeader();
+    setHeight(bar, 61);
     const {result} = renderHook(() => useHeaderCondensed(ref));
+    scrollTo(60);
     expect(result.current.isCondensed).toBe(false);
-    scrollTo(900);
+    scrollTo(61);
+    expect(result.current.isCondensed).toBe(true);
+    scrollTo(53);
+    expect(result.current.isCondensed).toBe(true);
+    scrollTo(52);
     expect(result.current.isCondensed).toBe(false);
   });
 
@@ -178,7 +178,6 @@ describe('useHeaderCondensed', () => {
 
   it('re-checks on resize, when the bar height changes', () => {
     runFramesImmediately();
-    stubPhoneLayout(false);
     setScrollY(100);
     const {ref, bar} = makeMeasuredHeader();
     const {result} = renderHook(() => useHeaderCondensed(ref));

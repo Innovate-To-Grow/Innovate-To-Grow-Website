@@ -1,8 +1,8 @@
 @layer itg.components {
 /* ---------- Phone header (<= 992px) ----------
-   One fixed blue bar, the same at every scroll position: 56px + the 5px gold
-   rule, the round i2G logo at the front and the menu button at the end. The
-   UC Merced wordmark and the menu row are not shown. */
+   One fixed blue bar: 56px + the 5px gold rule, the UC Merced wordmark at the
+   front (the round i2G logo once the page has scrolled) and the menu button
+   at the end. The university links and the menu row are not shown. */
 @media (max-width: 992px) {
   /* The bar is fixed; #menu-root keeps its room in the flow, but only where
      the header is actually mounted. */
@@ -32,9 +32,10 @@
     box-shadow: var(--itg-shadow-header, 0 6px 6px -2px rgba(121, 121, 121, 0.67));
   }
 
-  /* Logo at x = 2.5%, menu button 5px from the viewport edge (as the
-     reference's fixed button) */
+  /* Wordmark / logo at x = 2.5%, menu button 5px from the viewport edge (as
+     the reference's fixed button) */
   .site-header-bar-inner {
+    position: relative;
     height: 56px;
     display: flex;
     align-items: center;
@@ -42,15 +43,59 @@
     gap: 12px;
   }
 
-  .ucm-wordmark,
   .site-header-links,
   .site-header-menu {
     display: none;
   }
 
+  /* At the top of the page the bar shows the UC Merced wordmark; once the
+     page has scrolled by the bar's height (.is-condensed) the round i2G logo
+     takes its place. Both sit in the same spot at the bar's front. */
+  .ucm-wordmark {
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .site-header-logo {
+    position: absolute;
+    top: 8px;
+    left: 2.5%;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.88);
+    transform-origin: 0 50%;
+  }
+
   .site-header-logo img {
     width: 40px;
     height: 40px;
+  }
+
+  .site-header.is-condensed .ucm-wordmark {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .site-header.is-condensed .site-header-logo {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+
+  .site-header.has-motion .ucm-wordmark,
+  .site-header.has-motion .site-header-logo {
+    transition:
+      opacity var(--itg-transition-fast) ease-out,
+      transform var(--itg-transition-fast) ease-out,
+      visibility 0s linear var(--itg-transition-fast);
+  }
+
+  .site-header.has-motion.is-condensed .site-header-logo,
+  .site-header.has-motion:not(.is-condensed) .ucm-wordmark {
+    transition:
+      opacity var(--itg-transition-fast) ease-out,
+      transform var(--itg-transition-fast) ease-out,
+      visibility 0s;
   }
 
   /* Plain three-line icon, 60 x 52; a cross while the menu is open */

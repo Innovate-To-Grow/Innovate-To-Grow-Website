@@ -28,15 +28,15 @@ test('isolated routes reserve no room for the header that they do not mount', as
   expect(Math.abs(room.mainTop - room.barBottom)).toBeLessThanOrEqual(1);
 });
 
-test('the phone header is one blue bar with the logo and the menu button, the same at every scroll position', async ({page}) => {
+test('the phone bar shows the UC Merced wordmark at the top and the i2G logo once scrolled, and never moves', async ({page}) => {
   await page.setViewportSize(PHONE);
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await page.addStyleTag({content: '#footer-root { min-height: 3000px; }'});
 
   const bar = page.locator('.site-header-bar');
-  await expect(bar.getByRole('link', {name: 'Innovate To Grow home'})).toBeVisible();
+  const wordmark = bar.getByRole('link', {name: 'UC Merced'});
+  const logo = bar.getByRole('link', {name: 'Innovate To Grow home'});
   await expect(bar.getByRole('button', {name: 'Toggle menu'})).toBeVisible();
-  await expect(bar.getByRole('link', {name: 'UC Merced'})).toBeHidden();
   await expect(page.locator('.site-header-band')).toHaveCount(0);
 
   const scrollTo = (y: number) => page.evaluate((top) => window.scrollTo(0, top), y);
@@ -50,7 +50,6 @@ test('the phone header is one blue bar with the logo and the menu button, the sa
       const contentTop = document.getElementById('menu-root')!.getBoundingClientRect().bottom;
       return {
         bar: rect('.site-header-bar'),
-        logo: rect('.site-header-logo'),
         toggle: rect('.site-header-mobile-toggle'),
         // Any blank strip between the bar and the page content.
         emptyStrip: Math.max(0, Math.round(contentTop - barBottom)),
@@ -58,16 +57,28 @@ test('the phone header is one blue bar with the logo and the menu button, the sa
     });
 
   const atTop = await barState();
-  // 56px bar + the 5px gold rule; the logo at the front, the menu button at the end.
+  // 56px bar + the 5px gold rule, the menu button at the end.
   expect(atTop.bar).toEqual([0, 0, PHONE.width, 61]);
-  expect(atTop.logo[0]).toBeLessThan(atTop.toggle[0]);
   expect(atTop.emptyStrip).toBe(0);
+  await expect(wordmark).toBeVisible();
+  await expect(logo).toBeHidden();
+  const front = (await wordmark.boundingBox())!.x;
 
-  for (const y of [10, 30, 60, 200, 600, 90, 20, 0]) {
+  // Scrolled by the bar's height: the round logo takes the wordmark's place.
+  for (const y of [30, 200, 600]) {
     await scrollTo(y);
     await expect.poll(barState, {message: `at ${y}px`}).toEqual(atTop);
   }
-  await expect(page.locator('.site-header')).not.toHaveClass(/is-condensed/);
+  await expect(logo).toBeVisible();
+  await expect(wordmark).toBeHidden();
+  expect(Math.round((await logo.boundingBox())!.x)).toBe(Math.round(front));
+
+  for (const y of [90, 20, 0]) {
+    await scrollTo(y);
+    await expect.poll(barState, {message: `at ${y}px`}).toEqual(atTop);
+  }
+  await expect(wordmark).toBeVisible();
+  await expect(logo).toBeHidden();
 });
 
 test('the phone menu opens right under the bar, and the menu button, Escape or the backdrop close it', async ({page}) => {

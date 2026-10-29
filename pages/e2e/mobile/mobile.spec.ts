@@ -41,7 +41,17 @@ test('phone and tablet header: one blue bar, a cross while open, a one-size-smal
   const bar = await page.locator('.site-header-bar').boundingBox();
   expect(bar).toEqual({x: 0, y: 0, width: viewport.width, height: 61});
   await expect(page.locator('.site-header-band')).toHaveCount(0);
-  await expect(page.locator('.site-header-bar').getByRole('link', {name: 'UC Merced'})).toBeHidden();
+  // The UC Merced wordmark at the top of the page; the round i2G logo once scrolled.
+  const wordmark = page.locator('.site-header-bar').getByRole('link', {name: 'UC Merced'});
+  const logo = page.locator('.site-header-bar').getByRole('link', {name: 'Innovate To Grow home'});
+  await expect(wordmark).toBeVisible();
+  await expect(logo).toBeHidden();
+  await page.addStyleTag({content: '#footer-root { min-height: 3000px; }'});
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await expect(logo).toBeVisible();
+  await expect(wordmark).toBeHidden();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(wordmark).toBeVisible();
 
   const toggle = page.locator('#menu-root').getByRole('button', {name: 'Toggle menu'});
   await toggle.tap();
