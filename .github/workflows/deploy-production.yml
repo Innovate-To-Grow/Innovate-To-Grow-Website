@@ -115,13 +115,13 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   approve:
-    name: Approve all production deployments
+    name: Manual Deployment Approval
     needs: resolve-ci-release
     if: ${{ needs.resolve-ci-release.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment:
-      name: Production Deployments
+      name: Manual Deployment Approval
     outputs:
       deploy_sha: ${{ steps.approved.outputs.deploy_sha }}
       ci_run_id: ${{ steps.approved.outputs.ci_run_id }}

@@ -108,7 +108,7 @@ half reopens it. Don't reintroduce diff-scoping —
 
 `Deploy Production` is the only automatic production entry point. After a
 successful `main` CI run, it requests one approval through the protected
-`Production Deployments` environment and then calls all three component
+`Manual Deployment Approval` environment and then calls all three component
 workflows with the triggering commit SHA. See
 [Production Deployment Approval](production.md) for environment setup and the
 reviewer migration procedure.
