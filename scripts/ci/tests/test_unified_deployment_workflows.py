@@ -35,7 +35,7 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
         self.assertIn("workflow_run.conclusion == 'success'", resolver["if"])
         self.assertNotIn("environment", resolver)
         approval = production["jobs"]["approve"]
-        self.assertEqual(approval["environment"]["name"], "Production Deployments")
+        self.assertEqual(approval["environment"]["name"], "Manual Deployment Approval")
         self.assertEqual(approval["needs"], "resolve-ci-release")
         self.assertEqual(
             set(approval["outputs"]),
@@ -106,10 +106,10 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
             "${{ steps.release.outputs.ci_run_id }}",
         )
 
-    def test_component_workflows_are_reusable_and_keep_target_environments(self) -> None:
+    def test_component_workflows_are_reusable_and_keep_only_production_environments(self) -> None:
         expected_environments = {
-            "deploy-backend.yml": {"AWS ECS - Prod", "AWS ECS(DEMO) - Prod"},
-            "deploy-frontend.yml": {"AWS Amplify - Prod", "AWS Amplify(DEMO) - Prod"},
+            "deploy-backend.yml": {"AWS ECS - Prod"},
+            "deploy-frontend.yml": {"AWS Amplify - Prod"},
             "deploy-archive.yml": {"AWS ECS - Archive Prod"},
         }
 
@@ -127,12 +127,8 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
                 checkout = named_step(deploy, "Checkout code")
                 self.assertEqual(checkout["with"]["ref"], "${{ inputs.deploy_sha }}")
 
-                environment = deploy["environment"]["name"]
-                if "matrix.environment_name" in environment:
-                    configured = {target["environment_name"] for target in deploy["strategy"]["matrix"]["include"]}
-                else:
-                    configured = {environment}
-                self.assertEqual(configured, environments)
+                self.assertNotIn("strategy", deploy)
+                self.assertEqual({deploy["environment"]["name"]}, environments)
 
     def test_backend_promotes_ci_image_or_builds_for_manual_dispatch(self) -> None:
         backend = load_workflow("deploy-backend.yml")
