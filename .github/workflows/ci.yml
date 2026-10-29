@@ -301,12 +301,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -372,12 +375,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -487,12 +493,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -609,12 +618,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -1803,12 +1815,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
