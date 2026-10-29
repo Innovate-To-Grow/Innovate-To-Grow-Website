@@ -58,10 +58,11 @@ export function LoginLinkPage() {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!token) {
-      clearAuthCallbackParams('login-link');
-      return;
-    }
+    // The token only decides whether there is anything to send: it signs no one
+    // in, and nothing local is done on its say-so. LoginLinkView's verdict is
+    // the only authority. Without one the page already shows the fallback, and
+    // a handoff that yields no token holds nothing this page would send.
+    if (!token) return;
 
     let cancelled = false;
 
