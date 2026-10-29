@@ -226,12 +226,12 @@ The deploy workflows target the production backend, frontend, and archive.
 
 | GitHub Environment | Purpose |
 |--------------------|---------|
-| `Production Deployments` | Single required-reviewer gate shared by every production deployment |
+| `Manual Deployment Approval` | Single required-reviewer gate shared by every production deployment |
 | `AWS ECS - Prod` | Production backend |
 | `AWS Amplify - Prod` | Production frontend |
 | `AWS ECS - Archive Prod` | Archived event-pages ECS service |
 
-Keep required reviewers on `Production Deployments`. The three target
+Keep required reviewers on `Manual Deployment Approval`. The three target
 environments provide target-specific variables, secrets, URLs, and deployment
 history, but must not also require reviewers after the unified gate has been
 verified; otherwise GitHub requests a second approval.

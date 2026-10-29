@@ -35,7 +35,7 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
         self.assertIn("workflow_run.conclusion == 'success'", resolver["if"])
         self.assertNotIn("environment", resolver)
         approval = production["jobs"]["approve"]
-        self.assertEqual(approval["environment"]["name"], "Production Deployments")
+        self.assertEqual(approval["environment"]["name"], "Manual Deployment Approval")
         self.assertEqual(approval["needs"], "resolve-ci-release")
         self.assertEqual(
             set(approval["outputs"]),

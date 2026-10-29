@@ -2,7 +2,7 @@
 
 A successful `CI` run on `main` starts the `Deploy Production` workflow. An
 operator can also start that workflow manually on `main` to redeploy its
-current commit. Both paths pause once on the protected `Production Deployments`
+current commit. Both paths pause once on the protected `Manual Deployment Approval`
 environment. Approving that single gate releases the complete deployment set:
 
 - backend production on ECS;
@@ -27,12 +27,12 @@ disabled because it would bypass the shared gate.
 
 The workflow uses these environments:
 
-- `Production Deployments` — the single approval gate;
+- `Manual Deployment Approval` — the single approval gate;
 - `AWS ECS - Prod` — backend configuration;
 - `AWS Amplify - Prod` — frontend configuration;
 - `AWS ECS - Archive Prod` — archive configuration.
 
-Configure required reviewers on `Production Deployments`. The three target
+Configure required reviewers on `Manual Deployment Approval`. The three target
 environments continue to hold their target-specific variables, secrets, URLs,
 and deployment history, but they must not also require reviewers after the
 shared gate is verified. Otherwise GitHub will request a second round of
@@ -40,7 +40,7 @@ approvals when the component jobs begin.
 
 Migrate protection in this order:
 
-1. Create `Production Deployments` and configure its required reviewers.
+1. Create `Manual Deployment Approval` and configure its required reviewers.
 2. Merge the unified workflow and confirm its approval job waits correctly.
 3. Approve the first unified run and complete any existing target approvals.
 4. Remove only the required-reviewer rules from the three target environments.
