@@ -3,8 +3,10 @@ from email.utils import parseaddr
 from typing import Any
 
 from django.core.cache import cache
+from django.db.utils import OperationalError, ProgrammingError
 from imap_tools import AND
 
+from . import graph_backend
 from .connection import (
     INBOX_FOLDER,
     INBOX_LIMIT_CHOICES,
@@ -26,11 +28,17 @@ def list_inbox_messages(
     folder: str = INBOX_FOLDER,
     force_refresh: bool = False,
 ) -> list[dict[str, Any]]:
-    cache_key = f"{INBOX_LIST_CACHE_KEY}:{folder}:{limit}"
+    reader = _graph_reader()
+    cache_key = f"{INBOX_LIST_CACHE_KEY}:{_backend(reader)}{folder}:{limit}"
     if not force_refresh:
         cached = cache.get(cache_key)
         if cached is not None:
             return cached
+
+    if reader is not None:
+        results = graph_backend.list_messages(reader, folder=folder, limit=limit)
+        cache.set(cache_key, results, INBOX_LIST_CACHE_TTL)
+        return results
 
     try:
         import apps.mail.services.inbox as inbox_api
@@ -49,10 +57,17 @@ def list_inbox_messages(
 
 
 def fetch_inbox_message(uid: str, mailbox: str | None = None, *, folder: str = INBOX_FOLDER) -> dict[str, Any]:
-    cache_key = f"{INBOX_MSG_CACHE_PREFIX}{folder}:{uid}"
+    reader = _graph_reader()
+    cache_key = f"{INBOX_MSG_CACHE_PREFIX}{_backend(reader)}{folder}:{uid}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
+
+    if reader is not None:
+        # Mail.Read cannot mark a message read, so the cached list keeps Outlook's read state.
+        result = graph_backend.fetch_message(reader, uid)
+        cache.set(cache_key, result, INBOX_MSG_CACHE_TTL)
+        return result
 
     try:
         import apps.mail.services.inbox as inbox_api
@@ -69,6 +84,19 @@ def fetch_inbox_message(uid: str, mailbox: str | None = None, *, folder: str = I
     except Exception as exc:
         logger.exception("Failed to fetch inbox message uid=%s.", uid)
         raise InboxError("Failed to fetch the message.") from exc
+
+
+def _graph_reader():
+    """The Microsoft Graph reader when Graph has read permission on the I2G mailbox, else None (Gmail IMAP)."""
+    try:
+        return graph_backend.active_reader()
+    except (OperationalError, ProgrammingError) as exc:
+        raise InboxError("Mail configuration is unavailable. Run the latest migrations first.") from exc
+
+
+def _backend(reader) -> str:
+    # Graph and IMAP message ids differ, so their cached lists and messages must never be mixed.
+    return "graph:" if reader is not None else ""
 
 
 def message_summary(message: Any) -> dict[str, Any]:

@@ -5,7 +5,7 @@
             <div class="i2g-mail-toolbar__copy">
                 <div class="i2g-mail-toolbar__title">{% if folder == 'SENT' %}Sent{% else %}Inbox{% endif %}</div>
                 <div class="i2g-mail-toolbar__meta">
-                    {{ gmail_config.gmail_username|default:"Not configured" }} &middot; {{ folder|default:"INBOX" }}
+                    {{ inbox_account.account }} &middot; {{ folder|default:"INBOX" }}
                 </div>
             </div>
         </div>
@@ -61,11 +61,11 @@
          class="i2g-mail-account-panel">
         <div class="i2g-mail-account-field">
             <span class="i2g-mail-account-field__label">Account</span>
-            <span class="i2g-mail-account-field__value">{{ gmail_config.gmail_username|default:"Not configured" }}</span>
+            <span class="i2g-mail-account-field__value">{{ inbox_account.account }}</span>
         </div>
         <div class="i2g-mail-account-field">
-            <span class="i2g-mail-account-field__label">IMAP host</span>
-            <span class="i2g-mail-account-field__value">{{ gmail_config.imap_host|default:"N/A" }}</span>
+            <span class="i2g-mail-account-field__label">{{ inbox_account.source_label }}</span>
+            <span class="i2g-mail-account-field__value">{{ inbox_account.source }}</span>
         </div>
         <div class="i2g-mail-account-field">
             <span class="i2g-mail-account-field__label">Folder</span>

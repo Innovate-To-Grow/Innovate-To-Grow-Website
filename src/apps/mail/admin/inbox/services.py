@@ -17,7 +17,9 @@ from apps.mail.services.scam_detector import analyze_email, assess_email
 # Keeps the package's historical logger name.
 logger = logging.getLogger("apps.mail.admin.inbox")
 
-INBOX_CONFIG_ERROR_MESSAGE = "Inbox is not available. Check Gmail import configuration."
+INBOX_CONFIG_ERROR_MESSAGE = (
+    "Inbox is not available. Check the Microsoft Graph mailbox scope or the Gmail import configuration."
+)
 INBOX_UNEXPECTED_ERROR_MESSAGE = "Inbox could not be loaded. Check server logs."
 INBOX_MESSAGE_ERROR_MESSAGE = "Message could not be loaded. Check server logs."
 INBOX_DEFAULT_LIMIT = 30

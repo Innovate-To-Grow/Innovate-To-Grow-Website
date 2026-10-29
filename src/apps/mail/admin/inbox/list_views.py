@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from apps.core.models import GmailAccessAccount
 from apps.core.utils.access import user_can_access_app
+from apps.mail.services.inbox import graph_backend
 
 from . import services as inbox_api
 from .helpers import parse_folder, parse_limit
@@ -20,7 +21,7 @@ def inbox_list_view(request):
         raise PermissionDenied("You do not have permission to access the mail inbox.")
     context = {
         **admin.site.each_context(request),
-        "title": "Gmail Inbox",
+        "title": "Inbox",
         "fragment_url": reverse("admin:mail_inbox_fragment"),
     }
     return TemplateResponse(request, "admin/mail/inbox/list.html", context)
@@ -30,7 +31,6 @@ def inbox_fragment_view(request):
     """Return HTML partial for inbox list and config stats."""
     if not user_can_access_app(request.user, "mail"):
         raise PermissionDenied("You do not have permission to access the mail inbox.")
-    gmail_config = GmailAccessAccount.load()
     error_message = ""
     inbox_messages = []
     limit = parse_limit(request)
@@ -50,7 +50,7 @@ def inbox_fragment_view(request):
         request,
         "admin/mail/inbox/_inbox_full_body.html",
         {
-            "gmail_config": gmail_config,
+            "inbox_account": _inbox_account(),
             "inbox_messages": inbox_messages,
             "error_message": error_message,
             "limit": limit,
@@ -58,3 +58,20 @@ def inbox_fragment_view(request):
             "folder": folder,
         },
     )
+
+
+def _inbox_account() -> dict[str, str]:
+    """Which mailbox the inbox shows and where it is read from (Microsoft Graph or Gmail IMAP)."""
+    try:
+        reader = graph_backend.active_reader()
+    except Exception:
+        inbox_api.logger.exception("Could not resolve the Microsoft Graph inbox reader.")
+        reader = None
+    if reader is not None:
+        return {"account": reader.mailbox, "source_label": "Source", "source": "Microsoft Graph (Mail.Read)"}
+    gmail_config = GmailAccessAccount.load()
+    return {
+        "account": gmail_config.gmail_username or "Not configured",
+        "source_label": "IMAP host",
+        "source": gmail_config.imap_host or "N/A",
+    }

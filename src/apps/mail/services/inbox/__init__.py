@@ -1,4 +1,4 @@
-"""Inbox viewer and reply service using Gmail IMAP + AWS SES."""
+"""Inbox viewer and reply service: Microsoft Graph (Mail.Read) or Gmail IMAP to read, the email facade to reply."""
 
 from .connection import (
     INBOX_FOLDER,
