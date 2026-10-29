@@ -28,7 +28,12 @@ gspread>=6.2.1
 # Agents 0.21+ requires openai 3, while LiteLLM requires openai <3.
 # Revisit the cap when LiteLLM supports openai 3 (see PR #542).
 openai-agents[litellm]>=0.20.0,<0.21.0
-litellm>=1.103.2,<2.0
+# LiteLLM 1.104+ requires filelock<4, which excludes the filelock fix below, so
+# stay on the maintained 1.103.x line until LiteLLM allows filelock>=4.2.1.
+litellm>=1.103.2,<1.104
+# Transitive (huggingface-hub). 4.2.1 fixes CVE-2026-112940 / GHSA-v4x8-3wr5-3wq8
+# (ReadWriteLock file overwrite), code-scanning alert #657.
+filelock>=4.2.1
 
 # Email
 imap-tools>=1.16.0

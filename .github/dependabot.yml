@@ -42,6 +42,10 @@ updates:
       # Keep this in sync with src/requirements/base.txt until LiteLLM supports it.
       - dependency-name: "openai-agents"
         versions: [">=0.21"]
+      # LiteLLM 1.104+ requires filelock<4, below the filelock>=4.2.1 security floor.
+      # Keep this in sync with src/requirements/base.txt until LiteLLM allows it.
+      - dependency-name: "litellm"
+        versions: [">=1.104"]
 
   # React/Vite frontend
   - package-ecosystem: npm
