@@ -8,7 +8,10 @@ interface HeaderBarProps {
   onToggleMobileMenu: () => void;
 }
 
-/** The top bar: UC Merced wordmark, the I2G logo, university links and the phone menu toggle. */
+/**
+ * The top bar: UC Merced wordmark, the I2G logo, university links and the phone menu toggle.
+ * On phones (phone-header.css) it is just the round logo and the menu toggle.
+ */
 export const HeaderBar = ({isMobileOpen, mobileMenuTriggerRef, onToggleMobileMenu}: HeaderBarProps) => (
   <div className="site-header-bar">
     <div className="site-header-container site-header-bar-inner">
@@ -19,7 +22,7 @@ export const HeaderBar = ({isMobileOpen, mobileMenuTriggerRef, onToggleMobileMen
         rel="noopener noreferrer"
         aria-label="UC Merced"
       >
-        <ResponsiveBrandImage brand="ucm" alt="" sizes="(max-width: 992px) 114px, 138px" />
+        <ResponsiveBrandImage brand="ucm" alt="" sizes="138px" />
       </a>
 
       <a className="site-header-logo" href="/" aria-label="Innovate To Grow home">
@@ -28,7 +31,7 @@ export const HeaderBar = ({isMobileOpen, mobileMenuTriggerRef, onToggleMobileMen
           alt=""
           className="site-header-logo-image"
           sizes="156px"
-          artDirection={{media: `(max-width: ${PHONE_MAX_WIDTH}px)`, brand: 'i2g', sizes: '50px'}}
+          artDirection={{media: `(max-width: ${PHONE_MAX_WIDTH}px)`, brand: 'i2g', sizes: '40px'}}
         />
       </a>
 

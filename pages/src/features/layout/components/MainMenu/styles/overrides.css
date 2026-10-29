@@ -8,9 +8,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .site-header-bar,
-  .site-header-band,
-  .site-header.is-band-hidden .site-header-band,
+  .site-header.has-motion .menu-bar-list,
+  .site-header.has-motion.is-condensed .menu-bar-list,
+  .site-header.has-motion .site-header-menu-logo,
+  .site-header.has-motion.is-condensed .site-header-menu-logo,
+  .site-header-mobile-toggle-bar,
   .menu-dropdown,
   .menu-dropdown-nested,
   .member-arrow,

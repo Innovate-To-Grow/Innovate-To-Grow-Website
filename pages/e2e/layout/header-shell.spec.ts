@@ -17,71 +17,95 @@ test('isolated routes reserve no room for the header that they do not mount', as
     expect(await page.locator('#main').evaluate((main) => main.getBoundingClientRect().top), path).toBe(0);
   }
 
-  // A normal page still keeps the fixed phone bar + band's room above the content.
+  // A normal page still keeps the fixed phone bar's room above the content.
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
-  await expect(page.locator('.site-header-band')).toBeVisible();
+  await expect(page.locator('.site-header-bar')).toBeVisible();
   const room = await page.evaluate(() => ({
     mainTop: document.getElementById('main')!.getBoundingClientRect().top,
-    bandBottom: document.querySelector('.site-header-band')!.getBoundingClientRect().bottom,
+    barBottom: document.querySelector('.site-header-bar')!.getBoundingClientRect().bottom,
   }));
-  expect(room.mainTop).toBeGreaterThan(100);
-  expect(Math.abs(room.mainTop - room.bandBottom)).toBeLessThanOrEqual(1);
+  expect(room.mainTop).toBeGreaterThan(50);
+  expect(Math.abs(room.mainTop - room.barBottom)).toBeLessThanOrEqual(1);
 });
 
-test('the phone site-name band never leaves its room empty while scrolling', async ({page}) => {
+test('the phone header is one blue bar with the logo and the menu button, the same at every scroll position', async ({page}) => {
   await page.setViewportSize(PHONE);
-  // No transitions: each scroll position settles at once.
-  await page.emulateMedia({reducedMotion: 'reduce'});
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
   await page.addStyleTag({content: '#footer-root { min-height: 3000px; }'});
-  await expect(page.locator('.site-header-band')).toBeVisible();
+
+  const bar = page.locator('.site-header-bar');
+  await expect(bar.getByRole('link', {name: 'Innovate To Grow home'})).toBeVisible();
+  await expect(bar.getByRole('button', {name: 'Toggle menu'})).toBeVisible();
+  await expect(bar.getByRole('link', {name: 'UC Merced'})).toBeHidden();
+  await expect(page.locator('.site-header-band')).toBeHidden();
 
   const scrollTo = (y: number) => page.evaluate((top) => window.scrollTo(0, top), y);
-  // Height of any blank strip between the header (bar, or bar + band) and the page content.
-  const emptyStrip = () =>
+  const barState = () =>
     page.evaluate(() => {
-      const bar = document.querySelector('.site-header-bar')!.getBoundingClientRect();
-      const bandElement = document.querySelector('.site-header-band')!;
-      const band = bandElement.getBoundingClientRect();
-      const coveredTo = getComputedStyle(bandElement).visibility === 'hidden' ? bar.bottom : Math.max(bar.bottom, band.bottom);
+      const rect = (selector: string) => {
+        const box = document.querySelector(selector)!.getBoundingClientRect();
+        return [box.x, box.y, box.width, box.height].map((value) => Math.round(value));
+      };
+      const barBottom = document.querySelector('.site-header-bar')!.getBoundingClientRect().bottom;
       const contentTop = document.getElementById('menu-root')!.getBoundingClientRect().bottom;
-      return Math.max(0, Math.round(contentTop - coveredTo));
+      return {
+        bar: rect('.site-header-bar'),
+        logo: rect('.site-header-logo'),
+        toggle: rect('.site-header-mobile-toggle'),
+        // Any blank strip between the bar and the page content.
+        emptyStrip: Math.max(0, Math.round(contentTop - barBottom)),
+      };
     });
-  const header = page.locator('.site-header');
 
-  for (const y of [10, 30, 50, 70]) {
-    await scrollTo(y);
-    await expect.poll(emptyStrip, {message: `down to ${y}px`}).toBe(0);
-  }
-  await scrollTo(400);
-  await expect(header).toHaveClass(/is-band-hidden/);
-  await expect.poll(emptyStrip).toBe(0);
+  const atTop = await barState();
+  // 56px bar + the 5px gold rule; the logo at the front, the menu button at the end.
+  expect(atTop.bar).toEqual([0, 0, PHONE.width, 61]);
+  expect(atTop.logo[0]).toBeLessThan(atTop.toggle[0]);
+  expect(atTop.emptyStrip).toBe(0);
 
-  // Back up, but not to the very top: the band returns as soon as its room is in view.
-  for (const y of [200, 90, 60, 20, 10]) {
+  for (const y of [10, 30, 60, 200, 600, 90, 20, 0]) {
     await scrollTo(y);
-    await expect.poll(emptyStrip, {message: `up to ${y}px`}).toBe(0);
+    await expect.poll(barState, {message: `at ${y}px`}).toEqual(atTop);
   }
-  await expect(header).not.toHaveClass(/is-band-hidden/);
+  await expect(page.locator('.site-header')).not.toHaveClass(/is-condensed/);
 });
 
-test('the open mobile menu repeats the site bar at the same 80px + 5px height', async ({page}) => {
+test('the phone menu opens right under the bar, and the menu button, Escape or the backdrop close it', async ({page}) => {
   await page.setViewportSize(PHONE);
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
 
-  const bar = page.locator('.site-header-bar');
-  await expect(bar).toBeVisible();
-  const closedHeight = await bar.evaluate((element) => element.getBoundingClientRect().height);
-  expect(closedHeight).toBe(85);
-
-  await page.locator('#menu-root').getByRole('button', {name: 'Toggle menu'}).click();
-  const top = page.locator('#mobile-menu .header-mobile-top');
-  await expect(top).toBeVisible();
-  const open = await top.evaluate((element) => ({
-    height: element.getBoundingClientRect().height,
-    border: getComputedStyle(element).borderBottomWidth,
+  const toggle = page.locator('#menu-root').getByRole('button', {name: 'Toggle menu'});
+  const panel = page.locator('#mobile-menu');
+  await toggle.click();
+  await expect(panel).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  // No second copy of the bar: the page's own bar stays on screen above the menu.
+  await expect(panel.locator('.header-mobile-top, .header-mobile-close')).toHaveCount(0);
+  const placement = await page.evaluate(() => ({
+    barBottom: document.querySelector('.site-header-bar')!.getBoundingClientRect().bottom,
+    panelTop: document.getElementById('mobile-menu')!.getBoundingClientRect().top,
   }));
-  expect(open).toEqual({height: closedHeight, border: '5px'});
+  expect(Math.abs(placement.panelTop - placement.barBottom)).toBeLessThanOrEqual(0.5);
+  await expect(panel.getByRole('button', {name: /sign in \/ sign up/i})).toBeFocused();
+  // The covered page is out of reach for screen readers too, while the bar and the menu stay.
+  for (const id of ['main', 'footer-root', 'chatbot-root']) await expect(page.locator(`#${id}`)).toHaveAttribute('inert', '');
+  await expect(page.getByRole('region', {name: 'Mobile menu'})).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(toggle).toBeFocused();
+  for (const id of ['main', 'footer-root', 'chatbot-root']) await expect(page.locator(`#${id}`)).not.toHaveAttribute('inert');
+
+  await toggle.click();
+  await expect(panel).toBeVisible();
+  await toggle.click();
+  await expect(panel).toBeHidden();
+
+  // The dimmed page under the menu's sections closes it too.
+  await toggle.click();
+  await expect(panel).toBeVisible();
+  await page.mouse.click(PHONE.width / 2, PHONE.height - 20);
+  await expect(panel).toBeHidden();
 });
 
 test('empty-state text links are 44px touch targets on phones', async ({page}) => {

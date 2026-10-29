@@ -1,54 +1,58 @@
 import {useLayoutEffect, useState, type RefObject} from 'react';
+import {PHONE_MAX_WIDTH} from './parts/shared';
 
-/** Hide the phone site-name band once the page is scrolled past this offset (px)... */
-export const BAND_HIDE_AFTER_PX = 40;
-/** ...and show it again near the very top (hysteresis, px). */
-export const BAND_SHOW_BELOW_PX = 4;
+/** The condensed row lets go this far (px) before it would unpin, so scroll jitter at the threshold cannot flicker. */
+export const CONDENSE_HYSTERESIS_PX = 8;
 
 const readScrollY = () => (typeof window === 'undefined' ? 0 : window.scrollY || 0);
 
+const isPhoneLayout = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia(`(max-width: ${PHONE_MAX_WIDTH}px)`).matches;
+
 /**
- * Next hidden state of the phone site-name band.
+ * Next condensed state of the desktop header.
  *
- * On phones the band is fixed under the blue bar while #menu-root keeps its
- * room (`reservedPx`, the band's height) in the page flow. That room sits
- * under the bar until `scrollY` reaches `reservedPx`; hiding the band any
- * earlier would leave it on screen as an empty strip. So the band hides only
- * once the room has scrolled away (and past BAND_HIDE_AFTER_PX), and comes
- * back as soon as the user scrolls up far enough for the room to show again
- * (or reaches BAND_SHOW_BELOW_PX). With no reserved room the plain 40/4px
- * hysteresis applies.
+ * The blue bar and the site-name band scroll away with the page; once both
+ * have gone (`pinAtPx`, their combined height) only the white menu row is
+ * left, pinned at the top, and the header turns condensed: the round i2G logo
+ * joins the front of the row. It leaves that state CONDENSE_HYSTERESIS_PX
+ * before the row unpins. Without a measured height (phones, jsdom) it never
+ * condenses.
  */
-export const nextBandHidden = (wasHidden: boolean, scrollY: number, reservedPx = 0): boolean => {
-  const reserved = Number.isFinite(reservedPx) && reservedPx > 0 ? reservedPx : 0;
-  return wasHidden
-    ? scrollY >= Math.max(BAND_SHOW_BELOW_PX, reserved)
-    : scrollY > Math.max(BAND_HIDE_AFTER_PX, reserved);
+export const nextCondensed = (wasCondensed: boolean, scrollY: number, pinAtPx: number): boolean => {
+  if (!Number.isFinite(pinAtPx) || pinAtPx <= 0) return false;
+  return wasCondensed ? scrollY >= pinAtPx - CONDENSE_HYSTERESIS_PX : scrollY >= pinAtPx;
 };
 
-const readReservedPx = (headerRef?: RefObject<HTMLElement | null>): number => {
-  const band = headerRef?.current?.querySelector<HTMLElement>('.site-header-band');
-  return band ? band.getBoundingClientRect().height : 0;
+/** Combined height of the parts above the menu row; 0 on phones, whose one bar never changes. */
+const readPinAtPx = (headerRef: RefObject<HTMLElement | null>): number => {
+  const header = headerRef.current;
+  if (!header || isPhoneLayout()) return 0;
+  const height = (selector: string) => header.querySelector<HTMLElement>(selector)?.getBoundingClientRect().height ?? 0;
+  return height('.site-header-bar') + height('.site-header-band');
 };
 
 /**
- * Whether the site-name band should be tucked away. The value is computed on
- * every viewport; only the phone header stylesheet acts on it (on desktop the
- * band simply scrolls away above the sticky menu row). `headerRef` points at
- * the header so the band's reserved height can be read.
+ * Whether the desktop header is condensed (only the pinned menu row with the
+ * logo shows), and whether its transitions may run yet. Motion is switched on
+ * only after the first state is in place, so a reload that restores a
+ * scrolled position does not play the condense animation.
  */
-export const useHeaderBandHidden = (headerRef?: RefObject<HTMLElement | null>): boolean => {
-  const [hidden, setHidden] = useState(() => nextBandHidden(false, readScrollY()));
+export const useHeaderCondensed = (headerRef: RefObject<HTMLElement | null>) => {
+  const [isCondensed, setIsCondensed] = useState(false);
+  const [hasMotion, setHasMotion] = useState(false);
 
-  // Layout effect: the first check (which needs the mounted band) lands before paint.
+  // Layout effect: the first check (which needs the mounted header) lands before paint.
   useLayoutEffect(() => {
     let frame = 0;
     let scheduled = false;
     const update = () => {
       scheduled = false;
       const scrollY = readScrollY();
-      const reservedPx = readReservedPx(headerRef);
-      setHidden((wasHidden) => nextBandHidden(wasHidden, scrollY, reservedPx));
+      const pinAtPx = readPinAtPx(headerRef);
+      setIsCondensed((wasCondensed) => nextCondensed(wasCondensed, scrollY, pinAtPx));
     };
     // One state update per animation frame, however many scroll/resize events fire.
     const schedule = () => {
@@ -57,17 +61,22 @@ export const useHeaderBandHidden = (headerRef?: RefObject<HTMLElement | null>): 
       frame = window.requestAnimationFrame(update);
     };
     update();
+    let motionFrame = 0;
+    motionFrame = window.requestAnimationFrame(() => {
+      motionFrame = window.requestAnimationFrame(() => setHasMotion(true));
+    });
     window.addEventListener('scroll', schedule, {passive: true});
-    // The band's height changes with the breakpoint and when the web fonts load.
+    // The bar and band heights change with the breakpoint and when the web fonts load.
     window.addEventListener('resize', schedule);
     return () => {
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
       if (scheduled) window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(motionFrame);
     };
   }, [headerRef]);
 
-  return hidden;
+  return {isCondensed, hasMotion};
 };
 
 const HEADER_PARTS = [
