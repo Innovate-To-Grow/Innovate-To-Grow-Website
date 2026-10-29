@@ -64,7 +64,7 @@ Creates an empty active `EmailServiceConfig` row for backend defaults; it select
 cd src && python manage.py verify_service_configs --strict
 ```
 
-Confirms the active `EmailServiceConfig` has a valid From address and that the provider it selects is configured: AWS credentials for SES, an active `SMTPProviderConfig` for SMTP, or an active `MicrosoftGraphProviderConfig` (tenant ID, client ID, and client secret) for Microsoft Graph. Providers that are not selected only produce warnings, and `MicrosoftGraphProviderConfig` is reported only when Graph is selected or configured. The Graph check reads the stored settings and does not contact Microsoft; use **Send Test Email** under Mail → Notification Delivery to prove the credentials ([Microsoft Graph email](../integrations/microsoft-graph-email.md)). Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
+Confirms the active `EmailServiceConfig` has a valid From address and that the provider it selects is configured: AWS credentials for SES, an active `SMTPProviderConfig` for SMTP, or an active `MicrosoftGraphProviderConfig` (tenant ID, client ID, an unexpired certificate and private key or a client secret, and a mailbox scope that lets the sender mailbox and From address send) for Microsoft Graph; it also warns 30 days before the Graph certificate expires. Providers that are not selected only produce warnings, and `MicrosoftGraphProviderConfig` is reported only when Graph is selected or configured. The Graph check reads the stored settings and does not contact Microsoft; run `python manage.py verify_graph_access --deny-mailbox <unrelated mailbox>` to prove the credentials and the mailbox restriction against Microsoft, and **Send Test Email** under Mail → Notification Delivery to prove delivery ([Microsoft Graph email](../integrations/microsoft-graph-email.md)). Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
 
 ### Managing via admin
 
@@ -75,7 +75,7 @@ Configuration models are available in Django admin:
 | `AWSCredentialConfig` | Site Settings | Shared AWS IAM key, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
 | `EmailServiceConfig` | Mail → Notification Delivery | Sender identity, campaign send rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph) |
 | `SMTPProviderConfig` | Mail → Notification Delivery | SMTP host, port, TLS/SSL, optional authentication, and timeout |
-| `MicrosoftGraphProviderConfig` | Mail → Notification Delivery | Entra tenant ID, client ID, client secret, optional sender mailbox, and messages per minute for Microsoft Graph; also at `/admin/core/microsoftgraphproviderconfig/` (not in the sidebar) |
+| `MicrosoftGraphProviderConfig` | Mail → Notification Delivery | Entra tenant ID, client ID, certificate and private key (or client secret), optional sender mailbox, and messages per minute for Microsoft Graph; its **mailbox scope** (mailboxes and permission levels, `MicrosoftGraphMailboxScope`) is edited at `/admin/core/microsoftgraphproviderconfig/` (not in the sidebar; linked from the Graph panel) |
 | `GoogleCredentialConfig` | Site Settings | Google service-account JSON |
 | `GmailAccessAccount` | Site Settings | Gmail IMAP import account |
 | `MemberSheetSyncConfig` | Members & Auth | Member-to-Sheets selection |

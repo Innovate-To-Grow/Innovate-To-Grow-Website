@@ -64,10 +64,16 @@ sender name and email address, and save the active configuration.
 - **SMTP** shows the server, port, security, and optional authentication fields.
   Leave the password blank when editing to retain the saved password. STARTTLS
   and SSL both verify the server certificate; enable only one of them.
-- **Microsoft Graph** shows the tenant ID, client ID, client secret, sender
-  mailbox, and messages-per-minute fields. Leave the client secret blank when
-  editing to retain the saved secret. The sender mailbox defaults to the From
-  email, which must be that mailbox or an address it may send as. Graph mail
+- **Microsoft Graph** shows the tenant ID, client ID, authentication method,
+  certificate and private key (or client secret), sender mailbox, and
+  messages-per-minute fields, and lists the **mailbox scope**: the mailboxes
+  Graph may use and each one's permission level (send, read, or both). The
+  scope is edited on the Graph configuration's admin page, linked from the
+  panel, and must be in place before Graph can be selected. Leave the private
+  key or secret blank when editing to retain the saved one. The sender mailbox
+  defaults to the From email; both must be in the scope with send permission.
+  With read permission, **Mail → Inbox** reads that mailbox through Graph
+  instead of the Gmail import account. Graph mail
   counts against the mailbox's Exchange Online limits (about 30 messages per
   minute), is copied to its Sent Items folder, and reports no delivery events.
   Setup in Entra and Exchange Online is in
