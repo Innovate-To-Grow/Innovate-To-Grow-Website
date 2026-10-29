@@ -1728,7 +1728,12 @@ jobs:
 
   e2e:
     name: E2E (${{ matrix.project }})
-    runs-on: ubuntu-latest
+    # Pinned to the container's Ubuntu release: setup-python takes the backend
+    # Python from the host's tool cache (/__t), and since ubuntu-latest became
+    # ubuntu-26.04 (2026-10-29) that build needs OpenSSL >= 3.3, which the
+    # noble image below does not have, so `import ssl` failed in every leg.
+    # Move this together with the Playwright image's Ubuntu release.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # The image already contains the browsers and Linux packages required by
     # this Playwright version. Keeping E2E off the runner's live APT path avoids
