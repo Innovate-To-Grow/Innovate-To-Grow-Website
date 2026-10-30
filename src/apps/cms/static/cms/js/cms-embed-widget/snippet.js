@@ -5,7 +5,8 @@
 
     // The partner page sizes the iframe from the widget's resize messages, and lets the widget's
     // "Copy link" buttons use the clipboard (Chrome denies it to cross-origin frames by default).
-    // It trusts only messages from the widget's own origin: any other frame could post one.
+    // It trusts only messages from the widget's own origin: any other frame could post one. A height
+    // of zero (nothing rendered yet) leaves the iframe as it is, as the site's own embed block does.
     function buildEmbedSnippet(embedUrl, slug) {
         const safeSlug = escapeSlug(slug);
         const origin = JSON.stringify(new URL(embedUrl).origin);
@@ -20,6 +21,7 @@
             + '  window.addEventListener(\'message\', function(e){\n'
             + '    if (e.origin !== ' + origin + ') return;\n'
             + '    if (!e.data || e.data.type !== \'i2g-embed-resize\' || e.data.slug !== \'' + safeSlug + '\') return;\n'
+            + '    if (!(e.data.height > 0)) return;\n'
             + '    document.querySelectorAll(\'iframe[data-i2g-embed="' + safeSlug + '"]\').forEach(function(f){\n'
             + '      f.style.height = e.data.height + \'px\';\n'
             + '    });\n'

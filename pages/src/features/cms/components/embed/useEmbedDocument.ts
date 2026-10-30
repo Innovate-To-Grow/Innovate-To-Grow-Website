@@ -92,6 +92,9 @@ export function useReportHeightToParent(slug: string | undefined, ready: boolean
       // plain blocks). Not scrollHeight: that never drops below the frame's own height, which is
       // the height last reported, so the frame could grow but never shrink back.
       const height = Math.ceil(document.documentElement.getBoundingClientRect().height);
+      // Nothing has rendered yet (an app-route page still loading its code): keep the frame's height
+      // rather than collapse it to nothing for a moment. Snippets pasted earlier copy any height.
+      if (height <= 0) return;
       window.parent.postMessage(
         { type: 'i2g-embed-resize', slug, height },
         POST_TARGET,

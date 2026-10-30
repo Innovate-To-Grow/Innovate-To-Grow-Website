@@ -173,6 +173,8 @@ describe('EmbedBlockPage', () => {
       configurable: true,
       value: {postMessage: postMessageSpy},
     });
+    // jsdom lays nothing out; the rendered widget measures 640px.
+    vi.spyOn(document.documentElement, 'getBoundingClientRect').mockReturnValue({height: 640} as DOMRect);
 
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
@@ -182,10 +184,7 @@ describe('EmbedBlockPage', () => {
     renderAtSlug('widget');
 
     await waitFor(() => {
-      expect(postMessageSpy).toHaveBeenCalledWith(
-        expect.objectContaining({type: 'i2g-embed-resize', slug: 'widget'}),
-        '*',
-      );
+      expect(postMessageSpy).toHaveBeenCalledWith({type: 'i2g-embed-resize', slug: 'widget', height: 640}, '*');
     });
 
     // Restore
@@ -480,6 +479,12 @@ describe('EmbedBlockPage', () => {
     contentHeight = 400.4;
     onResize();
     expect(postMessageSpy).toHaveBeenLastCalledWith({type: 'i2g-embed-resize', slug: 'widget', height: 401}, '*');
+
+    // Nothing rendered (a lazy page still loading): the frame keeps its height instead of collapsing.
+    contentHeight = 0;
+    postMessageSpy.mockClear();
+    onResize();
+    expect(postMessageSpy).not.toHaveBeenCalled();
 
     Object.defineProperty(window, 'parent', {configurable: true, value: window});
     Reflect.deleteProperty(document.documentElement, 'scrollHeight');
