@@ -247,6 +247,8 @@ class PastProjectShareContentTests(PastProjectShareTestCase):
         share = PastProjectShare.objects.create(
             name="Mine", rows=[sample_row()], note="Old note", details_text="Old details", created_by=self.member
         )
+        self.catalog["T09"].project_title = "Added Project"
+        self.catalog["T09"].save(update_fields=["project_title"])
         next_rows = [sample_row(team_number="T09", project_title="Added Project")]
 
         response = self.client.patch(
@@ -272,7 +274,7 @@ class PastProjectShareContentTests(PastProjectShareTestCase):
         self.assertEqual(share.name, "Updated name")
         self.assertEqual(share.note, "Updated note")
         self.assertEqual(share.details_text, "Updated project details")
-        self.assertEqual(share.rows, next_rows)
+        self.assertEqual([row["id"] for row in share.rows], [str(self.catalog["T09"].pk)])
 
     def test_patch_blank_name_rederives_from_the_saved_note(self):
         share = PastProjectShare.objects.create(

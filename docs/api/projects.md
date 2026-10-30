@@ -75,6 +75,14 @@ Creates a versioned shared-project snapshot.
 
 **Throttle:** `PastProjectShareRateThrottle` — 10 requests/minute
 
+**Limit:** 100 shares per member; the 101st is a `400` with `code: "share_limit_reached"`.
+
+**Rows come from the catalog** (`apps/projects/services/share_rows.py`): each submitted row must name a published
+project, by `id` or (for a row without one) by Year-Semester + Class + Team#, and is stored as the archive has it —
+the text a client sends is never stored. A row naming no published project is a `400` on `rows`, except on an update
+when the share already holds that row (a project removed from the archive since), which is kept as stored. Reading
+a share shows the catalog's current text for every row that still resolves.
+
 **Name:** optional. A blank or missing `name` here or on a `PUT`, or a blank `name` sent in a `PATCH`, is replaced
 with the first line of the owner's own `note` text, truncated to 60 characters, else `"Past Project Curation"`
 (`apps/projects/services/share_names.py`). A `PATCH` without `name` keeps the stored name. Project details added by
@@ -100,7 +108,8 @@ not be reached; `502` with `code: "ai_search_error"` means the model call failed
 
 ### `GET /projects/past-shares/mine/`
 
-Lists snapshots created by the authenticated user.
+Lists snapshots created by the authenticated user. `row_count` is counted by the database; the rows themselves are
+never loaded for the list.
 
 **Permission:** Authenticated
 
@@ -112,6 +121,8 @@ integer `version`.
 **Permission:** AllowAny
 
 ### `PATCH /projects/past-shares/{id}/`
+
+**Throttle:** `PastProjectShareUpdateRateThrottle` — 120 requests/minute per member, shared with `PUT` and `DELETE`.
 
 Owner-only optimistic update. The request must include the `version` returned by
 the latest GET/PATCH. A stale update returns HTTP 409. This abbreviated example
@@ -132,7 +143,8 @@ of merging two whole-document updates.
 
 ### `DELETE /projects/past-shares/{id}/`
 
-Owner-only deletion. Non-owners receive 404 so ownership is not disclosed.
+Owner-only deletion. Non-owners receive 404 so ownership is not disclosed. Deleting a member's account deletes
+their shares too.
 
 ## Data import
 
