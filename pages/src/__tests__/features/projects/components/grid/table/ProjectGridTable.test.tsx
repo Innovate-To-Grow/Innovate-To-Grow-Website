@@ -1,4 +1,4 @@
-import {cleanup, fireEvent, render, screen, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, within} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {ProjectGridTable} from '@/features/projects/components/grid/table/ProjectGridTable';
@@ -11,6 +11,7 @@ import {
     type ProjectGridRow,
     type ProjectGridSortDirection,
 } from '@/features/projects/components/grid/contracts/projectGrid';
+import {stubGridLayout} from '@/__tests__/features/projects/fixtures/gridLayout';
 
 const makeRow = (overrides: Partial<ProjectGridRow> = {}): ProjectGridRow => ({
     semester_label: '2025-1 Spring',
@@ -62,6 +63,20 @@ const baseProps = {
 describe('ProjectGridTable', () => {
     afterEach(() => {
         cleanup();
+        vi.unstubAllGlobals();
+    });
+
+    it('renders only the layout the screen shows, and switches when the screen crosses the breakpoint', () => {
+        const layout = stubGridLayout('desktop');
+        const {container} = render(<ProjectGridTable {...baseProps} />);
+
+        // Hiding the other layout with CSS doubled every row and its opened details.
+        expect(container.querySelectorAll('tr.project-grid-row')).toHaveLength(2);
+        expect(container.querySelector('.project-grid-mobile-cards')).toBeNull();
+
+        act(() => layout.setPhone(true));
+        expect(container.querySelectorAll('.project-grid-mobile-card')).toHaveLength(2);
+        expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
     });
 
     it('renders a labelled search field and reports the row count and the rows shown', () => {
@@ -383,6 +398,7 @@ describe('ProjectGridTable', () => {
     });
 
     it('toggles selection and removes rows from the phone list', () => {
+        stubGridLayout('phone');
         const rows = makeRows(1);
         const onToggleSelected = vi.fn();
         const onDeleteRow = vi.fn();
@@ -510,6 +526,7 @@ describe('ProjectGridTable', () => {
     });
 
     it('shows a phone list with the term, team code and industry above each title', () => {
+        stubGridLayout('phone');
         const rows = createProjectGridItems([makeRow({team_number: '7'})], 'phone');
         const {container} = render(
             <ProjectGridTable

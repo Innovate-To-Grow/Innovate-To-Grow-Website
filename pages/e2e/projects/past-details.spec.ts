@@ -11,14 +11,16 @@ test('@core archive View shows abstract and students while preserving the indivi
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
   const desktop = page.locator('.search-table-card .project-grid-table-wrap');
   const mobile = page.locator('.search-table-card .project-grid-mobile-cards');
-  await expect(desktop.locator('tr.project-grid-row').filter({hasText: rows[0].project_title})).toHaveCount(1);
-  // Cards replace the table at the projects CSS breakpoint (max-width: 768px). Read the layout from the
-  // viewport: a mobile engine can briefly lay the page out wider while it applies the viewport meta tag.
+  // The phone list replaces the table at the projects breakpoint (max-width: 768px); only one of them is rendered.
+  // Read the layout from the viewport: a mobile engine can briefly lay the page out wider while it applies the
+  // viewport meta tag.
   const isDesktop = (page.viewportSize()?.width ?? Number.POSITIVE_INFINITY) > 768;
   const row = isDesktop
     ? desktop.locator('tr.project-grid-row').filter({hasText: rows[0].project_title})
     : mobile.locator('.project-grid-mobile-card').filter({hasText: rows[0].project_title});
+  await expect(row).toHaveCount(1);
   await expect(row).toBeVisible();
+  await expect(isDesktop ? mobile : desktop).toHaveCount(0);
   expect(detailRequests).toHaveLength(0);
   await row.getByRole('checkbox').check();
   await row.getByRole('button', {name: isDesktop ? 'Details' : 'Show details', exact: true}).click();

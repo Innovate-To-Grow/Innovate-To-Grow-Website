@@ -8,6 +8,7 @@ import {
   type ProjectDetail,
   type ProjectGridRow,
 } from '@/features/projects/api';
+import {stubGridLayout} from '@/__tests__/features/projects/fixtures/gridLayout';
 
 const {fetchDetail} = vi.hoisted(() => ({fetchDetail: vi.fn()}));
 vi.mock('@/features/projects/api', async (importOriginal) => ({
@@ -37,15 +38,19 @@ function deferredDetail() {
   return {promise, resolve, reject};
 }
 
-function renderTable(rows: ProjectGridRow[], onMergeSelected = vi.fn()) {
+/** Renders a search table in the desktop layout (or the phone one); `layout.setPhone` switches between them. */
+function renderTable(rows: ProjectGridRow[], onMergeSelected = vi.fn(), initialLayout: 'desktop' | 'phone' = 'desktop') {
+  const layout = stubGridLayout(initialLayout);
   const view = render(
     <SearchTableCard canRemove={false} initialRows={rows} tableId="archive" title="Search Table"
       onRemove={vi.fn()} onMergeSelected={onMergeSelected} />,
   );
   return {
     ...view,
-    desktop: within(view.container.querySelector('.project-grid-table-wrap') as HTMLElement),
-    mobile: within(view.container.querySelector('.project-grid-mobile-cards') as HTMLElement),
+    layout,
+    // Only the layout the screen shows is rendered, so each is looked up when it is used.
+    desktop: () => within(view.container.querySelector('.project-grid-table-wrap') as HTMLElement),
+    mobile: () => within(view.container.querySelector('.project-grid-mobile-cards') as HTMLElement),
   };
 }
 
@@ -54,7 +59,7 @@ function showRowsPerPage(count: number) {
   fireEvent.change(screen.getByLabelText('Per page'), {target: {value: String(count)}});
 }
 
-afterEach(() => { cleanup(); fetchDetail.mockReset(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); fetchDetail.mockReset(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('compact archive row details', () => {
   it('loads only on View, shares the request with mobile, and preserves selection and the individual URL', async () => {
@@ -62,45 +67,49 @@ describe('compact archive row details', () => {
     fetchDetail.mockReturnValue(response.promise);
     const row = compactRow('desktop-details');
     const onMerge = vi.fn();
-    const {desktop, mobile} = renderTable([row], onMerge);
+    const {desktop, mobile, layout} = renderTable([row], onMerge);
 
     expect(fetchDetail).not.toHaveBeenCalled();
-    fireEvent.click(desktop.getByRole('checkbox', {name: `Select ${row.project_title}`}));
-    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
-    const detailsId = desktop.getByRole('button', {name: 'Hide'}).getAttribute('aria-controls');
-    expect(desktop.getByRole('status')).toHaveTextContent('Loading project details...');
-    expect(mobile.getByRole('status')).toHaveTextContent('Loading project details...');
+    fireEvent.click(desktop().getByRole('checkbox', {name: `Select ${row.project_title}`}));
+    fireEvent.click(desktop().getByRole('button', {name: 'Details'}));
+    const detailsId = desktop().getByRole('button', {name: 'Hide'}).getAttribute('aria-controls');
+    expect(desktop().getByRole('status')).toHaveTextContent('Loading project details...');
     expect(fetchDetail).toHaveBeenCalledExactlyOnceWith(row.id, expect.any(AbortSignal), 15_000);
 
     await act(async () => response.resolve(detail(row.id!)));
-    for (const layout of [desktop, mobile]) {
-      expect(layout.getByText(`Abstract ${row.id}`)).toBeInTheDocument();
-      expect(layout.getByText(`Students ${row.id}`)).toBeInTheDocument();
-      expect(layout.getByRole('checkbox', {name: `Select ${row.project_title}`})).toBeChecked();
-      expect(layout.getByRole('link', {name: /open the project page/i})).toHaveAttribute('href', `${window.location.origin}/past-projects/project/${row.id}`);
-      expect(layout.getByRole('link', {name: /open the project page/i})).toHaveAttribute('target', '_blank');
+    expect(desktop().getByRole('button', {name: 'Hide'})).toHaveAttribute('aria-controls', detailsId);
+    // Turned to a phone and back: the row stays open in either layout, from the same request.
+    for (const isPhone of [true, false]) {
+      act(() => layout.setPhone(isPhone));
+      const view = isPhone ? mobile() : desktop();
+      expect(view.getByText(`Abstract ${row.id}`)).toBeInTheDocument();
+      expect(view.getByText(`Students ${row.id}`)).toBeInTheDocument();
+      expect(view.getByRole('checkbox', {name: `Select ${row.project_title}`})).toBeChecked();
+      expect(view.getByRole('link', {name: /open the project page/i})).toHaveAttribute('href', `${window.location.origin}/past-projects/project/${row.id}`);
+      expect(view.getByRole('link', {name: /open the project page/i})).toHaveAttribute('target', '_blank');
     }
-    expect(desktop.getByRole('button', {name: 'Hide'})).toHaveAttribute('aria-controls', detailsId);
+    expect(fetchDetail).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
     expect(onMerge).toHaveBeenCalledWith([row], expect.objectContaining({reportProgress: expect.any(Function)}));
     // The detail cache enriches presentation only; row identity and merge inputs stay stable.
     expect(row.abstract).toBe('');
-    fireEvent.click(desktop.getByRole('button', {name: 'Hide'}));
-    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
-    expect(desktop.getByText(`Abstract ${row.id}`)).toBeInTheDocument();
+    fireEvent.click(desktop().getByRole('button', {name: 'Hide'}));
+    fireEvent.click(desktop().getByRole('button', {name: 'Details'}));
+    expect(desktop().getByText(`Abstract ${row.id}`)).toBeInTheDocument();
     expect(fetchDetail).toHaveBeenCalledTimes(1);
   });
 
   it('shows a failure without losing the link and retries from mobile in both layouts', async () => {
     fetchDetail.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(detail('retry-details'));
-    const {desktop, mobile} = renderTable([compactRow('retry-details')]);
-    fireEvent.click(mobile.getByRole('button', {name: 'Show details'}));
-    expect(await mobile.findByRole('alert')).toHaveTextContent('Unable to load project details.');
-    expect(mobile.getByRole('link', {name: /open the project page/i})).toHaveAttribute('href', `${window.location.origin}/past-projects/project/retry-details`);
+    const {desktop, mobile, layout} = renderTable([compactRow('retry-details')], vi.fn(), 'phone');
+    fireEvent.click(mobile().getByRole('button', {name: 'Show details'}));
+    expect(await mobile().findByRole('alert')).toHaveTextContent('Unable to load project details.');
+    expect(mobile().getByRole('link', {name: /open the project page/i})).toHaveAttribute('href', `${window.location.origin}/past-projects/project/retry-details`);
     expect(fetchDetail).toHaveBeenCalledTimes(1);
-    fireEvent.click(mobile.getByRole('button', {name: 'Retry'}));
-    await waitFor(() => expect(desktop.getByText('Abstract retry-details')).toBeInTheDocument());
-    expect(mobile.getByText('Students retry-details')).toBeInTheDocument();
+    fireEvent.click(mobile().getByRole('button', {name: 'Retry'}));
+    await waitFor(() => expect(mobile().getByText('Students retry-details')).toBeInTheDocument());
+    act(() => layout.setPhone(false));
+    expect(desktop().getByText('Abstract retry-details')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(fetchDetail).toHaveBeenCalledTimes(2);
   });
@@ -108,11 +117,11 @@ describe('compact archive row details', () => {
   it('remembers a successful empty detail response across collapse and reopening', async () => {
     fetchDetail.mockResolvedValue(detail('empty-details', {abstract: '', student_names: ''}));
     const {desktop} = renderTable([compactRow('empty-details')]);
-    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
-    expect(await desktop.findByText('No abstract or student names available.')).toBeInTheDocument();
-    fireEvent.click(desktop.getByRole('button', {name: 'Hide'}));
-    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
-    expect(desktop.getByText('No abstract or student names available.')).toBeInTheDocument();
+    fireEvent.click(desktop().getByRole('button', {name: 'Details'}));
+    expect(await desktop().findByText('No abstract or student names available.')).toBeInTheDocument();
+    fireEvent.click(desktop().getByRole('button', {name: 'Hide'}));
+    fireEvent.click(desktop().getByRole('button', {name: 'Details'}));
+    expect(desktop().getByText('No abstract or student names available.')).toBeInTheDocument();
     expect(fetchDetail).toHaveBeenCalledTimes(1);
   });
 
@@ -120,7 +129,7 @@ describe('compact archive row details', () => {
     const rows = Array.from({length: PROJECT_DETAIL_CONCURRENCY + 1}, (_, index) => compactRow(`all-details-${index}`));
     const responses = new Map(rows.map((row) => [row.id!, deferredDetail()]));
     fetchDetail.mockImplementation((id: string) => responses.get(id)!.promise);
-    const {desktop, mobile} = renderTable(rows);
+    const {desktop, mobile, layout} = renderTable(rows);
     showRowsPerPage(10);
     fireEvent.click(screen.getByRole('button', {name: 'View All Details'}));
     expect(fetchDetail).toHaveBeenCalledTimes(PROJECT_DETAIL_CONCURRENCY);
@@ -130,10 +139,10 @@ describe('compact archive row details', () => {
     await act(async () => {
       rows.forEach((row) => responses.get(row.id!)!.resolve(detail(row.id!)));
     });
-    for (const row of rows) {
-      expect(desktop.getByText(`Abstract ${row.id}`)).toBeInTheDocument();
-      expect(mobile.getByText(`Students ${row.id}`)).toBeInTheDocument();
-    }
+    for (const row of rows) expect(desktop().getByText(`Abstract ${row.id}`)).toBeInTheDocument();
+    act(() => layout.setPhone(true));
+    for (const row of rows) expect(mobile().getByText(`Students ${row.id}`)).toBeInTheDocument();
+    act(() => layout.setPhone(false));
     fireEvent.click(screen.getByRole('button', {name: 'Hide All Details'}));
     fireEvent.click(screen.getByRole('button', {name: 'View All Details'}));
     expect(fetchDetail).toHaveBeenCalledTimes(rows.length);
@@ -166,7 +175,7 @@ describe('compact archive row details', () => {
     fireEvent.click(screen.getByRole('button', {name: 'View All Details'}));
     expect(fetchDetail).toHaveBeenCalledTimes(rows.length);
     await act(async () => responses.get(queuedId)!.resolve(detail(queuedId)));
-    expect(desktop.getByText(`Abstract ${queuedId}`)).toBeInTheDocument();
+    expect(desktop().getByText(`Abstract ${queuedId}`)).toBeInTheDocument();
   });
 
   it('refreshes expired details when reopened', async () => {
@@ -174,12 +183,12 @@ describe('compact archive row details', () => {
     fetchDetail.mockResolvedValueOnce(detail('expired-details', {abstract: 'Earlier abstract'}))
       .mockResolvedValueOnce(detail('expired-details', {abstract: 'Updated abstract'}));
     const {desktop} = renderTable([compactRow('expired-details')]);
-    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
-    expect(await desktop.findByText('Earlier abstract')).toBeInTheDocument();
-    fireEvent.click(desktop.getByRole('button', {name: 'Hide'}));
+    fireEvent.click(desktop().getByRole('button', {name: 'Details'}));
+    expect(await desktop().findByText('Earlier abstract')).toBeInTheDocument();
+    fireEvent.click(desktop().getByRole('button', {name: 'Hide'}));
     clock.mockReturnValue(1_000 + 5 * 60 * 1_000);
-    fireEvent.click(desktop.getByRole('button', {name: 'Details'}));
-    expect(await desktop.findByText('Updated abstract')).toBeInTheDocument();
+    fireEvent.click(desktop().getByRole('button', {name: 'Details'}));
+    expect(await desktop().findByText('Updated abstract')).toBeInTheDocument();
     expect(fetchDetail).toHaveBeenCalledTimes(2);
   });
 

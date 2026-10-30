@@ -90,7 +90,7 @@ async function mockArchiveWithout(page: Page): Promise<void> {
   );
 }
 
-// Titles render in the desktop table and in the phone cards; only the layout for this viewport is visible.
+// Titles render in the desktop table or in the phone list, whichever this viewport shows.
 const visibleLink = (page: Page, name: string) => page.getByRole('link', {name, exact: true}).filter({visible: true});
 
 test('a Current Projects title opens its populated project page', {tag: '@core'}, async ({page}) => {

@@ -30,18 +30,9 @@
 }
 
 @media (max-width: 768px) {
-  /* The table becomes a list of rows. */
-  .project-grid-table-wrap {
-    display: none;
-  }
-
   /* The save goes under the title instead of beside it. */
   .project-grid-save-status {
     align-items: flex-start;
-  }
-
-  .project-grid-mobile-cards {
-    display: block;
   }
 
   .project-grid-results-bar {

@@ -1,4 +1,5 @@
 import '../../styles/cascade/projects.css';
+import {useMediaQuery} from '@/features/layout';
 import {ProjectGridControls, PageSizeField} from '../controls/ProjectGridControls';
 import {ProjectGridDesktopTable} from './ProjectGridDesktopTable';
 import {ProjectGridMobileCards} from './ProjectGridMobileCards';
@@ -7,6 +8,9 @@ import {ProjectGridNoResults, ProjectGridResultsBar} from './ProjectGridResults'
 import type {ProjectGridTableProps} from '../contracts/gridTableProps';
 
 export type {ProjectGridSortOption} from '../contracts/gridTableProps';
+
+/** Where the table gives way to the phone list; the phone styles in projectsResponsive.css start at the same width. */
+const PHONE_LAYOUT_QUERY = '(max-width: 768px)';
 
 function withGridDefaults({
   searchPlaceholder = 'Search projects...',
@@ -60,6 +64,9 @@ const PageControls = ({grid}: {grid: ResolvedGridProps}) => (
 
 /** Everything below the filter well once the rows are loaded: counts, empty states, the rows and the pager. */
 const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
+  // Only the layout the screen shows is rendered: mounting both and hiding one with CSS doubled the rows (and their
+  // opened details) that every sort, page change and "View All Details" had to render.
+  const isPhone = useMediaQuery(PHONE_LAYOUT_QUERY);
   const query = grid.search.trim();
   const noResults = grid.totalCount > 0 && grid.filteredCount === 0;
   const rowProps = {
@@ -114,7 +121,9 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
       ) : null}
 
       {grid.totalCount > 0 && !noResults ? (
-        <>
+        isPhone ? (
+          <ProjectGridMobileCards {...rowProps} />
+        ) : (
           <ProjectGridDesktopTable
             {...rowProps}
             rows={grid.rows}
@@ -124,8 +133,7 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
             sortDirection={grid.sortDirection}
             onSortChange={grid.onSortChange}
           />
-          <ProjectGridMobileCards {...rowProps} />
-        </>
+        )
       ) : null}
 
       {grid.totalPages > 1 ? (
@@ -136,7 +144,7 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
 };
 
 /**
- * The projects grid: a filter well, an optional toolbar, the results (a table on wide screens, cards on
+ * The projects grid: a filter well, an optional toolbar, the results (a table on wide screens, a list on
  * phones) and the pager. Paging, sorting and selection state come from `useProjectGridTable`.
  */
 export const ProjectGridTable = (props: ProjectGridTableProps) => {

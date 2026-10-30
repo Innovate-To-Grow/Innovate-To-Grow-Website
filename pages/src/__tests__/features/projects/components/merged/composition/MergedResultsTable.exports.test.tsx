@@ -1,9 +1,10 @@
 
-import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MergedResultsTable} from '@/features/projects/components/merged/composition/MergedResultsTable';
 import {createProjectGridItems, type ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
+import {stubGridLayout} from '@/__tests__/features/projects/fixtures/gridLayout';
 
 const mockUseAuth = vi.fn();
 
@@ -142,6 +143,7 @@ describe('MergedResultsTable exports and row details', () => {
   });
 
   it('links to the project page from expanded desktop and mobile details', () => {
+    const layout = stubGridLayout('desktop');
     const {container} = render(<MergedResultsTable rows={makeItems([rowWithId])} />);
 
     const desktopDetailsButton = within(desktopTable(container)).getByRole('button', {name: 'Details'});
@@ -161,6 +163,8 @@ describe('MergedResultsTable exports and row details', () => {
     expect(desktopLink).toHaveAttribute('target', '_blank');
     expect(within(desktopTable(container)).getByRole('button', {name: 'Copy project link'})).toBeVisible();
 
+    // On a phone the same row is open in the list.
+    act(() => layout.setPhone(true));
     const mobileCards = container.querySelector('.project-grid-mobile-cards') as HTMLElement;
     const mobileLink = mobileCards.querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(mobileLink).not.toBeNull();
@@ -171,6 +175,7 @@ describe('MergedResultsTable exports and row details', () => {
     const mobileDetailsId = mobileDetailsButton.getAttribute('aria-controls');
     expect(mobileDetailsId).toBeTruthy();
     expect(document.getElementById(mobileDetailsId as string)).not.toBeNull();
+    vi.unstubAllGlobals();
   });
 
   it('exposes the current desktop sort direction to assistive technology', () => {

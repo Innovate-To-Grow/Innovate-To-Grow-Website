@@ -253,8 +253,7 @@ describe('PastProjectsBuilder — saving into the merged results', () => {
 
     fireEvent.click(screen.getByRole('button', {name: '+ Search Table'}));
     const table2 = screen.getByRole('heading', {level: 3, name: 'Search Table 2'}).closest('section') as HTMLElement;
-    // Desktop table + mobile card.
-    expect(within(table2).getAllByText('Saved')).toHaveLength(2);
+    expect(within(table2).getAllByText('Saved')).toHaveLength(1);
   });
 
   it('shows newly saved older projects instead of leaving them on a later page', () => {
