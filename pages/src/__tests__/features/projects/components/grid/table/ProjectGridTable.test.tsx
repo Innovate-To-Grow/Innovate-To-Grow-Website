@@ -121,7 +121,7 @@ describe('ProjectGridTable', () => {
     it('says in the count line when the search term is too common for the abstracts to be searched', () => {
         const rows = makeRows(1);
         const note = 'Abstracts were not searched: this search term is too common. Try a longer one.';
-        const serverSearch = {pending: false, addedRowsKey: null, tooBroad: true};
+        const serverSearch = {pending: false, addedRowsKey: null, tooBroad: true, failed: false};
         const {container, rerender} = render(
             <ProjectGridTable {...baseProps} search="team" serverSearch={serverSearch} pagedRows={rows} filteredCount={1} />,
         );
@@ -148,6 +148,19 @@ describe('ProjectGridTable', () => {
             />,
         );
         expect(screen.queryByText(note)).toBeNull();
+    });
+
+    it('says in the count line when the abstracts could not be searched, so no rows found is not a true zero', () => {
+        const note = 'Abstracts were not searched: something went wrong. Change the search to try again.';
+        const serverSearch = {pending: false, addedRowsKey: null, tooBroad: false, failed: true};
+        const {container} = render(
+            <ProjectGridTable {...baseProps} search="Denver" serverSearch={serverSearch} pagedRows={[]} filteredCount={0} />,
+        );
+        const count = container.querySelector('.project-grid-count') as HTMLElement;
+
+        expect(within(count).getByText(note)).toBeInTheDocument();
+        expect(count).toHaveTextContent('0 of 2 projects match “Denver”');
+        expect(screen.queryByText(/this search term is too common/)).toBeNull();
     });
 
     it('forwards search changes to onSearchChange', () => {

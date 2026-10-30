@@ -23,6 +23,11 @@ export interface ProjectGridServerSearch {
   addedRowsKey: string | null;
   /** It declined the search as matching too many projects, so the abstracts were not searched: the count says so. */
   tooBroad: boolean;
+  /**
+   * It could not be asked (the request failed), so the abstracts were not searched either: the count says so, and a
+   * search with no rows found is not taken for one with no matches.
+   */
+  failed: boolean;
 }
 
 export interface ProjectGridTableProps {

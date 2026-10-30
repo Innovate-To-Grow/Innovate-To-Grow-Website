@@ -5,11 +5,11 @@ import {ProjectGridControls, PageSizeField} from '../controls/ProjectGridControl
 import {ProjectGridDesktopTable} from './ProjectGridDesktopTable';
 import {ProjectGridMobileCards} from './ProjectGridMobileCards';
 import {ProjectGridPager} from '../controls/ProjectGridPager';
-import {ProjectGridNoResults, ProjectGridResultsBar} from './ProjectGridResults';
+import {ProjectGridNoResults, ProjectGridResultsBar, type AbstractsSkipped} from './ProjectGridResults';
 import {useDetailsAnnouncements} from '../state/useDetailsAnnouncements';
 import {showResultsStart, useResultsFocus} from '../state/useResultsFocus';
 import {useRetryFocus} from '../state/useRetryFocus';
-import type {ProjectGridTableProps} from '../contracts/gridTableProps';
+import type {ProjectGridServerSearch, ProjectGridTableProps} from '../contracts/gridTableProps';
 
 export type {ProjectGridSortOption} from '../contracts/gridTableProps';
 
@@ -113,6 +113,12 @@ const rowPropsFor = (grid: ResolvedGridProps, details: DetailsAnnouncements) => 
   announceDetails: details.announceRows,
 });
 
+/** Why the abstracts were not searched for the current search, or null when they were (or need not be). */
+const abstractsSkippedBy = (serverSearch: ProjectGridServerSearch | undefined): AbstractsSkipped | null => {
+  if (serverSearch?.tooBroad) return 'too-broad';
+  return serverSearch?.failed ? 'failed' : null;
+};
+
 /** Everything below the filter well once the rows are loaded: counts, empty states, the rows and the pager. */
 const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}: ResultsProps) => {
   // Only the layout the screen shows is rendered: mounting both and hiding one with CSS doubled the rows (and their
@@ -151,7 +157,7 @@ const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}:
           query={query}
           countLabel={grid.countLabel}
           activeFilters={grid.activeFilters}
-          abstractsSkipped={Boolean(grid.serverSearch?.tooBroad)}
+          abstractsSkipped={abstractsSkippedBy(grid.serverSearch)}
           pageControls={<PageControls grid={grid} onToggleAllDetails={details.toggleAllDetails} />}
           countRef={countRef}
         />
