@@ -5,6 +5,8 @@ interface PastProjectsDialogProps {
   cancelLabel?: string;
   children: ReactNode;
   confirmLabel: string;
+  /** Confirming opens this page in a new tab: the confirm control is a link to it (and still calls onConfirm). */
+  confirmHref?: string;
   /** Confirming throws work away: the dialog opens on Cancel, the safe choice. */
   destructive?: boolean;
   title: string;
@@ -44,6 +46,7 @@ export const PastProjectsDialog = ({
   cancelLabel = 'Cancel',
   children,
   confirmLabel,
+  confirmHref,
   destructive = false,
   title,
   onCancel,
@@ -54,8 +57,11 @@ export const PastProjectsDialog = ({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmLinkRef = useRef<HTMLAnchorElement>(null);
   const handleEscape = useEffectEvent(() => onCancel());
-  const focusFirstButton = useEffectEvent(() => (destructive ? cancelButtonRef : confirmButtonRef).current?.focus());
+  const focusFirstButton = useEffectEvent(() =>
+    (destructive ? cancelButtonRef.current : (confirmButtonRef.current ?? confirmLinkRef.current))?.focus(),
+  );
 
   // Open once, on mount. Callers pass inline handlers, so an effect that depended on them re-ran on every parent
   // render and pulled focus back to the first button.
@@ -121,9 +127,23 @@ export const PastProjectsDialog = ({
         <button ref={cancelButtonRef} type="button" className="itg-btn itg-btn-outline" onClick={onCancel}>
           {cancelLabel}
         </button>
-        <button ref={confirmButtonRef} type="button" className="itg-btn itg-btn-primary" onClick={onConfirm}>
-          {confirmLabel}
-        </button>
+        {confirmHref ? (
+          <a
+            ref={confirmLinkRef}
+            className="itg-btn itg-btn-primary"
+            href={confirmHref}
+            target="_blank"
+            rel="noopener"
+            onClick={onConfirm}
+          >
+            {confirmLabel}{' '}
+            <span className="sr-only">(opens in a new tab)</span>
+          </a>
+        ) : (
+          <button ref={confirmButtonRef} type="button" className="itg-btn itg-btn-primary" onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+        )}
       </div>
     </dialog>
   );

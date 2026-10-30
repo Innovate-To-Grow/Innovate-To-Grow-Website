@@ -1,7 +1,7 @@
-import type {ReactNode} from 'react';
+import {useMemo, type ReactNode} from 'react';
 import {useAuth} from '@/features/auth';
 import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {builderExportTarget} from '../list/curationNote';
+import {builderExportTarget, signInToSave, type SignInToSave} from '../list/curationNote';
 import {CurationSaveButton, CurationSaveSection} from './CurationSaveSection';
 import {BulkActionDialog, MergedEditButtons} from '../list/MergedEditButtons';
 import {MergedExportGroup} from '../list/MergedExportGroup';
@@ -165,6 +165,7 @@ interface BuilderListFooterProps {
   noteInsert: ReturnType<typeof useNoteInsertFields>;
   saveButton: ReactNode;
   pendingSaveCount: number;
+  signIn: SignInToSave;
   onConfirmBulkAction: () => void;
 }
 
@@ -177,6 +178,7 @@ const BuilderListFooter = ({
   noteInsert,
   saveButton,
   pendingSaveCount,
+  signIn,
   onConfirmBulkAction,
 }: BuilderListFooterProps) => (
   <>
@@ -191,6 +193,7 @@ const BuilderListFooter = ({
         noteInsert={noteInsert}
         saveButton={saveButton}
         pendingSaveCount={pendingSaveCount}
+        signIn={signIn}
       />
     ) : null}
 
@@ -240,6 +243,8 @@ export const BuilderMergedList = ({
   const {table, visibleRows, headingId} = list;
   const {isSharing} = curation;
   const shownCount = table.filteredRows.length;
+  // The whole draft, not just the rows its search shows, goes along to the full page from the widget.
+  const signIn = useMemo(() => signInToSave(rows), [rows]);
 
   const saveButton = canShare ? (
     <CurationSaveButton
@@ -263,6 +268,7 @@ export const BuilderMergedList = ({
         canSave={Boolean(onCreateShare)}
         isAuthenticated={isAuthenticated}
         saveButton={saveButton}
+        signIn={signIn}
       />
 
       {shownCount < rows.length ? (
@@ -312,6 +318,7 @@ export const BuilderMergedList = ({
         noteInsert={noteInsert}
         saveButton={saveButton}
         pendingSaveCount={pendingSaveCount}
+        signIn={signIn}
         onConfirmBulkAction={handleConfirmBulkAction}
       />
     </section>

@@ -1,7 +1,8 @@
 import type {ReactNode, RefObject} from 'react';
 import {pluralize} from '../../shared/utils/saveResults';
 import {SharedEditIcon, SharedSaveIcon} from '../../richText/editor/shareEditorIcons';
-import {currentLoginPath, formatSharedDate} from './curationNote';
+import {formatSharedDate, type SignInToSave} from './curationNote';
+import {SignInToSaveLink} from './SignInToSaveLink';
 import type {SharedListEditor} from '../shared/useSharedListEditor';
 
 interface SharedListHeaderProps {
@@ -74,6 +75,7 @@ interface BuilderCardHeaderProps {
   canSave: boolean;
   isAuthenticated: boolean;
   saveButton: ReactNode;
+  signIn: SignInToSave;
 }
 
 export const BuilderCardHeader = ({
@@ -83,6 +85,7 @@ export const BuilderCardHeader = ({
   canSave,
   isAuthenticated,
   saveButton,
+  signIn,
 }: BuilderCardHeaderProps) => (
   <div className="project-grid-card-header">
     <div className="project-grid-card-heading">
@@ -95,10 +98,12 @@ export const BuilderCardHeader = ({
     </div>
     {canSave ? (
       <div className="project-grid-save-status">
-        {isAuthenticated ? saveButton : (
-          <a className="itg-btn itg-btn-primary" href={currentLoginPath()}>
+        {isAuthenticated ? (
+          saveButton
+        ) : (
+          <SignInToSaveLink className="itg-btn itg-btn-primary" signIn={signIn}>
             Sign in to save
-          </a>
+          </SignInToSaveLink>
         )}
         <p className="project-grid-draft-note">Not saved yet. This browser keeps the draft until you save it.</p>
       </div>

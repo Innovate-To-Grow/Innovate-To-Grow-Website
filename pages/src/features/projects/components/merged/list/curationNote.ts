@@ -1,4 +1,6 @@
 import {buildLoginPath} from '@/features/auth/api/redirects';
+import {draftHandoverHref, isEmbeddedBuilder, PAST_PROJECTS_PATH} from '../../builder/draft/draftHandover';
+import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {pastProjectsDetailHtmlToPlainText, sanitizePastProjectsDetailHtml} from '../../richText/content/pastProjectsDetailText';
 import {getExportFileBaseName} from '../../shared/utils/shareHelpers';
 import type {ProjectRowsExportContext} from '../../export/support/exportTypes';
@@ -25,8 +27,24 @@ export const noteLengthProblem = (preparedNote: string) =>
       `and the limit is ${formatCount(NOTE_MAX_LENGTH)}. Shorten it before saving.`
     : '';
 
-/** Sign-in link that returns to this page afterwards. */
-export const currentLoginPath = () => buildLoginPath(`${window.location.pathname}${window.location.search}`);
+/**
+ * Sign-in link that returns to this page afterwards. Never to the widget's chromeless `/_embed/` page: a sign-in
+ * opened from the widget comes back to the full Past Projects page.
+ */
+export const currentLoginPath = () =>
+  buildLoginPath(isEmbeddedBuilder() ? PAST_PROJECTS_PATH : `${window.location.pathname}${window.location.search}`);
+
+/** Where "Sign in to save" leads. */
+export interface SignInToSave {
+  href: string;
+  /** In the widget: the full Past Projects page in a new tab, carrying the draft, where the visitor signs in. */
+  inNewTab: boolean;
+}
+
+export const signInToSave = (draftRows: readonly ProjectGridRow[]): SignInToSave =>
+  isEmbeddedBuilder()
+    ? {href: draftHandoverHref(draftRows), inNewTab: true}
+    : {href: currentLoginPath(), inNewTab: false};
 
 export const formatSharedDate = (value?: string) => {
   if (!value) return '';

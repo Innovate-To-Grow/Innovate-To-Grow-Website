@@ -4,6 +4,7 @@ import {AISearchLoginDialog} from '../search/AISearchLoginDialog';
 import {PastProjectsActionBar} from '../search/PastProjectsActionBar';
 import {MERGED_RESULTS_ID, scrollToMergedResults, useKeepScrollAnchor} from '../selection/scrollAnchor';
 import {useCurationDraft} from '../draft/useCurationDraft';
+import {useDraftHandover} from '../draft/useDraftHandover';
 import {useSaveSelectedRows} from '../selection/useSaveSelectedRows';
 import {ArchiveLoadFailed} from '../../search/cards/ArchiveLoadFailed';
 import {SearchTableStack} from '../../search/cards/SearchTableStack';
@@ -11,8 +12,11 @@ import {useSearchTables} from '../../search/state/useSearchTables';
 import {MergedResultsTable, type PastProjectShareCreationResult} from '../../merged/composition/MergedResultsTable';
 import type {ListMessage} from '../../merged/list/useMergedList';
 import {createProjectGridRowMatcher, type ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {pluralize} from '../../shared/utils/saveResults';
 
 const TABLE_ID_PREFIX = 'search-table';
+// What the handed-over projects are added as, in place of a search table's id.
+const HANDOVER_SOURCE_ID = 'widget-handover';
 
 interface PastProjectsBuilderProps {
     error: string | null;
@@ -53,6 +57,40 @@ function useDraftShareCreation(onCreateShare: CreateShare, dropShared: (rows: Pr
         [dropShared, onCreateShare],
     );
     return {isCreatingShare, handleCreateShare};
+}
+
+interface WidgetHandoverOptions {
+    rows: ProjectGridRow[];
+    loading: boolean;
+    addRows: ReturnType<typeof useSaveSelectedRows>['handleMergeSelected'];
+    /** Reports in the draft card, which shows once rows were added. */
+    reportDraftChange: (text: string) => void;
+    /** Reports under the Search Tables heading, when no draft card may be there to say it. */
+    reportElsewhere: (text: string) => void;
+}
+
+/**
+ * Adds the projects a Past Projects widget on a partner's page handed over (see draftHandover.ts) to this draft,
+ * loading their details as Add to Curation does, and says what happened.
+ */
+function useWidgetHandover({rows, loading, addRows, reportDraftChange, reportElsewhere}: WidgetHandoverOptions) {
+    useDraftHandover({
+        rows,
+        loading,
+        onHandover: (found, missing) => {
+            const missingNote = missing
+                ? `${pluralize(missing, 'project')} from the Past Projects widget ${missing === 1 ? 'is' : 'are'} no longer in the archive.`
+                : '';
+            if (!found.length) {
+                reportElsewhere(missingNote);
+                return;
+            }
+            Promise.resolve(addRows(found, {tableId: HANDOVER_SOURCE_ID, reportProgress: () => {}})).then(
+                (result) => reportDraftChange(`From the Past Projects widget: ${result.message} ${missingNote}`.trim()),
+                () => reportElsewhere('The projects from the Past Projects widget could not be added to the curation draft.'),
+            );
+        },
+    });
 }
 
 interface BuilderSavedResultsProps {
@@ -118,6 +156,13 @@ export const PastProjectsBuilder = ({
         refreshingMessage: 'Refreshing this search table from the latest past-project archive...',
     });
     const saving = useSaveSelectedRows({draft, scrollAnchorRef, onMessage: reportDraftChange});
+    useWidgetHandover({
+        rows,
+        loading,
+        addRows: saving.handleMergeSelected,
+        reportDraftChange,
+        reportElsewhere: setTablesMessage,
+    });
 
     const {isCreatingShare, handleCreateShare} = useDraftShareCreation(onCreateShare, draft.dropShared);
 
@@ -162,7 +207,10 @@ export const PastProjectsBuilder = ({
                 />
 
                 {isAISearchLoginDialogOpen ? (
-                    <AISearchLoginDialog onClose={() => setIsAISearchLoginDialogOpen(false)}/>
+                    <AISearchLoginDialog
+                        draftRows={draft.mergedRows}
+                        onClose={() => setIsAISearchLoginDialogOpen(false)}
+                    />
                 ) : null}
 
                 {/* Holds about the first table's room (see searchTables.css), so nothing below it moves in when the
