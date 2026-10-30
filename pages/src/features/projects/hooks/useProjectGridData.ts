@@ -47,9 +47,10 @@ const EMPTY_CLASS_LABELS: Record<string, string> = {};
 
 /**
  * What a project list says when its rows could not be loaded. The request's own message ("Network Error",
- * "Request failed with status code 503") means nothing to a visitor.
+ * "Request failed with status code 503") means nothing to a visitor. It names no cause: the same words follow a
+ * dropped connection, a server error and a timeout.
  */
-export const PROJECT_LIST_LOAD_ERROR = "We couldn't load the projects. Check your connection and try again.";
+export const PROJECT_LIST_LOAD_ERROR = "We couldn't load the projects. Please try again.";
 
 const responseStatus = (error: unknown) => (error as {response?: {status?: number}} | null)?.response?.status;
 
