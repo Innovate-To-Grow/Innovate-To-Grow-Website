@@ -16,6 +16,7 @@ on:
         type: string
 
 permissions:
+  id-token: write
   contents: read
 
 concurrency:
@@ -48,8 +49,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          allowed-account-ids: "394167325273"
+          role-session-name: deploy-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Validate required deployment configuration
@@ -76,16 +78,27 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Build archive image
+        run: docker build -t "itg-archive-ci:${{ inputs.deploy_sha }}" archive/page/
+
+      - name: Scan archive image before publishing
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: itg-archive-ci:${{ inputs.deploy_sha }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
       - name: Build, tag, and push Docker image
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ inputs.deploy_sha }}
         run: |
-          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" archive/page/
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          python scripts/deploy/publish_image.py --repository "$ECR_REPOSITORY" \
+            --registry "$ECR_REGISTRY" --tag "$IMAGE_TAG" --source "itg-archive-ci:$IMAGE_TAG"
+
 
       - name: Render ECS task definition from template
         id: task-def

@@ -9,19 +9,18 @@ environment. Approving that single gate releases the complete deployment set:
 - frontend production on Amplify;
 - archive production on ECS.
 
-The frontend starts only after the backend deployment has finished. It still
-ships if the backend deployment fails, because new backend tasks run migrations at boot
-and may already have moved the database on. The SPA links backend endpoints a
-release may only just have added (such as `/api/layout/theme.css`), so the backend
-goes first; a migration that retires backend CSS ships one release after the
-frontend that replaces it. The archive deploys in parallel.
+The backend first runs a standalone ECS migration task using the release image
+and service network configuration. A nonzero migration exit prevents rollout.
+Web containers do not migrate at boot. Database migrations must remain backward
+compatible with the currently running release; an ECS rollback never reverses DDL.
+An existing migration task prevents another run after a cancelled deployment.
+The frontend ships only after the backend has become healthy. Archive deploys
+in parallel and has an independent ECS circuit breaker.
 
-The component workflows are reusable workflows called only by
-`deploy-production.yml`. They receive the selected full commit SHA, so automatic
-runs promote the backend image published by CI while frontend and archive check
-out that exact revision. A manual unified run rebuilds and publishes the backend
-image first. Direct manual dispatch of an individual component is intentionally
-disabled because it would bypass the shared gate.
+Automatic and manual runs promote the same CI-tested backend image, resolved
+by its immutable SHA tag to a digest. The CI publish job uploads the tested and
+scanned image instead of rebuilding it. Repeated releases reuse existing tags.
+Component workflows cannot be manually dispatched.
 
 ## GitHub environments
 
@@ -48,5 +47,28 @@ Migrate protection in this order:
 5. Re-run a deployment and verify that only the shared approval is requested.
 
 Never remove the target reviewer rules before the shared gate is present on
-`main`. Manual runs are restricted to `main` and rebuild the backend image for
-the selected commit before deployment.
+`main`. Manual runs are restricted to `main` and reuse its successfully published CI image.
+
+## AWS authentication and rollout
+
+See [the scoped identity stack](../../aws/cicd/identity-stack.json). CI uses
+`AWS_CI_ROLE_ARN` at repository scope. Each production environment has its own
+`AWS_DEPLOY_ROLE_ARN`; no workflow uses a long-lived AWS key. CI trusts only the
+repository's main branch. Deployment roles trust their specific GitHub environment,
+which must be restricted to the main branch. Keep workflow edits subject to review.
+The shared approval still gates all production jobs. Do not enable prevention of
+self-review with only one reviewer; designate an independent reviewer first.
+
+Deploy the identity stack before merging the OIDC workflow change. Set the role
+ARN variables, copy target-specific repository variables into their environments,
+and restrict environment deployment branches to main. Archive needs its dedicated
+execution and task role ARNs. Keep the old keys until an OIDC CI publish and all
+three deployments succeed; then remove the GitHub keys and retire the IAM access
+key after checking other repositories that may share that user.
+
+ECR commit tags must be immutable. The publisher reuses an existing SHA, never
+updates `latest`, and deploys the digest. Trivy HIGH/CRITICAL findings with fixes
+block CI. Enable ECR push scanning for both image repositories as a second signal.
+The backend task role may update rules only for the I2G Amplify app; the archive
+task role has no application AWS permissions. Execution-role permissions belong
+to the ECS agent and include only the archive image, logs, and Sheets secret.

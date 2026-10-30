@@ -1375,6 +1375,7 @@ jobs:
             -e DB_PASSWORD=itg_ci_pass \
             -e DB_HOST="$postgres" \
             -e DB_PORT=5432 \
+            -e RUN_DATABASE_MIGRATIONS=true \
             -e WEB_CONCURRENCY=1 \
             "$IMAGE"
 
@@ -1426,7 +1427,7 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
-          exit-code: "0"
+          exit-code: "1"
           ignore-unfixed: true
 
       - name: Upload Trivy SARIF artifact
@@ -1462,8 +1463,20 @@ jobs:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: table
           severity: CRITICAL,HIGH
-          exit-code: "0"
+          exit-code: "1"
           ignore-unfixed: true
+
+      - name: Export tested and scanned backend image
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        run: docker save --output /tmp/backend-image.tar "itg-backend-ci:${{ github.sha }}"
+      - name: Upload tested and scanned backend image
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-scanned-image
+          path: /tmp/backend-image.tar
+          compression-level: 0
+          retention-days: 2
 
   backend-required-result:
     name: Backend Required Result
@@ -1507,48 +1520,42 @@ jobs:
     name: Backend Image Publish
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs:
-      - backend-required-result
-      - changes
-    # The one job with no PR-side equivalent: it needs secrets.AWS_ACCESS_KEY_ID
-    # and pushes `itg-backend:<sha>` to ECR for deploy-backend.yml to pull. Its
-    # pre-merge proxy is `backend-docker-build`, which builds the same
-    # `context: src` with the same buildx action on every PR.
+    needs: [backend-required-result, changes]
     if: >-
-      github.event_name == 'push' &&
-      (github.ref_name == 'main' || github.ref_name == 'master') &&
+      github.event_name == 'push' && github.ref_name == 'main' &&
       needs.changes.outputs.backend == 'true'
+    permissions:
+      contents: read
+      id-token: write
     env:
-      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
+      AWS_REGION: us-west-2
       ECR_REPOSITORY: itg-backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-
+      - name: Download tested and scanned image
+        uses: actions/download-artifact@v8
+        with:
+          name: backend-scanned-image
+          path: /tmp/backend-image
+      - name: Load tested image
+        run: docker load --input /tmp/backend-image/backend-image.tar
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          allowed-account-ids: "394167325273"
+          role-session-name: ci-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Build and publish backend image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: src
-          push: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Publish tested image once
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          python scripts/deploy/publish_image.py --repository "$ECR_REPOSITORY" \
+            --registry "$REGISTRY" --tag "$GITHUB_SHA" --source "itg-backend-ci:$GITHUB_SHA"
 
   security-required-result:
     name: Security Required Result
