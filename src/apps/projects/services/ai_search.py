@@ -1,8 +1,9 @@
 import json
 import logging
 import re
+import uuid
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from django.db.models import Q, QuerySet
 
@@ -111,7 +112,8 @@ def _build_prompt(*, query: str, candidates: list[Project], limit: int) -> str:
     return (
         "Choose the past Innovate to Grow projects that best match the user's search query.\n"
         "Use ONLY the candidate project IDs below. Do not invent IDs. Do not include explanations.\n"
-        f'Return valid JSON only in this exact shape: {{"ids": ["project-id"], "reason": "short summary"}}.\n'
+        "Each ID is the UUID after id= in a candidate line; return the UUID alone, without the id= prefix.\n"
+        f'Return valid JSON only in this exact shape: {{"ids": ["<candidate UUID>"], "reason": "short summary"}}.\n'
         f"Return at most {limit} IDs, ordered from most relevant to least relevant.\n\n"
         f"Search query: {query}\n\n"
         f"Candidate projects:\n{candidate_lines}"
@@ -133,7 +135,30 @@ def _json_fragment(text: str):
     return stripped
 
 
-def _parse_ids(text: str) -> list[str]:
+_ID_PREFIX_RE = re.compile(r"^id\s*[=:]\s*", re.IGNORECASE)
+
+
+def canonical_project_ids(values: Iterable, allowed: frozenset[str] | None = None) -> list[str]:
+    """The project UUIDs among ``values`` (model output), canonical and de-duplicated, in order.
+
+    Anything else the model may return (the prompt's placeholder, an echoed "id=" prefix, a number, an object) is
+    dropped rather than reaching a UUID lookup, and with ``allowed`` so is any id that was not a candidate.
+    """
+    ids: list[str] = []
+    for value in values:
+        if not isinstance(value, str | uuid.UUID):
+            continue
+        try:
+            project_id = str(uuid.UUID(_ID_PREFIX_RE.sub("", str(value).strip())))
+        except ValueError:
+            continue
+        if project_id in ids or (allowed is not None and project_id not in allowed):
+            continue
+        ids.append(project_id)
+    return ids
+
+
+def _parse_ids(text: str, allowed: frozenset[str] | None = None) -> list[str]:
     try:
         payload = json.loads(_json_fragment(text))
     except json.JSONDecodeError:
@@ -145,14 +170,11 @@ def _parse_ids(text: str) -> list[str]:
         raw_ids = payload
     if not isinstance(raw_ids, list):
         return []
-    ids: list[str] = []
-    seen: set[str] = set()
-    for value in raw_ids:
-        project_id = str(value).strip()
-        if not project_id or project_id in seen:
-            continue
-        seen.add(project_id)
-        ids.append(project_id)
+    ids = canonical_project_ids(raw_ids, allowed)
+    if len(ids) < len(raw_ids):
+        logger.warning(
+            "Past project AI search dropped ids that are repeated or not candidate UUIDs: %s", str(raw_ids)[:500]
+        )
     return ids
 
 
@@ -193,6 +215,8 @@ class PreparedPastProjectAISearch:
     prompt: str
     max_tokens: int
     estimated_input_tokens: int
+    # The ids the prompt offered: the only ones a reply may select.
+    candidate_ids: frozenset[str] = field(default_factory=frozenset)
 
 
 def prepare_past_project_ai_search(
@@ -213,6 +237,7 @@ def prepare_past_project_ai_search(
         prompt=prompt,
         max_tokens=min(config.public_assistant_max_response_tokens, _MAX_OUTPUT_TOKENS),
         estimated_input_tokens=estimate_prompt_input_tokens(system_text=_SYSTEM_TEXT, prompt=prompt),
+        candidate_ids=frozenset(str(project.id) for project in candidates),
     )
 
 
@@ -272,4 +297,4 @@ def run_past_project_ai_search(
         # usage_payload always returns a (possibly all-zero) dict, so fall back on the
         # char-based estimate whenever the model reported no usable token totals.
         usage = _estimate_usage(system_text, prompt, text)
-    return {"project_ids": _parse_ids(text)[:limit], "usage": usage}
+    return {"project_ids": _parse_ids(text, prepared.candidate_ids)[:limit], "usage": usage}
