@@ -468,6 +468,7 @@ jobs:
       run:
         working-directory: src
     env:
+      DJANGO_SETTINGS_MODULE: config.settings.environments.unit
       DB_NAME: itg_ci
       DB_USER: itg_ci_user
       DB_PASSWORD: itg_ci_pass
@@ -593,6 +594,7 @@ jobs:
       run:
         working-directory: src
     env:
+      DJANGO_SETTINGS_MODULE: config.settings.environments.unit
       DB_NAME: itg_ci
       DB_USER: itg_ci_user
       DB_PASSWORD: itg_ci_pass
@@ -1931,11 +1933,12 @@ jobs:
 
   e2e-report:
     name: E2E Report
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       actions: read
       contents: read
+      checks: write
     needs: [e2e, changes]
     if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
     continue-on-error: true
@@ -2002,7 +2005,7 @@ jobs:
           PY
 
       - name: Annotate test results on the PR
-        if: ${{ always() }}
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: mikepenz/action-junit-report@v6
         with:
           report_paths: pages/results.xml

@@ -130,6 +130,7 @@ module "runners" {
   }]
 
   # Restrict outbound access to web traffic (DNS uses the VPC resolver).
+  # Debian base images use signed APT repositories over HTTP during builds.
   runner_egress_rules = [{
     cidr_blocks      = ["0.0.0.0/0"]
     ipv6_cidr_blocks = []
@@ -140,6 +141,16 @@ module "runners" {
     security_groups  = []
     self             = false
     description      = "GitHub, AWS APIs and HTTPS package registries"
+    }, {
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = []
+    prefix_list_ids  = []
+    from_port        = 80
+    to_port          = 80
+    protocol         = "tcp"
+    security_groups  = []
+    self             = false
+    description      = "Signed operating-system package repositories in Docker builds"
   }]
   depends_on = [aws_ssm_parameter.runner_ami]
 }

@@ -80,6 +80,9 @@ resource "aws_imagebuilder_component" "runner" {
   name     = "${local.prefix}-ubuntu-tools"
   platform = "Linux"
   version  = "1.0.0"
+  lifecycle {
+    create_before_destroy = true
+  }
   data = yamlencode({
     name          = "I2GRunnerTools"
     description   = "Docker, GitHub runner, Python, Node and cached CI container images"
@@ -113,6 +116,9 @@ resource "aws_imagebuilder_image_recipe" "runner" {
   name         = "${local.prefix}-ubuntu-24"
   version      = "1.0.0"
   parent_image = "ssm:${data.aws_ssm_parameter.ubuntu.name}"
+  lifecycle {
+    create_before_destroy = true
+  }
   component {
     component_arn = aws_imagebuilder_component.runner.arn
   }

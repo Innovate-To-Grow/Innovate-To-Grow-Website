@@ -34,6 +34,12 @@ GitHub-hosted fallback, and the webhook guard independently enforces that
 boundary even if a fork edits its workflow. Existing production approval and
 OIDC policies remain in effect.
 
+Django unit coverage jobs select `config.settings.environments.unit`, using
+the fast password hasher recommended by Django for isolated tests. Default
+hashers remain available for existing fixtures. Browser E2E and production
+checks use their regular settings, and all test selection and coverage gates
+remain in place. See [Django test performance guidance](https://docs.djangoproject.com/en/6.0/topics/testing/overview/#password-hashing).
+
 The required label set is `[self-hosted, Linux, X64, i2g-aws]`. Runners are
 temporary: an empty GitHub Runners settings page while no jobs are running is
 expected. A newly queued job can take around 1–2 minutes to acquire a cold
@@ -43,7 +49,8 @@ workflow stages may each encounter startup latency.
 ## Network and credentials
 
 The fleet has its own VPC (`10.60.0.0/16`), no peering to production, no inbound
-security-group rules, and HTTPS-only runner egress. Public addresses exist
+security-group rules, and HTTP/HTTPS-only runner egress for package repositories
+and service APIs. Public addresses exist
 only for the lifetime of each runner; no NAT gateway or always-on controller
 is provisioned. SSM supports administrator troubleshooting without SSH.
 
@@ -70,7 +77,9 @@ instances also terminate when their work is done. A recipe-scoped lifecycle
 policy retains three image generations and cleans up older AMIs and snapshots.
 
 Changing workflow tool or container versions requires updating `bake-image.sh`
-and its validation in `image.tf`, then rebuilding the image. Cached virtualenv
+and its validation in `image.tf`, bumping the component and recipe semantic
+versions in `image.tf`, then rebuilding the image. These immutable resources
+use create-before-destroy so the existing pipeline can switch safely. Cached virtualenv
 keys distinguish GitHub-hosted and self-hosted filesystem layouts.
 
 ## Operations
