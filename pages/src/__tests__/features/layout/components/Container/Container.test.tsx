@@ -1,6 +1,6 @@
 import {act, cleanup, fireEvent, render, screen} from '@testing-library/react';
-import {useEffect, useState, type ReactNode} from 'react';
-import {Link, MemoryRouter, Route, Routes, useNavigate} from 'react-router';
+import type {ReactNode} from 'react';
+import {Link, MemoryRouter, Navigate, Route, Routes} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import type {Menu, MenuItem} from '@/features/layout/api';
@@ -107,101 +107,46 @@ describe('Container', () => {
     }
   });
 
+  // The focus and scroll rules themselves: __tests__/features/layout/hooks/.
   describe('after a client-side route change', () => {
     const ListPage = () => (
       <>
         <h1>Current Projects</h1>
         <Link to="/projects/abc">Solar drone</Link>
-        <Link to="/current-projects?page=2">Next</Link>
-        <Link to="/current-projects#results">Results</Link>
       </>
     );
-    const DetailPage = () => {
-      const navigate = useNavigate();
-      return (
-        <>
-          <h1>Solar drone</h1>
-          <button type="button" onClick={() => void navigate(-1)}>Browser back</button>
-        </>
-      );
-    };
-    /** A page that renders its h1 only once its data has arrived. */
-    const LoadingDetailPage = () => {
-      const [loaded, setLoaded] = useState(false);
-      useEffect(() => {
-        const timer = window.setTimeout(() => setLoaded(true), 10);
-        return () => window.clearTimeout(timer);
-      }, []);
-      return loaded ? <h1>Solar drone</h1> : <p>Loading project</p>;
-    };
 
-    const renderRoutes = (detail: ReactNode = <DetailPage />) =>
+    const renderRoutes = (initialPath: string) =>
       render(
-        <MemoryRouter initialEntries={['/current-projects']}>
+        <MemoryRouter initialEntries={[initialPath]}>
           <Routes>
             <Route element={<Container />}>
               <Route path="/current-projects" element={<ListPage />} />
-              <Route path="/projects/:id" element={detail} />
+              <Route path="/projects-teams" element={<Navigate to="/current-projects" replace />} />
+              <Route path="/projects/:id" element={<h1>Solar drone</h1>} />
             </Route>
           </Routes>
         </MemoryRouter>,
       );
 
-    it("moves focus to the new page's heading, but leaves the first page alone", () => {
-      renderRoutes();
+    it("moves focus to the new page's heading and starts it at the top", () => {
+      const scrollTo = vi.mocked(window.scrollTo);
+      renderRoutes('/current-projects');
       expect(document.body).toHaveFocus();
 
       act(() => {
         fireEvent.click(screen.getByRole('link', {name: 'Solar drone'}));
       });
 
-      const heading = screen.getByRole('heading', {level: 1, name: 'Solar drone'});
-      expect(heading).toHaveFocus();
-      expect(heading).toHaveAttribute('tabindex', '-1');
+      expect(screen.getByRole('heading', {level: 1, name: 'Solar drone'})).toHaveFocus();
+      expect(scrollTo).toHaveBeenCalledWith(0, 0);
     });
 
-    it('waits for a page that renders its heading after its data arrives', async () => {
-      renderRoutes(<LoadingDetailPage />);
-
-      act(() => {
-        fireEvent.click(screen.getByRole('link', {name: 'Solar drone'}));
-      });
-
-      expect(await screen.findByRole('heading', {level: 1, name: 'Solar drone'})).toHaveFocus();
-    });
-
-    it('does not move focus or scroll on a change within the page (query string or fragment)', () => {
-      const scrollTo = vi.mocked(window.scrollTo);
-      renderRoutes();
-      const next = screen.getByRole('link', {name: 'Next'});
-      next.focus();
-
-      act(() => {
-        fireEvent.click(next);
-      });
-      act(() => {
-        fireEvent.click(screen.getByRole('link', {name: 'Results'}));
-      });
+    it('leaves focus alone when the loaded page redirects (a cold load of /projects-teams)', () => {
+      renderRoutes('/projects-teams');
 
       expect(screen.getByRole('heading', {level: 1, name: 'Current Projects'})).not.toHaveFocus();
-      expect(scrollTo).not.toHaveBeenCalled();
-    });
-
-    it('starts a page reached by a link at the top, and leaves back/forward to the browser', () => {
-      const scrollTo = vi.mocked(window.scrollTo);
-      renderRoutes();
-
-      act(() => {
-        fireEvent.click(screen.getByRole('link', {name: 'Solar drone'}));
-      });
-      expect(scrollTo).toHaveBeenCalledOnce();
-      expect(scrollTo).toHaveBeenCalledWith(0, 0);
-
-      act(() => {
-        fireEvent.click(screen.getByRole('button', {name: 'Browser back'}));
-      });
-      expect(screen.getByRole('heading', {level: 1, name: 'Current Projects'})).toBeInTheDocument();
-      expect(scrollTo).toHaveBeenCalledOnce();
+      expect(document.body).toHaveFocus();
     });
   });
 });
