@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from apps.core.models import AWSCredentialConfig
 from apps.projects.serializers import PastProjectAISearchSerializer, ProjectTableSerializer
 from apps.projects.services.ai_search import (
+    canonical_project_ids,
     past_project_ai_queryset,
     prepare_past_project_ai_search,
     run_past_project_ai_search,
@@ -39,10 +40,12 @@ logger = logging.getLogger(__name__)
 _BUDGET_MESSAGE = "AI search has reached its usage limit for now. Please try again later."
 _BUDGET_UNAVAILABLE_MESSAGE = "AI search is temporarily unavailable. Please try again in a moment."
 _ERROR_MESSAGE = "AI search ran into a problem. Please try again in a moment."
-_UNAVAILABLE_MESSAGE = "AI search is not configured yet. Check the AWS Bedrock credentials and model settings."
+# Shown to members; the operator-facing cause goes to the log.
+_UNAVAILABLE_MESSAGE = "AI search isn't available right now. You can still search with a search table."
 
 
 def _unavailable_response(config: SystemIntelligenceConfig, query: str = "") -> Response:
+    logger.warning("Past project AI search is not configured: set the AWS Bedrock credentials and the public model.")
     return Response(
         {
             "available": False,
@@ -135,8 +138,16 @@ def _run_and_settle(turn: _SearchTurn, *, limit, prepared, reservation):
 def _results_response(turn: _SearchTurn, outcome, latency_ms) -> Response:
     # Only plausible integers are stored and returned: the raw block is provider-controlled.
     usage = sanitized_usage(outcome.get("usage"))
-    project_ids = outcome.get("project_ids") or []
-    projects_by_id = {str(project.id): project for project in past_project_ai_queryset().filter(id__in=project_ids)}
+    # The ids come from the model too: only UUIDs reach the lookup.
+    project_ids = canonical_project_ids(outcome.get("project_ids") or [])
+    try:
+        projects = past_project_ai_queryset().filter(id__in=project_ids)
+        projects_by_id = {str(project.id): project for project in projects}
+    except Exception:
+        # The tokens are already charged: the turn is still audited.
+        logger.exception("Past project AI search results could not be loaded")
+        turn.log(AssistantMessageLog.STATUS_ERROR, token_usage=usage, latency_ms=latency_ms)
+        return Response({"detail": _ERROR_MESSAGE, "code": "ai_search_error"}, status=status.HTTP_502_BAD_GATEWAY)
     ordered_projects = [projects_by_id[project_id] for project_id in project_ids if project_id in projects_by_id]
     turn.log(
         AssistantMessageLog.STATUS_OK,

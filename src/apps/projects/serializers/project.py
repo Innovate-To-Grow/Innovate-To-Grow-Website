@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from ..models import Project
+from ..pagination import PastProjectsPageNumberPagination
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
@@ -10,7 +11,11 @@ class ProjectListSerializer(serializers.ModelSerializer):
 
 
 class CompactPastProjectSerializer(serializers.ModelSerializer):
-    """Compact project representation for archive discovery lists."""
+    """Compact project representation for archive discovery lists.
+
+    Abstracts stay on the detail endpoint to keep the list small; student names are short and are included so a
+    list can be searched by team member.
+    """
 
     semester_label = serializers.CharField(source="semester.label", read_only=True)
 
@@ -25,6 +30,7 @@ class CompactPastProjectSerializer(serializers.ModelSerializer):
             "project_title",
             "organization",
             "industry",
+            "student_names",
             "track",
             "presentation_order",
         ]
@@ -42,6 +48,17 @@ class PastProjectQuerySerializer(serializers.Serializer):
         if "semester" in self.initial_data and not self.initial_data.get("semester", "").strip():
             raise serializers.ValidationError({"semester": "This field may not be blank."})
         return attrs
+
+
+class PastSemesterPageQuerySerializer(serializers.Serializer):
+    """Query parameters of the semester-grouped /projects/past/ list, validated like /projects/archive/'s."""
+
+    page = serializers.IntegerField(min_value=1, default=1)
+    page_size = serializers.IntegerField(
+        min_value=1,
+        max_value=PastProjectsPageNumberPagination.max_page_size,
+        default=PastProjectsPageNumberPagination.page_size,
+    )
 
 
 class ProjectTableSerializer(serializers.ModelSerializer):

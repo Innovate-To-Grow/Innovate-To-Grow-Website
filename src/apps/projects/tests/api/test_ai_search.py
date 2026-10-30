@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 from apps.core.models import AWSCredentialConfig
 from apps.projects.models import Semester
 from apps.projects.services.ai_search import (
+    PreparedPastProjectAISearch,
     find_ai_search_candidates,
     prepare_past_project_ai_search,
     run_past_project_ai_search,
@@ -306,6 +307,14 @@ class PreparePastProjectAISearchTests(TestCase):
 
         # 160 CJK characters are 480 UTF-8 bytes: charged one token per byte.
         self.assertGreater(with_cjk.estimated_input_tokens, ascii_only.estimated_input_tokens + 400)
+
+    def test_prepare_offers_its_candidates_and_a_prepared_search_must_name_them(self):
+        prepared = prepare_past_project_ai_search(query="solar", limit=5, config=self.config)
+
+        self.assertEqual(prepared.candidate_ids, frozenset({str(self.project.id)}))
+        # An empty candidate set selects nothing, so leaving the ids out is an error, not a search without results.
+        with self.assertRaises(TypeError):
+            PreparedPastProjectAISearch(limit=5, system_text="", prompt="", max_tokens=1, estimated_input_tokens=1)
 
     def test_output_cap_follows_a_smaller_configured_response_limit(self):
         self.config.public_assistant_max_response_tokens = 200
