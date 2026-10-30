@@ -1,7 +1,7 @@
 import {act, renderHook, waitFor} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {usePastProjectGridData} from '@/features/projects/hooks/useProjectGridData';
+import {PROJECT_LIST_LOAD_ERROR, usePastProjectGridData} from '@/features/projects/hooks/useProjectGridData';
 import type {CompactPastProjectRow, PaginatedResponse} from '@/features/projects/api';
 
 const {mockFetchPastProjectArchive} = vi.hoisted(() => ({mockFetchPastProjectArchive: vi.fn()}));
@@ -10,7 +10,9 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@/features/projects/api')>();
     return {
         ...actual,
-        fetchPastProjectArchive: (...args: unknown[]) => mockFetchPastProjectArchive(...args),
+        // The hook loads every archive page through fetchAllPastProjectArchive; one mocked page stands for them all.
+        fetchAllPastProjectArchive: async (...args: unknown[]) =>
+            ((await mockFetchPastProjectArchive(...args)) as PaginatedResponse<CompactPastProjectRow>).results,
     };
 });
 
@@ -48,7 +50,7 @@ describe('usePastProjectGridData — a refetch that fails', () => {
         const firstRows = result.current.rows;
 
         act(() => result.current.refetch());
-        await waitFor(() => expect(result.current.error).toBe('Request failed with status code 503'));
+        await waitFor(() => expect(result.current.error).toBe(PROJECT_LIST_LOAD_ERROR));
         // The same rows (same array): consumers keep their search tables and see no new archive.
         expect(result.current.rows).toBe(firstRows);
         expect(result.current.loading).toBe(false);
@@ -69,7 +71,7 @@ describe('usePastProjectGridData — a refetch that fails', () => {
             .mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve; }));
 
         const {result} = renderHook(() => usePastProjectGridData());
-        await waitFor(() => expect(result.current.error).toBe('Network Error'));
+        await waitFor(() => expect(result.current.error).toBe(PROJECT_LIST_LOAD_ERROR));
         expect(result.current.loading).toBe(false);
 
         act(() => result.current.refetch());
