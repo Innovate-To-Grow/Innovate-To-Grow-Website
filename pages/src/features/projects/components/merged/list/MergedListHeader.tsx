@@ -57,8 +57,9 @@ export const SharedListHeader = ({headingId, title, rowCount, sharedAt, editor, 
           </button>
         ) : null}
       </div>
+      {/* The name and note are a member's own words on the site's domain: say who put the page together. */}
       <p className="itg-page-meta">
-        {pluralize(rowCount, 'project')}
+        Curated by a site member · {pluralize(rowCount, 'project')}
         {sharedDate ? ` · shared ${sharedDate}` : ''}
       </p>
     </header>

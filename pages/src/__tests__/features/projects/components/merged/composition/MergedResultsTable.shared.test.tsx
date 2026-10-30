@@ -120,6 +120,22 @@ describe('MergedResultsTable in shared mode', () => {
     expect(screen.queryByText('Cascade Cooler Pouch Outfeed')).toBeNull();
   });
 
+  it('marks the note\'s links to other sites as member content for visitors', () => {
+    const {container} = render(
+      <MergedResultsTable
+        rows={makeItems()}
+        sharedMode
+        note={`<p>See <a href="https://elsewhere.example.com/x">this</a> and <a href="/past-projects">ours</a></p>`}
+      />,
+    );
+
+    const links = container.querySelectorAll('.project-grid-shared-note a');
+    expect([...links].map((link) => [link.textContent, link.getAttribute('rel')])).toEqual([
+      ['this', 'nofollow ugc noopener'],
+      ['ours', null],
+    ]);
+  });
+
   it('renders the share link above the note in shared mode', async () => {
     const {container} = render(
       <MergedResultsTable rows={makeItems()} sharedMode note="Curated highlights" />,
@@ -160,7 +176,7 @@ describe('MergedResultsTable in shared mode', () => {
     expect(screen.queryByRole('button', {name: /^show the/i})).toBeNull();
   });
 
-  it('heads a shared list with an eyebrow, the list name and when it was shared', () => {
+  it('heads a shared list with an eyebrow, the list name, who curated it and when it was shared', () => {
     render(
       <MergedResultsTable
         rows={makeItems([baseRow, addedRow])}
@@ -172,7 +188,10 @@ describe('MergedResultsTable in shared mode', () => {
 
     expect(screen.getByText('Curation · Past Projects')).toHaveClass('itg-eyebrow');
     expect(screen.getByRole('heading', {level: 1, name: 'Spring picks'})).toBeInTheDocument();
-    expect(screen.getByText('2 projects · shared October 16, 2026')).toHaveClass('itg-page-meta');
+    // A member wrote the name and note: the page says so rather than reading as an official record.
+    expect(screen.getByText('Curated by a site member · 2 projects · shared October 16, 2026')).toHaveClass(
+      'itg-page-meta',
+    );
   });
 
   it('leaves the date out of the meta line when the share has none', () => {
@@ -180,7 +199,9 @@ describe('MergedResultsTable in shared mode', () => {
       <MergedResultsTable rows={makeItems()} sharedMode title="Spring picks" sharedAt="not a date" />,
     );
 
-    expect(container.querySelector('.project-grid-shared-header .itg-page-meta')).toHaveTextContent(/^1 project$/);
+    expect(container.querySelector('.project-grid-shared-header .itg-page-meta')).toHaveTextContent(
+      /^Curated by a site member · 1 project$/,
+    );
   });
 
   it('copies the shareable link with the Copy link button', async () => {
