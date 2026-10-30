@@ -1,4 +1,4 @@
-import {act, cleanup, fireEvent, render, screen} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {useEffect, useRef, useState, type ReactNode} from 'react';
 import {Link, MemoryRouter, Navigate, Outlet, Route, Routes, useNavigate} from 'react-router';
 import {afterEach, describe, expect, it} from 'vitest';
@@ -61,6 +61,22 @@ const LoadingDetailPage = () => {
   return loaded ? <h1>Solar drone</h1> : <p>Loading project</p>;
 };
 
+/** A sign-in form: once the server answers, it replaces itself with the account page. */
+const LoginPage = () => {
+  const navigate = useNavigate();
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void Promise.resolve().then(() => navigate('/account', {replace: true}));
+      }}
+    >
+      <h1>Sign in</h1>
+      <button type="submit">Sign in</button>
+    </form>
+  );
+};
+
 const renderRoutes = (initialPath = '/current-projects', detail: ReactNode = <DetailPage />) =>
   render(
     <MemoryRouter initialEntries={[initialPath]}>
@@ -69,6 +85,7 @@ const renderRoutes = (initialPath = '/current-projects', detail: ReactNode = <De
           <Route path="/current-projects" element={<ListPage />} />
           <Route path="/projects-teams" element={<Navigate to="/current-projects" replace />} />
           <Route path="/profile" element={<Navigate to="/account" replace />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/account" element={<h1>Account Dashboard</h1>} />
           <Route path="/projects/:id" element={detail} />
         </Route>
@@ -146,6 +163,17 @@ describe('useRouteChangeFocus', () => {
 
     clickLink('Solar drone');
     expect(screen.getByRole('heading', {level: 1, name: 'Solar drone'})).toHaveFocus();
+  });
+
+  it("moves focus when the visitor's own step on the first page replaces it (a sign-in form)", async () => {
+    renderRoutes('/login');
+    const submit = screen.getByRole('button', {name: 'Sign in'});
+    submit.focus();
+
+    // A screen reader's activation: a click alone, with no pointer or key events before it.
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(screen.getByRole('heading', {level: 1, name: 'Account Dashboard'})).toHaveFocus());
   });
 
   it('moves focus to where a link redirects to', () => {
