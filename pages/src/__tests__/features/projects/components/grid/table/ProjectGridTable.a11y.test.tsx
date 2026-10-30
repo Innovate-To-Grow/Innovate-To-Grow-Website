@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {act, cleanup, fireEvent, render, screen, within} from '@testing-library/react';
-import {afterEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {ProjectGridTable} from '@/features/projects/components/grid/table/ProjectGridTable';
 import {useProjectGridTable} from '@/features/projects/components/grid/state/useProjectGridTable';
@@ -251,5 +251,80 @@ describe('ProjectGridTable accessibility', () => {
     // Opening the only row also makes "every row open"; it was still opened on its own, so it reports itself.
     act(() => fireEvent.click(screen.getByRole('button', {name: 'Details for Project 1'})));
     expect(screen.getByRole('status')).toHaveTextContent('Loading project details...');
+  });
+
+  describe('Try again', () => {
+    const LOAD_ERROR = "We couldn't load the projects. Please try again.";
+    const onRetry = vi.fn();
+    const failed = <ProjectGridTable {...baseProps} error={LOAD_ERROR} onRetry={onRetry} />;
+    const reloading = <ProjectGridTable {...baseProps} loading onRetry={onRetry} />;
+
+    beforeEach(() => onRetry.mockClear());
+
+    /** Presses Try again as a keyboard user does: the button has focus first. */
+    const pressTryAgain = () => {
+      const button = screen.getByRole('button', {name: 'Try again'});
+      button.focus();
+      fireEvent.click(button);
+    };
+
+    it('keeps focus in the grid: on the loading line, then on the count line once the rows are back', () => {
+      stubGridLayout('desktop');
+      const {rerender} = render(failed);
+
+      pressTryAgain();
+      expect(onRetry).toHaveBeenCalledTimes(1);
+      // The button left with the error; focus went to the loading line, not to the page.
+      rerender(reloading);
+      expect(document.activeElement).toBe(screen.getByRole('status'));
+
+      rerender(<ProjectGridTable {...baseProps} onRetry={onRetry} />);
+      expect(document.activeElement).toHaveClass('project-grid-count');
+      expect(document.activeElement).toHaveTextContent('2 projects');
+    });
+
+    it('returns focus to Try again when the load fails again, and to the empty message when no rows come back', () => {
+      stubGridLayout('desktop');
+      const {rerender} = render(failed);
+
+      pressTryAgain();
+      rerender(reloading);
+      rerender(failed);
+      expect(document.activeElement).toBe(screen.getByRole('button', {name: 'Try again'}));
+
+      pressTryAgain();
+      rerender(reloading);
+      rerender(
+        <ProjectGridTable
+          {...baseProps}
+          rows={[]}
+          pagedRows={[]}
+          filteredCount={0}
+          totalCount={0}
+          emptyMessage="No current projects are available yet."
+          onRetry={onRetry}
+        />,
+      );
+      expect(document.activeElement).toHaveTextContent('No current projects are available yet.');
+    });
+
+    it('leaves focus where the visitor moved it while the rows loaded', () => {
+      stubGridLayout('desktop');
+      const {rerender} = render(failed);
+
+      pressTryAgain();
+      rerender(reloading);
+      const search = screen.getByRole('searchbox');
+      search.focus();
+      rerender(<ProjectGridTable {...baseProps} onRetry={onRetry} />);
+      expect(document.activeElement).toBe(search);
+    });
+
+    it('does not move focus when the rows load without a retry', () => {
+      stubGridLayout('desktop');
+      const {rerender} = render(reloading);
+      rerender(<ProjectGridTable {...baseProps} onRetry={onRetry} />);
+      expect(document.activeElement).toBe(document.body);
+    });
   });
 });

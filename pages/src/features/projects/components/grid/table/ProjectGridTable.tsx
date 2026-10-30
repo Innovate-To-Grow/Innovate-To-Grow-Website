@@ -7,6 +7,7 @@ import {ProjectGridMobileCards} from './ProjectGridMobileCards';
 import {ProjectGridPager} from '../controls/ProjectGridPager';
 import {ProjectGridNoResults, ProjectGridResultsBar} from './ProjectGridResults';
 import {useDetailsAnnouncements} from '../state/useDetailsAnnouncements';
+import {useRetryFocus} from '../state/useRetryFocus';
 import type {ProjectGridTableProps} from '../contracts/gridTableProps';
 
 export type {ProjectGridSortOption} from '../contracts/gridTableProps';
@@ -98,14 +99,17 @@ interface ResultsProps {
   details: DetailsAnnouncements;
   /** The filter well's search field, focused when "Clear search" removes itself. */
   searchInputRef: RefObject<HTMLInputElement | null>;
+  /** The count line: focus goes there after a page change, and after Try again (see useRetryFocus). */
+  countRef: RefObject<HTMLParagraphElement | null>;
+  /** The empty message, which takes focus after Try again when no rows came back. */
+  emptyRef: RefObject<HTMLParagraphElement | null>;
 }
 
 /** Everything below the filter well once the rows are loaded: counts, empty states, the rows and the pager. */
-const ProjectGridResults = ({grid, details, searchInputRef}: ResultsProps) => {
+const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}: ResultsProps) => {
   // Only the layout the screen shows is rendered: mounting both and hiding one with CSS doubled the rows (and their
   // opened details) that every sort, page change and "View All Details" had to render.
   const isPhone = useMediaQuery(PHONE_LAYOUT_QUERY);
-  const countRef = useRef<HTMLParagraphElement>(null);
   const pagerTarget = useRef<number | null>(null);
   const query = grid.search.trim();
   const noResults = grid.totalCount > 0 && grid.filteredCount === 0;
@@ -132,7 +136,7 @@ const ProjectGridResults = ({grid, details, searchInputRef}: ResultsProps) => {
     const requested = pagerTarget.current;
     pagerTarget.current = null;
     if (requested === grid.page && countRef.current) showResultsStart(countRef.current);
-  }, [grid.page]);
+  }, [countRef, grid.page]);
   const changePage = (page: number) => {
     pagerTarget.current = page;
     grid.onPageChange(page);
@@ -160,7 +164,11 @@ const ProjectGridResults = ({grid, details, searchInputRef}: ResultsProps) => {
         />
       ) : null}
 
-      {grid.totalCount === 0 ? <p className="project-grid-empty">{grid.emptyMessage}</p> : null}
+      {grid.totalCount === 0 ? (
+        <p ref={emptyRef} className="project-grid-empty" tabIndex={-1}>
+          {grid.emptyMessage}
+        </p>
+      ) : null}
 
       {noResults ? (
         <ProjectGridNoResults
@@ -217,6 +225,10 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
   const grid = withGridDefaults(props);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const details = useDetailsAnnouncements(grid);
+  const countRef = useRef<HTMLParagraphElement>(null);
+  const emptyRef = useRef<HTMLParagraphElement>(null);
+  const {loadingRef, retryRef, retry} = useRetryFocus(Boolean(grid.loading), grid.error, countRef, emptyRef);
+  const {onRetry} = grid;
   const toolbarElement = grid.toolbar ? (
     <div className={`project-grid-toolbar${grid.toolbarPlacement === 'bottom' ? ' project-grid-toolbar--bottom' : ''}`}>
       {grid.toolbar}
@@ -247,7 +259,8 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
       {grid.toolbarPlacement === 'top' ? toolbarElement : null}
 
       {grid.loading ? (
-        <p className="project-grid-state project-grid-state-loading" role="status">
+        // Focusable from script: it holds focus while Try again loads the rows (useRetryFocus).
+        <p ref={loadingRef} className="project-grid-state project-grid-state-loading" role="status" tabIndex={-1}>
           Loading project data...
         </p>
       ) : null}
@@ -256,8 +269,13 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
           <p className="project-grid-state project-grid-state-error itg-error" role="alert">
             {grid.error}
           </p>
-          {grid.onRetry ? (
-            <button type="button" className="itg-btn itg-btn-outline" onClick={grid.onRetry}>
+          {onRetry ? (
+            <button
+              ref={retryRef}
+              type="button"
+              className="itg-btn itg-btn-outline"
+              onClick={() => retry(onRetry)}
+            >
               Try again
             </button>
           ) : null}
@@ -265,7 +283,13 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
       ) : null}
 
       {!grid.loading && !grid.error ? (
-        <ProjectGridResults grid={grid} details={details} searchInputRef={searchInputRef} />
+        <ProjectGridResults
+          grid={grid}
+          details={details}
+          searchInputRef={searchInputRef}
+          countRef={countRef}
+          emptyRef={emptyRef}
+        />
       ) : null}
 
       {grid.toolbarPlacement === 'bottom' ? toolbarElement : null}
