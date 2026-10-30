@@ -135,11 +135,10 @@ export const SharedMergedList = ({
         }
       />
 
-      {list.statusMessage ? (
-        <p className="project-grid-status" role="status">
-          {list.statusMessage}
-        </p>
-      ) : null}
+      {/* Always in the page, so screen readers announce its first message too. */}
+      <p className="project-grid-status" role="status">
+        {list.statusMessage}
+      </p>
     </section>
   );
 };

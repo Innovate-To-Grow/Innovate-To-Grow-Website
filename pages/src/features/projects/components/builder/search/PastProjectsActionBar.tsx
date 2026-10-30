@@ -180,7 +180,10 @@ export const PastProjectsActionBar = ({
 
       {showHelp ? <PastProjectsHelp saveLabel={saveLabel} saveTarget={saveTarget} savedLabel={savedLabel} /> : null}
 
-      {builderMessage ? <p className="project-grid-status past-projects-builder-message">{builderMessage}</p> : null}
+      {/* What the search tables did (a refresh, …). A live region kept in the page, so each message is announced. */}
+      <p className="project-grid-status past-projects-builder-message" role="status">
+        {builderMessage}
+      </p>
     </div>
   );
 };

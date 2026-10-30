@@ -74,7 +74,11 @@ export const SharedPastProjectMergeSearch = ({
 
       {isAISearchLoginDialogOpen ? <AISearchLoginDialog onClose={() => setIsAISearchLoginDialogOpen(false)} /> : null}
 
-      {loading ? <p className="project-grid-state">Loading past projects...</p> : null}
+      {loading ? (
+        <p className="project-grid-state" role="status">
+          Loading past projects...
+        </p>
+      ) : null}
       {archiveUnavailable ? <ArchiveLoadFailed onRetry={onRefreshRows} /> : null}
 
       {!loading && !archiveUnavailable ? (

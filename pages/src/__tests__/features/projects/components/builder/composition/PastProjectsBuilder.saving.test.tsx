@@ -60,6 +60,12 @@ const ROWS: ProjectGridRow[] = [
   makeRow({team_number: 'T03', team_name: 'Team Charlie', project_title: 'Charlie Project'}),
 ];
 
+// The first search table's save announcer (the page and the draft card have status lines of their own).
+const tableStatus = () =>
+  within(screen.getAllByRole('heading', {level: 3, name: /search table/i})[0].closest('[data-search-table-id]') as HTMLElement).getByRole(
+    'status',
+  );
+
 const getMergedSection = () => {
   const heading = screen.queryByRole('heading', {name: /curation draft/i});
   return heading ? (heading.closest('section') as HTMLElement) : null;
@@ -131,7 +137,7 @@ describe('PastProjectsBuilder — saving into the merged results', () => {
 
     await waitFor(() => expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalled());
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('1 project added to the curation draft (1 in total).'),
+      expect(tableStatus()).toHaveTextContent('1 project added to the curation draft (1 in total).'),
     );
     expect(within(getMergedSection() as HTMLElement).getAllByText('Hydrated Project').length).toBeGreaterThan(0);
   });
@@ -248,7 +254,7 @@ describe('PastProjectsBuilder — saving into the merged results', () => {
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
-    expect(screen.getByRole('status')).toHaveTextContent('1 project added to the curation draft (1 in total).');
+    expect(tableStatus()).toHaveTextContent('1 project added to the curation draft (1 in total).');
     expect(screen.getByRole('button', {name: 'View Curation Draft'})).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', {name: '+ Search Table'}));

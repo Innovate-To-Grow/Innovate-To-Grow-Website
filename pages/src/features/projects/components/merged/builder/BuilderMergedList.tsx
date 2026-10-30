@@ -8,7 +8,7 @@ import {MergedExportGroup} from '../list/MergedExportGroup';
 import {MergedListGrid, NarrowedSearchHint} from '../list/MergedListGrid';
 import {BuilderCardHeader} from '../list/MergedListHeader';
 import {useCurationShare, type PastProjectShareCreationResult} from './useCurationShare';
-import {useMergedList, useRevealRecentlyAdded} from '../list/useMergedList';
+import {useMergedList, useRevealRecentlyAdded, type ListMessage} from '../list/useMergedList';
 import {useNoteInsertFields} from '../list/useNoteInsertFields';
 
 export interface BuilderMergedListProps {
@@ -18,6 +18,8 @@ export interface BuilderMergedListProps {
   recentlyAdded: {keys: ReadonlySet<string>; token: number} | null;
   pendingSaveCount: number;
   title: string;
+  /** The page's latest report about the draft (a removal, an undo, another tab's change), for the status line. */
+  message?: ListMessage | null;
   onCreateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<PastProjectShareCreationResult>;
   nameDraft?: string;
   noteDraft?: string;
@@ -95,6 +97,7 @@ type BuilderListOptions = Pick<
   | 'rows'
   | 'recentlyAdded'
   | 'pendingSaveCount'
+  | 'message'
   | 'onCreateShare'
   | 'nameDraft'
   | 'noteDraft'
@@ -109,6 +112,7 @@ function useBuilderList({
   rows,
   recentlyAdded,
   pendingSaveCount,
+  message,
   onCreateShare,
   nameDraft,
   noteDraft,
@@ -119,7 +123,7 @@ function useBuilderList({
 }: BuilderListOptions) {
   const {isAuthenticated} = useAuth();
   const canShare = Boolean(onCreateShare) && isAuthenticated;
-  const list = useMergedList(rows, false);
+  const list = useMergedList(rows, false, message);
   const {table, visibleRows, setStatusMessage} = list;
   const noteInsert = useNoteInsertFields();
   const hiddenAddedCount = useRevealRecentlyAdded(table, rows, recentlyAdded);
@@ -164,7 +168,7 @@ interface BuilderListFooterProps {
   onConfirmBulkAction: () => void;
 }
 
-/** Under the table: the curation's name and note with its save button, the bulk-action dialog, and the status. */
+/** Under the table and its status line: the curation's name and note with its save button, and the bulk-action dialog. */
 const BuilderListFooter = ({
   list,
   curation,
@@ -193,12 +197,6 @@ const BuilderListFooter = ({
     {list.pendingBulkAction ? (
       <BulkActionDialog onCancel={() => list.setPendingBulkAction(null)} onConfirm={onConfirmBulkAction} />
     ) : null}
-
-    {list.statusMessage ? (
-      <p className="project-grid-status" role="status">
-        {list.statusMessage}
-      </p>
-    ) : null}
   </>
 );
 
@@ -213,6 +211,7 @@ export const BuilderMergedList = ({
   recentlyAdded,
   pendingSaveCount,
   title,
+  message,
   onCreateShare,
   nameDraft,
   noteDraft,
@@ -229,6 +228,7 @@ export const BuilderMergedList = ({
       rows,
       recentlyAdded,
       pendingSaveCount,
+      message,
       onCreateShare,
       nameDraft,
       noteDraft,
@@ -297,6 +297,12 @@ export const BuilderMergedList = ({
           />
         }
       />
+
+      {/* Right under the table and its toolbar, where removing, undoing and exporting happen. Always in the page,
+          so screen readers announce its first message too. */}
+      <p className="project-grid-status" role="status">
+        {list.statusMessage}
+      </p>
 
       <BuilderListFooter
         list={list}

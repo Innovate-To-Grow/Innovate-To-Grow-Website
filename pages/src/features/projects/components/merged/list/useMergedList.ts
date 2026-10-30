@@ -4,11 +4,17 @@ import {useProjectGridTable} from '../../grid/state/useProjectGridTable';
 import type {PendingBulkAction} from './MergedEditButtons';
 import {useRemovalFocus} from './useRemovalFocus';
 
+/** A message the page reports for the list; each report is a new object, so it replaces the line again. */
+export interface ListMessage {
+  text: string;
+}
+
 /**
  * State both list modes share: the paged table, the status line, the pending bulk-action dialog, and where focus
- * goes after a row's Remove (call `rememberRemoval` as one is pressed).
+ * goes after a row's Remove (call `rememberRemoval` as one is pressed). `message` is what the page reports about
+ * the list (the builder's draft edits); it takes the status line as the list's own messages do.
  */
-export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean) {
+export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean, message: ListMessage | null = null) {
   const table = useProjectGridTable({
     rows,
     pageSize: 5,
@@ -17,6 +23,11 @@ export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean) {
     expandAllByDefault: sharedMode,
   });
   const [statusMessage, setStatusMessage] = useState('');
+  const [appliedMessage, setAppliedMessage] = useState<ListMessage | null>(null);
+  if (message && message !== appliedMessage) {
+    setAppliedMessage(message);
+    setStatusMessage(message.text);
+  }
   const [pendingBulkAction, setPendingBulkAction] = useState<PendingBulkAction | null>(null);
   const headingId = useId();
   // The full saved snapshot — used by title/note/delete saves and by the shared-mode export.

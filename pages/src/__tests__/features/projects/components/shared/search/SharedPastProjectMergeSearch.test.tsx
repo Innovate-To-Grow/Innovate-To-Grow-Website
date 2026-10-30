@@ -1,4 +1,4 @@
-import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {SharedPastProjectMergeSearch} from '@/features/projects/components/shared/search/SharedPastProjectMergeSearch';
@@ -48,6 +48,12 @@ const makeRow = (overrides: Partial<ProjectGridRow>): ProjectGridRow => ({
   ...overrides,
 });
 
+// The first search table's save announcer (the page has a status line of its own).
+const tableStatus = () =>
+  within(screen.getAllByRole('heading', {level: 3, name: /search table/i})[0].closest('[data-search-table-id]') as HTMLElement).getByRole(
+    'status',
+  );
+
 const alphaRow = makeRow({team_number: 'T01', team_name: 'Team Alpha', project_title: 'Alpha Project'});
 const bravoRow = makeRow({team_number: 'T02', team_name: 'Team Bravo', project_title: 'Bravo Project'});
 const charlieRow = makeRow({team_number: 'T03', team_name: 'Team Charlie', project_title: 'Charlie Project'});
@@ -69,6 +75,12 @@ describe('SharedPastProjectMergeSearch', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it('announces that the archive is loading', () => {
+    render(<SharedPastProjectMergeSearch currentRows={[alphaRow]} rows={[]} error={null} loading onAddRows={vi.fn()} />);
+
+    expect(screen.getByText('Loading past projects...')).toHaveAttribute('role', 'status');
   });
 
   it('keeps reporting an add in its table when a refresh lands while it runs', async () => {
@@ -146,7 +158,7 @@ describe('SharedPastProjectMergeSearch', () => {
         }),
       ]);
     });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 project added.'));
+    await waitFor(() => expect(tableStatus()).toHaveTextContent('1 project added.'));
   });
 
   // Archive rows arrive compact. Saving them unchanged wrote the abstract and student names
@@ -277,7 +289,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this curation.'),
+      expect(tableStatus()).toHaveTextContent('That project is already in this curation.'),
     );
   });
 
@@ -383,7 +395,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this curation.'),
+      expect(tableStatus()).toHaveTextContent('That project is already in this curation.'),
     );
     expect(onAddRows).not.toHaveBeenCalled();
   });

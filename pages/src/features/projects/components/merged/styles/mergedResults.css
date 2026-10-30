@@ -69,6 +69,16 @@
   color: var(--itg-color-primary);
 }
 
+/* A status line stays in the page while empty, so screen readers announce the first message put in it; empty,
+   it takes no room (or gap) in its flex column. */
+.project-grid-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 /* ---- Share this list -------------------------------------------------------- */
 
 .project-grid-share {

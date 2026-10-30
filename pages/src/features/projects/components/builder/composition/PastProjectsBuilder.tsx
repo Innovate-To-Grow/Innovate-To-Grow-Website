@@ -9,6 +9,7 @@ import {ArchiveLoadFailed} from '../../search/cards/ArchiveLoadFailed';
 import {SearchTableStack} from '../../search/cards/SearchTableStack';
 import {useSearchTables} from '../../search/state/useSearchTables';
 import {MergedResultsTable, type PastProjectShareCreationResult} from '../../merged/composition/MergedResultsTable';
+import type {ListMessage} from '../../merged/list/useMergedList';
 import {createProjectGridRowMatcher, type ProjectGridRow} from '../../grid/contracts/projectGrid';
 
 const TABLE_ID_PREFIX = 'search-table';
@@ -57,17 +58,19 @@ function useDraftShareCreation(onCreateShare: CreateShare, dropShared: (rows: Pr
 interface BuilderSavedResultsProps {
     draft: ReturnType<typeof useCurationDraft>;
     pendingSaveCount: number;
+    message: ListMessage | null;
     onCreateShare: CreateShare;
 }
 
 /** The draft's merged list at the top of the page. */
-const BuilderSavedResults = ({draft, pendingSaveCount, onCreateShare}: BuilderSavedResultsProps) => (
+const BuilderSavedResults = ({draft, pendingSaveCount, message, onCreateShare}: BuilderSavedResultsProps) => (
     <MergedResultsTable
         id={MERGED_RESULTS_ID}
         className="past-projects-saved-results"
         rows={draft.mergedRows}
         recentlyAdded={draft.recentlyAdded}
         pendingSaveCount={pendingSaveCount}
+        message={message}
         onCreateShare={onCreateShare}
         nameDraft={draft.nameDraft}
         noteDraft={draft.noteDraft}
@@ -95,11 +98,14 @@ export const PastProjectsBuilder = ({
                                         onCreateShare,
                                     }: PastProjectsBuilderProps) => {
     const {isAuthenticated} = useAuth();
-    const [builderMessage, setBuilderMessage] = useState('');
+    // What the search tables did, under their heading; what happened to the draft, in the draft's own card.
+    const [tablesMessage, setTablesMessage] = useState('');
+    const [draftMessage, setDraftMessage] = useState<ListMessage | null>(null);
+    const reportDraftChange = useCallback((text: string) => setDraftMessage({text}), []);
     const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
     const searchTablesHeadingId = useId();
 
-    const draft = useCurationDraft(setBuilderMessage);
+    const draft = useCurationDraft(reportDraftChange);
     // Keep the table that was saved from where it was on screen while the saved results change above it.
     const scrollAnchorRef = useKeepScrollAnchor(draft.mergedRows);
     const tables = useSearchTables({
@@ -108,10 +114,10 @@ export const PastProjectsBuilder = ({
         rows,
         rowsError: error,
         onRefreshRows,
-        onMessage: setBuilderMessage,
+        onMessage: setTablesMessage,
         refreshingMessage: 'Refreshing this search table from the latest past-project archive...',
     });
-    const saving = useSaveSelectedRows({draft, scrollAnchorRef, onMessage: setBuilderMessage});
+    const saving = useSaveSelectedRows({draft, scrollAnchorRef, onMessage: reportDraftChange});
 
     const {isCreatingShare, handleCreateShare} = useDraftShareCreation(onCreateShare, draft.dropShared);
 
@@ -126,13 +132,19 @@ export const PastProjectsBuilder = ({
     // A failed refresh keeps the archive it had, and the table that asked reports it; only a first load that
     // failed leaves nothing to search.
     const archiveUnavailable = Boolean(error) && !rows.length;
+    const showSavedResults = draft.mergedRows.length > 0 || draft.canUndo;
+    // A card shown again later starts with an empty status line, not with what it said before it went.
+    if (!showSavedResults && draftMessage) {
+        setDraftMessage(null);
+    }
 
     return (
         <div className="past-projects-builder">
-            {draft.mergedRows.length > 0 || draft.canUndo ? (
+            {showSavedResults ? (
                 <BuilderSavedResults
                     draft={draft}
                     pendingSaveCount={saving.savesInFlight}
+                    message={draftMessage}
                     onCreateShare={handleCreateShare}
                 />
             ) : null}
@@ -140,7 +152,7 @@ export const PastProjectsBuilder = ({
             <section className="past-projects-search-tables" aria-labelledby={searchTablesHeadingId}>
                 <PastProjectsActionBar
                     headingId={searchTablesHeadingId}
-                    builderMessage={builderMessage}
+                    builderMessage={tablesMessage}
                     error={archiveUnavailable ? error : null}
                     loading={loading}
                     aiSearchDisabled={tables.hasAISearchTable}
@@ -153,7 +165,7 @@ export const PastProjectsBuilder = ({
                     <AISearchLoginDialog onClose={() => setIsAISearchLoginDialogOpen(false)}/>
                 ) : null}
 
-                {loading ? <p className="project-grid-state">Loading past projects...</p> : null}
+                {loading ? <p className="project-grid-state" role="status">Loading past projects...</p> : null}
                 {archiveUnavailable ? <ArchiveLoadFailed onRetry={onRefreshRows}/> : null}
 
                 {!loading && !archiveUnavailable ? (
