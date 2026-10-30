@@ -255,6 +255,23 @@ describe('ProjectDetailPage', () => {
     expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
   });
 
+  it.each([
+    ['/projects', '22222222-2222-4222-8222-222222222222'],
+    ['/projects', 'archive'],
+    ['/past-projects/project', '22222222-2222-4222-8222-222222222222'],
+    ['/past-projects/project', 'not-a-project'],
+  ])('keeps an unknown project at %s/%s out of search results', async (prefix, id) => {
+    vi.mocked(fetchProjectDetail).mockReset();
+    vi.mocked(fetchProjectDetail).mockRejectedValue(notFoundError());
+    renderAt(`${prefix}/${id}`);
+
+    expect(await screen.findByRole('heading', {level: 1, name: "We couldn't find this project"})).toBeInTheDocument();
+    expect(document.title).toBe('Project not found | Innovate to Grow');
+    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+    cleanup();
+    expect(document.head.querySelector('meta[name="robots"]')).toBeNull();
+  });
+
   it('shows an error message with the Past Projects back link when the fetch fails', async () => {
     vi.mocked(fetchProjectDetail).mockReset();
     vi.mocked(fetchProjectDetail).mockRejectedValue(new Error('boom'));
