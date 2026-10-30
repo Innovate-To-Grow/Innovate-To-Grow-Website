@@ -140,8 +140,8 @@ synced independently — not only the one marked **Active**.
 2. `fetch_schedule_sheet_records(config)` opens **that row's** `sheet_id` and reads the tracks and projects
    worksheets by `tracks_gid` / `projects_gid`
 3. Parses rows into track and project records. One-line cells have runs of whitespace (NBSPs and tabs included)
-   collapsed; abstracts keep their paragraph breaks. Placeholder cells are read as empty: an abstract like
-   `Abstract-101` and a team name that only repeats the team's code (`CAP-101`), so the pages hide them.
+   collapsed; abstracts keep their paragraph breaks. Every other value is stored as the sheet has it, placeholders
+   such as an `Abstract-101` abstract or a `CAP-101` team name included.
 4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack` and `EventScheduleSlot`
    rows inside one transaction (other schedules are untouched). A sheet row updates the `CurrentProject` with its
    Team# and title, else its team's (class + Team#) — so a title fix keeps the project's id and its

@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from apps.core.utils.text import collapse_whitespace, normalize_paragraphs
 
 from .defaults import SECTION_DEFAULTS
-
-# Cells the sheet fills before teams submit theirs: "Abstract-101", and a team name that only repeats the
-# team's code ("CAP-101"). Stored as they are they would show as real content, so they are read as empty.
-_PLACEHOLDER_ABSTRACT = re.compile(r"abstract[\s-]*\d+", re.IGNORECASE)
 
 
 def normalize_sheet_header(value: Any) -> str:
@@ -100,23 +95,6 @@ def build_grand_winners(records: list[dict[str, Any]]) -> list[dict[str, str]]:
     return winners
 
 
-def _code_key(value: str) -> str:
-    return "".join(character for character in value.upper() if character.isalnum())
-
-
-def _team_name(team_name: str, class_code: str, team_number: str) -> str:
-    """The team's name, or "" when the cell only repeats its code ("CAP-101", "CAP 101", "101")."""
-    name = collapse_whitespace(team_name)
-    if name and _code_key(name) in {_code_key(class_code + team_number), _code_key(team_number)}:
-        return ""
-    return name
-
-
-def _abstract(value: str) -> str:
-    abstract = normalize_paragraphs(value)
-    return "" if _PLACEHOLDER_ABSTRACT.fullmatch(abstract) else abstract
-
-
 def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
     """One schedule slot from a normalized sheet record; None for rows that are neither a slot nor a break."""
     track_raw = get_record_value(normalized, ["Track"])
@@ -132,7 +110,7 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
     is_presenting = not is_fall and not is_blank
 
     team_number = get_record_value(normalized, ["Team#", "Team #", "Team Number", "Team"])
-    team_name = get_record_value(normalized, ["TeamName", "Team Name"])
+    team_name = collapse_whitespace(get_record_value(normalized, ["TeamName", "Team Name"]))
     project_title = collapse_whitespace(get_record_value(normalized, ["Project Title", "Title"]))
     organization = collapse_whitespace(
         get_record_value(normalized, ["Organization", "Partner Organization", "Partner"])
@@ -143,7 +121,6 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
         team_name,
         project_title,
     )
-    team_name = _team_name(team_name, class_code, team_number)
     is_break = _is_break_slot(is_presenting, team_name, project_title, organization)
     if not is_break and not team_number:
         return None
@@ -157,7 +134,7 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
         "project_title": project_title,
         "organization": organization,
         "industry": collapse_whitespace(get_record_value(normalized, ["Industry"])),
-        "abstract": _abstract(get_record_value(normalized, ["Abstract", "Project Abstract"])),
+        "abstract": normalize_paragraphs(get_record_value(normalized, ["Abstract", "Project Abstract"])),
         "student_names": collapse_whitespace(get_record_value(normalized, ["Student Names", "Students"])),
         "name_title": get_record_value(
             normalized,

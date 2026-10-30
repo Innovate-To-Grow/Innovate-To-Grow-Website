@@ -29,25 +29,8 @@ def _row(**overrides):
 
 
 class PlaceholderCellsTest(TestCase):
-    def test_placeholder_abstract_is_read_as_empty(self):
-        for placeholder in ("Abstract-101", "abstract 7", "Abstract101"):
-            with self.subTest(placeholder=placeholder):
-                (slot,) = build_slot_rows([_row(Abstract=placeholder)])
-                self.assertEqual(slot["abstract"], "")
-
-    def test_team_name_repeating_the_team_code_is_read_as_empty(self):
-        for placeholder in ("CAP-101", "CAP 101", "cap101", "101"):
-            with self.subTest(placeholder=placeholder):
-                (slot,) = build_slot_rows([_row(TeamName=placeholder)])
-                self.assertEqual(slot["team_name"], "")
-
-    def test_real_values_are_kept(self):
-        (slot,) = build_slot_rows([_row(TeamName="Team 101 Rockets", Abstract="Abstract-101 explains the method.")])
-
-        self.assertEqual(slot["team_name"], "Team 101 Rockets")
-        self.assertEqual(slot["abstract"], "Abstract-101 explains the method.")
-
-    def test_sync_stores_empty_values_for_placeholders(self):
+    def test_placeholder_cells_are_stored_as_the_sheet_has_them(self):
+        # Before teams hand in theirs, the sheet fills "Abstract-101" and a team name of "CAP-101"; both are kept.
         cache.clear()
         config = CurrentProjectSchedule.objects.create(name="2026 Fall")
 
@@ -57,8 +40,8 @@ class PlaceholderCellsTest(TestCase):
 
         project = CurrentProject.objects.get(schedule=config)
         slot = EventScheduleSlot.objects.get(track__section__config=config)
-        self.assertEqual((project.team_name, project.abstract), ("", ""))
-        self.assertEqual((slot.team_name, slot.abstract), ("", ""))
+        self.assertEqual((project.team_name, project.abstract), ("CAP-101", "Abstract-101"))
+        self.assertEqual((slot.team_name, slot.abstract), ("CAP-101", "Abstract-101"))
 
 
 class WhitespaceCellsTest(TestCase):
