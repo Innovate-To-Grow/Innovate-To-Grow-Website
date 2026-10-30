@@ -1425,6 +1425,7 @@ jobs:
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
           format: sarif
+          limit-severities-for-sarif: true
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
           exit-code: "1"
@@ -1455,7 +1456,7 @@ jobs:
       # skipping this avoids a second full image scan. The cached DB above keeps
       # this fast when it does run.
       - name: Trivy human-readable table
-        if: ${{ steps.trivy-sarif.outcome == 'failure' }}
+        if: ${{ failure() && steps.trivy-sarif.outcome == 'failure' }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
           TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
