@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {getShareErrorMessage} from '../../shared/utils/shareHelpers';
-import {prepareNoteForSave} from '../list/curationNote';
+import {noteLengthProblem, prepareNoteForSave} from '../list/curationNote';
 
 /** Mirrors the backend serializer, which rejects a curation with more rows. */
 const MAX_CURATION_ROWS = 1000;
@@ -64,11 +64,17 @@ export function useCurationShare({
       onStatus('A curation can include at most 1000 projects. Remove some rows and try again.');
       return;
     }
+    const note = prepareNoteForSave(noteDraft);
+    const noteProblem = noteLengthProblem(note);
+    if (noteProblem) {
+      onStatus(noteProblem);
+      return;
+    }
 
     setIsSharing(true);
     onStatus('');
     try {
-      await onCreateShare(visibleRows, nameDraft.trim(), prepareNoteForSave(noteDraft));
+      await onCreateShare(visibleRows, nameDraft.trim(), note);
       if (isMountedRef.current) {
         onStatus('Saved. Opening your curation...');
       }

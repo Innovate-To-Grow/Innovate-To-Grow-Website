@@ -28,6 +28,13 @@
   margin: 0;
 }
 
+.past-projects-archive-failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
 .past-projects-action-bar-group {
   display: flex;
   flex-wrap: wrap;
@@ -108,6 +115,12 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* The builder while the archive loads: hold about the first search table's room (about 843px on wide screens, a
+   screen or more on phones), so the footer is not in the first screen only to be pushed out when it arrives. */
+.past-projects-builder-loading {
+  min-height: min(100vh, 53rem);
 }
 
 .project-grid-empty-shell {
@@ -301,6 +314,16 @@
 @keyframes past-projects-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Forced colours drop the tint that marks a checked row, leaving only its checkbox: outline the row (or phone
+   card) in the system's selection colour, which forced colours keep. An outline does not move the layout. */
+@media (forced-colors: active) {
+  .search-table-card tr.project-grid-row.is-selected,
+  .search-table-card .project-grid-mobile-card.is-selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }
 }

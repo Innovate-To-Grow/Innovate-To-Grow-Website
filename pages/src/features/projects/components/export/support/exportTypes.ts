@@ -31,6 +31,11 @@ export const HIGHLIGHT_FILL_RGB = [255, 233, 168] as const;
 export const HIGHLIGHT_TEXT = '7A5A00';
 
 export const I2G_LOGO_URL = '/assets/images/i2glogo.png';
+/**
+ * The logo for the PDF, which prints it 16 mm wide (about 400 dpi at 256 px). jsPDF re-encodes a PNG's pixels, so
+ * the full 2038 px logo would add megabytes to every PDF and take about a second to embed.
+ */
+export const I2G_PDF_LOGO_URL = '/assets/images/i2glogo-256.png';
 
 /** Tabular columns shared by every export (one row per project). */
 export const EXPORT_COLUMNS = [

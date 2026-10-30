@@ -78,7 +78,7 @@ const ROWS: ProjectGridRow[] = [
 ];
 
 const getMergedSection = () => {
-  const heading = screen.queryByRole('heading', {name: /saved merged results/i});
+  const heading = screen.queryByRole('heading', {name: /curation draft/i});
   return heading ? (heading.closest('section') as HTMLElement) : null;
 };
 
@@ -136,8 +136,8 @@ describe('PastProjectsBuilder — AI search table', () => {
       .getByRole('heading', {level: 3, name: 'AI Search Table: solar sensors'})
       .closest('section') as HTMLElement;
     fireEvent.click((await within(aiTable).findAllByLabelText('Select Solar Sensor Platform'))[0]);
-    await waitFor(() => expect(within(aiTable).getByRole('button', {name: /save selected/i})).toBeEnabled());
-    fireEvent.click(within(aiTable).getByRole('button', {name: /save selected/i}));
+    await waitFor(() => expect(within(aiTable).getByRole('button', {name: /add to curation/i})).toBeEnabled());
+    fireEvent.click(within(aiTable).getByRole('button', {name: /add to curation/i}));
 
     const merged = getMergedSection();
     expect(merged).not.toBeNull();
@@ -211,10 +211,11 @@ describe('PastProjectsBuilder — AI search table', () => {
     expect(screen.queryByPlaceholderText(/ask ai to find relevant past projects/i)).toBeNull();
   });
 
-  it('shows unavailable AI search responses inline inside the AI table', async () => {
+  it('shows unavailable AI search responses inline inside the AI table, in words meant for members', async () => {
     mockSearchPastProjectsWithAI.mockResolvedValue({
       available: false,
-      message: 'AI search is not configured yet.',
+      // The API's text is for the site's administrators.
+      message: 'AI search is not configured yet. Check the AWS Bedrock credentials and model settings.',
       query: 'solar',
       results: [],
       usage: {},
@@ -228,10 +229,12 @@ describe('PastProjectsBuilder — AI search table', () => {
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
-    expect((await screen.findByText('AI search is not configured yet.')).closest('.past-projects-ai-search-message')).toHaveClass(
-      'past-projects-ai-search-message',
-      'is-error',
-    );
+    expect(
+      (await screen.findByText(/AI search is not available on this site right now/)).closest(
+        '.past-projects-ai-search-message',
+      ),
+    ).toHaveClass('past-projects-ai-search-message', 'is-error');
+    expect(screen.queryByText(/Bedrock/)).toBeNull();
     expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
   });
 
@@ -293,5 +296,22 @@ describe('PastProjectsBuilder — AI search table', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
     expect(await screen.findByText('Try later.')).toBeInTheDocument();
+  });
+
+  it('shows why the API refused the query, such as a query that is too long', async () => {
+    mockSearchPastProjectsWithAI.mockRejectedValue({
+      response: {status: 400, data: {query: ['Query must be at most 2000 characters.']}},
+    });
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
+    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+      target: {value: 'x'.repeat(2100)},
+    });
+    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
+
+    expect(await screen.findByText('Query must be at most 2000 characters.')).toBeInTheDocument();
+    expect(screen.queryByText(/AI search is unavailable right now/)).toBeNull();
   });
 });

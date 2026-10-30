@@ -4,6 +4,7 @@ import {
     appendPastProjectsNoteInsertHtml,
     buildPastProjectsNoteInsertHtml,
     copyPastProjectsDetailToClipboard,
+    markMemberNoteLinks,
     normalizePastProjectsDetailHtml,
     pastProjectsDetailHtmlToPlainText,
     plainTextToPastProjectsDetailHtml,
@@ -61,6 +62,26 @@ describe('sanitizePastProjectsDetailHtml', () => {
 
     it('converts font bgcolor attributes into mark highlights', () => {
         expect(sanitizePastProjectsDetailHtml('<font bgcolor="red">marked</font>')).toBe('<mark>marked</mark>');
+    });
+});
+
+describe('markMemberNoteLinks', () => {
+    it('marks links to other sites nofollow / ugc / noopener and leaves this site\'s links alone', () => {
+        const html = markMemberNoteLinks(
+            sanitizePastProjectsDetailHtml(
+                '<a href="https://phish.example.net/x" rel="me">a</a><a href="/past-projects/project/1">b</a>' +
+                    `<a href="${window.location.origin}/news">c</a><a href="mailto:x@example.com">d</a>`,
+            ),
+        );
+
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        expect([...template.content.querySelectorAll('a')].map((link) => link.getAttribute('rel'))).toEqual([
+            'nofollow ugc noopener',
+            null,
+            null,
+            'nofollow ugc noopener',
+        ]);
     });
 });
 

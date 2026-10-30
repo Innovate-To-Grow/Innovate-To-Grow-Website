@@ -1,15 +1,16 @@
-import type {ReactNode} from 'react';
+import {useMemo, type ReactNode} from 'react';
 import {useAuth} from '@/features/auth';
 import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {builderExportTarget} from '../list/curationNote';
+import {builderExportTarget, signInToSave, type SignInToSave} from '../list/curationNote';
 import {CurationSaveButton, CurationSaveSection} from './CurationSaveSection';
 import {BulkActionDialog, MergedEditButtons} from '../list/MergedEditButtons';
 import {MergedExportGroup} from '../list/MergedExportGroup';
 import {MergedListGrid, NarrowedSearchHint} from '../list/MergedListGrid';
 import {BuilderCardHeader} from '../list/MergedListHeader';
 import {useCurationShare, type PastProjectShareCreationResult} from './useCurationShare';
-import {useMergedList, useRevealRecentlyAdded} from '../list/useMergedList';
+import {useMergedList, useRevealRecentlyAdded, type ListMessage} from '../list/useMergedList';
 import {useNoteInsertFields} from '../list/useNoteInsertFields';
+import {useStatusLineInView} from '../list/useStatusLineInView';
 
 export interface BuilderMergedListProps {
   id?: string;
@@ -18,6 +19,8 @@ export interface BuilderMergedListProps {
   recentlyAdded: {keys: ReadonlySet<string>; token: number} | null;
   pendingSaveCount: number;
   title: string;
+  /** The page's latest report about the draft (a removal, an undo, another tab's change), for the status line. */
+  message?: ListMessage | null;
   onCreateShare?: (rows: ProjectGridRow[], name: string, note: string) => Promise<PastProjectShareCreationResult>;
   nameDraft?: string;
   noteDraft?: string;
@@ -51,13 +54,16 @@ const BuilderListToolbar = ({
 }: BuilderListToolbarProps) => {
   const {table, visibleRows, setStatusMessage} = list;
   const {isSharing} = curation;
+  // Rows checked under an earlier search stay checked when the search changes. Removing acts only on the
+  // checked rows the search shows, like saving and exports; the hidden ones stay checked.
+  const shownSelectedRows = table.filteredRows.filter((row) => table.selectedKeys.has(row.__key));
 
   const handleRemoveSelectedRows = () => {
-    if (!onDeleteRows || !table.hasSelection || isSharing) {
+    if (!onDeleteRows || !shownSelectedRows.length || isSharing) {
       return;
     }
-    onDeleteRows(table.selectedRows);
-    table.clearSelection();
+    onDeleteRows(shownSelectedRows);
+    table.removeFromSelection(shownSelectedRows.map((row) => row.__key));
   };
 
   return (
@@ -71,10 +77,11 @@ const BuilderListToolbar = ({
             noteDraft: curation.noteDraft,
           })
         }
-        onError={setStatusMessage}
+        onStatus={setStatusMessage}
+        reloadNote="Your curation draft is kept."
       />
       <MergedEditButtons
-        bulkRemove={onDeleteRows ? {hasSelection: table.hasSelection, onRemove: handleRemoveSelectedRows} : null}
+        bulkRemove={onDeleteRows ? {hasSelection: shownSelectedRows.length > 0, onRemove: handleRemoveSelectedRows} : null}
         undo={onUndoRows ? {canUndo: canUndoRows, onUndo: onUndoRows} : null}
         canReset={Boolean(onResetRows)}
         shared={null}
@@ -91,6 +98,7 @@ type BuilderListOptions = Pick<
   | 'rows'
   | 'recentlyAdded'
   | 'pendingSaveCount'
+  | 'message'
   | 'onCreateShare'
   | 'nameDraft'
   | 'noteDraft'
@@ -105,6 +113,7 @@ function useBuilderList({
   rows,
   recentlyAdded,
   pendingSaveCount,
+  message,
   onCreateShare,
   nameDraft,
   noteDraft,
@@ -115,7 +124,7 @@ function useBuilderList({
 }: BuilderListOptions) {
   const {isAuthenticated} = useAuth();
   const canShare = Boolean(onCreateShare) && isAuthenticated;
-  const list = useMergedList(rows, false);
+  const list = useMergedList(rows, false, message);
   const {table, visibleRows, setStatusMessage} = list;
   const noteInsert = useNoteInsertFields();
   const hiddenAddedCount = useRevealRecentlyAdded(table, rows, recentlyAdded);
@@ -135,6 +144,7 @@ function useBuilderList({
     if (!onDeleteRow || isSharing) {
       return;
     }
+    list.rememberRemoval(row);
     onDeleteRow(row);
   };
 
@@ -145,7 +155,29 @@ function useBuilderList({
     list.setPendingBulkAction(null);
   };
 
-  return {isAuthenticated, canShare, list, noteInsert, hiddenAddedCount, curation, handleDeleteRow, handleConfirmBulkAction};
+  const saveButton = canShare ? (
+    <CurationSaveButton
+      hasRows={visibleRows.length > 0}
+      isSharing={isSharing}
+      pendingSaveCount={pendingSaveCount}
+      onSave={() => void curation.createShare()}
+    />
+  ) : null;
+  // The whole draft, not just the rows its search shows, goes along to the full page from the widget.
+  const signIn = useMemo(() => signInToSave(rows), [rows]);
+
+  return {
+    isAuthenticated,
+    canShare,
+    list,
+    noteInsert,
+    hiddenAddedCount,
+    curation,
+    saveButton,
+    signIn,
+    handleDeleteRow,
+    handleConfirmBulkAction,
+  };
 }
 
 interface BuilderListFooterProps {
@@ -156,10 +188,11 @@ interface BuilderListFooterProps {
   noteInsert: ReturnType<typeof useNoteInsertFields>;
   saveButton: ReactNode;
   pendingSaveCount: number;
+  signIn: SignInToSave;
   onConfirmBulkAction: () => void;
 }
 
-/** Under the table: the curation's name and note with its save button, the bulk-action dialog, and the status. */
+/** Under the table and its status line: the curation's name and note with its save button, and the bulk-action dialog. */
 const BuilderListFooter = ({
   list,
   curation,
@@ -168,6 +201,7 @@ const BuilderListFooter = ({
   noteInsert,
   saveButton,
   pendingSaveCount,
+  signIn,
   onConfirmBulkAction,
 }: BuilderListFooterProps) => (
   <>
@@ -182,21 +216,12 @@ const BuilderListFooter = ({
         noteInsert={noteInsert}
         saveButton={saveButton}
         pendingSaveCount={pendingSaveCount}
+        signIn={signIn}
       />
     ) : null}
 
     {list.pendingBulkAction ? (
-      <BulkActionDialog
-        action={list.pendingBulkAction}
-        onCancel={() => list.setPendingBulkAction(null)}
-        onConfirm={onConfirmBulkAction}
-      />
-    ) : null}
-
-    {list.statusMessage ? (
-      <p className="project-grid-status" role="status">
-        {list.statusMessage}
-      </p>
+      <BulkActionDialog onCancel={() => list.setPendingBulkAction(null)} onConfirm={onConfirmBulkAction} />
     ) : null}
   </>
 );
@@ -205,55 +230,21 @@ const BuilderListFooter = ({
  * The builder's unsaved merged list. Saving, exports and bulk removal act on the rows the search
  * shows; while a curation is being saved the rows stay as they were at the click.
  */
-export const BuilderMergedList = ({
-  id,
-  className,
-  rows,
-  recentlyAdded,
-  pendingSaveCount,
-  title,
-  onCreateShare,
-  nameDraft,
-  noteDraft,
-  onNameDraftChange,
-  onNoteDraftChange,
-  onDeleteRow,
-  onDeleteRows,
-  canUndoRows,
-  onUndoRows,
-  onResetRows,
-}: BuilderMergedListProps) => {
-  const {isAuthenticated, canShare, list, noteInsert, hiddenAddedCount, curation, handleDeleteRow, handleConfirmBulkAction} =
-    useBuilderList({
-      rows,
-      recentlyAdded,
-      pendingSaveCount,
-      onCreateShare,
-      nameDraft,
-      noteDraft,
-      onNameDraftChange,
-      onNoteDraftChange,
-      onDeleteRow,
-      onResetRows,
-    });
-  const {table, visibleRows, headingId} = list;
-  const {isSharing} = curation;
+export const BuilderMergedList = (props: BuilderMergedListProps) => {
+  const {id, className, rows, recentlyAdded, pendingSaveCount, title, onCreateShare, onDeleteRows} = props;
+  const {isAuthenticated, canShare, list, noteInsert, hiddenAddedCount, curation, saveButton, signIn, ...actions} =
+    useBuilderList(props);
+  const {table, headingId} = list;
   const shownCount = table.filteredRows.length;
-
-  const saveButton = canShare ? (
-    <CurationSaveButton
-      hasRows={visibleRows.length > 0}
-      isSharing={isSharing}
-      pendingSaveCount={pendingSaveCount}
-      onSave={() => void curation.createShare()}
-    />
-  ) : null;
+  const {cardRef, lineRef, onPointerDown} = useStatusLineInView(list.statusMessage, list.statusReports);
 
   return (
     <section
+      ref={cardRef}
       id={id}
       className={`itg-panel project-grid-card project-grid-merged${className ? ` ${className}` : ''}`}
       aria-labelledby={headingId}
+      onPointerDown={onPointerDown}
     >
       <BuilderCardHeader
         headingId={headingId}
@@ -262,6 +253,7 @@ export const BuilderMergedList = ({
         canSave={Boolean(onCreateShare)}
         isAuthenticated={isAuthenticated}
         saveButton={saveButton}
+        signIn={signIn}
       />
 
       {shownCount < rows.length ? (
@@ -279,8 +271,8 @@ export const BuilderMergedList = ({
         title={title}
         sharedMode={false}
         highlightedKeys={recentlyAdded?.keys}
-        onDeleteRow={handleDeleteRow}
-        deleteDisabled={isSharing}
+        onDeleteRow={actions.handleDeleteRow}
+        deleteDisabled={curation.isSharing}
         // Checkbox-based bulk removal: "check rows → Remove Selected".
         selectable={Boolean(onDeleteRows)}
         toolbar={
@@ -291,12 +283,18 @@ export const BuilderMergedList = ({
             canShare={canShare}
             curation={curation}
             onDeleteRows={onDeleteRows}
-            canUndoRows={canUndoRows}
-            onUndoRows={onUndoRows}
-            onResetRows={onResetRows}
+            canUndoRows={props.canUndoRows}
+            onUndoRows={props.onUndoRows}
+            onResetRows={props.onResetRows}
           />
         }
       />
+
+      {/* Right under the table and its toolbar, where removing, undoing and exporting happen, and scrolled into
+          view for them. Always in the page, so screen readers announce its first message too. */}
+      <p ref={lineRef} className="project-grid-status" role="status">
+        {list.statusMessage}
+      </p>
 
       <BuilderListFooter
         list={list}
@@ -306,7 +304,8 @@ export const BuilderMergedList = ({
         noteInsert={noteInsert}
         saveButton={saveButton}
         pendingSaveCount={pendingSaveCount}
-        onConfirmBulkAction={handleConfirmBulkAction}
+        signIn={signIn}
+        onConfirmBulkAction={actions.handleConfirmBulkAction}
       />
     </section>
   );

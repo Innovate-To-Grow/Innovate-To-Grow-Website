@@ -34,7 +34,7 @@ export const SharedNoteEditor = ({editor, rows, noteInsert}: SharedNoteEditorPro
         id="past-project-shared-note-editor"
         label="Curation note"
         value={editor.noteDraft}
-        placeholder="Add a curation note (shown at the top of the shared page)."
+        placeholder="Add a curation note (shown at the top of this page)."
         readOnly={!isEditingNote}
         autoFocus={isEditingNote}
         headerAction={noteAction}
@@ -44,7 +44,8 @@ export const SharedNoteEditor = ({editor, rows, noteInsert}: SharedNoteEditorPro
         <ProjectNoteInsertControl
           rows={rows}
           excludedFields={noteInsert.excludedFields}
-          onInsert={() => editor.setNoteDraft((current) => noteInsert.appendRows(current, rows))}
+          insertProblem={noteInsert.insertProblem}
+          onInsert={() => noteInsert.insertRows(editor.noteDraft, rows, editor.setNoteDraft)}
           onToggleExcludedField={noteInsert.toggleField}
         />
       ) : null}

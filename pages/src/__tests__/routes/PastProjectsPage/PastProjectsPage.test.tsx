@@ -12,6 +12,8 @@ import {
 
 const {
     addedRow,
+    authState,
+    gridState,
     mockNavigate,
     mockRetryShare,
     sampleRow,
@@ -42,7 +44,14 @@ const {
         mockNavigate: vi.fn(),
         mockRetryShare: vi.fn(),
         sharedState: {share: null as unknown, shareError: null as string | null, shareNotFound: false},
+        authState: {user: null as {member_uuid: string} | null},
+        gridState: {loading: false, rows: [sample] as Array<typeof sample>},
     };
+});
+
+vi.mock('@/features/auth', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/features/auth')>();
+    return {...actual, useAuth: () => ({...actual.useAuth(), user: authState.user})};
 });
 
 vi.mock('react-router', async (importOriginal) => {
@@ -71,8 +80,8 @@ vi.mock('@/features/projects/api', () => ({
 vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
     usePastProjectGridData: () => ({
         error: null,
-        loading: false,
-        rows: [sampleRow],
+        loading: gridState.loading,
+        rows: gridState.rows,
         refetch: vi.fn(),
     }),
     usePastProjectShareData: () => ({
@@ -118,6 +127,9 @@ describe('PastProjectsPage', () => {
         sharedState.share = null;
         sharedState.shareError = null;
         sharedState.shareNotFound = false;
+        authState.user = null;
+        gridState.loading = false;
+        gridState.rows = [sampleRow];
         mockNavigate.mockReset();
         mockRetryShare.mockReset();
         vi.mocked(createPastProjectShare).mockReset();
@@ -174,6 +186,35 @@ describe('PastProjectsPage', () => {
         );
     });
 
+    it("asks again whether the viewer may edit a curation once they sign out or switch accounts", () => {
+        // can_edit is the server's answer for whoever was signed in when the curation loaded.
+        authState.user = {member_uuid: 'owner-1'};
+        sharedState.share = shareFixture();
+        const {rerender} = renderPage();
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).not.toHaveBeenCalled();
+
+        authState.user = null;
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).toHaveBeenCalledTimes(1);
+
+        authState.user = {member_uuid: 'someone-else'};
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).toHaveBeenCalledTimes(2);
+    });
+
     it('titles a share stored without a name with the default curation title', async () => {
         sharedState.share = shareFixture({name: '  '});
 
@@ -182,12 +223,32 @@ describe('PastProjectsPage', () => {
         expect(await screen.findByTestId('share-title')).toHaveTextContent('Past Project Curation');
     });
 
+    it('names the tab Past Projects even after a curation page named it', () => {
+        // Both routes share the route title, so the route alone would not set it again.
+        document.title = 'Spring finalists | Innovate to Grow';
+        renderPage();
+
+        expect(document.title).toBe('Past Projects | Innovate to Grow');
+    });
+
     it('heads the builder with the archive size, the years it spans and a lede', () => {
         renderPage();
 
         expect(screen.getByRole('heading', {level: 1, name: 'Past Projects'})).toBeInTheDocument();
         expect(screen.getByText('1 project since 2025')).toHaveClass('itg-page-meta');
         expect(screen.getByText(/^Search past Innovate to Grow projects, check the ones you want/)).toHaveClass('itg-lead');
+    });
+
+    it('keeps the meta line in place while the archive loads, so the lede and builder do not move down', () => {
+        gridState.loading = true;
+        gridState.rows = [];
+        const {container} = renderPage();
+
+        const header = container.querySelector('.past-projects-header') as HTMLElement;
+        const meta = header.querySelector('.itg-page-meta') as HTMLElement;
+        expect(meta.textContent).toBe('\u00a0');
+        expect(meta).toHaveAttribute('aria-hidden', 'true');
+        expect(meta.nextElementSibling).toHaveClass('itg-lead');
     });
 
     it("lists the member's saved curations above the builder", () => {
@@ -205,7 +266,8 @@ describe('PastProjectsPage', () => {
                 <PastProjectsPage/>
             </MemoryRouter>,
         );
-        expect(screen.getByRole('status')).toHaveTextContent(
+        expect(screen.getByText(/^Curation saved\./)).toHaveAttribute('role', 'status');
+        expect(screen.getByText(/^Curation saved\./)).toHaveTextContent(
             'Curation saved. It is listed under My Curations on the Past Projects page, and you can keep editing it here.',
         );
         expect(screen.getByRole('link', {name: 'Past Projects'})).toHaveAttribute('href', '/past-projects');
@@ -258,8 +320,8 @@ describe('PastProjectsPage', () => {
 
         renderPage();
 
-        expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
-        expect(screen.getByRole('heading', {level: 1, name: "This shared list isn't available"})).toBeInTheDocument();
+        expect(screen.getByText('Curation · Past Projects')).toHaveClass('itg-eyebrow');
+        expect(screen.getByRole('heading', {level: 1, name: "This curation isn't available"})).toBeInTheDocument();
         expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
         expect(screen.getByRole('link', {name: 'Go to Projects'})).toHaveAttribute('href', '/projects');
         expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
@@ -272,9 +334,9 @@ describe('PastProjectsPage', () => {
 
         renderPage();
 
-        expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
-        expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this shared list"})).toBeInTheDocument();
-        expect(screen.queryByRole('heading', {name: "This shared list isn't available"})).toBeNull();
+        expect(screen.getByText('Curation · Past Projects')).toHaveClass('itg-eyebrow');
+        expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this curation"})).toBeInTheDocument();
+        expect(screen.queryByRole('heading', {name: "This curation isn't available"})).toBeNull();
         expect(screen.queryByText(/deleted the list/)).toBeNull();
         expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
         expect(screen.queryByTestId('share-title')).toBeNull();

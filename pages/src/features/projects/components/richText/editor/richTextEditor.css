@@ -53,7 +53,7 @@
 
 .project-grid-rich-editor-button:hover,
 .project-grid-rich-copy-button:hover,
-.project-grid-rich-editor-button[aria-pressed='true'] {
+.project-grid-rich-editor-button.is-active {
   border-color: var(--itg-color-primary);
   background: var(--itg-color-bg-light);
 }
@@ -102,14 +102,16 @@
   height: min(40rem, 75vh);
 }
 
-/* Not being edited: as tall as the note, up to a limit. */
+/* Not being edited (the owner's saved note, until "Edit curation note"): as tall as the note, up to a limit, and
+   read as content in the body colour on a panel, not as a greyed-out disabled field. */
 .project-grid-rich-detail-input[contenteditable='false'] {
   height: auto;
   min-height: 5.25rem;
   max-height: 24rem;
   resize: none;
-  background: var(--itg-color-disabled-bg);
-  color: var(--itg-color-disabled-text);
+  background: var(--itg-color-bg-panel);
+  box-shadow: none;
+  color: var(--itg-color-text);
 }
 
 .project-grid-rich-detail-input:empty::before {

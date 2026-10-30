@@ -209,4 +209,15 @@
   background: none;
   border-color: transparent;
 }
+
+/* Forced colours (Windows Contrast themes) replace the colours above. A native disabled button is then drawn in
+   GrayText, but an aria-disabled one (kept focusable so focus stays on it after its own press) in the same colours
+   as an enabled one: give it the native look. */
+@media (forced-colors: active) {
+  .itg-btn[aria-disabled='true'],
+  .itg-btn[aria-disabled='true']:hover {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
 }

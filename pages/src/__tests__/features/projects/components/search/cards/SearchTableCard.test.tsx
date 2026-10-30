@@ -64,7 +64,7 @@ describe('SearchTableCard', () => {
         renderCard();
 
         expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
-        expect(screen.getByText(/check the projects you want, then click save selected/i)).toBeInTheDocument();
+        expect(screen.getByText(/check the projects you want, then click add to curation/i)).toBeInTheDocument();
         expect(screen.getByText('3 projects')).toBeInTheDocument();
     });
 
@@ -80,7 +80,7 @@ describe('SearchTableCard', () => {
         const {container} = renderCard({onRefresh: vi.fn()});
         const toolbar = container.querySelector('.project-grid-toolbar') as HTMLElement;
 
-        expect(within(toolbar).getByRole('button', {name: 'Save Selected'})).toHaveClass('itg-btn-primary');
+        expect(within(toolbar).getByRole('button', {name: 'Add to Curation'})).toHaveClass('itg-btn-primary');
         const selection = within(toolbar).getByRole('group', {name: 'Selection'});
         expect(within(selection).getAllByRole('button').map((button) => button.textContent)).toEqual([
             'Select All',
@@ -110,7 +110,7 @@ describe('SearchTableCard', () => {
         expect(more).not.toHaveAttribute('open');
         expect(within(more).getByRole('group', {name: 'Tidy this table'})).toBeInTheDocument();
         // Save and the selection buttons stay in view.
-        expect(within(toolbar).getByRole('button', {name: 'Save Selected'})).toBeVisible();
+        expect(within(toolbar).getByRole('button', {name: 'Add to Curation'})).toBeVisible();
         expect(within(toolbar).getByRole('group', {name: 'Selection'}).closest('details')).toBeNull();
         vi.unstubAllGlobals();
     });
@@ -121,8 +121,8 @@ describe('SearchTableCard', () => {
         fireEvent.click(rowCheckbox('Project 1'));
         fireEvent.click(rowCheckbox('Project 2'));
 
-        const save = screen.getByRole('button', {name: 'Save Selected'});
-        expect(save).toHaveTextContent('Save Selected · 2');
+        const save = screen.getByRole('button', {name: 'Add to Curation'});
+        expect(save).toHaveTextContent('Add to Curation · 2');
         expect(within(save).getByText('· 2', {exact: false})).toHaveAttribute('aria-hidden', 'true');
     });
 
@@ -145,8 +145,8 @@ describe('SearchTableCard', () => {
         renderCard({onMergeSelected});
 
         fireEvent.click(rowCheckbox('Project 2'));
-        const mergeButton = screen.getByRole('button', {name: 'Save Selected'});
-        expect(mergeButton).toBeEnabled();
+        const mergeButton = screen.getByRole('button', {name: 'Add to Curation'});
+        expect(mergeButton).not.toHaveAttribute('aria-disabled');
 
         fireEvent.click(mergeButton);
 
@@ -156,35 +156,35 @@ describe('SearchTableCard', () => {
         expect(rowsArg[0]).toMatchObject({project_title: 'Project 2'});
         expect(rowsArg[0]).not.toHaveProperty('__key');
 
-        await waitFor(() => expect(screen.getByRole('button', {name: 'Save Selected'})).toBeDisabled());
+        await waitFor(() => expect(screen.getByRole('button', {name: 'Add to Curation'})).toHaveAttribute('aria-disabled', 'true'));
         expect(rowCheckbox('Project 2')).not.toBeChecked();
     });
 
     it('reports a synchronous save inside the table straight away', () => {
         const onMergeSelected = vi.fn(
-            (): SearchTableSaveResult => ({tone: 'info', message: 'That project is already in Saved Merged Results.'}),
+            (): SearchTableSaveResult => ({tone: 'info', message: 'That project is already in the curation draft.'}),
         );
         renderCard({onMergeSelected});
 
         fireEvent.click(rowCheckbox('Project 1'));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
-        expect(screen.getByRole('status')).toHaveTextContent('That project is already in Saved Merged Results.');
+        expect(screen.getByRole('status')).toHaveTextContent('That project is already in the curation draft.');
         expect(rowCheckbox('Project 1')).not.toBeChecked();
-        expect(screen.getByRole('button', {name: 'Save Selected'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('keeps only the retained rows checked and shows the error beside the toolbar', async () => {
         const onMergeSelected = vi.fn().mockResolvedValue({
             tone: 'error',
-            message: '1 project could not be loaded and is still selected. Click Save Selected to try again.',
+            message: '1 project could not be loaded and is still selected. Click Add to Curation to try again.',
             retainedIndexes: [1],
         } satisfies SearchTableSaveResult);
         renderCard({onMergeSelected});
 
         fireEvent.click(rowCheckbox('Project 1'));
         fireEvent.click(rowCheckbox('Project 3'));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
         await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('1 project could not be loaded'));
         expect(screen.getByText(/^1 project could not be loaded/, {selector: 'span'})).toBeVisible();
@@ -197,10 +197,10 @@ describe('SearchTableCard', () => {
         renderCard({onMergeSelected: vi.fn().mockRejectedValue(new Error('boom'))});
 
         fireEvent.click(rowCheckbox('Project 2'));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
         await waitFor(() =>
-            expect(screen.getByRole('alert')).toHaveTextContent('Could not save the selected projects.'),
+            expect(screen.getByRole('alert')).toHaveTextContent('Could not add the selected projects.'),
         );
         expect(rowCheckbox('Project 2')).toBeChecked();
     });
@@ -217,21 +217,21 @@ describe('SearchTableCard', () => {
 
         fireEvent.click(rowCheckbox('Project 1'));
         fireEvent.click(rowCheckbox('Project 2'));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
         expect(helpers?.tableId).toBe('table-1');
         // aria-disabled rather than disabled, so keyboard focus stays on the pressed button.
-        const savingButton = screen.getByRole('button', {name: 'Saving…'});
+        const savingButton = screen.getByRole('button', {name: 'Adding…'});
         expect(savingButton).toHaveAttribute('aria-disabled', 'true');
         expect(savingButton).toBeEnabled();
-        expect(screen.getByRole('status')).toHaveTextContent('Saving 2 projects…');
+        expect(screen.getByRole('status')).toHaveTextContent('Adding 2 projects…');
         // Progress shows for larger loads only, in steps, and stays out of the live region. It counts settled
         // requests, so it is worded as progress rather than as a number of loaded projects.
         act(() => helpers?.reportProgress(8, 40));
         expect(screen.getByText(/Loading details: 8 of 40\./)).toBeInTheDocument();
         expect(screen.getByRole('status')).not.toHaveTextContent('Loading details');
         // Tidying the table while it saves would contradict the outcome it is about to report.
-        expect(screen.getByRole('button', {name: 'Remove from Table'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Remove from Table'})).toHaveAttribute('aria-disabled', 'true');
         expect(screen.getByRole('button', {name: 'Delete table: Search Table'})).toBeDisabled();
 
         // Checked while the save is running: must survive the save finishing.
@@ -240,16 +240,16 @@ describe('SearchTableCard', () => {
         expect(onMergeSelected).toHaveBeenCalledTimes(1);
 
         await act(async () => {
-            pending.resolve({tone: 'success', message: '2 projects added to Saved Merged Results (2 in total).'});
+            pending.resolve({tone: 'success', message: '2 projects added to the curation draft (2 in total).'});
         });
 
-        expect(screen.getByRole('status')).toHaveTextContent('2 projects added to Saved Merged Results');
-        expect(screen.getByRole('button', {name: 'Save Selected'})).not.toHaveAttribute('aria-disabled');
+        expect(screen.getByRole('status')).toHaveTextContent('2 projects added to the curation draft');
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).not.toHaveAttribute('aria-disabled');
         expect(rowCheckbox('Project 1')).not.toBeChecked();
         expect(rowCheckbox('Project 2')).not.toBeChecked();
         expect(rowCheckbox('Project 3')).toBeChecked();
 
-        fireEvent.click(screen.getByRole('button', {name: 'View Saved Results'}));
+        fireEvent.click(screen.getByRole('button', {name: 'View Curation Draft'}));
         expect(onViewMergedResults).toHaveBeenCalledTimes(1);
     });
 
@@ -258,7 +258,7 @@ describe('SearchTableCard', () => {
 
         fireEvent.click(rowCheckbox('Project 1'));
         fireEvent.click(rowCheckbox('Project 2'));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
         await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Boom'));
         expect(rowCheckbox('Project 1')).toBeChecked();
@@ -273,16 +273,16 @@ describe('SearchTableCard', () => {
         renderCard({initialRows: rows, onMergeSelected});
 
         fireEvent.click(screen.getByRole('button', {name: 'Select All'}));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
-        const dialog = screen.getByRole('dialog', {name: 'Save 120 projects?'});
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
+        const dialog = screen.getByRole('dialog', {name: 'Add 120 projects?'});
         expect(onMergeSelected).not.toHaveBeenCalled();
 
         fireEvent.click(within(dialog).getByRole('button', {name: 'Cancel'}));
         expect(onMergeSelected).not.toHaveBeenCalled();
         expect(rowCheckbox('Bulk 0')).toBeChecked();
 
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
-        fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: 'Save 120 Projects'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
+        fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: 'Add 120 Projects'}));
         await waitFor(() => expect(onMergeSelected).toHaveBeenCalledTimes(1));
         expect(onMergeSelected.mock.calls[0][0]).toHaveLength(120);
     });
@@ -301,9 +301,9 @@ describe('SearchTableCard', () => {
         };
         const {rerender} = render(<SearchTableCard {...props} />);
         fireEvent.click(screen.getByRole('button', {name: 'Select All'}));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
-        const dialog = screen.getByRole('dialog', {name: 'Save 120 projects?'});
-        expect(within(dialog).getByRole('button', {name: 'Save 120 Projects'})).toHaveFocus();
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
+        const dialog = screen.getByRole('dialog', {name: 'Add 120 projects?'});
+        expect(within(dialog).getByRole('button', {name: 'Add 120 Projects'})).toHaveFocus();
 
         const cancel = within(dialog).getByRole('button', {name: 'Cancel'});
         cancel.focus();
@@ -327,7 +327,7 @@ describe('SearchTableCard', () => {
 
         fireEvent.click(rowCheckbox('Row 3'));
         expect(within(bottom).getByText('1 selected')).toBeInTheDocument();
-        fireEvent.click(within(bottom).getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(within(bottom).getByRole('button', {name: 'Add to Curation'}));
 
         expect(within(bottom).getByText('Saved from below.')).toBeInTheDocument();
         expect(container.querySelector('.project-grid-toolbar .search-table-save-status')).toBeNull();
@@ -340,7 +340,7 @@ describe('SearchTableCard', () => {
         fireEvent.change(screen.getByLabelText('Per page'), {target: {value: '25'}});
         fireEvent.click(rowCheckbox('Row 3'));
         const bottom = container.querySelector('.search-table-bottom-actions') as HTMLElement;
-        fireEvent.click(within(bottom).getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(within(bottom).getByRole('button', {name: 'Add to Curation'}));
 
         // The page shrinks below the bottom Save while the save runs.
         fireEvent.change(within(cardSection(container)).getByRole('searchbox'), {target: {value: 'Row 1'}});
@@ -366,7 +366,7 @@ describe('SearchTableCard', () => {
         expect(onSelectionChange.mock.lastCall?.[1][0]).not.toHaveProperty('__key');
 
         // Rows a running save submitted are on their way, not waiting.
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
         expect(onSelectionChange).toHaveBeenLastCalledWith('table-1', [], 'Search Table');
         await act(async () => pending.resolve({tone: 'success', message: 'Saved.'}));
         expect(onSelectionChange).toHaveBeenLastCalledWith('table-1', [], 'Search Table');
@@ -389,14 +389,14 @@ describe('SearchTableCard', () => {
         fireEvent.change(within(cardSection(container)).getByRole('searchbox'), {target: {value: 'Project'}});
         fireEvent.click(rowCheckbox('Project 1'));
         fireEvent.click(rowCheckbox('Project 2'));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
         // A Refresh lands while the save runs: fresh rows, and the search starts over.
         const fresh = [...rows.map((row) => ({...row})), makeRow({id: 'p-3', team_number: 'T03', project_title: 'Project 3'})];
         rerender(<SearchTableCard {...props} initialRows={fresh} resetKey={1} />);
         expect(within(cardSection(container)).getByRole('searchbox')).toHaveValue('');
         expect(screen.getAllByText('Project 3').length).toBeGreaterThan(0);
-        expect(screen.getByRole('button', {name: 'Saving…'})).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('button', {name: 'Adding…'})).toHaveAttribute('aria-disabled', 'true');
 
         await act(async () =>
             pending.resolve({
@@ -424,7 +424,7 @@ describe('SearchTableCard', () => {
             <SearchTableCard {...props} initialRows={[makeRow({id: 'p-1', project_title: 'Old Result'})]} resetKey={1} />,
         );
         fireEvent.click(rowCheckbox('Old Result'));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
         rerender(<SearchTableCard {...props} initialRows={[makeRow({id: 'p-9', project_title: 'New Result'})]} resetKey={2} />);
 
         await act(async () => pending.resolve({tone: 'error', message: 'Could not load it.', retainedIndexes: [0]}));
@@ -439,27 +439,27 @@ describe('SearchTableCard', () => {
             <SearchTableCard {...props} initialRows={makeRows()} resetKey={0} onMergeSelected={onMergeSelected} />,
         );
         fireEvent.click(rowCheckbox('Project 1'));
-        fireEvent.click(screen.getByRole('button', {name: 'Save Selected'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
         expect(screen.getByRole('status')).toHaveTextContent('Already saved.');
         fireEvent.click(rowCheckbox('Project 2'));
 
         rerender(<SearchTableCard {...props} initialRows={makeRows()} resetKey={1} onMergeSelected={onMergeSelected} />);
         expect(screen.getByRole('status')).toBeEmptyDOMElement();
         expect(rowCheckbox('Project 2')).not.toBeChecked();
-        expect(screen.getByRole('button', {name: 'Save Selected'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('removes the checked rows from the table and lets the user undo the last change', () => {
         renderCard();
 
         const undoButton = screen.getByRole('button', {name: 'Undo Row Change'});
-        expect(undoButton).toBeDisabled();
+        expect(undoButton).toHaveAttribute('aria-disabled', 'true');
 
         fireEvent.click(rowCheckbox('Project 2'));
         fireEvent.click(screen.getByRole('button', {name: 'Remove from Table'}));
 
         expect(screen.queryByText('Project 2')).toBeNull();
-        expect(undoButton).toBeEnabled();
+        expect(undoButton).not.toHaveAttribute('aria-disabled');
 
         fireEvent.click(undoButton);
         expect(screen.getAllByText('Project 2').length).toBeGreaterThan(0);
@@ -471,12 +471,12 @@ describe('SearchTableCard', () => {
         fireEvent.click(rowCheckbox('Project 1'));
         fireEvent.click(screen.getByRole('button', {name: 'Keep Only Selected'}));
 
-        // Only the checked row remains, still checked so Save Selected works right away.
+        // Only the checked row remains, still checked so Add to Curation works right away.
         expect(screen.getAllByText('Project 1').length).toBeGreaterThan(0);
         expect(screen.queryByText('Project 2')).toBeNull();
         expect(screen.queryByText('Project 3')).toBeNull();
         expect(rowCheckbox('Project 1')).toBeChecked();
-        expect(screen.getByRole('button', {name: 'Save Selected'})).toBeEnabled();
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).not.toHaveAttribute('aria-disabled');
 
         fireEvent.click(screen.getByRole('button', {name: 'Undo Row Change'}));
         expect(screen.getAllByText('Project 3').length).toBeGreaterThan(0);
@@ -490,21 +490,21 @@ describe('SearchTableCard', () => {
 
         expect(screen.getAllByText('Project 3').length).toBeGreaterThan(0);
         expect(rowCheckbox('Project 3')).toBeChecked();
-        expect(screen.getByRole('button', {name: 'Undo Row Change'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Undo Row Change'})).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('selects all rows and then deselects them', () => {
         renderCard();
 
-        const saveButton = screen.getByRole('button', {name: 'Save Selected'});
-        expect(saveButton).toBeDisabled();
+        const saveButton = screen.getByRole('button', {name: 'Add to Curation'});
+        expect(saveButton).toHaveAttribute('aria-disabled', 'true');
 
         fireEvent.click(screen.getByRole('button', {name: 'Select All'}));
-        expect(saveButton).toBeEnabled();
+        expect(saveButton).not.toHaveAttribute('aria-disabled');
         expect(screen.getByText('3 selected')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', {name: 'Deselect'}));
-        expect(saveButton).toBeDisabled();
+        expect(saveButton).toHaveAttribute('aria-disabled', 'true');
         expect(screen.queryByText(/selected$/)).toBeNull();
     });
 
@@ -564,7 +564,7 @@ describe('SearchTableCard', () => {
         renderCard({mergeDisabled: true});
 
         fireEvent.click(rowCheckbox('Project 1'));
-        expect(screen.getByRole('button', {name: 'Save Selected'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('uses a custom merge label and in-flight verb', async () => {

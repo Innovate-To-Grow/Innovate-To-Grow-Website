@@ -2,6 +2,7 @@ import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/project
 import {BuilderMergedList} from '../builder/BuilderMergedList';
 import {SharedMergedList} from '../shared/SharedMergedList';
 import type {PastProjectShareCreationResult} from '../builder/useCurationShare';
+import type {ListMessage} from '../list/useMergedList';
 
 export type {PastProjectShareCreationResult};
 
@@ -13,6 +14,8 @@ interface MergedResultsTableProps {
   recentlyAdded?: {keys: ReadonlySet<string>; token: number} | null;
   /** Saves still loading their projects (builder). Sharing waits, or the link would leave those rows out. */
   pendingSaveCount?: number;
+  /** The builder's latest report about its draft (a removal, an undo…), shown in the list's status line. */
+  message?: ListMessage | null;
   sharedMode?: boolean;
   title?: string;
   note?: string;
@@ -44,7 +47,7 @@ interface MergedResultsTableProps {
  */
 export const MergedResultsTable = ({
   sharedMode = false,
-  title = 'Saved Merged Results',
+  title = 'Curation Draft',
   editable = false,
   canUndoRows = false,
   recentlyAdded = null,
@@ -72,6 +75,7 @@ export const MergedResultsTable = ({
       recentlyAdded={recentlyAdded}
       pendingSaveCount={pendingSaveCount}
       title={title}
+      message={props.message}
       onCreateShare={props.onCreateShare}
       nameDraft={props.nameDraft}
       noteDraft={props.noteDraft}
