@@ -61,6 +61,8 @@ env:
   COVERAGE_VERSION: "7.16.1"
   CLI_COVERAGE_LINES: "99"
   CLI_COVERAGE_BRANCHES: "98"
+  # Cache transport failures must fall back to dependency installation promptly.
+  SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
   # npm only retries registry reads on network/5xx errors; keep the extra
   # attempts short so deterministic lint, test, and audit failures stay red.
   NPM_CONFIG_FETCH_RETRIES: "3"

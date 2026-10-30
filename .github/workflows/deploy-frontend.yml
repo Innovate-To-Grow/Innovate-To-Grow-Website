@@ -17,6 +17,9 @@ concurrency:
   group: deploy-frontend-production
   cancel-in-progress: false
 
+env:
+  SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
+
 jobs:
   deploy:
     name: Deploy Frontend

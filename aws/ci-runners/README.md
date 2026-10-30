@@ -92,6 +92,8 @@ and its validation in `image.tf`, bumping the component and recipe semantic
 versions in `image.tf`, then rebuilding the image. These immutable resources
 use create-before-destroy so the existing pipeline can switch safely. Cached virtualenv
 keys distinguish GitHub-hosted and self-hosted filesystem layouts.
+Dependency cache downloads have a two-minute segment timeout so upstream
+transport failures fall back to installing dependencies promptly.
 Changing the default Python patch version also requires updating its link in
 `runner-user-data.sh.tftpl`.
 
