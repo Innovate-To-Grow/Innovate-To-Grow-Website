@@ -1,5 +1,5 @@
 import {useState, useEffect} from 'react';
-import {fetchPastProjectArchive} from '@/features/projects/api';
+import {fetchAllPastProjectArchive} from '@/features/projects/api';
 import type {CompactPastProjectRow, PastProjectArchiveQuery} from '@/features/projects/api';
 import type {SheetRow} from '@/components/SheetsDataTable';
 import {formatSemesterLabel} from '@/lib/format';
@@ -16,7 +16,7 @@ function projectToSheetRow(p: CompactPastProjectRow): SheetRow {
         Organization: p.organization,
         Industry: p.industry,
         Abstract: '',
-        'Student Names': '',
+        'Student Names': p.student_names ?? '',
         'Showcase Participation': '',
         NameTitle: '',
     };
@@ -36,19 +36,8 @@ export function usePastProjectsData(query: Pick<PastProjectArchiveQuery, 'year' 
 
     useEffect(() => {
         const controller = new AbortController();
-        const load = async () => {
-            const projects: CompactPastProjectRow[] = [];
-            let page = 1;
-            while (true) {
-                const payload = await fetchPastProjectArchive({page, page_size: 100, year, season}, controller.signal);
-                projects.push(...payload.results);
-                if (projects.length >= payload.count) break;
-                page += 1;
-            }
-            return projects;
-        };
 
-        load()
+        fetchAllPastProjectArchive({year, season}, controller.signal)
             .then((projects) => {
                 if (controller.signal.aborted) return;
                 setRows(projects.map(projectToSheetRow));

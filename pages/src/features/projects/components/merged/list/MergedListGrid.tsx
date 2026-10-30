@@ -7,6 +7,8 @@ import type {useProjectGridTable} from '../../grid/state/useProjectGridTable';
 interface MergedListGridProps {
   table: ReturnType<typeof useProjectGridTable>;
   rows: ProjectGridItem[];
+  /** The list's heading, which names the table and its pager for screen readers. */
+  title: string;
   sharedMode: boolean;
   highlightedKeys?: ReadonlySet<string>;
   onDeleteRow?: (row: ProjectGridItem) => void;
@@ -19,6 +21,7 @@ interface MergedListGridProps {
 export const MergedListGrid = ({
   table,
   rows,
+  title,
   sharedMode,
   highlightedKeys,
   onDeleteRow,
@@ -51,7 +54,7 @@ export const MergedListGrid = ({
           aria-controls={phoneListId}
           onClick={() => setIsPhoneListOpen((current) => !current)}
         >
-          {isPhoneListOpen ? 'Hide the saved projects' : `Show the ${pluralize(rows.length, 'saved project')}`}
+          <span>{isPhoneListOpen ? 'Hide the saved projects' : `Show the ${pluralize(rows.length, 'saved project')}`}</span>
           <span aria-hidden="true">{isPhoneListOpen ? ' ▴' : ' ▾'}</span>
         </button>
       )}
@@ -69,6 +72,7 @@ export const MergedListGrid = ({
           pagedRows={table.pagedRows}
           filteredCount={table.filteredRows.length}
           totalCount={rows.length}
+          tableLabel={title}
           search={table.search}
           searchLabel="Search this list"
           searchPlaceholder="Team, project, organization…"

@@ -22,14 +22,11 @@
   min-width: 0;
 }
 
-/* Current projects: Search spans two columns, Class and Industry share the rest. */
+/* Current projects: Search takes half the row, Class and Industry a quarter each. Fixed tracks: an auto-fit grid
+   had only three tracks at 769-807px, where Search took two and Industry was left alone on a second row. */
 .project-grid-controls-row.has-filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(10.625rem, 100%), 1fr));
-}
-
-.project-grid-controls-row.has-filters > .project-grid-search-field {
-  grid-column: span 2;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .project-grid-search-input,
@@ -39,6 +36,14 @@
 
 .project-grid-page-size .project-grid-select {
   min-width: 5.5rem;
+}
+
+/* A button in a row of fields is as tall as they are: 34px here, 44px on touch screens (projectsResponsive.css).
+   View All Details is the same outlined button in the filter well and beside the Sort select. */
+.itg-btn.project-grid-toggle-details,
+.project-grid-share-result-row > .itg-btn {
+  min-height: 34px;
+  padding-block: 3px;
 }
 
 .project-grid-controls-status {
@@ -64,6 +69,10 @@
 
 .project-grid-count strong {
   color: var(--itg-color-text-dark);
+}
+
+.project-grid-count-note {
+  display: block;
 }
 
 .project-grid-results-controls {

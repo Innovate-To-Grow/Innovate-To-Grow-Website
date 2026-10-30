@@ -187,10 +187,13 @@ export function newsList(
   };
 }
 
+// Project ids are UUIDs: the project page treats anything else in its URL as no project at all.
+const E2E_PROJECT_IDS = ['e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002'] as const;
+
 export function pastProjectRows(): ProjectTableRow[] {
   return [
     {
-      id: 'project-e2e-1',
+      id: E2E_PROJECT_IDS[0],
       semester_label: '2025 Fall',
       class_code: 'CSE 120',
       team_number: '7',
@@ -205,7 +208,7 @@ export function pastProjectRows(): ProjectTableRow[] {
       presentation_order: 3,
     },
     {
-      id: 'project-e2e-2',
+      id: E2E_PROJECT_IDS[1],
       semester_label: '2025 Spring',
       class_code: 'ME 140',
       team_number: '2',
@@ -224,7 +227,7 @@ export function pastProjectRows(): ProjectTableRow[] {
 
 export function projectDetail(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
   return {
-    id: 'project-e2e-1',
+    id: E2E_PROJECT_IDS[0],
     project_title: 'Adaptive Irrigation Dashboard',
     team_name: 'Team Helix',
     team_number: '7',

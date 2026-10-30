@@ -71,6 +71,14 @@ describe('event API', () => {
     });
   });
 
+  it('passes an abort signal and a timeout through for the schedule', async () => {
+    apiMock.get.mockResolvedValue({data: {event: {name: 'Active'}}});
+    const signal = new AbortController().signal;
+
+    await fetchCurrentSchedule(null, {signal, timeout: 15_000});
+    expect(apiMock.get).toHaveBeenLastCalledWith('/event/schedule/', {signal, timeout: 15_000});
+  });
+
   describe('registration discovery', () => {
     it('uses the refresh-aware client when a session exists', async () => {
       mockGetStoredSession.mockReturnValue({generation: 'session-a'});

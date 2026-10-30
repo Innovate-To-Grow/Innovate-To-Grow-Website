@@ -11,29 +11,36 @@ test('@core archive View shows abstract and students while preserving the indivi
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
   const desktop = page.locator('.search-table-card .project-grid-table-wrap');
   const mobile = page.locator('.search-table-card .project-grid-mobile-cards');
-  await expect(desktop.locator('tr.project-grid-row').filter({hasText: rows[0].project_title})).toHaveCount(1);
-  // Cards replace the table at the projects CSS breakpoint (max-width: 768px). Read the layout from the
-  // viewport: a mobile engine can briefly lay the page out wider while it applies the viewport meta tag.
+  // The phone list replaces the table at the projects breakpoint (max-width: 768px); only one of them is rendered.
+  // Read the layout from the viewport: a mobile engine can briefly lay the page out wider while it applies the
+  // viewport meta tag.
   const isDesktop = (page.viewportSize()?.width ?? Number.POSITIVE_INFINITY) > 768;
   const row = isDesktop
     ? desktop.locator('tr.project-grid-row').filter({hasText: rows[0].project_title})
     : mobile.locator('.project-grid-mobile-card').filter({hasText: rows[0].project_title});
+  await expect(row).toHaveCount(1);
   await expect(row).toBeVisible();
+  await expect(isDesktop ? mobile : desktop).toHaveCount(0);
   expect(detailRequests).toHaveLength(0);
   await row.getByRole('checkbox').check();
-  await row.getByRole('button', {name: isDesktop ? 'Details' : 'Show details', exact: true}).click();
+  // Each row's toggle is named after its project: "Details for …" in the table, "Show details for …" on phones.
+  const toggleName = `${isDesktop ? 'Details' : 'Show details'} for ${rows[0].project_title}`;
+  await row.getByRole('button', {name: toggleName, exact: true}).click();
   const details = isDesktop ? row.locator('xpath=following-sibling::tr[1]') : row.locator('.project-grid-mobile-card-details');
   await expect(details.getByText(rows[0].abstract, {exact: false})).toBeVisible();
   await expect(details.getByText(rows[0].student_names, {exact: false})).toBeVisible();
   await expect(row.getByRole('checkbox')).toBeChecked();
-  const projectLink = details.getByRole('link', {name: /Open the project page/});
+  const projectLink = details.getByRole('link', {
+    name: `Open the project page for ${rows[0].project_title} (opens in a new tab)`,
+    exact: true,
+  });
   await expect(projectLink).toHaveAttribute('href', new URL(`/past-projects/project/${rows[0].id}`, page.url()).href);
   await expect(projectLink).toHaveAttribute('target', '_blank');
-  await expect(details.getByRole('button', {name: 'Copy project link'})).toBeVisible();
+  await expect(details.getByRole('button', {name: `Copy project link for ${rows[0].project_title}`})).toBeVisible();
   await expect.poll(() => detailRequests.length).toBe(1);
 
-  await row.getByRole('button', {name: isDesktop ? 'Hide' : 'Hide details', exact: true}).click();
-  await row.getByRole('button', {name: isDesktop ? 'Details' : 'Show details', exact: true}).click();
+  await row.getByRole('button', {name: isDesktop ? toggleName : `Hide details for ${rows[0].project_title}`, exact: true}).click();
+  await row.getByRole('button', {name: toggleName, exact: true}).click();
   await expect(details.getByText(rows[0].abstract, {exact: false})).toBeVisible();
   expect(detailRequests).toHaveLength(1);
 

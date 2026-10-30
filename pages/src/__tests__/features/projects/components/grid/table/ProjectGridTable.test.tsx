@@ -1,8 +1,7 @@
-import {cleanup, fireEvent, render, screen, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, within} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {ProjectGridTable} from '@/features/projects/components/grid/table/ProjectGridTable';
-import {getPagerItems} from '@/features/projects/components/grid/controls/pagerItems';
 import {
     PAST_PROJECT_GRID_COLUMNS,
     createProjectGridItems,
@@ -11,6 +10,7 @@ import {
     type ProjectGridRow,
     type ProjectGridSortDirection,
 } from '@/features/projects/components/grid/contracts/projectGrid';
+import {stubGridLayout} from '@/__tests__/features/projects/fixtures/gridLayout';
 
 const makeRow = (overrides: Partial<ProjectGridRow> = {}): ProjectGridRow => ({
     semester_label: '2025-1 Spring',
@@ -62,6 +62,20 @@ const baseProps = {
 describe('ProjectGridTable', () => {
     afterEach(() => {
         cleanup();
+        vi.unstubAllGlobals();
+    });
+
+    it('renders only the layout the screen shows, and switches when the screen crosses the breakpoint', () => {
+        const layout = stubGridLayout('desktop');
+        const {container} = render(<ProjectGridTable {...baseProps} />);
+
+        // Hiding the other layout with CSS doubled every row and its opened details.
+        expect(container.querySelectorAll('tr.project-grid-row')).toHaveLength(2);
+        expect(container.querySelector('.project-grid-mobile-cards')).toBeNull();
+
+        act(() => layout.setPhone(true));
+        expect(container.querySelectorAll('.project-grid-mobile-card')).toHaveLength(2);
+        expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
     });
 
     it('renders a labelled search field and reports the row count and the rows shown', () => {
@@ -102,6 +116,38 @@ describe('ProjectGridTable', () => {
         expect(container.querySelector('.project-grid-count')).toHaveTextContent(
             '1 of 2 projects matches “water” · showing 1–1',
         );
+    });
+
+    it('says in the count line when the search term is too common for the abstracts to be searched', () => {
+        const rows = makeRows(1);
+        const note = 'Abstracts were not searched: this search term is too common. Try a longer one.';
+        const serverSearch = {pending: false, addedRowsKey: null, tooBroad: true};
+        const {container, rerender} = render(
+            <ProjectGridTable {...baseProps} search="team" serverSearch={serverSearch} pagedRows={rows} filteredCount={1} />,
+        );
+        const count = container.querySelector('.project-grid-count') as HTMLElement;
+
+        // Inside the count's live region, so it is read out with it.
+        expect(within(count).getByText(note)).toBeInTheDocument();
+        expect(count).toHaveTextContent('1 of 2 projects matches “team” · showing 1–1');
+
+        // With no rows matching either.
+        rerender(
+            <ProjectGridTable {...baseProps} search="system" serverSearch={serverSearch} pagedRows={[]} filteredCount={0} />,
+        );
+        expect(within(container.querySelector('.project-grid-count') as HTMLElement).getByText(note)).toBeInTheDocument();
+
+        // A search the server did search says nothing more.
+        rerender(
+            <ProjectGridTable
+                {...baseProps}
+                search="water"
+                serverSearch={{...serverSearch, tooBroad: false}}
+                pagedRows={rows}
+                filteredCount={1}
+            />,
+        );
+        expect(screen.queryByText(note)).toBeNull();
     });
 
     it('forwards search changes to onSearchChange', () => {
@@ -156,6 +202,15 @@ describe('ProjectGridTable', () => {
 
         expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
         expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
+        expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+    });
+
+    it('offers to load the rows again after an error', () => {
+        const onRetry = vi.fn();
+        render(<ProjectGridTable {...baseProps} error="We couldn't load the projects." onRetry={onRetry} />);
+
+        fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+        expect(onRetry).toHaveBeenCalledTimes(1);
     });
 
     it('shows an empty message when there are no paged rows', () => {
@@ -212,12 +267,46 @@ describe('ProjectGridTable', () => {
 
         const resultsBar = within(container.querySelector('.project-grid-results-bar') as HTMLElement);
         const sortSelect = resultsBar.getByLabelText('Sort by');
-        expect(sortSelect).toHaveValue('class_code');
+        expect(sortSelect).toHaveValue('class_code:asc');
         expect(resultsBar.getByLabelText('Per page')).toBeInTheDocument();
-        expect(resultsBar.getByRole('button', {name: 'View All Details'})).toHaveClass('itg-btn-text');
+        // The same outlined button as in the filter well of tables without a Sort select.
+        expect(resultsBar.getByRole('button', {name: 'View All Details'})).toHaveClass('itg-btn-outline');
 
-        fireEvent.change(sortSelect, {target: {value: 'project_title'}});
+        // Without onSortSelect the select falls back to the header's toggle.
+        fireEvent.change(sortSelect, {target: {value: 'project_title:asc'}});
         expect(onSortChange).toHaveBeenCalledWith('project_title');
+    });
+
+    it('offers each sort in both directions and shows the direction in use, since phones have no headers', () => {
+        const onSortSelect = vi.fn();
+        const onSortChange = vi.fn();
+        render(
+            <ProjectGridTable
+                {...baseProps}
+                sortField="project_title"
+                sortDirection="desc"
+                onSortChange={onSortChange}
+                onSortSelect={onSortSelect}
+                sortOptions={[
+                    {field: 'class_code', label: 'Team number'},
+                    {field: 'project_title', label: 'Project title'},
+                ]}
+            />,
+        );
+
+        const sortSelect = screen.getByLabelText('Sort by');
+        expect(within(sortSelect).getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'Team number (low to high)',
+            'Team number (high to low)',
+            'Project title (A to Z)',
+            'Project title (Z to A)',
+        ]);
+        expect(sortSelect).toHaveValue('project_title:desc');
+        expect(within(sortSelect).getByRole('option', {name: 'Project title (Z to A)'})).toHaveProperty('selected', true);
+
+        fireEvent.change(sortSelect, {target: {value: 'class_code:desc'}});
+        expect(onSortSelect).toHaveBeenCalledWith('class_code', 'desc');
+        expect(onSortChange).not.toHaveBeenCalled();
     });
 
     it('lists a column sorted from its header in the Sort by select', () => {
@@ -230,8 +319,9 @@ describe('ProjectGridTable', () => {
         );
 
         const sortSelect = screen.getByLabelText('Sort by');
-        expect(sortSelect).toHaveValue('industry');
-        expect(within(sortSelect).getByRole('option', {name: 'Industry'})).toBeInTheDocument();
+        expect(sortSelect).toHaveValue('industry:asc');
+        expect(within(sortSelect).getByRole('option', {name: 'Industry (A to Z)'})).toBeInTheDocument();
+        expect(within(sortSelect).getByRole('option', {name: 'Industry (Z to A)'})).toBeInTheDocument();
     });
 
     it('shows a no-results state that clears the search and the filters', () => {
@@ -292,6 +382,79 @@ describe('ProjectGridTable', () => {
         expect(screen.getByRole('heading', {name: 'No projects match “zzz”'}).tagName).toBe(`H${level}`);
     });
 
+    it('says the filters, not only the search, narrowed the rows', () => {
+        const rows = makeRows(1);
+        const {container, rerender} = render(
+            <ProjectGridTable
+                {...baseProps}
+                search="a"
+                pagedRows={rows}
+                filteredCount={1}
+                totalCount={75}
+                activeFilters={['AeroSpace']}
+            />,
+        );
+        expect(container.querySelector('.project-grid-count')).toHaveTextContent(
+            /^1 of 75 projects matches “a” in AeroSpace · showing 1–1$/,
+        );
+
+        rerender(
+            <ProjectGridTable
+                {...baseProps}
+                pagedRows={rows}
+                filteredCount={1}
+                totalCount={75}
+                activeFilters={['Engineering Capstone (CAP)', 'AeroSpace']}
+            />,
+        );
+        expect(container.querySelector('.project-grid-count')).toHaveTextContent(
+            /^1 of 75 projects in Engineering Capstone \(CAP\) and AeroSpace · showing 1–1$/,
+        );
+    });
+
+    it('blames the filters in the no-results state when they are in use, and clears them', () => {
+        const onSearchChange = vi.fn();
+        const onClearFilters = vi.fn();
+        const noResults = {...baseProps, pagedRows: [], filteredCount: 0, totalCount: 75, onSearchChange, onClearFilters};
+        const {container, rerender} = render(
+            <ProjectGridTable
+                {...noResults}
+                search="CSE"
+                activeFilters={['Engineering Capstone (CAP)']}
+                noResultsHint="Older projects are in Past Projects."
+            />,
+        );
+
+        expect(
+            screen.getByRole('heading', {level: 2, name: 'No projects match “CSE” in Engineering Capstone (CAP)'}),
+        ).toBeInTheDocument();
+        expect(container.querySelector('.itg-empty-state-text')).toHaveTextContent(
+            /^Clear the filters to search all projects, or check the spelling\. Older projects are in Past Projects\.$/,
+        );
+        expect(container.querySelector('.project-grid-count')).toHaveTextContent(
+            /^0 of 75 projects match “CSE” in Engineering Capstone \(CAP\)$/,
+        );
+        fireEvent.click(screen.getByRole('button', {name: 'Clear search and filters'}));
+        expect(onSearchChange).toHaveBeenCalledWith('');
+        expect(onClearFilters).toHaveBeenCalledTimes(1);
+
+        rerender(<ProjectGridTable {...noResults} countLabel="teams" activeFilters={['Software Engineering Capstone (CSE)', 'Construction']} />);
+        expect(
+            screen.getByRole('heading', {name: 'No teams in Software Engineering Capstone (CSE) and Construction'}),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Clear the filters to see all teams.')).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Clear filters'})).toBeInTheDocument();
+    });
+
+    it('suggests what a search can find when no filter is in use', () => {
+        render(<ProjectGridTable {...baseProps} search="zzz" pagedRows={[]} filteredCount={0} totalCount={2} />);
+
+        expect(
+            screen.getByText('Check the spelling, or try a project title, team, organization, industry or student name.'),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Clear search'})).toBeInTheDocument();
+    });
+
     it('defaults the no-results heading to an h2, whatever the link scope', () => {
         render(<ProjectGridTable {...baseProps} linkScope="past" pagedRows={[]} filteredCount={0} totalCount={2} />);
 
@@ -330,50 +493,8 @@ describe('ProjectGridTable', () => {
         expect(screen.getByRole('button', {name: 'Hide All Details'})).toBeInTheDocument();
     });
 
-    it('renders numbered pages and marks the current one', () => {
-        const onPageChange = vi.fn();
-        render(<ProjectGridTable {...baseProps} page={1} totalPages={3} onPageChange={onPageChange} />);
-
-        const pages = within(screen.getByRole('navigation', {name: 'Pages'}));
-        expect(pages.getByRole('button', {name: 'Page 2'})).toHaveAttribute('aria-current', 'page');
-        expect(pages.getByRole('button', {name: 'Page 1'})).not.toHaveAttribute('aria-current');
-
-        fireEvent.click(pages.getByRole('button', {name: 'Page 2'}));
-        expect(onPageChange).not.toHaveBeenCalled();
-        fireEvent.click(pages.getByRole('button', {name: 'Page 3'}));
-        expect(onPageChange).toHaveBeenCalledWith(2);
-    });
-
-    it('renders pagination with correct disabled states', () => {
-        const onPageChange = vi.fn();
-        render(
-            <ProjectGridTable
-                {...baseProps}
-                page={0}
-                totalPages={3}
-                onPageChange={onPageChange}
-            />,
-        );
-
-        const previous = screen.getByRole('button', {name: 'Previous'});
-        const next = screen.getByRole('button', {name: 'Next'});
-        expect(previous).toBeDisabled();
-        expect(next).toBeEnabled();
-        expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
-
-        fireEvent.click(next);
-        expect(onPageChange).toHaveBeenCalledWith(1);
-    });
-
-    it('goes back a page with Previous', () => {
-        const onPageChange = vi.fn();
-        render(<ProjectGridTable {...baseProps} page={2} totalPages={3} onPageChange={onPageChange} />);
-
-        fireEvent.click(screen.getByRole('button', {name: 'Previous'}));
-        expect(onPageChange).toHaveBeenCalledWith(1);
-    });
-
     it('toggles selection and removes rows from the phone list', () => {
+        stubGridLayout('phone');
         const rows = makeRows(1);
         const onToggleSelected = vi.fn();
         const onDeleteRow = vi.fn();
@@ -395,13 +516,6 @@ describe('ProjectGridTable', () => {
         expect(onToggleSelected).toHaveBeenCalledWith(rows[0].__key);
         fireEvent.click(card.getByRole('button', {name: 'Remove'}));
         expect(onDeleteRow).toHaveBeenCalledWith(rows[0]);
-    });
-
-    it('disables Next on the last page', () => {
-        render(<ProjectGridTable {...baseProps} page={2} totalPages={3} onPageChange={vi.fn()} />);
-
-        expect(screen.getByRole('button', {name: 'Next'})).toBeDisabled();
-        expect(screen.getByRole('button', {name: 'Previous'})).toBeEnabled();
     });
 
     it('renders a select-all checkbox and per-row checkboxes when selectable', () => {
@@ -444,13 +558,13 @@ describe('ProjectGridTable', () => {
             />,
         );
 
-        // The desktop table's navy square button is named "Hide" when expanded, "Details" when collapsed.
+        // The desktop table's navy square button is named after its project; aria-expanded says whether it is open.
         const table = within(document.querySelector('.project-grid-table-wrap') as HTMLElement);
-        const hide = table.getByRole('button', {name: 'Hide'});
+        const hide = table.getByRole('button', {name: 'Details for Project 1'});
         expect(hide).toHaveClass('project-grid-detail-icon-button');
         expect(hide).toHaveAttribute('aria-expanded', 'true');
         expect(hide.querySelector('.project-grid-detail-icon')).toHaveAttribute('aria-hidden', 'true');
-        expect(table.getByRole('button', {name: 'Details'})).toHaveAttribute('aria-expanded', 'false');
+        expect(table.getByRole('button', {name: 'Details for Project 2'})).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(hide);
         expect(onToggleExpanded).toHaveBeenCalledWith(rows[0].__key);
     });
@@ -501,6 +615,7 @@ describe('ProjectGridTable', () => {
     });
 
     it('shows a phone list with the term, team code and industry above each title', () => {
+        stubGridLayout('phone');
         const rows = createProjectGridItems([makeRow({team_number: '7'})], 'phone');
         const {container} = render(
             <ProjectGridTable
@@ -520,24 +635,7 @@ describe('ProjectGridTable', () => {
         expect(within(card).getByText('2025 Spring · ENGR 120 7 · Technology')).toBeInTheDocument();
         expect(within(card).getByText('Team Alpha · Acme')).toBeInTheDocument();
         expect(within(card).getByRole('checkbox', {name: 'Select Alpha Project'})).toBeChecked();
-        fireEvent.click(within(card).getByRole('button', {name: 'Show details'}));
+        fireEvent.click(within(card).getByRole('button', {name: 'Show details for Alpha Project'}));
         expect(baseProps.onToggleExpanded).toHaveBeenCalledWith(rows[0].__key);
-    });
-});
-
-describe('getPagerItems', () => {
-    it('lists every page when there are few', () => {
-        expect(getPagerItems(0, 5)).toEqual([0, 1, 2, 3, 4]);
-    });
-
-    it('keeps the first, last and nearby pages and elides the rest', () => {
-        expect(getPagerItems(0, 10)).toEqual([0, 1, 2, 3, 'gap-end', 9]);
-        expect(getPagerItems(5, 10)).toEqual([0, 'gap-start', 4, 5, 6, 'gap-end', 9]);
-        expect(getPagerItems(9, 10)).toEqual([0, 'gap-start', 6, 7, 8, 9]);
-    });
-
-    it('shows a single hidden page instead of an ellipsis', () => {
-        expect(getPagerItems(3, 8)).toEqual([0, 1, 2, 3, 4, 'gap-end', 7]);
-        expect(getPagerItems(4, 8)).toEqual([0, 'gap-start', 3, 4, 5, 6, 7]);
     });
 });
