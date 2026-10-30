@@ -42,7 +42,8 @@ def _team_record(project: CurrentProject) -> CurrentProject:
     A schedule also lists teams that present in another semester (Track "(Fall)"): such a row has no slot and only
     what the sheet held before the team handed anything in, and the row of the schedule the team presents in (same
     class, Team# and title) carries its students and slot. Team numbers are reused every semester, so the title
-    must match too.
+    must match too. "Only listed" is read from is_presenting, which the sync sets from Track; the archive match in
+    apps.projects.services.current_project_links goes by the slot instead (see docs/api/projects.md).
     """
     if project.is_presenting or project.schedule.is_active:
         return project
