@@ -4,6 +4,7 @@ import {
   getPageReloadStatus,
   installPreloadErrorRecovery,
   isChunkLoadError,
+  isNewBuildDeployed,
   mayReloadForNewBuild,
   reloadForNewBuild,
   resetPageReloadState,
@@ -106,12 +107,77 @@ describe('pageReload', () => {
     expect(mayReloadForNewBuild(NOW)).toBe(false);
   });
 
+  describe('isNewBuildDeployed', () => {
+    const RUNNING_ENTRY = '/assets/index-OldBuild1.js';
+    const pageHtml = (entry: string) =>
+      `<!doctype html><html><head><script type="module" crossorigin src="${entry}"></script></head><body></body></html>`;
+    const serve = (response: Response) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+
+    beforeEach(() => {
+      document.head.innerHTML = `<script type="module" crossorigin src="${RUNNING_ENTRY}"></script>`;
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+      document.head.innerHTML = '';
+    });
+
+    it("is true when the page's HTML now names another entry script, fetched uncached by path alone", async () => {
+      serve(new Response(pageHtml('/assets/index-NewBuild2.js')));
+
+      await expect(isNewBuildDeployed()).resolves.toBe(true);
+
+      expect(fetch).toHaveBeenCalledWith(window.location.pathname, expect.objectContaining({cache: 'no-store'}));
+    });
+
+    it('is false while the same build is deployed (a chunk that fails anyway, or loads cancelled by leaving)', async () => {
+      serve(new Response(pageHtml(RUNNING_ENTRY)));
+
+      await expect(isNewBuildDeployed()).resolves.toBe(false);
+    });
+
+    it('is false when the answer is not a page, or no answer comes', async () => {
+      serve(new Response('Not found', {status: 404}));
+      await expect(isNewBuildDeployed()).resolves.toBe(false);
+
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Load failed')));
+      await expect(isNewBuildDeployed()).resolves.toBe(false);
+    });
+
+    it('gives up as no after five seconds', async () => {
+      vi.useFakeTimers();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          (_url: string, init: RequestInit) =>
+            new Promise((_resolve, reject) =>
+              init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))),
+            ),
+        ),
+      );
+
+      const answer = isNewBuildDeployed();
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      await expect(answer).resolves.toBe(false);
+    });
+
+    it('does not ask without an entry script to compare (the dev server)', async () => {
+      document.head.innerHTML = '';
+      serve(new Response(pageHtml('/assets/index-NewBuild2.js')));
+
+      await expect(isNewBuildDeployed()).resolves.toBe(false);
+      expect(fetch).not.toHaveBeenCalled();
+    });
+  });
+
   describe('vite:preloadError', () => {
     it.each([
       'Failed to fetch dynamically imported module: /assets/pdfExport-x.js',
       'Failed to fetch dynamically imported module: /assets/ProjectsPage-x.js',
-      'Unable to preload CSS for /assets/ProjectDetailPage-B6pqHK5d.css',
-    ])('never reloads, and the import still rejects to its caller: %s', async (message) => {
+      'Importing a module script failed.',
+    ])('never reloads, and a script that fails still rejects to its caller: %s', async (message) => {
       const reload = stubLocation();
       const target = new EventTarget() as Window;
       const uninstall = installPreloadErrorRecovery(target);
@@ -123,17 +189,16 @@ describe('pageReload', () => {
       uninstall();
     });
 
-    it('right after an automatic reload, lets a stylesheet that still fails through, but not a script', async () => {
-      stubLocation();
-      window.sessionStorage.setItem('i2g:reloaded-for-new-build-at', String(Date.now()));
+    it("lets a stylesheet that fails through, so the module's script decides", async () => {
+      const reload = stubLocation();
       const target = new EventTarget() as Window;
       const uninstall = installPreloadErrorRecovery(target);
-      const script = 'Failed to fetch dynamically imported module: /assets/ProjectDetailPage-C.js';
 
       await expect(vitePreload(target, 'Unable to preload CSS for /assets/ProjectDetailPage-B6pqHK5d.css')).resolves.toBe(
         'loaded',
       );
-      await expect(vitePreload(target, script)).rejects.toThrow(script);
+
+      expect(reload).not.toHaveBeenCalled();
       uninstall();
     });
   });

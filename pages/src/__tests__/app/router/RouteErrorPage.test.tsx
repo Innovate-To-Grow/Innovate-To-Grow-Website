@@ -8,6 +8,13 @@ import {RouteErrorPage} from '@/app/router/RouteErrorPage';
 
 const originalLocation = window.location;
 const CHUNK_ERROR = 'Failed to fetch dynamically imported module: https://i2g.ucmerced.edu/assets/ProjectDetailPage-CeeAsMfZ.js';
+const RUNNING_ENTRY = '/assets/index-OldBuild1.js';
+const NEW_ENTRY = '/assets/index-NewBuild2.js';
+
+/** What a reload of the page would get: index.html naming `entry` as the build's script. */
+const pageOf = (entry: string) =>
+  new Response(`<html><head><script type="module" crossorigin src="${entry}"></script></head></html>`);
+const serveBuild = (entry: string) => vi.stubGlobal('fetch', vi.fn(async () => pageOf(entry)));
 
 function Crashes(): never {
   throw new TypeError("Cannot read properties of undefined (reading 'replace')");
@@ -52,7 +59,7 @@ function stubLocation() {
   const reload = vi.fn();
   Object.defineProperty(window, 'location', {
     configurable: true,
-    value: {href: 'http://localhost/chunk', origin: 'http://localhost', reload},
+    value: {href: 'http://localhost/chunk', origin: 'http://localhost', pathname: '/chunk', reload},
   });
   return reload;
 }
@@ -62,11 +69,14 @@ describe('RouteErrorPage', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     window.sessionStorage.clear();
+    document.head.innerHTML = `<script type="module" crossorigin src="${RUNNING_ENTRY}"></script>`;
     document.title = 'Current Projects | Innovate to Grow';
+    serveBuild(NEW_ENTRY);
   });
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     resetPageReloadState();
     window.sessionStorage.clear();
@@ -103,15 +113,36 @@ describe('RouteErrorPage', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
-  it('reloads onto the new build when a route chunk is missing, and says so meanwhile', async () => {
+  it('reloads onto the new build when a route chunk is missing after a deploy, and says so meanwhile', async () => {
     const reload = stubLocation();
     const router = buildRouter('/chunk');
     render(<RouterProvider router={router} />);
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading the latest version of the site');
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading the latest version of the site…');
+    expect(fetch).toHaveBeenCalledWith('/chunk', expect.objectContaining({cache: 'no-store'}));
     expect(reload).toHaveBeenCalledOnce();
     expect(screen.queryByRole('heading', {name: 'Something went wrong'})).toBeNull();
     expect(document.title).toBe('Current Projects | Innovate to Grow');
+  });
+
+  it('shows the message without reloading while the same build is deployed', async () => {
+    // A chunk that fails anyway, or Safari cancelling the page's loads as the visitor goes to another page:
+    // a reload would not bring the chunk back, and would cancel that navigation.
+    let answer: (response: Response) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => (answer = resolve))));
+    const reload = stubLocation();
+    const router = buildRouter('/chunk');
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading page…');
+    act(() => answer(pageOf(RUNNING_ENTRY)));
+
+    expect(await screen.findByRole('heading', {level: 1, name: 'Something went wrong'})).toHaveAccessibleDescription(
+      /most likely because the site was just updated/,
+    );
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(reload).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', {name: 'Reload page'})).toBeInTheDocument();
   });
 
   it('never shows the error message before the reload starts', async () => {
@@ -129,7 +160,7 @@ describe('RouteErrorPage', () => {
     const router = buildRouter('/chunk');
     render(<RouterProvider router={router} />);
 
-    await screen.findByRole('status');
+    await screen.findByText('Loading the latest version of the site…');
     observer.disconnect();
 
     expect(shown).toEqual([]);
@@ -160,6 +191,7 @@ describe('RouteErrorPage', () => {
       /most likely because the site was just updated/,
     );
     expect(reload).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
     expect(screen.getByRole('button', {name: 'Reload page'})).toBeInTheDocument();
   });
 });

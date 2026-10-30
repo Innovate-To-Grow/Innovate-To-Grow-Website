@@ -2,6 +2,7 @@ export {
   getPageReloadStatus,
   installPreloadErrorRecovery,
   isChunkLoadError,
+  isNewBuildDeployed,
   mayReloadForNewBuild,
   reloadForNewBuild,
   reloadPage,
