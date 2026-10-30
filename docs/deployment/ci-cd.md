@@ -108,7 +108,7 @@ half reopens it. Don't reintroduce diff-scoping —
 
 `Deploy Production` is the only automatic production entry point. After a
 successful `main` CI run, it requests one approval through the protected
-`Production Deployments` environment and then calls all three component
+`Manual Deployment Approval` environment and then calls all three component
 workflows with the triggering commit SHA. See
 [Production Deployment Approval](production.md) for environment setup and the
 reviewer migration procedure.
@@ -125,17 +125,10 @@ reviewer migration procedure.
    - CORS header validation
    - JSON response validation
 
-The backend deploy job runs a target matrix:
-
-| Target | GitHub Environment | Default ECS service | Default URL |
-|--------|--------------------|---------------------|-------------|
-| `prod` | `AWS ECS - Prod` | `itg-backend-service` | `https://api.i2g.ucmerced.edu` |
-| `demo` | `AWS ECS(DEMO) - Prod` | `itg-backend-demo-service` | `https://demo.i2g.ucmerced.edu/admin` |
-
-Each target uses the same backend Docker image tag, but reads its own GitHub
-Environment variables and secrets for database, storage, CORS, and ECS service
-selection. The demo backend also has a direct origin,
-`https://demo-api.i2g.ucmerced.edu`, for health checks and Amplify proxy rules.
+The backend deploy job uses the `AWS ECS - Prod` GitHub Environment and
+updates `itg-backend-service` at `https://api.i2g.ucmerced.edu`. Database,
+storage, CORS, and ECS service configuration come from that environment's
+variables and secrets.
 
 ### Frontend (`deploy-frontend.yml`)
 
@@ -144,19 +137,14 @@ selection. The demo backend also has a direct origin,
 3. Upload to S3 via AWS pre-signed URL
 4. Trigger Amplify deployment
 
-The frontend deploy job also runs a target matrix:
+The frontend deploy job uses the `AWS Amplify - Prod` GitHub Environment,
+with `https://i2g.ucmerced.edu` as the default frontend URL and
+`https://api.i2g.ucmerced.edu` as the default API base.
 
-| Target | GitHub Environment | Default URL | Default API base |
-|--------|--------------------|-------------|------------------|
-| `prod` | `AWS Amplify - Prod` | `https://i2g.ucmerced.edu` | `https://api.i2g.ucmerced.edu` |
-| `demo` | `AWS Amplify(DEMO) - Prod` | `https://demo.i2g.ucmerced.edu` | `https://demo.i2g.ucmerced.edu/api` |
-
-Unlike the single production artifact built in CI, each frontend deploy target
-builds in the deploy job so `VITE_API_BASE_URL` can come from that target's
-GitHub Environment. The backend worker is the sole writer of Amplify custom
-rules; for demo it includes `/admin`, `/static`, and `/media` proxies so
-`https://demo.i2g.ucmerced.edu/admin` can front a separate backend origin. The
-frontend workflow only publishes the build and never replaces the rule list.
+The frontend builds in the deploy job so `VITE_API_BASE_URL` can come from the
+production GitHub Environment. The backend worker is the sole writer of
+Amplify custom rules. The frontend workflow only publishes the build and
+never replaces the rule list.
 
 ### Archive (`deploy-archive.yml`)
 

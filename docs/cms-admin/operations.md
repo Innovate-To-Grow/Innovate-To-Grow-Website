@@ -271,8 +271,8 @@ An active record takes effect in the SPA immediately. The admin separately repor
 - **Failed** — inspect the sanitized error, correct IAM/configuration, and use **Retry edge sync**.
 
 Edge publication requires the durable-job worker to run continuously with the
-same database and environment configuration as the Web service. Production and
-demo run it as the no-port `itg-background-worker` sidecar:
+same database and environment configuration as the Web service. Production
+runs it as the no-port `itg-background-worker` sidecar:
 
 ```bash
 python manage.py run_background_worker --settings=config.settings.environments.production
@@ -310,9 +310,9 @@ verify both source variants (with and without a trailing slash), an original
 query string, and the final browser URL. Once edge status is **Synced**, also
 verify the source response itself is HTTP 301.
 
-Production and demo each require their own `AMPLIFY_APP_ID`. For this feature,
-add only `amplify:GetApp` and `amplify:UpdateApp` to each ECS task role, scoped
-to that environment's matching `arn:aws:amplify:<region>:<account>:apps/<app-id>`
+Production requires `AMPLIFY_APP_ID`. For this feature, add only
+`amplify:GetApp` and `amplify:UpdateApp` to the ECS task role, scoped to the
+production `arn:aws:amplify:<region>:<account>:apps/<app-id>`
 resource. Route records are disabled rather than deleted so reconciliation can
 identify and remove edge rules it previously owned.
 
