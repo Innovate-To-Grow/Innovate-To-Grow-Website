@@ -91,7 +91,7 @@ function useFilteredSortedRows(
   // key of its ids: the same answer asked for again is a new Set, but the same key.
   const serverAddition = remoteMatches && filteredRows.length > ownMatches.length ? remoteMatches : null;
   const addedRowsKey = useMemo(() => (serverAddition ? [...serverAddition].sort().join(' ') : null), [serverAddition]);
-  const serverAnswer: ProjectGridServerSearch = {pending: remote.pending, addedRowsKey};
+  const serverAnswer: ProjectGridServerSearch = {pending: remote.pending, addedRowsKey, tooBroad: remote.tooBroad};
   return {filteredRows, sortedRows, serverAnswer};
 }
 

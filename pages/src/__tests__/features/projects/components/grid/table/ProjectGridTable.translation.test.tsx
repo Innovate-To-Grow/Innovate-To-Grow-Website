@@ -111,6 +111,21 @@ describe('ProjectGridTable on a translated page', () => {
     expect(shownText(view.container.querySelector('.itg-empty-state-actions button'))).toBe('Clear search and filters');
   });
 
+  it('adds and takes away the note that the abstracts were not searched', () => {
+    const tooBroad = {pending: false, addedRowsKey: null, tooBroad: true};
+    const view = renderTranslated(<ProjectGridTable {...gridProps} search="tea" filteredCount={32} />);
+    view.update(<ProjectGridTable {...gridProps} search="team" filteredCount={30} serverSearch={tooBroad} />);
+    const shown = count(view.container);
+    view.update(<ProjectGridTable {...gridProps} search="teams" filteredCount={3} />);
+    view.stop();
+
+    expect(view.errors).toEqual([]);
+    expect(shown).toBe(
+      '30 of 75 projects match “team” · showing 1–10Abstracts were not searched: too many projects match. Try a longer search.',
+    );
+    expect(count(view.container)).toBe('3 of 75 projects match “teams” · showing 1–3');
+  });
+
   it('keeps the count and the pager status in step with the page', () => {
     stubGridLayout('phone');
     const view = renderTranslated(<ProjectGridTable {...gridProps} />);

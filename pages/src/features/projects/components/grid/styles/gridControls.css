@@ -71,6 +71,10 @@
   color: var(--itg-color-text-dark);
 }
 
+.project-grid-count-note {
+  display: block;
+}
+
 .project-grid-results-controls {
   display: flex;
   flex-wrap: wrap;

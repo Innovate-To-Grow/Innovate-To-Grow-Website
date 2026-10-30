@@ -10,6 +10,9 @@ import type {ProjectGridSortOption, ProjectGridTableProps} from '../contracts/gr
 const singular = (noun: string) => (noun.endsWith('ies') ? `${noun.slice(0, -3)}y` : noun.replace(/s$/, ''));
 const countNoun = (count: number, noun: string) => `${count} ${count === 1 ? singular(noun) : noun}`;
 
+/** Under the count when the server would not search the abstracts: the matches shown come from the rows' own text. */
+const ABSTRACTS_SKIPPED = 'Abstracts were not searched: too many projects match. Try a longer search.';
+
 /** "Engineering Capstone (CAP)" or "Engineering Capstone (CAP) and AeroSpace". */
 const joinFilters = (filters: string[]) => filters.join(' and ');
 
@@ -30,6 +33,8 @@ type ResultsBarProps = Pick<
   countLabel: string;
   /** The extra filters in use (see ProjectGridTableProps.activeFilters). */
   activeFilters: string[];
+  /** The server declined to search the abstracts for this search (ProjectGridServerSearch.tooBroad). */
+  abstractsSkipped?: boolean;
   /** Per page and View All Details, shown beside the sort select while there are rows to act on. */
   pageControls: ReactNode;
   /** The count line, which takes focus after a page change. */
@@ -96,6 +101,7 @@ export const ProjectGridResultsBar = ({
   sortDirection,
   onSortChange,
   onSortSelect,
+  abstractsSkipped = false,
   pageControls,
   countRef,
   ...counts
@@ -115,6 +121,8 @@ export const ProjectGridResultsBar = ({
       <p ref={countRef} className="project-grid-count" aria-live="polite" tabIndex={-1}>
         <strong>{bold}</strong>
         <span>{rest}</span>
+        {/* In the count line, so it is read out with the count; on a line of its own. */}
+        {abstractsSkipped ? <span className="project-grid-count-note">{ABSTRACTS_SKIPPED}</span> : null}
       </p>
       {sortChoices && counts.filteredCount > 0 ? (
         <div className="project-grid-results-controls">

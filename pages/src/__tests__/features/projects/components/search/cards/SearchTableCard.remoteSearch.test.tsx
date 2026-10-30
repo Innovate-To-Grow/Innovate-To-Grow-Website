@@ -65,6 +65,20 @@ describe('SearchTableCard server search', () => {
     expect(screen.queryByText('Still searching project abstracts…')).toBeNull();
   });
 
+  it('says the abstracts were not searched when the server finds too many matches to list', async () => {
+    searchArchive.mockResolvedValue(null);
+    renderCard();
+
+    fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Project 1'}});
+
+    await vi.waitFor(() => expect(searchArchive).toHaveBeenCalledWith('Project 1', expect.any(AbortSignal)));
+    expect(
+      await screen.findByText('Abstracts were not searched: too many projects match. Try a longer search.'),
+    ).toBeInTheDocument();
+    // The matches the rows' own text finds are still shown.
+    expect(within(screen.getByRole('table', {name: 'Search Table'})).getByRole('link', {name: /Project 1/})).toBeInTheDocument();
+  });
+
   it('says there are no matches once the server finds none either', async () => {
     searchArchive.mockResolvedValue(new Set());
     renderCard();

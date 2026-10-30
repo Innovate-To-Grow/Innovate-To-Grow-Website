@@ -21,6 +21,8 @@ export interface ProjectGridServerSearch {
    * were sorted in among those shown and the table went back to its first page, without the visitor doing anything.
    */
   addedRowsKey: string | null;
+  /** It declined the search as matching too many projects, so the abstracts were not searched: the count says so. */
+  tooBroad: boolean;
 }
 
 export interface ProjectGridTableProps {

@@ -59,7 +59,7 @@ export const MAX_ARCHIVE_SEARCH_MATCHES = 500;
  * The ids of the archive projects the server finds for `query`. Its search also reads each project's abstract,
  * which the compact rows a list loads leave out, so a list adds these matches to the ones it finds itself.
  * Resolves to null, after one page, when more than MAX_ARCHIVE_SEARCH_MATCHES projects match: the list then keeps
- * the matches its own text finds.
+ * the matches its own text finds, and its count says the abstracts were not searched.
  */
 export const searchPastProjectArchiveIds = async (
     query: string,

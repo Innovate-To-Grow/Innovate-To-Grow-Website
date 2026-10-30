@@ -118,6 +118,38 @@ describe('ProjectGridTable', () => {
         );
     });
 
+    it('says in the count line when too many projects match for the abstracts to be searched', () => {
+        const rows = makeRows(1);
+        const note = 'Abstracts were not searched: too many projects match. Try a longer search.';
+        const serverSearch = {pending: false, addedRowsKey: null, tooBroad: true};
+        const {container, rerender} = render(
+            <ProjectGridTable {...baseProps} search="team" serverSearch={serverSearch} pagedRows={rows} filteredCount={1} />,
+        );
+        const count = container.querySelector('.project-grid-count') as HTMLElement;
+
+        // Inside the count's live region, so it is read out with it.
+        expect(within(count).getByText(note)).toBeInTheDocument();
+        expect(count).toHaveTextContent('1 of 2 projects matches “team” · showing 1–1');
+
+        // With no rows matching either.
+        rerender(
+            <ProjectGridTable {...baseProps} search="system" serverSearch={serverSearch} pagedRows={[]} filteredCount={0} />,
+        );
+        expect(within(container.querySelector('.project-grid-count') as HTMLElement).getByText(note)).toBeInTheDocument();
+
+        // A search the server did search says nothing more.
+        rerender(
+            <ProjectGridTable
+                {...baseProps}
+                search="water"
+                serverSearch={{...serverSearch, tooBroad: false}}
+                pagedRows={rows}
+                filteredCount={1}
+            />,
+        );
+        expect(screen.queryByText(note)).toBeNull();
+    });
+
     it('forwards search changes to onSearchChange', () => {
         const onSearchChange = vi.fn();
         render(<ProjectGridTable {...baseProps} onSearchChange={onSearchChange} />);

@@ -151,6 +151,7 @@ const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}:
           query={query}
           countLabel={grid.countLabel}
           activeFilters={grid.activeFilters}
+          abstractsSkipped={Boolean(grid.serverSearch?.tooBroad)}
           pageControls={<PageControls grid={grid} onToggleAllDetails={details.toggleAllDetails} />}
           countRef={countRef}
         />
