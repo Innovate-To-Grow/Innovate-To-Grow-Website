@@ -2,6 +2,7 @@ import './styles/layers.css';
 import './index.css';
 import {captureAuthCallbackParams} from '@/features/auth/api/callbackParams';
 import {mountApp} from '@/app/providers';
+import {installPreloadErrorRecovery} from '@/app/pageReload';
 import {
   loadThirdPartyScripts,
   markIsolatedIframeRoute,
@@ -10,6 +11,8 @@ import {
 // Capture one-time credentials before router creation. mountApp creates the
 // router only after this synchronous URL scrub has completed.
 captureAuthCallbackParams();
+// A route chunk that fails to load (deleted by a deploy since this tab opened) reloads onto the new build.
+installPreloadErrorRecovery();
 
 function bootstrap() {
   markIsolatedIframeRoute();

@@ -51,7 +51,8 @@ describe('router helpers', () => {
   it('redirects the retired /unsubscribe-login to /account and drops its token', async () => {
     const {createAppRouter} = await import('@/app/router');
     const rootRoute = createAppRouter().routes.find((route) => route.path === '/');
-    const legacyRoute = rootRoute?.children?.find(
+    // Pages sit inside the pathless route that catches their errors.
+    const legacyRoute = rootRoute?.children?.[0]?.children?.find(
       (route) => 'path' in route && route.path === 'unsubscribe-login',
     ) as {element?: ReactElement} | undefined;
 
