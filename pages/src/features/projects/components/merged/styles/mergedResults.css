@@ -150,6 +150,12 @@
   gap: 0 1.25rem;
 }
 
+.project-grid-note-insert-problem {
+  margin: 0.25rem 0 0;
+  font-size: var(--itg-font-size-small);
+  color: var(--itg-color-error);
+}
+
 .project-grid-note-insert-menu {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));

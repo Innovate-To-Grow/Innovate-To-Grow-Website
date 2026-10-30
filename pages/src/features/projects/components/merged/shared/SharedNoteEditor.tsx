@@ -44,7 +44,8 @@ export const SharedNoteEditor = ({editor, rows, noteInsert}: SharedNoteEditorPro
         <ProjectNoteInsertControl
           rows={rows}
           excludedFields={noteInsert.excludedFields}
-          onInsert={() => editor.setNoteDraft((current) => noteInsert.appendRows(current, rows))}
+          insertProblem={noteInsert.insertProblem}
+          onInsert={() => noteInsert.insertRows(editor.noteDraft, rows, editor.setNoteDraft)}
           onToggleExcludedField={noteInsert.toggleField}
         />
       ) : null}

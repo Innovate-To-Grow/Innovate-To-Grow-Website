@@ -10,6 +10,21 @@ export const prepareNoteForSave = (html: string) =>
 
 export const noteHasContent = (html: string) => pastProjectsDetailHtmlToPlainText(html).trim() !== '';
 
+/**
+ * Mirrors the backend's NOTE_MAX_LENGTH (src/apps/projects/serializers/past_project_share.py): the API refuses
+ * a longer note, and it counts the note's markup.
+ */
+export const NOTE_MAX_LENGTH = 50_000;
+
+const formatCount = (count: number) => count.toLocaleString('en-US');
+
+/** Why a note, as prepared for saving, is too long to save; '' when it is not. */
+export const noteLengthProblem = (preparedNote: string) =>
+  preparedNote.length > NOTE_MAX_LENGTH
+    ? `The curation note is too long to save: ${formatCount(preparedNote.length)} characters with its formatting, ` +
+      `and the limit is ${formatCount(NOTE_MAX_LENGTH)}. Shorten it before saving.`
+    : '';
+
 /** Sign-in link that returns to this page afterwards. */
 export const currentLoginPath = () => buildLoginPath(`${window.location.pathname}${window.location.search}`);
 

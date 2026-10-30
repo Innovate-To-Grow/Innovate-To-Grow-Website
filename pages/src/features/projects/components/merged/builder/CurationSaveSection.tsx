@@ -88,7 +88,8 @@ export const CurationSaveSection = ({
               <ProjectNoteInsertControl
                 rows={rows}
                 excludedFields={noteInsert.excludedFields}
-                onInsert={() => onNoteDraftChange(noteInsert.appendRows(noteDraft, rows))}
+                insertProblem={noteInsert.insertProblem}
+                onInsert={() => noteInsert.insertRows(noteDraft, rows, onNoteDraftChange)}
                 onToggleExcludedField={noteInsert.toggleField}
               />
             </div>

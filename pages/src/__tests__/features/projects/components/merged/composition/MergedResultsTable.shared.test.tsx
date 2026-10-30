@@ -445,7 +445,7 @@ describe('MergedResultsTable in shared mode', () => {
     fireEvent.click(screen.getByRole('button', {name: /save name/i}));
 
     expect(
-      await screen.findByText('Unable to update this shared page. Please try again.'),
+      await screen.findByText('Unable to update this curation. Please try again.'),
     ).toBeInTheDocument();
   });
 
