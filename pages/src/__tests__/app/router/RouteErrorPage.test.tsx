@@ -80,13 +80,14 @@ describe('RouteErrorPage', () => {
     await act(() => router.navigate('/crash'));
 
     expect(screen.getByText('Site menu')).toBeInTheDocument();
-    const alert = screen.getByRole('alert');
-    expect(alert).toHaveTextContent('Something went wrong');
-    expect(alert).toHaveTextContent('Reload the page to try again.');
+    const heading = screen.getByRole('heading', {level: 1, name: 'Something went wrong'});
+    // Focus announces the heading with its message; an alert as well would read it all twice.
+    expect(heading).toHaveFocus();
+    expect(heading).toHaveAccessibleDescription(/Reload the page to try again\./);
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByText('Unexpected Application Error!')).toBeNull();
     expect(document.querySelector('pre')).toBeNull();
-    expect(alert).not.toHaveTextContent("reading 'replace'");
-    expect(screen.getByRole('heading', {level: 1, name: 'Something went wrong'})).toHaveFocus();
+    expect(document.body).not.toHaveTextContent("reading 'replace'");
     expect(screen.getByRole('link', {name: 'Go to the home page'})).toHaveAttribute('href', '/');
     expect(document.title).toBe('Something went wrong | Innovate to Grow');
     expect(document.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
@@ -118,7 +119,9 @@ describe('RouteErrorPage', () => {
     const router = buildRouter('/chunk');
     render(<RouterProvider router={router} />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('most likely because the site was just updated');
+    expect(await screen.findByRole('heading', {level: 1, name: 'Something went wrong'})).toHaveAccessibleDescription(
+      /most likely because the site was just updated/,
+    );
     expect(reload).not.toHaveBeenCalled();
     expect(screen.getByRole('button', {name: 'Reload page'})).toBeInTheDocument();
   });

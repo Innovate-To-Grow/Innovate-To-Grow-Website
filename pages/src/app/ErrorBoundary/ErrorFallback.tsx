@@ -1,4 +1,4 @@
-import {useEffect, useRef} from 'react';
+import {useEffect, useId, useRef} from 'react';
 import {reloadPage} from '@/app/pageReload';
 
 interface ErrorFallbackProps {
@@ -8,7 +8,10 @@ interface ErrorFallbackProps {
   message?: string;
   reloadLabel?: string;
   className?: string;
-  /** Moves focus to the heading, for a page that broke under the visitor's hands. */
+  /**
+   * Moves focus to the heading, for a page that broke under the visitor's hands. Focus announces the
+   * heading and, through aria-describedby, the message, so the section is then not also an alert.
+   */
   focusHeading?: boolean;
 }
 
@@ -25,21 +28,25 @@ export function ErrorFallback({
   focusHeading = false,
 }: ErrorFallbackProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const messageId = useId();
 
   useEffect(() => {
     if (focusHeading) headingRef.current?.focus({preventScroll: true});
   }, [focusHeading]);
 
   return (
-    <section className={`itg-empty-state ${className}`.trim()} role="alert">
+    <section className={`itg-empty-state ${className}`.trim()} role={focusHeading ? undefined : 'alert'}>
       <Heading
         ref={headingRef}
         className={Heading === 'h1' ? 'itg-page-title' : 'itg-empty-state-title'}
         tabIndex={focusHeading ? -1 : undefined}
+        aria-describedby={focusHeading ? messageId : undefined}
       >
         {title}
       </Heading>
-      <p className="itg-empty-state-text">{message}</p>
+      <p id={messageId} className="itg-empty-state-text">
+        {message}
+      </p>
       <div className="itg-empty-state-actions">
         <button type="button" className="itg-btn itg-btn-primary" onClick={reloadPage}>
           {reloadLabel}
