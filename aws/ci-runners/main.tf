@@ -83,16 +83,18 @@ module "runners" {
   runners_lambda_zip                = "${path.module}/.artifacts/runners.zip"
   runner_binaries_syncer_lambda_zip = "${path.module}/.artifacts/runner-binaries-syncer.zip"
 
-  enable_organization_runners                                    = false
-  repository_white_list                                          = [local.repository]
-  runner_extra_labels                                            = ["i2g-aws"]
-  enable_runner_bidirectional_label_match                        = true
-  enable_ephemeral_runners                                       = true
-  enable_jit_config                                              = true
-  enable_job_queued_check                                        = true
-  runners_maximum_count                                          = var.maximum_runners
-  scale_up_reserved_concurrent_executions                        = 1
-  runners_scale_up_lambda_timeout                                = 90
+  enable_organization_runners             = false
+  repository_white_list                   = [local.repository]
+  runner_extra_labels                     = ["i2g-aws"]
+  enable_runner_bidirectional_label_match = true
+  enable_ephemeral_runners                = true
+  enable_jit_config                       = true
+  enable_job_queued_check                 = true
+  runners_maximum_count                   = var.maximum_runners
+  scale_up_reserved_concurrent_executions = 1
+  # SQS visibility follows this timeout; use the upstream 30-second default so
+  # throttled deliveries do not hold otherwise-ready jobs for 90 seconds.
+  runners_scale_up_lambda_timeout                                = 30
   lambda_event_source_mapping_batch_size                         = 10
   lambda_event_source_mapping_maximum_batching_window_in_seconds = 2
   delay_webhook_event                                            = 0
