@@ -1,5 +1,6 @@
 import {Link} from 'react-router';
 import {ProjectsMessagePage} from '@/features/projects/components/views/pages/ProjectsMessagePage';
+import {softDisabled} from '@/features/projects/components/shared/utils/softDisabled';
 import {usePageTitle} from '@/hooks/usePageTitle';
 
 // Each names the tab after what happened, so a tab list or a screen reader's page title tells it from a curation.
@@ -30,8 +31,14 @@ export const SharedListUnavailable = () => {
   );
 };
 
+interface SharedListLoadFailedProps {
+  /** Try again was pressed and the curation is loading: the page stays (focus stays on the button) and says so. */
+  retrying: boolean;
+  onRetry: () => void;
+}
+
 /** The share request failed (server error, network, timeout): the link may be fine, so offer to try again. */
-export const SharedListLoadFailed = ({onRetry}: {onRetry: () => void}) => {
+export const SharedListLoadFailed = ({retrying, onRetry}: SharedListLoadFailedProps) => {
   usePageTitle('Curation could not be loaded');
   return (
     <ProjectsMessagePage
@@ -40,7 +47,7 @@ export const SharedListLoadFailed = ({onRetry}: {onRetry: () => void}) => {
       title="We couldn't load this curation"
       actions={
         <>
-          <button type="button" className="itg-btn itg-btn-primary" onClick={onRetry}>
+          <button type="button" className="itg-btn itg-btn-primary" {...softDisabled(retrying, onRetry)}>
             Try again
           </button>
           <Link className="itg-btn itg-btn-outline" to="/past-projects">
@@ -49,7 +56,12 @@ export const SharedListLoadFailed = ({onRetry}: {onRetry: () => void}) => {
         </>
       }
     >
-      <p>Something went wrong while loading this curation. Check your connection and try again.</p>
+      {/* A live region, so a retry's loading, and its failing again, are announced while the page stays. */}
+      <p role="status">
+        {retrying
+          ? 'Loading curation...'
+          : 'Something went wrong while loading this curation. Check your connection and try again.'}
+      </p>
     </ProjectsMessagePage>
   );
 };

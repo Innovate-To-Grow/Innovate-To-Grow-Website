@@ -266,7 +266,8 @@ describe('PastProjectsPage', () => {
                 <PastProjectsPage/>
             </MemoryRouter>,
         );
-        expect(screen.getByRole('status')).toHaveTextContent(
+        expect(screen.getByText(/^Curation saved\./)).toHaveAttribute('role', 'status');
+        expect(screen.getByText(/^Curation saved\./)).toHaveTextContent(
             'Curation saved. It is listed under My Curations on the Past Projects page, and you can keep editing it here.',
         );
         expect(screen.getByRole('link', {name: 'Past Projects'})).toHaveAttribute('href', '/past-projects');

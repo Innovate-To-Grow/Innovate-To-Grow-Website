@@ -1,6 +1,8 @@
+import {useCallback} from 'react';
 import {Link} from 'react-router';
 import {MergedResultsTable, SharedPastProjectMergeSearch, type ProjectGridItem} from '@/features/projects';
 import {DEFAULT_PAST_PROJECT_SHARE_NAME, type PastProjectShare, type ProjectGridRow} from '@/features/projects/api';
+import {useRetryInPlace} from '@/features/projects/components/shared/utils/useRetryInPlace';
 import {SharedListLoadFailed, SharedListUnavailable} from './SharedListMessages';
 import {shareDisplayTitle} from './useSharedListMutations';
 
@@ -67,16 +69,29 @@ export const SharedCurationView = ({
   archive,
   onAddRows,
 }: SharedCurationViewProps) => {
+  // A retry that brings the curation moves focus from the gone Try again to its title (focusable).
+  const focusTitle = useCallback(
+    () => document.querySelector<HTMLElement>('.past-projects-page--shared h1[tabindex]'),
+    [],
+  );
+  const loadFailure = useRetryInPlace({
+    loading: status.loading,
+    // "Isn't available" only when the API says the list does not exist; any other failure may pass.
+    failed: Boolean(status.error) && !status.notFound,
+    onRetry: status.retry,
+    focusTarget: focusTitle,
+  });
+
   return (
     <div className="past-projects-page past-projects-page--shared">
-      {status.loading ? (
-        <p className="past-projects-state" role="status">
-          Loading curation...
-        </p>
-      ) : null}
-      {/* "Isn't available" only when the API says the list does not exist; any other failure may pass. */}
+      {/* Kept in the page while empty, so screen readers announce "Loading curation..." when it is put in. */}
+      <p className="past-projects-state past-projects-loading-line" role="status">
+        {status.loading && !loadFailure.showFailure ? 'Loading curation...' : null}
+      </p>
       {status.error && status.notFound ? <SharedListUnavailable /> : null}
-      {status.error && !status.notFound ? <SharedListLoadFailed onRetry={status.retry} /> : null}
+      {loadFailure.showFailure ? (
+        <SharedListLoadFailed retrying={loadFailure.retrying} onRetry={loadFailure.retry} />
+      ) : null}
       {conflictMessage ? (
         <p className="past-projects-state past-projects-state-error itg-error" role="alert">
           {conflictMessage}
