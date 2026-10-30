@@ -40,6 +40,15 @@ export type {PaginatedResponse} from '@/types/api';
 
 export {DEFAULT_PAST_PROJECT_SHARE_NAME} from './constants';
 
+/**
+ * How long one projects API request may take before it fails like a network error. The shared client sets no
+ * timeout, so without one a stalled request leaves a list "Loading…" (or a row's details queued) indefinitely.
+ */
+export const PROJECT_REQUEST_TIMEOUT_MS = 15_000;
+
+/** The largest archive page the API serves (it rejects a bigger page_size). */
+const ARCHIVE_PAGE_SIZE = 100;
+
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
     id: project.id,
     semester_label: formatSemesterLabel(project.semester_label),
@@ -84,8 +93,27 @@ export const fetchPastProjectArchive = async (
     const response = await api.get<PaginatedResponse<CompactPastProjectRow>>('/projects/archive/', {
         params: query,
         signal,
+        timeout: PROJECT_REQUEST_TIMEOUT_MS,
     });
     return response.data;
+};
+
+/**
+ * Every archive row matching `query`. Page 1 tells how many there are, and the remaining pages are then requested
+ * together: requested one after another, the 920-row archive took ten round trips to reach the screen.
+ */
+export const fetchAllPastProjectArchive = async (
+    query: Omit<PastProjectArchiveQuery, 'page' | 'page_size'> = {},
+    signal?: AbortSignal,
+): Promise<CompactPastProjectRow[]> => {
+    const firstPage = await fetchPastProjectArchive({...query, page: 1, page_size: ARCHIVE_PAGE_SIZE}, signal);
+    const pageCount = Math.ceil(firstPage.count / ARCHIVE_PAGE_SIZE);
+    const laterPages = await Promise.all(
+        Array.from({length: Math.max(0, pageCount - 1)}, (_, index) =>
+            fetchPastProjectArchive({...query, page: index + 2, page_size: ARCHIVE_PAGE_SIZE}, signal),
+        ),
+    );
+    return [firstPage, ...laterPages].flatMap((page) => page.results);
 };
 
 export const compactProjectToGridRow = (project: CompactPastProjectRow): ProjectGridRow => ({
@@ -131,9 +159,6 @@ const HYDRATION_CONCURRENCY = 4;
 // A save must not fail because one of many detail requests hit a transient error, so each
 // request is retried after these delays before its row is reported as failed.
 const HYDRATION_RETRY_DELAYS_MS = [300, 900];
-// Without a timeout one stalled request would leave a save "Saving…" indefinitely; a timeout is
-// retried like any other network failure.
-const HYDRATION_REQUEST_TIMEOUT_MS = 15_000;
 // Once rows have kept failing for this long with no request answered in between, the API is down or
 // stalled, and the rows not requested yet are reported as failed at once instead of each waiting out its own
 // timeouts and retries. It counts from the first such failure, not from the last answer, so time the page
@@ -173,7 +198,9 @@ const fetchProjectDetailWithRetry = async (id: string, signal?: AbortSignal): Pr
         try {
             const response = await api.get<ProjectDetail>(`/projects/${id}/`, {
                 signal,
-                timeout: HYDRATION_REQUEST_TIMEOUT_MS,
+                // Without a timeout one stalled request would leave a save "Saving…" indefinitely; a timeout is
+                // retried like any other network failure.
+                timeout: PROJECT_REQUEST_TIMEOUT_MS,
             });
             return response.data;
         } catch (error) {

@@ -2,7 +2,7 @@ import {CurrentProjectsView} from '@/features/projects/components/views/pages/Cu
 import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
 
 export const ProjectsPage = () => {
-  const {rows, loading, error, classLabels} = useCurrentProjectGridData();
+  const {rows, loading, error, refetch, classLabels} = useCurrentProjectGridData();
 
   return (
     <CurrentProjectsView
@@ -11,6 +11,7 @@ export const ProjectsPage = () => {
       rows={rows}
       loading={loading}
       error={error}
+      onRetry={refetch}
       classLabels={classLabels}
       namespace="current-projects"
       emptyMessage="No current projects are available yet."

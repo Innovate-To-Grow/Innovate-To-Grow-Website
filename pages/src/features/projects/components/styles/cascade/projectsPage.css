@@ -42,6 +42,19 @@
   color: var(--itg-color-error);
 }
 
+/* A list that could not load: the message, then "Try again" beside it (under it on narrow screens). */
+.project-grid-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 1rem 0;
+}
+
+.project-grid-load-error .project-grid-state {
+  padding: 0;
+}
+
 .past-projects-shared-closing {
   margin: 0;
   padding-top: 1rem;

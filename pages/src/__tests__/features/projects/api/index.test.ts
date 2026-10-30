@@ -31,6 +31,7 @@ import {
   compactProjectToGridRow,
   createPastProjectShare,
   deleteShare,
+  fetchAllPastProjectArchive,
   fetchCurrentProjects,
   fetchCurrentProjectsFull,
   fetchPastProjectArchive,
@@ -282,6 +283,7 @@ describe('project archive and detail fetch helpers', () => {
     expect(apiMock.get).toHaveBeenCalledWith('/projects/archive/', {
       params: {page: 2, page_size: 50, year: 2025, season: 1},
       signal,
+      timeout: 15_000,
     });
   });
 
@@ -291,7 +293,42 @@ describe('project archive and detail fetch helpers', () => {
     expect(apiMock.get).toHaveBeenCalledWith('/projects/archive/', {
       params: {},
       signal: undefined,
+      timeout: 15_000,
     });
+  });
+
+  it('requests every archive page after the first at once, not one after another', async () => {
+    const signal = new AbortController().signal;
+    const pending = new Map<number, (results: {id: string}[]) => void>();
+    apiMock.get.mockImplementation((_url: string, {params}: {params: {page: number}}) =>
+      params.page === 1
+        ? Promise.resolve({data: {count: 250, next: null, previous: null, results: [{id: 'p1'}]}})
+        : new Promise((resolve) => {
+            pending.set(params.page, (results) => resolve({data: {count: 250, next: null, previous: null, results}}));
+          }),
+    );
+
+    const loaded = fetchAllPastProjectArchive({year: 2025}, signal);
+    // Pages 2 and 3 are both requested before either answers.
+    await vi.waitFor(() => expect(pending.size).toBe(2));
+    expect(apiMock.get.mock.calls.map(([, config]) => config.params)).toEqual([
+      {year: 2025, page: 1, page_size: 100},
+      {year: 2025, page: 2, page_size: 100},
+      {year: 2025, page: 3, page_size: 100},
+    ]);
+    expect(apiMock.get.mock.calls.every(([, config]) => config.signal === signal)).toBe(true);
+
+    // The rows keep page order whichever page answers first.
+    pending.get(3)?.([{id: 'p3'}]);
+    pending.get(2)?.([{id: 'p2'}]);
+    await expect(loaded).resolves.toEqual([{id: 'p1'}, {id: 'p2'}, {id: 'p3'}]);
+  });
+
+  it('makes a single request for an archive that fits on one page', async () => {
+    apiMock.get.mockResolvedValue({data: {count: 2, next: null, previous: null, results: [{id: 'a'}, {id: 'b'}]}});
+
+    await expect(fetchAllPastProjectArchive()).resolves.toEqual([{id: 'a'}, {id: 'b'}]);
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
   });
 
   it('fetches the legacy past projects endpoint with page query params', async () => {

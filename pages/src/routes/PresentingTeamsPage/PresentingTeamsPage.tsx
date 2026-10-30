@@ -3,7 +3,7 @@ import {CurrentProjectsView} from '@/features/projects/components/views/pages/Cu
 import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
 
 export const PresentingTeamsPage = () => {
-  const {rows, loading, error, classLabels} = useCurrentProjectGridData();
+  const {rows, loading, error, refetch, classLabels} = useCurrentProjectGridData();
   const presentingRows = useMemo(() => rows.filter((row) => row.is_presenting === 'Yes'), [rows]);
 
   return (
@@ -13,6 +13,7 @@ export const PresentingTeamsPage = () => {
       rows={presentingRows}
       loading={loading}
       error={error}
+      onRetry={refetch}
       classLabels={classLabels}
       namespace="presenting-teams"
       emptyMessage="No presenting teams are available yet."

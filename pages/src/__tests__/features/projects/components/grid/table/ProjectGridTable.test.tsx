@@ -156,6 +156,15 @@ describe('ProjectGridTable', () => {
 
         expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
         expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
+        expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+    });
+
+    it('offers to load the rows again after an error', () => {
+        const onRetry = vi.fn();
+        render(<ProjectGridTable {...baseProps} error="We couldn't load the projects." onRetry={onRetry} />);
+
+        fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+        expect(onRetry).toHaveBeenCalledTimes(1);
     });
 
     it('shows an empty message when there are no paged rows', () => {

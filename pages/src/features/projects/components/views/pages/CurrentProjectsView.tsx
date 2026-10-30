@@ -96,6 +96,8 @@ interface CurrentProjectsViewProps {
   rows: ProjectGridRow[];
   loading: boolean;
   error: string | null;
+  /** Loads the projects again after `error`. */
+  onRetry?: () => void;
   /** Class names by code, from the schedule. */
   classLabels?: Record<string, string>;
   /** Key prefix for the grid rows. */
@@ -112,6 +114,7 @@ export const CurrentProjectsView = ({
   rows,
   loading,
   error,
+  onRetry,
   classLabels,
   namespace,
   emptyMessage,
@@ -182,6 +185,7 @@ export const CurrentProjectsView = ({
         onPageSizeChange={table.setPageSize}
         loading={loading}
         error={error}
+        onRetry={onRetry}
         emptyMessage={emptyMessage}
         countLabel={countLabel}
         linkScope="current"

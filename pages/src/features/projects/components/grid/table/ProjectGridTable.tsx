@@ -164,9 +164,16 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
 
       {grid.loading ? <p className="project-grid-state">Loading project data...</p> : null}
       {grid.error ? (
-        <p className="project-grid-state project-grid-state-error itg-error" role="alert">
-          {grid.error}
-        </p>
+        <div className="project-grid-load-error">
+          <p className="project-grid-state project-grid-state-error itg-error" role="alert">
+            {grid.error}
+          </p>
+          {grid.onRetry ? (
+            <button type="button" className="itg-btn itg-btn-outline" onClick={grid.onRetry}>
+              Try again
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       {!grid.loading && !grid.error ? <ProjectGridResults grid={grid} /> : null}

@@ -55,6 +55,8 @@ export interface ProjectGridTableProps {
   onPageSizeChange: (size: number) => void;
   loading?: boolean;
   error?: string | null;
+  /** Loads the rows again after `error`; shown as a "Try again" button beside it. */
+  onRetry?: () => void;
   emptyMessage?: string;
   /** Plural noun for the result count ("projects", "teams"). */
   countLabel?: string;
