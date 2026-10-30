@@ -1,5 +1,5 @@
 import {useLayoutEffect, useRef} from 'react';
-import {isInAutoHeightFrame, scrollPartnerPageBy} from '../../shared/utils/partnerFrame';
+import {isInAutoHeightFrame, scrollFrameBoxIntoView, scrollPartnerPageBy} from '../../shared/utils/partnerFrame';
 
 export const MERGED_RESULTS_ID = 'past-projects-saved-results';
 
@@ -67,13 +67,21 @@ export function useKeepScrollAnchor(dependency: unknown) {
   return pendingAnchor;
 }
 
-/** Scroll to the saved results and move keyboard focus along with the view. */
+/**
+ * Scroll to the saved results and move keyboard focus along with the view. In the partner widget the partner page
+ * scrolls, which in WebKit only its snippet can do (see partnerFrame.ts).
+ */
 export const scrollToMergedResults = () => {
   const section = document.getElementById(MERGED_RESULTS_ID);
   if (!section) {
     return;
   }
-  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  section.scrollIntoView?.({behavior: reduceMotion ? 'auto' : 'smooth', block: 'start'});
+  const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (isInAutoHeightFrame()) {
+    const {top, height} = section.getBoundingClientRect();
+    scrollFrameBoxIntoView(top, height, 'start', smooth);
+  } else {
+    section.scrollIntoView?.({behavior: smooth ? 'smooth' : 'auto', block: 'start'});
+  }
   section.querySelector<HTMLElement>('.project-grid-card-title')?.focus({preventScroll: true});
 };

@@ -41,29 +41,81 @@ export function measureVisibleFramePart(callback: (visible: DOMRectReadOnly | nu
   return stop;
 }
 
-/**
- * Scrolls a hidden box (client coordinates) into view, which scrolls the frame's ancestors as needed. The box ends
- * at the frame's bottom at the latest: one that reached past it would let the frame's own document scroll.
+/*
+ * WebKit does not let scrollIntoView in a frame from another site scroll the page around it, so in Safari the
+ * widget could not scroll the partner page at all. A partner page whose snippet can scroll the page for the widget
+ * says so: the widget posts {type: SCROLL_HELLO, slug} to it, and the snippet answers {type: SCROLL_READY}. From
+ * then on the widget asks it, with {type: SCROLL_INTO_VIEW, slug, top, height, block, smooth}, to scroll the page as
+ * scrollIntoView({block}) would bring the frame's box from `top` (frame client coordinates, the same as the frame's
+ * page ones: the frame does not scroll) `height` pixels tall on screen. Snippets that cannot never answer, and the
+ * widget keeps using scrollIntoView, which Chromium and Firefox carry over to the partner page.
  */
-const scrollBoxIntoView = (top: number, height: number, block: ScrollLogicalPosition) => {
+const SCROLL_HELLO = 'i2g-embed-scroll-hello';
+const SCROLL_READY = 'i2g-embed-scroll-ready';
+const SCROLL_INTO_VIEW = 'i2g-embed-scroll-into-view';
+
+let partnerPageScrolls = false;
+
+/** The widget's slug, from its address (`/_embed/<slug>`), as its resize messages carry it; null outside one. */
+const widgetSlug = () => {
+  const match = /^\/_embed\/([^/]+)/.exec(window.location.pathname);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
+/**
+ * Asks the partner page around the widget whether its snippet scrolls the page when asked (see above), and listens
+ * for the answer. Returns a cleanup that stops listening and forgets the answer. A no-op outside the widget.
+ */
+export function askPartnerPageToScroll(): () => void {
+  const slug = widgetSlug();
+  if (window.parent === window || slug === null) {
+    return () => {};
+  }
+  const handleMessage = (event: MessageEvent) => {
+    if (event.source === window.parent && (event.data as {type?: unknown} | null)?.type === SCROLL_READY) {
+      partnerPageScrolls = true;
+    }
+  };
+  window.addEventListener('message', handleMessage);
+  // Any partner page may host the widget, so its origin is not known; the message carries nothing private.
+  window.parent.postMessage({type: SCROLL_HELLO, slug}, '*');
+  return () => {
+    window.removeEventListener('message', handleMessage);
+    partnerPageScrolls = false;
+  };
+}
+
+/**
+ * Scrolls a box (client coordinates) into view, which scrolls the frame's ancestors as needed: through the partner
+ * page's snippet when it said it can, else with a hidden box of the same size. The box ends at the frame's bottom at
+ * the latest: one that reached past it would let the frame's own document scroll.
+ */
+export function scrollFrameBoxIntoView(top: number, height: number, block: 'start' | 'nearest', smooth = false) {
   const boxTop = Math.min(top, window.innerHeight - 1);
+  const boxHeight = Math.max(Math.min(height, window.innerHeight - boxTop), 1);
+  if (partnerPageScrolls) {
+    window.parent.postMessage(
+      {type: SCROLL_INTO_VIEW, slug: widgetSlug(), top: boxTop, height: boxHeight, block, smooth},
+      '*',
+    );
+    return;
+  }
   const probe = document.createElement('div');
   probe.style.cssText = 'position:absolute;left:0;top:0;width:1px;visibility:hidden;pointer-events:none';
-  probe.style.height = `${Math.max(Math.min(height, window.innerHeight - boxTop), 1)}px`;
+  probe.style.height = `${boxHeight}px`;
   document.body.append(probe);
   // Its containing block may not start at the top of the page.
   probe.style.top = `${boxTop - probe.getBoundingClientRect().top}px`;
-  probe.scrollIntoView({block});
+  probe.scrollIntoView({block, behavior: smooth ? 'smooth' : 'auto'});
   probe.remove();
-};
+}
 
 /**
  * Scrolls the partner page by `distance`, as `window.scrollBy` scrolls a page of its own: a box over the visible
  * part, moved by `distance`, is scrolled into view, lined up with the screen's top edge when the frame runs past
  * it, else just far enough to be all on screen. That waits until the partner page has resized the frame to its
  * new content, which can take more than one step (until then the frame's own document would scroll instead).
- * Chromium and Firefox carry scrollIntoView over to the partner page; WebKit does not scroll a page from another
- * site, so there nothing moves.
+ * In WebKit only a snippet that scrolls the page when asked (see scrollFrameBoxIntoView) moves it.
  */
 export function scrollPartnerPageBy(distance: number) {
   let started = false;
@@ -76,7 +128,7 @@ export function scrollPartnerPageBy(distance: number) {
     window.clearTimeout(timer);
     measureVisibleFramePart((visible) => {
       if (visible && visible.height > 0) {
-        scrollBoxIntoView(visible.top + distance, visible.height, visible.top > 0 ? 'start' : 'nearest');
+        scrollFrameBoxIntoView(visible.top + distance, visible.height, visible.top > 0 ? 'start' : 'nearest');
       }
     });
   };

@@ -1,4 +1,4 @@
-import {useCallback, useId, useMemo, useState} from 'react';
+import {useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {AISearchLoginDialog} from '../search/AISearchLoginDialog';
 import {PastProjectsActionBar} from '../search/PastProjectsActionBar';
@@ -13,6 +13,7 @@ import {MergedResultsTable, type PastProjectShareCreationResult} from '../../mer
 import type {ListMessage} from '../../merged/list/useMergedList';
 import {createProjectGridRowMatcher, type ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {pluralize} from '../../shared/utils/saveResults';
+import {askPartnerPageToScroll} from '../../shared/utils/partnerFrame';
 
 const TABLE_ID_PREFIX = 'search-table';
 // What the handed-over projects are added as, in place of a search table's id.
@@ -229,6 +230,8 @@ export const PastProjectsBuilder = ({
     const draft = useCurationDraft(reportDraftChange);
     // Keep the table that was saved from where it was on screen while the saved results change above it.
     const scrollAnchorRef = useKeepScrollAnchor(draft.mergedRows);
+    // In the partner widget, finds out whether the partner page scrolls for it when asked (see partnerFrame.ts).
+    useEffect(askPartnerPageToScroll, []);
     const tables = useSearchTables({
         idPrefix: TABLE_ID_PREFIX,
         isAuthenticated,
