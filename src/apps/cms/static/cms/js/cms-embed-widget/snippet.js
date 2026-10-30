@@ -3,8 +3,9 @@
         return String(slug).replace(/"/g, '');
     }
 
-    // The partner page sizes the iframe from the widget's resize messages, trusting only those
-    // from the widget's own origin: any other frame could post one.
+    // The partner page sizes the iframe from the widget's resize messages, and lets the widget's
+    // "Copy link" buttons use the clipboard (Chrome denies it to cross-origin frames by default).
+    // It trusts only messages from the widget's own origin: any other frame could post one.
     function buildEmbedSnippet(embedUrl, slug) {
         const safeSlug = escapeSlug(slug);
         const origin = JSON.stringify(new URL(embedUrl).origin);
@@ -12,6 +13,7 @@
             + '        data-i2g-embed="' + safeSlug + '"\n'
             + '        style="width:100%; border:0;"\n'
             + '        height="400"\n'
+            + '        allow="clipboard-write"\n'
             + '        loading="lazy"></iframe>\n'
             + '<script>\n'
             + '(function(){\n'
