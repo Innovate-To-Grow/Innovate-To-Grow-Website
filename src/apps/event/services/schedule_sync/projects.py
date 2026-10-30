@@ -30,6 +30,8 @@ def _save_project(config: CurrentProjectSchedule, fields: dict[str, Any], touche
         return CurrentProject.objects.create(schedule=config, **fields)
     for name, value in fields.items():
         setattr(project, name, value)
+    # Already its schedule; caching it lets the save signal check whether that schedule is live without a query.
+    project.schedule = config
     project.save()
     return project
 

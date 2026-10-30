@@ -1,7 +1,9 @@
 """How the schedule sync reads a sheet's cells and keeps each team's CurrentProject across syncs."""
 
 from django.core.cache import cache
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from apps.event.models import CurrentProject, CurrentProjectSchedule, EventScheduleSlot
 from apps.event.services import sync_schedule
@@ -102,3 +104,17 @@ class CurrentProjectIdentityTest(TestCase):
         self._sync(_row(), _row(Order=2))
 
         self.assertEqual(CurrentProject.objects.filter(schedule=self.config).count(), 1)
+
+    def test_resync_checks_the_live_schedule_without_a_query_per_project(self):
+        rows = [_row(Order=n, **{"Team#": str(100 + n), "Project Title": f"Project {n}"}) for n in range(1, 4)]
+        self._sync(*rows)
+
+        with CaptureQueriesContext(connection) as queries:
+            self._sync(*rows)
+
+        # The save signal asks whether each project's schedule is live; the sync already holds that schedule.
+        schedule_table = f'"{CurrentProjectSchedule._meta.db_table}"'
+        schedule_reads = [
+            query["sql"] for query in queries.captured_queries if f"FROM {schedule_table}" in query["sql"]
+        ]
+        self.assertEqual(schedule_reads, [])

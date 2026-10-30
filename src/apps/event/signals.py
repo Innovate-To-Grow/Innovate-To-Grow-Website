@@ -87,7 +87,7 @@ def _clear_current_projects_cache():
 
 
 def _belongs_to_active_schedule(project) -> bool:
-    # The schedule sync hands update_or_create its schedule, so checking costs no query there.
+    # The schedule sync saves each project with its schedule attached, so checking costs no query there.
     if CurrentProject._meta.get_field("schedule").is_cached(project):
         return bool(project.schedule and project.schedule.is_active)
     return CurrentProjectSchedule.objects.filter(pk=project.schedule_id, is_active=True).exists()
