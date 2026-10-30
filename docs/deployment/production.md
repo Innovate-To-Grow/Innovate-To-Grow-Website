@@ -27,13 +27,13 @@ Component workflows cannot be manually dispatched.
 The workflow uses these environments:
 
 - `Manual Deployment Approval` — the single approval gate;
-- `AWS ECS - Prod` — backend configuration;
-- `AWS Amplify - Prod` — frontend configuration;
-- `AWS ECS - Archive Prod` — archive configuration.
+- `AWS ECS - Prod` — backend identity and deployment history;
+- `AWS Amplify - Prod` — frontend identity and deployment history;
+- `AWS ECS - Archive Prod` — archive identity and deployment history.
 
 Configure required reviewers on `Manual Deployment Approval`. The three target
-environments continue to hold their target-specific variables, secrets, URLs,
-and deployment history, but they must not also require reviewers after the
+environments retain their URLs and deployment history. Configuration lives in
+AWS Secrets Manager. They must not also require reviewers after the
 shared gate is verified. Otherwise GitHub will request a second round of
 approvals when the component jobs begin.
 
@@ -43,7 +43,7 @@ Migrate protection in this order:
 2. Merge the unified workflow and confirm its approval job waits correctly.
 3. Approve the first unified run and complete any existing target approvals.
 4. Remove only the required-reviewer rules from the three target environments.
-   Keep their variables, secrets, URLs, and other protection settings intact.
+   Keep their URLs and other protection settings intact.
 5. Re-run a deployment and verify that only the shared approval is requested.
 
 Never remove the target reviewer rules before the shared gate is present on
@@ -52,15 +52,14 @@ Never remove the target reviewer rules before the shared gate is present on
 ## AWS authentication and rollout
 
 See [the scoped identity stack](../../aws/cicd/identity-stack.json). CI uses
-`AWS_CI_ROLE_ARN` at repository scope. Each production environment has its own
-`AWS_DEPLOY_ROLE_ARN`; no workflow uses a long-lived AWS key. CI trusts only the
+a public role ARN declared in its workflow. Each deployment workflow declares
+its own role ARN; no workflow uses a long-lived AWS key. CI trusts only the
 repository's main branch. Deployment roles trust their specific GitHub environment,
 which must be restricted to the main branch. Keep workflow edits subject to review.
 The shared approval still gates all production jobs. Do not enable prevention of
 self-review with only one reviewer; designate an independent reviewer first.
 
-Deploy the identity stack before merging the OIDC workflow change. Set the role
-ARN variables, copy target-specific repository variables into their environments,
+Deploy the identity stack before merging the OIDC workflow change. Create the AWS deployment configuration objects
 and restrict environment deployment branches to main. Archive needs its dedicated
 execution and task role ARNs. Keep the old keys until an OIDC CI publish and all
 three deployments succeed; then remove the GitHub keys and retire the IAM access
@@ -72,3 +71,22 @@ block CI. Enable ECR push scanning for both image repositories as a second signa
 The backend task role may update rules only for the I2G Amplify app; the archive
 task role has no application AWS permissions. Execution-role permissions belong
 to the ECS agent and include only the archive image, logs, and Sheets secret.
+
+### AWS-owned deployment configuration
+
+Production settings are stored as JSON objects in Secrets Manager:
+`itg/backend/deploy-config`, `itg/frontend/deploy-config`, and
+`itg/archive/deploy-config`. Each deployment role can read only its own object.
+The loader validates setting names against `aws/cicd/deploy-config-keys.json`
+and rejects multiline values before exporting them to the job. Application
+passwords and signing keys remain separate secrets injected directly by ECS.
+
+GitHub Actions secrets and variables are not required. Public OIDC role ARNs
+and the AWS region are bootstrap identifiers in workflow code; they cannot be
+fetched before authentication. CI's public API URL is a checked-in test/build
+default, while production frontend deployment reads its URL from AWS.
+
+Unused former repository settings are preserved in the backend configuration
+for recovery; storing them does not enable new application features. Legacy SES
+credentials are backed up separately in `itg/shared/legacy-ses-credentials` and
+are not automatically injected into runtime or exposed to deployment roles.

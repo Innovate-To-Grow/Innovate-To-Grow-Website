@@ -146,7 +146,7 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
             credentials = named_step(workflow["jobs"]["deploy"], "Configure AWS credentials")["with"]
             self.assertNotIn("aws-secret-access-key", credentials)
             self.assertEqual(credentials["allowed-account-ids"], "394167325273")
-            self.assertIn("vars.AWS_DEPLOY_ROLE_ARN", credentials["role-to-assume"])
+            self.assertTrue(credentials["role-to-assume"].startswith("arn:aws:iam::394167325273:role/itg-prod-"))
 
     def test_archive_tags_the_approved_sha(self) -> None:
         archive = load_workflow("deploy-archive.yml")

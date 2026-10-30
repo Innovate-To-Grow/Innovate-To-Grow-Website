@@ -4,8 +4,7 @@ name: Deploy Archive to AWS ECS
 # own ECS Fargate service behind the shared prod ALB
 # (host: archive.i2g.ucmerced.edu). The Google Sheets API key is injected by
 # ECS at task launch from Secrets Manager / SSM via the task definition's
-# `secrets` block — only its ARN (SHEETS_API_KEY_SECRET_ARN) lives in GitHub
-# Actions configuration and in the registered task definition.
+# `secrets` block. The secret ARN is loaded from AWS deployment configuration.
 
 on:
   workflow_call:
@@ -24,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+  AWS_REGION: us-west-2
   ECR_REPOSITORY: itg-archive
   ECS_CLUSTER: itg-backend-cluster
   ECS_SERVICE: itg-archive-service
@@ -49,16 +48,20 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::394167325273:role/itg-prod-archive-deployer
           allowed-account-ids: "394167325273"
           role-session-name: deploy-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Load deployment configuration from AWS
+        working-directory: .
+        run: python scripts/deploy/load_config.py archive
+
       - name: Validate required deployment configuration
         env:
-          SHEETS_API_KEY_SECRET_ARN: ${{ vars.SHEETS_API_KEY_SECRET_ARN || secrets.SHEETS_API_KEY_SECRET_ARN }}
-          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
-          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+          SHEETS_API_KEY_SECRET_ARN: ${{ env.SHEETS_API_KEY_SECRET_ARN }}
+          ECS_EXECUTION_ROLE_ARN: ${{ env.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ env.ECS_TASK_ROLE_ARN }}
         run: |
           missing=()
           for name in SHEETS_API_KEY_SECRET_ARN ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
@@ -72,7 +75,7 @@ jobs:
           fi
 
       # SECURITY: SHEETS_API_KEY is injected by ECS from Secrets Manager or
-      # SSM Parameter Store. Keep only its secret ARN/name in GitHub Actions.
+      # SSM Parameter Store. Keep its ARN in the AWS deployment configuration.
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -99,14 +102,13 @@ jobs:
           python scripts/deploy/publish_image.py --repository "$ECR_REPOSITORY" \
             --registry "$ECR_REGISTRY" --tag "$IMAGE_TAG" --source "itg-archive-ci:$IMAGE_TAG"
 
-
       - name: Render ECS task definition from template
         id: task-def
         env:
           IMAGE_URI: ${{ steps.build-image.outputs.image }}
-          SHEETS_API_KEY_SECRET_ARN: ${{ vars.SHEETS_API_KEY_SECRET_ARN || secrets.SHEETS_API_KEY_SECRET_ARN }}
-          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
-          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+          SHEETS_API_KEY_SECRET_ARN: ${{ env.SHEETS_API_KEY_SECRET_ARN }}
+          ECS_EXECUTION_ROLE_ARN: ${{ env.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ env.ECS_TASK_ROLE_ARN }}
         run: |
           python - <<'PY'
           import json
