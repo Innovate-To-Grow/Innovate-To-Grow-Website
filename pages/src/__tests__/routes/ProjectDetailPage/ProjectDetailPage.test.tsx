@@ -252,7 +252,10 @@ describe('ProjectDetailPage', () => {
     expect(screen.getByRole('link', {name: 'Current Projects'})).toHaveAttribute('href', '/current-projects');
     expect(screen.getByRole('link', {name: /back to current projects/i})).toHaveAttribute('href', '/current-projects');
     expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
-    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+    // The mark is claimed in an effect, which can run after the heading that findByRole saw.
+    await waitFor(() =>
+      expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex'),
+    );
   });
 
   it.each([
@@ -302,12 +305,13 @@ describe('ProjectDetailPage', () => {
     renderAt(`/past-projects/project/${projectDetail.id}`);
     const robots = () => document.head.querySelector('meta[name="robots"]');
 
+    // The mark is claimed and withdrawn in effects, which can run after the DOM change findByRole saw.
     const tryAgain = await screen.findByRole('button', {name: 'Try again'});
-    expect(robots()).toHaveAttribute('content', 'noindex');
+    await waitFor(() => expect(robots()).toHaveAttribute('content', 'noindex'));
     fireEvent.click(tryAgain);
 
     expect(await screen.findByRole('heading', {level: 1, name: 'Rotary Joint Testing System'})).toBeInTheDocument();
-    expect(robots()).toBeNull();
+    await waitFor(() => expect(robots()).toBeNull());
   });
 
   it('shows the current-projects back link on the error branch of the legacy route', async () => {
