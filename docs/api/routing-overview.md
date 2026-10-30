@@ -108,7 +108,7 @@ The frontend router (`pages/src/app/router/router.tsx`) maps browser URLs to Rea
 | `/register` | `/authn/register/`, `/authn/public-key/` |
 | `/news` | `/news/` |
 | `/news/:id` | `/news/{id}/` |
-| `/past-projects` | `/projects/past/` |
+| `/past-projects` | `/projects/archive/`, `/projects/{id}/` |
 | `/projects/:id` | `/projects/{id}/` |
 | `/event-registration` | `/event/registration-events/`, `/event/registration-options/`, `/event/registrations/` |
 | `/schedule` | `/event/schedule/` |

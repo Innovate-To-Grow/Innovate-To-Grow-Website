@@ -43,7 +43,8 @@ class CompactPastProjectsAPIViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 4)
-        self.assertEqual([row["id"] for row in response.data["results"]], [str(self.beta.id), str(self.alpha.id)])
+        # Team numbers sort as numbers: 2 before 10.
+        self.assertEqual([row["id"] for row in response.data["results"]], [str(self.alpha.id), str(self.beta.id)])
         self.assertEqual(
             set(response.data["results"][0]),
             {
@@ -55,14 +56,28 @@ class CompactPastProjectsAPIViewTests(TestCase):
                 "project_title",
                 "organization",
                 "industry",
+                "student_names",
                 "track",
                 "presentation_order",
             },
         )
         self.assertNotIn("abstract", response.data["results"][0])
+        self.assertEqual(response.data["results"][1]["student_names"], "Searchable Student")
         second = self.client.get("/projects/archive/", {"page": 2, "page_size": 2})
         self.assertEqual(
             [row["id"] for row in second.data["results"]], [str(self.spring_project.id), str(self.old_project.id)]
+        )
+
+    def test_team_numbers_sort_numerically_within_a_class(self):
+        semester = Semester.objects.create(year=2021, season=1, is_published=True)
+        for team_number in ("10", "CSE02", "1", "CSE10", "2", "CSE01"):
+            class_code = "CSE" if team_number.startswith("CSE") else "CAP"
+            self.create_project(semester, f"Team {team_number}", class_code=class_code, team_number=team_number)
+
+        response = self.client.get("/projects/archive/", {"year": 2021})
+
+        self.assertEqual(
+            [row["team_number"] for row in response.data["results"]], ["1", "2", "10", "CSE01", "CSE02", "CSE10"]
         )
 
     def test_searches_text_fields_case_insensitively(self):

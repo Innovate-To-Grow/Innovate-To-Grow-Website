@@ -28,9 +28,21 @@ The projects system stores historical project records organized by semester. Pro
 
 ## Endpoints
 
+Every list orders projects newest semester first, then by class, then by team number as a number (`2` before
+`10`; 2021's class-prefixed `CAP02` reads as 2) — `apps/projects/ordering.py`.
+
+### `GET /projects/archive/`
+
+The archive the `/past-projects` page searches: compact project rows (no abstract; `student_names` included so a list
+can be searched by team member), paginated and filterable (`page`, `page_size` 1-100, `search`, `year`, `season`,
+`semester`). Invalid parameters are a `400` with field errors.
+
+**Permission:** AllowAny
+
 ### `GET /projects/past/`
 
-Paginated list of past projects, grouped by semester.
+Paginated list of past projects, grouped by semester (`page`, `page_size` 1-20; invalid values are a `400`). No
+first-party client calls it.
 
 **Permission:** AllowAny
 
@@ -38,7 +50,8 @@ Paginated list of past projects, grouped by semester.
 
 ### `GET /projects/past-all/`
 
-All past projects without pagination. Used for full-list views or exports.
+All past projects without pagination, server-cached for 10 minutes. No first-party client calls it (the SPA uses
+`/projects/archive/` and `/projects/{id}/`).
 
 **Permission:** AllowAny
 
@@ -49,6 +62,10 @@ Single project detail.
 **Permission:** AllowAny
 
 **Serializer:** `ProjectDetailSerializer`
+
+The id can also be a current-semester project link (an event `CurrentProject` id) from an earlier schedule: the
+response is then the team's archive project once its semester is imported, else the `CurrentProject` in the same
+shape (`apps/projects/services/current_project_links.py`).
 
 ### `POST /projects/past-shares/`
 

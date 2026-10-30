@@ -191,7 +191,7 @@ browser** using a hardcoded API key; the key now lives only in the backend servi
    a full replace. Rows with `source="manual"` (CSV-imported or hand-entered in admin) are **never touched**.
 6. The `projects:past-all` cache is cleared (explicitly, since `bulk_create` does not fire `post_save`), and a
    `PastProjectSyncLog` row records the outcome.
-7. `GET /projects/past-all/` serves the rows to the React `/past-projects` page.
+7. `GET /projects/archive/` (compact pages) and `GET /projects/{id}/` serve the rows to the React `/past-projects` page.
 
 ### Visibility note (newest semester)
 

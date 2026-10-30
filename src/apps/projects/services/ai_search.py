@@ -8,6 +8,7 @@ from django.db.models import Q, QuerySet
 
 from apps.core.models import AWSCredentialConfig
 from apps.projects.models import Project
+from apps.projects.ordering import archive_ordering
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.agents import run_tool_free_agent
 from apps.system_intelligence.services.bedrock import BedrockError, normalize_bedrock_model_id
@@ -47,11 +48,7 @@ _STOP_WORDS = {
 def past_project_ai_queryset() -> QuerySet[Project]:
     """Published past projects, matching /projects/past-all/ semantics (every published semester,
     including the newest — it is a real past term imported by the sheet sync)."""
-    return (
-        Project.objects.filter(semester__is_published=True)
-        .select_related("semester")
-        .order_by("-semester__year", "-semester__season", "class_code", "team_number")
-    )
+    return Project.objects.filter(semester__is_published=True).select_related("semester").order_by(*archive_ordering())
 
 
 def _tokens(query: str) -> list[str]:
