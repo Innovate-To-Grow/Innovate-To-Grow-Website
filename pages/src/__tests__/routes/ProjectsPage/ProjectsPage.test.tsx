@@ -8,7 +8,7 @@ import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGri
 
 const viewProps = vi.hoisted(() => ({current: null as Record<string, unknown> | null}));
 
-vi.mock('@/features/projects/components/CurrentProjectsView', () => ({
+vi.mock('@/features/projects/components/views/pages/CurrentProjectsView', () => ({
   CurrentProjectsView: (props: Record<string, unknown>) => {
     viewProps.current = props;
     return <h1>{String(props.title)}</h1>;

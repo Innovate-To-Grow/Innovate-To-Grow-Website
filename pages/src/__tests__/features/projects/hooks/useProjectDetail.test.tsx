@@ -7,7 +7,7 @@ import {
   useProjectDetail,
 } from '@/features/projects/hooks/useProjectDetail';
 import {currentScheduleToGridRows} from '@/features/projects/hooks/useProjectGridData';
-import {getProjectGridRowHref} from '@/features/projects/components/projectGrid';
+import {getProjectGridRowHref} from '@/features/projects/components/grid/contracts/projectGrid';
 import type {ProjectDetail} from '@/features/projects/api';
 import {
   ARCHIVE_PROJECT_ID,

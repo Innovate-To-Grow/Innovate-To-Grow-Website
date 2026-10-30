@@ -51,7 +51,7 @@ worker explicitly replaces the image entrypoint with:
 python manage.py run_background_worker --settings=config.settings.environments.production
 ```
 
-It therefore does not run startup migrations, create the demo administrator,
+It therefore does not run startup migrations, create the default administrator,
 collect static files, or start Uvicorn. Its ECS `HEALTHY` dependency on
 `itg-backend` delays the worker until the Web entrypoint has completed
 migrations and the liveness check passes. The worker is essential: an
@@ -150,14 +150,14 @@ ALB requirements (both are the AWS defaults; do not change them): `routing.http.
 (with `preserve` the last entry would be client-controlled) and `routing.http.xff_client_port.enabled = false`
 (otherwise entries become `ip:port` and each connection would get a fresh throttle bucket).
 
-**Extra hops.** Setting the value too low is safe but coarse (throttles key on the outermost trusted proxy's
-address); too high trusts a client-controlled entry and re-opens the bypass. The demo frontend calls the API through
-the Amplify domain (`VITE_API_BASE_URL=https://demo.i2g.ucmerced.edu/api`, proxied by the Amplify rewrite to the
-ALB), so requests there pass through CloudFront *and* the ALB. It is deployed with `NUM_PROXIES=1` (throttles then
-key on the edge address). Only raise its `NUM_PROXIES` GitHub Environment variable to `2` after confirming from a
-real request that CloudFront appended the viewer address to `X-Forwarded-For`. Production's frontend calls
-`https://api.i2g.ucmerced.edu` directly, which is one hop. The archive service is a Flask app without DRF throttling
-and is not affected.
+**Extra hops.** Setting the value too low is safe but coarse (throttles key
+on the outermost trusted proxy's address); too high trusts a client-controlled
+entry and re-opens the bypass. Production's frontend calls
+`https://api.i2g.ucmerced.edu` directly, which is one hop. If routing API traffic
+through Amplify/CloudFront, only raise `NUM_PROXIES` to `2` after confirming from
+a real request that CloudFront appended the viewer address to
+`X-Forwarded-For`. The archive service is a Flask app without DRF throttling and
+is not affected.
 
 ## Health endpoints
 
