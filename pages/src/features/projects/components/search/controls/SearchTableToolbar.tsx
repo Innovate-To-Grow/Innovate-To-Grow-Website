@@ -106,6 +106,8 @@ interface SearchTableToolbarProps {
   saveControls: ReactNode;
   topStatus: ReactNode;
   isPhone: boolean;
+  /** Names the Save group after what its button does ("Add to Curation", "Add Selected"). */
+  saveGroupLabel: string;
   /** Id for the hint the selection-dependent buttons point to while no row is checked. */
   selectionHintId: string;
   onRefresh?: () => void;
@@ -118,6 +120,7 @@ export const SearchTableToolbar = ({
   saveControls,
   topStatus,
   isPhone,
+  saveGroupLabel,
   selectionHintId,
   onRefresh,
 }: SearchTableToolbarProps) => {
@@ -131,7 +134,7 @@ export const SearchTableToolbar = ({
         Check one or more rows in the table first.
       </span>
       <div className="search-table-save-row">
-        <div className="project-grid-toolbar-cluster search-table-save-group" role="group" aria-label="Save">
+        <div className="project-grid-toolbar-cluster search-table-save-group" role="group" aria-label={saveGroupLabel}>
           {saveControls}
         </div>
         {topStatus}

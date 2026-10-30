@@ -81,10 +81,10 @@ type TableRows = ReturnType<typeof useSearchTableRows>;
 type Save = ReturnType<typeof useSearchTableSave>;
 type Selection = ReturnType<typeof useSearchTableSelection>;
 
-const SearchTableCardHeader = ({card, isSaving}: {card: CardProps; isSaving: boolean}) => (
+const SearchTableCardHeader = ({card, headingId, isSaving}: {card: CardProps; headingId: string; isSaving: boolean}) => (
   <div className="project-grid-card-header search-table-card-header">
     {/* Focusable from script: deleting the table next to this one moves focus here. */}
-    <h3 className="project-grid-card-title" tabIndex={-1}>
+    <h3 id={headingId} className="project-grid-card-title" tabIndex={-1}>
       {card.title}
     </h3>
     {card.canRemove ? (
@@ -99,6 +99,20 @@ const SearchTableCardHeader = ({card, isSaving}: {card: CardProps; isSaving: boo
       </button>
     ) : null}
   </div>
+);
+
+/**
+ * How many rows are checked, for screen readers. Select All and the header checkbox check every row the search
+ * matches, on every page, so a few visible rows can mean hundreds checked. A polite live region like the table's
+ * count line; the card's status is its save outcome.
+ */
+const SelectionAnnouncer = ({selectedCount, hiddenSelectedCount}: {selectedCount: number; hiddenSelectedCount: number}) => (
+  <p className="sr-only" aria-live="polite">
+    {selectedCount
+      ? `${pluralize(selectedCount, 'project')} selected` +
+        (hiddenSelectedCount ? `, ${hiddenSelectedCount} of them not shown by the current search` : '')
+      : ''}
+  </p>
 );
 
 /** Confirms saving a large selection, whose details all have to be loaded first. */
@@ -183,6 +197,7 @@ export function SearchTableCard(props: SearchTableCardProps) {
   const selection = useSearchTableSelection({table, save, tableId, title, onSelectionChange: card.onSelectionChange});
   const [appliedResetKey, setAppliedResetKey] = useState(resetKey);
   const selectionHintId = useId();
+  const headingId = useId();
   // Same breakpoint as the stacked table actions in projectsResponsive.css.
   const isPhone = useMediaQuery('(max-width: 768px)');
 
@@ -226,15 +241,19 @@ export function SearchTableCard(props: SearchTableCardProps) {
   const {onRefresh, resultsMotionKey} = card;
 
   return (
+    // Named after its heading: with several tables open, each one's search field, pager and buttons are
+    // announced inside "Search Table 2" rather than as one more unnamed "Search" or "Pages".
     <section
       className={`project-grid-card search-table-card${card.className ? ` ${card.className}` : ''}`}
       data-search-table-id={tableId}
+      aria-labelledby={headingId}
       aria-busy={save.isSaving}
     >
-      <SearchTableCardHeader card={card} isSaving={save.isSaving} />
+      <SearchTableCardHeader card={card} headingId={headingId} isSaving={save.isSaving} />
       <p className="project-grid-card-copy">{card.description}</p>
 
       <SaveStatusAnnouncer saveProgress={save.saveProgress} saveStatus={save.saveStatus} mergingVerb={mergingVerb} />
+      <SelectionAnnouncer selectedCount={selection.selectedCount} hiddenSelectedCount={selection.hiddenSelectedCount} />
 
       <div
         key={resultsMotionKey === undefined ? 'search-table-static-results' : `search-table-results-${resultsMotionKey}`}
@@ -251,13 +270,14 @@ export function SearchTableCard(props: SearchTableCardProps) {
               saveControls={saveControls('top')}
               topStatus={statusFor('top')}
               isPhone={isPhone}
+              saveGroupLabel={card.mergeLabel}
               selectionHintId={selectionHintId}
               onRefresh={onRefresh ? () => onRefresh(tableId) : undefined}
             />
           }
         />
         {showBottomActions ? (
-          <div className="search-table-bottom-actions" role="group" aria-label={`Save from ${title}`}>
+          <div className="search-table-bottom-actions" role="group" aria-label={`${card.mergeLabel} below the table`}>
             <div className="project-grid-toolbar-cluster search-table-save-group">{saveControls('bottom')}</div>
             {statusFor('bottom')}
           </div>
