@@ -53,6 +53,7 @@ PUBLIC_APP_ROUTES = [
     {"url": "/current-projects", "title": "Current Projects"},
     {"url": "/presenting-teams", "title": "Presenting Teams"},
     {"url": "/past-projects", "title": "Past Projects"},
+    {"url": "/projects-teams", "title": "Legacy Projects & Teams Redirect"},
     {"url": "/event-registration", "title": "Event Registration"},
     {"url": "/schedule", "title": "Event Schedule"},
     {"url": "/subscribe", "title": "Subscribe"},
