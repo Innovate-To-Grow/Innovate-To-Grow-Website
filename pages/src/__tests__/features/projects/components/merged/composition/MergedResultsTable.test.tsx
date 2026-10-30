@@ -410,7 +410,9 @@ describe('MergedResultsTable', () => {
     expect(screen.getByRole('button', {name: 'Remove Selected'})).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByRole('button', {name: 'Undo'})).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByRole('button', {name: 'Clear Draft'})).toHaveAttribute('aria-disabled', 'true');
-    screen.getAllByRole('button', {name: 'Remove'}).forEach((button) => expect(button).toBeDisabled());
+    screen
+      .getAllByRole('button', {name: /^Remove (Shared Project|Irrigation Sensor)$/})
+      .forEach((button) => expect(button).toBeDisabled());
 
     await act(async () => finishShare('share-1'));
     expect(screen.getByRole('button', {name: 'Clear Draft'})).not.toHaveAttribute('aria-disabled');
