@@ -33,7 +33,16 @@ const lazyRoute = (element: ReactElement): ReactElement => (
     <Suspense fallback={routeFallback}>{element}</Suspense>
 );
 
-const titled = (title: string): {handle: RouteHandle} => ({handle: {title}});
+const titled = (title: string, meta: Omit<RouteHandle, 'title'> = {}): {handle: RouteHandle} => ({
+    handle: {title, ...meta},
+});
+
+const CURRENT_PROJECTS_DESCRIPTION =
+    "This semester's Innovate to Grow student projects at UC Merced's School of Engineering: teams, partner organizations and abstracts.";
+const PRESENTING_TEAMS_DESCRIPTION =
+    "The student teams presenting at this semester's Innovate to Grow showcase at UC Merced, with their projects and partner organizations.";
+const PAST_PROJECTS_DESCRIPTION =
+    'Search the archive of past Innovate to Grow student projects at UC Merced, and collect them into lists to save, share or export.';
 
 // Auth pages (lazy)
 const LoginPage = React.lazy(() => import('@/features/auth/components/pages/LoginPage').then(m => ({default: m.LoginPage})));
@@ -87,11 +96,28 @@ export const createAppRouter = () => createBrowserRouter([
             {path: 'news/:id', element: lazyRoute(<NewsDetailPage/>)},
 
             // project pages (plain CMS routes like /projects, /sample-proposals
-            {path: 'current-projects', element: lazyRoute(<ProjectsPage/>), ...titled('Current Projects')},
-            {path: 'presenting-teams', element: lazyRoute(<PresentingTeamsPage/>), ...titled('Presenting Teams')},
-            {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>), ...titled('Past Projects')},
+            {
+                path: 'current-projects',
+                element: lazyRoute(<ProjectsPage/>),
+                ...titled('Current Projects', {description: CURRENT_PROJECTS_DESCRIPTION}),
+            },
+            {
+                path: 'presenting-teams',
+                element: lazyRoute(<PresentingTeamsPage/>),
+                ...titled('Presenting Teams', {description: PRESENTING_TEAMS_DESCRIPTION}),
+            },
+            {
+                path: 'past-projects',
+                element: lazyRoute(<PastProjectsPage/>),
+                ...titled('Past Projects', {description: PAST_PROJECTS_DESCRIPTION}),
+            },
             {path: 'past-projects/project/:id', element: lazyRoute(<ProjectDetailPage/>)},
-            {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>), ...titled('Past Projects')},
+            // Shared curations are visitors' own lists (names and notes): kept out of search indexes.
+            {
+                path: 'past-projects/:shareId',
+                element: lazyRoute(<PastProjectsPage/>),
+                ...titled('Past Projects', {noindex: true}),
+            },
             {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
 
             // event pages (plain CMS routes like /event, /past-events are served
