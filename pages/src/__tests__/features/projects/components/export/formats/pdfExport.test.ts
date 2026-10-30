@@ -64,6 +64,20 @@ const row = (overrides: Partial<ProjectGridRow> = {}): ProjectGridRow => ({
   ...overrides,
 });
 
+// Names and text as they appear in the archive: a non-breaking hyphen, accents outside Windows-1252, Greek, a
+// combining mark and emoji.
+const unicodeRow = row({
+  project_title: 'Farm\u2011NG Amiga Robot',
+  team_name: '\u{1f96d}MangoDB\u{1f96d}',
+  organization: 'T\u035fH\u0113 L\u014dk\u0101t\u0259rs',
+  industry: '\u03c9SST',
+  student_names: 'Ana \u017divanovi\u0107, Nguy\u1ec5n V\u0103n An, \u0141ukasz',
+  abstract: 'A real\u2011time pipeline.',
+});
+
+const drawnTexts = () => recorded.drawn.map((entry) => entry.text);
+const savedPdfText = () => new TextDecoder('latin1').decode(recorded.saved[0]);
+
 afterEach(() => {
   vi.unstubAllGlobals();
   recorded.drawn.length = 0;
@@ -86,5 +100,66 @@ describe('exportProjectRowsPdf with the real jsPDF', () => {
     // The logo and its alpha mask, written once for all the pages.
     expect(manyText.match(/\/Subtype \/Image/g)).toHaveLength(2);
     expect(manyText).toContain('/FlateDecode');
+  });
+
+  it('draws names, accents and hyphens outside Windows-1252 in the embedded Open Sans', async () => {
+    servePublicAssets();
+
+    await exportProjectRowsPdf([unicodeRow], 'past-projects', {title: 'Curation \u2011 2025'});
+
+    expect(new Set(recorded.drawn.map((entry) => entry.family))).toEqual(new Set(['OpenSans']));
+    expect(drawnTexts()).toEqual(
+      expect.arrayContaining([
+        'Curation - 2025',
+        'Project 1: Farm-NG Amiga Robot',
+        'MangoDB',
+        'TH\u0113 L\u014dk\u0101t\u0259rs',
+        '\u03c9SST',
+        'Ana \u017divanovi\u0107, Nguy\u1ec5n V\u0103n An, \u0141ukasz',
+        'A real-time pipeline.',
+      ]),
+    );
+    expect(savedPdfText()).toMatch(/\/FontFile2/);
+    expect(savedPdfText()).toMatch(/\/BaseFont \/OpenSans/);
+  });
+
+  it('falls back to Helvetica with Windows-1252 text when the fonts cannot be loaded', async () => {
+    servePublicAssets(/\/fonts\//);
+
+    await exportProjectRowsPdf([unicodeRow], 'past-projects');
+
+    expect(new Set(recorded.drawn.map((entry) => entry.family))).toEqual(new Set(['helvetica']));
+    expect(drawnTexts()).toEqual(
+      expect.arrayContaining([
+        'Project 1: Farm-NG Amiga Robot',
+        'MangoDB',
+        'THe Lokatrs',
+        'SST',
+        'Ana \u017divanovic, Nguyen Van An, Lukasz',
+        'A real-time pipeline.',
+      ]),
+    );
+    expect(recorded.saved).toHaveLength(1);
+  });
+
+  it('loads the italic faces only for a note that uses them', async () => {
+    const fetchMock = servePublicAssets();
+    const fontsFetched = () =>
+      fetchMock.mock.calls.map(([url]) => url).filter((url) => url.includes('/fonts/')).sort();
+
+    await exportProjectRowsPdf([row()], 'plain');
+    expect(fontsFetched()).toEqual([
+      '/assets/fonts/open-sans/OpenSans-Bold.ttf',
+      '/assets/fonts/open-sans/OpenSans-Regular.ttf',
+    ]);
+
+    fetchMock.mockClear();
+    await exportProjectRowsPdf([row()], 'noted', {note: '<p>Read <em>this</em> first</p>'});
+    expect(fontsFetched()).toEqual([
+      '/assets/fonts/open-sans/OpenSans-Bold.ttf',
+      '/assets/fonts/open-sans/OpenSans-Italic.ttf',
+      '/assets/fonts/open-sans/OpenSans-Regular.ttf',
+    ]);
+    expect(recorded.drawn).toEqual(expect.arrayContaining([{family: 'OpenSans', text: 'this'}]));
   });
 });

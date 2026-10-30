@@ -13,25 +13,29 @@ import {
   type ProjectRowsExportContext,
 } from '../support/exportTypes';
 import {parseRichTextRuns, type StyledRun} from '../richText/exportRichText';
-import {drawRunLine, wrapRunsToLines} from '../richText/pdfRichText';
+import {drawRunLine, fontStyle, wrapRunsToLines} from '../richText/pdfRichText';
 import {loadI2gLogoAsset} from '../support/logoAsset';
+import {loadPdfFontFiles, registerPdfTypeface, type PdfFontStyle, type PdfTypeface} from '../support/pdfTypeface';
 import type {ExportLogoAsset} from '../support/exportTypes';
 
 const LABEL_RGB = BRAND_BLUE_RGB;
 const ALT_FILL_RGB = TABLE_ALT_FILL_RGB;
 
 // Fields shown per project, in the same order as the on-screen expanded row detail.
-const detailFieldsFor = (row: ProjectGridRow): Array<{label: string; value: string}> => [
-  {label: 'Year-Semester', value: toDisplayValue(row.semester_label) || 'N/A'},
+const detailFieldsFor = (
+  row: ProjectGridRow,
+  show: (value: string) => string,
+): Array<{label: string; value: string}> => [
+  {label: 'Year-Semester', value: show(row.semester_label) || 'N/A'},
   {
     label: 'Class / Team#',
-    value: [toDisplayValue(row.class_code), toDisplayValue(row.team_number)].filter(Boolean).join(' / ') || 'N/A',
+    value: [show(row.class_code), show(row.team_number)].filter(Boolean).join(' / ') || 'N/A',
   },
-  {label: 'Team Name', value: toDisplayValue(row.team_name) || 'N/A'},
-  {label: 'Organization', value: toDisplayValue(row.organization) || 'N/A'},
-  {label: 'Industry', value: toDisplayValue(row.industry) || 'N/A'},
-  {label: 'Student Names', value: toDisplayValue(row.student_names) || 'N/A'},
-  {label: 'Abstract', value: toDisplayValue(row.abstract) || 'N/A'},
+  {label: 'Team Name', value: show(row.team_name) || 'N/A'},
+  {label: 'Organization', value: show(row.organization) || 'N/A'},
+  {label: 'Industry', value: show(row.industry) || 'N/A'},
+  {label: 'Student Names', value: show(row.student_names) || 'N/A'},
+  {label: 'Abstract', value: show(row.abstract) || 'N/A'},
 ];
 
 const MARGIN = 14;
@@ -48,6 +52,7 @@ const TITLE_BAR_HEIGHT = 9;
 /** The document being written and where the next line goes. */
 interface PdfPage {
   pdf: jsPDF;
+  typeface: PdfTypeface;
   logo: ExportLogoAsset | null;
   title: string;
   pageWidth: number;
@@ -59,8 +64,12 @@ interface PdfPage {
 const setBrandTextColor = (pdf: jsPDF) => pdf.setTextColor(BRAND_BLUE_RGB[0], BRAND_BLUE_RGB[1], BRAND_BLUE_RGB[2]);
 const setBodyTextColor = (pdf: jsPDF) => pdf.setTextColor(TEXT_COLOR_RGB[0], TEXT_COLOR_RGB[1], TEXT_COLOR_RGB[2]);
 
+/** A row value as the page's font can draw it. */
+const showValue = (page: PdfPage, value: string | number | null | undefined) =>
+  page.typeface.drawable(toDisplayValue(value)).trim();
+
 /** Logo, title (at most two lines) and site name over the gold rule, repeated on every page. */
-const drawPageHeader = ({pdf, logo, title, pageWidth, contentWidth}: PdfPage) => {
+const drawPageHeader = ({pdf, typeface, logo, title, pageWidth, contentWidth}: PdfPage) => {
   const logoSize = 16;
   const titleX = logo ? MARGIN + logoSize + 7 : MARGIN;
   const titleWidth = contentWidth - (logo ? logoSize + 7 : 0);
@@ -70,13 +79,13 @@ const drawPageHeader = ({pdf, logo, title, pageWidth, contentWidth}: PdfPage) =>
     pdf.addImage(logo.dataUrl, 'PNG', MARGIN, 8, logoSize, logoSize, 'i2g-logo');
   }
 
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(typeface.family, 'bold');
   pdf.setFontSize(14);
   setBrandTextColor(pdf);
   const titleLines = (pdf.splitTextToSize(title, titleWidth) as string[]).slice(0, 2);
   pdf.text(titleLines, titleX, 14);
 
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont(typeface.family, 'normal');
   pdf.setFontSize(8);
   pdf.setTextColor(MUTED_TEXT_RGB[0], MUTED_TEXT_RGB[1], MUTED_TEXT_RGB[2]);
   pdf.text('Innovate to Grow Past Projects', titleX, titleLines.length > 1 ? 25 : 21);
@@ -100,9 +109,9 @@ const ensureSpace = (page: PdfPage, heightNeeded: number) => {
 
 // Draw the share note's styled runs (bold/italic/underline/highlight), wrapped to the page width.
 const addRichText = (page: PdfPage, runs: StyledRun[], fontSize: number, lineHeight: number) => {
-  for (const line of wrapRunsToLines(page.pdf, runs, page.contentWidth, fontSize)) {
+  for (const line of wrapRunsToLines(page.pdf, runs, page.contentWidth, fontSize, page.typeface.family)) {
     ensureSpace(page, lineHeight);
-    drawRunLine(page.pdf, line, MARGIN, page.cursorY, fontSize);
+    drawRunLine(page.pdf, line, MARGIN, page.cursorY, fontSize, page.typeface.family);
     page.cursorY += lineHeight;
   }
 };
@@ -112,7 +121,7 @@ const addSectionHeading = (page: PdfPage, label: string) => {
   ensureSpace(page, 12);
   pdf.setFillColor(BRAND_BLUE_RGB[0], BRAND_BLUE_RGB[1], BRAND_BLUE_RGB[2]);
   pdf.rect(MARGIN, page.cursorY - 2, page.contentWidth, 8, 'F');
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(page.typeface.family, 'bold');
   pdf.setFontSize(10);
   pdf.setTextColor(255, 255, 255);
   pdf.text(label, MARGIN + 3, page.cursorY + 3.5);
@@ -122,14 +131,14 @@ const addSectionHeading = (page: PdfPage, label: string) => {
 
 /** One "Label: value" field, the value wrapped and aligned just past the bold label. */
 const drawField = (page: PdfPage, field: {label: string; value: string}, tinted: boolean) => {
-  const {pdf} = page;
+  const {pdf, typeface} = page;
   const valueIndent = MARGIN + BLOCK_PADDING;
   const valueWidth = page.contentWidth - BLOCK_PADDING * 2;
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(typeface.family, 'bold');
   pdf.setFontSize(FIELD_FONT);
   const labelText = `${field.label}: `;
   const labelWidth = pdf.getTextWidth(labelText);
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont(typeface.family, 'normal');
   pdf.setFontSize(FIELD_FONT);
   const wrapped = pdf.splitTextToSize(field.value, valueWidth - labelWidth) as string[];
   const lines = wrapped.length ? wrapped : [''];
@@ -143,12 +152,12 @@ const drawField = (page: PdfPage, field: {label: string; value: string}, tinted:
     }
     const baselineY = page.cursorY + FIELD_FONT * 0.4;
     if (lineIndex === 0) {
-      pdf.setFont('helvetica', 'bold');
+      pdf.setFont(typeface.family, 'bold');
       pdf.setFontSize(FIELD_FONT);
       pdf.setTextColor(LABEL_RGB[0], LABEL_RGB[1], LABEL_RGB[2]);
       pdf.text(labelText, valueIndent, baselineY);
     }
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(typeface.family, 'normal');
     pdf.setFontSize(FIELD_FONT);
     setBodyTextColor(pdf);
     pdf.text(line || ' ', valueIndent + labelWidth, baselineY);
@@ -162,15 +171,15 @@ const drawProjectBlock = (page: PdfPage, row: ProjectGridRow, index: number) => 
   ensureSpace(page, TITLE_BAR_HEIGHT + FIELD_LINE * 2);
   pdf.setFillColor(BRAND_BLUE_RGB[0], BRAND_BLUE_RGB[1], BRAND_BLUE_RGB[2]);
   pdf.rect(MARGIN, page.cursorY, page.contentWidth, TITLE_BAR_HEIGHT, 'F');
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(page.typeface.family, 'bold');
   pdf.setFontSize(10);
   pdf.setTextColor(255, 255, 255);
-  const titleText = `Project ${index + 1}: ${toDisplayValue(row.project_title) || 'N/A'}`;
+  const titleText = `Project ${index + 1}: ${showValue(page, row.project_title) || 'N/A'}`;
   const titleWidth = page.contentWidth - BLOCK_PADDING * 2;
   pdf.text((pdf.splitTextToSize(titleText, titleWidth) as string[])[0], MARGIN + BLOCK_PADDING, page.cursorY + 6);
   page.cursorY += TITLE_BAR_HEIGHT;
 
-  for (const field of detailFieldsFor(row)) {
+  for (const field of detailFieldsFor(row, (value) => showValue(page, value))) {
     drawField(page, field, index % 2 === 1);
   }
   // Spacing before the next project.
@@ -182,15 +191,28 @@ export const exportProjectRowsPdf = async (
   fileBaseName: string,
   context: ProjectRowsExportContext = {},
 ) => {
-  const [{jsPDF: JsPdf}, logo] = await Promise.all([import('jspdf'), loadI2gLogoAsset(I2G_PDF_LOGO_URL)]);
   const exportContext = normalizeProjectRowsExportContext(context);
-  // compress: Flate-encode the page content and the logo's pixels.
+  const noteRuns = parseRichTextRuns(exportContext.note);
+  // Regular and bold draw the header, labels and values; the note's emphasis may need the italic faces too.
+  const fontStyles: PdfFontStyle[] = [
+    'normal',
+    'bold',
+    ...noteRuns.map((run) => fontStyle(Boolean(run.bold), Boolean(run.italic))),
+  ];
+  const [{jsPDF: JsPdf}, logo, fontFiles] = await Promise.all([
+    import('jspdf'),
+    loadI2gLogoAsset(I2G_PDF_LOGO_URL),
+    loadPdfFontFiles(fontStyles),
+  ]);
+  // compress: Flate-encode the page content, the logo's pixels and the embedded font subsets.
   const pdf: jsPDF = new JsPdf({orientation: 'landscape', compress: true});
+  const typeface = registerPdfTypeface(pdf, fontFiles);
   const pageWidth = pdf.internal.pageSize.getWidth();
   const page: PdfPage = {
     pdf,
+    typeface,
     logo,
-    title: exportContext.title,
+    title: typeface.drawable(exportContext.title),
     pageWidth,
     pageHeight: pdf.internal.pageSize.getHeight(),
     contentWidth: pageWidth - MARGIN * 2,
@@ -199,10 +221,10 @@ export const exportProjectRowsPdf = async (
 
   drawPageHeader(page);
 
-  const noteRuns = parseRichTextRuns(exportContext.note);
-  if (noteRuns.length) {
+  const drawableNote = noteRuns.map((run) => ({...run, text: typeface.drawable(run.text)}));
+  if (drawableNote.some((run) => run.text.trim())) {
     addSectionHeading(page, 'Note');
-    addRichText(page, noteRuns, 9, 4.7);
+    addRichText(page, drawableNote, 9, 4.7);
     page.cursorY += 5;
   }
 
