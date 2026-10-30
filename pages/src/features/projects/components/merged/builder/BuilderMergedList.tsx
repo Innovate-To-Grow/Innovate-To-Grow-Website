@@ -10,6 +10,7 @@ import {BuilderCardHeader} from '../list/MergedListHeader';
 import {useCurationShare, type PastProjectShareCreationResult} from './useCurationShare';
 import {useMergedList, useRevealRecentlyAdded, type ListMessage} from '../list/useMergedList';
 import {useNoteInsertFields} from '../list/useNoteInsertFields';
+import {useStatusLineInView} from '../list/useStatusLineInView';
 
 export interface BuilderMergedListProps {
   id?: string;
@@ -235,12 +236,15 @@ export const BuilderMergedList = (props: BuilderMergedListProps) => {
     useBuilderList(props);
   const {table, headingId} = list;
   const shownCount = table.filteredRows.length;
+  const {cardRef, lineRef, onPointerDown} = useStatusLineInView(list.statusMessage, list.statusReports);
 
   return (
     <section
+      ref={cardRef}
       id={id}
       className={`itg-panel project-grid-card project-grid-merged${className ? ` ${className}` : ''}`}
       aria-labelledby={headingId}
+      onPointerDown={onPointerDown}
     >
       <BuilderCardHeader
         headingId={headingId}
@@ -285,9 +289,9 @@ export const BuilderMergedList = (props: BuilderMergedListProps) => {
         }
       />
 
-      {/* Right under the table and its toolbar, where removing, undoing and exporting happen. Always in the page,
-          so screen readers announce its first message too. */}
-      <p className="project-grid-status" role="status">
+      {/* Right under the table and its toolbar, where removing, undoing and exporting happen, and scrolled into
+          view for them. Always in the page, so screen readers announce its first message too. */}
+      <p ref={lineRef} className="project-grid-status" role="status">
         {list.statusMessage}
       </p>
 

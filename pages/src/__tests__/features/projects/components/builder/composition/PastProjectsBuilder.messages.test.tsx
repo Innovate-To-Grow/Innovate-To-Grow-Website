@@ -60,6 +60,7 @@ describe('PastProjectsBuilder — status messages', () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("reports removing and restoring draft rows in the draft card's status line, not under the search tables", () => {
@@ -78,6 +79,25 @@ describe('PastProjectsBuilder — status messages', () => {
     // The card's line sits right under its table, ahead of the curation's name and note.
     const saveSection = within(draftCard()).getByRole('heading', {name: 'Save this curation'});
     expect(cardStatus.compareDocumentPosition(saveSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("scrolls the draft card's status line into view when a row's Remove reports below the screen", () => {
+    renderBuilder();
+    addBothToDraft();
+    // A 900px screen with the card's line just under its bottom edge, as with a full page of draft rows.
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(900);
+    vi.spyOn(within(draftCard()).getByRole('status'), 'getBoundingClientRect').mockReturnValue({
+      top: 958,
+      bottom: 982,
+    } as DOMRect);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({top: 420, bottom: 450} as DOMRect);
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    const removes = within(desktopTable(draftCard())).getAllByRole('button', {name: /^remove/i});
+    removes[0].focus();
+
+    fireEvent.click(removes[0]);
+
+    expect(scrollBy).toHaveBeenCalledExactlyOnceWith(0, 98);
   });
 
   it('keeps the search tables\' status line in the page, and reports a refresh in it', () => {

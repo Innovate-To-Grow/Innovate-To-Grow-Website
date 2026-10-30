@@ -1,4 +1,4 @@
-import {useId, useMemo, useState} from 'react';
+import {useCallback, useId, useMemo, useState} from 'react';
 import {stripProjectGridItem, type ProjectGridItem} from '../../grid/contracts/projectGrid';
 import {useProjectGridTable} from '../../grid/state/useProjectGridTable';
 import type {PendingBulkAction} from './MergedEditButtons';
@@ -22,7 +22,12 @@ export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean, mess
     defaultSortDirection: 'desc',
     expandAllByDefault: sharedMode,
   });
-  const [statusMessage, setStatusMessage] = useState('');
+  // Every report is counted, one that repeats the line's text too (a second row removed), so it can be shown again.
+  const [status, setStatus] = useState({text: '', reports: 0});
+  const setStatusMessage = useCallback(
+    (text: string) => setStatus((current) => ({text, reports: current.reports + 1})),
+    [],
+  );
   const [appliedMessage, setAppliedMessage] = useState<ListMessage | null>(null);
   if (message && message !== appliedMessage) {
     setAppliedMessage(message);
@@ -41,7 +46,9 @@ export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean, mess
     allRows,
     visibleRows,
     headingId,
-    statusMessage,
+    statusMessage: status.text,
+    /** How many reports the status line has had; changes with each one. */
+    statusReports: status.reports,
     setStatusMessage,
     pendingBulkAction,
     setPendingBulkAction,
