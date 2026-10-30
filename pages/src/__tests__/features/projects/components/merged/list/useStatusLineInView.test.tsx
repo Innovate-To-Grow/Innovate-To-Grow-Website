@@ -90,3 +90,74 @@ describe('useStatusLineInView', () => {
     expect(scrollBy).not.toHaveBeenCalled();
   });
 });
+
+describe('useStatusLineInView in the partner widget', () => {
+  // The frame is as tall as its content and the partner page scrolls: the line is placed against the part of the
+  // frame on the visitor's screen, and the partner page is scrolled (through scrollIntoView or its snippet).
+  let observe: ((rect: Partial<DOMRectReadOnly>) => void) | null;
+  let scrolled: Array<{top: string; height: string; block: ScrollLogicalPosition | undefined}>;
+  let scrollBy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.spyOn(window, 'parent', 'get').mockReturnValue({} as Window);
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(4000);
+    vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockReturnValue(4000);
+    scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    observe = null;
+    scrolled = [];
+    class FakeIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        observe = (rect) =>
+          callback([{intersectionRect: rect} as IntersectionObserverEntry], this as unknown as IntersectionObserver);
+      }
+      observe() {}
+      disconnect() {}
+    }
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+    Element.prototype.scrollIntoView = function (this: HTMLElement, options?: boolean | ScrollIntoViewOptions) {
+      scrolled.push({
+        top: this.style.top,
+        height: this.style.height,
+        block: typeof options === 'object' ? options.block : undefined,
+      });
+    };
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  const renderRemoved = (lineTop: number, removeTop: number) => {
+    const {rerender} = render(<Card message="" reports={0} />);
+    placeAt(screen.getByRole('status'), lineTop);
+    const remove = screen.getByRole('button', {name: 'Remove Bravo Project'});
+    placeAt(remove, removeTop);
+    remove.focus();
+    rerender(<Card message="Project removed from the curation draft." reports={1} />);
+  };
+
+  it('scrolls the partner page just far enough to show a line below the visitor\'s screen', () => {
+    // 1500px of the frame are above the screen; the line, 1018px down the frame's screenful, is below it.
+    renderRemoved(2518, 1920);
+    observe?.({top: 1500, bottom: 2400, height: 900});
+
+    // The line and a 16px margin, brought up to the screen's bottom edge: the partner page scrolls 158px.
+    expect(scrolled).toEqual([{top: '2518px', height: '40px', block: 'nearest'}]);
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+
+  it('leaves the partner page alone when what was acted on would leave the screen, or the line is on it', () => {
+    renderRemoved(2518, 1600);
+    observe?.({top: 1500, bottom: 2400, height: 900});
+    expect(scrolled).toEqual([]);
+
+    cleanup();
+    renderRemoved(2300, 1920);
+    observe?.({top: 1500, bottom: 2400, height: 900});
+    expect(scrolled).toEqual([]);
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+});
