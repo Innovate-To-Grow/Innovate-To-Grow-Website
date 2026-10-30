@@ -130,6 +130,7 @@ export const SharedMergedList = ({
 
       <MergedListGrid
         table={table}
+        title={title}
         rows={rows}
         sharedMode
         onDeleteRow={canEdit ? editor.deleteRow : undefined}
