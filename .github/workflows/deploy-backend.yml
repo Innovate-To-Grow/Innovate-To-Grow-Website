@@ -30,59 +30,21 @@ env:
 
 jobs:
   deploy:
-    name: Deploy Backend (${{ matrix.target }})
+    name: Deploy Backend
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: prod
-            environment_name: AWS ECS - Prod
-            environment_url: https://api.i2g.ucmerced.edu
-            ecr_repository: itg-backend
-            ecs_cluster: itg-backend-cluster
-            ecs_service: itg-backend-service
-            task_family: itg-backend
-            log_group: /ecs/itg-backend
-            frontend_url: https://i2g.ucmerced.edu
-            backend_url: https://api.i2g.ucmerced.edu
-            api_base_url: https://api.i2g.ucmerced.edu
-            amplify_backend_proxy_url: https://api.i2g.ucmerced.edu
-            amplify_proxy_admin_paths: "false"
-            storage_bucket: itg-static-assets
-            ensure_default_admin: "false"
-            superuser_first_name: I2G
-            superuser_last_name: Admin
-          - target: demo
-            environment_name: AWS ECS(DEMO) - Prod
-            environment_url: https://demo.i2g.ucmerced.edu/admin
-            ecr_repository: itg-backend
-            ecs_cluster: itg-backend-cluster
-            ecs_service: itg-backend-demo-service
-            task_family: itg-backend-demo
-            log_group: /ecs/itg-backend-demo
-            frontend_url: https://demo.i2g.ucmerced.edu
-            backend_url: https://demo.i2g.ucmerced.edu
-            api_base_url: https://demo-api.i2g.ucmerced.edu
-            amplify_backend_proxy_url: https://demo-api.i2g.ucmerced.edu
-            amplify_proxy_admin_paths: "true"
-            storage_bucket: itg-demo-static-assets
-            ensure_default_admin: "true"
-            superuser_first_name: Demo
-            superuser_last_name: Admin
     environment:
-      name: ${{ matrix.environment_name }}
-      url: ${{ matrix.environment_url }}
+      name: AWS ECS - Prod
+      url: https://api.i2g.ucmerced.edu
     env:
       AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
-      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || matrix.ecr_repository }}
-      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || matrix.ecs_cluster }}
-      ECS_SERVICE: ${{ vars.ECS_SERVICE || matrix.ecs_service }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'itg-backend' }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'itg-backend-cluster' }}
+      ECS_SERVICE: ${{ vars.ECS_SERVICE || 'itg-backend-service' }}
       ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION || 'aws/task-definition.json' }}
       CONTAINER_NAME: ${{ vars.CONTAINER_NAME || 'itg-backend' }}
-      ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY || matrix.task_family }}
-      ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP || matrix.log_group }}
+      ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY || 'itg-backend' }}
+      ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP || '/ecs/itg-backend' }}
 
     steps:
       - name: Checkout code
@@ -104,8 +66,8 @@ jobs:
           DB_NAME: ${{ vars.DB_NAME }}
           DB_USER: ${{ vars.DB_USER }}
           DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
+          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://api.i2g.ucmerced.edu' }}
           ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
           ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
         run: |
@@ -162,7 +124,7 @@ jobs:
       - name: Upload Django static assets to S3
         env:
           IMAGE_URI: ${{ steps.image.outputs.image }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
+          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
           AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
         run: |
           set -euo pipefail
@@ -208,14 +170,13 @@ jobs:
           NUM_PROXIES: ${{ vars.NUM_PROXIES || '1' }}
           DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
           DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
-          DJANGO_SUPERUSER_FIRST_NAME: ${{ vars.DJANGO_SUPERUSER_FIRST_NAME || matrix.superuser_first_name }}
-          DJANGO_SUPERUSER_LAST_NAME: ${{ vars.DJANGO_SUPERUSER_LAST_NAME || matrix.superuser_last_name }}
+          DJANGO_SUPERUSER_FIRST_NAME: ${{ vars.DJANGO_SUPERUSER_FIRST_NAME || 'I2G' }}
+          DJANGO_SUPERUSER_LAST_NAME: ${{ vars.DJANGO_SUPERUSER_LAST_NAME || 'Admin' }}
           DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ vars.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN || secrets.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
-          ENSURE_DEFAULT_ADMIN: ${{ vars.ENSURE_DEFAULT_ADMIN || matrix.ensure_default_admin }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || matrix.backend_url }}
-          API_BASE_URL: ${{ vars.VITE_API_BASE_URL || matrix.api_base_url }}
-          DEPLOY_TARGET: ${{ matrix.target }}
+          ENSURE_DEFAULT_ADMIN: ${{ vars.ENSURE_DEFAULT_ADMIN || 'false' }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
+          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://api.i2g.ucmerced.edu' }}
+          API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
           LEGACY_VIEW_ENABLED: ${{ vars.LEGACY_VIEW_ENABLED || 'false' }}
           LEGACY_ORIGIN_URL: ${{ vars.LEGACY_ORIGIN_URL }}
           LEGACY_VIEWER_URL: ${{ vars.LEGACY_VIEWER_URL }}
@@ -226,11 +187,11 @@ jobs:
           DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
           CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
           CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || matrix.storage_bucket }}
+          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
           AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
           AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BACKEND_PROXY_URL: ${{ vars.AMPLIFY_BACKEND_PROXY_URL || matrix.amplify_backend_proxy_url }}
-          AMPLIFY_PROXY_ADMIN_PATHS: ${{ vars.AMPLIFY_PROXY_ADMIN_PATHS || matrix.amplify_proxy_admin_paths }}
+          AMPLIFY_BACKEND_PROXY_URL: ${{ vars.AMPLIFY_BACKEND_PROXY_URL || 'https://api.i2g.ucmerced.edu' }}
+          AMPLIFY_PROXY_ADMIN_PATHS: ${{ vars.AMPLIFY_PROXY_ADMIN_PATHS || 'false' }}
           AMPLIFY_CONFIG_REVISION: ${{ github.run_id }}.${{ github.run_attempt }}
           BACKGROUND_JOBS_ENABLED: ${{ vars.BACKGROUND_JOBS_ENABLED || 'false' }}
           BACKGROUND_JOB_METRICS_NAMESPACE: ${{ vars.BACKGROUND_JOB_METRICS_NAMESPACE }}
@@ -316,7 +277,7 @@ jobs:
               "__AWS_LOG_GROUP__": env_value("ECS_LOG_GROUP", "/ecs/itg-backend"),
               "__DJANGO_SUPERUSER_USERNAME__": env_value("DJANGO_SUPERUSER_USERNAME"),
               "__DJANGO_SUPERUSER_EMAIL__": env_value("DJANGO_SUPERUSER_EMAIL"),
-              "__DJANGO_SUPERUSER_FIRST_NAME__": env_value("DJANGO_SUPERUSER_FIRST_NAME", "Demo"),
+              "__DJANGO_SUPERUSER_FIRST_NAME__": env_value("DJANGO_SUPERUSER_FIRST_NAME", "I2G"),
               "__DJANGO_SUPERUSER_LAST_NAME__": env_value("DJANGO_SUPERUSER_LAST_NAME", "Admin"),
               "__ENSURE_DEFAULT_ADMIN__": env_value("ENSURE_DEFAULT_ADMIN", "false"),
               "__LEGACY_VIEW_ENABLED__": env_value("LEGACY_VIEW_ENABLED", "false"),
@@ -334,15 +295,6 @@ jobs:
               "__LEGACY_ORIGIN_HEADER_SECRET_ARN__": env_value("LEGACY_ORIGIN_HEADER_SECRET_ARN"),
           }
 
-          # The private Legacy viewer exists only in production. Every other
-          # target renders it disabled with no origin, viewer URL, or secret,
-          # even when a repository-level variable leaks into that environment.
-          if env_value("DEPLOY_TARGET").strip() != "prod":
-              mapping["__LEGACY_VIEW_ENABLED__"] = "false"
-              mapping["__LEGACY_ORIGIN_URL__"] = ""
-              mapping["__LEGACY_VIEWER_URL__"] = ""
-              mapping["__LEGACY_ORIGIN_HEADER_NAME__"] = ""
-              secret_mapping["__LEGACY_ORIGIN_HEADER_SECRET_ARN__"] = ""
           required_secret_placeholders = {
               "__DJANGO_SECRET_KEY_SECRET_ARN__",
               "__DB_PASSWORD_SECRET_ARN__",
@@ -483,8 +435,8 @@ jobs:
 
       - name: Smoke check deployed health endpoint and CORS
         env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
-          API_BASE_URL: ${{ vars.BACKEND_SMOKE_URL || vars.VITE_API_BASE_URL || matrix.api_base_url }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
+          API_BASE_URL: ${{ vars.BACKEND_SMOKE_URL || vars.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
         run: |
           set -euo pipefail
 

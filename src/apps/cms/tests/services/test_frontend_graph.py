@@ -554,7 +554,7 @@ class RealFrontendEntryTests(SimpleTestCase):
         self.assertIn("index.css", entry)
         # index.css -> assets/shared.css -> assets/tokens.css through CSS @import.
         self.assertIn("assets/tokens.css", entry)
-        self.assertNotIn("features/projects/components/projects.css", entry)
+        self.assertNotIn("features/projects/components/styles/cascade/projects.css", entry)
         for relative in entry:
             with self.subTest(file=relative):
                 self.assertTrue((REAL_FRONTEND_DIR / relative).is_file())

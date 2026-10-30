@@ -1,5 +1,5 @@
 import {useMemo} from 'react';
-import {CurrentProjectsView} from '@/features/projects/components/CurrentProjectsView';
+import {CurrentProjectsView} from '@/features/projects/components/views/pages/CurrentProjectsView';
 import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
 
 export const PresentingTeamsPage = () => {

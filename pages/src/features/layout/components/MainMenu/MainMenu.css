@@ -4,7 +4,6 @@
    add new rules to the file that owns them. */
 @import './styles/shell.css';
 @import './styles/blue-bar.css';
-@import './styles/band.css';
 @import './styles/menu-row.css';
 @import './styles/dropdowns.css';
 @import './styles/member.css';
