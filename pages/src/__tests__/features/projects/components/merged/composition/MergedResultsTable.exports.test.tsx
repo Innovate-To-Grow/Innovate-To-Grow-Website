@@ -296,4 +296,20 @@ describe('MergedResultsTable exports and row details', () => {
     expect(screen.queryByText(/Please try again/)).toBeNull();
     expect(within(exportCluster).getByRole('button', {name: 'Reload page'})).toBeInTheDocument();
   });
+
+  it('drops the reload advice and its button once another export succeeds', async () => {
+    exportMocks.exportProjectRowsPdf.mockRejectedValueOnce(
+      new TypeError('Failed to fetch dynamically imported module: https://i2g.example/assets/jspdf.es.min-OLD.js'),
+    );
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
+    expect(await within(exportCluster).findByRole('button', {name: 'Reload page'})).toBeInTheDocument();
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Microsoft Word'}));
+
+    await waitFor(() => expect(exportMocks.exportProjectRowsWord).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText(/Unable to export/)).toBeNull());
+    expect(within(exportCluster).queryByRole('button', {name: 'Reload page'})).toBeNull();
+  });
 });

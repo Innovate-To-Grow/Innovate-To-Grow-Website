@@ -37,6 +37,7 @@ interface MergedExportGroupProps {
 
 export const MergedExportGroup = ({rows, buildTarget, onStatus, reloadNote}: MergedExportGroupProps) => {
   const [pendingFormat, setPendingFormat] = useState<ProjectRowsExportFormat | null>(null);
+  // Shown only while the status line asks for a reload: the next export replaces that advice, and takes the button.
   const [needsReload, setNeedsReload] = useState(false);
   // Set synchronously, so a second click before the re-render does not start a second download.
   const isExportingRef = useRef(false);
@@ -47,6 +48,7 @@ export const MergedExportGroup = ({rows, buildTarget, onStatus, reloadNote}: Mer
     }
     isExportingRef.current = true;
     setPendingFormat(format);
+    setNeedsReload(false);
     const label = EXPORT_LABELS[format];
     onStatus(`Preparing ${label}…`);
     let loaded = false;
