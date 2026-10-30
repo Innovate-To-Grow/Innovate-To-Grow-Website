@@ -57,6 +57,7 @@ describe('usePageTracking', () => {
     cleanup();
     delete (window as {requestIdleCallback?: unknown}).requestIdleCallback;
     delete (window as {cancelIdleCallback?: unknown}).cancelIdleCallback;
+    delete (window as {_sz?: unknown})._sz;
   });
 
   it('skips tracking for isolated routes', () => {
@@ -100,6 +101,37 @@ describe('usePageTracking', () => {
 
     expect(result.current).toBeUndefined();
     expect(mockTrackPageView).toHaveBeenCalledTimes(1);
+  });
+
+  it('credits a client-side page view to the previous in-app page, not to the landing referrer', () => {
+    renderHook(() => usePageTracking(), {wrapper: makeWrapper('/presenting-teams?class=CSE')});
+
+    act(() => {
+      navigateRef.current?.('/projects/b158588f');
+    });
+    act(() => {
+      navigateRef.current?.('/current-projects');
+    });
+
+    expect(mockTrackPageView.mock.calls.map(([view]) => view)).toEqual([
+      {path: '/presenting-teams', referrer: document.referrer},
+      {path: '/projects/b158588f', referrer: `${window.location.origin}/presenting-teams`},
+      {path: '/current-projects', referrer: `${window.location.origin}/projects/b158588f`},
+    ]);
+  });
+
+  it('announces client-side route changes to Siteimprove, but not the first page view it counts itself', () => {
+    const push = vi.fn();
+    (window as {_sz?: unknown})._sz = {push};
+    renderHook(() => usePageTracking(), {wrapper: makeWrapper('/presenting-teams')});
+    expect(push).not.toHaveBeenCalled();
+
+    act(() => {
+      navigateRef.current?.('/projects/b158588f');
+    });
+
+    expect(push).toHaveBeenCalledOnce();
+    expect(push).toHaveBeenCalledWith(['trackdynamic']);
   });
 
   it('cancels the idle callback on unmount', () => {
