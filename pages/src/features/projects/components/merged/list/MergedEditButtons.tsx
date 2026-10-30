@@ -1,6 +1,6 @@
 import {PastProjectsDialog} from '../../builder/dialog/PastProjectsDialog';
 
-export type PendingBulkAction = 'reset-builder' | 'remove-all-shared';
+export type PendingBulkAction = 'reset-builder';
 
 interface MergedEditButtonsProps {
   /** Builder: check rows, then "Remove Selected". */
@@ -57,54 +57,35 @@ export const MergedEditButtons = ({
           Clear Draft
         </button>
       ) : null}
+      {/* A curation keeps at least one project (the API refuses an empty one), so it has no "remove all";
+          deleting a whole curation is done from My Curations. */}
       {shared ? (
-        <>
-          <button
-            type="button"
-            className="itg-btn itg-btn-text"
-            onClick={() => void shared.onUndo()}
-            disabled={!shared.canUndo || shared.isSaving}
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            className="itg-btn itg-btn-text itg-btn-danger"
-            onClick={() => onRequestBulkAction('remove-all-shared')}
-            disabled={shared.isSaving}
-          >
-            Remove All
-          </button>
-        </>
+        <button
+          type="button"
+          className="itg-btn itg-btn-text"
+          onClick={() => void shared.onUndo()}
+          disabled={!shared.canUndo || shared.isSaving}
+        >
+          Undo
+        </button>
       ) : null}
     </div>
   );
 };
 
 interface BulkActionDialogProps {
-  action: PendingBulkAction;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export const BulkActionDialog = ({action, onCancel, onConfirm}: BulkActionDialogProps) => {
-  const isReset = action === 'reset-builder';
-  return (
-    <PastProjectsDialog
-      title={isReset ? 'Clear the curation draft?' : 'Remove all projects?'}
-      confirmLabel={isReset ? 'Clear Draft' : 'Close'}
-      showCancel={isReset}
-      onCancel={onCancel}
-      onConfirm={onConfirm}
-    >
-      {isReset ? (
-        <p>Remove every project from the curation draft? You can undo this right afterward.</p>
-      ) : (
-        <p>
-          This curation cannot be saved with zero projects because the API requires at least one row. Remove
-          rows individually, or delete the curation if it is no longer needed.
-        </p>
-      )}
-    </PastProjectsDialog>
-  );
-};
+/** Confirms clearing the builder's draft. */
+export const BulkActionDialog = ({onCancel, onConfirm}: BulkActionDialogProps) => (
+  <PastProjectsDialog
+    title="Clear the curation draft?"
+    confirmLabel="Clear Draft"
+    onCancel={onCancel}
+    onConfirm={onConfirm}
+  >
+    <p>Remove every project from the curation draft? You can undo this right afterward.</p>
+  </PastProjectsDialog>
+);

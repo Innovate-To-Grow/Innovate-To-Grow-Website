@@ -186,11 +186,7 @@ const BuilderListFooter = ({
     ) : null}
 
     {list.pendingBulkAction ? (
-      <BulkActionDialog
-        action={list.pendingBulkAction}
-        onCancel={() => list.setPendingBulkAction(null)}
-        onConfirm={onConfirmBulkAction}
-      />
+      <BulkActionDialog onCancel={() => list.setPendingBulkAction(null)} onConfirm={onConfirmBulkAction} />
     ) : null}
 
     {list.statusMessage ? (

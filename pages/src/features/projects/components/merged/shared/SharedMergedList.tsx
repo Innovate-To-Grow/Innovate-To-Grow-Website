@@ -1,7 +1,7 @@
 import {RichDetailPreview} from '../../richText/content/RichDetailPreview';
 import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {noteHasContent, sharedListExportTarget} from '../list/curationNote';
-import {BulkActionDialog, MergedEditButtons} from '../list/MergedEditButtons';
+import {MergedEditButtons} from '../list/MergedEditButtons';
 import {MergedExportGroup} from '../list/MergedExportGroup';
 import {MergedListGrid} from '../list/MergedListGrid';
 import {SharedListHeader} from '../list/MergedListHeader';
@@ -33,26 +33,6 @@ const SharedNoteView = ({noteHtml}: {noteHtml: string}) =>
       <RichDetailPreview className="project-grid-shared-detail-text itg-content" html={noteHtml} />
     </div>
   ) : null;
-
-/** A shared list keeps at least one project, so confirming "remove all" only explains that. */
-const SharedBulkActionDialog = ({list}: {list: ReturnType<typeof useMergedList>}) => {
-  if (!list.pendingBulkAction) return null;
-  const handleConfirm = () => {
-    if (list.pendingBulkAction === 'remove-all-shared') {
-      list.setStatusMessage(
-        'A curation needs at least one project. Remove rows individually, or delete the curation if it is no longer needed.',
-      );
-    }
-    list.setPendingBulkAction(null);
-  };
-  return (
-    <BulkActionDialog
-      action={list.pendingBulkAction}
-      onCancel={() => list.setPendingBulkAction(null)}
-      onConfirm={handleConfirm}
-    />
-  );
-};
 
 /** A saved curation's page: its link, note and projects, editable in place by its owner. */
 export const SharedMergedList = ({
@@ -147,8 +127,6 @@ export const SharedMergedList = ({
           />
         }
       />
-
-      <SharedBulkActionDialog list={list} />
 
       {list.statusMessage ? (
         <p className="project-grid-status" role="status">

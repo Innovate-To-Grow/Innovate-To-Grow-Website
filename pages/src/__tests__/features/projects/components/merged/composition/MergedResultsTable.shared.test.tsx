@@ -364,9 +364,7 @@ describe('MergedResultsTable in shared mode', () => {
     expect(await screen.findByText('Change undone.')).toBeInTheDocument();
   });
 
-  it('keeps Remove All guarded for editable shared pages while the API requires one row', async () => {
-    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
-
+  it('offers its owner no "remove all", which a curation (at least one project) could never do', () => {
     render(
       <MergedResultsTable
         rows={makeItems([baseRow, addedRow])}
@@ -374,18 +372,13 @@ describe('MergedResultsTable in shared mode', () => {
         editable
         title="Original Name"
         note="Owner note"
-        onUpdateShare={onUpdateShare}
+        onUpdateShare={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', {name: /remove all/i}));
-    const dialog = screen.getByRole('dialog', {name: /remove all projects/i});
-    // Informational dialog: a single Close action, no confusing cancel alternative.
-    expect(within(dialog).queryByRole('button', {name: /keep projects/i})).toBeNull();
-    fireEvent.click(within(dialog).getByRole('button', {name: /close/i}));
-
-    expect(onUpdateShare).not.toHaveBeenCalled();
-    expect(await screen.findByText(/A curation needs at least one project/i)).toBeInTheDocument();
+    const editGroup = screen.getByRole('group', {name: 'Edit list'});
+    expect(within(editGroup).getAllByRole('button').map((button) => button.textContent)).toEqual(['Undo']);
+    expect(screen.queryByRole('button', {name: /remove all/i})).toBeNull();
   });
 
   it('expands all rows by default in shared mode so project details are visible', () => {
