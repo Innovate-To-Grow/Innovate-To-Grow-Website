@@ -69,6 +69,15 @@ class CurrentProjectLinkTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["id"], str(self.spring_ids["101"]))
 
+    def test_slotted_team_an_admin_hid_still_matches_its_archive_project_by_team_number(self):
+        # The team has a slot, so it presented that semester; hiding it changes nothing about which team it is.
+        CurrentProject.objects.filter(pk=self.spring_ids["101"]).update(is_presenting=False)
+        Project.objects.filter(pk=self.archived.pk).update(project_title="ASHRAE HVAC Design Calculation Suite")
+
+        response = self.client.get(f"/projects/{self.spring_ids['101']}/")
+
+        self.assertEqual(response.data["id"], str(self.archived.pk))
+
     def test_unknown_id_is_still_not_found(self):
         response = self.client.get(f"/projects/{uuid.uuid4()}/")
 
@@ -136,6 +145,16 @@ class EarlierScheduleListedTeamTest(TestCase):
 
     def test_listed_team_is_not_served_another_archive_team_with_its_number(self):
         # The listed 202 presents in a later semester; spring's own CAP 202 was another team.
+        semester = Semester.objects.create(year=2026, season=1, is_published=True)
+        Project.objects.create(semester=semester, class_code="CAP", team_number="202", project_title="Seed Counter")
+
+        response = self.client.get(f"/projects/{self.spring_ids['202']}/")
+
+        self.assertEqual(response.data["id"], str(self.spring_ids["202"]))
+        self.assertEqual(response.data["project_title"], "Frequency Ablation Caps")
+
+    def test_unslotted_row_an_admin_shows_still_needs_its_title_to_match_an_archive_project(self):
+        CurrentProject.objects.filter(pk=self.spring_ids["202"]).update(is_presenting=True)
         semester = Semester.objects.create(year=2026, season=1, is_published=True)
         Project.objects.create(semester=semester, class_code="CAP", team_number="202", project_title="Seed Counter")
 

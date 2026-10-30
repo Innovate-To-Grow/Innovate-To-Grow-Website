@@ -67,8 +67,9 @@ The id can also be a current-semester project link (an event `CurrentProject` id
 response is then the team's archive project once its semester is imported, else the `CurrentProject` in the same
 shape (`apps/projects/services/current_project_links.py`). A team that schedule only listed (Track `(Fall)` or
 `(Spring)`: it presents in another semester) resolves to its row in the schedule it presents in, matched by class,
-Team# and title. A row without a slot matches an archive project only when the title matches too, since its
-schedule's semester may not be the team's.
+Team# and title. A row without a slot in its schedule matches an archive project only when the title matches too,
+since its schedule's semester may not be the team's; a row with a slot matches by class and Team# alone. The slot
+decides, not `is_presenting`, which admins toggle to show or hide a team.
 
 ### `POST /projects/past-shares/`
 

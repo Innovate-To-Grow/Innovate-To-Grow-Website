@@ -11,8 +11,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from apps.projects.models import Project
+
+if TYPE_CHECKING:
+    from apps.event.services.current_projects import CurrentProjectReference
 
 _TERM_RE = re.compile(r"^(\d{4})-(\d)\s")
 
@@ -25,8 +29,9 @@ class CurrentProjectLink:
     detail: dict
 
 
-def _archived_project(project, term: str) -> Project | None:
-    match = _TERM_RE.match(term)
+def _archived_project(reference: CurrentProjectReference) -> Project | None:
+    project = reference.project
+    match = _TERM_RE.match(reference.term)
     if not match or not project.team_number:
         return None
     archived = Project.objects.filter(
@@ -36,9 +41,11 @@ def _archived_project(project, term: str) -> Project | None:
         class_code=project.class_code,
         team_number=project.team_number,
     )
-    if not project.is_presenting:
+    if reference.track is None:
         # A row without a slot may list a team of another semester (Track "(Fall)"), and team numbers are reused
-        # every semester, so this semester's Team# alone can name another team: the title must match too.
+        # every semester, so this semester's Team# alone can name another team: the title must match too. The slot
+        # decides, not is_presenting: admins toggle that flag to show or hide a team, which says nothing about its
+        # semester.
         archived = archived.filter(project_title=project.project_title)
     return archived.select_related("semester").order_by("-source", "pk").first()
 
@@ -53,7 +60,7 @@ def resolve_current_project_link(project_id) -> CurrentProjectLink | None:
         return None
     project = reference.project
     return CurrentProjectLink(
-        archived=_archived_project(project, reference.term),
+        archived=_archived_project(reference),
         detail={
             "id": str(project.pk),
             "project_title": project.project_title,
