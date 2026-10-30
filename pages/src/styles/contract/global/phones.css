@@ -57,8 +57,13 @@
   :where(h2) { font-size: var(--itg-font-size-h2-mobile); }
   :where(h3) { font-size: var(--itg-font-size-h3-mobile); }
 
+  /* A page title that is a long project or curation name wrapped to 10+
+     lines at the desktop size and filled the first screen. On phones it
+     scales with the width (28px at 390px, never below 28px) up to the
+     h1-mobile token, with a tighter line-height for the multi-line case. */
   .itg-page-title {
-    font-size: var(--itg-font-size-h1-mobile);
+    font-size: min(var(--itg-font-size-h1-mobile), max(1.75rem, 7.2vw));
+    line-height: 1.25;
   }
 
   .itg-section-title,
