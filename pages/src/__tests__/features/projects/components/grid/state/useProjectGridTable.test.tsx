@@ -1,5 +1,5 @@
 import {act, cleanup, renderHook, waitFor} from '@testing-library/react';
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {
     PROJECT_GRID_PAGE_SIZE_OPTIONS,
@@ -64,6 +64,39 @@ describe('useProjectGridTable', () => {
 
         await waitFor(() => expect(result.current.filteredRows).toHaveLength(1));
         expect(result.current.filteredRows[0].project_title).toBe('Project 2');
+    });
+
+    it('keeps the rows the server finds by text they do not carry, along with their own matches', async () => {
+        // Compact archive rows have no abstract; "EnergyPro" is only in Project 3's abstract on the server.
+        const rows = makeItems(
+            makeRows(3).map((row, index) => ({...row, id: `p${index + 1}`, abstract: '', industry: index ? 'Energy' : 'Water'})),
+        );
+        const searchRemote = vi.fn(async (query: string) => new Set(query === 'energy' ? ['p1', 'p3'] : ['p3']));
+        const {result} = renderHook(() =>
+            useProjectGridTable({
+                rows,
+                defaultSortField: 'team_number',
+                searchRemote,
+                // The extra filter still applies to the server's matches.
+                filterRow: (row) => row.project_title !== 'Project 1',
+            }),
+        );
+        const titles = () => result.current.filteredRows.map((row) => row.project_title);
+
+        act(() => result.current.setSearch('EnergyPro'));
+        // Until the server answers, only the rows' own text has been searched.
+        await waitFor(() => expect(result.current.search).toBe('EnergyPro'));
+        expect(titles()).toEqual([]);
+        expect(result.current.searchPending).toBe(true);
+
+        await waitFor(() => expect(result.current.searchPending).toBe(false));
+        expect(titles()).toEqual(['Project 3']);
+        expect(searchRemote).toHaveBeenLastCalledWith('EnergyPro', expect.any(AbortSignal));
+
+        // Project 2 matches by its own industry; Project 1 the server names, but the filter hides it.
+        act(() => result.current.setSearch('energy'));
+        await waitFor(() => expect(result.current.searchPending).toBe(false));
+        expect(titles()).toEqual(['Project 2', 'Project 3']);
     });
 
     it('finds rows by what the page shows, not by hidden or raw values', async () => {

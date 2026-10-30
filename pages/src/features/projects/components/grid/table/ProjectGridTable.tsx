@@ -176,6 +176,7 @@ const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}:
           countLabel={grid.countLabel}
           activeFilters={grid.activeFilters}
           headingLevel={grid.noResultsHeadingLevel}
+          searching={grid.searchPending}
           noResultsHint={grid.noResultsHint}
           noResultsActions={grid.noResultsActions}
           onClear={() => {

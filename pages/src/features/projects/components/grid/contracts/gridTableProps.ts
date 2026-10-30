@@ -21,6 +21,11 @@ export interface ProjectGridTableProps {
   /** Names the table, and its pager ("… pages"), for screen readers: "Current Projects", "Search Table 2". */
   tableLabel?: string;
   search: string;
+  /**
+   * The server is still searching text the rows do not carry (useProjectGridTable's `searchPending`): with no rows
+   * found yet, the no-results message says more may come.
+   */
+  searchPending?: boolean;
   /** Replaces the search field (e.g. the AI search form). */
   searchControl?: ReactNode;
   controlsStatus?: ReactNode;

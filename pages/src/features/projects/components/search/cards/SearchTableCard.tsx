@@ -134,6 +134,7 @@ const SearchTableGrid = ({card, tableRows, selection, toolbar}: SearchTableGridP
       totalCount={rows.length}
       tableLabel={card.title}
       search={table.search}
+      searchPending={table.searchPending}
       searchPlaceholder="Team, project, organization…"
       searchControl={card.searchControl}
       controlsStatus={card.controlsStatus}

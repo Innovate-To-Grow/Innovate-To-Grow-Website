@@ -145,11 +145,18 @@ type NoResultsProps = Pick<ProjectGridTableProps, 'noResultsHint' | 'noResultsAc
   countLabel: string;
   activeFilters: string[];
   headingLevel: 2 | 3 | 4;
+  /** The server is still searching the abstracts, which may still find rows. */
+  searching?: boolean;
   onClear: () => void;
 };
 
 /** The heading, hint and clear button, naming the filters when they (not only the search) hide every row. */
-const noResultsText = ({query, countLabel, activeFilters, noResultsHint}: Omit<NoResultsProps, 'headingLevel' | 'onClear'>) => {
+const noResultsText = ({
+  query,
+  countLabel,
+  activeFilters,
+  noResultsHint,
+}: Omit<NoResultsProps, 'headingLevel' | 'searching' | 'onClear'>) => {
   const filters = activeFilters.length ? `in ${joinFilters(activeFilters)}` : '';
   const heading = query
     ? [`No ${countLabel} match “${query}”`, filters].filter(Boolean).join(' ')
@@ -162,13 +169,15 @@ const noResultsText = ({query, countLabel, activeFilters, noResultsHint}: Omit<N
   return {heading, hint: noResultsHint ? `${advice} ${noResultsHint}` : advice, clearLabel};
 };
 
-export const ProjectGridNoResults = ({headingLevel, noResultsActions, onClear, ...text}: NoResultsProps) => {
+export const ProjectGridNoResults = ({headingLevel, noResultsActions, searching, onClear, ...text}: NoResultsProps) => {
   const NoResultsHeading = `h${headingLevel}` as const;
   const {heading, hint, clearLabel} = noResultsText(text);
   return (
     <div className="itg-empty-state project-grid-no-results">
       <NoResultsHeading className="itg-empty-state-title">{heading}</NoResultsHeading>
       <p className="itg-empty-state-text">{hint}</p>
+      {/* The count line above is the live region: it reads out the matches the server adds. */}
+      {searching ? <p className="itg-empty-state-text project-grid-searching">Still searching project abstracts…</p> : null}
       <div className="itg-empty-state-actions">
         <button type="button" className="itg-btn itg-btn-outline" onClick={onClear}>
           {clearLabel}

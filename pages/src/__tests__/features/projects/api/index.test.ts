@@ -44,6 +44,7 @@ import {
   needsProjectGridHydration,
   rememberProjectDetail,
   scheduleProjectToGridRow,
+  searchPastProjectArchiveIds,
   searchPastProjectsWithAI,
   toProjectGridRow,
   updatePastProjectShare,
@@ -371,6 +372,21 @@ describe('project archive and detail fetch helpers', () => {
 
     await expect(fetchAllPastProjectArchive()).resolves.toEqual([{id: 'a'}, {id: 'b'}]);
     expect(apiMock.get).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks the archive for a search's matches on every page and returns their ids", async () => {
+    const signal = new AbortController().signal;
+    apiMock.get.mockImplementation((_url: string, {params}: {params: {page: number}}) =>
+      Promise.resolve({data: {count: 150, next: null, previous: null, results: [{id: `match-${params.page}`}]}}),
+    );
+
+    const ids = await searchPastProjectArchiveIds('EnergyPro', signal);
+
+    expect([...ids]).toEqual(['match-1', 'match-2']);
+    expect(apiMock.get.mock.calls.map(([url, config]) => [url, config.params, config.signal === signal])).toEqual([
+      ['/projects/archive/', {search: 'EnergyPro', page: 1, page_size: 100}, true],
+      ['/projects/archive/', {search: 'EnergyPro', page: 2, page_size: 100}, true],
+    ]);
   });
 
   it('fetches the legacy past projects endpoint with page query params', async () => {

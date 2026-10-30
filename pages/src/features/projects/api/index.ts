@@ -127,6 +127,15 @@ export const fetchAllPastProjectArchive = async (
     return [firstPage, ...laterPages].flatMap((page) => page.results);
 };
 
+/**
+ * The ids of the archive projects the server finds for `query`. Its search also reads each project's abstract,
+ * which the compact rows a list loads leave out, so a list adds these matches to the ones it finds itself.
+ */
+export const searchPastProjectArchiveIds = async (query: string, signal?: AbortSignal): Promise<ReadonlySet<string>> => {
+    const projects = await fetchAllPastProjectArchive({search: query}, signal);
+    return new Set(projects.map((project) => project.id));
+};
+
 export const compactProjectToGridRow = (project: CompactPastProjectRow): ProjectGridRow => ({
     id: project.id,
     semester_label: formatSemesterLabel(project.semester_label),

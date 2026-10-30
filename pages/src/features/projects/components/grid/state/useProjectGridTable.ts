@@ -10,6 +10,7 @@ import {
   type ProjectGridSortDirection,
 } from '../contracts/projectGrid';
 import {useGridPagination} from './useGridPagination';
+import {useRemoteSearchMatches, type RemoteRowSearch} from './useRemoteSearchMatches';
 import {useRowKeySet} from './useRowKeySet';
 
 /** Default choices for the “rows per page” control (hook merges in the current size if needed). */
@@ -37,22 +38,31 @@ interface UseProjectGridTableOptions {
   filterRow?: (row: ProjectGridItem) => boolean;
   /** Class names by code ("CAP" -> "Engineering Capstone"), so a search finds a team by its class name. */
   classLabels?: Record<string, string>;
+  /**
+   * Asks the server which projects match a search, for text the rows do not carry (a compact archive row has no
+   * abstract). Rows it names are kept along with those the rows' own text matches; `searchPending` is true until it
+   * has answered the current search. Keep its identity stable.
+   */
+  searchRemote?: RemoteRowSearch;
 }
 
 interface RowFilters {
   search: string;
   filterRow: UseProjectGridTableOptions['filterRow'];
   classLabels: Record<string, string>;
+  searchRemote: UseProjectGridTableOptions['searchRemote'];
 }
 
 /** The rows the search (and the extra filter) keeps, in the chosen sort order. */
 function useFilteredSortedRows(
   rows: ProjectGridItem[],
-  {search, filterRow, classLabels}: RowFilters,
+  {search, filterRow, classLabels, searchRemote}: RowFilters,
   sortField: ProjectGridColumnKey,
   sortDirection: ProjectGridSortDirection,
 ) {
   const deferredSearch = useDeferredValue(search);
+  const remote = useRemoteSearchMatches(deferredSearch, searchRemote);
+  const remoteMatches = remote.matches;
   // Built once per set of rows, not on every keystroke: normalizing 920 archive rows is not free.
   const searchValues = useMemo(
     () => new Map(rows.map((row) => [row.__key, getProjectGridSearchValue(row, classLabels)])),
@@ -64,14 +74,16 @@ function useFilteredSortedRows(
     if (!query) {
       return candidates;
     }
-    return candidates.filter((row) => searchValues.get(row.__key)?.includes(query));
-  }, [deferredSearch, filterRow, rows, searchValues]);
+    return candidates.filter(
+      (row) => searchValues.get(row.__key)?.includes(query) || Boolean(row.id && remoteMatches?.has(row.id)),
+    );
+  }, [deferredSearch, filterRow, remoteMatches, rows, searchValues]);
 
   const sortedRows = useMemo(
     () => sortProjectGridItems(filteredRows, sortField, sortDirection),
     [filteredRows, sortDirection, sortField],
   );
-  return {filteredRows, sortedRows};
+  return {filteredRows, sortedRows, searchPending: remote.pending};
 }
 
 /** Expanded rows: the keys of rows with details, whether all are open, and opening them all on mount if asked. */
@@ -101,6 +113,24 @@ function useExpandedRows(rows: ProjectGridItem[], expandAllByDefault: boolean) {
   return {expandedKeys, expanded, allDetailsExpanded, toggleAllDetails};
 }
 
+/** The search, started from `initialSearch` and started over whenever that seed changes while mounted. */
+function useSeededSearch(initialSearch: string) {
+  const [search, setSearch] = useState(initialSearch);
+
+  useEffect(() => {
+    // Reset the user's in-progress search when the seed prop changes (it tracks the
+    // ?value= URL param / external team search, which can change while mounted).
+    // `search` holds intervening user input, so this is a genuine prop-change reset,
+    // not a derivable value. Doing it during render with a previous-prop ref would
+    // shift the update from after-paint to render-phase — an observable timing change
+    // we must not introduce — so the effect-phase sync stays.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- external prop-change reset; render-phase alternative would change effect timing
+    setSearch(initialSearch);
+  }, [initialSearch]);
+
+  return [search, setSearch] as const;
+}
+
 export function useProjectGridTable({
   rows,
   pageSize: initialPageSize = 10,
@@ -114,13 +144,14 @@ export function useProjectGridTable({
   expandAllByDefault = false,
   filterRow,
   classLabels = NO_CLASS_LABELS,
+  searchRemote,
 }: UseProjectGridTableOptions) {
-  const [search, setSearch] = useState(initialSearch);
+  const [search, setSearch] = useSeededSearch(initialSearch);
   const [sortField, setSortField] = useState<ProjectGridColumnKey>(initialSortField);
   const [sortDirection, setSortDirection] = useState<ProjectGridSortDirection>(initialSortDirection);
-  const {filteredRows, sortedRows} = useFilteredSortedRows(
+  const {filteredRows, sortedRows, searchPending} = useFilteredSortedRows(
     rows,
-    {search, filterRow, classLabels},
+    {search, filterRow, classLabels, searchRemote},
     sortField,
     sortDirection,
   );
@@ -129,17 +160,6 @@ export function useProjectGridTable({
   const {setPage} = paging;
   const {expandedKeys, expanded, allDetailsExpanded, toggleAllDetails} = useExpandedRows(rows, expandAllByDefault);
   const [selectedKeys, selected] = useRowKeySet();
-
-  useEffect(() => {
-    // Reset the user's in-progress search when the seed prop changes (it tracks the
-    // ?value= URL param / external team search, which can change while mounted).
-    // `search` holds intervening user input, so this is a genuine prop-change reset,
-    // not a derivable value. Doing it during render with a previous-prop ref would
-    // shift the update from after-paint to render-phase — an observable timing change
-    // we must not introduce — so the effect-phase sync stays.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- external prop-change reset; render-phase alternative would change effect timing
-    setSearch(initialSearch);
-  }, [initialSearch]);
 
   // Rows the user has explicitly checked (independent of the current search
   // filter), in the table's natural order. Drives "merge only what I selected".
@@ -206,6 +226,7 @@ export function useProjectGridTable({
     totalPages: paging.totalPages,
     filteredRows,
     sortedRows,
+    searchPending,
     selectedRows,
     pagedRows: paging.pagedRows,
     expandedKeys,
