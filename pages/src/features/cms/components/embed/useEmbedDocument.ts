@@ -79,17 +79,17 @@ export function useReportHeightToParent(slug: string | undefined, ready: boolean
     if (window.parent === window) return; // not inside an iframe — no-op
 
     const reportHeight = () => {
-      const height = Math.max(
-        document.documentElement.scrollHeight,
-        document.body ? document.body.scrollHeight : 0,
-      );
+      // The height of the <html> box, which wraps the content (index.html makes the isolated roots
+      // plain blocks). Not scrollHeight: that never drops below the frame's own height, which is
+      // the height last reported, so the frame could grow but never shrink back.
+      const height = Math.ceil(document.documentElement.getBoundingClientRect().height);
       window.parent.postMessage(
         { type: 'i2g-embed-resize', slug, height },
         POST_TARGET,
       );
     };
 
-    // Initial report + observe future changes on <html>, which reflows for
+    // Initial report + observe future changes on <html>, which resizes for
     // both content changes and container-width changes.
     reportHeight();
     const ro = new ResizeObserver(reportHeight);

@@ -491,4 +491,34 @@ describe('EmbedBlockPage', () => {
     expect(document.getElementById('itg-embed-body')).toBeNull();
     expect(document.head.querySelector('base')).toBeNull();
   });
+
+  it('reports the content height, so the frame shrinks when the content does', async () => {
+    const postMessageSpy = vi.fn();
+    Object.defineProperty(window, 'parent', {configurable: true, value: {postMessage: postMessageSpy}});
+    let onResize: () => void = () => {};
+    (globalThis as unknown as {ResizeObserver: unknown}).ResizeObserver = class {
+      constructor(callback: () => void) {
+        onResize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    };
+    // In a frame, scrollHeight never drops below the frame's own (last reported) height.
+    Object.defineProperty(document.documentElement, 'scrollHeight', {configurable: true, value: 1200});
+    let contentHeight = 1200;
+    vi.spyOn(document.documentElement, 'getBoundingClientRect').mockImplementation(
+      () => ({height: contentHeight}) as DOMRect,
+    );
+    fetchCMSEmbedMock.mockResolvedValue({blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}]});
+
+    renderAtSlug('widget');
+    await waitFor(() => expect(postMessageSpy).toHaveBeenCalledWith(expect.objectContaining({height: 1200}), '*'));
+
+    contentHeight = 400.4;
+    onResize();
+    expect(postMessageSpy).toHaveBeenLastCalledWith({type: 'i2g-embed-resize', slug: 'widget', height: 401}, '*');
+
+    Object.defineProperty(window, 'parent', {configurable: true, value: window});
+    Reflect.deleteProperty(document.documentElement, 'scrollHeight');
+  });
 });
