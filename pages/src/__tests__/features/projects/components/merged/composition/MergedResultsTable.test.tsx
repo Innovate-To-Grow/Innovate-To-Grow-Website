@@ -138,6 +138,37 @@ describe('MergedResultsTable', () => {
     expect(removed[0]).toMatchObject({project_title: 'Irrigation Sensor'});
   });
 
+  it('removes only checked rows the search shows, keeping rows checked under an earlier search', async () => {
+    const onDeleteRows = vi.fn();
+    const {container} = render(
+      <MergedResultsTable
+        rows={makeItems([baseRow, addedRow])}
+        onCreateShare={vi.fn()}
+        onDeleteRow={vi.fn()}
+        onDeleteRows={onDeleteRows}
+        onUndoRows={vi.fn()}
+        onResetRows={vi.fn()}
+      />,
+    );
+    const search = screen.getByLabelText('Search this list');
+    const desktop = () => within(desktopTable(container));
+
+    // Check "Shared Project", then search for the other row: the first stays checked but hidden.
+    fireEvent.click(desktop().getByLabelText('Select Shared Project'));
+    fireEvent.change(search, {target: {value: 'Irrigation'}});
+    await waitFor(() => expect(desktop().queryByText('Shared Project')).not.toBeInTheDocument());
+    const removeSelected = screen.getByRole('button', {name: 'Remove Selected'});
+    expect(removeSelected).toBeDisabled();
+
+    fireEvent.click(desktop().getByLabelText('Select Irrigation Sensor'));
+    fireEvent.click(removeSelected);
+
+    expect(onDeleteRows).toHaveBeenCalledTimes(1);
+    expect(onDeleteRows.mock.calls[0][0].map((row: ProjectGridRow) => row.project_title)).toEqual(['Irrigation Sensor']);
+    fireEvent.change(search, {target: {value: ''}});
+    expect(await desktop().findByLabelText('Select Shared Project')).toBeChecked();
+  });
+
   it('inserts visible project details and individual links into the share note', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
 

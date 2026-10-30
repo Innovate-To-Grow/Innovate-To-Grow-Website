@@ -29,8 +29,8 @@ export const MergedListGrid = ({
   const [isPhoneListOpen, setIsPhoneListOpen] = useState(false);
   const phoneListId = useId();
 
-  // Select-all targets the rows currently visible (matching the active search), so a narrowed view +
-  // Remove Selected can never delete rows the user cannot see.
+  // Select-all targets the rows currently visible (matching the active search). Remove Selected likewise
+  // removes only the checked rows the search shows (BuilderMergedList), never rows the user cannot see.
   const handleToggleSelectAll = () => {
     const visible = table.filteredRows;
     const allVisibleSelected = visible.length > 0 && visible.every((row) => table.selectedKeys.has(row.__key));

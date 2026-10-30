@@ -51,13 +51,16 @@ const BuilderListToolbar = ({
 }: BuilderListToolbarProps) => {
   const {table, visibleRows, setStatusMessage} = list;
   const {isSharing} = curation;
+  // Rows checked under an earlier search stay checked when the search changes. Removing acts only on the
+  // checked rows the search shows, like saving and exports; the hidden ones stay checked.
+  const shownSelectedRows = table.filteredRows.filter((row) => table.selectedKeys.has(row.__key));
 
   const handleRemoveSelectedRows = () => {
-    if (!onDeleteRows || !table.hasSelection || isSharing) {
+    if (!onDeleteRows || !shownSelectedRows.length || isSharing) {
       return;
     }
-    onDeleteRows(table.selectedRows);
-    table.clearSelection();
+    onDeleteRows(shownSelectedRows);
+    table.removeFromSelection(shownSelectedRows.map((row) => row.__key));
   };
 
   return (
@@ -74,7 +77,7 @@ const BuilderListToolbar = ({
         onError={setStatusMessage}
       />
       <MergedEditButtons
-        bulkRemove={onDeleteRows ? {hasSelection: table.hasSelection, onRemove: handleRemoveSelectedRows} : null}
+        bulkRemove={onDeleteRows ? {hasSelection: shownSelectedRows.length > 0, onRemove: handleRemoveSelectedRows} : null}
         undo={onUndoRows ? {canUndo: canUndoRows, onUndo: onUndoRows} : null}
         canReset={Boolean(onResetRows)}
         shared={null}
