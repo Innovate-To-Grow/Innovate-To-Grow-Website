@@ -3,6 +3,7 @@ import type {jsPDF} from 'jspdf';
 import {
   ACCENT_GOLD_RGB,
   BRAND_BLUE_RGB,
+  I2G_PDF_LOGO_URL,
   MUTED_TEXT_RGB,
   TABLE_ALT_FILL_RGB,
   TEXT_COLOR_RGB,
@@ -65,7 +66,8 @@ const drawPageHeader = ({pdf, logo, title, pageWidth, contentWidth}: PdfPage) =>
   const titleWidth = contentWidth - (logo ? logoSize + 7 : 0);
 
   if (logo) {
-    pdf.addImage(logo.dataUrl, 'PNG', MARGIN, 8, logoSize, logoSize);
+    // One alias, so every page's header reuses the same image object.
+    pdf.addImage(logo.dataUrl, 'PNG', MARGIN, 8, logoSize, logoSize, 'i2g-logo');
   }
 
   pdf.setFont('helvetica', 'bold');
@@ -180,9 +182,10 @@ export const exportProjectRowsPdf = async (
   fileBaseName: string,
   context: ProjectRowsExportContext = {},
 ) => {
-  const [{jsPDF: JsPdf}, logo] = await Promise.all([import('jspdf'), loadI2gLogoAsset()]);
+  const [{jsPDF: JsPdf}, logo] = await Promise.all([import('jspdf'), loadI2gLogoAsset(I2G_PDF_LOGO_URL)]);
   const exportContext = normalizeProjectRowsExportContext(context);
-  const pdf: jsPDF = new JsPdf({orientation: 'landscape'});
+  // compress: Flate-encode the page content and the logo's pixels.
+  const pdf: jsPDF = new JsPdf({orientation: 'landscape', compress: true});
   const pageWidth = pdf.internal.pageSize.getWidth();
   const page: PdfPage = {
     pdf,
