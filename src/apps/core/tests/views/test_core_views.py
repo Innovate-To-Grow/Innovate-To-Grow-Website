@@ -38,6 +38,7 @@ class RobotsTxtTest(TestCase):
             "/layout/",
             "/health/",
             "/cms/pages/about/",
+            "/cms/embed-hosts/",
             "/event/schedule/",
             "/projects/archive/?page=2",
             "/projects/5970763b-cf7c-40d6-a87c-96916e0ea695/",
@@ -59,6 +60,22 @@ class RobotsTxtTest(TestCase):
         ):
             with self.subTest(path=path):
                 self.assertFalse(self._allowed(rules, path))
+
+    def test_first_matching_rule_reads_the_same_as_the_longest(self):
+        rules = self._rules()
+
+        for path in (
+            "/projects/archive/",
+            "/projects/5970763b-cf7c-40d6-a87c-96916e0ea695/",
+            "/projects/past-shares/0f0f0f0f-1111-4222-8333-444444444444/",
+            "/projects/past-ai-search/",
+            "/projects/past-all/",
+            "/projects/past/?page=2",
+            "/admin/",
+        ):
+            with self.subTest(path=path):
+                first_match = next((allow for allow, prefix in rules if path.startswith(prefix)), True)
+                self.assertEqual(first_match, self._allowed(rules, path))
 
     def _rules(self):
         content = self.client.get("/robots.txt").content.decode()
