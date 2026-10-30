@@ -52,7 +52,7 @@ export function ProjectGridRowDetails({row, scope, loadMissingDetails = false}: 
       {details.abstract ? <p className="project-grid-detail-abstract">{details.abstract}</p> : null}
       {details.student_names ? (
         <p className="project-grid-detail-members">
-          <strong>Team members:</strong> {details.student_names}
+          <strong>Team members:</strong> <span>{details.student_names}</span>
         </p>
       ) : null}
       {loaded && !details.abstract && !details.student_names ? (

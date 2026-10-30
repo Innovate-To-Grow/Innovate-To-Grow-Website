@@ -138,7 +138,8 @@ const MobileCardActions = ({
         aria-controls={detailsId}
         onClick={() => onToggleExpanded(row.__key)}
       >
-        {isExpanded ? 'Hide details' : 'Show details'}
+        {/* The label has its own element, so page translation cannot leave it reading "Show details" when open. */}
+        <span>{isExpanded ? 'Hide details' : 'Show details'}</span>
         <span aria-hidden="true">{isExpanded ? ' ▴' : ' ▾'}</span>
       </button>
     ) : null}

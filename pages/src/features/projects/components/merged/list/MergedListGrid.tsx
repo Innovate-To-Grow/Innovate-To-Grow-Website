@@ -51,7 +51,7 @@ export const MergedListGrid = ({
           aria-controls={phoneListId}
           onClick={() => setIsPhoneListOpen((current) => !current)}
         >
-          {isPhoneListOpen ? 'Hide the saved projects' : `Show the ${pluralize(rows.length, 'saved project')}`}
+          <span>{isPhoneListOpen ? 'Hide the saved projects' : `Show the ${pluralize(rows.length, 'saved project')}`}</span>
           <span aria-hidden="true">{isPhoneListOpen ? ' ▴' : ' ▾'}</span>
         </button>
       )}

@@ -135,7 +135,7 @@ describe('CurrentProjectsView', () => {
   it('sorts by the Sort by select', () => {
     const {container} = renderView();
 
-    fireEvent.change(screen.getByLabelText('Sort by'), {target: {value: 'project_title'}});
+    fireEvent.change(screen.getByLabelText('Sort by'), {target: {value: 'project_title:asc'}});
 
     const titles = Array.from(desktopTable(container).querySelectorAll('.project-grid-title')).map(
       (title) => title.textContent,

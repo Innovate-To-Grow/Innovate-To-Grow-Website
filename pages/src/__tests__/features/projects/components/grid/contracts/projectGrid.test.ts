@@ -6,6 +6,7 @@ import {
   getEarliestTermYear,
   getPredominantTerm,
   getProjectGridRowHref,
+  getDefaultClassName,
   getDisplayTeamNumber,
   getProjectGridSearchValue,
   getProjectGridTeamCode,
@@ -123,6 +124,35 @@ describe('projectGrid helpers', () => {
       '2019 Spring CSE 2',
       '2019 Spring CSE 10',
     ]);
+  });
+
+  it('breaks ties on the sorted column by team number, in either direction, not by the order rows arrived in', () => {
+    const team = (class_code: string, team_number: string, organization: string): ProjectGridRow => ({
+      ...row('2026 Fall', `${class_code} ${team_number}`),
+      class_code,
+      team_number,
+      organization,
+    });
+    // As the schedule sends them: presenting teams (slots) first, the others after.
+    const items = createProjectGridItems(
+      [team('CAP', '212', 'BART'), team('CSE', '418', 'Agrecom'), team('CAP', '122', 'BART'), team('CAP', '133', 'Agrecom')],
+      'ties',
+    );
+    const order = (direction: 'asc' | 'desc') =>
+      sortProjectGridItems(items, 'organization', direction).map((item) => `${item.class_code} ${item.team_number}`);
+
+    expect(order('asc')).toEqual(['CAP 133', 'CSE 418', 'CAP 122', 'CAP 212']);
+    // Only the organizations reverse; each one's teams keep team-number order.
+    expect(order('desc')).toEqual(['CAP 122', 'CAP 212', 'CAP 133', 'CSE 418']);
+  });
+
+  it('names a class by its code the way the schedule does, whatever the case', () => {
+    expect(getDefaultClassName('CAP')).toBe('Engineering Capstone');
+    expect(getDefaultClassName('CSE')).toBe('Software Engineering Capstone');
+    expect(getDefaultClassName('CEE')).toBe('Civil & Environmental Engineering');
+    expect(getDefaultClassName(' EngSL ')).toBe('Engineering Service Learning');
+    expect(getDefaultClassName('ENGR 120')).toBe('');
+    expect(getDefaultClassName(undefined as unknown as string)).toBe('');
   });
 
   it('formats terms, team codes and student lists for display', () => {

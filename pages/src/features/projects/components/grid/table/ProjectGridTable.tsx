@@ -1,4 +1,5 @@
 import '../../styles/cascade/projects.css';
+import {useEffect, useRef} from 'react';
 import {useMediaQuery} from '@/features/layout';
 import {ProjectGridControls, PageSizeField} from '../controls/ProjectGridControls';
 import {ProjectGridDesktopTable} from './ProjectGridDesktopTable';
@@ -12,6 +13,20 @@ export type {ProjectGridSortOption} from '../contracts/gridTableProps';
 /** Where the table gives way to the phone list; the phone styles in projectsResponsive.css start at the same width. */
 const PHONE_LAYOUT_QUERY = '(max-width: 768px)';
 
+const NO_ACTIVE_FILTERS: string[] = [];
+
+/**
+ * After the pager changes page: focus the count line at the top of the results (the pressed step button may have
+ * just been disabled, which dropped focus to the page) and, when it is out of view, scroll it under the sticky
+ * header (the page's scroll-padding-top), so the new page is read from its first row, not its last.
+ */
+const showResultsStart = (countLine: HTMLElement) => {
+  countLine.focus({preventScroll: true});
+  const headerSpace = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+  const {top} = countLine.getBoundingClientRect();
+  if (top < headerSpace || top > window.innerHeight) countLine.scrollIntoView({block: 'start'});
+};
+
 function withGridDefaults({
   searchPlaceholder = 'Search projects...',
   searchLabel = 'Search',
@@ -21,6 +36,7 @@ function withGridDefaults({
   countLabel = 'projects',
   toolbarPlacement = 'top',
   linkScope = 'current',
+  activeFilters = NO_ACTIVE_FILTERS,
   selectable = false,
   selectedKeys = new Set<string>(),
   deleteDisabled = false,
@@ -37,6 +53,7 @@ function withGridDefaults({
     countLabel,
     toolbarPlacement,
     linkScope,
+    activeFilters,
     selectable,
     selectedKeys,
     deleteDisabled,
@@ -67,6 +84,8 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
   // Only the layout the screen shows is rendered: mounting both and hiding one with CSS doubled the rows (and their
   // opened details) that every sort, page change and "View All Details" had to render.
   const isPhone = useMediaQuery(PHONE_LAYOUT_QUERY);
+  const countRef = useRef<HTMLParagraphElement>(null);
+  const pagerTarget = useRef<number | null>(null);
   const query = grid.search.trim();
   const noResults = grid.totalCount > 0 && grid.filteredCount === 0;
   const rowProps = {
@@ -86,6 +105,17 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
     highlightedKeys: grid.highlightedKeys,
   };
 
+  // Only a page the pager asked for moves focus and scroll; a search or sort that starts over at page 1 does not.
+  useEffect(() => {
+    const requested = pagerTarget.current;
+    pagerTarget.current = null;
+    if (requested === grid.page && countRef.current) showResultsStart(countRef.current);
+  }, [grid.page]);
+  const changePage = (page: number) => {
+    pagerTarget.current = page;
+    grid.onPageChange(page);
+  };
+
   return (
     <>
       {grid.totalCount > 0 ? (
@@ -97,10 +127,14 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
           pageSize={grid.pageSize}
           sortOptions={grid.sortOptions}
           sortField={grid.sortField}
+          sortDirection={grid.sortDirection}
           onSortChange={grid.onSortChange}
+          onSortSelect={grid.onSortSelect}
           query={query}
           countLabel={grid.countLabel}
+          activeFilters={grid.activeFilters}
           pageControls={<PageControls grid={grid} />}
+          countRef={countRef}
         />
       ) : null}
 
@@ -110,6 +144,7 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
         <ProjectGridNoResults
           query={query}
           countLabel={grid.countLabel}
+          activeFilters={grid.activeFilters}
           headingLevel={grid.noResultsHeadingLevel}
           noResultsHint={grid.noResultsHint}
           noResultsActions={grid.noResultsActions}
@@ -137,7 +172,7 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
       ) : null}
 
       {grid.totalPages > 1 ? (
-        <ProjectGridPager page={grid.page} totalPages={grid.totalPages} onPageChange={grid.onPageChange} />
+        <ProjectGridPager page={grid.page} totalPages={grid.totalPages} onPageChange={changePage} />
       ) : null}
     </>
   );

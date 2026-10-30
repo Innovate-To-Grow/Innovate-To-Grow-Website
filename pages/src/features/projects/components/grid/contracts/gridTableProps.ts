@@ -27,12 +27,20 @@ export interface ProjectGridTableProps {
   searchLabel?: string;
   /** More fields for the filter well, after the search field (e.g. Class and Industry selects). */
   filterControls?: ReactNode;
+  /**
+   * The values of the extra filters in use, as their selects show them ("Engineering Capstone (CAP)"), so the
+   * count and the no-results state say the filters, not only the search, narrowed the rows.
+   */
+  activeFilters?: string[];
   /** Shows a "Sort by" select in the results bar; Per page and View All Details move there too. */
   sortOptions?: ProjectGridSortOption[];
   sortField: ProjectGridColumnKey;
   sortDirection: ProjectGridSortDirection;
   onSearchChange: (value: string) => void;
+  /** A column header was clicked: sort by it, or reverse it if it is already the sort. */
   onSortChange: (field: ProjectGridColumnKey) => void;
+  /** Sort from the Sort by select, whose options name the direction ("Project title (Z to A)"). */
+  onSortSelect?: (field: ProjectGridColumnKey, direction: ProjectGridSortDirection) => void;
   /** Clears the extra filters too when the visitor clicks "Clear search" in the no-results state. */
   onClearFilters?: () => void;
   /** Extra hint and actions for the no-results state (e.g. a link to search past projects). */

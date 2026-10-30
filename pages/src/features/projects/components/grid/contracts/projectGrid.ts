@@ -301,6 +301,10 @@ const compareTeams = (left: ProjectGridRow, right: ProjectGridRow) =>
   compareText(left.class_code || '', right.class_code || '') ||
   compareText(getDisplayTeamNumber(left), getDisplayTeamNumber(right));
 
+/** The order rows that tie on the sorted column keep, whichever way it runs: by term, then by team number. */
+const compareTies = (left: ProjectGridRow, right: ProjectGridRow) =>
+  compareSemesters(left.semester_label || '', right.semester_label || '') || compareTeams(left, right);
+
 export const sortProjectGridItems = (
   rows: ProjectGridItem[],
   sortField: ProjectGridColumnKey,
@@ -315,7 +319,8 @@ export const sortProjectGridItems = (
       // ordered by team number as text (1, 10, 11, ..., 2), which a stable sort would otherwise keep.
       return direction * compareSemesters(left.semester_label || '', right.semester_label || '') || compareTeams(left, right);
     }
-    return direction * compareText(left[sortField] || '', right[sortField] || '');
+    // Ties do not keep the API's order (which lists presenting teams first): they follow the team numbers.
+    return direction * compareText(left[sortField] || '', right[sortField] || '') || compareTies(left, right);
   });
   return sorted;
 };
