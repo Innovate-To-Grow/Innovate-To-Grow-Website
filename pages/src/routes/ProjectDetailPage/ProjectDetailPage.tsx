@@ -19,6 +19,8 @@ interface ProjectLoadFailedProps {
 /** A project that does not exist (or a link that is wrong), or one that could not be loaded right now. */
 const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => {
   const notFound = error !== 'failed';
+  // Neither state belongs in search results; the mark goes with this message (a retry that loads the project).
+  usePageTitle(null, {noindex: true});
   return (
     <ProjectsMessagePage
       className="project-detail projects-error"
