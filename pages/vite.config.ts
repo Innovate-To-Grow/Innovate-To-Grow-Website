@@ -51,34 +51,44 @@ function chunkFiles(bundle: Rollup.OutputBundle, root: Rollup.OutputChunk, loade
   return files
 }
 
+/** Puts `tag` before the first stylesheet: a classic script after one waits for it (and every other) to load. */
+function insertBeforeStylesheets(html: string, tag: string): string {
+  const at = html.search(/<link\b[^>]*\brel=["']?stylesheet\b/i)
+  return at === -1 ? html.replace('</head>', `  ${tag}\n  </head>`) : `${html.slice(0, at)}${tag}\n    ${html.slice(at)}`
+}
+
 /**
  * Inlines a small script that, on a URL in PRELOADED_ROUTES, adds modulepreload / preload links for
  * that route's chunk and its CSS, so they download alongside the entry bundle. The links match the
  * ones Vite's preload helper would add later (absolute href, anonymous CORS), which it then skips.
+ * The script goes ahead of the stylesheets (Site Settings' theme.css, the fonts, the bundle CSS), so it
+ * runs as soon as it is parsed. A route module the bundle no longer has fails the build.
  */
 function routeChunkPreload(): Plugin {
   return {
     name: 'itg-route-chunk-preload',
     transformIndexHtml: {
       order: 'post',
-      handler(_html, { bundle, chunk: entry }) {
+      handler(html, { bundle, chunk: entry }) {
         if (!bundle || !entry) return
         const entryFiles = new Set<string>()
         chunkFiles(bundle, entry, entryFiles)
-        const table = PRELOADED_ROUTES.flatMap(([pattern, module]) => {
+        const table = PRELOADED_ROUTES.map(([pattern, module]) => {
           const route = Object.values(bundle).find(
             (output): output is Rollup.OutputChunk =>
               output.type === 'chunk' && Boolean(output.facadeModuleId?.endsWith(module)),
           )
-          return route ? [[pattern, chunkFiles(bundle, route, new Set(entryFiles)).map((file) => `/${file}`)]] : []
+          if (!route) {
+            throw new Error(`itg-route-chunk-preload: no chunk for ${module}; update PRELOADED_ROUTES in vite.config.ts`)
+          }
+          return [pattern, chunkFiles(bundle, route, new Set(entryFiles)).map((file) => `/${file}`)]
         })
-        if (table.length === 0) return
         const script =
           `(function(r,p){for(var i=0;i<r.length;i++){if(!new RegExp(r[i][0]).test(p))continue;` +
           `r[i][1].forEach(function(f){var l=document.createElement('link');` +
           `if(/\\.css$/.test(f)){l.rel='preload';l.as='style'}else{l.rel='modulepreload'}` +
           `l.crossOrigin='';l.href=f;document.head.appendChild(l)});return}})(${JSON.stringify(table)},location.pathname)`
-        return [{ tag: 'script', children: script, injectTo: 'head' }]
+        return insertBeforeStylesheets(html, `<script>${script}</script>`)
       },
     },
   }
