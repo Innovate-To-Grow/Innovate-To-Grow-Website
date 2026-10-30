@@ -158,7 +158,9 @@ describe('projectGrid helpers', () => {
       {CAP: 'Engineering Capstone'},
     );
 
-    for (const shown of ['2026 fall', 'fall 2026', 'cap 101', 'cap101', 'engineering capstone', '"shower-head"']) {
+    const shownText = ['2026 fall', 'fall 2026', 'cap 101', 'cap101', 'engineering capstone', '"shower-head"'];
+    // Across columns, as the table lists them, and with the term as prose reads it.
+    for (const shown of [...shownText, '2026 fall cap 101', 'fall 2026 cap 101']) {
       expect(value).toContain(shown);
     }
     // The hidden Yes/No presenting flag is not part of it.

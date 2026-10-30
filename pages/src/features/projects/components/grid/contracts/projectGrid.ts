@@ -230,26 +230,28 @@ export const normalizeSearchText = (value: string) =>
     .toLowerCase();
 
 /**
- * The text a row is found by: what the page shows for it. That is the term both ways ("2026 Fall" in tables,
- * "Fall 2026" in prose), the team code with and without its space, the class name the filter and project page use,
- * and the row's title, team, organization, industry, abstract and students. Hidden values (is_presenting's
- * Yes/No) are left out, so "yes" or "no" do not match rows that never show them.
+ * The text a row is found by: what the page shows for it. That is the term, team code, team, title, organization,
+ * industry, abstract and students in table order (so "2019 Spring CSE" matches across columns), then the term as
+ * prose reads it ("Spring 2019 CSE"), the team code without its space and the class name the filter and project
+ * page use. Hidden values (is_presenting's Yes/No) are left out, so "yes" or "no" do not match rows that never
+ * show them.
  */
 export const getProjectGridSearchValue = (row: ProjectGridRow, classLabels: Record<string, string> = {}) => {
   const teamCode = getProjectGridTeamCode(row);
   return normalizeSearchText(
     [
       row.semester_label,
-      formatTermForProse(row.semester_label),
       teamCode,
-      teamCode.replace(/\s+/g, ''),
-      classLabels[row.class_code] ?? '',
       row.team_name,
       row.project_title,
       row.organization,
       row.industry,
       row.abstract,
       row.student_names,
+      formatTermForProse(row.semester_label),
+      teamCode,
+      teamCode.replace(/\s+/g, ''),
+      classLabels[row.class_code] ?? '',
     ].join(' '),
   );
 };
