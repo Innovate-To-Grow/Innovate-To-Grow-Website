@@ -266,11 +266,16 @@ describe('ProjectDetailPage', () => {
   ])('keeps an unknown project at %s/%s out of search results', async (prefix, id) => {
     vi.mocked(fetchProjectDetail).mockReset();
     vi.mocked(fetchProjectDetail).mockRejectedValue(notFoundError());
+    // Not the title an earlier case left: this page has to set it.
+    document.title = 'Innovate to Grow | School of Engineering';
     renderAt(`${prefix}/${id}`);
 
     expect(await screen.findByRole('heading', {level: 1, name: "We couldn't find this project"})).toBeInTheDocument();
-    expect(document.title).toBe('Project not found | Innovate to Grow');
-    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+    // The title and the mark are set in effects, which can run after the heading that findByRole saw.
+    await waitFor(() => expect(document.title).toBe('Project not found | Innovate to Grow'));
+    await waitFor(() =>
+      expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex'),
+    );
     cleanup();
     expect(document.head.querySelector('meta[name="robots"]')).toBeNull();
   });
