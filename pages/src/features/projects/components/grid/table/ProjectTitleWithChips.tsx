@@ -1,6 +1,11 @@
 import type {ReactNode} from 'react';
-import {Link, useInRouterContext} from 'react-router';
-import {getProjectGridRowHref, type ProjectGridLinkScope, type ProjectGridRow} from '../contracts/projectGrid';
+import {Link, useInRouterContext, useLocation} from 'react-router';
+import {
+  getProjectGridRowHref,
+  type ProjectGridLinkScope,
+  type ProjectGridRow,
+  type ProjectPageLinkState,
+} from '../contracts/projectGrid';
 
 interface ProjectPageLinkProps {
   href: string;
@@ -9,9 +14,21 @@ interface ProjectPageLinkProps {
   children: ReactNode;
 }
 
+/** A client-side link that tells the project page which list (and which view of it) it was opened from. */
+const RouterProjectLink = ({href, className, children}: Omit<ProjectPageLinkProps, 'scope'>) => {
+  const {pathname, search} = useLocation();
+  const state: ProjectPageLinkState = {from: `${pathname}${search}`};
+  return (
+    <Link className={className} to={href} state={state}>
+      {children}
+    </Link>
+  );
+};
+
 /**
  * Link to a project page. Past-project links open in a new tab, so a curation in progress on the page is kept;
- * current-project links navigate in place (client-side when a router is present).
+ * current-project links navigate in place (client-side when a router is present), and the project page's back
+ * link returns to the list they came from.
  */
 export const ProjectPageLink = ({href, scope, className, children}: ProjectPageLinkProps) => {
   const inRouter = useInRouterContext();
@@ -24,9 +41,9 @@ export const ProjectPageLink = ({href, scope, className, children}: ProjectPageL
     );
   }
   return inRouter ? (
-    <Link className={className} to={href}>
+    <RouterProjectLink className={className} href={href}>
       {children}
-    </Link>
+    </RouterProjectLink>
   ) : (
     <a className={className} href={href}>
       {children}

@@ -49,6 +49,22 @@ export const getDisplayTeamNumber = ({class_code, team_number}: Pick<ProjectGrid
   return /^\d/.test(rest) ? rest : number;
 };
 
+/**
+ * Class names by code, as the event schedule names its sections when nothing overrides them (the backend's
+ * schedule_sync SECTION_DEFAULTS). Archive projects carry only the code; the schedule's own names win for current
+ * ones.
+ */
+const DEFAULT_CLASS_NAMES: Record<string, string> = {
+  CAP: 'Engineering Capstone',
+  CEE: 'Civil & Environmental Engineering',
+  CSE: 'Software Engineering Capstone',
+  ENGSL: 'Engineering Service Learning',
+};
+
+/** "Engineering Capstone" for "CAP" (any case), or '' for a class the site does not name. */
+export const getDefaultClassName = (classCode: string) =>
+  DEFAULT_CLASS_NAMES[(classCode ?? '').trim().toUpperCase()] ?? '';
+
 /** "CAP 101": the class code and team number a team is known by. */
 export const getProjectGridTeamCode = (row: Pick<ProjectGridRow, 'class_code' | 'team_number'>) =>
   [row.class_code ?? '', getDisplayTeamNumber(row)].map((value) => value.trim()).filter(Boolean).join(' ');
@@ -195,6 +211,11 @@ export const getPastProjectDetailPath = (projectId: string) =>
   `/past-projects/project/${encodeURIComponent(projectId)}`;
 
 export const getCurrentProjectDetailPath = (projectId: string) => `/projects/${encodeURIComponent(projectId)}`;
+
+/** History state of a project page opened from a list: the list's path and query, for its back link. */
+export interface ProjectPageLinkState {
+  from: string;
+}
 
 const currentFrontendOrigin = () => {
   if (typeof window === 'undefined') {

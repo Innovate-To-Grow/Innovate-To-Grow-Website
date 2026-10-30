@@ -137,6 +137,12 @@ test('a Presenting Teams title opens its populated project page', async ({page})
 
   await expect(page.getByRole('heading', {level: 1, name: 'ASHRAE HVAC Design Calculations'})).toBeVisible();
   await expect(page.locator('.project-detail-abstract')).toContainText('complete HVAC system');
+  await expect(page.locator('.project-detail-meta')).toContainText('Track 1 · 1:00 · Glacier 165');
+
+  // Back to the list the visitor came from, not to Current Projects.
+  await page.getByRole('link', {name: /Back to Presenting Teams/}).last().click();
+  await expect(page).toHaveURL(/\/presenting-teams$/);
+  await expect(page.getByRole('heading', {level: 1, name: 'Presenting Teams'})).toBeVisible();
 });
 
 test('an archive project id on /projects/:id still opens the archive project', async ({page}) => {
@@ -145,6 +151,7 @@ test('an archive project id on /projects/:id still opens the archive project', a
   await page.goto(`/projects/${ARCHIVE_PROJECT_ID}`, {waitUntil: 'domcontentloaded'});
 
   await expect(page.getByRole('heading', {level: 1, name: 'ASHRAE HVAC (archive)'})).toBeVisible();
+  await expect(page.getByRole('link', {name: /Back to Past Projects/}).first()).toHaveAttribute('href', '/past-projects');
 });
 
 test('an id neither the schedule nor the archive has is not found', async ({page}) => {

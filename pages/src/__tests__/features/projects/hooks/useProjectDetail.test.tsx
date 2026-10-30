@@ -14,6 +14,7 @@ import {
   DASHBOARD_PROJECT_ID,
   HVAC_PROJECT_ID,
   HVAC_SLOT_ID,
+  WEED_PROJECT_ID,
   WING_PROJECT_ID,
   currentSchedulePayload,
 } from '@/__tests__/features/projects/fixtures/currentSchedule';
@@ -70,7 +71,34 @@ describe('findCurrentScheduleProject', () => {
       },
       classLabel: 'Engineering Capstone',
       source: 'current',
+      presentation: {track: 'Track 1', time: '1:00', room: 'Glacier 165'},
     });
+  });
+
+  it("gives a presenting team its slot's start: the class's start plus a slot length per earlier slot", () => {
+    expect(findCurrentScheduleProject(currentSchedulePayload(), WEED_PROJECT_ID)?.presentation).toEqual({
+      track: 'Track 1',
+      time: '1:30',
+      room: 'Glacier 165',
+    });
+    expect(findCurrentScheduleProject(currentSchedulePayload(), DASHBOARD_PROJECT_ID)?.presentation).toEqual({
+      track: 'Track 6',
+      time: '1:00',
+      room: 'Glacier 140',
+    });
+  });
+
+  it('leaves out an empty room, and names no slot for a presenting team listed outside the grid', () => {
+    const payload = currentSchedulePayload();
+    payload.sections[0].tracks[0].room = '  ';
+    expect(findCurrentScheduleProject(payload, HVAC_PROJECT_ID)?.presentation).toEqual({
+      track: 'Track 1',
+      time: '1:00',
+      room: '',
+    });
+
+    payload.projects[3] = {...payload.projects[3], is_presenting: true};
+    expect(findCurrentScheduleProject(payload, WING_PROJECT_ID)?.presentation).toEqual({track: '', time: '', room: ''});
   });
 
   it("finds a team that is not presenting by its own id and gives it the schedule's term", () => {
@@ -83,6 +111,7 @@ describe('findCurrentScheduleProject', () => {
       semester_label: '2026 Spring',
     });
     expect(found?.classLabel).toBe('Engineering Capstone');
+    expect(found?.presentation).toBeNull();
   });
 
   it('resolves every project link the current-projects list renders', () => {

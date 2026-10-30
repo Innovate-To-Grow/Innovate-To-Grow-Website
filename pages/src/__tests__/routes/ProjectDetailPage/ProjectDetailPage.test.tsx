@@ -84,7 +84,7 @@ describe('ProjectDetailPage', () => {
     );
   });
 
-  it('keeps the current-projects back link on the legacy project route', async () => {
+  it('points an archive project on the legacy project route back to Past Projects', async () => {
     render(
       <MemoryRouter initialEntries={[`/projects/${projectDetail.id}`]}>
         <Routes>
@@ -94,9 +94,89 @@ describe('ProjectDetailPage', () => {
     );
 
     expect(await screen.findByRole('heading', {name: 'Rotary Joint Testing System'})).toBeInTheDocument();
-    const backLinks = screen.getAllByRole('link', {name: /back to current projects/i});
+    const backLinks = screen.getAllByRole('link', {name: /back to past projects/i});
     expect(backLinks).toHaveLength(2);
-    backLinks.forEach((link) => expect(link.getAttribute('href')).toBe('/current-projects'));
+    backLinks.forEach((link) => expect(link.getAttribute('href')).toBe('/past-projects'));
+  });
+
+  it('goes back to the list that opened the project, as the visitor left it', async () => {
+    const router = createMemoryRouter(
+      [
+        {path: '/presenting-teams', element: <h1>Presenting Teams list</h1>},
+        {path: '/projects/:id', element: <ProjectDetailPage />},
+      ],
+      {
+        initialEntries: [
+          '/presenting-teams?class=CAP&page=2',
+          {pathname: `/projects/${HVAC_PROJECT_ID}`, state: {from: '/presenting-teams?class=CAP&page=2'}},
+        ],
+        initialIndex: 1,
+      },
+    );
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole('heading', {level: 1, name: 'ASHRAE HVAC Design Calculations'});
+    const backLinks = screen.getAllByRole('link', {name: /back to presenting teams/i});
+    expect(backLinks).toHaveLength(2);
+    backLinks.forEach((link) => expect(link).toHaveAttribute('href', '/presenting-teams?class=CAP&page=2'));
+
+    fireEvent.click(backLinks[1]);
+
+    expect(await screen.findByRole('heading', {name: 'Presenting Teams list'})).toBeInTheDocument();
+    // History Back, not a new entry: the list comes back with its scroll position.
+    expect(router.state.historyAction).toBe('POP');
+    expect(router.state.location.search).toBe('?class=CAP&page=2');
+  });
+
+  it('follows the back link instead when it is opened with a modifier key', async () => {
+    const router = createMemoryRouter([{path: '/projects/:id', element: <ProjectDetailPage />}], {
+      initialEntries: [{pathname: `/projects/${HVAC_PROJECT_ID}`, state: {from: '/current-projects?sort=organization'}}],
+    });
+    render(<RouterProvider router={router} />);
+
+    const [backLink] = await screen.findAllByRole('link', {name: /back to current projects/i});
+    expect(backLink).toHaveAttribute('href', '/current-projects?sort=organization');
+    const click = new MouseEvent('click', {bubbles: true, cancelable: true, ctrlKey: true});
+    backLink.dispatchEvent(click);
+    // Left to the browser (a new tab), not taken over by the page.
+    expect(click.defaultPrevented).toBe(false);
+    expect(router.state.location.pathname).toBe(`/projects/${HVAC_PROJECT_ID}`);
+  });
+
+  it.each([{from: '/news'}, {from: '//example.com/current-projects'}, {from: 42}, 'not-an-object'])(
+    'ignores link state that names no project list (%j)',
+    async (state) => {
+      const router = createMemoryRouter([{path: '/projects/:id', element: <ProjectDetailPage />}], {
+        initialEntries: [{pathname: `/projects/${HVAC_PROJECT_ID}`, state}],
+      });
+      render(<RouterProvider router={router} />);
+
+      const backLinks = await screen.findAllByRole('link', {name: /back to current projects/i});
+      backLinks.forEach((link) => expect(link).toHaveAttribute('href', '/current-projects'));
+    },
+  );
+
+  it('names the tab after the project, or after what went wrong', async () => {
+    renderAt(`/projects/${HVAC_PROJECT_ID}`);
+    await screen.findByRole('heading', {level: 1, name: 'ASHRAE HVAC Design Calculations'});
+    await waitFor(() => expect(document.title).toBe('ASHRAE HVAC Design Calculations | Innovate to Grow'));
+    cleanup();
+
+    vi.mocked(fetchProjectDetail).mockRejectedValue(notFoundError());
+    renderAt('/past-projects/project/00000000-0000-4000-8000-000000000000');
+    await screen.findByRole('heading', {level: 1, name: "We couldn't find this project"});
+    await waitFor(() => expect(document.title).toBe('Project not found | Innovate to Grow'));
+    cleanup();
+
+    renderAt('/projects/archive');
+    await screen.findByRole('heading', {level: 1, name: "We couldn't find this project"});
+    await waitFor(() => expect(document.title).toBe('Project not found | Innovate to Grow'));
+    cleanup();
+
+    vi.mocked(fetchProjectDetail).mockRejectedValue(new Error('boom'));
+    renderAt(`/past-projects/project/${projectDetail.id}`);
+    await screen.findByRole('heading', {level: 1, name: "We couldn't load this project"});
+    await waitFor(() => expect(document.title).toBe("Project couldn't be loaded | Innovate to Grow"));
   });
 
   it('shows the class and term, the team and organization, the facts in table order, and the team members', async () => {
@@ -108,13 +188,14 @@ describe('ProjectDetailPage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('CAP · Spring 2025')).toHaveClass('itg-eyebrow');
+    // An archive project names its class as current projects do, and the term reads the same in both places.
+    expect(await screen.findByText('Engineering Capstone · Spring 2025')).toHaveClass('itg-eyebrow');
     expect(screen.getByText('General Rotary · E&J Gallo Winery')).toHaveClass('itg-page-meta');
     const facts = screen.getAllByRole('term').map((term) => term.textContent);
     expect(facts).toEqual(['Term', 'Class', 'Team #', 'Team', 'Organization', 'Industry']);
     expect(screen.getAllByRole('definition').map((value) => value.textContent)).toEqual([
-      '2025 Spring',
-      'CAP',
+      'Spring 2025',
+      'Engineering Capstone (CAP)',
       '101',
       'General Rotary',
       'E&J Gallo Winery',
@@ -217,13 +298,23 @@ describe('ProjectDetailPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Engineering Capstone · Spring 2026')).toHaveClass('itg-eyebrow');
     expect(screen.getByText('HVAC Regulators · ASHRAE - Sierra Delta')).toHaveClass('itg-page-meta');
+    expect(screen.getAllByRole('term').map((term) => term.textContent)).toEqual([
+      'Term',
+      'Class',
+      'Team #',
+      'Team',
+      'Organization',
+      'Industry',
+      'Showcase',
+    ]);
     expect(screen.getAllByRole('definition').map((value) => value.textContent)).toEqual([
-      '2026 Spring',
+      'Spring 2026',
       'Engineering Capstone (CAP)',
       '101',
       'HVAC Regulators',
       'ASHRAE - Sierra Delta',
       'Energy',
+      'Track 1 · 1:00 · Glacier 165',
     ]);
     expect(screen.getByText(/^This project aimed to design a complete HVAC system/)).toHaveClass(
       'project-detail-abstract',
@@ -250,6 +341,7 @@ describe('ProjectDetailPage', () => {
       await screen.findByRole('heading', {level: 1, name: 'Distributed-Flapping Wing with Glide-Lock Mechanism'}),
     ).toBeInTheDocument();
     expect(screen.getByText('Engineering Capstone · Spring 2026')).toHaveClass('itg-eyebrow');
+    expect(screen.getByText('Showcase').nextElementSibling).toHaveTextContent(/^Not presenting$/);
     expect(screen.getByText('Abstract-201')).toBeInTheDocument();
     // No student names on this row: no empty Team members section.
     expect(screen.queryByRole('heading', {name: 'Team members'})).toBeNull();
