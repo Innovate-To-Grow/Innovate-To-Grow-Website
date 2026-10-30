@@ -10,6 +10,7 @@ from apps.event.models import (
     CurrentProjectSchedule,
     ScheduleSyncLog,
 )
+from apps.event.services.current_projects import CURRENT_PROJECTS_CACHE_KEY
 
 from .parsing import build_grand_winners, build_slot_rows, build_track_rows
 from .projects import sync_projects_from_slots
@@ -78,7 +79,7 @@ def _sync_schedule(
     )
     if config.is_active:
         # /event/projects/ only ever caches the active schedule's projects.
-        cache.delete("event:current-projects")
+        cache.delete(CURRENT_PROJECTS_CACHE_KEY)
     _record_sync_success(config, stats, sync_type)
     return stats
 
