@@ -69,7 +69,7 @@ export const PastProjectsPage = () => {
 
   return (
     <div className="past-projects-page">
-      <header className="past-projects-header">
+      <header className="past-projects-header" data-embed-section="page-header">
         <h1 className="itg-page-title">Past Projects</h1>
         {archiveMeta ? <p className="itg-page-meta">{archiveMeta}</p> : null}
         <p className="itg-lead">

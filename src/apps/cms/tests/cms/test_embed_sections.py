@@ -4,7 +4,11 @@ from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase, TestCase
 
 from apps.cms.models import CMSEmbedWidget, CMSPage
-from apps.cms.services.embed.embed_sections import effective_hidden_sections, normalize_hidden_sections
+from apps.cms.services.embed.embed_sections import (
+    effective_hidden_sections,
+    hidden_section_presets_payload,
+    normalize_hidden_sections,
+)
 
 
 class NormalizeHiddenSectionsTests(SimpleTestCase):
@@ -31,6 +35,13 @@ class NormalizeHiddenSectionsTests(SimpleTestCase):
     def test_unavailable_key_for_route_raises(self):
         with self.assertRaises(ValidationError):
             normalize_hidden_sections(["schedule_projects"], "app_route", "/news")
+
+    def test_section_titles_names_the_project_page_header_it_hides(self):
+        # The project app routes have no `.section-title`; the preset hides their marked page header.
+        by_key = {preset["key"]: preset for preset in hidden_section_presets_payload()}
+        self.assertEqual(by_key["section_titles"]["label"], "Section titles and page header")
+        for route in ("/current-projects", "/presenting-teams", "/past-projects"):
+            self.assertEqual(normalize_hidden_sections(["section_titles"], "app_route", route), ["section_titles"])
 
 
 class EffectiveHiddenSectionsTests(TestCase):

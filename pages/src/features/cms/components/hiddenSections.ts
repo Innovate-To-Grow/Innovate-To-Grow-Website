@@ -1,7 +1,8 @@
 export const SECTION_TITLES_KEY = 'section_titles';
 
 export const HIDDEN_SECTION_SELECTORS: Record<string, string> = {
-  [SECTION_TITLES_KEY]: '.section-title',
+  // CMS block headings, and the header (title, meta line, lede) of app-route pages that mark one.
+  [SECTION_TITLES_KEY]: '.section-title, [data-embed-section="page-header"]',
   schedule_header: '[data-embed-section="schedule-header"]',
   schedule_winners: '[data-embed-section="schedule-winners"]',
   schedule_expo: '[data-embed-section="schedule-expo"]',

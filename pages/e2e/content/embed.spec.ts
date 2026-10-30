@@ -39,3 +39,18 @@ test('a project link in an embedded Current Projects widget opens in a new tab, 
   await expect(page).toHaveURL(/\/_embed\/projects-widget$/);
   await expect(page.getByRole('heading', {name: 'Current Projects'})).toBeVisible();
 });
+
+test('"Section titles" hides the page header of an embedded project page', async ({page}) => {
+  await mockSchedule(page, linkedSchedule());
+  await mockCmsEmbed(page, 'projects-no-titles', cmsEmbedResponse({
+    widget_type: 'app_route',
+    app_route: '/current-projects',
+    blocks: [],
+    hidden_sections: ['section_titles'],
+  }));
+  await page.goto('/_embed/projects-no-titles', {waitUntil: 'domcontentloaded'});
+
+  await expect(page.getByRole('link', {name: 'Adaptive Irrigation Dashboard', exact: true}).filter({visible: true})).toBeVisible();
+  await expect(page.getByRole('heading', {name: 'Current Projects'})).toBeHidden();
+  await expect(page.locator('.projects-page .itg-lead')).toBeHidden();
+});
