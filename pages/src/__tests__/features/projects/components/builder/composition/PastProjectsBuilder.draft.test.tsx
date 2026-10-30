@@ -152,6 +152,34 @@ describe('PastProjectsBuilder — the kept draft', () => {
     expect(storedDraft()?.rows.map((row) => row.project_title)).toEqual(['Persisted Project']);
   });
 
+  it('opens with a malformed kept draft: rows missing fields are completed, anything else is dropped', () => {
+    // Storage is not this page's to trust (an older version, an extension, a hand edit). A row without a
+    // semester used to crash the page on every visit, since the draft was never cleared.
+    localStorage.setItem(
+      DRAFT_STORAGE_KEY,
+      JSON.stringify({owner: null, rows: [{project_title: 'Half a row'}, null, 'text', 7, ['nested'], {}], name: 3}),
+    );
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(screen.getByRole('heading', {level: 2, name: 'Search Tables'})).toBeInTheDocument();
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Half a row').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/curation name/i)).toHaveValue('');
+    expect(storedDraft()?.rows).toEqual([makeRow({
+      semester_label: '', class_code: '', team_number: '', team_name: '', project_title: 'Half a row',
+      organization: '', industry: '',
+    })]);
+  });
+
+  it('drops malformed rows kept in sessionStorage by the earlier version', () => {
+    sessionStorage.setItem(LEGACY_MERGED_ROWS_STORAGE_KEY, JSON.stringify([{team_name: 'Team Legacy'}, null, 5]));
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Team Legacy').length).toBeGreaterThan(0);
+    expect(storedDraft()?.rows.map((row) => row.team_name)).toEqual(['Team Legacy']);
+  });
+
   it('clears the kept draft once the curation is saved', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
