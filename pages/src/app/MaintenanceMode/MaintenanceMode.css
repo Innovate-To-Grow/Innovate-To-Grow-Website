@@ -308,14 +308,6 @@
   }
 }
 
-/* The reference's phone content column runs from x = 39 to 20px from the
-   right edge. */
-@media (max-width: 767px) {
-  .maintenance-content {
-    padding-left: 39px;
-  }
-}
-
 @media (max-width: 640px) {
   .maintenance-title {
     font-size: var(--itg-font-size-h1-mobile);
