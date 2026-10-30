@@ -1,0 +1,477 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "I2G scoped GitHub OIDC deployment identities and isolated archive runtime.",
+  "Resources": {
+    "ImagePublisher": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "itg-ci-image-publisher",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::394167325273:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:Innovate-To-Grow/Innovate-To-Grow-Website:ref:refs/heads/main"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "itg-ci-image-publisher",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeImages",
+                    "ecr:PutImage",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:UploadLayerPart",
+                    "ecr:CompleteLayerUpload"
+                  ],
+                  "Resource": "arn:aws:ecr:us-west-2:394167325273:repository/itg-backend"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "BackendDeployer": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "itg-prod-backend-deployer",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::394167325273:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:Innovate-To-Grow/Innovate-To-Grow-Website:environment:AWS ECS - Prod"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "itg-prod-backend-deployer",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeImages"
+                  ],
+                  "Resource": "arn:aws:ecr:us-west-2:394167325273:repository/itg-backend"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:UpdateService",
+                    "ecs:DescribeServices"
+                  ],
+                  "Resource": "arn:aws:ecs:us-west-2:394167325273:service/itg-backend-cluster/itg-backend-service"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:RegisterTaskDefinition",
+                    "ecs:DescribeTaskDefinition"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "iam:PassRole",
+                  "Resource": [
+                    "arn:aws:iam::394167325273:role/ecsTaskRole",
+                    "arn:aws:iam::394167325273:role/ecsTaskExecutionRole"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:ListBucket",
+                    "s3:GetBucketLocation"
+                  ],
+                  "Resource": "arn:aws:s3:::itg-static-assets"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:PutObject"
+                  ],
+                  "Resource": "arn:aws:s3:::itg-static-assets/static/*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "ecs:RunTask",
+                  "Resource": "arn:aws:ecs:us-west-2:394167325273:task-definition/itg-backend-migrate:*",
+                  "Condition": {
+                    "ArnEquals": {
+                      "ecs:cluster": "arn:aws:ecs:us-west-2:394167325273:cluster/itg-backend-cluster"
+                    }
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:DescribeTasks",
+                    "ecs:StopTask"
+                  ],
+                  "Resource": "arn:aws:ecs:us-west-2:394167325273:task/itg-backend-cluster/*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "ecs:ListTasks",
+                  "Resource": "*",
+                  "Condition": {
+                    "ArnEquals": {
+                      "ecs:cluster": "arn:aws:ecs:us-west-2:394167325273:cluster/itg-backend-cluster"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "FrontendDeployer": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "itg-prod-frontend-deployer",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::394167325273:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:Innovate-To-Grow/Innovate-To-Grow-Website:environment:AWS Amplify - Prod"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "itg-prod-frontend-deployer",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "amplify:CreateDeployment",
+                    "amplify:StartDeployment",
+                    "amplify:GetJob"
+                  ],
+                  "Resource": [
+                    "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j/branches/main",
+                    "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j/branches/main/jobs/*"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ArchiveTask": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "itg-archive-task",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": "394167325273"
+                },
+                "ArnLike": {
+                  "aws:SourceArn": "arn:aws:ecs:us-west-2:394167325273:*"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ArchiveExecution": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "itg-archive-execution",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": "394167325273"
+                },
+                "ArnLike": {
+                  "aws:SourceArn": "arn:aws:ecs:us-west-2:394167325273:*"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "itg-archive-execution",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeImages"
+                  ],
+                  "Resource": "arn:aws:ecr:us-west-2:394167325273:repository/itg-archive"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:us-west-2:394167325273:log-group:/ecs/itg-archive:log-stream:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "secretsmanager:GetSecretValue",
+                  "Resource": "arn:aws:secretsmanager:us-west-2:394167325273:secret:itg/archive/sheets-api-key-iJoGIC"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ArchiveDeployer": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "itg-prod-archive-deployer",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::394167325273:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:Innovate-To-Grow/Innovate-To-Grow-Website:environment:AWS ECS - Archive Prod"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "itg-prod-archive-deployer",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                    "ecr:DescribeImages",
+                    "ecr:PutImage",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:UploadLayerPart",
+                    "ecr:CompleteLayerUpload"
+                  ],
+                  "Resource": "arn:aws:ecr:us-west-2:394167325273:repository/itg-archive"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:UpdateService",
+                    "ecs:DescribeServices"
+                  ],
+                  "Resource": "arn:aws:ecs:us-west-2:394167325273:service/itg-backend-cluster/itg-archive-service"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:RegisterTaskDefinition",
+                    "ecs:DescribeTaskDefinition"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "iam:PassRole",
+                  "Resource": [
+                    "arn:aws:iam::394167325273:role/itg-archive-task",
+                    "arn:aws:iam::394167325273:role/itg-archive-execution"
+                  ],
+                  "Condition": {
+                    "StringEquals": {
+                      "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "BackendAmplifyRules": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "itg-worker-amplify-rules",
+        "Roles": [
+          "ecsTaskRole"
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "amplify:GetApp",
+                "amplify:UpdateApp"
+              ],
+              "Resource": "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ImagePublisherArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ImagePublisher",
+          "Arn"
+        ]
+      }
+    },
+    "BackendDeployerArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "BackendDeployer",
+          "Arn"
+        ]
+      }
+    },
+    "FrontendDeployerArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "FrontendDeployer",
+          "Arn"
+        ]
+      }
+    },
+    "ArchiveTaskArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ArchiveTask",
+          "Arn"
+        ]
+      }
+    },
+    "ArchiveExecutionArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ArchiveExecution",
+          "Arn"
+        ]
+      }
+    },
+    "ArchiveDeployerArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ArchiveDeployer",
+          "Arn"
+        ]
+      }
+    }
+  }
+}

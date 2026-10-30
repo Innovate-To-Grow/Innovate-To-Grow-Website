@@ -119,7 +119,7 @@ reviewer migration procedure.
 2. Extract and upload Django static assets
 3. Render both the Web and no-port background-worker containers from `aws/task-definition.json`
 4. Validate shared image/env/secrets, worker entrypoint isolation, health dependency, and the task CPU/memory envelope
-5. Deploy the two-container task to ECS via `aws-actions/amazon-ecs-deploy-task-definition@v2`
+5. Run the release migrations in a standalone ECS task; stop on failure, then deploy the two-container task via `aws-actions/amazon-ecs-deploy-task-definition@v2`
 6. Run smoke tests:
    - Readiness endpoint check (`/readyz/`)
    - CORS header validation
@@ -151,8 +151,9 @@ never replaces the rule list.
 The archive workflow checks out the approved commit, builds and publishes its
 container image, deploys the ECS service, and runs HTTPS smoke checks.
 
-All component workflows use credentials and target-specific configuration from
-their existing GitHub Environments.
+All component workflows use environment-specific OIDC role ARNs and configuration.
+CI publishes the already tested/scanned backend image using its own main-only role.
+See [production authentication](production.md#aws-authentication-and-rollout).
 
 ## Branch strategy
 

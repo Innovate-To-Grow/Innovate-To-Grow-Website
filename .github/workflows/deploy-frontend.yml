@@ -9,6 +9,7 @@ on:
         type: string
 
 permissions:
+  id-token: write
   actions: read
   contents: read
 
@@ -66,8 +67,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          allowed-account-ids: "394167325273"
+          role-session-name: deploy-${{ github.run_id }}
           aws-region: us-west-2
 
       - name: Deploy to AWS Amplify
@@ -92,7 +94,7 @@ jobs:
           cd ..
 
           # Upload the zip to the pre-signed URL
-          curl -T build.zip "$UPLOAD_URL" \
+          curl --fail --show-error --silent -T build.zip "$UPLOAD_URL" \
             -H "Content-Type: application/zip"
 
           # Start the deployment

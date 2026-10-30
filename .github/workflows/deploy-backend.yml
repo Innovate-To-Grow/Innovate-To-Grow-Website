@@ -7,13 +7,9 @@ on:
         description: Full commit SHA from the successful CI run.
         required: true
         type: string
-      build_image:
-        description: Build and publish the backend image before deployment.
-        required: false
-        type: boolean
-        default: false
 
 permissions:
+  id-token: write
   contents: read
 
 concurrency:
@@ -55,8 +51,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          allowed-account-ids: "394167325273"
+          role-session-name: deploy-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Validate required deployment configuration
@@ -86,22 +83,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        if: ${{ inputs.build_image }}
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Build and tag Docker image
-        if: ${{ inputs.build_image }}
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: src
-          load: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ inputs.deploy_sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Resolve Docker image URI
         id: image
         env:
@@ -109,10 +90,12 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           set -euo pipefail
-          echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}:${DEPLOY_SHA}" >> "$GITHUB_OUTPUT"
+          digest="$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=$DEPLOY_SHA" --query 'imageDetails[0].imageDigest' --output text)"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Pull published Docker image
-        if: ${{ !inputs.build_image }}
         run: docker pull "${{ steps.image.outputs.image }}"
 
       # SECURITY: Production secret values must live in AWS Secrets Manager
@@ -141,15 +124,6 @@ jobs:
             --region "${AWS_S3_REGION_NAME}" \
             --cache-control "max-age=86400" \
             --size-only
-
-      - name: Push Docker image to ECR
-        if: ${{ inputs.build_image }}
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ inputs.deploy_sha }}
-        run: |
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
       - name: Render ECS task definition from template
         id: task-def
@@ -392,6 +366,9 @@ jobs:
           PY
           python aws/validate_backend_task_definition.py rendered-task-definition.json --rendered
           echo "task-definition=rendered-task-definition.json" >> "$GITHUB_OUTPUT"
+
+      - name: Run database migration before replacing the service
+        run: python scripts/deploy/migrate_ecs.py rendered-task-definition.json
 
       - name: Deploy to ECS
         id: deploy-ecs
