@@ -7,6 +7,7 @@ import {ProjectGridMobileCards} from './ProjectGridMobileCards';
 import {ProjectGridPager} from '../controls/ProjectGridPager';
 import {ProjectGridNoResults, ProjectGridResultsBar} from './ProjectGridResults';
 import {useDetailsAnnouncements} from '../state/useDetailsAnnouncements';
+import {useResultsFocus} from '../state/useResultsFocus';
 import {useRetryFocus} from '../state/useRetryFocus';
 import type {ProjectGridTableProps} from '../contracts/gridTableProps';
 
@@ -229,6 +230,7 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
   const countRef = useRef<HTMLParagraphElement>(null);
   const emptyRef = useRef<HTMLParagraphElement>(null);
   const {loadingRef, retryRef, retry} = useRetryFocus(Boolean(grid.loading), grid.error, countRef, emptyRef);
+  const rememberFocus = useResultsFocus(countRef, emptyRef);
   const {onRetry} = grid;
   const toolbarElement = grid.toolbar ? (
     <div className={`project-grid-toolbar${grid.toolbarPlacement === 'bottom' ? ' project-grid-toolbar--bottom' : ''}`}>
@@ -237,7 +239,7 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
   ) : null;
 
   return (
-    <div className="project-grid-table-shell">
+    <div className="project-grid-table-shell" onFocus={rememberFocus}>
       {/* Always in the page, so each new message is read out (a polite live region, like the count line). */}
       <p className="sr-only" aria-live="polite">
         {details.message}

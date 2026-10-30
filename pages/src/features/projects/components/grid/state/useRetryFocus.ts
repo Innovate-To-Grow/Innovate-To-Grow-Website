@@ -1,7 +1,5 @@
 import {useEffect, useRef, type RefObject} from 'react';
-
-/** The focused element left the page, which drops focus to <body>. */
-const focusWasDropped = () => !document.activeElement || document.activeElement === document.body;
+import {focusWasDropped} from './useResultsFocus';
 
 /**
  * Keeps keyboard focus in the grid through "Try again", whose button leaves with the error it answers. While the

@@ -177,6 +177,44 @@ describe('ProjectGridTable accessibility', () => {
     expect(document.activeElement).toBe(container.querySelector('.project-grid-count'));
   });
 
+  it("keeps focus in the grid when the server's matches take the no-results message away", () => {
+    stubGridLayout('desktop');
+    const {container, rerender} = render(
+      <ProjectGridTable {...baseProps} search="EnergyPro" searchPending filteredCount={0} pagedRows={[]} />,
+    );
+    expect(screen.getByText('Still searching project abstracts…')).toBeInTheDocument();
+    screen.getByRole('button', {name: 'Clear search'}).focus();
+
+    // The server finds a project by its abstract: rows replace the message, and its Clear button with it.
+    rerender(<ProjectGridTable {...baseProps} search="EnergyPro" filteredCount={1} pagedRows={[rows[1]]} />);
+    expect(screen.queryByRole('button', {name: 'Clear search'})).toBeNull();
+    expect(document.activeElement).toBe(container.querySelector('.project-grid-count'));
+    expect(document.activeElement).toHaveTextContent('1 of 2 projects matches “EnergyPro”');
+  });
+
+  it('keeps focus in the grid when the table goes back to its first page under the pager', () => {
+    stubGridLayout('desktop');
+    const {container, rerender} = render(<ProjectGridTable {...baseProps} page={2} totalPages={3} />);
+    screen.getByRole('button', {name: 'Previous'}).focus();
+
+    // The server's answer started the search over on page 1: Previous is disabled under the visitor.
+    rerender(<ProjectGridTable {...baseProps} page={0} totalPages={3} />);
+    expect(screen.getByRole('button', {name: 'Previous'})).toBeDisabled();
+    expect(document.activeElement).toBe(container.querySelector('.project-grid-count'));
+  });
+
+  it('leaves focus alone when a control outside the results goes away', () => {
+    stubGridLayout('desktop');
+    const merge = <button type="button">Merge</button>;
+    const {rerender} = render(
+      <ProjectGridTable {...baseProps} search="zzz" filteredCount={0} pagedRows={[]} toolbar={merge} />,
+    );
+    screen.getByRole('button', {name: 'Merge'}).focus();
+
+    rerender(<ProjectGridTable {...baseProps} search="zzz" filteredCount={0} pagedRows={[]} />);
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it('with no rows matching, keeps the count but not the controls that act on rows', () => {
     const {container, rerender} = render(
       <ProjectGridTable {...baseProps} sortOptions={sortOptions} search="zzz" filteredCount={0} pagedRows={[]} />,
