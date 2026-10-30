@@ -54,18 +54,12 @@
   }
 }
 
+/* Tablets and phones: the same gutter on both sides. The reference indented
+   the phone column to x = 39 but kept 20px on the right; that lopsided inset
+   is deliberately not reproduced. */
 @media (max-width: 992px) {
   .app-layout {
     padding: 16px var(--itg-page-gutter-mobile, 20px) 32px;
-  }
-}
-
-/* Phones: the reference's content column runs from x = 39 to 20px from the
-   right edge (its grid indents the column by 19px inside a 20px gutter). */
-@media (max-width: 767px) {
-  .app-layout {
-    padding-left: 39px;
-    padding-right: 20px;
   }
 }
 }

@@ -2,7 +2,6 @@ import {useEffect, useRef, type RefObject} from 'react';
 import {type MenuItem} from '@/features/layout/api';
 import {type User} from '@/features/auth/api/types';
 import {formatE164ForDisplay} from '@/lib/format/phoneInput';
-import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
 import {Icon} from '@/components/Icon/Icon';
 import {type SectionMatch} from '@/features/layout/sections';
 import {type LayoutLoadState} from '../../LayoutProvider/context';
@@ -36,10 +35,10 @@ const FOCUSABLE_SELECTOR = [
 const isVisible = (element: HTMLElement) => !element.closest('[hidden]');
 
 /**
- * While ``isOpen``: focus the first control, keep Tab inside the panel, close on Escape; on close,
- * return focus to the menu button.
+ * While ``isOpen``: focus the first control, keep Tab cycling through the menu button and the panel
+ * (the page behind them is covered), close on Escape; on close, return focus to the menu button.
  */
-const useDialogFocusTrap = (
+const useMenuFocusLoop = (
   panelRef: RefObject<HTMLDivElement | null>,
   isOpen: boolean,
   onClose: () => void,
@@ -63,7 +62,11 @@ const useDialogFocusTrap = (
       }
       if (event.key !== 'Tab') return;
 
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(isVisible);
+      // The menu button sits before the panel in the page, so it starts the loop.
+      const focusable = [
+        ...(trigger ? [trigger] : []),
+        ...Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(isVisible),
+      ];
       if (!focusable.length) {
         event.preventDefault();
         panel.focus();
@@ -73,10 +76,11 @@ const useDialogFocusTrap = (
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       const active = document.activeElement;
-      if (event.shiftKey && (active === first || !panel.contains(active))) {
+      const inLoop = active === trigger || panel.contains(active);
+      if (event.shiftKey && (active === first || !inLoop)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
+      } else if (!event.shiftKey && (active === last || !inLoop)) {
         event.preventDefault();
         first.focus();
       }
@@ -90,30 +94,6 @@ const useDialogFocusTrap = (
     };
   }, [panelRef, isOpen, onClose, triggerRef]);
 };
-
-/** The blue bar repeated at the top of the panel, with the close button where the menu button was. */
-const MobileMenuTopBar = ({onClose}: {onClose: () => void}) => (
-  <>
-  <div className="header-mobile-top">
-    <span className="header-mobile-ucm" aria-hidden="true">
-      <ResponsiveBrandImage brand="ucm" alt="" sizes="138px" />
-    </span>
-    <a href="/" className="header-mobile-brand" aria-label="Innovate To Grow home">
-      <ResponsiveBrandImage brand="i2g" alt="" className="header-mobile-logo" sizes="50px" />
-    </a>
-    {/* Drawn like the menu button it replaces (the reference keeps the three bars). */}
-    <button type="button" className="header-mobile-close" aria-label="Close menu" onClick={onClose}>
-      <span className="header-mobile-close-bar" />
-      <span className="header-mobile-close-bar" />
-      <span className="header-mobile-close-bar" />
-    </button>
-  </div>
-
-  <div className="header-mobile-sitename" aria-hidden="true">
-    Innovate To Grow
-  </div>
-  </>
-);
 
 const MobileMenuNav = ({menuItems, state, current}: Pick<MobileMenuPanelProps, 'menuItems' | 'state' | 'current'>) => (
   <nav className="header-mobile-nav" aria-label="Mobile navigation" aria-busy={state === 'loading'}>
@@ -169,12 +149,11 @@ const MobileMenuMember = ({
 );
 
 /**
- * Phone menu dialog. It covers the viewport and repeats the blue bar at the
- * top (UC Merced wordmark, round logo, close button where the menu button
- * was) and the site name, so it reads as the reference site's menu panel
- * opening under the bar while keeping its own close control inside the modal
- * for screen-reader users. Rows, member links and the Directory / Apply / Give
- * strip follow the reference's phone menu.
+ * Phone menu panel. It opens right under the fixed blue bar, which stays on
+ * screen with the menu button (drawn as a close cross while open) as the
+ * panel's open/close control; the rest of the page is dimmed behind it, and a
+ * tap on that backdrop closes the menu. Rows, member links and the
+ * Directory / Apply / Give strip follow the reference's phone menu.
  */
 export const MobileMenuPanel = ({
   menuItems,
@@ -191,23 +170,24 @@ export const MobileMenuPanel = ({
 }: MobileMenuPanelProps) => {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  useDialogFocusTrap(panelRef, isMobileOpen, onClose, triggerRef);
+  useMenuFocusLoop(panelRef, isMobileOpen, onClose, triggerRef);
 
   return (
     <div
       ref={panelRef}
       id="mobile-menu"
       className={`header-mobile-menu${isMobileOpen ? ' is-open' : ''}`}
-      role="dialog"
-      aria-modal="true"
+      role="region"
       aria-label="Mobile menu"
       aria-hidden={!isMobileOpen}
       inert={!isMobileOpen}
       hidden={!isMobileOpen}
       tabIndex={-1}
+      onClick={(event) => {
+        // The panel's own box shows only where the backdrop is.
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
-      <MobileMenuTopBar onClose={onClose} />
-
       <MobileMenuNav menuItems={menuItems} state={state} current={current} />
 
       <MobileMenuMember

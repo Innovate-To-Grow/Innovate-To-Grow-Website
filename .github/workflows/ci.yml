@@ -301,12 +301,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -372,12 +375,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -487,12 +493,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -609,12 +618,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi
@@ -1233,19 +1245,6 @@ jobs:
             --ignore-vuln GHSA-2vrm-gr82-f7m5 \
             --ignore-vuln PYSEC-2025-183 \
             --ignore-vuln PYSEC-2026-161 \
-            --ignore-vuln GHSA-v4x8-3wr5-3wq8 \
-            --ignore-vuln GHSA-9vhv-jxww-xfm5 \
-            --ignore-vuln GHSA-567q-5qvw-pf92 \
-            --ignore-vuln GHSA-m462-7rxw-wvpg \
-            --ignore-vuln GHSA-j8f7-rjxc-mr56 \
-            --ignore-vuln GHSA-8mx5-7m5m-r77g \
-            --ignore-vuln GHSA-69hj-f68j-2879 \
-            --ignore-vuln GHSA-9c4x-gm8v-wgc4 \
-            --ignore-vuln GHSA-rfpc-qcw5-3pc4 \
-            --ignore-vuln GHSA-cwqr-hh33-gh44 \
-            --ignore-vuln GHSA-fq56-3cx3-fjxp \
-            --ignore-vuln GHSA-9j6q-wvj5-jgjg \
-            --ignore-vuln GHSA-6627-m3xw-93mp \
             | tee "$GITHUB_STEP_SUMMARY"
 
   semgrep-sast:
@@ -1729,7 +1728,12 @@ jobs:
 
   e2e:
     name: E2E (${{ matrix.project }})
-    runs-on: ubuntu-latest
+    # Pinned to the container's Ubuntu release: setup-python takes the backend
+    # Python from the host's tool cache (/__t), and since ubuntu-latest became
+    # ubuntu-26.04 (2026-10-29) that build needs OpenSSL >= 3.3, which the
+    # noble image below does not have, so `import ssl` failed in every leg.
+    # Move this together with the Playwright image's Ubuntu release.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # The image already contains the browsers and Linux packages required by
     # this Playwright version. Keeping E2E off the runner's live APT path avoids
@@ -1816,12 +1820,15 @@ jobs:
           # A cached venv hard-codes the interpreter it was built against. If
           # that interpreter is gone (a hosted-runner Python patch bump) or the
           # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. Probe it, and discard it
-          # when it is not usable so the install step below rebuilds it.
-          if .venv/bin/python -c "" 2>/dev/null; then
+          # instead of falling back to a reinstall. A venv can also start but be
+          # unable to import what the backend needs: on 2026-10-29 restored E2E
+          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+          # Probe those imports, and discard the venv when they fail so the install
+          # step below rebuilds it.
+          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
             echo "usable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cached virtualenv is unusable; rebuilding."
+            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
             rm -rf .venv
             echo "usable=false" >> "$GITHUB_OUTPUT"
           fi

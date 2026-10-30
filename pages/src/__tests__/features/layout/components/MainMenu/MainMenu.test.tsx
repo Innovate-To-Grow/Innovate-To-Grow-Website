@@ -3,6 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MainMenu} from '@/features/layout/components/MainMenu/MainMenu';
 import {ROUTE_CHANGE_EVENT} from '@/features/layout/hooks/useCurrentPathname';
+import {makeState, menuItem} from '@/__tests__/features/layout/components/MainMenu/mainMenuFixtures';
 
 const useMainMenuState = vi.hoisted(() => vi.fn());
 
@@ -73,40 +74,6 @@ vi.mock('@/components/ResponsiveBrandImage', () => ({
   ResponsiveBrandImage: () => null,
 }));
 
-const menuItem = {
-  title: 'Parent',
-  url: '/parent',
-  type: 'app',
-  open_in_new_tab: false,
-  children: [
-    {
-      title: 'Child',
-      url: '/child',
-      type: 'app',
-      open_in_new_tab: false,
-      children: [],
-    },
-  ],
-};
-
-const makeState = (overrides: Record<string, unknown> = {}) => ({
-  isAuthenticated: false,
-  hasMemberIdentity: false,
-  isMemberDropdownOpen: false,
-  isMobileOpen: false,
-  logout: vi.fn(),
-  menuItems: [] as unknown[],
-  navIntroFade: false,
-  openItemIndex: null as number | null,
-  setIsMemberDropdownOpen: vi.fn(),
-  setIsMobileOpen: vi.fn(),
-  setNavIntroFade: vi.fn(),
-  setOpenItemIndex: vi.fn(),
-  state: 'ready',
-  user: null,
-  ...overrides,
-});
-
 const fireAnimationEnd = (element: Element, animationName?: string) => {
   // jsdom has no AnimationEvent constructor, so React falls back to the
   // vendor-prefixed webkitAnimationEnd listener. Dispatch that type directly.
@@ -129,7 +96,7 @@ describe('MainMenu', () => {
     vi.useRealTimers();
   });
 
-  it('renders the blue bar, the site-name band and the menu row with the date, without a badge', () => {
+  it('renders the blue bar and then the menu row with the date, without a site-name band or a badge', () => {
     vi.useFakeTimers({toFake: ['Date']});
     vi.setSystemTime(new Date(2026, 8, 20, 10, 30));
     useMainMenuState.mockReturnValue(makeState());
@@ -148,10 +115,9 @@ describe('MainMenu', () => {
       'Give',
     ]);
 
-    const siteName = screen.getByRole('link', {name: 'Innovate To Grow School of Engineering'});
-    expect(siteName).toHaveAttribute('href', '/');
-    expect(siteName.querySelector('.site-header-sitename-title')).toHaveTextContent(/^Innovate To Grow$/);
-    expect(siteName.querySelector('.site-header-sitename-subtitle')).toHaveTextContent(/^School of Engineering$/);
+    // No site-name band: the menu row follows the blue bar directly.
+    expect(bar.nextElementSibling).toBe(container.querySelector('.site-header-menu'));
+    expect(screen.queryByText('School of Engineering')).toBeNull();
 
     expect(container.querySelector('.site-header-menu')).toContainElement(
       screen.getByRole('navigation', {name: 'Main menu'}),
@@ -519,6 +485,30 @@ describe('MainMenu', () => {
     }
   });
 
+  it('keeps a tabindex the main landmark already has, and leaves the link alone without one', () => {
+    useMainMenuState.mockReturnValue(makeState());
+    render(<MainMenu navigate={vi.fn()} />);
+    const skip = screen.getByRole('link', {name: 'Skip to main content'});
+    try {
+      // No main landmark on the page: the click keeps its default.
+      expect(fireEvent.click(skip)).toBe(true);
+
+      const main = document.createElement('div');
+      main.id = 'main';
+      main.tabIndex = 0;
+      document.body.appendChild(main);
+      try {
+        expect(fireEvent.click(skip)).toBe(false);
+        expect(main).toHaveFocus();
+        expect(main).toHaveAttribute('tabindex', '0');
+      } finally {
+        main.remove();
+      }
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
+
   describe('current section', () => {
     afterEach(() => {
       window.history.replaceState(null, '', '/');
@@ -549,79 +539,6 @@ describe('MainMenu', () => {
         window.dispatchEvent(new PopStateEvent('popstate'));
       });
       expect(childProps.menuTree.current?.menuIndex).toBeNull();
-    });
-  });
-
-  describe('scroll behaviour', () => {
-    const setScrollY = (value: number) => {
-      Object.defineProperty(window, 'scrollY', {configurable: true, value});
-    };
-
-    afterEach(() => {
-      setScrollY(0);
-    });
-
-    it('tucks the site-name band away after scrolling down and never leaves its room empty', () => {
-      vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-        callback(0);
-        return 1;
-      });
-      // The phone band is 84px tall: #menu-root keeps that room for it under the fixed bar.
-      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-        const height = this.classList.contains('site-header-band') ? 84 : 0;
-        return {height, width: 0, top: 0, left: 0, right: 0, bottom: height, x: 0, y: 0, toJSON: () => ({})} as DOMRect;
-      });
-      useMainMenuState.mockReturnValue(makeState());
-      render(<MainMenu navigate={vi.fn()} />);
-      const header = screen.getByRole('banner');
-      const scrollTo = (value: number) =>
-        act(() => {
-          setScrollY(value);
-          window.dispatchEvent(new Event('scroll'));
-        });
-      expect(header).not.toHaveClass('is-band-hidden');
-
-      // Still over its own room: hiding it here would uncover an empty strip.
-      scrollTo(60);
-      expect(header).not.toHaveClass('is-band-hidden');
-
-      scrollTo(120);
-      expect(header).toHaveClass('is-band-hidden');
-
-      // Scrolling back up: it returns as soon as its room comes into view, not only at the top.
-      scrollTo(20);
-      expect(header).not.toHaveClass('is-band-hidden');
-
-      scrollTo(120);
-      expect(header).toHaveClass('is-band-hidden');
-      scrollTo(0);
-      expect(header).not.toHaveClass('is-band-hidden');
-    });
-
-    it('publishes the header part heights as CSS custom properties', () => {
-      useMainMenuState.mockReturnValue(makeState());
-      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-        const height = this.classList.contains('site-header-bar')
-          ? 85
-          : this.classList.contains('site-header-band')
-            ? 109.6
-            : this.classList.contains('site-header-menu')
-              ? 44
-              : 0;
-        return {height, width: 0, top: 0, left: 0, right: 0, bottom: height, x: 0, y: 0, toJSON: () => ({})} as DOMRect;
-      });
-      render(<MainMenu navigate={vi.fn()} />);
-
-      const style = document.documentElement.style;
-      expect(style.getPropertyValue('--itg-header-bar-height')).toBe('85px');
-      expect(style.getPropertyValue('--itg-header-band-height')).toBe('109.6px');
-      expect(style.getPropertyValue('--itg-header-menu-height')).toBe('44px');
-    });
-
-    it('marks the header while the mobile menu is open', () => {
-      useMainMenuState.mockReturnValue(makeState({isMobileOpen: true}));
-      render(<MainMenu navigate={vi.fn()} />);
-      expect(screen.getByRole('banner')).toHaveClass('is-mobile-open');
     });
   });
 });
