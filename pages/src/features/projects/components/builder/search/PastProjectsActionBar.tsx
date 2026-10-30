@@ -134,9 +134,9 @@ export const PastProjectsActionBar = ({
   showHelp = true,
   title = 'Search Tables',
   headingId,
-  saveLabel = 'Save Selected',
-  saveTarget = 'your saved results at the top of the page',
-  savedLabel = 'Saved',
+  saveLabel = 'Add to Curation',
+  saveTarget = 'the curation draft at the top of the page',
+  savedLabel = 'Added',
   onAddAISearchTable,
   onAddSearchTable,
 }: PastProjectsActionBarProps) => {

@@ -61,7 +61,7 @@ const ROWS: ProjectGridRow[] = [
 ];
 
 const getMergedSection = () => {
-  const heading = screen.queryByRole('heading', {name: /saved merged results/i});
+  const heading = screen.queryByRole('heading', {name: /curation draft/i});
   return heading ? (heading.closest('section') as HTMLElement) : null;
 };
 
@@ -91,11 +91,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     // No saved results yet.
     expect(getMergedSection()).toBeNull();
 
-    // Check exactly one row, then Save Selected — the per-table merge button. (The grid renders a
+    // Check exactly one row, then Add to Curation — the per-table merge button. (The grid renders a
     // desktop table and mobile cards, so each row's checkbox/label appears twice — target the first
     // match; both checkboxes map to the same row key.) There is no confirmation dialog anymore.
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     expect(window.confirm).not.toHaveBeenCalled();
 
     const merged = getMergedSection();
@@ -107,10 +107,10 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(mergedView.queryByText('Charlie Project')).toBeNull();
   });
 
-  it('disables Save Selected until a row is selected and never merges everything by default', () => {
+  it('disables Add to Curation until a row is selected and never merges everything by default', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    const mergeButton = screen.getByRole('button', {name: /save selected/i});
+    const mergeButton = screen.getByRole('button', {name: /add to curation/i});
     expect(mergeButton).toBeDisabled();
 
     // Selecting a row enables it.
@@ -121,7 +121,7 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
   it('does not toggle selection from desktop row body clicks', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    const mergeButton = screen.getByRole('button', {name: /save selected/i});
+    const mergeButton = screen.getByRole('button', {name: /add to curation/i});
     fireEvent.click(screen.getAllByText('Bravo Project')[0]);
     expect(mergeButton).toBeDisabled();
 

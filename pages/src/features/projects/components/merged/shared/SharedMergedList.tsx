@@ -40,7 +40,7 @@ const SharedBulkActionDialog = ({list}: {list: ReturnType<typeof useMergedList>}
   const handleConfirm = () => {
     if (list.pendingBulkAction === 'remove-all-shared') {
       list.setStatusMessage(
-        'A shared page needs at least one project. Remove rows individually, or delete the shared page if it is no longer needed.',
+        'A curation needs at least one project. Remove rows individually, or delete the curation if it is no longer needed.',
       );
     }
     list.setPendingBulkAction(null);
@@ -105,7 +105,7 @@ export const SharedMergedList = ({
       id={id}
       className={`project-grid-shared-list${className ? ` ${className}` : ''}`}
       aria-labelledby={isEditingTitle ? undefined : headingId}
-      aria-label={isEditingTitle ? 'Shared list' : undefined}
+      aria-label={isEditingTitle ? 'Curation' : undefined}
     >
       <SharedListHeader
         headingId={headingId}

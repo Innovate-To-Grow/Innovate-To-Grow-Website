@@ -221,7 +221,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getAllByLabelText('Select New Two')[0]);
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('A shared page can include at most 1000 projects.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('A curation can include at most 1000 projects.');
     expect(mockHydrateProjectGridRowsSettled).not.toHaveBeenCalled();
     expect(onAddRows).not.toHaveBeenCalled();
     expect(screen.getAllByLabelText('Select New One')[0]).toBeChecked();
@@ -256,7 +256,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this shared result.'),
+      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this curation.'),
     );
   });
 
@@ -362,7 +362,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this shared result.'),
+      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this curation.'),
     );
     expect(onAddRows).not.toHaveBeenCalled();
   });

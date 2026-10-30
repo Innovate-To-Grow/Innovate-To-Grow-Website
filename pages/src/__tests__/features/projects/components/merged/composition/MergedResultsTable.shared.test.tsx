@@ -157,7 +157,7 @@ describe('MergedResultsTable in shared mode', () => {
   it('shows a shared list without the phone disclosure', () => {
     render(<MergedResultsTable rows={makeItems()} sharedMode />);
 
-    expect(screen.queryByRole('button', {name: /saved project/})).toBeNull();
+    expect(screen.queryByRole('button', {name: /^show the/i})).toBeNull();
   });
 
   it('heads a shared list with an eyebrow, the list name and when it was shared', () => {
@@ -170,7 +170,7 @@ describe('MergedResultsTable in shared mode', () => {
       />,
     );
 
-    expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
+    expect(screen.getByText('Curation · Past Projects')).toHaveClass('itg-eyebrow');
     expect(screen.getByRole('heading', {level: 1, name: 'Spring picks'})).toBeInTheDocument();
     expect(screen.getByText('2 projects · shared October 16, 2026')).toHaveClass('itg-page-meta');
   });
@@ -270,7 +270,7 @@ describe('MergedResultsTable in shared mode', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
-    fireEvent.change(screen.getByLabelText('Shared page name'), {target: {value: 'Updated Name'}});
+    fireEvent.change(screen.getByLabelText('Curation name'), {target: {value: 'Updated Name'}});
     fireEvent.click(screen.getByRole('button', {name: /save name/i}));
 
     await waitFor(() => {
@@ -294,7 +294,7 @@ describe('MergedResultsTable in shared mode', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
-    fireEvent.change(screen.getByLabelText('Shared page name'), {target: {value: '   '}});
+    fireEvent.change(screen.getByLabelText('Curation name'), {target: {value: '   '}});
     fireEvent.click(screen.getByRole('button', {name: /save name/i}));
 
     await waitFor(() => {
@@ -340,7 +340,7 @@ describe('MergedResultsTable in shared mode', () => {
       />,
     );
 
-    const undoButton = screen.getByRole('button', {name: /undo shared change/i});
+    const undoButton = screen.getByRole('button', {name: /^undo$/i});
     expect(undoButton).toBeDisabled();
 
     fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
@@ -385,7 +385,7 @@ describe('MergedResultsTable in shared mode', () => {
     fireEvent.click(within(dialog).getByRole('button', {name: /close/i}));
 
     expect(onUpdateShare).not.toHaveBeenCalled();
-    expect(await screen.findByText(/A shared page needs at least one project/i)).toBeInTheDocument();
+    expect(await screen.findByText(/A curation needs at least one project/i)).toBeInTheDocument();
   });
 
   it('expands all rows by default in shared mode so project details are visible', () => {
@@ -448,7 +448,7 @@ describe('MergedResultsTable in shared mode', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
-    fireEvent.change(screen.getByLabelText('Shared page name'), {target: {value: 'New Name'}});
+    fireEvent.change(screen.getByLabelText('Curation name'), {target: {value: 'New Name'}});
     fireEvent.click(screen.getByRole('button', {name: /save name/i}));
 
     expect(
@@ -471,10 +471,10 @@ describe('MergedResultsTable in shared mode', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
-    expect(screen.getByLabelText('Shared page name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Curation name')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', {name: /save name/i}));
 
-    expect(screen.queryByLabelText('Shared page name')).toBeNull();
+    expect(screen.queryByLabelText('Curation name')).toBeNull();
     expect(onUpdateShare).not.toHaveBeenCalled();
   });
 
@@ -514,7 +514,7 @@ describe('MergedResultsTable in shared mode', () => {
 
     fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
 
-    expect(await screen.findByText('A shared page needs at least one project.')).toBeInTheDocument();
+    expect(await screen.findByText('A curation needs at least one project.')).toBeInTheDocument();
     expect(onUpdateShare).not.toHaveBeenCalled();
   });
 
@@ -533,8 +533,8 @@ describe('MergedResultsTable in shared mode', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
-    fireEvent.change(screen.getByLabelText('Shared page name'), {target: {value: 'Renamed'}});
-    fireEvent.keyDown(screen.getByLabelText('Shared page name'), {key: 'Enter'});
+    fireEvent.change(screen.getByLabelText('Curation name'), {target: {value: 'Renamed'}});
+    fireEvent.keyDown(screen.getByLabelText('Curation name'), {key: 'Enter'});
 
     await waitFor(() => expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Renamed', ''));
   });
@@ -600,7 +600,7 @@ describe('MergedResultsTable in shared mode', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
-    expect(screen.getByLabelText('Shared page name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Curation name')).toBeInTheDocument();
 
     rerender(
       <MergedResultsTable
@@ -613,6 +613,6 @@ describe('MergedResultsTable in shared mode', () => {
       />,
     );
 
-    expect(screen.queryByLabelText('Shared page name')).toBeNull();
+    expect(screen.queryByLabelText('Curation name')).toBeNull();
   });
 });

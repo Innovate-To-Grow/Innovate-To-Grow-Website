@@ -20,14 +20,14 @@ export const SharedListHeader = ({headingId, title, rowCount, sharedAt, editor, 
 
   return (
     <header className="project-grid-shared-header">
-      <p className="itg-eyebrow">Shared list · Past Projects</p>
+      <p className="itg-eyebrow">Curation · Past Projects</p>
       <div className={`project-grid-share-title-editor${isEditing ? ' is-editing' : ''}`}>
         {editor && isEditing ? (
           <input
             ref={titleInputRef}
             type="text"
             className="itg-input project-grid-share-title-input"
-            aria-label="Shared page name"
+            aria-label="Curation name"
             value={editor.titleDraft}
             maxLength={200}
             onChange={(event) => editor.setTitleDraft(event.target.value)}
@@ -89,7 +89,7 @@ export const BuilderCardHeader = ({
         {title}
       </h2>
       <p className="project-grid-card-count">
-        <strong>{pluralize(rowCount, 'project')}</strong> in this list
+        <strong>{pluralize(rowCount, 'project')}</strong> in this draft
       </p>
     </div>
     {canSave ? (
@@ -99,7 +99,7 @@ export const BuilderCardHeader = ({
             Sign in to save
           </a>
         )}
-        <p className="project-grid-draft-note">Not saved yet. This browser keeps the list until you save it.</p>
+        <p className="project-grid-draft-note">Not saved yet. This browser keeps the draft until you save it.</p>
       </div>
     ) : null}
   </div>

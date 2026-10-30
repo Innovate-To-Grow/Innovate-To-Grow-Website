@@ -101,7 +101,7 @@ describe('MergedResultsTable exports and row details', () => {
     const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsExcel.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
-    expect(context).toMatchObject({title: 'Saved Merged Results'});
+    expect(context).toMatchObject({title: 'Curation Draft'});
   });
 
   it('exports with the typed name and note so the PDF matches the page it will share', async () => {
@@ -224,7 +224,7 @@ describe('MergedResultsTable exports and row details', () => {
     const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsPdf.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
-    expect(context).toMatchObject({title: 'Saved Merged Results'});
+    expect(context).toMatchObject({title: 'Curation Draft'});
   });
 
   it('exports Microsoft Word through the word exporter', async () => {

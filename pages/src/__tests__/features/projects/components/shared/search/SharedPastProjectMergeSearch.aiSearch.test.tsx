@@ -241,7 +241,7 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
-    expect(await screen.findByText('AI found projects that are already in this shared result.')).toBeInTheDocument();
+    expect(await screen.findByText('AI found projects that are already in this curation.')).toBeInTheDocument();
     expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
     expect(onAddRows).not.toHaveBeenCalled();
   });

@@ -61,7 +61,7 @@ const ROWS: ProjectGridRow[] = [
 ];
 
 const getMergedSection = () => {
-  const heading = screen.queryByRole('heading', {name: /saved merged results/i});
+  const heading = screen.queryByRole('heading', {name: /curation draft/i});
   return heading ? (heading.closest('section') as HTMLElement) : null;
 };
 
@@ -117,7 +117,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
     expect(storedDraft()).toBeNull();
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
     const note = screen.getByRole('textbox', {name: /curation note/i});
     note.innerHTML = 'Why these';
@@ -157,7 +157,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     expect(storedDraft()).not.toBeNull();
 
     fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
@@ -175,7 +175,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     expect(storedDraft()).not.toBeNull();
 
     fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
@@ -207,7 +207,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
     const builder = <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />;
     const {rerender} = render(builder);
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
 
     for (const isInitializing of [true, false]) {
@@ -270,7 +270,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
       <PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />,
     );
     fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalledTimes(1);
     mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
     rerender(<PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />);

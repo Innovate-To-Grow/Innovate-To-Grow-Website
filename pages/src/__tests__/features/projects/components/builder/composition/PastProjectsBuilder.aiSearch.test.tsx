@@ -78,7 +78,7 @@ const ROWS: ProjectGridRow[] = [
 ];
 
 const getMergedSection = () => {
-  const heading = screen.queryByRole('heading', {name: /saved merged results/i});
+  const heading = screen.queryByRole('heading', {name: /curation draft/i});
   return heading ? (heading.closest('section') as HTMLElement) : null;
 };
 
@@ -136,8 +136,8 @@ describe('PastProjectsBuilder — AI search table', () => {
       .getByRole('heading', {level: 3, name: 'AI Search Table: solar sensors'})
       .closest('section') as HTMLElement;
     fireEvent.click((await within(aiTable).findAllByLabelText('Select Solar Sensor Platform'))[0]);
-    await waitFor(() => expect(within(aiTable).getByRole('button', {name: /save selected/i})).toBeEnabled());
-    fireEvent.click(within(aiTable).getByRole('button', {name: /save selected/i}));
+    await waitFor(() => expect(within(aiTable).getByRole('button', {name: /add to curation/i})).toBeEnabled());
+    fireEvent.click(within(aiTable).getByRole('button', {name: /add to curation/i}));
 
     const merged = getMergedSection();
     expect(merged).not.toBeNull();

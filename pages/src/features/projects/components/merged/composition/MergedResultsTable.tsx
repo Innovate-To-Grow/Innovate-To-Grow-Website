@@ -44,7 +44,7 @@ interface MergedResultsTableProps {
  */
 export const MergedResultsTable = ({
   sharedMode = false,
-  title = 'Saved Merged Results',
+  title = 'Curation Draft',
   editable = false,
   canUndoRows = false,
   recentlyAdded = null,

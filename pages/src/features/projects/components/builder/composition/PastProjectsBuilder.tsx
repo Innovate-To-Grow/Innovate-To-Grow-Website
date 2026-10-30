@@ -167,13 +167,14 @@ export const PastProjectsBuilder = ({
                         cardProps={{
                             mergeDisabled: isCreatingShare,
                             isRowSaved,
+                            savedRowLabel: 'Added',
                             onViewMergedResults: scrollToMergedResults,
                             onSelectionChange: saving.handleSelectionChange,
                             onMergeSelected: saving.handleMergeSelected,
                         }}
                         copy={{
                             aiDescription:
-                                'Use AI to load matching past projects into this table, then check the projects you want and click Save Selected.',
+                                'Use AI to load matching past projects into this table, then check the projects you want and click Add to Curation.',
                             noTablesMessage:
                                 'No search tables are open. Add a new table to start searching past projects.',
                         }}

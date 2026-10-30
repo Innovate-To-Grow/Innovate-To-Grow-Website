@@ -90,7 +90,7 @@ export function useCurationDraft(onMessage: (message: string) => void) {
   const deleteRow = (row: ProjectGridItem) => {
     setMergedRowsUndo(mergedRowsRef.current);
     commitMergedRows((current) => current.filter((item) => item.__key !== row.__key));
-    onMessage('Project removed from merged results.');
+    onMessage('Project removed from the curation draft.');
   };
 
   const deleteRows = (rowsToRemove: ProjectGridItem[]) => {
@@ -100,7 +100,7 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     const removeKeys = new Set(rowsToRemove.map((row) => row.__key));
     setMergedRowsUndo(mergedRowsRef.current);
     commitMergedRows((current) => current.filter((item) => !removeKeys.has(item.__key)));
-    onMessage(`${rowsToRemove.length} project${rowsToRemove.length === 1 ? '' : 's'} removed from merged results.`);
+    onMessage(`${rowsToRemove.length} project${rowsToRemove.length === 1 ? '' : 's'} removed from the curation draft.`);
   };
 
   const undo = () => {
@@ -109,7 +109,7 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     }
     commitMergedRows(() => mergedRowsUndo);
     setMergedRowsUndo(null);
-    onMessage('Merged results restored.');
+    onMessage('Curation draft restored.');
   };
 
   const reset = () => {
@@ -118,7 +118,7 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     }
     setMergedRowsUndo(mergedRowsRef.current);
     commitMergedRows(() => []);
-    onMessage('Merged results reset. Undo Merged Change can restore them until you leave this page.');
+    onMessage('Curation draft cleared. Undo can restore it until you leave this page.');
   };
 
   return {

@@ -44,7 +44,7 @@ export const SharedPastProjectMergeSearch = ({
     onRefreshRows,
     onMessage: setBuilderMessage,
     filterAIRows: (aiRows) => aiRows.filter((row) => !isAlreadyShared(row)),
-    allAIRowsFilteredMessage: 'AI found projects that are already in this shared result.',
+    allAIRowsFilteredMessage: 'AI found projects that are already in this curation.',
     refreshingMessage: 'Refreshing this full-archive search table from the latest past-project data...',
   });
   const {isSaving, addSelected} = useAddToShare({currentRows, isAlreadyShared, onAddRows, onMessage: setBuilderMessage});
@@ -58,7 +58,7 @@ export const SharedPastProjectMergeSearch = ({
         loading={loading || isSaving}
         title="Add Projects from Full Archive"
         saveLabel="Add Selected"
-        saveTarget="this shared page"
+        saveTarget="this curation"
         savedLabel="Added"
         aiSearchDisabled={tables.hasAISearchTable}
         aiSearchLoginRequired={!isAuthenticated}
@@ -97,7 +97,7 @@ export const SharedPastProjectMergeSearch = ({
             aiDescription:
               'Use AI to load matching past projects into this table, then check the projects you want and click Add Selected.',
             standardDescription:
-              'Search the full past-project archive for additional projects to add to this shared result.',
+              'Search the full past-project archive for additional projects to add to this curation.',
             noTablesMessage: 'No search tables are open. Add a new table to search for more projects.',
           }}
         />

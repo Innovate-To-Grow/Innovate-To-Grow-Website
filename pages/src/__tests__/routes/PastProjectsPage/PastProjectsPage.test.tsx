@@ -258,8 +258,8 @@ describe('PastProjectsPage', () => {
 
         renderPage();
 
-        expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
-        expect(screen.getByRole('heading', {level: 1, name: "This shared list isn't available"})).toBeInTheDocument();
+        expect(screen.getByText('Curation · Past Projects')).toHaveClass('itg-eyebrow');
+        expect(screen.getByRole('heading', {level: 1, name: "This curation isn't available"})).toBeInTheDocument();
         expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
         expect(screen.getByRole('link', {name: 'Go to Projects'})).toHaveAttribute('href', '/projects');
         expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
@@ -272,9 +272,9 @@ describe('PastProjectsPage', () => {
 
         renderPage();
 
-        expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
-        expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this shared list"})).toBeInTheDocument();
-        expect(screen.queryByRole('heading', {name: "This shared list isn't available"})).toBeNull();
+        expect(screen.getByText('Curation · Past Projects')).toHaveClass('itg-eyebrow');
+        expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this curation"})).toBeInTheDocument();
+        expect(screen.queryByRole('heading', {name: "This curation isn't available"})).toBeNull();
         expect(screen.queryByText(/deleted the list/)).toBeNull();
         expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
         expect(screen.queryByTestId('share-title')).toBeNull();

@@ -118,7 +118,7 @@ export function useSharedListEditor({rows, allRows, title, note, onUpdateShare, 
     }
     const nextRows = allRows.filter((_, index) => index !== rowIndex);
     if (!nextRows.length) {
-      onStatus('A shared page needs at least one project.');
+      onStatus('A curation needs at least one project.');
       return;
     }
     if (await save(nextRows, title, savedNote, 'Project removed.')) {

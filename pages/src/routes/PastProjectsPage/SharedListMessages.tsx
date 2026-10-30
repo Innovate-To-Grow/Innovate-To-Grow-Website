@@ -4,8 +4,8 @@ import {ProjectsMessagePage} from '@/features/projects/components/views/pages/Pr
 export const SharedListUnavailable = () => (
   <ProjectsMessagePage
     className="past-projects-share-unavailable"
-    eyebrow="Shared list · Past Projects"
-    title="This shared list isn't available"
+    eyebrow="Curation · Past Projects"
+    title="This curation isn't available"
     actions={
       <>
         <Link className="itg-btn itg-btn-primary" to="/past-projects">
@@ -18,8 +18,8 @@ export const SharedListUnavailable = () => (
     }
   >
     <p>
-      The link may be incomplete, or the person who shared it has deleted the list. Ask them to send the link again,
-      or search the past projects yourself.
+      The link may be incomplete, or the person who shared it has deleted the curation. Ask them to send the link
+      again, or search the past projects yourself.
     </p>
   </ProjectsMessagePage>
 );
@@ -28,8 +28,8 @@ export const SharedListUnavailable = () => (
 export const SharedListLoadFailed = ({onRetry}: {onRetry: () => void}) => (
   <ProjectsMessagePage
     className="past-projects-share-failed"
-    eyebrow="Shared list · Past Projects"
-    title="We couldn't load this shared list"
+    eyebrow="Curation · Past Projects"
+    title="We couldn't load this curation"
     actions={
       <>
         <button type="button" className="itg-btn itg-btn-primary" onClick={onRetry}>
@@ -41,6 +41,6 @@ export const SharedListLoadFailed = ({onRetry}: {onRetry: () => void}) => (
       </>
     }
   >
-    <p>Something went wrong while loading this list. Check your connection and try again.</p>
+    <p>Something went wrong while loading this curation. Check your connection and try again.</p>
   </ProjectsMessagePage>
 );

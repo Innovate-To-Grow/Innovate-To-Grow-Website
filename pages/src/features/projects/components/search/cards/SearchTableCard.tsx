@@ -31,15 +31,15 @@ interface SearchTableCardProps {
   controlsStatus?: ReactNode;
   tableId: string;
   title: string;
-  /** Label for the per-table merge button (e.g. "Save Selected" in the builder). */
+  /** Label for the per-table merge button (e.g. "Add to Curation" in the builder). */
   mergeLabel?: string;
-  /** Verb for the merge ("Save" -> "Save 120 Projects" in the large-save confirmation). */
+  /** Verb for the merge ("Add" -> "Add 120 Projects" in the large-save confirmation). */
   mergeVerb?: string;
-  /** Verb shown while that merge runs ("Saving" -> "Saving…" / "Saving 3 projects…"). */
+  /** Verb shown while that merge runs ("Adding" -> "Adding…" / "Adding 3 projects…"). */
   mergingVerb?: string;
   /** Disable the merge button (e.g. while an async add from another table is in flight). */
   mergeDisabled?: boolean;
-  /** Marks rows that are already in the saved results (e.g. with a "Saved" chip). */
+  /** Marks rows that are already in the saved results (e.g. with an "Added" chip). */
   isRowSaved?: (row: ProjectGridRow) => boolean;
   savedRowLabel?: string;
   /** Scroll to the saved results; offered next to a save's outcome. */
@@ -64,13 +64,13 @@ interface SearchTableCardProps {
 const BOTTOM_ACTIONS_MIN_ROWS = 6;
 
 function withCardDefaults({
-  description = 'Search this table, check the projects you want, then click Save Selected to add them to your saved results.',
+  description = 'Search this table, check the projects you want, then click Add to Curation to add them to the curation draft.',
   emptyMessage = 'No rows available in this search table.',
-  mergeLabel = 'Save Selected',
-  mergeVerb = 'Save',
-  mergingVerb = 'Saving',
+  mergeLabel = 'Add to Curation',
+  mergeVerb = 'Add',
+  mergingVerb = 'Adding',
   mergeDisabled = false,
-  viewMergedResultsLabel = 'View Saved Results',
+  viewMergedResultsLabel = 'View Curation Draft',
   ...rest
 }: SearchTableCardProps) {
   return {...rest, description, emptyMessage, mergeLabel, mergeVerb, mergingVerb, mergeDisabled, viewMergedResultsLabel};

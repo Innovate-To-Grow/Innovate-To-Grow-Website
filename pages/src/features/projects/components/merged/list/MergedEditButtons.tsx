@@ -44,7 +44,7 @@ export const MergedEditButtons = ({
       ) : null}
       {undo ? (
         <button type="button" className="itg-btn itg-btn-text" onClick={undo.onUndo} disabled={!undo.canUndo || isSharing}>
-          Undo Merged Change
+          Undo
         </button>
       ) : null}
       {canReset ? (
@@ -54,7 +54,7 @@ export const MergedEditButtons = ({
           onClick={() => onRequestBulkAction('reset-builder')}
           disabled={!hasRows || isSharing}
         >
-          Reset Merged Results
+          Clear Draft
         </button>
       ) : null}
       {shared ? (
@@ -65,7 +65,7 @@ export const MergedEditButtons = ({
             onClick={() => void shared.onUndo()}
             disabled={!shared.canUndo || shared.isSaving}
           >
-            Undo Shared Change
+            Undo
           </button>
           <button
             type="button"
@@ -91,18 +91,18 @@ export const BulkActionDialog = ({action, onCancel, onConfirm}: BulkActionDialog
   const isReset = action === 'reset-builder';
   return (
     <PastProjectsDialog
-      title={isReset ? 'Reset merged results?' : 'Remove all projects?'}
-      confirmLabel={isReset ? 'Reset Merged Results' : 'Close'}
+      title={isReset ? 'Clear the curation draft?' : 'Remove all projects?'}
+      confirmLabel={isReset ? 'Clear Draft' : 'Close'}
       showCancel={isReset}
       onCancel={onCancel}
       onConfirm={onConfirm}
     >
       {isReset ? (
-        <p>Clear every project from the saved merged results? You can undo this immediately afterward.</p>
+        <p>Remove every project from the curation draft? You can undo this right afterward.</p>
       ) : (
         <p>
-          This shared page cannot be saved with zero projects because the API requires at least one row. Remove
-          rows individually, or delete the shared page if it is no longer needed.
+          This curation cannot be saved with zero projects because the API requires at least one row. Remove
+          rows individually, or delete the curation if it is no longer needed.
         </p>
       )}
     </PastProjectsDialog>

@@ -69,7 +69,7 @@ export const SharedCurationView = ({
 }: SharedCurationViewProps) => {
   return (
     <div className="past-projects-page past-projects-page--shared">
-      {status.loading ? <p className="past-projects-state">Loading shared list...</p> : null}
+      {status.loading ? <p className="past-projects-state">Loading curation...</p> : null}
       {/* "Isn't available" only when the API says the list does not exist; any other failure may pass. */}
       {status.error && status.notFound ? <SharedListUnavailable /> : null}
       {status.error && !status.notFound ? <SharedListLoadFailed onRetry={status.retry} /> : null}

@@ -60,9 +60,9 @@ test('a curation draft outlives the tab, and a saved curation is listed on Past 
     .locator('section.search-table-card .project-grid-table-wrap')
     .getByRole('checkbox', {name: `Select ${project.project_title}`})
     .check();
-  await page.getByRole('button', {name: 'Save Selected'}).first().click();
+  await page.getByRole('button', {name: 'Add to Curation'}).first().click();
   const savedResults = page.locator('#past-projects-saved-results');
-  await expect(savedResults.getByText('Not saved yet. This browser keeps the list until you save it.')).toBeVisible();
+  await expect(savedResults.getByText('Not saved yet. This browser keeps the draft until you save it.')).toBeVisible();
   await page.getByLabel('Curation name (optional)').fill('Water picks');
   await page.getByRole('textbox', {name: /Curation note/}).click();
   await page.keyboard.type('For the board meeting');
