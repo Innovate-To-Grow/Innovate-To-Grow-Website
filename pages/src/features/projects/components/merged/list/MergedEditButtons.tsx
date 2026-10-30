@@ -83,6 +83,7 @@ export const BulkActionDialog = ({onCancel, onConfirm}: BulkActionDialogProps) =
   <PastProjectsDialog
     title="Clear the curation draft?"
     confirmLabel="Clear Draft"
+    destructive
     onCancel={onCancel}
     onConfirm={onConfirm}
   >
