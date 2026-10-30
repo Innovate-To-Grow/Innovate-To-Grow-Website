@@ -353,6 +353,73 @@ describe('PastProjectsBuilder — the kept draft', () => {
     expect(screen.getAllByLabelText('Select Alpha Project')[0]).toBeChecked();
   });
 
+  describe('with the builder open in another tab too', () => {
+    // The storage event fires only in the tabs that did not write, carrying the new value.
+    const writeFromOtherTab = (value: unknown) =>
+      act(() => {
+        const newValue = value === null ? null : JSON.stringify(value);
+        if (newValue === null) localStorage.removeItem(DRAFT_STORAGE_KEY);
+        else localStorage.setItem(DRAFT_STORAGE_KEY, newValue);
+        window.dispatchEvent(new StorageEvent('storage', {key: DRAFT_STORAGE_KEY, newValue, storageArea: localStorage}));
+      });
+
+    it("follows the other tab's changes, so its next save does not overwrite them", () => {
+      storeDraft([ROWS[0]], {owner: 'member-1'});
+      render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+      // The other tab adds Bravo and names the draft. This tab does not write it back (tabs answering each
+      // other's writes would never stop).
+      const fromTabB = {owner: 'member-1', rows: [ROWS[1], ROWS[0]], name: 'From tab B', note: ''};
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+      writeFromOtherTab(fromTabB);
+      expect(setItem).toHaveBeenCalledTimes(1);
+      setItem.mockRestore();
+      const merged = within(getMergedSection() as HTMLElement);
+      expect(merged.getAllByText('Bravo Project').length).toBeGreaterThan(0);
+      expect(screen.getByLabelText(/curation name/i)).toHaveValue('From tab B');
+      expect(screen.getByText(/The curation draft was changed in another tab/)).toBeInTheDocument();
+
+      // This tab then adds Charlie: the stored draft has all three.
+      fireEvent.click(screen.getAllByLabelText('Select Charlie Project')[0]);
+      fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
+      expect(storedDraft()?.rows.map((row) => row.project_title)).toEqual([
+        'Bravo Project',
+        'Alpha Project',
+        'Charlie Project',
+      ]);
+      expect(storedDraft()?.name).toBe('From tab B');
+    });
+
+    it("keeps this tab's checked rows checked, and empties when the other tab clears the draft", () => {
+      storeDraft([ROWS[0], ROWS[1]], {owner: 'member-1'});
+      render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+      const merged = within(getMergedSection() as HTMLElement);
+      fireEvent.click(merged.getAllByLabelText('Select Alpha Project')[0]);
+
+      writeFromOtherTab({owner: 'member-1', rows: [ROWS[0], ROWS[1], ROWS[2]], name: '', note: ''});
+      expect(merged.getAllByLabelText('Select Alpha Project')[0]).toBeChecked();
+
+      writeFromOtherTab(null);
+      expect(getMergedSection()).toBeNull();
+      expect(storedDraft()).toBeNull();
+    });
+
+    it("ignores another member's draft and a value it cannot read", () => {
+      storeDraft([ROWS[0]], {owner: 'member-1'});
+      render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+      writeFromOtherTab({owner: 'member-2', rows: [ROWS[1]], name: 'Not yours', note: ''});
+      act(() => {
+        window.dispatchEvent(new StorageEvent('storage', {key: DRAFT_STORAGE_KEY, newValue: '{not json'}));
+      });
+
+      const merged = within(getMergedSection() as HTMLElement);
+      expect(merged.getAllByText('Alpha Project').length).toBeGreaterThan(0);
+      expect(merged.queryByText('Bravo Project')).toBeNull();
+      expect(screen.getByLabelText(/curation name/i)).toHaveValue('');
+    });
+  });
+
   it('ignores a malformed kept draft', () => {
     localStorage.setItem(DRAFT_STORAGE_KEY, '{not valid json');
 

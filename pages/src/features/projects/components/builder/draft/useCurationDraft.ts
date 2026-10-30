@@ -1,13 +1,20 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useEffectEvent, useRef, useState, type RefObject} from 'react';
 import {useAuth} from '@/features/auth';
 import {
+  createProjectGridFingerprint,
   createProjectGridItems,
   createProjectGridRowMatcher,
   stripProjectGridItem,
   type ProjectGridItem,
   type ProjectGridRow,
 } from '../../grid/contracts/projectGrid';
-import {clearPersistedDraft, readPersistedDraft, writePersistedDraft} from './curationDraftStorage';
+import {
+  clearPersistedDraft,
+  readPersistedDraft,
+  subscribeToOtherTabsDraft,
+  writePersistedDraft,
+  type CurationDraft,
+} from './curationDraftStorage';
 
 // New rows are added to the snapshot an Undo/Reset restores, so a save that lands after a Reset is
 // neither lost by a later Undo nor allowed to cancel that Undo.
@@ -16,9 +23,46 @@ const appendUnsaved = (snapshot: ProjectGridItem[], added: ProjectGridItem[]) =>
   return [...snapshot, ...added.filter((row) => !inSnapshot.has(row))];
 };
 
+const rowIdentity = (row: ProjectGridRow) => `${row.id ?? ''}\u001f${createProjectGridFingerprint(row)}`;
+
+/**
+ * Another tab's rows as items, reusing this tab's item for each project it already shows: the item's key
+ * keeps that row's checkbox and Details state.
+ */
+const adoptRows = (current: ProjectGridItem[], storedRows: ProjectGridRow[], namespace: string) => {
+  const shown = new Map(current.map((item) => [rowIdentity(stripProjectGridItem(item)), item]));
+  const fresh = createProjectGridItems(storedRows, namespace);
+  return fresh.map((item) => shown.get(rowIdentity(stripProjectGridItem(item))) ?? item);
+};
+
+/**
+ * The draft is one storage key, written whole by every tab with the builder open. Each tab follows the
+ * others' writes, so its next write builds on their changes instead of overwriting them. Returns a check the
+ * mirroring effect uses to skip writing back what it just adopted: tabs that serialize the same draft
+ * differently would otherwise answer each other's writes forever.
+ */
+function useOtherTabsDraft(
+  draftMemberRef: RefObject<string | null>,
+  adopt: (draft: CurationDraft) => ProjectGridItem[],
+) {
+  const adoptedRef = useRef<{rows: ProjectGridItem[]; name: string; note: string} | null>(null);
+  const handleOtherTabDraft = useEffectEvent((draft: CurationDraft) => {
+    adoptedRef.current = {rows: adopt(draft), name: draft.name, note: draft.note};
+  });
+  useEffect(
+    () => subscribeToOtherTabsDraft(() => draftMemberRef.current, (draft) => handleOtherTabDraft(draft)),
+    [draftMemberRef],
+  );
+  return useCallback((rows: ProjectGridItem[], name: string, note: string) => {
+    const adopted = adoptedRef.current;
+    adoptedRef.current = null;
+    return Boolean(adopted && adopted.rows === rows && adopted.name === name && adopted.note === note);
+  }, []);
+}
+
 /**
  * The curation being built: its merged rows (with a one-step undo), name and note, mirrored to
- * localStorage on every change and dropped when the signed-in member changes.
+ * localStorage on every change (and from other tabs' changes) and dropped when the signed-in member changes.
  */
 export function useCurationDraft(onMessage: (message: string) => void) {
   const {isInitializing, unverified, user} = useAuth();
@@ -48,16 +92,30 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     setMergedRows(next);
   }, []);
 
+  const isAdoptedDraft = useOtherTabsDraft(draftMemberRef, (draft) => {
+    mergeSequence.current += 1;
+    const rows = adoptRows(mergedRowsRef.current, draft.rows, `synced-${mergeSequence.current}`);
+    commitMergedRows(() => rows);
+    // An undo snapshot from before the other tab's change would revert it.
+    setMergedRowsUndo(null);
+    setRecentlyAdded(null);
+    setNameDraft(draft.name);
+    setNoteDraft(draft.note);
+    onMessage('The curation draft was changed in another tab. This page now shows those changes.');
+    return rows;
+  });
+
   // Mirror the draft into localStorage on every change so however the visitor leaves (the login reload, a
   // refresh, closing the tab, SPA navigation), it can be restored on return.
   useEffect(() => {
+    if (isAdoptedDraft(mergedRows, nameDraft, noteDraft)) return;
     writePersistedDraft({
       owner: draftMemberRef.current,
       rows: mergedRows.map(stripProjectGridItem),
       name: nameDraft,
       note: noteDraft,
     });
-  }, [mergedRows, nameDraft, noteDraft]);
+  }, [isAdoptedDraft, mergedRows, nameDraft, noteDraft]);
 
   // Revalidation is not a logout. Keep the draft while identity is being checked, and clear it
   // only when a known member actually logs out or changes accounts. Guest drafts survive login.

@@ -106,3 +106,32 @@ export const clearPersistedDraft = () => {
     // ignore — nothing to clean up if storage is unavailable.
   }
 };
+
+/**
+ * Follow the draft that other tabs store (the `storage` event fires only in the tabs that did not write):
+ * `onChange` gets each new draft, empty when one was removed. A value this page cannot read, or another
+ * member's draft, is skipped. Returns the unsubscribe function.
+ */
+export const subscribeToOtherTabsDraft = (
+  getMemberId: () => string | null,
+  onChange: (draft: CurationDraft) => void,
+) => {
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key !== DRAFT_STORAGE_KEY) return;
+    if (event.newValue === null) {
+      onChange(EMPTY_DRAFT);
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(event.newValue);
+    } catch {
+      return;
+    }
+    const owner = (parsed as {owner?: unknown} | null)?.owner;
+    if (typeof owner === 'string' && owner !== getMemberId()) return;
+    onChange(draftFor(parsed, getMemberId()));
+  };
+  window.addEventListener('storage', handleStorage);
+  return () => window.removeEventListener('storage', handleStorage);
+};
