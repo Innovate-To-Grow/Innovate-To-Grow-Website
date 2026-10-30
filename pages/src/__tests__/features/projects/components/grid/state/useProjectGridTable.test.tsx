@@ -89,16 +89,16 @@ describe('useProjectGridTable', () => {
         // Until the server answers, only the rows' own text has been searched.
         await waitFor(() => expect(result.current.search).toBe('EnergyPro'));
         expect(titles()).toEqual([]);
-        expect(result.current.searchPending).toBe(true);
+        expect(result.current.serverSearch.pending).toBe(true);
 
-        await waitFor(() => expect(result.current.searchPending).toBe(false));
+        await waitFor(() => expect(result.current.serverSearch.pending).toBe(false));
         expect(titles()).toEqual(['Project 3']);
         expect(searchRemote).toHaveBeenLastCalledWith('EnergyPro', expect.any(AbortSignal));
 
         // Project 2 matches by its own industry; Project 1 the server names, but the filter hides it.
         act(() => result.current.setSearch('energy'));
         await waitFor(() => expect(searchRemote).toHaveBeenLastCalledWith('energy', expect.any(AbortSignal)));
-        await waitFor(() => expect(result.current.searchPending).toBe(false));
+        await waitFor(() => expect(result.current.serverSearch.pending).toBe(false));
         expect(titles()).toEqual(['Project 2', 'Project 3']);
     });
 
@@ -119,7 +119,7 @@ describe('useProjectGridTable', () => {
 
         act(() => result.current.setSearch('capstone'));
         await waitFor(() => expect(result.current.search).toBe('capstone'));
-        expect(result.current.searchPending).toBe(false);
+        expect(result.current.serverSearch.pending).toBe(false);
         await act(() => new Promise((resolve) => setTimeout(resolve, REMOTE_SEARCH_DELAY_MS + 50)));
         expect(searchRemote).not.toHaveBeenCalled();
         expect(result.current.filteredRows).toHaveLength(4);
@@ -159,6 +159,49 @@ describe('useProjectGridTable', () => {
         expect(result.current.page).toBe(2);
     });
 
+    it('starts over again only when an answer adds other rows, not when the same rows come back', async () => {
+        const rows = makeItems(
+            makeRows(12).map((row, index) => ({
+                ...row,
+                id: `p${index}`,
+                abstract: '',
+                project_title: index < 6 ? `Solar ${index}` : `Wind ${index}`,
+            })),
+        );
+        const answers: ((ids: ReadonlySet<string>) => void)[] = [];
+        const searchRemote = vi.fn(() => new Promise<ReadonlySet<string>>((resolve) => answers.push(resolve)));
+        const {result} = renderHook(() =>
+            useProjectGridTable({rows, pageSize: 2, defaultSortField: 'team_number', searchRemote}),
+        );
+        /** The visitor takes a letter off the search and types it again: the last answer shows at once, and the
+         *  server is asked again once typing pauses. */
+        const retype = async () => {
+            const asked = searchRemote.mock.calls.length;
+            act(() => result.current.setSearch('sola'));
+            act(() => result.current.setSearch('solar'));
+            await waitFor(() => expect(result.current.filteredRows.length).toBeGreaterThan(6));
+            await waitFor(() => expect(searchRemote).toHaveBeenCalledTimes(asked + 1));
+        };
+
+        act(() => result.current.setSearch('solar'));
+        await waitFor(() => expect(searchRemote).toHaveBeenCalledTimes(1));
+        await act(async () => answers[0](new Set(['p6', 'p7'])));
+        expect(result.current.page).toBe(0);
+
+        // The same rows, asked for again: a page the visitor moved to meanwhile stays.
+        await retype();
+        act(() => result.current.setPage(2));
+        await act(async () => answers[1](new Set(['p7', 'p6'])));
+        expect(result.current.page).toBe(2);
+
+        // Another row the second time: it sorts in among the rows shown, so the search starts over.
+        await retype();
+        act(() => result.current.setPage(2));
+        await act(async () => answers[2](new Set(['p6', 'p7', 'p8'])));
+        expect(result.current.filteredRows).toHaveLength(9);
+        expect(result.current.page).toBe(0);
+    });
+
     it("keeps the page when the server's answer adds no rows", async () => {
         const rows = makeItems(
             makeRows(12).map((row, index) => ({
@@ -179,7 +222,7 @@ describe('useProjectGridTable', () => {
         act(() => result.current.setPage(2));
         // The server names only rows the titles already found.
         await act(async () => answer(new Set(['p0', 'p1'])));
-        expect(result.current.searchPending).toBe(false);
+        expect(result.current.serverSearch.pending).toBe(false);
         expect(result.current.page).toBe(2);
     });
 

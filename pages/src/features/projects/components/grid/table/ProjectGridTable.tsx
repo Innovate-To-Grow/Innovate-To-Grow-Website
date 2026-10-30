@@ -7,7 +7,7 @@ import {ProjectGridMobileCards} from './ProjectGridMobileCards';
 import {ProjectGridPager} from '../controls/ProjectGridPager';
 import {ProjectGridNoResults, ProjectGridResultsBar} from './ProjectGridResults';
 import {useDetailsAnnouncements} from '../state/useDetailsAnnouncements';
-import {useResultsFocus} from '../state/useResultsFocus';
+import {showResultsStart, useResultsFocus} from '../state/useResultsFocus';
 import {useRetryFocus} from '../state/useRetryFocus';
 import type {ProjectGridTableProps} from '../contracts/gridTableProps';
 
@@ -17,18 +17,6 @@ export type {ProjectGridSortOption} from '../contracts/gridTableProps';
 const PHONE_LAYOUT_QUERY = '(max-width: 768px)';
 
 const NO_ACTIVE_FILTERS: string[] = [];
-
-/**
- * After the pager changes page: focus the count line at the top of the results (the pressed step button may have
- * just been disabled, which dropped focus to the page) and, when it is out of view, scroll it under the sticky
- * header (the page's scroll-padding-top), so the new page is read from its first row, not its last.
- */
-const showResultsStart = (countLine: HTMLElement) => {
-  countLine.focus({preventScroll: true});
-  const headerSpace = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-  const {top} = countLine.getBoundingClientRect();
-  if (top < headerSpace || top > window.innerHeight) countLine.scrollIntoView({block: 'start'});
-};
 
 function withGridDefaults({
   searchPlaceholder = 'Search projects...',
@@ -106,6 +94,25 @@ interface ResultsProps {
   emptyRef: RefObject<HTMLParagraphElement | null>;
 }
 
+/** What the table and the phone list both take to show the page's rows. */
+const rowPropsFor = (grid: ResolvedGridProps, details: DetailsAnnouncements) => ({
+  columns: grid.columns,
+  pagedRows: grid.pagedRows,
+  linkScope: grid.linkScope,
+  selectable: grid.selectable,
+  selectedKeys: grid.selectedKeys,
+  onToggleSelected: grid.onToggleSelected,
+  expandedKeys: grid.expandedKeys,
+  onToggleExpanded: details.toggleRow,
+  onDeleteRow: grid.onDeleteRow,
+  deleteDisabled: grid.deleteDisabled,
+  loadMissingDetails: grid.loadMissingDetails,
+  isRowSaved: grid.isRowSaved,
+  savedRowLabel: grid.savedRowLabel,
+  highlightedKeys: grid.highlightedKeys,
+  announceDetails: details.announceRows,
+});
+
 /** Everything below the filter well once the rows are loaded: counts, empty states, the rows and the pager. */
 const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}: ResultsProps) => {
   // Only the layout the screen shows is rendered: mounting both and hiding one with CSS doubled the rows (and their
@@ -114,23 +121,7 @@ const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}:
   const pagerTarget = useRef<number | null>(null);
   const query = grid.search.trim();
   const noResults = grid.totalCount > 0 && grid.filteredCount === 0;
-  const rowProps = {
-    columns: grid.columns,
-    pagedRows: grid.pagedRows,
-    linkScope: grid.linkScope,
-    selectable: grid.selectable,
-    selectedKeys: grid.selectedKeys,
-    onToggleSelected: grid.onToggleSelected,
-    expandedKeys: grid.expandedKeys,
-    onToggleExpanded: details.toggleRow,
-    onDeleteRow: grid.onDeleteRow,
-    deleteDisabled: grid.deleteDisabled,
-    loadMissingDetails: grid.loadMissingDetails,
-    isRowSaved: grid.isRowSaved,
-    savedRowLabel: grid.savedRowLabel,
-    highlightedKeys: grid.highlightedKeys,
-    announceDetails: details.announceRows,
-  };
+  const rowProps = rowPropsFor(grid, details);
 
   // Only a page the pager asked for moves focus and scroll; a search or sort that starts over at page 1 does not.
   useEffect(() => {
@@ -177,7 +168,7 @@ const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}:
           countLabel={grid.countLabel}
           activeFilters={grid.activeFilters}
           headingLevel={grid.noResultsHeadingLevel}
-          searching={grid.searchPending}
+          searching={grid.serverSearch?.pending}
           noResultsHint={grid.noResultsHint}
           noResultsActions={grid.noResultsActions}
           onClear={() => {
@@ -230,7 +221,7 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
   const countRef = useRef<HTMLParagraphElement>(null);
   const emptyRef = useRef<HTMLParagraphElement>(null);
   const {loadingRef, retryRef, retry} = useRetryFocus(Boolean(grid.loading), grid.error, countRef, emptyRef);
-  const rememberFocus = useResultsFocus(countRef, emptyRef);
+  const resultsFocus = useResultsFocus(countRef, emptyRef, grid.serverSearch?.addedRowsKey ?? null);
   const {onRetry} = grid;
   const toolbarElement = grid.toolbar ? (
     <div className={`project-grid-toolbar${grid.toolbarPlacement === 'bottom' ? ' project-grid-toolbar--bottom' : ''}`}>
@@ -239,7 +230,7 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
   ) : null;
 
   return (
-    <div className="project-grid-table-shell" onFocus={rememberFocus}>
+    <div className="project-grid-table-shell" onFocus={resultsFocus.onFocus} onBlur={resultsFocus.onBlur}>
       {/* Always in the page, so each new message is read out (a polite live region, like the count line). */}
       <p className="sr-only" aria-live="polite">
         {details.message}

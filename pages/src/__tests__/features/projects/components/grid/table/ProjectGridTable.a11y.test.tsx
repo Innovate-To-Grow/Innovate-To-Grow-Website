@@ -71,6 +71,10 @@ const baseProps = {
 
 const sortOptions = [{field: 'project_title' as ProjectGridColumnKey, label: 'Project title'}];
 
+/** The server is still searching abstracts; then it answers, adding the rows `addedRowsKey` names. */
+const asking = {pending: true, addedRowsKey: null};
+const answered = (addedRowsKey: string) => ({pending: false, addedRowsKey});
+
 /** A past-projects table whose rows have no details yet, so opening one loads them (and stays loading). */
 const LoadingGrid = () => {
   const [items] = useState(() => makeRows(3, {abstract: '', student_names: ''}));
@@ -180,16 +184,113 @@ describe('ProjectGridTable accessibility', () => {
   it("keeps focus in the grid when the server's matches take the no-results message away", () => {
     stubGridLayout('desktop');
     const {container, rerender} = render(
-      <ProjectGridTable {...baseProps} search="EnergyPro" searchPending filteredCount={0} pagedRows={[]} />,
+      <ProjectGridTable {...baseProps} search="EnergyPro" serverSearch={asking} filteredCount={0} pagedRows={[]} />,
     );
     expect(screen.getByText('Still searching project abstracts…')).toBeInTheDocument();
     screen.getByRole('button', {name: 'Clear search'}).focus();
 
     // The server finds a project by its abstract: rows replace the message, and its Clear button with it.
-    rerender(<ProjectGridTable {...baseProps} search="EnergyPro" filteredCount={1} pagedRows={[rows[1]]} />);
+    rerender(
+      <ProjectGridTable
+        {...baseProps}
+        search="EnergyPro"
+        serverSearch={answered('a11y-1')}
+        filteredCount={1}
+        pagedRows={[rows[1]]}
+      />,
+    );
     expect(screen.queryByRole('button', {name: 'Clear search'})).toBeNull();
     expect(document.activeElement).toBe(container.querySelector('.project-grid-count'));
     expect(document.activeElement).toHaveTextContent('1 of 2 projects matches “EnergyPro”');
+  });
+
+  it('leaves focus where the visitor moved it before the answer took the no-results message away', () => {
+    stubGridLayout('desktop');
+    const {rerender} = render(
+      <ProjectGridTable {...baseProps} search="EnergyPro" serverSearch={asking} filteredCount={0} pagedRows={[]} />,
+    );
+    const clear = screen.getByRole('button', {name: 'Clear search'});
+    clear.focus();
+    // The visitor clicks blank page space: focus leaves Clear search, which is still there.
+    clear.blur();
+
+    rerender(
+      <ProjectGridTable
+        {...baseProps}
+        search="EnergyPro"
+        serverSearch={answered('a11y-1')}
+        filteredCount={1}
+        pagedRows={[rows[1]]}
+      />,
+    );
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  describe("when the server's answer sorts rows in above the focused row", () => {
+    // "water" first finds Projects 1 and 2 by their own text, two to a page. The server then finds Projects 3 and 4
+    // by their abstracts, and they sort in above Project 2, which moves to page 2.
+    const fourRows = makeRows(4);
+    const searchProps = {...baseProps, rows: fourRows, filteredCount: 4, totalCount: 4, totalPages: 2, search: 'water'};
+    const firstPage = fourRows.slice(0, 2);
+    const answeredPage = [fourRows[2], fourRows[0]];
+
+    it.each(['desktop', 'phone'] as const)('moves focus from a row that left the page to the count line (%s)', (layout) => {
+      stubGridLayout(layout);
+      const {container, rerender} = render(
+        <ProjectGridTable {...searchProps} serverSearch={asking} pagedRows={firstPage} />,
+      );
+      screen.getByRole('button', {name: /details for Project 2$/i}).focus();
+      const count = container.querySelector('.project-grid-count') as HTMLElement;
+      const focusCount = vi.spyOn(count, 'focus');
+
+      rerender(<ProjectGridTable {...searchProps} serverSearch={answered('a11y-2 a11y-3')} pagedRows={answeredPage} />);
+      expect(screen.queryByRole('button', {name: /details for Project 2$/i})).toBeNull();
+      expect(document.activeElement).toBe(count);
+      // The browser does not scroll to it on its own; the grid scrolls only when the line is out of view.
+      expect(focusCount).toHaveBeenCalledWith({preventScroll: true});
+    });
+
+    it('scrolls the count line into view only when it is off-screen', () => {
+      stubGridLayout('desktop');
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      const {container, rerender} = render(
+        <ProjectGridTable {...searchProps} serverSearch={asking} pagedRows={firstPage} />,
+      );
+      // The visitor scrolled down to the last row: the count line is far above the viewport.
+      const count = container.querySelector('.project-grid-count') as HTMLElement;
+      vi.spyOn(count, 'getBoundingClientRect').mockReturnValue({top: -900} as DOMRect);
+      screen.getByRole('button', {name: 'Details for Project 2'}).focus();
+
+      rerender(<ProjectGridTable {...searchProps} serverSearch={answered('a11y-2 a11y-3')} pagedRows={answeredPage} />);
+      expect(document.activeElement).toBe(count);
+      expect(scrollIntoView).toHaveBeenCalledWith({block: 'start'});
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    });
+
+    it('leaves focus alone when the row is still on the page', () => {
+      stubGridLayout('desktop');
+      const {rerender} = render(<ProjectGridTable {...searchProps} serverSearch={asking} pagedRows={firstPage} />);
+      const details = screen.getByRole('button', {name: 'Details for Project 1'});
+      details.focus();
+
+      rerender(<ProjectGridTable {...searchProps} serverSearch={answered('a11y-2 a11y-3')} pagedRows={answeredPage} />);
+      expect(document.activeElement).toBe(details);
+    });
+
+    it("leaves a row the visitor's own change took away to the table's owner", () => {
+      stubGridLayout('desktop');
+      const {rerender} = render(
+        <ProjectGridTable {...searchProps} serverSearch={answered('a11y-2 a11y-3')} pagedRows={answeredPage} />,
+      );
+      screen.getByRole('button', {name: 'Details for Project 3'}).focus();
+
+      // Remove from Table: the row leaves, with no new answer from the server (the same rows, asked again).
+      rerender(
+        <ProjectGridTable {...searchProps} serverSearch={answered('a11y-2 a11y-3')} pagedRows={[fourRows[0], fourRows[1]]} />,
+      );
+      expect(document.activeElement).toBe(document.body);
+    });
   });
 
   it('keeps focus in the grid when the table goes back to its first page under the pager', () => {
