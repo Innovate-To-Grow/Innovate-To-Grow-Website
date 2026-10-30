@@ -217,6 +217,7 @@
                   ],
                   "Resource": [
                     "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j/branches/main",
+                    "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j/branches/main/deployments/*",
                     "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j/branches/main/jobs/*"
                   ]
                 }
