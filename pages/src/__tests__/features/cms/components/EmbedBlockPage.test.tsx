@@ -1,6 +1,6 @@
 import {act, cleanup, render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {MemoryRouter, Route, Routes} from 'react-router';
+import {Link, MemoryRouter, Route, Routes} from 'react-router';
 
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
 
@@ -34,16 +34,19 @@ vi.mock('@/features/cms/components/BlockRenderer', () => ({
   ),
 }));
 
+const EmbeddedSchedule = ({scheduleId}: {scheduleId?: string | null}) => (
+  <div data-testid="embedded-schedule-route">
+    {scheduleId === undefined ? 'no-prop' : scheduleId || 'active-schedule'}
+  </div>
+);
+
+// Like the project pages: a router link to a page outside the embed.
+const EmbeddedProjects = () => <Link to="/projects/abc">Project ABC</Link>;
+
 const appRoutes = {
   supportsSchedule: (route?: string | null) => route === '/schedule',
   resolve: (route?: string | null) =>
-    route === '/schedule'
-      ? ({scheduleId}: {scheduleId?: string | null}) => (
-          <div data-testid="embedded-schedule-route">
-            {scheduleId === undefined ? 'no-prop' : scheduleId || 'active-schedule'}
-          </div>
-        )
-      : null,
+    ({'/schedule': EmbeddedSchedule, '/current-projects': EmbeddedProjects})[route ?? ''] ?? null,
 };
 
 const renderAtSlug = (slug: string) =>
@@ -520,5 +523,20 @@ describe('EmbedBlockPage', () => {
 
     Object.defineProperty(window, 'parent', {configurable: true, value: window});
     Reflect.deleteProperty(document.documentElement, 'scrollHeight');
+  });
+
+  it('keeps block widgets transparent but gives app-route widgets the page background', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}]});
+    renderAtSlug('blocks-widget');
+    await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
+    expect(document.getElementById('itg-embed-body')?.textContent).toContain('background: transparent !important');
+    cleanup();
+
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+    await screen.findByRole('link', {name: 'Project ABC'});
+    const css = document.getElementById('itg-embed-body')?.textContent;
+    expect(css).toContain('background: var(--itg-color-bg-page, #fff) !important');
+    expect(css).not.toContain('transparent');
   });
 });

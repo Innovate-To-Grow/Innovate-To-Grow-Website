@@ -8,17 +8,26 @@ import {inComponentsLayer} from '@/lib/css';
 // narrowing `POST_TARGET` to `document.referrer`.
 const POST_TARGET = '*';
 
-/** Embed-specific body styles: transparent background, no margins. */
-export const EMBED_BODY_CSS = `
+/** Embed-specific body styles: no margins, and the page background ``background``. */
+const embedBodyCss = (background: string) => `
       html, body {
         margin: 0 !important;
         padding: 0 !important;
-        background: transparent !important;
+        background: ${background} !important;
       }
       body {
         overflow-x: hidden;
       }
     `;
+
+/** Block widgets are transparent, so their blocks sit on the host page like its own content. */
+export const EMBED_BODY_CSS = embedBodyCss('transparent');
+
+/**
+ * App-route widgets are whole site pages, whose text colours and striped rows assume the site's page
+ * background; on a coloured host page a transparent one would leave them unreadable.
+ */
+export const EMBED_APP_ROUTE_BODY_CSS = embedBodyCss('var(--itg-color-bg-page, #fff)');
 
 /** The embeddable block for ``slug``; ``notFound`` once fetching it failed. */
 export function useEmbedData(slug: string | undefined) {

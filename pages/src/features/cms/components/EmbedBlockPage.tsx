@@ -3,7 +3,14 @@ import { useParams, useSearchParams } from 'react-router';
 import { BlockRenderer } from './BlockRenderer';
 import { cmsPageClassName } from './pageClassName';
 import type { CMSEmbedResponse } from '@/features/cms/api';
-import { EMBED_BODY_CSS, useBaseTargetBlank, useEmbedData, useHeadStyle, useReportHeightToParent } from './embed/useEmbedDocument';
+import {
+  EMBED_APP_ROUTE_BODY_CSS,
+  EMBED_BODY_CSS,
+  useBaseTargetBlank,
+  useEmbedData,
+  useHeadStyle,
+  useReportHeightToParent,
+} from './embed/useEmbedDocument';
 import { normalizeScheduleId } from './embedScheduleId';
 import {
   SECTION_TITLES_KEY,
@@ -60,7 +67,7 @@ export const EmbedBlockPage = ({appRoutes}: {appRoutes: EmbedAppRoutes}) => {
   );
 
   useBaseTargetBlank();
-  useHeadStyle('itg-embed-body', EMBED_BODY_CSS);
+  useHeadStyle('itg-embed-body', data?.widget_type === 'app_route' ? EMBED_APP_ROUTE_BODY_CSS : EMBED_BODY_CSS);
   // Hide safe preset sections when requested by widget config or preview query params.
   useHeadStyle('itg-embed-hide-sections', hiddenSectionsCss);
   // Report height to parent (once data is rendered, and on any size change).
