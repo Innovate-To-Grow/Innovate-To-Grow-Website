@@ -19,7 +19,7 @@ _TERM_RE = re.compile(r"^(\d{4})-(\d)\s")
 
 @dataclass(frozen=True)
 class CurrentProjectLink:
-    # The archive project of the same semester, class and Team#, when the archive has it.
+    # The archive project of the same semester, class and Team# (and title, for a team without a slot), if any.
     archived: Project | None
     # The CurrentProject in the shape of the project detail endpoint.
     detail: dict
@@ -29,18 +29,18 @@ def _archived_project(project, term: str) -> Project | None:
     match = _TERM_RE.match(term)
     if not match or not project.team_number:
         return None
-    return (
-        Project.objects.filter(
-            semester__is_published=True,
-            semester__year=int(match.group(1)),
-            semester__season=int(match.group(2)),
-            class_code=project.class_code,
-            team_number=project.team_number,
-        )
-        .select_related("semester")
-        .order_by("-source", "pk")
-        .first()
+    archived = Project.objects.filter(
+        semester__is_published=True,
+        semester__year=int(match.group(1)),
+        semester__season=int(match.group(2)),
+        class_code=project.class_code,
+        team_number=project.team_number,
     )
+    if not project.is_presenting:
+        # A row without a slot may list a team of another semester (Track "(Fall)"), and team numbers are reused
+        # every semester, so this semester's Team# alone can name another team: the title must match too.
+        archived = archived.filter(project_title=project.project_title)
+    return archived.select_related("semester").order_by("-source", "pk").first()
 
 
 def resolve_current_project_link(project_id) -> CurrentProjectLink | None:

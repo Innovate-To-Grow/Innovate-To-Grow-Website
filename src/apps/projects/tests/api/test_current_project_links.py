@@ -134,6 +134,26 @@ class EarlierScheduleListedTeamTest(TestCase):
         self.assertEqual(response.data["id"], str(self.spring_ids["202"]))
         self.assertEqual(response.data["project_title"], "Frequency Ablation Caps")
 
+    def test_listed_team_is_not_served_another_archive_team_with_its_number(self):
+        # The listed 202 presents in a later semester; spring's own CAP 202 was another team.
+        semester = Semester.objects.create(year=2026, season=1, is_published=True)
+        Project.objects.create(semester=semester, class_code="CAP", team_number="202", project_title="Seed Counter")
+
+        response = self.client.get(f"/projects/{self.spring_ids['202']}/")
+
+        self.assertEqual(response.data["id"], str(self.spring_ids["202"]))
+        self.assertEqual(response.data["project_title"], "Frequency Ablation Caps")
+
+    def test_unslotted_team_with_its_title_in_the_archive_serves_the_archive_project(self):
+        semester = Semester.objects.create(year=2026, season=1, is_published=True)
+        archived = Project.objects.create(
+            semester=semester, class_code="CAP", team_number="202", project_title="Frequency Ablation Caps"
+        )
+
+        response = self.client.get(f"/projects/{self.spring_ids['202']}/")
+
+        self.assertEqual(response.data["id"], str(archived.pk))
+
     def test_team_that_presented_in_the_earlier_semester_keeps_its_own_row(self):
         response = self.client.get(f"/projects/{self.spring_ids['102']}/")
 

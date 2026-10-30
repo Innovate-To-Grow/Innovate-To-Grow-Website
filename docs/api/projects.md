@@ -67,7 +67,8 @@ The id can also be a current-semester project link (an event `CurrentProject` id
 response is then the team's archive project once its semester is imported, else the `CurrentProject` in the same
 shape (`apps/projects/services/current_project_links.py`). A team that schedule only listed (Track `(Fall)` or
 `(Spring)`: it presents in another semester) resolves to its row in the schedule it presents in, matched by class,
-Team# and title.
+Team# and title. A row without a slot matches an archive project only when the title matches too, since its
+schedule's semester may not be the team's.
 
 ### `POST /projects/past-shares/`
 
