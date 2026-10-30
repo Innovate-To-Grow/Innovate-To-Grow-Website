@@ -188,11 +188,12 @@ export function usePastProjectGridData(enabled: boolean = true): ProjectGridData
             })
             .catch((err) => {
                 if (controller.signal.aborted) return;
-                setState({
+                // A failed refetch keeps the rows it was revalidating (see below); only a first load has none.
+                setState((previous) => ({
                     requestKey,
-                    rows: [],
+                    rows: previous.rows,
                     error: err instanceof Error ? err.message : 'Failed to load past projects',
-                });
+                }));
             });
 
         return () => {
@@ -206,7 +207,8 @@ export function usePastProjectGridData(enabled: boolean = true): ProjectGridData
 
     // Stale-while-revalidate: a refetch() keeps serving the previously resolved rows (loading stays
     // false) until the new response lands, so consumers keep their search tables mounted — and their
-    // per-table curation intact — across a refresh. Only the very first load reports loading.
+    // per-table curation intact — across a refresh. Only the very first load reports loading. A failed
+    // refetch reports its error next to those same rows.
     const hasResolved = state.requestKey === requestKey;
     const hasEverResolved = state.requestKey !== null;
     return {

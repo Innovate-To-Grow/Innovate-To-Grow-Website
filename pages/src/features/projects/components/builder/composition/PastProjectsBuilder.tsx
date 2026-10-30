@@ -5,6 +5,7 @@ import {PastProjectsActionBar} from '../search/PastProjectsActionBar';
 import {MERGED_RESULTS_ID, scrollToMergedResults, useKeepScrollAnchor} from '../selection/scrollAnchor';
 import {useCurationDraft} from '../draft/useCurationDraft';
 import {useSaveSelectedRows} from '../selection/useSaveSelectedRows';
+import {ArchiveLoadFailed} from '../../search/cards/ArchiveLoadFailed';
 import {SearchTableStack} from '../../search/cards/SearchTableStack';
 import {useSearchTables} from '../../search/state/useSearchTables';
 import {MergedResultsTable, type PastProjectShareCreationResult} from '../../merged/composition/MergedResultsTable';
@@ -105,6 +106,7 @@ export const PastProjectsBuilder = ({
         idPrefix: TABLE_ID_PREFIX,
         isAuthenticated,
         rows,
+        rowsError: error,
         onRefreshRows,
         onMessage: setBuilderMessage,
         refreshingMessage: 'Refreshing this search table from the latest past-project archive...',
@@ -121,6 +123,9 @@ export const PastProjectsBuilder = ({
 
     // Lets a search table mark the projects that are already saved.
     const isRowSaved = useMemo(() => createProjectGridRowMatcher(draft.mergedRows).has, [draft.mergedRows]);
+    // A failed refresh keeps the archive it had, and the table that asked reports it; only a first load that
+    // failed leaves nothing to search.
+    const archiveUnavailable = Boolean(error) && !rows.length;
 
     return (
         <div className="past-projects-builder">
@@ -136,7 +141,7 @@ export const PastProjectsBuilder = ({
                 <PastProjectsActionBar
                     headingId={searchTablesHeadingId}
                     builderMessage={builderMessage}
-                    error={error}
+                    error={archiveUnavailable ? error : null}
                     loading={loading}
                     aiSearchDisabled={tables.hasAISearchTable}
                     aiSearchLoginRequired={!isAuthenticated}
@@ -149,13 +154,9 @@ export const PastProjectsBuilder = ({
                 ) : null}
 
                 {loading ? <p className="project-grid-state">Loading past projects...</p> : null}
-                {error ? (
-                    <p className="project-grid-state project-grid-state-error itg-error" role="alert">
-                        {error}
-                    </p>
-                ) : null}
+                {archiveUnavailable ? <ArchiveLoadFailed onRetry={onRefreshRows}/> : null}
 
-                {!loading && !error ? (
+                {!loading && !archiveUnavailable ? (
                     <SearchTableStack
                         tables={tables}
                         idPrefix={TABLE_ID_PREFIX}

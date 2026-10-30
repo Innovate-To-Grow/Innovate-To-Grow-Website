@@ -58,44 +58,76 @@ const aiSearchOutcome = (
 
 interface UseTableRefreshOptions {
   rows: ProjectGridRow[];
+  rowsError: string | null;
   setSearchTables: Dispatch<SetStateAction<SearchTableState[]>>;
   onRefreshRows?: () => void;
   onMessage: (message: string) => void;
   refreshingMessage: string;
 }
 
-/** Refreshing one table from a refetched archive; returns the per-table refresh action. */
-function useTableRefresh({rows, setSearchTables, onRefreshRows, onMessage, refreshingMessage}: UseTableRefreshOptions) {
-  const pendingRefreshTableId = useRef<string | null>(null);
+const REFRESH_FAILED_MESSAGE =
+  'This table was not refreshed: the past-project archive could not be loaded. Its rows are unchanged; ' +
+  'click Refresh Search Table to try again.';
+
+/** Refreshing tables from a refetched archive; returns the per-table refresh action. */
+function useTableRefresh({
+  rows,
+  rowsError,
+  setSearchTables,
+  onRefreshRows,
+  onMessage,
+  refreshingMessage,
+}: UseTableRefreshOptions) {
+  // Every table waiting for the refetch: another table may ask before the first refetch lands.
+  const pendingTableIds = useRef(new Set<string>());
   const lastSeenRows = useRef(rows);
+
+  const settlePending = useCallback(
+    (update: (table: SearchTableState) => SearchTableState) => {
+      const tableIds = pendingTableIds.current;
+      pendingTableIds.current = new Set();
+      setSearchTables((current) => current.map((table) => (tableIds.has(table.id) ? update(table) : table)));
+      return tableIds.size;
+    },
+    [setSearchTables],
+  );
 
   // Refresh is per-table: the refetch keeps serving stale rows (so the stack stays mounted and
   // every other table keeps its local curation), and once the fresh archive lands as a new `rows`
-  // array, only the table that asked is reset — via its resetKey — with the new data. The card stays
+  // array, only the tables that asked are reset — via their resetKey — with the new data. A card stays
   // mounted, so a save it has running still reports its outcome there.
   useEffect(() => {
     if (rows === lastSeenRows.current) {
       return;
     }
     lastSeenRows.current = rows;
-    const tableId = pendingRefreshTableId.current;
-    if (!tableId) {
+    if (!pendingTableIds.current.size) {
       return;
     }
-    pendingRefreshTableId.current = null;
-    setSearchTables((current) =>
-      current.map((table) => (table.id === tableId ? {...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1} : table)),
-    );
-    onMessage('Search table refreshed from the latest past-project archive.');
-  }, [rows, onMessage, setSearchTables]);
+    const count = settlePending((table) => ({...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1}));
+    onMessage(`Search ${count === 1 ? 'table' : 'tables'} refreshed from the latest past-project archive.`);
+  }, [rows, onMessage, settlePending]);
+
+  // A failed refetch keeps serving the same rows, so only its error says so: the tables that asked keep
+  // their rows and say they were not refreshed.
+  useEffect(() => {
+    if (!rowsError || !pendingTableIds.current.size) {
+      return;
+    }
+    settlePending((table) => ({...table, message: REFRESH_FAILED_MESSAGE, messageTone: 'error'}));
+    onMessage('');
+  }, [rowsError, onMessage, settlePending]);
 
   return useCallback(
     (tableId: string) => {
-      pendingRefreshTableId.current = tableId;
+      pendingTableIds.current.add(tableId);
+      setSearchTables((current) =>
+        current.map((table) => (table.id === tableId ? {...table, message: undefined, messageTone: undefined} : table)),
+      );
       onRefreshRows?.();
       onMessage(refreshingMessage);
     },
-    [onRefreshRows, onMessage, refreshingMessage],
+    [onRefreshRows, onMessage, refreshingMessage, setSearchTables],
   );
 }
 
@@ -105,6 +137,8 @@ interface UseSearchTablesOptions {
   isAuthenticated: boolean;
   /** The past-project archive every standard table searches. */
   rows: ProjectGridRow[];
+  /** Why the archive's latest (re)load failed; a failed refresh keeps `rows`. */
+  rowsError?: string | null;
   onRefreshRows?: () => void;
   onMessage: (message: string) => void;
   /** Drops AI results this page cannot use (e.g. projects already on the shared page). */
@@ -120,6 +154,7 @@ export function useSearchTables({
   idPrefix,
   isAuthenticated,
   rows,
+  rowsError = null,
   onRefreshRows,
   onMessage,
   filterAIRows = (aiRows) => aiRows,
@@ -201,7 +236,14 @@ export function useSearchTables({
     setSearchTables((current) => current.filter((table) => table.id !== tableId));
   };
 
-  const refreshSearchTable = useTableRefresh({rows, setSearchTables, onRefreshRows, onMessage, refreshingMessage});
+  const refreshSearchTable = useTableRefresh({
+    rows,
+    rowsError,
+    setSearchTables,
+    onRefreshRows,
+    onMessage,
+    refreshingMessage,
+  });
 
   return {
     searchTables,

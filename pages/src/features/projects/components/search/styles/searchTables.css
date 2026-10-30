@@ -28,6 +28,13 @@
   margin: 0;
 }
 
+.past-projects-archive-failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
 .past-projects-action-bar-group {
   display: flex;
   flex-wrap: wrap;

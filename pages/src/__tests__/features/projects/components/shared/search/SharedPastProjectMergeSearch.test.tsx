@@ -93,6 +93,27 @@ describe('SharedPastProjectMergeSearch', () => {
     expect(onAddRows).not.toHaveBeenCalled();
   });
 
+  it('keeps its table when a refresh fails, and offers to try again when the first load fails', () => {
+    const onRefreshRows = vi.fn();
+    const props = {currentRows: [alphaRow], loading: false, onAddRows: vi.fn(), onRefreshRows};
+    // A failed refetch keeps serving the same rows array.
+    const archive = [bravoRow];
+    const {rerender} = render(<SharedPastProjectMergeSearch rows={archive} error={null} {...props} />);
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: 'Refresh Search Table'}));
+    rerender(<SharedPastProjectMergeSearch rows={archive} error="Network Error" {...props} />);
+
+    expect(screen.getAllByLabelText('Select Bravo Project')[0]).toBeChecked();
+    expect(screen.getByRole('alert')).toHaveTextContent(/This table was not refreshed/);
+    expect(screen.queryByText('Network Error')).toBeNull();
+
+    cleanup();
+    render(<SharedPastProjectMergeSearch rows={[]} error="Network Error" {...props} />);
+    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    expect(onRefreshRows).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Network Error')).toBeNull();
+  });
+
   it('uses the search table merge flow to add selected projects', async () => {
     const onAddRows = vi.fn().mockResolvedValue(undefined);
 
