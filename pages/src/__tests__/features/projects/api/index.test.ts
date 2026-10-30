@@ -21,6 +21,8 @@ const mockIsDefinitiveAuthFailure = vi.hoisted(() =>
 );
 
 vi.mock('@/lib/api', () => ({api: apiMock}));
+// The shared test setup stubs the archive search; this file tests the real one.
+vi.unmock('@/features/projects/api/archive');
 vi.mock('@/features/auth', () => ({
   authApi: authApiMock,
   getAccessToken: mockGetAccessToken,
