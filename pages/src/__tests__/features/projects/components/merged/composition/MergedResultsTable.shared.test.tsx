@@ -1,5 +1,5 @@
 
-import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MergedResultsTable} from '@/features/projects/components/merged/composition/MergedResultsTable';
@@ -532,18 +532,28 @@ describe('MergedResultsTable in shared mode', () => {
     await waitFor(() => expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Renamed', ''));
   });
 
-  it('copies the share URL when the input is focused', async () => {
+  it('selects the share URL when the input takes focus, without touching the clipboard', async () => {
+    // Tabbing onto the field used to copy, replacing whatever a keyboard user had on their clipboard.
     const writeText = vi.fn().mockResolvedValue(undefined);
+    const execCommand = vi.fn().mockReturnValue(true);
     Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
+    Object.defineProperty(document, 'execCommand', {value: execCommand, configurable: true});
     try {
       render(<MergedResultsTable rows={makeItems()} sharedMode />);
+      const input = screen.getByLabelText<HTMLInputElement>('Shareable link');
 
-      fireEvent.focus(screen.getByLabelText('Shareable link'));
+      input.focus();
+      await act(async () => {});
 
-      await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
-      expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();
+      expect(input).toHaveFocus();
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(window.location.href.length);
+      expect(writeText).not.toHaveBeenCalled();
+      expect(execCommand).not.toHaveBeenCalled();
+      expect(screen.queryByText('Shareable URL copied.')).toBeNull();
     } finally {
       Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
+      Reflect.deleteProperty(document, 'execCommand');
     }
   });
 

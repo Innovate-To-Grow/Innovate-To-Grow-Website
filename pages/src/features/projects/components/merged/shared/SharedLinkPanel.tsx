@@ -53,9 +53,8 @@ export const SharedLinkPanel = ({shareUrl, onStatus, children}: SharedLinkPanelP
             value={shareUrl}
             readOnly
             title="Click to copy the link"
-            onFocus={(event) => {
-              void copyShareUrl(shareUrl, event.currentTarget, onStatus);
-            }}
+            // Taking focus only selects the link: tabbing through the page must not overwrite the clipboard.
+            onFocus={(event) => event.currentTarget.select()}
             onClick={(event) => {
               void copyShareUrl(shareUrl, event.currentTarget, onStatus);
             }}
