@@ -1544,6 +1544,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+      - name: Set up publisher Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
       - name: Download tested and scanned image
         uses: actions/download-artifact@v8
         with:
