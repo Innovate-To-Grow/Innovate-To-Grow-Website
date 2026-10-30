@@ -121,6 +121,22 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     onMessage('Curation draft cleared. Undo can restore it until you leave this page.');
   };
 
+  /**
+   * A curation was saved from `sharedRows`: they leave the draft, and so do the name and note that went with
+   * them. Rows the save left out (a search hid them) stay for the next curation. Storage is written here and
+   * now, because the save opens the new curation, which unmounts this page before the mirroring effect runs.
+   */
+  const dropShared = (sharedRows: ProjectGridRow[]) => {
+    const shared = createProjectGridRowMatcher(sharedRows);
+    const remaining = mergedRowsRef.current.filter((row) => !shared.has(row));
+    writePersistedDraft({owner: draftMemberRef.current, rows: remaining.map(stripProjectGridItem), name: '', note: ''});
+    commitMergedRows(() => remaining);
+    setMergedRowsUndo(null);
+    setRecentlyAdded(null);
+    setNameDraft('');
+    setNoteDraft('');
+  };
+
   return {
     mergedRows,
     mergedRowsRef,
@@ -136,6 +152,7 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     deleteRows,
     undo,
     reset,
+    dropShared,
   };
 }
 

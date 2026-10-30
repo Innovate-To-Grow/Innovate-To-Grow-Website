@@ -393,7 +393,7 @@ describe('MergedResultsTable', () => {
 
     expect(
       await screen.findByText(
-        /Your search shows 1 of the 2 projects in this draft\. Saving and exports include only the 1 it shows\./,
+        /Your search shows 1 of the 2 projects in this draft\. Saving and exports include only the 1 it shows; after saving, 1 other project stays in this draft\./,
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));

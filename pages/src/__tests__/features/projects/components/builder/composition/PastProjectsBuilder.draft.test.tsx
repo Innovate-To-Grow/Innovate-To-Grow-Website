@@ -196,6 +196,49 @@ describe('PastProjectsBuilder — the kept draft', () => {
     await waitFor(() => expect(storedDraft()).toBeNull());
   });
 
+  it('keeps the projects a narrowed search left out of the saved curation in the draft', async () => {
+    storeDraft(
+      [
+        makeRow({team_number: 'T01', project_title: 'Project 1', organization: 'Acme'}),
+        makeRow({team_number: 'T02', project_title: 'Project 2', organization: 'Globex'}),
+        makeRow({team_number: 'T03', project_title: 'Project 3', organization: 'Initech'}),
+      ],
+      {owner: 'member-1', name: 'Acme picks', note: 'For Acme'},
+    );
+    const onCreateShare = vi.fn().mockResolvedValue({id: 'share-acme'});
+    const {unmount} = render(
+      <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />,
+    );
+
+    const merged = within(getMergedSection() as HTMLElement);
+    fireEvent.change(merged.getByRole('searchbox', {name: 'Search this list'}), {target: {value: 'Acme'}});
+    expect(merged.getByText(/after saving, 2 other projects stay in this draft\./)).toBeInTheDocument();
+    fireEvent.click(merged.getAllByRole('button', {name: /save curation/i})[0]);
+
+    await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
+    expect((onCreateShare.mock.calls[0][0] as ProjectGridRow[]).map((row) => row.project_title)).toEqual(['Project 1']);
+    // The saved project and the name and note it took with it leave the draft; the hidden ones stay.
+    await waitFor(() =>
+      expect(storedDraft()).toEqual({
+        owner: 'member-1',
+        rows: [
+          expect.objectContaining({project_title: 'Project 2'}),
+          expect.objectContaining({project_title: 'Project 3'}),
+        ],
+        name: '',
+        note: '',
+      }),
+    );
+
+    // Coming back to the builder (the save opened the curation, unmounting it) offers the rest.
+    unmount();
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    const restored = within(getMergedSection() as HTMLElement);
+    expect(restored.getAllByText('Project 2').length).toBeGreaterThan(0);
+    expect(restored.getAllByText('Project 3').length).toBeGreaterThan(0);
+    expect(restored.queryByText('Project 1')).toBeNull();
+  });
+
   it('keeps the draft when saving the curation fails', async () => {
     // The whole point of persistence is to not lose the user's merged rows; a failed save
     // (network error, 4xx/5xx) must leave the draft intact so they can retry.

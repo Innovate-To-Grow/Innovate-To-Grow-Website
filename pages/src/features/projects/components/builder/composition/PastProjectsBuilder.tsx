@@ -2,7 +2,6 @@ import {useCallback, useId, useMemo, useState} from 'react';
 import {useAuth} from '@/features/auth';
 import {AISearchLoginDialog} from '../search/AISearchLoginDialog';
 import {PastProjectsActionBar} from '../search/PastProjectsActionBar';
-import {clearPersistedDraft} from '../draft/curationDraftStorage';
 import {MERGED_RESULTS_ID, scrollToMergedResults, useKeepScrollAnchor} from '../selection/scrollAnchor';
 import {useCurationDraft} from '../draft/useCurationDraft';
 import {useSaveSelectedRows} from '../selection/useSaveSelectedRows';
@@ -30,26 +29,26 @@ interface PastProjectsBuilderProps {
 type CreateShare = PastProjectsBuilderProps['onCreateShare'];
 
 /**
- * Wraps the parent's share creator so a *successful* share drops the persisted draft — the share
- * now owns this snapshot, and returning to the builder should start clean. A failed attempt keeps
- * the draft so the user does not lose their merged rows. While a shareable link is being created,
- * saving waits: the link is made from the rows shown at the click, and the draft is dropped once it
- * exists, so rows saved meanwhile would be lost.
+ * Wraps the parent's share creator so a *successful* share takes its rows out of the draft — the curation
+ * now owns them, and returning to the builder should not offer them again. Rows a narrowed search left out
+ * of the curation stay in the draft. A failed attempt keeps the draft whole so the user does not lose their
+ * rows. While a curation is being saved, adding waits: the curation is made from the rows shown at the
+ * click, and those leave the draft once it exists.
  */
-function useDraftShareCreation(onCreateShare: CreateShare) {
+function useDraftShareCreation(onCreateShare: CreateShare, dropShared: (rows: ProjectGridRow[]) => void) {
     const [isCreatingShare, setIsCreatingShare] = useState(false);
     const handleCreateShare = useCallback(
         async (shareRows: ProjectGridRow[], name: string, note: string) => {
             setIsCreatingShare(true);
             try {
                 const result = await onCreateShare(shareRows, name, note);
-                clearPersistedDraft();
+                dropShared(shareRows);
                 return result;
             } finally {
                 setIsCreatingShare(false);
             }
         },
-        [onCreateShare],
+        [dropShared, onCreateShare],
     );
     return {isCreatingShare, handleCreateShare};
 }
@@ -112,7 +111,7 @@ export const PastProjectsBuilder = ({
     });
     const saving = useSaveSelectedRows({draft, scrollAnchorRef, onMessage: setBuilderMessage});
 
-    const {isCreatingShare, handleCreateShare} = useDraftShareCreation(onCreateShare);
+    const {isCreatingShare, handleCreateShare} = useDraftShareCreation(onCreateShare, draft.dropShared);
 
     const handleAddAISearchTable = () => {
         if (!tables.addAISearchTable()) {
