@@ -100,6 +100,24 @@ class CurrentProjectIdentityTest(TestCase):
 
         self.assertEqual(dict(CurrentProject.objects.values_list("team_number", "pk")), ids)
 
+    def test_swapped_team_numbers_keep_each_project_its_id(self):
+        self._sync(_row(**{"Project Title": "Alpha"}), _row(Order=2, **{"Team#": "102", "Project Title": "Beta"}))
+        ids = dict(CurrentProject.objects.values_list("project_title", "pk"))
+
+        self._sync(_row(**{"Project Title": "Beta"}), _row(Order=2, **{"Team#": "102", "Project Title": "Alpha"}))
+
+        self.assertEqual(dict(CurrentProject.objects.values_list("project_title", "pk")), ids)
+        self.assertEqual(CurrentProject.objects.get(pk=ids["Alpha"]).team_number, "102")
+
+    def test_title_two_teams_share_does_not_move_a_project(self):
+        self._sync(_row(**{"Project Title": "Alpha"}), _row(Order=2, **{"Team#": "102", "Project Title": "Beta"}))
+        ids = dict(CurrentProject.objects.values_list("team_number", "pk"))
+
+        # "Beta" names two teams now, so it says nothing about which stored row is whose.
+        self._sync(_row(**{"Project Title": "Beta"}), _row(Order=2, **{"Team#": "102", "Project Title": "Beta"}))
+
+        self.assertEqual(dict(CurrentProject.objects.values_list("team_number", "pk")), ids)
+
     def test_rows_sharing_team_number_and_title_still_share_one_project(self):
         self._sync(_row(), _row(Order=2))
 

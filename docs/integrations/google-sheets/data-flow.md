@@ -144,8 +144,9 @@ synced independently — not only the one marked **Active**.
    such as an `Abstract-101` abstract or a `CAP-101` team name included.
 4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack` and `EventScheduleSlot`
    rows inside one transaction (other schedules are untouched). A sheet row updates the `CurrentProject` with its
-   Team# and title, else its team's (class + Team#) — so a title fix keeps the project's id and its
-   `/projects/<id>` links. `EventAgendaItem` rows (the Expo and Awards
+   Team# and title; else, when no other team of the sheet has its title, the one row of its class with that title
+   (a renumbered team keeps its id, so swapped numbers do not swap links); else its team's (class + Team#) — so a
+   title fix keeps the project's id and its `/projects/<id>` links. `EventAgendaItem` rows (the Expo and Awards
    tables) are **not** replaced: the first sync of a schedule seeds the defaults from `defaults.py`, and from then
    on they are edited in the schedule's admin change form and never rewritten by a sync
 5. Records grand winners on the schedule and writes a `ScheduleSyncLog` entry
