@@ -21,6 +21,11 @@
     width: 44px;
     height: 44px;
   }
+
+  .itg-btn.project-grid-toggle-details,
+  .project-grid-share-result-row > .itg-btn {
+    min-height: 2.75rem;
+  }
 }
 
 @media (max-width: 900px) {
@@ -254,6 +259,50 @@
 
   .past-projects-dialog-actions .itg-btn {
     flex: 1 1 auto;
+  }
+}
+
+/* ---- The narrowest phones (320-360px, and 400% zoom) ---------------------------- */
+
+@media (max-width: 360px) {
+  /* Class and Industry one above the other: "All industries" does not fit half a row. */
+  .project-grid-controls-row.has-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* "Sort by" over a full-width select, so the longest choice ("Team number (low to high)") is not cut off. */
+  .project-grid-results-controls .project-grid-sort {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .project-grid-results-controls .project-grid-sort .project-grid-select {
+    width: 100%;
+  }
+
+  /* Per page and View All Details a row each, so the button's label stays on one line. */
+  .project-grid-controls-row > .project-grid-page-size,
+  .project-grid-controls-row > .project-grid-toggle-details {
+    grid-column: 1 / -1;
+  }
+
+  /* Previous / Page x of y / Next stay on one line. */
+  .project-grid-pagination {
+    flex-wrap: nowrap;
+  }
+
+  .project-grid-pager-step {
+    padding-inline: 0.5em;
+  }
+
+  .project-grid-pager-status {
+    text-align: center;
+  }
+
+  /* + Search Table and AI Search Table one above the other, each on one line. */
+  .past-projects-action-bar-group {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
