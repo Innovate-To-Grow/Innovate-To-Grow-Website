@@ -172,6 +172,14 @@
                       "ecs:cluster": "arn:aws:ecs:us-west-2:394167325273:cluster/itg-backend-cluster"
                     }
                   }
+                },
+                {
+                  "Sid": "ReadDeploymentConfiguration",
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-west-2:394167325273:secret:itg/backend/deploy-config-OKSpsZ"
                 }
               ]
             }
@@ -217,8 +225,17 @@
                   ],
                   "Resource": [
                     "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j/branches/main",
+                    "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j/branches/main/deployments/*",
                     "arn:aws:amplify:us-west-2:394167325273:apps/d27iyf1haq14j/branches/main/jobs/*"
                   ]
+                },
+                {
+                  "Sid": "ReadDeploymentConfiguration",
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-west-2:394167325273:secret:itg/frontend/deploy-config-aQpF2v"
                 }
               ]
             }
@@ -394,6 +411,14 @@
                       "iam:PassedToService": "ecs-tasks.amazonaws.com"
                     }
                   }
+                },
+                {
+                  "Sid": "ReadDeploymentConfiguration",
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-west-2:394167325273:secret:itg/archive/deploy-config-4CEqpR"
                 }
               ]
             }

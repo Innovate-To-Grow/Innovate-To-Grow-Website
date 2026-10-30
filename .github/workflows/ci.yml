@@ -906,7 +906,7 @@ jobs:
       - name: Check production frontend configuration is present
         env:
           EVENT_NAME: ${{ github.event_name }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: https://api.i2g.ucmerced.edu
         run: |
           if [ -n "$VITE_API_BASE_URL" ]; then
             echo "VITE_API_BASE_URL is configured."
@@ -1173,7 +1173,7 @@ jobs:
 
       - name: Validate production frontend configuration
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: https://api.i2g.ucmerced.edu
         run: |
           if [ -z "$VITE_API_BASE_URL" ]; then
             echo "::error::VITE_API_BASE_URL is required for the production frontend build."
@@ -1193,7 +1193,7 @@ jobs:
       - name: Build production frontend
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: https://api.i2g.ucmerced.edu
 
       - name: Upload production frontend dist
         uses: actions/upload-artifact@v7
@@ -1547,7 +1547,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::394167325273:role/itg-ci-image-publisher
           allowed-account-ids: "394167325273"
           role-session-name: ci-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}

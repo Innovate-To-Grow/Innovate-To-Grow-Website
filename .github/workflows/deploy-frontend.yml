@@ -35,10 +35,22 @@ jobs:
         with:
           ref: ${{ inputs.deploy_sha }}
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::394167325273:role/itg-prod-frontend-deployer
+          allowed-account-ids: "394167325273"
+          role-session-name: deploy-${{ github.run_id }}
+          aws-region: us-west-2
+
+      - name: Load deployment configuration from AWS
+        working-directory: .
+        run: python scripts/deploy/load_config.py frontend
+
       - name: Validate required deploy configuration
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
-          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
+          AMPLIFY_APP_ID: ${{ env.AMPLIFY_APP_ID }}
         run: |
           if [ -z "$AMPLIFY_APP_ID" ]; then
             echo "::error::AMPLIFY_APP_ID is required for the Amplify deployment."
@@ -62,21 +74,13 @@ jobs:
       - name: Build frontend
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          allowed-account-ids: "394167325273"
-          role-session-name: deploy-${{ github.run_id }}
-          aws-region: us-west-2
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
 
       - name: Deploy to AWS Amplify
         id: deploy-amplify
         env:
-          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BRANCH: ${{ vars.AMPLIFY_BRANCH || 'main' }}
+          AMPLIFY_APP_ID: ${{ env.AMPLIFY_APP_ID }}
+          AMPLIFY_BRANCH: ${{ env.AMPLIFY_BRANCH || 'main' }}
         run: |
           # Create a deployment and get the upload URL + job ID
           DEPLOY_RESULT=$(aws amplify create-deployment \
@@ -108,8 +112,8 @@ jobs:
 
       - name: Wait for Amplify deployment to finish
         env:
-          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BRANCH: ${{ vars.AMPLIFY_BRANCH || 'main' }}
+          AMPLIFY_APP_ID: ${{ env.AMPLIFY_APP_ID }}
+          AMPLIFY_BRANCH: ${{ env.AMPLIFY_BRANCH || 'main' }}
           JOB_ID: ${{ steps.deploy-amplify.outputs.job-id }}
         run: |
           set -euo pipefail
@@ -143,8 +147,8 @@ jobs:
 
       - name: Smoke check deployed frontend
         env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
+          FRONTEND_URL: ${{ env.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
+          VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
         run: |
           set -euo pipefail
 
