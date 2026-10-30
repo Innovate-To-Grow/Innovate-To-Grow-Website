@@ -108,7 +108,9 @@ class AWSCredentialConfigAdminTests(TestCase):
         response = self.client.get(reverse("admin:core_awscredentialconfig_change", args=[self.config.pk]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Access Key ID")
+        self.assertContains(response, 'name="credentials_secret_arn"')
+        self.assertNotContains(response, 'name="access_key_id"')
+        self.assertNotContains(response, 'name="secret_access_key"')
         self.assertContains(response, "AWS Region")
         self.assertNotContains(response, "SNS SMS")
         self.assertNotContains(response, 'name="sms_from_number"')

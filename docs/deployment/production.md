@@ -81,7 +81,7 @@ The loader validates setting names against `aws/cicd/deploy-config-keys.json`
 and rejects multiline values before exporting them to the job. Application
 passwords and signing keys remain separate secrets injected directly by ECS.
 
-GitHub Actions secrets and variables are not required. Public OIDC role ARNs
+Deployment requires no GitHub Actions secrets or variables. CI runner selection may retain the non-secret `AWS_RUNNERS_ENABLED` bootstrap switch. Public OIDC role ARNs
 and the AWS region are bootstrap identifiers in workflow code; they cannot be
 fetched before authentication. CI's public API URL is a checked-in test/build
 default, while production frontend deployment reads its URL from AWS.
@@ -90,3 +90,32 @@ Unused former repository settings are preserved in the backend configuration
 for recovery; storing them does not enable new application features. Legacy SES
 credentials are backed up separately in `itg/shared/legacy-ses-credentials` and
 are not automatically injected into runtime or exposed to deployment roles.
+
+### Application AWS credentials and background jobs
+
+Application credentials are separate from deployment identities. Each AWS
+credential configuration references `itg/backend/aws-credentials/<config-id>`.
+The secret JSON contains `access_key_id` and `secret_access_key`; the database
+retains only its ARN, region, and service metadata. SES, SMS, Bedrock, usage
+metrics, and admin test actions use the same resolver. The ECS task role has
+read-only access to this namespace. Values are cached only in process memory
+for up to 60 seconds before rotation is picked up. Production refuses legacy
+database keys and prevents new plaintext writes. The legacy columns remain
+empty for a safe staged schema transition and local-test compatibility.
+
+For an initial migration, use a temporary operations role scoped to creating
+and reading this secret namespace. Apply schema migrations, then run
+`python manage.py migrate_aws_credentials` from the new image before rolling
+out the service. This copies and verifies every existing configuration while
+keeping legacy values for the old containers. After every service container
+runs the new image, run `python manage.py migrate_aws_credentials --clear-legacy`.
+The clear phase refuses to erase a database key if its cloud copy differs.
+Remove the temporary migration role after verification. Do not roll back to an
+image that predates the Secrets Manager resolver after clearing legacy columns.
+
+Set `BACKGROUND_JOBS_ENABLED` to `true` in `itg/backend/deploy-config` to enable
+durable queues and startup reconciliation of Amplify rules. The worker waits
+for Web readiness. Before initial enablement, inspect pending/retry jobs, then
+verify worker heartbeat, successful reconciliation, frontend/API routes, and
+provider access. Validate email/SMS with read-only API calls unless an actual
+test recipient has been explicitly requested.
