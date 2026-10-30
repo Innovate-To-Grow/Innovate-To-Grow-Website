@@ -1,4 +1,4 @@
-import {act, cleanup, fireEvent, render, screen, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {PastProjectsBuilder} from '@/features/projects/components/builder/composition/PastProjectsBuilder';
@@ -157,8 +157,11 @@ describe('PastProjectsBuilder and the Past Projects widget', () => {
         'From the Past Projects widget: 1 project added to the curation draft (1 in total). ' +
           '1 project from the Past Projects widget is no longer in the archive.',
       );
-      const stored = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) ?? '{}') as {rows: ProjectGridRow[]};
-      expect(stored.rows.map((row) => row.abstract)).toEqual(['Bravo Project abstract']);
+      // The draft is stored by an effect, which can run after the DOM change findByRole saw.
+      await waitFor(() => {
+        const stored = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) ?? '{}') as {rows?: ProjectGridRow[]};
+        expect(stored.rows?.map((row) => row.abstract)).toEqual(['Bravo Project abstract']);
+      });
       // Gone from the address, so a reload or a copied link does not add them again; the router's state stays.
       expect(window.location.pathname + window.location.search + window.location.hash).toBe('/past-projects?value=x');
       expect(window.history.state).toEqual({idx: 0});
