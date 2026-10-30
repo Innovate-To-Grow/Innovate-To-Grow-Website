@@ -76,7 +76,7 @@ export const SharedMergedList = ({
           savedNoteHtml: noteHtml,
         })
       }
-      onError={setStatusMessage}
+      onStatus={setStatusMessage}
     />
   );
 

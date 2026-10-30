@@ -74,7 +74,8 @@ const BuilderListToolbar = ({
             noteDraft: curation.noteDraft,
           })
         }
-        onError={setStatusMessage}
+        onStatus={setStatusMessage}
+        reloadNote="Your curation draft is kept."
       />
       <MergedEditButtons
         bulkRemove={onDeleteRows ? {hasSelection: shownSelectedRows.length > 0, onRemove: handleRemoveSelectedRows} : null}
