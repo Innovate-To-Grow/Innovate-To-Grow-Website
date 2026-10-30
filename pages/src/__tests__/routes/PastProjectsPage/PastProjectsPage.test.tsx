@@ -219,6 +219,14 @@ describe('PastProjectsPage', () => {
         expect(await screen.findByTestId('share-title')).toHaveTextContent('Past Project Curation');
     });
 
+    it('names the tab Past Projects even after a curation page named it', () => {
+        // Both routes share the route title, so the route alone would not set it again.
+        document.title = 'Spring finalists | Innovate to Grow';
+        renderPage();
+
+        expect(document.title).toBe('Past Projects | Innovate to Grow');
+    });
+
     it('heads the builder with the archive size, the years it spans and a lede', () => {
         renderPage();
 

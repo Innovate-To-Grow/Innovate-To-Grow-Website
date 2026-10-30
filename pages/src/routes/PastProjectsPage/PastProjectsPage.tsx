@@ -45,8 +45,9 @@ export const PastProjectsPage = () => {
     shareId,
     share,
   );
-  // A shared list is named after the share; the plain page keeps its route title.
-  usePageTitle(sharedMode && activeShare ? shareDisplayTitle(activeShare) : null);
+  // A shared list is named after the share (its message pages name themselves). The builder names itself too: both
+  // routes have the same route title, so coming back from a curation would otherwise keep that curation's title.
+  usePageTitle(sharedMode ? activeShare && shareDisplayTitle(activeShare) : 'Past Projects');
   // The archive is only needed to search (the builder, or the owner adding to a shared list).
   const {rows, loading, error, refetch} = usePastProjectGridData(!sharedMode || Boolean(activeShare?.can_edit));
 

@@ -32,4 +32,20 @@ describe('SharedCurationView', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading curation...');
   });
+
+  it('names the tab after a curation that does not exist', () => {
+    document.title = 'Past Projects | Innovate to Grow';
+    renderView({error: 'Not found', notFound: true});
+
+    expect(screen.getByRole('heading', {level: 1})).toHaveTextContent("This curation isn't available");
+    expect(document.title).toBe('Curation not available | Innovate to Grow');
+  });
+
+  it('names the tab after a curation that could not be loaded', () => {
+    document.title = 'Past Projects | Innovate to Grow';
+    renderView({error: 'Network Error'});
+
+    expect(screen.getByRole('heading', {level: 1})).toHaveTextContent("We couldn't load this curation");
+    expect(document.title).toBe('Curation could not be loaded | Innovate to Grow');
+  });
 });
