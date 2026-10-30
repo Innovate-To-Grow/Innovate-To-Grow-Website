@@ -7,7 +7,7 @@ URL organization for the Django backend, defined in `src/config/routing/urls.py`
 | Path | Handler | Description |
 |------|---------|-------------|
 | `/` | `root_index` | Static landing response |
-| `/robots.txt` | `robots_txt` | Search engine directives |
+| `/robots.txt` | `robots_txt` | Search engine directives: the public reads the SPA renders pages from are allowed, everything else is disallowed |
 | `/admin/login/` | `AdminLoginView` | Custom admin login (overrides default) |
 | `/admin/` | Django admin | Unfold-themed admin interface |
 | `/livez/` | `HealthCheckMiddleware` | Liveness probe without DB access (intercepted before URL routing) |

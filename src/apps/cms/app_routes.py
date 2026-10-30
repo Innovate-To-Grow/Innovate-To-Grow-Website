@@ -73,6 +73,10 @@ PUBLIC_APP_ROUTES = [
     {"url": "/account/past-project-curation-shared-links", "title": "Shared Project Curations"},
 ]
 
+# Public content routes owned by React components, listed in /sitemap.xml next to the published CMS pages. Sign-in,
+# account and link-handling routes are not content and stay out.
+SITEMAP_APP_ROUTES = ["/news", "/schedule", "/current-projects", "/presenting-teams", "/past-projects"]
+
 # React-router dynamic patterns.  ``:name`` represents one non-empty path
 # segment.  Concrete paths matching these patterns are application-owned and
 # cannot be claimed as CMS pages or redirect sources.
