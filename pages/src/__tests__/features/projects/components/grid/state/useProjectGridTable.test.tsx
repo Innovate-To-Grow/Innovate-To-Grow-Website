@@ -125,6 +125,64 @@ describe('useProjectGridTable', () => {
         expect(result.current.filteredRows).toHaveLength(4);
     });
 
+    it("goes back to the first page once when the server's answer adds rows to a search paged through", async () => {
+        // 6 rows match "solar" by title (3 pages of 2); the server also finds two rows by their abstracts.
+        const rows = makeItems(
+            makeRows(12).map((row, index) => ({
+                ...row,
+                id: `p${index}`,
+                abstract: '',
+                project_title: index < 6 ? `Solar ${index}` : `Wind ${index}`,
+            })),
+        );
+        let answer!: (ids: ReadonlySet<string>) => void;
+        const searchRemote = vi.fn(() => new Promise<ReadonlySet<string>>((resolve) => (answer = resolve)));
+        const {result, rerender} = renderHook(
+            ({items}) => useProjectGridTable({rows: items, pageSize: 2, defaultSortField: 'team_number', searchRemote}),
+            {initialProps: {items: rows}},
+        );
+
+        act(() => result.current.setSearch('solar'));
+        await waitFor(() => expect(searchRemote).toHaveBeenCalledTimes(1));
+        // The visitor pages on before the answer arrives.
+        act(() => result.current.setPage(2));
+        expect(result.current.pagedRows.map((row) => row.project_title)).toEqual(['Solar 4', 'Solar 5']);
+
+        await act(async () => answer(new Set(['p6', 'p7'])));
+        expect(result.current.filteredRows).toHaveLength(8);
+        // Page 3 would now hold other rows under the same "showing 5–6": the search starts over.
+        expect(result.current.page).toBe(0);
+
+        // Rows removed later do not start it over again.
+        act(() => result.current.setPage(2));
+        rerender({items: rows.filter((row) => row.id !== 'p6')});
+        expect(result.current.page).toBe(2);
+    });
+
+    it("keeps the page when the server's answer adds no rows", async () => {
+        const rows = makeItems(
+            makeRows(12).map((row, index) => ({
+                ...row,
+                id: `p${index}`,
+                abstract: '',
+                project_title: index < 6 ? `Solar ${index}` : 'Wind',
+            })),
+        );
+        let answer!: (ids: ReadonlySet<string>) => void;
+        const searchRemote = vi.fn(() => new Promise<ReadonlySet<string>>((resolve) => (answer = resolve)));
+        const {result} = renderHook(() =>
+            useProjectGridTable({rows, pageSize: 2, defaultSortField: 'team_number', searchRemote}),
+        );
+
+        act(() => result.current.setSearch('solar'));
+        await waitFor(() => expect(searchRemote).toHaveBeenCalledTimes(1));
+        act(() => result.current.setPage(2));
+        // The server names only rows the titles already found.
+        await act(async () => answer(new Set(['p0', 'p1'])));
+        expect(result.current.searchPending).toBe(false);
+        expect(result.current.page).toBe(2);
+    });
+
     it('finds rows by what the page shows, not by hidden or raw values', async () => {
         const rows = makeItems([
             makeRow({

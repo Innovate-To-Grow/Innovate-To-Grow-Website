@@ -86,7 +86,23 @@ function useFilteredSortedRows(
     () => sortProjectGridItems(filteredRows, sortField, sortDirection),
     [filteredRows, sortDirection, sortField],
   );
-  return {filteredRows, sortedRows, searchPending: remote.pending};
+  // The server's answer when it found rows the rows' own text did not: they are sorted in among those shown.
+  const serverAddition = remoteMatches && filteredRows.length > ownMatches.length ? remoteMatches : null;
+  return {filteredRows, sortedRows, searchPending: remote.pending, serverAddition};
+}
+
+/**
+ * Back to the first page when the server's answer adds rows to a search: they are sorted in among the rows already
+ * shown, so a later page the visitor moved to meanwhile would show other rows under the same "showing 11–15". Once
+ * per answer: rows removed and restored afterwards do not start it over again.
+ */
+function useStartOverOnServerRows(serverAddition: ReadonlySet<string> | null, setPage: (page: number) => void) {
+  const [startedOver, setStartedOver] = useState<ReadonlySet<string> | null>(null);
+  // Adjusted during render, like the page clamp in useGridPagination.
+  if (serverAddition && serverAddition !== startedOver) {
+    setStartedOver(serverAddition);
+    setPage(0);
+  }
 }
 
 /** Expanded rows: the keys of rows with details, whether all are open, and opening them all on mount if asked. */
@@ -152,7 +168,7 @@ export function useProjectGridTable({
   const [search, setSearch] = useSeededSearch(initialSearch);
   const [sortField, setSortField] = useState<ProjectGridColumnKey>(initialSortField);
   const [sortDirection, setSortDirection] = useState<ProjectGridSortDirection>(initialSortDirection);
-  const {filteredRows, sortedRows, searchPending} = useFilteredSortedRows(
+  const {filteredRows, sortedRows, searchPending, serverAddition} = useFilteredSortedRows(
     rows,
     {search, filterRow, classLabels, searchRemote},
     sortField,
@@ -161,6 +177,7 @@ export function useProjectGridTable({
   // Every table that uses this hook starts a new search on its first page.
   const paging = useGridPagination(sortedRows, {initialPageSize, pageSizeChoices, initialPage, resetKey: search});
   const {setPage} = paging;
+  useStartOverOnServerRows(serverAddition, setPage);
   const {expandedKeys, expanded, allDetailsExpanded, toggleAllDetails} = useExpandedRows(rows, expandAllByDefault);
   const [selectedKeys, selected] = useRowKeySet();
 
