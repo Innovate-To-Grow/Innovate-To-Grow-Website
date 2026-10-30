@@ -362,6 +362,24 @@ describe('CMSPageComponent page title', () => {
     expect(document.title).toBe('Fall 2020 Event | Innovate to Grow');
   });
 
+  it("names og:title and the meta description after the page, replacing the previous page's", () => {
+    document.head.innerHTML = '<meta property="og:title" content="Current Projects">';
+    useCMSPage.mockReturnValue({
+      page: {...page, meta_description: 'Teams presented their projects at the Fall 2020 showcase.'},
+      redirectTo: null,
+      loading: false,
+      error: null,
+      isLivePreview: false,
+    });
+
+    renderPage('/2020-fall-event');
+
+    const meta = (selector: string) => document.head.querySelector<HTMLMetaElement>(selector)?.content;
+    expect(meta('meta[property="og:title"]')).toBe('Fall 2020 Event');
+    expect(meta('meta[name="description"]')).toBe('Teams presented their projects at the Fall 2020 showcase.');
+    expect(meta('meta[property="og:description"]')).toBe('Teams presented their projects at the Fall 2020 showcase.');
+  });
+
   it('adds no extra h1 when a block already renders one', async () => {
     blockHeading.text = 'About Us';
     useCMSPage.mockReturnValue({page, redirectTo: null, loading: false, error: null, isLivePreview: false});
