@@ -39,14 +39,14 @@ describe('MySharedLinksSection', () => {
         mockListMyShares.mockResolvedValue([share()]);
         render(<MySharedLinksSection/>);
 
-        fireEvent.click(await screen.findByRole('button', {name: /^Copy the link to Spring finalists/}));
+        fireEvent.click(await screen.findByRole('button', {name: /^Copy link to Spring finalists/}));
 
         await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://example.test/past-projects/share-1'));
         expect(await screen.findByRole('status')).toHaveTextContent('Link copied.');
         vi.unstubAllGlobals();
     });
 
-    it('renders the list with open + delete only when the user has shares', async () => {
+    it('renders the list with copy, open and delete when the user has shares', async () => {
         mockListMyShares.mockResolvedValue([share()]);
         render(<MySharedLinksSection/>);
 
@@ -62,7 +62,8 @@ describe('MySharedLinksSection', () => {
             'href',
             '/account/past-project-curation-shared-links',
         );
-        expect(screen.queryByRole('button', {name: /copy link/i})).toBeNull();
+        // Its name starts with the visible "Copy link", so speech input can press it by what it says.
+        expect(screen.getByRole('button', {name: /^Copy link to Spring finalists/})).toHaveTextContent('Copy link');
         expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
     });
 
