@@ -85,6 +85,10 @@ the text a client sends is never stored. A row naming no published project is a 
 when the share already holds that row (a project removed from the archive since), which is kept as stored. Reading
 a share shows the catalog's current text for every row that still resolves.
 
+**Note and details:** `note` is rich text, at most 50,000 characters, sanitized to the share allowlist on every
+write. `details_text` is read-only: shares saved by the old client still serve theirs, and a value sent on a write is
+ignored.
+
 **Name:** optional. A blank or missing `name` here or on a `PUT`, or a blank `name` sent in a `PATCH`, is replaced
 with the first line of the owner's own `note` text, truncated to 60 characters, else `"Past Project Curation"`
 (`apps/projects/services/share_names.py`). A `PATCH` without `name` keeps the stored name. Project details added by

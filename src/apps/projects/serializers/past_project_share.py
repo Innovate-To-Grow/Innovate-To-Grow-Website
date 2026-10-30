@@ -10,7 +10,7 @@ from ..models import PastProjectShare
 from ..services.share_names import default_share_name
 from ..services.share_rows import UnknownShareRows, rebuild_share_rows, rows_for_display
 
-# Allowlist for the stored details_text HTML: inline emphasis + line/paragraph structure, no
+# Allowlist for a share's stored rich text (the note): inline emphasis + line/paragraph structure, no
 # attributes. Defense-in-depth so safety does not rely solely on every client render calling
 # DOMPurify.
 DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark", "a"]
@@ -21,13 +21,8 @@ DETAILS_ALLOWED_ATTRIBUTES = {
     "div": ["data-past-project-note-curation", "data-past-project-key"],
 }
 
-# Generous cap: a generated detail for ~1000 projects with long abstracts is well under this
-# (low hundreds of KB), so it never rejects a legitimate large share, but it stops absurd
-# payloads. details legitimately needs much more room than the note.
-DETAILS_TEXT_MAX_LENGTH = 2_000_000
-
 # The share-level note is rich text (HTML). Cap well above plain-text length so emphasis tags
-# don't reject a reasonable note, but far below the details cap.
+# don't reject a reasonable note.
 NOTE_MAX_LENGTH = 50_000
 
 # Row text is rebuilt from the catalog, so these caps only bound a request: about ten times the longest archive
@@ -42,7 +37,7 @@ class StalePastProjectShareSnapshot(Exception):
 
 
 def sanitize_details_text(value: str) -> str:
-    """Strip any markup outside the rich-detail allowlist from a share's details_text."""
+    """Strip any markup outside the rich-detail allowlist from a share's rich text."""
     if not value:
         return value
     return bleach.clean(value, tags=DETAILS_ALLOWED_TAGS, attributes=DETAILS_ALLOWED_ATTRIBUTES, strip=True)
@@ -76,10 +71,8 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     industry = serializers.CharField(max_length=100, allow_blank=True)
     abstract = serializers.CharField(allow_blank=True, max_length=ROW_ABSTRACT_MAX_LENGTH)
     student_names = serializers.CharField(allow_blank=True, max_length=ROW_STUDENT_NAMES_MAX_LENGTH)
-    # Round-trip the frontend's presenting flag ('Yes'/'No'/'') so stored rows match freshly
-    # searched rows — the client dedup fingerprint includes is_presenting, and dropping it here
-    # made an owner's "add rows" re-add a project already in the share. Optional + default so
-    # pre-existing shares (saved without the field) keep validating and serialize as "".
+    # Accepted so clients that send the presenting flag ('Yes'/'No'/'') keep validating; it is never stored as
+    # sent. The row is rebuilt from the catalog (services/share_rows.py), which always stores "".
     is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
 
     # noinspection PyMethodMayBeStatic
@@ -96,9 +89,9 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     note = serializers.CharField(
         required=False, allow_blank=True, default="", trim_whitespace=False, max_length=NOTE_MAX_LENGTH
     )
-    details_text = serializers.CharField(
-        required=False, allow_blank=True, default="", max_length=DETAILS_TEXT_MAX_LENGTH
-    )
+    # The combined project text clients sent before the rows became the snapshot. Shares that hold one still serve
+    # it, but no client writes it any more, so it is not accepted: it was the only field without a small cap.
+    details_text = serializers.CharField(read_only=True)
     share_url = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     version = serializers.IntegerField(required=False, min_value=1)
@@ -128,15 +121,9 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         return data
 
     # noinspection PyMethodMayBeStatic
-    def validate_details_text(self, value):
-        # Sanitize on write so stored/served details_text can never carry script or other
-        # disallowed markup, regardless of how a client renders it.
-        return sanitize_details_text(value)
-
-    # noinspection PyMethodMayBeStatic
     def validate_note(self, value):
-        # The note is rich text; sanitize on write with the same allowlist as details_text so a
-        # stored note can never carry script or disallowed markup, however a client renders it.
+        # The note is rich text; sanitize on write so a stored note can never carry script or
+        # disallowed markup, however a client renders it.
         return sanitize_details_text(value)
 
     def validate_rows(self, value):
@@ -171,16 +158,13 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
             name=name,
             rows=validated_data["rows"],
             note=note,
-            details_text=validated_data.get("details_text", ""),
             created_by=created_by,
         )
 
     def update(self, instance, validated_data):
         expected_version = validated_data.pop("version")
         next_note = validated_data.get("note", instance.note)
-        updates = {
-            field: validated_data[field] for field in ("rows", "note", "details_text") if field in validated_data
-        }
+        updates = {field: validated_data[field] for field in ("rows", "note") if field in validated_data}
         if "name" in validated_data:
             name = (validated_data.get("name") or "").strip()
             updates["name"] = name or default_share_name(next_note)
