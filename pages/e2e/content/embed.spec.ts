@@ -52,5 +52,9 @@ test('"Section titles" hides the page header of an embedded project page', async
 
   await expect(page.getByRole('link', {name: 'Adaptive Irrigation Dashboard', exact: true}).filter({visible: true})).toBeVisible();
   await expect(page.getByRole('heading', {name: 'Current Projects'})).toBeHidden();
+  // The meta line ("N projects · …") is there once the rows load, and goes with the rest of the header.
+  const meta = page.locator('.projects-page .itg-page-meta');
+  await expect(meta).toHaveCount(1);
+  await expect(meta).toBeHidden();
   await expect(page.locator('.projects-page .itg-lead')).toBeHidden();
 });
