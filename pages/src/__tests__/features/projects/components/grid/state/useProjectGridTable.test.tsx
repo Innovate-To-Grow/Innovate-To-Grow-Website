@@ -5,6 +5,7 @@ import {
     PROJECT_GRID_PAGE_SIZE_OPTIONS,
     useProjectGridTable,
 } from '@/features/projects/components/grid/state/useProjectGridTable';
+import {REMOTE_SEARCH_DELAY_MS} from '@/features/projects/components/grid/state/useRemoteSearchMatches';
 import {createProjectGridItems, type ProjectGridItem, type ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
 
 const makeRow = (overrides: Partial<ProjectGridRow> = {}): ProjectGridRow => ({
@@ -68,8 +69,9 @@ describe('useProjectGridTable', () => {
 
     it('keeps the rows the server finds by text they do not carry, along with their own matches', async () => {
         // Compact archive rows have no abstract; "EnergyPro" is only in Project 3's abstract on the server.
+        const industries = ['Water', 'Energy', 'Food'];
         const rows = makeItems(
-            makeRows(3).map((row, index) => ({...row, id: `p${index + 1}`, abstract: '', industry: index ? 'Energy' : 'Water'})),
+            makeRows(3).map((row, index) => ({...row, id: `p${index + 1}`, abstract: '', industry: industries[index]})),
         );
         const searchRemote = vi.fn(async (query: string) => new Set(query === 'energy' ? ['p1', 'p3'] : ['p3']));
         const {result} = renderHook(() =>
@@ -95,8 +97,32 @@ describe('useProjectGridTable', () => {
 
         // Project 2 matches by its own industry; Project 1 the server names, but the filter hides it.
         act(() => result.current.setSearch('energy'));
+        await waitFor(() => expect(searchRemote).toHaveBeenLastCalledWith('energy', expect.any(AbortSignal)));
         await waitFor(() => expect(result.current.searchPending).toBe(false));
         expect(titles()).toEqual(['Project 2', 'Project 3']);
+    });
+
+    it('does not ask the server about a search every row already matches', async () => {
+        // Every row's class is "Capstone": the server could not add a row.
+        const rows = makeItems(
+            makeRows(4).map((row, index) => ({...row, id: `p${index}`, abstract: '', class_code: 'CAP'})),
+        );
+        const searchRemote = vi.fn(async () => new Set(['p0']));
+        const {result} = renderHook(() =>
+            useProjectGridTable({
+                rows,
+                defaultSortField: 'team_number',
+                searchRemote,
+                classLabels: {CAP: 'Engineering Capstone'},
+            }),
+        );
+
+        act(() => result.current.setSearch('capstone'));
+        await waitFor(() => expect(result.current.search).toBe('capstone'));
+        expect(result.current.searchPending).toBe(false);
+        await act(() => new Promise((resolve) => setTimeout(resolve, REMOTE_SEARCH_DELAY_MS + 50)));
+        expect(searchRemote).not.toHaveBeenCalled();
+        expect(result.current.filteredRows).toHaveLength(4);
     });
 
     it('finds rows by what the page shows, not by hidden or raw values', async () => {

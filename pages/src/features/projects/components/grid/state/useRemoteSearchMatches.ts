@@ -1,7 +1,10 @@
 import {useEffect, useState} from 'react';
 
-/** Resolves to the ids of the projects whose text, as the server holds it, matches `query`. */
-export type RemoteRowSearch = (query: string, signal: AbortSignal) => Promise<ReadonlySet<string>>;
+/**
+ * Resolves to the ids of the projects whose text, as the server holds it, matches `query`, or to null when the
+ * server declines a query too broad to narrow the list (see searchPastProjectArchiveIds).
+ */
+export type RemoteRowSearch = (query: string, signal: AbortSignal) => Promise<ReadonlySet<string> | null>;
 
 /** How long typing must pause before the server is asked. */
 export const REMOTE_SEARCH_DELAY_MS = 300;
@@ -12,7 +15,7 @@ const MAX_REMOTE_QUERY_LENGTH = 200;
 
 interface RemoteAnswer {
   query: string;
-  /** null when the request failed: the search then finds what the rows' own text finds. */
+  /** null when the request failed or was declined: the search then finds what the rows' own text finds. */
   ids: ReadonlySet<string> | null;
 }
 

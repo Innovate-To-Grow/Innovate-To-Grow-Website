@@ -53,6 +53,7 @@ import {
   type ProjectGridRow,
   type ProjectTableRow,
 } from '@/features/projects/api';
+import {MAX_ARCHIVE_SEARCH_MATCHES} from '@/features/projects/api/archive';
 
 const rows = [
   {
@@ -384,11 +385,25 @@ describe('project archive and detail fetch helpers', () => {
 
     const ids = await searchPastProjectArchiveIds('EnergyPro', signal);
 
-    expect([...ids]).toEqual(['match-1', 'match-2']);
+    expect(ids).toEqual(new Set(['match-1', 'match-2']));
     expect(apiMock.get.mock.calls.map(([url, config]) => [url, config.params, config.signal === signal])).toEqual([
       ['/projects/archive/', {search: 'EnergyPro', page: 1, page_size: 100}, true],
       ['/projects/archive/', {search: 'EnergyPro', page: 2, page_size: 100}, true],
     ]);
+  });
+
+  it('declines, after one page, a search the archive matches in more projects than a list fetches', async () => {
+    // "the" is in 900 of 920 abstracts: its matches would be the whole archive again, and say nothing about it.
+    apiMock.get.mockResolvedValue({
+      data: {count: MAX_ARCHIVE_SEARCH_MATCHES + 1, next: null, previous: null, results: [{id: 'match-1'}]},
+    });
+
+    await expect(searchPastProjectArchiveIds('the')).resolves.toBeNull();
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
+
+    apiMock.get.mockResolvedValue({data: {count: MAX_ARCHIVE_SEARCH_MATCHES, next: null, previous: null, results: []}});
+    await expect(searchPastProjectArchiveIds('system')).resolves.toEqual(new Set());
+    expect(apiMock.get).toHaveBeenCalledTimes(1 + MAX_ARCHIVE_SEARCH_MATCHES / 100);
   });
 
   it('fetches the legacy past projects endpoint with page query params', async () => {

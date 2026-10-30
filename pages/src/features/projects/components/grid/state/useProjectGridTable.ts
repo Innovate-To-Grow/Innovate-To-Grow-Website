@@ -61,23 +61,26 @@ function useFilteredSortedRows(
   sortDirection: ProjectGridSortDirection,
 ) {
   const deferredSearch = useDeferredValue(search);
-  const remote = useRemoteSearchMatches(deferredSearch, searchRemote);
-  const remoteMatches = remote.matches;
+  const query = normalizeSearchText(deferredSearch);
   // Built once per set of rows, not on every keystroke: normalizing 920 archive rows is not free.
   const searchValues = useMemo(
     () => new Map(rows.map((row) => [row.__key, getProjectGridSearchValue(row, classLabels)])),
     [classLabels, rows],
   );
+  const candidates = useMemo(() => (filterRow ? rows.filter(filterRow) : rows), [filterRow, rows]);
+  const ownMatches = useMemo(
+    () => (query ? candidates.filter((row) => searchValues.get(row.__key)?.includes(query)) : candidates),
+    [candidates, query, searchValues],
+  );
+  // The server can only add rows whose own text the search missed: with none left, it is not asked.
+  const serverCanAdd = ownMatches.length < candidates.length;
+  const remote = useRemoteSearchMatches(deferredSearch, serverCanAdd ? searchRemote : undefined);
+  const remoteMatches = remote.matches;
   const filteredRows = useMemo(() => {
-    const candidates = filterRow ? rows.filter(filterRow) : rows;
-    const query = normalizeSearchText(deferredSearch);
-    if (!query) {
-      return candidates;
-    }
-    return candidates.filter(
-      (row) => searchValues.get(row.__key)?.includes(query) || Boolean(row.id && remoteMatches?.has(row.id)),
-    );
-  }, [deferredSearch, filterRow, remoteMatches, rows, searchValues]);
+    if (!remoteMatches) return ownMatches;
+    const own = new Set(ownMatches);
+    return candidates.filter((row) => own.has(row) || Boolean(row.id && remoteMatches.has(row.id)));
+  }, [candidates, ownMatches, remoteMatches]);
 
   const sortedRows = useMemo(
     () => sortProjectGridItems(filteredRows, sortField, sortDirection),

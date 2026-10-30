@@ -98,6 +98,15 @@ describe('useRemoteSearchMatches', () => {
     expect(result.current).toEqual({matches: null, pending: false});
   });
 
+  it('adds nothing, and stops searching, when the server declines a query too broad to narrow the list', async () => {
+    const searchRemote = vi.fn<RemoteRowSearch>().mockResolvedValue(null);
+    const {result} = renderSearch('the', searchRemote);
+
+    await pause();
+    expect(searchRemote).toHaveBeenCalledTimes(1);
+    expect(result.current).toEqual({matches: null, pending: false});
+  });
+
   it('cancels a pending request when the search is cleared', async () => {
     const searchRemote = vi.fn<RemoteRowSearch>().mockReturnValue(new Promise(() => {}));
     const {result, rerender} = renderSearch('EnergyPro', searchRemote);
