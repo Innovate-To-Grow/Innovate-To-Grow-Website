@@ -1,9 +1,10 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {
+  getPageReloadStatus,
   installPreloadErrorRecovery,
   isChunkLoadError,
-  isReloadingPage,
+  mayReloadForNewBuild,
   reloadForNewBuild,
   resetPageReloadState,
 } from '@/app/pageReload/pageReload';
@@ -19,6 +20,14 @@ function stubLocation() {
 
 function preloadError(message: string): Event & {payload: Error} {
   return Object.assign(new Event('vite:preloadError', {cancelable: true}), {payload: new Error(message)});
+}
+
+/** What Vite's preload helper does with a failed dependency: fire the event, then reject unless it is cancelled. */
+async function vitePreload(target: Window, message: string): Promise<'loaded'> {
+  const event = preloadError(message);
+  target.dispatchEvent(event);
+  if (!event.defaultPrevented) throw event.payload;
+  return 'loaded';
 }
 
 describe('pageReload', () => {
@@ -51,9 +60,10 @@ describe('pageReload', () => {
   it('reloads the page and remembers that it did', () => {
     const reload = stubLocation();
 
+    expect(mayReloadForNewBuild(NOW)).toBe(true);
     expect(reloadForNewBuild(NOW)).toBe(true);
 
-    expect(isReloadingPage()).toBe(true);
+    expect(getPageReloadStatus()).toBe('reloading');
     expect(reload).toHaveBeenCalledOnce();
     expect(window.sessionStorage.getItem('i2g:reloaded-for-new-build-at')).toBe(String(NOW));
   });
@@ -63,6 +73,7 @@ describe('pageReload', () => {
     expect(reloadForNewBuild(NOW)).toBe(true);
     resetPageReloadState(); // the reloaded page starts afresh, with the same session storage
 
+    expect(mayReloadForNewBuild(NOW + 5_000)).toBe(false);
     expect(reloadForNewBuild(NOW + 5_000)).toBe(false);
     expect(reload).toHaveBeenCalledOnce();
 
@@ -76,36 +87,53 @@ describe('pageReload', () => {
       throw new DOMException('denied', 'SecurityError');
     });
 
+    expect(mayReloadForNewBuild(NOW)).toBe(false);
     expect(reloadForNewBuild(NOW)).toBe(false);
     expect(reload).not.toHaveBeenCalled();
   });
 
+  it('refuses, and says so, when session storage will not keep the stamp', () => {
+    const reload = stubLocation();
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError');
+    });
+    expect(mayReloadForNewBuild(NOW)).toBe(true);
+
+    expect(reloadForNewBuild(NOW)).toBe(false);
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(getPageReloadStatus()).toBe('refused');
+    expect(mayReloadForNewBuild(NOW)).toBe(false);
+  });
+
   describe('vite:preloadError', () => {
-    it('reloads onto the new build on the first failed chunk', () => {
+    it.each([
+      'Failed to fetch dynamically imported module: /assets/pdfExport-x.js',
+      'Failed to fetch dynamically imported module: /assets/ProjectsPage-x.js',
+      'Unable to preload CSS for /assets/ProjectDetailPage-B6pqHK5d.css',
+    ])('never reloads, and the import still rejects to its caller: %s', async (message) => {
       const reload = stubLocation();
       const target = new EventTarget() as Window;
       const uninstall = installPreloadErrorRecovery(target);
-      const event = preloadError('Failed to fetch dynamically imported module: /assets/ProjectsPage-x.js');
 
-      target.dispatchEvent(event);
+      await expect(vitePreload(target, message)).rejects.toThrow(message);
 
-      expect(reload).toHaveBeenCalledOnce();
+      expect(reload).not.toHaveBeenCalled();
+      expect(getPageReloadStatus()).toBe('idle');
       uninstall();
     });
 
-    it('after that, lets the page render without a stylesheet that still fails, but not without a script', () => {
+    it('right after an automatic reload, lets a stylesheet that still fails through, but not a script', async () => {
       stubLocation();
       window.sessionStorage.setItem('i2g:reloaded-for-new-build-at', String(Date.now()));
       const target = new EventTarget() as Window;
       const uninstall = installPreloadErrorRecovery(target);
-      const cssEvent = preloadError('Unable to preload CSS for /assets/ProjectDetailPage-B6pqHK5d.css');
-      const scriptEvent = preloadError('Failed to fetch dynamically imported module: /assets/ProjectDetailPage-C.js');
+      const script = 'Failed to fetch dynamically imported module: /assets/ProjectDetailPage-C.js';
 
-      target.dispatchEvent(cssEvent);
-      target.dispatchEvent(scriptEvent);
-
-      expect(cssEvent.defaultPrevented).toBe(true);
-      expect(scriptEvent.defaultPrevented).toBe(false);
+      await expect(vitePreload(target, 'Unable to preload CSS for /assets/ProjectDetailPage-B6pqHK5d.css')).resolves.toBe(
+        'loaded',
+      );
+      await expect(vitePreload(target, script)).rejects.toThrow(script);
       uninstall();
     });
   });

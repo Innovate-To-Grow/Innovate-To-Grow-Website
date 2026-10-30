@@ -3,8 +3,10 @@
  *
  * Every frontend deploy replaces the hashed /assets/* files, so a tab opened before it fails the first
  * time it needs a route chunk it has not loaded yet. The only way back is a full reload, which fetches
- * the new index.html and its new chunk names. It happens once on its own; if the chunk still fails
- * right after, the route error screen offers the reload instead of looping.
+ * the new index.html and its new chunk names. The route error screen (RouteErrorPage) starts it once on
+ * its own; if the chunk still fails right after, it offers the reload instead of looping. Other lazy
+ * imports (the exporters, the captcha, the chat's Markdown) keep their own error handling: reloading
+ * under them would throw away what the visitor was doing.
  */
 
 const RELOAD_STAMP_KEY = 'i2g:reloaded-for-new-build-at';
@@ -19,8 +21,19 @@ const CHUNK_ERROR_PATTERNS = [
   /Unable to preload CSS/i, // Vite's preload helper
 ];
 
-let reloading = false;
+/**
+ * Whether a reload has started, or an automatic one was refused because session storage would not
+ * remember it (without that stamp nothing stops a loop).
+ */
+export type PageReloadStatus = 'idle' | 'reloading' | 'refused';
+
+let status: PageReloadStatus = 'idle';
 const reloadListeners = new Set<() => void>();
+
+const setStatus = (next: PageReloadStatus) => {
+  status = next;
+  reloadListeners.forEach((listener) => listener());
+};
 
 const messageOf = (error: unknown): string => {
   if (error instanceof Error) return error.message;
@@ -33,12 +46,12 @@ export function isChunkLoadError(error: unknown): boolean {
   return CHUNK_ERROR_PATTERNS.some((pattern) => pattern.test(message));
 }
 
-/** Whether a reload has been started, so error screens can say so instead of flashing. */
-export function isReloadingPage(): boolean {
-  return reloading;
+/** The reload status, so error screens can say a reload is coming instead of flashing. */
+export function getPageReloadStatus(): PageReloadStatus {
+  return status;
 }
 
-/** Subscribes to the start of a reload (a `useSyncExternalStore` source with `isReloadingPage`). */
+/** Subscribes to status changes (a `useSyncExternalStore` source with `getPageReloadStatus`). */
 export function subscribeToPageReload(listener: () => void): () => void {
   reloadListeners.add(listener);
   return () => {
@@ -48,23 +61,42 @@ export function subscribeToPageReload(listener: () => void): () => void {
 
 /** Reloads the page (index.html is served with max-age=0, so it comes back revalidated). */
 export function reloadPage(): void {
-  reloading = true;
-  reloadListeners.forEach((listener) => listener());
+  setStatus('reloading');
   window.location.reload();
 }
 
-/**
- * Reloads once to pick up a new build. Returns false, without reloading, when the last automatic reload
- * was moments ago (the failure is not a stale build, so a reload would loop) or when session storage is
- * unavailable to remember it.
- */
-export function reloadForNewBuild(now = Date.now()): boolean {
-  if (reloading) return true;
+/** When the last automatic reload started: 0 for none, null when session storage is unavailable. */
+function lastAutomaticReload(): number | null {
   try {
-    const last = Number(window.sessionStorage.getItem(RELOAD_STAMP_KEY));
-    if (last && now - last < RELOAD_LOOP_WINDOW_MS) return false;
+    return Number(window.sessionStorage.getItem(RELOAD_STAMP_KEY)) || 0;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether an automatic reload started moments ago, so a failure now is not a stale build. */
+function reloadedMomentsAgo(now: number): boolean {
+  const last = lastAutomaticReload();
+  return last ? now - last < RELOAD_LOOP_WINDOW_MS : false;
+}
+
+/**
+ * Whether reloadForNewBuild would reload: there was no automatic reload moments ago (the failure would
+ * not be a stale build, so a reload would loop) and session storage is there to remember this one.
+ */
+export function mayReloadForNewBuild(now = Date.now()): boolean {
+  if (status !== 'idle') return status === 'reloading';
+  return lastAutomaticReload() !== null && !reloadedMomentsAgo(now);
+}
+
+/** Reloads once to pick up a new build. Returns false, without reloading, when mayReloadForNewBuild is false. */
+export function reloadForNewBuild(now = Date.now()): boolean {
+  if (status === 'reloading') return true;
+  if (!mayReloadForNewBuild(now)) return false;
+  try {
     window.sessionStorage.setItem(RELOAD_STAMP_KEY, String(now));
   } catch {
+    setStatus('refused');
     return false;
   }
   reloadPage();
@@ -76,21 +108,22 @@ interface VitePreloadErrorEvent extends Event {
 }
 
 /**
- * Vite's preload helper fires `vite:preloadError` (cancelable) before a route chunk's import rejects.
- * The first failure reloads onto the new build. If that already happened, a stylesheet that still fails
- * is let through, so the page renders without it rather than not at all; a script failure goes on to
- * the route error screen.
+ * Vite's preload helper fires `vite:preloadError` (cancelable) before any lazy import rejects; unless
+ * the event is cancelled, the import rejects to its caller. This listener never reloads: a route's
+ * failure reaches RouteErrorPage, which does, while the other lazy imports report their own errors.
+ * It only lets a stylesheet through that still fails right after an automatic reload, so the page
+ * renders without it rather than not at all.
  */
 export function installPreloadErrorRecovery(target: Window = window): () => void {
   const onPreloadError = (event: Event) => {
-    if (reloadForNewBuild()) return;
-    if (/Unable to preload CSS/i.test(messageOf((event as VitePreloadErrorEvent).payload))) event.preventDefault();
+    const cssFailed = /Unable to preload CSS/i.test(messageOf((event as VitePreloadErrorEvent).payload));
+    if (cssFailed && reloadedMomentsAgo(Date.now())) event.preventDefault();
   };
   target.addEventListener('vite:preloadError', onPreloadError);
   return () => target.removeEventListener('vite:preloadError', onPreloadError);
 }
 
-/** Test hook: forget that a reload was started. */
+/** Test hook: forget that a reload was started or refused. */
 export function resetPageReloadState(): void {
-  reloading = false;
+  status = 'idle';
 }

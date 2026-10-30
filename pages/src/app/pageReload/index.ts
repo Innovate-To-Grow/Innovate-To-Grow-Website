@@ -1,8 +1,10 @@
 export {
+  getPageReloadStatus,
   installPreloadErrorRecovery,
   isChunkLoadError,
-  isReloadingPage,
+  mayReloadForNewBuild,
   reloadForNewBuild,
   reloadPage,
   subscribeToPageReload,
+  type PageReloadStatus,
 } from './pageReload';

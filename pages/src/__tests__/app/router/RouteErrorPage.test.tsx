@@ -110,7 +110,44 @@ describe('RouteErrorPage', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('Loading the latest version of the site');
     expect(reload).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('heading', {name: 'Something went wrong'})).toBeNull();
+    expect(document.title).toBe('Current Projects | Innovate to Grow');
+  });
+
+  it('never shows the error message before the reload starts', async () => {
+    stubLocation();
+    const shown: string[] = [];
+    // Nodes keep their text after React removes them, so a message that was rendered and replaced still counts.
+    const observer = new MutationObserver((records) => {
+      records.forEach((record) =>
+        record.addedNodes.forEach((node) => {
+          if (node.textContent?.includes('Something went wrong')) shown.push(node.textContent);
+        }),
+      );
+    });
+    observer.observe(document.body, {childList: true, subtree: true, characterData: true});
+    const router = buildRouter('/chunk');
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole('status');
+    observer.disconnect();
+
+    expect(shown).toEqual([]);
+  });
+
+  it('shows the message, not an endless loader, when session storage refuses the reload stamp', async () => {
+    const reload = stubLocation();
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('full', 'QuotaExceededError');
+    });
+    const router = buildRouter('/chunk');
+    render(<RouterProvider router={router} />);
+
+    expect(await screen.findByRole('heading', {level: 1, name: 'Something went wrong'})).toHaveAccessibleDescription(
+      /most likely because the site was just updated/,
+    );
+    expect(reload).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Loading the latest version/)).toBeNull();
   });
 
   it('asks for a reload instead of looping when the chunk is still missing after one', async () => {
