@@ -2,7 +2,7 @@
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
-   Forms: 16px labels; #f2f2f2 controls, 1px #ccc border, 4px radius
+   Forms: 16px labels; #f2f2f2 controls, 1px #858585 border, 4px radius
    ========================================================================== */
 
 .itg-field {
@@ -34,7 +34,12 @@
   min-width: 0;
   height: 34px;
   padding: 4px 6px;
-  border: 1px solid var(--itg-color-border-input);
+  /* The field's edge is all that marks it out on the grey filter well, so it
+     needs 3:1 against the #f2f2f2 fill, the #f5f5f5 well and white (WCAG
+     1.4.11): --itg-color-border-field (#858585) reaches 3.3:1 or more. The
+     reference's #ccc (--itg-color-border-input, still used by other controls)
+     reaches 1.5:1. */
+  border: 1px solid var(--itg-color-border-field);
   border-radius: var(--itg-radius-input);
   background-color: var(--itg-color-bg-light);
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
@@ -43,6 +48,14 @@
   font-size: var(--itg-font-size-body);
   line-height: 24px;
   transition: border-color 0.2s linear, box-shadow 0.2s linear;
+}
+
+/* A select's text box is laid out by the engine (its line-height is always
+   'normal'); WebKit adds its own vertical padding on top of ours, which pushed
+   the text below the 34px box and cut it off. The engines centre it. */
+select.itg-select {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 textarea.itg-input {
