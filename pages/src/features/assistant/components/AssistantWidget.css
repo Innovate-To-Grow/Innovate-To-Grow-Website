@@ -532,6 +532,13 @@
   font-weight: 700;
 }
 
+/* ---- Print: a floating widget has no place on paper -------------------- */
+@media print {
+  .itg-assistant {
+    display: none;
+  }
+}
+
 /* ---- Mobile: near-full-width bottom sheet ------------------------------ */
 @media (max-width: 480px) {
   .itg-assistant__panel {
