@@ -61,4 +61,24 @@ describe('usePastProjectGridData — a refetch that fails', () => {
         );
         expect(result.current.error).toBeNull();
     });
+
+    it('reports loading while retrying a first load that failed, since it has no rows to serve meanwhile', async () => {
+        let resolveRetry!: (payload: PaginatedResponse<CompactPastProjectRow>) => void;
+        mockFetchPastProjectArchive
+            .mockRejectedValueOnce(new Error('Network Error'))
+            .mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve; }));
+
+        const {result} = renderHook(() => usePastProjectGridData());
+        await waitFor(() => expect(result.current.error).toBe('Network Error'));
+        expect(result.current.loading).toBe(false);
+
+        act(() => result.current.refetch());
+        // Consumers show their loading state rather than empty tables that would never pick up the archive.
+        expect(result.current.loading).toBe(true);
+        expect(result.current.error).toBeNull();
+
+        await act(async () => resolveRetry(page(['Recovered'])));
+        expect(result.current.loading).toBe(false);
+        expect(result.current.rows.map((row) => row.project_title)).toEqual(['Recovered']);
+    });
 });

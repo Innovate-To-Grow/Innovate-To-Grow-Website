@@ -207,13 +207,14 @@ export function usePastProjectGridData(enabled: boolean = true): ProjectGridData
 
     // Stale-while-revalidate: a refetch() keeps serving the previously resolved rows (loading stays
     // false) until the new response lands, so consumers keep their search tables mounted — and their
-    // per-table curation intact — across a refresh. Only the very first load reports loading. A failed
-    // refetch reports its error next to those same rows.
+    // per-table curation intact — across a refresh. Only a load with no rows to serve meanwhile (the
+    // first one, or a retry after it failed) reports loading. A failed refetch reports its error next to
+    // the rows it kept.
     const hasResolved = state.requestKey === requestKey;
-    const hasEverResolved = state.requestKey !== null;
+    const hasStaleRows = state.requestKey !== null && state.rows.length > 0;
     return {
         rows: state.rows,
-        loading: !hasResolved && !hasEverResolved,
+        loading: !hasResolved && !hasStaleRows,
         error: hasResolved ? state.error : null,
         refetch,
     };
