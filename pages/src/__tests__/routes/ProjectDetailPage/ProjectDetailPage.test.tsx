@@ -265,7 +265,13 @@ describe('ProjectDetailPage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/Unable to load this project\./)).toBeInTheDocument();
+    // Any failure but a 404 lands here, a server error included: the copy does not blame the visitor's connection.
+    expect(
+      await screen.findByText(
+        'Unable to load this project. Please try again, or search for it by title, team or organization.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/connection/i)).toBeNull();
     expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this project"})).toBeInTheDocument();
     expect(screen.queryByRole('heading', {name: 'Rotary Joint Testing System'})).toBeNull();
     const backLink = screen.getByRole('link', {name: /back to past projects/i});

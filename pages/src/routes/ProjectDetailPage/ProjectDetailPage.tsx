@@ -42,7 +42,7 @@ const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => 
       <p>
         {notFound
           ? 'The link may be incomplete, or the project has been removed from the catalog. Search for it by title, team or organization.'
-          : 'Unable to load this project. Check your connection and try again, or search for it by title, team or organization.'}
+          : 'Unable to load this project. Please try again, or search for it by title, team or organization.'}
       </p>
     </ProjectsMessagePage>
   );
