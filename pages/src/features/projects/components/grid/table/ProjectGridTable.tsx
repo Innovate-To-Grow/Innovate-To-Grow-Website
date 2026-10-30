@@ -205,7 +205,7 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
 
       {grid.toolbarPlacement === 'top' ? toolbarElement : null}
 
-      {grid.loading ? <p className="project-grid-state">Loading project data...</p> : null}
+      {grid.loading ? <p className="project-grid-state project-grid-state-loading">Loading project data...</p> : null}
       {grid.error ? (
         <div className="project-grid-load-error">
           <p className="project-grid-state project-grid-state-error itg-error" role="alert">
