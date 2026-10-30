@@ -139,9 +139,13 @@ synced independently — not only the one marked **Active**.
    - `python manage.py sync_schedule` (cron; see [operations](operations.md#schedule-auto-sync)).
 2. `fetch_schedule_sheet_records(config)` opens **that row's** `sheet_id` and reads the tracks and projects
    worksheets by `tracks_gid` / `projects_gid`
-3. Parses rows into track and project records
+3. Parses rows into track and project records. One-line cells have runs of whitespace (NBSPs and tabs included)
+   collapsed; abstracts keep their paragraph breaks. Placeholder cells are read as empty: an abstract like
+   `Abstract-101` and a team name that only repeats the team's code (`CAP-101`), so the pages hide them.
 4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack` and `EventScheduleSlot`
-   rows inside one transaction (other schedules are untouched). `EventAgendaItem` rows (the Expo and Awards
+   rows inside one transaction (other schedules are untouched). A sheet row updates the `CurrentProject` with its
+   Team# and title, else its team's (class + Team#) — so a title fix keeps the project's id and its
+   `/projects/<id>` links. `EventAgendaItem` rows (the Expo and Awards
    tables) are **not** replaced: the first sync of a schedule seeds the defaults from `defaults.py`, and from then
    on they are edited in the schedule's admin change form and never rewritten by a sync
 5. Records grand winners on the schedule and writes a `ScheduleSyncLog` entry
@@ -184,7 +188,8 @@ browser** using a hardcoded API key; the key now lives only in the backend servi
    `python manage.py sync_past_projects` runs on a schedule.
 2. `fetch_past_project_records()` reads the configured worksheet (by **name**) from the configured spreadsheet.
 3. Each row's `Year-Semester` cell is parsed by `resolve_project_row` into a `Semester` FK (auto-creating and
-   publishing the semester); the other columns are mapped by header text to `Project` fields.
+   publishing the semester); the other columns are mapped by header text to `Project` fields. Text cells other
+   than Class and Team# (the sync key) have their whitespace tidied the same way as the schedule sync's.
 4. Rows with an unparseable/empty `Year-Semester`, an out-of-range season, a blank title, or a duplicate
    `(semester, class_code, team_number)` are skipped and counted.
 5. In one transaction, **all `Project` rows with `source="sheet"` are deleted and recreated** from the sheet —
