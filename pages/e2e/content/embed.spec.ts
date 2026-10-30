@@ -1,6 +1,6 @@
 // /_embed/:embedSlug: public embed widget rendered in an isolated iframe.
 import {test, expect} from '../helpers/fixtures';
-import {cmsEmbedResponse, mockCmsEmbed} from '../helpers';
+import {cmsEmbedResponse, mockCmsEmbed, mockSchedule, schedulePayload} from '../helpers';
 
 test('embed page renders CMS blocks', async ({page}) => {
   await mockCmsEmbed(page, 'test-embed', cmsEmbedResponse({widget_type: 'blocks'}));
@@ -17,4 +17,40 @@ test('embed page applies hidden sections when configured', async ({page}) => {
   }));
   await page.goto('/_embed/hidden-sections', {waitUntil: 'networkidle'});
   await expect(page.locator('.cms-page')).toBeVisible();
+});
+
+// A team listed by its CurrentProject id (not presenting, track 0), so its title links to /projects/<id>.
+const linkedSchedule = () => {
+  const [project] = schedulePayload().projects;
+  return schedulePayload({projects: [{...project, track: 0, order: 0, is_presenting: false}]});
+};
+
+test('a project link in an embedded Current Projects widget opens in a new tab, leaving the widget', async ({page}) => {
+  await mockSchedule(page, linkedSchedule());
+  await mockCmsEmbed(page, 'projects-widget', cmsEmbedResponse({widget_type: 'app_route', app_route: '/current-projects', blocks: []}));
+  await page.goto('/_embed/projects-widget', {waitUntil: 'domcontentloaded'});
+
+  const popup = page.context().waitForEvent('page');
+  await page.getByRole('link', {name: 'Adaptive Irrigation Dashboard', exact: true}).filter({visible: true}).click();
+  const tab = await popup;
+  await tab.waitForURL(/\/projects\/project-e2e-1$/);
+  await tab.close();
+
+  await expect(page).toHaveURL(/\/_embed\/projects-widget$/);
+  await expect(page.getByRole('heading', {name: 'Current Projects'})).toBeVisible();
+});
+
+test('"Section titles" hides the page header of an embedded project page', async ({page}) => {
+  await mockSchedule(page, linkedSchedule());
+  await mockCmsEmbed(page, 'projects-no-titles', cmsEmbedResponse({
+    widget_type: 'app_route',
+    app_route: '/current-projects',
+    blocks: [],
+    hidden_sections: ['section_titles'],
+  }));
+  await page.goto('/_embed/projects-no-titles', {waitUntil: 'domcontentloaded'});
+
+  await expect(page.getByRole('link', {name: 'Adaptive Irrigation Dashboard', exact: true}).filter({visible: true})).toBeVisible();
+  await expect(page.getByRole('heading', {name: 'Current Projects'})).toBeHidden();
+  await expect(page.locator('.projects-page .itg-lead')).toBeHidden();
 });

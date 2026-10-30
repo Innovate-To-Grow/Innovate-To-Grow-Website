@@ -137,11 +137,11 @@ export const CurrentProjectsView = ({
 
   return (
     <div className="projects-page">
-      <h1 className="itg-page-title">{title}</h1>
+      <h1 className="itg-page-title" data-embed-section="page-header">{title}</h1>
       {!loading && !error && rows.length ? (
-        <p className="itg-page-meta">{metaLine(rows, countLabel)}</p>
+        <p className="itg-page-meta" data-embed-section="page-header">{metaLine(rows, countLabel)}</p>
       ) : null}
-      <p className="itg-lead">{lede}</p>
+      <p className="itg-lead" data-embed-section="page-header">{lede}</p>
 
       <ProjectGridTable
         columns={PROJECT_GRID_COLUMNS}
