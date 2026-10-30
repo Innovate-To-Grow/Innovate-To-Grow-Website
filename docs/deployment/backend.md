@@ -94,7 +94,7 @@ python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/
 
 ### Environment injection
 
-The deploy workflow (`deploy-backend.yml`) substitutes GitHub Secrets into the task definition template using a Python script. All environment variables listed in [Environments](environments.md) are injected at deploy time. It stamps both Web and worker with `AMPLIFY_CONFIG_REVISION=<github.run_id>.<github.run_attempt>`, giving every deployment attempt a shared, monotonically comparable Amplify configuration generation.
+The deploy workflow (`deploy-backend.yml`) loads settings and secret ARN references from `itg/backend/deploy-config` in AWS Secrets Manager, then renders the task definition with a Python script. All environment variables listed in [Environments](environments.md) are injected at deploy time. It stamps both Web and worker with `AMPLIFY_CONFIG_REVISION=<github.run_id>.<github.run_attempt>`, giving every deployment attempt a shared, monotonically comparable Amplify configuration generation.
 
 ## Deployment flow
 
@@ -143,7 +143,7 @@ right is the client.
 |---|---|
 | Env var | `NUM_PROXIES` (integer ≥ 1, default `1`; startup fails on anything else). Not a secret. |
 | Where it is applied | `settings.NUM_PROXIES` (used by `apps.core.utils.client_ip`) **and** `REST_FRAMEWORK["NUM_PROXIES"]` (used by DRF's throttle `get_ident()`, which ignores the top-level setting). Both are set once in `config/settings/environments/production.py`. |
-| Deployment | `aws/task-definition.json` carries `__NUM_PROXIES__`; `deploy-backend.yml` renders it from the `NUM_PROXIES` GitHub Environment variable (default `1`) and `aws/validate_backend_task_definition.py` rejects a rendered value that is not a positive integer. |
+| Deployment | `aws/task-definition.json` carries `__NUM_PROXIES__`; `deploy-backend.yml` renders it from the `NUM_PROXIES` AWS deployment setting (default `1`) and `aws/validate_backend_task_definition.py` rejects a rendered value that is not a positive integer. |
 | Local / CI | Unset (no proxy): DRF falls back to the full header / `REMOTE_ADDR`. |
 
 ALB requirements (both are the AWS defaults; do not change them): `routing.http.xff_header_processing.mode = append`

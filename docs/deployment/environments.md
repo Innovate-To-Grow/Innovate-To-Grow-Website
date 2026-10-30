@@ -44,7 +44,7 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
 | `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
-| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` GitHub Environment variable, default `1`) |
+| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
 | `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | No (defaults to false) |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
 
@@ -78,7 +78,7 @@ A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/serv
 
 #### Production cache today
 
-Verified from the GitHub deploy configuration: production has **no Redis**.
+Verified from the deployment configuration: production has **no Redis**.
 `REDIS_URL_SECRET_ARN` is set neither as a repository nor as an environment
 variable or secret, so `deploy-backend.yml` drops the `REDIS_URL` secret when it
 renders `aws/task-definition.json` (the repository variable `REDIS_URL` holds
@@ -213,9 +213,9 @@ Route-redirect synchronization uses the ECS task role through boto3's ambient cr
 
 The backend deployment defaults `AMPLIFY_BACKEND_PROXY_URL` to
 `https://api.i2g.ucmerced.edu` and admin-path proxying to false. Set these values
-in the `AWS ECS - Prod` GitHub Environment if overriding them.
+in the `itg/backend/deploy-config` Secrets Manager object if overriding them.
 `AMPLIFY_CONFIG_REVISION` is stamped by the workflow from GitHub's numeric run
-ID and attempt; do not define or override it in a GitHub Environment. If
+ID and attempt; do not define or override it in deployment configuration. If
 `BACKGROUND_JOB_METRICS_NAMESPACE` is enabled, also grant the task role
 `cloudwatch:PutMetricData`; leaving it empty avoids that permission and does not
 affect job processing.
@@ -232,8 +232,8 @@ The deploy workflows target the production backend, frontend, and archive.
 | `AWS ECS - Archive Prod` | Archived event-pages ECS service |
 
 Keep required reviewers on `Manual Deployment Approval`. The three target
-environments provide target-specific variables, secrets, URLs, and deployment
-history, but must not also require reviewers after the unified gate has been
+environments provide identity boundaries, URLs, and deployment history; settings
+live in AWS Secrets Manager. They must not also require reviewers after the unified gate has been
 verified; otherwise GitHub requests a second approval.
 
 ### Google Sheets
