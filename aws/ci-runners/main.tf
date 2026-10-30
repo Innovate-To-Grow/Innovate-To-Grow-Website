@@ -92,11 +92,11 @@ module "runners" {
   enable_job_queued_check                 = true
   runners_maximum_count                   = var.maximum_runners
   scale_up_reserved_concurrent_executions = 1
-  # The module ties queue visibility to this timeout. Keep throttled batches
-  # available long enough for the serialized capacity check to catch up.
-  runners_scale_up_lambda_timeout                                = 180
-  lambda_event_source_mapping_batch_size                         = 32
-  lambda_event_source_mapping_maximum_batching_window_in_seconds = 2
+  # The guarded FIFO queue in guard.tf is the active launch source. Its single
+  # message group serializes launches without SQS poller throttling/backoff.
+  runners_scale_up_lambda_timeout                                = 30
+  lambda_event_source_mapping_batch_size                         = 10
+  lambda_event_source_mapping_maximum_batching_window_in_seconds = 0
   delay_webhook_event                                            = 0
   pool_config                                                    = []
   idle_config                                                    = []

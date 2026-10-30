@@ -19,7 +19,7 @@ resource "aws_iam_role_policy" "guard" {
     Version = "2012-10-17"
     Statement = [
       { Effect = "Allow", Action = ["ssm:GetParameters"], Resource = ["${local.secret_arn}/id", "${local.secret_arn}/key-base64", "${local.secret_arn}/webhook-secret"] },
-      { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = module.runners.webhook.lambda.arn },
+      { Effect = "Allow", Action = ["sqs:SendMessage"], Resource = aws_sqs_queue.launch.arn },
       { Effect = "Allow", Action = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"], Resource = aws_sqs_queue.recovery.arn },
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.guard.arn}:*" },
     ]
@@ -37,11 +37,42 @@ resource "aws_lambda_function" "guard" {
   memory_size      = 256
   environment {
     variables = {
-      WEBHOOK_FUNCTION = module.runners.webhook.lambda.function_name
-      RECOVERY_QUEUE   = aws_sqs_queue.recovery.url
+      LAUNCH_QUEUE   = aws_sqs_queue.launch.url
+      RECOVERY_QUEUE = aws_sqs_queue.recovery.url
     }
   }
   depends_on = [aws_iam_role_policy.guard, aws_cloudwatch_log_group.guard]
+}
+
+# FIFO's single group allows exactly one capacity decision at a time while
+# leaving the 32 runner machines free to execute jobs concurrently.
+resource "aws_sqs_queue" "launch" {
+  name                       = "${local.prefix}-launch.fifo"
+  fifo_queue                 = true
+  visibility_timeout_seconds = 180 # Six times the 30-second consumer timeout.
+  message_retention_seconds  = 86400
+  sqs_managed_sse_enabled    = true
+}
+
+resource "aws_iam_role_policy" "launch_consumer" {
+  name = "guarded-fifo-launch-queue"
+  role = module.runners.runners.role_scale_up.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+      Resource = aws_sqs_queue.launch.arn
+    }]
+  })
+}
+
+resource "aws_lambda_event_source_mapping" "launch" {
+  event_source_arn        = aws_sqs_queue.launch.arn
+  function_name           = module.runners.runners.lambda_up.arn
+  batch_size              = 10
+  function_response_types = ["ReportBatchItemFailures"]
+  depends_on              = [aws_iam_role_policy.launch_consumer]
 }
 
 # Every accepted job gets a delayed authoritative status check, independent of

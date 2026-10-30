@@ -20,9 +20,11 @@ and the serverless control plane are additional usage charges.
 2. A signed-webhook guard checks the repository, exact runner labels, and the
    workflow run's authoritative GitHub metadata. Fork runs, completed runs,
    mismatched commits, and `pull_request_target` runs cannot launch machines.
-3. The pinned `github-aws-runners/github-runner/aws` module (`8.0.0`) queues
-   accepted jobs and scales the repository-level runner fleet to its limit.
-   Its scale-up function is serialized so launches share one capacity check.
+3. The guard writes accepted jobs to an encrypted FIFO queue with one message
+   group. The pinned `github-aws-runners/github-runner/aws` module (`8.0.0`)
+   consumes batches of up to ten and scales the repository-level runner fleet
+   to its limit. FIFO serializes capacity decisions without competing pollers
+   throttling a single-concurrency function. Machines still execute in parallel.
 4. Runners fetch their one-use JIT registration configuration from SSM,
    register with GitHub, execute their job, and terminate.
 5. A separate encrypted recovery queue checks each accepted job after three
@@ -30,8 +32,8 @@ and the serverless control plane are additional usage charges.
    and status are revalidated before redelivery, at most three times. Started,
    canceled, completed, or untrusted jobs cannot start replacement machines.
    This covers interrupted cold boots and failed queue handoffs without an
-   always-on controller. The serialized launch consumer batches up to 32 jobs;
-   its three-minute visibility window gives throttled deliveries time to retry.
+   always-on controller. The FIFO queue's three-minute visibility window is six
+   times the launch function's timeout, following AWS retry guidance.
 
 Heavy CI jobs, CodeQL, dependency audits, and production deployment jobs use
 the fleet when repository variable `AWS_RUNNERS_ENABLED` is `true`. Small
@@ -140,4 +142,5 @@ python -m unittest discover -s scripts/ci/tests
 ```
 
 References: [upstream runner module](https://github.com/github-aws-runners/terraform-aws-github-runner/tree/v8.0.0),
-[AWS ephemeral runner guidance](https://aws.amazon.com/blogs/devops/best-practices-working-with-self-hosted-github-action-runners-at-scale-on-aws/).
+[AWS ephemeral runner guidance](https://aws.amazon.com/blogs/devops/best-practices-working-with-self-hosted-github-action-runners-at-scale-on-aws/),
+[FIFO consumer serialization](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/fifo-queue-lambda-behavior.html).

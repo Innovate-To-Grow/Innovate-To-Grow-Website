@@ -1,12 +1,10 @@
-import { createHmac, createSign } from 'node:crypto';
+import { createSign } from 'node:crypto';
 import { validSignature, trustedRun } from './trust.mjs';
 import { recoverableJob } from './recovery.mjs';
 import { SSMClient, GetParametersCommand } from '@aws-sdk/client-ssm';
-import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
 const ssm = new SSMClient({});
-const lambda = new LambdaClient({});
 const sqs = new SQSClient({});
 const repository = 'Innovate-To-Grow/Innovate-To-Grow-Website';
 let cached;
@@ -46,13 +44,17 @@ async function token(credentials) {
   return installation.token;
 }
 
-async function forward(event) {
-  const invoked = await lambda.send(new InvokeCommand({
-    FunctionName: process.env.WEBHOOK_FUNCTION, InvocationType: 'RequestResponse', Payload: Buffer.from(JSON.stringify(event)),
+async function enqueue(job, delivery) {
+  // One FIFO message group serializes capacity decisions at the queue itself,
+  // avoiding competing pollers that throttle a single-concurrency consumer.
+  await sqs.send(new SendMessageCommand({
+    QueueUrl: process.env.LAUNCH_QUEUE, MessageGroupId: 'i2g-ci',
+    MessageDeduplicationId: `${job.id}:${delivery}`,
+    MessageBody: JSON.stringify({ id: job.id, eventType: 'workflow_job',
+      repositoryName: repository.split('/')[1], repositoryOwner: repository.split('/')[0],
+      installationId: installation.id, queueId: process.env.LAUNCH_QUEUE,
+      repoOwnerType: 'Organization', labels: job.labels }),
   }));
-  if (invoked.FunctionError) throw new Error('Runner webhook failed');
-  const result = JSON.parse(Buffer.from(invoked.Payload).toString());
-  if (result.statusCode >= 300) throw new Error(`Runner webhook returned ${result.statusCode}`);
 }
 
 async function schedule(pending) {
@@ -71,13 +73,7 @@ async function recover(record) {
     github(`/repos/${repository}/actions/jobs/${pending.jobId}`, access),
   ]);
   if (!recoverableJob(run, job, pending)) return;
-  // Recheck the trusted source before signing a replacement queued event.
-  const body = JSON.stringify({ action: 'queued', workflow_job: job, installation: { id: installation.id },
-    repository: { full_name: repository, name: repository.split('/')[1], owner: { login: repository.split('/')[0], type: 'Organization' } } });
-  await forward({ body, isBase64Encoded: false, headers: {
-    'x-github-event': 'workflow_job',
-    'x-hub-signature-256': `sha256=${createHmac('sha256', credentials.secret).update(body).digest('hex')}`,
-  } });
+  await enqueue(job, `recovery-${pending.attempt}`);
   if (pending.attempt < 2) await schedule({ ...pending, attempt: pending.attempt + 1 });
   console.log(JSON.stringify({ recoveredJob: pending.jobId, attempt: pending.attempt }));
 }
@@ -107,6 +103,7 @@ export const handler = async event => {
     }
     const runId = payload.workflow_job.run_id;
     if (!Number.isSafeInteger(runId) || runId <= 0) return { statusCode: 400, body: 'Invalid run ID' };
+    if (!Number.isSafeInteger(payload.workflow_job.id) || payload.workflow_job.id <= 0) return { statusCode: 400, body: 'Invalid job ID' };
     const run = await github(`/repos/${repository}/actions/runs/${runId}`, await token(credentials));
     if (!trustedRun(run, payload)) {
       console.log(JSON.stringify({ blockedRun: runId, reason: 'Untrusted source or inactive run' }));
@@ -115,9 +112,7 @@ export const handler = async event => {
     // Durably schedule a status check before dispatch, so an accepted event
     // can recover even if a later handoff or cold machine fails.
     await schedule({ jobId: payload.workflow_job.id, runId, headSha: payload.workflow_job.head_sha, attempt: 0 });
-    // Preserve the signed raw body; the upstream webhook verifies it again.
-    const forwarded = { ...event, body: body.toString(), isBase64Encoded: false };
-    await forward(forwarded);
+    await enqueue(payload.workflow_job, 'original');
     return { statusCode: 202, body: 'Queued' };
   } catch (error) {
     // No raw webhook payloads, tokens, signatures or private keys in logs.
