@@ -39,7 +39,7 @@ describe('usePastProjectsData', () => {
   it('starts loading and maps a single page of rows', async () => {
     mockFetchAllPastProjectArchive.mockResolvedValue([
       makeProject(),
-      makeProject({id: 'p-2', track: null, presentation_order: null}),
+      makeProject({id: 'p-2', track: null, presentation_order: null, student_names: 'Ada Lovelace'}),
     ]);
 
     const {result} = renderHook(() => usePastProjectsData());
@@ -77,7 +77,7 @@ describe('usePastProjectsData', () => {
         Organization: 'Org A',
         Industry: 'Energy',
         Abstract: '',
-        'Student Names': '',
+        'Student Names': 'Ada Lovelace',
         'Showcase Participation': '',
         NameTitle: '',
       },

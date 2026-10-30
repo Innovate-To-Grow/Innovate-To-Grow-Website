@@ -66,6 +66,54 @@ describe('useProjectGridTable', () => {
         expect(result.current.filteredRows[0].project_title).toBe('Project 2');
     });
 
+    it('finds rows by what the page shows, not by hidden or raw values', async () => {
+        const rows = makeItems([
+            makeRow({
+                semester_label: '2026-2 Fall',
+                class_code: 'CSE',
+                team_number: '403',
+                project_title: 'Carrot Field AI System',
+                organization: 'Bolthouse Fresh Foods',
+                student_names: 'Ana Živanović',
+                is_presenting: 'Yes',
+            }),
+            makeRow({
+                semester_label: '2026-2 Fall',
+                class_code: 'CAP',
+                team_number: '101',
+                project_title: 'In-Air Drop "Shower-Head" Development',
+                abstract: 'A drop apparatus.',
+                is_presenting: 'No',
+            }),
+        ]);
+        const {result} = renderHook(() =>
+            useProjectGridTable({
+                rows,
+                defaultSortField: 'class_code',
+                classLabels: {CSE: 'Software Engineering Capstone', CAP: 'Engineering Capstone'},
+            }),
+        );
+        const titlesFor = async (search: string) => {
+            act(() => result.current.setSearch(search));
+            let titles: string[] = [];
+            await waitFor(() => {
+                expect(result.current.search).toBe(search);
+                titles = result.current.filteredRows.map((row) => row.project_title);
+            });
+            return titles;
+        };
+
+        expect(await titlesFor('Fall 2026')).toHaveLength(2);
+        expect(await titlesFor('Software Engineering')).toEqual(['Carrot Field AI System']);
+        expect(await titlesFor('cap  101')).toEqual(['In-Air Drop "Shower-Head" Development']);
+        expect(await titlesFor('CAP101')).toEqual(['In-Air Drop "Shower-Head" Development']);
+        expect(await titlesFor('\u201cShower-Head\u201d')).toEqual(['In-Air Drop "Shower-Head" Development']);
+        expect(await titlesFor('Bolthouse  Fresh')).toEqual(['Carrot Field AI System']);
+        expect(await titlesFor('zivanovic')).toEqual(['Carrot Field AI System']);
+        // The presenting flag is not shown, so it is not searched.
+        expect(await titlesFor('yes')).toEqual([]);
+    });
+
     it('toggles sort direction when the same field is clicked twice', () => {
         const rows = makeItems(makeRows());
         const {result} = renderHook(() =>

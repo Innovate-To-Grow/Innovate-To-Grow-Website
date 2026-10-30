@@ -3,6 +3,7 @@ import {
   createProjectGridFingerprint,
   getProjectGridSearchValue,
   hasProjectGridDetails,
+  normalizeSearchText,
   sortProjectGridItems,
   type ProjectGridColumnKey,
   type ProjectGridItem,
@@ -13,6 +14,8 @@ import {useRowKeySet} from './useRowKeySet';
 
 /** Default choices for the “rows per page” control (hook merges in the current size if needed). */
 export const PROJECT_GRID_PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100] as const;
+
+const NO_CLASS_LABELS: Record<string, string> = {};
 
 interface UseProjectGridTableOptions {
   rows: ProjectGridItem[];
@@ -27,25 +30,37 @@ interface UseProjectGridTableOptions {
   expandAllByDefault?: boolean;
   /** Extra filter applied with the search (e.g. the Class and Industry selects). Keep its identity stable. */
   filterRow?: (row: ProjectGridItem) => boolean;
+  /** Class names by code ("CAP" -> "Engineering Capstone"), so a search finds a team by its class name. */
+  classLabels?: Record<string, string>;
+}
+
+interface RowFilters {
+  search: string;
+  filterRow: UseProjectGridTableOptions['filterRow'];
+  classLabels: Record<string, string>;
 }
 
 /** The rows the search (and the extra filter) keeps, in the chosen sort order. */
 function useFilteredSortedRows(
   rows: ProjectGridItem[],
-  search: string,
-  filterRow: UseProjectGridTableOptions['filterRow'],
+  {search, filterRow, classLabels}: RowFilters,
   sortField: ProjectGridColumnKey,
   sortDirection: ProjectGridSortDirection,
 ) {
   const deferredSearch = useDeferredValue(search);
+  // Built once per set of rows, not on every keystroke: normalizing 920 archive rows is not free.
+  const searchValues = useMemo(
+    () => new Map(rows.map((row) => [row.__key, getProjectGridSearchValue(row, classLabels)])),
+    [classLabels, rows],
+  );
   const filteredRows = useMemo(() => {
     const candidates = filterRow ? rows.filter(filterRow) : rows;
-    if (!deferredSearch.trim()) {
+    const query = normalizeSearchText(deferredSearch);
+    if (!query) {
       return candidates;
     }
-    const query = deferredSearch.trim().toLowerCase();
-    return candidates.filter((row) => getProjectGridSearchValue(row).includes(query));
-  }, [deferredSearch, filterRow, rows]);
+    return candidates.filter((row) => searchValues.get(row.__key)?.includes(query));
+  }, [deferredSearch, filterRow, rows, searchValues]);
 
   const sortedRows = useMemo(
     () => sortProjectGridItems(filteredRows, sortField, sortDirection),
@@ -90,11 +105,17 @@ export function useProjectGridTable({
   initialSearch = '',
   expandAllByDefault = false,
   filterRow,
+  classLabels = NO_CLASS_LABELS,
 }: UseProjectGridTableOptions) {
   const [search, setSearch] = useState(initialSearch);
   const [sortField, setSortField] = useState<ProjectGridColumnKey>(defaultSortField);
   const [sortDirection, setSortDirection] = useState<ProjectGridSortDirection>(defaultSortDirection);
-  const {filteredRows, sortedRows} = useFilteredSortedRows(rows, search, filterRow, sortField, sortDirection);
+  const {filteredRows, sortedRows} = useFilteredSortedRows(
+    rows,
+    {search, filterRow, classLabels},
+    sortField,
+    sortDirection,
+  );
   const paging = useGridPagination(sortedRows, initialPageSize, pageSizeChoices);
   const {setPage} = paging;
   const {expandedKeys, expanded, allDetailsExpanded, toggleAllDetails} = useExpandedRows(rows, expandAllByDefault);

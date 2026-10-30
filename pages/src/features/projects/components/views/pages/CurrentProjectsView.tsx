@@ -129,6 +129,7 @@ export const CurrentProjectsView = ({
     defaultSortDirection: 'asc',
     initialSearch: searchParams.get('value') || '',
     filterRow: filters.filterRow,
+    classLabels,
   });
 
   const query = table.search.trim();

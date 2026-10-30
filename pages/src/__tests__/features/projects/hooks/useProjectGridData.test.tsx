@@ -96,7 +96,7 @@ describe('usePastProjectGridData', () => {
     it('loads the whole archive and maps it to grid rows', async () => {
         mockFetchAllPastProjectArchive.mockResolvedValue([
             makeProject({}),
-            makeProject({id: 'p-2'}),
+            makeProject({id: 'p-2', student_names: 'Brian Arroyo'}),
         ]);
 
         const {result} = renderHook(() => usePastProjectGridData());
@@ -107,7 +107,7 @@ describe('usePastProjectGridData', () => {
         expect(mockFetchAllPastProjectArchive).toHaveBeenCalledWith({}, expect.any(AbortSignal));
         expect(result.current.rows.map((row) => [row.id, row.semester_label, row.student_names])).toEqual([
             ['project-1', '2025 Spring', ''],
-            ['p-2', '2025 Spring', ''],
+            ['p-2', '2025 Spring', 'Brian Arroyo'],
         ]);
         expect(result.current.error).toBeNull();
     });
@@ -219,6 +219,20 @@ describe('useCurrentProjectGridData', () => {
         expect(options).toEqual({signal: expect.any(AbortSignal), timeout: 15_000});
         unmount();
         expect((options as {signal: AbortSignal}).signal.aborted).toBe(true);
+    });
+
+    it('files the teams that are not presenting under the schedule\'s term', async () => {
+        mockFetchCurrentSchedule.mockResolvedValue({
+            projects: [
+                {...scheduleRow, year_semester: '2026-2 Fall'},
+                {...scheduleRow, id: 'project-9', track: 0, order: 0, year_semester: '', is_presenting: false},
+            ],
+        });
+
+        const {result} = renderHook(() => useCurrentProjectGridData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        expect(result.current.rows.map((row) => row.semester_label)).toEqual(['2026 Fall', '2026 Fall']);
     });
 
     it('links each row to its project and names the classes from the schedule sections', async () => {

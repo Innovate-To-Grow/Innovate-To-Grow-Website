@@ -153,6 +153,19 @@ describe('useProjectGridDetails', () => {
     expect(await screen.findByText('error')).toBeInTheDocument();
   });
 
+  it('loads the abstract of an archive row that arrived with its student names', async () => {
+    mockFetchProjectDetail.mockImplementation(async (id: string) => detail(id));
+    const WithNames = () => {
+      const {loading, details} = useProjectGridDetails({...compactRow('with-names'), student_names: 'Ada Lovelace'}, true);
+      return <p>{loading ? 'loading' : details.abstract}</p>;
+    };
+
+    render(<WithNames />);
+
+    expect(await screen.findByText('Abstract of with-names')).toBeInTheDocument();
+    expect(mockFetchProjectDetail).toHaveBeenCalledWith('with-names', expect.any(AbortSignal), 15_000);
+  });
+
   it('keeps loaded details for a save of the same rows', async () => {
     mockFetchProjectDetail.mockImplementation(async (id: string) => detail(id));
 

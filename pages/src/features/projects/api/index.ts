@@ -136,8 +136,10 @@ export const compactProjectToGridRow = (project: CompactPastProjectRow): Project
     project_title: project.project_title,
     organization: project.organization,
     industry: project.industry,
+    // The abstract is left to the detail endpoint; student names come along when the API sends them, so a search
+    // finds a team by its members.
     abstract: '',
-    student_names: '',
+    student_names: project.student_names ?? '',
     is_presenting: '',
 });
 
@@ -178,9 +180,11 @@ const HYDRATION_RETRY_DELAYS_MS = [300, 900];
 // the others keep loading.
 const HYDRATION_STALL_MS = 30_000;
 
-/** Archive rows arrive compact; their abstract and student names live only on the detail endpoint. */
-export const needsProjectGridHydration = (row: ProjectGridRow) =>
-    Boolean(row.id) && !row.abstract && !row.student_names;
+/**
+ * Archive rows arrive compact: their abstract lives only on the detail endpoint. Their student names may come
+ * with them, so a row without an abstract is what needs its details.
+ */
+export const needsProjectGridHydration = (row: ProjectGridRow) => Boolean(row.id) && !row.abstract;
 
 const isRetryableDetailError = (error: unknown) => {
     const status = (error as {response?: {status?: number}}).response?.status;

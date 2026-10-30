@@ -104,7 +104,7 @@ export const ProjectGridNoResults = ({query, countLabel, headingLevel, noResults
         No {countLabel} {query ? `match “${query}”` : 'match the filters'}
       </NoResultsHeading>
       <p className="itg-empty-state-text">
-        Check the spelling, or try a team, sponsor or industry name.
+        Check the spelling, or try a title, team, sponsor, industry or student name.
         {noResultsHint ? ` ${noResultsHint}` : ''}
       </p>
       <div className="itg-empty-state-actions">

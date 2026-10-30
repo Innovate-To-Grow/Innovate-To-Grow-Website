@@ -7,7 +7,9 @@ import {
   getPredominantTerm,
   getProjectGridRowHref,
   getDisplayTeamNumber,
+  getProjectGridSearchValue,
   getProjectGridTeamCode,
+  normalizeSearchText,
   sortProjectGridItems,
   splitStudentNames,
   type ProjectGridRow,
@@ -148,6 +150,25 @@ describe('projectGrid helpers', () => {
     expect(getPredominantTerm([row('', 'x')])).toBe('');
     expect(getEarliestTermYear([...rows, row('2012 Fall', 'e')])).toBe(2012);
     expect(getEarliestTermYear([row('', 'x')])).toBeNull();
+  });
+
+  it('searches what the page shows: both term formats, the team code with or without its space, the class name', () => {
+    const value = getProjectGridSearchValue(
+      {...row('2026 Fall', 'In-Air Drop "Shower-Head"'), class_code: 'CAP', team_number: '101', is_presenting: 'Yes'},
+      {CAP: 'Engineering Capstone'},
+    );
+
+    for (const shown of ['2026 fall', 'fall 2026', 'cap 101', 'cap101', 'engineering capstone', '"shower-head"']) {
+      expect(value).toContain(shown);
+    }
+    // The hidden Yes/No presenting flag is not part of it.
+    expect(value).not.toMatch(/\byes\b/);
+    expect(getProjectGridSearchValue({...row('', 'Untitled'), is_presenting: 'No'})).not.toMatch(/\bno\b/);
+  });
+
+  it('compares searches without case, accents, curly quotes or repeated spaces', () => {
+    expect(normalizeSearchText('  Živanović \u201cShower-Head\u201d   CAP  101 ')).toBe('zivanovic "shower-head" cap 101');
+    expect(normalizeSearchText('\u2018Smart\u2019 sensors')).toBe("'smart' sensors");
   });
 
   it('links a row to its current or past project page', () => {

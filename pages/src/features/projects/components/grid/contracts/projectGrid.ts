@@ -215,21 +215,44 @@ export const getProjectGridRowHref = (row: Pick<ProjectGridRow, 'id'>, scope: Pr
 
 export const hasProjectGridDetails = (row: ProjectGridRow) => Boolean(row.id || row.abstract || row.student_names);
 
-export const getProjectGridSearchValue = (row: ProjectGridRow) =>
-  [
-    row.semester_label,
-    row.class_code,
-    row.team_number,
-    row.team_name,
-    row.project_title,
-    row.organization,
-    row.industry,
-    row.abstract,
-    row.student_names,
-    row.is_presenting,
-  ]
-    .join(' ')
+/**
+ * Text as a search compares it: lowercase, without accents ("Živanović" matches "zivanovic"), with curly quotes made
+ * straight and runs of spaces collapsed. Applied to both the query and the text searched.
+ */
+export const normalizeSearchText = (value: string) =>
+  value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2018\u2019\u201a\u201b\u2032]/g, "'")
+    .replace(/[\u201c\u201d\u201e\u201f\u2033]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
     .toLowerCase();
+
+/**
+ * The text a row is found by: what the page shows for it. That is the term both ways ("2026 Fall" in tables,
+ * "Fall 2026" in prose), the team code with and without its space, the class name the filter and project page use,
+ * and the row's title, team, organization, industry, abstract and students. Hidden values (is_presenting's
+ * Yes/No) are left out, so "yes" or "no" do not match rows that never show them.
+ */
+export const getProjectGridSearchValue = (row: ProjectGridRow, classLabels: Record<string, string> = {}) => {
+  const teamCode = getProjectGridTeamCode(row);
+  return normalizeSearchText(
+    [
+      row.semester_label,
+      formatTermForProse(row.semester_label),
+      teamCode,
+      teamCode.replace(/\s+/g, ''),
+      classLabels[row.class_code] ?? '',
+      row.team_name,
+      row.project_title,
+      row.organization,
+      row.industry,
+      row.abstract,
+      row.student_names,
+    ].join(' '),
+  );
+};
 
 // One collator for every comparison: localeCompare with options builds a new collator on each call, which made
 // sorting the 920-row archive take hundreds of milliseconds on a slower phone.

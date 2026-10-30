@@ -1,6 +1,6 @@
 import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {CurrentProjectsView} from '@/features/projects/components/views/pages/CurrentProjectsView';
 import type {ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
@@ -143,6 +143,15 @@ describe('CurrentProjectsView', () => {
     expect(titles).toEqual(['Almond Optimization', 'Bagging Bags', 'HVAC Design']);
   });
 
+  it('finds a team by the class name the Class filter shows', async () => {
+    const {container} = renderView();
+
+    fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'engineering capstone'}});
+
+    await waitFor(() => expect(countLine(container)).toHaveTextContent('2 of 3 projects match “engineering capstone”'));
+    expect(within(desktopTable(container)).queryByText('Bagging Bags')).toBeNull();
+  });
+
   it('seeds the search from the ?value= parameter', () => {
     renderView({}, ['/current-projects?value=Bagging']);
 
@@ -190,6 +199,15 @@ describe('CurrentProjectsView', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Schedule down');
+    expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+  });
+
+  it('offers to load the projects again after an error', () => {
+    const onRetry = vi.fn();
+    renderView({rows: [], error: "We couldn't load the projects.", onRetry});
+
+    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
   it('shows the empty message when there are no projects yet', () => {

@@ -41,6 +41,7 @@ import {
   fetchProjectDetail,
   hydrateProjectGridRowsSettled,
   listMyShares,
+  needsProjectGridHydration,
   rememberProjectDetail,
   scheduleProjectToGridRow,
   searchPastProjectsWithAI,
@@ -242,6 +243,29 @@ describe('project grid row mappers', () => {
     });
     expect(scheduleProjectToGridRow(scheduleRow)).not.toHaveProperty('id');
     expect(scheduleProjectToGridRow({...scheduleRow, is_presenting: false}).is_presenting).toBe('No');
+  });
+
+  it('keeps the student names the archive sends, so a search finds a team by its members', () => {
+    const compact = {
+      id: 'project-1',
+      semester_label: '2025-1 Spring',
+      class_code: 'CAP',
+      team_number: '101',
+      team_name: 'Team A',
+      project_title: 'Project A',
+      organization: 'Org A',
+      industry: 'Energy',
+      student_names: 'Brian Arroyo, Joel Gonzalez',
+      track: null,
+      presentation_order: null,
+    };
+    const row = compactProjectToGridRow(compact);
+
+    expect(row).toMatchObject({abstract: '', student_names: 'Brian Arroyo, Joel Gonzalez'});
+    // The abstract still has to be loaded from the detail endpoint.
+    expect(needsProjectGridHydration(row)).toBe(true);
+    expect(needsProjectGridHydration({...row, abstract: 'Loaded'})).toBe(false);
+    expect(needsProjectGridHydration({...row, id: undefined})).toBe(false);
   });
 
   it('maps a compact archive row with empty detail fields', () => {

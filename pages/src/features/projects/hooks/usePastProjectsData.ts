@@ -16,7 +16,7 @@ function projectToSheetRow(p: CompactPastProjectRow): SheetRow {
         Organization: p.organization,
         Industry: p.industry,
         Abstract: '',
-        'Student Names': '',
+        'Student Names': p.student_names ?? '',
         'Showcase Participation': '',
         NameTitle: '',
     };

@@ -9,6 +9,7 @@ import {
     type ProjectGridRow,
 } from '@/features/projects/api';
 import {fetchCurrentSchedule, type EventSchedulePayload} from '@/features/events/api';
+import {getPredominantTerm} from '../components/grid/contracts/projectGrid';
 
 interface ProjectGridDataResult {
     rows: ProjectGridRow[];
@@ -65,7 +66,7 @@ export const currentScheduleToGridRows = (payload: Pick<EventSchedulePayload, 'p
             (track.slots ?? []).forEach((slot) => slotProjectIds.set(slot.id, slot.project_id ?? null)),
         ),
     );
-    return payload.projects.map((project) => {
+    const rows = payload.projects.map((project) => {
         const row = scheduleProjectToGridRow(project);
         const projectId = slotProjectIds.has(project.id)
             ? slotProjectIds.get(project.id)
@@ -74,6 +75,10 @@ export const currentScheduleToGridRows = (payload: Pick<EventSchedulePayload, 'p
               : null;
         return projectId ? {...row, id: projectId} : row;
     });
+    // Teams that are not presenting carry no term of their own: they belong to the schedule's semester, and a
+    // search for that term ("Fall 2026") should find them too.
+    const term = getPredominantTerm(rows);
+    return term ? rows.map((row) => (row.semester_label ? row : {...row, semester_label: term})) : rows;
 };
 
 export const currentScheduleClassLabels = (payload: Partial<EventSchedulePayload>) => {

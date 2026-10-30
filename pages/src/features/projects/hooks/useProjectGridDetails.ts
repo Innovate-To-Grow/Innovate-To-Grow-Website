@@ -4,6 +4,7 @@ import {
   PROJECT_DETAIL_CONCURRENCY,
   PROJECT_REQUEST_TIMEOUT_MS,
   fetchProjectDetail,
+  needsProjectGridHydration,
   rememberProjectDetail,
   type ProjectGridRow,
 } from '@/features/projects/api';
@@ -101,7 +102,7 @@ function requestDetails(entry: DetailEntry) {
 }
 
 export function useProjectGridDetails(row: ProjectGridRow, loadMissingDetails: boolean) {
-  const id = loadMissingDetails && row.id && !row.abstract && !row.student_names ? row.id : null;
+  const id = loadMissingDetails && needsProjectGridHydration(row) ? row.id! : null;
   const entry = useMemo(() => id ? getEntry(id) : null, [id]);
   const subscribe = useCallback((listener: () => void) => {
     if (!entry) return () => {};
