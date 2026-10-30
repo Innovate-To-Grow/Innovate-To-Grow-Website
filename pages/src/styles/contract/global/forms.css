@@ -36,9 +36,10 @@
   padding: 4px 6px;
   /* The field's edge is all that marks it out on the grey filter well, so it
      needs 3:1 against the #f2f2f2 fill, the #f5f5f5 well and white (WCAG
-     1.4.11): #858585 reaches 3.3:1 or more. The reference's #ccc
-     (--itg-color-border-input, still used by other controls) reaches 1.5:1. */
-  border: 1px solid #858585;
+     1.4.11): --itg-color-border-field (#858585) reaches 3.3:1 or more. The
+     reference's #ccc (--itg-color-border-input, still used by other controls)
+     reaches 1.5:1. */
+  border: 1px solid var(--itg-color-border-field);
   border-radius: var(--itg-radius-input);
   background-color: var(--itg-color-bg-light);
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
