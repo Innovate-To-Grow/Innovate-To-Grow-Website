@@ -1,10 +1,13 @@
-import { createSign } from 'node:crypto';
+import { createHmac, createSign } from 'node:crypto';
 import { validSignature, trustedRun } from './trust.mjs';
+import { recoverableJob } from './recovery.mjs';
 import { SSMClient, GetParametersCommand } from '@aws-sdk/client-ssm';
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
 const ssm = new SSMClient({});
 const lambda = new LambdaClient({});
+const sqs = new SQSClient({});
 const repository = 'Innovate-To-Grow/Innovate-To-Grow-Website';
 let cached;
 let installation;
@@ -39,11 +42,54 @@ async function token(credentials) {
   const jwt = `${content}.${signature}`;
   const app = await github(`/repos/${repository}/installation`, jwt);
   const result = await github(`/app/installations/${app.id}/access_tokens`, jwt, 'POST');
-  installation = { token: result.token, expires: Date.parse(result.expires_at) };
+  installation = { id: app.id, token: result.token, expires: Date.parse(result.expires_at) };
   return installation.token;
 }
 
+async function forward(event) {
+  const invoked = await lambda.send(new InvokeCommand({
+    FunctionName: process.env.WEBHOOK_FUNCTION, InvocationType: 'RequestResponse', Payload: Buffer.from(JSON.stringify(event)),
+  }));
+  if (invoked.FunctionError) throw new Error('Runner webhook failed');
+  const result = JSON.parse(Buffer.from(invoked.Payload).toString());
+  if (result.statusCode >= 300) throw new Error(`Runner webhook returned ${result.statusCode}`);
+}
+
+async function schedule(pending) {
+  await sqs.send(new SendMessageCommand({
+    QueueUrl: process.env.RECOVERY_QUEUE, DelaySeconds: 180, MessageBody: JSON.stringify(pending),
+  }));
+}
+
+async function recover(record) {
+  const pending = JSON.parse(record.body);
+  if (!Number.isSafeInteger(pending.runId) || !Number.isSafeInteger(pending.jobId)) throw new Error('Invalid recovery IDs');
+  const credentials = await secrets();
+  const access = await token(credentials);
+  const [run, job] = await Promise.all([
+    github(`/repos/${repository}/actions/runs/${pending.runId}`, access),
+    github(`/repos/${repository}/actions/jobs/${pending.jobId}`, access),
+  ]);
+  if (!recoverableJob(run, job, pending)) return;
+  // Recheck the trusted source before signing a replacement queued event.
+  const body = JSON.stringify({ action: 'queued', workflow_job: job, installation: { id: installation.id },
+    repository: { full_name: repository, name: repository.split('/')[1], owner: { login: repository.split('/')[0], type: 'Organization' } } });
+  await forward({ body, isBase64Encoded: false, headers: {
+    'x-github-event': 'workflow_job',
+    'x-hub-signature-256': `sha256=${createHmac('sha256', credentials.secret).update(body).digest('hex')}`,
+  } });
+  if (pending.attempt < 2) await schedule({ ...pending, attempt: pending.attempt + 1 });
+  console.log(JSON.stringify({ recoveredJob: pending.jobId, attempt: pending.attempt }));
+}
+
 export const handler = async event => {
+  if (Array.isArray(event.Records)) {
+    const results = await Promise.all(event.Records.map(async record => {
+      try { await recover(record); return null; }
+      catch (error) { console.error(error.message); return { itemIdentifier: record.messageId }; }
+    }));
+    return { batchItemFailures: results.filter(Boolean) };
+  }
   try {
     const credentials = await secrets();
     const body = Buffer.from(event.body ?? '', event.isBase64Encoded ? 'base64' : 'utf8');
@@ -66,14 +112,12 @@ export const handler = async event => {
       console.log(JSON.stringify({ blockedRun: runId, reason: 'Untrusted source or inactive run' }));
       return { statusCode: 202, body: 'Untrusted source' };
     }
+    // Durably schedule a status check before dispatch, so an accepted event
+    // can recover even if a later handoff or cold machine fails.
+    await schedule({ jobId: payload.workflow_job.id, runId, headSha: payload.workflow_job.head_sha, attempt: 0 });
     // Preserve the signed raw body; the upstream webhook verifies it again.
     const forwarded = { ...event, body: body.toString(), isBase64Encoded: false };
-    const invoked = await lambda.send(new InvokeCommand({
-      FunctionName: process.env.WEBHOOK_FUNCTION, InvocationType: 'RequestResponse', Payload: Buffer.from(JSON.stringify(forwarded)),
-    }));
-    if (invoked.FunctionError) throw new Error('Runner webhook failed');
-    const result = JSON.parse(Buffer.from(invoked.Payload).toString());
-    if (result.statusCode >= 300) throw new Error(`Runner webhook returned ${result.statusCode}`);
+    await forward(forwarded);
     return { statusCode: 202, body: 'Queued' };
   } catch (error) {
     // No raw webhook payloads, tokens, signatures or private keys in logs.

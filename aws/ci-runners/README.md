@@ -25,6 +25,13 @@ and the serverless control plane are additional usage charges.
    Its scale-up function is serialized so launches share one capacity check.
 4. Runners fetch their one-use JIT registration configuration from SSM,
    register with GitHub, execute their job, and terminate.
+5. A separate encrypted recovery queue checks each accepted job after three
+   minutes. If it is still queued, its authoritative repository, commit, labels,
+   and status are revalidated before redelivery, at most three times. Started,
+   canceled, completed, or untrusted jobs cannot start replacement machines.
+   This covers interrupted cold boots and failed queue handoffs without an
+   always-on controller. The serialized launch consumer batches up to 32 jobs;
+   its three-minute visibility window gives throttled deliveries time to retry.
 
 Heavy CI jobs, CodeQL, dependency audits, and production deployment jobs use
 the fleet when repository variable `AWS_RUNNERS_ENABLED` is `true`. Small
@@ -42,7 +49,7 @@ remain in place. See [Django test performance guidance](https://docs.djangoproje
 
 The required label set is `[self-hosted, Linux, X64, i2g-aws]`. Runners are
 temporary: an empty GitHub Runners settings page while no jobs are running is
-expected. A newly queued job can take around 1–2 minutes to acquire a cold
+expected. A newly queued job can take around 1–3 minutes to acquire a cold
 machine; this is an expectation, not a startup-time guarantee. Different
 workflow stages may each encounter startup latency.
 

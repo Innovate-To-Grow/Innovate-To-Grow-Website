@@ -92,10 +92,10 @@ module "runners" {
   enable_job_queued_check                 = true
   runners_maximum_count                   = var.maximum_runners
   scale_up_reserved_concurrent_executions = 1
-  # SQS visibility follows this timeout; use the upstream 30-second default so
-  # throttled deliveries do not hold otherwise-ready jobs for 90 seconds.
-  runners_scale_up_lambda_timeout                                = 30
-  lambda_event_source_mapping_batch_size                         = 10
+  # The module ties queue visibility to this timeout. Keep throttled batches
+  # available long enough for the serialized capacity check to catch up.
+  runners_scale_up_lambda_timeout                                = 180
+  lambda_event_source_mapping_batch_size                         = 32
   lambda_event_source_mapping_maximum_batching_window_in_seconds = 2
   delay_webhook_event                                            = 0
   pool_config                                                    = []

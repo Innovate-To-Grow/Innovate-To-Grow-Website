@@ -20,6 +20,7 @@ resource "aws_iam_role_policy" "guard" {
     Statement = [
       { Effect = "Allow", Action = ["ssm:GetParameters"], Resource = ["${local.secret_arn}/id", "${local.secret_arn}/key-base64", "${local.secret_arn}/webhook-secret"] },
       { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = module.runners.webhook.lambda.arn },
+      { Effect = "Allow", Action = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"], Resource = aws_sqs_queue.recovery.arn },
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.guard.arn}:*" },
     ]
   })
@@ -35,9 +36,39 @@ resource "aws_lambda_function" "guard" {
   timeout          = 30
   memory_size      = 256
   environment {
-    variables = { WEBHOOK_FUNCTION = module.runners.webhook.lambda.function_name }
+    variables = {
+      WEBHOOK_FUNCTION = module.runners.webhook.lambda.function_name
+      RECOVERY_QUEUE   = aws_sqs_queue.recovery.url
+    }
   }
   depends_on = [aws_iam_role_policy.guard, aws_cloudwatch_log_group.guard]
+}
+
+# Every accepted job gets a delayed authoritative status check, independent of
+# the initial launch queue. Failed handoffs and failed boots cannot strand it.
+resource "aws_sqs_queue" "recovery" {
+  name                       = "${local.prefix}-job-recovery"
+  visibility_timeout_seconds = 180
+  message_retention_seconds  = 86400
+  sqs_managed_sse_enabled    = true
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.recovery_dead_letter.arn
+    maxReceiveCount     = 10
+  })
+}
+
+resource "aws_sqs_queue" "recovery_dead_letter" {
+  name                      = "${local.prefix}-job-recovery-dead-letter"
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+}
+
+resource "aws_lambda_event_source_mapping" "recovery" {
+  event_source_arn        = aws_sqs_queue.recovery.arn
+  function_name           = aws_lambda_function.guard.arn
+  batch_size              = 5
+  function_response_types = ["ReportBatchItemFailures"]
+  depends_on              = [aws_iam_role_policy.guard]
 }
 
 resource "aws_apigatewayv2_api" "guard" {
