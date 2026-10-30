@@ -64,6 +64,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
+      - name: Verify default Python before tool setup
+        run: python --version
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"

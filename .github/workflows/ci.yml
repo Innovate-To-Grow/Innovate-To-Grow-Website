@@ -61,6 +61,8 @@ env:
   COVERAGE_VERSION: "7.16.1"
   CLI_COVERAGE_LINES: "99"
   CLI_COVERAGE_BRANCHES: "98"
+  # Cache transport failures must fall back to dependency installation promptly.
+  SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
   # npm only retries registry reads on network/5xx errors; keep the extra
   # attempts short so deterministic lint, test, and audit failures stay red.
   NPM_CONFIG_FETCH_RETRIES: "3"
@@ -1544,6 +1546,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+      - name: Set up publisher Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
       - name: Download tested and scanned image
         uses: actions/download-artifact@v8
         with:

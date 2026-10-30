@@ -84,12 +84,18 @@ publishing the image. The pipeline runs weekly to refresh the agent and OS
 packages, then updates `/imagebuilder/i2g-ci/runner-ami`. Image-builder
 instances also terminate when their work is done. A recipe-scoped lifecycle
 policy retains three image generations and cleans up older AMIs and snapshots.
+Startup exposes the cached Python 3.14.10 interpreter as the default `python`
+command; jobs can select their required version with `setup-python`.
 
 Changing workflow tool or container versions requires updating `bake-image.sh`
 and its validation in `image.tf`, bumping the component and recipe semantic
 versions in `image.tf`, then rebuilding the image. These immutable resources
 use create-before-destroy so the existing pipeline can switch safely. Cached virtualenv
 keys distinguish GitHub-hosted and self-hosted filesystem layouts.
+Dependency cache downloads have a two-minute segment timeout so upstream
+transport failures fall back to installing dependencies promptly.
+Changing the default Python patch version also requires updating its link in
+`runner-user-data.sh.tftpl`.
 
 ## Operations
 

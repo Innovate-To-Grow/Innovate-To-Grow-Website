@@ -45,6 +45,11 @@ jobs:
         with:
           ref: ${{ inputs.deploy_sha }}
 
+      - name: Set up deployment Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -88,6 +93,8 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: itg-archive-ci:${{ inputs.deploy_sha }}
+          # Install locally; hosted binary caches contain absolute paths.
+          cache: false
           severity: CRITICAL,HIGH
           exit-code: "1"
           ignore-unfixed: true
