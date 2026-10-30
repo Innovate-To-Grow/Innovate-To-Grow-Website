@@ -100,9 +100,11 @@ class AWSAdminDisplayTest(TestCase):
         actions = self.admin.get_actions(_request(self.user))
         self.assertNotIn("delete_selected", actions)
 
-    def test_form_uses_password_widget(self):
+    def test_form_accepts_reference_without_plaintext_credentials(self):
         form = AWSCredentialConfigForm()
-        self.assertIn("secret_access_key", form.fields)
+        self.assertIn("credentials_secret_arn", form.fields)
+        self.assertNotIn("secret_access_key", form.fields)
+        self.assertNotIn("access_key_id", form.fields)
 
 
 class AWSBedrockTestActionTest(TestCase):

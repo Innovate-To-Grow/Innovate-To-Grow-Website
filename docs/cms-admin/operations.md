@@ -56,7 +56,7 @@ After the new revision is fully deployed and every old task has drained, add a f
 cd src && python manage.py seed_service_configs
 ```
 
-Creates an empty active `EmailServiceConfig` row for backend defaults. AWS credentials, region, End User Messaging origination number, and SMS OTP template are entered through the AWS Credentials admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
+Creates an empty active `EmailServiceConfig` row for backend defaults. Create application AWS keys in Secrets Manager under `itg/backend/aws-credentials/`, then enter the secret ARN and AWS region in the AWS Credentials admin UI. Production stores no key values in the database. `AWS_SERVICE_CREDENTIALS_SECRET_ARN` can seed that reference; `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` seeding is supported only outside production. SMS origination and OTP settings remain service metadata.
 
 ### Verifying configs before deploy
 
@@ -64,7 +64,7 @@ Creates an empty active `EmailServiceConfig` row for backend defaults. AWS crede
 cd src && python manage.py verify_service_configs --strict
 ```
 
-Confirms an active `EmailServiceConfig` and AWS credentials are configured for SES. Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
+Confirms an active `EmailServiceConfig` and an AWS credential reference are structurally configured for SES; this does not prove that Secrets Manager or provider calls succeed. Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
 
 ### Managing via admin
 
@@ -72,7 +72,7 @@ Configuration models are available in Django admin:
 
 | Model | Admin area | Purpose |
 |-------|------------|---------|
-| `AWSCredentialConfig` | Site Settings | Shared AWS IAM key, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
+| `AWSCredentialConfig` | Site Settings | Shared AWS Secrets Manager reference, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
 | `EmailServiceConfig` | Site Settings | Sender identity and campaign send rate |
 | `GoogleCredentialConfig` | Site Settings | Google service-account JSON |
 | `GmailAccessAccount` | Site Settings | Gmail IMAP import account |

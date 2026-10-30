@@ -447,6 +447,27 @@
           ]
         }
       }
+    },
+    "ApplicationAwsCredentialsRead": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "itg-application-aws-credentials-read",
+        "Roles": [
+          "ecsTaskRole"
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "secretsmanager:GetSecretValue"
+              ],
+              "Resource": "arn:aws:secretsmanager:us-west-2:394167325273:secret:itg/backend/aws-credentials/*"
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
