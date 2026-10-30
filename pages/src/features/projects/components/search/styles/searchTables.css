@@ -117,6 +117,12 @@
   gap: 1.5rem;
 }
 
+/* The builder while the archive loads: hold about the first search table's room (about 843px on wide screens, a
+   screen or more on phones), so the footer is not in the first screen only to be pushed out when it arrives. */
+.past-projects-builder-loading {
+  min-height: min(100vh, 53rem);
+}
+
 .project-grid-empty-shell {
   border-top: 0;
 }

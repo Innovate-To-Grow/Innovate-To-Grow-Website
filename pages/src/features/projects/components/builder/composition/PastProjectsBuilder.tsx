@@ -165,7 +165,13 @@ export const PastProjectsBuilder = ({
                     <AISearchLoginDialog onClose={() => setIsAISearchLoginDialogOpen(false)}/>
                 ) : null}
 
-                {loading ? <p className="project-grid-state" role="status">Loading past projects...</p> : null}
+                {/* Holds about the first table's room (see searchTables.css), so nothing below it moves in when the
+                    archive arrives. */}
+                {loading ? (
+                    <p className="project-grid-state past-projects-builder-loading" role="status">
+                        Loading past projects...
+                    </p>
+                ) : null}
                 {archiveUnavailable ? <ArchiveLoadFailed onRetry={onRefreshRows}/> : null}
 
                 {!loading && !archiveUnavailable ? (

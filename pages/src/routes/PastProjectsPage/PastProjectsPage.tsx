@@ -87,7 +87,11 @@ export const PastProjectsPage = () => {
     <div className="past-projects-page">
       <header className="past-projects-header">
         <h1 className="itg-page-title">Past Projects</h1>
-        {archiveMeta ? <p className="itg-page-meta">{archiveMeta}</p> : null}
+        {/* Its line is there while the archive loads too: arriving later, it pushed the lede and the whole builder
+            down (most of the page's layout shift). */}
+        <p className="itg-page-meta" aria-hidden={archiveMeta ? undefined : true}>
+          {archiveMeta || '\u00a0'}
+        </p>
         <p className="itg-lead">
           Search past Innovate to Grow projects, check the ones you want, and collect them into a curation. Save it to
           keep it and share it with a link, or export it.

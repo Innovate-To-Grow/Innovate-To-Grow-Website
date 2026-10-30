@@ -13,6 +13,7 @@ import {
 const {
     addedRow,
     authState,
+    gridState,
     mockNavigate,
     mockRetryShare,
     sampleRow,
@@ -44,6 +45,7 @@ const {
         mockRetryShare: vi.fn(),
         sharedState: {share: null as unknown, shareError: null as string | null, shareNotFound: false},
         authState: {user: null as {member_uuid: string} | null},
+        gridState: {loading: false, rows: [sample] as Array<typeof sample>},
     };
 });
 
@@ -78,8 +80,8 @@ vi.mock('@/features/projects/api', () => ({
 vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
     usePastProjectGridData: () => ({
         error: null,
-        loading: false,
-        rows: [sampleRow],
+        loading: gridState.loading,
+        rows: gridState.rows,
         refetch: vi.fn(),
     }),
     usePastProjectShareData: () => ({
@@ -126,6 +128,8 @@ describe('PastProjectsPage', () => {
         sharedState.shareError = null;
         sharedState.shareNotFound = false;
         authState.user = null;
+        gridState.loading = false;
+        gridState.rows = [sampleRow];
         mockNavigate.mockReset();
         mockRetryShare.mockReset();
         vi.mocked(createPastProjectShare).mockReset();
@@ -233,6 +237,18 @@ describe('PastProjectsPage', () => {
         expect(screen.getByRole('heading', {level: 1, name: 'Past Projects'})).toBeInTheDocument();
         expect(screen.getByText('1 project since 2025')).toHaveClass('itg-page-meta');
         expect(screen.getByText(/^Search past Innovate to Grow projects, check the ones you want/)).toHaveClass('itg-lead');
+    });
+
+    it('keeps the meta line in place while the archive loads, so the lede and builder do not move down', () => {
+        gridState.loading = true;
+        gridState.rows = [];
+        const {container} = renderPage();
+
+        const header = container.querySelector('.past-projects-header') as HTMLElement;
+        const meta = header.querySelector('.itg-page-meta') as HTMLElement;
+        expect(meta.textContent).toBe('\u00a0');
+        expect(meta).toHaveAttribute('aria-hidden', 'true');
+        expect(meta.nextElementSibling).toHaveClass('itg-lead');
     });
 
     it("lists the member's saved curations above the builder", () => {
