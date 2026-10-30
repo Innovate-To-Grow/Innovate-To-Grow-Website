@@ -143,12 +143,20 @@ synced independently — not only the one marked **Active**.
    collapsed; abstracts keep their paragraph breaks. Every other value is stored as the sheet has it, placeholders
    such as an `Abstract-101` abstract or a `CAP-101` team name included.
 4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack` and `EventScheduleSlot`
-   rows inside one transaction (other schedules are untouched). A sheet row updates the `CurrentProject` with its
-   Team# and title; else, when no other team of the sheet has its title, the one row of its class with that title
-   (a renumbered team keeps its id, so swapped numbers do not swap links); else its team's (class + Team#) — so a
-   title fix keeps the project's id and its `/projects/<id>` links. `EventAgendaItem` rows (the Expo and Awards
-   tables) are **not** replaced: the first sync of a schedule seeds the defaults from `defaults.py`, and from then
-   on they are edited in the schedule's admin change form and never rewritten by a sync
+   rows inside one transaction (other schedules are untouched). Each team of the sheet (a Team# and title) updates
+   a stored `CurrentProject` when one matches, so the project keeps its id and its `/projects/<id>` links. The
+   match runs in three passes, each over the schedule's stored rows that no earlier pass took:
+   1. the row with the team's Team# and title;
+   2. when no other team of the sheet has the team's class and title, the row of its class with that title, if
+      exactly one is left (the team was renumbered);
+   3. the oldest row of its class and Team# (the team's title was edited).
+
+   Every title is matched before any number, so a renumbered team keeps its id even when another team now has its
+   old number, in whatever order the sheet lists them (a title two teams share, or two stored rows share, decides
+   nothing and is left to the third pass). A team no pass matches gets a new row, and stored rows no team took are
+   deleted. `EventAgendaItem` rows (the Expo and Awards tables) are **not** replaced: the first sync
+   of a schedule seeds the defaults from `defaults.py`, and from then on they are edited in the schedule's admin
+   change form and never rewritten by a sync
 5. Records grand winners on the schedule and writes a `ScheduleSyncLog` entry
 
 ### Sheet structure

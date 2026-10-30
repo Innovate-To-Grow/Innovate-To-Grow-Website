@@ -30,6 +30,10 @@ def _row(**overrides):
     return row
 
 
+def _team(order, team_number, title):
+    return _row(Order=order, **{"Team#": team_number, "Project Title": title})
+
+
 class PlaceholderCellsTest(TestCase):
     def test_placeholder_cells_are_stored_as_the_sheet_has_them(self):
         # Before teams hand in theirs, the sheet fills "Abstract-101" and a team name of "CAP-101"; both are kept.
@@ -108,6 +112,44 @@ class CurrentProjectIdentityTest(TestCase):
 
         self.assertEqual(dict(CurrentProject.objects.values_list("project_title", "pk")), ids)
         self.assertEqual(CurrentProject.objects.get(pk=ids["Alpha"]).team_number, "102")
+
+    def test_rotated_team_numbers_keep_each_project_its_id(self):
+        self._sync(_team(1, "101", "A"), _team(2, "102", "B"), _team(3, "103", "C"))
+        ids = dict(CurrentProject.objects.values_list("project_title", "pk"))
+
+        self._sync(_team(1, "101", "C"), _team(2, "102", "A"), _team(3, "103", "B"))
+
+        self.assertEqual(dict(CurrentProject.objects.values_list("project_title", "pk")), ids)
+
+    def test_renumbered_teams_keep_their_ids_when_a_new_team_takes_an_old_number(self):
+        self._sync(_team(1, "101", "A"), _team(2, "102", "B"))
+        ids = dict(CurrentProject.objects.values_list("project_title", "pk"))
+
+        self._sync(_team(1, "101", "C"), _team(2, "102", "A"), _team(3, "103", "B"))
+
+        after = dict(CurrentProject.objects.values_list("project_title", "pk"))
+        self.assertEqual((after["A"], after["B"]), (ids["A"], ids["B"]))
+        self.assertNotIn(after["C"], ids.values())
+
+    def test_new_team_at_an_old_number_takes_no_teams_id_in_any_slot(self):
+        # N takes number 101 and the teams it displaced move up one; the old links must still open their own team.
+        orders = {
+            "earlier slot": [_team(1, "101", "N"), _team(2, "102", "A"), _team(3, "103", "B"), _team(4, "104", "C")],
+            "last slot": [_team(2, "102", "A"), _team(3, "103", "B"), _team(4, "104", "C"), _team(5, "101", "N")],
+        }
+        for label, rows in orders.items():
+            with self.subTest(label):
+                config = CurrentProjectSchedule.objects.create(name=f"2026 Fall ({label})")
+                original = [_team(1, "101", "A"), _team(2, "102", "B"), _team(3, "103", "C")]
+                sync_schedule(config, tracks_records=TRACKS, projects_records=original)
+                schedule_projects = CurrentProject.objects.filter(schedule=config)
+                ids = dict(schedule_projects.values_list("project_title", "pk"))
+
+                sync_schedule(config, tracks_records=TRACKS, projects_records=rows)
+
+                after = dict(schedule_projects.values_list("pk", "project_title"))
+                self.assertEqual({title: after.get(pk) for title, pk in ids.items()}, {"A": "A", "B": "B", "C": "C"})
+                self.assertEqual(dict(schedule_projects.values_list("project_title", "team_number"))["N"], "101")
 
     def test_title_two_teams_share_does_not_move_a_project(self):
         self._sync(_row(**{"Project Title": "Alpha"}), _row(Order=2, **{"Team#": "102", "Project Title": "Beta"}))
