@@ -11,6 +11,7 @@ import {
   useHeadStyle,
   useReportHeightToParent,
 } from './embed/useEmbedDocument';
+import { BlockedTabNotice } from './embed/BlockedTabNotice';
 import { usePopOutNavigation } from './embed/usePopOutNavigation';
 import { normalizeScheduleId } from './embedScheduleId';
 import {
@@ -69,7 +70,7 @@ export const EmbedBlockPage = ({appRoutes}: {appRoutes: EmbedAppRoutes}) => {
   );
 
   useBaseTargetBlank();
-  const {blockedUrl, clearBlockedUrl} = usePopOutNavigation();
+  const blockedNavigation = usePopOutNavigation();
   useHeadStyle('itg-embed-body', data?.widget_type === 'app_route' ? EMBED_APP_ROUTE_BODY_CSS : EMBED_BODY_CSS);
   // Hide safe preset sections when requested by widget config or preview query params.
   useHeadStyle('itg-embed-hide-sections', hiddenSectionsCss);
@@ -89,14 +90,7 @@ export const EmbedBlockPage = ({appRoutes}: {appRoutes: EmbedAppRoutes}) => {
 
   return (
     <>
-      {blockedUrl ? (
-        // The browser would not open the tab without a fresh click (e.g. after a save); offer one.
-        <p className="cms-embed-message" role="status">
-          <a href={blockedUrl} target="_blank" rel="noopener" onClick={clearBlockedUrl}>
-            Open the page in a new tab
-          </a>
-        </p>
-      ) : null}
+      <BlockedTabNotice blocked={blockedNavigation} />
       <EmbedBody data={data} containerRef={containerRef} scheduleIdOverride={scheduleIdFromQuery} appRoutes={appRoutes} />
     </>
   );

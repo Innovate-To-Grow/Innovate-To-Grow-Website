@@ -63,6 +63,10 @@ const renderAt = (url: string) =>
 
 const renderAtSlug = (slug: string) => renderAt(`/_embed/${slug}`);
 
+// Whether the click behind a navigation may still open a tab (jsdom has no `navigator.userActivation`).
+const setUserActivation = (value: {isActive: boolean} | undefined) =>
+  Object.defineProperty(window.navigator, 'userActivation', {configurable: true, value});
+
 // jsdom does not implement ResizeObserver; the component uses it to watch
 // document height for the iframe-resize postMessage. A no-op stub is enough.
 class MockResizeObserver {
@@ -84,6 +88,7 @@ describe('EmbedBlockPage', () => {
     document
       .querySelectorAll('base, style#itg-embed-body, style#itg-embed-hide-sections')
       .forEach((n) => n.remove());
+    setUserActivation(undefined);
     vi.restoreAllMocks();
   });
 
@@ -507,19 +512,38 @@ describe('EmbedBlockPage', () => {
     expect(document.head.querySelector('base')).not.toBeNull();
   });
 
-  it('offers a link when the browser blocks the new tab', async () => {
-    vi.spyOn(window, 'open').mockReturnValue(null);
+  it('offers the page in a live region, brought into focus, when no click can open the tab', async () => {
+    setUserActivation({isActive: false});
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+
+    // Present while empty, so screen readers announce the link when it fills in.
+    const status = await screen.findByRole('status');
+    expect(status).toBeEmptyDOMElement();
+    fireEvent.click(await screen.findByRole('link', {name: 'Project ABC'}));
+
+    expect(open).not.toHaveBeenCalled();
+    const fallback = screen.getByRole('link', {name: 'Open the page in a new tab'});
+    expect(status).toContainElement(fallback);
+    expect(fallback).toHaveAttribute('href', '/projects/abc');
+    expect(fallback).toHaveFocus();
+
+    setUserActivation({isActive: true});
+    fireEvent.click(fallback);
+    expect(open).toHaveBeenCalledWith(`${window.location.origin}/projects/abc`, '_blank');
+    expect(screen.queryByRole('link', {name: 'Open the page in a new tab'})).toBeNull();
+  });
+
+  it('does not pull focus into the widget while the user is elsewhere on the page', async () => {
+    setUserActivation({isActive: false});
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false);
     fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
     renderAtSlug('projects-widget');
 
     fireEvent.click(await screen.findByRole('link', {name: 'Project ABC'}));
 
-    const fallback = screen.getByRole('link', {name: 'Open the page in a new tab'});
-    expect(fallback).toHaveAttribute('href', `${window.location.origin}/projects/abc`);
-    expect(fallback).toHaveAttribute('target', '_blank');
-    expect(screen.getByRole('status')).toContainElement(fallback);
-
-    fireEvent.click(fallback);
-    expect(screen.queryByRole('link', {name: 'Open the page in a new tab'})).toBeNull();
+    expect(screen.getByRole('link', {name: 'Open the page in a new tab'})).not.toHaveFocus();
   });
 });
