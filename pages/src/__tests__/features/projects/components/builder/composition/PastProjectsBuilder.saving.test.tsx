@@ -470,11 +470,11 @@ describe('PastProjectsBuilder — saving into the merged results', () => {
     expect(onCreateShare).toHaveBeenCalledTimes(1);
     // The link is made from the rows saved at the click, and the draft is dropped once it exists.
     fireEvent.click(within(searchTable).getAllByLabelText('Select Bravo Project')[0]);
-    expect(within(searchTable).getByRole('button', {name: /add to curation/i})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Clear Draft'})).toBeDisabled();
+    expect(within(searchTable).getByRole('button', {name: /add to curation/i})).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', {name: 'Clear Draft'})).toHaveAttribute('aria-disabled', 'true');
 
     await act(async () => finishShare('share-1'));
-    expect(within(searchTable).getByRole('button', {name: /add to curation/i})).toBeEnabled();
+    expect(within(searchTable).getByRole('button', {name: /add to curation/i})).not.toHaveAttribute('aria-disabled');
   });
 
   it('does not call a project unsaved in another table once this save saved it', () => {

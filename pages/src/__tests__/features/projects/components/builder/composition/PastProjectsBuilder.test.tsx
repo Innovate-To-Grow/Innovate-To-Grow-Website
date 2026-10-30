@@ -111,11 +111,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     const mergeButton = screen.getByRole('button', {name: /add to curation/i});
-    expect(mergeButton).toBeDisabled();
+    expect(mergeButton).toHaveAttribute('aria-disabled', 'true');
 
     // Selecting a row enables it.
     fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
-    expect(mergeButton).toBeEnabled();
+    expect(mergeButton).not.toHaveAttribute('aria-disabled');
   });
 
   it('does not toggle selection from desktop row body clicks', () => {
@@ -123,10 +123,10 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
 
     const mergeButton = screen.getByRole('button', {name: /add to curation/i});
     fireEvent.click(screen.getAllByText('Bravo Project')[0]);
-    expect(mergeButton).toBeDisabled();
+    expect(mergeButton).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    expect(mergeButton).toBeEnabled();
+    expect(mergeButton).not.toHaveAttribute('aria-disabled');
   });
 
   it('can undo search-table row deletion and refresh a standard search table', () => {
@@ -142,13 +142,13 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     );
 
     const undoButton = screen.getByRole('button', {name: /undo row change/i});
-    expect(undoButton).toBeDisabled();
+    expect(undoButton).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /remove from table/i}));
 
     expect(screen.queryByText('Bravo Project')).toBeNull();
-    expect(undoButton).toBeEnabled();
+    expect(undoButton).not.toHaveAttribute('aria-disabled');
 
     fireEvent.click(undoButton);
     expect(screen.getAllByText('Bravo Project').length).toBeGreaterThan(0);

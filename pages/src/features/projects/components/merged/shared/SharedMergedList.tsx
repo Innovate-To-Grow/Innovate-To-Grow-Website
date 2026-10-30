@@ -112,7 +112,14 @@ export const SharedMergedList = ({
         table={table}
         rows={rows}
         sharedMode
-        onDeleteRow={canEdit ? editor.deleteRow : undefined}
+        onDeleteRow={
+          canEdit
+            ? (row) => {
+                list.rememberRemoval(row);
+                void editor.deleteRow(row);
+              }
+            : undefined
+        }
         deleteDisabled={false}
         selectable={false}
         toolbar={

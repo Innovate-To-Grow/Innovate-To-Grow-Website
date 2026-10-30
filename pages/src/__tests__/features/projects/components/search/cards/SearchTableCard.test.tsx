@@ -146,7 +146,7 @@ describe('SearchTableCard', () => {
 
         fireEvent.click(rowCheckbox('Project 2'));
         const mergeButton = screen.getByRole('button', {name: 'Add to Curation'});
-        expect(mergeButton).toBeEnabled();
+        expect(mergeButton).not.toHaveAttribute('aria-disabled');
 
         fireEvent.click(mergeButton);
 
@@ -156,7 +156,7 @@ describe('SearchTableCard', () => {
         expect(rowsArg[0]).toMatchObject({project_title: 'Project 2'});
         expect(rowsArg[0]).not.toHaveProperty('__key');
 
-        await waitFor(() => expect(screen.getByRole('button', {name: 'Add to Curation'})).toBeDisabled());
+        await waitFor(() => expect(screen.getByRole('button', {name: 'Add to Curation'})).toHaveAttribute('aria-disabled', 'true'));
         expect(rowCheckbox('Project 2')).not.toBeChecked();
     });
 
@@ -171,7 +171,7 @@ describe('SearchTableCard', () => {
 
         expect(screen.getByRole('status')).toHaveTextContent('That project is already in the curation draft.');
         expect(rowCheckbox('Project 1')).not.toBeChecked();
-        expect(screen.getByRole('button', {name: 'Add to Curation'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('keeps only the retained rows checked and shows the error beside the toolbar', async () => {
@@ -231,7 +231,7 @@ describe('SearchTableCard', () => {
         expect(screen.getByText(/Loading details: 8 of 40\./)).toBeInTheDocument();
         expect(screen.getByRole('status')).not.toHaveTextContent('Loading details');
         // Tidying the table while it saves would contradict the outcome it is about to report.
-        expect(screen.getByRole('button', {name: 'Remove from Table'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Remove from Table'})).toHaveAttribute('aria-disabled', 'true');
         expect(screen.getByRole('button', {name: 'Delete table: Search Table'})).toBeDisabled();
 
         // Checked while the save is running: must survive the save finishing.
@@ -446,20 +446,20 @@ describe('SearchTableCard', () => {
         rerender(<SearchTableCard {...props} initialRows={makeRows()} resetKey={1} onMergeSelected={onMergeSelected} />);
         expect(screen.getByRole('status')).toBeEmptyDOMElement();
         expect(rowCheckbox('Project 2')).not.toBeChecked();
-        expect(screen.getByRole('button', {name: 'Add to Curation'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('removes the checked rows from the table and lets the user undo the last change', () => {
         renderCard();
 
         const undoButton = screen.getByRole('button', {name: 'Undo Row Change'});
-        expect(undoButton).toBeDisabled();
+        expect(undoButton).toHaveAttribute('aria-disabled', 'true');
 
         fireEvent.click(rowCheckbox('Project 2'));
         fireEvent.click(screen.getByRole('button', {name: 'Remove from Table'}));
 
         expect(screen.queryByText('Project 2')).toBeNull();
-        expect(undoButton).toBeEnabled();
+        expect(undoButton).not.toHaveAttribute('aria-disabled');
 
         fireEvent.click(undoButton);
         expect(screen.getAllByText('Project 2').length).toBeGreaterThan(0);
@@ -476,7 +476,7 @@ describe('SearchTableCard', () => {
         expect(screen.queryByText('Project 2')).toBeNull();
         expect(screen.queryByText('Project 3')).toBeNull();
         expect(rowCheckbox('Project 1')).toBeChecked();
-        expect(screen.getByRole('button', {name: 'Add to Curation'})).toBeEnabled();
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).not.toHaveAttribute('aria-disabled');
 
         fireEvent.click(screen.getByRole('button', {name: 'Undo Row Change'}));
         expect(screen.getAllByText('Project 3').length).toBeGreaterThan(0);
@@ -490,21 +490,21 @@ describe('SearchTableCard', () => {
 
         expect(screen.getAllByText('Project 3').length).toBeGreaterThan(0);
         expect(rowCheckbox('Project 3')).toBeChecked();
-        expect(screen.getByRole('button', {name: 'Undo Row Change'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Undo Row Change'})).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('selects all rows and then deselects them', () => {
         renderCard();
 
         const saveButton = screen.getByRole('button', {name: 'Add to Curation'});
-        expect(saveButton).toBeDisabled();
+        expect(saveButton).toHaveAttribute('aria-disabled', 'true');
 
         fireEvent.click(screen.getByRole('button', {name: 'Select All'}));
-        expect(saveButton).toBeEnabled();
+        expect(saveButton).not.toHaveAttribute('aria-disabled');
         expect(screen.getByText('3 selected')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', {name: 'Deselect'}));
-        expect(saveButton).toBeDisabled();
+        expect(saveButton).toHaveAttribute('aria-disabled', 'true');
         expect(screen.queryByText(/selected$/)).toBeNull();
     });
 
@@ -564,7 +564,7 @@ describe('SearchTableCard', () => {
         renderCard({mergeDisabled: true});
 
         fireEvent.click(rowCheckbox('Project 1'));
-        expect(screen.getByRole('button', {name: 'Add to Curation'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Add to Curation'})).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('uses a custom merge label and in-flight verb', async () => {

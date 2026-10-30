@@ -2,8 +2,12 @@ import {useId, useMemo, useState} from 'react';
 import {stripProjectGridItem, type ProjectGridItem} from '../../grid/contracts/projectGrid';
 import {useProjectGridTable} from '../../grid/state/useProjectGridTable';
 import type {PendingBulkAction} from './MergedEditButtons';
+import {useRemovalFocus} from './useRemovalFocus';
 
-/** State both list modes share: the paged table, the status line and the pending bulk-action dialog. */
+/**
+ * State both list modes share: the paged table, the status line, the pending bulk-action dialog, and where focus
+ * goes after a row's Remove (call `rememberRemoval` as one is pressed).
+ */
 export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean) {
   const table = useProjectGridTable({
     rows,
@@ -19,6 +23,7 @@ export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean) {
   const allRows = useMemo(() => rows.map(stripProjectGridItem), [rows]);
   // The visible (filtered/sorted) rows — used for builder share-create and builder export.
   const visibleRows = useMemo(() => table.sortedRows.map(stripProjectGridItem), [table.sortedRows]);
+  const rememberRemoval = useRemovalFocus(rows, headingId);
 
   return {
     table,
@@ -29,6 +34,7 @@ export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean) {
     setStatusMessage,
     pendingBulkAction,
     setPendingBulkAction,
+    rememberRemoval,
   };
 }
 

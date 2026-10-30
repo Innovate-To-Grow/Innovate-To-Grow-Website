@@ -158,7 +158,7 @@ describe('MergedResultsTable', () => {
     fireEvent.change(search, {target: {value: 'Irrigation'}});
     await waitFor(() => expect(desktop().queryByText('Shared Project')).not.toBeInTheDocument());
     const removeSelected = screen.getByRole('button', {name: 'Remove Selected'});
-    expect(removeSelected).toBeDisabled();
+    expect(removeSelected).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(desktop().getByLabelText('Select Irrigation Sensor'));
     fireEvent.click(removeSelected);
@@ -319,7 +319,7 @@ describe('MergedResultsTable', () => {
       'Undo',
       'Clear Draft',
     ]);
-    expect(within(editGroup).getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
+    expect(within(editGroup).getByRole('button', {name: 'Remove Selected'})).toHaveAttribute('aria-disabled', 'true');
     expect(within(editGroup).getByRole('button', {name: 'Clear Draft'})).toHaveClass('itg-btn-danger');
     expect(within(section).getByRole('heading', {level: 3, name: 'Save this curation'})).toBeInTheDocument();
     expect(
@@ -407,13 +407,13 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getAllByLabelText(/^Select /)[1]);
     fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
-    expect(screen.getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Undo'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Clear Draft'})).toBeDisabled();
+    expect(screen.getByRole('button', {name: 'Remove Selected'})).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', {name: 'Undo'})).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', {name: 'Clear Draft'})).toHaveAttribute('aria-disabled', 'true');
     screen.getAllByRole('button', {name: 'Remove'}).forEach((button) => expect(button).toBeDisabled());
 
     await act(async () => finishShare('share-1'));
-    expect(screen.getByRole('button', {name: 'Clear Draft'})).toBeEnabled();
+    expect(screen.getByRole('button', {name: 'Clear Draft'})).not.toHaveAttribute('aria-disabled');
     expect(onDeleteRows).not.toHaveBeenCalled();
   });
 

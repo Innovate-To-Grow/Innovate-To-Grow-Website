@@ -139,6 +139,7 @@ function useBuilderList({
     if (!onDeleteRow || isSharing) {
       return;
     }
+    list.rememberRemoval(row);
     onDeleteRow(row);
   };
 

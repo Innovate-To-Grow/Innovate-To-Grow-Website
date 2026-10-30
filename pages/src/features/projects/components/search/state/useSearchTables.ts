@@ -143,6 +143,37 @@ function useTableRefresh({
   );
 }
 
+/** Where focus goes once the stack has rendered: a new table's search field, or a table's heading. */
+interface TableFocusRequest {
+  tableId: string;
+  target: 'field' | 'heading';
+}
+
+const focusSearchTable = ({tableId, target}: TableFocusRequest) => {
+  const card = document.querySelector(`[data-search-table-id="${tableId}"]`);
+  const element = card?.querySelector<HTMLElement>(target === 'field' ? 'input[type="search"]' : '.project-grid-card-title');
+  element?.focus();
+};
+
+/**
+ * A new table is added at the bottom of the page, out of view, and adding the AI table greys out its button;
+ * deleting a table takes its Delete button with it. Focus follows the change instead of dropping to the page: to
+ * the new table's search field, or to the heading of the table that was next to the deleted one.
+ */
+function useTableFocus(searchTables: SearchTableState[]) {
+  const request = useRef<TableFocusRequest | null>(null);
+  useEffect(() => {
+    const pending = request.current;
+    request.current = null;
+    if (pending) {
+      focusSearchTable(pending);
+    }
+  }, [searchTables]);
+  return useCallback((next: TableFocusRequest) => {
+    request.current = next;
+  }, []);
+}
+
 interface UseSearchTablesOptions {
   /** Table ids are `${idPrefix}-1`, `${idPrefix}-2`, … */
   idPrefix: string;
@@ -178,6 +209,7 @@ export function useSearchTables({
   ]);
   const tableSequence = useRef(1);
   const hasAISearchTable = searchTables.some((table) => table.type === 'ai');
+  const focusAfterRender = useTableFocus(searchTables);
 
   const nextTableId = () => {
     tableSequence.current += 1;
@@ -191,6 +223,7 @@ export function useSearchTables({
   const addSearchTable = () => {
     const id = nextTableId();
     setSearchTables((current) => [...current, {id, type: 'standard'}]);
+    focusAfterRender({tableId: id, target: 'field'});
     onMessage('');
   };
 
@@ -205,6 +238,7 @@ export function useSearchTables({
         ...current,
         {id, initialRows: [], rowsResetKey: 0, title: 'AI Search Table', type: 'ai'},
       ]);
+      focusAfterRender({tableId: id, target: 'field'});
       onMessage('');
     }
     return true;
@@ -245,6 +279,11 @@ export function useSearchTables({
   };
 
   const removeSearchTable = (tableId: string) => {
+    const index = searchTables.findIndex((table) => table.id === tableId);
+    const neighbour = searchTables[index - 1] ?? searchTables[index + 1];
+    if (neighbour) {
+      focusAfterRender({tableId: neighbour.id, target: 'heading'});
+    }
     setSearchTables((current) => current.filter((table) => table.id !== tableId));
   };
 

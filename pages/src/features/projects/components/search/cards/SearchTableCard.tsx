@@ -1,4 +1,4 @@
-import {useState, type ReactNode} from 'react';
+import {useId, useState, type ReactNode} from 'react';
 import {useMediaQuery} from '@/features/layout';
 import {ProjectGridTable} from '../../grid/table/ProjectGridTable';
 import {PastProjectsDialog} from '../../builder/dialog/PastProjectsDialog';
@@ -83,7 +83,10 @@ type Selection = ReturnType<typeof useSearchTableSelection>;
 
 const SearchTableCardHeader = ({card, isSaving}: {card: CardProps; isSaving: boolean}) => (
   <div className="project-grid-card-header search-table-card-header">
-    <h3 className="project-grid-card-title">{card.title}</h3>
+    {/* Focusable from script: deleting the table next to this one moves focus here. */}
+    <h3 className="project-grid-card-title" tabIndex={-1}>
+      {card.title}
+    </h3>
     {card.canRemove ? (
       <button
         type="button"
@@ -179,6 +182,7 @@ export function SearchTableCard(props: SearchTableCardProps) {
   const save = useSearchTableSave({tableId, tableRows, mergeDisabled, onMergeSelected: card.onMergeSelected});
   const selection = useSearchTableSelection({table, save, tableId, title, onSelectionChange: card.onSelectionChange});
   const [appliedResetKey, setAppliedResetKey] = useState(resetKey);
+  const selectionHintId = useId();
   // Same breakpoint as the stacked table actions in projectsResponsive.css.
   const isPhone = useMediaQuery('(max-width: 768px)');
 
@@ -198,6 +202,7 @@ export function SearchTableCard(props: SearchTableCardProps) {
       mergeDisabled={mergeDisabled}
       mergeLabel={card.mergeLabel}
       mergingVerb={mergingVerb}
+      selectionHintId={selectionHintId}
     />
   );
 
@@ -246,6 +251,7 @@ export function SearchTableCard(props: SearchTableCardProps) {
               saveControls={saveControls('top')}
               topStatus={statusFor('top')}
               isPhone={isPhone}
+              selectionHintId={selectionHintId}
               onRefresh={onRefresh ? () => onRefresh(tableId) : undefined}
             />
           }

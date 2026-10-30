@@ -341,7 +341,7 @@ describe('MergedResultsTable in shared mode', () => {
     );
 
     const undoButton = screen.getByRole('button', {name: /^undo$/i});
-    expect(undoButton).toBeDisabled();
+    expect(undoButton).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(screen.getAllByRole('button', {name: /remove/i})[0]);
 
@@ -350,7 +350,7 @@ describe('MergedResultsTable in shared mode', () => {
     });
     // The button enables only after the post-await state commits (setSharedRowsUndo +
     // setIsSavingShareEdit(false)), which lands in a later microtask than the mock call above.
-    await waitFor(() => expect(undoButton).toBeEnabled());
+    await waitFor(() => expect(undoButton).not.toHaveAttribute('aria-disabled'));
 
     fireEvent.click(undoButton);
 
