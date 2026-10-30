@@ -1,7 +1,11 @@
 import {useEffect, type ReactNode} from 'react';
 import {Link, useLocation, useParams} from 'react-router';
 import {ProjectsMessagePage} from '@/features/projects/components/views/pages/ProjectsMessagePage';
-import {formatTermForProse, splitStudentNames} from '@/features/projects/components/grid/contracts/projectGrid';
+import {
+  formatTermForProse,
+  getDisplayTeamNumber,
+  splitStudentNames,
+} from '@/features/projects/components/grid/contracts/projectGrid';
 import {useCopyLink} from '@/hooks/useCopyLink';
 import {useProjectDetail} from '@/features/projects/hooks/useProjectDetail';
 import {formatSemesterLabel} from '@/lib/format';
@@ -53,7 +57,7 @@ const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => 
 const projectFacts = ({project, classLabel}: ProjectDetail, term: string): Array<[string, string]> => [
   ['Term', term],
   ['Class', classLabel && project.class_code ? `${classLabel} (${project.class_code})` : project.class_code],
-  ['Team #', project.team_number],
+  ['Team #', getDisplayTeamNumber(project)],
   ['Team', project.team_name],
   ['Organization', project.organization],
   ['Industry', project.industry],

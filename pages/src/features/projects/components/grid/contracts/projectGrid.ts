@@ -37,9 +37,21 @@ export const PAST_PROJECT_GRID_COLUMNS: ProjectGridColumn[] = [
 /** Which page a project title links to: the current-projects detail route or the past-projects one. */
 export type ProjectGridLinkScope = 'current' | 'past';
 
+/**
+ * A team number as it reads after its class code: "01" for "CAP01" in class CAP (the 2021 sheets stored the class
+ * prefix in the team number), otherwise the number as stored.
+ */
+export const getDisplayTeamNumber = ({class_code, team_number}: Pick<ProjectGridRow, 'class_code' | 'team_number'>) => {
+  const number = (team_number ?? '').trim();
+  const code = (class_code ?? '').trim();
+  if (!code || number.slice(0, code.length).toUpperCase() !== code.toUpperCase()) return number;
+  const rest = number.slice(code.length).replace(/^[\s-]+/, '');
+  return /^\d/.test(rest) ? rest : number;
+};
+
 /** "CAP 101": the class code and team number a team is known by. */
 export const getProjectGridTeamCode = (row: Pick<ProjectGridRow, 'class_code' | 'team_number'>) =>
-  [row.class_code, row.team_number].map((value) => (value ?? '').trim()).filter(Boolean).join(' ');
+  [row.class_code ?? '', getDisplayTeamNumber(row)].map((value) => value.trim()).filter(Boolean).join(' ');
 
 /** "2026 Spring" (how terms are listed in tables) to "Spring 2026" (how they read in a sentence). */
 export const formatTermForProse = (label: string) => {
@@ -238,25 +250,26 @@ const compareSemesters = (left: string, right: string) => {
   );
 };
 
+/** "Team number" order: class code, then team number within the class, as numbers ("CSE 2" before "CSE 10"). */
+const compareTeams = (left: ProjectGridRow, right: ProjectGridRow) =>
+  compareText(left.class_code || '', right.class_code || '') ||
+  compareText(getDisplayTeamNumber(left), getDisplayTeamNumber(right));
+
 export const sortProjectGridItems = (
   rows: ProjectGridItem[],
   sortField: ProjectGridColumnKey,
   sortDirection: ProjectGridSortDirection,
 ) => {
+  const direction = sortDirection === 'asc' ? 1 : -1;
   const sorted = [...rows];
   sorted.sort((left, right) => {
-    const leftValue = left[sortField] || '';
-    const rightValue = right[sortField] || '';
-    let comparison: number;
-    if (sortField === 'class_code') {
-      // "Team number" order: class code, then team number within the class.
-      comparison = compareText(leftValue, rightValue) || compareText(left.team_number || '', right.team_number || '');
-    } else if (sortField === 'semester_label') {
-      comparison = compareSemesters(leftValue, rightValue);
-    } else {
-      comparison = compareText(leftValue, rightValue);
+    if (sortField === 'class_code') return direction * compareTeams(left, right);
+    if (sortField === 'semester_label') {
+      // Within a term the teams follow their team numbers, whichever way the terms run. The archive arrives
+      // ordered by team number as text (1, 10, 11, ..., 2), which a stable sort would otherwise keep.
+      return direction * compareSemesters(left.semester_label || '', right.semester_label || '') || compareTeams(left, right);
     }
-    return sortDirection === 'asc' ? comparison : -comparison;
+    return direction * compareText(left[sortField] || '', right[sortField] || '');
   });
   return sorted;
 };

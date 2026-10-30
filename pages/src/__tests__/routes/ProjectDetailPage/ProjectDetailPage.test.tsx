@@ -125,6 +125,14 @@ describe('ProjectDetailPage', () => {
     expect(within(members).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Alice', 'Bob']);
   });
 
+  it('shows a team number stored with its class prefix without repeating the class', async () => {
+    vi.mocked(fetchProjectDetail).mockResolvedValue({...projectDetail, team_number: 'CAP01', semester_label: '2021-1 Spring'});
+    renderAt(`/past-projects/project/${projectDetail.id}`);
+
+    const teamNumber = await screen.findByText('Team #');
+    expect(teamNumber.nextElementSibling).toHaveTextContent(/^01$/);
+  });
+
   it('copies the link to the project and says so', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});

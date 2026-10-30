@@ -6,6 +6,7 @@ import {
   getEarliestTermYear,
   getPredominantTerm,
   getProjectGridRowHref,
+  getDisplayTeamNumber,
   getProjectGridTeamCode,
   sortProjectGridItems,
   splitStudentNames,
@@ -87,11 +88,52 @@ describe('projectGrid helpers', () => {
     }
   });
 
+  it('lists the teams of a term by team number, as numbers, whichever way the terms run', () => {
+    // The archive arrives with team numbers ordered as text: 1, 10, 2.
+    const team = (semester: string, classCode: string, teamNumber: string) => ({
+      ...row(semester, `${semester} ${classCode} ${teamNumber}`),
+      class_code: classCode,
+      team_number: teamNumber,
+    });
+    const rows = createProjectGridItems(
+      [
+        team('2019 Spring', 'CSE', '1'),
+        team('2019 Spring', 'CSE', '10'),
+        team('2019 Spring', 'CSE', '2'),
+        team('2019 Spring', 'CAP', '3'),
+        team('2021 Spring', 'CAP', 'CAP10'),
+        team('2021 Spring', 'CAP', 'CAP02'),
+      ],
+      'team-order',
+    );
+
+    expect(sortProjectGridItems(rows, 'semester_label', 'desc').map((item) => item.project_title)).toEqual([
+      '2021 Spring CAP CAP02',
+      '2021 Spring CAP CAP10',
+      '2019 Spring CAP 3',
+      '2019 Spring CSE 1',
+      '2019 Spring CSE 2',
+      '2019 Spring CSE 10',
+    ]);
+    expect(sortProjectGridItems(rows, 'semester_label', 'asc').map((item) => item.project_title).slice(0, 4)).toEqual([
+      '2019 Spring CAP 3',
+      '2019 Spring CSE 1',
+      '2019 Spring CSE 2',
+      '2019 Spring CSE 10',
+    ]);
+  });
+
   it('formats terms, team codes and student lists for display', () => {
     expect(formatTermForProse('2026-1 Spring')).toBe('Spring 2026');
     expect(formatTermForProse('Summer session')).toBe('Summer session');
     expect(getProjectGridTeamCode({class_code: 'CAP', team_number: '101'})).toBe('CAP 101');
     expect(getProjectGridTeamCode({class_code: '', team_number: '7'})).toBe('7');
+    // The 2021 sheets stored the class prefix in the team number: the class code is shown once.
+    expect(getProjectGridTeamCode({class_code: 'CAP', team_number: 'CAP01'})).toBe('CAP 01');
+    expect(getProjectGridTeamCode({class_code: 'CSE', team_number: 'cse-13'})).toBe('CSE 13');
+    expect(getDisplayTeamNumber({class_code: 'CAP', team_number: 'CAP01'})).toBe('01');
+    expect(getDisplayTeamNumber({class_code: 'CAP', team_number: 'CAPSTONE'})).toBe('CAPSTONE');
+    expect(getDisplayTeamNumber({class_code: 'CAP', team_number: 'CAP'})).toBe('CAP');
     expect(splitStudentNames('Ada Lovelace, Alan Turing; Grace Hopper\n')).toEqual([
       'Ada Lovelace',
       'Alan Turing',
