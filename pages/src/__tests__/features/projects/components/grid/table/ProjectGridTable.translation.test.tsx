@@ -121,7 +121,7 @@ describe('ProjectGridTable on a translated page', () => {
 
     expect(view.errors).toEqual([]);
     expect(shown).toBe(
-      '30 of 75 projects match “team” · showing 1–10Abstracts were not searched: too many projects match. Try a longer search.',
+      '30 of 75 projects match “team” · showing 1–10Abstracts were not searched: this search term is too common. Try a longer one.',
     );
     expect(count(view.container)).toBe('3 of 75 projects match “teams” · showing 1–3');
   });

@@ -73,7 +73,7 @@ describe('SearchTableCard server search', () => {
 
     await vi.waitFor(() => expect(searchArchive).toHaveBeenCalledWith('Project 1', expect.any(AbortSignal)));
     expect(
-      await screen.findByText('Abstracts were not searched: too many projects match. Try a longer search.'),
+      await screen.findByText('Abstracts were not searched: this search term is too common. Try a longer one.'),
     ).toBeInTheDocument();
     // The matches the rows' own text finds are still shown.
     expect(within(screen.getByRole('table', {name: 'Search Table'})).getByRole('link', {name: /Project 1/})).toBeInTheDocument();

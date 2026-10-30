@@ -118,9 +118,9 @@ describe('ProjectGridTable', () => {
         );
     });
 
-    it('says in the count line when too many projects match for the abstracts to be searched', () => {
+    it('says in the count line when the search term is too common for the abstracts to be searched', () => {
         const rows = makeRows(1);
-        const note = 'Abstracts were not searched: too many projects match. Try a longer search.';
+        const note = 'Abstracts were not searched: this search term is too common. Try a longer one.';
         const serverSearch = {pending: false, addedRowsKey: null, tooBroad: true};
         const {container, rerender} = render(
             <ProjectGridTable {...baseProps} search="team" serverSearch={serverSearch} pagedRows={rows} filteredCount={1} />,

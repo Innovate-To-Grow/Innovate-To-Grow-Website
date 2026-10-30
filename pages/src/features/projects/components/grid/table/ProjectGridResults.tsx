@@ -11,7 +11,7 @@ const singular = (noun: string) => (noun.endsWith('ies') ? `${noun.slice(0, -3)}
 const countNoun = (count: number, noun: string) => `${count} ${count === 1 ? singular(noun) : noun}`;
 
 /** Under the count when the server would not search the abstracts: the matches shown come from the rows' own text. */
-const ABSTRACTS_SKIPPED = 'Abstracts were not searched: too many projects match. Try a longer search.';
+const ABSTRACTS_SKIPPED = 'Abstracts were not searched: this search term is too common. Try a longer one.';
 
 /** "Engineering Capstone (CAP)" or "Engineering Capstone (CAP) and AeroSpace". */
 const joinFilters = (filters: string[]) => filters.join(' and ');
