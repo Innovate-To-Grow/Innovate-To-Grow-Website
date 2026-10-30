@@ -60,6 +60,8 @@ class CurrentProjectLinkTest(TestCase):
         self.assertEqual(response.data["abstract"], "Dries lumber with sunlight.")
         self.assertEqual(response.data["semester_label"], "2026-1 Spring")
         self.assertEqual((response.data["track"], response.data["presentation_order"]), (1, 2))
+        self.assertEqual(response["Cache-Control"], "public, max-age=60, stale-while-revalidate=300")
+        self.assertIn("ETag", response)
 
     def test_unpublished_archive_semester_is_not_served(self):
         Semester.objects.filter(year=2026, season=1).update(is_published=False)

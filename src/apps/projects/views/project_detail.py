@@ -1,7 +1,8 @@
 from django.http import Http404
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
+
+from apps.core.utils.http_cache import public_json_response
 
 from ..models import Project
 from ..serializers import ProjectDetailSerializer
@@ -16,13 +17,17 @@ class ProjectDetailAPIView(RetrieveAPIView):
     lookup_field = "pk"
 
     def retrieve(self, request, *args, **kwargs):
+        # Public catalog text, the same for every visitor: cacheable like /projects/archive/.
+        return public_json_response(request, self._project_data(kwargs[self.lookup_field]))
+
+    def _project_data(self, project_id) -> dict:
         try:
-            return super().retrieve(request, *args, **kwargs)
+            return self.get_serializer(self.get_object()).data
         except Http404:
             # Not an archive id: it may be a current-semester project link from an earlier schedule.
-            link = resolve_current_project_link(kwargs[self.lookup_field])
+            link = resolve_current_project_link(project_id)
             if link is None:
                 raise
             if link.archived is not None:
-                return Response(self.get_serializer(link.archived).data)
-            return Response(link.detail)
+                return self.get_serializer(link.archived).data
+            return link.detail
