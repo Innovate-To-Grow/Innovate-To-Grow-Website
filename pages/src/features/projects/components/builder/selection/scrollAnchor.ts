@@ -1,4 +1,5 @@
 import {useLayoutEffect, useRef} from 'react';
+import {isInAutoHeightFrame, scrollPartnerPageBy} from '../../shared/utils/partnerFrame';
 
 export const MERGED_RESULTS_ID = 'past-projects-saved-results';
 
@@ -6,11 +7,13 @@ export interface ScrollAnchor {
   element: Element;
   /** Where the element sat in the viewport just before the change. */
   top: number;
+  /** In the partner widget, whose frame grows with its content: the partner page is what scrolls. */
+  inAutoHeightFrame: boolean;
 }
 
 const visibleAnchor = (element: Element): ScrollAnchor | null => {
   const {top, bottom} = element.getBoundingClientRect();
-  return bottom > 0 && top < window.innerHeight ? {element, top} : null;
+  return bottom > 0 && top < window.innerHeight ? {element, top, inAutoHeightFrame: isInAutoHeightFrame()} : null;
 };
 
 // What to keep in place while the saved results change: when the user is working in the saved results
@@ -51,7 +54,12 @@ export function useKeepScrollAnchor(dependency: unknown) {
       return;
     }
     const shift = anchor.element.getBoundingClientRect().top - anchor.top;
-    if (Math.abs(shift) > 1) {
+    if (Math.abs(shift) <= 1) {
+      return;
+    }
+    if (anchor.inAutoHeightFrame) {
+      scrollPartnerPageBy(shift);
+    } else {
       window.scrollBy(0, shift);
     }
   }, [dependency]);
