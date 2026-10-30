@@ -1,10 +1,9 @@
 @layer itg.components {
 /* Moved verbatim from the CMS "layout-menu" stylesheet. */
 
-/* ---------- Blue bar ---------- */
+/* ---------- Blue bar (scrolls away on desktop; fixed on phones) ---------- */
 .site-header-bar {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 3;
   background: var(--itg-color-primary);
   border-bottom: 5px solid var(--itg-color-accent-gold);

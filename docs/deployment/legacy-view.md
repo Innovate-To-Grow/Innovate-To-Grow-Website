@@ -159,10 +159,8 @@ feature remains disabled. Configure these GitHub Environment values in
 | Variable | `LEGACY_READ_TIMEOUT_SECONDS` | `15` |
 
 Leave `LEGACY_VIEWER_URL` and `LEGACY_ORIGIN_HEADER_SECRET_ARN` unset until the
-stack outputs exist. Do not enable these settings in `AWS ECS(DEMO) - Prod`.
-The backend workflow also enforces this boundary: every demo matrix render
-forces the feature false, clears the private/viewer URLs and header reference,
-and removes the legacy secret even if a repository-level variable is set.
+stack outputs exist. The backend workflow deploys this configuration only to
+the production backend.
 After deployment, verify migrations completed and `/admin/legacy-view/` does not
 offer a launch action while disabled.
 
@@ -474,7 +472,7 @@ connections on 80, 443, 3000, or 5000 even when the old Host header is forced.
 From Django ECS, re-run the 8080 and authenticated CloudFront checks.
 
 Do not add a public redirect from the old hostname. Do not change
-`archive.i2g.ucmerced.edu`, the demo environment, the Elastic IP association,
+`archive.i2g.ucmerced.edu`, the Elastic IP association,
 or instance lifecycle in this rollout.
 
 ## Monitoring and secret handling

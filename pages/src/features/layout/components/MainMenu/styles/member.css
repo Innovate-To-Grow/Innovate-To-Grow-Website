@@ -4,8 +4,12 @@
 /* ---------- Right end of the menu row: date + member link (12px uppercase) ----------
    The date's text sits ~2px above the menu labels, its right edge 21px inside
    the container, as on the reference. */
+/* Gives way before the menu does (shrink 1000 to its 1), but keeps 6rem so the
+   member link never collapses; its content stays at the right end. */
 .site-header-utility {
-  flex: 0 0 auto;
+  flex: 0 1000 auto;
+  min-width: 6rem;
+  justify-content: flex-end;
   align-self: stretch;
   margin-left: auto;
   margin-right: 21px;
@@ -45,6 +49,13 @@
   position: relative;
   display: flex;
   align-items: center;
+}
+
+/* When the row is short of room the member label ends in an ellipsis (after
+   the date has gone, see below). */
+.site-header-member,
+.member-button {
+  min-width: 0;
 }
 
 .member-signin,
@@ -164,18 +175,23 @@
   color: var(--itg-color-error);
 }
 
-/* The reference hides the date below 1200px; the member link stays. */
-@media (max-width: 1199px) {
-  .site-header-date {
-    display: none;
-  }
+/* The date shows whenever it fits next to the menu (with the condensed logo's
+   slot reserved, so it does not come and go on scroll); MainMenu sets
+   .is-date-hidden otherwise. A hidden date leaves the flow unseen but keeps
+   its width, which useHeaderDateFit measures. The member link stays. */
+.site-header.is-date-hidden .site-header-date {
+  position: absolute;
+  top: 0;
+  left: 0; /* inside the row, never past the viewport's right edge */
+  visibility: hidden;
+  pointer-events: none;
+}
 
-  .site-header-date + .site-header-member {
-    padding-left: 0;
-  }
+.site-header.is-date-hidden .site-header-date + .site-header-member {
+  padding-left: 0;
+}
 
-  .site-header-date + .site-header-member::before {
-    content: none;
-  }
+.site-header.is-date-hidden .site-header-date + .site-header-member::before {
+  content: none;
 }
 }

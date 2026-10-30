@@ -1,21 +1,22 @@
 @layer itg.components {
-/* Moved verbatim from the CMS "layout-menu" stylesheet. */
-
-/* ---------- Phone header (<= 992px) ---------- */
+/* ---------- Phone header (<= 992px) ----------
+   One fixed blue bar: 56px + the 5px gold rule, the UC Merced wordmark at the
+   front (the round i2G logo once the page has scrolled) and the menu button
+   at the end. The university links and the menu row are not shown. */
 @media (max-width: 992px) {
-  /* The bar and band are fixed; #menu-root keeps their room in the flow, but
-     only where the header is actually mounted. */
+  /* The bar is fixed; #menu-root keeps its room in the flow, but only where
+     the header is actually mounted. */
   #menu-root {
     position: relative;
     top: auto;
   }
 
   html:not([data-block-preview]) #menu-root {
-    height: calc(var(--itg-header-bar-height, 85px) + var(--itg-header-band-height, 74px));
+    height: var(--itg-header-bar-height, 61px);
   }
 
   html:not([data-block-preview]) {
-    scroll-padding-top: calc(var(--itg-header-bar-height, 85px) + 12px);
+    scroll-padding-top: calc(var(--itg-header-bar-height, 61px) + 12px);
   }
 
   .site-header-container {
@@ -28,33 +29,83 @@
     left: 0;
     right: 0;
     z-index: 3;
-    transition: box-shadow var(--itg-transition-fast) ease;
+    box-shadow: var(--itg-shadow-header, 0 6px 6px -2px rgba(121, 121, 121, 0.67));
   }
 
-  /* Wordmark at x = 2.5%, round logo centred, menu button 5px from the
-     viewport edge (as the reference's fixed button) */
+  /* Wordmark / logo at x = 2.5%, menu button 5px from the viewport edge (as
+     the reference's fixed button) */
   .site-header-bar-inner {
-    height: 80px;
+    position: relative;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 12px;
   }
 
-  .ucm-wordmark {
-    min-height: 44px;
-    align-items: center;
-  }
-
-  .site-header-logo img {
-    width: 50px;
-    height: 50px;
-  }
-
-  .site-header-links {
+  .site-header-links,
+  .site-header-menu {
     display: none;
   }
 
-  /* Plain three-line icon, 60 x 52 */
+  /* At the top of the page the bar shows the UC Merced wordmark; once the
+     page has scrolled by the bar's height (.is-condensed) the round i2G logo
+     takes its place. Both sit in the same spot at the bar's front. */
+  .ucm-wordmark {
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Smaller than on desktop (138 x 34), so it sits quietly in the 56px bar. */
+  .ucm-wordmark img {
+    width: 97px;
+    height: 24px;
+  }
+
+  .site-header-logo {
+    position: absolute;
+    top: 8px;
+    left: 2.5%;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.88);
+    transform-origin: 0 50%;
+  }
+
+  .site-header-logo img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .site-header.is-condensed .ucm-wordmark {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .site-header.is-condensed .site-header-logo {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+
+  .site-header.has-motion .ucm-wordmark,
+  .site-header.has-motion .site-header-logo {
+    transition:
+      opacity var(--itg-transition-fast) ease-out,
+      transform var(--itg-transition-fast) ease-out,
+      visibility 0s linear var(--itg-transition-fast);
+  }
+
+  .site-header.has-motion.is-condensed .site-header-logo,
+  .site-header.has-motion:not(.is-condensed) .ucm-wordmark {
+    transition:
+      opacity var(--itg-transition-fast) ease-out,
+      transform var(--itg-transition-fast) ease-out,
+      visibility 0s;
+  }
+
+  /* Plain three-line icon, 60 x 52; a cross while the menu is open */
   .site-header-mobile-toggle {
-    justify-self: end;
     box-sizing: border-box;
     width: 60px;
     height: 52px;
@@ -77,41 +128,22 @@
     height: 3px;
     margin: 3.5px 0;
     background: var(--itg-color-white);
+    transition:
+      transform var(--itg-transition-fast) ease,
+      opacity var(--itg-transition-fast) linear;
   }
 
-  .site-header-band {
-    position: fixed;
-    top: var(--itg-header-bar-height, 85px);
-    left: 0;
-    right: 0;
-    z-index: 2;
-    box-shadow: var(--itg-shadow-header, 0 6px 6px -2px rgba(121, 121, 121, 0.67));
-    transition: transform 0.25s ease, visibility 0s linear 0s;
+  /* The outer bars meet in the middle one's place (3px bar + 2 x 3.5px margin apart). */
+  .site-header-mobile-toggle[aria-expanded='true'] .site-header-mobile-toggle-bar:nth-child(1) {
+    transform: translateY(10px) rotate(45deg);
   }
 
-  /* Site name at x = 20, band 20px + 38.4px + 15px */
-  .site-header-band .site-header-band-inner {
-    padding: 20px 20px 15px;
+  .site-header-mobile-toggle[aria-expanded='true'] .site-header-mobile-toggle-bar:nth-child(2) {
+    opacity: 0;
   }
 
-  .site-header-sitename-title {
-    font-size: 32px;
-  }
-
-  /* The reference shows only the site name on phones. */
-  .site-header-sitename-subtitle {
-    display: none;
-  }
-
-  /* Scrolled down: the band slides up behind the bar. */
-  .site-header.is-band-hidden .site-header-band {
-    transform: translateY(-100%);
-    visibility: hidden;
-    transition: transform 0.25s ease, visibility 0s linear 0.25s;
-  }
-
-  .site-header-menu {
-    display: none;
+  .site-header-mobile-toggle[aria-expanded='true'] .site-header-mobile-toggle-bar:nth-child(3) {
+    transform: translateY(-10px) rotate(-45deg);
   }
 }
 }
