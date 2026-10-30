@@ -2,6 +2,10 @@
 
 GitHub Actions pipelines for linting, testing, building, and deploying.
 
+Compute-intensive jobs can use the repository's [AWS ephemeral runner fleet](../../aws/ci-runners/README.md).
+The fleet scales from zero to 32 machines; `AWS_RUNNERS_ENABLED` controls routing,
+and lightweight planning and result jobs stay on GitHub to avoid cold-start delays.
+
 ## Workflow files
 
 | File | Purpose | Trigger |

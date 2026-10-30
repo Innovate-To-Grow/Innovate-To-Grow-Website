@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+exec > >(tee /var/log/user-data.log | logger -t user-data -s 2>/dev/console) 2>&1
+# Never trace JIT registration credentials into logs.
+set +x
+trap 'shutdown -h now' EXIT
+
+# A boot failure or abandoned job must not leave a billable machine behind.
+# Current jobs time out at 45 minutes; allow ample margin for runner startup.
+shutdown -h +90
+systemctl start docker
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/aws/amazon-cloudwatch-agent/bin"
+export RUNNER_TOOL_CACHE=/opt/hostedtoolcache
+(
+${start_runner}
+)

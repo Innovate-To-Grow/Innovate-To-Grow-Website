@@ -123,6 +123,9 @@ jobs:
       - name: Validate CI planner scripts
         run: python -m unittest discover -s scripts/ci/tests
 
+      - name: Validate AWS runner trust boundary
+        run: node --test aws/ci-runners/guard/trust.test.mjs
+
       - name: Validate Legacy viewer infrastructure
         run: python scripts/ci/validate_legacy_infrastructure.py
 
@@ -251,7 +254,7 @@ jobs:
 
   backend-db-migration:
     name: Backend DB Migration Test (PostgreSQL)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs: [lint, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -293,7 +296,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.environment }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Validate cached virtualenv
         id: backend-venv-check
@@ -332,7 +335,7 @@ jobs:
 
   backend-static-and-prod-check:
     name: Backend Static and Production Checks
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs: [lint, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -367,7 +370,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.environment }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Validate cached virtualenv
         id: backend-venv-check
@@ -435,7 +438,7 @@ jobs:
 
   django-test-coverage:
     name: Django Test and Coverage (${{ matrix.app }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 15
     needs:
       - backend-db-migration
@@ -485,7 +488,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.environment }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Validate cached virtualenv
         id: backend-venv-check
@@ -564,7 +567,7 @@ jobs:
 
   cli-admin-coverage:
     name: CLI Admin Coverage
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 15
     needs:
       - backend-db-migration
@@ -610,7 +613,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: src/.venv
-          key: backend-venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.environment }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Validate cached virtualenv
         id: backend-venv-check
@@ -678,7 +681,7 @@ jobs:
 
   cli-coverage:
     name: CLI Test and Coverage
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.cli == 'true' }}
@@ -755,7 +758,7 @@ jobs:
 
   frontend-lint:
     name: Frontend ESLint
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -786,7 +789,7 @@ jobs:
 
   frontend-typecheck:
     name: Frontend TypeScript Type Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -814,7 +817,7 @@ jobs:
 
   frontend-unit-coverage:
     name: Frontend Unit Test Coverage
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 15
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -886,7 +889,7 @@ jobs:
 
   frontend-build:
     name: Frontend CI Build Artifact
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -939,7 +942,7 @@ jobs:
 
   frontend-bundle-size:
     name: Frontend Bundle Size
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs:
       - frontend-build
@@ -976,7 +979,7 @@ jobs:
 
   frontend-chromium-smoke:
     name: Required Chromium Smoke
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 15
     # Keep the browser and its OS dependencies out of the runner's live APT
     # path. The image version must stay aligned with pages/package-lock.json.
@@ -1042,7 +1045,7 @@ jobs:
 
   frontend-security-audit:
     name: Frontend npm Audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     # Deliberately NOT gated on `changes`. `npm audit` compares the committed
     # lockfile against a live advisory database, so its result is a function of
@@ -1075,7 +1078,7 @@ jobs:
 
   frontend-supply-chain-report:
     name: Frontend SBOM and License Report
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -1152,7 +1155,7 @@ jobs:
 
   frontend-prod-build:
     name: Frontend Production Build Artifact
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs:
       - frontend-required
@@ -1201,7 +1204,7 @@ jobs:
 
   python-security-audit:
     name: Python Security Audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     # Ungated for the same reason as `frontend-security-audit` above: pip-audit
     # resolves the committed requirements lock against a live advisory feed, so a
@@ -1249,7 +1252,7 @@ jobs:
 
   semgrep-sast:
     name: Semgrep SAST
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 15
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
@@ -1294,7 +1297,7 @@ jobs:
 
   backend-docker-build:
     name: Backend Docker Build and Scan
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 25
     needs:
       - lint
@@ -1519,7 +1522,7 @@ jobs:
 
   backend-image-publish:
     name: Backend Image Publish
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 25
     needs: [backend-required-result, changes]
     if: >-
@@ -1628,7 +1631,7 @@ jobs:
 
   python-supply-chain-report:
     name: Python Supply Chain Report
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs:
       - python-security-audit
@@ -1741,7 +1744,7 @@ jobs:
     # ubuntu-26.04 (2026-10-29) that build needs OpenSSL >= 3.3, which the
     # noble image below does not have, so `import ssl` failed in every leg.
     # Move this together with the Playwright image's Ubuntu release.
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     # The image already contains the browsers and Linux packages required by
     # this Playwright version. Keeping E2E off the runner's live APT path avoids
@@ -1812,7 +1815,7 @@ jobs:
           path: src/.venv
           # Do not restore a host-runner venv inside the job container: scripts
           # and interpreter links can contain environment-specific paths.
-          key: backend-venv-pw-v1.62.1-noble-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.environment }}-pw-v1.62.1-noble-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -1928,7 +1931,7 @@ jobs:
 
   e2e-report:
     name: E2E Report
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     permissions:
       actions: read
@@ -2066,7 +2069,7 @@ jobs:
 
   archive-tests:
     name: Archive Static Site Tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 10
     needs: changes
     if: ${{ needs.changes.outputs.archive == 'true' }}
