@@ -15,5 +15,7 @@ export RUNNER_TOOL_CACHE=/opt/hostedtoolcache
 # that installer, so registration and ./run.sh need an explicit working dir.
 cd /opt/actions-runner
 (
-${start_runner}
+# The upstream script uses curl -v for metadata reads. Omit that flag so
+# temporary IMDS authentication headers are never copied into startup logs.
+${replace(start_runner, " -v ", " ")}
 )
