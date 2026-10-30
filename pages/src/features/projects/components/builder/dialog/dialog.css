@@ -15,6 +15,13 @@
   color: var(--itg-color-text);
 }
 
+/* The browser centres it with auto margins. A dialog that is the last child of a panel (Clear Draft's, in the
+   draft card) also matched `.itg-panel > :last-child { margin-bottom: 0 }`, which pinned it to the bottom of the
+   screen, hence the stronger selector. */
+dialog.past-projects-dialog:modal {
+  margin: auto;
+}
+
 /* Not every browser lets the backdrop inherit the page's custom properties, hence the fallback inside var(). */
 .past-projects-dialog::backdrop {
   background: rgba(15, 45, 82, 0.45);
@@ -22,7 +29,7 @@
 }
 
 /* In the embed widget: centred on the part of the frame that is on screen (dialogPlacement.ts). */
-.past-projects-dialog.is-placed {
+dialog.past-projects-dialog.is-placed:modal {
   inset-block: var(--past-projects-dialog-center) auto;
   max-height: var(--past-projects-dialog-max-height);
   margin-block: 0;
