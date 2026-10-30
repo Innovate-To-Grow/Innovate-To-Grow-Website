@@ -10,8 +10,15 @@ import type {ProjectGridSortOption, ProjectGridTableProps} from '../contracts/gr
 const singular = (noun: string) => (noun.endsWith('ies') ? `${noun.slice(0, -3)}y` : noun.replace(/s$/, ''));
 const countNoun = (count: number, noun: string) => `${count} ${count === 1 ? singular(noun) : noun}`;
 
-/** Under the count when the server would not search the abstracts: the matches shown come from the rows' own text. */
-const ABSTRACTS_SKIPPED = 'Abstracts were not searched: this search term is too common. Try a longer one.';
+/** Why the server did not search the abstracts (see ProjectGridServerSearch): the term was too common, or it failed. */
+export type AbstractsSkipped = 'too-broad' | 'failed';
+
+/** Under the count when the abstracts were not searched: the matches shown come from the rows' own text. */
+const ABSTRACTS_SKIPPED: Record<AbstractsSkipped, string> = {
+  'too-broad': 'Abstracts were not searched: this search term is too common. Try a longer one.',
+  // A new search asks again; the same one keeps this answer.
+  failed: 'Abstracts were not searched: something went wrong. Change the search to try again.',
+};
 
 /** "Engineering Capstone (CAP)" or "Engineering Capstone (CAP) and AeroSpace". */
 const joinFilters = (filters: string[]) => filters.join(' and ');
@@ -33,8 +40,8 @@ type ResultsBarProps = Pick<
   countLabel: string;
   /** The extra filters in use (see ProjectGridTableProps.activeFilters). */
   activeFilters: string[];
-  /** The server declined to search the abstracts for this search (ProjectGridServerSearch.tooBroad). */
-  abstractsSkipped?: boolean;
+  /** Why the abstracts were not searched for this search, if they were not (ProjectGridServerSearch). */
+  abstractsSkipped?: AbstractsSkipped | null;
   /** Per page and View All Details, shown beside the sort select while there are rows to act on. */
   pageControls: ReactNode;
   /** The count line, which takes focus after a page change. */
@@ -101,7 +108,7 @@ export const ProjectGridResultsBar = ({
   sortDirection,
   onSortChange,
   onSortSelect,
-  abstractsSkipped = false,
+  abstractsSkipped = null,
   pageControls,
   countRef,
   ...counts
@@ -122,7 +129,7 @@ export const ProjectGridResultsBar = ({
         <strong>{bold}</strong>
         <span>{rest}</span>
         {/* In the count line, so it is read out with the count; on a line of its own. */}
-        {abstractsSkipped ? <span className="project-grid-count-note">{ABSTRACTS_SKIPPED}</span> : null}
+        {abstractsSkipped ? <span className="project-grid-count-note">{ABSTRACTS_SKIPPED[abstractsSkipped]}</span> : null}
       </p>
       {sortChoices && counts.filteredCount > 0 ? (
         <div className="project-grid-results-controls">

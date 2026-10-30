@@ -72,8 +72,8 @@ const baseProps = {
 const sortOptions = [{field: 'project_title' as ProjectGridColumnKey, label: 'Project title'}];
 
 /** The server is still searching abstracts; then it answers, adding the rows `addedRowsKey` names. */
-const asking = {pending: true, addedRowsKey: null, tooBroad: false};
-const answered = (addedRowsKey: string) => ({pending: false, addedRowsKey, tooBroad: false});
+const asking = {pending: true, addedRowsKey: null, tooBroad: false, failed: false};
+const answered = (addedRowsKey: string) => ({pending: false, addedRowsKey, tooBroad: false, failed: false});
 
 /** A past-projects table whose rows have no details yet, so opening one loads them (and stays loading). */
 const LoadingGrid = () => {

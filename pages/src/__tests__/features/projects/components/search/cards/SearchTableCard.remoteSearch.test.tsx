@@ -79,6 +79,20 @@ describe('SearchTableCard server search', () => {
     expect(within(screen.getByRole('table', {name: 'Search Table'})).getByRole('link', {name: /Project 1/})).toBeInTheDocument();
   });
 
+  it('says the abstracts were not searched when the server search fails, instead of a plain no match', async () => {
+    searchArchive.mockRejectedValue(new Error('Request failed with status code 503'));
+    renderCard();
+
+    fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'Denver'}});
+
+    await vi.waitFor(() => expect(searchArchive).toHaveBeenCalledWith('Denver', expect.any(AbortSignal)));
+    expect(
+      await screen.findByText('Abstracts were not searched: something went wrong. Change the search to try again.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Still searching project abstracts…')).toBeNull();
+    expect(screen.getByRole('heading', {name: 'No projects match “Denver”'})).toBeInTheDocument();
+  });
+
   it('says there are no matches once the server finds none either', async () => {
     searchArchive.mockResolvedValue(new Set());
     renderCard();

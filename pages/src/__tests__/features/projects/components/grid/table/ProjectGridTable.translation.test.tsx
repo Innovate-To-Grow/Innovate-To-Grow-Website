@@ -112,16 +112,23 @@ describe('ProjectGridTable on a translated page', () => {
   });
 
   it('adds and takes away the note that the abstracts were not searched', () => {
-    const tooBroad = {pending: false, addedRowsKey: null, tooBroad: true};
+    const tooBroad = {pending: false, addedRowsKey: null, tooBroad: true, failed: false};
+    const failed = {pending: false, addedRowsKey: null, tooBroad: false, failed: true};
     const view = renderTranslated(<ProjectGridTable {...gridProps} search="tea" filteredCount={32} />);
     view.update(<ProjectGridTable {...gridProps} search="team" filteredCount={30} serverSearch={tooBroad} />);
     const shown = count(view.container);
+    // The note's reason changes in place: the search failed for the next term.
+    view.update(<ProjectGridTable {...gridProps} search="teamw" filteredCount={4} serverSearch={failed} />);
+    const shownFailed = count(view.container);
     view.update(<ProjectGridTable {...gridProps} search="teams" filteredCount={3} />);
     view.stop();
 
     expect(view.errors).toEqual([]);
     expect(shown).toBe(
       '30 of 75 projects match “team” · showing 1–10Abstracts were not searched: this search term is too common. Try a longer one.',
+    );
+    expect(shownFailed).toBe(
+      '4 of 75 projects match “teamw” · showing 1–4Abstracts were not searched: something went wrong. Change the search to try again.',
     );
     expect(count(view.container)).toBe('3 of 75 projects match “teams” · showing 1–3');
   });

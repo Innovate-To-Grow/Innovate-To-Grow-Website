@@ -19,12 +19,15 @@ interface RemoteAnswer {
   ids: ReadonlySet<string> | null;
   /** The server declined the query as matching too many projects; the abstracts were not searched. */
   tooBroad: boolean;
+  /** The request failed; the abstracts were not searched either. */
+  failed: boolean;
 }
 
 /**
  * Rows a search finds by text the rows do not carry. Compact archive rows leave out the abstract, which the server
  * does search: once typing pauses, the server is asked for the query, and its matches come back for that query only.
- * `pending` stays true until the server has answered the current query; `tooBroad` is true when it declined it.
+ * `pending` stays true until the server has answered the current query; `tooBroad` is true when it declined it, and
+ * `failed` when the request failed: either way only the rows' own text was searched, which the count line says.
  */
 export function useRemoteSearchMatches(search: string, searchRemote?: RemoteRowSearch) {
   const query = search.replace(/\s+/g, ' ').trim();
@@ -38,10 +41,10 @@ export function useRemoteSearchMatches(search: string, searchRemote?: RemoteRowS
     const timer = window.setTimeout(() => {
       searchRemote(query, controller.signal).then(
         (ids) => {
-          if (!controller.signal.aborted) setAnswer({query, ids, tooBroad: ids === null});
+          if (!controller.signal.aborted) setAnswer({query, ids, tooBroad: ids === null, failed: false});
         },
         () => {
-          if (!controller.signal.aborted) setAnswer({query, ids: null, tooBroad: false});
+          if (!controller.signal.aborted) setAnswer({query, ids: null, tooBroad: false, failed: true});
         },
       );
     }, REMOTE_SEARCH_DELAY_MS);
@@ -52,6 +55,6 @@ export function useRemoteSearchMatches(search: string, searchRemote?: RemoteRowS
   }, [asks, query, searchRemote]);
 
   const current = asks && answer?.query === query ? answer : null;
-  if (!current) return {matches: null, pending: asks, tooBroad: false};
-  return {matches: current.ids, pending: false, tooBroad: current.tooBroad};
+  if (!current) return {matches: null, pending: asks, tooBroad: false, failed: false};
+  return {matches: current.ids, pending: false, tooBroad: current.tooBroad, failed: current.failed};
 }
