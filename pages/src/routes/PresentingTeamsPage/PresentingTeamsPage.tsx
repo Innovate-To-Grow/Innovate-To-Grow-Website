@@ -9,7 +9,7 @@ export const PresentingTeamsPage = () => {
   return (
     <CurrentProjectsView
       title="Presenting Teams"
-      lede="Teams presenting at this semester's Innovate to Grow showcase. Search by team, class or organization, and open a project to read its abstract and team members."
+      lede="Teams presenting at this semester's Innovate to Grow showcase. Search by project title, team, organization, industry or student name, and open a project to read its abstract and team members."
       rows={presentingRows}
       loading={loading}
       error={error}

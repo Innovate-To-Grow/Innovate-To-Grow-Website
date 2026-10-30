@@ -127,7 +127,10 @@ describe('CurrentProjectsView', () => {
     fireEvent.change(classSelect, {target: {value: 'CAP'}});
     fireEvent.change(industrySelect, {target: {value: 'Food Processing'}});
 
-    await waitFor(() => expect(countLine(container)).toHaveTextContent('1 of 3 projects matches the filters'));
+    // The count names the filters that narrowed the rows.
+    await waitFor(() =>
+      expect(countLine(container)).toHaveTextContent('1 of 3 projects in Engineering Capstone (CAP) and Food Processing'),
+    );
     expect(within(desktopTable(container)).getByText('Almond Optimization')).toBeInTheDocument();
     expect(within(desktopTable(container)).queryByText('HVAC Design')).toBeNull();
   });
@@ -164,8 +167,11 @@ describe('CurrentProjectsView', () => {
     fireEvent.change(screen.getByLabelText('Class'), {target: {value: 'CSE'}});
     fireEvent.change(screen.getByRole('searchbox'), {target: {value: 'hydroponics'}});
 
-    expect(await screen.findByRole('heading', {level: 2, name: 'No projects match “hydroponics”'})).toBeInTheDocument();
-    expect(countLine(container)).toHaveTextContent('0 of 3 projects match “hydroponics”');
+    // The Class filter is in use too: the message says so, rather than blaming the spelling alone.
+    expect(
+      await screen.findByRole('heading', {level: 2, name: 'No projects match “hydroponics” in CSE'}),
+    ).toBeInTheDocument();
+    expect(countLine(container)).toHaveTextContent('0 of 3 projects match “hydroponics” in CSE');
     expect(screen.getByText(/Older projects are in Past Projects\./)).toBeInTheDocument();
     expect(screen.getByRole('link', {name: 'Search Past Projects for “hydroponics”'})).toHaveAttribute(
       'href',
@@ -173,17 +179,22 @@ describe('CurrentProjectsView', () => {
     );
     expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Clear search and filters'}));
 
     await waitFor(() => expect(countLine(container)).toHaveTextContent('3 projects · showing 1–3'));
     expect(screen.getByRole('searchbox')).toHaveValue('');
     expect(screen.getByLabelText('Class')).toHaveValue('');
   });
 
-  it('shows the loading and error states without a meta line', () => {
-    const {rerender} = renderView({loading: true, rows: []});
+  it('shows the loading and error states without a meta line, keeping its room while loading', () => {
+    const {container, rerender} = renderView({loading: true, rows: []});
     expect(screen.getByText('Loading project data...')).toBeInTheDocument();
     expect(screen.queryByText(/projects ·/)).toBeNull();
+    // A blank line, so the lede and the grid do not move down when the real one appears.
+    const meta = container.querySelector('.itg-page-meta') as HTMLElement;
+    expect(meta.textContent).toBe('\u00a0');
+    expect(meta).toHaveAttribute('aria-hidden', 'true');
+    expect(meta.nextElementSibling).toHaveClass('itg-lead');
 
     rerender(
       <MemoryRouter>

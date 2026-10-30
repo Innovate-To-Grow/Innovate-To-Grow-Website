@@ -264,6 +264,63 @@ describe('useProjectGridTable', () => {
         expect(result.current.totalPages).toBe(1);
     });
 
+    it('starts a new search on the first page, for every table that uses the hook', () => {
+        const rows = makeItems(makeRows(25));
+        const {result} = renderHook(() =>
+            useProjectGridTable({rows, defaultSortField: 'semester_label', pageSize: 5}),
+        );
+
+        act(() => result.current.setPage(3));
+        expect(result.current.page).toBe(3);
+
+        // Matches every row: page 4 would still exist, but the first matches are on page 1.
+        act(() => result.current.setSearch('project'));
+        expect(result.current.page).toBe(0);
+
+        act(() => result.current.setPage(2));
+        act(() => result.current.setSearch(''));
+        expect(result.current.page).toBe(0);
+    });
+
+    it('starts from a restored sort and page, and keeps the page while the rows are still loading', () => {
+        const {result, rerender} = renderHook(
+            ({rows}: {rows: ProjectGridItem[]}) =>
+                useProjectGridTable({
+                    rows,
+                    pageSize: 5,
+                    defaultSortField: 'class_code',
+                    initialSortField: 'project_title',
+                    initialSortDirection: 'desc',
+                    initialPage: 2,
+                }),
+            {initialProps: {rows: [] as ProjectGridItem[]}},
+        );
+
+        expect(result.current.sortField).toBe('project_title');
+        expect(result.current.sortDirection).toBe('desc');
+        // No rows yet: page 1 is all there is to show, but the restored page is not forgotten.
+        expect(result.current.page).toBe(0);
+
+        rerender({rows: makeItems(makeRows(25))});
+        expect(result.current.page).toBe(2);
+        expect(result.current.pagedRows[0].project_title).toBe('Project 15');
+    });
+
+    it('sets a sort field and direction at once and goes back to the first page', () => {
+        const rows = makeItems(makeRows(12));
+        const {result} = renderHook(() =>
+            useProjectGridTable({rows, defaultSortField: 'class_code', pageSize: 5}),
+        );
+
+        act(() => result.current.setPage(2));
+        act(() => result.current.setSort('project_title', 'desc'));
+
+        expect(result.current.sortField).toBe('project_title');
+        expect(result.current.sortDirection).toBe('desc');
+        expect(result.current.page).toBe(0);
+        expect(result.current.pagedRows[0].project_title).toBe('Project 12');
+    });
+
     it('prunes expanded and selected keys for rows that no longer exist', () => {
         const rows = makeItems(makeRows());
         const rowKey = rows[0].__key;

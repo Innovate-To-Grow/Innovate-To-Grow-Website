@@ -25,6 +25,11 @@ interface UseProjectGridTableOptions {
   pageSizeOptions?: readonly number[];
   defaultSortField: ProjectGridColumnKey;
   defaultSortDirection?: ProjectGridSortDirection;
+  /** The sort to start with when it is not the default (e.g. restored from the URL); `reset` still goes back to the default. */
+  initialSortField?: ProjectGridColumnKey;
+  initialSortDirection?: ProjectGridSortDirection;
+  /** The page to start on (0-based), e.g. restored from the URL. */
+  initialPage?: number;
   initialSearch?: string;
   /** Seed every expandable row open on mount (used by the shared, read-only view). */
   expandAllByDefault?: boolean;
@@ -102,21 +107,25 @@ export function useProjectGridTable({
   pageSizeOptions: pageSizeChoices = PROJECT_GRID_PAGE_SIZE_OPTIONS,
   defaultSortField,
   defaultSortDirection = 'asc',
+  initialSortField = defaultSortField,
+  initialSortDirection = defaultSortDirection,
+  initialPage = 0,
   initialSearch = '',
   expandAllByDefault = false,
   filterRow,
   classLabels = NO_CLASS_LABELS,
 }: UseProjectGridTableOptions) {
   const [search, setSearch] = useState(initialSearch);
-  const [sortField, setSortField] = useState<ProjectGridColumnKey>(defaultSortField);
-  const [sortDirection, setSortDirection] = useState<ProjectGridSortDirection>(defaultSortDirection);
+  const [sortField, setSortField] = useState<ProjectGridColumnKey>(initialSortField);
+  const [sortDirection, setSortDirection] = useState<ProjectGridSortDirection>(initialSortDirection);
   const {filteredRows, sortedRows} = useFilteredSortedRows(
     rows,
     {search, filterRow, classLabels},
     sortField,
     sortDirection,
   );
-  const paging = useGridPagination(sortedRows, initialPageSize, pageSizeChoices);
+  // Every table that uses this hook starts a new search on its first page.
+  const paging = useGridPagination(sortedRows, {initialPageSize, pageSizeChoices, initialPage, resetKey: search});
   const {setPage} = paging;
   const {expandedKeys, expanded, allDetailsExpanded, toggleAllDetails} = useExpandedRows(rows, expandAllByDefault);
   const [selectedKeys, selected] = useRowKeySet();
@@ -160,6 +169,13 @@ export function useProjectGridTable({
     setPage(0);
   };
 
+  /** Sort by a field in a given direction (the Sort by select names both). */
+  const setSort = (field: ProjectGridColumnKey, direction: ProjectGridSortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+    setPage(0);
+  };
+
   // Start over as a newly mounted table would, for when the rows are replaced by a reload.
   const reset = () => {
     paging.resetPaging();
@@ -181,6 +197,7 @@ export function useProjectGridTable({
     sortField,
     sortDirection,
     toggleSort,
+    setSort,
     pageSize: paging.pageSize,
     setPageSize: paging.setPageSize,
     pageSizeOptions: paging.pageSizeOptions,
