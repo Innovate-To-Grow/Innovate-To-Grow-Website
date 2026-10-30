@@ -111,6 +111,8 @@ const pageRoutes = (): RouteObject[] => [
         ...titled('Past Projects', {noindex: true}),
     },
     {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
+    // Legacy-site path still linked from CMS pages (/judges, /about-engsl).
+    {path: 'projects-teams', element: <Navigate to="/current-projects" replace/>},
 
     // event pages (plain CMS routes like /event, /past-events are served
     // by the catch-all CMS route below)
