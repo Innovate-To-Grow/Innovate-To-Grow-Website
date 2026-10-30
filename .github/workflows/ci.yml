@@ -1429,6 +1429,9 @@ jobs:
           TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
+          # The action's binary cache contains absolute hosted-runner paths.
+          # Install locally; the vulnerability database is cached above.
+          cache: false
           format: sarif
           limit-severities-for-sarif: true
           output: trivy-results.sarif
@@ -1467,6 +1470,8 @@ jobs:
           TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
+          cache: false
+          skip-setup-trivy: true
           format: table
           severity: CRITICAL,HIGH
           exit-code: "1"
