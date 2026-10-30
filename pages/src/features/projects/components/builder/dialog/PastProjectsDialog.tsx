@@ -136,8 +136,8 @@ export const PastProjectsDialog = ({
             rel="noopener"
             onClick={onConfirm}
           >
-            {confirmLabel}{' '}
-            <span className="sr-only">(opens in a new tab)</span>
+            {confirmLabel}
+            <span className="sr-only"> (opens in a new tab)</span>
           </a>
         ) : (
           <button ref={confirmButtonRef} type="button" className="itg-btn itg-btn-primary" onClick={onConfirm}>

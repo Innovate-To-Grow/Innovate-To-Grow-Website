@@ -84,6 +84,8 @@ describe('PastProjectsBuilder and the Past Projects widget', () => {
   });
 
   describe('in the widget', () => {
+    const NEW_TAB_LINK_NAME = /^Continue in Past Projects\s*\(opens in a new tab\)$/;
+
     beforeEach(() => window.history.replaceState(null, '', '/_embed/test-past'));
 
     it('continues to the full page in a new tab, with the draft, instead of signing in inside the frame', async () => {
@@ -96,7 +98,11 @@ describe('PastProjectsBuilder and the Past Projects widget', () => {
       for (const link of continueLinks) {
         expect(link).toHaveAttribute('href', `/past-projects#curation-draft=${ID_ALPHA},${ID_BRAVO}`);
         expect(link).toHaveAttribute('target', '_blank');
-        expect(link).toHaveAccessibleName('Continue in Past Projects (opens in a new tab)');
+        // The space before the hint is inside the visually hidden span, so the underline ends at "Projects".
+        // Browsers keep it in the name (the span is positioned out of the line); jsdom drops it, hence \s*.
+        expect(link).toHaveAccessibleName(NEW_TAB_LINK_NAME);
+        expect(link.querySelector('.sr-only')).toHaveTextContent(/^ \(opens in a new tab\)$/, {normalizeWhitespace: false});
+        expect(link.firstChild).toHaveProperty('textContent', 'Continue in Past Projects');
       }
       expect(within(draftSection()).queryByRole('link', {name: /sign in/i})).toBeNull();
       expect(draftSection().querySelector('a[href*="/login"]')).toBeNull();
@@ -110,7 +116,7 @@ describe('PastProjectsBuilder and the Past Projects widget', () => {
         fireEvent.click(screen.getByRole('button', {name: 'AI Search Table'}));
 
         const dialog = screen.getByRole('dialog', {name: 'Sign in required'});
-        const link = within(dialog).getByRole('link', {name: 'Continue in Past Projects (opens in a new tab)'});
+        const link = within(dialog).getByRole('link', {name: NEW_TAB_LINK_NAME});
         expect(link).toHaveAttribute('href', `/past-projects#curation-draft=${ID_ALPHA}`);
         expect(link).toHaveAttribute('target', '_blank');
         expect(within(dialog).queryByRole('button', {name: 'Sign In'})).toBeNull();

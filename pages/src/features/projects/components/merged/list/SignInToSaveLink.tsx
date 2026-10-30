@@ -15,8 +15,9 @@ interface SignInToSaveLinkProps {
 export const SignInToSaveLink = ({signIn, className, children}: SignInToSaveLinkProps) =>
   signIn.inNewTab ? (
     <a className={className} href={signIn.href} target="_blank" rel="noopener">
-      Continue in Past Projects{' '}
-      <span className="sr-only">(opens in a new tab)</span>
+      Continue in Past Projects
+      {/* The space is inside the hidden text, so the link's underline stops at its last visible word. */}
+      <span className="sr-only"> (opens in a new tab)</span>
     </a>
   ) : (
     <a className={className} href={signIn.href}>
