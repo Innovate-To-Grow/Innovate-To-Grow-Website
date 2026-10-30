@@ -10,6 +10,19 @@ import {SharedCurationView} from './SharedCurationView';
 import {shareDisplayTitle, useSharedListMutations} from './useSharedListMutations';
 
 /**
+ * Whether the viewer may edit a curation (`can_edit`) is the server's answer for whoever was signed in when it
+ * loaded. Signing out (or into another account) without a reload asks again, so the owner's controls go.
+ */
+function useReloadShareForNewViewer(reloadShare: () => void) {
+  const viewerId = useAuth().user?.member_uuid ?? null;
+  const [shareViewerId, setShareViewerId] = useState(viewerId);
+  if (viewerId !== shareViewerId) {
+    setShareViewerId(viewerId);
+    reloadShare();
+  }
+}
+
+/**
  * `/past-projects` (the builder) and `/past-projects/:shareId` (a saved curation's shared page). Edits to a
  * shared page go through `useSharedListMutations`, which serializes them and reconciles concurrent edits.
  */
@@ -27,14 +40,7 @@ export const PastProjectsPage = () => {
     notFound: shareNotFound,
     retry: retryShare,
   } = usePastProjectShareData(shareId);
-  // Whether the viewer may edit (`can_edit`) is the server's answer for whoever was signed in when the share
-  // loaded. Signing out (or into another account) without a reload asks again, so the owner's controls go.
-  const viewerId = useAuth().user?.member_uuid ?? null;
-  const [shareViewerId, setShareViewerId] = useState(viewerId);
-  if (viewerId !== shareViewerId) {
-    setShareViewerId(viewerId);
-    retryShare();
-  }
+  useReloadShareForNewViewer(retryShare);
   const {activeShare, setEditableShare, conflictMessage, updateShare, addShareRows} = useSharedListMutations(
     shareId,
     share,
