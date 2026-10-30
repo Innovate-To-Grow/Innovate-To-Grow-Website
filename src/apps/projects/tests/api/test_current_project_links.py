@@ -73,3 +73,69 @@ class CurrentProjectLinkTest(TestCase):
         response = self.client.get(f"/projects/{uuid.uuid4()}/")
 
         self.assertEqual(response.status_code, 404)
+
+
+def _listed_row(team, title):
+    # The spring sheet lists teams that present in the fall, before they hand in anything.
+    return {
+        "Track": "(Fall)",
+        "Order": "(Fall)",
+        "Class": "CAP",
+        "Team#": team,
+        "TeamName": f"CAP-{team}",
+        "Project Title": title,
+        "Abstract": f"Abstract-{team}",
+    }
+
+
+class EarlierScheduleListedTeamTest(TestCase):
+    """A team an earlier schedule only listed resolves to the row of the semester it presents in."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        tracks = [{"Track": 1, "Room": "Granite", "Class": "CAP"}]
+        spring = CurrentProjectSchedule.objects.create(name="2026 Spring I2G Event")
+        sync_schedule(
+            spring,
+            tracks_records=tracks,
+            projects_records=[
+                _schedule_row("102", "Solar Kiln"),
+                _listed_row("201", "Power Aspire"),
+                _listed_row("202", "Frequency Ablation Caps"),
+            ],
+        )
+        self.spring_ids = dict(CurrentProject.objects.filter(schedule=spring).values_list("team_number", "pk"))
+        fall = CurrentProjectSchedule.objects.create(name="2026 Fall I2G Event", is_active=True)
+        fall_row = {"Year-Semester": "2026-2 Fall"}
+        sync_schedule(
+            fall,
+            tracks_records=tracks,
+            projects_records=[
+                _schedule_row("201", "Power Aspire", **fall_row, **{"Student Names": "Ada Lovelace"}),
+                _schedule_row("202", "Seed Vacuum Harvester", **fall_row),
+                _schedule_row("102", "Solar Kiln", **fall_row, Order=3),
+            ],
+        )
+        self.fall_ids = dict(CurrentProject.objects.filter(schedule=fall).values_list("team_number", "pk"))
+
+    def test_listed_team_serves_the_live_schedule_row(self):
+        response = self.client.get(f"/projects/{self.spring_ids['201']}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], str(self.fall_ids["201"]))
+        self.assertEqual(response.data["semester_label"], "2026-2 Fall")
+        self.assertEqual(response.data["student_names"], "Ada Lovelace")
+        self.assertEqual((response.data["track"], response.data["presentation_order"]), (1, 1))
+
+    def test_reused_team_number_with_another_title_is_not_the_same_team(self):
+        response = self.client.get(f"/projects/{self.spring_ids['202']}/")
+
+        self.assertEqual(response.data["id"], str(self.spring_ids["202"]))
+        self.assertEqual(response.data["project_title"], "Frequency Ablation Caps")
+
+    def test_team_that_presented_in_the_earlier_semester_keeps_its_own_row(self):
+        response = self.client.get(f"/projects/{self.spring_ids['102']}/")
+
+        self.assertEqual(response.data["id"], str(self.spring_ids["102"]))
+        self.assertEqual(response.data["semester_label"], "2026-1 Spring")

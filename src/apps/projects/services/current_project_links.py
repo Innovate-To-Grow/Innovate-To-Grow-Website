@@ -3,7 +3,8 @@
 Current Projects and Presenting Teams link each team to its event CurrentProject id. Those ids are not archive
 ids, and the SPA only finds them in the live schedule, so a link copied last semester stopped resolving once a
 new schedule went live. The detail endpoint falls back to this lookup: the team's archive project once the
-past-project sheet has imported its semester, otherwise the CurrentProject itself.
+past-project sheet has imported its semester, otherwise the CurrentProject itself (for a team the schedule only
+listed, its row in the schedule it presents in: apps.event.services.current_projects.find_current_project).
 """
 
 from __future__ import annotations
