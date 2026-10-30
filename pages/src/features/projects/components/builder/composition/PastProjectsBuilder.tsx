@@ -123,11 +123,6 @@ const BuilderSavedResults = ({draft, pendingSaveCount, message, onCreateShare}: 
     />
 );
 
-/**
- * The past-projects builder: search tables whose checked rows are saved into one merged list, which is a
- * draft (kept in localStorage) until it is saved as a curation. State lives in `builder/draft/useCurationDraft`,
- * `search/state/useSearchTables` and `builder/selection/useSaveSelectedRows`.
- */
 interface BuilderSearchSectionProps {
     tables: ReturnType<typeof useSearchTables>;
     /** What the search tables did (a refresh, …), under their heading. */
@@ -213,6 +208,11 @@ const BuilderSearchSection = ({
     );
 };
 
+/**
+ * The past-projects builder: search tables whose checked rows are saved into one merged list, which is a
+ * draft (kept in localStorage) until it is saved as a curation. State lives in `builder/draft/useCurationDraft`,
+ * `search/state/useSearchTables` and `builder/selection/useSaveSelectedRows`.
+ */
 export const PastProjectsBuilder = ({
                                         error,
                                         loading,
