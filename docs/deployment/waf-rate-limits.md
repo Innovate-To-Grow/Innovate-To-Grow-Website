@@ -58,13 +58,12 @@ Known from the repository:
   API origin directly. `NUM_PROXIES = 1` in the production settings and
   [Request flow](../architecture/request-flow.md) assume the ALB is the only
   proxy on that path.
-- **Through Amplify.** The demo frontend's default API base is
-  `https://demo.i2g.ucmerced.edu/api`: Amplify Hosting (CloudFront) rewrites
-  `/api/<*>` to the backend origin (`apps/cms/services/amplify/rules.py`, target
-  `AMPLIFY_BACKEND_PROXY_URL`). The worker reconciles the same rewrite onto the
-  production Amplify app, so `https://i2g.ucmerced.edu/api/...` also reaches
-  production that way. Admin paths are proxied the same way on demo
-  (`AMPLIFY_PROXY_ADMIN_PATHS=true`), not on production.
+- **Through Amplify.** The backend worker also reconciles an `/api/<*>`
+  rewrite onto the production Amplify app, so
+  `https://i2g.ucmerced.edu/api/...` reaches the backend origin through
+  CloudFront (`apps/cms/services/amplify/rules.py`, target
+  `AMPLIFY_BACKEND_PROXY_URL`). Admin-path proxying defaults to false
+  (`AMPLIFY_PROXY_ADMIN_PATHS=false`).
 - When the `DJANGO_ALLOWED_HOSTS` variable is unset, the deploy adds
   `.cloudfront.net` and `.elb.amazonaws.com` to the allowed hosts. That permits
   a CloudFront distribution in front of the API but does not show that one
