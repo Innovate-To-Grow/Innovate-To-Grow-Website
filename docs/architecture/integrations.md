@@ -95,6 +95,8 @@ manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | Runtime | `src/apps/system_intelligence/services/bedrock/` |
 
+Known Claude models with fixed sampling (including Fable 5) omit `temperature` in both Converse and agent calls. Older models retain the configured value. The admin connectivity test also omits optional sampling settings and reads text after any reasoning blocks. See [Anthropic sampling limits](https://platform.claude.com/docs/en/about-claude/models/extended-thinking-models).
+
 ## AWS S3 / Cloudflare R2
 
 File storage in production. Configured via `django-storages` with boto3.

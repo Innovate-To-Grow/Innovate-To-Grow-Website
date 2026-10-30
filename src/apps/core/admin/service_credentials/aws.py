@@ -126,9 +126,11 @@ class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
             resp = client.converse(
                 modelId=model_id,
                 messages=[{"role": "user", "content": [{"text": "Reply with exactly: OK"}]}],
-                inferenceConfig={"maxTokens": 16, "temperature": 0},
+                inferenceConfig={"maxTokens": 1024},
             )
-            output_text = resp["output"]["message"]["content"][0]["text"]
+            output_text = "".join(block.get("text", "") for block in resp["output"]["message"]["content"])
+            if not output_text.strip():
+                raise ValueError("The model returned no text; verify its output token limit.")
             messages.success(request, 'Bedrock API test passed. Model responded: "' + output_text.strip() + '"')
         except ClientError as exc:
             messages.error(request, f"Bedrock API test failed: {exc.response['Error']['Message']}")
