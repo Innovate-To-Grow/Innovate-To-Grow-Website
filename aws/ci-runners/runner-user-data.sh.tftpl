@@ -11,6 +11,9 @@ shutdown -h +90
 systemctl start docker
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/aws/amazon-cloudwatch-agent/bin"
 export RUNNER_TOOL_CACHE=/opt/hostedtoolcache
+# The upstream installer normally selects this directory. A baked image skips
+# that installer, so registration and ./run.sh need an explicit working dir.
+cd /opt/actions-runner
 (
 ${start_runner}
 )

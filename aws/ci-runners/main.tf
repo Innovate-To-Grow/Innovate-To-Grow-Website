@@ -83,23 +83,25 @@ module "runners" {
   runners_lambda_zip                = "${path.module}/.artifacts/runners.zip"
   runner_binaries_syncer_lambda_zip = "${path.module}/.artifacts/runner-binaries-syncer.zip"
 
-  enable_organization_runners             = false
-  repository_white_list                   = [local.repository]
-  runner_extra_labels                     = ["i2g-aws"]
-  enable_runner_bidirectional_label_match = true
-  enable_ephemeral_runners                = true
-  enable_jit_config                       = true
-  enable_job_queued_check                 = true
-  runners_maximum_count                   = var.maximum_runners
-  scale_up_reserved_concurrent_executions = 1
-  lambda_event_source_mapping_batch_size  = 10
-  delay_webhook_event                     = 0
-  pool_config                             = []
-  idle_config                             = []
-  scale_down_schedule_expression          = "cron(* * * * ? *)"
-  scale_down_idle_confirmation_seconds    = 60
-  minimum_running_time_in_minutes         = 2
-  runner_boot_time_in_minutes             = 5
+  enable_organization_runners                                    = false
+  repository_white_list                                          = [local.repository]
+  runner_extra_labels                                            = ["i2g-aws"]
+  enable_runner_bidirectional_label_match                        = true
+  enable_ephemeral_runners                                       = true
+  enable_jit_config                                              = true
+  enable_job_queued_check                                        = true
+  runners_maximum_count                                          = var.maximum_runners
+  scale_up_reserved_concurrent_executions                        = 1
+  runners_scale_up_lambda_timeout                                = 90
+  lambda_event_source_mapping_batch_size                         = 10
+  lambda_event_source_mapping_maximum_batching_window_in_seconds = 2
+  delay_webhook_event                                            = 0
+  pool_config                                                    = []
+  idle_config                                                    = []
+  scale_down_schedule_expression                                 = "cron(* * * * ? *)"
+  scale_down_idle_confirmation_seconds                           = 60
+  minimum_running_time_in_minutes                                = 2
+  runner_boot_time_in_minutes                                    = 5
 
   # On-demand avoids interrupted builds and Spot capacity waits.
   instance_target_capacity_type = "on-demand"
