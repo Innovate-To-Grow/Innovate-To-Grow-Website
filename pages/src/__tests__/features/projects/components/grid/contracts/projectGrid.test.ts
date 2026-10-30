@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 
 import {
   createProjectGridItems,
@@ -65,6 +65,26 @@ describe('projectGrid helpers', () => {
       'CAP 10',
       'CSE 2',
     ]);
+  });
+
+  it('sorts without building a collator per comparison, in natural, case-insensitive order', () => {
+    const titles = ['beta 10', 'Alpha', 'beta 9', 'Éclair', 'alpha 2', 'Delta'];
+    const rows = createProjectGridItems(titles.map((title) => row('2026 Spring', title)), 'collator');
+    const localeCompare = vi.spyOn(String.prototype, 'localeCompare');
+    try {
+      expect(sortProjectGridItems(rows, 'project_title', 'asc').map((item) => item.project_title)).toEqual([
+        'Alpha',
+        'alpha 2',
+        'beta 9',
+        'beta 10',
+        'Delta',
+        'Éclair',
+      ]);
+      // localeCompare with options constructs an ICU collator on every call: ~120 ms per 920-row sort at 4x CPU.
+      expect(localeCompare).not.toHaveBeenCalled();
+    } finally {
+      localeCompare.mockRestore();
+    }
   });
 
   it('formats terms, team codes and student lists for display', () => {

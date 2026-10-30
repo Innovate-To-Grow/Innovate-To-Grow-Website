@@ -219,8 +219,12 @@ export const getProjectGridSearchValue = (row: ProjectGridRow) =>
     .join(' ')
     .toLowerCase();
 
-const compareText = (left: string, right: string) =>
-  left.localeCompare(right, undefined, {numeric: true, sensitivity: 'base'});
+// One collator for every comparison: localeCompare with options builds a new collator on each call, which made
+// sorting the 920-row archive take hundreds of milliseconds on a slower phone.
+const textCollator = new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'});
+
+/** Case- and accent-insensitive text order, with numbers in numeric order ("CAP 9" before "CAP 10"). */
+export const compareText = (left: string, right: string) => textCollator.compare(left, right);
 
 /** Chronological (year, then season) when both labels parse, else as text. */
 const compareSemesters = (left: string, right: string) => {

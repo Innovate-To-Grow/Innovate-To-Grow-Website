@@ -1,13 +1,12 @@
 import {useCallback, useMemo, useState} from 'react';
-import type {ProjectGridItem} from '@/features/projects/components/grid/contracts/projectGrid';
+import {compareText, type ProjectGridItem} from '@/features/projects/components/grid/contracts/projectGrid';
 
 export interface ProjectGridFilterOption {
   value: string;
   label: string;
 }
 
-const byLabel = (left: ProjectGridFilterOption, right: ProjectGridFilterOption) =>
-  left.label.localeCompare(right.label, undefined, {numeric: true, sensitivity: 'base'});
+const byLabel = (left: ProjectGridFilterOption, right: ProjectGridFilterOption) => compareText(left.label, right.label);
 
 const distinctValues = (rows: ProjectGridItem[], pick: (row: ProjectGridItem) => string) => {
   const values = new Set<string>();
