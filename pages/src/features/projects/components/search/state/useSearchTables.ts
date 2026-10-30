@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction} from 'react';
 import {searchPastProjectsWithAI, toProjectGridRow} from '@/features/projects/api';
+import {collectFieldMessages} from '@/lib/api/errorMessages';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 
 export interface SearchTableState {
@@ -24,10 +25,21 @@ const createAISearchTableTitle = (query: string) => {
   return `AI Search Table: ${clipped}`;
 };
 
+// The API's reason when it gives one: `detail` (budget, provider errors), `message`, or a validation error on a
+// field (`{"query": ["Query must be at most 2000 characters."]}`), which a retry would only repeat.
 const getAISearchErrorMessage = (error: unknown) => {
-  const payload = (error as {response?: {data?: {detail?: string; message?: string}}}).response?.data;
-  return payload?.detail || payload?.message || 'AI search is unavailable right now. Please try again.';
+  const data = (error as {response?: {data?: unknown}} | null)?.response?.data;
+  const [reason] =
+    data && typeof data === 'object'
+      ? collectFieldMessages(data as Record<string, unknown>, (message) => Boolean(message.trim()), ['code'])
+      : [];
+  return reason || 'AI search is unavailable right now. Please try again.';
 };
+
+// `available: false` means AI search is not set up on this site. The API's own message is meant for the site's
+// administrators, so members get this instead.
+const AI_SEARCH_NOT_AVAILABLE_MESSAGE =
+  'AI search is not available on this site right now. You can still find projects with a regular search table.';
 
 /** A table's heading: its own title, else "AI Search Table", else "Search Table" (numbered when several). */
 export function searchTableTitle(table: SearchTableState, tables: SearchTableState[]) {
@@ -47,7 +59,7 @@ const aiSearchOutcome = (
   allAIRowsFilteredMessage: string,
 ): {error: string} | {rows: ProjectGridRow[]; title: string} => {
   if (!response.available) {
-    return {error: response.message || 'AI search is unavailable right now.'};
+    return {error: AI_SEARCH_NOT_AVAILABLE_MESSAGE};
   }
   const aiRows = filterAIRows(response.results.map(toProjectGridRow));
   if (!aiRows.length) {

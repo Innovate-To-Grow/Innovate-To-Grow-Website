@@ -335,7 +335,8 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
-    expect(await screen.findByText('Not configured.')).toBeInTheDocument();
+    expect(await screen.findByText(/AI search is not available on this site right now/)).toBeInTheDocument();
+    expect(screen.queryByText('Not configured.')).toBeNull();
   });
 
   it('shows a no-results message when AI search finds nothing', async () => {
