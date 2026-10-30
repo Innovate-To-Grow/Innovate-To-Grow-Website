@@ -16,8 +16,9 @@ const controls = (overrides: Partial<ComponentProps<typeof SaveControls>> = {}) 
     selectedCount={3}
     hiddenSelectedCount={1}
     mergeDisabled={false}
-    mergeLabel="Save Selected"
-    mergingVerb="Saving"
+    mergeLabel="Add to Curation"
+    mergingVerb="Adding"
+    selectionHintId="selection-hint"
     {...overrides}
   />
 );
@@ -47,13 +48,13 @@ describe('SaveControls on a translated page', () => {
 
     expect(errors).toEqual([]);
     expect(shownText(view.container.querySelector('.search-table-selection-count'))).toBe('1 selected');
-    expect(shownText(view.container.querySelector('.search-table-save-button'))).toBe('Saving…');
+    expect(shownText(view.container.querySelector('.search-table-save-button'))).toBe('Adding…');
   });
 
   it('shows the count beside the label and says how many checked rows the search hides', () => {
     const view = render(controls());
 
-    expect(view.container.querySelector('.search-table-save-button')).toHaveTextContent(/^Save Selected · 3$/);
+    expect(view.container.querySelector('.search-table-save-button')).toHaveTextContent(/^Add to Curation · 3$/);
     expect(view.container.querySelector('.search-table-selection-count')).toHaveTextContent(
       /^3 selected \(1 not shown by the current search\)$/,
     );
