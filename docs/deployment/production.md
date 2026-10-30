@@ -2,8 +2,11 @@
 
 A successful `CI` run on `main` starts the `Deploy Production` workflow. An
 operator can also start that workflow manually on `main` to redeploy its
-current commit. Both paths pause once on the protected `Manual Deployment Approval`
-environment. Approving that single gate releases the complete deployment set:
+current commit, provided that exact commit has a successful main CI image. Both
+paths enter the `Manual Deployment Approval` environment. This job pauses only
+when an enabled, plan-supported required-reviewer rule applies; the environment
+name alone does not enforce approval. Once that job completes, the workflow
+releases the complete deployment set:
 
 - backend production on ECS;
 - frontend production on Amplify;
@@ -26,12 +29,14 @@ Component workflows cannot be manually dispatched.
 
 The workflow uses these environments:
 
-- `Manual Deployment Approval` — the single approval gate;
+- `Manual Deployment Approval` — the shared gate when reviewer protection is enforced;
 - `AWS ECS - Prod` — backend identity and deployment history;
 - `AWS Amplify - Prod` — frontend identity and deployment history;
 - `AWS ECS - Archive Prod` — archive identity and deployment history.
 
-Configure required reviewers on `Manual Deployment Approval`. The three target
+Configure required reviewers on `Manual Deployment Approval` and verify that
+the current repository visibility and GitHub plan support them. A green approval
+job is not evidence that a human reviewed the release. The three target
 environments retain their URLs and deployment history. Configuration lives in
 AWS Secrets Manager. They must not also require reviewers after the
 shared gate is verified. Otherwise GitHub will request a second round of
@@ -119,3 +124,17 @@ for Web readiness. Before initial enablement, inspect pending/retry jobs, then
 verify worker heartbeat, successful reconciliation, frontend/API routes, and
 provider access. Validate email/SMS with read-only API calls unless an actual
 test recipient has been explicitly requested.
+
+### GitHub feature prerequisites
+
+Required reviewers on private repositories depend on the GitHub plan. Free, Pro,
+and Team plans offer this protection only for public repositories; check the
+[current environment requirements](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
+before relying on a release pause. Verify an actual pending review in a test
+release, including after repository visibility or plan changes.
+
+CodeQL result uploads for private repositories also require GitHub Code Security
+to be enabled. An Advanced Security/Code Security feature error is an account or
+repository configuration issue, not a failed application test. Resolve the
+[feature prerequisite](https://docs.github.com/en/code-security/reference/code-scanning/troubleshoot-analysis-errors/private-repository-enablement)
+before claiming code-scanning uploads work.
