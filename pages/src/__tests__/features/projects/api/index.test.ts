@@ -172,6 +172,22 @@ describe('past project share API', () => {
       '/projects/past-shares/share-1/',
     );
   });
+
+  it('keeps a share id inside its path segment, whatever the link holds', async () => {
+    // React Router decodes %2F and %3F in the route param, so a crafted link hands over "../mine" or "a?b".
+    mockGetAccessToken.mockReturnValue(null);
+    apiMock.get.mockResolvedValue({data: {id: 'x'}});
+    authApiMock.patch.mockResolvedValue({data: {id: 'x'}});
+    authApiMock.delete.mockResolvedValue({status: 204});
+
+    await fetchPastProjectShare('../mine');
+    await updatePastProjectShare('a?b=1', {version: 1});
+    await deleteShare('../../event/projects');
+
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/past-shares/..%2Fmine/');
+    expect(authApiMock.patch).toHaveBeenCalledWith('/projects/past-shares/a%3Fb%3D1/', {version: 1});
+    expect(authApiMock.delete).toHaveBeenCalledWith('/projects/past-shares/..%2F..%2Fevent%2Fprojects/');
+  });
 });
 
 const makeTableRow = (overrides: Partial<ProjectTableRow> = {}): ProjectTableRow => ({
@@ -364,6 +380,16 @@ describe('project archive and detail fetch helpers', () => {
     apiMock.get.mockResolvedValue({data: {id: 'project-1'}});
     await expect(fetchProjectDetail('project-1', signal)).resolves.toEqual({id: 'project-1'});
     expect(apiMock.get).toHaveBeenCalledWith('/projects/project-1/', {signal});
+  });
+
+  it('requests a project id as one path segment, so a crafted link cannot reach another endpoint', async () => {
+    apiMock.get.mockResolvedValue({data: {id: 'x'}});
+
+    await fetchProjectDetail('../../event/projects');
+    await fetchProjectDetail('abc?x=1');
+
+    expect(apiMock.get).toHaveBeenNthCalledWith(1, '/projects/..%2F..%2Fevent%2Fprojects/', {signal: undefined});
+    expect(apiMock.get).toHaveBeenNthCalledWith(2, '/projects/abc%3Fx%3D1/', {signal: undefined});
   });
 
   it('hydrates only the rows that need it and leaves the rest untouched', async () => {

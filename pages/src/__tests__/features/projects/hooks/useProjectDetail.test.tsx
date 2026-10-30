@@ -240,6 +240,17 @@ describe('useProjectDetail', () => {
     expect(mockFetchCurrentSchedule).not.toHaveBeenCalled();
   });
 
+  it.each(['archive', 'past', 'current', 'past-shares', '../../event/projects', 'abc?x=1'])(
+    'treats %s, which is not a project id, as not found without requesting it',
+    (projectId) => {
+      const {result} = renderHook(() => useProjectDetail(projectId, true));
+
+      expect(result.current).toMatchObject({result: null, loading: false, error: 'not-found'});
+      expect(mockFetchCurrentSchedule).not.toHaveBeenCalled();
+      expect(mockFetchProjectDetail).not.toHaveBeenCalled();
+    },
+  );
+
   it('ignores a response that lands after unmount', async () => {
     let resolve!: (value: unknown) => void;
     mockFetchCurrentSchedule.mockReturnValue(new Promise((res) => (resolve = res)));

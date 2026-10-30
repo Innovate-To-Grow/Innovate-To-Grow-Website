@@ -49,6 +49,9 @@ export const PROJECT_REQUEST_TIMEOUT_MS = 15_000;
 /** The largest archive page the API serves (it rejects a bigger page_size). */
 const ARCHIVE_PAGE_SIZE = 100;
 
+/** A project or share id as one URL path segment: a route param is decoded, so "../x" or "a?b" must not escape it. */
+const pathSegment = (id: string) => encodeURIComponent(id);
+
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
     id: project.id,
     semester_label: formatSemesterLabel(project.semester_label),
@@ -149,7 +152,7 @@ export const searchPastProjectsWithAI = async (
 };
 
 export const fetchProjectDetail = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
-    const response = await api.get<ProjectDetail>(`/projects/${id}/`, {signal});
+    const response = await api.get<ProjectDetail>(`/projects/${pathSegment(id)}/`, {signal});
     return response.data;
 };
 
@@ -196,7 +199,7 @@ const sleep = (ms: number, signal?: AbortSignal) =>
 const fetchProjectDetailWithRetry = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
     for (let attempt = 0; ; attempt += 1) {
         try {
-            const response = await api.get<ProjectDetail>(`/projects/${id}/`, {
+            const response = await api.get<ProjectDetail>(`/projects/${pathSegment(id)}/`, {
                 signal,
                 // Without a timeout one stalled request would leave a save "Saving…" indefinitely; a timeout is
                 // retried like any other network failure.
@@ -292,7 +295,7 @@ export const createPastProjectShare = async (
 export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
     if (getAccessToken()) {
         try {
-            const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${id}/`, {
+            const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${pathSegment(id)}/`, {
                 requireFreshIdentity: true,
             });
             return response.data;
@@ -304,7 +307,7 @@ export const fetchPastProjectShare = async (id: string): Promise<PastProjectShar
         }
     }
 
-    const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
+    const response = await api.get<PastProjectShare>(`/projects/past-shares/${pathSegment(id)}/`);
     return response.data;
 };
 
@@ -313,7 +316,7 @@ export const updatePastProjectShare = async (
     payload: Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>> &
         Pick<PastProjectShare, 'version'>,
 ): Promise<PastProjectShare> => {
-    const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
+    const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${pathSegment(id)}/`, payload);
     return response.data;
 };
 
@@ -323,5 +326,5 @@ export const listMyShares = async (): Promise<PastProjectShareSummary[]> => {
 };
 
 export const deleteShare = async (id: string): Promise<void> => {
-    await authApi.delete(`/projects/past-shares/${id}/`);
+    await authApi.delete(`/projects/past-shares/${pathSegment(id)}/`);
 };

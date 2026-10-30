@@ -19,6 +19,15 @@ export type ProjectDetailError = 'not-found' | 'failed';
 
 const isNotFound = (error: unknown) => (error as {response?: {status?: number}} | null)?.response?.status === 404;
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Projects (archive and current) are identified by UUIDs. Anything else in a project URL ("archive", "past", a
+ * mangled link) names no project: requesting it would reach one of the list endpoints that share the /projects/
+ * prefix and render that list as an empty project page.
+ */
+export const isProjectId = (value: string) => UUID_PATTERN.test(value);
+
 /**
  * The current-semester project a Current Projects or Presenting Teams row links to, read back from the schedule
  * payload those lists are built from. The rows link by the schedule's project id (an event CurrentProject, also
@@ -100,15 +109,16 @@ interface ProjectDetailResult {
 
 export function useProjectDetail(projectId: string | undefined, includeCurrent: boolean): ProjectDetailResult {
   const [attempt, setAttempt] = useState(0);
+  const validId = projectId && isProjectId(projectId) ? projectId : undefined;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- attempt forces a new Symbol so retry() loads again
-  const requestKey = useMemo(() => (projectId ? Symbol(projectId) : null), [projectId, includeCurrent, attempt]);
+  const requestKey = useMemo(() => (validId ? Symbol(validId) : null), [validId, includeCurrent, attempt]);
   const [state, setState] = useState<ProjectDetailState>({requestKey: null, result: null, error: null});
   const retry = useCallback(() => setAttempt((count) => count + 1), []);
 
   useEffect(() => {
-    if (!requestKey || !projectId) return;
+    if (!requestKey || !validId) return;
     const controller = new AbortController();
-    loadProjectDetail(projectId, {includeCurrent, signal: controller.signal})
+    loadProjectDetail(validId, {includeCurrent, signal: controller.signal})
       .then((result) => {
         if (!controller.signal.aborted) setState({requestKey, result, error: null});
       })
@@ -118,7 +128,7 @@ export function useProjectDetail(projectId: string | undefined, includeCurrent: 
         }
       });
     return () => controller.abort();
-  }, [requestKey, projectId, includeCurrent]);
+  }, [requestKey, validId, includeCurrent]);
 
   if (!requestKey) return {result: null, loading: false, error: 'not-found', retry};
   const hasResolved = state.requestKey === requestKey;

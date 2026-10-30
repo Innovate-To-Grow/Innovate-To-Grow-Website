@@ -263,6 +263,17 @@ describe('ProjectDetailPage', () => {
     expect(fetchCurrentSchedule).not.toHaveBeenCalled();
   });
 
+  it.each(['/projects/archive', '/projects/past', '/past-projects/project/archive', '/projects/..%2Fpast-shares'])(
+    'says %s is not a project, without requesting the list endpoint its name matches',
+    async (path) => {
+      renderAt(path);
+
+      expect(await screen.findByRole('heading', {level: 1, name: "We couldn't find this project"})).toBeInTheDocument();
+      expect(fetchCurrentSchedule).not.toHaveBeenCalled();
+      expect(fetchProjectDetail).not.toHaveBeenCalled();
+    },
+  );
+
   it('does not take a schedule slot id for a project', async () => {
     vi.mocked(fetchProjectDetail).mockRejectedValue(notFoundError());
     renderAt(`/projects/${HVAC_SLOT_ID}`);
@@ -287,6 +298,8 @@ describe('ProjectDetailPage', () => {
   });
 
   it('aborts and ignores a stale detail response after route navigation', async () => {
+    const projectA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const projectB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
     let resolveFirst!: (value: typeof projectDetail) => void;
     let resolveSecond!: (value: typeof projectDetail) => void;
     const first = new Promise<typeof projectDetail>((resolve) => {
@@ -296,24 +309,24 @@ describe('ProjectDetailPage', () => {
       resolveSecond = resolve;
     });
     vi.mocked(fetchProjectDetail).mockImplementation((id) =>
-      id === 'project-a' ? first : second,
+      id === projectA ? first : second,
     );
     const router = createMemoryRouter(
       [{path: '/projects/:id', element: <ProjectDetailPage />}],
-      {initialEntries: ['/projects/project-a']},
+      {initialEntries: [`/projects/${projectA}`]},
     );
     render(<RouterProvider router={router} />);
 
     await waitFor(() =>
       expect(fetchProjectDetail).toHaveBeenCalledWith(
-        'project-a',
+        projectA,
         expect.any(AbortSignal),
       ),
     );
     const firstSignal = vi.mocked(fetchProjectDetail).mock.calls[0][1];
 
     await act(async () => {
-      await router.navigate('/projects/project-b');
+      await router.navigate(`/projects/${projectB}`);
     });
     resolveSecond({...projectDetail, project_title: 'Project B'});
     expect(
