@@ -62,10 +62,11 @@ def _sync_schedule(
     if not parsed_tracks or not parsed_slots:
         raise ScheduleSyncError("The configured sheet does not contain any schedule tracks or slots.")
 
-    current_projects, touched_project_pks = sync_projects_from_slots(config, parsed_slots)
     stats = ScheduleSyncStats()
 
+    # The projects too: a sync that fails part way must not leave some teams renumbered or retitled.
     with transaction.atomic():
+        current_projects, touched_project_pks = sync_projects_from_slots(config, parsed_slots)
         clear_schedule(config, touched_project_pks)
         sections_by_code = create_sections(config, parsed_tracks, parsed_slots, stats)
         tracks_by_number = create_tracks(sections_by_code, parsed_tracks, stats)
