@@ -1,6 +1,6 @@
-import {act, cleanup, render, screen, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {Link, MemoryRouter, Route, Routes} from 'react-router';
+import {Link, RouterProvider, createMemoryRouter} from 'react-router';
 
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
 
@@ -10,7 +10,8 @@ import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
  * Contract:
  *   - Fetches /cms/embed/<slug>/ on mount via fetchCMSEmbed()
  *   - Renders the returned block inside a wrapper div using page_css_class
- *   - Injects <base target="_blank"> so internal links pop out of the iframe
+ *   - Injects <base target="_blank"> so internal links pop out of the iframe, and opens
+ *     router navigations to other pages in a new tab
  *   - Posts {type: 'i2g-embed-resize', slug, height} to parent on content resize
  *   - Shows "Embed not found." on 404 / fetch error
  */
@@ -49,14 +50,18 @@ const appRoutes = {
     ({'/schedule': EmbeddedSchedule, '/current-projects': EmbeddedProjects})[route ?? ''] ?? null,
 };
 
-const renderAtSlug = (slug: string) =>
+// A data router, as in the app: the page blocks navigations that would leave the embed.
+const renderAt = (url: string) =>
   render(
-    <MemoryRouter initialEntries={[`/_embed/${slug}`]}>
-      <Routes>
-        <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-      </Routes>
-    </MemoryRouter>,
+    <RouterProvider
+      router={createMemoryRouter(
+        [{path: '/_embed/:embedSlug', element: <EmbedBlockPage appRoutes={appRoutes} />}],
+        {initialEntries: [url]},
+      )}
+    />,
   );
+
+const renderAtSlug = (slug: string) => renderAt(`/_embed/${slug}`);
 
 // jsdom does not implement ResizeObserver; the component uses it to watch
 // document height for the iframe-resize postMessage. A no-op stub is enough.
@@ -230,13 +235,7 @@ describe('EmbedBlockPage', () => {
       hide_section_titles: false,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/widget?hide-titles=1']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/widget?hide-titles=1');
 
     await waitFor(() => {
       const tag = document.getElementById('itg-embed-hide-sections');
@@ -270,13 +269,7 @@ describe('EmbedBlockPage', () => {
       hide_section_titles: false,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/widget?hide-sections=schedule_header,schedule_awards']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/widget?hide-sections=schedule_header,schedule_awards');
 
     await waitFor(() => {
       const tag = document.getElementById('itg-embed-hide-sections');
@@ -294,13 +287,7 @@ describe('EmbedBlockPage', () => {
       hide_section_titles: false,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/widget?hide-sections=also-bad']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/widget?hide-sections=also-bad');
 
     await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
     expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
@@ -315,13 +302,7 @@ describe('EmbedBlockPage', () => {
         hide_section_titles: false,
       });
 
-      render(
-        <MemoryRouter initialEntries={[`/_embed/widget?hide-titles=${value}`]}>
-          <Routes>
-            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-          </Routes>
-        </MemoryRouter>,
-      );
+      renderAt(`/_embed/widget?hide-titles=${value}`);
 
       await waitFor(() => {
         expect(document.getElementById('itg-embed-hide-sections')).not.toBeNull();
@@ -338,13 +319,7 @@ describe('EmbedBlockPage', () => {
         hide_section_titles: false,
       });
 
-      render(
-        <MemoryRouter initialEntries={[`/_embed/widget?hide-titles=${value}`]}>
-          <Routes>
-            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-          </Routes>
-        </MemoryRouter>,
-      );
+      renderAt(`/_embed/widget?hide-titles=${value}`);
 
       await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
       expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
@@ -358,13 +333,7 @@ describe('EmbedBlockPage', () => {
       hide_section_titles: true,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/widget?hide-titles=false']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/widget?hide-titles=false');
 
     await waitFor(() => {
       expect(document.getElementById('itg-embed-hide-sections')).not.toBeNull();
@@ -423,15 +392,7 @@ describe('EmbedBlockPage', () => {
       page_css_class: '',
     });
 
-    render(
-      <MemoryRouter
-        initialEntries={['/_embed/schedule-widget?schedule_id=6F1D2C3B-4A5E-4F60-8A9B-0C1D2E3F4A5B']}
-      >
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/schedule-widget?schedule_id=6F1D2C3B-4A5E-4F60-8A9B-0C1D2E3F4A5B');
 
     await waitFor(() =>
       expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent(
@@ -449,13 +410,7 @@ describe('EmbedBlockPage', () => {
       page_css_class: '',
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/schedule-widget?schedule_id=../../etc']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/schedule-widget?schedule_id=../../etc');
 
     await waitFor(() =>
       expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent('schedule-123'),
@@ -538,5 +493,33 @@ describe('EmbedBlockPage', () => {
     const css = document.getElementById('itg-embed-body')?.textContent;
     expect(css).toContain('background: var(--itg-color-bg-page, #fff) !important');
     expect(css).not.toContain('transparent');
+  });
+
+  it('opens app-route links to other pages in a new tab, keeping the widget', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+
+    fireEvent.click(await screen.findByRole('link', {name: 'Project ABC'}));
+
+    expect(open).toHaveBeenCalledWith(`${window.location.origin}/projects/abc`, '_blank');
+    expect(screen.getByRole('link', {name: 'Project ABC'})).toBeInTheDocument();
+    expect(document.head.querySelector('base')).not.toBeNull();
+  });
+
+  it('offers a link when the browser blocks the new tab', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+
+    fireEvent.click(await screen.findByRole('link', {name: 'Project ABC'}));
+
+    const fallback = screen.getByRole('link', {name: 'Open the page in a new tab'});
+    expect(fallback).toHaveAttribute('href', `${window.location.origin}/projects/abc`);
+    expect(fallback).toHaveAttribute('target', '_blank');
+    expect(screen.getByRole('status')).toContainElement(fallback);
+
+    fireEvent.click(fallback);
+    expect(screen.queryByRole('link', {name: 'Open the page in a new tab'})).toBeNull();
   });
 });
