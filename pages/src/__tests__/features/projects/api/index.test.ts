@@ -28,6 +28,7 @@ vi.mock('@/features/auth', () => ({
 }));
 
 import {
+  PROJECT_DETAIL_CONCURRENCY,
   compactProjectToGridRow,
   createPastProjectShare,
   deleteShare,
@@ -40,6 +41,7 @@ import {
   fetchProjectDetail,
   hydrateProjectGridRowsSettled,
   listMyShares,
+  rememberProjectDetail,
   scheduleProjectToGridRow,
   searchPastProjectsWithAI,
   toProjectGridRow,
@@ -386,10 +388,27 @@ describe('project archive and detail fetch helpers', () => {
     apiMock.get.mockResolvedValue({data: {id: 'x'}});
 
     await fetchProjectDetail('../../event/projects');
-    await fetchProjectDetail('abc?x=1');
+    await fetchProjectDetail('abc?x=1', undefined, 5000);
 
     expect(apiMock.get).toHaveBeenNthCalledWith(1, '/projects/..%2F..%2Fevent%2Fprojects/', {signal: undefined});
-    expect(apiMock.get).toHaveBeenNthCalledWith(2, '/projects/abc%3Fx%3D1/', {signal: undefined});
+    expect(apiMock.get).toHaveBeenNthCalledWith(2, '/projects/abc%3Fx%3D1/', {signal: undefined, timeout: 5000});
+  });
+
+  it('does not request again the details a row already loaded', async () => {
+    rememberProjectDetail({...makeTableRow({id: 'cached-1', project_title: 'Cached'}), abstract: 'Cached abstract'});
+    apiMock.get.mockResolvedValue({data: makeTableRow({id: 'fresh-1', project_title: 'Fresh'})});
+
+    const {rows: result} = await hydrateProjectGridRowsSettled([
+      {id: 'cached-1', ...makeGridRowBase(), abstract: '', student_names: ''},
+      {id: 'fresh-1', ...makeGridRowBase(), abstract: '', student_names: ''},
+    ]);
+
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/fresh-1/', expect.anything());
+    expect(result.map((row) => [row.project_title, row.abstract])).toEqual([
+      ['Cached', 'Cached abstract'],
+      ['Fresh', 'An abstract'],
+    ]);
   });
 
   it('hydrates only the rows that need it and leaves the rest untouched', async () => {
@@ -448,7 +467,7 @@ describe('project archive and detail fetch helpers', () => {
     const {rows: result} = await hydrateProjectGridRowsSettled(rows);
 
     // Selecting a large page of archive rows must not open one request per row at once.
-    expect(peak).toBeLessThanOrEqual(4);
+    expect(peak).toBe(PROJECT_DETAIL_CONCURRENCY);
     expect(apiMock.get).toHaveBeenCalledTimes(20);
     expect(result).toHaveLength(20);
     expect(result[0].project_title).toBe('Fetched project-0');
@@ -546,9 +565,9 @@ describe('hydrateProjectGridRowsSettled retries and partial results', () => {
     const {failedIndexes} = await pending;
 
     expect(failedIndexes).toHaveLength(200);
-    // Each row takes 1.2 s of retries, so 4 at a time get through about 100 rows before failures have gone on
+    // Each row takes 1.2 s of retries, so 6 at a time get through about 150 rows before failures have gone on
     // for 30 s; the rest are never requested (every row tried 3 times would be 600 requests).
-    expect(apiMock.get.mock.calls.length).toBeLessThan(400);
+    expect(apiMock.get.mock.calls.length).toBeLessThan(500);
     expect(apiMock.get).not.toHaveBeenCalledWith('/projects/p-199/', expect.anything());
   });
 
@@ -569,8 +588,8 @@ describe('hydrateProjectGridRowsSettled retries and partial results', () => {
     await vi.runAllTimersAsync();
     const {failedIndexes} = await pending;
 
-    // Only the 4 rows in flight during the sleep failed; the others were requested once it was over, and loaded.
-    expect(failedIndexes).toEqual([0, 1, 2, 3]);
+    // Only the rows in flight during the sleep failed; the others were requested once it was over, and loaded.
+    expect(failedIndexes).toEqual(Array.from({length: PROJECT_DETAIL_CONCURRENCY}, (_, index) => index));
   });
 
   it('keeps going while other rows load, however long one broken project takes', async () => {

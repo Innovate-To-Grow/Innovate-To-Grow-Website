@@ -7,6 +7,7 @@ import {
 import {formatSemesterLabel} from '@/lib/format';
 import type {PaginatedResponse} from '@/types/api';
 import type {ScheduleProjectRow} from '@/features/events/api';
+import {readCachedProjectDetail} from './projectDetailCache';
 import type {
     ProjectTableRow,
     CompactPastProjectRow,
@@ -39,12 +40,19 @@ export type {
 export type {PaginatedResponse} from '@/types/api';
 
 export {DEFAULT_PAST_PROJECT_SHARE_NAME} from './constants';
+export {PROJECT_DETAIL_CACHE_TTL_MS, readCachedProjectDetail, rememberProjectDetail} from './projectDetailCache';
 
 /**
  * How long one projects API request may take before it fails like a network error. The shared client sets no
  * timeout, so without one a stalled request leaves a list "Loading…" (or a row's details queued) indefinitely.
  */
 export const PROJECT_REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * How many project detail requests may be open at once, for a row's Details and for saving rows. The API is served
+ * over HTTP/2, so they share one connection; the bound keeps a 100-row "View All Details" from opening 100 at once.
+ */
+export const PROJECT_DETAIL_CONCURRENCY = 6;
 
 /** The largest archive page the API serves (it rejects a bigger page_size). */
 const ARCHIVE_PAGE_SIZE = 100;
@@ -151,14 +159,15 @@ export const searchPastProjectsWithAI = async (
     return response.data;
 };
 
-export const fetchProjectDetail = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
-    const response = await api.get<ProjectDetail>(`/projects/${pathSegment(id)}/`, {signal});
+export const fetchProjectDetail = async (
+    id: string,
+    signal?: AbortSignal,
+    timeout?: number,
+): Promise<ProjectDetail> => {
+    const response = await api.get<ProjectDetail>(`/projects/${pathSegment(id)}/`, {signal, timeout});
     return response.data;
 };
 
-// Matches the inline detail loader's bound. Saving a large selection of archive rows
-// would otherwise open one request per row at once.
-const HYDRATION_CONCURRENCY = 4;
 // A save must not fail because one of many detail requests hit a transient error, so each
 // request is retried after these delays before its row is reported as failed.
 const HYDRATION_RETRY_DELAYS_MS = [300, 900];
@@ -197,15 +206,14 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     });
 
 const fetchProjectDetailWithRetry = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
+    // Rows whose Details were just opened are not requested again.
+    const cached = readCachedProjectDetail(id);
+    if (cached) return cached;
     for (let attempt = 0; ; attempt += 1) {
         try {
-            const response = await api.get<ProjectDetail>(`/projects/${pathSegment(id)}/`, {
-                signal,
-                // Without a timeout one stalled request would leave a save "Saving…" indefinitely; a timeout is
-                // retried like any other network failure.
-                timeout: PROJECT_REQUEST_TIMEOUT_MS,
-            });
-            return response.data;
+            // A timeout is retried like any other network failure; without one a stalled request would leave a save
+            // "Saving…" indefinitely.
+            return await fetchProjectDetail(id, signal, PROJECT_REQUEST_TIMEOUT_MS);
         } catch (error) {
             if (signal?.aborted || attempt >= HYDRATION_RETRY_DELAYS_MS.length || !isRetryableDetailError(error)) {
                 throw error;
@@ -268,7 +276,7 @@ export const hydrateProjectGridRowsSettled = async (
         }
     };
     await Promise.all(
-        Array.from({length: Math.min(HYDRATION_CONCURRENCY, pendingIndexes.length)}, worker),
+        Array.from({length: Math.min(PROJECT_DETAIL_CONCURRENCY, pendingIndexes.length)}, worker),
     );
     const byIndex = (left: number, right: number) => left - right;
     return {

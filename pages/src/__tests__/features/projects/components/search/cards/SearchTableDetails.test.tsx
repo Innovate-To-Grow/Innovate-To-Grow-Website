@@ -2,7 +2,12 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {SearchTableCard} from '@/features/projects/components/search/cards/SearchTableCard';
 import {ProjectGridRowDetails} from '@/features/projects/components/grid/table/ProjectGridRowDetails';
-import {compactProjectToGridRow, type ProjectDetail, type ProjectGridRow} from '@/features/projects/api';
+import {
+  PROJECT_DETAIL_CONCURRENCY,
+  compactProjectToGridRow,
+  type ProjectDetail,
+  type ProjectGridRow,
+} from '@/features/projects/api';
 
 const {fetchDetail} = vi.hoisted(() => ({fetchDetail: vi.fn()}));
 vi.mock('@/features/projects/api', async (importOriginal) => ({
@@ -44,6 +49,11 @@ function renderTable(rows: ProjectGridRow[], onMergeSelected = vi.fn()) {
   };
 }
 
+/** Shows `count` rows per page, so a page holds more rows than detail requests may run at once. */
+function showRowsPerPage(count: number) {
+  fireEvent.change(screen.getByLabelText('Per page'), {target: {value: String(count)}});
+}
+
 afterEach(() => { cleanup(); fetchDetail.mockReset(); vi.restoreAllMocks(); });
 
 describe('compact archive row details', () => {
@@ -60,7 +70,7 @@ describe('compact archive row details', () => {
     const detailsId = desktop.getByRole('button', {name: 'Hide'}).getAttribute('aria-controls');
     expect(desktop.getByRole('status')).toHaveTextContent('Loading project details...');
     expect(mobile.getByRole('status')).toHaveTextContent('Loading project details...');
-    expect(fetchDetail).toHaveBeenCalledExactlyOnceWith(row.id);
+    expect(fetchDetail).toHaveBeenCalledExactlyOnceWith(row.id, expect.any(AbortSignal), 15_000);
 
     await act(async () => response.resolve(detail(row.id!)));
     for (const layout of [desktop, mobile]) {
@@ -107,15 +117,16 @@ describe('compact archive row details', () => {
   });
 
   it('limits View All Details requests and loads each project once across both layouts', async () => {
-    const rows = Array.from({length: 5}, (_, index) => compactRow(`all-details-${index}`));
+    const rows = Array.from({length: PROJECT_DETAIL_CONCURRENCY + 1}, (_, index) => compactRow(`all-details-${index}`));
     const responses = new Map(rows.map((row) => [row.id!, deferredDetail()]));
     fetchDetail.mockImplementation((id: string) => responses.get(id)!.promise);
     const {desktop, mobile} = renderTable(rows);
+    showRowsPerPage(10);
     fireEvent.click(screen.getByRole('button', {name: 'View All Details'}));
-    expect(fetchDetail).toHaveBeenCalledTimes(4);
+    expect(fetchDetail).toHaveBeenCalledTimes(PROJECT_DETAIL_CONCURRENCY);
     const firstId = fetchDetail.mock.calls[0][0] as string;
     await act(async () => responses.get(firstId)!.resolve(detail(firstId)));
-    expect(fetchDetail).toHaveBeenCalledTimes(5);
+    expect(fetchDetail).toHaveBeenCalledTimes(rows.length);
     await act(async () => {
       rows.forEach((row) => responses.get(row.id!)!.resolve(detail(row.id!)));
     });
@@ -125,7 +136,7 @@ describe('compact archive row details', () => {
     }
     fireEvent.click(screen.getByRole('button', {name: 'Hide All Details'}));
     fireEvent.click(screen.getByRole('button', {name: 'View All Details'}));
-    expect(fetchDetail).toHaveBeenCalledTimes(5);
+    expect(fetchDetail).toHaveBeenCalledTimes(rows.length);
   });
 
   it('preserves saved snapshot fields and does not request details for existing content', () => {
@@ -138,21 +149,22 @@ describe('compact archive row details', () => {
   });
 
   it('skips queued work after collapsing all rows and loads it when reopened', async () => {
-    const rows = Array.from({length: 5}, (_, index) => compactRow(`collapse-details-${index}`));
+    const rows = Array.from({length: PROJECT_DETAIL_CONCURRENCY + 1}, (_, index) => compactRow(`collapse-details-${index}`));
     const responses = new Map(rows.map((row) => [row.id!, deferredDetail()]));
     fetchDetail.mockImplementation((id: string) => responses.get(id)!.promise);
     const {desktop} = renderTable(rows);
+    showRowsPerPage(10);
     fireEvent.click(screen.getByRole('button', {name: 'View All Details'}));
-    expect(fetchDetail).toHaveBeenCalledTimes(4);
+    expect(fetchDetail).toHaveBeenCalledTimes(PROJECT_DETAIL_CONCURRENCY);
     const requestedIds = fetchDetail.mock.calls.map(([id]) => id as string);
     const queuedId = rows.find((row) => !requestedIds.includes(row.id!))!.id!;
     fireEvent.click(screen.getByRole('button', {name: 'Hide All Details'}));
     await act(async () => {
       requestedIds.forEach((id) => responses.get(id)!.resolve(detail(id)));
     });
-    expect(fetchDetail).toHaveBeenCalledTimes(4);
+    expect(fetchDetail).toHaveBeenCalledTimes(PROJECT_DETAIL_CONCURRENCY);
     fireEvent.click(screen.getByRole('button', {name: 'View All Details'}));
-    expect(fetchDetail).toHaveBeenCalledTimes(5);
+    expect(fetchDetail).toHaveBeenCalledTimes(rows.length);
     await act(async () => responses.get(queuedId)!.resolve(detail(queuedId)));
     expect(desktop.getByText(`Abstract ${queuedId}`)).toBeInTheDocument();
   });
