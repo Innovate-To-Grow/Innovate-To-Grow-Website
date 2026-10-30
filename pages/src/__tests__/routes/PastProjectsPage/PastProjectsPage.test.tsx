@@ -12,6 +12,7 @@ import {
 
 const {
     addedRow,
+    authState,
     mockNavigate,
     mockRetryShare,
     sampleRow,
@@ -42,7 +43,13 @@ const {
         mockNavigate: vi.fn(),
         mockRetryShare: vi.fn(),
         sharedState: {share: null as unknown, shareError: null as string | null, shareNotFound: false},
+        authState: {user: null as {member_uuid: string} | null},
     };
+});
+
+vi.mock('@/features/auth', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/features/auth')>();
+    return {...actual, useAuth: () => ({...actual.useAuth(), user: authState.user})};
 });
 
 vi.mock('react-router', async (importOriginal) => {
@@ -118,6 +125,7 @@ describe('PastProjectsPage', () => {
         sharedState.share = null;
         sharedState.shareError = null;
         sharedState.shareNotFound = false;
+        authState.user = null;
         mockNavigate.mockReset();
         mockRetryShare.mockReset();
         vi.mocked(createPastProjectShare).mockReset();
@@ -172,6 +180,35 @@ describe('PastProjectsPage', () => {
                 version: 4,
             }),
         );
+    });
+
+    it("asks again whether the viewer may edit a curation once they sign out or switch accounts", () => {
+        // can_edit is the server's answer for whoever was signed in when the curation loaded.
+        authState.user = {member_uuid: 'owner-1'};
+        sharedState.share = shareFixture();
+        const {rerender} = renderPage();
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).not.toHaveBeenCalled();
+
+        authState.user = null;
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).toHaveBeenCalledTimes(1);
+
+        authState.user = {member_uuid: 'someone-else'};
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).toHaveBeenCalledTimes(2);
     });
 
     it('titles a share stored without a name with the default curation title', async () => {

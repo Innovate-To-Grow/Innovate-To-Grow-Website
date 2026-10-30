@@ -1,5 +1,6 @@
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
 import {useLocation, useNavigate, useParams, useSearchParams} from 'react-router';
+import {useAuth} from '@/features/auth';
 import {MyCurationsPanel, PastProjectsBuilder, createProjectGridItems} from '@/features/projects';
 import {getEarliestTermYear} from '@/features/projects/components/grid/contracts/projectGrid';
 import {usePastProjectGridData, usePastProjectShareData} from '@/features/projects/hooks/useProjectGridData';
@@ -26,6 +27,14 @@ export const PastProjectsPage = () => {
     notFound: shareNotFound,
     retry: retryShare,
   } = usePastProjectShareData(shareId);
+  // Whether the viewer may edit (`can_edit`) is the server's answer for whoever was signed in when the share
+  // loaded. Signing out (or into another account) without a reload asks again, so the owner's controls go.
+  const viewerId = useAuth().user?.member_uuid ?? null;
+  const [shareViewerId, setShareViewerId] = useState(viewerId);
+  if (viewerId !== shareViewerId) {
+    setShareViewerId(viewerId);
+    retryShare();
+  }
   const {activeShare, setEditableShare, conflictMessage, updateShare, addShareRows} = useSharedListMutations(
     shareId,
     share,
