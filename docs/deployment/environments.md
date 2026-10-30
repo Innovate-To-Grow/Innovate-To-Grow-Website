@@ -217,69 +217,30 @@ IP-independent bound on request count, `POST /analytics/pageview/` and
 
 Route-redirect synchronization uses the ECS task role through boto3's ambient credentials. Scope that role to `amplify:GetApp` and `amplify:UpdateApp` for the environment's specific Amplify app ARN; do not reuse the database-managed SES/SNS credentials for this operation. The backend worker is the only repository-managed writer of the full Amplify custom-rule list; it reconciles the sitemap, API, optional admin/static/media proxies, CMS 301s, and final SPA fallback while preserving unrelated rules. The frontend deploy workflow publishes assets only and must not call `UpdateApp`. Without the app ID, IAM permission, or an enabled background worker, the existing CMS SPA fallback remains available and the admin reports edge synchronization as pending or failed.
 
-The backend deployment defaults `AMPLIFY_BACKEND_PROXY_URL` to the target's
-direct API origin (`api.i2g.ucmerced.edu` for production and
-`demo-api.i2g.ucmerced.edu` for demo) and defaults admin-path proxying to false
-for production and true for demo. Set the same values in each target's ECS
-GitHub Environment if overriding them. `AMPLIFY_CONFIG_REVISION` is stamped by
-the workflow from GitHub's numeric run ID and attempt; do not define or override
-it in a GitHub Environment. If `BACKGROUND_JOB_METRICS_NAMESPACE`
-is enabled, also grant the task role `cloudwatch:PutMetricData`; leaving it
-empty avoids that permission and does not affect job processing.
+The backend deployment defaults `AMPLIFY_BACKEND_PROXY_URL` to
+`https://api.i2g.ucmerced.edu` and admin-path proxying to false. Set these values
+in the `AWS ECS - Prod` GitHub Environment if overriding them.
+`AMPLIFY_CONFIG_REVISION` is stamped by the workflow from GitHub's numeric run
+ID and attempt; do not define or override it in a GitHub Environment. If
+`BACKGROUND_JOB_METRICS_NAMESPACE` is enabled, also grant the task role
+`cloudwatch:PutMetricData`; leaving it empty avoids that permission and does not
+affect job processing.
 
 ### Production targets
 
-The deploy workflows run separate GitHub Environment targets for production and
-demo. The demo target is intended to use isolated backend data and deployment
-resources while sharing the same source code and container image.
+The deploy workflows target the production backend, frontend, and archive.
 
 | GitHub Environment | Purpose |
 |--------------------|---------|
-| `Production Deployments` | Single required-reviewer gate shared by every production deployment |
-| `AWS ECS - Prod` | Existing production backend |
-| `AWS ECS(DEMO) - Prod` | Demo backend, default admin URL `https://demo.i2g.ucmerced.edu/admin` |
-| `AWS Amplify - Prod` | Existing production frontend |
-| `AWS Amplify(DEMO) - Prod` | Demo frontend, default URL `https://demo.i2g.ucmerced.edu` |
+| `Manual Deployment Approval` | Single required-reviewer gate shared by every production deployment |
+| `AWS ECS - Prod` | Production backend |
+| `AWS Amplify - Prod` | Production frontend |
 | `AWS ECS - Archive Prod` | Archived event-pages ECS service |
 
-Keep required reviewers on `Production Deployments`. The five target
-environments continue to provide target-specific variables, secrets, URLs, and
-deployment history, but must not also require reviewers after the unified gate
-has been verified; otherwise GitHub requests a second approval.
-
-### Demo target values
-
-The demo site is deployed as a separate frontend, backend service, static asset
-bucket, and PostgreSQL database. To keep demo cost low, the demo database is a
-separate logical database on the existing RDS instance, not a second RDS
-instance.
-
-| Setting | Value |
-|---------|-------|
-| Frontend URL | `https://demo.i2g.ucmerced.edu` |
-| Admin URL | `https://demo.i2g.ucmerced.edu/admin` |
-| Direct backend origin | `https://demo-api.i2g.ucmerced.edu` |
-| Amplify app id | `d216f5mwm2zgtd` |
-| Amplify branch | `main` |
-| ECS cluster | `itg-backend-cluster` |
-| ECS service | `itg-backend-demo-service` |
-| ECS task family | `itg-backend-demo` |
-| ECS log group | `/ecs/itg-backend-demo` |
-| Database host | `i2g-prod-postgres-west2.cerh6zqru5na.us-west-2.rds.amazonaws.com` |
-| Database name | `innovate_to_grow_demo` |
-| S3 static/media bucket | `itg-demo-static-assets` |
-
-Configure `AWS Amplify(DEMO) - Prod` with `AMPLIFY_APP_ID=d216f5mwm2zgtd`,
-`AMPLIFY_BRANCH=main`, `FRONTEND_URL=https://demo.i2g.ucmerced.edu`,
-`VITE_API_BASE_URL=https://demo.i2g.ucmerced.edu/api`,
-`AMPLIFY_BACKEND_PROXY_URL=https://demo-api.i2g.ucmerced.edu`, and
-`AMPLIFY_PROXY_ADMIN_PATHS=true`.
-
-Configure `AWS ECS(DEMO) - Prod` with the ECS, database, URL, CORS/CSRF, and
-S3 values above. Reuse the existing deployment AWS credentials and secret ARN
-variables for `DJANGO_SECRET_KEY`, `DB_PASSWORD`, and
-`DJANGO_SUPERUSER_PASSWORD` unless separate demo credentials are intentionally
-created.
+Keep required reviewers on `Manual Deployment Approval`. The three target
+environments provide target-specific variables, secrets, URLs, and deployment
+history, but must not also require reviewers after the unified gate has been
+verified; otherwise GitHub requests a second approval.
 
 ### Google Sheets
 

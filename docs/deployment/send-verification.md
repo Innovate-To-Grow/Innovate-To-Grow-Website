@@ -527,8 +527,8 @@ destinations. Events include `challenge_issued`, `challenge_consumed`,
 and `cleanup`. Do not log OTPs, HMAC secrets, or full proof payloads.
 
 Production logs are plain text lines (`LEVEL time module pid tid message`) in
-the task's CloudWatch Logs group (`ECS_LOG_GROUP`, default `/ecs/itg-backend`;
-demo `/ecs/itg-backend-demo`), `ecs/` streams for web and `worker/` for the
+the task's CloudWatch Logs group (`ECS_LOG_GROUP`, default `/ecs/itg-backend`),
+`ecs/` streams for web and `worker/` for the
 worker. Two log alarms and one storage alarm (below) are worth creating now:
 
 | Signal | Filter pattern | Meaning |

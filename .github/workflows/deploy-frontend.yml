@@ -18,26 +18,12 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy Frontend (${{ matrix.target }})
+    name: Deploy Frontend
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: prod
-            environment_name: AWS Amplify - Prod
-            environment_url: https://i2g.ucmerced.edu
-            frontend_url: https://i2g.ucmerced.edu
-            api_base_url: https://api.i2g.ucmerced.edu
-          - target: demo
-            environment_name: AWS Amplify(DEMO) - Prod
-            environment_url: https://demo.i2g.ucmerced.edu
-            frontend_url: https://demo.i2g.ucmerced.edu
-            api_base_url: https://demo.i2g.ucmerced.edu/api
     environment:
-      name: ${{ matrix.environment_name }}
-      url: ${{ matrix.environment_url }}
+      name: AWS Amplify - Prod
+      url: https://i2g.ucmerced.edu
     defaults:
       run:
         working-directory: pages
@@ -50,7 +36,7 @@ jobs:
 
       - name: Validate required deploy configuration
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
           AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
         run: |
           if [ -z "$AMPLIFY_APP_ID" ]; then
@@ -75,7 +61,7 @@ jobs:
       - name: Build frontend
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -155,8 +141,8 @@ jobs:
 
       - name: Smoke check deployed frontend
         env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || matrix.frontend_url }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || matrix.api_base_url }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || secrets.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
         run: |
           set -euo pipefail
 

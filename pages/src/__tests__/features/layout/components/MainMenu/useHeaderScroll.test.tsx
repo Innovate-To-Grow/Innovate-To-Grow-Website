@@ -2,10 +2,9 @@ import {act, cleanup, renderHook} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {
-  BAND_HIDE_AFTER_PX,
-  BAND_SHOW_BELOW_PX,
-  nextBandHidden,
-  useHeaderBandHidden,
+  CONDENSE_HYSTERESIS_PX,
+  nextCondensed,
+  useHeaderCondensed,
   useHeaderMetrics,
 } from '@/features/layout/components/MainMenu/useHeaderScroll';
 
@@ -13,7 +12,7 @@ const setScrollY = (value: number) => {
   Object.defineProperty(window, 'scrollY', {configurable: true, value});
 };
 
-const HEIGHT_PROPERTIES = ['--itg-header-bar-height', '--itg-header-band-height', '--itg-header-menu-height'];
+const HEIGHT_PROPERTIES = ['--itg-header-bar-height', '--itg-header-menu-height'];
 
 const publishedHeights = () => HEIGHT_PROPERTIES.map((property) => document.documentElement.style.getPropertyValue(property));
 
@@ -22,14 +21,13 @@ const setHeight = (element: HTMLElement, height: number) => {
     ({height, width: 0, top: 0, left: 0, right: 0, bottom: height, x: 0, y: 0, toJSON: () => ({})}) as DOMRect;
 };
 
-/** A header with its bar, phone band and menu row, each a known height. */
+/** A header with its bar and menu row, each a known height. */
 const makeMeasuredHeader = () => {
   const header = document.createElement('header');
   const parts = Object.fromEntries(
     (
       [
         ['bar', 'site-header-bar', 85],
-        ['band', 'site-header-band', 74],
         ['menu', 'site-header-menu', 40],
       ] as const
     ).map(([key, className, height]) => {
@@ -39,7 +37,7 @@ const makeMeasuredHeader = () => {
       header.appendChild(element);
       return [key, element];
     }),
-  ) as Record<'bar' | 'band' | 'menu', HTMLDivElement>;
+  ) as Record<'bar' | 'menu', HTMLDivElement>;
   return {ref: {current: header}, ...parts};
 };
 
@@ -76,23 +74,22 @@ const installResizeObserverStub = () => {
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);
 };
 
-/** A header whose phone site-name band is `height` px tall (the room #menu-root reserves for it). */
-const makeHeaderRef = (height: number) => {
-  const header = document.createElement('header');
-  const band = document.createElement('div');
-  band.className = 'site-header-band';
-  band.getBoundingClientRect = () =>
-    ({height, width: 0, top: 0, left: 0, right: 0, bottom: height, x: 0, y: 0, toJSON: () => ({})}) as DOMRect;
-  header.appendChild(band);
-  return {current: header, band};
-};
-
 /** Runs each requested animation frame straight away. */
 const runFramesImmediately = () =>
   vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
     callback(0);
     return 1;
   });
+
+/** Collects requested animation frames so a test can run them one at a time. */
+const collectFrames = () => {
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    frames.push(callback);
+    return frames.length;
+  });
+  return frames;
+};
 
 const scrollTo = (value: number) =>
   act(() => {
@@ -108,116 +105,128 @@ afterEach(() => {
   for (const property of HEIGHT_PROPERTIES) document.documentElement.style.removeProperty(property);
 });
 
-describe('nextBandHidden', () => {
-  it('without reserved room, hides past the threshold and only shows again near the top', () => {
-    expect(nextBandHidden(false, BAND_HIDE_AFTER_PX)).toBe(false);
-    expect(nextBandHidden(false, BAND_HIDE_AFTER_PX + 1)).toBe(true);
-    expect(nextBandHidden(true, BAND_SHOW_BELOW_PX + 10)).toBe(true);
-    expect(nextBandHidden(true, BAND_SHOW_BELOW_PX)).toBe(true);
-    expect(nextBandHidden(true, BAND_SHOW_BELOW_PX - 1)).toBe(false);
+describe('nextCondensed', () => {
+  it('condenses once the bar has scrolled away, and lets go just before the row unpins', () => {
+    expect(nextCondensed(false, 84, 85)).toBe(false);
+    expect(nextCondensed(false, 85, 85)).toBe(true);
+    expect(nextCondensed(true, 85 - CONDENSE_HYSTERESIS_PX, 85)).toBe(true);
+    expect(nextCondensed(true, 85 - CONDENSE_HYSTERESIS_PX - 1, 85)).toBe(false);
+    // Inside the hysteresis band the state depends on where it came from.
+    expect(nextCondensed(false, 81, 85)).toBe(false);
+    expect(nextCondensed(true, 81, 85)).toBe(true);
   });
 
-  it('keeps the band while its reserved room is still under the bar, then hides it', () => {
-    // Hiding at 41..84px would uncover the empty room the page keeps for the band.
-    expect(nextBandHidden(false, BAND_HIDE_AFTER_PX + 1, 84)).toBe(false);
-    expect(nextBandHidden(false, 84, 84)).toBe(false);
-    expect(nextBandHidden(false, 85, 84)).toBe(true);
-  });
-
-  it('brings the band back as soon as its reserved room scrolls into view again', () => {
-    expect(nextBandHidden(true, 300, 84)).toBe(true);
-    expect(nextBandHidden(true, 84, 84)).toBe(true);
-    expect(nextBandHidden(true, 83, 84)).toBe(false);
-    // The case that used to leave an empty strip: back up to 20px, above the 4px show threshold.
-    expect(nextBandHidden(true, 20, 84)).toBe(false);
-  });
-
-  it('ignores a missing or invalid reserved height', () => {
-    expect(nextBandHidden(true, 20, 0)).toBe(true);
-    expect(nextBandHidden(true, 20, Number.NaN)).toBe(true);
-    expect(nextBandHidden(false, BAND_HIDE_AFTER_PX + 1, -5)).toBe(true);
+  it('never condenses without a measured height', () => {
+    expect(nextCondensed(false, 500, 0)).toBe(false);
+    expect(nextCondensed(true, 500, Number.NaN)).toBe(false);
+    expect(nextCondensed(true, 500, -5)).toBe(false);
   });
 });
 
-describe('useHeaderBandHidden', () => {
-  it('starts hidden when the page loads already scrolled', () => {
+describe('useHeaderCondensed', () => {
+  it('starts condensed when the page loads already scrolled past the bar', () => {
     setScrollY(300);
-    const {result} = renderHook(() => useHeaderBandHidden());
-    expect(result.current).toBe(true);
+    const {ref} = makeMeasuredHeader();
+    const {result} = renderHook(() => useHeaderCondensed(ref));
+    expect(result.current.isCondensed).toBe(true);
   });
 
-  it('shows the band on load when its reserved room is still in view', () => {
-    setScrollY(60);
-    const {current} = makeHeaderRef(84);
-    const {result} = renderHook(() => useHeaderBandHidden({current}));
-    expect(result.current).toBe(false);
-  });
-
-  it('hides on the way down only after the reserved room is gone, and reveals it on the way back up', () => {
+  it('condenses when the menu row pins and goes back near the top', () => {
     runFramesImmediately();
-    const {current} = makeHeaderRef(84);
-    const {result} = renderHook(() => useHeaderBandHidden({current}));
-    expect(result.current).toBe(false);
+    const {ref} = makeMeasuredHeader();
+    // The 85px bar is above the row: it pins at 85px.
+    const {result} = renderHook(() => useHeaderCondensed(ref));
+    expect(result.current.isCondensed).toBe(false);
 
     scrollTo(60);
-    expect(result.current).toBe(false);
-    scrollTo(300);
-    expect(result.current).toBe(true);
-
-    // Scrolling back up: hidden while the room is still above the viewport...
-    scrollTo(120);
-    expect(result.current).toBe(true);
-    // ...and back the moment it would show as an empty strip under the bar.
-    scrollTo(20);
-    expect(result.current).toBe(false);
-
-    scrollTo(300);
-    expect(result.current).toBe(true);
-    scrollTo(0);
-    expect(result.current).toBe(false);
+    expect(result.current.isCondensed).toBe(false);
+    scrollTo(85);
+    expect(result.current.isCondensed).toBe(true);
+    scrollTo(81);
+    expect(result.current.isCondensed).toBe(true);
+    scrollTo(76);
+    expect(result.current.isCondensed).toBe(false);
   });
 
-  it('re-checks on resize, when the band height can change', () => {
+  it('condenses the phone header too, once the page has scrolled by its 61px bar', () => {
+    runFramesImmediately();
+    const {ref, bar} = makeMeasuredHeader();
+    setHeight(bar, 61);
+    const {result} = renderHook(() => useHeaderCondensed(ref));
+    scrollTo(60);
+    expect(result.current.isCondensed).toBe(false);
+    scrollTo(61);
+    expect(result.current.isCondensed).toBe(true);
+    scrollTo(53);
+    expect(result.current.isCondensed).toBe(true);
+    scrollTo(52);
+    expect(result.current.isCondensed).toBe(false);
+  });
+
+  it('never condenses without a bar above the row, or without a mounted header', () => {
+    runFramesImmediately();
+    const {ref, bar} = makeMeasuredHeader();
+    bar.remove();
+    const {result} = renderHook(() => useHeaderCondensed(ref));
+    scrollTo(900);
+    expect(result.current.isCondensed).toBe(false);
+
+    const {result: unmounted} = renderHook(() => useHeaderCondensed({current: null}));
+    scrollTo(900);
+    expect(unmounted.current.isCondensed).toBe(false);
+  });
+
+  it('re-checks on resize, when the bar height changes', () => {
     runFramesImmediately();
     setScrollY(100);
-    const {current, band} = makeHeaderRef(84);
-    const {result} = renderHook(() => useHeaderBandHidden({current}));
-    expect(result.current).toBe(true);
+    const {ref, bar} = makeMeasuredHeader();
+    const {result} = renderHook(() => useHeaderCondensed(ref));
+    expect(result.current.isCondensed).toBe(true);
 
-    // Wider layout: the band is taller than the scroll offset, so its room is in view again.
-    band.getBoundingClientRect = () =>
-      ({height: 110, width: 0, top: 0, left: 0, right: 0, bottom: 110, x: 0, y: 0, toJSON: () => ({})}) as DOMRect;
+    // The bar grows past the scroll offset: the row is no longer pinned.
+    setHeight(bar, 117);
     act(() => {
       window.dispatchEvent(new Event('resize'));
     });
-    expect(result.current).toBe(false);
+    expect(result.current.isCondensed).toBe(false);
   });
 
   it('coalesces scroll events into one update per animation frame', () => {
-    const frames: FrameRequestCallback[] = [];
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      frames.push(callback);
-      return frames.length;
-    });
-    const {result} = renderHook(() => useHeaderBandHidden());
+    const frames = collectFrames();
+    const {ref} = makeMeasuredHeader();
+    const {result} = renderHook(() => useHeaderCondensed(ref));
+    const pending = frames.length;
 
     act(() => {
-      setScrollY(200);
+      setScrollY(400);
       window.dispatchEvent(new Event('scroll'));
       window.dispatchEvent(new Event('scroll'));
       window.dispatchEvent(new Event('resize'));
     });
-    expect(frames).toHaveLength(1);
-    expect(result.current).toBe(false);
+    expect(frames).toHaveLength(pending + 1);
+    expect(result.current.isCondensed).toBe(false);
+
+    act(() => frames[pending](0));
+    expect(result.current.isCondensed).toBe(true);
+  });
+
+  it('turns motion on only after the first state has been painted', () => {
+    const frames = collectFrames();
+    const {ref} = makeMeasuredHeader();
+    const {result} = renderHook(() => useHeaderCondensed(ref));
+    expect(result.current.hasMotion).toBe(false);
 
     act(() => frames[0](0));
-    expect(result.current).toBe(true);
+    expect(result.current.hasMotion).toBe(false);
+    act(() => frames[1](0));
+    expect(result.current.hasMotion).toBe(true);
   });
 
   it('stops listening on unmount', () => {
     const cancel = vi.spyOn(window, 'cancelAnimationFrame');
     const raf = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(7);
-    const {unmount} = renderHook(() => useHeaderBandHidden());
+    const {ref} = makeMeasuredHeader();
+    const {unmount} = renderHook(() => useHeaderCondensed(ref));
     window.dispatchEvent(new Event('scroll'));
     unmount();
     expect(cancel).toHaveBeenCalledWith(7);
@@ -232,12 +241,12 @@ describe('useHeaderBandHidden', () => {
 describe('useHeaderMetrics', () => {
   it('publishes the measured heights before paint and watches each header part', () => {
     installResizeObserverStub();
-    const {ref, bar, band, menu} = makeMeasuredHeader();
+    const {ref, bar, menu} = makeMeasuredHeader();
     renderHook(() => useHeaderMetrics(ref));
 
-    expect(publishedHeights()).toEqual(['85px', '74px', '40px']);
+    expect(publishedHeights()).toEqual(['85px', '40px']);
     expect(ResizeObserverStub.instances).toHaveLength(1);
-    expect(ResizeObserverStub.instances[0].observed).toEqual([bar, band, menu]);
+    expect(ResizeObserverStub.instances[0].observed).toEqual([bar, menu]);
   });
 
   it('writes a reported resize on the next animation frame, once for any number of notifications', () => {
@@ -255,11 +264,11 @@ describe('useHeaderMetrics', () => {
     setHeight(bar, 96);
     observer.notify();
     observer.notify();
-    expect(publishedHeights()).toEqual(['85px', '74px', '40px']);
+    expect(publishedHeights()).toEqual(['85px', '40px']);
     expect(frames).toHaveLength(1);
 
     act(() => frames[0](0));
-    expect(publishedHeights()).toEqual(['96px', '74px', '40px']);
+    expect(publishedHeights()).toEqual(['96px', '40px']);
 
     // Converged: the next notification schedules a frame that rewrites nothing.
     const setProperty = vi.spyOn(document.documentElement.style, 'setProperty');
@@ -272,20 +281,20 @@ describe('useHeaderMetrics', () => {
     vi.stubGlobal('ResizeObserver', undefined);
     const {ref, menu} = makeMeasuredHeader();
     const {unmount} = renderHook(() => useHeaderMetrics(ref));
-    expect(publishedHeights()).toEqual(['85px', '74px', '40px']);
+    expect(publishedHeights()).toEqual(['85px', '40px']);
 
     setHeight(menu, 48);
     act(() => {
       window.dispatchEvent(new Event('resize'));
     });
-    expect(publishedHeights()).toEqual(['85px', '74px', '48px']);
+    expect(publishedHeights()).toEqual(['85px', '48px']);
 
     unmount();
     setHeight(menu, 60);
     act(() => {
       window.dispatchEvent(new Event('resize'));
     });
-    expect(publishedHeights()).toEqual(['85px', '74px', '48px']);
+    expect(publishedHeights()).toEqual(['85px', '48px']);
   });
 
   it('stops observing and drops a pending frame on unmount', () => {
@@ -305,7 +314,7 @@ describe('useHeaderMetrics', () => {
   it('does nothing without a mounted header', () => {
     installResizeObserverStub();
     renderHook(() => useHeaderMetrics({current: null}));
-    expect(publishedHeights()).toEqual(['', '', '']);
+    expect(publishedHeights()).toEqual(['', '']);
     expect(ResizeObserverStub.instances).toHaveLength(0);
   });
 });
