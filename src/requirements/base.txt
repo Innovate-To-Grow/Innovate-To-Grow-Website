@@ -28,7 +28,11 @@ gspread>=6.2.1
 # Agents 0.21+ requires openai 3, while LiteLLM requires openai <3.
 # Revisit the cap when LiteLLM supports openai 3 (see PR #542).
 openai-agents[litellm]>=0.20.0,<0.21.0
-litellm>=1.103.2,<2.0
+# LiteLLM 1.104+ requires filelock <4.0, but the 2026-10 filelock advisories are
+# fixed only in 4.2.1. The 1.103.x backport line does not pin filelock, so it
+# resolves to a fixed 4.x. Lift the cap once a LiteLLM release allows
+# filelock >=4.2.1 (BerriAI/litellm#48394); keep in sync with .github/dependabot.yml.
+litellm>=1.103.10,<1.104
 
 # Email
 imap-tools>=1.16.0

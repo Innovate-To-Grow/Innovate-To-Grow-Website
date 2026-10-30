@@ -104,6 +104,41 @@ test("'left' image + text stacks the image above the text on phones", async ({pa
   expect(text.width).toBeCloseTo(content.width, 0);
 });
 
+// Tablets and phones: the column keeps the same 20px gutter on both sides (the reference's
+// phone column started at x = 39 but ended 20px from the right).
+for (const width of [320, 390, 767, 992]) {
+  test(`the content column has a 20px gutter on both sides at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 800});
+    await openImageTextPage(page, 'left');
+
+    const inset = await page.locator('.app-layout-main').evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return [Math.round(r.left), Math.round(document.documentElement.clientWidth - r.right)];
+    });
+    expect(inset).toEqual([20, 20]);
+  });
+}
+
+for (const width of [390, 767]) {
+  test(`the home page hero photo spans the whole ${width}px viewport`, async ({page}) => {
+    await page.setViewportSize({width, height: 800});
+    await mockCmsPage(page, 'home-hero', cmsPageResponse({
+      slug: 'home-hero', route: '/home-hero', title: 'Home', page_css_class: 'post-event-home-page',
+      blocks: [{block_type: 'rich_text', sort_order: 0, data: {
+        body_html: '<div class="peh-hero"><img class="peh-hero-img" src="/assets/about/engineering_capstone.webp" ' +
+          `alt="Showcase"></div><p>${PARAGRAPH}</p>`,
+      }}],
+    }));
+    await page.goto('/home-hero', {waitUntil: 'networkidle'});
+    await expect(page.getByRole('img', {name: 'Showcase'})).toBeVisible();
+
+    const hero = await box(page, '.peh-hero');
+    const viewport = await page.evaluate(() => document.documentElement.clientWidth);
+    expect([Math.round(hero.left), Math.round(hero.right)]).toEqual([0, viewport]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  });
+}
+
 test('hero, CTA, notice and numbered-list blocks render with the design system', async ({page}) => {
   await page.setViewportSize({width: 1280, height: 900});
   await mockCmsPage(page, 'new-blocks', cmsPageResponse({

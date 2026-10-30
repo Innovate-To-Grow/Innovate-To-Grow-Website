@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {fetchProjectDetail, type ProjectDetail} from '@/features/projects/api';
 import {fetchCurrentSchedule, type EventSchedulePayload} from '@/features/events/api';
-import {getPredominantTerm} from '../components/projectGrid';
+import {getPredominantTerm} from '../components/grid/contracts/projectGrid';
 import {currentScheduleClassLabels, currentScheduleToGridRows} from './useProjectGridData';
 
 /** Where a project page's data came from: this semester's schedule, or the published archive. */

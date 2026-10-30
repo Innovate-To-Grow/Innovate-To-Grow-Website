@@ -226,14 +226,6 @@ html:has(.post-event-home-page .peh-hero) {
   text-align: center;
 }
 
-/* Phones (<= 767px): the main column is offset (39px left, 20px right), so
-   the hero bleeds by the left padding instead of half the difference. */
-@media (max-width: 767px) {
-  .post-event-home-page .peh-hero {
-    margin-left: calc(100% + 20px - 100vw);
-  }
-}
-
 @media (max-width: 768px) {
   .event-grid,
   .peh-two-col {
