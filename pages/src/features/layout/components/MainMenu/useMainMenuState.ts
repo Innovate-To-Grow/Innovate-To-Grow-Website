@@ -5,6 +5,9 @@ import {type MenuItem} from '@/features/layout/api';
 
 const NO_MENU_ITEMS: MenuItem[] = [];
 
+/** The page content around the header root (pages/index.html). */
+const PAGE_ROOT_IDS = ['main', 'footer-root', 'chatbot-root'] as const;
+
 export const useMainMenuState = () => {
   const {menu, state} = useMenu();
   const {user, isAuthenticated, logout, refreshProfile} = useAuth();
@@ -56,9 +59,18 @@ export const useMainMenuState = () => {
     document.body.style.overflow = isMobileOpen ? 'hidden' : '';
     // Lets page-level sheets hide floating widgets (the UserWay button) behind the open phone menu.
     document.documentElement.classList.toggle('is-mobile-menu-open', isMobileOpen);
+    // The open phone menu covers the page under the bar, so screen readers must not reach it either.
+    // Only the roots this effect made inert are released again.
+    const covered = isMobileOpen
+      ? PAGE_ROOT_IDS.map((id) => document.getElementById(id)).filter(
+          (root): root is HTMLElement => root !== null && !root.hasAttribute('inert'),
+        )
+      : [];
+    for (const root of covered) root.setAttribute('inert', '');
     return () => {
       document.body.style.overflow = '';
       document.documentElement.classList.remove('is-mobile-menu-open');
+      for (const root of covered) root.removeAttribute('inert');
     };
   }, [isMobileOpen]);
 

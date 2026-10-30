@@ -1,0 +1,26 @@
+/* ==========================================================================
+   Projects pages (current projects, presenting teams, past projects, shared
+   lists). Generic pieces (buttons, fields, wells, panels, tables, tags,
+   pagination, empty states) come from the global class contract in the CMS
+   "global" sheet; this file only lays them out for the project pages.
+   Visual language: innovatetogrow.ucmerced.edu (UC Merced theme) -- 16px / 24px
+   #323336 text, underlined navy links, the current-projects DataTables table
+   (sort arrows, sorted-column shading, navy square detail buttons, the pager
+   right-aligned under the table).
+   ========================================================================== */
+
+/* The sections live in their owning feature areas. They are imported in
+   their original cascade order -- later files override earlier ones at equal
+   specificity, and projectsResponsive.css must stay last -- so do not reorder
+   this list, and add new rules to the file that owns them. */
+@import './projectsPage.css';
+@import '../../curations/panel/MyCurationsPanel.css';
+@import '../../grid/styles/gridControls.css';
+@import '../../grid/styles/gridTable.css';
+@import '../../grid/styles/gridList.css';
+@import '../../search/styles/searchTables.css';
+@import '../../merged/styles/mergedResults.css';
+@import '../../richText/editor/richTextEditor.css';
+@import '../../shared/styles/sharedList.css';
+@import '../../builder/dialog/dialog.css';
+@import './projectsResponsive.css';

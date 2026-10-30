@@ -10,15 +10,22 @@
 }
 
 .site-header-menu-inner {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 0 24px;
   min-height: 40px;
 }
 
+/* The menu always keeps room at its end for the condensed logo's slot (see
+   below), so pinning the row changes nothing in its layout. Short of room, the
+   utility block gives way first (the date, then the member label, down to
+   member.css's floor); the menu wraps only as the last resort, the same way at
+   the top and pinned. */
 .site-header-nav {
   flex: 1 1 auto;
   min-width: 0;
+  padding-right: var(--itg-menu-logo-slot);
 }
 
 @keyframes menuNavIntroFade {
@@ -100,5 +107,80 @@ a.menu-bar-link:focus {
   max-width: 100%;
   background: var(--itg-color-disabled-bg);
   animation: menu-bar-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+/* ---------- Condensed (pinned) row: the round i2G logo at its front ----------
+   32 x 32, centred in the 40px row at the content's left edge. The items move
+   aside by the logo slot (logo + 16px to "Home", less the item's own 5px
+   inset) with a transform, into the room the menu keeps at its end (above),
+   so nothing reflows when the state flips. useHeaderDateFit reads the slot. */
+.site-header {
+  --itg-menu-logo-slot: 43px;
+}
+
+.site-header-menu-logo {
+  position: absolute;
+  top: 4px;
+  left: var(--itg-page-gutter, 24px);
+  display: block;
+  width: 32px;
+  height: 32px;
+  line-height: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px) scale(0.88);
+  transform-origin: 0 50%;
+}
+
+.site-header-menu-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Shown while condensed, and while it still holds focus after a scroll back up
+   (focus is never left on a hidden element). */
+.site-header.is-condensed .site-header-menu-logo,
+.site-header-menu-inner:has(> .site-header-menu-logo:focus) > .site-header-menu-logo {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.site-header.is-condensed .menu-bar-list,
+.site-header-menu-inner:has(> .site-header-menu-logo:focus) .menu-bar-list {
+  transform: translateX(var(--itg-menu-logo-slot));
+}
+
+/* Pinned at y = 0, the global ring (2px outside) would lose its top edge. (The
+   logo sits 4px down, so its ring stays outside.) */
+.site-header.is-condensed .menu-bar-link:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Motion, only once MainMenu has settled the first state (.has-motion).
+   In: the items make room, then the logo lands. Out: the logo fades first, so
+   an item never passes over a visible logo. */
+.site-header.has-motion .menu-bar-list {
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1) 60ms;
+}
+
+.site-header.has-motion.is-condensed .menu-bar-list {
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.site-header.has-motion .site-header-menu-logo {
+  transition:
+    opacity 100ms ease-out,
+    transform 100ms ease-out,
+    visibility 0s linear 100ms;
+}
+
+.site-header.has-motion.is-condensed .site-header-menu-logo {
+  transition:
+    opacity 180ms ease-out 60ms,
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1) 60ms,
+    visibility 0s;
 }
 }

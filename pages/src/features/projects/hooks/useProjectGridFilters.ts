@@ -1,5 +1,5 @@
 import {useCallback, useMemo, useState} from 'react';
-import type {ProjectGridItem} from '@/features/projects/components/projectGrid';
+import type {ProjectGridItem} from '@/features/projects/components/grid/contracts/projectGrid';
 
 export interface ProjectGridFilterOption {
   value: string;

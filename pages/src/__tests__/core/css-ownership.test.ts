@@ -117,7 +117,7 @@ describe('selector ownership', () => {
 describe('ownership', () => {
   it('an @imported section belongs to the stylesheet that imports it', () => {
     const projects = join(SRC_DIR, 'features', 'projects', 'components');
-    expect(ownerOf(join(projects, 'grid', 'gridTable.css'))).toBe(join(projects, 'projects.css'));
+    expect(ownerOf(join(projects, 'grid', 'styles', 'gridTable.css'))).toBe(join(projects, 'styles', 'cascade', 'projects.css'));
     expect(ownerOf(join(SRC_DIR, 'index.css'))).toBe(join(SRC_DIR, 'index.css'));
   });
 });
