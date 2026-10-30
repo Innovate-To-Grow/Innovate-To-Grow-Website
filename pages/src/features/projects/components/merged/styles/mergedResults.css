@@ -192,4 +192,13 @@
 .project-grid-note-insert-option input {
   accent-color: var(--itg-color-primary);
 }
+
+/* Checked draft rows under forced colours, as in the search tables (searchTables.css). */
+@media (forced-colors: active) {
+  .project-grid-merged tr.project-grid-row.is-selected,
+  .project-grid-merged .project-grid-mobile-card.is-selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
 }

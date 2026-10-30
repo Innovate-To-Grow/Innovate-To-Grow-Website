@@ -316,4 +316,14 @@
     transform: rotate(360deg);
   }
 }
+
+/* Forced colours drop the tint that marks a checked row, leaving only its checkbox: outline the row (or phone
+   card) in the system's selection colour, which forced colours keep. An outline does not move the layout. */
+@media (forced-colors: active) {
+  .search-table-card tr.project-grid-row.is-selected,
+  .search-table-card .project-grid-mobile-card.is-selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
 }
