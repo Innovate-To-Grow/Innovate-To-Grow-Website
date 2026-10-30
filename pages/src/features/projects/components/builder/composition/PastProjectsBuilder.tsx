@@ -6,7 +6,7 @@ import {MERGED_RESULTS_ID, scrollToMergedResults, useKeepScrollAnchor} from '../
 import {useCurationDraft} from '../draft/useCurationDraft';
 import {useDraftHandover} from '../draft/useDraftHandover';
 import {useSaveSelectedRows} from '../selection/useSaveSelectedRows';
-import {ArchiveLoadFailed} from '../../search/cards/ArchiveLoadFailed';
+import {ArchiveLoadState} from '../../search/cards/ArchiveLoadState';
 import {SearchTableStack, type SharedCardProps} from '../../search/cards/SearchTableStack';
 import {useSearchTables} from '../../search/state/useSearchTables';
 import {MergedResultsTable, type PastProjectShareCreationResult} from '../../merged/composition/MergedResultsTable';
@@ -178,14 +178,15 @@ const BuilderSearchSection = ({
                 <AISearchLoginDialog draftRows={draftRows} onClose={() => setIsAISearchLoginDialogOpen(false)}/>
             ) : null}
 
-            {/* Holds about the first table's room (see searchTables.css), so nothing below it moves in when the
-                archive arrives. */}
-            {loading ? (
-                <p className="project-grid-state past-projects-builder-loading" role="status">
-                    Loading past projects...
-                </p>
-            ) : null}
-            {archiveUnavailable ? <ArchiveLoadFailed onRetry={onRefreshRows}/> : null}
+            {/* While loading, holds about the first table's room (see searchTables.css), so nothing below it moves
+                in when the archive arrives. */}
+            <ArchiveLoadState
+                loading={loading}
+                failed={archiveUnavailable}
+                onRetry={onRefreshRows}
+                headingId={headingId}
+                loadingClassName="past-projects-builder-loading"
+            />
 
             {!loading && !archiveUnavailable ? (
                 <SearchTableStack

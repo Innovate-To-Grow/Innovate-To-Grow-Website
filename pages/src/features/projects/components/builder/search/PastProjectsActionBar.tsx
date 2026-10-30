@@ -8,7 +8,7 @@ interface PastProjectsActionBarProps {
   loading: boolean;
   showHelp?: boolean;
   title?: string;
-  /** Id for the heading, so the section holding the tables can be labelled by it. */
+  /** Id for the heading, so the section holding the tables can be labelled by it (and focus moved to it). */
   headingId?: string;
   /** How the help text names each table's save button, where it saves to, and the saved-row tag. */
   saveLabel?: string;
@@ -148,7 +148,7 @@ export const PastProjectsActionBar = ({
   return (
     <div className="past-projects-action-bar">
       <div className="past-projects-action-bar-header">
-        <h2 id={headingId} className="project-grid-card-title past-projects-action-bar-title">
+        <h2 id={headingId} className="project-grid-card-title past-projects-action-bar-title" tabIndex={-1}>
           {title}
         </h2>
         <div className="past-projects-action-bar-group" role="group" aria-label="Add a table">

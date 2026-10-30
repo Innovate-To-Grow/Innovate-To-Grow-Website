@@ -113,9 +113,17 @@ describe('PastProjectsBuilder — status messages', () => {
     expect(status).toHaveTextContent('Refreshing this search table from the latest past-project archive...');
   });
 
-  it('announces that the archive is loading', () => {
-    renderBuilder({rows: [], loading: true});
+  it('announces that the archive is loading from a status line kept in the page', () => {
+    const {rerender} = renderBuilder({rows: [], loading: false, error: null});
+    const line = searchTablesSection().querySelector('.past-projects-loading-line');
+    expect(line).toHaveAttribute('role', 'status');
+    expect(line).toBeEmptyDOMElement();
 
-    expect(within(searchTablesSection()).getByText('Loading past projects...')).toHaveAttribute('role', 'status');
+    rerender(<PastProjectsBuilder rows={[]} loading error={null} onRefreshRows={vi.fn()} onCreateShare={vi.fn()} />);
+    expect(within(searchTablesSection()).getByText('Loading past projects...')).toBe(line);
+
+    rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onRefreshRows={vi.fn()} onCreateShare={vi.fn()} />);
+    expect(line).toBeInTheDocument();
+    expect(line).toBeEmptyDOMElement();
   });
 });

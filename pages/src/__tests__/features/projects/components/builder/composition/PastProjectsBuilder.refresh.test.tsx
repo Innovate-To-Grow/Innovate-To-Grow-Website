@@ -1,4 +1,5 @@
 import {cleanup, fireEvent, render, screen, within} from '@testing-library/react';
+import {useState} from 'react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {PastProjectsBuilder} from '@/features/projects/components/builder/composition/PastProjectsBuilder';
@@ -35,6 +36,32 @@ const REFRESH_FAILED = /This table was not refreshed: the past-project archive c
 
 const searchTable = (name: string) =>
   screen.getByRole('heading', {level: 3, name}).closest('section') as HTMLElement;
+
+interface Archive {
+  rows: ProjectGridRow[];
+  loading: boolean;
+  error: string | null;
+}
+
+/** The builder over an archive whose first load failed; Try again loads it again, as usePastProjectGridData does. */
+const RetryHarness = () => {
+  const [archive, setArchive] = useState<Archive>({rows: [], loading: false, error: RAW_ERROR});
+  return (
+    <>
+      <PastProjectsBuilder
+        {...archive}
+        onRefreshRows={() => setArchive({rows: [], loading: true, error: null})}
+        onCreateShare={vi.fn()}
+      />
+      <button type="button" onClick={() => setArchive({rows: [], loading: false, error: RAW_ERROR})}>
+        Fail the load
+      </button>
+      <button type="button" onClick={() => setArchive({rows: ROWS, loading: false, error: null})}>
+        Finish the load
+      </button>
+    </>
+  );
+};
 
 describe('PastProjectsBuilder — refreshing a search table', () => {
   const onRefreshRows = vi.fn();
@@ -114,5 +141,33 @@ describe('PastProjectsBuilder — refreshing a search table', () => {
     expect(screen.getByRole('button', {name: '+ Search Table'})).toBeDisabled();
     fireEvent.click(within(alert).getByRole('button', {name: 'Try again'}));
     expect(onRefreshRows).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps Try again, and its focus, while the retry loads, then hands focus to the Search Tables heading', () => {
+    render(<RetryHarness />);
+    const tryAgain = screen.getByRole('button', {name: 'Try again'});
+    tryAgain.focus();
+
+    fireEvent.click(tryAgain);
+    // Pressing it again while it loads starts nothing more.
+    fireEvent.click(tryAgain);
+    expect(tryAgain).toBeInTheDocument();
+    expect(tryAgain).toHaveFocus();
+    expect(tryAgain).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent('Loading past projects...');
+    expect(screen.getAllByText('Loading past projects...')).toHaveLength(1);
+
+    // A retry that fails again says so in the same alert, and Try again works again.
+    fireEvent.click(screen.getByRole('button', {name: 'Fail the load'}));
+    expect(screen.getByRole('alert')).toHaveTextContent('The past-project archive could not be loaded.');
+    expect(tryAgain).toHaveFocus();
+    expect(tryAgain).not.toHaveAttribute('aria-disabled');
+
+    fireEvent.click(tryAgain);
+    fireEvent.click(screen.getByRole('button', {name: 'Finish the load'}));
+    expect(tryAgain).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('heading', {level: 2, name: 'Search Tables'})).toHaveFocus();
+    expect(searchTable('Search Table')).toBeInTheDocument();
   });
 });

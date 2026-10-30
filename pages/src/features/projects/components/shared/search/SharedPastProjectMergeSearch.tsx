@@ -3,7 +3,7 @@ import {useAuth} from '@/features/auth';
 import {AISearchLoginDialog} from '../../builder/search/AISearchLoginDialog';
 import {PastProjectsActionBar} from '../../builder/search/PastProjectsActionBar';
 import {createProjectGridRowMatcher, type ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {ArchiveLoadFailed} from '../../search/cards/ArchiveLoadFailed';
+import {ArchiveLoadState} from '../../search/cards/ArchiveLoadState';
 import {SearchTableStack} from '../../search/cards/SearchTableStack';
 import {useSearchTables} from '../../search/state/useSearchTables';
 import {useAddToShare} from './useAddToShare';
@@ -74,12 +74,7 @@ export const SharedPastProjectMergeSearch = ({
 
       {isAISearchLoginDialogOpen ? <AISearchLoginDialog onClose={() => setIsAISearchLoginDialogOpen(false)} /> : null}
 
-      {loading ? (
-        <p className="project-grid-state" role="status">
-          Loading past projects...
-        </p>
-      ) : null}
-      {archiveUnavailable ? <ArchiveLoadFailed onRetry={onRefreshRows} /> : null}
+      <ArchiveLoadState loading={loading} failed={archiveUnavailable} onRetry={onRefreshRows} headingId={headingId} />
 
       {!loading && !archiveUnavailable ? (
         <SearchTableStack
