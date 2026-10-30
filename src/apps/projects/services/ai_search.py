@@ -3,7 +3,7 @@ import logging
 import re
 import uuid
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from django.db.models import Q, QuerySet
 
@@ -215,8 +215,8 @@ class PreparedPastProjectAISearch:
     prompt: str
     max_tokens: int
     estimated_input_tokens: int
-    # The ids the prompt offered: the only ones a reply may select.
-    candidate_ids: frozenset[str] = field(default_factory=frozenset)
+    # The ids the prompt offered: the only ones a reply may select. Required, because an empty set selects nothing.
+    candidate_ids: frozenset[str]
 
 
 def prepare_past_project_ai_search(
