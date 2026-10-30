@@ -30,6 +30,9 @@ NOTE_MAX_LENGTH = 50_000
 ROW_ABSTRACT_MAX_LENGTH = 20_000
 ROW_STUDENT_NAMES_MAX_LENGTH = 5_000
 MAX_SHARE_ROWS = 1000
+# Rows across all of one member's shares: about five copies of the whole archive. Each row is a catalog copy of up
+# to ~2 KB, so this bounds what one account stores at about 10 MB (100 full shares would be ~200 MB).
+MAX_MEMBER_SHARE_ROWS = 5000
 
 
 class StalePastProjectShareSnapshot(Exception):
@@ -131,6 +134,7 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("At least one row is required.")
         if len(value) > MAX_SHARE_ROWS:
             raise serializers.ValidationError(f"At most {MAX_SHARE_ROWS} rows may be shared.")
+        self._check_member_row_total(len(value))
         # Store what the archive says, never the text a client sent (services/share_rows.py).
         try:
             return rebuild_share_rows(value, stored_rows=self.instance.rows if self.instance else ())
@@ -139,6 +143,23 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"{exc.count} {projects} not in the published archive. Remove them and save again."
             ) from exc
+
+    def _check_member_row_total(self, row_count: int) -> None:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return
+        other_shares = PastProjectShare.objects.filter(created_by=user)
+        stored_count = 0
+        if self.instance is not None:
+            other_shares = other_shares.exclude(pk=self.instance.pk)
+            stored_count = len(self.instance.rows) if isinstance(self.instance.rows, list) else 0
+        # Only a write that adds rows is refused, so a member already past the bound can still edit and trim.
+        if row_count > stored_count and other_shares.row_total() + row_count > MAX_MEMBER_SHARE_ROWS:
+            raise serializers.ValidationError(
+                f"Your shared curations can hold up to {MAX_MEMBER_SHARE_ROWS:,} projects in all. "
+                "Remove some projects or delete a curation you no longer need, then save again."
+            )
 
     def get_share_url(self, obj):
         return _share_url(obj, self.context.get("request"))

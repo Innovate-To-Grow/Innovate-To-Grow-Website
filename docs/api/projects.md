@@ -78,7 +78,9 @@ Creates a versioned shared-project snapshot.
 
 **Throttle:** `PastProjectShareRateThrottle` — 10 requests/minute
 
-**Limit:** 100 shares per member; the 101st is a `400` with `code: "share_limit_reached"`.
+**Limit:** 100 shares per member; the 101st is a `400` with `code: "share_limit_reached"`. A share holds at most
+1,000 rows, and one member's shares at most 5,000 in all: a create or update that adds rows past that is a `400` on
+`rows` (an update that does not add rows is always allowed, so a member past the bound can still edit and trim).
 
 **Rows come from the catalog** (`apps/projects/services/share_rows.py`): each submitted row must name a published
 project, by `id` or (for a row without one) by Year-Semester + Class + Team#, and is stored as the archive has it —

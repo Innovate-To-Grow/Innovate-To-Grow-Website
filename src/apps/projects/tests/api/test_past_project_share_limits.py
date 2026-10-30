@@ -1,4 +1,6 @@
-"""What one member's shares may cost the service: how many, how fast they change, and what listing them loads."""
+"""What one member's shares may cost the service: how many, how many rows, how fast they change, what listing loads."""
+
+from unittest.mock import patch
 
 from django.conf import settings
 from django.db import connection
@@ -78,6 +80,57 @@ class PastProjectShareLimitsTests(PastProjectShareTestCase):
         self.assertEqual(len(share_selects), 1)
         self.assertNotIn('"projects_pastprojectshare"."rows",', share_selects[0])
         self.assertNotIn('"projects_pastprojectshare"."details_text"', share_selects[0])
+
+
+def _rows(count):
+    # Only a share's row count matters to the bound; each of these names a catalog project.
+    return [sample_row(team_number=f"T{n % 2 + 1:02d}") for n in range(count)]
+
+
+@patch("apps.projects.serializers.past_project_share.MAX_MEMBER_SHARE_ROWS", 5)
+class MemberShareRowTotalTests(PastProjectShareTestCase):
+    def test_create_is_refused_past_the_members_row_total(self):
+        PastProjectShare.objects.create(name="Kept", rows=_rows(4), created_by=self.member)
+
+        response = self.client.post("/projects/past-shares/", sample_payload(rows=_rows(2)), format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("up to 5 projects in all", response.data["rows"][0])
+        self.assertEqual(PastProjectShare.objects.filter(created_by=self.member).count(), 1)
+
+    def test_create_within_the_total_and_other_members_rows_are_allowed(self):
+        other = Member.objects.create_user(password="OtherPass123!", is_active=True)
+        PastProjectShare.objects.create(name="Theirs", rows=_rows(5), created_by=other)
+        PastProjectShare.objects.create(name="Kept", rows=_rows(3), created_by=self.member)
+
+        response = self.client.post("/projects/past-shares/", sample_payload(rows=_rows(2)), format="json")
+
+        self.assertEqual(response.status_code, 201)
+
+    def test_update_that_adds_rows_past_the_total_is_refused(self):
+        PastProjectShare.objects.create(name="Kept", rows=_rows(3), created_by=self.member)
+        share = PastProjectShare.objects.create(name="Edited", rows=_rows(2), created_by=self.member)
+
+        response = self.client.patch(
+            f"/projects/past-shares/{share.pk}/", {"rows": _rows(3), "version": share.version}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("rows", response.data)
+
+    def test_member_already_past_the_total_can_still_edit_and_trim(self):
+        PastProjectShare.objects.create(name="Kept", rows=_rows(5), created_by=self.member)
+        share = PastProjectShare.objects.create(name="Edited", rows=_rows(3), created_by=self.member)
+
+        same = self.client.patch(
+            f"/projects/past-shares/{share.pk}/", {"rows": _rows(3), "version": share.version}, format="json"
+        )
+        trimmed = self.client.patch(
+            f"/projects/past-shares/{share.pk}/", {"rows": _rows(1), "version": share.version + 1}, format="json"
+        )
+
+        self.assertEqual((same.status_code, trimmed.status_code), (200, 200))
+        self.assertEqual(len(trimmed.data["rows"]), 1)
 
 
 class AccountDeletionRemovesSharesTests(PastProjectShareTestCase):

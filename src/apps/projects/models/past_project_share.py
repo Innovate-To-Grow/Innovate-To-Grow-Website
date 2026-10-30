@@ -27,6 +27,10 @@ class PastProjectShareQuerySet(models.QuerySet):
         couple of MB each) are never loaded."""
         return self.defer("rows", "details_text").annotate(row_count=JSONArrayLength("rows"))
 
+    def row_total(self) -> int:
+        """How many rows these shares hold in all, counted by the database."""
+        return self.aggregate(total=models.Sum(JSONArrayLength("rows")))["total"] or 0
+
 
 class PastProjectShare(ProjectControlModel):
     name = models.CharField(max_length=200, default="")
