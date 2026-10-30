@@ -1,5 +1,6 @@
 import './MainMenu.css';
 import {useCallback, useMemo, useRef, useState, type MouseEvent} from 'react';
+import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
 import {useCurrentPathname} from '@/features/layout/hooks/useCurrentPathname';
 import {resolveSection} from '@/features/layout/sections';
 import {DesktopMenuNav} from './parts/DesktopMenuNav';
@@ -7,7 +8,8 @@ import {HeaderBar} from './parts/HeaderBar';
 import {MemberMenu} from './parts/MemberMenu';
 import {MobileMenuPanel} from './parts/MobileMenuPanel';
 import {formatMenuDate} from './parts/shared';
-import {useHeaderBandHidden, useHeaderMetrics} from './useHeaderScroll';
+import {useHeaderDateHidden} from './useHeaderDateFit';
+import {useHeaderCondensed, useHeaderMetrics} from './useHeaderScroll';
 import {useMainMenuState} from './useMainMenuState';
 
 interface MainMenuProps {
@@ -23,16 +25,15 @@ const skipToMain = (event: MouseEvent<HTMLAnchorElement>) => {
   main.focus();
 };
 
-const SiteNameBand = () => (
-  <div className="site-header-band">
-    <div className="site-header-container site-header-band-inner">
-      <a className="site-header-sitename" href="/">
-        <span className="site-header-sitename-title">Innovate To Grow</span>{' '}
-        <span className="site-header-sitename-subtitle">School of Engineering</span>
-      </a>
-    </div>
-  </div>
+/** The round i2G logo at the front of the menu row: shown only while the condensed row is pinned (menu-row.css). */
+const MenuRowLogo = () => (
+  <a className="site-header-menu-logo" href="/" aria-label="Innovate To Grow home">
+    <ResponsiveBrandImage brand="i2g" alt="" sizes="32px" />
+  </a>
 );
+
+const headerClassName = (flags: Record<string, boolean>) =>
+  ['site-header', ...Object.entries(flags).filter(([, on]) => on).map(([name]) => name)].join(' ');
 
 interface MemberMenuHandlerOptions {
   hasMemberIdentity: boolean;
@@ -100,7 +101,8 @@ export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMe
   const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const pathname = useCurrentPathname();
   const current = useMemo(() => resolveSection(menuItems, pathname), [menuItems, pathname]);
-  const isBandHidden = useHeaderBandHidden(headerRef);
+  const {isCondensed, hasMotion} = useHeaderCondensed(headerRef);
+  const isDateHidden = useHeaderDateHidden(headerRef);
   useHeaderMetrics(headerRef);
   const [today] = useState(() => formatMenuDate(new Date()));
   const memberMenuHandlers = useMemberMenuHandlers({
@@ -123,7 +125,12 @@ export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMe
   return (
     <header
       ref={headerRef}
-      className={`site-header${isBandHidden ? ' is-band-hidden' : ''}${isMobileOpen ? ' is-mobile-open' : ''}`}
+      className={headerClassName({
+        'is-condensed': isCondensed,
+        'has-motion': hasMotion,
+        'is-date-hidden': isDateHidden,
+        'is-mobile-open': isMobileOpen,
+      })}
       role="banner"
     >
       <a className="skip-link" href="#main" onClick={skipToMain}>
@@ -136,10 +143,9 @@ export const MainMenu = ({navigate = (to) => window.location.assign(to)}: MainMe
         onToggleMobileMenu={toggleMobileMenu}
       />
 
-      <SiteNameBand />
-
       <div className="site-header-menu">
         <div className="site-header-container site-header-menu-inner">
+          <MenuRowLogo />
           <DesktopMenuNav menu={menu} current={current} />
 
           <div className="site-header-utility">
