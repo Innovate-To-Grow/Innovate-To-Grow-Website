@@ -7,7 +7,7 @@ import {useCurationDraft} from '../draft/useCurationDraft';
 import {useDraftHandover} from '../draft/useDraftHandover';
 import {useSaveSelectedRows} from '../selection/useSaveSelectedRows';
 import {ArchiveLoadFailed} from '../../search/cards/ArchiveLoadFailed';
-import {SearchTableStack} from '../../search/cards/SearchTableStack';
+import {SearchTableStack, type SharedCardProps} from '../../search/cards/SearchTableStack';
 import {useSearchTables} from '../../search/state/useSearchTables';
 import {MergedResultsTable, type PastProjectShareCreationResult} from '../../merged/composition/MergedResultsTable';
 import type {ListMessage} from '../../merged/list/useMergedList';
@@ -127,6 +127,91 @@ const BuilderSavedResults = ({draft, pendingSaveCount, message, onCreateShare}: 
  * draft (kept in localStorage) until it is saved as a curation. State lives in `builder/draft/useCurationDraft`,
  * `search/state/useSearchTables` and `builder/selection/useSaveSelectedRows`.
  */
+interface BuilderSearchSectionProps {
+    tables: ReturnType<typeof useSearchTables>;
+    /** What the search tables did (a refresh, …), under their heading. */
+    tablesMessage: string;
+    rows: ProjectGridRow[];
+    loading: boolean;
+    error: string | null;
+    initialSearch: string;
+    isAuthenticated: boolean;
+    /** The draft, carried to the full page when AI search asks a widget visitor to sign in. */
+    draftRows: ProjectGridRow[];
+    cardProps: SharedCardProps;
+    onRefreshRows?: () => void;
+}
+
+/** The Search Tables section: its action bar, the archive's loading or failure, and the tables. */
+const BuilderSearchSection = ({
+                                  tables,
+                                  tablesMessage,
+                                  rows,
+                                  loading,
+                                  error,
+                                  initialSearch,
+                                  isAuthenticated,
+                                  draftRows,
+                                  cardProps,
+                                  onRefreshRows,
+                              }: BuilderSearchSectionProps) => {
+    const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
+    const headingId = useId();
+    // A failed refresh keeps the archive it had, and the table that asked reports it; only a first load that
+    // failed leaves nothing to search.
+    const archiveUnavailable = Boolean(error) && !rows.length;
+
+    return (
+        <section className="past-projects-search-tables" aria-labelledby={headingId}>
+            <PastProjectsActionBar
+                headingId={headingId}
+                builderMessage={tablesMessage}
+                error={archiveUnavailable ? error : null}
+                loading={loading}
+                aiSearchDisabled={tables.hasAISearchTable}
+                aiSearchLoginRequired={!isAuthenticated}
+                onAddAISearchTable={() => {
+                    if (!tables.addAISearchTable()) {
+                        setIsAISearchLoginDialogOpen(true);
+                    }
+                }}
+                onAddSearchTable={tables.addSearchTable}
+            />
+
+            {isAISearchLoginDialogOpen ? (
+                <AISearchLoginDialog draftRows={draftRows} onClose={() => setIsAISearchLoginDialogOpen(false)}/>
+            ) : null}
+
+            {/* Holds about the first table's room (see searchTables.css), so nothing below it moves in when the
+                archive arrives. */}
+            {loading ? (
+                <p className="project-grid-state past-projects-builder-loading" role="status">
+                    Loading past projects...
+                </p>
+            ) : null}
+            {archiveUnavailable ? <ArchiveLoadFailed onRetry={onRefreshRows}/> : null}
+
+            {!loading && !archiveUnavailable ? (
+                <SearchTableStack
+                    tables={tables}
+                    idPrefix={TABLE_ID_PREFIX}
+                    rows={rows}
+                    initialSearch={initialSearch}
+                    isAuthenticated={isAuthenticated}
+                    canRefresh={Boolean(onRefreshRows)}
+                    cardProps={cardProps}
+                    copy={{
+                        aiDescription:
+                            'Use AI to load matching past projects into this table, then check the projects you want and click Add to Curation.',
+                        noTablesMessage:
+                            'No search tables are open. Add a new table to start searching past projects.',
+                    }}
+                />
+            ) : null}
+        </section>
+    );
+};
+
 export const PastProjectsBuilder = ({
                                         error,
                                         loading,
@@ -140,8 +225,6 @@ export const PastProjectsBuilder = ({
     const [tablesMessage, setTablesMessage] = useState('');
     const [draftMessage, setDraftMessage] = useState<ListMessage | null>(null);
     const reportDraftChange = useCallback((text: string) => setDraftMessage({text}), []);
-    const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
-    const searchTablesHeadingId = useId();
 
     const draft = useCurationDraft(reportDraftChange);
     // Keep the table that was saved from where it was on screen while the saved results change above it.
@@ -166,17 +249,8 @@ export const PastProjectsBuilder = ({
 
     const {isCreatingShare, handleCreateShare} = useDraftShareCreation(onCreateShare, draft.dropShared);
 
-    const handleAddAISearchTable = () => {
-        if (!tables.addAISearchTable()) {
-            setIsAISearchLoginDialogOpen(true);
-        }
-    };
-
     // Lets a search table mark the projects that are already saved.
     const isRowSaved = useMemo(() => createProjectGridRowMatcher(draft.mergedRows).has, [draft.mergedRows]);
-    // A failed refresh keeps the archive it had, and the table that asked reports it; only a first load that
-    // failed leaves nothing to search.
-    const archiveUnavailable = Boolean(error) && !rows.length;
     const showSavedResults = draft.mergedRows.length > 0 || draft.canUndo;
     // A card shown again later starts with an empty status line, not with what it said before it went.
     if (!showSavedResults && draftMessage) {
@@ -194,59 +268,25 @@ export const PastProjectsBuilder = ({
                 />
             ) : null}
 
-            <section className="past-projects-search-tables" aria-labelledby={searchTablesHeadingId}>
-                <PastProjectsActionBar
-                    headingId={searchTablesHeadingId}
-                    builderMessage={tablesMessage}
-                    error={archiveUnavailable ? error : null}
-                    loading={loading}
-                    aiSearchDisabled={tables.hasAISearchTable}
-                    aiSearchLoginRequired={!isAuthenticated}
-                    onAddAISearchTable={handleAddAISearchTable}
-                    onAddSearchTable={tables.addSearchTable}
-                />
-
-                {isAISearchLoginDialogOpen ? (
-                    <AISearchLoginDialog
-                        draftRows={draft.mergedRows}
-                        onClose={() => setIsAISearchLoginDialogOpen(false)}
-                    />
-                ) : null}
-
-                {/* Holds about the first table's room (see searchTables.css), so nothing below it moves in when the
-                    archive arrives. */}
-                {loading ? (
-                    <p className="project-grid-state past-projects-builder-loading" role="status">
-                        Loading past projects...
-                    </p>
-                ) : null}
-                {archiveUnavailable ? <ArchiveLoadFailed onRetry={onRefreshRows}/> : null}
-
-                {!loading && !archiveUnavailable ? (
-                    <SearchTableStack
-                        tables={tables}
-                        idPrefix={TABLE_ID_PREFIX}
-                        rows={rows}
-                        initialSearch={initialSearch}
-                        isAuthenticated={isAuthenticated}
-                        canRefresh={Boolean(onRefreshRows)}
-                        cardProps={{
-                            mergeDisabled: isCreatingShare,
-                            isRowSaved,
-                            savedRowLabel: 'Added',
-                            onViewMergedResults: scrollToMergedResults,
-                            onSelectionChange: saving.handleSelectionChange,
-                            onMergeSelected: saving.handleMergeSelected,
-                        }}
-                        copy={{
-                            aiDescription:
-                                'Use AI to load matching past projects into this table, then check the projects you want and click Add to Curation.',
-                            noTablesMessage:
-                                'No search tables are open. Add a new table to start searching past projects.',
-                        }}
-                    />
-                ) : null}
-            </section>
+            <BuilderSearchSection
+                tables={tables}
+                tablesMessage={tablesMessage}
+                rows={rows}
+                loading={loading}
+                error={error}
+                initialSearch={initialSearch}
+                isAuthenticated={isAuthenticated}
+                draftRows={draft.mergedRows}
+                cardProps={{
+                    mergeDisabled: isCreatingShare,
+                    isRowSaved,
+                    savedRowLabel: 'Added',
+                    onViewMergedResults: scrollToMergedResults,
+                    onSelectionChange: saving.handleSelectionChange,
+                    onMergeSelected: saving.handleMergeSelected,
+                }}
+                onRefreshRows={onRefreshRows}
+            />
         </div>
     );
 };

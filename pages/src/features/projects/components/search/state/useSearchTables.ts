@@ -174,6 +174,53 @@ function useTableFocus(searchTables: SearchTableState[]) {
   }, []);
 }
 
+type UpdateSearchTable = (tableId: string, update: (table: SearchTableState) => SearchTableState) => void;
+
+interface AISearchRunnerOptions {
+  isAuthenticated: boolean;
+  updateSearchTable: UpdateSearchTable;
+  filterAIRows: (rows: ProjectGridRow[]) => ProjectGridRow[];
+  allAIRowsFilteredMessage: string;
+  onMessage: (message: string) => void;
+}
+
+/** Runs an AI table's query and loads its results into that table, or says in it why there are none. */
+const createAISearchRunner =
+  ({isAuthenticated, updateSearchTable, filterAIRows, allAIRowsFilteredMessage, onMessage}: AISearchRunnerOptions) =>
+  async (tableId: string, query: string) => {
+    if (!isAuthenticated) {
+      return;
+    }
+    const finish = (message: string, messageTone: SearchTableState['messageTone'], extra = {}) =>
+      updateSearchTable(tableId, (table) => ({...table, isLoading: false, message, messageTone, ...extra}));
+
+    updateSearchTable(tableId, (table) => ({
+      ...table,
+      isLoading: true,
+      message: 'Searching past projects with AI...',
+      messageTone: 'loading',
+    }));
+    try {
+      const outcome = aiSearchOutcome(await searchPastProjectsWithAI(query, AI_SEARCH_LIMIT), query, filterAIRows, allAIRowsFilteredMessage);
+      if ('error' in outcome) {
+        finish(outcome.error, 'error');
+        return;
+      }
+      updateSearchTable(tableId, (table) => ({
+        ...table,
+        initialRows: outcome.rows,
+        isLoading: false,
+        message: `${outcome.rows.length} AI result${outcome.rows.length === 1 ? '' : 's'} loaded into this table.`,
+        messageTone: 'success',
+        rowsResetKey: (table.rowsResetKey ?? 0) + 1,
+        title: outcome.title,
+      }));
+      onMessage('');
+    } catch (err) {
+      finish(getAISearchErrorMessage(err), 'error');
+    }
+  };
+
 interface UseSearchTablesOptions {
   /** Table ids are `${idPrefix}-1`, `${idPrefix}-2`, … */
   idPrefix: string;
@@ -216,7 +263,7 @@ export function useSearchTables({
     return `${idPrefix}-${tableSequence.current}`;
   };
 
-  const updateSearchTable = (tableId: string, update: (table: SearchTableState) => SearchTableState) => {
+  const updateSearchTable: UpdateSearchTable = (tableId, update) => {
     setSearchTables((current) => current.map((table) => (table.id === tableId ? update(table) : table)));
   };
 
@@ -244,39 +291,13 @@ export function useSearchTables({
     return true;
   };
 
-  const runAISearch = async (tableId: string, query: string) => {
-    if (!isAuthenticated) {
-      return;
-    }
-    const finish = (message: string, messageTone: SearchTableState['messageTone'], extra = {}) =>
-      updateSearchTable(tableId, (table) => ({...table, isLoading: false, message, messageTone, ...extra}));
-
-    updateSearchTable(tableId, (table) => ({
-      ...table,
-      isLoading: true,
-      message: 'Searching past projects with AI...',
-      messageTone: 'loading',
-    }));
-    try {
-      const outcome = aiSearchOutcome(await searchPastProjectsWithAI(query, AI_SEARCH_LIMIT), query, filterAIRows, allAIRowsFilteredMessage);
-      if ('error' in outcome) {
-        finish(outcome.error, 'error');
-        return;
-      }
-      updateSearchTable(tableId, (table) => ({
-        ...table,
-        initialRows: outcome.rows,
-        isLoading: false,
-        message: `${outcome.rows.length} AI result${outcome.rows.length === 1 ? '' : 's'} loaded into this table.`,
-        messageTone: 'success',
-        rowsResetKey: (table.rowsResetKey ?? 0) + 1,
-        title: outcome.title,
-      }));
-      onMessage('');
-    } catch (err) {
-      finish(getAISearchErrorMessage(err), 'error');
-    }
-  };
+  const runAISearch = createAISearchRunner({
+    isAuthenticated,
+    updateSearchTable,
+    filterAIRows,
+    allAIRowsFilteredMessage,
+    onMessage,
+  });
 
   const removeSearchTable = (tableId: string) => {
     const index = searchTables.findIndex((table) => table.id === tableId);

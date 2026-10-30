@@ -154,7 +154,29 @@ function useBuilderList({
     list.setPendingBulkAction(null);
   };
 
-  return {isAuthenticated, canShare, list, noteInsert, hiddenAddedCount, curation, handleDeleteRow, handleConfirmBulkAction};
+  const saveButton = canShare ? (
+    <CurationSaveButton
+      hasRows={visibleRows.length > 0}
+      isSharing={isSharing}
+      pendingSaveCount={pendingSaveCount}
+      onSave={() => void curation.createShare()}
+    />
+  ) : null;
+  // The whole draft, not just the rows its search shows, goes along to the full page from the widget.
+  const signIn = useMemo(() => signInToSave(rows), [rows]);
+
+  return {
+    isAuthenticated,
+    canShare,
+    list,
+    noteInsert,
+    hiddenAddedCount,
+    curation,
+    saveButton,
+    signIn,
+    handleDeleteRow,
+    handleConfirmBulkAction,
+  };
 }
 
 interface BuilderListFooterProps {
@@ -207,53 +229,12 @@ const BuilderListFooter = ({
  * The builder's unsaved merged list. Saving, exports and bulk removal act on the rows the search
  * shows; while a curation is being saved the rows stay as they were at the click.
  */
-export const BuilderMergedList = ({
-  id,
-  className,
-  rows,
-  recentlyAdded,
-  pendingSaveCount,
-  title,
-  message,
-  onCreateShare,
-  nameDraft,
-  noteDraft,
-  onNameDraftChange,
-  onNoteDraftChange,
-  onDeleteRow,
-  onDeleteRows,
-  canUndoRows,
-  onUndoRows,
-  onResetRows,
-}: BuilderMergedListProps) => {
-  const {isAuthenticated, canShare, list, noteInsert, hiddenAddedCount, curation, handleDeleteRow, handleConfirmBulkAction} =
-    useBuilderList({
-      rows,
-      recentlyAdded,
-      pendingSaveCount,
-      message,
-      onCreateShare,
-      nameDraft,
-      noteDraft,
-      onNameDraftChange,
-      onNoteDraftChange,
-      onDeleteRow,
-      onResetRows,
-    });
-  const {table, visibleRows, headingId} = list;
-  const {isSharing} = curation;
+export const BuilderMergedList = (props: BuilderMergedListProps) => {
+  const {id, className, rows, recentlyAdded, pendingSaveCount, title, onCreateShare, onDeleteRows} = props;
+  const {isAuthenticated, canShare, list, noteInsert, hiddenAddedCount, curation, saveButton, signIn, ...actions} =
+    useBuilderList(props);
+  const {table, headingId} = list;
   const shownCount = table.filteredRows.length;
-  // The whole draft, not just the rows its search shows, goes along to the full page from the widget.
-  const signIn = useMemo(() => signInToSave(rows), [rows]);
-
-  const saveButton = canShare ? (
-    <CurationSaveButton
-      hasRows={visibleRows.length > 0}
-      isSharing={isSharing}
-      pendingSaveCount={pendingSaveCount}
-      onSave={() => void curation.createShare()}
-    />
-  ) : null;
 
   return (
     <section
@@ -285,8 +266,8 @@ export const BuilderMergedList = ({
         rows={rows}
         sharedMode={false}
         highlightedKeys={recentlyAdded?.keys}
-        onDeleteRow={handleDeleteRow}
-        deleteDisabled={isSharing}
+        onDeleteRow={actions.handleDeleteRow}
+        deleteDisabled={curation.isSharing}
         // Checkbox-based bulk removal: "check rows → Remove Selected".
         selectable={Boolean(onDeleteRows)}
         toolbar={
@@ -297,9 +278,9 @@ export const BuilderMergedList = ({
             canShare={canShare}
             curation={curation}
             onDeleteRows={onDeleteRows}
-            canUndoRows={canUndoRows}
-            onUndoRows={onUndoRows}
-            onResetRows={onResetRows}
+            canUndoRows={props.canUndoRows}
+            onUndoRows={props.onUndoRows}
+            onResetRows={props.onResetRows}
           />
         }
       />
@@ -319,7 +300,7 @@ export const BuilderMergedList = ({
         saveButton={saveButton}
         pendingSaveCount={pendingSaveCount}
         signIn={signIn}
-        onConfirmBulkAction={handleConfirmBulkAction}
+        onConfirmBulkAction={actions.handleConfirmBulkAction}
       />
     </section>
   );
