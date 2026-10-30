@@ -116,6 +116,8 @@ interface CurrentProjectsViewProps {
 }
 
 type CurrentProjectsGridProps = Omit<CurrentProjectsViewProps, 'title' | 'lede' | 'rows' | 'namespace'> & {
+  /** The page title, which names the table. */
+  tableLabel: string;
   items: ProjectGridItem[];
   /** The rows are loaded and shown: the grid's state can be written to the URL. */
   ready: boolean;
@@ -126,6 +128,7 @@ type CurrentProjectsGridProps = Omit<CurrentProjectsViewProps, 'title' | 'lede' 
  * it, so Back from a project page, a reload or a shared link shows the same view.
  */
 const CurrentProjectsGrid = ({
+  tableLabel,
   items,
   ready,
   loading,
@@ -171,6 +174,7 @@ const CurrentProjectsGrid = ({
 
   return (
     <ProjectGridTable
+      tableLabel={tableLabel}
       columns={PROJECT_GRID_COLUMNS}
       rows={items}
       pagedRows={table.pagedRows}
@@ -234,7 +238,7 @@ export const CurrentProjectsView = ({title, lede, rows, namespace, ...gridProps}
         {meta || '\u00a0'}
       </p>
       <p className="itg-lead">{lede}</p>
-      <CurrentProjectsGrid key={gridKey} items={items} ready={ready} {...gridProps} />
+      <CurrentProjectsGrid key={gridKey} tableLabel={title} items={items} ready={ready} {...gridProps} />
     </div>
   );
 };

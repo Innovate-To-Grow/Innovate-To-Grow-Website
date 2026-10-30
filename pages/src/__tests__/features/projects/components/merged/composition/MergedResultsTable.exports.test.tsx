@@ -146,7 +146,7 @@ describe('MergedResultsTable exports and row details', () => {
     const layout = stubGridLayout('desktop');
     const {container} = render(<MergedResultsTable rows={makeItems([rowWithId])} />);
 
-    const desktopDetailsButton = within(desktopTable(container)).getByRole('button', {name: 'Details'});
+    const desktopDetailsButton = within(desktopTable(container)).getByRole('button', {name: /^Details for /});
     expect(desktopDetailsButton).toHaveAttribute('aria-expanded', 'false');
     const desktopDetailsId = desktopDetailsButton.getAttribute('aria-controls');
     expect(desktopDetailsId).toBeTruthy();
@@ -161,7 +161,7 @@ describe('MergedResultsTable exports and row details', () => {
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
     expect(desktopLink).toHaveTextContent('Open the project page');
     expect(desktopLink).toHaveAttribute('target', '_blank');
-    expect(within(desktopTable(container)).getByRole('button', {name: 'Copy project link'})).toBeVisible();
+    expect(within(desktopTable(container)).getByRole('button', {name: /^Copy project link for /})).toBeVisible();
 
     // On a phone the same row is open in the list.
     act(() => layout.setPhone(true));
@@ -170,7 +170,7 @@ describe('MergedResultsTable exports and row details', () => {
     expect(mobileLink).not.toBeNull();
     expect(mobileLink.getAttribute('href')).toBe(expectedHref);
     expect(mobileLink).toHaveTextContent('Open the project page');
-    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: 'Hide details'});
+    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: /^Hide details for /});
     expect(mobileDetailsButton).toHaveAttribute('aria-expanded', 'true');
     const mobileDetailsId = mobileDetailsButton.getAttribute('aria-controls');
     expect(mobileDetailsId).toBeTruthy();
@@ -196,7 +196,7 @@ describe('MergedResultsTable exports and row details', () => {
   it('lets an id-only row expand so its individual project URL is reachable', () => {
     const idOnlyRow: ProjectGridRow = {...rowWithId, abstract: '', student_names: ''};
     const {container} = render(<MergedResultsTable rows={makeItems([idOnlyRow])} />);
-    const detailButton = within(desktopTable(container)).getByRole('button', {name: 'Details'});
+    const detailButton = within(desktopTable(container)).getByRole('button', {name: /^Details for /});
 
     expect(detailButton).toBeEnabled();
     fireEvent.click(detailButton);
@@ -211,7 +211,7 @@ describe('MergedResultsTable exports and row details', () => {
   it('does not show an individual link for legacy rows without an id', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} />);
 
-    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'Details'}));
+    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: /^Details for /}));
 
     expect(desktopTable(container).querySelector('.project-grid-individual-link')).toBeNull();
     expect(within(desktopTable(container)).queryByRole('link')).toBeNull();

@@ -130,6 +130,7 @@ describe('ProjectGridTable on a translated page', () => {
 
     expect(view.errors).toEqual([]);
     const toggle = view.container.querySelector('.project-grid-mobile-card .project-grid-detail-button');
-    expect(shownText(toggle)).toBe('Hide details ▴');
+    // The visible label and arrow; a hidden " for <title>" names the project for screen readers.
+    expect(shownText(toggle)).toBe(`Hide details for ${rows[0].project_title} ▴`);
   });
 });

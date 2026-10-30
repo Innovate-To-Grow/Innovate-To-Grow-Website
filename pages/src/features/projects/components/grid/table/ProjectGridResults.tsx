@@ -30,7 +30,7 @@ type ResultsBarProps = Pick<
   countLabel: string;
   /** The extra filters in use (see ProjectGridTableProps.activeFilters). */
   activeFilters: string[];
-  /** Per page and View All Details, shown beside the sort select. */
+  /** Per page and View All Details, shown beside the sort select while there are rows to act on. */
   pageControls: ReactNode;
   /** The count line, which takes focus after a page change. */
   countRef?: Ref<HTMLParagraphElement>;
@@ -85,7 +85,10 @@ const countText = ({
   return {bold: `${filteredCount} of ${totalCount}`, rest: ` ${countLabel} ${criteria}${showing}`};
 };
 
-/** "N projects · showing a–b" (or "N of M match …"), and the sort select when the table offers one. */
+/**
+ * "N projects · showing a–b" (or "N of M match …"), and the sort select when the table offers one. With no rows
+ * matching, only the count stays: the no-results message and its Clear button come next, not controls for rows.
+ */
 export const ProjectGridResultsBar = ({
   columns,
   sortOptions,
@@ -113,7 +116,7 @@ export const ProjectGridResultsBar = ({
         <strong>{bold}</strong>
         <span>{rest}</span>
       </p>
-      {sortChoices ? (
+      {sortChoices && counts.filteredCount > 0 ? (
         <div className="project-grid-results-controls">
           <div className="project-grid-sort">
             <label htmlFor={sortSelectId}>Sort by</label>

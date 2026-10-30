@@ -35,8 +35,9 @@ export const ProjectPageLink = ({href, scope, className, children}: ProjectPageL
   if (scope === 'past') {
     return (
       <a className={className} href={href} target="_blank" rel="noopener noreferrer">
-        {children}
-        <span className="sr-only"> (opens in a new tab)</span>
+        {/* The space is its own text node: a hidden span's leading space is dropped from the link's name. */}
+        {children}{' '}
+        <span className="sr-only">(opens in a new tab)</span>
       </a>
     );
   }

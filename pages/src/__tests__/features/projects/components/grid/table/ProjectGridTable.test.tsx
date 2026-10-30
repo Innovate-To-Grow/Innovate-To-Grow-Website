@@ -237,7 +237,8 @@ describe('ProjectGridTable', () => {
         const sortSelect = resultsBar.getByLabelText('Sort by');
         expect(sortSelect).toHaveValue('class_code:asc');
         expect(resultsBar.getByLabelText('Per page')).toBeInTheDocument();
-        expect(resultsBar.getByRole('button', {name: 'View All Details'})).toHaveClass('itg-btn-text');
+        // The same outlined button as in the filter well of tables without a Sort select.
+        expect(resultsBar.getByRole('button', {name: 'View All Details'})).toHaveClass('itg-btn-outline');
 
         // Without onSortSelect the select falls back to the header's toggle.
         fireEvent.change(sortSelect, {target: {value: 'project_title:asc'}});
@@ -525,13 +526,13 @@ describe('ProjectGridTable', () => {
             />,
         );
 
-        // The desktop table's navy square button is named "Hide" when expanded, "Details" when collapsed.
+        // The desktop table's navy square button is named after its project; aria-expanded says whether it is open.
         const table = within(document.querySelector('.project-grid-table-wrap') as HTMLElement);
-        const hide = table.getByRole('button', {name: 'Hide'});
+        const hide = table.getByRole('button', {name: 'Details for Project 1'});
         expect(hide).toHaveClass('project-grid-detail-icon-button');
         expect(hide).toHaveAttribute('aria-expanded', 'true');
         expect(hide.querySelector('.project-grid-detail-icon')).toHaveAttribute('aria-hidden', 'true');
-        expect(table.getByRole('button', {name: 'Details'})).toHaveAttribute('aria-expanded', 'false');
+        expect(table.getByRole('button', {name: 'Details for Project 2'})).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(hide);
         expect(onToggleExpanded).toHaveBeenCalledWith(rows[0].__key);
     });
@@ -602,7 +603,7 @@ describe('ProjectGridTable', () => {
         expect(within(card).getByText('2025 Spring · ENGR 120 7 · Technology')).toBeInTheDocument();
         expect(within(card).getByText('Team Alpha · Acme')).toBeInTheDocument();
         expect(within(card).getByRole('checkbox', {name: 'Select Alpha Project'})).toBeChecked();
-        fireEvent.click(within(card).getByRole('button', {name: 'Show details'}));
+        fireEvent.click(within(card).getByRole('button', {name: 'Show details for Alpha Project'}));
         expect(baseProps.onToggleExpanded).toHaveBeenCalledWith(rows[0].__key);
     });
 });

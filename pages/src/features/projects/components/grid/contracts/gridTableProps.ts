@@ -18,6 +18,8 @@ export interface ProjectGridTableProps {
   pagedRows: ProjectGridItem[];
   filteredCount: number;
   totalCount: number;
+  /** Names the table, and its pager ("… pages"), for screen readers: "Current Projects", "Search Table 2". */
+  tableLabel?: string;
   search: string;
   /** Replaces the search field (e.g. the AI search form). */
   searchControl?: ReactNode;

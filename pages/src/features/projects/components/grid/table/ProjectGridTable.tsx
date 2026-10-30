@@ -1,11 +1,12 @@
 import '../../styles/cascade/projects.css';
-import {useEffect, useRef} from 'react';
+import {useEffect, useRef, type RefObject} from 'react';
 import {useMediaQuery} from '@/features/layout';
 import {ProjectGridControls, PageSizeField} from '../controls/ProjectGridControls';
 import {ProjectGridDesktopTable} from './ProjectGridDesktopTable';
 import {ProjectGridMobileCards} from './ProjectGridMobileCards';
 import {ProjectGridPager} from '../controls/ProjectGridPager';
 import {ProjectGridNoResults, ProjectGridResultsBar} from './ProjectGridResults';
+import {useDetailsAnnouncements} from '../state/useDetailsAnnouncements';
 import type {ProjectGridTableProps} from '../contracts/gridTableProps';
 
 export type {ProjectGridSortOption} from '../contracts/gridTableProps';
@@ -63,15 +64,28 @@ function withGridDefaults({
 
 type ResolvedGridProps = ReturnType<typeof withGridDefaults>;
 
-/** Per page and View All Details: in the filter well, or beside the sort select when there is one. */
-const PageControls = ({grid}: {grid: ResolvedGridProps}) => (
+type DetailsAnnouncements = ReturnType<typeof useDetailsAnnouncements>;
+
+interface PageControlsProps {
+  grid: ResolvedGridProps;
+  /** Opens or closes every row's details and says so (useDetailsAnnouncements). */
+  onToggleAllDetails: () => void;
+}
+
+/**
+ * Per page and View All Details: in the filter well, or beside the sort select when there is one. The toggle is
+ * the same outlined button in both places.
+ */
+const PageControls = ({grid, onToggleAllDetails}: PageControlsProps) => (
   <>
     <PageSizeField value={grid.pageSize} options={grid.pageSizeOptions} onChange={grid.onPageSizeChange} />
     {grid.onToggleAllDetails ? (
       <button
         type="button"
-        className={`itg-btn ${grid.sortOptions ? 'itg-btn-text' : 'itg-btn-outline'} project-grid-toggle-details`}
-        onClick={grid.onToggleAllDetails}
+        className="itg-btn itg-btn-outline project-grid-toggle-details"
+        onClick={onToggleAllDetails}
+        // With no rows shown it would only change its own label.
+        disabled={grid.filteredCount === 0}
       >
         {grid.allDetailsExpanded ? 'Hide All Details' : 'View All Details'}
       </button>
@@ -79,8 +93,15 @@ const PageControls = ({grid}: {grid: ResolvedGridProps}) => (
   </>
 );
 
+interface ResultsProps {
+  grid: ResolvedGridProps;
+  details: DetailsAnnouncements;
+  /** The filter well's search field, focused when "Clear search" removes itself. */
+  searchInputRef: RefObject<HTMLInputElement | null>;
+}
+
 /** Everything below the filter well once the rows are loaded: counts, empty states, the rows and the pager. */
-const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
+const ProjectGridResults = ({grid, details, searchInputRef}: ResultsProps) => {
   // Only the layout the screen shows is rendered: mounting both and hiding one with CSS doubled the rows (and their
   // opened details) that every sort, page change and "View All Details" had to render.
   const isPhone = useMediaQuery(PHONE_LAYOUT_QUERY);
@@ -96,13 +117,14 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
     selectedKeys: grid.selectedKeys,
     onToggleSelected: grid.onToggleSelected,
     expandedKeys: grid.expandedKeys,
-    onToggleExpanded: grid.onToggleExpanded,
+    onToggleExpanded: details.toggleRow,
     onDeleteRow: grid.onDeleteRow,
     deleteDisabled: grid.deleteDisabled,
     loadMissingDetails: grid.loadMissingDetails,
     isRowSaved: grid.isRowSaved,
     savedRowLabel: grid.savedRowLabel,
     highlightedKeys: grid.highlightedKeys,
+    announceDetails: details.announceRows,
   };
 
   // Only a page the pager asked for moves focus and scroll; a search or sort that starts over at page 1 does not.
@@ -133,7 +155,7 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
           query={query}
           countLabel={grid.countLabel}
           activeFilters={grid.activeFilters}
-          pageControls={<PageControls grid={grid} />}
+          pageControls={<PageControls grid={grid} onToggleAllDetails={details.toggleAllDetails} />}
           countRef={countRef}
         />
       ) : null}
@@ -149,6 +171,9 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
           noResultsHint={grid.noResultsHint}
           noResultsActions={grid.noResultsActions}
           onClear={() => {
+            // The button leaves with the empty state: move focus first, to the search field (or, when the well
+            // holds another search control, the count line), so it does not fall to the page.
+            (searchInputRef.current ?? countRef.current)?.focus();
             grid.onSearchChange('');
             grid.onClearFilters?.();
           }}
@@ -161,6 +186,7 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
         ) : (
           <ProjectGridDesktopTable
             {...rowProps}
+            tableLabel={grid.tableLabel}
             rows={grid.rows}
             selectAllStateRows={grid.selectAllStateRows}
             onToggleSelectAll={grid.onToggleSelectAll}
@@ -172,7 +198,12 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
       ) : null}
 
       {grid.totalPages > 1 ? (
-        <ProjectGridPager page={grid.page} totalPages={grid.totalPages} onPageChange={changePage} />
+        <ProjectGridPager
+          page={grid.page}
+          totalPages={grid.totalPages}
+          onPageChange={changePage}
+          label={grid.tableLabel ? `${grid.tableLabel} pages` : undefined}
+        />
       ) : null}
     </>
   );
@@ -184,6 +215,8 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
  */
 export const ProjectGridTable = (props: ProjectGridTableProps) => {
   const grid = withGridDefaults(props);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const details = useDetailsAnnouncements(grid);
   const toolbarElement = grid.toolbar ? (
     <div className={`project-grid-toolbar${grid.toolbarPlacement === 'bottom' ? ' project-grid-toolbar--bottom' : ''}`}>
       {grid.toolbar}
@@ -192,6 +225,11 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
 
   return (
     <div className="project-grid-table-shell">
+      {/* Always in the page, so each new message is read out (a polite live region, like the count line). */}
+      <p className="sr-only" aria-live="polite">
+        {details.message}
+      </p>
+
       <ProjectGridControls
         search={grid.search}
         searchControl={grid.searchControl}
@@ -200,12 +238,19 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
         searchLabel={grid.searchLabel}
         filterControls={grid.filterControls}
         onSearchChange={grid.onSearchChange}
-        pageControls={grid.sortOptions ? null : <PageControls grid={grid} />}
+        pageControls={
+          grid.sortOptions ? null : <PageControls grid={grid} onToggleAllDetails={details.toggleAllDetails} />
+        }
+        searchInputRef={searchInputRef}
       />
 
       {grid.toolbarPlacement === 'top' ? toolbarElement : null}
 
-      {grid.loading ? <p className="project-grid-state project-grid-state-loading">Loading project data...</p> : null}
+      {grid.loading ? (
+        <p className="project-grid-state project-grid-state-loading" role="status">
+          Loading project data...
+        </p>
+      ) : null}
       {grid.error ? (
         <div className="project-grid-load-error">
           <p className="project-grid-state project-grid-state-error itg-error" role="alert">
@@ -219,7 +264,9 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
         </div>
       ) : null}
 
-      {!grid.loading && !grid.error ? <ProjectGridResults grid={grid} /> : null}
+      {!grid.loading && !grid.error ? (
+        <ProjectGridResults grid={grid} details={details} searchInputRef={searchInputRef} />
+      ) : null}
 
       {grid.toolbarPlacement === 'bottom' ? toolbarElement : null}
     </div>

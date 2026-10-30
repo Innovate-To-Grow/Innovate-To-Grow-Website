@@ -100,12 +100,16 @@ describe('CurrentProjectsView', () => {
     const {container} = renderView();
     const table = within(desktopTable(container));
 
-    fireEvent.click(table.getAllByRole('button', {name: 'Details'})[0]);
+    // Each row's Details button and page link are named after its project.
+    fireEvent.click(table.getByRole('button', {name: 'Details for HVAC Design'}));
 
     expect(table.getByText('An HVAC abstract.')).toBeInTheDocument();
     expect(table.getByText('Brian Arroyo, Joel Gonzalez')).toBeInTheDocument();
-    expect(table.getByRole('link', {name: 'Open the project page'})).toHaveAttribute('href', '/projects/project-1');
-    expect(table.queryByRole('button', {name: 'Copy project link'})).toBeNull();
+    expect(table.getByRole('link', {name: 'Open the project page for HVAC Design'})).toHaveAttribute(
+      'href',
+      '/projects/project-1',
+    );
+    expect(table.queryByRole('button', {name: /^Copy project link/})).toBeNull();
   });
 
   it('builds the Class and Industry filters from the rows and filters by them', async () => {
