@@ -47,7 +47,7 @@ test.describe('required smoke', {tag: '@required-smoke'}, () => {
     await expect(page.locator('.projects-page')).toContainText('Adaptive Irrigation Dashboard');
   });
 
-  test('mobile menu traps keyboard focus and returns it on Escape', async ({page}) => {
+  test('mobile menu keeps keyboard focus between its button and the menu, and returns it on Escape', async ({page}) => {
     await page.setViewportSize({width: 390, height: 844});
     await page.goto('/login', {waitUntil: 'domcontentloaded'});
 
@@ -55,8 +55,9 @@ test.describe('required smoke', {tag: '@required-smoke'}, () => {
     await trigger.focus();
     await page.keyboard.press('Enter');
 
-    const menu = page.getByRole('dialog', {name: 'Mobile menu'});
+    const menu = page.locator('#mobile-menu');
     await expect(menu).toBeVisible();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
     const focusable = menu.locator(
       'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     );
@@ -64,8 +65,13 @@ test.describe('required smoke', {tag: '@required-smoke'}, () => {
     const last = focusable.last();
     await expect(first).toBeFocused();
 
+    // The menu button (which closes the menu) starts the loop, right before the menu.
+    await page.keyboard.press('Shift+Tab');
+    await expect(trigger).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(last).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(trigger).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(first).toBeFocused();
 

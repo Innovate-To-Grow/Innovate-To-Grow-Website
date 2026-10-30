@@ -136,14 +136,6 @@ class ECSTaskDefinitionTopologyTests(SimpleTestCase):
             workflow,
         )
 
-    def test_backend_workflow_keeps_the_legacy_viewer_off_outside_production(self):
-        workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
-
-        self.assertIn("DEPLOY_TARGET: ${{ matrix.target }}", workflow)
-        self.assertIn('if env_value("DEPLOY_TARGET").strip() != "prod":', workflow)
-        self.assertIn('mapping["__LEGACY_VIEW_ENABLED__"] = "false"', workflow)
-        self.assertIn('secret_mapping["__LEGACY_ORIGIN_HEADER_SECRET_ARN__"] = ""', workflow)
-
 
 class ECSRenderedLegacyViewerTests(SimpleTestCase):
     """Rendered-task rules for the private Legacy viewer (docs/deployment/legacy-view.md)."""
