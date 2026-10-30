@@ -76,8 +76,9 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
       <div className="project-grid-help-card">
         <dt>+ Search Table</dt>
         <dd>
-          Adds another search table. Each table loads the full past-project archive on its own, so you can try
-          different searches side by side (for example, one for a class code and another for an organization).
+          Adds another search table over the same past-project archive, so you can try different searches side
+          by side (for example, one for a class code and another for an organization). Each table keeps its own
+          search, checked rows and tidy edits.
         </dd>
       </div>
       <div className="project-grid-help-card">
@@ -116,8 +117,9 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
           Search, click a column heading to sort, and change <strong>Per page</strong> to see more rows at once.
           Open <strong>Details</strong> on a row to read its abstract and team members.{' '}
           <strong>Select All</strong> and the header checkbox select the rows that match the current search, and
-          the table shows how many rows are selected. <strong>Deselect</strong> clears the selection and{' '}
-          <strong>Refresh Search Table</strong> reloads the archive.
+          the table shows how many rows are selected. <strong>Deselect</strong> clears the selection.{' '}
+          <strong>Refresh Search Table</strong> reloads the archive and starts that table over: its search, sort,
+          Per page, checked rows and tidy edits are cleared. Other tables keep theirs.
         </dd>
       </div>
     </dl>

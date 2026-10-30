@@ -241,6 +241,18 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(within(section).getByText('Help: buttons, saving and tables')).toBeInTheDocument();
   });
 
+  it('says in its help that tables share one archive and that Refresh starts a table over', () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    const help = screen.getByText('Help: buttons, saving and tables').closest('details') as HTMLElement;
+    expect(help).toHaveTextContent('Adds another search table over the same past-project archive');
+    expect(help).not.toHaveTextContent('loads the full past-project archive on its own');
+    expect(help).toHaveTextContent(
+      'Refresh Search Table reloads the archive and starts that table over: its search, sort, Per page, ' +
+        'checked rows and tidy edits are cleared.',
+    );
+  });
+
   it('omits the search table number until there are multiple tables', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
