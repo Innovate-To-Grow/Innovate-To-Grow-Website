@@ -41,7 +41,7 @@ The CI pipeline builds and validates the Docker image on every push.
 | Worker | `itg-background-worker`: 256 CPU units, 512 MB reservation, no port |
 | Log driver | `awslogs` → CloudWatch `/ecs/itg-backend` (`ecs` and `worker` stream prefixes) |
 
-Both containers use the same SHA-pinned image, environment, Secrets Manager or
+Both containers use the same digest-pinned image, environment, Secrets Manager or
 SSM references, task role, database, and cache configuration. Without
 `REDIS_URL` (production today) each container has its own file cache; see
 [Environments: production cache](environments.md#production-cache-today). The
@@ -53,8 +53,8 @@ python manage.py run_background_worker --settings=config.settings.environments.p
 
 It therefore does not run startup migrations, create the default administrator,
 collect static files, or start Uvicorn. Its ECS `HEALTHY` dependency on
-`itg-backend` delays the worker until the Web entrypoint has completed
-migrations and the liveness check passes. The worker is essential: an
+`itg-backend` delays the worker until the liveness check passes. Migrations
+run as a standalone deployment task before the service is updated. The worker is essential: an
 unexpected worker exit replaces the whole task instead of leaving a healthy
 Web process with an unconsumed queue. SIGTERM receives the Fargate maximum
 120-second stop window. Besides jobs, the worker runs the hourly database
