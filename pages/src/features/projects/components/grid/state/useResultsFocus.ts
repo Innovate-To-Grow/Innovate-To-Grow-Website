@@ -69,9 +69,11 @@ export function useResultsFocus(
     },
     onBlur: (event: FocusEvent<HTMLElement>) => {
       // Focus left a control that is still there and usable: the visitor moved it, and where it went is theirs.
-      // (A control that leaves the page, or turns disabled, under the visitor fails one of these.)
+      // (A control that leaves the page, or turns disabled, under the visitor fails one of these.) A blur because the
+      // window lost focus, to another window or app, leaves the control focused in the page, so it stays watched.
       const control = event.target;
-      if (control === lastFocused.current && control.isConnected && !control.matches(':disabled')) {
+      const windowLeft = !document.hasFocus();
+      if (control === lastFocused.current && !windowLeft && control.isConnected && !control.matches(':disabled')) {
         lastFocused.current = null;
       }
     },

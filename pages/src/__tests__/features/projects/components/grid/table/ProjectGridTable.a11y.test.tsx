@@ -211,8 +211,11 @@ describe('ProjectGridTable accessibility', () => {
     );
     const clear = screen.getByRole('button', {name: 'Clear search'});
     clear.focus();
-    // The visitor clicks blank page space: focus leaves Clear search, which is still there.
+    // The visitor clicks blank page space: focus leaves Clear search, which is still there. (The window keeps focus;
+    // jsdom answers hasFocus() from the focused element, which it clears before the blur.)
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true);
     clear.blur();
+    hasFocus.mockRestore();
 
     rerender(
       <ProjectGridTable
@@ -224,6 +227,31 @@ describe('ProjectGridTable accessibility', () => {
       />,
     );
     expect(document.activeElement).toBe(document.body);
+  });
+
+  it('still moves focus to the count line when the visitor was in another window as the answer landed', () => {
+    stubGridLayout('desktop');
+    const {container, rerender} = render(
+      <ProjectGridTable {...baseProps} search="EnergyPro" serverSearch={asking} filteredCount={0} pagedRows={[]} />,
+    );
+    const clear = screen.getByRole('button', {name: 'Clear search'});
+    clear.focus();
+    // The visitor switches to another window: the control gets a blur but stays the page's focused element.
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    fireEvent.blur(clear);
+    hasFocus.mockRestore();
+    expect(document.activeElement).toBe(clear);
+
+    rerender(
+      <ProjectGridTable
+        {...baseProps}
+        search="EnergyPro"
+        serverSearch={answered('a11y-1')}
+        filteredCount={1}
+        pagedRows={[rows[1]]}
+      />,
+    );
+    expect(document.activeElement).toBe(container.querySelector('.project-grid-count'));
   });
 
   describe("when the server's answer sorts rows in above the focused row", () => {
