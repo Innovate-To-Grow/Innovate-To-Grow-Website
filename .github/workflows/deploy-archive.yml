@@ -33,7 +33,7 @@ env:
 jobs:
   deploy:
     name: Build & Deploy Archive
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     environment:
       name: AWS ECS - Archive Prod
