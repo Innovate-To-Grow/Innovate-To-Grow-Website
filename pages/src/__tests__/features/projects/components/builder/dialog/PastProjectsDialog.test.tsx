@@ -157,9 +157,32 @@ describe('PastProjectsDialog', () => {
 
       expect(dialog).toHaveClass('is-placed');
       expect(dialog.style.getPropertyValue('--past-projects-dialog-center')).toBe('3450px');
-      expect(dialog.style.getPropertyValue('--past-projects-dialog-max-height')).toBe('868px');
       expect(showModal).toHaveBeenCalledTimes(1);
       expect(dialog.querySelector('.itg-btn-primary')).toHaveFocus();
+    });
+
+    it('keeps its full height when only a thin strip of the frame is on screen, and brings all of it on screen', () => {
+      // The visitor scrolled the partner page until only the frame's bottom 130px show; the dialog is 196px tall.
+      vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.tagName === 'DIALOG' ? 196 : 0;
+      });
+      const scrolled: Array<{top: string; height: string; block: ScrollLogicalPosition | undefined}> = [];
+      Element.prototype.scrollIntoView = function (this: HTMLElement, options?: boolean | ScrollIntoViewOptions) {
+        scrolled.push({top: this.style.top, height: this.style.height, block: (options as ScrollIntoViewOptions).block});
+      };
+      render(<DialogHarness />);
+      openFromButton();
+
+      act(() => observe({top: 7795, height: 130, bottom: 7925}));
+
+      const dialog = screen.getByRole('dialog');
+      // Not squeezed into the strip: no height limit, and it ends 16px above the frame's bottom.
+      expect(dialog.style.getPropertyValue('--past-projects-dialog-max-height')).toBe('');
+      expect(dialog.style.getPropertyValue('--past-projects-dialog-center')).toBe(`${7925 - 16 - 98}px`);
+      expect(dialog.querySelector('.itg-btn-primary')).toHaveFocus();
+      // The partner page is scrolled just far enough to show the dialog and its margins.
+      expect(scrolled).toEqual([{top: `${7925 - 16 - 196 - 16}px`, height: '228px', block: 'nearest'}]);
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
     });
 
     it('stays centred in the frame when the whole frame is on screen', () => {

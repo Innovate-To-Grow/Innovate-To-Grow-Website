@@ -71,9 +71,9 @@ export const PastProjectsDialog = ({
       return;
     }
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const cancelPlacement = openInVisiblePart(dialog, () => {
-      showDialog(dialog);
-      focusFirstButton();
+    const cancelPlacement = openInVisiblePart(dialog, {
+      show: () => showDialog(dialog),
+      focus: () => focusFirstButton(),
     });
 
     // Escape is the browser's close request; cancelling the key press stops it from closing the dialog behind

@@ -31,7 +31,6 @@ dialog.past-projects-dialog:modal {
 /* In the embed widget: centred on the part of the frame that is on screen (dialogPlacement.ts). */
 dialog.past-projects-dialog.is-placed:modal {
   inset-block: var(--past-projects-dialog-center) auto;
-  max-height: var(--past-projects-dialog-max-height);
   margin-block: 0;
   translate: 0 -50%;
 }
