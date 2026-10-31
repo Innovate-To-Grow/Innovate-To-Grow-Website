@@ -1,4 +1,6 @@
+import type {ProjectCatalogSource} from '@/features/projects/api';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {isProjectId} from './draftHandover';
 
 // The curation being built (its saved projects, name and note) is a draft until it is saved, which needs signing
 // in — and the login button reloads the page. Keep the draft in localStorage so it survives that reload, closing
@@ -38,6 +40,17 @@ const ROW_TEXT_FIELDS = [
 
 const stringOrEmpty = (value: unknown) => (typeof value === 'string' ? value : '');
 
+const isCatalogSource = (value: unknown): value is ProjectCatalogSource => value === 'archive' || value === 'current';
+
+/**
+ * Which list a stored row came from and the current project an archive row stands in for (projectGrid's matcher and
+ * links read them), when they are still valid; a row without them is an archive row.
+ */
+const draftCatalogFields = (stored: Record<string, unknown>): Pick<ProjectGridRow, 'catalog' | 'current_project_id'> => ({
+  ...(isCatalogSource(stored.catalog) ? {catalog: stored.catalog} : {}),
+  ...(isProjectId(stored.current_project_id) ? {current_project_id: stored.current_project_id} : {}),
+});
+
 /** A stored row with every text field a string (missing ones empty); null when it is not a project row at all. */
 const toDraftRow = (value: unknown): ProjectGridRow | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -48,7 +61,7 @@ const toDraftRow = (value: unknown): ProjectGridRow | null => {
   >;
   const id = stringOrEmpty(stored.id);
   if (!id && !row.project_title && !row.team_name) return null;
-  return id ? {id, ...row} : row;
+  return {...(id ? {id} : {}), ...row, ...draftCatalogFields(stored)};
 };
 
 /** The project rows of a stored list; anything that is not one is dropped. */
