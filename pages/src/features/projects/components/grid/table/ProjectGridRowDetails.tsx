@@ -1,3 +1,4 @@
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useCopyLink} from '@/hooks/useCopyLink';
 import {useProjectGridDetails} from '../../../hooks/useProjectGridDetails';
 import {getProjectGridRowHref, type ProjectGridLinkScope, type ProjectGridRow} from '../contracts/projectGrid';
@@ -44,7 +45,7 @@ export function ProjectGridRowDetails({row, scope, loadMissingDetails = false, a
     <>
       {loading ? (
         <p className="project-grid-detail-state" role={announce ? 'status' : undefined}>
-          Loading project details...
+          <LoadingIndicator label="Loading project details…" />
         </p>
       ) : null}
       {error ? (

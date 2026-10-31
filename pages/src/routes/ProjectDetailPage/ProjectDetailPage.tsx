@@ -1,5 +1,6 @@
 import {useEffect, type ReactNode} from 'react';
 import {Link, useLocation, useParams} from 'react-router';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ProjectsMessagePage} from '@/features/projects/components/views/pages/ProjectsMessagePage';
 import {useCopyLink} from '@/hooks/useCopyLink';
 import {useProjectDetail, type ProjectDetailError} from '@/features/projects/hooks/useProjectDetail';
@@ -120,8 +121,8 @@ export const ProjectDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="project-detail">
-        <p className="itg-loading">Loading...</p>
+      <div className="project-detail-loading" role="status" data-launcher-avoid="">
+        <LoadingIndicator label="Loading project…" />
       </div>
     );
   }

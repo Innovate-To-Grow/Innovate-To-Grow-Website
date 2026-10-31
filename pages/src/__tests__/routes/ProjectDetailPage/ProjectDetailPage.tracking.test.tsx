@@ -128,7 +128,8 @@ describe('ProjectDetailPage page views', () => {
     expect(push).not.toHaveBeenCalled();
 
     await act(() => router.navigate(to));
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading project…');
+    expect(screen.getByRole('status')).toHaveAttribute('data-launcher-avoid', '');
     await waitFor(() => expect(fetchProjectDetail).toHaveBeenCalled());
     // Not under the title of the page the visitor came from, nor under a section's name.
     expect(push).not.toHaveBeenCalled();

@@ -373,7 +373,7 @@ describe('ProjectGridTable accessibility', () => {
     expect(message).toHaveTextContent('');
 
     fireEvent.click(screen.getByRole('button', {name: 'View All Details'}));
-    expect(screen.getAllByText('Loading project details...')).toHaveLength(3);
+    expect(screen.getAllByText('Loading project details…')).toHaveLength(3);
     expect(screen.queryAllByRole('status')).toHaveLength(0);
     expect(message).toHaveTextContent('All details shown.');
 
@@ -382,12 +382,12 @@ describe('ProjectGridTable accessibility', () => {
 
     // A row opened by its own button still says it is loading.
     fireEvent.click(screen.getByRole('button', {name: 'Details for Project 1'}));
-    expect(screen.getByRole('status')).toHaveTextContent('Loading project details...');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading project details…');
   });
 
   it('says it is loading the rows', () => {
     render(<ProjectGridTable {...baseProps} loading />);
-    expect(screen.getByRole('status')).toHaveTextContent('Loading project data...');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading project data…');
   });
 
   it('still announces the first row opened when it is the only row', () => {
@@ -417,7 +417,7 @@ describe('ProjectGridTable accessibility', () => {
 
     // Opening the only row also makes "every row open"; it was still opened on its own, so it reports itself.
     act(() => fireEvent.click(screen.getByRole('button', {name: 'Details for Project 1'})));
-    expect(screen.getByRole('status')).toHaveTextContent('Loading project details...');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading project details…');
   });
 
   describe('Try Again', () => {

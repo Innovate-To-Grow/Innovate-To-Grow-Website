@@ -1,5 +1,6 @@
 import '../../styles/cascade/projects.css';
 import {useEffect, useRef, type RefObject} from 'react';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useMediaQuery} from '@/features/layout';
 import {ProjectGridControls, PageSizeField} from '../controls/ProjectGridControls';
 import {ProjectGridDesktopTable} from './ProjectGridDesktopTable';
@@ -271,7 +272,7 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
       {grid.loading ? (
         // Focusable from script: it holds focus while Try Again loads the rows (useRetryFocus).
         <p ref={loadingRef} className="project-grid-state project-grid-state-loading" role="status" tabIndex={-1}>
-          Loading project data...
+          <LoadingIndicator label="Loading project data…" />
         </p>
       ) : null}
       {grid.error ? (

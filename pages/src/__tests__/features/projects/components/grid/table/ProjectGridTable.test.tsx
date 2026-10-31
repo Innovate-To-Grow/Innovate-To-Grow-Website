@@ -207,7 +207,11 @@ describe('ProjectGridTable', () => {
     it('renders the loading state instead of the table', () => {
         const {container} = render(<ProjectGridTable {...baseProps} loading />);
 
-        expect(screen.getByText('Loading project data...')).toBeInTheDocument();
+        // The shared loading indicator, inside the line's own status role.
+        const status = screen.getByRole('status');
+        expect(status).toHaveClass('project-grid-state-loading');
+        expect(status).toHaveTextContent('Loading project data…');
+        expect(status.querySelector('.loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
         expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
     });
 

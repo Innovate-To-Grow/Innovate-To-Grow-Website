@@ -58,6 +58,12 @@
   padding: 1rem 0;
 }
 
+/* It holds the same room as the loading line above, so the footer does not jump up when the load fails. */
+.projects-page .project-grid-load-error {
+  min-height: min(100vh, 850px);
+  align-content: flex-start;
+}
+
 .project-grid-load-error .project-grid-state {
   padding: 0;
 }

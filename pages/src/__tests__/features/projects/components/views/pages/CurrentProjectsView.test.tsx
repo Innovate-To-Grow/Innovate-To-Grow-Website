@@ -193,7 +193,7 @@ describe('CurrentProjectsView', () => {
 
   it('shows the loading and error states without a meta line, keeping its room while loading', () => {
     const {container, rerender} = renderView({loading: true, rows: []});
-    expect(screen.getByText('Loading project data...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading project data…');
     expect(screen.queryByText(/projects ·/)).toBeNull();
     // A blank line, so the lede and the grid do not move down when the real one appears.
     const meta = container.querySelector('.itg-page-meta') as HTMLElement;

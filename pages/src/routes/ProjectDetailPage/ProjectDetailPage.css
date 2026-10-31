@@ -8,6 +8,17 @@
   min-width: 0;
 }
 
+/* While the project loads: the loading line, holding room so the footer does not show in the first screen only to
+   be pushed out when the page arrives. A failure holds the same room. */
+.project-detail-loading {
+  min-height: 40vh;
+  padding: 1rem 0;
+}
+
+.project-detail.projects-error {
+  min-height: 40vh;
+}
+
 /* The eyebrow sits right above the h1, as on the shared-list page. */
 .project-detail-header .itg-eyebrow {
   margin: 0 0 2px;
