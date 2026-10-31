@@ -179,6 +179,19 @@ describe('SharedCurationView', () => {
     expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
   });
 
+  it('keeps the chat launcher off the page in every state', () => {
+    const {container, rerender} = renderView({loading: true});
+    const root = () => container.querySelector('.past-projects-page--shared');
+    expect(root()).toHaveAttribute('data-launcher-avoid', '');
+
+    rerender(view({}, SHARE));
+    expect(root()).toHaveAttribute('data-launcher-avoid', '');
+    rerender(view({error: 'Not found', notFound: true}));
+    expect(root()).toHaveAttribute('data-launcher-avoid', '');
+    rerender(view({error: 'Network Error'}));
+    expect(root()).toHaveAttribute('data-launcher-avoid', '');
+  });
+
   it('names the tab after a curation that does not exist', () => {
     document.title = 'Past Projects | Innovate to Grow';
     renderView({error: 'Not found', notFound: true});

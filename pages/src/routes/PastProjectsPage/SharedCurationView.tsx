@@ -106,7 +106,8 @@ export const SharedCurationView = ({
   });
 
   return (
-    <div className="past-projects-page past-projects-page--shared">
+    // Marked so the chat launcher tucks away over the page's text and rows, not only its controls (useLauncherYield).
+    <div className="past-projects-page past-projects-page--shared" data-launcher-avoid="">
       {/* Kept in the page while empty, so screen readers announce "Loading curation…" when it is put in. */}
       <p className="past-projects-state past-projects-loading-line" role="status">
         {status.loading && !loadFailure.showFailure ? <LoadingIndicator label="Loading curation…" /> : null}
