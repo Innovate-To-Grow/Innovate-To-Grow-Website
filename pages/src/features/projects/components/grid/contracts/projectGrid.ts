@@ -156,7 +156,8 @@ export const createProjectGridFingerprint = (row: ProjectGridRow) =>
   ]);
 
 /** The ids a row is known by: its own, and the current-semester project's an archive row stands in for. */
-const projectIds = (row: ProjectGridRow) => [row.id, row.current_project_id].filter((id): id is string => Boolean(id));
+export const getProjectRowIds = (row: ProjectGridRow) =>
+  [row.id, row.current_project_id].filter((id): id is string => Boolean(id));
 
 /**
  * Tells whether a row is one of `rows`: the same project id, or the same content. The fingerprint alone is not
@@ -168,14 +169,14 @@ export const createProjectGridRowMatcher = (rows: ProjectGridRow[]) => {
   const ids = new Set<string>();
   const fingerprints = new Set<string>();
   const add = (row: ProjectGridRow) => {
-    projectIds(row).forEach((id) => ids.add(id));
+    getProjectRowIds(row).forEach((id) => ids.add(id));
     fingerprints.add(createProjectGridFingerprint(row));
   };
   rows.forEach(add);
   return {
     add,
     has: (row: ProjectGridRow) =>
-      projectIds(row).some((id) => ids.has(id)) || fingerprints.has(createProjectGridFingerprint(row)),
+      getProjectRowIds(row).some((id) => ids.has(id)) || fingerprints.has(createProjectGridFingerprint(row)),
   };
 };
 

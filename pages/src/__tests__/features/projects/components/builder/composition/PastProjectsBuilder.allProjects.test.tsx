@@ -288,6 +288,21 @@ describe('PastProjectsBuilder on All Projects', () => {
       await waitFor(() => expect(window.location.hash).toBe(''));
     });
 
+    it('finds a handed-over current project as the archive row that stands in for it once its semester is archived', async () => {
+      const standIn = makeRow({id: ID_ARCHIVE, catalog: 'archive', current_project_id: ID_CURRENT});
+      // The widget's draft may hold both ids of that project; it is still one project.
+      window.history.replaceState(null, '', `/all-projects#curation-draft=${ID_CURRENT},${ID_ARCHIVE}`);
+      render(builder({rows: [standIn]}));
+      await screen.findByRole('heading', {level: 2, name: /curation draft/i});
+
+      expect(mockHydrateProjectGridRowsSettled.mock.calls[0][0].map((row: ProjectGridRow) => row.id)).toEqual([
+        ID_ARCHIVE,
+      ]);
+      expect(within(draftSection()).getByText(/From the All Projects widget/)).toHaveTextContent(
+        /^From the All Projects widget: 1 project added to the curation draft \(1 in total\)\.$/,
+      );
+    });
+
     it('says so under the search tables when none of the handed-over projects are listed', () => {
       window.history.replaceState(null, '', `/all-projects#curation-draft=${ID_GONE}`);
       render(builder());

@@ -1,19 +1,20 @@
 import {useEffect, useEffectEvent, useRef} from 'react';
-import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {getProjectRowIds, type ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {isEmbeddedBuilder, readDraftHandover} from './draftHandover';
 
 interface UseDraftHandoverOptions {
-  /** The past-project archive, where the handed-over ids are looked up. */
+  /** The list the builder searches, where the handed-over ids are looked up. */
   rows: ProjectGridRow[];
   loading: boolean;
-  /** Adds the archive rows that were found; `missing` counts the ids the archive does not have. */
+  /** Adds the rows that were found, each once; `missing` counts the ids the list does not have. */
   onHandover: (found: ProjectGridRow[], missing: number) => void;
 }
 
 /**
  * On the full page, takes the projects a widget handed over (see draftHandover.ts) into this browser's draft once
- * the archive has loaded, and takes the handover out of the address, so a reload or a shared link does not add
- * them again.
+ * the list has loaded, and takes the handover out of the address, so a reload or a shared link does not add
+ * them again. A current-semester project whose semester was archived meanwhile is found as the archive row that
+ * stands in for it (and names its id in `current_project_id`).
  */
 export function useDraftHandover({rows, loading, onHandover}: UseDraftHandoverOptions) {
   const pendingIds = useRef<string[] | null | undefined>(undefined);
@@ -24,7 +25,7 @@ export function useDraftHandover({rows, loading, onHandover}: UseDraftHandoverOp
       pendingIds.current = isEmbeddedBuilder() ? null : readDraftHandover(window.location.hash);
     }
     const ids = pendingIds.current;
-    // An unreadable handover is dropped at once; a readable one waits for the archive.
+    // An unreadable handover is dropped at once; a readable one waits for the list.
     if (!ids || (ids.length && (loading || !rows.length))) {
       return;
     }
@@ -34,8 +35,9 @@ export function useDraftHandover({rows, loading, onHandover}: UseDraftHandoverOp
     if (!ids.length) {
       return;
     }
-    const byId = new Map(rows.flatMap((row) => (row.id ? [[row.id, row] as const] : [])));
-    const found = ids.flatMap((id) => byId.get(id) ?? []);
-    handOver(found, ids.length - found.length);
+    const byId = new Map(rows.flatMap((row) => getProjectRowIds(row).map((id) => [id, row] as const)));
+    const matches = ids.map((id) => byId.get(id));
+    const found = [...new Set(matches.filter((row): row is ProjectGridRow => Boolean(row)))];
+    handOver(found, matches.filter((row) => !row).length);
   }, [loading, rows]);
 }
