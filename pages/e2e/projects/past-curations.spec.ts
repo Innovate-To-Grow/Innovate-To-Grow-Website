@@ -3,7 +3,7 @@
 // curations are listed on Past Projects. Desktop engines only (untagged).
 import type {Page} from '@playwright/test';
 import type {PastProjectShare} from '../../src/features/projects/api';
-import {mockPastProjects, pastProjectRows, seedAuthenticatedSession} from '../helpers';
+import {mockAllProjects, mockPastProjects, pastProjectRows, seedAuthenticatedSession} from '../helpers';
 import {expect, test} from '../helpers/fixtures';
 
 const json = (body: unknown, status = 200) => ({status, contentType: 'application/json', body: JSON.stringify(body)});
@@ -11,6 +11,8 @@ const json = (body: unknown, status = 200) => ({status, contentType: 'applicatio
 async function openBuilder(page: Page, saved: PastProjectShare[]) {
   await seedAuthenticatedSession(page);
   await mockPastProjects(page, pastProjectRows());
+  // The saved curation's page searches every project, for its owner to add more.
+  await mockAllProjects(page, pastProjectRows());
   // Registered after the helpers, so these answer first.
   await page.route(/\/projects\/past-shares\/mine\/(?:\?.*)?$/, (route) =>
     route.fulfill(
@@ -82,6 +84,9 @@ test('a curation draft outlives the tab, and a saved curation is listed on Past 
   const notice = next.locator('.past-projects-saved-notice');
   await expect(notice).toContainText('Curation saved.');
   expect(saved[0]).toMatchObject({name: 'Water picks', note: 'For the board meeting'});
+  // Its owner can add the project that is not in it yet.
+  const addMore = next.getByRole('region', {name: 'Add More Projects'}).locator('.project-grid-table-wrap');
+  await expect(addMore.getByRole('link', {name: /Low-Cost Wind Turbine/})).toBeVisible();
 
   await notice.getByRole('link', {name: 'Past Projects'}).click();
   const curations = next.getByRole('region', {name: 'My Curations'});

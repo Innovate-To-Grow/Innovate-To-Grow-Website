@@ -3,9 +3,10 @@
 // real-browser contentEditable + Selection behaviors jsdom cannot reproduce still need coverage:
 // typing must not reset the caret (the FE-1 focus guard), and a highlight must toggle on and back
 // off without re-selecting (real <mark> wrap/re-select + the sync effect not rewriting the user's
-// own edit). Desktop engines only (untagged → no @mobile).
-import type {PastProjectShare} from '../src/features/projects/api';
-import {mockPastProjects, mockPastProjectShare, pastProjectRows} from '../helpers';
+// own edit). An owner's page also searches every project (/projects/all/) to add more to the
+// curation. Desktop engines only (untagged → no @mobile).
+import type {PastProjectShare, ProjectTableRow} from '../../src/features/projects/api';
+import {mockAllProjects, mockPastProjectShare, pastProjectRows} from '../helpers';
 import {expect, test} from '../helpers/fixtures';
 
 const SHARE_ID = 'share-e2e-1';
@@ -44,7 +45,7 @@ const noteEditor = (page: import('@playwright/test').Page) =>
 
 test.describe('past projects shared page', () => {
   test('renders the saved snapshot with export options for a visitor', async ({page}) => {
-    await mockPastProjects(page, pastProjectRows());
+    await mockAllProjects(page, pastProjectRows());
     await mockPastProjectShare(page, shareFixture({can_edit: false, note: 'Curated highlights'}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
@@ -65,7 +66,7 @@ test.describe('past projects shared page', () => {
   });
 
   test('shows the note and name edit affordances to an owner', async ({page}) => {
-    await mockPastProjects(page, pastProjectRows());
+    await mockAllProjects(page, pastProjectRows());
     await mockPastProjectShare(page, shareFixture({can_edit: true}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
@@ -73,8 +74,37 @@ test.describe('past projects shared page', () => {
     await expect(page.getByRole('button', {name: /edit name/i}).first()).toBeVisible();
   });
 
+  test("lets an owner add from every project, this semester's teams included", async ({page}) => {
+    const [saved, archived] = pastProjectRows();
+    const current: ProjectTableRow = {
+      ...archived,
+      id: 'e2e00000-0000-4000-8000-0000000000c1',
+      semester_label: '2026 Fall',
+      class_code: 'CAP',
+      team_number: '101',
+      team_name: 'CAP-101',
+      project_title: 'Campus Water Sensor',
+      catalog: 'current',
+      is_presenting: true,
+    };
+    await mockAllProjects(page, [current, saved, archived]);
+    await mockPastProjectShare(page, shareFixture({can_edit: true}));
+    await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
+
+    const table = page.getByRole('region', {name: 'Add More Projects'}).locator('.project-grid-table-wrap');
+    // A current-semester team links to its own page, an archived one to the archive's.
+    await expect(table.getByRole('link', {name: /Campus Water Sensor/})).toHaveAttribute(
+      'href',
+      new RegExp(`/projects/${current.id}$`),
+    );
+    await expect(table.getByRole('link', {name: /Low-Cost Wind Turbine/})).toHaveAttribute(
+      'href',
+      new RegExp(`/past-projects/project/${archived.id}$`),
+    );
+  });
+
   test('owner can type into the note and the text persists in order', async ({page}) => {
-    await mockPastProjects(page, pastProjectRows());
+    await mockAllProjects(page, pastProjectRows());
     await mockPastProjectShare(page, shareFixture({can_edit: true}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
@@ -88,7 +118,7 @@ test.describe('past projects shared page', () => {
   });
 
   test('owner save persists through reload with the next snapshot version', async ({page}) => {
-    await mockPastProjects(page, pastProjectRows());
+    await mockAllProjects(page, pastProjectRows());
     const shareMock = await mockPastProjectShare(page, shareFixture({can_edit: true}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
@@ -106,7 +136,7 @@ test.describe('past projects shared page', () => {
   });
 
   test('stale owner save reloads authoritative state before the next edit', async ({page}) => {
-    await mockPastProjects(page, pastProjectRows());
+    await mockAllProjects(page, pastProjectRows());
     const shareMock = await mockPastProjectShare(page, shareFixture({can_edit: true}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
@@ -134,7 +164,7 @@ test.describe('past projects shared page', () => {
   });
 
   test('owner can toggle a note highlight on and back off without re-selecting', async ({page}) => {
-    await mockPastProjects(page, pastProjectRows());
+    await mockAllProjects(page, pastProjectRows());
     await mockPastProjectShare(page, shareFixture({can_edit: true}));
     await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
