@@ -78,48 +78,34 @@
   outline-offset: -3px;
 }
 
-/* Row shading, as DataTables does it: the stripes count the project rows only (an open row's details do not
-   shift them), the sorted column is shaded ("sorting_1": #f1f1f1 on striped rows, #fafafa on the others), an
-   open row is the reference's "shown" row (#162d4f on #f6f6f6, sorted column #eaeaea, a 1px #ccc rule under it)
-   with its details on white below, and a checked row is #fff6db. The reference also set the open row in bold;
-   that made long titles wrap one line more, so the row jumped under the pointer as it opened, and with every
+/* Row shading: the stripes (--itg-color-row-stripe) count the project rows only, so an open row's details do not
+   shift them. An open row takes the open-row fill (--itg-color-bg-light, as .itg-table's is-expanded rows do) with
+   a --itg-color-border rule under it and its details on white below, and a checked row is highlighted. The sorted
+   column is not shaded: its header's navy arrow and aria-sort mark it. The reference also set the open row in
+   bold; that made long titles wrap one line more, so the row jumped under the pointer as it opened, and with every
    row open the table was all bold. A navy rule down its left edge marks it instead. */
 .project-grid-table tbody > tr.project-grid-row > td {
   background: transparent;
 }
 
 .project-grid-table tbody > tr.project-grid-row.is-odd > td {
-  background: #f9f9f9;
-}
-
-.project-grid-table tbody > tr.project-grid-row > td.is-sorted-col {
-  background: #fafafa;
-}
-
-.project-grid-table tbody > tr.project-grid-row.is-odd > td.is-sorted-col {
-  background: #f1f1f1;
+  background: var(--itg-color-row-stripe);
 }
 
 .project-grid-table tbody > tr.project-grid-row.is-expanded > td {
-  border-bottom: 1px solid #cccccc;
-  background: #f6f6f6;
-  color: #162d4f;
+  border-bottom: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-light);
 }
 
 .project-grid-table tbody > tr.project-grid-row.is-expanded > td:first-child {
   box-shadow: inset 3px 0 0 var(--itg-color-primary);
 }
 
-.project-grid-table tbody > tr.project-grid-row.is-expanded > td.is-sorted-col {
-  background: #eaeaea;
-}
-
 .project-grid-table tbody > tr.project-grid-detail-row > td {
   background: var(--itg-color-white);
 }
 
-.project-grid-table tbody > tr.project-grid-row.is-selected > td,
-.project-grid-table tbody > tr.project-grid-row.is-selected > td.is-sorted-col {
+.project-grid-table tbody > tr.project-grid-row.is-selected > td {
   background: var(--itg-color-highlight);
 }
 
@@ -262,8 +248,8 @@ a.project-grid-title-link:focus {
   color: var(--itg-color-disabled-text);
 }
 
-/* The details under an open row: on white, below the open row's #ccc rule, spaced like the reference's child
-   row (its 8px cell padding plus the 8px padding of the table inside it). */
+/* The details under an open row: on white, below the open row's rule, spaced like the reference's child row (its
+   8px cell padding plus the 8px padding of the table inside it). */
 .project-grid-table .project-grid-detail-row > td {
   padding-top: 16px;
   padding-bottom: 16px;

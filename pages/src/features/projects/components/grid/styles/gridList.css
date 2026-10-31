@@ -4,14 +4,15 @@
 
 /* ---- Phone list ------------------------------------------------------------- */
 
-/* The phone list keeps the table's look: 1px #111 rules above and below, #ddd row separators, striped rows.
-   It replaces the table below 768px: the grid renders one or the other (ProjectGridTable), never both. */
+/* The phone list keeps the table's look: 1px primary rules above and below, --itg-color-border row separators,
+   --itg-color-row-stripe odd rows. It replaces the table below 768px: the grid renders one or the other
+   (ProjectGridTable), never both. */
 .project-grid-mobile-cards {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid #111111;
-  border-bottom: 1px solid #111111;
+  border-top: 1px solid var(--itg-color-primary);
+  border-bottom: 1px solid var(--itg-color-primary);
 }
 
 .project-grid-mobile-card {
@@ -26,12 +27,12 @@
 }
 
 .project-grid-mobile-card:nth-child(odd) {
-  background: #f9f9f9;
+  background: var(--itg-color-row-stripe);
 }
 
-/* An open phone row takes the shade of the table's open row. */
+/* An open phone row takes the fill of the table's open row. */
 .project-grid-mobile-card.is-expanded {
-  background: #f6f6f6;
+  background: var(--itg-color-bg-light);
 }
 
 .project-grid-mobile-card.is-selected {

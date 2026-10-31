@@ -27,7 +27,6 @@ interface DesktopRowProps {
   isSaved: boolean;
   savedRowLabel: string;
   isHighlighted: boolean;
-  sortField: ProjectGridColumnKey;
   /** The row's details say they are loading; false when every row was opened at once (useDetailsAnnouncements). */
   announceDetails: boolean;
 }
@@ -130,7 +129,6 @@ export const DesktopRow = ({
   isSaved,
   savedRowLabel,
   isHighlighted,
-  sortField,
   announceDetails,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
@@ -164,10 +162,7 @@ export const DesktopRow = ({
         ) : null}
 
         {columns.map((column) => (
-          <td
-            key={column.key}
-            className={`project-grid-col-${column.key}${column.key === sortField ? ' is-sorted-col' : ''}`}
-          >
+          <td key={column.key} className={`project-grid-col-${column.key}`}>
             <DesktopCell
               columnKey={column.key}
               row={row}

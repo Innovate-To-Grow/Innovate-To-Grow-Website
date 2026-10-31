@@ -182,7 +182,6 @@ export const ProjectGridDesktopTable = ({
               isSaved={Boolean(isRowSaved?.(row))}
               savedRowLabel={savedRowLabel}
               isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
-              sortField={sortField}
               announceDetails={announceDetails}
             />
           ))}

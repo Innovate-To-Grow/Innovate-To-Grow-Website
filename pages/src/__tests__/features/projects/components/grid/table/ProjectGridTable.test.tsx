@@ -181,7 +181,7 @@ describe('ProjectGridTable', () => {
         expect(onSortChange).toHaveBeenCalledWith('project_title');
     });
 
-    it('marks the sorted header and shades the sorted column, DataTables style', () => {
+    it('marks the sorted header, and only the header', () => {
         const {container} = render(
             <ProjectGridTable {...baseProps} sortField="organization" sortDirection="desc" />,
         );
@@ -196,9 +196,10 @@ describe('ProjectGridTable', () => {
         // The arrows are drawn by CSS: the header button holds the label only.
         expect(within(organizationHeader).getByRole('button')).toHaveTextContent(/^Organization$/);
 
-        const sortedCells = container.querySelectorAll('tbody td.is-sorted-col');
-        expect(sortedCells).toHaveLength(2);
-        sortedCells.forEach((cell) => expect(cell).toHaveClass('project-grid-col-organization'));
+        // The arrow and aria-sort mark the sorted column: its cells are not shaded.
+        const organizationCells = container.querySelectorAll('tbody td.project-grid-col-organization');
+        expect(organizationCells).toHaveLength(2);
+        organizationCells.forEach((cell) => expect(cell.className).toBe('project-grid-col-organization'));
         // The details column is headed "Details", as on the reference table.
         expect(table.getByRole('columnheader', {name: 'Details'})).toBeInTheDocument();
     });
