@@ -42,6 +42,7 @@ class RobotsTxtTest(TestCase):
             "/cms/embed-hosts/",
             "/event/schedule/",
             "/projects/archive/?page=2",
+            "/projects/all/?page=2",
             "/projects/5970763b-cf7c-40d6-a87c-96916e0ea695/",
         ):
             with self.subTest(path=path):
