@@ -193,10 +193,16 @@
     color: var(--itg-color-white);
   }
 
-  .search-table-action-group .itg-btn-text:disabled {
+  /* Disabled, or soft-disabled (aria-disabled keeps focus on a button that has nothing to do yet): greyed out as
+     above 768px, and not filled navy on hover or focus. */
+  .search-table-action-group .itg-btn-text:disabled,
+  .search-table-action-group .itg-btn-text[aria-disabled='true'],
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:hover,
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:focus-visible {
     border-color: var(--itg-color-disabled-border);
     background: var(--itg-color-disabled-bg);
     color: var(--itg-color-disabled-text);
+    cursor: not-allowed;
   }
 
   /* Saved Merged Results and shared lists. */
@@ -314,6 +320,16 @@
   .project-grid-table th.project-grid-sortable .project-grid-sort-button::after {
     forced-color-adjust: none;
     background-color: CanvasText;
+  }
+
+  /* The phone rules above outrank buttons.css's GrayText for an unavailable button, and the theme turns their
+     author colours into ButtonText, which looked available: use the theme's disabled colour again. */
+  .search-table-action-group .itg-btn-text:disabled,
+  .search-table-action-group .itg-btn-text[aria-disabled='true'],
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:hover,
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:focus-visible {
+    color: GrayText;
+    border-color: GrayText;
   }
 }
 
