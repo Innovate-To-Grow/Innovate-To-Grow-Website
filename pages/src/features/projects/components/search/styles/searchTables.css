@@ -257,24 +257,17 @@
   gap: 0.375rem;
 }
 
+/* No icons: the words and their colour carry the outcome (errors are also alerts). */
+.past-projects-ai-search-message.is-success {
+  color: var(--itg-color-success);
+}
+
 .past-projects-ai-search-message.is-error {
   color: var(--itg-color-error);
 }
 
 .past-projects-ai-search-message.is-loading {
   color: var(--itg-color-text-secondary);
-}
-
-.past-projects-status-icon {
-  flex: none;
-  width: 1.125rem;
-  height: 1.125rem;
-  margin-top: 0.125rem;
-  fill: none;
-  stroke: var(--itg-color-success);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .search-table-save-status {

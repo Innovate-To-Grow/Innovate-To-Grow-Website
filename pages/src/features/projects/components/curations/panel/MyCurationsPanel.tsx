@@ -25,7 +25,7 @@ export const MyCurationsPanel = () => {
   const memberId = isAuthenticated && !isInitializing ? (user?.member_uuid ?? null) : null;
   // Tagged with the member they were loaded for, so another account never sees them while its own load runs.
   const [loaded, setLoaded] = useState<{memberId: string; shares: PastProjectShareSummary[]} | null>(null);
-  const {status: copyStatus, copy} = useCopyLink({
+  const {status: copyStatus, tone: copyTone, copy} = useCopyLink({
     copied: 'Link copied.',
     failed: 'Could not copy the link. Open the curation and copy its address instead.',
   });
@@ -95,7 +95,10 @@ export const MyCurationsPanel = () => {
           );
         })}
       </ul>
-      <p className="past-projects-my-curations-status" role="status">
+      <p
+        className={`past-projects-my-curations-status ${copyTone === 'error' ? 'itg-error' : 'itg-success'}`}
+        role="status"
+      >
         {copyStatus}
       </p>
     </section>
