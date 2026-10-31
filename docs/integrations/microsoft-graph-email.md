@@ -18,7 +18,7 @@ It is the third choice of the **Provider** setting:
 
 | | AWS SES | SMTP | Microsoft Graph |
 |---|---|---|---|
-| Credentials | Shared AWS IAM key (`AWSCredentialConfig`) | Host, port, optional username and password (`SMTPProviderConfig`) | Entra tenant ID, client ID, certificate and private key (or a client secret), and a mailbox scope (`MicrosoftGraphProviderConfig`) |
+| Credentials | Shared AWS IAM key in Secrets Manager, referenced by `AWSCredentialConfig` | Host, port, optional username and password (`SMTPProviderConfig`) | Entra tenant ID, client ID, certificate and private key (or a client secret), and a mailbox scope (`MicrosoftGraphProviderConfig`) |
 | Transport | SES API, raw MIME | SMTP submission | HTTPS `sendMail`, base64 MIME |
 | Message ID recorded | SES message ID | MIME `Message-ID` | MIME `Message-ID` |
 | Delivery events | Yes, through the [SNS webhook](ses-event-tracking.md) | No | No |

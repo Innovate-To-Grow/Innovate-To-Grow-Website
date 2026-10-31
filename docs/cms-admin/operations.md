@@ -56,7 +56,7 @@ After the new revision is fully deployed and every old task has drained, add a f
 cd src && python manage.py seed_service_configs
 ```
 
-Creates an empty active `EmailServiceConfig` row for backend defaults; it selects AWS SES until you choose SMTP or Microsoft Graph under Mail → Notification Delivery. SMTP and Microsoft Graph credentials are entered there and are never seeded from the environment. AWS credentials, region, End User Messaging origination number, and SMS OTP template are entered through the AWS Credentials admin UI, not via `.env`. `AWSCredentialConfig` is also created when `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are set locally.
+Creates an empty active `EmailServiceConfig` row for backend defaults; it selects AWS SES until you choose SMTP or Microsoft Graph under Mail → Notification Delivery. SMTP and Microsoft Graph credentials are entered there and are never seeded from the environment. Create application AWS keys in Secrets Manager under `itg/backend/aws-credentials/`, then enter the secret ARN and AWS region in the AWS Credentials admin UI. Production stores no key values in the database. `AWS_SERVICE_CREDENTIALS_SECRET_ARN` can seed that reference; `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` seeding is supported only outside production. SMS origination and OTP settings remain service metadata.
 
 ### Verifying configs before deploy
 
@@ -64,7 +64,7 @@ Creates an empty active `EmailServiceConfig` row for backend defaults; it select
 cd src && python manage.py verify_service_configs --strict
 ```
 
-Confirms the active `EmailServiceConfig` has a valid From address and that the provider it selects is configured: AWS credentials for SES, an active `SMTPProviderConfig` for SMTP, or an active `MicrosoftGraphProviderConfig` (tenant ID, client ID, an unexpired certificate and private key or a client secret, and a mailbox scope that lets the sender mailbox and From address send) for Microsoft Graph; it also warns 30 days before the Graph certificate expires. Providers that are not selected only produce warnings, and `MicrosoftGraphProviderConfig` is reported only when Graph is selected or configured. The Graph check reads the stored settings and does not contact Microsoft; run `python manage.py verify_graph_access --deny-mailbox <unrelated mailbox>` to prove the credentials and the mailbox restriction against Microsoft, and **Send Test Email** under Mail → Notification Delivery to prove delivery ([Microsoft Graph email](../integrations/microsoft-graph-email.md)). Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
+Confirms the active `EmailServiceConfig` has a valid From address and that the provider it selects is structurally configured: an AWS credential reference for SES, an active `SMTPProviderConfig` for SMTP, or an active `MicrosoftGraphProviderConfig` (tenant ID, client ID, an unexpired certificate and private key or a client secret, and a mailbox scope that lets the sender mailbox and From address send) for Microsoft Graph; it also warns 30 days before the Graph certificate expires. This does not prove that Secrets Manager or provider calls succeed. Providers that are not selected only produce warnings, and `MicrosoftGraphProviderConfig` is reported only when Graph is selected or configured. The Graph check reads the stored settings and does not contact Microsoft; run `python manage.py verify_graph_access --deny-mailbox <unrelated mailbox>` to prove the credentials and the mailbox restriction against Microsoft, and **Send Test Email** under Mail → Notification Delivery to prove delivery ([Microsoft Graph email](../integrations/microsoft-graph-email.md)). Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
 
 ### Managing via admin
 
@@ -72,7 +72,7 @@ Configuration models are available in Django admin:
 
 | Model | Admin area | Purpose |
 |-------|------------|---------|
-| `AWSCredentialConfig` | Site Settings | Shared AWS IAM key, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
+| `AWSCredentialConfig` | Site Settings | Shared AWS Secrets Manager reference, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
 | `EmailServiceConfig` | Mail → Notification Delivery | Sender identity, campaign send rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph) |
 | `SMTPProviderConfig` | Mail → Notification Delivery | SMTP host, port, TLS/SSL, optional authentication, and timeout |
 | `MicrosoftGraphProviderConfig` | Mail → Notification Delivery | Entra tenant ID, client ID, certificate and private key (or client secret), optional sender mailbox, and messages per minute for Microsoft Graph; its **mailbox scope** (mailboxes and permission levels, `MicrosoftGraphMailboxScope`) is edited at `/admin/core/microsoftgraphproviderconfig/` (not in the sidebar; linked from the Graph panel) |

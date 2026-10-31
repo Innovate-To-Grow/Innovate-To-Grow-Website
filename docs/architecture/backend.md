@@ -168,6 +168,7 @@ The following configuration selectors enforce their single-active invariant in b
 |---------|----------|---------|
 | `resetdb` | `core/management/commands/resetdb.py` | Dev-only: drops DB, regenerates migrations, seeds admin user |
 | `seed_service_configs` | `core/management/commands/seed_service_configs.py` | Creates skeleton EmailServiceConfig row and optional AWSCredentialConfig from local env |
+| `migrate_aws_credentials` | `core/management/commands/migrate_aws_credentials.py` | Copies and verifies application AWS keys in Secrets Manager; `--clear-legacy` retires database plaintext after rollout |
 | `verify_service_configs` | `core/management/commands/verify_service_configs.py` | Verifies active service configs exist before removing env vars |
 | `migrate_locked` | `authn/management/commands/migrate_locked.py` | Runs migrations on PostgreSQL while holding the repository advisory lock |
 | `run_background_worker` | `core/management/commands/run_background_worker.py` | Claims and processes durable background jobs (`--once` processes one batch) and runs the hourly maintenance list (`MAINTENANCE_TASKS`: retired RSA keys, public-assistant budgets, send-verification cleanup, expired sessions, login failure windows; `--maintenance-seconds`, minimum 300) |

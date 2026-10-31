@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  id-token: write
   actions: read
   contents: read
 
@@ -150,23 +151,14 @@ jobs:
     uses: ./.github/workflows/deploy-backend.yml
     with:
       deploy_sha: ${{ needs.approve.outputs.deploy_sha }}
-      build_image: false
-    secrets: inherit
 
   deploy-frontend:
     name: Deploy frontend targets
-    # The SPA links backend endpoints a new release may only just have added (e.g.
-    # /api/layout/theme.css), so the backend goes first. A migration that retires
-    # backend CSS therefore ships one release after the frontend that replaces it.
-    # Only the order changes: a failed backend deployment does not hold
-    # back the frontend, since new backend tasks may already have migrated the
-    # database to match it.
+    # Release the SPA only after migration and backend health checks succeed.
     needs: [approve, deploy-backend]
-    if: ${{ !cancelled() && needs.approve.result == 'success' }}
     uses: ./.github/workflows/deploy-frontend.yml
     with:
       deploy_sha: ${{ needs.approve.outputs.deploy_sha }}
-    secrets: inherit
 
   deploy-archive:
     name: Deploy archive target
@@ -174,4 +166,3 @@ jobs:
     uses: ./.github/workflows/deploy-archive.yml
     with:
       deploy_sha: ${{ needs.approve.outputs.deploy_sha }}
-    secrets: inherit

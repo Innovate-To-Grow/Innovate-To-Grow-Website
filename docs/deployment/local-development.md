@@ -51,7 +51,7 @@ Local development uses `config.settings.environments.local` by default. Key beha
 - SQLite database (`src/db.sqlite3`)
 - Emails printed to console
 - In-memory cache
-- `ALLOWED_HOSTS`: `localhost`, `127.0.0.1`, `0.0.0.0`
+- `DJANGO_ALLOWED_HOSTS`: `localhost`, `127.0.0.1`, `0.0.0.0`
 
 Most Django commands pick up dev settings automatically. For `test`, you must specify explicitly:
 
