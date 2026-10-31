@@ -139,10 +139,16 @@ test('saves a curation of a current team and an archived one, named after All Pr
     };
     await route.fulfill(json(saved, 201));
   });
-  await page.route(/\/projects\/past-shares\/share-all\/(?:\?.*)?$/, (route) => route.fulfill(json(saved)));
+  const shareReads: string[] = [];
+  await page.route(/\/projects\/past-shares\/share-all\/(?:\?.*)?$/, (route) => {
+    shareReads.push(route.request().method());
+    return route.fulfill(json(saved));
+  });
   await page.goto('/all-projects', {waitUntil: 'domcontentloaded'});
 
   await addToCuration(page, presenting.project_title, archived.project_title);
+  // Saved without a name, a curation holding this semester's team is a "Project Curation", not a past-project one.
+  await expect(page.getByLabel('Curation name (optional)')).toHaveAttribute('placeholder', 'Project Curation');
   await page
     .locator('#past-projects-saved-results .project-grid-card-header')
     .getByRole('button', {name: 'Save Curation'})
@@ -165,6 +171,16 @@ test('saves a curation of a current team and an archived one, named after All Pr
     'href',
     new RegExp(`/past-projects/project/${archived.id}$`),
   );
+  // The way to a list of one's own goes back to All Projects, which holds this semester's teams.
+  const closing = page.locator('.past-projects-shared-closing');
+  await expect(closing.getByRole('link', {name: 'Search all projects'})).toHaveAttribute('href', '/all-projects');
+  // The save handed the curation over: the page never asked for it again.
+  expect(shareReads).toEqual([]);
+
+  // A reload restores the history entry with the curation as saved, which may be outdated: the page loads it.
+  await page.reload({waitUntil: 'domcontentloaded'});
+  await expect(list.locator('.itg-eyebrow')).toHaveText('Curation · All Projects');
+  expect(shareReads).toEqual(['GET']);
 });
 
 test('the All Projects widget hands its draft over to /all-projects in a new tab', async ({page, context}) => {
