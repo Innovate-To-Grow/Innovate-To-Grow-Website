@@ -1,4 +1,5 @@
 import {useId, useState, type FormEvent} from 'react';
+import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 
 interface PastProjectsAISearchFormProps {
   isAuthenticated: boolean;
@@ -12,6 +13,8 @@ export const PastProjectsAISearchForm = ({
   onSearch,
 }: PastProjectsAISearchFormProps) => {
   const inputId = useId();
+  // Names what the search looks through: past projects, or every project on All Projects.
+  const {copy} = useProjectCatalog();
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim();
   const formClassName = `project-grid-search-field past-projects-ai-search${loading ? ' is-loading' : ''}`;
@@ -40,7 +43,7 @@ export const PastProjectsAISearchForm = ({
             type="search"
             className="itg-input project-grid-search-input past-projects-ai-search-input"
             value={query}
-            placeholder="Ask AI to find relevant past projects..."
+            placeholder={copy.aiPlaceholder}
             disabled={!isAuthenticated || loading}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -55,7 +58,7 @@ export const PastProjectsAISearchForm = ({
       </button>
       {loading ? (
         <p className="past-projects-ai-search-status" role="status" aria-live="polite">
-          Searching past projects with AI...
+          {copy.aiSearching}
         </p>
       ) : null}
     </form>

@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction} from 'react';
-import {searchPastProjectsWithAI, toProjectGridRow} from '@/features/projects/api';
+import {searchPastProjectsWithAI, toProjectGridRow, type ProjectAISearchScope} from '@/features/projects/api';
+import {useProjectCatalog, type ProjectCatalogCopy} from '@/features/projects/catalog/projectCatalog';
 import {collectFieldMessages} from '@/lib/api/errorMessages';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 
@@ -51,19 +52,31 @@ export function searchTableTitle(table: SearchTableState, tables: SearchTableSta
 
 type AISearchResponse = Awaited<ReturnType<typeof searchPastProjectsWithAI>>;
 
+// The client's own default scope is 'past', so Past Projects calls it as it always has; All Projects asks for 'all'.
+const searchWithAI = (query: string, scope: ProjectAISearchScope) =>
+  scope === 'past'
+    ? searchPastProjectsWithAI(query, AI_SEARCH_LIMIT)
+    : searchPastProjectsWithAI(query, AI_SEARCH_LIMIT, scope);
+
+interface AIResultsOptions {
+  filterAIRows: (rows: ProjectGridRow[]) => ProjectGridRow[];
+  /** When every AI result was filtered out, and when AI search found none. */
+  allAIRowsFilteredMessage: string;
+  noResultsMessage: string;
+}
+
 /** The rows and title an AI search loads into its table, or why it loads none. */
 const aiSearchOutcome = (
   response: AISearchResponse,
   query: string,
-  filterAIRows: (rows: ProjectGridRow[]) => ProjectGridRow[],
-  allAIRowsFilteredMessage: string,
+  {filterAIRows, allAIRowsFilteredMessage, noResultsMessage}: AIResultsOptions,
 ): {error: string} | {rows: ProjectGridRow[]; title: string} => {
   if (!response.available) {
     return {error: AI_SEARCH_NOT_AVAILABLE_MESSAGE};
   }
   const aiRows = filterAIRows(response.results.map(toProjectGridRow));
   if (!aiRows.length) {
-    return {error: response.results.length ? allAIRowsFilteredMessage : 'AI search did not find matching past projects.'};
+    return {error: response.results.length ? allAIRowsFilteredMessage : noResultsMessage};
   }
   return {rows: aiRows, title: createAISearchTableTitle(response.query || query)};
 };
@@ -75,11 +88,9 @@ interface UseTableRefreshOptions {
   onRefreshRows?: () => void;
   onMessage: (message: string) => void;
   refreshingMessage: string;
+  /** What a refresh says once the rows landed, or when they could not be loaded (the catalog's). */
+  copy: Pick<ProjectCatalogCopy, 'refreshed' | 'refreshFailed'>;
 }
-
-const REFRESH_FAILED_MESSAGE =
-  'This table was not refreshed: the past-project archive could not be loaded. Its rows are unchanged; ' +
-  'click Refresh Search Table to try again.';
 
 /** Refreshing tables from a refetched archive; returns the per-table refresh action. */
 function useTableRefresh({
@@ -89,6 +100,7 @@ function useTableRefresh({
   onRefreshRows,
   onMessage,
   refreshingMessage,
+  copy: {refreshed, refreshFailed},
 }: UseTableRefreshOptions) {
   // Every table waiting for the refetch: another table may ask before the first refetch lands.
   const pendingTableIds = useRef(new Set<string>());
@@ -117,8 +129,8 @@ function useTableRefresh({
       return;
     }
     const count = settlePending((table) => ({...table, rowsResetKey: (table.rowsResetKey ?? 0) + 1}));
-    onMessage(`Search ${count === 1 ? 'table' : 'tables'} refreshed from the latest past-project archive.`);
-  }, [rows, onMessage, settlePending]);
+    onMessage(refreshed(count));
+  }, [rows, onMessage, refreshed, settlePending]);
 
   // A failed refetch keeps serving the same rows, so only its error says so: the tables that asked keep
   // their rows and say they were not refreshed.
@@ -126,9 +138,9 @@ function useTableRefresh({
     if (!rowsError || !pendingTableIds.current.size) {
       return;
     }
-    settlePending((table) => ({...table, message: REFRESH_FAILED_MESSAGE, messageTone: 'error'}));
+    settlePending((table) => ({...table, message: refreshFailed, messageTone: 'error'}));
     onMessage('');
-  }, [rowsError, onMessage, settlePending]);
+  }, [rowsError, onMessage, refreshFailed, settlePending]);
 
   return useCallback(
     (tableId: string) => {
@@ -176,17 +188,18 @@ function useTableFocus(searchTables: SearchTableState[]) {
 
 type UpdateSearchTable = (tableId: string, update: (table: SearchTableState) => SearchTableState) => void;
 
-interface AISearchRunnerOptions {
+interface AISearchRunnerOptions extends AIResultsOptions {
   isAuthenticated: boolean;
   updateSearchTable: UpdateSearchTable;
-  filterAIRows: (rows: ProjectGridRow[]) => ProjectGridRow[];
-  allAIRowsFilteredMessage: string;
+  /** What the search ranks (the catalog's), and what its table says while it runs. */
+  scope: ProjectAISearchScope;
+  searchingMessage: string;
   onMessage: (message: string) => void;
 }
 
 /** Runs an AI table's query and loads its results into that table, or says in it why there are none. */
 const createAISearchRunner =
-  ({isAuthenticated, updateSearchTable, filterAIRows, allAIRowsFilteredMessage, onMessage}: AISearchRunnerOptions) =>
+  ({isAuthenticated, updateSearchTable, scope, searchingMessage, onMessage, ...results}: AISearchRunnerOptions) =>
   async (tableId: string, query: string) => {
     if (!isAuthenticated) {
       return;
@@ -197,11 +210,11 @@ const createAISearchRunner =
     updateSearchTable(tableId, (table) => ({
       ...table,
       isLoading: true,
-      message: 'Searching past projects with AI...',
+      message: searchingMessage,
       messageTone: 'loading',
     }));
     try {
-      const outcome = aiSearchOutcome(await searchPastProjectsWithAI(query, AI_SEARCH_LIMIT), query, filterAIRows, allAIRowsFilteredMessage);
+      const outcome = aiSearchOutcome(await searchWithAI(query, scope), query, results);
       if ('error' in outcome) {
         finish(outcome.error, 'error');
         return;
@@ -233,13 +246,16 @@ interface UseSearchTablesOptions {
   onMessage: (message: string) => void;
   /** Drops AI results this page cannot use (e.g. projects already on the shared page). */
   filterAIRows?: (rows: ProjectGridRow[]) => ProjectGridRow[];
-  /** When every AI result was filtered out. */
+  /** When every AI result was filtered out. Left out, the catalog's "did not find" message. */
   allAIRowsFilteredMessage?: string;
-  /** Shown while a standard table reloads the archive. */
-  refreshingMessage: string;
+  /** Shown while a standard table reloads its rows. Left out, the catalog's. */
+  refreshingMessage?: string;
 }
 
-/** A stack of search tables: standard archive searches plus at most one AI search table. */
+/**
+ * A stack of search tables: standard searches over the page's list plus at most one AI search table. The list's
+ * AI scope and the messages naming it come from the page's ProjectCatalog.
+ */
 export function useSearchTables({
   idPrefix,
   isAuthenticated,
@@ -248,9 +264,10 @@ export function useSearchTables({
   onRefreshRows,
   onMessage,
   filterAIRows = (aiRows) => aiRows,
-  allAIRowsFilteredMessage = 'AI search did not find matching past projects.',
+  allAIRowsFilteredMessage,
   refreshingMessage,
 }: UseSearchTablesOptions) {
+  const {aiScope, copy} = useProjectCatalog();
   const [searchTables, setSearchTables] = useState<SearchTableState[]>(() => [
     {id: initialSearchTableId(idPrefix), type: 'standard'},
   ]);
@@ -294,8 +311,11 @@ export function useSearchTables({
   const runAISearch = createAISearchRunner({
     isAuthenticated,
     updateSearchTable,
+    scope: aiScope,
+    searchingMessage: copy.aiSearching,
     filterAIRows,
-    allAIRowsFilteredMessage,
+    allAIRowsFilteredMessage: allAIRowsFilteredMessage ?? copy.aiNoResults,
+    noResultsMessage: copy.aiNoResults,
     onMessage,
   });
 
@@ -314,7 +334,8 @@ export function useSearchTables({
     setSearchTables,
     onRefreshRows,
     onMessage,
-    refreshingMessage,
+    refreshingMessage: refreshingMessage ?? copy.refreshing,
+    copy,
   });
 
   return {

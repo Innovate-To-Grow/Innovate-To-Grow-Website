@@ -30,22 +30,23 @@ export const noteLengthProblem = (preparedNote: string) =>
 
 /**
  * Sign-in link that returns to this page afterwards. Never to the widget's chromeless `/_embed/` page: a sign-in
- * opened from the widget comes back to the full Past Projects page.
+ * opened from the widget comes back to the full builder page at `path` (Past Projects or All Projects).
  */
-export const currentLoginPath = () =>
-  buildLoginPath(isEmbeddedBuilder() ? PAST_PROJECTS_PATH : `${window.location.pathname}${window.location.search}`);
+export const currentLoginPath = (path: string = PAST_PROJECTS_PATH) =>
+  buildLoginPath(isEmbeddedBuilder() ? path : `${window.location.pathname}${window.location.search}`);
 
 /** Where "Sign in to save" leads. */
 export interface SignInToSave {
   href: string;
-  /** In the widget: the full Past Projects page in a new tab, carrying the draft, where the visitor signs in. */
+  /** In the widget: the full builder page in a new tab, carrying the draft, where the visitor signs in. */
   inNewTab: boolean;
 }
 
-export const signInToSave = (draftRows: readonly ProjectGridRow[]): SignInToSave =>
+/** `path` is the builder's route, where the widget's draft continues (the page's ProjectCatalog). */
+export const signInToSave = (draftRows: readonly ProjectGridRow[], path: string = PAST_PROJECTS_PATH): SignInToSave =>
   isEmbeddedBuilder()
-    ? {href: draftHandoverHref(draftRows), inNewTab: true}
-    : {href: currentLoginPath(), inNewTab: false};
+    ? {href: draftHandoverHref(draftRows, path), inNewTab: true}
+    : {href: currentLoginPath(path), inNewTab: false};
 
 export const formatSharedDate = (value?: string) => {
   if (!value) return '';

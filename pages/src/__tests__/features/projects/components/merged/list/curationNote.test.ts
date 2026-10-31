@@ -1,7 +1,12 @@
-import {describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it} from 'vitest';
 
 import type {ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
-import {builderExportTarget, sharedListExportTarget} from '@/features/projects/components/merged/list/curationNote';
+import {
+  builderExportTarget,
+  currentLoginPath,
+  sharedListExportTarget,
+  signInToSave,
+} from '@/features/projects/components/merged/list/curationNote';
 
 const ID_A = '11111111-1111-4111-8111-111111111111';
 const ID_B = '22222222-2222-4222-8222-222222222222';
@@ -22,6 +27,39 @@ const makeRow = (overrides: Partial<ProjectGridRow>): ProjectGridRow => ({
 
 const ARCHIVE_ROW = makeRow({id: ID_A, catalog: 'archive'});
 const CURRENT_ROW = makeRow({id: ID_B, semester_label: '2026 Fall', catalog: 'current', is_presenting: 'Yes'});
+
+const login = (returnTo: string) => `/login?returnTo=${encodeURIComponent(returnTo)}`;
+
+describe('signing in to save', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('returns to the page itself on the site', () => {
+    window.history.replaceState(null, '', '/all-projects?value=solar');
+
+    expect(currentLoginPath('/all-projects')).toBe(login('/all-projects?value=solar'));
+    expect(signInToSave([ARCHIVE_ROW], '/all-projects')).toEqual({
+      href: login('/all-projects?value=solar'),
+      inNewTab: false,
+    });
+  });
+
+  it("goes from the widget to the builder page it is (All Projects), never back to the widget's frame", () => {
+    window.history.replaceState(null, '', '/_embed/partner-all');
+
+    expect(currentLoginPath('/all-projects')).toBe(login('/all-projects'));
+    expect(signInToSave([ARCHIVE_ROW, CURRENT_ROW], '/all-projects')).toEqual({
+      href: `/all-projects#curation-draft=${ID_A},${ID_B}`,
+      inNewTab: true,
+    });
+  });
+
+  it('goes from the widget to Past Projects when no path is given', () => {
+    window.history.replaceState(null, '', '/_embed/partner-past');
+
+    expect(currentLoginPath()).toBe(login('/past-projects'));
+    expect(signInToSave([ARCHIVE_ROW])).toEqual({href: `/past-projects#curation-draft=${ID_A}`, inNewTab: true});
+  });
+});
 
 describe('export targets', () => {
   const draft = {enabled: true, nameDraft: 'Spring picks', noteDraft: '<p>Hello</p>'};

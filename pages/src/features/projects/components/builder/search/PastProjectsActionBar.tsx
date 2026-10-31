@@ -1,4 +1,5 @@
 import {useId} from 'react';
+import {useProjectCatalog, type ProjectCatalogCopy} from '@/features/projects/catalog/projectCatalog';
 
 interface PastProjectsActionBarProps {
   aiSearchDisabled?: boolean;
@@ -63,10 +64,13 @@ const AISearchTableButton = ({loginRequired, disabled, loginNoteId, onClick}: AI
   </button>
 );
 
-type HelpProps = Required<Pick<PastProjectsActionBarProps, 'saveLabel' | 'saveTarget' | 'savedLabel'>>;
+type HelpProps = Required<Pick<PastProjectsActionBarProps, 'saveLabel' | 'saveTarget' | 'savedLabel'>> & {
+  /** How the help names the list the page searches (ProjectCatalog). */
+  copy: Pick<ProjectCatalogCopy, 'helpSearchSource' | 'helpAIResults' | 'helpRefreshSource'>;
+};
 
 /** What each button does, folded away under a summary. */
-const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
+const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel, copy}: HelpProps) => (
   <details className="past-projects-help-details">
     <summary className="past-projects-help-summary">Help: buttons, saving and tables</summary>
     <p className="past-projects-help-intro">
@@ -76,16 +80,16 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
       <div className="project-grid-help-card">
         <dt>+ Search Table</dt>
         <dd>
-          Adds another search table over the same past-project archive, so you can try different searches side
-          by side (for example, one for a class code and another for an organization). Each table keeps its own
-          search, checked rows and tidy edits.
+          Adds another search table over {copy.helpSearchSource}, so you can try different searches side by side
+          (for example, one for a class code and another for an organization). Each table keeps its own search,
+          checked rows and tidy edits.
         </dd>
       </div>
       <div className="project-grid-help-card">
         <dt>+ AI Search Table</dt>
         <dd>
           Adds a separate AI search table (sign-in required). Describe what you are looking for inside that table to
-          load matching past projects, then use the same checkboxes and buttons as a regular search table.
+          load {copy.helpAIResults}, then use the same checkboxes and buttons as a regular search table.
         </dd>
       </div>
       <div className="project-grid-help-card">
@@ -118,8 +122,8 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
           Open <strong>Details</strong> on a row to read its abstract and team members.{' '}
           <strong>Select All</strong> and the header checkbox select the rows that match the current search, and
           the table shows how many rows are selected. <strong>Deselect</strong> clears the selection.{' '}
-          <strong>Refresh Search Table</strong> reloads the archive and starts that table over: its search, sort,
-          Per page, checked rows and tidy edits are cleared. Other tables keep theirs.
+          <strong>Refresh Search Table</strong> reloads {copy.helpRefreshSource} and starts that table over: its
+          search, sort, Per page, checked rows and tidy edits are cleared. Other tables keep theirs.
         </dd>
       </div>
     </dl>
@@ -143,6 +147,7 @@ export const PastProjectsActionBar = ({
   onAddSearchTable,
 }: PastProjectsActionBarProps) => {
   const loginNoteId = useId();
+  const {copy} = useProjectCatalog();
   const tablesUnavailable = loading || Boolean(error);
 
   return (
@@ -178,7 +183,9 @@ export const PastProjectsActionBar = ({
         </p>
       ) : null}
 
-      {showHelp ? <PastProjectsHelp saveLabel={saveLabel} saveTarget={saveTarget} savedLabel={savedLabel} /> : null}
+      {showHelp ? (
+        <PastProjectsHelp saveLabel={saveLabel} saveTarget={saveTarget} savedLabel={savedLabel} copy={copy} />
+      ) : null}
 
       {/* What the search tables did (a refresh, …). A live region kept in the page, so each message is announced. */}
       <p className="project-grid-status past-projects-builder-message" role="status">
