@@ -30,6 +30,7 @@ const PRELOADED_ROUTES: ReadonlyArray<readonly [pathPattern: string, routeModule
   ['^/current-projects/?$', 'src/routes/ProjectsPage/index.ts'],
   ['^/presenting-teams/?$', 'src/routes/PresentingTeamsPage/index.ts'],
   ['^/past-projects(/[^/]+)?/?$', 'src/routes/PastProjectsPage/index.ts'],
+  ['^/all-projects/?$', 'src/routes/AllProjectsPage/index.ts'],
   ['^/(projects|past-projects/project)/[^/]+/?$', 'src/routes/ProjectDetailPage/index.ts'],
 ]
 

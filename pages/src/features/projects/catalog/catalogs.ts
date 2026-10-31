@@ -1,6 +1,12 @@
 // The project lists a builder page can search (projectCatalog.ts). Past Projects keeps the words its page has always
 // used; All Projects names the whole list, not the archive.
-import {compactProjectToGridRow, fetchAllPastProjectArchive, searchPastProjectArchiveIds} from '@/features/projects/api';
+import {
+  compactProjectToGridRow,
+  fetchAllPastProjectArchive,
+  fetchAllProjectsCatalog,
+  searchAllProjectIds,
+  searchPastProjectArchiveIds,
+} from '@/features/projects/api';
 import {pluralize} from '../components/shared/utils/saveResults';
 import type {ProjectCatalog} from './projectCatalog';
 
@@ -47,10 +53,11 @@ export const PAST_PROJECTS_CATALOG: ProjectCatalog = {
   },
 };
 
-// Until /projects/all/ has a client (fetchAllProjectsCatalog, searchAllProjectIds).
-const notImplemented = async (): Promise<never> => {
-  throw new Error('The All Projects list is not implemented yet.');
-};
+// /projects/all/: the active schedule's projects that are not archived yet, then the archive. Its rows say which list
+// they come from (`catalog`), so a current project links to its own page.
+const loadAllRows = async (signal?: AbortSignal) =>
+  (await fetchAllProjectsCatalog({}, signal)).map(compactProjectToGridRow);
+const searchAllRows: ProjectCatalog['searchRemote'] = (query, signal) => searchAllProjectIds(query, signal);
 
 export const ALL_PROJECTS_CATALOG: ProjectCatalog = {
   key: 'all',
@@ -59,8 +66,8 @@ export const ALL_PROJECTS_CATALOG: ProjectCatalog = {
   lede:
     "Search every Innovate to Grow project, this semester's teams and the archive, check the ones you want, and " +
     'collect them into a curation. Save it to keep it and share it with a link, or export it.',
-  loadRows: notImplemented,
-  searchRemote: notImplemented,
+  loadRows: loadAllRows,
+  searchRemote: searchAllRows,
   aiScope: 'all',
   copy: {
     loading: 'Loading projects...',

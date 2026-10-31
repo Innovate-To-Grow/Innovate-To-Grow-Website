@@ -18,11 +18,12 @@ export const getShareErrorMessage = (
   return fallback;
 };
 
-export const getExportFileBaseName = (title: string) => {
+/** An export's file name without its extension: the prefix (curationBranding's), then the title as a slug. */
+export const getExportFileBaseName = (title: string, prefix: string) => {
   const slug = title
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return slug ? `past-projects-${slug}` : 'past-projects';
+  return slug ? `${prefix}-${slug}` : prefix;
 };

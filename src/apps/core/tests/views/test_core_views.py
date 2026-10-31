@@ -16,6 +16,7 @@ APP_ROUTE_LOCATIONS = [
     "https://i2g.ucmerced.edu/current-projects",
     "https://i2g.ucmerced.edu/presenting-teams",
     "https://i2g.ucmerced.edu/past-projects",
+    "https://i2g.ucmerced.edu/all-projects",
 ]
 
 

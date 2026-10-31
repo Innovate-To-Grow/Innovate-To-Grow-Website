@@ -5,6 +5,7 @@ const LIST_NAMES: Record<string, string> = {
   '/current-projects': 'Current Projects',
   '/presenting-teams': 'Presenting Teams',
   '/past-projects': 'Past Projects',
+  '/all-projects': 'All Projects',
   '/schedule': 'Event Schedule',
 };
 

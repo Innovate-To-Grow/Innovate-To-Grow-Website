@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import {createProjectGridFingerprint, getPastProjectDetailUrl, type ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {createProjectGridFingerprint, getProjectRowDetailUrl, type ProjectGridRow} from '../../grid/contracts/projectGrid';
 
 const RICH_DETAIL_ALLOWED_TAGS = ['br', 'div', 'p', 'b', 'strong', 'i', 'em', 'u', 'mark', 'a'];
 // The per-project marker attribute lets a re-insert append only projects not already present
@@ -110,13 +110,6 @@ export const normalizePastProjectsDetailHtml = (value: string) =>
 const fieldLine = (label: string, value: string) =>
   value.trim() ? `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value.trim())}</div>` : '';
 
-const individualProjectHref = (row: ProjectGridRow) => {
-  if (!row.id) {
-    return '';
-  }
-  return getPastProjectDetailUrl(row.id);
-};
-
 // Compact, stable hash (FNV-1a → base36) so the per-project marker stays short instead of embedding
 // the whole fingerprint (which would bloat the note and duplicate the abstract text).
 const hashString = (value: string) => {
@@ -138,7 +131,8 @@ const projectInsertFieldsHtml = (
   index: number,
   excludedFields: Set<PastProjectNoteInsertField>,
 ) => {
-  const href = individualProjectHref(row);
+  // The project's own page: a current-semester project's, or the archive's ('' without an id).
+  const href = getProjectRowDetailUrl(row);
   const include = (field: PastProjectNoteInsertField, html: string) => (excludedFields.has(field) ? '' : html);
   return [
     include('project_label', `<div><strong>Project ${index + 1}</strong></div>`),

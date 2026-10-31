@@ -12,7 +12,9 @@ import {
 
 const {
     addedRow,
+    allGridState,
     authState,
+    currentRow,
     gridState,
     mockNavigate,
     mockRetryShare,
@@ -44,8 +46,19 @@ const {
         mockNavigate: vi.fn(),
         mockRetryShare: vi.fn(),
         sharedState: {share: null as unknown, shareError: null as string | null, shareNotFound: false},
+        currentRow: {
+            ...sample,
+            id: '33333333-3333-4333-8333-333333333333',
+            semester_label: '2026 Fall',
+            team_number: '303',
+            team_name: 'Team Gamma',
+            project_title: 'This Semester Project',
+            catalog: 'current' as const,
+        },
         authState: {user: null as {member_uuid: string} | null},
-        gridState: {loading: false, rows: [sample] as Array<typeof sample>},
+        // Each hook call's `enabled`, so a test can tell which list the page asked for.
+        gridState: {loading: false, rows: [sample] as Array<typeof sample>, enabled: [] as boolean[]},
+        allGridState: {rows: [] as Array<Record<string, unknown>>, enabled: [] as boolean[]},
     };
 });
 
@@ -78,12 +91,14 @@ vi.mock('@/features/projects/api', () => ({
 }));
 
 vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
-    usePastProjectGridData: () => ({
-        error: null,
-        loading: gridState.loading,
-        rows: gridState.rows,
-        refetch: vi.fn(),
-    }),
+    usePastProjectGridData: (enabled = true) => {
+        gridState.enabled.push(enabled);
+        return {error: null, loading: gridState.loading, rows: gridState.rows, refetch: vi.fn()};
+    },
+    useAllProjectGridData: (enabled = true) => {
+        allGridState.enabled.push(enabled);
+        return {error: null, loading: false, rows: allGridState.rows, refetch: vi.fn()};
+    },
     usePastProjectShareData: () => ({
         error: sharedState.shareError,
         loading: false,
@@ -99,6 +114,16 @@ vi.mock('@/features/projects', async () =>
         addedRow,
     ),
 );
+
+// The builder page's body (CatalogBuilderView) imports these two directly.
+vi.mock('@/features/projects/components/builder/composition/PastProjectsBuilder', async () => ({
+    PastProjectsBuilder: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
+        .pastProjectsModuleStub(sampleRow, addedRow).PastProjectsBuilder,
+}));
+vi.mock('@/features/projects/components/curations/panel/MyCurationsPanel', async () => ({
+    MyCurationsPanel: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
+        .pastProjectsModuleStub(sampleRow, addedRow).MyCurationsPanel,
+}));
 
 const shareFixture = (
     overrides: Partial<PastProjectShare> = {},
@@ -130,6 +155,9 @@ describe('PastProjectsPage', () => {
         authState.user = null;
         gridState.loading = false;
         gridState.rows = [sampleRow];
+        gridState.enabled = [];
+        allGridState.rows = [currentRow, sampleRow];
+        allGridState.enabled = [];
         mockNavigate.mockReset();
         mockRetryShare.mockReset();
         vi.mocked(createPastProjectShare).mockReset();
@@ -288,6 +316,73 @@ describe('PastProjectsPage', () => {
             </MemoryRouter>,
         );
         expect(screen.queryByText(/Curation saved/)).toBeNull();
+    });
+
+    it('names All Projects in the saved notice of a curation All Projects saved', () => {
+        sharedState.share = shareFixture();
+        render(
+            <MemoryRouter
+                initialEntries={[
+                    {pathname: '/past-projects/share-abc', state: {curationSaved: true, builtOn: '/all-projects'}},
+                ]}
+            >
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByText(/^Curation saved\./)).toHaveTextContent(
+            'Curation saved. It is listed under My Curations on the All Projects page, and you can keep editing it here.',
+        );
+        expect(screen.getByRole('link', {name: 'All Projects'})).toHaveAttribute('href', '/all-projects');
+    });
+
+    it('names Past Projects in the saved notice when the save names no other builder', () => {
+        sharedState.share = shareFixture();
+        render(
+            <MemoryRouter
+                initialEntries={[
+                    {pathname: '/past-projects/share-abc', state: {curationSaved: true, builtOn: '/somewhere-else'}},
+                ]}
+            >
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByRole('link', {name: 'Past Projects'})).toHaveAttribute('href', '/past-projects');
+        expect(screen.queryByRole('link', {name: 'All Projects'})).toBeNull();
+    });
+
+    it('builds on the archive under the Past Projects words, without loading every project', () => {
+        renderPage();
+
+        const builder = screen.getByRole('button', {name: 'Create mocked share'});
+        expect(builder).toHaveAttribute('data-catalog', 'past');
+        expect(builder).toHaveAttribute('data-rows', 'Shared Project');
+        expect(gridState.enabled).toContain(true);
+        expect(allGridState.enabled).not.toContain(true);
+    });
+
+    it("lets a curation's owner add from every project, worded as All Projects", () => {
+        sharedState.share = shareFixture();
+
+        renderPage();
+
+        // Every project holds whatever either builder saved, this semester's teams too.
+        const search = screen.getByRole('button', {name: 'Add mocked row'});
+        expect(search).toHaveAttribute('data-catalog', 'all');
+        expect(search).toHaveAttribute('data-rows', 'This Semester Project|Shared Project');
+        expect(allGridState.enabled).toContain(true);
+        expect(gridState.enabled).not.toContain(true);
+    });
+
+    it('loads no list for a visitor who cannot edit the curation', () => {
+        sharedState.share = shareFixture({can_edit: false});
+
+        renderPage();
+
+        expect(screen.queryByRole('button', {name: 'Add mocked row'})).toBeNull();
+        expect(gridState.enabled).not.toContain(true);
+        expect(allGridState.enabled).not.toContain(true);
     });
 
     it('passes the ?value= search on to the builder', () => {

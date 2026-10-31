@@ -135,7 +135,7 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
     expect(await screen.findByRole('heading', {level: 3, name: 'AI Search Table: solar pump'})).toBeInTheDocument();
-    expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar pump', 10);
+    expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar pump', 10, 'past');
 
     const aiTable = screen
       .getByRole('heading', {level: 3, name: 'AI Search Table: solar pump'})

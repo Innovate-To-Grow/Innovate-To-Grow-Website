@@ -1,22 +1,19 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
     PROJECT_REQUEST_TIMEOUT_MS,
-    compactProjectToGridRow,
-    fetchAllPastProjectArchive,
     fetchPastProjectShare,
     scheduleProjectToGridRow,
     type PastProjectShare,
     type ProjectGridRow,
 } from '@/features/projects/api';
 import {fetchCurrentSchedule, type EventSchedulePayload} from '@/features/events/api';
+import {ALL_PROJECTS_CATALOG, PAST_PROJECTS_CATALOG} from '../catalog/catalogs';
 import {getPredominantTerm} from '../components/grid/contracts/projectGrid';
+import {PROJECT_LIST_LOAD_ERROR, useRevalidatingRows, type RevalidatingRowsResult} from './useRevalidatingRows';
 
-interface ProjectGridDataResult {
-    rows: ProjectGridRow[];
-    loading: boolean;
-    error: string | null;
-    refetch: () => void;
-}
+export {PROJECT_LIST_LOAD_ERROR} from './useRevalidatingRows';
+
+type ProjectGridDataResult = RevalidatingRowsResult;
 
 interface CurrentProjectGridDataResult extends ProjectGridDataResult {
     /** Class names by class code ("CAP" -> "Engineering Capstone"), from the schedule's sections. */
@@ -33,24 +30,14 @@ interface PastProjectShareResult {
     retry: () => void;
 }
 
-interface ProjectGridRowsState {
+interface CurrentProjectGridState {
     requestKey: symbol | null;
     rows: ProjectGridRow[];
     error: string | null;
-}
-
-interface CurrentProjectGridState extends ProjectGridRowsState {
     classLabels: Record<string, string>;
 }
 
 const EMPTY_CLASS_LABELS: Record<string, string> = {};
-
-/**
- * What a project list says when its rows could not be loaded. The request's own message ("Network Error",
- * "Request failed with status code 503") means nothing to a visitor. It names no cause: the same words follow a
- * dropped connection, a server error and a timeout.
- */
-export const PROJECT_LIST_LOAD_ERROR = "We couldn't load the projects. Please try again.";
 
 const responseStatus = (error: unknown) => (error as {response?: {status?: number}} | null)?.response?.status;
 
@@ -164,66 +151,17 @@ export function useCurrentProjectGridData(enabled: boolean = true): CurrentProje
     };
 }
 
+/** The published archive, as the Past Projects builder searches it (useRevalidatingRows: stale while revalidating). */
 export function usePastProjectGridData(enabled: boolean = true): ProjectGridDataResult {
-    const [refetchCount, setRefetchCount] = useState(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetchCount forces a new Symbol to trigger the fetch useEffect
-    const requestKey = useMemo(() => (enabled ? Symbol('past-project-grid') : null), [enabled, refetchCount]);
-    const [state, setState] = useState<ProjectGridRowsState>({
-        requestKey: null,
-        rows: [],
-        error: null,
-    });
+    return useRevalidatingRows(PAST_PROJECTS_CATALOG.loadRows, enabled);
+}
 
-    const refetch = useCallback(() => setRefetchCount((c) => c + 1), []);
-
-    useEffect(() => {
-        if (!requestKey) {
-            return;
-        }
-
-        const controller = new AbortController();
-
-        fetchAllPastProjectArchive({}, controller.signal)
-            .then((projects) => {
-                if (controller.signal.aborted) return;
-                setState({
-                    requestKey,
-                    rows: projects.map(compactProjectToGridRow),
-                    error: null,
-                });
-            })
-            .catch(() => {
-                if (controller.signal.aborted) return;
-                // A failed refetch keeps the rows it was revalidating (see below); only a first load has none.
-                setState((previous) => ({
-                    requestKey,
-                    rows: previous.rows,
-                    error: PROJECT_LIST_LOAD_ERROR,
-                }));
-            });
-
-        return () => {
-            controller.abort();
-        };
-    }, [requestKey]);
-
-    if (!requestKey) {
-        return {rows: [], loading: false, error: null, refetch};
-    }
-
-    // Stale-while-revalidate: a refetch() keeps serving the previously resolved rows (loading stays
-    // false) until the new response lands, so consumers keep their search tables mounted — and their
-    // per-table curation intact — across a refresh. Only a load with no rows to serve meanwhile (the
-    // first one, or a retry after it failed) reports loading. A failed refetch reports its error next to
-    // the rows it kept.
-    const hasResolved = state.requestKey === requestKey;
-    const hasStaleRows = state.requestKey !== null && state.rows.length > 0;
-    return {
-        rows: state.rows,
-        loading: !hasResolved && !hasStaleRows,
-        error: hasResolved ? state.error : null,
-        refetch,
-    };
+/**
+ * Every project, the active schedule's that are not archived yet and then the archive, as the All Projects builder
+ * searches it and a share's owner adds to it.
+ */
+export function useAllProjectGridData(enabled: boolean = true): ProjectGridDataResult {
+    return useRevalidatingRows(ALL_PROJECTS_CATALOG.loadRows, enabled);
 }
 
 export function usePastProjectShareData(shareId: string | undefined): PastProjectShareResult {

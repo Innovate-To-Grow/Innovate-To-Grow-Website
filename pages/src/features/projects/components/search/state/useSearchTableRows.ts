@@ -1,5 +1,5 @@
 import {useCallback, useLayoutEffect, useRef, useState} from 'react';
-import {searchPastProjectArchiveIds} from '@/features/projects/api';
+import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 import {createProjectGridItems, type ProjectGridItem, type ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {useProjectGridTable} from '../../grid/state/useProjectGridTable';
 
@@ -14,14 +14,15 @@ export function useSearchTableRows(initialRows: ProjectGridRow[], tableId: strin
   // The rows and reset count as last rendered, for a save that finishes after a reload replaced the rows.
   const rowsRef = useRef(rows);
   const resetCountRef = useRef(resetCount);
+  const {searchRemote} = useProjectCatalog();
   const table = useProjectGridTable({
     rows,
     pageSize: 5,
     defaultSortField: 'semester_label',
     defaultSortDirection: 'desc',
     initialSearch,
-    // The rows come from the archive without their abstracts; the server's search reads those too.
-    searchRemote: searchPastProjectArchiveIds,
+    // The rows come without their abstracts; the server's search over the page's list (ProjectCatalog) reads those too.
+    searchRemote,
   });
 
   // Synced during commit, so a save resolving right after a reset already sees the new rows.

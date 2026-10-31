@@ -49,6 +49,8 @@ const PRESENTING_TEAMS_DESCRIPTION =
     "The student teams presenting at this semester's Innovate to Grow showcase at UC Merced, with their projects and partner organizations.";
 const PAST_PROJECTS_DESCRIPTION =
     'Search the archive of past Innovate to Grow student projects at UC Merced, and collect them into lists to save, share or export.';
+const ALL_PROJECTS_DESCRIPTION =
+    "Search every Innovate to Grow student project at UC Merced, this semester's teams and the archive, and collect them into lists to save, share or export.";
 
 // Auth pages (lazy)
 const LoginPage = React.lazy(() => import('@/features/auth/components/pages/LoginPage').then(m => ({default: m.LoginPage})));
@@ -65,6 +67,7 @@ const NewsPage = React.lazy(() => import('@/routes/NewsPage').then(m => ({defaul
 const NewsDetailPage = React.lazy(() => import('@/routes/NewsDetailPage').then(m => ({default: m.NewsDetailPage})));
 const ProjectsPage = React.lazy(() => import('@/routes/ProjectsPage').then(m => ({default: m.ProjectsPage})));
 const PastProjectsPage = React.lazy(() => import('@/routes/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
+const AllProjectsPage = React.lazy(() => import('@/routes/AllProjectsPage').then(m => ({default: m.AllProjectsPage})));
 const PresentingTeamsPage = React.lazy(() => import('@/routes/PresentingTeamsPage').then(m => ({default: m.PresentingTeamsPage})));
 const ProjectDetailPage = React.lazy(() => import('@/routes/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
 const SchedulePage = React.lazy(() => import('@/routes/SchedulePage').then(m => ({default: m.SchedulePage})));
@@ -109,6 +112,12 @@ const pageRoutes = (): RouteObject[] => [
         path: 'past-projects/:shareId',
         element: lazyRoute(<PastProjectsPage/>),
         ...titled('Past Projects', {noindex: true}),
+    },
+    // Past Projects' builder over every project; its curations open at past-projects/:shareId too.
+    {
+        path: 'all-projects',
+        element: lazyRoute(<AllProjectsPage/>),
+        ...titled('All Projects', {description: ALL_PROJECTS_DESCRIPTION}),
     },
     {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
     // Legacy-site path still linked from CMS pages (/judges, /about-engsl).

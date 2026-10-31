@@ -6,15 +6,20 @@ import {compactProjectToGridRow, type CompactPastProjectRow} from '@/features/pr
 import {ALL_PROJECTS_CATALOG, PAST_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
 import {ProjectCatalogContext, useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 
-const {mockFetchAllPastProjectArchive, mockSearchPastProjectArchiveIds} = vi.hoisted(() => ({
-  mockFetchAllPastProjectArchive: vi.fn(),
-  mockSearchPastProjectArchiveIds: vi.fn(),
-}));
+const {mockFetchAllPastProjectArchive, mockSearchPastProjectArchiveIds, mockFetchAllProjectsCatalog, mockSearchAllProjectIds} =
+  vi.hoisted(() => ({
+    mockFetchAllPastProjectArchive: vi.fn(),
+    mockSearchPastProjectArchiveIds: vi.fn(),
+    mockFetchAllProjectsCatalog: vi.fn(),
+    mockSearchAllProjectIds: vi.fn(),
+  }));
 
 vi.mock('@/features/projects/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/projects/api')>()),
   fetchAllPastProjectArchive: (...args: unknown[]) => mockFetchAllPastProjectArchive(...args),
   searchPastProjectArchiveIds: (...args: unknown[]) => mockSearchPastProjectArchiveIds(...args),
+  fetchAllProjectsCatalog: (...args: unknown[]) => mockFetchAllProjectsCatalog(...args),
+  searchAllProjectIds: (...args: unknown[]) => mockSearchAllProjectIds(...args),
 }));
 
 const archiveRow: CompactPastProjectRow = {
@@ -34,6 +39,8 @@ const archiveRow: CompactPastProjectRow = {
 afterEach(() => {
   mockFetchAllPastProjectArchive.mockReset();
   mockSearchPastProjectArchiveIds.mockReset();
+  mockFetchAllProjectsCatalog.mockReset();
+  mockSearchAllProjectIds.mockReset();
 });
 
 describe('useProjectCatalog', () => {
@@ -84,6 +91,36 @@ describe('PAST_PROJECTS_CATALOG', () => {
 });
 
 describe('ALL_PROJECTS_CATALOG', () => {
+  it("loads every project, the active schedule's and the archive's, as grid rows", async () => {
+    const currentRow: CompactPastProjectRow = {
+      ...archiveRow,
+      id: '33333333-3333-4333-8333-333333333333',
+      semester_label: '2026 Fall',
+      catalog: 'current',
+      is_presenting: true,
+      current_project_id: null,
+    };
+    mockFetchAllProjectsCatalog.mockResolvedValue([currentRow, archiveRow]);
+    const signal = new AbortController().signal;
+
+    await expect(ALL_PROJECTS_CATALOG.loadRows(signal)).resolves.toEqual([
+      compactProjectToGridRow(currentRow),
+      compactProjectToGridRow(archiveRow),
+    ]);
+    expect(mockFetchAllProjectsCatalog).toHaveBeenCalledWith({}, signal);
+    expect(mockFetchAllPastProjectArchive).not.toHaveBeenCalled();
+  });
+
+  it("asks the whole list's server search which projects match", async () => {
+    const ids = new Set([archiveRow.id]);
+    mockSearchAllProjectIds.mockResolvedValue(ids);
+    const signal = new AbortController().signal;
+
+    await expect(ALL_PROJECTS_CATALOG.searchRemote('Abstract-101', signal)).resolves.toBe(ids);
+    expect(mockSearchAllProjectIds).toHaveBeenCalledWith('Abstract-101', signal);
+    expect(mockSearchPastProjectArchiveIds).not.toHaveBeenCalled();
+  });
+
   it('names the All Projects page and asks AI search for every project', () => {
     const {copy} = ALL_PROJECTS_CATALOG;
 

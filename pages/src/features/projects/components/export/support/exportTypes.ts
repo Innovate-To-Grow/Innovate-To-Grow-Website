@@ -53,6 +53,8 @@ export const EXPORT_COLUMNS = [
 export interface ProjectRowsExportContext {
   note?: string;
   title?: string;
+  /** The line under the title, naming the list the projects come from (curationBranding). */
+  heading?: string;
 }
 
 export interface ExportLogoAsset {
@@ -71,6 +73,7 @@ export type ProjectRowsExporter = (
 export const normalizeProjectRowsExportContext = (context: ProjectRowsExportContext = {}) => ({
   note: (context.note ?? '').trim(),
   title: context.title?.trim() || 'Past Projects',
+  heading: context.heading?.trim() || 'Innovate to Grow Past Projects',
 });
 
 export const toDisplayValue = (value: string | number | null | undefined) => String(value ?? '').trim();

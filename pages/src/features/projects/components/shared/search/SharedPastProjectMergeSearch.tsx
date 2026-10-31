@@ -20,7 +20,10 @@ interface SharedPastProjectMergeSearchProps {
   onRefreshRows?: () => void;
 }
 
-/** On a shared page its owner can edit: search the full archive and add more projects to it. */
+/**
+ * On a shared page its owner can edit: search for more projects and add them to it. It searches the list it is given
+ * (every project, on the share page) and words its states and help after the list in context (useProjectCatalog).
+ */
 export const SharedPastProjectMergeSearch = ({
   currentRows,
   error,
@@ -49,7 +52,6 @@ export const SharedPastProjectMergeSearch = ({
     onMessage: setBuilderMessage,
     filterAIRows: (aiRows) => aiRows.filter((row) => !isAlreadyShared(row)),
     allAIRowsFilteredMessage: 'AI found projects that are already in this curation.',
-    refreshingMessage: 'Refreshing this full-archive search table from the latest past-project data...',
   });
   const {isSaving, addSelected} = useAddToShare({currentRows, isAlreadyShared, onAddRows, onMessage: setBuilderMessage});
 
@@ -60,7 +62,7 @@ export const SharedPastProjectMergeSearch = ({
         builderMessage={builderMessage}
         error={archiveUnavailable ? error : null}
         loading={loading || isSaving}
-        title="Add Projects from Full Archive"
+        title="Add More Projects"
         saveLabel="Add Selected"
         saveTarget="this curation"
         savedLabel="Added"
@@ -94,9 +96,8 @@ export const SharedPastProjectMergeSearch = ({
           }}
           copy={{
             aiDescription:
-              'Use AI to load matching past projects into this table, then check the projects you want and click Add Selected.',
-            standardDescription:
-              'Search the full past-project archive for additional projects to add to this curation.',
+              'Use AI to load matching projects into this table, then check the projects you want and click Add Selected.',
+            standardDescription: 'Search for more projects to add to this curation.',
             noTablesMessage: 'No search tables are open. Add a new table to search for more projects.',
           }}
         />
