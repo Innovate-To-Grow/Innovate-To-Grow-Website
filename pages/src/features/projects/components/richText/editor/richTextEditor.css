@@ -27,16 +27,18 @@
 
 .project-grid-rich-detail-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
 }
 
+/* 40px, like the site's other controls, edged like a field. */
 .project-grid-rich-editor-button,
 .project-grid-rich-copy-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2rem;
-  height: 2rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
   padding: 0 0.5rem;
   border: 1px solid var(--itg-color-border-field);
   border-radius: var(--itg-radius-button);
@@ -47,8 +49,21 @@
   cursor: pointer;
 }
 
+/* 44px targets on touch screens; the toolbar wraps when they do not fit one line. */
+@media (max-width: 992px) {
+  .project-grid-rich-editor-button,
+  .project-grid-rich-copy-button {
+    min-width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
 .project-grid-rich-editor-size-button {
   gap: 0.375rem;
+}
+
+.project-grid-rich-editor-underline {
+  text-decoration: underline;
 }
 
 .project-grid-rich-editor-button:hover,

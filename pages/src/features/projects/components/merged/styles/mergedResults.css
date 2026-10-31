@@ -195,6 +195,13 @@
   accent-color: var(--itg-color-primary);
 }
 
+/* 44px targets on touch screens: the whole label row checks its box. */
+@media (max-width: 992px) {
+  .project-grid-note-insert-option {
+    min-height: 2.75rem;
+  }
+}
+
 /* Checked draft rows under forced colours, as in the search tables (searchTables.css). */
 @media (forced-colors: active) {
   .project-grid-merged tr.project-grid-row.is-selected,

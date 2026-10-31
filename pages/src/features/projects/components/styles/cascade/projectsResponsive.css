@@ -121,11 +121,6 @@
     width: 100%;
   }
 
-  .search-table-save-button {
-    min-height: 3rem;
-    font-size: var(--itg-font-size-meta);
-  }
-
   .search-table-save-count {
     display: inline;
   }
