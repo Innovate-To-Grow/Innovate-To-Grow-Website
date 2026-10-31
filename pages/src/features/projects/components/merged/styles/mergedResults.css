@@ -100,14 +100,10 @@
   color: var(--itg-color-primary);
 }
 
-/* The name on its own row, the note under it at the card's full width. */
+/* The name on its own row, the note under it, both at the card's full width. */
 .project-grid-share-fields {
   display: grid;
   gap: 1rem;
-}
-
-.project-grid-share-name {
-  max-width: 40rem;
 }
 
 .project-grid-share-note {
