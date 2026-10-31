@@ -139,8 +139,8 @@ describe('SharedCurationView', () => {
     );
 
     expect(screen.getByRole('heading', {level: 2, name: 'Add More Projects'})).toBeInTheDocument();
-    expect(screen.getByText('Loading projects...')).toHaveAttribute('role', 'status');
-    expect(screen.queryByText('Loading past projects...')).toBeNull();
+    expect(screen.getByText('Loading projects…').closest('[role="status"]')).not.toBeNull();
+    expect(screen.queryByText('Loading past projects…')).toBeNull();
     // The way back to a builder still names Past Projects.
     expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
   });

@@ -158,7 +158,7 @@ describe('MergedResultsTable in shared mode', () => {
     // No create controls and no combined "Past Projects Detail" editor in shared mode.
     expect(screen.queryByRole('button', {name: /save curation/i})).toBeNull();
     expect(screen.queryByRole('textbox', {name: 'Past Projects Detail'})).toBeNull();
-    expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Microsoft Word']);
+    expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Word']);
   });
 
   it('heads a shared list search with no matches one level under the list title (h2)', () => {
@@ -424,7 +424,7 @@ describe('MergedResultsTable in shared mode', () => {
     const noteEditor = screen.getByRole('textbox', {name: 'Curation note'});
     // Clicking the insert button moves focus in a real browser; mirror that so the
     // editor's focus guard does not suppress the inserted value rewrite.
-    const insertButton = screen.getByRole('button', {name: 'Insert projects into note'});
+    const insertButton = screen.getByRole('button', {name: 'Insert Projects into Note'});
     insertButton.focus();
     fireEvent.click(insertButton);
 

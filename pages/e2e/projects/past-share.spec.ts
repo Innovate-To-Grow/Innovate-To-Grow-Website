@@ -54,7 +54,7 @@ test.describe('past projects shared page', () => {
     await expect(page.getByText('Adaptive Irrigation Dashboard').first()).toBeVisible();
 
     // The surviving exports — PDF / Excel / Word — and no editable note for a non-owner.
-    for (const label of ['PDF', 'Excel', 'Microsoft Word']) {
+    for (const label of ['PDF', 'Excel', 'Word']) {
       await expect(page.getByRole('button', {name: label}).first()).toBeVisible();
     }
     // A non-owner sees the note read-only: no editor textbox and no formatting toolbar.
