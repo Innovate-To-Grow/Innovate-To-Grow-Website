@@ -67,7 +67,7 @@ class AISearchModelOutputTests(TestCase):
         self.assertEqual(self._titles(response), ["Solar Sensor Irrigation Network"])
 
     def test_a_failed_results_lookup_is_still_logged(self):
-        with patch("apps.projects.views.ai_search.past_project_ai_queryset", side_effect=RuntimeError("db down")):
+        with patch("apps.projects.views.ai_search.ai_search_results", side_effect=RuntimeError("db down")):
             response = self._search(f'{{"ids": ["{self.candidate.id}"]}}')
 
         self.assertEqual(response.status_code, 502)

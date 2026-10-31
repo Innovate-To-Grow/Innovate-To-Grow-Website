@@ -33,6 +33,7 @@ class PastProjectShareCatalogRowsTests(PastProjectShareTestCase):
             "abstract": "A project abstract.",
             "student_names": "Alice, Bob",
             "is_presenting": "",
+            "catalog": "archive",
         }
         self.assertEqual(response.data["rows"], [expected])
         self.assertEqual(PastProjectShare.objects.get(pk=response.data["id"]).rows, [expected])
@@ -63,7 +64,7 @@ class PastProjectShareCatalogRowsTests(PastProjectShareTestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
-            str(response.data["rows"][0]), "1 project is not in the published archive. Remove them and save again."
+            str(response.data["rows"][0]), "1 project is not among the published projects. Remove them and save again."
         )
 
     def test_rejects_oversized_row_text(self):

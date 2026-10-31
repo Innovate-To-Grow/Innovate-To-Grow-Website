@@ -75,8 +75,12 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     abstract = serializers.CharField(allow_blank=True, max_length=ROW_ABSTRACT_MAX_LENGTH)
     student_names = serializers.CharField(allow_blank=True, max_length=ROW_STUDENT_NAMES_MAX_LENGTH)
     # Accepted so clients that send the presenting flag ('Yes'/'No'/'') keep validating; it is never stored as
-    # sent. The row is rebuilt from the catalog (services/share_rows.py), which always stores "".
+    # sent. The row is rebuilt from the catalog (services/share_rows.py): "" for an archive project, and the
+    # event's flag as "Yes"/"No" for a current-semester one.
     is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
+    # "archive" or "current": the catalog the stored row was rebuilt from. Read-only, so that a row kept as stored
+    # (one that no longer resolves) still names it; rows saved before rows carried it leave it out.
+    catalog = serializers.CharField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
     def validate_id(self, value):
@@ -135,13 +139,13 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         if len(value) > MAX_SHARE_ROWS:
             raise serializers.ValidationError(f"At most {MAX_SHARE_ROWS} rows may be shared.")
         self._check_member_row_total(len(value))
-        # Store what the archive says, never the text a client sent (services/share_rows.py).
+        # Store what the catalog says, never the text a client sent (services/share_rows.py).
         try:
             return rebuild_share_rows(value, stored_rows=self.instance.rows if self.instance else ())
         except UnknownShareRows as exc:
             projects = "project is" if exc.count == 1 else "projects are"
             raise serializers.ValidationError(
-                f"{exc.count} {projects} not in the published archive. Remove them and save again."
+                f"{exc.count} {projects} not among the published projects. Remove them and save again."
             ) from exc
 
     def _check_member_row_total(self, row_count: int) -> None:
