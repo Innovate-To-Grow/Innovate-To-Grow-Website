@@ -60,7 +60,7 @@ reason = "The registration admin's 'send login link' action records the mail Log
 [[exceptions]]
 from = "apps.projects.services.current_project_links"
 to = "apps.event.services.current_projects"
-reason = "/projects/<id>/ resolves a current-semester project link (an event CurrentProject id) from an earlier schedule to the team's archive project; imported lazily inside the lookup."
+reason = "The projects app's one gateway to current-semester projects (event CurrentProjects): /projects/<id>/ resolves a link from an earlier schedule, /projects/all/ lists the active schedule's, and shares and AI search look them up by id, each matched to the team's archive project; imported lazily inside the lookups."
 
 # Import-time cycles accepted until refactored, as
 # [[cycles]] modules = [...] reason = "...". None today.
