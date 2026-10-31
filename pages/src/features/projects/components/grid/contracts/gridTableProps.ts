@@ -98,7 +98,10 @@ export interface ProjectGridTableProps {
   emptyActions?: ReactNode;
   /** Plural noun for the result count ("projects", "teams"). */
   countLabel?: string;
-  /** Actions shown above the results ('top', after the filter well) or under the table ('bottom'). */
+  /**
+   * Actions shown above the results ('top', after the filter well) or under the table ('bottom'). Any truthy value is
+   * wrapped in a spaced toolbar box, so pass undefined, not an empty fragment, when there is nothing to show.
+   */
   toolbar?: ReactNode;
   toolbarPlacement?: 'top' | 'bottom';
   /** Which project page a title links to. Past-project links open in a new tab so curation work is kept. */

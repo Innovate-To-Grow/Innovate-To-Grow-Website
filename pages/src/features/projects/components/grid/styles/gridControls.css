@@ -106,6 +106,28 @@
   margin-top: 1.25rem;
 }
 
+/* The Class and Industry filters in use, as removable chips (ActiveFilterChips), between the filter well and the
+   results bar. They are outline buttons, so they take .itg-btn's 40px (44px on touch screens) and square corners; a
+   long value wraps inside its chip. */
+.project-grid-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.itg-btn.project-grid-filter-chip {
+  max-width: 100%;
+  padding: 6px 12px;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.project-grid-filter-chip-remove {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
 .project-grid-inline-actions {
   display: flex;
   flex-wrap: wrap;
