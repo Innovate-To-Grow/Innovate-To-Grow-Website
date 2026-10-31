@@ -90,8 +90,8 @@ const DesktopActionsCell = ({
         aria-controls={detailsId}
         onClick={() => onToggleExpanded(row.__key)}
       >
-        {/* The reference's navy square with a white arrow. The hidden text names the button after its project, one
-            name whether open or closed: aria-expanded says which. */}
+        {/* A square outline button with an arrow. The hidden text names the button after its project, one name
+            whether open or closed: aria-expanded says which. */}
         <span className="project-grid-detail-icon" aria-hidden="true" />
         <span className="sr-only">{`Details for ${row.project_title}`}</span>
       </button>

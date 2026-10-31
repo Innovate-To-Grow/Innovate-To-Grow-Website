@@ -97,20 +97,91 @@
 
 /* ---- Pager ------------------------------------------------------------------- */
 
-/* The pager sits right under the table, right-aligned (.itg-pagination); its numbers are a plain list. */
+/* The pager sits right under the table, right-aligned (.itg-pagination); its numbers are a plain list. Every page
+   and step is a 40px outline button (44px on touch screens), square like the site's other buttons; the current page
+   is filled primary, and a step that cannot be taken uses the disabled colours. The global .itg-pagination keeps
+   its DataTables look for the other pages that use it. */
+.itg-pagination.project-grid-pagination,
+.project-grid-pager-pages {
+  gap: 0.5rem;
+}
+
 .project-grid-pager-pages {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.project-grid-pagination .itg-pagination-link {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: var(--itg-radius-button);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
+}
+
+.project-grid-pagination .itg-pagination-link:hover,
+.project-grid-pagination .itg-pagination-link:focus-visible,
+.project-grid-pagination .itg-pagination-link[aria-current='page'],
+.project-grid-pagination .itg-pagination-link[aria-current='page']:hover {
+  border-color: var(--itg-color-primary);
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.project-grid-pagination .itg-pagination-link[aria-current='page'] {
+  cursor: default;
+}
+
+.project-grid-pagination .itg-pagination-link:disabled,
+.project-grid-pagination .itg-pagination-link:disabled:hover {
+  border-color: var(--itg-color-disabled-border);
+  background: var(--itg-color-disabled-bg);
+  color: var(--itg-color-disabled-text);
+  cursor: not-allowed;
+}
+
+.project-grid-pagination .itg-pagination-gap {
+  padding: 0 0.25rem;
+  color: var(--itg-color-text-secondary);
+}
+
 .project-grid-pager-status {
   display: none;
   font-size: var(--itg-font-size-meta);
+}
+
+/* The rules above outrank phones.css's 44px for .itg-pagination-link, so they restate it. */
+@media (max-width: 992px) {
+  .project-grid-pagination .itg-pagination-link {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Previous / Page x of y / Next on one line at 320px. */
+@media (max-width: 360px) {
+  .project-grid-pagination .project-grid-pager-step {
+    padding-inline: 0.5rem;
+  }
+}
+
+/* Forced colours (Windows Contrast themes) repaint the fills, so the current page would look like the others: mark
+   it in the theme's selection colours. The 2px edges stay, in the theme's button text colour. */
+@media (forced-colors: active) {
+  .project-grid-pagination .itg-pagination-link[aria-current='page'],
+  .project-grid-pagination .itg-pagination-link[aria-current='page']:hover {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
 }
 
 /* ---- Empty and no-results states ------------------------------------------ */

@@ -158,7 +158,7 @@
   width: 15%;
 }
 
-/* "Details" column: a plain header, the navy square button centred under it (and "Remove" in curated lists). */
+/* "Details" column: a plain header, the square Details button centred under it (and "Remove" in curated lists). */
 .project-grid-table .project-grid-actions-col {
   width: 6.25rem;
 }
@@ -177,35 +177,36 @@
   vertical-align: middle;
 }
 
-/* The reference's details_open.png / details_close.png: a 35px #162d4f square with a 2px bevel (lighter top and
-   left edge, darker bottom and right edge) and a light hollow arrow, down to open and up to close. */
+/* Details: a 40px square outline button in primary (44px on touch screens, projectsResponsive.css), like the
+   site's other flat buttons; it fills navy on hover and focus. Its arrow points down to open and turns up once the
+   row is open. */
 .project-grid-detail-icon-button {
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 35px;
-  height: 35px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: #162d4f;
-  box-shadow: inset 2px 2px 0 #48566c, inset -2px -2px 0 #041329;
-  color: #e3e5ea;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: var(--itg-radius-button);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
   vertical-align: middle;
   cursor: pointer;
-  transition: background-color var(--itg-transition-fast) ease-in-out;
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
 }
 
 .project-grid-detail-icon-button:hover,
 .project-grid-detail-icon-button:focus-visible {
-  background: var(--itg-color-primary-hover);
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
 }
 
 .project-grid-detail-icon {
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   margin-left: -1px;
   background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
