@@ -168,6 +168,10 @@ describe('PastProjectsBuilder — AI search table', () => {
     expect(aiSearchForm).toHaveAttribute('aria-busy', 'true');
     expect(aiSearchInputFrame).not.toBeNull();
     expect(within(aiSearchForm as HTMLElement).getByRole('status')).toHaveTextContent('Searching past projects with AI…');
+    // The site's loading indicator, inside the form's own status line.
+    expect(
+      within(aiSearchForm as HTMLElement).getByRole('status').querySelector('.loading-indicator-spinner'),
+    ).toHaveAttribute('aria-hidden', 'true');
     expect(document.querySelector('.past-projects-ai-search-spinner')).toBeNull();
     expect(document.querySelector('.past-projects-ai-search-progress')).toBeNull();
     expect(screen.getByText('Searching past projects with AI…').closest('.project-grid-controls-status')).toBeNull();

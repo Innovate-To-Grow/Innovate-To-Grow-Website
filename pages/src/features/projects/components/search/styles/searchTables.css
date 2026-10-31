@@ -28,9 +28,12 @@
   margin: 0;
 }
 
+/* The failure holds the loading line's room too (ArchiveLoadState gives it the builder's loading class), its
+   message and Try Again packed at the top of it. */
 .past-projects-archive-failed {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   align-items: center;
   gap: 0.5rem 1rem;
 }
@@ -303,24 +306,6 @@
   gap: 0.5rem;
   margin: 0;
   color: var(--itg-color-text-secondary);
-}
-
-/* A plain spinner beside the progress text. */
-.past-projects-ai-search-status::before {
-  content: '';
-  flex: none;
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 2px solid var(--itg-color-border);
-  border-top-color: var(--itg-color-primary);
-  border-radius: 50%;
-  animation: past-projects-spin 0.9s linear infinite;
-}
-
-@keyframes past-projects-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* Forced colours drop the tint that marks a checked row, leaving only its checkbox: outline the row (or phone

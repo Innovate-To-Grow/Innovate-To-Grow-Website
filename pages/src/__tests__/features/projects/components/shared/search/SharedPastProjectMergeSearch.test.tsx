@@ -123,7 +123,7 @@ describe('SharedPastProjectMergeSearch', () => {
 
     cleanup();
     render(<SharedPastProjectMergeSearch rows={[]} error="Network Error" {...props} />);
-    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Try Again'}));
     expect(onRefreshRows).toHaveBeenCalledTimes(2);
     expect(screen.queryByText('Network Error')).toBeNull();
   });

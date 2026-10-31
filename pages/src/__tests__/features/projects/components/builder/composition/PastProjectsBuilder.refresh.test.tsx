@@ -43,7 +43,7 @@ interface Archive {
   error: string | null;
 }
 
-/** The builder over an archive whose first load failed; Try again loads it again, as usePastProjectGridData does. */
+/** The builder over an archive whose first load failed; Try Again loads it again, as usePastProjectGridData does. */
 const RetryHarness = () => {
   const [archive, setArchive] = useState<Archive>({rows: [], loading: false, error: RAW_ERROR});
   return (
@@ -139,13 +139,13 @@ describe('PastProjectsBuilder — refreshing a search table', () => {
     expect(alert).toHaveTextContent('The past-project archive could not be loaded. Check your connection and try again.');
     expect(screen.queryByText(RAW_ERROR)).toBeNull();
     expect(screen.getByRole('button', {name: '+ Search Table'})).toBeDisabled();
-    fireEvent.click(within(alert).getByRole('button', {name: 'Try again'}));
+    fireEvent.click(within(alert).getByRole('button', {name: 'Try Again'}));
     expect(onRefreshRows).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps Try again, and its focus, while the retry loads, then hands focus to the Search Tables heading', () => {
+  it('keeps Try Again, and its focus, while the retry loads, then hands focus to the Search Tables heading', () => {
     render(<RetryHarness />);
-    const tryAgain = screen.getByRole('button', {name: 'Try again'});
+    const tryAgain = screen.getByRole('button', {name: 'Try Again'});
     tryAgain.focus();
 
     fireEvent.click(tryAgain);
@@ -157,7 +157,7 @@ describe('PastProjectsBuilder — refreshing a search table', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Loading past projects…');
     expect(screen.getAllByText('Loading past projects…')).toHaveLength(1);
 
-    // A retry that fails again says so in the same alert, and Try again works again.
+    // A retry that fails again says so in the same alert, and Try Again works again.
     fireEvent.click(screen.getByRole('button', {name: 'Fail the load'}));
     expect(screen.getByRole('alert')).toHaveTextContent('The past-project archive could not be loaded.');
     expect(tryAgain).toHaveFocus();

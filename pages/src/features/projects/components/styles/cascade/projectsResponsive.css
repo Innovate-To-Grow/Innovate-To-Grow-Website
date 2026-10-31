@@ -331,6 +331,7 @@
   .project-grid-no-results .itg-empty-state-actions,
   .project-grid-detail-links,
   .project-grid-detail-state .itg-btn,
+  .project-grid-detail-error .itg-btn,
   .project-grid-sort-button::after,
   .project-grid-mobile-card-select,
   .project-grid-mobile-card-actions {
@@ -379,10 +380,6 @@
 @media (prefers-reduced-motion: reduce) {
   .search-table-results-motion {
     animation: none;
-  }
-
-  .past-projects-ai-search-status::before {
-    animation-duration: 3s;
   }
 }
 }
