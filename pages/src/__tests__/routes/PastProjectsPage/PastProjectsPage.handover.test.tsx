@@ -130,7 +130,7 @@ describe('PastProjectsPage — a curation handed over by its save', () => {
         expect(screen.getByText(/^Curation saved\./)).toHaveTextContent('on the All Projects page');
         // The owner's search for more projects is there at once, the share being loaded.
         expect(screen.getByRole('button', {name: 'Add mocked row'})).toBeInTheDocument();
-        expect(screen.queryByText('Loading curation...')).toBeNull();
+        expect(screen.queryByText('Loading curation…')).toBeNull();
     });
 
     it('loads a curation whose history entry a reload or Back/Forward restores, which may be outdated', async () => {
