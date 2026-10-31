@@ -82,4 +82,15 @@ textarea.itg-input {
 .itg-select[aria-invalid='true'] {
   border-color: var(--itg-color-error);
 }
+
+/* Forced colours: the placeholder takes the theme's GrayText, the system
+   colour for hint and disabled text, in every engine. Chromium already maps
+   it there (#600000 in a High Contrast White palette, the "dark red" seen in
+   its emulation); Firefox drew it as CanvasText at 54% opacity. */
+@media (forced-colors: active) {
+  .itg-input::placeholder {
+    forced-color-adjust: none;
+    color: GrayText;
+  }
+}
 }
