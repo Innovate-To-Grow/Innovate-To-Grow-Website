@@ -16,6 +16,11 @@
     padding: 0;
   }
 
+  /* The boxed danger button's own 40px (buttons.css) outranks .itg-btn above, so it restates the 44px. */
+  .itg-btn-outline.itg-btn-danger {
+    min-height: 44px;
+  }
+
   .itg-btn-cta {
     min-height: 44px;
   }
@@ -58,11 +63,12 @@
   :where(h3) { font-size: var(--itg-font-size-h3-mobile); }
 
   /* A page title that is a long project or curation name wrapped to 10+
-     lines at the desktop size and filled the first screen. On phones it
-     scales with the width (28px at 390px, never below 28px) up to the
-     h1-mobile token, with a tighter line-height for the multi-line case. */
+     lines at the desktop size and filled the first screen. On phones it is
+     fixed at 32px / 40px, so it stays a step above the 28px h2 at every
+     width (it used to shrink with the width to the h2's 28px); the
+     h1-mobile token still caps it, so Site Settings can make it smaller. */
   .itg-page-title {
-    font-size: min(var(--itg-font-size-h1-mobile), max(1.75rem, 7.2vw));
+    font-size: min(var(--itg-font-size-h1-mobile), 2rem);
     line-height: 1.25;
   }
 
