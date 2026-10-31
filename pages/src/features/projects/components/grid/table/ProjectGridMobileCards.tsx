@@ -123,7 +123,7 @@ interface MobileCardActionsProps
   detailsId: string;
 }
 
-/** "Show details" and "Remove" under a card. */
+/** "Show Details" and "Remove" under a card. */
 const MobileCardActions = ({
   row,
   hasDetails,
@@ -142,9 +142,9 @@ const MobileCardActions = ({
         aria-controls={detailsId}
         onClick={() => onToggleExpanded(row.__key)}
       >
-        {/* The label has its own element, so page translation cannot leave it reading "Show details" when open.
+        {/* The label has its own element, so page translation cannot leave it reading "Show Details" when open.
             The hidden text names the project, as the table's Details button does. */}
-        <span>{isExpanded ? 'Hide details' : 'Show details'}</span>{' '}
+        <span>{isExpanded ? 'Hide Details' : 'Show Details'}</span>{' '}
         <span className="sr-only">{`for ${row.project_title}`}</span>
         <span aria-hidden="true">{isExpanded ? ' ▴' : ' ▾'}</span>
       </button>

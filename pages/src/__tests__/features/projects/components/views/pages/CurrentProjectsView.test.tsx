@@ -106,11 +106,11 @@ describe('CurrentProjectsView', () => {
 
     expect(table.getByText('An HVAC abstract.')).toBeInTheDocument();
     expect(table.getByText('Brian Arroyo, Joel Gonzalez')).toBeInTheDocument();
-    expect(table.getByRole('link', {name: 'Open the project page for HVAC Design'})).toHaveAttribute(
+    expect(table.getByRole('link', {name: 'Open the Project Page for HVAC Design'})).toHaveAttribute(
       'href',
       '/projects/project-1',
     );
-    expect(table.queryByRole('button', {name: /^Copy project link/})).toBeNull();
+    expect(table.queryByRole('button', {name: /^Copy Project Link/})).toBeNull();
   });
 
   it('builds the Class and Industry filters from the rows and filters by them', async () => {
@@ -184,7 +184,7 @@ describe('CurrentProjectsView', () => {
     );
     expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', {name: 'Clear search and filters'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Clear Search and Filters'}));
 
     await waitFor(() => expect(countLine(container)).toHaveTextContent('3 projects · showing 1–3'));
     expect(screen.getByRole('searchbox')).toHaveValue('');
@@ -216,14 +216,17 @@ describe('CurrentProjectsView', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Schedule down');
-    expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+    expect(screen.queryByRole('button', {name: 'Try Again'})).toBeNull();
   });
 
   it('offers to load the projects again after an error', () => {
     const onRetry = vi.fn();
     renderView({rows: [], error: "We couldn't load the projects.", onRetry});
 
-    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    const tryAgain = screen.getByRole('button', {name: 'Try Again'});
+    // An outline button: the failure sits inside the page and does not outrank its own actions.
+    expect(tryAgain).toHaveClass('itg-btn', 'itg-btn-outline');
+    fireEvent.click(tryAgain);
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 

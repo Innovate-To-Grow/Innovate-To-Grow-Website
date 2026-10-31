@@ -81,7 +81,7 @@ describe('ProjectGridTable', () => {
     it('renders a labelled search field and reports the row count and the rows shown', () => {
         const {container} = render(<ProjectGridTable {...baseProps} />);
 
-        expect(screen.getByLabelText('Search')).toHaveAttribute('placeholder', 'Search projects...');
+        expect(screen.getByLabelText('Search')).toHaveAttribute('placeholder', 'Search projects…');
         expect(screen.getByText('2 projects')).toBeInTheDocument();
         expect(container.querySelector('.project-grid-count')).toHaveTextContent('2 projects · showing 1–2');
     });
@@ -216,14 +216,16 @@ describe('ProjectGridTable', () => {
 
         expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
         expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
-        expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+        expect(screen.queryByRole('button', {name: 'Try Again'})).toBeNull();
     });
 
     it('offers to load the rows again after an error', () => {
         const onRetry = vi.fn();
         render(<ProjectGridTable {...baseProps} error="We couldn't load the projects." onRetry={onRetry} />);
 
-        fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+        const tryAgain = screen.getByRole('button', {name: 'Try Again'});
+        expect(tryAgain).toHaveClass('itg-btn', 'itg-btn-outline');
+        fireEvent.click(tryAgain);
         expect(onRetry).toHaveBeenCalledTimes(1);
     });
 
@@ -360,7 +362,7 @@ describe('ProjectGridTable', () => {
         expect(screen.getByRole('link', {name: 'Search Past Projects'})).toBeInTheDocument();
         expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
 
-        fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Clear Search'}));
         expect(onSearchChange).toHaveBeenCalledWith('');
         expect(onClearFilters).toHaveBeenCalledTimes(1);
     });
@@ -448,7 +450,7 @@ describe('ProjectGridTable', () => {
         expect(container.querySelector('.project-grid-count')).toHaveTextContent(
             /^0 of 75 projects match “CSE” in Engineering Capstone \(CAP\)$/,
         );
-        fireEvent.click(screen.getByRole('button', {name: 'Clear search and filters'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Clear Search and Filters'}));
         expect(onSearchChange).toHaveBeenCalledWith('');
         expect(onClearFilters).toHaveBeenCalledTimes(1);
 
@@ -457,7 +459,7 @@ describe('ProjectGridTable', () => {
             screen.getByRole('heading', {name: 'No teams in Software Engineering Capstone (CSE) and Construction'}),
         ).toBeInTheDocument();
         expect(screen.getByText('Clear the filters to see all teams.')).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Clear filters'})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Clear Filters'})).toBeInTheDocument();
     });
 
     it('suggests what a search can find when no filter is in use', () => {
@@ -466,7 +468,7 @@ describe('ProjectGridTable', () => {
         expect(
             screen.getByText('Check the spelling, or try a project title, team, organization, industry or student name.'),
         ).toBeInTheDocument();
-        expect(screen.getByRole('button', {name: 'Clear search'})).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Clear Search'})).toBeInTheDocument();
     });
 
     it('defaults the no-results heading to an h2, whatever the link scope', () => {
@@ -649,7 +651,7 @@ describe('ProjectGridTable', () => {
         expect(within(card).getByText('2025 Spring · ENGR 120 7 · Technology')).toBeInTheDocument();
         expect(within(card).getByText('Team Alpha · Acme')).toBeInTheDocument();
         expect(within(card).getByRole('checkbox', {name: 'Select Alpha Project'})).toBeChecked();
-        fireEvent.click(within(card).getByRole('button', {name: 'Show details for Alpha Project'}));
+        fireEvent.click(within(card).getByRole('button', {name: 'Show Details for Alpha Project'}));
         expect(baseProps.onToggleExpanded).toHaveBeenCalledWith(rows[0].__key);
     });
 });

@@ -116,16 +116,16 @@ describe('ProjectGridTable accessibility', () => {
     expect(table.getByRole('button', {name: 'Details for Project 2'})).toHaveAttribute('aria-expanded', 'false');
     expect(table.queryByRole('button', {name: 'Hide'})).toBeNull();
     expect(table.getByRole('group', {name: 'Details for Project 1'})).toHaveTextContent('An abstract');
-    expect(table.getByRole('link', {name: 'Open the project page for Project 1 (opens in a new tab)'})).toBeInTheDocument();
-    expect(table.getByRole('button', {name: 'Copy project link for Project 1'})).toBeInTheDocument();
+    expect(table.getByRole('link', {name: 'Open the Project Page for Project 1 (opens in a new tab)'})).toBeInTheDocument();
+    expect(table.getByRole('button', {name: 'Copy Project Link for Project 1'})).toBeInTheDocument();
   });
 
   it('names the phone toggle after its project too', () => {
     stubGridLayout('phone');
     render(<ProjectGridTable {...baseProps} expandedKeys={new Set([rows[1].__key])} />);
 
-    expect(screen.getByRole('button', {name: 'Show details for Project 1'})).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('button', {name: 'Hide details for Project 2'})).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', {name: 'Show Details for Project 1'})).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', {name: 'Hide Details for Project 2'})).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('reads the Details heading of a list with Remove buttons as one phrase', () => {
@@ -143,7 +143,7 @@ describe('ProjectGridTable accessibility', () => {
     expect(screen.getByRole('navigation', {name: 'Search Table 2 pages'})).toBeInTheDocument();
   });
 
-  it('keeps focus on the search field when Clear search takes the no-results message away', () => {
+  it('keeps focus on the search field when Clear Search takes the no-results message away', () => {
     const onSearchChange = vi.fn();
     const onClearFilters = vi.fn();
     render(
@@ -157,7 +157,7 @@ describe('ProjectGridTable accessibility', () => {
       />,
     );
 
-    const clear = screen.getByRole('button', {name: 'Clear search'});
+    const clear = screen.getByRole('button', {name: 'Clear Search'});
     clear.focus();
     fireEvent.click(clear);
 
@@ -177,7 +177,7 @@ describe('ProjectGridTable accessibility', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Clear Search'}));
     expect(document.activeElement).toBe(container.querySelector('.project-grid-count'));
   });
 
@@ -187,7 +187,7 @@ describe('ProjectGridTable accessibility', () => {
       <ProjectGridTable {...baseProps} search="EnergyPro" serverSearch={asking} filteredCount={0} pagedRows={[]} />,
     );
     expect(screen.getByText('Still searching project abstracts…')).toBeInTheDocument();
-    screen.getByRole('button', {name: 'Clear search'}).focus();
+    screen.getByRole('button', {name: 'Clear Search'}).focus();
 
     // The server finds a project by its abstract: rows replace the message, and its Clear button with it.
     rerender(
@@ -199,7 +199,7 @@ describe('ProjectGridTable accessibility', () => {
         pagedRows={[rows[1]]}
       />,
     );
-    expect(screen.queryByRole('button', {name: 'Clear search'})).toBeNull();
+    expect(screen.queryByRole('button', {name: 'Clear Search'})).toBeNull();
     expect(document.activeElement).toBe(container.querySelector('.project-grid-count'));
     expect(document.activeElement).toHaveTextContent('1 of 2 projects matches “EnergyPro”');
   });
@@ -209,9 +209,9 @@ describe('ProjectGridTable accessibility', () => {
     const {rerender} = render(
       <ProjectGridTable {...baseProps} search="EnergyPro" serverSearch={asking} filteredCount={0} pagedRows={[]} />,
     );
-    const clear = screen.getByRole('button', {name: 'Clear search'});
+    const clear = screen.getByRole('button', {name: 'Clear Search'});
     clear.focus();
-    // The visitor clicks blank page space: focus leaves Clear search, which is still there. (The window keeps focus;
+    // The visitor clicks blank page space: focus leaves Clear Search, which is still there. (The window keeps focus;
     // jsdom answers hasFocus() from the focused element, which it clears before the blur.)
     const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true);
     clear.blur();
@@ -234,7 +234,7 @@ describe('ProjectGridTable accessibility', () => {
     const {container, rerender} = render(
       <ProjectGridTable {...baseProps} search="EnergyPro" serverSearch={asking} filteredCount={0} pagedRows={[]} />,
     );
-    const clear = screen.getByRole('button', {name: 'Clear search'});
+    const clear = screen.getByRole('button', {name: 'Clear Search'});
     clear.focus();
     // The visitor switches to another window: the control gets a blur but stays the page's focused element.
     const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
@@ -420,7 +420,7 @@ describe('ProjectGridTable accessibility', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading project details...');
   });
 
-  describe('Try again', () => {
+  describe('Try Again', () => {
     const LOAD_ERROR = "We couldn't load the projects. Please try again.";
     const onRetry = vi.fn();
     const failed = <ProjectGridTable {...baseProps} error={LOAD_ERROR} onRetry={onRetry} />;
@@ -428,9 +428,9 @@ describe('ProjectGridTable accessibility', () => {
 
     beforeEach(() => onRetry.mockClear());
 
-    /** Presses Try again as a keyboard user does: the button has focus first. */
+    /** Presses Try Again as a keyboard user does: the button has focus first. */
     const pressTryAgain = () => {
-      const button = screen.getByRole('button', {name: 'Try again'});
+      const button = screen.getByRole('button', {name: 'Try Again'});
       button.focus();
       fireEvent.click(button);
     };
@@ -450,14 +450,14 @@ describe('ProjectGridTable accessibility', () => {
       expect(document.activeElement).toHaveTextContent('2 projects');
     });
 
-    it('returns focus to Try again when the load fails again, and to the empty message when no rows come back', () => {
+    it('returns focus to Try Again when the load fails again, and to the empty message when no rows come back', () => {
       stubGridLayout('desktop');
       const {rerender} = render(failed);
 
       pressTryAgain();
       rerender(reloading);
       rerender(failed);
-      expect(document.activeElement).toBe(screen.getByRole('button', {name: 'Try again'}));
+      expect(document.activeElement).toBe(screen.getByRole('button', {name: 'Try Again'}));
 
       pressTryAgain();
       rerender(reloading);

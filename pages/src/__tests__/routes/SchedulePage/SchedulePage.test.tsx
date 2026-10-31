@@ -520,7 +520,7 @@ describe('SchedulePage', () => {
     fireEvent.click(screen.getByRole('button', {name: 'CSE-101'}));
 
     expect(screen.getByTestId('location-probe')).toHaveTextContent('value=CSE-101');
-    expect(screen.getByPlaceholderText('Search projects...')).toHaveValue('CSE-101');
+    expect(screen.getByPlaceholderText('Search projects…')).toHaveValue('CSE-101');
   });
 
   it('filters the projects grid down to presenting projects', () => {
@@ -562,7 +562,7 @@ describe('SchedulePage', () => {
 
     fireEvent.click(screen.getAllByRole('button', {name: 'CSE-101'})[0]);
 
-    expect(screen.getByPlaceholderText('Search projects...')).toHaveValue('CSE-101');
+    expect(screen.getByPlaceholderText('Search projects…')).toHaveValue('CSE-101');
   });
 
   it('clears the team search param when a slot has no team identifier', () => {

@@ -180,7 +180,7 @@ const noResultsText = ({
   if (filters) {
     advice = query ? `Clear the filters to search all ${countLabel}, or check the spelling.` : `Clear the filters to see all ${countLabel}.`;
   }
-  const clearLabel = filters ? (query ? 'Clear search and filters' : 'Clear filters') : 'Clear search';
+  const clearLabel = filters ? (query ? 'Clear Search and Filters' : 'Clear Filters') : 'Clear Search';
   return {heading, hint: noResultsHint ? `${advice} ${noResultsHint}` : advice, clearLabel};
 };
 

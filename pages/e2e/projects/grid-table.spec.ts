@@ -38,7 +38,7 @@ test('search input filters rows across all columns', async ({page}) => {
 test('row expand shows abstract and student names', async ({page}) => {
   await mockSchedule(page, schedulePayload());
   await page.goto('/current-projects', {waitUntil: 'domcontentloaded'});
-  // "Details for …" in the table, "Show details for …" in the phone list: whichever layout is showing.
+  // "Details for …" in the table, "Show Details for …" in the phone list: whichever layout is showing.
   const toggle = page.locator('.project-grid-detail-button:visible').first();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await toggle.click();
@@ -117,7 +117,7 @@ test('a search with no results offers to clear it or search past projects', asyn
     'href',
     '/past-projects?value=hydroponics',
   );
-  await page.getByRole('button', {name: 'Clear search'}).click();
+  await page.getByRole('button', {name: 'Clear Search'}).click();
   await expect(page.locator('.project-grid-count')).toContainText('3 projects');
 });
 

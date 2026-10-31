@@ -63,7 +63,7 @@ export interface ProjectGridTableProps {
   onSortChange: (field: ProjectGridColumnKey) => void;
   /** Sort from the Sort by select, whose options name the direction ("Project title (Z to A)"). */
   onSortSelect?: (field: ProjectGridColumnKey, direction: ProjectGridSortDirection) => void;
-  /** Clears the extra filters too when the visitor clicks "Clear search" in the no-results state. */
+  /** Clears the extra filters too when the visitor clicks "Clear Search" in the no-results state. */
   onClearFilters?: () => void;
   /** Extra hint and actions for the no-results state (e.g. a link to search past projects). */
   noResultsHint?: string;
@@ -85,7 +85,7 @@ export interface ProjectGridTableProps {
   onPageSizeChange: (size: number) => void;
   loading?: boolean;
   error?: string | null;
-  /** Loads the rows again after `error`; shown as a "Try again" button beside it. */
+  /** Loads the rows again after `error`; shown as a "Try Again" button beside it. */
   onRetry?: () => void;
   /** What shows when there are no rows at all: the text under `emptyTitle`, or on its own without one. */
   emptyMessage?: string;

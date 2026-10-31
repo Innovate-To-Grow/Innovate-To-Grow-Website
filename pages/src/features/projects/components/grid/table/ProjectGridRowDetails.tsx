@@ -18,13 +18,13 @@ interface ProjectGridRowDetailsProps {
 const CopyProjectLinkButton = ({href, title}: {href: string; title: string}) => {
   const {status, copy} = useCopyLink({
     copied: 'Project link copied.',
-    failed: 'Could not copy the link. Use Open the project page and copy its address.',
+    failed: 'Could not copy the link. Use Open the Project Page and copy its address.',
   });
 
   return (
     <>
       <button type="button" className="itg-btn itg-btn-text project-grid-copy-link" onClick={() => void copy(href)}>
-        Copy project link{' '}
+        Copy Project Link{' '}
         <span className="sr-only">{`for ${title}`}</span>
       </button>
       {status ? (
@@ -68,7 +68,7 @@ export function ProjectGridRowDetails({row, scope, loadMissingDetails = false, a
         <div className="project-grid-detail-links">
           {/* Named after the project, so a list of the page's links tells them apart. */}
           <ProjectPageLink className="project-grid-individual-link" href={href} scope={scope}>
-            Open the project page{' '}
+            Open the Project Page{' '}
             <span className="sr-only">{`for ${row.project_title}`}</span>
           </ProjectPageLink>
           {scope === 'past' ? <CopyProjectLinkButton href={href} title={row.project_title} /> : null}

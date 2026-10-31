@@ -108,7 +108,7 @@ describe('ProjectGridTable on a translated page', () => {
     expect(view.errors).toEqual([]);
     expect(count(view.container)).toBe('0 of 75 projects match “xqzv” in Energy');
     expect(shownText(view.container.querySelector('h2'))).toBe('No projects match “xqzv” in Energy');
-    expect(shownText(view.container.querySelector('.itg-empty-state-actions button'))).toBe('Clear search and filters');
+    expect(shownText(view.container.querySelector('.itg-empty-state-actions button'))).toBe('Clear Search and Filters');
   });
 
   it('adds and takes away the note that the abstracts were not searched', () => {
@@ -153,6 +153,6 @@ describe('ProjectGridTable on a translated page', () => {
     expect(view.errors).toEqual([]);
     const toggle = view.container.querySelector('.project-grid-mobile-card .project-grid-detail-button');
     // The visible label and arrow; a hidden " for <title>" names the project for screen readers.
-    expect(shownText(toggle)).toBe(`Hide details for ${rows[0].project_title} ▴`);
+    expect(shownText(toggle)).toBe(`Hide Details for ${rows[0].project_title} ▴`);
   });
 });

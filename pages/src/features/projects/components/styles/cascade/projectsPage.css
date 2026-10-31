@@ -49,7 +49,7 @@
   min-height: min(100vh, 850px);
 }
 
-/* A list that could not load: the message, then "Try again" beside it (under it on narrow screens). */
+/* A list that could not load: the message, then "Try Again" beside it (under it on narrow screens). */
 .project-grid-load-error {
   display: flex;
   flex-wrap: wrap;
