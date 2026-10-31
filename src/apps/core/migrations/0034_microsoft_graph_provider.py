@@ -5,6 +5,12 @@ import uuid
 from django.db import migrations, models
 
 
+def switch_graph_senders_to_ses(apps, schema_editor):
+    """Reversing: code from before this migration has no "graph" provider, so fall back to SES instead of failing."""
+    EmailServiceConfig = apps.get_model("core", "EmailServiceConfig")
+    EmailServiceConfig.objects.filter(provider="graph").update(provider="ses")
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("core", "0033_awscredentialconfig_credentials_secret_arn"),
@@ -62,21 +68,11 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    "client_secret",
-                    models.CharField(
-                        blank=True,
-                        default="",
-                        help_text="Client secret value (not the secret ID). Secrets expire, so rotate before the expiry date.",
-                        max_length=256,
-                        verbose_name="Client Secret",
-                    ),
-                ),
-                (
                     "mailbox",
                     models.CharField(
                         blank=True,
                         default="",
-                        help_text="Email address / user principal name (or object ID) of the Exchange Online mailbox that sends mail. Leave blank to use the From email address.",
+                        help_text="Email address / user principal name (or object ID) of the Exchange Online mailbox that sends mail and whose inbox the admin reads. Leave blank to use the From email address. It must be listed in the mailbox scope below.",
                         max_length=254,
                         verbose_name="Sender Mailbox",
                     ),
@@ -106,4 +102,5 @@ class Migration(migrations.Migration):
                 ],
             },
         ),
+        migrations.RunPython(migrations.RunPython.noop, switch_graph_senders_to_ses),
     ]

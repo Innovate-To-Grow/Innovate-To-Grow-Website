@@ -70,7 +70,7 @@ The SES variables below matter only while AWS SES is the selected email provider
 
 ### Microsoft Graph (email)
 
-The Microsoft Graph email provider has no environment variables. Its Entra tenant ID, client ID, client secret, and sender mailbox live in [`MicrosoftGraphProviderConfig`](../../src/apps/core/models/base/service_credentials/microsoft_graph.py) and are entered under Mail → Notification Delivery, like the SMTP settings. The only deployment requirement is outbound HTTPS (port 443) from the backend and background-worker containers to `login.microsoftonline.com` and `graph.microsoft.com`; the provider connects to them directly and ignores proxy environment variables. Setup and limits: [Microsoft Graph email](../integrations/microsoft-graph-email.md).
+The Microsoft Graph email provider has no environment variables. Its Entra tenant ID, client ID, and sender mailbox live in [`MicrosoftGraphProviderConfig`](../../src/apps/core/models/base/service_credentials/microsoft_graph.py) and are entered under Mail → Notification Delivery, like the SMTP settings. It authenticates with a certificate whose private key is kept in the credential store (AWS Secrets Manager in production); the database keeps only the certificate's public data and the pinned version (`MicrosoftGraphCertificate`). The only deployment requirement is outbound HTTPS (port 443) from the backend and background-worker containers to `login.microsoftonline.com` and `graph.microsoft.com`; the provider connects to them directly and ignores proxy environment variables. Setup and limits: [Microsoft Graph email](../integrations/microsoft-graph-email.md).
 
 ### Cache
 
@@ -254,7 +254,8 @@ These integrations read credentials from Django admin at runtime (Site Settings,
 | `AWSCredentialConfig` | Secrets Manager ARN + region + SMS origination number + OTP template |
 | `EmailServiceConfig` | Sender identity, campaign rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph); there is no fallback between providers |
 | `SMTPProviderConfig` | SMTP host, port, TLS/SSL, optional username and password |
-| `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, client secret, optional sender mailbox, messages per minute |
+| `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, optional sender mailbox, messages per minute |
+| `MicrosoftGraphCertificate` | Installed Graph certificates (current, previous for rollback, removed): public data, thumbprints, validity, and the pinned credential-store version of the private key |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
 
 Before removing legacy env vars from a deployed environment, run `python manage.py verify_service_configs --strict` against the prod DB to confirm active rows exist. See [CMS & Admin → Operations](../cms-admin/operations.md#service-configuration).

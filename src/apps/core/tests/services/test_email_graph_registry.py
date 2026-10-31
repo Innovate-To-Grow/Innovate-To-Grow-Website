@@ -20,7 +20,6 @@ from apps.core.services.email.registry import register_provider
 from apps.core.tests import graph_helpers
 from apps.core.tests.services.test_email_graph import (
     CLIENT_ID,
-    CLIENT_SECRET,
     PROVIDER_LOGGER,
     TENANT_ID,
     GraphFixtureMixin,
@@ -39,7 +38,6 @@ def create_graph_config(**overrides):
         "is_active": True,
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
     }
     return graph_helpers.create_graph_config(scope=SCOPE, **{**values, **overrides})
 
@@ -59,7 +57,7 @@ class GraphProviderFactoryTests(GraphFixtureMixin, TestCase):
         self.assertIsInstance(provider, GraphProvider)
         self.assertEqual(provider.name, "graph")
         self.assertEqual((provider.credential.tenant_id, provider.credential.client_id), (TENANT_ID, CLIENT_ID))
-        self.assertEqual(provider.credential.client_secret, CLIENT_SECRET)
+        self.assertEqual(provider.credential.x5t_s256, MicrosoftGraphProviderConfig.load().current_certificate.x5t_s256)
         self.assertEqual((provider.from_email, provider.from_name), ("noreply@ucmerced.edu", "Innovate to Grow"))
 
     def test_mailbox_falls_back_to_the_from_email(self):
@@ -103,9 +101,9 @@ class GraphProviderFactoryTests(GraphFixtureMixin, TestCase):
         with self.assertRaisesMessage(PermanentEmailDeliveryError, "missing or invalid"):
             resolve_provider(self.service_config)
 
-    def test_an_active_config_without_a_secret_is_unconfigured(self):
+    def test_an_active_config_without_a_current_certificate_is_unconfigured(self):
         config = create_graph_config()
-        MicrosoftGraphProviderConfig.objects.filter(pk=config.pk).update(client_secret="")
+        config.certificates.update(state="removed")
 
         with self.assertRaisesMessage(PermanentEmailDeliveryError, "missing or invalid"):
             resolve_provider(self.service_config)
@@ -121,7 +119,7 @@ class GraphProviderFactoryTests(GraphFixtureMixin, TestCase):
                 with self.assertRaisesMessage(PermanentEmailDeliveryError, "missing or invalid") as caught:
                     resolve_provider(self.service_config)
 
-                self.assertNotIn(CLIENT_SECRET, str(caught.exception))
+                self.assertNotIn("PRIVATE KEY", str(caught.exception))
 
     def test_an_invalid_from_email_fallback_is_rejected(self):
         create_graph_config(mailbox="")

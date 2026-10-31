@@ -49,7 +49,6 @@ class DeliveryPacingNoticeTests(TestCase):
             "is_active": True,
             "tenant_id": TENANT_ID,
             "client_id": CLIENT_ID,
-            "client_secret": "not-a-real-secret",
         }
         return create_graph_config(scope=GRAPH_TEST_SCOPE, **values | overrides)
 
@@ -102,7 +101,6 @@ class ConfirmPageNoticeTests(TestCase):
             is_active=True,
             tenant_id=TENANT_ID,
             client_id=CLIENT_ID,
-            client_secret="not-a-real-secret",
         )
         EmailServiceConfig.objects.create(
             name="Mail", is_active=True, provider="graph", from_email="sender@example.com"
@@ -152,7 +150,6 @@ def make_graph_sender(messages_per_minute=24):
         is_active=True,
         tenant_id=TENANT_ID,
         client_id=CLIENT_ID,
-        client_secret="not-a-real-secret",
         messages_per_minute=messages_per_minute,
     )
     return EmailServiceConfig.objects.create(

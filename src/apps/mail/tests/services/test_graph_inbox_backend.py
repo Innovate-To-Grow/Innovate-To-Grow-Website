@@ -86,7 +86,6 @@ def graph_config(permission=Permission.SEND_AND_READ, **overrides):
         "is_active": True,
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
-        "client_secret": "not-a-real-secret",
     }
     return create_graph_config(scope=(MAILBOX,), permission=permission, **{**values, **overrides})
 
@@ -113,7 +112,6 @@ class ActiveReaderTests(TestCase):
             is_active=True,
             tenant_id=TENANT_ID,
             client_id=CLIENT_ID,
-            client_secret="not-a-real-secret",
             mailbox="Shared@Contoso.com",
         )
 

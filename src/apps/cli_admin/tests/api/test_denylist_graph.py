@@ -1,21 +1,19 @@
 from apps.cli_admin.models import CliAuditLog
 from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff, make_superuser
-from apps.core.models import MicrosoftGraphProviderConfig
+from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.tests.graph_helpers import create_graph_config
 
 # Graph senders used in this module; the mailbox scope rules have their own tests.
 GRAPH_TEST_SCOPE = ("sender@example.com",)
 
-SECRET = "not-a-real-graph-secret"
 ATTACKER_VALUE = "attacker-chosen"
-COLLECTION = "/admin-api/records/core/microsoftgraphproviderconfig/"
-SCHEMA = "/admin-api/models/core/microsoftgraphproviderconfig/schema/"
-DENIED_READ = "Read access is not allowed for core.MicrosoftGraphProviderConfig."
-DENIED_WRITE = "Write access is not allowed for core.MicrosoftGraphProviderConfig."
+CONFIG_COLLECTION = "/admin-api/records/core/microsoftgraphproviderconfig/"
+CERTIFICATE_COLLECTION = "/admin-api/records/core/microsoftgraphcertificate/"
+DENIED = "{access} access is not allowed for core.{model}."
 
 
 class GraphDenylistTests(CliApiTestCase):
-    """Microsoft Graph credentials are unreachable through /admin-api/, even for superusers and the core app."""
+    """The Graph config and its installed certificates are unreachable through /admin-api/, even for superusers."""
 
     def setUp(self):
         super().setUp()
@@ -25,10 +23,13 @@ class GraphDenylistTests(CliApiTestCase):
             is_active=True,
             tenant_id="11111111-2222-3333-4444-555555555555",
             client_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-            client_secret=SECRET,
             mailbox="sender@example.com",
         )
-        self.detail = f"{COLLECTION}{self.config.pk}/"
+        self.certificate = self.config.current_certificate
+        self.targets = {
+            "MicrosoftGraphProviderConfig": (CONFIG_COLLECTION, f"{CONFIG_COLLECTION}{self.config.pk}/"),
+            "MicrosoftGraphCertificate": (CERTIFICATE_COLLECTION, f"{CERTIFICATE_COLLECTION}{self.certificate.pk}/"),
+        }
         # Both actors hold the "core" app grant (superusers hold every grant), so a 400 below comes from the
         # denylist and not from the per-app 403.
         self.actors = {
@@ -36,31 +37,32 @@ class GraphDenylistTests(CliApiTestCase):
             "superuser": self.auth(issue_token(make_superuser(email="graph-admin@example.com"))[1]),
         }
 
-    def assert_denied(self, response, detail):
+    def assert_denied(self, response, access, model):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["error"], "bad_request")
-        self.assertEqual(response.data["detail"], detail)
-        self.assertNotIn(SECRET, response.content.decode())
+        self.assertEqual(response.data["detail"], DENIED.format(access=access, model=model))
+        self.assertNotIn(self.certificate.store_version_id, response.content.decode())
 
-    def test_reads_are_400_and_never_return_the_secret(self):
+    def each_target(self):
         for actor, auth in self.actors.items():
-            with self.subTest(actor=actor):
-                self.assert_denied(self.client.get(COLLECTION, **auth), DENIED_READ)
-                self.assert_denied(self.client.get(COLLECTION, {"count": "1"}, **auth), DENIED_READ)
-                self.assert_denied(self.client.get(self.detail, **auth), DENIED_READ)
+            for model, (collection, detail) in self.targets.items():
+                with self.subTest(actor=actor, model=model):
+                    yield auth, model, collection, detail
 
-    def test_filtering_on_the_secret_is_refused_rather_than_used_as_an_oracle(self):
-        query = {"filter": f"client_secret={SECRET}", "field": "client_secret"}
-        for actor, auth in self.actors.items():
-            with self.subTest(actor=actor):
-                self.assert_denied(self.client.get(COLLECTION, query, **auth), DENIED_READ)
+    def test_reads_and_schemas_are_400(self):
+        for auth, model, collection, detail in self.each_target():
+            self.assert_denied(self.client.get(collection, **auth), "Read", model)
+            self.assert_denied(self.client.get(collection, {"count": "1"}, **auth), "Read", model)
+            self.assert_denied(self.client.get(detail, **auth), "Read", model)
+            schema = f"/admin-api/models/core/{model.lower()}/schema/"
+            self.assert_denied(self.client.get(schema, **auth), "Read", model)
 
-    def test_schema_is_400(self):
-        for actor, auth in self.actors.items():
-            with self.subTest(actor=actor):
-                self.assert_denied(self.client.get(SCHEMA, **auth), DENIED_READ)
+    def test_filtering_is_refused_rather_than_used_as_an_oracle(self):
+        query = {"filter": f"store_version_id={self.certificate.store_version_id}", "field": "store_version_id"}
+        for auth, model, collection, _detail in self.each_target():
+            self.assert_denied(self.client.get(collection, query, **auth), "Read", model)
 
-    def test_model_catalogue_omits_the_model(self):
+    def test_model_catalogue_omits_the_models(self):
         for actor, auth in self.actors.items():
             with self.subTest(actor=actor):
                 response = self.client.get("/admin-api/models/", **auth)
@@ -69,46 +71,46 @@ class GraphDenylistTests(CliApiTestCase):
                 labels = {row["label"] for row in response.data}
                 self.assertIn("projects.Semester", labels)
                 self.assertNotIn("core.MicrosoftGraphProviderConfig", labels)
+                self.assertNotIn("core.MicrosoftGraphCertificate", labels)
 
     def test_create_is_400_and_writes_nothing(self):
-        payload = {"name": "Injected", "tenant_id": "contoso.com", "client_id": "x", "client_secret": ATTACKER_VALUE}
-        for actor, auth in self.actors.items():
-            with self.subTest(actor=actor):
-                self.assert_denied(self.client.post(COLLECTION, payload, format="json", **auth), DENIED_WRITE)
+        payload = {"name": "Injected", "tenant_id": "contoso.com", "client_id": "x", "state": "current"}
+        for auth, model, collection, _detail in self.each_target():
+            self.assert_denied(self.client.post(collection, payload, format="json", **auth), "Write", model)
 
         self.assertEqual(MicrosoftGraphProviderConfig.objects.count(), 1)
+        self.assertEqual(MicrosoftGraphCertificate.objects.count(), 1)
 
-    def test_update_is_400_and_leaves_the_row_untouched(self):
-        changes = (("mailbox", "attacker@example.com"), ("client_secret", ATTACKER_VALUE), ("is_active", False))
-        for actor, auth in self.actors.items():
+    def test_update_is_400_and_leaves_the_rows_untouched(self):
+        changes = (("mailbox", "attacker@example.com"), ("state", "removed"), ("store_version_id", ATTACKER_VALUE))
+        for auth, model, _collection, detail in self.each_target():
             for field, value in changes:
-                with self.subTest(actor=actor, field=field):
-                    response = self.client.patch(self.detail, {field: value}, format="json", **auth)
-
-                    self.assert_denied(response, DENIED_WRITE)
+                response = self.client.patch(detail, {field: value}, format="json", **auth)
+                self.assert_denied(response, "Write", model)
 
         self.config.refresh_from_db()
+        self.certificate.refresh_from_db()
         self.assertEqual(self.config.mailbox, "sender@example.com")
-        self.assertEqual(self.config.client_secret, SECRET)
-        self.assertTrue(self.config.is_active)
+        self.assertEqual(self.certificate.state, MicrosoftGraphCertificate.State.CURRENT)
+        self.assertNotEqual(self.certificate.store_version_id, ATTACKER_VALUE)
 
-    def test_delete_is_400_and_keeps_the_row(self):
-        for actor, auth in self.actors.items():
-            with self.subTest(actor=actor):
-                self.assert_denied(self.client.delete(self.detail, **auth), DENIED_WRITE)
-                self.assert_denied(self.client.delete(f"{self.detail}?confirm_cascade=1", **auth), DENIED_WRITE)
+    def test_delete_is_400_and_keeps_the_rows(self):
+        for auth, model, _collection, detail in self.each_target():
+            self.assert_denied(self.client.delete(detail, **auth), "Write", model)
+            self.assert_denied(self.client.delete(f"{detail}?confirm_cascade=1", **auth), "Write", model)
 
         self.assertTrue(MicrosoftGraphProviderConfig.objects.filter(pk=self.config.pk).exists())
+        self.assertTrue(MicrosoftGraphCertificate.objects.filter(pk=self.certificate.pk).exists())
 
-    def test_denied_writes_are_audited_as_failed_without_any_secret(self):
+    def test_denied_writes_are_audited_as_failed(self):
+        detail = self.targets["MicrosoftGraphCertificate"][1]
         response = self.client.patch(
-            self.detail, {"client_secret": ATTACKER_VALUE}, format="json", **self.actors["staff"]
+            detail, {"store_version_id": ATTACKER_VALUE}, format="json", **self.actors["staff"]
         )
 
         self.assertEqual(response.status_code, 400)
         self.assertFalse(CliAuditLog.objects.filter(status="success").exists())
         log = CliAuditLog.objects.get(action="update", status="failed")
-        self.assertEqual(log.model_name, "microsoftgraphproviderconfig")
+        self.assertEqual(log.model_name, "microsoftgraphcertificate")
         for stored in (log.error_message, log.target_repr, str(log.changes), str(log.before_snapshot)):
-            self.assertNotIn(SECRET, stored)
             self.assertNotIn(ATTACKER_VALUE, stored)

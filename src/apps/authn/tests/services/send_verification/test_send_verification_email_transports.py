@@ -18,10 +18,10 @@ from apps.authn.services.email.challenges import issue_email_challenge, verify_e
 from apps.authn.tests.services.send_verification.test_send_verification_concurrency import send, verified_request
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import ConnectFailed, HttpResponse, ResponseLost
+from apps.core.tests.graph_helpers import make_test_credential, private_key_lines
 
 GRAPH_TENANT_ID = "11111111-2222-3333-4444-555555555555"
 GRAPH_CLIENT_ID = "66666666-7777-8888-9999-000000000000"
-GRAPH_SECRET = "not-a-real-secret"
 GRAPH_TOKEN = "not-a-real-token"
 GRAPH_TOKEN_BODY = b'{"access_token": "not-a-real-token", "expires_in": 3600}'
 GRAPH_ERROR_BODY = b'{"error": {"code": "ErrorSendAsDenied", "message": "leaky detail for sender@example.com"}}'
@@ -87,12 +87,20 @@ class ProtectedEmailTransportTests(TestCase):
             use_ssl=False,
             timeout=5,
         )
+        credential = make_test_credential(tenant_id=GRAPH_TENANT_ID, client_id=GRAPH_CLIENT_ID)
+        # The installed certificate, as access.credential_for reads it; its key is in the in-memory store.
+        certificate = SimpleNamespace(
+            x5t_s256=credential.x5t_s256,
+            public_key_sha256=credential.public_key_sha256,
+            store_arn=credential.key_arn,
+            store_version_id=credential.key_version_id,
+            usable_for=lambda config: True,
+        )
         graph_config = SimpleNamespace(
             is_configured=True,
             tenant_id=GRAPH_TENANT_ID,
             client_id=GRAPH_CLIENT_ID,
-            uses_certificate=False,
-            client_secret=GRAPH_SECRET,
+            current_certificate=certificate,
             mailbox="",
             # A scope that admits the sender; the scope rules have their own tests in apps.core.
             sender_mailbox=lambda from_email: from_email.lower(),
@@ -185,10 +193,11 @@ class ProtectedEmailTransportTests(TestCase):
             self.assertEqual(str(mime["To"]), "member@example.com")
             self.assertEqual(str(mime["From"]), "Verification <sender@example.com>")
             self.assertIn("123456", mime.get_body(preferencelist=("html", "plain")).get_content())
-            self.assertNotIn(GRAPH_SECRET.encode(), body)
-        # Neither the public answer nor any log line may carry the client secret, a token or Graph's response body.
+            for line in private_key_lines():
+                self.assertNotIn(line.encode(), body)
+        # Neither the public answer nor any log line may carry key material, a token or Graph's response body.
         visible = "\n".join([repr(response.data), *logs])
-        for leaked in (GRAPH_SECRET, GRAPH_TOKEN, "leaky detail"):
+        for leaked in (GRAPH_TOKEN, "leaky detail", *private_key_lines()):
             self.assertNotIn(leaked, visible)
 
     def test_smtp_disconnect_during_submission_preserves_otp_without_retry(self):

@@ -27,7 +27,6 @@ from apps.core.tests.graph_helpers import create_graph_config, grant
 from apps.core.tests.services.test_email_graph import (
     ACCESS_TOKEN,
     CLIENT_ID,
-    CLIENT_SECRET,
     TENANT_ID,
     GraphFixtureMixin,
     error_body,
@@ -74,7 +73,6 @@ class GraphReaderFixtureMixin(GraphFixtureMixin):
             is_active=True,
             tenant_id=TENANT_ID,
             client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
         )
 
     def reader(self, mailbox=MAILBOX, **kwargs):
@@ -105,7 +103,7 @@ class GraphReaderScopeTests(GraphReaderFixtureMixin, TestCase):
         reader = self.reader("read-only@contoso.com", timeout=5)
 
         self.assertEqual((reader.mailbox, reader.timeout), ("read-only@contoso.com", 5))
-        self.assertEqual(reader.credential.client_secret, CLIENT_SECRET)
+        self.assertEqual(reader.credential.key_version_id, self.config.current_certificate.store_version_id)
 
 
 class GraphReaderListTests(GraphReaderFixtureMixin, TestCase):

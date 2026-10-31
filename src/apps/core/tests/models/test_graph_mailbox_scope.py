@@ -20,7 +20,6 @@ def active_config(**overrides):
         "is_active": True,
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
-        "client_secret": "not-a-real-secret",
     }
     return create_graph_config(**{**values, **overrides})
 
@@ -128,14 +127,15 @@ class ConfigScopeTests(TestCase):
         self.assertFalse(inactive.is_configured)
 
         config = active_config(scope=(SENDER,), name="Active")
-        for field, value in {"mailbox": "not a mailbox", "client_secret": "", "tenant_id": "common"}.items():
+        for field, value in {"mailbox": "not a mailbox", "tenant_id": "common"}.items():
             with self.subTest(field):
                 MicrosoftGraphProviderConfig.objects.filter(pk=config.pk).update(**{field: value})
                 config.refresh_from_db()
                 self.assertFalse(config.is_configured)
-                MicrosoftGraphProviderConfig.objects.filter(pk=config.pk).update(
-                    mailbox="", client_secret="not-a-real-secret", tenant_id=TENANT_ID
-                )
+                MicrosoftGraphProviderConfig.objects.filter(pk=config.pk).update(mailbox="", tenant_id=TENANT_ID)
+        with self.subTest("certificate removed"):
+            config.certificates.update(state="removed")
+            self.assertFalse(config.is_configured)
 
     def test_sender_mailbox_prefers_the_configured_mailbox(self):
         self.assertEqual(

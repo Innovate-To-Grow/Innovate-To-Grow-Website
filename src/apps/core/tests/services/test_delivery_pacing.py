@@ -46,7 +46,6 @@ class ConfiguredRateTest(TestCase):
             is_active=True,
             tenant_id=TENANT_ID,
             client_id=CLIENT_ID,
-            client_secret="not-a-real-secret",
         )
 
         self.assertAlmostEqual(configured_ses_rate(self.email("graph", max_send_rate=10)), 0.4)

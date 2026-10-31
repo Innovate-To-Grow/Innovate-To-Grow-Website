@@ -44,7 +44,7 @@ selection. There is no per-message routing or automatic failover.
 | Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — active sender identity, selected provider, and campaign send rate |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
-| Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph.py`) — Entra tenant ID, client ID, client secret, optional sender mailbox, and messages per minute |
+| Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph.py`) — Entra tenant ID, client ID, optional sender mailbox, and messages per minute; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
 | Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`) |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |

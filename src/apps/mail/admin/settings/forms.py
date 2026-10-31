@@ -3,7 +3,7 @@
 from django import forms
 from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
-from apps.core.admin.service_credentials.microsoft_graph import GRAPH_FORM_FIELDS, GraphSecretFormMixin
+from apps.core.admin.service_credentials.microsoft_graph import GRAPH_FORM_FIELDS
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
 
 
@@ -63,14 +63,15 @@ class SMTPDeliveryForm(forms.ModelForm):
         return self.cleaned_data["password"] or self.instance.password
 
 
-class GraphDeliveryForm(GraphSecretFormMixin, forms.ModelForm):
+class GraphDeliveryForm(forms.ModelForm):
+    """The Graph config's non-secret settings. Certificates are installed on the Graph config's own admin page."""
+
     class Meta:
         model = MicrosoftGraphProviderConfig
         fields = GRAPH_FORM_FIELDS
 
     def __init__(self, *args, enabled=True, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setup_write_only_fields()
         for field in self.fields.values():
             field.widget.attrs["data-graph-required"] = "true" if field.required else "false"
             field.disabled = not enabled

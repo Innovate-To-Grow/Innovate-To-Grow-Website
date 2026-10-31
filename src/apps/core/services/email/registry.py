@@ -75,13 +75,8 @@ def _graph_factory(config: object, **provider_options) -> GraphProvider:
     # Graph sends as the URL mailbox and Exchange checks Send As for the From address, so both must be in scope.
     mailbox = require_mailbox(graph, graph.sender_mailbox(config.from_email), SEND)
     require_mailbox(graph, config.from_email, SEND)
-    credential = credential_for(graph)
     return GraphProvider(
-        tenant_id=credential.tenant_id,
-        client_id=credential.client_id,
-        client_secret=credential.client_secret,
-        private_key_pem=credential.private_key_pem,
-        certificate_thumbprint=credential.certificate_thumbprint,
+        credential=credential_for(graph),
         mailbox=mailbox,
         from_email=config.from_email,
         from_name=config.from_name,

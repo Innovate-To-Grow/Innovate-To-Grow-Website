@@ -105,12 +105,13 @@ class Command(BaseCommand):
             problems.append(
                 "The Graph sending mailbox or the From address is not in the mailbox scope with send permission."
             )
-        if not graph.uses_certificate:
-            warnings.append("MicrosoftGraphProviderConfig authenticates with a client secret, not a certificate.")
+        certificate = graph.current_certificate
+        if certificate is None:
+            problems.append("MicrosoftGraphProviderConfig has no installed certificate.")
             return
-        expires_at = graph.certificate_expires_at
-        if expires_at is None:
-            return
+        if certificate.not_before > timezone.now():
+            problems.append(f"The Microsoft Graph certificate is not valid until {certificate.not_before:%Y-%m-%d}.")
+        expires_at = certificate.not_after
         days_left = (expires_at - timezone.now()).days
         if days_left < 0:
             problems.append(f"The Microsoft Graph certificate expired on {expires_at:%Y-%m-%d}.")

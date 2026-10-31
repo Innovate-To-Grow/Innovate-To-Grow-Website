@@ -12,17 +12,18 @@ from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
     GoogleCredentialConfig,
+    MicrosoftGraphCertificate,
     MicrosoftGraphMailboxScope,
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
-from apps.core.tests.graph_helpers import certificate_pair, create_graph_config, grant
+from apps.core.tests.graph_helpers import create_graph_config
 
 Permission = MicrosoftGraphMailboxScope.Permission
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 FROM = "i2g@g.ucmerced.edu"
-SECRET_WARNING = "authenticates with a client secret, not a certificate"
+NO_CERTIFICATE = "MicrosoftGraphProviderConfig has no installed certificate."
 NO_SCOPE = "has no mailbox scope; Graph refuses every mailbox"
 NOT_IN_SCOPE = "not in the mailbox scope with send permission"
 
@@ -49,49 +50,49 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
     def email(self, provider="graph"):
         return EmailServiceConfig.objects.create(name="Prod", is_active=True, provider=provider, from_email=FROM)
 
-    def secret_graph(self, scope=(FROM,), **overrides):
+    def graph(self, scope=(FROM,), **overrides):
         values = {"name": "Graph", "is_active": True, "tenant_id": TENANT_ID, "client_id": CLIENT_ID}
-        return create_graph_config(scope=scope, **{**values, "client_secret": "not-a-real-secret", **overrides})
-
-    def certificate_graph(self, days_valid=365, scope=(FROM,)):
-        certificate, key = certificate_pair(days_valid=days_valid)
-        return create_graph_config(
-            scope=scope,
-            name="Graph",
-            is_active=True,
-            tenant_id=TENANT_ID,
-            client_id=CLIENT_ID,
-            auth_method=MicrosoftGraphProviderConfig.AuthMethod.CERTIFICATE,
-            certificate=certificate,
-            private_key=key,
-        )
+        return create_graph_config(scope=scope, **{**values, **overrides})
 
     def expire(self, config, delta):
-        MicrosoftGraphProviderConfig.objects.filter(pk=config.pk).update(certificate_expires_at=timezone.now() + delta)
+        MicrosoftGraphCertificate.objects.filter(config=config).update(not_after=timezone.now() + delta)
 
-    def test_a_valid_certificate_passes_strict_without_auth_warnings(self):
+    def test_a_valid_certificate_passes_strict_quietly(self):
         self.email()
-        self.certificate_graph()
+        self.graph()
 
         out = self.run_command("--strict")
 
         self.assertIn("MicrosoftGraphProviderConfig: OK", out)
         self.assertIn("Service config verification passed.", out)
-        self.assertNotIn(SECRET_WARNING, out)
-        self.assertNotIn("certificate expires", out)
+        self.assertNotIn("Microsoft Graph certificate", out)
+        self.assertNotIn("MicrosoftGraphProviderConfig has", out)
 
-    def test_client_secret_auth_warns(self):
+    def test_no_installed_certificate_fails_when_graph_is_the_provider(self):
         self.email()
-        self.secret_graph()
+        self.graph(certificate=False)
 
-        out = self.run_command("--strict")
+        out = self.run_command()
 
-        self.assertIn(f"WARN: MicrosoftGraphProviderConfig {SECRET_WARNING}.", out)
-        self.assertIn("Service config verification passed.", out)
+        self.assertIn(f"FAIL: {NO_CERTIFICATE}", out)
+        self.assertNotIn("certificate expire", out)
+        with self.assertRaises(CommandError):
+            self.run_command("--strict")
+
+    def test_a_certificate_that_is_not_valid_yet_fails(self):
+        self.email()
+        config = self.graph()
+        start = timezone.now() + datetime.timedelta(days=2)
+        MicrosoftGraphCertificate.objects.filter(config=config).update(not_before=start)
+
+        out = self.run_command()
+
+        self.assertIn(f"FAIL: The Microsoft Graph certificate is not valid until {start:%Y-%m-%d}.", out)
+        self.assertIn("MicrosoftGraphProviderConfig: MISSING", out)
 
     def test_a_certificate_expiring_within_30_days_warns(self):
         self.email()
-        self.expire(self.certificate_graph(), datetime.timedelta(days=10, hours=1))
+        self.expire(self.graph(), datetime.timedelta(days=10, hours=1))
 
         out = self.run_command("--strict")
 
@@ -101,13 +102,13 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
 
     def test_a_certificate_with_more_than_30_days_left_is_quiet(self):
         self.email()
-        self.expire(self.certificate_graph(), datetime.timedelta(days=31))
+        self.expire(self.graph(), datetime.timedelta(days=31))
 
         self.assertNotIn("rotate it", self.run_command("--strict"))
 
     def test_an_expired_certificate_fails_when_graph_is_the_provider(self):
         self.email()
-        self.expire(self.certificate_graph(), -datetime.timedelta(days=2))
+        self.expire(self.graph(), -datetime.timedelta(days=2))
         out = StringIO()
 
         with self.assertRaises(CommandError):
@@ -121,7 +122,7 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
         SMTPProviderConfig.objects.create(
             name="SMTP", is_active=True, host="smtp.example.com", port=587, username="u", password="not-a-real-pw"
         )
-        self.expire(self.certificate_graph(), -datetime.timedelta(hours=1))
+        self.expire(self.graph(), -datetime.timedelta(hours=1))
 
         out = self.run_command("--strict")
 
@@ -130,7 +131,7 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
 
     def test_missing_scope_fails_when_graph_is_the_provider(self):
         self.email()
-        self.secret_graph(scope=())
+        self.graph(scope=())
 
         out = self.run_command()
 
@@ -144,7 +145,7 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
         SMTPProviderConfig.objects.create(
             name="SMTP", is_active=True, host="smtp.example.com", port=587, username="u", password="not-a-real-pw"
         )
-        self.secret_graph(scope=())
+        self.graph(scope=())
 
         out = self.run_command("--strict")
 
@@ -153,7 +154,7 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
 
     def test_a_from_address_outside_the_scope_fails(self):
         self.email()
-        self.secret_graph(scope=("other@g.ucmerced.edu",))
+        self.graph(scope=("other@g.ucmerced.edu",))
 
         out = self.run_command()
 
@@ -169,33 +170,27 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
             is_active=True,
             tenant_id=TENANT_ID,
             client_id=CLIENT_ID,
-            client_secret="not-a-real-secret",
         )
 
         with self.assertRaises(CommandError):
             self.run_command("--strict")
 
-    def test_a_certificate_row_without_a_pair_fails_without_expiry_messages(self):
-        """An active certificate row that skipped validation (bulk insert) has no recorded expiry."""
+    def test_removed_certificates_fail_without_expiry_messages(self):
         self.email()
-        row = MicrosoftGraphProviderConfig(
-            name="Broken", is_active=True, tenant_id=TENANT_ID, client_id=CLIENT_ID, auth_method="certificate"
-        )
-        MicrosoftGraphProviderConfig.objects.bulk_create([row])
-        grant(row, FROM)
+        self.graph().certificates.update(state=MicrosoftGraphCertificate.State.REMOVED)
 
         out = self.run_command()
 
         self.assertIn("MicrosoftGraphProviderConfig: MISSING", out)
+        self.assertIn(f"FAIL: {NO_CERTIFICATE}", out)
         self.assertNotIn("certificate expire", out)
-        self.assertNotIn(SECRET_WARNING, out)
 
     def test_an_inactive_graph_config_is_not_checked(self):
         self.email(provider="smtp")
         SMTPProviderConfig.objects.create(
             name="SMTP", is_active=True, host="smtp.example.com", port=587, username="u", password="not-a-real-pw"
         )
-        self.secret_graph(scope=(), is_active=False)
+        self.graph(scope=(), is_active=False)
 
         out = self.run_command("--strict")
 

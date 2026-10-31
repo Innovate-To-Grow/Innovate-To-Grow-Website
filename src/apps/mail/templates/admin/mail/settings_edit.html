@@ -48,7 +48,7 @@
         <h3 class="mb-4 text-sm font-semibold text-font-important-light dark:text-font-important-dark">Microsoft Graph Provider</h3>
         <p class="mb-4 text-xs text-base-500 dark:text-base-400">
             Sends (and, with read permission, reads the admin inbox) through Outlook / Exchange Online with an Entra app.
-            Use certificate authentication. The sender mailbox and the From email above must both be in the mailbox scope with send permission.
+            It authenticates with a certificate, installed on the Graph config's own page. The sender mailbox and the From email above must both be in the mailbox scope with send permission.
             Exchange Online allows about 30 messages per minute per mailbox.
         </p>
         <div class="grid grid-cols-1 gap-x-6 md:grid-cols-2">

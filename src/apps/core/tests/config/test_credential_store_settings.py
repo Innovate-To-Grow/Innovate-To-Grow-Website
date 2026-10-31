@@ -98,3 +98,24 @@ class CredentialStoreCheckTests(SimpleTestCase):
         for value in (0, -1, True, "5", None):
             with self.subTest(value=value), override_settings(CREDENTIAL_STORE_READ_TIMEOUT_SECONDS=value):
                 self.assertEqual(error_ids(), ["core.E005"])
+
+    def test_graph_certificate_limits_are_positive_settings_checked_at_startup(self):
+        self.assertEqual(
+            (
+                settings.GRAPH_CERTIFICATE_MIN_RSA_KEY_BITS,
+                settings.GRAPH_CERTIFICATE_MAX_INPUT_BYTES,
+                settings.GRAPH_CERTIFICATE_CLOCK_SKEW_SECONDS,
+                settings.GRAPH_CERTIFICATE_CHECK_TIMEOUT_SECONDS,
+            ),
+            (2048, 65536, 300, 10),
+        )
+        for name in (
+            "GRAPH_CERTIFICATE_MIN_RSA_KEY_BITS",
+            "GRAPH_CERTIFICATE_MAX_INPUT_BYTES",
+            "GRAPH_CERTIFICATE_CHECK_TIMEOUT_SECONDS",
+        ):
+            with self.subTest(name=name), override_settings(**{name: 0}):
+                self.assertEqual(error_ids(), ["core.E005"])
+        # No clock skew allowance at all is a valid choice.
+        with override_settings(GRAPH_CERTIFICATE_CLOCK_SKEW_SECONDS=0):
+            self.assertEqual(error_ids(), [])

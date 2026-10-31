@@ -22,7 +22,6 @@ def make_graph(**overrides):
         "is_active": True,
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
-        "client_secret": "not-a-real-secret",
     }
     return create_graph_config(**values | overrides)
 

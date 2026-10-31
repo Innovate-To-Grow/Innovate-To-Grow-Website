@@ -1,20 +1,29 @@
-"""Access tokens for Microsoft Graph from the OAuth2 client-credentials grant (certificate or client secret).
+"""Access tokens for Microsoft Graph from the OAuth2 client-credentials grant with a certificate (``private_key_jwt``).
 
 Tokens live only in process memory: they can send mail as any mailbox the app may use, so they must never reach
 the shared cache (file-based in production) or disk. Each process fetches its own roughly hourly.
+
+The certificate's private key never sits in this process between requests: on a token-cache miss it is read from
+the credential store by the exact version the installed certificate pins, checked against the certificate's public
+key, used to sign one client assertion and dropped.
 """
 
-import hashlib
 import json
 import re
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from urllib.parse import quote, urlencode
+
+from cryptography.exceptions import UnsupportedAlgorithm
+from django.views.decorators.debug import sensitive_variables
+
+from apps.core.services.credential_store import CredentialStoreError
 
 from ..exceptions import PermanentEmailDeliveryError, TransientEmailDeliveryError
 from . import transport
-from .certificate import CertificateError, build_client_assertion
+from .certificate import build_client_assertion
+from .credential import stored_key
 from .errors import token_endpoint_error
 
 AUTHORITY_HOST = "login.microsoftonline.com"
@@ -27,47 +36,29 @@ _ACCESS_TOKEN_RE = re.compile(r"[A-Za-z0-9._~+/=-]{1,16384}")
 
 CLIENT_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
-_cache: dict[tuple[str, str, str], tuple[str, float]] = {}
+_cache: dict[tuple[str, str, str, str], tuple[str, float]] = {}
 _cache_lock = threading.Lock()
 
 
 @dataclass(frozen=True)
 class GraphCredential:
-    """An Entra application credential: a certificate (private key + thumbprint) or a client secret.
+    """Which Entra app and installed certificate to authenticate with. It holds no secret.
 
-    Secret material is excluded from ``repr`` so a credential can never leak through a log line or traceback.
+    ``key_arn`` and ``key_version_id`` pin the stored private key; ``public_key_sha256`` is the certificate's public
+    key hash that the stored key must match, and ``x5t_s256`` the thumbprint each assertion names.
     """
 
     tenant_id: str
     client_id: str
-    client_secret: str = field(default="", repr=False)
-    private_key_pem: str = field(default="", repr=False)
-    certificate_thumbprint: str = ""
+    x5t_s256: str
+    public_key_sha256: str
+    key_arn: str
+    key_version_id: str
 
-    @property
-    def uses_certificate(self) -> bool:
-        return bool(self.private_key_pem)
-
-    def cache_key(self) -> tuple[str, str, str]:
-        # Hashing the secret material means rotating it can never reuse a token minted with the old one.
-        material = (
-            f"{self.certificate_thumbprint}:{self.private_key_pem}" if self.uses_certificate else self.client_secret
-        )
-        return self.tenant_id, self.client_id, hashlib.sha256(material.encode()).hexdigest()
-
-    def authentication_fields(self) -> dict[str, str]:
-        if not self.uses_certificate:
-            return {"client_secret": self.client_secret}
-        try:
-            assertion = build_client_assertion(
-                tenant_id=self.tenant_id,
-                client_id=self.client_id,
-                private_key_pem=self.private_key_pem,
-                thumbprint=self.certificate_thumbprint,
-            )
-        except (CertificateError, ValueError, TypeError) as exc:
-            raise PermanentEmailDeliveryError("The Microsoft Graph certificate private key could not be used.") from exc
-        return {"client_assertion_type": CLIENT_ASSERTION_TYPE, "client_assertion": assertion}
+    def cache_key(self) -> tuple[str, str, str, str]:
+        # Installing or rolling back a certificate changes the version or thumbprint, so a token minted with
+        # another certificate is never reused.
+        return self.tenant_id, self.client_id, self.key_version_id, self.x5t_s256
 
 
 def clear_access_token_cache() -> None:
@@ -99,26 +90,22 @@ def get_access_token(credential: GraphCredential, *, timeout: float = REQUEST_TI
     return access_token
 
 
-def _request_access_token(credential: GraphCredential, timeout: float) -> tuple[str, int]:
-    form = {"client_id": credential.client_id, **credential.authentication_fields()}
-    body = urlencode({**form, "scope": RESOURCE_SCOPE, "grant_type": "client_credentials"}).encode("ascii")
-    path = f"/{quote(credential.tenant_id, safe='')}/oauth2/v2.0/token"
+def post_token_request(tenant_id: str, client_id: str, assertion: str, *, timeout: float) -> transport.HttpResponse:
+    """POST the client-credentials grant. Raises ``transport.ConnectFailed`` / ``transport.ResponseLost``."""
+    form = {
+        "client_id": client_id,
+        "client_assertion_type": CLIENT_ASSERTION_TYPE,
+        "client_assertion": assertion,
+        "scope": RESOURCE_SCOPE,
+        "grant_type": "client_credentials",
+    }
+    path = f"/{quote(tenant_id, safe='')}/oauth2/v2.0/token"
     headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
-    try:
-        response = transport.post(AUTHORITY_HOST, path, body, headers, timeout=timeout)
-    except transport.ConnectFailed as exc:
-        if exc.verification_failed:
-            raise PermanentEmailDeliveryError("TLS verification of the Microsoft identity platform failed.") from exc
-        raise TransientEmailDeliveryError("Microsoft identity platform could not be reached.") from exc
-    except transport.ResponseLost as exc:
-        # A token request sends no mail, so repeating it is always safe.
-        raise TransientEmailDeliveryError("Microsoft identity platform did not answer.") from exc
-    if response.status != 200:
-        raise token_endpoint_error(response)
-    return _parse_access_token(response.body)
+    return transport.post(AUTHORITY_HOST, path, urlencode(form).encode("ascii"), headers, timeout=timeout)
 
 
-def _parse_access_token(body: bytes) -> tuple[str, int]:
+def parse_access_token(body: bytes) -> tuple[str, int]:
+    """The token and its lifetime from a 200 answer; an unreadable answer is transient."""
     try:
         data = json.loads(body)
         access_token = data["access_token"]
@@ -128,3 +115,45 @@ def _parse_access_token(body: bytes) -> tuple[str, int]:
     if not isinstance(access_token, str) or not _ACCESS_TOKEN_RE.fullmatch(access_token):
         raise TransientEmailDeliveryError("Microsoft identity platform returned an unreadable response.")
     return access_token, lifetime
+
+
+def _request_access_token(credential: GraphCredential, timeout: float) -> tuple[str, int]:
+    assertion = _signed_assertion(credential)
+    try:
+        response = post_token_request(credential.tenant_id, credential.client_id, assertion, timeout=timeout)
+    except transport.ConnectFailed as exc:
+        if exc.verification_failed:
+            raise PermanentEmailDeliveryError("TLS verification of the Microsoft identity platform failed.") from exc
+        raise TransientEmailDeliveryError("Microsoft identity platform could not be reached.") from exc
+    except transport.ResponseLost as exc:
+        # A token request sends no mail, so repeating it is always safe.
+        raise TransientEmailDeliveryError("Microsoft identity platform did not answer.") from exc
+    if response.status != 200:
+        raise token_endpoint_error(response)
+    return parse_access_token(response.body)
+
+
+@sensitive_variables()
+def _signed_assertion(credential: GraphCredential) -> str:
+    """Read the pinned key, sign one assertion, and let the key go out of scope."""
+    error = None
+    try:
+        private_key = stored_key.read_key(
+            arn=credential.key_arn,
+            version_id=credential.key_version_id,
+            expected_public_key_sha256=credential.public_key_sha256,
+        )
+    except CredentialStoreError as exc:
+        error_class = TransientEmailDeliveryError if exc.transient else PermanentEmailDeliveryError
+        error = error_class(f"The Microsoft Graph private key could not be read: {exc}")
+    if error is not None:
+        raise error
+    try:
+        return build_client_assertion(
+            tenant_id=credential.tenant_id,
+            client_id=credential.client_id,
+            private_key=private_key,
+            x5t_s256=credential.x5t_s256,
+        )
+    except (ValueError, TypeError, UnsupportedAlgorithm):
+        raise PermanentEmailDeliveryError("The Microsoft Graph certificate private key could not be used.") from None

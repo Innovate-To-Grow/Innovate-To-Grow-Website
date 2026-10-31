@@ -1,5 +1,6 @@
 """Graph access tokens: the client-credentials request, the in-memory cache and failure classification."""
 
+import dataclasses
 import json
 from unittest.mock import patch
 from urllib.parse import parse_qs
@@ -9,10 +10,11 @@ from django.test import SimpleTestCase
 from apps.core.services.email import EmailDeliveryError, PermanentEmailDeliveryError, TransientEmailDeliveryError
 from apps.core.services.email.graph import auth
 from apps.core.services.email.graph.transport import ConnectFailed, HttpResponse, ResponseLost
+from apps.core.tests.graph_helpers import make_test_credential, private_key_lines
 from apps.core.tests.services.test_email_graph import (
     ACCESS_TOKEN,
     CLIENT_ID,
-    CLIENT_SECRET,
+    KEY_LINE,
     RESPONSE_TEXT,
     TENANT_ID,
     GraphFixtureMixin,
@@ -31,9 +33,14 @@ class FakeClock:
 
 
 class TokenTestCase(GraphFixtureMixin, SimpleTestCase):
-    def get_token(self, timeout=None, **overrides):
-        values = {"tenant_id": TENANT_ID, "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET}
-        credential = auth.GraphCredential(**{**values, **overrides})
+    def setUp(self):
+        super().setUp()
+        # Two installed certificates with different stored keys (so different pinned versions).
+        self.credential = make_test_credential()
+        self.other_credential = make_test_credential(key_index=1)
+
+    def get_token(self, timeout=None, credential=None, **overrides):
+        credential = dataclasses.replace(credential or self.credential, **overrides)
         if timeout is None:
             return auth.get_access_token(credential)
         return auth.get_access_token(credential, timeout=timeout)
@@ -48,33 +55,25 @@ class GraphTokenRequestTests(TokenTestCase):
         self.assertEqual(request.path, f"/{TENANT_ID}/oauth2/v2.0/token")
         self.assertEqual(request.headers["Content-Type"], "application/x-www-form-urlencoded")
         form = parse_qs(request.body.decode("ascii"), strict_parsing=True)
+        self.assertEqual(len(form.pop("client_assertion")), 1)
         self.assertEqual(
             form,
             {
                 "client_id": [CLIENT_ID],
-                "client_secret": [CLIENT_SECRET],
+                "client_assertion_type": [auth.CLIENT_ASSERTION_TYPE],
                 "scope": ["https://graph.microsoft.com/.default"],
                 "grant_type": ["client_credentials"],
             },
         )
 
-    def test_the_secret_travels_only_in_the_form_body(self):
+    def test_the_assertion_travels_only_in_the_form_body_and_the_key_never_travels(self):
         self.get_token()
 
         request = self.fake.requests[0]
-        self.assertNotIn(CLIENT_SECRET, request.path)
-        self.assertNotIn(CLIENT_SECRET, "".join(request.headers.values()))
+        self.assertNotIn("client_secret", parse_qs(request.body.decode("ascii")))
         self.assertNotIn("Authorization", request.headers)
-
-    def test_special_characters_in_the_secret_are_url_encoded(self):
-        secret = "p@ss&w=rd+1%2F /\N{LATIN SMALL LETTER E WITH ACUTE}\"'"
-
-        self.get_token(client_secret=secret)
-
-        body = self.fake.requests[0].body
-        self.assertEqual(parse_qs(body.decode("ascii"), strict_parsing=True)["client_secret"], [secret])
-        self.assertEqual(body.count(b"&"), 3, "the secret must not add form fields")
-        self.assertNotIn(secret.encode(), body)
+        for line in private_key_lines():
+            self.assertNotIn(line, request.path + request.body.decode("ascii") + "".join(request.headers.values()))
 
     def test_tenant_is_percent_encoded_so_it_cannot_add_path_segments(self):
         cases = [
@@ -165,9 +164,10 @@ class GraphTokenCacheTests(TokenTestCase):
 
         self.assertEqual(len(self.fake.token_requests), 1)
 
-    def test_different_secret_tenant_or_client_id_use_separate_cache_entries(self):
+    def test_different_certificate_tenant_or_client_id_use_separate_cache_entries(self):
         variants = {
-            "secret": {"client_secret": "another-fake-secret"},
+            "certificate and key version": {"credential": self.other_credential},
+            "thumbprint": {"x5t_s256": self.other_credential.x5t_s256},
             "tenant": {"tenant_id": "contoso.onmicrosoft.com"},
             "client id": {"client_id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"},
         }
@@ -184,39 +184,42 @@ class GraphTokenCacheTests(TokenTestCase):
 
     def test_forget_access_token_drops_only_the_matching_entry(self):
         self.script(token=[token_response("token-a1"), token_response("token-b1"), token_response("token-a2")])
-        self.assertEqual(self.get_token(client_secret="secret-a"), "token-a1")
-        self.assertEqual(self.get_token(client_secret="secret-b"), "token-b1")
+        self.assertEqual(self.get_token(), "token-a1")
+        self.assertEqual(self.get_token(credential=self.other_credential), "token-b1")
 
-        auth.forget_access_token(auth.GraphCredential(TENANT_ID, CLIENT_ID, "secret-a"))
+        auth.forget_access_token(self.credential)
 
-        self.assertEqual(self.get_token(client_secret="secret-b"), "token-b1")
-        self.assertEqual(self.get_token(client_secret="secret-a"), "token-a2")
+        self.assertEqual(self.get_token(credential=self.other_credential), "token-b1")
+        self.assertEqual(self.get_token(), "token-a2")
 
     def test_forgetting_a_credential_that_was_never_cached_is_harmless(self):
-        auth.forget_access_token(auth.GraphCredential(TENANT_ID, CLIENT_ID, "never-used-secret"))
+        auth.forget_access_token(self.other_credential)
 
         self.assertEqual(self.get_token(), ACCESS_TOKEN)
 
     def test_clear_access_token_cache_forgets_every_entry(self):
         self.script(token=[token_response("token-a1"), token_response("token-b1"), token_response("token-a2")])
-        self.get_token(client_secret="secret-a")
-        self.get_token(client_secret="secret-b")
+        self.get_token()
+        self.get_token(credential=self.other_credential)
 
         auth.clear_access_token_cache()
 
-        self.assertEqual(self.get_token(client_secret="secret-a"), "token-a2")
+        self.assertEqual(self.get_token(), "token-a2")
         self.assertEqual(len(self.fake.token_requests), 3)
 
-    def test_cache_keys_do_not_contain_the_client_secret(self):
+    def test_cache_keys_name_the_pinned_version_and_never_contain_key_material(self):
         self.get_token()
 
-        self.assertEqual(len(auth._cache), 1)
-        self.assertNotIn(CLIENT_SECRET, repr(list(auth._cache)))
+        ((key, (token, _expiry)),) = auth._cache.items()
+        self.assertEqual(key, (TENANT_ID, CLIENT_ID, self.credential.key_version_id, self.credential.x5t_s256))
+        self.assertEqual(token, ACCESS_TOKEN)
+        for line in private_key_lines():
+            self.assertNotIn(line, repr(list(auth._cache)))
 
 
 class GraphTokenFailureTests(TokenTestCase):
     def assert_message_is_clean(self, error):
-        for leaked in (RESPONSE_TEXT, CLIENT_SECRET, ACCESS_TOKEN, "trace-id-value"):
+        for leaked in (RESPONSE_TEXT, KEY_LINE, ACCESS_TOKEN, "trace-id-value"):
             self.assertNotIn(leaked, str(error))
 
     def test_transport_failures_are_classified_before_any_mail_is_sent(self):
@@ -244,8 +247,8 @@ class GraphTokenFailureTests(TokenTestCase):
         body = json.dumps(
             {
                 "error": "invalid_client",
-                "error_description": f"AADSTS7000215: Invalid client secret provided. {RESPONSE_TEXT}",
-                "error_codes": [7000215],
+                "error_description": f"AADSTS700027: Client assertion failed signature validation. {RESPONSE_TEXT}",
+                "error_codes": [700027],
                 "trace_id": "trace-id-value",
                 "correlation_id": "correlation-id-value",
             }
@@ -257,9 +260,9 @@ class GraphTokenFailureTests(TokenTestCase):
                 with self.assertRaises(PermanentEmailDeliveryError) as caught:
                     self.get_token()
 
-                self.assertIn("invalid_client AADSTS7000215", str(caught.exception))
+                self.assertIn("invalid_client AADSTS700027", str(caught.exception))
                 self.assert_message_is_clean(caught.exception)
-                self.assertNotIn("Invalid client secret", str(caught.exception))
+                self.assertNotIn("signature validation", str(caught.exception))
                 self.assertNotIn("correlation-id-value", str(caught.exception))
 
     def test_a_rejection_without_a_readable_body_carries_no_code(self):

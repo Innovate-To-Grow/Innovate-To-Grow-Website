@@ -6,6 +6,7 @@ from django.utils import timezone
 from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_guid
 
 from ..control import ProjectControlModel
+from .microsoft_graph_certificate import MicrosoftGraphCertificate
 
 # Exchange Online limits for one sender mailbox (Microsoft Learn: "Exchange Online limits").
 GRAPH_MAX_MESSAGES_PER_MINUTE = 30
@@ -21,11 +22,12 @@ def normalize_mailbox(value: str) -> str:
 
 
 class MicrosoftGraphProviderConfig(ProjectControlModel):
-    """Entra app credentials used to send and read email through Microsoft Graph (Outlook / Exchange Online)."""
+    """The Entra app used to send and read email through Microsoft Graph (Outlook / Exchange Online).
 
-    class AuthMethod(models.TextChoices):
-        CERTIFICATE = "certificate", "Certificate (recommended)"
-        CLIENT_SECRET = "client_secret", "Client secret"
+    The app authenticates only with a certificate. Its public data and a pointer to the private key live in
+    ``MicrosoftGraphCertificate`` rows (one current, one previous for rollback); the key itself is kept in the
+    credential store, never in this table.
+    """
 
     name = models.CharField(max_length=128, default="Default", verbose_name="Config Name")
     is_active = models.BooleanField(
@@ -42,42 +44,6 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
         max_length=64,
         verbose_name="Client ID",
         help_text="Application (client) ID of the Entra app registration.",
-    )
-    auth_method = models.CharField(
-        max_length=16,
-        choices=AuthMethod.choices,
-        default=AuthMethod.CERTIFICATE,
-        verbose_name="Authentication",
-        help_text="How the app proves its identity to Microsoft Entra ID.",
-    )
-    client_secret = models.CharField(
-        max_length=256,
-        blank=True,
-        default="",
-        verbose_name="Client Secret",
-        help_text="Client secret value (not the secret ID). Secrets expire, so rotate before the expiry date.",
-    )
-    certificate = models.TextField(
-        blank=True,
-        default="",
-        verbose_name="Certificate (PEM)",
-        help_text="Public X.509 certificate uploaded to the Entra app, PEM encoded (-----BEGIN CERTIFICATE-----).",
-    )
-    private_key = models.TextField(
-        blank=True,
-        default="",
-        verbose_name="Private Key (PEM)",
-        help_text="Unencrypted RSA private key of the certificate, PEM encoded. It never leaves the server.",
-    )
-    certificate_thumbprint = models.CharField(
-        max_length=64,
-        blank=True,
-        default="",
-        editable=False,
-        verbose_name="Certificate SHA-256 Thumbprint",
-    )
-    certificate_expires_at = models.DateTimeField(
-        null=True, blank=True, editable=False, verbose_name="Certificate Expires"
     )
     mailbox = models.CharField(
         max_length=254,
@@ -125,32 +91,29 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
             errors["client_id"] = "The application (client) ID must be a GUID."
         if self.mailbox and not is_exchange_mailbox(self.mailbox):
             errors["mailbox"] = "Enter the mailbox email address / user principal name, or its object ID (GUID)."
-        if self.auth_method == self.AuthMethod.CERTIFICATE:
-            errors.update(self._clean_certificate())
-        elif self.is_active and not self.client_secret:
-            errors["client_secret"] = "A client secret is required for an active configuration."  # nosec B105 — validation message, not a credential
+        changed = self._application_field_changed_under_a_certificate()
+        if changed:
+            errors.setdefault(
+                changed,
+                "Remove the installed certificates before changing the Entra application, then install the "
+                "certificate registered for the new application.",
+            )
         if errors:
             raise ValidationError(errors)
 
-    def _clean_certificate(self) -> dict[str, str]:
-        """Check the PEM pair and record its thumbprint and expiry, which the token request and monitoring use."""
-        from apps.core.services.email.graph.certificate import CertificateError, inspect_pair
+    def _application_field_changed_under_a_certificate(self) -> str:
+        """A certificate is tested for one tenant and app, so it never silently follows a change of either.
 
-        self.certificate, self.private_key = self.certificate.strip(), self.private_key.strip()
-        self.certificate_thumbprint, self.certificate_expires_at = "", None
-        if not (self.certificate or self.private_key):
-            return {"certificate": "A certificate and its private key are required."} if self.is_active else {}
-        if not (self.certificate and self.private_key):
-            field = "private_key" if self.certificate else "certificate"
-            return {field: "Enter both the certificate and its private key."}
-        try:
-            info = inspect_pair(self.certificate, self.private_key)
-        except CertificateError as exc:
-            return {"certificate": str(exc)}
-        self.certificate_thumbprint, self.certificate_expires_at = info.thumbprint, info.not_after
-        if self.is_active and info.not_after <= timezone.now():
-            return {"certificate": "This certificate has expired. Upload a new one to Entra and enter it here."}
-        return {}
+        Returns the name of the changed field while a current or previous certificate is installed, else "".
+        """
+        if self._state.adding:
+            return ""
+        stored = type(self).objects.filter(pk=self.pk).values_list("tenant_id", "client_id").first()
+        if stored is None or stored == (self.tenant_id, self.client_id):
+            return ""
+        if not self.certificates.filter(state__in=MicrosoftGraphCertificate.LIVE_STATES).exists():
+            return ""
+        return "tenant_id" if stored[0] != self.tenant_id else "client_id"
 
     def validate_constraints(self, exclude=None):
         # save() replaces the active row atomically. Do not reject that switch
@@ -179,19 +142,34 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
             return cls()
 
     @property
-    def uses_certificate(self) -> bool:
-        return self.auth_method == self.AuthMethod.CERTIFICATE
+    def current_certificate(self):
+        """The certificate the site signs with, or None."""
+        if self._state.adding:
+            return None
+        return self.certificates.filter(state=MicrosoftGraphCertificate.State.CURRENT).first()
+
+    @property
+    def previous_certificate(self):
+        """The certificate the current one replaced, kept for rollback, or None."""
+        if self._state.adding:
+            return None
+        return self.certificates.filter(state=MicrosoftGraphCertificate.State.PREVIOUS).first()
+
+    @property
+    def certificate_expires_at(self):
+        certificate = self.current_certificate
+        return certificate.not_after if certificate is not None else None
 
     @property
     def certificate_expired(self) -> bool:
-        return self.certificate_expires_at is not None and self.certificate_expires_at <= timezone.now()
+        expires_at = self.certificate_expires_at
+        return expires_at is not None and expires_at <= timezone.now()
 
     @property
     def credential_configured(self) -> bool:
-        if self.uses_certificate:
-            has_pair = self.certificate and self.private_key and self.certificate_thumbprint
-            return bool(has_pair and not self.certificate_expired)
-        return bool(self.client_secret)
+        """A current certificate, valid now and tested for this tenant and app, pins a stored private key."""
+        certificate = self.current_certificate
+        return certificate is not None and certificate.usable_for(self)
 
     @property
     def is_configured(self):

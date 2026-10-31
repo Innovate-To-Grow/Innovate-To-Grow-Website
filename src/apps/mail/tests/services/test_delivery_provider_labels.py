@@ -54,7 +54,6 @@ class ProviderFixtureMixin:
             is_active=True,
             tenant_id=TENANT_ID,
             client_id=CLIENT_ID,
-            client_secret="not-a-real-secret",
             mailbox=graph_mailbox,
         )
         self.sender = EmailServiceConfig.objects.create(

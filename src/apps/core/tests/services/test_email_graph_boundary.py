@@ -28,7 +28,7 @@ from apps.core.services.email.graph import provider as graph_provider
 from apps.core.services.email.graph.transport import ConnectFailed, HttpResponse, ResponseLost
 from apps.core.tests.services.test_email_graph import (
     ACCESS_TOKEN,
-    CLIENT_SECRET,
+    KEY_LINE,
     PROVIDER_LOGGER,
     REQUEST_ID,
     RESPONSE_TEXT,
@@ -236,7 +236,7 @@ class GraphSendOutcomeTests(GraphFixtureMixin, SimpleTestCase):
                 self.assertEqual(error.outcome, OUTCOME_OF[expected])
                 self.assertEqual(error.retry_after, retry_after)
                 self.assertIn(fragment, str(error))
-                for leaked in (RESPONSE_TEXT, ACCESS_TOKEN, CLIENT_SECRET):
+                for leaked in (RESPONSE_TEXT, ACCESS_TOKEN, KEY_LINE):
                     self.assertNotIn(leaked, str(error))
 
     def test_transport_failures_while_posting_depend_on_whether_bytes_were_sent(self):
@@ -255,7 +255,7 @@ class GraphSendOutcomeTests(GraphFixtureMixin, SimpleTestCase):
                 self.assertEqual(caught.exception.outcome, OUTCOME_OF[expected])
                 self.assertIn(fragment, str(caught.exception))
                 self.assertIs(caught.exception.__cause__, failure)
-                for leaked in (ACCESS_TOKEN, CLIENT_SECRET):
+                for leaked in (ACCESS_TOKEN, KEY_LINE):
                     self.assertNotIn(leaked, str(caught.exception))
 
     def assert_rejection_drops_the_token(self, status, expected_error):
@@ -313,7 +313,7 @@ class GraphFailureLoggingTests(GraphFixtureMixin, SimpleTestCase):
         self.assertIn("status=403", line)
         self.assertIn("code=ErrorSendAsDenied", line)
         self.assertIn(f"request_id={REQUEST_ID}", line)
-        for leaked in (ACCESS_TOKEN, CLIENT_SECRET, RESPONSE_TEXT):
+        for leaked in (ACCESS_TOKEN, KEY_LINE, RESPONSE_TEXT):
             self.assertNotIn(leaked, output)
 
     def test_missing_code_and_request_id_are_logged_as_placeholders(self):
@@ -340,7 +340,7 @@ class GraphFailureLoggingTests(GraphFixtureMixin, SimpleTestCase):
 
 class GraphUnexpectedErrorTests(GraphFixtureMixin, SimpleTestCase):
     def test_an_unexpected_error_after_the_callback_is_uncertain_and_leaks_nothing(self):
-        leaky = ValueError(f"Invalid header value 'Bearer {ACCESS_TOKEN}' for {CLIENT_SECRET}")
+        leaky = ValueError(f"Invalid header value 'Bearer {ACCESS_TOKEN}' for {KEY_LINE}")
         provider = make_provider()
 
         with (
@@ -356,7 +356,7 @@ class GraphUnexpectedErrorTests(GraphFixtureMixin, SimpleTestCase):
         self.assertTrue(error.__suppress_context__)
         logged = "\n".join(logs.output)
         self.assertIn("ValueError", logged)
-        for leaked in (ACCESS_TOKEN, CLIENT_SECRET):
+        for leaked in (ACCESS_TOKEN, KEY_LINE):
             self.assertNotIn(leaked, str(error))
             self.assertNotIn(leaked, logged)
 

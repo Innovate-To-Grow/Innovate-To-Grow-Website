@@ -1,4 +1,4 @@
-"""Entra certificate credentials: check the PEM pair and sign client assertions (``private_key_jwt``).
+"""Entra certificate credentials: describe a certificate and sign client assertions (``private_key_jwt``).
 
 Microsoft documents the assertion format in "Microsoft identity platform certificate credentials": a PS256 JWT
 whose header carries ``x5t#S256`` (the base64url SHA-256 thumbprint of the certificate's DER encoding) and whose
@@ -19,54 +19,57 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 # Microsoft: keep the assertion short-lived, "5-10 minutes after nbf at most".
 ASSERTION_LIFETIME_SECONDS = 300
-MIN_RSA_KEY_BITS = 2048
 TOKEN_ENDPOINT = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"  # nosec B105 — URL template, not a credential
 
 
-class CertificateError(ValueError):
-    """The certificate or private key cannot be used. Messages never contain key material."""
-
-
 @dataclass(frozen=True)
-class CertificateInfo:
-    thumbprint: str
+class CertificateFacts:
+    """The public data of one certificate, as ``MicrosoftGraphCertificate`` stores it.
+
+    ``sha1_thumbprint`` is the upper-case hex value Entra shows under Certificates & secrets (and the value OIT
+    quotes); ``x5t_s256`` is the base64url SHA-256 thumbprint the assertion header carries.
+    """
+
+    certificate_pem: str
+    sha1_thumbprint: str
+    sha256_fingerprint: str
+    x5t_s256: str
+    public_key_sha256: str
+    subject: str
+    issuer: str
+    serial_number: str
+    key_bits: int
     not_before: datetime
     not_after: datetime
-    subject: str
 
 
-def inspect_pair(certificate_pem: str, private_key_pem: str) -> CertificateInfo:
-    """Validate that the RSA private key belongs to the certificate and describe the certificate."""
-    certificate = _load_certificate(certificate_pem)
+def describe_certificate(certificate: x509.Certificate) -> CertificateFacts:
+    """Re-serialise the leaf certificate and compute its thumbprints. The caller has checked it holds an RSA key."""
+    der = certificate.public_bytes(serialization.Encoding.DER)
     public_key = certificate.public_key()
-    if not isinstance(public_key, rsa.RSAPublicKey):
-        raise CertificateError("Entra certificate credentials must use an RSA key.")
-    if public_key.key_size < MIN_RSA_KEY_BITS:
-        raise CertificateError(f"The certificate key must be at least {MIN_RSA_KEY_BITS} bits.")
-    private_key = load_private_key(private_key_pem)
-    if private_key.public_key().public_numbers() != public_key.public_numbers():
-        raise CertificateError("The private key does not belong to this certificate.")
-    return CertificateInfo(
-        thumbprint=_thumbprint(certificate),
+    return CertificateFacts(
+        certificate_pem=certificate.public_bytes(serialization.Encoding.PEM).decode("ascii"),
+        # SHA-1 only identifies the certificate the way Entra displays it; nothing is verified with it.
+        sha1_thumbprint=hashlib.sha1(der, usedforsecurity=False).hexdigest().upper(),
+        sha256_fingerprint=hashlib.sha256(der).hexdigest().upper(),
+        x5t_s256=base64.urlsafe_b64encode(hashlib.sha256(der).digest()).rstrip(b"=").decode("ascii"),
+        public_key_sha256=public_key_sha256(public_key),
+        subject=certificate.subject.rfc4514_string(),
+        issuer=certificate.issuer.rfc4514_string(),
+        serial_number=format(certificate.serial_number, "X"),
+        key_bits=public_key.key_size,
         not_before=certificate.not_valid_before_utc,
         not_after=certificate.not_valid_after_utc,
-        subject=certificate.subject.rfc4514_string(),
     )
 
 
-def load_private_key(private_key_pem: str) -> rsa.RSAPrivateKey:
-    try:
-        key = serialization.load_pem_private_key((private_key_pem or "").strip().encode("ascii"), password=None)
-    except TypeError as exc:
-        raise CertificateError("The private key must not be password-protected (export it unencrypted).") from exc
-    except (ValueError, UnicodeError) as exc:
-        raise CertificateError("The private key is not a readable PEM private key.") from exc
-    if not isinstance(key, rsa.RSAPrivateKey):
-        raise CertificateError("Entra certificate credentials must use an RSA key.")
-    return key
+def public_key_sha256(public_key) -> str:
+    """Hex SHA-256 of the DER SubjectPublicKeyInfo: ties a stored private key to the certificate it belongs to."""
+    spki = public_key.public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+    return hashlib.sha256(spki).hexdigest()
 
 
-def build_client_assertion(*, tenant_id: str, client_id: str, private_key_pem: str, thumbprint: str) -> str:
+def build_client_assertion(*, tenant_id: str, client_id: str, private_key: rsa.RSAPrivateKey, x5t_s256: str) -> str:
     """A signed JWT that proves possession of the certificate's private key to the identity platform."""
     now = int(time.time())
     claims = {
@@ -78,17 +81,5 @@ def build_client_assertion(*, tenant_id: str, client_id: str, private_key_pem: s
         "iat": now,
         "exp": now + ASSERTION_LIFETIME_SECONDS,
     }
-    headers = {"typ": "JWT", "x5t#S256": thumbprint}
-    return jwt.encode(claims, load_private_key(private_key_pem), algorithm="PS256", headers=headers)
-
-
-def _load_certificate(certificate_pem: str) -> x509.Certificate:
-    try:
-        return x509.load_pem_x509_certificate((certificate_pem or "").strip().encode("ascii"))
-    except (ValueError, UnicodeError) as exc:
-        raise CertificateError("The certificate is not a readable PEM certificate.") from exc
-
-
-def _thumbprint(certificate: x509.Certificate) -> str:
-    digest = hashlib.sha256(certificate.public_bytes(serialization.Encoding.DER)).digest()
-    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    headers = {"typ": "JWT", "x5t#S256": x5t_s256}
+    return jwt.encode(claims, private_key, algorithm="PS256", headers=headers)

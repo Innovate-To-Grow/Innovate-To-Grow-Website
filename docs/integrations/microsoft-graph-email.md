@@ -18,7 +18,7 @@ It is the third choice of the **Provider** setting:
 
 | | AWS SES | SMTP | Microsoft Graph |
 |---|---|---|---|
-| Credentials | Shared AWS IAM key in Secrets Manager, referenced by `AWSCredentialConfig` | Host, port, optional username and password (`SMTPProviderConfig`) | Entra tenant ID, client ID, certificate and private key (or a client secret), and a mailbox scope (`MicrosoftGraphProviderConfig`) |
+| Credentials | Shared AWS IAM key in Secrets Manager, referenced by `AWSCredentialConfig` | Host, port, optional username and password (`SMTPProviderConfig`) | Entra tenant ID and client ID, an installed certificate whose private key is kept in the credential store (AWS Secrets Manager in production), and a mailbox scope (`MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`) |
 | Transport | SES API, raw MIME | SMTP submission | HTTPS `sendMail`, base64 MIME |
 | Message ID recorded | SES message ID | MIME `Message-ID` | MIME `Message-ID` |
 | Delivery events | Yes, through the [SNS webhook](ses-event-tracking.md) | No | No |
@@ -76,8 +76,7 @@ added earlier, remove them (or revoke the admin consent) once step 4 is in place
 
 The app proves its identity with a certificate (Microsoft's `private_key_jwt`): it signs a short-lived
 assertion with the private key, and Entra checks it against the uploaded certificate. The private key
-never leaves the server, so nothing reusable crosses the network. Client secrets are still supported for
-development but are not used for the UC Merced deployment.
+never leaves the server, so nothing reusable crosses the network. The site supports no client secrets.
 
 Create an RSA key (2048 bits or more) and a certificate. A self-signed certificate is fine; Entra only
 checks that the key matches. Do this on a trusted workstation, not on a shared server:
@@ -89,11 +88,12 @@ openssl req -x509 -newkey rsa:3072 -sha256 -days 365 -nodes \
 
 - Upload `i2g-graph.crt` under **Certificates & secrets** → **Certificates** → **Upload certificate**.
   Note the expiry date; a reminder is also built in ([Monitoring](#monitoring)).
-- `i2g-graph.key` is the private key. It goes only into the admin form in the next section; store no
-  other copy except in an approved secrets store, and delete the local file once it is saved.
-- If you are given a `.pfx` file instead, extract the two PEM parts:
-  `openssl pkcs12 -in i2g.pfx -nokeys -clcerts -out i2g-graph.crt` and
-  `openssl pkcs12 -in i2g.pfx -nocerts -nodes -out i2g-graph.key`.
+- `i2g-graph.key` is the private key. It is installed once (next section); the site keeps it in the
+  credential store, never in the database. Store no other copy, and delete the local file once it is
+  installed.
+- The private key may also be a PKCS#1 PEM, an encrypted PEM with its passphrase, or part of a
+  `.p12`/`.pfx` file with its password (what macOS Keychain exports); the certificate may also be a DER
+  `.cer` file.
 
 ### 4. Limit the app to the I2G mailbox
 
@@ -141,17 +141,24 @@ provider.
    | **Active** | Tick it. Only one Graph configuration can be active; activating one deactivates the others. |
    | **Tenant ID** | Directory (tenant) ID as a GUID, or a verified domain such as `contoso.onmicrosoft.com`. `common`, `organizations`, and `consumers` are rejected. |
    | **Client ID** | Application (client) ID of the Entra app registration (a GUID). |
-   | **Authentication** | **Certificate** (default and required for UC Merced) or **Client secret**. |
-   | **Certificate (PEM)** | Contents of `i2g-graph.crt` (`-----BEGIN CERTIFICATE-----` …). |
-   | **Private Key (PEM)** | Contents of `i2g-graph.key`, unencrypted. Never displayed again; leave blank when editing to keep it, except after changing **Tenant ID** or **Client ID**, when the form asks for it again. |
-   | **Client Secret** | Only for the client-secret method; same write-only rules. |
+   | **Certificate** (read-only) | The installed certificate: SHA-1 thumbprint (as Entra lists it under **Certificates & secrets**), SHA-256 fingerprint, subject, validity, key store version and the Entra check result, plus the previous certificate kept for rollback. The form has no certificate, key or secret input. |
    | **Sender Mailbox** | `i2g@ucmerced.edu`. Blank means the **From Email** address. The admin inbox reads this mailbox too. |
    | **Messages per Minute** | 1 to 30, default 24. Exchange Online allows 30 messages per minute per mailbox. See [Campaign pacing](#campaign-pacing). |
    | **Mailbox scope** (inline rows) | One row: mailbox `i2g@ucmerced.edu`, permission **Send and read (Mail.Send + Mail.Read)**. |
 
-   Saving checks that the private key is RSA, at least 2048 bits, unencrypted, and belongs to the
-   certificate, and that the certificate has not expired. It records the certificate's SHA-256
-   thumbprint and expiry date (read-only fields), which you can compare with the Entra portal.
+   **Tenant ID** and **Client ID** cannot change while a certificate is installed: a certificate is
+   tested for one tenant and app. Remove the certificates first, then install the one registered for the
+   new app.
+
+   Installing a certificate (`apps.core.services.email.graph.credential.lifecycle`) checks, in memory,
+   that the key is RSA of at least `GRAPH_CERTIFICATE_MIN_RSA_KEY_BITS` (2048) bits and belongs to the
+   certificate, that the input holds exactly one certificate and the certificate input no private key,
+   and that the certificate is valid now. It then requests one token from Entra with the key: a wrong
+   tenant, unknown or disabled app refuses the install before anything is stored, and on the active
+   configuration only a certificate Entra accepts is installed. The key is then written to the credential
+   store, and the new version is pinned as the current certificate; the replaced one becomes previous.
+   Every message is fixed text and never contains key material. The certificate alone (no key) re-issues
+   the installed key when its public key matches.
 2. Open **Mail → Notification Delivery**: in the sidebar choose **Delivery Operations** (group
    **Broadcast Delivery**), switch to the **Notification Delivery** tab (`/admin/mail/settings/`), and
    select **Edit Notification Delivery**.
@@ -221,24 +228,15 @@ Entra accepts several certificates on one app, so rotation has no downtime:
 
 1. Create a new key and certificate ([step 3](#3-create-and-upload-a-certificate)) and upload the
    certificate to the app in Entra. The old one keeps working.
-2. Paste the new certificate and private key into the Graph configuration and save. Check the new
-   thumbprint and expiry shown in the admin.
+2. Install the new certificate and private key. Check that the SHA-1 thumbprint and expiry shown in the
+   admin match Entra. The replaced certificate is kept as previous, so a rollback (after a fresh Entra
+   token test with the previous key) is possible until the next install.
 3. Run `verify_graph_access` and send a test email.
 4. Remove the old certificate from the app in Entra, and destroy any remaining copy of the old key.
 
 The new credential applies to the next request in every process; no restart is needed. Rotate at least
 30 days before expiry ([Monitoring](#monitoring)) and immediately if the key may have been exposed
 ([Emergency revocation](#emergency-revocation)).
-
-### Rotate the client secret
-
-Only for the client-secret method:
-
-1. In Entra create a new client secret. The old one keeps working.
-2. Paste the new **Value** into **Client Secret**, save, and send a test email.
-3. Delete the old secret in Entra.
-
-The new secret applies to the next send in every process; no restart is needed.
 
 ### Check the stored configuration
 
@@ -247,10 +245,10 @@ cd src && python manage.py verify_service_configs --strict
 ```
 
 The command prints `MicrosoftGraphProviderConfig: OK (<name>)` when Graph can send (active, a well-formed
-tenant ID and client ID, an unexpired certificate pair or a client secret, a mailbox scope, and the sending
+tenant ID and client ID, a current certificate that is valid now, a mailbox scope, and the sending
 mailbox and **From Email** in that scope with send permission) and `MISSING` when Graph is the selected
-provider but cannot. It also reports a missing scope, a certificate that expires within 30 days (warning)
-or has expired (failure when Graph is selected), and client-secret authentication (warning). It prints
+provider but cannot. It also reports a missing scope, a missing certificate or one that is not valid yet,
+a certificate that expires within 30 days (warning) or has expired (failure when Graph is selected). It prints
 nothing about Graph when another provider is selected and no Graph configuration exists. With `--strict`,
 a failure makes the command exit non-zero. It reads stored settings only and does not contact Microsoft;
 `verify_graph_access` and **Send Test Email** prove the credentials.
@@ -285,30 +283,34 @@ a failure makes the command exit non-zero. It reads stored settings only and doe
   silently receive nothing. Such a message is refused as a permanent error. No current feature sends
   Bcc.
 - **Tokens.** Access tokens are kept only in each process's memory (never in the database, the cache,
-  or on disk), keyed by tenant, client ID, and a hash of the key or secret, and renewed shortly before
+  or on disk), keyed by tenant, client ID, the pinned key version and the certificate thumbprint, and renewed shortly before
   they expire. Each process therefore requests its own token about once an hour. A `401` or `403` from Graph
   drops the cached token, so consent or role changes made after it was issued apply to the next send.
 - **No retry inside the provider.** One request is made per message. Retrying is left to the caller
   (see the [error reference](#error-reference)), and an uncertain outcome is never retried
   automatically.
-- **Protecting the private key.** The private key (and a client secret, if used) is stored in the
-  database with the other service credentials (as the AWS keys are), never in code, images, task
-  definitions, or environment variables. Production PostgreSQL (RDS) is encrypted at rest and reached over
-  TLS. The admin forms never display a stored key or secret, a blank field keeps it, and the
-  confirm-on-save diff masks it. Only staff granted the **Core** app can open the configuration, and the
-  model and its scope are on the safe-ORM denylist, so the `i2g-admin` CLI and the AI assistant cannot
-  read or change them. The key is used only in memory to sign assertions; error messages and log lines
-  carry no key, secret, token, or response body.
+- **Protecting the private key.** The private key is never stored in the database, code, images, task
+  definitions, or environment variables. It is kept in the credential store
+  (`apps.core.services.credential_store`): the AWS Secrets Manager secret
+  `itg/backend/microsoft-graph/certificate-key` in production, a 0600 file under the gitignored
+  `src/data/` locally, and process memory in tests. The database keeps only the certificate's public data
+  and the pinned store version (`MicrosoftGraphCertificate`). On a token-cache miss the pinned version is
+  read, checked against the certificate's public key, used to sign one assertion and dropped; no process
+  caches the key. Only staff granted the **Core** app can open the configuration, and the config, its
+  scope and its certificates are on the safe-ORM denylist, so the `i2g-admin` CLI and the AI assistant
+  cannot read or change them. Error messages and log lines carry no key, token, or response body.
 
 | Concern | Location |
 |---------|----------|
 | Sending, token cache, HTTPS, error mapping | `src/apps/core/services/email/graph/` (`provider.py`, `auth.py`, `transport.py`, `errors.py`) |
-| Certificate checks and client assertions | `src/apps/core/services/email/graph/certificate.py` |
+| Certificate facts and client assertions | `src/apps/core/services/email/graph/certificate.py` |
+| Certificate input, stored key, Entra test, install / rollback / remove | `src/apps/core/services/email/graph/credential/` |
 | Mailbox scope enforcement | `src/apps/core/services/email/graph/access.py` |
 | Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox.py`, `src/apps/mail/services/inbox/graph_backend.py` |
 | Access validation | `src/apps/core/services/email/graph/access_check.py`, `manage.py verify_graph_access` |
 | Provider selection | `src/apps/core/services/email/registry.py` |
 | Settings and scope models | `src/apps/core/models/base/service_credentials/microsoft_graph.py` |
+| Installed certificates (public data + key pointer) | `src/apps/core/models/base/service_credentials/microsoft_graph_certificate.py` |
 | Notification Delivery forms | `src/apps/mail/admin/settings/forms.py` |
 
 ## Admin inbox
@@ -355,8 +357,9 @@ schedule (or after each deploy) to catch certificate expiry.
   for about an hour. The site stores no copy of received mail.
 - **Logs.** Graph log lines carry status, error code, and request ID only, under the CloudWatch Logs
   retention configured for the ECS log groups.
-- **Credentials.** A rotated or revoked certificate's private key is overwritten in the database by the
-  replacement; destroy any other copy.
+- **Credentials.** A replaced or removed certificate's key version stays in the credential store
+  (Secrets Manager cannot delete a single version), but no row pins it, so the site never reads it
+  again; it stops working once Entra no longer lists its certificate. Destroy any other copy of the key.
 
 ## Emergency revocation
 
@@ -369,9 +372,10 @@ stop new tokens; the third removes the mailbox permissions themselves.
    or delete it to remove everything at once.
 3. **Exchange Online:** remove the role assignments
    (`Get-ManagementRoleAssignment -RoleAssignee <client-id> | Remove-ManagementRoleAssignment`).
-4. **Site:** set **Provider** back to **AWS SES** (or SMTP) on Notification Delivery so email keeps
-   working, then untick **Active** on the Graph configuration and delete it, which removes the stored
-   private key and its mailbox scope. The admin inbox falls back to Gmail IMAP.
+4. **Site:** remove the installed certificates (current and previous), which clears the pin so every
+   process refuses to sign at its next token request without any store or Entra call; the removal can
+   switch **Provider** back to **AWS SES** in the same step when SES is configured. Otherwise set the
+   provider on Notification Delivery so email keeps working. The admin inbox falls back to Gmail IMAP.
 
 An access token that was already issued stays valid until it expires (about 60 to 90 minutes), and
 Exchange applies role-assignment removals within 30 minutes to 2 hours. Steps 1 and 2 are therefore the
@@ -474,7 +478,7 @@ correlation ID; quote the AADSTS number and the time instead.
 | Result | Class | Message recorded | Cause and action |
 |--------|-------|------------------|------------------|
 | `202` | Success | none | Accepted for sending; not a delivery confirmation. |
-| `401` | Transient | `Microsoft Graph rejected the access token; it will be refreshed.` | The cached token is dropped and the retry fetches a new one. If it repeats, check **Tenant ID**, **Client ID**, and the secret. |
+| `401` | Transient | `Microsoft Graph rejected the access token; it will be refreshed.` | The cached token is dropped and the retry fetches a new one. If it repeats, check **Tenant ID**, **Client ID**, and the installed certificate. |
 | `403` | Permanent | `Microsoft Graph rejected the request (ErrorAccessDenied).` or `(ErrorSendAsDenied)` | The app may not send as this mailbox or address: the consent was removed before the RBAC assignment applied, the mailbox is outside the management scope, the change has not propagated yet (30 minutes to 2 hours), or **From Email** is not the mailbox or an address it may send as. The cached token is dropped, so the next send uses a new one that carries any consent granted since. |
 | `404` | Permanent | `Microsoft Graph rejected the request (MailboxNotEnabledForRESTAPI).` or `(ResourceNotFound)` | **Sender Mailbox** (or **From Email**, when blank) is not an Exchange Online mailbox, or is misspelled. Use the mailbox's primary address. |
 | `400` | Permanent | `Microsoft Graph rejected the request (<code>).` | Graph refused the request or the MIME content, for example an invalid recipient. The code names the problem. |
@@ -495,8 +499,6 @@ A token request sends no mail, so these failures are always certain: nothing was
 | Result | Class | Message recorded | Cause and action |
 |--------|-------|------------------|------------------|
 | `invalid_client`, `AADSTS700027` | Permanent | `Microsoft rejected the Graph credentials (invalid_client AADSTS700027).` | The assertion's signature or key is not recognised: the certificate in the admin is not (or no longer) uploaded to this app in Entra. Compare the thumbprint shown in the admin with the one in Entra. |
-| `invalid_client`, `AADSTS7000215` | Permanent | `Microsoft rejected the Graph credentials (invalid_client AADSTS7000215).` | Wrong client secret (client-secret method). A common cause is the secret ID pasted instead of the value. |
-| `invalid_client`, `AADSTS7000222` | Permanent | `Microsoft rejected the Graph credentials (invalid_client AADSTS7000222).` | The client secret has expired. [Rotate it](#rotate-the-client-secret). |
 | `unauthorized_client`, `AADSTS700016` | Permanent | `Microsoft rejected the Graph credentials (unauthorized_client AADSTS700016).` | No app with this **Client ID** exists in this tenant. Check **Client ID** and **Tenant ID**. |
 | Any other rejection (an unknown tenant, `invalid_scope`, other `4xx`) | Permanent | `Microsoft rejected the Graph credentials (<error> AADSTS<number>).` | Look the AADSTS number up in Microsoft's error-code reference. |
 | `408`, `429`, `5xx` | Transient | `Microsoft identity platform is temporarily unavailable.` | Retried later by the background worker (`Retry-After`, when sent, delays that retry); without the worker the send fails once. |
@@ -510,19 +512,21 @@ A token request sends no mail, so these failures are always certain: nothing was
 | Situation | Class | Message recorded | Cause and action |
 |-----------|-------|------------------|------------------|
 | The sending mailbox or **From Email** is not in the mailbox scope with send permission | Permanent | `Microsoft Graph may not send as <mailbox>: it is not in the configured mailbox scope with that permission.` | Add the mailbox to the scope (and to the Exchange role assignment, after InfoSec review) or fix **Sender Mailbox** / **From Email**. |
-| The certificate private key cannot be loaded | Permanent | `The Microsoft Graph certificate private key could not be used.` | Re-enter the certificate and private key; saving validates the pair. |
+| No usable current certificate (none, removed, expired, not valid yet, or tested for another app) | Permanent | `No usable Microsoft Graph certificate is installed.` | Install a certificate; check its validity in the admin. |
+| The pinned key cannot be read from the credential store | Transient (throttling, outage, timeout) or Permanent | `The Microsoft Graph private key could not be read: <fixed text> (<AWS error code>)` | Permanent codes such as `AccessDeniedException` or `ResourceNotFoundException` mean the task role or the secret is wrong; reinstall the certificate if its version is gone. |
+| The stored key does not match the installed certificate | Permanent | `The Microsoft Graph private key could not be read: The stored private key does not match the installed certificate.` | Reinstall the certificate with its own private key. |
+| The certificate private key cannot be used to sign | Permanent | `The Microsoft Graph certificate private key could not be used.` | Reinstall the certificate and private key. |
 | A Bcc recipient is present | Permanent | `Microsoft Graph does not support Bcc recipients.` | Send separate messages instead. |
 | The MIME message cannot be built | Permanent | `The email could not be composed for Microsoft Graph.` | Fix the message. Composition errors raised by the shared MIME builder keep their own message, for example `Email has no recipients.` |
 | **Sender Mailbox** is blank and **From Email** is not a valid address | Permanent | `Microsoft Graph configuration is invalid.` | The sender mailbox falls back to **From Email**, which must be an address or object ID. |
-| No active, complete, well-formed Graph configuration | Permanent | `Active Microsoft Graph provider configuration is missing or invalid.` | Tick **Active** and fill in **Tenant ID**, **Client ID**, the certificate and private key (or **Client Secret**), and at least one mailbox scope row. An expired certificate, or a row saved outside the admin with a malformed tenant ID, client ID, or sender mailbox, counts as not configured; fix and re-save it in the admin. |
+| No active, complete, well-formed Graph configuration | Permanent | `Active Microsoft Graph provider configuration is missing or invalid.` | Tick **Active**, fill in **Tenant ID** and **Client ID**, install a certificate, and add at least one mailbox scope row. An expired certificate, or a row saved outside the admin with a malformed tenant ID, client ID, or sender mailbox, counts as not configured; fix and re-save it in the admin. |
 | No active email configuration | Permanent | `No active email service configuration exists.` | Tick **Active** under **Email Sender**. |
 
 ## Troubleshooting checklist
 
 1. **Test email fails with "Microsoft rejected the Graph credentials".** Check **Tenant ID** and
    **Client ID** against the app's Overview page, and that the certificate shown in the admin
-   (thumbprint, expiry) is uploaded to that app under **Certificates & secrets**. With the client-secret
-   method, check that the secret value has not expired. Re-enter it; a blank field keeps the old one.
+   (SHA-1 thumbprint, expiry) is uploaded to that app under **Certificates & secrets**.
 2. **Test email fails with `(ErrorAccessDenied)` or `(ErrorSendAsDenied)` (HTTP 403).** Run `Test-ServicePrincipalAuthorization` for the sender mailbox
    (`InScope` must be True). After a new assignment, or after removing the tenant-wide consent, wait up
    to 2 hours. Check that the management scope filter matches the mailbox, and that **From Email** is
@@ -533,8 +537,7 @@ A token request sends no mail, so these failures are always certain: nothing was
    Sent Items should hold a copy, and the Inbox may hold a non-delivery report with the reason. Check
    the recipient's junk folder.
 5. **All email suddenly fails.** The certificate may have expired (the configuration then counts as not
-   configured) or been removed in Entra (`AADSTS700027`), the client secret may have expired
-   (`AADSTS7000222`), or the mailbox may be full (`507`). Check **Certificates & secrets** in Entra,
+   configured) or been removed in Entra (`AADSTS700027`), or the mailbox may be full (`507`). Check **Certificates & secrets** in Entra,
    `verify_service_configs`, and the mailbox size.
 6. **Frequent `429` or "temporarily rejected".** Lower **Messages per Minute**, stop other tools that
    send as the same mailbox, and see [Limits](#limits).
@@ -557,8 +560,8 @@ First live check after a new setup or a credential change:
 3. Send yourself a ticket email. Confirm the inline barcode image displays and the calendar file is
    attached, and that a subject or name with accented characters displays correctly. Confirm the received
    message shows a sent date (the app does not write a `Date` header; Exchange is expected to add one).
-4. In a non-production environment, save a deliberately wrong secret and confirm the test email reports
-   `Microsoft rejected the Graph credentials (invalid_client AADSTS7000215)`. Restore the real secret.
+4. In a non-production environment, install a throwaway certificate that is not registered on the app
+   on an inactive configuration and confirm its Entra check reads `invalid_client AADSTS700027`.
 5. Confirm the small campaign completed without `429` responses.
 
 ## Sources

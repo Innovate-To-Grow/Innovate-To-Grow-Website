@@ -23,7 +23,7 @@ from apps.core.services.email import (
 )
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
-from apps.core.tests.graph_helpers import create_graph_config
+from apps.core.tests.graph_helpers import create_graph_config, private_key_lines
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.send_campaign.runner import _configured_provider, send_campaign
@@ -44,11 +44,11 @@ RUNNER_LOGGER = "apps.mail.services.send_campaign.runner"
 GRAPH_LOGGER = "apps.core.services.email.graph.provider"
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "66666666-7777-8888-9999-000000000000"
-CLIENT_SECRET = "not-a-real-secret"
+AWS_SECRET = "not-a-real-secret"
 FAKE_TOKEN = "not-a-real-token"
 UNSUBSCRIBE_URL = "https://backend.example.com/mail/unsubscribe/token/"
 DENIED_BODY = json.dumps({"error": {"code": "ErrorSendAsDenied", "message": "leaky detail for mailer@example.com"}})
-LEAKS = (CLIENT_SECRET, FAKE_TOKEN, "leaky detail")
+LEAKS = (FAKE_TOKEN, "leaky detail", *private_key_lines())
 
 
 class FakeGraphTransport:
@@ -86,7 +86,6 @@ def create_graph_sender():
         is_active=True,
         tenant_id=TENANT_ID,
         client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
         mailbox="mailer@example.com",
     )
     return EmailServiceConfig.objects.create(
@@ -230,15 +229,16 @@ class SendViaGraphEndToEndTests(TestCase):
                     self.assertNotIn(leaked, result.error)
                     self.assertNotIn(leaked, "\n".join(logs.output))
 
-    def test_rejected_client_secret_is_a_definite_failure_before_any_message_is_sent(self):
-        token_body = json.dumps({"error": "invalid_client", "error_codes": [7000215]})
+    def test_a_rejected_certificate_is_a_definite_failure_before_any_message_is_sent(self):
+        token_body = json.dumps({"error": "invalid_client", "error_codes": [700027]})
         self.transport.token_response = HttpResponse(401, {}, token_body.encode())
 
         result = self.send()
 
         self.assertEqual((result.provider, result.outcome), ("graph", SES_OUTCOME_PERMANENT))
         self.assertIn("rejected the Graph credentials", result.error)
-        self.assertNotIn(CLIENT_SECRET, result.error)
+        for leaked in LEAKS:
+            self.assertNotIn(leaked, result.error)
         self.assertEqual(self.transport.sent, [])
 
 
@@ -250,7 +250,7 @@ class SesTrackingWarningTests(TestCase):
             name="AWS",
             is_active=True,
             access_key_id="AKID",
-            secret_access_key=CLIENT_SECRET,
+            secret_access_key=AWS_SECRET,
             default_region="us-west-2",
         )
         SMTPProviderConfig.objects.create(name="SMTP", is_active=True, host="smtp.example.com", port=587)

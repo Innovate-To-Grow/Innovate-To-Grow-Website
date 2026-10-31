@@ -18,7 +18,6 @@ from apps.core.tests.graph_helpers import create_graph_config, grant
 from apps.core.tests.services.test_email_graph import (
     ACCESS_TOKEN,
     CLIENT_ID,
-    CLIENT_SECRET,
     TENANT_ID,
     error_body,
     token_response,
@@ -83,7 +82,6 @@ class ProbeFixtureMixin:
             is_active=True,
             tenant_id=TENANT_ID,
             client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
         )
 
 

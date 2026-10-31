@@ -17,15 +17,22 @@ class GraphScopeError(PermanentEmailDeliveryError):
 
 
 def credential_for(config) -> GraphCredential:
-    """The Entra credential of a ``MicrosoftGraphProviderConfig`` for its selected authentication method."""
-    if config.uses_certificate:
-        return GraphCredential(
-            tenant_id=config.tenant_id,
-            client_id=config.client_id,
-            private_key_pem=config.private_key,
-            certificate_thumbprint=config.certificate_thumbprint,
-        )
-    return GraphCredential(tenant_id=config.tenant_id, client_id=config.client_id, client_secret=config.client_secret)
+    """The certificate credential of a ``MicrosoftGraphProviderConfig``: its current certificate's pinned key.
+
+    No store or Entra call happens here. A config without a usable current certificate (none installed, removed,
+    expired, not valid yet, or tested for another app) is refused.
+    """
+    certificate = config.current_certificate
+    if certificate is None or not certificate.usable_for(config):
+        raise PermanentEmailDeliveryError("No usable Microsoft Graph certificate is installed.")
+    return GraphCredential(
+        tenant_id=config.tenant_id,
+        client_id=config.client_id,
+        x5t_s256=certificate.x5t_s256,
+        public_key_sha256=certificate.public_key_sha256,
+        key_arn=certificate.store_arn,
+        key_version_id=certificate.store_version_id,
+    )
 
 
 def require_mailbox(config, mailbox: str, permission: str) -> str:

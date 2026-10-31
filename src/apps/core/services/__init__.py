@@ -18,12 +18,14 @@ Subsystem               What it is                                            Im
 ``background_jobs/``    Durable outbox: queue, worker, retry, rate limit.      ``authn``, ``cms``, ``event``, ``mail``
                         Apps register job kinds from ``AppConfig.ready()``
                         with ``register_job_kind`` (dotted handler paths).
-``credential_store/``   Versioned private-key store, read by pinned version:   ``core`` only (system check)
+``credential_store/``   Versioned private-key store, read by pinned version:   ``core`` only (system check, Graph key)
                         Secrets Manager (prod), 0600 files (dev), memory
                         (tests). The database keeps only ARN + version id.
 ``db_tools/``           ``safe_orm``: the read-only ORM sandbox (field /       ``cli_admin``, ``system_intelligence``
                         filter allowlists, ``MAX_ROWS``)
-``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery        ``authn``, ``event``, ``mail``
+``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery;       ``authn``, ``event``, ``mail``
+                        ``graph/credential/`` installs the Graph certificate
+                        (key in ``credential_store``)
 ``helpers/``            In-process task runner + sheet formula safety         ``authn``, ``event``, ``mail``, ``system_intelligence``
 ``legacy_access/``      Signed access to the read-only legacy site viewer      ``core`` only (legacy_view, admin, views)
 ``status/``             Infrastructure status dashboard client                 ``core`` only (admin infrastructure status)

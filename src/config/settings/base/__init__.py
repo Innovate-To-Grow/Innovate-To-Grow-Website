@@ -17,3 +17,4 @@ from .integrations.admin import *  # noqa: F403     # Unfold admin theme
 from .integrations.api import *  # noqa: F403       # DRF + SimpleJWT
 from .integrations.editor import *  # noqa: F403    # CKEditor 5
 from .integrations.credential_store import *  # noqa: F403  # private-key store backend + secret names
+from .integrations.microsoft_graph import *  # noqa: F403  # Graph certificate limits

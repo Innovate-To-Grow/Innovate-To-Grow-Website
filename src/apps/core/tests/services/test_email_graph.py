@@ -7,6 +7,7 @@ registry/facade (``_registry``). They reuse the fakes defined at the top of this
 """
 
 import base64
+import dataclasses
 import email
 import email.policy
 import json
@@ -20,11 +21,13 @@ from apps.core.services.email.graph import auth
 from apps.core.services.email.graph import provider as graph_provider
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.services.email.mime import build_mime_message
+from apps.core.tests.graph_helpers import CLIENT_ID as CLIENT_ID  # re-exported for the other Graph test modules
+from apps.core.tests.graph_helpers import TENANT_ID as TENANT_ID
+from apps.core.tests.graph_helpers import make_test_credential, private_key_lines
 
-TENANT_ID = "11111111-2222-3333-4444-555555555555"
-CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-CLIENT_SECRET = "not-a-real-secret"
 ACCESS_TOKEN = "not-a-real-access-token"
+# A line of the shared test certificate's private key: like the token, it must never reach a message or a log.
+KEY_LINE = private_key_lines()[1]
 MAILBOX = "sender@contoso.com"
 REQUEST_ID = "8a1b2c3d-1111-2222-3333-444455556666"
 # Stands in for the free text of a Microsoft error body; it must never reach an exception message or a log line.
@@ -121,11 +124,15 @@ class GraphFixtureMixin:
         self.fake.script(token=token, send=send)
 
 
+CREDENTIAL_FIELDS = tuple(field.name for field in dataclasses.fields(auth.GraphCredential))
+
+
 def make_provider(**overrides):
+    """A provider whose certificate key is in the credential store; credential fields can be overridden by name."""
+    credential = overrides.pop("credential", None) or make_test_credential()
+    changes = {name: overrides.pop(name) for name in CREDENTIAL_FIELDS if name in overrides}
     values = {
-        "tenant_id": TENANT_ID,
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
+        "credential": dataclasses.replace(credential, **changes),
         "mailbox": MAILBOX,
         "from_email": MAILBOX,
         "from_name": "Innovate to Grow",
@@ -175,7 +182,7 @@ class GraphProviderConfigurationTests(SimpleTestCase):
         self.assertEqual(provider.credential.tenant_id, "contoso.onmicrosoft.com")
         self.assertEqual(provider.mailbox, "72f988bf-86f1-41af-91ab-2d7cd011db47")
 
-    def test_rejects_invalid_configuration_without_echoing_the_secret(self):
+    def test_rejects_invalid_configuration_without_echoing_key_material(self):
         invalid = {
             "tenant without a dot": {"tenant_id": "common"},
             "tenant with a path separator": {"tenant_id": "a/b"},
@@ -185,17 +192,23 @@ class GraphProviderConfigurationTests(SimpleTestCase):
             "mailbox that is not an address": {"mailbox": "not a mailbox"},
             "mailbox with an injected header": {"mailbox": "user@contoso.com\nBcc: evil@example.com"},
             "blank mailbox": {"mailbox": ""},
-            "blank secret": {"client_secret": ""},
-            "missing secret": {"client_secret": None},
+            "blank certificate thumbprint": {"x5t_s256": ""},
+            "blank key reference": {"key_arn": ""},
+            "blank key version": {"key_version_id": ""},
         }
         for label, overrides in invalid.items():
             with self.subTest(label):
                 with self.assertRaisesMessage(PermanentEmailDeliveryError, "configuration is invalid") as caught:
                     make_provider(**overrides)
-                self.assertNotIn(CLIENT_SECRET, str(caught.exception))
+                for line in private_key_lines():
+                    self.assertNotIn(line, str(caught.exception))
 
-    def test_repr_does_not_expose_the_secret(self):
-        self.assertNotIn(CLIENT_SECRET, repr(make_provider()))
+    def test_repr_does_not_expose_key_material(self):
+        text = repr(make_provider())
+
+        self.assertNotIn("PRIVATE KEY", text)
+        for line in private_key_lines():
+            self.assertNotIn(line, text)
 
 
 class GraphProviderSendTests(GraphFixtureMixin, SimpleTestCase):
@@ -336,10 +349,11 @@ class GraphProviderSendTests(GraphFixtureMixin, SimpleTestCase):
         self.send()
 
         request = self.fake.send_requests[0]
-        for secret in (CLIENT_SECRET, ACCESS_TOKEN):
-            self.assertNotIn(secret, request.path)
-            self.assertNotIn(secret.encode(), request.body)
-        self.assertNotIn(CLIENT_SECRET, "".join(request.headers.values()))
+        self.assertNotIn(ACCESS_TOKEN, request.path)
+        self.assertNotIn(ACCESS_TOKEN.encode(), request.body)
+        for line in private_key_lines():
+            for sent in (request.path, request.body.decode("ascii"), "".join(request.headers.values())):
+                self.assertNotIn(line, sent)
         carrying_the_token = [name for name, value in request.headers.items() if ACCESS_TOKEN in value]
         self.assertEqual(carrying_the_token, ["Authorization"])
 

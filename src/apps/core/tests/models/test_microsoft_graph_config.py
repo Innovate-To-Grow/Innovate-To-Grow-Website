@@ -12,13 +12,12 @@ from apps.core.models import (
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
-from apps.core.tests.graph_helpers import create_graph_config, grant
+from apps.core.tests.graph_helpers import create_graph_config, grant, install_test_certificate, private_key_lines
 
 TENANT_ID = "1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 OBJECT_ID = "99999999-8888-7777-6666-555555555555"
 MAILBOX = "sender@example.com"
-SECRET = "not-a-real-graph-secret"
 # Every sender these tests use is in scope; the scope rules have their own tests.
 SCOPE = (MAILBOX, "shared@example.com", "noreply@example.com", OBJECT_ID)
 
@@ -29,8 +28,6 @@ def graph_fields(**overrides):
         "name": "Mail",
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
-        "auth_method": MicrosoftGraphProviderConfig.AuthMethod.CLIENT_SECRET,
-        "client_secret": SECRET,
         "mailbox": MAILBOX,
     }
     return fields | overrides
@@ -41,12 +38,17 @@ def make_graph(**overrides):
     return create_graph_config(scope=SCOPE, **graph_fields(**overrides))
 
 
-def store_graph_unvalidated(**overrides):
-    """Replace every Graph row with one written without save() or validation, as a script could."""
+def store_graph_unvalidated(certificate=True, **overrides):
+    """Replace every Graph row with one written without save() or validation, as a script could.
+
+    *certificate* installs a current certificate (``True``, or a dict of ``install_test_certificate`` options).
+    """
     MicrosoftGraphProviderConfig.objects.all().delete()
     row = MicrosoftGraphProviderConfig.objects.bulk_create([MicrosoftGraphProviderConfig(**graph_fields(**overrides))])[
         0
     ]
+    if certificate:
+        install_test_certificate(row, **(certificate if isinstance(certificate, dict) else {}))
     return grant(row, *SCOPE)
 
 
@@ -56,11 +58,12 @@ def loaded(**overrides):
 
 
 class GraphConfigDefaultsTest(SimpleTestCase):
-    def test_new_config_is_inactive_with_a_blank_secret_and_mailbox(self):
+    def test_new_config_is_inactive_without_a_certificate_or_mailbox(self):
         config = MicrosoftGraphProviderConfig()
 
         self.assertEqual(config.messages_per_minute, 24)
-        self.assertEqual(config.client_secret, "")
+        self.assertIsNone(config.current_certificate)
+        self.assertIsNone(config.certificate_expires_at)
         self.assertEqual(config.mailbox, "")
         self.assertFalse(config.is_active)
         self.assertFalse(config.is_configured)
@@ -82,13 +85,6 @@ class GraphConfigStrTest(SimpleTestCase):
 
     def test_reports_not_configured_when_nothing_identifies_the_app(self):
         self.assertEqual(str(MicrosoftGraphProviderConfig(name="Blank")), "Blank: not configured")
-
-    def test_never_contains_the_client_secret(self):
-        for overrides in ({}, {"mailbox": ""}, {"is_active": True}, {"mailbox": "", "client_id": ""}):
-            with self.subTest(overrides=overrides):
-                rendered = str(MicrosoftGraphProviderConfig(**graph_fields(**overrides)))
-
-                self.assertNotIn(SECRET, rendered)
 
 
 class GraphConfigCleanTest(SimpleTestCase):
@@ -148,17 +144,14 @@ class GraphConfigCleanTest(SimpleTestCase):
             with self.subTest(mailbox=mailbox):
                 self.assertEqual(list(self.errors(mailbox=mailbox)), ["mailbox"])
 
-    def test_active_config_requires_a_client_secret(self):
-        self.assertEqual(list(self.errors(is_active=True, client_secret="")), ["client_secret"])
+    def test_a_config_may_be_saved_before_its_certificate_is_installed(self):
+        # The certificate is installed on a saved config; until then the config is simply not configured.
         self.assertEqual(self.errors(is_active=True), {})
 
-    def test_inactive_config_may_omit_the_client_secret(self):
-        self.assertEqual(self.errors(is_active=False, client_secret=""), {})
-
     def test_every_invalid_field_is_reported_at_once(self):
-        errors = self.errors(is_active=True, tenant_id="common", client_id="x", mailbox="x", client_secret="")
+        errors = self.errors(is_active=True, tenant_id="common", client_id="x", mailbox="x")
 
-        self.assertEqual(sorted(errors), ["client_id", "client_secret", "mailbox", "tenant_id"])
+        self.assertEqual(sorted(errors), ["client_id", "mailbox", "tenant_id"])
 
     def test_messages_per_minute_stays_within_the_exchange_limit(self):
         for rate in (-1, 0, 31, 1000):
@@ -190,7 +183,6 @@ class GraphConfigSaveTest(TestCase):
             {"client_id": "not-a-guid"},
             {"mailbox": "garbage"},
             {"messages_per_minute": 31},
-            {"is_active": True, "client_secret": ""},
         )
         for overrides in invalid:
             with self.subTest(overrides=overrides), self.assertRaises(ValidationError):
@@ -211,7 +203,7 @@ class GraphConfigSaveTest(TestCase):
         current = make_graph(name="Current", is_active=True)
 
         with self.assertRaises(ValidationError):
-            MicrosoftGraphProviderConfig(**graph_fields(name="Next", is_active=True, client_secret="")).save()
+            MicrosoftGraphProviderConfig(**graph_fields(name="Next", is_active=True, tenant_id="common")).save()
 
         current.refresh_from_db()
         self.assertTrue(current.is_active)
@@ -230,7 +222,7 @@ class GraphConfigSaveTest(TestCase):
     def test_saving_an_inactive_config_leaves_the_active_one_alone(self):
         active = make_graph(name="Active", is_active=True)
 
-        make_graph(name="Standby", client_secret="")
+        make_graph(name="Standby", certificate=False)
 
         active.refresh_from_db()
         self.assertTrue(active.is_active)
@@ -281,7 +273,8 @@ class GraphConfigLoadTest(TestCase):
 
         self.assertTrue(config._state.adding)
         self.assertNotEqual(config.pk, inactive.pk)
-        self.assertEqual((config.tenant_id, config.client_id, config.client_secret), ("", "", ""))
+        self.assertEqual((config.tenant_id, config.client_id), ("", ""))
+        self.assertIsNone(config.current_certificate)
         self.assertFalse(config.is_configured)
         self.assertEqual(MicrosoftGraphProviderConfig.objects.count(), 1)
 
@@ -294,7 +287,10 @@ class GraphConfigIsConfiguredTest(TestCase):
             ("inactive", {"is_active": False}, False),
             ("missing tenant", {"tenant_id": ""}, False),
             ("missing client id", {"client_id": ""}, False),
-            ("missing client secret", {"client_secret": ""}, False),
+            ("no installed certificate", {"certificate": False}, False),
+            ("expired certificate", {"certificate": {"days_valid": -1, "not_before_days": -30}}, False),
+            ("certificate not valid yet", {"certificate": {"not_before_days": 2}}, False),
+            ("previous certificate only", {"certificate": {"state": "previous"}}, False),
             ("tenant that is neither a GUID nor a domain", {"tenant_id": "common"}, False),
             ("tenant that adds a path segment", {"tenant_id": "contoso.com/../x"}, False),
             ("client id that is not a GUID", {"client_id": "not-a-guid"}, False),
@@ -353,7 +349,7 @@ class EmailServiceConfigGraphActivationTest(TestCase):
         self.assertIn("Microsoft Graph", error.exception.message_dict["provider"][0])
 
     def test_graph_activation_ignores_inactive_and_incomplete_rows(self):
-        rows = (("inactive row", {}), ("active row without a secret", {"is_active": True, "client_secret": ""}))
+        rows = (("inactive row", {}), ("active row without a certificate", {"is_active": True, "certificate": False}))
         for label, overrides in rows:
             store_graph_unvalidated(**overrides)
             with self.subTest(label), self.assertRaises(ValidationError):
@@ -414,7 +410,7 @@ class EmailServiceConfigGraphDeliveryTest(TestCase):
         config = self.graph_email()
         rows = (
             ("inactive", {}),
-            ("no secret", {"is_active": True, "client_secret": ""}),
+            ("no certificate", {"is_active": True, "certificate": False}),
             ("no tenant", {"is_active": True, "tenant_id": ""}),
             ("no client id", {"is_active": True, "client_id": ""}),
             ("malformed tenant", {"is_active": True, "tenant_id": "common"}),
@@ -497,7 +493,8 @@ class EmailServiceConfigDeliverySummaryTest(TestCase):
         make_graph(is_active=True)
         summary = self.email("graph").delivery_summary
 
-        self.assertNotIn(SECRET, summary)
+        for line in private_key_lines():
+            self.assertNotIn(line, summary)
         self.assertNotIn(CLIENT_ID, summary)
         self.assertNotIn(TENANT_ID, summary)
 

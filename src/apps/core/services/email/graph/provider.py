@@ -40,28 +40,22 @@ class GraphProvider:
     def __init__(
         self,
         *,
-        tenant_id: str,
-        client_id: str,
+        credential: auth.GraphCredential,
         mailbox: str,
         from_email: str,
         from_name: str = "",
-        client_secret: str = "",
-        private_key_pem: str = "",
-        certificate_thumbprint: str = "",
         timeout: float = auth.REQUEST_TIMEOUT,
     ):
         # Tenant and mailbox become URL path segments, so rows created outside the validated admin are re-checked.
-        has_secret = bool(client_secret or (private_key_pem and certificate_thumbprint))
-        valid = is_entra_tenant(tenant_id) and is_guid(client_id) and is_exchange_mailbox(mailbox) and has_secret
+        valid = (
+            is_entra_tenant(credential.tenant_id)
+            and is_guid(credential.client_id)
+            and is_exchange_mailbox(mailbox)
+            and bool(credential.x5t_s256 and credential.key_arn and credential.key_version_id)
+        )
         if not valid:
             raise PermanentEmailDeliveryError("Microsoft Graph configuration is invalid.")
-        self.credential = auth.GraphCredential(
-            tenant_id=tenant_id,
-            client_id=client_id,
-            client_secret=client_secret,
-            private_key_pem=private_key_pem,
-            certificate_thumbprint=certificate_thumbprint,
-        )
+        self.credential = credential
         self.mailbox, self.from_email, self.from_name, self.timeout = mailbox, from_email, from_name, timeout
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:

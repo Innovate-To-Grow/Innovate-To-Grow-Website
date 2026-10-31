@@ -1,4 +1,4 @@
-"""The Notification Delivery pages with the Microsoft Graph provider (no network, fake secrets only)."""
+"""The Notification Delivery pages with the Microsoft Graph provider (no network, throwaway certificates only)."""
 
 import base64
 import json
@@ -14,18 +14,18 @@ from django.urls import reverse
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
-from apps.core.tests.graph_helpers import create_graph_config
+from apps.core.tests.graph_helpers import create_graph_config, private_key_lines
 from apps.event.tests.helpers import make_admin, make_superuser
 
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "66666666-7777-8888-9999-000000000000"
 OBJECT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-STORED_SECRET = "stored-not-a-real-secret"
-NEW_SECRET = "new-not-a-real-secret"
 # The senders these tests submit; the mailbox scope itself is edited on the Graph config admin page.
 GRAPH_SCOPE = ("mailer@example.com", "updated@example.com", "old@example.com", "admin@example.com", OBJECT_ID)
 FAKE_TOKEN = "not-a-real-token"
-GRAPH_FIELDS = ("name", "is_active", "tenant_id", "client_id", "client_secret", "mailbox", "messages_per_minute")
+GRAPH_FIELDS = ("name", "is_active", "tenant_id", "client_id", "mailbox", "messages_per_minute")
+# Credential inputs this page must never render or accept: certificates are installed on the Graph config's page.
+CREDENTIAL_INPUTS = ("graph-client_secret", "graph-private_key", "graph-certificate", "graph-auth_method")
 PROVIDER_ERROR = (
     "An active Microsoft Graph configuration whose mailbox scope lets the sender mailbox and the From address "
     "send is required before activation."
@@ -116,7 +116,6 @@ class GraphSettingsTestCase(TestCase):
             "is_active": True,
             "tenant_id": TENANT_ID,
             "client_id": CLIENT_ID,
-            "client_secret": STORED_SECRET,
             "mailbox": "mailer@example.com",
             "messages_per_minute": 24,
         }
@@ -162,10 +161,6 @@ class GraphSettingsTestCase(TestCase):
                     "graph-is_active": "on",
                     "graph-tenant_id": TENANT_ID,
                     "graph-client_id": CLIENT_ID,
-                    "graph-auth_method": "client_secret",
-                    "graph-certificate": "",
-                    "graph-private_key": "",
-                    "graph-client_secret": NEW_SECRET,
                     "graph-mailbox": "mailer@example.com",
                     "graph-messages_per_minute": "20",
                 }
@@ -185,6 +180,12 @@ class GraphSettingsTestCase(TestCase):
             "smtp": snapshot(self.smtp_config),
             "graph": [snapshot(row) for row in MicrosoftGraphProviderConfig.objects.order_by("created_at")],
         }
+
+    def assert_no_key_material(self, content):
+        text = content.decode() if isinstance(content, bytes) else content
+        self.assertNotIn("PRIVATE KEY", text)
+        for line in private_key_lines():
+            self.assertNotIn(line, text)
 
     def panel_attrs(self, response, panel_id):
         finder = _ElementFinder(panel_id)
@@ -249,7 +250,7 @@ class EditPageRenderingTests(GraphSettingsTestCase):
         self.assertIn("hidden", self.panel_attrs(response, "graph-provider-settings"))
         self.assertNotContains(response, "existing-secret")
 
-    def test_graph_panel_shows_stored_values_but_never_the_client_secret(self):
+    def test_graph_panel_shows_stored_values_and_no_credential_input(self):
         self.make_graph()
         self.use_provider("graph")
 
@@ -257,8 +258,10 @@ class EditPageRenderingTests(GraphSettingsTestCase):
 
         for value in (TENANT_ID, CLIENT_ID, "mailer@example.com"):
             self.assertContains(response, f'value="{value}"')
-        self.assertContains(response, "Leave blank to keep the existing client secret.")
-        self.assertNotContains(response, STORED_SECRET)
+        for name in CREDENTIAL_INPUTS:
+            self.assertNotContains(response, f'name="{name}"')
+        self.assertContains(response, "installed on the Graph config's own page")
+        self.assert_no_key_material(response.content)
 
     def test_graph_inputs_carry_the_markers_the_provider_toggle_script_reads(self):
         self.use_provider("graph")
@@ -267,7 +270,8 @@ class EditPageRenderingTests(GraphSettingsTestCase):
 
         fields = response.context["graph_form"].fields
         self.assertEqual(fields["tenant_id"].widget.attrs["data-graph-required"], "true")
-        self.assertEqual(fields["client_secret"].widget.attrs["data-graph-required"], "false")
+        self.assertEqual(fields["mailbox"].widget.attrs["data-graph-required"], "false")
+        self.assertEqual(tuple(fields), GRAPH_FIELDS)
         self.assertContains(response, 'graph: document.getElementById("graph-provider-settings")')
         self.assertContains(response, 'smtp: document.getElementById("smtp-provider-settings")')
 
@@ -294,9 +298,7 @@ class SelectingGraphTests(GraphSettingsTestCase):
         graph = MicrosoftGraphProviderConfig.objects.get()
         self.assertTrue(graph.is_active)
         self.assertEqual((graph.name, graph.tenant_id, graph.client_id), ("Outlook Sender", TENANT_ID, CLIENT_ID))
-        self.assertEqual(
-            (graph.client_secret, graph.mailbox, graph.messages_per_minute), (NEW_SECRET, "mailer@example.com", 20)
-        )
+        self.assertEqual((graph.mailbox, graph.messages_per_minute), ("mailer@example.com", 20))
         self.config.refresh_from_db()
         self.assertEqual(self.config.provider, "graph")
         self.assertEqual(self.config.from_email, "updated@example.com")
@@ -321,55 +323,32 @@ class SelectingGraphTests(GraphSettingsTestCase):
         self.assertEqual(
             (graph.name, graph.mailbox, graph.messages_per_minute), ("Outlook Sender", "mailer@example.com", 15)
         )
-        self.assertEqual(graph.client_secret, NEW_SECRET)
 
-    def test_blank_client_secret_keeps_the_stored_secret(self):
+    def test_credential_inputs_posted_here_are_ignored(self):
         graph = self.make_graph()
+        certificate = graph.current_certificate
+        smuggled = {name.removeprefix("graph-"): "ignored-not-a-credential" for name in CREDENTIAL_INPUTS}
 
-        response = self.client.post(self.edit_url, self.post_data("graph", client_secret="", messages_per_minute="12"))
+        response = self.client.post(self.edit_url, self.post_data("graph", messages_per_minute="12", **smuggled))
 
         self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
         graph.refresh_from_db()
-        self.assertEqual(graph.client_secret, STORED_SECRET)
         self.assertEqual(graph.messages_per_minute, 12)
+        self.assertEqual(graph.current_certificate, certificate)
+        self.assertEqual(snapshot(certificate)["store_version_id"], certificate.store_version_id)
 
-    def test_blank_secret_with_a_different_application_is_rejected_and_changes_nothing(self):
+    def test_changing_the_application_under_the_installed_certificate_is_rejected_and_changes_nothing(self):
         self.make_graph()
         before = self.state()
 
         response = self.client.post(
-            self.edit_url, self.post_data("graph", client_id="bbbbbbbb-cccc-dddd-eeee-ffffffffffff", client_secret="")
+            self.edit_url, self.post_data("graph", client_id="bbbbbbbb-cccc-dddd-eeee-ffffffffffff")
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("client_secret", response.context["graph_form"].errors)
-        self.assertContains(response, "Enter the client secret for the new application.")
+        self.assertIn("client_id", response.context["graph_form"].errors)
+        self.assertContains(response, "Remove the installed certificates before changing the Entra application")
         self.assertEqual(self.state(), before)
-
-    def test_whitespace_secret_with_a_different_application_is_rejected(self):
-        self.make_graph()
-        before = self.state()
-
-        response = self.client.post(
-            self.edit_url,
-            self.post_data("graph", client_id="bbbbbbbb-cccc-dddd-eeee-ffffffffffff", client_secret="   "),
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("client_secret", response.context["graph_form"].errors)
-        self.assertEqual(self.state(), before)
-
-    def test_new_secret_with_a_different_application_is_saved(self):
-        graph = self.make_graph()
-        other_client_id = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"
-
-        response = self.client.post(
-            self.edit_url, self.post_data("graph", client_id=other_client_id, client_secret=NEW_SECRET)
-        )
-
-        self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-        graph.refresh_from_db()
-        self.assertEqual((graph.client_id, graph.client_secret), (other_client_id, NEW_SECRET))
 
     def test_messages_per_minute_accepts_the_documented_limits(self):
         self.make_graph()
@@ -381,7 +360,8 @@ class SelectingGraphTests(GraphSettingsTestCase):
                 self.assertEqual(MicrosoftGraphProviderConfig.objects.get().messages_per_minute, int(limit))
 
     def test_verified_domain_tenant_and_object_id_mailbox_are_accepted(self):
-        self.make_graph()
+        # The certificate was tested for this tenant; changing the tenant itself is refused (see above).
+        self.make_graph(tenant_id="contoso.onmicrosoft.com")
         data = self.post_data("graph", tenant_id="contoso.onmicrosoft.com", mailbox=OBJECT_ID)
 
         response = self.client.post(self.edit_url, data)
@@ -430,7 +410,6 @@ class SwitchingProvidersTests(GraphSettingsTestCase):
             {
                 "graph-tenant_id": "not a tenant!",
                 "graph-client_id": "not-a-guid",
-                "graph-client_secret": "ignored-not-a-real-secret",
                 "graph-mailbox": "not-an-email",
                 "graph-messages_per_minute": "999",
             }
@@ -445,15 +424,14 @@ class SwitchingProvidersTests(GraphSettingsTestCase):
         graph = self.make_graph()
         for provider in ("graph", "ses", "smtp", "graph"):
             with self.subTest(provider=provider):
-                response = self.client.post(self.edit_url, self.post_data(provider, client_secret=""))
+                response = self.client.post(self.edit_url, self.post_data(provider))
 
                 self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
                 self.config.refresh_from_db()
                 graph.refresh_from_db()
                 self.assertEqual(self.config.provider, provider)
-                self.assertEqual(
-                    (graph.client_secret, graph.tenant_id, graph.client_id), (STORED_SECRET, TENANT_ID, CLIENT_ID)
-                )
+                self.assertEqual((graph.tenant_id, graph.client_id), (TENANT_ID, CLIENT_ID))
+                self.assertTrue(graph.credential_configured)
                 self.assertTrue(graph.is_active)
 
     def test_selecting_smtp_still_saves_the_smtp_config_and_leaves_the_graph_row_untouched(self):
@@ -498,14 +476,13 @@ class RejectedGraphInputTests(GraphSettingsTestCase):
                 self.assertEqual(self.state(), before)
         self.assertFalse(MicrosoftGraphProviderConfig.objects.exists())
 
-    def test_rejected_page_does_not_echo_the_submitted_client_secret(self):
+    def test_rejected_page_carries_no_key_material(self):
         self.make_graph()
 
         response = self.client.post(self.edit_url, self.post_data("graph", mailbox="not-an-email"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, NEW_SECRET)
-        self.assertNotContains(response, STORED_SECRET)
+        self.assert_no_key_material(response.content)
 
     def test_selecting_graph_without_an_active_graph_config_is_rejected_on_the_provider_field(self):
         before = self.state()
@@ -528,14 +505,14 @@ class RejectedGraphInputTests(GraphSettingsTestCase):
         self.assertEqual(self.state(), before)
         self.assertTrue(MicrosoftGraphProviderConfig.load().is_configured)
 
-    def test_activating_graph_without_any_client_secret_is_rejected_on_the_secret_field(self):
+    def test_activating_graph_without_an_installed_certificate_is_rejected_on_the_provider_field(self):
+        self.make_graph(certificate=False)
         before = self.state()
 
-        response = self.client.post(self.edit_url, self.post_data("graph", client_secret=""))
+        response = self.client.post(self.edit_url, self.post_data("graph"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("client_secret", response.context["graph_form"].errors)
-        self.assertContains(response, "A client secret is required for an active configuration.")
+        self.assertEqual(response.context["email_form"].errors["provider"], [PROVIDER_ERROR])
         self.assertEqual(self.state(), before)
 
 
@@ -561,7 +538,7 @@ class SummaryChipTests(GraphSettingsTestCase):
         self.assertEqual(response.context["email_provider"], "Microsoft Graph (mailer@example.com)")
         self.assertEqual(response.context["email_provider_color"], "success")
         self.assert_chip(response, "Microsoft Graph (mailer@example.com)", "success")
-        self.assertNotContains(response, STORED_SECRET)
+        self.assert_no_key_material(response.content)
 
     def test_graph_chip_names_the_from_email_when_no_mailbox_is_set(self):
         self.make_graph(mailbox="")
@@ -644,8 +621,8 @@ class SendTestEmailTests(GraphSettingsTestCase):
         self.assertEqual(sent.headers["Content-Type"], "text/plain")
         self.assertEqual(transport.sent_mime["To"], "ops@example.com")
         self.assertEqual(transport.sent_mime["From"], "I2G Admin <admin@example.com>")
-        self.assertNotIn(STORED_SECRET.encode(), sent.body)
-        self.assertNotContains(response, STORED_SECRET)
+        self.assert_no_key_material(sent.body)
+        self.assert_no_key_material(response.content)
         self.assertNotContains(response, FAKE_TOKEN)
 
     def test_graph_rejection_is_reported_without_response_details_or_secrets(self):
@@ -662,6 +639,6 @@ class SendTestEmailTests(GraphSettingsTestCase):
             response, "Failed to send test email: Microsoft Graph rejected the request (ErrorSendAsDenied)."
         )
         self.assertEqual(len(transport.sent), 1)
-        for leaked in ("leaky detail", STORED_SECRET, FAKE_TOKEN):
+        for leaked in ("leaky detail", FAKE_TOKEN, *private_key_lines()):
             self.assertNotContains(response, leaked)
             self.assertNotIn(leaked, "\n".join(logs.output))

@@ -13,11 +13,10 @@ from apps.core.models import (
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
-from apps.core.tests.graph_helpers import create_graph_config
+from apps.core.tests.graph_helpers import create_graph_config, install_test_certificate, private_key_lines
 
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-SECRET = "not-a-real-graph-secret"
 
 
 class VerifyServiceConfigsGraphTest(TestCase):
@@ -48,24 +47,18 @@ class VerifyServiceConfigsGraphTest(TestCase):
             "is_active": True,
             "tenant_id": TENANT_ID,
             "client_id": CLIENT_ID,
-            "client_secret": SECRET,
             "mailbox": "i2g@g.ucmerced.edu",
         }
         return create_graph_config(scope=("i2g@g.ucmerced.edu",), **values | overrides)
 
-    def _create_unvalidated_graph(self, **overrides):
+    def _create_unvalidated_graph(self, certificate=True, **overrides):
         """An active row that save() would refuse, as a script or an older release could leave behind."""
-        row = MicrosoftGraphProviderConfig(
-            name="Broken",
-            is_active=True,
-            tenant_id=TENANT_ID,
-            client_id=CLIENT_ID,
-            auth_method=MicrosoftGraphProviderConfig.AuthMethod.CLIENT_SECRET,
-            client_secret=SECRET,
-        )
+        row = MicrosoftGraphProviderConfig(name="Broken", is_active=True, tenant_id=TENANT_ID, client_id=CLIENT_ID)
         for field, value in overrides.items():
             setattr(row, field, value)
         MicrosoftGraphProviderConfig.objects.bulk_create([row])
+        if certificate:
+            install_test_certificate(row)
         return row
 
     def _create_smtp(self):
@@ -122,7 +115,7 @@ class VerifyServiceConfigsGraphTest(TestCase):
         scenarios = {
             "no row": lambda: None,
             "inactive row": lambda: self._create_graph(is_active=False),
-            "active row without a secret": lambda: self._create_unvalidated_graph(client_secret=""),
+            "active row without a certificate": lambda: self._create_unvalidated_graph(certificate=False),
             "active row without a tenant": lambda: self._create_unvalidated_graph(tenant_id=""),
             "active row without a client id": lambda: self._create_unvalidated_graph(client_id=""),
         }
@@ -156,7 +149,7 @@ class VerifyServiceConfigsGraphTest(TestCase):
         self.assertIn("FAIL: EmailServiceConfig From address is empty or invalid.", out)
         self.assertNotIn("Microsoft Graph, but", out)
 
-    def test_output_never_contains_the_client_secret(self):
+    def test_output_never_contains_key_material(self):
         self._create_email()
         self._create_graph()
         configured = self._run("--strict")
@@ -165,8 +158,8 @@ class VerifyServiceConfigsGraphTest(TestCase):
         self._create_unvalidated_graph(tenant_id="")
         broken = self._run()
 
-        self.assertNotIn(SECRET, configured)
-        self.assertNotIn(SECRET, broken)
+        for line in private_key_lines():
+            self.assertNotIn(line, configured + broken)
         self.assertIn("FAIL", broken)
 
     # --- Microsoft Graph not selected ---------------------------------------------------------------
