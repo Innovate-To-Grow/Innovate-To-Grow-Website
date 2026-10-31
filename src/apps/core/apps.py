@@ -11,6 +11,7 @@ class CoreConfig(AppConfig):
     def ready(self):
         from django.contrib import admin
 
+        from . import checks  # noqa: F401  # registers the system checks
         from .admin.legacy_view import get_legacy_view_admin_urls
 
         if getattr(admin.AdminSite, "_core_legacy_view_urls_patched", False):

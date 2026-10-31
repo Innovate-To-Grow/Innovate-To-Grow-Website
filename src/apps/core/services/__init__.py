@@ -18,6 +18,9 @@ Subsystem               What it is                                            Im
 ``background_jobs/``    Durable outbox: queue, worker, retry, rate limit.      ``authn``, ``cms``, ``event``, ``mail``
                         Apps register job kinds from ``AppConfig.ready()``
                         with ``register_job_kind`` (dotted handler paths).
+``credential_store/``   Versioned private-key store, read by pinned version:   ``core`` only (system check)
+                        Secrets Manager (prod), 0600 files (dev), memory
+                        (tests). The database keeps only ARN + version id.
 ``db_tools/``           ``safe_orm``: the read-only ORM sandbox (field /       ``cli_admin``, ``system_intelligence``
                         filter allowlists, ``MAX_ROWS``)
 ``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery        ``authn``, ``event``, ``mail``
