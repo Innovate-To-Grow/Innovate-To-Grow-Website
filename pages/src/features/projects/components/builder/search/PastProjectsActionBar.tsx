@@ -153,7 +153,13 @@ export const PastProjectsActionBar = ({
   return (
     <div className="past-projects-action-bar">
       <div className="past-projects-action-bar-header">
-        <h2 id={headingId} className="project-grid-card-title past-projects-action-bar-title" tabIndex={-1}>
+        {/* Hidden visually (not from the outline) by the embed's "Section titles" option: a retry focuses it. */}
+        <h2
+          id={headingId}
+          className="project-grid-card-title past-projects-action-bar-title"
+          tabIndex={-1}
+          data-embed-section="section-title"
+        >
           {title}
         </h2>
         <div className="past-projects-action-bar-group" role="group" aria-label="Add a table">

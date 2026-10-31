@@ -239,6 +239,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       '+ AI Search Table',
     ]);
     expect(within(section).getByText('Help: Buttons, Saving and Tables')).toBeInTheDocument();
+    // The embed's "Section titles" option hides the heading by this marker (visually only: it stays a heading).
+    expect(within(section).getByRole('heading', {level: 2, name: 'Search Tables'})).toHaveAttribute(
+      'data-embed-section',
+      'section-title',
+    );
   });
 
   it('says in its help that tables share one archive and that Refresh starts a table over', () => {
