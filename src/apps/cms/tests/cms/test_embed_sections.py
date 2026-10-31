@@ -40,7 +40,7 @@ class NormalizeHiddenSectionsTests(SimpleTestCase):
         # The project app routes have no `.section-title`; the preset hides their marked page header.
         by_key = {preset["key"]: preset for preset in hidden_section_presets_payload()}
         self.assertEqual(by_key["section_titles"]["label"], "Section titles and page header")
-        for route in ("/current-projects", "/presenting-teams", "/past-projects"):
+        for route in ("/current-projects", "/presenting-teams", "/past-projects", "/all-projects"):
             self.assertEqual(normalize_hidden_sections(["section_titles"], "app_route", route), ["section_titles"])
 
 
@@ -68,6 +68,17 @@ class EffectiveHiddenSectionsTests(TestCase):
         result = effective_hidden_sections(widget)
         # schedule_projects is dropped (not allowed for blocks), section_titles kept.
         self.assertEqual(result, ["section_titles"])
+
+    def test_all_projects_widget_can_hide_its_page_header(self):
+        # /all-projects is an embeddable app route, and marks its header for "Section titles and page header".
+        widget = CMSEmbedWidget(
+            widget_type="app_route",
+            slug="all-projects",
+            app_route="/all-projects",
+            hidden_sections=["section_titles"],
+        )
+        widget.full_clean()
+        self.assertEqual(effective_hidden_sections(widget), ["section_titles"])
 
     def test_non_list_stored_sections_default_to_empty(self):
         widget = CMSEmbedWidget(

@@ -27,10 +27,13 @@ interface PathCandidate {
   exact: boolean;
 }
 
-/** Detail routes and aliases, mapped to the menu page(s) they belong to (first match wins). */
+/**
+ * Detail routes and aliases, mapped to the menu page(s) they belong to (first match wins). Both kinds of project page
+ * are also All Projects', so a menu that lists only All Projects still marks them.
+ */
 const DETAIL_ROUTE_RULES: ReadonlyArray<readonly [RegExp, readonly string[]]> = [
-  [/^\/projects\/[^/]+$/, ['/current-projects']],
-  [/^\/past-projects\/project\/[^/]+$/, ['/past-projects']],
+  [/^\/projects\/[^/]+$/, ['/current-projects', '/all-projects']],
+  [/^\/past-projects\/project\/[^/]+$/, ['/past-projects', '/all-projects']],
   [/^\/past-projects\/[^/]+$/, ['/past-projects']],
   [/^\/news\/[^/]+$/, ['/news']],
   [/^\/events\/[^/]+$/, ['/past-events', '/event', '/events']],

@@ -21,6 +21,7 @@ APP_ROUTES = [
     {"url": "/current-projects", "title": "Current Projects", "embeddable": True},
     {"url": "/presenting-teams", "title": "Presenting Teams", "embeddable": True},
     {"url": "/past-projects", "title": "Past Projects", "embeddable": True},
+    {"url": "/all-projects", "title": "All Projects", "embeddable": True},
     {"url": "/event", "title": "Event", "embeddable": False},
     {"url": "/schedule", "title": "Event Schedule", "embeddable": True, "schedule_selectable": True},
     {"url": "/acknowledgement", "title": "Partners & Sponsors", "embeddable": True},
@@ -53,6 +54,7 @@ PUBLIC_APP_ROUTES = [
     {"url": "/current-projects", "title": "Current Projects"},
     {"url": "/presenting-teams", "title": "Presenting Teams"},
     {"url": "/past-projects", "title": "Past Projects"},
+    {"url": "/all-projects", "title": "All Projects"},
     {"url": "/projects-teams", "title": "Legacy Projects & Teams Redirect"},
     {"url": "/event-registration", "title": "Event Registration"},
     {"url": "/schedule", "title": "Event Schedule"},
@@ -76,7 +78,7 @@ PUBLIC_APP_ROUTES = [
 
 # Public content routes owned by React components, listed in /sitemap.xml next to the published CMS pages. Sign-in,
 # account and link-handling routes are not content and stay out.
-SITEMAP_APP_ROUTES = ["/news", "/schedule", "/current-projects", "/presenting-teams", "/past-projects"]
+SITEMAP_APP_ROUTES = ["/news", "/schedule", "/current-projects", "/presenting-teams", "/past-projects", "/all-projects"]
 
 # React-router dynamic patterns.  ``:name`` represents one non-empty path
 # segment.  Concrete paths matching these patterns are application-owned and
