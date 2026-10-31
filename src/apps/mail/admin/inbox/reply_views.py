@@ -10,7 +10,8 @@ from apps.core.models import EmailServiceConfig
 from apps.core.utils.access import user_can_access_app
 
 from . import services as inbox_api
-from .helpers import build_original_from, build_reply_references, build_reply_subject
+from .detail_views import sent_mail_denied_fragment
+from .helpers import build_original_from, build_reply_references, build_reply_subject, sent_mail_denied
 
 
 def _send_reply_from_post(request, msg, *, reply_subject, reply_references, original_from, reply_url, detail_url):
@@ -58,6 +59,9 @@ def inbox_reply_view(request, uid):
         inbox_api.logger.warning("Inbox message uid=%s could not be loaded for reply: %s", uid, exc)
         messages.error(request, inbox_api.INBOX_MESSAGE_ERROR_MESSAGE)
         return HttpResponseRedirect(list_url)
+    # A reply quotes the original, so replying to Sent mail would disclose it like opening it.
+    if sent_mail_denied(request, inbox_api.INBOX_FOLDER, msg):
+        raise PermissionDenied(inbox_api.SENT_MAIL_DENIED_MESSAGE)
 
     email_config = EmailServiceConfig.load()
     original_subject = msg["subject"]
@@ -98,6 +102,10 @@ def inbox_reply_fragment_view(request, uid):
     except Exception:
         inbox_api.logger.exception("Unexpected error loading reply fragment uid=%s.", uid)
         return _reply_load_error_response(request)
+    if sent_mail_denied(request, inbox_api.INBOX_FOLDER, msg):
+        if request.method == "POST":
+            return JsonResponse({"ok": False, "error": inbox_api.SENT_MAIL_DENIED_MESSAGE}, status=403)
+        return sent_mail_denied_fragment(request)
 
     email_config = EmailServiceConfig.load()
     reply_subject = build_reply_subject(msg["subject"])

@@ -63,6 +63,8 @@ def _probe_read(token: str, mailbox: str, *, expect_allowed: bool, timeout: floa
         response = transport.get(GRAPH_HOST, path, headers, timeout=timeout, max_bytes=transport.MAX_RESPONSE_BYTES)
     except (transport.ConnectFailed, transport.ResponseLost):
         return ProbeResult("read", mailbox, _expected(expect_allowed), None, "", False, "Graph could not be reached.")
+    except transport.RequestNotAllowed as exc:
+        return ProbeResult("read", mailbox, _expected(expect_allowed), None, "", False, str(exc))
     return _judge("read", mailbox, response, allowed_status=200, expect_allowed=expect_allowed)
 
 
@@ -75,6 +77,8 @@ def _probe_send(token: str, sender: str, recipient: str, *, expect_allowed: bool
         response = transport.post(GRAPH_HOST, path, payload, headers, timeout=timeout)
     except (transport.ConnectFailed, transport.ResponseLost):
         return ProbeResult("send", sender, _expected(expect_allowed), None, "", False, "Graph outcome unknown.")
+    except transport.RequestNotAllowed as exc:
+        return ProbeResult("send", sender, _expected(expect_allowed), None, "", False, str(exc))
     result = _judge("send", sender, response, allowed_status=202, expect_allowed=expect_allowed)
     if response.status == 202:
         return ProbeResult(**{**result.__dict__, "note": f"probe email sent to {recipient}"})

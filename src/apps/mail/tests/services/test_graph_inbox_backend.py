@@ -24,7 +24,7 @@ MESSAGE_ID = "AAMkAGI2THVSAAA="
 SUMMARY_KEYS = {"uid", "subject", "from_name", "from_email", "to", "date", "snippet", "is_seen"}
 DETAIL_KEYS = {
     "uid", "subject", "from_name", "from_email", "to", "date", "html", "text",
-    "message_id", "references", "reply_to", "return_path", "authentication_results",
+    "message_id", "references", "reply_to", "return_path", "authentication_results", "from_own_mailbox",
 }  # fmt: skip
 GRAPH_MESSAGE = {
     "id": MESSAGE_ID,
@@ -175,7 +175,7 @@ class SummaryTests(TestCase):
 
 class DetailTests(TestCase):
     def detail(self, raw=RAW_MIME):
-        reader = SimpleNamespace(fetch_mime=lambda uid: raw)
+        reader = SimpleNamespace(fetch_mime=lambda uid: raw, mailbox=MAILBOX)
         return graph_backend.fetch_message(reader, MESSAGE_ID)
 
     def test_has_the_same_keys_as_the_imap_detail(self):
@@ -229,6 +229,25 @@ class DetailTests(TestCase):
                 detail = self.detail()
 
         self.assertEqual((detail["html"], detail["text"]), ("", ""))
+
+    def test_mail_from_the_site_mailbox_or_its_from_address_is_flagged_as_own(self):
+        # A Graph id is unique in the whole mailbox, so the views use this flag to treat such mail as Sent mail.
+        EmailServiceConfig.objects.create(name="Mail", is_active=True, from_email="Noreply@Contoso.com")
+        cases = {
+            f"Innovate to Grow <{MAILBOX.upper()}>": True,
+            "noreply@contoso.com": True,
+            '"Ada Lovelace" <ada@example.com>': False,
+        }
+        for sender, own in cases.items():
+            with self.subTest(sender=sender):
+                detail = self.detail(f"From: {sender}\r\nSubject: s\r\n\r\nbody".encode())
+
+                self.assertIs(detail["from_own_mailbox"], own)
+
+    def test_mail_without_a_sender_is_not_own_even_without_a_from_address(self):
+        EmailServiceConfig.objects.create(name="Mail", is_active=True, from_email="")
+
+        self.assertIs(self.detail(b"Subject: s\r\n\r\nbody")["from_own_mailbox"], False)
 
     def test_header_helpers_tolerate_unparseable_values(self):
         message = SimpleNamespace(get=lambda header: object())

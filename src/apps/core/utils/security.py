@@ -48,6 +48,9 @@ def validate_aws_sns_https_url(url: str) -> str:
 _GUID_RE = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
 _DNS_LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
 _DNS_NAME_RE = re.compile(r"(?=.{3,253}$)" + _DNS_LABEL + r"(?:\." + _DNS_LABEL + r")+")
+# A dot-atom local part (RFC 5322 section 3.2.3) without the HTML metacharacters ' and &.
+_ATEXT = r"[A-Za-z0-9!#$%*+/=?^_`{|}~-]"
+_PLAIN_LOCAL_PART_RE = re.compile(_ATEXT + r"+(?:\." + _ATEXT + r"+)*")
 
 
 def is_guid(value: str) -> bool:
@@ -70,6 +73,23 @@ def is_exchange_mailbox(value: str) -> bool:
     text = str(value or "")
     if is_guid(text):
         return True
+    try:
+        validate_email(text)
+    except ValidationError:
+        return False
+    return True
+
+
+def is_plain_address(value: str) -> bool:
+    """Whether *value* is a bare ``local@domain`` address: a dot-atom local part and a DNS domain name.
+
+    Quoted local parts, display names, comments, address literals and the HTML metacharacters are refused, so the
+    value is safe to show and to hand to a mail provider as one recipient.
+    """
+    text = str(value or "")
+    local, separator, domain = text.rpartition("@")
+    if not separator or not _PLAIN_LOCAL_PART_RE.fullmatch(local) or not _DNS_NAME_RE.fullmatch(domain):
+        return False
     try:
         validate_email(text)
     except ValidationError:

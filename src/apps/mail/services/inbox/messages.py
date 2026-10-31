@@ -135,6 +135,8 @@ def detailed_message(message: Any) -> dict[str, Any]:
         "reply_to": _header_address(headers, "reply-to"),
         "return_path": _header_address(headers, "return-path"),
         "authentication_results": " ".join(headers.get("authentication-results", []) or []),
+        # IMAP UIDs are per folder, so the requested folder already says whether this is Sent mail.
+        "from_own_mailbox": False,
     }
 
 

@@ -6,7 +6,7 @@ last line of defence against path, query and header injection through values ent
 
 from django.test import SimpleTestCase
 
-from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_guid
+from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_guid, is_plain_address
 
 GUID = "72f988bf-86f1-41af-91ab-2d7cd011db47"
 # 63 characters is the longest DNS label; 253 characters is the longest DNS name.
@@ -167,3 +167,45 @@ class IsExchangeMailboxTests(SimpleTestCase):
         for value in values:
             with self.subTest(value=value):
                 self.assertFalse(is_exchange_mailbox(value))
+
+
+class IsPlainAddressTests(SimpleTestCase):
+    """Bare ``local@domain`` addresses only: the inbox reply To / Cc come from a sender-controlled From header."""
+
+    def test_accepts_ordinary_addresses(self):
+        for value in (
+            "ada@example.com",
+            "First.Last+tag@mail.example.co.uk",
+            "a_b-c=d@example.org",
+            "x@" + LONGEST_NAME,
+        ):
+            with self.subTest(value=value):
+                self.assertTrue(is_plain_address(value))
+
+    def test_rejects_quoted_names_comments_literals_and_markup(self):
+        values = [
+            "",
+            None,
+            "ada",
+            "@example.com",
+            "ada@",
+            '"ada"@example.com',
+            '"ada <img src=x onerror=alert(1)>"@example.com',
+            "Ada <ada@example.com>",
+            "<ada@example.com>",
+            "ada@example.com (Ada)",
+            "ada lovelace@example.com",
+            "ada..lovelace@example.com",
+            ".ada@example.com",
+            "o'brien@example.com",
+            "a&b@example.com",
+            "ada@[192.0.2.1]",
+            "ada@localhost",
+            "ada@example.com\n",
+            "ada@example.com\r\nBcc: evil@example.com",
+            "ada@exa_mple.com",
+            "ada@example.com.",
+        ]
+        for value in values:
+            with self.subTest(value=value):
+                self.assertFalse(is_plain_address(value))

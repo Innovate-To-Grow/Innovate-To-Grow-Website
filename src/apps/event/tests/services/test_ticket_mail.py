@@ -1,4 +1,6 @@
+import base64
 import datetime
+import json
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
@@ -13,10 +15,12 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
+from apps.core.tests.services.test_email_graph import GraphFixtureMixin, make_provider
 from apps.event.models import EventRegistration, Ticket
 from apps.event.services.ticket.jobs import send_ticket_email_job
 from apps.event.services.ticket.mail import (
     _build_mime_message,
+    _build_ticket_message,
     _issue_ticket_login_link,
     _send_via_ses,
     send_ticket_email,
@@ -54,6 +58,8 @@ class SendTicketEmailTest(TestCase):
         self.assertEqual(message.attachments[1].content_type, "text/calendar")
         self.assertEqual(message.attachments[1].filename, "event.ics")
         self.assertIn("cid:ticket-barcode", message.html_body)
+        # The ticket code and the login link are credentials: no copy may stay in the sender's Sent Items.
+        self.assertIs(message.keep_sent_copy, False)
 
     @patch("apps.event.services.ticket.mail.deliver_email")
     @patch("apps.event.services.ticket.mail._load_config")
@@ -517,3 +523,32 @@ class TicketJobRetryAfterTest(TestCase):
         self.assertNotIsInstance(caught.exception, ProviderDeliveryError)
         self.registration.refresh_from_db()
         self.assertNotEqual(self.registration.ticket_email_error, "")
+
+
+class TicketThroughGraphTest(GraphFixtureMixin, TestCase):
+    """Through Microsoft Graph the ticket goes as JSON sendMail: no Sent Items copy, barcode still inline."""
+
+    def test_the_ticket_is_json_with_save_to_sent_items_false_and_its_attachments(self):
+        event = make_event()
+        registration = EventRegistration.objects.create(
+            member=make_member(), event=event, ticket=Ticket.objects.create(event=event, name="GA")
+        )
+        message = _build_ticket_message(registration, config=_mock_config(), login_url="https://i2g.example/l#token=t")
+
+        make_provider().send(message)
+
+        request = self.fake.send_requests[0]
+        self.assertEqual(request.headers["Content-Type"], "application/json")
+        body = json.loads(request.body)
+        self.assertIs(body["saveToSentItems"], False)
+        sent = body["message"]
+        self.assertIn("https://i2g.example/l#token=t", sent["body"]["content"])
+        self.assertIn("cid:ticket-barcode", sent["body"]["content"])
+        barcode, calendar = sent["attachments"]
+        self.assertEqual(
+            {key: barcode[key] for key in ("name", "contentType", "isInline", "contentId")},
+            {"name": "ticket-barcode.png", "contentType": "image/png", "isInline": True, "contentId": "ticket-barcode"},
+        )
+        self.assertEqual(base64.b64decode(barcode["contentBytes"]), message.attachments[0].content)
+        self.assertEqual((calendar["name"], calendar["contentType"]), ("event.ics", "text/calendar"))
+        self.assertNotIn("isInline", calendar)

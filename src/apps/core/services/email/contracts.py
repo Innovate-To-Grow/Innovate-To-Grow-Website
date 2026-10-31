@@ -19,7 +19,12 @@ class EmailAttachment:
 
 @dataclass(frozen=True)
 class EmailMessage:
-    """A complete outbound message independent of any delivery provider."""
+    """A complete outbound message independent of any delivery provider.
+
+    ``keep_sent_copy=False`` marks a message that carries a credential (a sign-in code, a login link, an admin
+    invitation, a ticket): a provider that would otherwise file a copy in the sender mailbox's Sent Items
+    (Microsoft Graph) must not, because anyone who can read that folder could use it.
+    """
 
     subject: str
     to: tuple[str, ...]
@@ -30,6 +35,7 @@ class EmailMessage:
     reply_to: tuple[str, ...] = ()
     attachments: tuple[EmailAttachment, ...] = ()
     headers: dict[str, str] = field(default_factory=dict)
+    keep_sent_copy: bool = True
 
     @property
     def envelope_recipients(self) -> tuple[str, ...]:

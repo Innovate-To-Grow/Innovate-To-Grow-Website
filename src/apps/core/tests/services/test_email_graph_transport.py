@@ -39,7 +39,7 @@ class GraphTransportPostTests(SimpleTestCase):
         connection_class.return_value = connection
         caller_headers = {"Authorization": "Bearer fake-token"}
 
-        response = post("graph.microsoft.com", "/v1.0/x", b"payload", caller_headers, timeout=12)
+        response = post("graph.microsoft.com", "/v1.0/users/x/sendMail", b"payload", caller_headers, timeout=12)
 
         self.assertEqual(response, HttpResponse(202, {"request-id": "abc", "retry-after": "5"}, b"{}"))
         args, kwargs = connection_class.call_args
@@ -52,7 +52,10 @@ class GraphTransportPostTests(SimpleTestCase):
         self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
         self.assertEqual([call[0] for call in connection.method_calls], ["connect", "request", "getresponse", "close"])
         connection.request.assert_called_once_with(
-            "POST", "/v1.0/x", body=b"payload", headers={"User-Agent": USER_AGENT, "Authorization": "Bearer fake-token"}
+            "POST",
+            "/v1.0/users/x/sendMail",
+            body=b"payload",
+            headers={"User-Agent": USER_AGENT, "Authorization": "Bearer fake-token"},
         )
         self.assertEqual(caller_headers, {"Authorization": "Bearer fake-token"})
 

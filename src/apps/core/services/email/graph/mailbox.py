@@ -1,6 +1,7 @@
-"""Read a mailbox through Microsoft Graph with ``Mail.Read``: folder listings and raw MIME, never changing anything.
+"""Read a mailbox through Microsoft Graph: folder listings and raw MIME, never changing anything.
 
-``Mail.Read`` cannot update messages, so opening a message here never marks it read in Outlook.
+Only GET requests are made, and the transport refuses any other request before connecting, so opening a message
+here never marks it read in Outlook, and nothing is moved or deleted, even while the app holds ``Mail.ReadWrite``.
 """
 
 import json
@@ -83,6 +84,8 @@ class GraphMailboxReader:
             response = transport.get(GRAPH_HOST, path, headers, timeout=self.timeout, max_bytes=max_bytes)
         except (transport.ConnectFailed, transport.ResponseLost) as exc:
             raise GraphReadError("Microsoft Graph could not be reached.") from exc
+        except transport.RequestNotAllowed as exc:
+            raise GraphReadError(str(exc)) from exc
         if response.status == 200:
             return response
         self._raise_for(response)

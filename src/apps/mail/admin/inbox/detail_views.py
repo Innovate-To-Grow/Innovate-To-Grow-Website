@@ -10,7 +10,7 @@ from apps.core.utils.access import user_can_access_app
 from apps.core.utils.json_helpers import safe_json
 
 from . import services as inbox_api
-from .helpers import message_body_html, parse_folder
+from .helpers import message_body_html, parse_folder, sent_mail_denied
 
 
 def inbox_detail_view(request, uid):
@@ -21,6 +21,8 @@ def inbox_detail_view(request, uid):
         raise PermissionDenied("You do not have permission to access the mail inbox.")
     list_url = reverse("admin:mail_inbox_list")
     folder = parse_folder(request)
+    if sent_mail_denied(request, folder):
+        raise PermissionDenied(inbox_api.SENT_MAIL_DENIED_MESSAGE)
 
     try:
         msg = inbox_api.fetch_inbox_message(uid, folder=folder)
@@ -32,6 +34,8 @@ def inbox_detail_view(request, uid):
         inbox_api.logger.exception("Unexpected error fetching message uid=%s.", uid)
         messages.error(request, inbox_api.INBOX_MESSAGE_ERROR_MESSAGE)
         return HttpResponseRedirect(list_url)
+    if sent_mail_denied(request, folder, msg):
+        raise PermissionDenied(inbox_api.SENT_MAIL_DENIED_MESSAGE)
 
     body_html = message_body_html(msg)
     scam_analysis = inbox_api.assess_email(msg, folder=folder)
@@ -54,6 +58,8 @@ def inbox_detail_fragment_view(request, uid):
     if not user_can_access_app(request.user, "mail"):
         raise PermissionDenied("You do not have permission to access the mail inbox.")
     folder = parse_folder(request)
+    if sent_mail_denied(request, folder):
+        return sent_mail_denied_fragment(request)
     try:
         msg = inbox_api.fetch_inbox_message(uid, folder=folder)
     except inbox_api.InboxError as exc:
@@ -70,6 +76,8 @@ def inbox_detail_fragment_view(request, uid):
             "admin/mail/inbox/_fragment_error.html",
             {"error_message": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE},
         )
+    if sent_mail_denied(request, folder, msg):
+        return sent_mail_denied_fragment(request)
 
     body_html = message_body_html(msg)
     scam_analysis = inbox_api.assess_email(msg, folder=folder)
@@ -84,4 +92,14 @@ def inbox_detail_fragment_view(request, uid):
             "scam_analysis": scam_analysis,
             "folder": folder,
         },
+    )
+
+
+def sent_mail_denied_fragment(request):
+    """The preview-pane answer when the user may not read this Sent mail (``helpers.sent_mail_denied``)."""
+    return TemplateResponse(
+        request,
+        "admin/mail/inbox/_fragment_error.html",
+        {"error_message": inbox_api.SENT_MAIL_DENIED_MESSAGE},
+        status=403,
     )

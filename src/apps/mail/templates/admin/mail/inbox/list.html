@@ -888,7 +888,7 @@
       credentials: 'same-origin',
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
     })
-      .then(function (r) { if (!r.ok) throw new Error(); return r.text(); })
+      .then(fragmentText)
       .then(function (html) {
         content.innerHTML = html;
         initPreviewIframe(content);
@@ -910,7 +910,7 @@
       credentials: 'same-origin',
       headers: { 'X-Requested-With': 'XMLHttpRequest' },
     })
-      .then(function (r) { if (!r.ok) throw new Error(); return r.text(); })
+      .then(fragmentText)
       .then(function (html) {
         replyArea.innerHTML = html;
         replyArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -918,6 +918,29 @@
       .catch(function () {
         replyArea.innerHTML = '<div class="p-4 text-sm text-red-600">Failed to load reply form.</div>';
       });
+  }
+
+  // The message names the reply's addresses, which come from the original sender: it is inserted as text only,
+  // never as HTML.
+  function showReplySent(replyArea, message) {
+    var banner = document.createElement('div');
+    banner.className = 'flex items-center gap-2 py-4 text-green-600';
+    var icon = document.createElement('span');
+    icon.className = 'material-symbols-outlined !text-[20px]';
+    icon.textContent = 'check_circle';
+    var label = document.createElement('span');
+    label.className = 'text-sm font-medium';
+    label.textContent = typeof message === 'string' && message ? message : 'Reply sent.';
+    banner.appendChild(icon);
+    banner.appendChild(label);
+    replyArea.textContent = '';
+    replyArea.appendChild(banner);
+  }
+
+  // A 403 fragment explains why (Sent mail is for superusers only), so it is shown like any other fragment.
+  function fragmentText(r) {
+    if (!r.ok && r.status !== 403) throw new Error();
+    return r.text();
   }
 
   function submitReplyForm(form, replyArea) {
@@ -946,7 +969,7 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.ok) {
-          replyArea.innerHTML = '<div class="flex items-center gap-2 py-4 text-green-600"><span class="material-symbols-outlined !text-[20px]">check_circle</span><span class="text-sm font-medium">' + data.message + '</span></div>';
+          showReplySent(replyArea, data.message);
         } else {
           if (statusEl) {
             statusEl.className = 'mt-2 text-sm text-red-600';

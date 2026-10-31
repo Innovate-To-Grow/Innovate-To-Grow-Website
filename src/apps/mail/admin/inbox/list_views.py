@@ -10,7 +10,7 @@ from apps.core.utils.access import user_can_access_app
 from apps.mail.services.inbox import graph_backend
 
 from . import services as inbox_api
-from .helpers import parse_folder, parse_limit
+from .helpers import parse_folder, parse_limit, sent_mail_restricted
 
 
 def inbox_list_view(request):
@@ -35,6 +35,10 @@ def inbox_fragment_view(request):
     inbox_messages = []
     limit = parse_limit(request)
     folder = parse_folder(request)
+    sent_folder_allowed = not sent_mail_restricted(request.user)
+    if not sent_folder_allowed:
+        # The Sent tab is not offered, and a remembered or hand-written ?folder=SENT shows the Inbox instead.
+        folder = inbox_api.INBOX_FOLDER
     force_refresh = request.GET.get("refresh") == "1"
 
     try:
@@ -56,6 +60,7 @@ def inbox_fragment_view(request):
             "limit": limit,
             "limit_choices": inbox_api.INBOX_LIMIT_CHOICES,
             "folder": folder,
+            "sent_folder_allowed": sent_folder_allowed,
         },
     )
 
@@ -68,7 +73,7 @@ def _inbox_account() -> dict[str, str]:
         inbox_api.logger.exception("Could not resolve the Microsoft Graph inbox reader.")
         reader = None
     if reader is not None:
-        return {"account": reader.mailbox, "source_label": "Source", "source": "Microsoft Graph (Mail.Read)"}
+        return {"account": reader.mailbox, "source_label": "Source", "source": "Microsoft Graph"}
     gmail_config = GmailAccessAccount.load()
     return {
         "account": gmail_config.gmail_username or "Not configured",

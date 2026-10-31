@@ -145,6 +145,9 @@ class SendViaSesTests(TestCase):
         self.assertEqual(result.message_id, "SES-1")
         self.assertEqual(result.error, "")
         self.assertEqual(deliver.call_args.kwargs["configuration_set"], "cfg")
+        # Campaigns need List-Unsubscribe, which Graph's JSON form cannot carry, so they keep the MIME path and
+        # its Sent Items copy (see docs/integrations/microsoft-graph-email.md, "Sent Items").
+        self.assertIs(deliver.call_args.args[0].keep_sent_copy, True)
 
     def test_failure_returns_error(self):
         result, _ = self._send(side_effect=UncertainEmailDeliveryError("could not be confirmed"))

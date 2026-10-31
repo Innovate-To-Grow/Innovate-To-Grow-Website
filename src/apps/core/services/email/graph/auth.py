@@ -26,7 +26,7 @@ from .certificate import build_client_assertion
 from .credential import stored_key
 from .errors import token_endpoint_error
 
-AUTHORITY_HOST = "login.microsoftonline.com"
+AUTHORITY_HOST = transport.AUTHORITY_HOST
 RESOURCE_SCOPE = "https://graph.microsoft.com/.default"
 REQUEST_TIMEOUT = 30
 EXPIRY_MARGIN_SECONDS = 300

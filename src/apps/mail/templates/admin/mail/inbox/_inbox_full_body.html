@@ -17,12 +17,15 @@
                 <span class="material-symbols-outlined !text-[16px]">inbox</span>
                 Inbox
             </button>
+            {% comment %}Sent Items of the Microsoft Graph mailbox is for superusers only (helpers.sent_mail_restricted).{% endcomment %}
+            {% if sent_folder_allowed %}
             <button type="button" data-inbox-folder="SENT" role="tab"
                     aria-selected="{% if folder == 'SENT' %}true{% else %}false{% endif %}"
                     class="i2g-mail-folder-tab{% if folder == 'SENT' %} i2g-mail-folder-tab--active{% endif %} cursor-pointer font-sans">
                 <span class="material-symbols-outlined !text-[16px]">send</span>
                 Sent
             </button>
+            {% endif %}
         </div>
 
         <div class="i2g-mail-toolbar__actions">

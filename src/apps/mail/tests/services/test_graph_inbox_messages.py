@@ -168,7 +168,7 @@ class InboxAccountTests(GraphInboxFixtureMixin, TestCase):
 
         self.assertEqual(
             _inbox_account(),
-            {"account": MAILBOX, "source_label": "Source", "source": "Microsoft Graph (Mail.Read)"},
+            {"account": MAILBOX, "source_label": "Source", "source": "Microsoft Graph"},
         )
 
     def test_gmail_account_otherwise(self):

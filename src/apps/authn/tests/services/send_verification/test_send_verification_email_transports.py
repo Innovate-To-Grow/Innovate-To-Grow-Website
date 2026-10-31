@@ -1,10 +1,9 @@
 """Protect OTP state across the real SES/SMTP/Microsoft Graph adapters with mocked network clients."""
 
-import base64
+import json
 import logging
 import smtplib
 from contextlib import ExitStack, contextmanager
-from email import message_from_bytes, policy
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -189,10 +188,17 @@ class ProtectedEmailTransportTests(TestCase):
             host, path, body, headers = sendmail.call_args.args
             self.assertEqual((host, path), ("graph.microsoft.com", "/v1.0/users/sender@example.com/sendMail"))
             self.assertEqual(headers["Authorization"], f"Bearer {GRAPH_TOKEN}")
-            mime = message_from_bytes(base64.b64decode(body), policy=policy.default)
-            self.assertEqual(str(mime["To"]), "member@example.com")
-            self.assertEqual(str(mime["From"]), "Verification <sender@example.com>")
-            self.assertIn("123456", mime.get_body(preferencelist=("html", "plain")).get_content())
+            # A sign-in code must leave no copy in the sender's Sent Items: JSON sendMail, saveToSentItems false.
+            self.assertEqual(headers["Content-Type"], "application/json")
+            request = json.loads(body)
+            self.assertIs(request["saveToSentItems"], False)
+            message = request["message"]
+            self.assertEqual(message["toRecipients"], [{"emailAddress": {"address": "member@example.com"}}])
+            self.assertEqual(
+                message["from"], {"emailAddress": {"address": "sender@example.com", "name": "Verification"}}
+            )
+            self.assertEqual(message["body"]["contentType"], "HTML")
+            self.assertIn("123456", message["body"]["content"])
             for line in private_key_lines():
                 self.assertNotIn(line.encode(), body)
         # Neither the public answer nor any log line may carry key material, a token or Graph's response body.

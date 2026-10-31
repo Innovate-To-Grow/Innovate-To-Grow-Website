@@ -52,10 +52,15 @@ selection. There is no per-message routing or automatic failover.
 
 Microsoft Graph sends each message as base64 MIME with `POST /users/{mailbox}/sendMail`,
 authenticated by an app-only access token (OAuth 2.0 client-credentials flow).
+A message that carries a credential (`EmailMessage(keep_sent_copy=False)`: verification
+codes, admin invitations, tickets) is sent in Graph's JSON format with
+`saveToSentItems: false` instead, so no copy stays in the mailbox's Sent Items.
 Tokens are cached in process memory only, never in the database or the shared cache.
-Graph answers `202 Accepted` with no message ID, so the MIME `Message-ID` is recorded
-instead. See [Microsoft Graph email](../integrations/microsoft-graph-email.md) for the
-Entra setup, mailbox scoping, limits, and error reference.
+The Graph transport refuses every request except the token request, `sendMail` and
+three read-only GETs before connecting. Graph answers `202 Accepted` with no message
+ID, so the MIME `Message-ID` is recorded instead. See
+[Microsoft Graph email](../integrations/microsoft-graph-email.md) for the Entra setup,
+mailbox scoping, limits, and error reference.
 
 Delivery fails closed unless the selected provider and sender are structurally
 configured. A failed or uncertain request is never retried through the other

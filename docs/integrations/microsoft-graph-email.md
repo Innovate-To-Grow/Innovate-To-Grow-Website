@@ -9,18 +9,20 @@ credential rotation, retention, emergency revocation, the limits, and what each 
 The Microsoft Graph provider sends mail from an Outlook / Exchange Online mailbox and, with read
 permission, shows that mailbox in the admin inbox. The backend signs in as an Entra application (OAuth 2.0
 client-credentials flow with a **certificate**, `Mail.Send` and `Mail.Read` application permissions, no
-signed-in user) and calls Graph `sendMail` once per message. The request body is the complete MIME
-message the app builds for every provider, base64-encoded, so every header (`List-Unsubscribe`,
+signed-in user) and calls Graph `sendMail` once per message. The request body is usually the complete
+MIME message the app builds for every provider, base64-encoded, so every header (`List-Unsubscribe`,
 `In-Reply-To`, `References`), inline image, and attachment (such as the ticket calendar file) is sent
-as built. Graph's JSON message format would accept only custom headers that start with `x-`.
+as built. Graph always files a copy of a MIME `sendMail` in the sender mailbox's Sent Items, so mail that
+carries a credential (sign-in codes and links, admin invitations, tickets) is sent in Graph's JSON format
+with `saveToSentItems: false` instead; see [Sent Items](#sent-items-and-credential-mail).
 
 It is the third choice of the **Provider** setting:
 
 | | AWS SES | SMTP | Microsoft Graph |
 |---|---|---|---|
 | Credentials | Shared AWS IAM key in Secrets Manager, referenced by `AWSCredentialConfig` | Host, port, optional username and password (`SMTPProviderConfig`) | Entra tenant ID and client ID, an installed certificate whose private key is kept in the credential store (AWS Secrets Manager in production), and a mailbox scope (`MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`) |
-| Transport | SES API, raw MIME | SMTP submission | HTTPS `sendMail`, base64 MIME |
-| Message ID recorded | SES message ID | MIME `Message-ID` | MIME `Message-ID` |
+| Transport | SES API, raw MIME | SMTP submission | HTTPS `sendMail`: base64 MIME, or JSON for credential mail |
+| Message ID recorded | SES message ID | MIME `Message-ID` | MIME `Message-ID` (none for a JSON send) |
 | Delivery events | Yes, through the [SNS webhook](ses-event-tracking.md) | No | No |
 | Provider limits | SES account quotas | The SMTP server's | Per mailbox: about 30 messages per minute, 10,000 recipients per day |
 
@@ -279,13 +281,23 @@ a failure makes the command exit non-zero. It reads stored settings only and doe
   with the private key (`PS256`, header `x5t#S256` = the certificate's SHA-256 thumbprint, valid for 5
   minutes, a fresh `jti` each time), never the key itself. It then sends
   `POST https://graph.microsoft.com/v1.0/users/{mailbox}/sendMail` with `Content-Type: text/plain` and
-  the base64 MIME as the body. Only those two hosts are used, over TLS 1.2 or later, without following
-  redirects or using proxy environment variables, with a 30-second timeout per request. The backend and
-  worker containers need outbound HTTPS to both.
+  the base64 MIME as the body, or with `Content-Type: application/json` for credential mail. Only those
+  two hosts are used, over TLS 1.2 or later, without following redirects or using proxy environment
+  variables, with a 30-second timeout per request. The backend and worker containers need outbound HTTPS
+  to both.
+- **Only five kinds of request.** The transport (`transport.py`, `ALLOWED_REQUESTS`) refuses, before
+  opening a connection, every request except the token request, `POST …/users/{mailbox}/sendMail`,
+  `GET …/mailFolders/{inbox|sentitems}/messages`, `GET …/mailFolders/inbox` (the access-check probe) and
+  `GET …/messages/{id}/$value`. No code path can create a draft, reply, move, flag, mark read or delete
+  mail, whatever permissions the Entra app holds. OIT reported configuring `Mail.ReadWrite` rather than the
+  approved `Mail.Read` (not verified on our side); the allowlist keeps the site itself from using the extra
+  permission, but it does not limit someone who obtains the key or a token. A refused request is the
+  permanent error `The site does not make this Microsoft Graph request.`
 - **Message ID.** `sendMail` answers `202 Accepted` with no body and no message ID, so the app records
   the `Message-ID` header it generated as the provider message ID in the Email Log (`RecipientLog`,
   provider `graph`), as it does for SMTP. Its domain part is the **From Email** domain
-  (`<...@g.ucmerced.edu>`), never the server's internal host name.
+  (`<...@g.ucmerced.edu>`), never the server's internal host name. A JSON send sets no `Message-ID`
+  (Exchange assigns one) and reports none; no current JSON-sent message is recorded in the Email Log.
 - **202 means queued, not delivered.** A later failure, such as an unknown recipient or a rejection by
   the recipient's server, comes back as a non-delivery report in the sender mailbox's Inbox. The app
   shows that Inbox to admins (see [Admin inbox](#admin-inbox)) but does not parse it, and receives no
@@ -293,13 +305,11 @@ a failure makes the command exit non-zero. It reads stored settings only and doe
   `complained`, as with SMTP. Someone should watch the sender mailbox
   for non-delivery reports. The Delivery Dashboard charts SES CloudWatch metrics only and says so in a
   notice while another provider is active.
-- **Sent Items.** Every message is saved in the sender mailbox's Sent Items folder, and MIME mode cannot
-  turn that off. A campaign leaves one copy per recipient. Set a retention policy for the folder (the
-  period is a records-policy decision) and watch the mailbox size: a full mailbox makes Graph answer
-  `507`, and sending stops until space is freed.
-- **No Bcc.** The app builds no Bcc header and Graph has no separate envelope, so a Bcc recipient would
-  silently receive nothing. Such a message is refused as a permanent error. No current feature sends
-  Bcc.
+- **Sent Items.** A MIME `sendMail` is always saved in the sender mailbox's Sent Items folder; credential
+  mail is sent as JSON and leaves no copy. See [Sent Items and credential mail](#sent-items-and-credential-mail).
+- **Bcc.** The MIME builder writes no Bcc header and Graph has no separate envelope for MIME, so a MIME
+  message with a Bcc recipient is refused as a permanent error rather than silently not delivered to it. The
+  JSON form has its own Bcc list and delivers it. No current feature sends Bcc.
 - **Tokens.** Access tokens are kept only in each process's memory (never in the database, the cache,
   or on disk), keyed by tenant, client ID, the pinned key version and the certificate thumbprint, and renewed shortly before
   they expire. Each process therefore requests its own token about once an hour. A `401` or `403` from Graph
@@ -323,11 +333,13 @@ a failure makes the command exit non-zero. It reads stored settings only and doe
 
 | Concern | Location |
 |---------|----------|
-| Sending, token cache, HTTPS, error mapping | `src/apps/core/services/email/graph/` (`provider.py`, `auth.py`, `transport.py`, `errors.py`) |
+| Sending, token cache, HTTPS and its request allowlist, error mapping | `src/apps/core/services/email/graph/` (`provider.py`, `auth.py`, `transport.py`, `errors.py`) |
+| JSON `sendMail` body for credential mail | `src/apps/core/services/email/graph/json_message.py` |
 | Certificate facts and client assertions | `src/apps/core/services/email/graph/certificate.py` |
 | Certificate input, stored key, Entra test, install / rollback / remove | `src/apps/core/services/email/graph/credential/` |
 | Mailbox scope enforcement | `src/apps/core/services/email/graph/access.py` |
 | Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox.py`, `src/apps/mail/services/inbox/graph_backend.py` |
+| Sent mail access in the admin inbox | `src/apps/mail/admin/inbox/helpers.py` (`sent_mail_restricted`, `sent_mail_denied`) |
 | Access validation | `src/apps/core/services/email/graph/access_check.py`, `manage.py verify_graph_access` |
 | Provider selection | `src/apps/core/services/email/registry.py` |
 | Settings and scope models | `src/apps/core/models/base/service_credentials/microsoft_graph.py` |
@@ -335,18 +347,64 @@ a failure makes the command exit non-zero. It reads stored settings only and doe
 | Certificate pages, certificate panel, mailbox scope inline and its guard | `src/apps/core/admin/service_credentials/microsoft_graph*.py` |
 | Notification Delivery (selects the provider; Graph read-only) | `src/apps/mail/admin/settings/` |
 
+### Sent Items and credential mail
+
+A MIME `sendMail` is always saved in the sender mailbox's Sent Items folder; only the JSON format can turn
+that off (`saveToSentItems: false`). A copy of a sign-in code or link there would let anyone who can read
+the folder (mailbox delegates in Outlook, or admin staff in the Sent folder of **Mail → Inbox**) sign in as
+the recipient, so a message marked `keep_sent_copy=False` (`apps.core.services.email.EmailMessage`) is sent
+as JSON. These are marked:
+
+- **Verification codes**, every purpose (`send_verification_email`: login, admin login, register, password
+  reset and change, account deletion, contact and event-registration email checks), with the sign-in links
+  they carry: the code or link signs in or authorises an account change.
+- **Admin invitations**: the acceptance URL creates a staff account for whoever holds it.
+- **Ticket emails**: the ticket code is the check-in credential, and the member's login link signs in.
+
+The JSON form carries the subject, one body (the HTML body when there is one, otherwise the text body), To,
+Cc, Bcc, Reply-To, attachments (inline ones keep their Content-ID, so the ticket barcode still displays) and
+custom headers whose names start with `x-`. Graph accepts no other custom header in this form, so any other
+header is left out and its name logged at WARNING
+(`Microsoft Graph JSON sendMail cannot carry these headers, so they were left out: …`); the marked messages
+set none.
+
+Everything else stays MIME and keeps a Sent Items copy: campaigns (one copy per recipient; they need
+`List-Unsubscribe`), inbox replies, security and subscription notices, the test email and access-check
+probes. **Campaigns that use `{{login_link}}` therefore leave live login links in Sent Items** for as long
+as each link is valid. Only superusers can open Sent mail in **Mail → Inbox** (see
+[Admin inbox](#admin-inbox)); the M365 admins should keep human Full Access to the mailbox to a minimum.
+Set a retention policy for the folder (the period is a records-policy decision) and watch the mailbox size:
+a full mailbox makes Graph answer `507`, and sending stops until space is freed.
+
 ## Admin inbox
 
 When the active Graph configuration grants read permission on its sending mailbox, **Mail → Inbox** reads
 that mailbox through Graph instead of Gmail IMAP; otherwise the Gmail import account is used as before.
-The page shows the mailbox and `Microsoft Graph (Mail.Read)` as the source.
+The page shows the mailbox and `Microsoft Graph` as the source.
 
 - It lists the newest messages of **Inbox** or **Sent Items**
   (`GET /v1.0/users/{mailbox}/mailFolders/{inbox|sentitems}/messages`) and opens a message as its original
   MIME (`GET /v1.0/users/{mailbox}/messages/{id}/$value`), so the scam detector still sees
   `Authentication-Results`, `Reply-To`, and `Return-Path`, and replies keep `In-Reply-To` / `References`.
-- `Mail.Read` cannot change anything: opening a message does not mark it read in Outlook, and nothing is
-  moved or deleted. Replies are sent through the email provider (Graph `sendMail`).
+- **Sent mail is for superusers only.** Sent Items holds what the site sends as MIME, including campaign
+  login links, so other staff with the Mail app see no **Sent** tab, a request for the Sent folder shows the
+  Inbox instead, and opening or replying to Sent mail answers `403`. A Graph message ID is unique in the
+  whole mailbox rather than per folder, so any message whose sender is the sending mailbox or the
+  **From Email** counts as Sent mail too, whichever folder the link names (a reply quotes the original, so
+  it is refused like opening it). If the inbox backend cannot be resolved, Sent mail stays hidden. The
+  Gmail IMAP inbox is unchanged.
+- **No AI review of Sent mail.** A message in the medium rule-score band normally gets a second opinion
+  from Amazon Bedrock (sender, Reply-To, subject, `Authentication-Results` and the first 4,000 characters of
+  the body). Sent mail, by folder or by sender as above, keeps the rule score only and is never sent to
+  Bedrock: the site wrote it, and it can hold live codes (a password-reset code scores in the medium band
+  because of the word "password"). Inbox mail is still reviewed.
+- **Replies.** To and Cc must be plain addresses (`name@example.com`); a quoted local part, a display name,
+  a comment or an HTML metacharacter is refused with `Use plain email addresses such as name@example.com in
+  To and Cc.` before anything is sent, because the To address is copied from the original sender's From
+  header. The confirmation is shown as text, never as HTML.
+- The site only reads: opening a message does not mark it read in Outlook, and nothing is moved or deleted
+  (see [Only five kinds of request](#how-it-behaves)). Replies are sent through the email provider (Graph
+  `sendMail`, MIME, with a Sent Items copy).
 - Lists are cached for 5 minutes and opened messages for 30 minutes in the site cache, as with IMAP;
   **Refresh** reloads the list. A message larger than 25 MB is not shown; open it in Outlook.
 - Read failures show "Inbox is not available…" and write one WARNING log line,
@@ -371,9 +429,10 @@ schedule (or after each deploy) to catch certificate expiry.
 
 ## Retention
 
-- **Mailbox.** Every message the site sends stays in Sent Items (one copy per campaign recipient); received
-  mail stays in the Inbox. Retention is set by the UC Merced Microsoft 365 records policy for the mailbox,
-  not by the site.
+- **Mailbox.** Every MIME message the site sends stays in Sent Items (one copy per campaign recipient,
+  including any `{{login_link}}`); credential mail sent as JSON leaves no copy there. Received mail stays in
+  the Inbox. Retention is set by the UC Merced Microsoft 365 records policy for the mailbox, not by the
+  site; a short Sent Items period limits how long campaign login links sit there.
 - **Site.** The Email Log (`RecipientLog`) and campaign records keep recipients, subjects, status, and the
   `Message-ID`; inbox views are cached for at most 30 minutes; access tokens live only in process memory
   for about an hour. The site stores no copy of received mail.
@@ -473,8 +532,10 @@ Every failure is classified so callers know whether sending again is safe:
 - **Transient**: nothing was sent, or Microsoft asked for a later retry. Sending again is safe.
 - **Permanent**: sending the same message again will fail the same way. Fix the cause first.
 - **Uncertain**: Graph may have accepted the message, so sending again could duplicate it. It is never
-  retried automatically. The sender mailbox's Sent Items folder is the best evidence: a copy there
-  means Exchange accepted the message. Wait and check again before sending it again.
+  retried automatically. For a MIME send the sender mailbox's Sent Items folder is the best evidence: a
+  copy there means Exchange accepted the message. Wait and check again before sending it again. Credential
+  mail (JSON, see [Sent Items and credential mail](#sent-items-and-credential-mail)) leaves no copy, so
+  for it ask the recipient or use the Exchange message trace.
 
 How a campaign records these depends on how it runs. With the background worker enabled
 (`BACKGROUND_JOBS_ENABLED`, see [Environments](../deployment/environments.md)) a recipient becomes
@@ -538,8 +599,9 @@ A token request sends no mail, so these failures are always certain: nothing was
 | The pinned key cannot be read from the credential store | Transient (throttling, outage, timeout) or Permanent | `The Microsoft Graph private key could not be read: <fixed text> (<AWS error code>)` | Permanent codes such as `AccessDeniedException` or `ResourceNotFoundException` mean the task role or the secret is wrong; reinstall the certificate if its version is gone. |
 | The stored key does not match the installed certificate | Permanent | `The Microsoft Graph private key could not be read: The stored private key does not match the installed certificate.` | Reinstall the certificate with its own private key. |
 | The certificate private key cannot be used to sign | Permanent | `The Microsoft Graph certificate private key could not be used.` | Reinstall the certificate and private key. |
-| A Bcc recipient is present | Permanent | `Microsoft Graph does not support Bcc recipients.` | Send separate messages instead. |
-| The MIME message cannot be built | Permanent | `The email could not be composed for Microsoft Graph.` | Fix the message. Composition errors raised by the shared MIME builder keep their own message, for example `Email has no recipients.` |
+| A Bcc recipient is present on a MIME message | Permanent | `Microsoft Graph does not support Bcc recipients.` | Send separate messages instead. |
+| The MIME or JSON message cannot be built | Permanent | `The email could not be composed for Microsoft Graph.` | Fix the message. Composition errors raised by the builders keep their own message, for example `Email has no recipients.`, `An email recipient address is invalid.` or `An email header is malformed.` |
+| A request outside the allowlist | Permanent | `The site does not make this Microsoft Graph request.` | A code defect, or a mailbox value whose encoding is refused (an encoded `.`, `/` or `\`). Nothing was sent. |
 | **Sender Mailbox** is blank and **From Email** is not a valid address | Permanent | `Microsoft Graph configuration is invalid.` | The sender mailbox falls back to **From Email**, which must be an address or object ID. |
 | No active, complete, well-formed Graph configuration | Permanent | `Active Microsoft Graph provider configuration is missing or invalid.` | Tick **Active**, fill in **Tenant ID** and **Client ID**, install a certificate, and add at least one mailbox scope row. An expired certificate, or a row saved outside the admin with a malformed tenant ID, client ID, or sender mailbox, counts as not configured; fix and re-save it in the admin. |
 | No active email configuration | Permanent | `No active email service configuration exists.` | Tick **Active** under **Email Sender**. |
@@ -577,18 +639,21 @@ First live check after a new setup or a credential change:
 
 1. Send a test email to an external mailbox you can open. Confirm it arrives, shows the configured
    **From Name** and **From Email**, and leaves a copy in the sender mailbox's Sent Items.
-2. Send a small campaign to yourself. In the received message's headers confirm `List-Unsubscribe` and
+2. Request a sign-in code for your own account. Confirm it arrives with the same From and that **no** copy
+   is in Sent Items (JSON `sendMail` with `saveToSentItems: false`).
+3. Send a small campaign to yourself. In the received message's headers confirm `List-Unsubscribe` and
    `List-Unsubscribe-Post`, and that the `Message-ID` matches the provider message ID in the Email Log.
-3. Send yourself a ticket email. Confirm the inline barcode image displays and the calendar file is
-   attached, and that a subject or name with accented characters displays correctly. Confirm the received
+4. Send yourself a ticket email. Confirm the inline barcode image displays and the calendar file is
+   attached, that a subject or name with accented characters displays correctly, and that no copy is in
+   Sent Items. Confirm the received
    message shows a sent date (the app does not write a `Date` header; Exchange is expected to add one).
-4. In a non-production environment, install a throwaway certificate that is not registered on the app
+5. In a non-production environment, install a throwaway certificate that is not registered on the app
    on an inactive configuration and confirm its Entra check reads `invalid_client AADSTS700027`.
-5. Confirm the small campaign completed without `429` responses.
+6. Confirm the small campaign completed without `429` responses.
 
 ## Sources
 
-- [`sendMail` API reference](https://learn.microsoft.com/en-us/graph/api/user-sendmail): MIME format, the `202` response, and the Sent Items copy.
+- [`sendMail` API reference](https://learn.microsoft.com/en-us/graph/api/user-sendmail): the JSON and MIME formats, `saveToSentItems`, custom `x-` headers (`internetMessageHeaders`), the `202` response, and the Sent Items copy of a MIME send.
 - [Things to know about sending mail](https://learn.microsoft.com/en-us/graph/outlook-things-to-know-about-send-mail)
 - [Microsoft Graph throttling limits](https://learn.microsoft.com/en-us/graph/throttling-limits): concurrent requests and requests per 10 minutes.
 - [Microsoft Graph error responses](https://learn.microsoft.com/en-us/graph/errors)

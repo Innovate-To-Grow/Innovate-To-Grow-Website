@@ -29,12 +29,16 @@ def _load_config():
 
 
 def _build_mime_message(*, subject, from_address, recipients, html_body, barcode_bytes, ics_data):
-    """Build the provider-neutral ticket message with PDF417 and ICS attachments."""
+    """Build the provider-neutral ticket message with PDF417 and ICS attachments.
+
+    The ticket code and the member's login link are credentials, so the message leaves no Sent Items copy.
+    """
     del from_address  # The active provider owns the configured sender address.
     return EmailMessage(
         subject=subject,
         to=tuple(recipients),
         html_body=html_body,
+        keep_sent_copy=False,
         attachments=(
             EmailAttachment(
                 "ticket-barcode.png",

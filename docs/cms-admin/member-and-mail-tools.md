@@ -76,9 +76,13 @@ sender name and email address, and save the active configuration.
   store, never in the database. The sender mailbox
   defaults to the From email; both must be in the scope with send permission.
   With read permission, **Mail → Inbox** reads that mailbox through Graph
-  instead of the Gmail import account. Graph mail
-  counts against the mailbox's Exchange Online limits (about 30 messages per
-  minute), is copied to its Sent Items folder, and reports no delivery events.
+  instead of the Gmail import account; its **Sent** folder (and any message
+  from the site's own address) is then shown to superusers only, and Sent
+  mail is never sent to the AI scam review. Graph mail counts against the
+  mailbox's Exchange Online limits (about 30 messages per minute) and reports
+  no delivery events. Campaigns, replies and notices are copied to its Sent
+  Items folder; verification codes, admin invitations and tickets are not,
+  because they carry sign-in credentials.
   Setup in Entra and Exchange Online is in
   [Microsoft Graph email](../integrations/microsoft-graph-email.md).
 - AWS settings remain available for SMS even when email uses SMTP or Microsoft

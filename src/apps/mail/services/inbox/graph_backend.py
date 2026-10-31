@@ -1,8 +1,13 @@
-"""Inbox backend that reads the I2G mailbox through Microsoft Graph (``Mail.Read``) instead of Gmail IMAP.
+"""Inbox backend that reads the I2G mailbox through Microsoft Graph instead of Gmail IMAP.
 
 It is used whenever the active Microsoft Graph config grants read permission on its sending mailbox, and returns
-the same dictionaries as the IMAP backend so the admin views and the scam detector do not change. ``Mail.Read``
-cannot modify messages, so opening one never marks it read in Outlook.
+the same dictionaries as the IMAP backend so the admin views and the scam detector do not change. The site only
+issues GET requests (the Graph transport refuses anything else), so opening a message never marks it read in
+Outlook.
+
+A Graph message id is unique in the whole mailbox, not per folder, so a message also says whether it was sent from
+the site's own address (``from_own_mailbox``): the views treat such a message as Sent mail whichever folder the
+request named.
 """
 
 import email
@@ -36,6 +41,11 @@ def active_reader() -> GraphMailboxReader | None:
     return GraphMailboxReader(graph, mailbox)
 
 
+def graph_inbox_active() -> bool:
+    """Whether Mail -> Inbox reads the Microsoft Graph mailbox (rather than the Gmail import account)."""
+    return active_reader() is not None
+
+
 def list_messages(reader: GraphMailboxReader, *, folder: str, limit: int) -> list[dict[str, Any]]:
     try:
         messages = reader.list_messages(folder, limit)
@@ -51,7 +61,11 @@ def fetch_message(reader: GraphMailboxReader, uid: str) -> dict[str, Any]:
         raise InboxError("Message not found.") from exc
     except GraphReadError as exc:
         raise InboxError(str(exc)) from exc
-    return _detail(uid, email.message_from_bytes(raw, policy=email.policy.default))
+    detail = _detail(uid, email.message_from_bytes(raw, policy=email.policy.default))
+    sender = detail["from_email"].strip().lower()
+    own_addresses = {reader.mailbox.lower(), (EmailServiceConfig.load().from_email or "").strip().lower()}
+    detail["from_own_mailbox"] = bool(sender) and sender in own_addresses
+    return detail
 
 
 def _summary(message: dict) -> dict[str, Any]:

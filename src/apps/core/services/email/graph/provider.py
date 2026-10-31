@@ -14,25 +14,31 @@ from ..exceptions import (
     UncertainEmailDeliveryError,
 )
 from ..mime import build_mime_message
-from . import auth, transport
+from . import auth, json_message, transport
 from .errors import graph_error_code, request_id, send_mail_error
 
 logger = logging.getLogger(__name__)
 
-GRAPH_HOST = "graph.microsoft.com"
+GRAPH_HOST = transport.GRAPH_HOST
+MIME_CONTENT_TYPE = "text/plain"
 SEND_MAIL_PATH = "/v1.0/users/{mailbox}/sendMail"
 _TOKEN_REJECTED_STATUSES = (401, 403)
 
 
 class GraphProvider:
-    """Deliver base64 MIME messages with Graph ``sendMail`` using an app-only (client-credentials) token.
+    """Deliver messages with Graph ``sendMail`` using an app-only (client-credentials) token.
+
+    A message is sent as base64 MIME, which keeps every header but always leaves a copy in the sender mailbox's Sent
+    Items. A message marked ``keep_sent_copy=False`` (one that carries a credential) is sent as JSON with
+    ``saveToSentItems`` false instead; see ``json_message`` for what that form cannot carry.
 
     The caller (the registry) has already checked that *mailbox* and the From address are inside the configured
     mailbox scope with send permission; this class only re-checks that the values are well formed.
 
     Graph answers ``202 Accepted`` with an empty body, so it returns no message id; the MIME ``Message-ID`` is
-    reported instead (as SMTP does). A 202 only means the message was queued: later transport or recipient failures
-    are delivered as non-delivery reports to the sender mailbox, which this provider cannot observe.
+    reported instead (as SMTP does), and a JSON send reports none. A 202 only means the message was queued: later
+    transport or recipient failures are delivered as non-delivery reports to the sender mailbox, which this provider
+    cannot observe.
     """
 
     name = "graph"
@@ -59,18 +65,18 @@ class GraphProvider:
         self.mailbox, self.from_email, self.from_name, self.timeout = mailbox, from_email, from_name, timeout
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
-        mime_id, payload = self._encode(message)
+        message_id, payload, content_type = self._encode(message)
         access_token = auth.get_access_token(self.credential, timeout=self.timeout)
         if before_provider_call is not None:
             before_provider_call()
-        return self._submit(access_token, payload, mime_id)
+        return self._submit(access_token, payload, content_type, message_id)
 
-    def _submit(self, access_token: str, payload: bytes, mime_id: str) -> DeliveryResult:
+    def _submit(self, access_token: str, payload: bytes, content_type: str, message_id: str) -> DeliveryResult:
         """POST the message. Everything after the callback is classified; unexpected errors are Uncertain."""
         try:
-            response = self._post(access_token, payload)
+            response = self._post(access_token, payload, content_type)
             if response.status == 202:
-                return DeliveryResult(provider=self.name, message_id=mime_id)
+                return DeliveryResult(provider=self.name, message_id=message_id)
             self._log_failure(response)
             if response.status in _TOKEN_REJECTED_STATUSES:
                 # A fresh token also picks up consent or role changes made after this one was issued.
@@ -83,23 +89,29 @@ class GraphProvider:
             logger.error("Unexpected %s while sending through Microsoft Graph", type(exc).__name__)
             raise UncertainEmailDeliveryError("Microsoft Graph request outcome could not be confirmed.") from None
 
-    def _encode(self, message: EmailMessage) -> tuple[str, bytes]:
-        """The MIME ``Message-ID`` and the base64 request body; composition problems are definitive."""
+    def _encode(self, message: EmailMessage) -> tuple[str, bytes, str]:
+        """The reported message id, the request body and its content type; composition problems are definitive."""
+        if not message.keep_sent_copy:
+            try:
+                body = json_message.send_mail_body(message, from_email=self.from_email, from_name=self.from_name)
+            except (ValueError, UnicodeError) as exc:
+                raise PermanentEmailDeliveryError("The email could not be composed for Microsoft Graph.") from exc
+            return "", body, json_message.CONTENT_TYPE
         if message.bcc:
             # build_mime_message never writes a Bcc header and Graph has no separate envelope, so a Bcc
             # recipient would silently receive nothing.
             raise PermanentEmailDeliveryError("Microsoft Graph does not support Bcc recipients.")
         try:
             mime = build_mime_message(message, from_email=self.from_email, from_name=self.from_name)
-            return str(mime["Message-ID"]), base64.b64encode(mime.as_bytes())
+            return str(mime["Message-ID"]), base64.b64encode(mime.as_bytes()), MIME_CONTENT_TYPE
         except (ValueError, UnicodeError) as exc:
             raise PermanentEmailDeliveryError("The email could not be composed for Microsoft Graph.") from exc
 
-    def _post(self, access_token: str, payload: bytes) -> transport.HttpResponse:
+    def _post(self, access_token: str, payload: bytes, content_type: str) -> transport.HttpResponse:
         path = SEND_MAIL_PATH.format(mailbox=quote(self.mailbox, safe="@"))
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "Content-Type": "text/plain",
+            "Content-Type": content_type,
             "Accept": "application/json",
         }
         try:

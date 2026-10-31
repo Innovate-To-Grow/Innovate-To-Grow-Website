@@ -12,7 +12,11 @@ from apps.core.tests.services.test_email_graph_transport import CONNECTION, make
 
 def do_get(max_bytes=100):
     return get(
-        "graph.microsoft.com", "/v1.0/users/x/messages", {"Accept": "application/json"}, timeout=7, max_bytes=max_bytes
+        "graph.microsoft.com",
+        "/v1.0/users/x/mailFolders/inbox/messages?$top=1",
+        {"Accept": "application/json"},
+        timeout=7,
+        max_bytes=max_bytes,
     )
 
 
@@ -32,7 +36,7 @@ class GraphTransportGetTests(SimpleTestCase):
         self.assertEqual(kwargs["context"].minimum_version, ssl.TLSVersion.TLSv1_2)
         connection.request.assert_called_once_with(
             "GET",
-            "/v1.0/users/x/messages",
+            "/v1.0/users/x/mailFolders/inbox/messages?$top=1",
             body=None,
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
         )
