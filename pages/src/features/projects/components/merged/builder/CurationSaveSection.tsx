@@ -23,7 +23,7 @@ export const CurationSaveButton = ({hasRows, isSharing, pendingSaveCount, onSave
     onClick={onSave}
     disabled={!hasRows || isSharing || pendingSaveCount > 0}
   >
-    {isSharing ? 'Saving...' : 'Save Curation'}
+    {isSharing ? 'Saving…' : 'Save Curation'}
   </button>
 );
 

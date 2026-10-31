@@ -129,7 +129,7 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
     expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar pump'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
@@ -168,22 +168,22 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar pump'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
-    const aiSearchForm = screen.getByPlaceholderText(/ask ai to find relevant past projects/i).closest('form');
+    const aiSearchForm = screen.getByPlaceholderText(/ask about past projects/i).closest('form');
     const aiSearchInputFrame = screen
-      .getByPlaceholderText(/ask ai to find relevant past projects/i)
+      .getByPlaceholderText(/ask about past projects/i)
       .closest('.past-projects-ai-search-input-frame');
     expect(aiSearchForm).toHaveClass('past-projects-ai-search', 'is-loading');
     expect(aiSearchForm).toHaveAttribute('aria-busy', 'true');
     expect(aiSearchInputFrame).not.toBeNull();
-    expect(within(aiSearchForm as HTMLElement).getByRole('status')).toHaveTextContent('Searching past projects with AI...');
+    expect(within(aiSearchForm as HTMLElement).getByRole('status')).toHaveTextContent('Searching past projects with AI…');
     expect(document.querySelector('.past-projects-ai-search-spinner')).toBeNull();
     expect(document.querySelector('.past-projects-ai-search-progress')).toBeNull();
-    expect(screen.getByText('Searching past projects with AI...').closest('.project-grid-controls-status')).toBeNull();
+    expect(screen.getByText('Searching past projects with AI…').closest('.project-grid-controls-status')).toBeNull();
 
     resolveSearch({
       available: true,
@@ -236,7 +236,7 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'alpha'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
@@ -330,7 +330,7 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
@@ -358,7 +358,7 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     );
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));

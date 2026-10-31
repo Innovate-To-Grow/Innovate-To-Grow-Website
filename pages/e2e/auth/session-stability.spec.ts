@@ -158,7 +158,7 @@ test('a successful token refresh preserves saved merged projects', async ({page,
 
   await page.getByRole('button', {name: '+ AI Search Table'}).click();
   const searchForm = page.locator('.past-projects-ai-search');
-  await searchForm.getByPlaceholder('Ask AI to find relevant past projects...').fill('irrigation');
+  await searchForm.getByPlaceholder('Ask about past projects…').fill('irrigation');
   const sessionRevalidated = page.waitForResponse((response) =>
     new URL(response.url()).pathname.endsWith('/authn/session/') && response.status() === 200,
   );

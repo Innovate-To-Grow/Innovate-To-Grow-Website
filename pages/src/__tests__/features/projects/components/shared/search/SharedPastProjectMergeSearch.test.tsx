@@ -82,7 +82,7 @@ describe('SharedPastProjectMergeSearch', () => {
   it('announces that the archive is loading', () => {
     render(<SharedPastProjectMergeSearch currentRows={[alphaRow]} rows={[]} error={null} loading onAddRows={vi.fn()} />);
 
-    expect(screen.getByText('Loading past projects...')).toHaveAttribute('role', 'status');
+    expect(screen.getByText('Loading past projects…').closest('[role="status"]')).not.toBeNull();
   });
 
   it('keeps reporting an add in its table when a refresh lands while it runs', async () => {
@@ -142,7 +142,7 @@ describe('SharedPastProjectMergeSearch', () => {
     );
 
     expect(screen.getByRole('heading', {level: 2, name: 'Add More Projects'})).toBeInTheDocument();
-    expect(screen.getByText('Help: buttons, saving and tables')).toBeInTheDocument();
+    expect(screen.getByText('Help: Buttons, Saving and Tables')).toBeInTheDocument();
     expect(screen.getAllByRole('button', {name: 'Add Selected'}).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     expect(screen.queryByText('Alpha Project')).toBeNull();
@@ -315,7 +315,7 @@ describe('SharedPastProjectMergeSearch', () => {
     expect(onRefreshRows).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     // Without a catalog in context it words itself as Past Projects does.
-    expect(screen.getByText('Refreshing this search table from the latest past-project archive...')).toBeInTheDocument();
+    expect(screen.getByText('Refreshing this search table from the latest past-project archive…')).toBeInTheDocument();
 
     // The refetch resolves with a new archive snapshot; the table picks up the new project.
     const deltaRow = makeRow({team_number: 'T04', team_name: 'Team Delta', project_title: 'Delta Project'});
@@ -349,7 +349,7 @@ describe('SharedPastProjectMergeSearch', () => {
     expect(screen.queryByText(/archive/)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', {name: /refresh search table/i}));
-    expect(screen.getByText('Refreshing this search table from the latest project list...')).toBeInTheDocument();
+    expect(screen.getByText('Refreshing this search table from the latest project list…')).toBeInTheDocument();
 
     rerender(search([alphaRow, bravoRow, charlieRow]));
     expect(screen.getByText('Search table refreshed from the latest project list.')).toBeInTheDocument();

@@ -38,7 +38,7 @@ describe('SearchTableCard — telling one table from another', () => {
 
     const second = screen.getByRole('region', {name: 'Search Table 2'});
     expect(within(second).getByRole('searchbox')).toBeInTheDocument();
-    expect(within(second).getByRole('button', {name: 'Delete table: Search Table 2'})).toBeInTheDocument();
+    expect(within(second).getByRole('button', {name: 'Delete Table: Search Table 2'})).toBeInTheDocument();
     expect(screen.getByRole('region', {name: 'Search Table'})).not.toContainElement(within(second).getByRole('searchbox'));
   });
 

@@ -35,7 +35,7 @@ export const noteLengthProblem = (preparedNote: string) =>
 export const currentLoginPath = (path: string = PAST_PROJECTS_PATH) =>
   buildLoginPath(isEmbeddedBuilder() ? path : `${window.location.pathname}${window.location.search}`);
 
-/** Where "Sign in to save" leads. */
+/** Where "Sign In to Save" leads. */
 export interface SignInToSave {
   href: string;
   /** In the widget: the full builder page in a new tab, carrying the draft, where the visitor signs in. */

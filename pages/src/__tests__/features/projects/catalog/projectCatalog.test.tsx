@@ -88,6 +88,18 @@ describe('PAST_PROJECTS_CATALOG', () => {
     expect(copy.handoverMissing(1)).toBe('1 project from the Past Projects widget is no longer in the archive.');
     expect(copy.handoverMissing(3)).toBe('3 projects from the Past Projects widget are no longer in the archive.');
   });
+
+  it('keeps its placeholder short enough for the AI field on a phone, and ends progress lines with an ellipsis', () => {
+    const {copy} = PAST_PROJECTS_CATALOG;
+
+    expect(copy.aiPlaceholder).toBe('Ask about past projects…');
+    expect(copy.loading).toBe('Loading past projects…');
+    expect(copy.refreshing).toBe('Refreshing this search table from the latest past-project archive…');
+    expect(copy.aiSearching).toBe('Searching past projects with AI…');
+    for (const text of [copy.aiPlaceholder, copy.loading, copy.refreshing, copy.aiSearching]) {
+      expect(text).not.toMatch(/\.\.\./);
+    }
+  });
 });
 
 describe('ALL_PROJECTS_CATALOG', () => {
@@ -125,8 +137,8 @@ describe('ALL_PROJECTS_CATALOG', () => {
     const {copy} = ALL_PROJECTS_CATALOG;
 
     expect(ALL_PROJECTS_CATALOG).toMatchObject({key: 'all', path: '/all-projects', title: 'All Projects', aiScope: 'all'});
-    expect(copy.loading).toBe('Loading projects...');
-    expect(copy.aiPlaceholder).toBe('Ask AI to find relevant projects...');
+    expect(copy.loading).toBe('Loading projects…');
+    expect(copy.aiPlaceholder).toBe('Ask about projects…');
     expect(copy.handoverMissing(2)).toBe('2 projects from the All Projects widget are no longer listed.');
   });
 });

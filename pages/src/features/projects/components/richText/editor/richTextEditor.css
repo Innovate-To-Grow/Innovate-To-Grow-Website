@@ -98,7 +98,7 @@
   height: min(40rem, 75vh);
 }
 
-/* Not being edited (the owner's saved note, until "Edit curation note"): as tall as the note, up to a limit, and
+/* Not being edited (the owner's saved note, until "Edit Curation Note"): as tall as the note, up to a limit, and
    read as content in the body colour on a panel, not as a greyed-out disabled field. */
 .project-grid-rich-detail-input[contenteditable='false'] {
   height: auto;

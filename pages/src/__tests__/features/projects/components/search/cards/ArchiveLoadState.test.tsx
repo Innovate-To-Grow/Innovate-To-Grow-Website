@@ -24,7 +24,7 @@ describe('ArchiveLoadState', () => {
 
   it('names the past-project archive without a catalog', () => {
     const {rerender} = render(<ArchiveLoadState loading failed={false} headingId="heading" />);
-    expect(screen.getByRole('status')).toHaveTextContent('Loading past projects...');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading past projects…');
 
     rerender(<ArchiveLoadState loading={false} failed headingId="heading" />);
     expect(screen.getByRole('alert')).toHaveTextContent(
@@ -35,7 +35,7 @@ describe('ArchiveLoadState', () => {
   it("names All Projects' list while it loads", () => {
     render(inAllProjects(<ArchiveLoadState loading failed={false} headingId="heading" />));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Loading projects...');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading projects…');
   });
 
   it("names All Projects' list when its first load failed, and while Try again loads it", () => {
@@ -45,6 +45,6 @@ describe('ArchiveLoadState', () => {
 
     fireEvent.click(within(alert).getByRole('button', {name: 'Try again'}));
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Loading projects...');
+    expect(screen.getByRole('alert')).toHaveTextContent('Loading projects…');
   });
 });

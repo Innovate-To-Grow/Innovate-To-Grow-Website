@@ -101,15 +101,10 @@ export const MergedExportGroup = ({rows, buildTarget, onStatus, reloadNote}: Mer
       </span>
       {exportButton('pdf', 'PDF')}
       {exportButton('excel', 'Excel')}
-      {exportButton(
-        'word',
-        <span>
-          <span className="project-grid-wide-only">Microsoft</span> Word
-        </span>,
-      )}
+      {exportButton('word', 'Word')}
       {needsReload ? (
         <button type="button" className="itg-btn itg-btn-text" onClick={() => window.location.reload()}>
-          Reload page
+          Reload Page
         </button>
       ) : null}
     </div>

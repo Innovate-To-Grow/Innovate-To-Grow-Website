@@ -5,7 +5,7 @@ import type {SignInToSave} from './curationNote';
 interface SignInToSaveLinkProps {
   signIn: SignInToSave;
   className?: string;
-  /** The link's text on the site itself ("Sign in to save"). */
+  /** The link's text on the site itself ("Sign In to Save"). */
   children: ReactNode;
 }
 

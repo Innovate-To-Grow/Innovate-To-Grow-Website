@@ -76,7 +76,7 @@ export function useCurationShare({
     try {
       await onCreateShare(visibleRows, nameDraft.trim(), note);
       if (isMountedRef.current) {
-        onStatus('Saved. Opening your curation...');
+        onStatus('Saved. Opening your curation…');
       }
     } catch (error) {
       if (isMountedRef.current) {

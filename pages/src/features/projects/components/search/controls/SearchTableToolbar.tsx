@@ -168,7 +168,7 @@ export const SearchTableToolbar = ({
           // Seven buttons, most of them disabled until rows are checked, would push the results
           // a full screen down on a phone; the table-tidying ones fold away here.
           <details className="search-table-more-actions">
-            <summary className="search-table-more-actions-summary">More table actions</summary>
+            <summary className="search-table-more-actions-summary">More Table Actions</summary>
             {tidyActions}
           </details>
         ) : (

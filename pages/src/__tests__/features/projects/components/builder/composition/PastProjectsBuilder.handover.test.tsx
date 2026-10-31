@@ -197,7 +197,7 @@ describe('PastProjectsBuilder and the Past Projects widget', () => {
       render(renderBuilder());
       await addToCuration('Alpha Project');
 
-      expect(within(draftSection()).getByRole('link', {name: 'Sign in to save'})).toHaveAttribute(
+      expect(within(draftSection()).getByRole('link', {name: 'Sign In to Save'})).toHaveAttribute(
         'href',
         `/login?returnTo=${encodeURIComponent('/past-projects?value=solar')}`,
       );

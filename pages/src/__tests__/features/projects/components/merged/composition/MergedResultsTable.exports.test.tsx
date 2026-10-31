@@ -87,7 +87,7 @@ describe('MergedResultsTable exports and row details', () => {
 
   it('offers only Excel, PDF, and Word exports (no CSV)', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-    expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Microsoft Word']);
+    expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Word']);
   });
 
   it('passes the visible rows and export context to the chosen exporter', async () => {
@@ -232,13 +232,13 @@ describe('MergedResultsTable exports and row details', () => {
     expect(context).toMatchObject({title: 'Curation Draft'});
   });
 
-  it('exports Microsoft Word through the word exporter', async () => {
+  it('exports Word through the word exporter', async () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
     const exportCluster = container.querySelector(
       '.project-grid-toolbar-cluster[aria-label="Export"]',
     ) as HTMLElement;
 
-    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Microsoft Word'}));
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Word'}));
 
     await waitFor(() => expect(exportMocks.exportProjectRowsWord).toHaveBeenCalledTimes(1));
     const [rowsArg, fileBaseName] = exportMocks.exportProjectRowsWord.mock.calls[0];
@@ -274,7 +274,7 @@ describe('MergedResultsTable exports and row details', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
     const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
 
-    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Microsoft Word'}));
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Word'}));
     expect(await screen.findByText('Unable to export Microsoft Word. Please try again.')).toBeInTheDocument();
     fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
 
@@ -299,7 +299,7 @@ describe('MergedResultsTable exports and row details', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Please try again/)).toBeNull();
-    expect(within(exportCluster).getByRole('button', {name: 'Reload page'})).toBeInTheDocument();
+    expect(within(exportCluster).getByRole('button', {name: 'Reload Page'})).toBeInTheDocument();
   });
 
   it('drops the reload advice and its button once another export succeeds', async () => {
@@ -309,12 +309,12 @@ describe('MergedResultsTable exports and row details', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
     const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
     fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
-    expect(await within(exportCluster).findByRole('button', {name: 'Reload page'})).toBeInTheDocument();
+    expect(await within(exportCluster).findByRole('button', {name: 'Reload Page'})).toBeInTheDocument();
 
-    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Microsoft Word'}));
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Word'}));
 
     await waitFor(() => expect(exportMocks.exportProjectRowsWord).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByText(/Unable to export/)).toBeNull());
-    expect(within(exportCluster).queryByRole('button', {name: 'Reload page'})).toBeNull();
+    expect(within(exportCluster).queryByRole('button', {name: 'Reload Page'})).toBeNull();
   });
 });

@@ -122,14 +122,14 @@ describe('PastProjectsBuilder — keyboard focus after its actions', () => {
     expect(addButton).toHaveFocus();
   });
 
-  it("moves focus to a new table's search field, and to the neighbouring table's heading after Delete table", () => {
+  it("moves focus to a new table's search field, and to the neighbouring table's heading after Delete Table", () => {
     renderBuilder();
 
     press(screen.getByRole('button', {name: '+ Search Table'}));
     const secondTable = searchTable('Search Table 2');
     expect(within(secondTable).getByRole('searchbox')).toHaveFocus();
 
-    press(within(secondTable).getByRole('button', {name: 'Delete table: Search Table 2'}));
+    press(within(secondTable).getByRole('button', {name: 'Delete Table: Search Table 2'}));
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toHaveFocus();
   });
 

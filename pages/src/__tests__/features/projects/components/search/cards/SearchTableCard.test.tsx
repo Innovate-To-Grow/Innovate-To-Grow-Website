@@ -96,7 +96,7 @@ describe('SearchTableCard', () => {
         within(tidy).getAllByRole('button').forEach((button) => expect(button).toHaveClass('itg-btn-text'));
     });
 
-    it('folds the table-tidying buttons into "More table actions" on phones', () => {
+    it('folds the table-tidying buttons into "More Table Actions" on phones', () => {
         vi.stubGlobal('matchMedia', (query: string) => ({
             matches: query === '(max-width: 768px)',
             media: query,
@@ -106,7 +106,7 @@ describe('SearchTableCard', () => {
         const {container} = renderCard({onRefresh: vi.fn()});
         const toolbar = container.querySelector('.project-grid-toolbar') as HTMLElement;
 
-        const more = within(toolbar).getByText('More table actions').closest('details') as HTMLElement;
+        const more = within(toolbar).getByText('More Table Actions').closest('details') as HTMLElement;
         expect(more).not.toHaveAttribute('open');
         expect(within(more).getByRole('group', {name: 'Tidy this table'})).toBeInTheDocument();
         // Save and the selection buttons stay in view.
@@ -136,7 +136,7 @@ describe('SearchTableCard', () => {
         const onRemove = vi.fn();
         renderCard({onRemove});
 
-        fireEvent.click(screen.getByRole('button', {name: 'Delete table: Search Table'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Delete Table: Search Table'}));
         expect(onRemove).toHaveBeenCalledWith('table-1');
     });
 
@@ -232,7 +232,7 @@ describe('SearchTableCard', () => {
         expect(screen.getByRole('status')).not.toHaveTextContent('Loading details');
         // Tidying the table while it saves would contradict the outcome it is about to report.
         expect(screen.getByRole('button', {name: 'Remove from Table'})).toHaveAttribute('aria-disabled', 'true');
-        expect(screen.getByRole('button', {name: 'Delete table: Search Table'})).toBeDisabled();
+        expect(screen.getByRole('button', {name: 'Delete Table: Search Table'})).toBeDisabled();
 
         // Checked while the save is running: must survive the save finishing.
         fireEvent.click(rowCheckbox('Project 3'));

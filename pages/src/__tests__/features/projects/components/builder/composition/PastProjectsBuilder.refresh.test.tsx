@@ -154,8 +154,8 @@ describe('PastProjectsBuilder — refreshing a search table', () => {
     expect(tryAgain).toBeInTheDocument();
     expect(tryAgain).toHaveFocus();
     expect(tryAgain).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByRole('alert')).toHaveTextContent('Loading past projects...');
-    expect(screen.getAllByText('Loading past projects...')).toHaveLength(1);
+    expect(screen.getByRole('alert')).toHaveTextContent('Loading past projects…');
+    expect(screen.getAllByText('Loading past projects…')).toHaveLength(1);
 
     // A retry that fails again says so in the same alert, and Try again works again.
     fireEvent.click(screen.getByRole('button', {name: 'Fail the load'}));

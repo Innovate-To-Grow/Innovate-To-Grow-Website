@@ -70,7 +70,7 @@
 }
 
 /* A status line stays in the page while empty, so screen readers announce the first message put in it; empty,
-   it takes no room (or gap) in its flex column. A loading line ("Loading past projects...") is one too. */
+   it takes no room (or gap) in its flex column. A loading line ("Loading past projects…") is one too. */
 .project-grid-status:empty,
 .past-projects-loading-line:empty {
   position: absolute;

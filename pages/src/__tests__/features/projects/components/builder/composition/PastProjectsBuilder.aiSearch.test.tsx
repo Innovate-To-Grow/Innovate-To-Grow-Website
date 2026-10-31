@@ -120,7 +120,7 @@ describe('PastProjectsBuilder — AI search table', () => {
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
     expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
-    const aiSearchInput = screen.getByPlaceholderText(/ask ai to find relevant past projects/i);
+    const aiSearchInput = screen.getByPlaceholderText(/ask about past projects/i);
     expect(aiSearchInput.closest('.project-grid-controls-row')).not.toBeNull();
     expect(aiSearchInput.closest('.past-projects-action-bar')).toBeNull();
 
@@ -155,22 +155,22 @@ describe('PastProjectsBuilder — AI search table', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar sensors'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
-    const aiSearchForm = screen.getByPlaceholderText(/ask ai to find relevant past projects/i).closest('form');
+    const aiSearchForm = screen.getByPlaceholderText(/ask about past projects/i).closest('form');
     const aiSearchInputFrame = screen
-      .getByPlaceholderText(/ask ai to find relevant past projects/i)
+      .getByPlaceholderText(/ask about past projects/i)
       .closest('.past-projects-ai-search-input-frame');
     expect(aiSearchForm).toHaveClass('past-projects-ai-search', 'is-loading');
     expect(aiSearchForm).toHaveAttribute('aria-busy', 'true');
     expect(aiSearchInputFrame).not.toBeNull();
-    expect(within(aiSearchForm as HTMLElement).getByRole('status')).toHaveTextContent('Searching past projects with AI...');
+    expect(within(aiSearchForm as HTMLElement).getByRole('status')).toHaveTextContent('Searching past projects with AI…');
     expect(document.querySelector('.past-projects-ai-search-spinner')).toBeNull();
     expect(document.querySelector('.past-projects-ai-search-progress')).toBeNull();
-    expect(screen.getByText('Searching past projects with AI...').closest('.project-grid-controls-status')).toBeNull();
+    expect(screen.getByText('Searching past projects with AI…').closest('.project-grid-controls-status')).toBeNull();
     expect(screen.getByRole('button', {name: 'Search'})).toBeDisabled();
     expect(screen.queryByText('Searching...')).toBeNull();
 
@@ -208,7 +208,7 @@ describe('PastProjectsBuilder — AI search table', () => {
     expect(screen.getByRole('dialog', {name: /sign in required/i})).toBeInTheDocument();
     expect(screen.getByText('You need to sign in before using AI search.')).toBeInTheDocument();
     expect(mockSearchPastProjectsWithAI).not.toHaveBeenCalled();
-    expect(screen.queryByPlaceholderText(/ask ai to find relevant past projects/i)).toBeNull();
+    expect(screen.queryByPlaceholderText(/ask about past projects/i)).toBeNull();
   });
 
   it('shows unavailable AI search responses inline inside the AI table, in words meant for members', async () => {
@@ -224,7 +224,7 @@ describe('PastProjectsBuilder — AI search table', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
@@ -262,7 +262,7 @@ describe('PastProjectsBuilder — AI search table', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
@@ -276,7 +276,7 @@ describe('PastProjectsBuilder — AI search table', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
@@ -290,7 +290,7 @@ describe('PastProjectsBuilder — AI search table', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'solar'},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
@@ -306,7 +306,7 @@ describe('PastProjectsBuilder — AI search table', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask ai to find relevant past projects/i), {
+    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
       target: {value: 'x'.repeat(2100)},
     });
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));

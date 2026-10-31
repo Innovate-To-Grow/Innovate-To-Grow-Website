@@ -3,12 +3,6 @@
    override the base rules of all the files before them, so they must follow every one of them.
    Imported in order by projects.css; see the note there. */
 
-/* ---- Utilities ----------------------------------------------------------------- */
-
-.project-grid-wide-only {
-  display: inline;
-}
-
 /* ---- Narrow screens ------------------------------------------------------------ */
 
 @media (max-width: 992px) {
@@ -163,7 +157,7 @@
     display: none;
   }
 
-  /* "More table actions": the table-tidying buttons, folded away until opened. */
+  /* "More Table Actions": the table-tidying buttons, folded away until opened. */
   .search-table-more-actions {
     border-top: 1px solid var(--itg-color-border);
   }
@@ -243,10 +237,6 @@
 
   .project-grid-export-group .project-grid-group-label {
     grid-column: 1 / -1;
-  }
-
-  .project-grid-wide-only {
-    display: none;
   }
 
   .project-grid-share-result-row {

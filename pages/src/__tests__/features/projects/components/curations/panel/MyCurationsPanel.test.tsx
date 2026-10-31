@@ -84,7 +84,7 @@ describe('MyCurationsPanel', () => {
     ]);
     expect(within(panel).getByText('1 project · updated Oct 18, 2026')).toBeInTheDocument();
     expect(within(panel).getByText('3 projects · saved Sep 10, 2026')).toBeInTheDocument();
-    expect(within(panel).getByRole('link', {name: 'Manage curations'})).toHaveAttribute(
+    expect(within(panel).getByRole('link', {name: 'Manage Curations'})).toHaveAttribute(
       'href',
       '/account/past-project-curation-shared-links',
     );
@@ -103,7 +103,7 @@ describe('MyCurationsPanel', () => {
     expect(within(panel).getAllByRole('listitem')).toHaveLength(5);
     expect(within(panel).getByText('List 6')).toBeInTheDocument();
     expect(within(panel).queryByText('List 1')).toBeNull();
-    expect(within(panel).getByRole('link', {name: 'See all 7'})).toHaveAttribute(
+    expect(within(panel).getByRole('link', {name: 'See All 7'})).toHaveAttribute(
       'href',
       '/account/past-project-curation-shared-links',
     );
@@ -115,9 +115,9 @@ describe('MyCurationsPanel', () => {
     mockListMyShares.mockResolvedValue([share({})]);
 
     await renderPanel();
-    // Speech input users say what they see ("click Copy link"), so the visible label leads the name.
-    const copyButton = screen.getByRole('button', {name: 'Copy link to Water projects'});
-    expect(copyButton).toHaveTextContent('Copy link');
+    // Speech input users say what they see ("click Copy Link"), so the visible label leads the name.
+    const copyButton = screen.getByRole('button', {name: 'Copy Link to Water projects'});
+    expect(copyButton).toHaveTextContent('Copy Link');
     await act(async () => {
       fireEvent.click(copyButton);
     });

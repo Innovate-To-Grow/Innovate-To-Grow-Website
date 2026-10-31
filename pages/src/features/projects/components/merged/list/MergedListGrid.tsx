@@ -54,7 +54,7 @@ export const MergedListGrid = ({
           aria-controls={phoneListId}
           onClick={() => setIsPhoneListOpen((current) => !current)}
         >
-          <span>{isPhoneListOpen ? 'Hide the projects' : `Show the ${pluralize(rows.length, 'project')}`}</span>
+          <span>{isPhoneListOpen ? 'Hide the Projects' : `Show the ${pluralize(rows.length, 'Project')}`}</span>
           <span aria-hidden="true">{isPhoneListOpen ? ' ▴' : ' ▾'}</span>
         </button>
       )}
@@ -129,7 +129,7 @@ export const NarrowedSearchHint = ({shownCount, totalCount, hiddenAddedCount, on
       {`Saving and exports include only the ${shownCount} it shows; after saving, ` +
         `${pluralize(hiddenCount, 'other project')} ${hiddenCount === 1 ? 'stays' : 'stay'} in this draft.`}{' '}
       <button type="button" className="itg-btn itg-btn-text past-projects-status-action" onClick={onClearSearch}>
-        Clear search
+        Clear Search
       </button>
     </p>
   );
