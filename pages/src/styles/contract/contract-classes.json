@@ -150,6 +150,7 @@
     "itg-table",
     "itg-table-wrap",
     "itg-tag",
+    "itg-tag-current",
     "itg-tag-new",
     "itg-tag-saved",
     "itg-text",

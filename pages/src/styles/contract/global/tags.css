@@ -2,7 +2,10 @@
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
-   Tags
+   Tags: one shape for every tag (11px, 700, uppercase, 1px letter-spacing,
+   1px 6px padding, square), each with its own fill: NEW tag-new with
+   primary text, ADDED / SAVED tag-added with success text and a check,
+   CURRENT tag-current with primary text.
    ========================================================================== */
 
 .itg-tag {
@@ -26,10 +29,13 @@
 }
 
 .itg-tag-saved {
-  padding-left: 0;
-  padding-right: 0;
-  background: none;
+  background: var(--itg-color-tag-added);
   color: var(--itg-color-success);
+}
+
+.itg-tag-current {
+  background: var(--itg-color-tag-current);
+  color: var(--itg-color-primary);
 }
 
 .itg-tag-saved::before {
@@ -43,16 +49,16 @@
 }
 
 /* Forced colours (Windows Contrast themes) replace backgrounds with the page
-   colour: the masked check (a currentColor background) vanished and the
-   "New" chip lost its fill. Paint the check in the text colour and give the
-   chip an outline instead. */
+   colour: the masked check (a currentColor background) vanished and every
+   tag lost its fill. Paint the check in the text colour and give every tag
+   an outline instead. */
 @media (forced-colors: active) {
   .itg-tag-saved::before {
     forced-color-adjust: none;
     background: CanvasText;
   }
 
-  .itg-tag-new {
+  .itg-tag {
     outline: 1px solid CanvasText;
   }
 }
