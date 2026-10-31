@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 def keep_existing_configs_working(apps, schema_editor):
     """Rows saved before certificates existed authenticate with their client secret, and the sender mailbox they
-    already used becomes a send-only scope entry, so nothing that worked before 0034 stops working."""
+    already used becomes a send-only scope entry, so nothing that worked before 0035 stops working."""
     Config = apps.get_model("core", "MicrosoftGraphProviderConfig")
     Scope = apps.get_model("core", "MicrosoftGraphMailboxScope")
     for config in Config.objects.all():
@@ -20,7 +20,7 @@ def keep_existing_configs_working(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0033_microsoft_graph_provider"),
+        ("core", "0034_microsoft_graph_provider"),
     ]
 
     operations = [

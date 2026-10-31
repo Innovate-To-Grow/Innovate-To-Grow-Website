@@ -1,4 +1,4 @@
-"""Migration 0034: Graph configs saved before certificates keep working (client secret + send-only scope)."""
+"""Migration 0035: Graph configs saved before certificates keep working (client secret + send-only scope)."""
 
 import importlib
 
@@ -9,15 +9,15 @@ from django.test import TestCase, TransactionTestCase
 
 from apps.core.models import MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
 
-MIGRATION = importlib.import_module("apps.core.migrations.0034_graph_certificate_and_mailbox_scope")
-BEFORE = [("core", "0033_microsoft_graph_provider")]
-AFTER = [("core", "0034_graph_certificate_and_mailbox_scope")]
+MIGRATION = importlib.import_module("apps.core.migrations.0035_graph_certificate_and_mailbox_scope")
+BEFORE = [("core", "0034_microsoft_graph_provider")]
+AFTER = [("core", "0035_graph_certificate_and_mailbox_scope")]
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 
 class KeepExistingConfigsWorkingTests(TestCase):
-    """The data function against the current models (rows that already exist when 0034 runs)."""
+    """The data function against the current models (rows that already exist when 0035 runs)."""
 
     def insert(self, **values):
         row = MicrosoftGraphProviderConfig(name="Old", tenant_id=TENANT_ID, client_id=CLIENT_ID, **values)
@@ -53,8 +53,8 @@ class KeepExistingConfigsWorkingTests(TestCase):
         self.assertEqual(list(row.mailbox_scopes.values_list("permission", flat=True)), ["send_read"])
 
 
-class Migration0034ForwardTests(TransactionTestCase):
-    """Migrate core back to 0033, insert a row with the historical model, and migrate forward."""
+class Migration0035ForwardTests(TransactionTestCase):
+    """Migrate core back to 0034, insert a row with the historical model, and migrate forward."""
 
     def setUp(self):
         executor = MigrationExecutor(connection)
@@ -78,7 +78,7 @@ class Migration0034ForwardTests(TransactionTestCase):
         executor.migrate(executor.loader.graph.leaf_nodes())
         super().tearDown()
 
-    def test_rows_saved_before_0034_keep_sending(self):
+    def test_rows_saved_before_0035_keep_sending(self):
         migrated = MicrosoftGraphProviderConfig.objects.get(pk=self.with_mailbox.pk)
 
         self.assertEqual(migrated.auth_method, "client_secret")

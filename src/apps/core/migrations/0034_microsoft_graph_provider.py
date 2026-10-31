@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0032_legacyaccessgrant"),
+        ("core", "0033_awscredentialconfig_credentials_secret_arn"),
     ]
 
     operations = [
