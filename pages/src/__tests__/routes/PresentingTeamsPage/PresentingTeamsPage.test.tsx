@@ -79,7 +79,7 @@ describe('PresentingTeamsPage', () => {
     expect(screen.getByRole('link', {name: 'Search Past Projects'})).toHaveAttribute('href', '/past-projects');
   });
 
-  it('forwards the loading and error state, and the reload for "Try again"', () => {
+  it('forwards the loading state and the reload for "Try Again", and names the teams in the error', () => {
     const refetch = vi.fn();
     vi.mocked(useCurrentProjectGridData).mockReturnValue({
       rows: [],
@@ -95,6 +95,10 @@ describe('PresentingTeamsPage', () => {
       </MemoryRouter>,
     );
 
-    expect(viewProps.current).toMatchObject({loading: true, error: 'Failed to load', onRetry: refetch});
+    expect(viewProps.current).toMatchObject({
+      loading: true,
+      error: "We couldn't load the presenting teams. Please try again.",
+      onRetry: refetch,
+    });
   });
 });
