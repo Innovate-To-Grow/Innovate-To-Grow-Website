@@ -102,6 +102,21 @@ describe('resolveSection', () => {
     expect(resolveSection(MENU, '/past-projects/project/9').currentPath).toBe('/past-projects');
   });
 
+  it("maps a curation's shared page onto All Projects when the menu lists only that", () => {
+    const menu = [item('Home', '/', [], 'home'), item('Explore', '/explore', [item('All Projects', '/all-projects')])];
+
+    // All Projects saves its curations at /past-projects/:shareId too.
+    expect(resolveSection(menu, '/past-projects/share-123')).toMatchObject({
+      menuIndex: 1,
+      currentPath: '/all-projects',
+      isExact: false,
+    });
+    // A menu that lists Past Projects still marks that one, even when it lists All Projects first.
+    expect(resolveSection(MENU, '/past-projects/share-123').currentPath).toBe('/past-projects');
+    const both = [item('All Projects', '/all-projects'), item('Past Projects', '/past-projects')];
+    expect(resolveSection(both, '/past-projects/share-123')).toMatchObject({menuIndex: 1, currentPath: '/past-projects'});
+  });
+
   it('falls back to the closest ancestor page for nested CMS pages', () => {
     const match = resolveSection(MENU, '/about/history');
     expect(titleOf(match.menuIndex)).toBe('About');
