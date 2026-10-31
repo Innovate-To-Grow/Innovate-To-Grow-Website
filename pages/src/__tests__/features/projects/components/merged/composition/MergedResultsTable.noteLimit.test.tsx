@@ -134,7 +134,8 @@ describe('MergedResultsTable — the curation note limit', () => {
     fireEvent.click(screen.getByRole('button', {name: /save curation note/i}));
 
     expect(onUpdateShare).not.toHaveBeenCalled();
-    expect(screen.getByRole('status')).toHaveTextContent('The curation note is too long to save');
+    // The list's status line says why (the link panel has a status line of its own for copies).
+    expect(screen.getByText(/^The curation note is too long to save/)).toHaveAttribute('role', 'status');
     expect(screen.getByRole('button', {name: /save curation note/i})).toBeInTheDocument();
   });
 });
