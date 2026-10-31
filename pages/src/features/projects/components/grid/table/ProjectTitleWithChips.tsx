@@ -62,9 +62,13 @@ interface ProjectTitleWithChipsProps {
   savedRowLabel: string;
 }
 
-// The title keeps its own text node so it can still be found by its exact text when tags follow it.
+// The title keeps its own text node so it can still be found by its exact text when tags follow it. In the lists
+// that mix catalogs (the 'past' scope: All Projects, the draft, shared curations), a row from the current schedule is
+// tagged "Current", the name of the list its link goes to; "This Semester" could be wrong for a row kept from an
+// earlier term. The Current, Presenting and Past Projects lists hold one catalog each, so they never show it.
 export const ProjectTitleWithChips = ({row, scope, isNew, isSaved, savedRowLabel}: ProjectTitleWithChipsProps) => {
   const href = getProjectGridRowHref(row, scope);
+  const isCurrent = scope === 'past' && row.catalog === 'current';
   return (
     <span className="project-grid-title-line">
       {href ? (
@@ -74,6 +78,7 @@ export const ProjectTitleWithChips = ({row, scope, isNew, isSaved, savedRowLabel
       ) : (
         <span className="project-grid-title">{row.project_title}</span>
       )}
+      {isCurrent ? <span className="itg-tag itg-tag-current project-grid-row-chip is-current">Current</span> : null}
       {isNew ? <span className="itg-tag itg-tag-new project-grid-row-chip is-new">New</span> : null}
       {isSaved ? <span className="itg-tag itg-tag-saved project-grid-row-chip is-saved">{savedRowLabel}</span> : null}
     </span>
