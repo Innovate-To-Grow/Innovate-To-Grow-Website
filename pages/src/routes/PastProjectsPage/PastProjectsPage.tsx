@@ -2,8 +2,13 @@ import {useMemo, useState} from 'react';
 import {useLocation, useNavigate, useParams, useSearchParams} from 'react-router';
 import {useAuth} from '@/features/auth';
 import {createProjectGridItems} from '@/features/projects';
+import {ALL_PROJECTS_CATALOG, PAST_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
 import {CatalogBuilderView} from '@/features/projects/components/views/pages/CatalogBuilderView';
-import {usePastProjectGridData, usePastProjectShareData} from '@/features/projects/hooks/useProjectGridData';
+import {
+  useAllProjectGridData,
+  usePastProjectGridData,
+  usePastProjectShareData,
+} from '@/features/projects/hooks/useProjectGridData';
 import {createPastProjectShare, type ProjectGridRow} from '@/features/projects/api';
 import {usePageTitle} from '@/hooks/usePageTitle';
 import {SharedCurationView} from './SharedCurationView';
@@ -22,15 +27,27 @@ function useReloadShareForNewViewer(reloadShare: () => void) {
   }
 }
 
+/** The history state of a curation the builder just saved: All Projects' save names itself in `builtOn`. */
+interface CurationSavedState {
+  curationSaved?: boolean;
+  builtOn?: string;
+}
+
+/** The builder a curation was saved from, which its saved notice names: Past Projects unless All Projects says so. */
+const builtOnCatalog = (builtOn: unknown) =>
+  builtOn === ALL_PROJECTS_CATALOG.path ? ALL_PROJECTS_CATALOG : PAST_PROJECTS_CATALOG;
+
 /**
- * `/past-projects` (the builder) and `/past-projects/:shareId` (a saved curation's shared page). Edits to a
- * shared page go through `useSharedListMutations`, which serializes them and reconciles concurrent edits.
+ * `/past-projects` (the builder) and `/past-projects/:shareId` (a saved curation's shared page, whichever builder
+ * saved it). Edits to a shared page go through `useSharedListMutations`, which serializes them and reconciles
+ * concurrent edits.
  */
 export const PastProjectsPage = () => {
   const {shareId} = useParams<{shareId: string}>();
   const navigate = useNavigate();
   // Set by the builder's save, which opens the new curation's page.
-  const justSaved = Boolean((useLocation().state as {curationSaved?: boolean} | null)?.curationSaved);
+  const savedState = useLocation().state as CurationSavedState | null;
+  const justSaved = Boolean(savedState?.curationSaved);
   const [searchParams] = useSearchParams();
   const sharedMode = Boolean(shareId);
   const {
@@ -48,8 +65,10 @@ export const PastProjectsPage = () => {
   // A shared list is named after the share (its message pages name themselves). The builder names itself too: both
   // routes have the same route title, so coming back from a curation would otherwise keep that curation's title.
   usePageTitle(sharedMode ? activeShare && shareDisplayTitle(activeShare) : 'Past Projects');
-  // The archive is only needed to search (the builder, or the owner adding to a shared list).
-  const {rows, loading, error, refetch} = usePastProjectGridData(!sharedMode || Boolean(activeShare?.can_edit));
+  // A list is only needed to search: the builder searches the archive, and the owner adding to a shared list searches
+  // every project, which holds whatever either builder saved.
+  const archive = usePastProjectGridData(!sharedMode);
+  const allProjects = useAllProjectGridData(sharedMode && Boolean(activeShare?.can_edit));
 
   const sharedItems = useMemo(
     () => createProjectGridItems(activeShare?.rows || [], `shared-${shareId || 'past-projects'}`),
@@ -69,10 +88,11 @@ export const PastProjectsPage = () => {
         status={{loading: shareLoading, error: shareError, notFound: shareNotFound, retry: retryShare}}
         conflictMessage={conflictMessage}
         justSaved={justSaved}
+        builtOn={builtOnCatalog(savedState?.builtOn)}
         share={activeShare}
         items={sharedItems}
         onUpdateShare={updateShare}
-        archive={{rows, loading, error, refetch}}
+        projects={allProjects}
         onAddRows={addShareRows}
       />
     );
@@ -80,11 +100,11 @@ export const PastProjectsPage = () => {
 
   return (
     <CatalogBuilderView
-      rows={rows}
-      loading={loading}
-      error={error}
+      rows={archive.rows}
+      loading={archive.loading}
+      error={archive.error}
       initialSearch={searchParams.get('value') || ''}
-      onRefreshRows={refetch}
+      onRefreshRows={archive.refetch}
       onCreateShare={handleCreateShare}
     />
   );

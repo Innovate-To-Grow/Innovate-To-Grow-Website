@@ -83,6 +83,13 @@ vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
         rows: [sampleRow],
         refetch: vi.fn(),
     }),
+    // The owner's add-more search lists every project.
+    useAllProjectGridData: () => ({
+        error: null,
+        loading: false,
+        rows: [sampleRow],
+        refetch: vi.fn(),
+    }),
     usePastProjectShareData: () => ({
         error: sharedState.shareError,
         loading: false,

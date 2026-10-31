@@ -1,6 +1,8 @@
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
+import {ALL_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
+import {ProjectCatalogContext} from '@/features/projects/catalog/projectCatalog';
 import {SharedPastProjectMergeSearch} from '@/features/projects/components/shared/search/SharedPastProjectMergeSearch';
 import type {ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
 
@@ -139,7 +141,7 @@ describe('SharedPastProjectMergeSearch', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', {level: 2, name: 'Add Projects from Full Archive'})).toBeInTheDocument();
+    expect(screen.getByRole('heading', {level: 2, name: 'Add More Projects'})).toBeInTheDocument();
     expect(screen.getByText('Help: buttons, saving and tables')).toBeInTheDocument();
     expect(screen.getAllByRole('button', {name: 'Add Selected'}).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
@@ -293,7 +295,7 @@ describe('SharedPastProjectMergeSearch', () => {
     );
   });
 
-  it('can refresh a full-archive standard search table without deleting it', () => {
+  it('can refresh a standard search table without deleting it', () => {
     const onRefreshRows = vi.fn();
     const onAddRows = vi.fn();
 
@@ -312,7 +314,8 @@ describe('SharedPastProjectMergeSearch', () => {
 
     expect(onRefreshRows).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
-    expect(screen.getByText(/Refreshing this full-archive search table/i)).toBeInTheDocument();
+    // Without a catalog in context it words itself as Past Projects does.
+    expect(screen.getByText('Refreshing this search table from the latest past-project archive...')).toBeInTheDocument();
 
     // The refetch resolves with a new archive snapshot; the table picks up the new project.
     const deltaRow = makeRow({team_number: 'T04', team_name: 'Team Delta', project_title: 'Delta Project'});
@@ -330,6 +333,26 @@ describe('SharedPastProjectMergeSearch', () => {
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     expect(screen.getAllByText('Delta Project').length).toBeGreaterThan(0);
     expect(screen.getByText('Search table refreshed from the latest past-project archive.')).toBeInTheDocument();
+  });
+
+  it('words its search and refresh after All Projects, the list the share page gives it', () => {
+    const props = {currentRows: [alphaRow], error: null, loading: false, onAddRows: vi.fn(), onRefreshRows: vi.fn()};
+    const search = (rows: ProjectGridRow[]) => (
+      <ProjectCatalogContext.Provider value={ALL_PROJECTS_CATALOG}>
+        <SharedPastProjectMergeSearch rows={rows} {...props} />
+      </ProjectCatalogContext.Provider>
+    );
+    const {rerender} = render(search([alphaRow, bravoRow]));
+
+    expect(screen.getByRole('heading', {level: 2, name: 'Add More Projects'})).toBeInTheDocument();
+    expect(screen.getByText('Search for more projects to add to this curation.')).toBeInTheDocument();
+    expect(screen.queryByText(/archive/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', {name: /refresh search table/i}));
+    expect(screen.getByText('Refreshing this search table from the latest project list...')).toBeInTheDocument();
+
+    rerender(search([alphaRow, bravoRow, charlieRow]));
+    expect(screen.getByText('Search table refreshed from the latest project list.')).toBeInTheDocument();
   });
 
   it('adds a second standard search table with numbered titles', () => {
