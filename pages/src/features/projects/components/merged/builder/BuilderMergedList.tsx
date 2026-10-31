@@ -71,11 +71,11 @@ const BuilderListToolbar = ({
       <MergedExportGroup
         rows={visibleRows}
         buildTarget={() =>
-          builderExportTarget(title, {
-            enabled: canShare,
-            nameDraft: curation.nameDraft,
-            noteDraft: curation.noteDraft,
-          })
+          builderExportTarget(
+            title,
+            {enabled: canShare, nameDraft: curation.nameDraft, noteDraft: curation.noteDraft},
+            visibleRows,
+          )
         }
         onStatus={setStatusMessage}
         reloadNote="Your curation draft is kept."

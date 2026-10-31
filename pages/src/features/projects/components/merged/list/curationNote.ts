@@ -4,6 +4,7 @@ import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {pastProjectsDetailHtmlToPlainText, sanitizePastProjectsDetailHtml} from '../../richText/content/pastProjectsDetailText';
 import {getExportFileBaseName} from '../../shared/utils/shareHelpers';
 import type {ProjectRowsExportContext} from '../../export/support/exportTypes';
+import {curationBranding} from './curationBranding';
 
 // The share-level note is rich text (HTML). Persist the sanitized markup, but collapse an
 // effectively-empty note (whitespace / a stray <br>) back to "" so it does not render an empty box.
@@ -59,29 +60,45 @@ export interface ExportTarget {
   context: ProjectRowsExportContext;
 }
 
-/** A shared list exports under its (possibly unsaved, edited) name and note. */
+/**
+ * A shared list exports under its (possibly unsaved, edited) name and note, its file and heading named after the
+ * exported rows (curationBranding).
+ */
 export function sharedListExportTarget(
   title: string,
   edit: {enabled: boolean; titleDraft: string; noteDraft: string; savedNoteHtml: string},
+  rows: readonly ProjectGridRow[],
 ): ExportTarget {
   const sharedTitle = (edit.enabled ? edit.titleDraft : title).trim() || title;
+  const {filePrefix, exportHeading} = curationBranding(rows);
   return {
-    fileBaseName: getExportFileBaseName(sharedTitle),
-    context: {title: sharedTitle, note: edit.enabled ? prepareNoteForSave(edit.noteDraft) : edit.savedNoteHtml},
+    fileBaseName: getExportFileBaseName(sharedTitle, filePrefix),
+    context: {
+      title: sharedTitle,
+      note: edit.enabled ? prepareNoteForSave(edit.noteDraft) : edit.savedNoteHtml,
+      heading: exportHeading,
+    },
   };
 }
 
 /**
- * The builder exports with the typed name and note. A blank name exports as the card's title; the
- * shared page's default name is derived by the server from the note when the link is created.
+ * The builder exports with the typed name and note, its file and heading named after the exported rows
+ * (curationBranding). A blank name exports as the card's title; the shared page's default name is derived by the
+ * server from the note when the link is created.
  */
 export function builderExportTarget(
   title: string,
   draft: {enabled: boolean; nameDraft: string; noteDraft: string},
+  rows: readonly ProjectGridRow[],
 ): ExportTarget {
   const typedName = draft.enabled ? draft.nameDraft.trim() : '';
+  const {filePrefix, exportHeading} = curationBranding(rows);
   return {
-    fileBaseName: getExportFileBaseName(typedName),
-    context: {title: typedName || title, note: draft.enabled ? prepareNoteForSave(draft.noteDraft) : ''},
+    fileBaseName: getExportFileBaseName(typedName, filePrefix),
+    context: {
+      title: typedName || title,
+      note: draft.enabled ? prepareNoteForSave(draft.noteDraft) : '',
+      heading: exportHeading,
+    },
   };
 }

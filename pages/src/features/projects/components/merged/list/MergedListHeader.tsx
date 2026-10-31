@@ -7,6 +7,8 @@ import type {SharedListEditor} from '../shared/useSharedListEditor';
 
 interface SharedListHeaderProps {
   headingId: string;
+  /** Over the name: which list the projects come from (curationBranding). */
+  eyebrow: string;
   title: string;
   rowCount: number;
   sharedAt?: string;
@@ -15,13 +17,21 @@ interface SharedListHeaderProps {
   titleInputRef: RefObject<HTMLInputElement | null>;
 }
 
-export const SharedListHeader = ({headingId, title, rowCount, sharedAt, editor, titleInputRef}: SharedListHeaderProps) => {
+export const SharedListHeader = ({
+  headingId,
+  eyebrow,
+  title,
+  rowCount,
+  sharedAt,
+  editor,
+  titleInputRef,
+}: SharedListHeaderProps) => {
   const sharedDate = formatSharedDate(sharedAt);
   const isEditing = Boolean(editor?.isEditingTitle);
 
   return (
     <header className="project-grid-shared-header">
-      <p className="itg-eyebrow">Curation · Past Projects</p>
+      <p className="itg-eyebrow">{eyebrow}</p>
       <div className={`project-grid-share-title-editor${isEditing ? ' is-editing' : ''}`}>
         {editor && isEditing ? (
           <input
