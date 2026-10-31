@@ -1,4 +1,4 @@
-import type {ProjectGridRow, ProjectTableRow} from '@/features/projects/api';
+import type {ProjectGridRow} from '@/features/projects/api';
 import {formatSemesterLabel} from '@/lib/format';
 
 export type {ProjectGridRow} from '@/features/projects/api';
@@ -137,20 +137,6 @@ const semesterSortKey = (value: string) => {
 
   return {year, seasonRank};
 };
-
-export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
-  id: project.id,
-  semester_label: formatSemesterLabel(project.semester_label),
-  class_code: project.class_code,
-  team_number: project.team_number,
-  team_name: project.team_name,
-  project_title: project.project_title,
-  organization: project.organization,
-  industry: project.industry,
-  abstract: project.abstract,
-  student_names: project.student_names,
-  is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
-});
 
 // `id` is deliberately excluded from the content fingerprint so equivalent rows from archive and
 // AI search sources still deduplicate when one source lacks an id. The id remains on the row for
