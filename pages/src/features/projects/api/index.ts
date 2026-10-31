@@ -42,7 +42,15 @@ export type {
 export type {PaginatedResponse} from '@/types/api';
 
 export {DEFAULT_PAST_PROJECT_SHARE_NAME, PROJECT_REQUEST_TIMEOUT_MS} from './constants';
-export {fetchAllPastProjectArchive, fetchPastProjectArchive, searchPastProjectArchiveIds} from './archive';
+export {
+    fetchAllPastProjectArchive,
+    fetchAllProjectsCatalog,
+    fetchCatalogPage,
+    fetchPastProjectArchive,
+    searchAllProjectIds,
+    searchPastProjectArchiveIds,
+    type ProjectCatalogEndpoint,
+} from './archive';
 export {PROJECT_DETAIL_CACHE_TTL_MS, readCachedProjectDetail, rememberProjectDetail} from './projectDetailCache';
 
 /**
