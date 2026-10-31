@@ -58,3 +58,18 @@ test('"Section titles" hides the page header of an embedded project page', async
   await expect(meta).toBeHidden();
   await expect(page.locator('.projects-page .itg-lead')).toBeHidden();
 });
+
+test('an app-route widget keeps its controls off the frame edge: 16px in, 20px on phones', {tag: '@core'}, async ({page}) => {
+  await mockSchedule(page, linkedSchedule());
+  await mockCmsEmbed(page, 'projects-widget', cmsEmbedResponse({widget_type: 'app_route', app_route: '/current-projects', blocks: []}));
+  await page.goto('/_embed/projects-widget', {waitUntil: 'domcontentloaded'});
+
+  const title = page.getByRole('heading', {level: 1, name: 'Current Projects'});
+  await expect(title).toBeVisible();
+  const inset = (page.viewportSize()?.width ?? 1280) <= 768 ? 20 : 16;
+  const box = await title.boundingBox();
+  expect(Math.round(box?.x ?? -1)).toBe(inset);
+  await expect(page.locator('.cms-embed-app-route')).toHaveCSS('padding-left', `${inset}px`);
+  // The page background stays, so the widget's text and stripes keep their contrast on a coloured host page.
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+});
