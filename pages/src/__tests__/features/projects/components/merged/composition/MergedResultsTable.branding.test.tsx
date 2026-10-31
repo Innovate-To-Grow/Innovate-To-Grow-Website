@@ -85,6 +85,14 @@ describe('MergedResultsTable branding', () => {
     expect(context).toMatchObject({title: 'Curation Draft', heading: 'Innovate to Grow Projects'});
   });
 
+  it('suggests the name the server gives a draft with a current-semester project saved without one', () => {
+    const {rerender} = render(<MergedResultsTable rows={items([ARCHIVE_ROW, CURRENT_ROW])} onCreateShare={vi.fn()} />);
+    expect(screen.getByLabelText(/curation name/i)).toHaveAttribute('placeholder', 'Project Curation');
+
+    rerender(<MergedResultsTable rows={items([ARCHIVE_ROW])} onCreateShare={vi.fn()} />);
+    expect(screen.getByLabelText(/curation name/i)).toHaveAttribute('placeholder', 'Past Project Curation');
+  });
+
   it('exports the archive projects a search narrowed the draft to under the Past Projects names', async () => {
     const {container} = render(<MergedResultsTable rows={items([ARCHIVE_ROW, CURRENT_ROW])} onCreateShare={vi.fn()} />);
 

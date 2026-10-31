@@ -42,7 +42,7 @@ export type {
 
 export type {PaginatedResponse} from '@/types/api';
 
-export {DEFAULT_PAST_PROJECT_SHARE_NAME, PROJECT_REQUEST_TIMEOUT_MS} from './constants';
+export {DEFAULT_PAST_PROJECT_SHARE_NAME, DEFAULT_PROJECT_SHARE_NAME, PROJECT_REQUEST_TIMEOUT_MS} from './constants';
 export {
     fetchAllPastProjectArchive,
     fetchAllProjectsCatalog,

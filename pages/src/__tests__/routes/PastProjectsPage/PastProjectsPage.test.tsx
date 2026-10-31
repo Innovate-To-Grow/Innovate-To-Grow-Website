@@ -251,6 +251,15 @@ describe('PastProjectsPage', () => {
         expect(await screen.findByTestId('share-title')).toHaveTextContent('Past Project Curation');
     });
 
+    it('titles a share of current-semester projects stored without a name as the server would name it', async () => {
+        sharedState.share = shareFixture({name: '', rows: [sampleRow, currentRow]});
+
+        renderPage();
+
+        expect(await screen.findByTestId('share-title')).toHaveTextContent(/^Project Curation$/);
+        expect(document.title).toBe('Project Curation | Innovate to Grow');
+    });
+
     it('names the tab Past Projects even after a curation page named it', () => {
         // Both routes share the route title, so the route alone would not set it again.
         document.title = 'Spring finalists | Innovate to Grow';

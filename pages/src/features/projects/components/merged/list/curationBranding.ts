@@ -1,3 +1,4 @@
+import {DEFAULT_PAST_PROJECT_SHARE_NAME, DEFAULT_PROJECT_SHARE_NAME} from '@/features/projects/api/constants';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 
 /** How a curation names the list its projects come from: on its shared page and in its exports. */
@@ -8,14 +9,24 @@ export interface CurationBranding {
   exportHeading?: string;
   /** What an export's file name starts with ("past-projects-spring-picks.pdf"). */
   filePrefix: string;
+  /**
+   * The name of a curation saved without one or any note text of its owner's, as the server gives it
+   * (share_names.default_share_name), and what one stored with a blank name is shown as.
+   */
+  defaultName: string;
 }
 
-const PAST_PROJECTS_BRANDING: CurationBranding = {eyebrow: 'Curation · Past Projects', filePrefix: 'past-projects'};
+const PAST_PROJECTS_BRANDING: CurationBranding = {
+  eyebrow: 'Curation · Past Projects',
+  filePrefix: 'past-projects',
+  defaultName: DEFAULT_PAST_PROJECT_SHARE_NAME,
+};
 
 const ALL_PROJECTS_BRANDING: CurationBranding = {
   eyebrow: 'Curation · All Projects',
   exportHeading: 'Innovate to Grow Projects',
   filePrefix: 'projects',
+  defaultName: DEFAULT_PROJECT_SHARE_NAME,
 };
 
 /**
