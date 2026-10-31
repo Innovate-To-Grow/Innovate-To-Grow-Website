@@ -72,10 +72,19 @@
   white-space: nowrap;
 }
 
-/* The curator's note is set like the reference's blockquote: a 5px #cfcfcf rule, 15px in. */
+/* The curation note, read the same by its owner and by visitors: set like the reference's blockquote, a 5px rule
+   in the border colour and 15px in, under a label row that also holds the owner's Edit Curation Note. */
 .project-grid-shared-note {
   padding: 0 0 0 15px;
-  border-left: 5px solid #cfcfcf;
+  border-left: 5px solid var(--itg-color-border);
+}
+
+.project-grid-shared-note-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
 }
 
 .project-grid-shared-note-label {
@@ -93,9 +102,23 @@
   overflow-wrap: anywhere;
 }
 
+/* Only the owner sees an empty note, with this line under the label row. */
+.project-grid-shared-note-empty {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+}
+
 .project-grid-share-editor {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+/* On paper the owner's note reads as a visitor's: no Edit Curation Note, and no box for a note that is empty. */
+@media print {
+  .project-grid-shared-note .project-grid-share-note-action,
+  .project-grid-shared-note.is-empty {
+    display: none;
+  }
 }
 }

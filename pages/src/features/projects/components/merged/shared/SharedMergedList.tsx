@@ -1,13 +1,13 @@
-import {RichDetailPreview} from '../../richText/content/RichDetailPreview';
 import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {curationBranding} from '../list/curationBranding';
-import {noteHasContent, sharedListExportTarget} from '../list/curationNote';
+import {sharedListExportTarget} from '../list/curationNote';
 import {MergedEditButtons} from '../list/MergedEditButtons';
 import {MergedExportGroup} from '../list/MergedExportGroup';
 import {MergedListGrid} from '../list/MergedListGrid';
 import {SharedListHeader} from '../list/MergedListHeader';
 import {SharedLinkPanel} from './SharedLinkPanel';
 import {SharedNoteEditor} from './SharedNoteEditor';
+import {SharedNoteView} from './SharedNoteView';
 import {useMergedList} from '../list/useMergedList';
 import {useNoteInsertFields} from '../list/useNoteInsertFields';
 import {useSharedListEditor} from './useSharedListEditor';
@@ -25,15 +25,6 @@ export interface SharedMergedListProps {
   canUndoRows: boolean;
   onUndoRows?: () => void;
 }
-
-/** The saved note, read-only, for viewers who cannot edit it. */
-const SharedNoteView = ({noteHtml}: {noteHtml: string}) =>
-  noteHasContent(noteHtml) ? (
-    <div className="project-grid-shared-note">
-      <p className="project-grid-shared-note-label">Curation note</p>
-      <RichDetailPreview className="project-grid-shared-detail-text itg-content" html={noteHtml} />
-    </div>
-  ) : null;
 
 /** A saved curation's page: its link, note and projects, editable in place by its owner. */
 export const SharedMergedList = ({
@@ -104,7 +95,7 @@ export const SharedMergedList = ({
       ) : null}
 
       {canEdit ? (
-        <SharedNoteEditor editor={editor} rows={allRows} noteInsert={noteInsert} />
+        <SharedNoteEditor editor={editor} rows={allRows} noteInsert={noteInsert} noteHtml={noteHtml} />
       ) : (
         <SharedNoteView noteHtml={noteHtml} />
       )}
