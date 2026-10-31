@@ -126,8 +126,10 @@ the team is archived. Each stored row carries `catalog` (`"archive"` or `"curren
 identity. A row naming no published project is a `400` on `rows` ("… not among the published projects …"), except
 on an update when the share already holds that row (a project removed from the archive since, or a deleted
 `CurrentProject`), which is kept as stored. Reading a share shows the catalog's current text for every row that
-still resolves, so a current row reads as its archive row once its semester is imported; rows that become the same
-project that way are kept once, on reads and writes.
+still resolves, so a current row reads as its archive row once its semester is imported. A row naming a project an
+earlier row already names (by its id, as sent or as resolved) is dropped, on reads and writes: a current row and its
+archive row, two ids of one team, or a project sent twice. A share stored with such a repeat keeps it until its next
+save, so its `row_count` under `/past-shares/mine/` counts it until then.
 
 **Note and details:** `note` is rich text, at most 50,000 characters, sanitized to the share allowlist on every
 write. `details_text` is read-only: shares saved by the old client still serve theirs, and a value sent on a write is
@@ -162,8 +164,8 @@ not be reached; `502` with `code: "ai_search_error"` means the model call failed
 
 ### `GET /projects/past-shares/mine/`
 
-Lists snapshots created by the authenticated user. `row_count` is counted by the database; the rows themselves are
-never loaded for the list.
+Lists snapshots created by the authenticated user. `row_count` is counted by the database from the stored rows;
+the rows themselves are never loaded for the list.
 
 **Permission:** Authenticated
 

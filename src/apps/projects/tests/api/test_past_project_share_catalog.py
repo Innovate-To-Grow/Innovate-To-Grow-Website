@@ -114,3 +114,24 @@ class PastProjectShareCatalogRowsTests(PastProjectShareTestCase):
 
         self.assertEqual(response.data["rows"][0]["project_title"], "Shared Project")
         self.assertEqual(response.data["rows"][0]["student_names"], "Alice, Bob")
+
+    def test_create_stores_a_project_sent_twice_once(self):
+        first, second = (str(self.catalog[team].pk) for team in ("T01", "T02"))
+        rows = [sample_row(id=first), sample_row(id=second), sample_row(id=first)]
+
+        response = self.client.post("/projects/past-shares/", sample_payload(rows=rows), format="json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual([row["id"] for row in response.data["rows"]], [first, second])
+        self.assertEqual(len(PastProjectShare.objects.get(pk=response.data["id"]).rows), 2)
+
+    def test_get_shows_a_project_stored_twice_once(self):
+        project_id = str(self.catalog["T01"].pk)
+        share = PastProjectShare.objects.create(rows=[sample_row(id=project_id), sample_row(id=project_id)])
+
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+
+        self.assertEqual([row["id"] for row in response.data["rows"]], [project_id])
+        # The snapshot keeps both until the next write.
+        share.refresh_from_db()
+        self.assertEqual(len(share.rows), 2)
