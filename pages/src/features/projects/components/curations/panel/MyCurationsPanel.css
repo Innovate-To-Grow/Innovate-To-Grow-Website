@@ -46,12 +46,12 @@
   border-top: 1px solid var(--itg-color-border);
 }
 
+/* Copy Link in its own right-hand column, centred on its row, whatever the name's length. */
 .past-projects-my-curation {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
+  column-gap: 1rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--itg-color-border);
 }
