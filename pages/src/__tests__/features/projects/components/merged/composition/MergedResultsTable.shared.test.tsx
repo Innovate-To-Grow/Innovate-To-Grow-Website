@@ -475,9 +475,18 @@ describe('MergedResultsTable in shared mode', () => {
     expect(screen.queryByRole('button', {name: /remove all/i})).toBeNull();
   });
 
-  it('expands all rows by default in shared mode so project details are visible', () => {
-    const {container} = render(<MergedResultsTable rows={makeItems()} sharedMode note="See below" />);
-    expect(within(desktopTable(container)).getByText(/A detailed project abstract\./)).toBeInTheDocument();
+  it('opens a shared list with every row collapsed, as every other list does', () => {
+    const {container} = render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} sharedMode note="See below" />);
+
+    expect(container.querySelector('.project-grid-detail-row')).toBeNull();
+    expect(within(desktopTable(container)).queryByText(/A detailed project abstract\./)).toBeNull();
+    const toggle = screen.getByRole('button', {name: 'View All Details'});
+
+    // View All Details still opens them all.
+    fireEvent.click(toggle);
+    expect(container.querySelectorAll('.project-grid-detail-row')).toHaveLength(2);
+    expect(within(desktopTable(container)).getAllByText(/A detailed project abstract\./)).toHaveLength(2);
+    expect(toggle).toHaveTextContent('Hide All Details');
   });
 
   it('inserts projects into the shared note while editing', async () => {

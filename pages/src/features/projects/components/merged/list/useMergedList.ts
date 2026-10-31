@@ -12,15 +12,15 @@ export interface ListMessage {
 /**
  * State both list modes share: the paged table, the status line, the pending bulk-action dialog, and where focus
  * goes after a row's Remove (call `rememberRemoval` as one is pressed). `message` is what the page reports about
- * the list (the builder's draft edits); it takes the status line as the list's own messages do.
+ * the list (the builder's draft edits); it takes the status line as the list's own messages do. Rows start
+ * collapsed in both modes, as in every other list; View All Details opens them all.
  */
-export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean, message: ListMessage | null = null) {
+export function useMergedList(rows: ProjectGridItem[], message: ListMessage | null = null) {
   const table = useProjectGridTable({
     rows,
     pageSize: 5,
     defaultSortField: 'semester_label',
     defaultSortDirection: 'desc',
-    expandAllByDefault: sharedMode,
   });
   // Every report is counted, one that repeats the line's text too (a second row removed), so it can be shown again.
   const [status, setStatus] = useState({text: '', reports: 0});

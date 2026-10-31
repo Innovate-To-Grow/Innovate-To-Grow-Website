@@ -40,7 +40,7 @@ export const SharedMergedList = ({
   onUndoRows,
 }: SharedMergedListProps) => {
   const canEdit = editable && Boolean(onUpdateShare);
-  const list = useMergedList(rows, true);
+  const list = useMergedList(rows);
   const {table, allRows, headingId, setStatusMessage} = list;
   const noteInsert = useNoteInsertFields();
   const {titleInputRef, ...editor} = useSharedListEditor({

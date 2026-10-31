@@ -125,7 +125,7 @@ function useBuilderList({
 }: BuilderListOptions) {
   const {isAuthenticated} = useAuth();
   const canShare = Boolean(onCreateShare) && isAuthenticated;
-  const list = useMergedList(rows, false, message);
+  const list = useMergedList(rows, message);
   const {table, visibleRows, setStatusMessage} = list;
   const noteInsert = useNoteInsertFields();
   const hiddenAddedCount = useRevealRecentlyAdded(table, rows, recentlyAdded);
