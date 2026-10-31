@@ -96,6 +96,14 @@
   min-height: 2.75rem;
 }
 
+/* A touch screen keeps :hover on the button last tapped, and .itg-btn-text drops its underline on hover, so after
+   a tap "Hide Details" lost the underline "Show Details" had. Only the decoration: Remove keeps its own colour. */
+@media (hover: none) {
+  .project-grid-mobile-card-actions .itg-btn:hover {
+    text-decoration: underline;
+  }
+}
+
 /* ---- Pager ------------------------------------------------------------------- */
 
 /* The pager sits right under the table, right-aligned (.itg-pagination); its numbers are a plain list. Every page
