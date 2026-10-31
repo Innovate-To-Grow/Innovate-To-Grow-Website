@@ -35,6 +35,8 @@ export type {
     PastProjectShareSummary,
     PastProjectAISearchResponse,
     ProjectGridHydrationResult,
+    ProjectCatalogSource,
+    ProjectAISearchScope,
 } from './types';
 
 export type {PaginatedResponse} from '@/types/api';

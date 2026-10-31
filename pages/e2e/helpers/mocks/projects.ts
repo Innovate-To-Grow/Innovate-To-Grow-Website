@@ -43,6 +43,17 @@ export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Pro
   });
 }
 
+/**
+ * `/projects/all/`: the archive and the active schedule's projects, paged like `/projects/archive/`.
+ * TODO: page, search and filter `rows` as mockPastProjects does; for now every request gets an empty page.
+ */
+export async function mockAllProjects(page: Page, rows: ProjectTableRow[]): Promise<void> {
+  void rows;
+  await page.route(/\/projects\/all\/(?:\?.*)?$/, (route) =>
+    route.fulfill(json({count: 0, next: null, previous: null, results: []})),
+  );
+}
+
 export interface PastProjectShareMockController {
   patchPayloads: Partial<PastProjectShare>[];
   deleted: boolean;
