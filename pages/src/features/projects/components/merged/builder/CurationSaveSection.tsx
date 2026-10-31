@@ -112,12 +112,17 @@ export const CurationSaveSection = ({
           </div>
         </>
       ) : (
-        <p className="project-grid-share-login-hint">
-          <SignInToSaveLink signIn={signIn}>Sign in</SignInToSaveLink>
-          {signIn.inNewTab
-            ? ' to sign in, save this curation and get a link to share it. This draft goes with you.'
-            : ' to save this curation and get a link to share it.'}
-        </p>
+        // Mirrors the signed-in actions: the card header's button again, and a note on what saving gives.
+        <div className="project-grid-share-actions">
+          <SignInToSaveLink className="itg-btn itg-btn-primary" signIn={signIn}>
+            Sign In to Save
+          </SignInToSaveLink>
+          <span className="project-grid-share-actions-note">
+            {signIn.inNewTab
+              ? 'Sign in there to save this curation and get a link to share it. This draft goes with you.'
+              : 'Saved curations are listed under My Curations, each with a link anyone can view.'}
+          </span>
+        </div>
       )}
     </div>
   );

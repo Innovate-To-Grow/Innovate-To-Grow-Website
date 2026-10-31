@@ -472,17 +472,24 @@ describe('MergedResultsTable', () => {
     expect(rowsArg[0]).toMatchObject({project_title: 'Irrigation Sensor'});
   });
 
-  it('hides the share controls and shows a login hint for anonymous users', () => {
+  it('hides the share controls and offers Sign In to Save where the save buttons would be', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
     render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
     expect(screen.queryByRole('button', {name: /save curation/i})).toBeNull();
     expect(screen.queryByLabelText(/curation name/i)).toBeNull();
-    expect(screen.getByText(/to save this curation and get a link to share it/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: 'Sign In to Save'}).getAttribute('href')).toMatch(/^\/login\?returnTo=/);
-    // The sign-in link carries a returnTo so sign-in brings the visitor back to this page.
-    const loginLink = screen.getByRole('link', {name: 'Sign in'});
-    expect(loginLink.getAttribute('href')).toMatch(/^\/login\?returnTo=/);
+    // The card header's button again under "Save this curation", as for a member, and no sign-in sentence.
+    const signInLinks = screen.getAllByRole('link', {name: 'Sign In to Save'});
+    expect(signInLinks).toHaveLength(2);
+    for (const link of signInLinks) {
+      expect(link).toHaveClass('itg-btn', 'itg-btn-primary');
+      // Each carries a returnTo, so sign-in brings the visitor back to this page.
+      expect(link.getAttribute('href')).toMatch(/^\/login\?returnTo=/);
+    }
+    expect(screen.queryByText(/Sign in to save this curation/i)).toBeNull();
+    const section = screen.getByRole('heading', {name: 'Save this curation'}).closest('.project-grid-share') as HTMLElement;
+    expect(within(section).getByText('Saved curations are listed under My Curations, each with a link anyone can view.'))
+      .toBeInTheDocument();
   });
 
   it('folds the saved list behind a disclosure for phones', () => {

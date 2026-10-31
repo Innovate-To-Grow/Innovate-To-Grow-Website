@@ -151,10 +151,6 @@
   color: var(--itg-color-text-secondary);
 }
 
-.project-grid-share-login-hint {
-  margin: 0;
-}
-
 /* Note insert tools under the curation note. */
 .project-grid-note-insert-actions {
   display: flex;
