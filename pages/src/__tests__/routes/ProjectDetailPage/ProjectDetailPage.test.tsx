@@ -226,9 +226,17 @@ describe('ProjectDetailPage', () => {
         </MemoryRouter>,
       );
 
-      fireEvent.click(await screen.findByRole('button', {name: 'Copy link to this project'}));
+      const copyButton = await screen.findByRole('button', {name: 'Copy Link to this project'});
+      expect(copyButton.closest('article')).toHaveAttribute('data-launcher-avoid', '');
+      expect(copyButton).toHaveClass('itg-btn', 'itg-btn-primary');
+      // The back link beside it is an outline button, the same at every width.
+      const backLinks = screen.getAllByRole('link', {name: /^back to /i});
+      expect(backLinks[1]).toHaveClass('itg-btn', 'itg-btn-outline', 'project-detail-actions-back');
+      fireEvent.click(copyButton);
 
-      expect(await screen.findByRole('status')).toHaveTextContent('Link copied.');
+      const status = await screen.findByRole('status');
+      expect(status).toHaveTextContent('Link copied.');
+      expect(status).toHaveClass('itg-success');
       expect(writeText).toHaveBeenCalledWith(window.location.href);
     } finally {
       Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});

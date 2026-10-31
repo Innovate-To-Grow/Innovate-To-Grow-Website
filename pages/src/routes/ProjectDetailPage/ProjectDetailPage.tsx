@@ -54,31 +54,32 @@ const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => 
   );
 };
 
-/** Back to the list, and copy a link to this project. */
+/**
+ * Back to the list, and copy a link to this project: the same two buttons at every width, side by side on wide
+ * screens and stacked full width on phones. The back link also sits above the title; this one is where a reader
+ * ends up after a long abstract and team list, several phone screens below it.
+ */
 const ProjectDetailActions = ({backTarget}: {backTarget: ProjectBackTarget}) => {
-  const {status: copyStatus, copy} = useCopyLink({
+  const {status: copyStatus, tone, copy} = useCopyLink({
     copied: 'Link copied.',
     failed: 'Could not copy the link. Copy it from the address bar instead.',
   });
   return (
     <div className="project-detail-actions">
-      <ProjectBackLink target={backTarget} className="itg-link project-detail-actions-back">
-        <span className="project-detail-wide-only" aria-hidden="true">
-          ‹{' '}
-        </span>
+      <ProjectBackLink target={backTarget} className="itg-btn itg-btn-outline project-detail-actions-back">
+        <span aria-hidden="true">‹ </span>
         <span>{backTarget.label}</span>
       </ProjectBackLink>
       <button
         type="button"
-        className="itg-btn itg-btn-text project-detail-copy"
+        className="itg-btn itg-btn-primary project-detail-copy"
         onClick={() => void copy(window.location.href)}
       >
-        <span>
-          Copy link <span className="project-detail-wide-only">to this project</span>
-        </span>
+        Copy Link{' '}
+        <span className="sr-only">to this project</span>
       </button>
       {copyStatus ? (
-        <p className="project-detail-copy-status" role="status">
+        <p className={`project-detail-copy-status ${tone === 'error' ? 'itg-error' : 'itg-success'}`} role="status">
           {copyStatus}
         </p>
       ) : null}

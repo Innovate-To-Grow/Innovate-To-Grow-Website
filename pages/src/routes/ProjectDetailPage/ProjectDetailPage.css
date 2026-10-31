@@ -54,6 +54,8 @@
   column-gap: 1.5rem;
 }
 
+/* The closing actions: "‹ Back to …" (outline) and "Copy Link" (primary) side by side, then the copy status.
+   Its colour comes from its tone class (.itg-success or .itg-error). */
 .project-detail-actions {
   display: flex;
   flex-wrap: wrap;
@@ -66,15 +68,9 @@
 
 .project-detail-copy-status {
   margin: 0;
-  color: var(--itg-color-success);
 }
 
-.project-detail-wide-only {
-  display: inline;
-}
-
-/* Phones: "Back to …" outlined and "Copy link" filled (the reference's 2px navy buttons), full width so the
-   labels stay on one line. */
+/* Phones: the two buttons stacked, full width, so their labels stay on one line. */
 @media (max-width: 768px) {
   .project-detail-members {
     display: block;
@@ -91,50 +87,12 @@
     gap: 10px;
   }
 
-  .project-detail-actions .project-detail-actions-back,
-  .project-detail-actions .project-detail-copy {
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.75rem;
-    padding: 0 0.5rem;
-    border: 2px solid var(--itg-color-primary);
-    font-size: var(--itg-font-size-body);
-    font-weight: 400;
-    text-align: center;
-    text-decoration: none;
-  }
-
-  .project-detail-actions .project-detail-actions-back {
-    background: var(--itg-color-white);
-    color: var(--itg-color-primary);
-  }
-
-  .project-detail-actions .project-detail-actions-back:hover,
-  .project-detail-actions .project-detail-actions-back:focus-visible {
-    background: var(--itg-color-primary);
-    color: var(--itg-color-white);
-  }
-
-  .project-detail-actions .project-detail-copy {
-    background: var(--itg-color-primary);
-    color: var(--itg-color-white);
-  }
-
-  .project-detail-actions .project-detail-copy:hover,
-  .project-detail-actions .project-detail-copy:focus-visible {
-    border-color: var(--itg-color-primary-hover);
-    background: var(--itg-color-primary-hover);
-    color: var(--itg-color-white);
+  .project-detail-actions > .itg-btn {
+    width: 100%;
   }
 
   .project-detail-copy-status {
     grid-column: 1 / -1;
-  }
-
-  .project-detail-wide-only {
-    display: none;
   }
 }
 }
