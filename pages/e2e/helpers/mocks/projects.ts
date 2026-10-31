@@ -2,7 +2,7 @@
 // returns the captured request payloads for assertions. RegExp matchers are
 // used where a request may carry a query string (glob `?`/`*` handling is
 // finicky); exact slash-terminated paths use string globs.
-import type {Page, Route} from '@playwright/test';
+import type {BrowserContext, Page, Route} from '@playwright/test';
 import type {
   PastProjectAISearchResponse,
   PastProjectShare,
@@ -40,7 +40,7 @@ function fulfillListPage(route: Route, rows: ProjectTableRow[], toResult: (row: 
 }
 
 /** `/projects/<id>/` for each of `rows`, as given; any other id goes on to the next handler. */
-async function mockRowDetails(page: Page, rows: ProjectTableRow[]): Promise<void> {
+async function mockRowDetails(page: Page | BrowserContext, rows: ProjectTableRow[]): Promise<void> {
   await page.route(/\/projects\/[^/]+\/(?:\?.*)?$/, async (route) => {
     const id = new URL(route.request().url()).pathname.split('/').at(-2);
     const row = rows.find((project) => project.id === id);
@@ -57,9 +57,10 @@ export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Pro
 /**
  * `/projects/all/`, the list All Projects and a curation owner's "Add More Projects" search: `rows` in the order
  * given (the API lists the active schedule's projects first), paged and searched like `/projects/archive/`, with
- * the fields it adds. A row without `catalog` is an archive row. Their details are served too.
+ * the fields it adds. A row without `catalog` is an archive row. Their details are served too. Given the context, it
+ * also serves the tabs a page opens (a widget's "Continue in All Projects").
  */
-export async function mockAllProjects(page: Page, rows: ProjectTableRow[]): Promise<void> {
+export async function mockAllProjects(page: Page | BrowserContext, rows: ProjectTableRow[]): Promise<void> {
   await mockRowDetails(page, rows);
   await page.route(/\/projects\/all\/(?:\?.*)?$/, (route) =>
     fulfillListPage(route, rows, (row) => {
