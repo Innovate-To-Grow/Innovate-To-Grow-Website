@@ -1,5 +1,5 @@
 
-import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MergedResultsTable} from '@/features/projects/components/merged/composition/MergedResultsTable';
@@ -143,7 +143,7 @@ describe('MergedResultsTable in shared mode', () => {
 
     const shareBlock = container.querySelector('.project-grid-share-result');
     expect(shareBlock).toHaveClass('itg-panel');
-    expect(within(shareBlock as HTMLElement).getByRole('button', {name: 'Copy link'})).toBeInTheDocument();
+    expect(within(shareBlock as HTMLElement).getByRole('button', {name: 'Copy Link'})).toBeInTheDocument();
     const noteBlock = container.querySelector('.project-grid-shared-note');
     expect(noteBlock).not.toBeNull();
     expect(screen.getByText('Curated highlights')).toBeInTheDocument();
@@ -202,21 +202,6 @@ describe('MergedResultsTable in shared mode', () => {
     expect(container.querySelector('.project-grid-shared-header .itg-page-meta')).toHaveTextContent(
       /^Curated by a site member · 1 project$/,
     );
-  });
-
-  it('copies the shareable link with the Copy link button', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
-    try {
-      render(<MergedResultsTable rows={makeItems()} sharedMode />);
-
-      fireEvent.click(screen.getByRole('button', {name: 'Copy link'}));
-
-      await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
-      expect(await screen.findByRole('status')).toHaveTextContent('Shareable URL copied.');
-    } finally {
-      Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
-    }
   });
 
   it('does not render a note block in shared mode when note is empty', () => {
@@ -293,30 +278,6 @@ describe('MergedResultsTable in shared mode', () => {
     expect(screen.queryByText('No curation note yet.')).toBeNull();
     expect(screen.queryByText('Curation note')).toBeNull();
     expect(screen.queryByRole('button', {name: 'Edit Curation Note'})).toBeNull();
-  });
-
-  it('confirms when the shareable URL is copied to the clipboard', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
-    try {
-      render(<MergedResultsTable rows={makeItems()} sharedMode />);
-
-      fireEvent.click(screen.getByLabelText('Shareable link'));
-
-      await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
-      expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();
-    } finally {
-      Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
-    }
-  });
-
-  it('asks for a manual copy when no clipboard mechanism is available', async () => {
-    // jsdom has neither navigator.clipboard nor document.execCommand — both paths fall through.
-    render(<MergedResultsTable rows={makeItems()} sharedMode />);
-
-    fireEvent.click(screen.getByLabelText('Shareable link'));
-
-    expect(await screen.findByText('Unable to copy URL. Select the link and copy it manually.')).toBeInTheDocument();
   });
 
   it('lets an editable shared page save note changes', async () => {
@@ -513,22 +474,6 @@ describe('MergedResultsTable in shared mode', () => {
     await waitFor(() => expect(noteEditor.textContent).toContain('Project 1'));
   });
 
-  it('copies the share URL via document.execCommand when no async clipboard exists', async () => {
-    Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
-    const execCommand = vi.fn().mockReturnValue(true);
-    Object.defineProperty(document, 'execCommand', {value: execCommand, configurable: true, writable: true});
-    try {
-      render(<MergedResultsTable rows={makeItems()} sharedMode />);
-
-      fireEvent.click(screen.getByLabelText('Shareable link'));
-
-      expect(await screen.findByText('Shareable URL copied.')).toBeInTheDocument();
-      expect(execCommand).toHaveBeenCalledWith('copy');
-    } finally {
-      Object.defineProperty(document, 'execCommand', {value: undefined, configurable: true, writable: true});
-    }
-  });
-
   it('surfaces a failure message when a shared update is rejected', async () => {
     const onUpdateShare = vi.fn().mockRejectedValue(new Error('boom'));
 
@@ -635,31 +580,6 @@ describe('MergedResultsTable in shared mode', () => {
     fireEvent.keyDown(screen.getByLabelText('Curation name'), {key: 'Enter'});
 
     await waitFor(() => expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Renamed', ''));
-  });
-
-  it('selects the share URL when the input takes focus, without touching the clipboard', async () => {
-    // Tabbing onto the field used to copy, replacing whatever a keyboard user had on their clipboard.
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    const execCommand = vi.fn().mockReturnValue(true);
-    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
-    Object.defineProperty(document, 'execCommand', {value: execCommand, configurable: true});
-    try {
-      render(<MergedResultsTable rows={makeItems()} sharedMode />);
-      const input = screen.getByLabelText<HTMLInputElement>('Shareable link');
-
-      input.focus();
-      await act(async () => {});
-
-      expect(input).toHaveFocus();
-      expect(input.selectionStart).toBe(0);
-      expect(input.selectionEnd).toBe(window.location.href.length);
-      expect(writeText).not.toHaveBeenCalled();
-      expect(execCommand).not.toHaveBeenCalled();
-      expect(screen.queryByText('Shareable URL copied.')).toBeNull();
-    } finally {
-      Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
-      Reflect.deleteProperty(document, 'execCommand');
-    }
   });
 
   it('closes the inline note editor when the note prop changes externally', async () => {

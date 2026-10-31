@@ -72,6 +72,23 @@
   white-space: nowrap;
 }
 
+/* Copy Link's outcome, on its own line under the link and the exports (inside the field it would push the export
+   buttons off the link's row). Its colour comes from .itg-success or .itg-error. It stays in the page while empty,
+   so screen readers announce its first message, and empty it takes no room (or gap) in the panel. */
+.project-grid-share-copy-status {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.project-grid-share-copy-status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 /* The curation note, read the same by its owner and by visitors: set like the reference's blockquote, a 5px rule
    in the border colour and 15px in, under a label row that also holds the owner's Edit Curation Note. */
 .project-grid-shared-note {
@@ -114,10 +131,12 @@
   gap: 0.5rem;
 }
 
-/* On paper the owner's note reads as a visitor's: no Edit Curation Note, and no box for a note that is empty. */
+/* On paper the owner's note reads as a visitor's (no Edit Curation Note, and no box for a note that is empty), and
+   a copy's feedback is left off. */
 @media print {
   .project-grid-shared-note .project-grid-share-note-action,
-  .project-grid-shared-note.is-empty {
+  .project-grid-shared-note.is-empty,
+  .project-grid-share-copy-status {
     display: none;
   }
 }

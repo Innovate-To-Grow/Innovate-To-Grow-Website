@@ -89,7 +89,7 @@ export const SharedMergedList = ({
       />
 
       {shareUrl ? (
-        <SharedLinkPanel shareUrl={shareUrl} onStatus={setStatusMessage}>
+        <SharedLinkPanel shareUrl={shareUrl}>
           {exportGroup}
         </SharedLinkPanel>
       ) : null}
