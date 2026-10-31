@@ -16,7 +16,10 @@ interface ProjectLoadFailedProps {
   retry: () => void;
 }
 
-/** A project that does not exist (or a link that is wrong), or one that could not be loaded right now. */
+/**
+ * A project that does not exist (or a link that is wrong), or one that could not be loaded right now. Each has one
+ * primary action, then text links: "Search Past Projects" when it is not found, "Try Again" when it failed.
+ */
 const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => {
   const notFound = error !== 'failed';
   // Neither state belongs in search results; the mark goes with this message (a retry that loads the project).
@@ -30,11 +33,11 @@ const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => 
         <>
           {notFound ? null : (
             <button type="button" className="itg-btn itg-btn-primary" onClick={retry}>
-              Try again
+              Try Again
             </button>
           )}
-          <Link className={`itg-btn ${notFound ? 'itg-btn-primary' : 'itg-btn-outline'}`} to="/past-projects">
-            Search past projects
+          <Link className={notFound ? 'itg-btn itg-btn-primary' : 'itg-link'} to="/past-projects">
+            Search Past Projects
           </Link>
           <Link className="itg-link" to="/current-projects">
             Current Projects
