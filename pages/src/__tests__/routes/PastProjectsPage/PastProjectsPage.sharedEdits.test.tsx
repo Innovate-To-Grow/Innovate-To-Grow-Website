@@ -99,6 +99,16 @@ vi.mock('@/features/projects', async () =>
     ),
 );
 
+// The builder page's body (CatalogBuilderView) imports these two directly.
+vi.mock('@/features/projects/components/builder/composition/PastProjectsBuilder', async () => ({
+    PastProjectsBuilder: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
+        .pastProjectsModuleStub(sampleRow, addedRow).PastProjectsBuilder,
+}));
+vi.mock('@/features/projects/components/curations/panel/MyCurationsPanel', async () => ({
+    MyCurationsPanel: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
+        .pastProjectsModuleStub(sampleRow, addedRow).MyCurationsPanel,
+}));
+
 const shareFixture = (
     overrides: Partial<PastProjectShare> = {},
 ): PastProjectShare => ({

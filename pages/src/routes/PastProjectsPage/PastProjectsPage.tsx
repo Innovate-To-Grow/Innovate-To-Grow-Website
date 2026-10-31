@@ -1,10 +1,10 @@
 import {useMemo, useState} from 'react';
 import {useLocation, useNavigate, useParams, useSearchParams} from 'react-router';
 import {useAuth} from '@/features/auth';
-import {MyCurationsPanel, PastProjectsBuilder, createProjectGridItems} from '@/features/projects';
-import {getEarliestTermYear} from '@/features/projects/components/grid/contracts/projectGrid';
+import {createProjectGridItems} from '@/features/projects';
+import {CatalogBuilderView} from '@/features/projects/components/views/pages/CatalogBuilderView';
 import {usePastProjectGridData, usePastProjectShareData} from '@/features/projects/hooks/useProjectGridData';
-import {createPastProjectShare} from '@/features/projects/api';
+import {createPastProjectShare, type ProjectGridRow} from '@/features/projects/api';
 import {usePageTitle} from '@/hooks/usePageTitle';
 import {SharedCurationView} from './SharedCurationView';
 import {shareDisplayTitle, useSharedListMutations} from './useSharedListMutations';
@@ -56,17 +56,12 @@ export const PastProjectsPage = () => {
     [activeShare?.rows, shareId],
   );
 
-  const handleCreateShare = async (shareRows: typeof rows, name: string, note: string) => {
+  const handleCreateShare = async (shareRows: ProjectGridRow[], name: string, note: string) => {
     const nextShare = await createPastProjectShare(shareRows, name, note);
     setEditableShare(nextShare);
     navigate(`/past-projects/${nextShare.id}`, {state: {curationSaved: true}});
     return nextShare;
   };
-
-  const sinceYear = useMemo(() => getEarliestTermYear(rows), [rows]);
-  const archiveMeta = rows.length
-    ? `${rows.length} ${rows.length === 1 ? 'project' : 'projects'}${sinceYear ? ` since ${sinceYear}` : ''}`
-    : '';
 
   if (sharedMode) {
     return (
@@ -84,30 +79,13 @@ export const PastProjectsPage = () => {
   }
 
   return (
-    <div className="past-projects-page">
-      <header className="past-projects-header" data-embed-section="page-header">
-        <h1 className="itg-page-title">Past Projects</h1>
-        {/* Its line is there while the archive loads too: arriving later, it pushed the lede and the whole builder
-            down (most of the page's layout shift). */}
-        <p className="itg-page-meta" aria-hidden={archiveMeta ? undefined : true}>
-          {archiveMeta || '\u00a0'}
-        </p>
-        <p className="itg-lead">
-          Search past Innovate to Grow projects, check the ones you want, and collect them into a curation. Save it to
-          keep it and share it with a link, or export it.
-        </p>
-      </header>
-
-      <MyCurationsPanel />
-
-      <PastProjectsBuilder
-        rows={rows}
-        loading={loading}
-        error={error}
-        initialSearch={searchParams.get('value') || ''}
-        onRefreshRows={refetch}
-        onCreateShare={handleCreateShare}
-      />
-    </div>
+    <CatalogBuilderView
+      rows={rows}
+      loading={loading}
+      error={error}
+      initialSearch={searchParams.get('value') || ''}
+      onRefreshRows={refetch}
+      onCreateShare={handleCreateShare}
+    />
   );
 };
