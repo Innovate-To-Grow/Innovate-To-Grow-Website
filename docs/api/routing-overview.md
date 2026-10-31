@@ -110,7 +110,7 @@ The frontend router (`pages/src/app/router/router.tsx`) maps browser URLs to Rea
 | `/news` | `/news/` |
 | `/news/:id` | `/news/{id}/` |
 | `/past-projects` | `/projects/archive/`, `/projects/{id}/` |
-| `/past-projects/:shareId` | `/projects/past-shares/{id}/`; for its owner's Add More Projects, `/projects/all/` |
+| `/past-projects/:shareId` | `/projects/past-shares/{id}/`, except right after All Projects' save, which hands the new curation over in the navigation state; for its owner's Add More Projects, `/projects/all/` |
 | `/all-projects` | `/projects/all/`, `/projects/{id}/` |
 | `/projects/:id` | `/projects/{id}/` |
 | `/event-registration` | `/event/registration-events/`, `/event/registration-options/`, `/event/registrations/` |

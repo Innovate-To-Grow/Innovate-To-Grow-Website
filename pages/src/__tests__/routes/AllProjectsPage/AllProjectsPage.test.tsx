@@ -144,7 +144,7 @@ describe('AllProjectsPage', () => {
         expect(curations.compareDocumentPosition(builder) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it("opens a saved curation's page, saying All Projects saved it", async () => {
+    it("opens a saved curation's page, saying All Projects saved it and handing the curation over", async () => {
         vi.mocked(createPastProjectShare).mockResolvedValue(SHARE);
 
         renderPage();
@@ -152,8 +152,9 @@ describe('AllProjectsPage', () => {
 
         await waitFor(() => {
             expect(createPastProjectShare).toHaveBeenCalledWith([archiveRow], 'Spring finalists', 'Review note');
+            // The share page takes the curation from the state instead of loading it again.
             expect(mockNavigate).toHaveBeenCalledWith('/past-projects/share-new', {
-                state: {curationSaved: true, builtOn: '/all-projects'},
+                state: {curationSaved: true, builtOn: '/all-projects', share: SHARE},
             });
         });
     });

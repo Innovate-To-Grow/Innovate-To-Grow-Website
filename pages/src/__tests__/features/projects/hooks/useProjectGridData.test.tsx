@@ -411,6 +411,69 @@ describe('usePastProjectShareData', () => {
         expect(result.current.error).toBe('Failed to load shared past projects');
     });
 
+    it('serves a seed that is the share at the id without requesting it', async () => {
+        const seed = makeShare({name: 'Just saved'});
+
+        const {result} = renderHook(() => usePastProjectShareData('share-1', seed));
+
+        expect(result.current).toMatchObject({share: seed, loading: false, error: null, notFound: false});
+        await act(async () => {});
+        expect(mockFetchPastProjectShare).not.toHaveBeenCalled();
+    });
+
+    it('loads the share when the seed is another share', async () => {
+        mockFetchPastProjectShare.mockResolvedValue(makeShare());
+
+        const {result} = renderHook(() => usePastProjectShareData('share-1', makeShare({id: 'share-2'})));
+
+        expect(result.current.loading).toBe(true);
+        await waitFor(() => expect(result.current.share).toMatchObject({id: 'share-1', name: 'Shared'}));
+        expect(mockFetchPastProjectShare).toHaveBeenCalledWith('share-1');
+    });
+
+    it('uses a seed once: Try again, or coming back to its id, loads the share from the server', async () => {
+        const seed = makeShare({name: 'Just saved'});
+        mockFetchPastProjectShare.mockImplementation(async (id: string) => makeShare({id, name: `Loaded ${id}`}));
+
+        const {result, rerender} = renderHook(({shareId}) => usePastProjectShareData(shareId, seed), {
+            initialProps: {shareId: 'share-1'},
+        });
+        expect(result.current.share).toBe(seed);
+
+        act(() => result.current.retry());
+        await waitFor(() => expect(result.current.share).toMatchObject({name: 'Loaded share-1'}));
+        expect(mockFetchPastProjectShare).toHaveBeenCalledTimes(1);
+
+        rerender({shareId: 'share-2'});
+        await waitFor(() => expect(result.current.share).toMatchObject({name: 'Loaded share-2'}));
+        rerender({shareId: 'share-1'});
+        await waitFor(() => expect(result.current.share).toMatchObject({name: 'Loaded share-1'}));
+        expect(mockFetchPastProjectShare).toHaveBeenCalledTimes(3);
+    });
+
+    it('lets a seed handed over after mounting stand in for the load in flight', async () => {
+        let resolve!: (share: PastProjectShare) => void;
+        mockFetchPastProjectShare.mockReturnValue(
+            new Promise<PastProjectShare>((res) => {
+                resolve = res;
+            }),
+        );
+        const seed = makeShare({name: 'Just saved', version: 2});
+
+        const {result, rerender} = renderHook(({current}) => usePastProjectShareData('share-1', current), {
+            initialProps: {current: null as PastProjectShare | null},
+        });
+        expect(result.current.loading).toBe(true);
+        rerender({current: seed});
+        expect(result.current.share).toBe(seed);
+
+        // The older answer of the request the seed replaced is not shown over it.
+        await act(async () => {
+            resolve(makeShare({name: 'Older', version: 1}));
+        });
+        expect(result.current.share).toBe(seed);
+    });
+
     it('ignores a late resolution after unmount', async () => {
         let resolve!: (share: PastProjectShare) => void;
         mockFetchPastProjectShare.mockReturnValue(

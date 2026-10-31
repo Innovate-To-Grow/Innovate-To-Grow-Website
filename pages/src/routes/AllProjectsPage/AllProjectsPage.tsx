@@ -9,7 +9,8 @@ import {usePageTitle} from '@/hooks/usePageTitle';
 /**
  * `/all-projects`: the Past Projects builder over every project, the active schedule's teams that are not archived
  * yet and then the archive. It shares the curation draft, My Curations and the share pages with Past Projects: a
- * saved curation opens at `/past-projects/:shareId`, whose saved notice links back here (`builtOn`).
+ * saved curation opens at `/past-projects/:shareId`, whose saved notice links back here (`builtOn`), and which takes
+ * the curation the save created from the navigation (`share`) instead of loading it again.
  */
 export const AllProjectsPage = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export const AllProjectsPage = () => {
 
   const handleCreateShare = async (shareRows: ProjectGridRow[], name: string, note: string) => {
     const share = await createPastProjectShare(shareRows, name, note);
-    navigate(`/past-projects/${share.id}`, {state: {curationSaved: true, builtOn: ALL_PROJECTS_CATALOG.path}});
+    navigate(`/past-projects/${share.id}`, {state: {curationSaved: true, builtOn: ALL_PROJECTS_CATALOG.path, share}});
     return share;
   };
 

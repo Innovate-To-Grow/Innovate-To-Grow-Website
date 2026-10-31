@@ -164,21 +164,45 @@ export function useAllProjectGridData(enabled: boolean = true): ProjectGridDataR
     return useRevalidatingRows(ALL_PROJECTS_CATALOG.loadRows, enabled);
 }
 
-export function usePastProjectShareData(shareId: string | undefined): PastProjectShareResult {
-    const [attempt, setAttempt] = useState(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- attempt forces a new Symbol so retry() loads again
-    const requestKey = useMemo(() => (shareId ? Symbol(shareId) : null), [shareId, attempt]);
+/**
+ * The share state, with `seed` put in it as the answer to `requestKey` when it is the share at `shareId`, once per
+ * seed. Set while rendering, so the seed is there on the first render and the load never requests it (see
+ * https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+ */
+function useSeededShareState(shareId: string | undefined, requestKey: symbol | null, seed: PastProjectShare | null) {
     const [state, setState] = useState<PastProjectShareState>({
         requestKey: null,
         share: null,
         error: null,
         notFound: false,
     });
+    const [usedSeed, setUsedSeed] = useState<PastProjectShare | null>(null);
+    if (requestKey && seed?.id === shareId && seed !== usedSeed) {
+        setUsedSeed(seed);
+        setState({requestKey, share: seed, error: null, notFound: false});
+    }
+    return [state, setState] as const;
+}
+
+/**
+ * The share at `shareId`. A `seed` is a share the caller already holds (the one a save just created): when it is the
+ * share at `shareId` it stands in for loading it, so the page shows it without asking the server again. Each seed
+ * stands in once; Try again (`retry`) loads the share from the server.
+ */
+export function usePastProjectShareData(
+    shareId: string | undefined,
+    seed: PastProjectShare | null = null,
+): PastProjectShareResult {
+    const [attempt, setAttempt] = useState(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- attempt forces a new Symbol so retry() loads again
+    const requestKey = useMemo(() => (shareId ? Symbol(shareId) : null), [shareId, attempt]);
+    const [state, setState] = useSeededShareState(shareId, requestKey, seed);
 
     const retry = useCallback(() => setAttempt((count) => count + 1), []);
+    const hasResolved = requestKey !== null && state.requestKey === requestKey;
 
     useEffect(() => {
-        if (!requestKey || !shareId) {
+        if (!requestKey || !shareId || hasResolved) {
             return;
         }
 
@@ -207,13 +231,12 @@ export function usePastProjectShareData(shareId: string | undefined): PastProjec
         return () => {
             cancelled = true;
         };
-    }, [requestKey, shareId]);
+    }, [requestKey, shareId, hasResolved, setState]);
 
     if (!requestKey) {
         return {share: null, loading: false, error: null, notFound: false, retry};
     }
 
-    const hasResolved = state.requestKey === requestKey;
     return {
         share: hasResolved ? state.share : null,
         loading: !hasResolved,
