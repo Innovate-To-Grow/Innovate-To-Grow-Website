@@ -243,7 +243,8 @@ export const CurrentProjectsView = ({title, lede, rows, namespace, ...gridProps}
   const meta = ready ? metaLine(rows, countLabel) : '';
 
   return (
-    <div className="projects-page">
+    // Marked so the chat launcher tucks away over the list's text and rows, not only its controls (useLauncherYield).
+    <div className="projects-page" data-launcher-avoid="">
       <h1 className="itg-page-title" data-embed-section="page-header">{title}</h1>
       {/* Kept, blank, while the rows load: appearing later, the line pushed the lede and the grid down. */}
       <p className="itg-page-meta" data-embed-section="page-header" aria-hidden={meta ? undefined : true}>

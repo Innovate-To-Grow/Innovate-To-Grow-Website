@@ -73,7 +73,9 @@ describe('CurrentProjectsView', () => {
   });
 
   it('renders the title, a meta line computed from the rows, and the lede', () => {
-    renderView();
+    const {container} = renderView();
+    // The chat launcher tucks away over the list's text and rows, not only its controls (useLauncherYield).
+    expect(container.querySelector('.projects-page')).toHaveAttribute('data-launcher-avoid', '');
 
     expect(screen.getByRole('heading', {level: 1, name: 'Current Projects'})).toBeInTheDocument();
     expect(screen.getByText('Spring 2026 · 3 projects · 2 teams presenting at the showcase')).toBeInTheDocument();

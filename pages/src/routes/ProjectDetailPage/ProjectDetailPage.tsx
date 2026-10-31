@@ -132,7 +132,8 @@ export const ProjectDetailPage = () => {
   }
 
   return (
-    <article className="project-detail">
+    // Marked so the chat launcher tucks away over the abstract, not only over links and buttons (useLauncherYield).
+    <article className="project-detail" data-launcher-avoid="">
       {backLink}
       <ProjectDetailBody result={result} />
       <ProjectDetailActions backTarget={backTarget} />
