@@ -67,6 +67,11 @@
   display: block;
 }
 
+/* "· showing 11–20" never breaks: at 390px it was split over two lines. */
+.project-grid-count-range {
+  white-space: nowrap;
+}
+
 .project-grid-results-controls {
   display: flex;
   flex-wrap: wrap;

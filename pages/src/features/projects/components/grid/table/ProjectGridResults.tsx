@@ -77,7 +77,10 @@ const sortChoicesFor = (
   );
 };
 
-/** The count line: the bold count, then the rest of the sentence. */
+/**
+ * The count line: the bold count, the rest of the sentence, and the range shown ("· showing 1–10", or '' with no
+ * rows), which is kept apart so it never breaks over two lines.
+ */
 const countText = ({
   filteredCount,
   totalCount,
@@ -87,14 +90,14 @@ const countText = ({
   countLabel,
   activeFilters,
 }: Pick<ResultsBarProps, 'filteredCount' | 'totalCount' | 'page' | 'pageSize' | 'query' | 'countLabel' | 'activeFilters'>) => {
-  const showing =
-    filteredCount > 0 ? ` · showing ${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filteredCount)}` : '';
-  if (filteredCount === totalCount) return {bold: countNoun(totalCount, countLabel), rest: showing};
+  const range =
+    filteredCount > 0 ? `· showing ${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filteredCount)}` : '';
+  if (filteredCount === totalCount) return {bold: countNoun(totalCount, countLabel), rest: '', range};
   const verb = filteredCount === 1 ? 'matches' : 'match';
   const filters = activeFilters.length ? `in ${joinFilters(activeFilters)}` : '';
   // "match “a” in AeroSpace", "in AeroSpace", or "match “a”" (and "match the filters" when the caller names none).
   const criteria = query ? [`${verb} “${query}”`, filters].filter(Boolean).join(' ') : filters || `${verb} the filters`;
-  return {bold: `${filteredCount} of ${totalCount}`, rest: ` ${countLabel} ${criteria}${showing}`};
+  return {bold: `${filteredCount} of ${totalCount}`, rest: ` ${countLabel} ${criteria}`, range};
 };
 
 /**
@@ -115,7 +118,7 @@ export const ProjectGridResultsBar = ({
 }: ResultsBarProps) => {
   const sortSelectId = useId();
   const sortChoices = sortChoicesFor(sortOptions, sortField, columns);
-  const {bold, rest} = countText(counts);
+  const {bold, rest, range} = countText(counts);
 
   const selectSort = (value: string) => {
     const [field, direction] = value.split(':') as [ProjectGridColumnKey, ProjectGridSortDirection];
@@ -127,7 +130,8 @@ export const ProjectGridResultsBar = ({
     <div className="project-grid-results-bar">
       <p ref={countRef} className="project-grid-count" aria-live="polite" tabIndex={-1}>
         <strong>{bold}</strong>
-        <span>{rest}</span>
+        <span>{`${rest}${range ? ' ' : ''}`}</span>
+        {range ? <span className="project-grid-count-range">{range}</span> : null}
         {/* In the count line, so it is read out with the count; on a line of its own. */}
         {abstractsSkipped ? <span className="project-grid-count-note">{ABSTRACTS_SKIPPED[abstractsSkipped]}</span> : null}
       </p>
