@@ -122,7 +122,7 @@ describe('AllProjectsPage', () => {
         const {container} = renderPage();
 
         const meta = container.querySelector('.past-projects-header .itg-page-meta') as HTMLElement;
-        expect(meta.textContent).toBe(' ');
+        expect(meta.textContent).toBe('\u00a0');
         expect(meta).toHaveAttribute('aria-hidden', 'true');
     });
 

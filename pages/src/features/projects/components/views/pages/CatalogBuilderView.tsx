@@ -41,7 +41,7 @@ export const CatalogBuilderView = ({
         {/* Its line is there while the list loads too: arriving later, it pushed the lede and the whole builder
             down (most of the page's layout shift). */}
         <p className="itg-page-meta" aria-hidden={meta ? undefined : true}>
-          {meta || ' '}
+          {meta || '\u00a0'}
         </p>
         <p className="itg-lead">{lede}</p>
       </header>
