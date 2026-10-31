@@ -61,6 +61,11 @@ describe('Component barrel exports', () => {
     expect(mod.ScheduleGrid).toBeDefined();
   });
 
+  it('@/components/LoadingIndicator exports resolve', async () => {
+    const mod = await import('@/components/LoadingIndicator');
+    expect(mod.LoadingIndicator).toBeDefined();
+  });
+
   it('@/components/NotFoundPage exports resolve', async () => {
     const mod = await import('@/components/NotFoundPage');
     expect(mod.NotFoundPage).toBeDefined();

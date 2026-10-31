@@ -127,10 +127,12 @@ h4.itg-empty-state-title {
   font-size: var(--itg-font-size-body);
 }
 
+/* The same 24px spinner as the LoadingIndicator component (components/LoadingIndicator). */
 .itg-loading::before {
   content: '';
-  width: 36px;
-  height: 36px;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
   border: 3px solid var(--itg-color-border);
   border-top-color: var(--itg-color-primary);
   border-radius: 50%;

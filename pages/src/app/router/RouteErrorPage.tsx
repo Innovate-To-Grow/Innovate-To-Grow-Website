@@ -9,6 +9,7 @@ import {
   reloadForNewBuild,
   subscribeToPageReload,
 } from '@/app/pageReload';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {usePageTitle} from '@/hooks/usePageTitle';
 
 const CHUNK_ERROR_MESSAGE =
@@ -58,7 +59,7 @@ export function RouteErrorPage({inShell = true}: RouteErrorPageProps) {
   if (checking || reloading) {
     return (
       <div className="page-loader" role="status">
-        {reloading ? 'Loading the latest version of the site…' : 'Loading page…'}
+        <LoadingIndicator label={reloading ? 'Loading the latest version of the site…' : 'Loading page…'} />
       </div>
     );
   }
