@@ -258,6 +258,20 @@
   }
 }
 
+/* ---- Small phones ---------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  /* The AI question gets the full width, and its Search button goes under it: side by side, the field was too
+     narrow for its placeholder. */
+  .past-projects-ai-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .past-projects-ai-search > .itg-btn {
+    width: 100%;
+  }
+}
+
 /* ---- The narrowest phones (320-360px, and 400% zoom) ---------------------------- */
 
 @media (max-width: 360px) {
