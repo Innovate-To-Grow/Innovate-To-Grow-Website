@@ -35,6 +35,37 @@ export function normalizeHiddenSections(keys: Array<string | undefined | null>):
   return Array.from(selected);
 }
 
+/**
+ * Section headings inside an app-route page (the builders' "Search Tables"), which "Section titles" also hides.
+ * Hidden from sight only: they stay in the page's outline and remain focus targets (a builder focuses "Search
+ * Tables" after a retry), so they are clipped like .sr-only rather than removed.
+ */
+export const VISUALLY_HIDDEN_SECTION_SELECTORS: Record<string, string> = {
+  [SECTION_TITLES_KEY]: '[data-embed-section="section-title"]',
+};
+
+const VISUALLY_HIDDEN_CSS = [
+  'position: absolute',
+  'width: 1px',
+  'height: 1px',
+  'margin: 0',
+  'padding: 0',
+  'overflow: hidden',
+  'clip-path: inset(50%)',
+  'white-space: nowrap',
+  'border: 0',
+]
+  .map((declaration) => `${declaration} !important;`)
+  .join(' ');
+
 export function buildHiddenSectionsCss(keys: string[]): string {
-  return keys.map((key) => `${HIDDEN_SECTION_SELECTORS[key]} { display: none !important; }`).join('\n');
+  return keys
+    .flatMap((key) => {
+      const visuallyHidden = VISUALLY_HIDDEN_SECTION_SELECTORS[key];
+      return [
+        `${HIDDEN_SECTION_SELECTORS[key]} { display: none !important; }`,
+        ...(visuallyHidden ? [`${visuallyHidden} { ${VISUALLY_HIDDEN_CSS} }`] : []),
+      ];
+    })
+    .join('\n');
 }

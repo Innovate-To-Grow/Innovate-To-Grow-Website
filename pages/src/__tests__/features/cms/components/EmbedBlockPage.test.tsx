@@ -262,6 +262,10 @@ describe('EmbedBlockPage', () => {
       expect(tag).not.toBeNull();
       expect(tag?.textContent).toContain('[data-embed-section="schedule-projects"]');
       expect(tag?.textContent).toContain('.section-title');
+      // Builder section headings are clipped, not removed: they stay headings and focus targets.
+      expect(tag?.textContent).toContain(
+        '[data-embed-section="section-title"] { position: absolute !important; width: 1px !important;',
+      );
     });
   });
 

@@ -1,6 +1,6 @@
 // /_embed/:embedSlug: public embed widget rendered in an isolated iframe.
 import {test, expect} from '../helpers/fixtures';
-import {cmsEmbedResponse, mockCmsEmbed, mockSchedule, schedulePayload} from '../helpers';
+import {cmsEmbedResponse, mockCmsEmbed, mockPastProjects, mockSchedule, pastProjectRows, schedulePayload} from '../helpers';
 
 test('embed page renders CMS blocks', async ({page}) => {
   await mockCmsEmbed(page, 'test-embed', cmsEmbedResponse({widget_type: 'blocks'}));
@@ -72,4 +72,25 @@ test('an app-route widget keeps its controls off the frame edge: 16px in, 20px o
   await expect(page.locator('.cms-embed-app-route')).toHaveCSS('padding-left', `${inset}px`);
   // The page background stays, so the widget's text and stripes keep their contrast on a coloured host page.
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+});
+
+test('"Section titles" hides a builder\'s section heading from sight, not from the outline', async ({page}) => {
+  await mockPastProjects(page, pastProjectRows());
+  await mockCmsEmbed(page, 'past-no-titles', cmsEmbedResponse({
+    widget_type: 'app_route',
+    app_route: '/past-projects',
+    blocks: [],
+    hidden_sections: ['section_titles'],
+  }));
+  await page.goto('/_embed/past-no-titles', {waitUntil: 'domcontentloaded'});
+
+  await expect(page.getByText(pastProjectRows()[0].project_title).first()).toBeVisible();
+  await expect(page.getByRole('heading', {level: 1, name: 'Past Projects'})).toHaveCount(0);
+  // Still a heading (a retry focuses it), clipped to nothing on screen.
+  const sectionTitle = page.getByRole('heading', {level: 2, name: 'Search Tables'});
+  await expect(sectionTitle).toHaveCount(1);
+  await expect(sectionTitle).toHaveCSS('clip-path', 'inset(50%)');
+  const box = await sectionTitle.boundingBox();
+  expect(box?.width ?? 0).toBeLessThanOrEqual(1);
+  expect(box?.height ?? 0).toBeLessThanOrEqual(1);
 });
