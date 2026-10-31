@@ -39,11 +39,11 @@ const startAISearch = (tables: ReturnType<typeof renderTables>, query: string) =
 describe('useSearchTables AI search', () => {
   afterEach(() => mockSearchPastProjectsWithAI.mockReset());
 
-  it('leaves Past Projects on the archive, the default scope', () => {
+  it('asks Past Projects\' AI search to rank the archive only', () => {
     mockSearchPastProjectsWithAI.mockReturnValue(new Promise(() => {}));
     const aiTable = startAISearch(renderTables(), 'solar');
 
-    expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar', 10);
+    expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar', 10, 'past');
     expect(aiTable()).toMatchObject({message: 'Searching past projects with AI...', messageTone: 'loading'});
   });
 

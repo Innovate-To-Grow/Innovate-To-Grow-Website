@@ -52,12 +52,6 @@ export function searchTableTitle(table: SearchTableState, tables: SearchTableSta
 
 type AISearchResponse = Awaited<ReturnType<typeof searchPastProjectsWithAI>>;
 
-// The client's own default scope is 'past', so Past Projects calls it as it always has; All Projects asks for 'all'.
-const searchWithAI = (query: string, scope: ProjectAISearchScope) =>
-  scope === 'past'
-    ? searchPastProjectsWithAI(query, AI_SEARCH_LIMIT)
-    : searchPastProjectsWithAI(query, AI_SEARCH_LIMIT, scope);
-
 interface AIResultsOptions {
   filterAIRows: (rows: ProjectGridRow[]) => ProjectGridRow[];
   /** When every AI result was filtered out, and when AI search found none. */
@@ -214,7 +208,7 @@ const createAISearchRunner =
       messageTone: 'loading',
     }));
     try {
-      const outcome = aiSearchOutcome(await searchWithAI(query, scope), query, results);
+      const outcome = aiSearchOutcome(await searchPastProjectsWithAI(query, AI_SEARCH_LIMIT, scope), query, results);
       if ('error' in outcome) {
         finish(outcome.error, 'error');
         return;
