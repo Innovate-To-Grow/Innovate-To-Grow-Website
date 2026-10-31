@@ -19,6 +19,7 @@ import type {
     PastProjectShare,
     PastProjectShareSummary,
     PastProjectAISearchResponse,
+    ProjectAISearchScope,
     ProjectGridHydrationResult,
 } from './types';
 
@@ -62,6 +63,18 @@ export const PROJECT_DETAIL_CONCURRENCY = 6;
 /** A project or share id as one URL path segment: a route param is decoded, so "../x" or "a?b" must not escape it. */
 const pathSegment = (id: string) => encodeURIComponent(id);
 
+const presentingText = (isPresenting: boolean | null | undefined) =>
+    isPresenting == null ? '' : isPresenting ? 'Yes' : 'No';
+
+/**
+ * Which list a row came from and the current project an archive row stands in for, as a grid row keeps them: only
+ * when the API sent them (rows of /projects/all/, project details and AI search results; not the archive's own).
+ */
+const catalogFields = ({catalog, current_project_id}: Pick<ProjectGridRow, 'catalog' | 'current_project_id'>) => ({
+    ...(catalog ? {catalog} : {}),
+    ...(current_project_id ? {current_project_id} : {}),
+});
+
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
     id: project.id,
     semester_label: formatSemesterLabel(project.semester_label),
@@ -73,7 +86,8 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
     industry: project.industry,
     abstract: project.abstract,
     student_names: project.student_names,
-    is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
+    is_presenting: presentingText(project.is_presenting),
+    ...catalogFields(project),
 });
 
 export const scheduleProjectToGridRow = (row: ScheduleProjectRow): ProjectGridRow => ({
@@ -112,7 +126,9 @@ export const compactProjectToGridRow = (project: CompactPastProjectRow): Project
     // finds a team by its members.
     abstract: '',
     student_names: project.student_names ?? '',
-    is_presenting: '',
+    // Sent on a current-semester row of /projects/all/; null (shown as nothing) on archive rows.
+    is_presenting: presentingText(project.is_presenting),
+    ...catalogFields(project),
 });
 
 export const fetchPastProjects = async (
@@ -125,11 +141,17 @@ export const fetchPastProjects = async (
     return response.data;
 };
 
+/** `scope` 'all' also ranks the active schedule's projects, as /projects/all/ lists them; 'past' the archive only. */
 export const searchPastProjectsWithAI = async (
     query: string,
     limit = 10,
+    scope: ProjectAISearchScope = 'past',
 ): Promise<PastProjectAISearchResponse> => {
-    const response = await authApi.post<PastProjectAISearchResponse>('/projects/past-ai-search/', {query, limit});
+    const response = await authApi.post<PastProjectAISearchResponse>('/projects/past-ai-search/', {
+        query,
+        limit,
+        scope,
+    });
     return response.data;
 };
 
@@ -199,6 +221,25 @@ const fetchProjectDetailWithRetry = async (id: string, signal?: AbortSignal): Pr
     }
 };
 
+/**
+ * A row as its details load it. A current-semester id answers with its archive project once the team's semester is
+ * archived, so the catalog goes with the id the row now has: the detail's own, else the row's while the id is the
+ * same (an older server sends none). `current_project_id` is kept while the id is the same; a current row that
+ * became its archive row gets its former id there, as /projects/all/ lists such a row, so a list loaded before the
+ * import still matches it.
+ */
+const hydratedGridRow = (row: ProjectGridRow, detail: ProjectDetail): ProjectGridRow => {
+    const sameId = detail.id === row.id;
+    const formerCurrentId = !sameId && row.catalog === 'current' ? row.id : undefined;
+    return {
+        ...toProjectGridRow(detail),
+        ...catalogFields({
+            catalog: detail.catalog ?? (sameId ? row.catalog : undefined),
+            current_project_id: detail.current_project_id || (sameId ? row.current_project_id : formerCurrentId),
+        }),
+    };
+};
+
 interface HydrationOptions {
     signal?: AbortSignal;
     /** Called after each detail request settles, over only the rows that needed one. */
@@ -224,7 +265,8 @@ export const hydrateProjectGridRowsSettled = async (
     let failingSince: number | null = null;
     const hydrateIndex = async (index: number) => {
         try {
-            hydrated[index] = toProjectGridRow(await fetchProjectDetailWithRetry(rows[index].id as string, signal));
+            const row = rows[index];
+            hydrated[index] = hydratedGridRow(row, await fetchProjectDetailWithRetry(row.id as string, signal));
             failingSince = null;
         } catch (error) {
             if (signal?.aborted) throw error;
