@@ -1,4 +1,5 @@
 import {DEFAULT_PAST_PROJECT_SHARE_NAME, DEFAULT_PROJECT_SHARE_NAME} from '@/features/projects/api/constants';
+import {ALL_PROJECTS_CATALOG, PAST_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 
 /** How a curation names the list its projects come from: on its shared page and in its exports. */
@@ -14,12 +15,15 @@ export interface CurationBranding {
    * (share_names.default_share_name), and what one stored with a blank name is shown as.
    */
   defaultName: string;
+  /** Where the shared page sends a visitor who wants to make a list of their own, and the link's words. */
+  searchLink: {to: string; label: string};
 }
 
 const PAST_PROJECTS_BRANDING: CurationBranding = {
   eyebrow: 'Curation · Past Projects',
   filePrefix: 'past-projects',
   defaultName: DEFAULT_PAST_PROJECT_SHARE_NAME,
+  searchLink: {to: PAST_PROJECTS_CATALOG.path, label: 'Search all past projects'},
 };
 
 const ALL_PROJECTS_BRANDING: CurationBranding = {
@@ -27,6 +31,7 @@ const ALL_PROJECTS_BRANDING: CurationBranding = {
   exportHeading: 'Innovate to Grow Projects',
   filePrefix: 'projects',
   defaultName: DEFAULT_PROJECT_SHARE_NAME,
+  searchLink: {to: ALL_PROJECTS_CATALOG.path, label: 'Search all projects'},
 };
 
 /**

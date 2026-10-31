@@ -145,6 +145,33 @@ describe('SharedCurationView', () => {
     expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
   });
 
+  it('points a visitor to All Projects from a curation holding a current-semester project', () => {
+    const currentRow = {
+      id: '33333333-3333-4333-8333-333333333333',
+      semester_label: '2026 Fall',
+      class_code: 'CAP',
+      team_number: '303',
+      team_name: 'Team Gamma',
+      project_title: 'This Semester Project',
+      organization: 'Acme',
+      industry: 'Technology',
+      abstract: '',
+      student_names: '',
+      is_presenting: 'Yes',
+      catalog: 'current' as const,
+    };
+    const {unmount} = render(view({}, {...SHARE, rows: [currentRow]}));
+
+    expect(screen.getByText(/Want to make your own list\?/)).toHaveClass('past-projects-shared-closing');
+    expect(screen.getByRole('link', {name: 'Search all projects'})).toHaveAttribute('href', '/all-projects');
+    expect(screen.queryByRole('link', {name: 'Search all past projects'})).toBeNull();
+    unmount();
+
+    // One of archive projects only still points to Past Projects.
+    render(view({}, {...SHARE, rows: [{...currentRow, catalog: 'archive'}]}));
+    expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
+  });
+
   it('names the tab after a curation that does not exist', () => {
     document.title = 'Past Projects | Innovate to Grow';
     renderView({error: 'Not found', notFound: true});

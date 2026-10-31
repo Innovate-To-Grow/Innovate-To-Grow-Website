@@ -10,6 +10,7 @@ describe('curationBranding', () => {
       filePrefix: 'projects',
       // As the server names it when saved without a name (share_names.DEFAULT_PROJECT_SHARE_NAME).
       defaultName: 'Project Curation',
+      searchLink: {to: '/all-projects', label: 'Search all projects'},
     });
   });
 
@@ -19,6 +20,7 @@ describe('curationBranding', () => {
         eyebrow: 'Curation · Past Projects',
         filePrefix: 'past-projects',
         defaultName: 'Past Project Curation',
+        searchLink: {to: '/past-projects', label: 'Search all past projects'},
       });
     }
   });

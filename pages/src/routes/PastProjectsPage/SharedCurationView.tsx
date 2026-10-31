@@ -4,6 +4,7 @@ import {MergedResultsTable, SharedPastProjectMergeSearch, type ProjectGridItem} 
 import {DEFAULT_PAST_PROJECT_SHARE_NAME, type PastProjectShare, type ProjectGridRow} from '@/features/projects/api';
 import {ALL_PROJECTS_CATALOG, PAST_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
 import {ProjectCatalogContext, type ProjectCatalog} from '@/features/projects/catalog/projectCatalog';
+import {curationBranding} from '@/features/projects/components/merged/list/curationBranding';
 import {useRetryInPlace} from '@/features/projects/components/shared/utils/useRetryInPlace';
 import {SharedListLoadFailed, SharedListUnavailable} from './SharedListMessages';
 import {shareDisplayTitle} from './useSharedListMutations';
@@ -27,7 +28,9 @@ type SharedCurationContentProps = Omit<SharedCurationViewProps, 'status' | 'conf
 
 /**
  * The loaded list: the saved notice, the list itself, the owner's search for more projects, and a pointer to the
- * builder. The owner's search runs over every project (All Projects), so it words itself as All Projects does.
+ * builder. The owner's search runs over every project (All Projects), so it words itself as All Projects does. The
+ * pointer names the list the curation's projects come from (curationBranding): All Projects once it holds a
+ * current-semester project.
  */
 const SharedCurationContent = ({
   justSaved,
@@ -39,6 +42,7 @@ const SharedCurationContent = ({
   onAddRows,
 }: SharedCurationContentProps) => {
   const canEdit = Boolean(share?.can_edit);
+  const searchLink = curationBranding(share?.rows ?? []).searchLink;
   return (
     <>
       {justSaved && canEdit ? (
@@ -69,7 +73,7 @@ const SharedCurationContent = ({
         </ProjectCatalogContext.Provider>
       ) : null}
       <p className="past-projects-shared-closing">
-        Want to make your own list? <Link to="/past-projects">Search all past projects</Link>
+        Want to make your own list? <Link to={searchLink.to}>{searchLink.label}</Link>
       </p>
     </>
   );

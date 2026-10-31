@@ -258,6 +258,7 @@ describe('PastProjectsPage', () => {
 
         expect(await screen.findByTestId('share-title')).toHaveTextContent(/^Project Curation$/);
         expect(document.title).toBe('Project Curation | Innovate to Grow');
+        expect(screen.getByRole('link', {name: 'Search all projects'})).toHaveAttribute('href', '/all-projects');
     });
 
     it('names the tab Past Projects even after a curation page named it', () => {
