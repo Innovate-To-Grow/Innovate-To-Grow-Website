@@ -38,7 +38,7 @@
   min-width: 2rem;
   height: 2rem;
   padding: 0 0.5rem;
-  border: 1px solid var(--itg-color-border-input);
+  border: 1px solid var(--itg-color-border-field);
   border-radius: var(--itg-radius-button);
   background: var(--itg-color-bg-page);
   color: var(--itg-color-primary);
@@ -69,15 +69,16 @@
   stroke-linejoin: round;
 }
 
-/* The reference's textarea: #f2f2f2, 1px #ccc, 4px radius, inset shadow, blue glow on focus. It opens about
-   eight lines tall; the corner handle drags it taller (or shorter), and Expand gives it most of the screen. */
+/* A field like .itg-input: bg-light, the field edge, 4px radius and the resting inset shadow; focus shows the
+   site's one focus ring. It opens about eight lines tall; the corner handle drags it taller (or shorter), and
+   Expand gives it most of the screen. */
 .project-grid-rich-detail-input {
   height: 13.5rem;
   min-height: 6rem;
   overflow-y: auto;
   resize: vertical;
   padding: 4px 6px;
-  border: 1px solid var(--itg-color-border-input);
+  border: 1px solid var(--itg-color-border-field);
   border-radius: var(--itg-radius-input);
   background: var(--itg-color-bg-light);
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
@@ -87,11 +88,6 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   transition: border-color 0.2s linear, box-shadow 0.2s linear;
-}
-
-.project-grid-rich-detail-input:focus {
-  border-color: rgba(82, 168, 236, 0.8);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6);
 }
 
 .project-grid-rich-detail-input.is-large-detail-set {

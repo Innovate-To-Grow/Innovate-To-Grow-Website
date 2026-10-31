@@ -163,6 +163,12 @@
   margin: 0;
 }
 
+/* Framed like the draft's table (mergedResults.css): every table inside a builder card has the same edge. */
+.search-table-card .project-grid-table-wrap {
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-page);
+}
+
 .search-table-card .search-table-remove-button {
   color: var(--itg-color-text-secondary);
 }
