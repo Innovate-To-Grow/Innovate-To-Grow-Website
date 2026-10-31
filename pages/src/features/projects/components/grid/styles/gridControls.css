@@ -38,14 +38,6 @@
   min-width: 5.5rem;
 }
 
-/* A button in a row of fields is as tall as they are: 34px here, 44px on touch screens (projectsResponsive.css).
-   View All Details is the same outlined button in the filter well and beside the Sort select. */
-.itg-btn.project-grid-toggle-details,
-.project-grid-share-result-row > .itg-btn {
-  min-height: 34px;
-  padding-block: 3px;
-}
-
 .project-grid-controls-status {
   margin-top: 0.875rem;
 }
@@ -97,10 +89,11 @@
   color: var(--itg-color-text);
 }
 
+/* The fields' 40px (44px on touch screens, projectsResponsive.css): this rule outranks forms.css. */
 .project-grid-results-controls .project-grid-select {
   width: auto;
-  min-height: 2.125rem;
-  height: 2.125rem;
+  min-height: 2.5rem;
+  height: 2.5rem;
 }
 
 /* ---- Toolbars -------------------------------------------------------------- */
