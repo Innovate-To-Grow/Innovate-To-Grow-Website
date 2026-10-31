@@ -5,11 +5,19 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from django.db.models import Q, QuerySet
-
 from apps.core.models import AWSCredentialConfig
-from apps.projects.models import Project
-from apps.projects.ordering import archive_ordering
+
+# The candidates and the results have their own module. Its names are re-exported here, so callers, and the tests
+# that patch find_ai_search_candidates, keep naming this one.
+from apps.projects.services.ai_search_candidates import (  # noqa: F401 (re-exported)
+    AI_SEARCH_SCOPES,
+    SCOPE_ALL,
+    SCOPE_PAST,
+    AISearchCandidate,
+    ai_search_results,
+    find_ai_search_candidates,
+    past_project_ai_queryset,
+)
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.agents import run_tool_free_agent
 from apps.system_intelligence.services.bedrock import BedrockError, normalize_bedrock_model_id
@@ -19,98 +27,41 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_AI_SEARCH_LIMIT = 10
 MAX_AI_SEARCH_LIMIT = 10
-_CANDIDATE_LIMIT = 80
 _MAX_OUTPUT_TOKENS = 700
 _SYSTEM_TEXT = (
     "You are a read-only project search assistant for Innovate to Grow. "
     "Your only job is to select matching project IDs from the supplied candidate list."
 )
-_TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9+#.&/-]*", re.IGNORECASE)
-_STOP_WORDS = {
-    "a",
-    "about",
-    "and",
-    "are",
-    "for",
-    "from",
-    "in",
-    "of",
-    "on",
-    "or",
-    "past",
-    "project",
-    "projects",
-    "the",
-    "to",
-    "with",
+# What the prompt asks for, by scope: the archive's past projects, or this semester's projects as well.
+_PROMPT_SUBJECTS = {
+    SCOPE_PAST: "the past Innovate to Grow projects",
+    SCOPE_ALL: "the Innovate to Grow projects, this semester's and past ones,",
 }
 
 
-def past_project_ai_queryset() -> QuerySet[Project]:
-    """Published past projects, matching /projects/past-all/ semantics (every published semester,
-    including the newest — it is a real past term imported by the sheet sync)."""
-    return Project.objects.filter(semester__is_published=True).select_related("semester").order_by(*archive_ordering())
-
-
-def _tokens(query: str) -> list[str]:
-    seen: set[str] = set()
-    tokens: list[str] = []
-    for match in _TOKEN_RE.findall(query.lower()):
-        token = match.strip("-/.&")
-        if len(token) < 2 or token in _STOP_WORDS or token in seen:
-            continue
-        seen.add(token)
-        tokens.append(token)
-    return tokens
-
-
-def _candidate_filter(tokens: Iterable[str]) -> Q:
-    query = Q()
-    for token in tokens:
-        query |= Q(project_title__icontains=token)
-        query |= Q(organization__icontains=token)
-        query |= Q(industry__icontains=token)
-        query |= Q(class_code__icontains=token)
-        query |= Q(team_number__icontains=token)
-        query |= Q(team_name__icontains=token)
-        query |= Q(abstract__icontains=token)
-        query |= Q(student_names__icontains=token)
-    return query
-
-
-def find_ai_search_candidates(query: str, *, candidate_limit: int = _CANDIDATE_LIMIT) -> list[Project]:
-    tokens = _tokens(query)
-    if not tokens:
-        return []
-    project_filter = _candidate_filter(tokens)
-    if not project_filter:
-        return []
-    return list(past_project_ai_queryset().filter(project_filter).distinct()[:candidate_limit])
-
-
-def _candidate_line(project: Project) -> str:
-    abstract = (project.abstract or "").replace("\n", " ").strip()
+def _candidate_line(candidate: AISearchCandidate) -> str:
+    abstract = (candidate.abstract or "").replace("\n", " ").strip()
     if len(abstract) > 420:
         abstract = abstract[:420].rstrip() + "..."
     parts = [
-        f"id={project.id}",
-        f"title={project.project_title}",
-        f"semester={project.semester.label}",
-        f"class={project.class_code}",
-        f"team_number={project.team_number}",
-        f"team_name={project.team_name}",
-        f"organization={project.organization}",
-        f"industry={project.industry}",
+        f"id={candidate.id}",
+        f"title={candidate.project_title}",
+        f"semester={candidate.semester_label}",
+        f"class={candidate.class_code}",
+        f"team_number={candidate.team_number}",
+        f"team_name={candidate.team_name}",
+        f"organization={candidate.organization}",
+        f"industry={candidate.industry}",
     ]
     if abstract:
         parts.append(f"abstract={abstract}")
     return " | ".join(parts)
 
 
-def _build_prompt(*, query: str, candidates: list[Project], limit: int) -> str:
-    candidate_lines = "\n".join(f"- {_candidate_line(project)}" for project in candidates)
+def _build_prompt(*, query: str, candidates: list[AISearchCandidate], limit: int, scope: str) -> str:
+    candidate_lines = "\n".join(f"- {_candidate_line(candidate)}" for candidate in candidates)
     return (
-        "Choose the past Innovate to Grow projects that best match the user's search query.\n"
+        f"Choose {_PROMPT_SUBJECTS[scope]} that best match the user's search query.\n"
         "Use ONLY the candidate project IDs below. Do not invent IDs. Do not include explanations.\n"
         "Each ID is the UUID after id= in a candidate line; return the UUID alone, without the id= prefix.\n"
         f'Return valid JSON only in this exact shape: {{"ids": ["<candidate UUID>"], "reason": "short summary"}}.\n'
@@ -224,20 +175,21 @@ def prepare_past_project_ai_search(
     query: str,
     limit: int,
     config: SystemIntelligenceConfig,
+    scope: str = SCOPE_PAST,
 ) -> PreparedPastProjectAISearch | None:
-    """Find candidates and build the prompt. ``None`` when nothing matches (no model call)."""
+    """Find candidates in ``scope`` and build the prompt. ``None`` when nothing matches (no model call)."""
     limit = min(max(1, limit), MAX_AI_SEARCH_LIMIT)
-    candidates = find_ai_search_candidates(query)
+    candidates = find_ai_search_candidates(query, scope=scope)
     if not candidates:
         return None
-    prompt = _build_prompt(query=query, candidates=candidates, limit=limit)
+    prompt = _build_prompt(query=query, candidates=candidates, limit=limit, scope=scope)
     return PreparedPastProjectAISearch(
         limit=limit,
         system_text=_SYSTEM_TEXT,
         prompt=prompt,
         max_tokens=min(config.public_assistant_max_response_tokens, _MAX_OUTPUT_TOKENS),
         estimated_input_tokens=estimate_prompt_input_tokens(system_text=_SYSTEM_TEXT, prompt=prompt),
-        candidate_ids=frozenset(str(project.id) for project in candidates),
+        candidate_ids=frozenset(candidate.id for candidate in candidates),
     )
 
 
@@ -248,7 +200,8 @@ def run_past_project_ai_search(
     config: SystemIntelligenceConfig,
     prepared: PreparedPastProjectAISearch | None = None,
 ) -> dict:
-    """Run the search. Pass ``prepared`` to reuse a prompt the caller already budgeted for."""
+    """Run the search. Pass ``prepared`` to reuse a prompt the caller already budgeted for (its scope's; without
+    one, the search ranks the "past" scope)."""
     if prepared is None:
         prepared = prepare_past_project_ai_search(query=query, limit=limit, config=config)
     if prepared is None:
