@@ -297,10 +297,6 @@
     flex-wrap: nowrap;
   }
 
-  .project-grid-pager-step {
-    padding-inline: 0.5em;
-  }
-
   .project-grid-pager-status {
     text-align: center;
   }
@@ -313,14 +309,10 @@
 
 /* ---- Forced colours (Windows Contrast themes) ------------------------------------ */
 
-/* The theme repaints backgrounds and drops shadows. The Details button is a navy square with a bevel and its
-   arrow, like the sort arrows, is a mask filled with background-color, so all of them vanished: give the button
-   an edge and fill the arrows with the theme's own text colours. */
+/* The theme repaints backgrounds. The Details button keeps its 2px edge (forced to the theme's colour), but its
+   arrow, like the sort arrows, is a mask filled with background-color, so the arrows vanished: fill them with the
+   theme's own text colours. */
 @media (forced-colors: active) {
-  .project-grid-detail-icon-button {
-    border: 1px solid ButtonText;
-  }
-
   .project-grid-detail-icon {
     forced-color-adjust: none;
     background-color: ButtonText;
