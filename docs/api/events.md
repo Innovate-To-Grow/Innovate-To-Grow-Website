@@ -186,6 +186,13 @@ Returns the current event with associated projects (linked via `CurrentProjectSc
 
 **Permission:** AllowAny
 
+`CurrentProject` ids are used by the projects app too. `GET /projects/all/` (the `/all-projects` page) lists the
+active schedule's projects that are not archived yet ahead of the archive, and AI search with `scope: "all"` ranks
+them; `/projects/{id}/` resolves one from any schedule, and a curation (`/projects/past-shares/`) may hold one. Once
+the past-projects sync imports a team's semester, each of these shows the team's archive project instead. The projects app reads them
+only through `apps/event/services/current_projects.py` (`find_current_projects`, `active_schedule_references`). See
+[Projects](projects.md).
+
 ### Check-in
 
 #### `POST /event/check-in/scan/`

@@ -158,6 +158,9 @@ synced independently — not only the one marked **Active**.
    of a schedule seeds the defaults from `defaults.py`, and from then on they are edited in the schedule's admin
    change form and never rewritten by a sync
 5. Records grand winners on the schedule and writes a `ScheduleSyncLog` entry
+6. The active schedule's projects show on `/all-projects` (`GET /projects/all/`) ahead of the archive, with the text
+   the sync stored (placeholders included); a team the sheet only lists, without a slot, gets the schedule's term.
+   There is no cache to clear: the list's `ETag` comes from its content.
 
 ### Sheet structure
 
@@ -205,7 +208,11 @@ browser** using a hardcoded API key; the key now lives only in the backend servi
    a full replace. Rows with `source="manual"` (CSV-imported or hand-entered in admin) are **never touched**.
 6. The `projects:past-all` cache is cleared (explicitly, since `bulk_create` does not fire `post_save`), and a
    `PastProjectSyncLog` row records the outcome.
-7. `GET /projects/archive/` (compact pages) and `GET /projects/{id}/` serve the rows to the React `/past-projects` page.
+7. `GET /projects/archive/` (compact pages) and `GET /projects/{id}/` serve the rows to the React `/past-projects` page,
+   and `GET /projects/all/` to `/all-projects`, after the active schedule's projects. Once a sync imports the
+   semester of a team the active schedule lists (the same term, class and Team#, compared normalised, plus the title
+   for a team without a slot), `/all-projects` shows that team once, as its archive row, and its `CurrentProject` id
+   (in a `/projects/<id>` link or a saved curation) resolves to that archive project.
 
 ### Visibility note (newest semester)
 
