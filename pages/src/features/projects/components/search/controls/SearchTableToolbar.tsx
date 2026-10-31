@@ -103,7 +103,7 @@ interface SearchTableToolbarProps {
   saveControls: ReactNode;
   topStatus: ReactNode;
   isPhone: boolean;
-  /** Names the Save group after what its button does ("Add to Curation", "Add Selected"). */
+  /** Names the Save group after what its button does ("Add to Curation" in the builder and on a shared page). */
   saveGroupLabel: string;
   /** Id for the hint the selection-dependent buttons point to while no row is checked. */
   selectionHintId: string;

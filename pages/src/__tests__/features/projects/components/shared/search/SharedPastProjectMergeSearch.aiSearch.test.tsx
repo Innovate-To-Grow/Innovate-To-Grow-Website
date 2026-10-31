@@ -141,8 +141,8 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
       .getByRole('heading', {level: 3, name: 'AI Search Table: solar pump'})
       .closest('section') as HTMLElement;
     fireEvent.click((await within(aiTable).findAllByLabelText('Select Solar Pump Station'))[0]);
-    await waitFor(() => expect(within(aiTable).getByRole('button', {name: /add selected/i})).toBeEnabled());
-    fireEvent.click(within(aiTable).getByRole('button', {name: /add selected/i}));
+    await waitFor(() => expect(within(aiTable).getByRole('button', {name: 'Add to Curation'})).toBeEnabled());
+    fireEvent.click(within(aiTable).getByRole('button', {name: 'Add to Curation'}));
 
     await waitFor(() => {
       expect(onAddRows).toHaveBeenCalledWith([expectedGridRow]);
