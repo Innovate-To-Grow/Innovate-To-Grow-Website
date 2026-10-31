@@ -104,13 +104,13 @@ class GraphScopeInlineAdminTests(TestCase):
         self.assertFalse(self.config.mailbox_scopes.exists())
         self.assert_no_key_material(response)
 
-    def test_changing_the_application_under_the_certificate_is_refused(self):
+    def test_the_application_cannot_be_changed_under_the_certificate(self):
         response = self.client.post(self.change_url, self.post_data(client_id=OTHER_CLIENT_ID))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Remove the installed certificates before changing the Entra application")
+        self.assertEqual(response.status_code, 302)  # the read-only field's posted value is ignored
         self.config.refresh_from_db()
         self.assertEqual(self.config.client_id, CLIENT_ID)
+        self.assertEqual(self.config.current_certificate, self.certificate)
 
     def test_changelist_shows_the_scope_summary(self):
         grant(self.config, MAILBOX, permission=Permission.READ)

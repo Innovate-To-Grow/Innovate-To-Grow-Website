@@ -106,13 +106,17 @@ class CredentialStoreCheckTests(SimpleTestCase):
                 settings.GRAPH_CERTIFICATE_MAX_INPUT_BYTES,
                 settings.GRAPH_CERTIFICATE_CLOCK_SKEW_SECONDS,
                 settings.GRAPH_CERTIFICATE_CHECK_TIMEOUT_SECONDS,
+                settings.GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS,
+                settings.GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS,
             ),
-            (2048, 65536, 300, 10),
+            (2048, 65536, 300, 10, 60, 14),
         )
         for name in (
             "GRAPH_CERTIFICATE_MIN_RSA_KEY_BITS",
             "GRAPH_CERTIFICATE_MAX_INPUT_BYTES",
             "GRAPH_CERTIFICATE_CHECK_TIMEOUT_SECONDS",
+            "GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS",
+            "GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS",
         ):
             with self.subTest(name=name), override_settings(**{name: 0}):
                 self.assertEqual(error_ids(), ["core.E005"])

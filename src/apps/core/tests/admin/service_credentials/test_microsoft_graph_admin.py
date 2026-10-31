@@ -1,6 +1,7 @@
-"""Django admin for MicrosoftGraphProviderConfig: no credential inputs, certificate data read-only, delete rules,
-access control and confirm-on-save."""
+"""Django admin for MicrosoftGraphProviderConfig: no credential inputs, the certificate panel, read-only Entra
+application fields, delete rules, access control and confirm-on-save."""
 
+import datetime
 import json
 
 from django.contrib import admin
@@ -8,8 +9,9 @@ from django.contrib.admin.models import LogEntry
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.cache import cache
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.core.admin.common.base import BaseModelAdmin
 from apps.core.admin.mixins.confirm_on_save_utils import (
@@ -19,11 +21,13 @@ from apps.core.admin.mixins.confirm_on_save_utils import (
     is_sensitive_field,
 )
 from apps.core.admin.service_credentials.microsoft_graph import (
+    APPLICATION_FIELDS,
     GRAPH_FORM_FIELDS,
     NO_CERTIFICATE,
     MicrosoftGraphProviderConfigAdmin,
     MicrosoftGraphProviderConfigForm,
 )
+from apps.core.admin.service_credentials.microsoft_graph_panel import expiry_badge, store_name
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.tests.graph_helpers import create_graph_config, install_test_certificate, private_key_lines
 from apps.event.tests.helpers import make_admin, make_superuser
@@ -118,25 +122,28 @@ class MicrosoftGraphProviderConfigAdminTest(TestCase):
 
     def test_certificate_columns_show_the_current_certificate_or_say_none_is_installed(self):
         config = create_graph_config(**config_values(), certificate=False)
-        for method in (
-            "certificate_thumbprint",
-            "certificate_sha256",
-            "certificate_valid_until",
-            "certificate_entra_check",
-        ):
+        for method in ("certificate_thumbprint", "certificate_valid_until"):
             with self.subTest(method):
                 self.assertEqual(getattr(self.model_admin, method)(config), NO_CERTIFICATE)
-        self.assertEqual(self.model_admin.previous_certificate_summary(config), "None")
 
         current = install_test_certificate(config)
-        previous = install_test_certificate(config, state=MicrosoftGraphCertificate.State.PREVIOUS)
+        install_test_certificate(config, state=MicrosoftGraphCertificate.State.PREVIOUS)
 
         self.assertEqual(self.model_admin.certificate_thumbprint(config), current.sha1_thumbprint)
-        self.assertEqual(self.model_admin.certificate_sha256(config), current.sha256_fingerprint)
-        self.assertEqual(self.model_admin.certificate_key_version(config), current.store_version_id)
         self.assertEqual(self.model_admin.certificate_valid_until(config), current.not_after)
-        self.assertTrue(self.model_admin.certificate_entra_check(config).startswith("Token issued, "))
-        self.assertEqual(self.model_admin.previous_certificate_summary(config), str(previous))
+
+    def test_the_entra_application_is_read_only_while_a_certificate_is_installed(self):
+        config = create_graph_config(**config_values(), certificate=False)
+        self.assertFalse(set(APPLICATION_FIELDS) & set(self.model_admin.get_readonly_fields(self.request(), config)))
+
+        for state in (MicrosoftGraphCertificate.State.PREVIOUS, MicrosoftGraphCertificate.State.CURRENT):
+            install_test_certificate(config, state=state)
+            with self.subTest(state):
+                readonly = self.model_admin.get_readonly_fields(self.request(), config)
+                self.assertTrue(set(APPLICATION_FIELDS) <= set(readonly))
+        config.certificates.update(state=MicrosoftGraphCertificate.State.REMOVED)
+        self.assertFalse(set(APPLICATION_FIELDS) & set(self.model_admin.get_readonly_fields(self.request(), config)))
+        self.assertFalse(set(APPLICATION_FIELDS) & set(self.model_admin.get_readonly_fields(self.request(), None)))
 
     def test_delete_permission_is_denied_only_for_the_active_config(self):
         active = create_graph_config(**config_values(name="Active", is_active=True))
@@ -204,18 +211,38 @@ class MicrosoftGraphProviderConfigAdminPagesTest(TestCase):
             self.assertNotContains(response, f'name="{name}"')
         self.assertNotContains(response, 'type="password"')
 
-    def test_change_page_shows_the_certificate_read_only_and_never_key_material(self):
+    def test_change_page_shows_the_certificate_panel_and_never_key_material(self):
+        previous = install_test_certificate(self.config, state=MicrosoftGraphCertificate.State.PREVIOUS)
+
         response = self.client.get(self.change_url)
 
         self.assertEqual(response.status_code, 200)
         for value in (
             self.certificate.sha1_thumbprint,
             self.certificate.sha256_fingerprint,
-            self.certificate.store_version_id,
+            self.certificate.serial_number,
+            self.certificate.subject,
+            f"{self.certificate.not_after.astimezone(datetime.UTC):%Y-%m-%d %H:%M} UTC",
+            f'Stored in the in-memory store (tests only), version <span class="break-all font-mono">'
+            f"{self.certificate.store_version_id}",
+            "Thumbprint (SHA-1, as shown in Entra)",
+            "Expires in ",
+            "Previous certificate (kept for rollback)",
+            previous.sha1_thumbprint,
         ):
             self.assertContains(response, value)
-        self.assertContains(response, "credential store")
+        self.assertNotContains(response, 'name="tenant_id"')
+        self.assertNotContains(response, 'name="client_id"')
         self.assert_no_key_material(response)
+
+    def test_without_a_certificate_the_panel_says_so_and_the_application_is_editable(self):
+        standby = create_graph_config(**config_values(name="Standby"), certificate=False)
+
+        response = self.client.get(reverse("admin:core_microsoftgraphproviderconfig_change", args=[standby.pk]))
+
+        self.assertContains(response, "None installed: Microsoft Graph cannot send or read mail")
+        self.assertContains(response, 'name="tenant_id"')
+        self.assertContains(response, 'name="client_id"')
 
     def test_valid_change_is_saved_and_keeps_the_certificate(self):
         response = self.client.post(self.change_url, self.post_data(name="Renamed", messages_per_minute="12"))
@@ -228,13 +255,12 @@ class MicrosoftGraphProviderConfigAdminPagesTest(TestCase):
         entry = LogEntry.objects.get(object_id=str(self.config.pk))
         self.assertNotIn("PRIVATE", entry.get_change_message())
 
-    def test_changing_the_application_under_the_certificate_is_refused(self):
-        response = self.client.post(self.change_url, self.post_data(client_id=OTHER_CLIENT_ID))
+    def test_a_posted_application_change_under_the_certificate_is_ignored(self):
+        response = self.client.post(self.change_url, self.post_data(client_id=OTHER_CLIENT_ID, name="Renamed"))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("client_id", response.context["adminform"].form.errors)
+        self.assertEqual(response.status_code, 302)
         self.config.refresh_from_db()
-        self.assertEqual(self.config.client_id, CLIENT_ID)
+        self.assertEqual((self.config.name, self.config.client_id), ("Renamed", CLIENT_ID))
 
     def test_add_creates_an_inactive_config_without_a_certificate(self):
         response = self.client.post(self.add_url, form_data(name="Standby", _save="Save"))
@@ -338,3 +364,40 @@ class MicrosoftGraphProviderConfigConfirmTest(TestCase):
         self.config.refresh_from_db()
         self.assertEqual(self.config.name, "Renamed")
         self.assertIsNotNone(self.config.current_certificate)
+
+
+class CertificatePanelHelperTests(SimpleTestCase):
+    def certificate(self, *, days_left=None, starts_in_days=-1):
+        now = timezone.now()
+        return MicrosoftGraphCertificate(
+            not_before=now + datetime.timedelta(days=starts_in_days),
+            not_after=now + datetime.timedelta(days=days_left, hours=1),
+        )
+
+    @override_settings(GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS=60, GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS=14)
+    def test_the_expiry_badge_follows_the_configured_thresholds(self):
+        for days_left, expected in (
+            (365, ("Expires in 365 days", "success")),
+            (61, ("Expires in 61 days", "success")),
+            (60, ("Expires in 60 days", "warning")),
+            (15, ("Expires in 15 days", "warning")),
+            (14, ("Expires in 14 days", "danger")),
+            (1, ("Expires in 1 day", "danger")),
+            (0, ("Expires within a day", "danger")),
+        ):
+            with self.subTest(days_left=days_left):
+                self.assertEqual(expiry_badge(self.certificate(days_left=days_left)), expected)
+        self.assertEqual(expiry_badge(self.certificate(days_left=-2)), ("Expired", "danger"))
+        self.assertEqual(expiry_badge(self.certificate(days_left=30, starts_in_days=1)), ("Not valid yet", "danger"))
+
+    @override_settings(GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS=90, GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS=30)
+    def test_other_thresholds_come_from_settings(self):
+        self.assertEqual(expiry_badge(self.certificate(days_left=80))[1], "warning")
+        self.assertEqual(expiry_badge(self.certificate(days_left=30))[1], "danger")
+
+    def test_the_store_is_named_from_the_pinned_reference(self):
+        arn = "arn:aws:secretsmanager:us-west-2:111122223333:secret:itg/backend/microsoft-graph/certificate-key-AbCdEf"
+        self.assertEqual(store_name(arn), "AWS Secrets Manager")
+        self.assertEqual(store_name("local-file:itg/backend/x"), "the local file store (development only)")
+        self.assertEqual(store_name("memory:itg/backend/x"), "the in-memory store (tests only)")
+        self.assertEqual(store_name("unknown"), "the credential store")

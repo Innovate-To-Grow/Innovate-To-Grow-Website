@@ -1,15 +1,18 @@
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
 from django.utils.translation import gettext_lazy as _
-from unfold.admin import TabularInline
 from unfold.decorators import display
 
-from apps.core.models import MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
+from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 
 from ..common.base import BaseModelAdmin
+from .microsoft_graph_certificate_views import GraphCertificateViewsMixin
+from .microsoft_graph_panel import certificate_panel
+from .microsoft_graph_scope import MicrosoftGraphMailboxScopeInline
 
 # The config holds no secret: the certificate's private key is kept in the credential store, and certificates are
-# installed, rolled back and removed through the credential lifecycle, never through this form.
+# installed, rolled back and removed on their own pages (``GraphCertificateViewsMixin``), never through this form.
 GRAPH_FORM_FIELDS = (
     "name",
     "is_active",
@@ -18,6 +21,8 @@ GRAPH_FORM_FIELDS = (
     "mailbox",
     "messages_per_minute",
 )
+# A certificate is tested for one tenant and app, so these are read-only while one is installed.
+APPLICATION_FIELDS = ("tenant_id", "client_id")
 NO_CERTIFICATE = "None installed"
 
 
@@ -27,18 +32,11 @@ class MicrosoftGraphProviderConfigForm(forms.ModelForm):
         fields = GRAPH_FORM_FIELDS
 
 
-class MicrosoftGraphMailboxScopeInline(TabularInline):
-    model = MicrosoftGraphMailboxScope
-    fields = ("mailbox", "permission")
-    extra = 0
-    verbose_name = "Mailbox in scope"
-    verbose_name_plural = "Mailbox scope (only these mailboxes may be used, with these permissions)"
-
-
 @admin.register(MicrosoftGraphProviderConfig)
-class MicrosoftGraphProviderConfigAdmin(BaseModelAdmin):
+class MicrosoftGraphProviderConfigAdmin(GraphCertificateViewsMixin, BaseModelAdmin):
     form = MicrosoftGraphProviderConfigForm
     inlines = (MicrosoftGraphMailboxScopeInline,)
+    change_form_outer_before_template = "admin/core/microsoftgraphproviderconfig/certificate_panel.html"
     list_display = (
         "name",
         "status_badge",
@@ -52,39 +50,16 @@ class MicrosoftGraphProviderConfigAdmin(BaseModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("name", "mailbox", "client_id")
     ordering = ("-is_active", "-updated_at")
-    readonly_fields = (
-        "certificate_thumbprint",
-        "certificate_sha256",
-        "certificate_subject",
-        "certificate_valid_from",
-        "certificate_valid_until",
-        "certificate_key_version",
-        "certificate_entra_check",
-        "previous_certificate_summary",
-        "id",
-        "created_at",
-        "updated_at",
-    )
+    readonly_fields = ("id", "created_at", "updated_at")
     fieldsets = (
         (None, {"fields": ("name", "is_active")}),
-        (_("Entra application"), {"fields": ("tenant_id", "client_id")}),
         (
-            _("Certificate"),
+            _("Entra application"),
             {
-                "fields": (
-                    "certificate_thumbprint",
-                    "certificate_sha256",
-                    "certificate_subject",
-                    "certificate_valid_from",
-                    "certificate_valid_until",
-                    "certificate_key_version",
-                    "certificate_entra_check",
-                    "previous_certificate_summary",
-                ),
+                "fields": APPLICATION_FIELDS,
                 "description": (
-                    "The app authenticates with a certificate only. Its private key is kept in the credential "
-                    "store (AWS Secrets Manager in production) and is never stored or shown here. Compare the "
-                    "SHA-1 thumbprint with the one Entra lists under Certificates & secrets."
+                    "Read-only while a certificate is installed: a certificate is tested for one tenant and app. "
+                    "To use another app, set up a standby config for it, or remove the certificates first."
                 ),
             },
         ),
@@ -104,45 +79,26 @@ class MicrosoftGraphProviderConfigAdmin(BaseModelAdmin):
 
     @display(description="Thumbprint (SHA-1)")
     def certificate_thumbprint(self, obj):
-        return self._current(obj, "sha1_thumbprint")
-
-    @display(description="SHA-256 fingerprint")
-    def certificate_sha256(self, obj):
-        return self._current(obj, "sha256_fingerprint")
-
-    @display(description="Subject")
-    def certificate_subject(self, obj):
-        return self._current(obj, "subject")
-
-    @display(description="Valid from")
-    def certificate_valid_from(self, obj):
-        return self._current(obj, "not_before")
+        certificate = obj.current_certificate
+        return certificate.sha1_thumbprint if certificate is not None else NO_CERTIFICATE
 
     @display(description="Valid until")
     def certificate_valid_until(self, obj):
-        return self._current(obj, "not_after")
+        certificate = obj.current_certificate
+        return certificate.not_after if certificate is not None else NO_CERTIFICATE
 
-    @display(description="Key store version")
-    def certificate_key_version(self, obj):
-        return self._current(obj, "store_version_id")
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj is not None and obj.certificates.filter(state__in=MicrosoftGraphCertificate.LIVE_STATES).exists():
+            readonly.extend(name for name in APPLICATION_FIELDS if name not in readonly)
+        return readonly
 
-    @display(description="Entra check")
-    def certificate_entra_check(self, obj):
-        certificate = obj.current_certificate if obj else None
-        if certificate is None:
-            return NO_CERTIFICATE
-        code = f" ({certificate.entra_check_code})" if certificate.entra_check_code else ""
-        return f"{certificate.get_entra_check_display()}{code}, {certificate.entra_checked_at:%Y-%m-%d %H:%M} UTC"
-
-    @display(description="Previous certificate (rollback)")
-    def previous_certificate_summary(self, obj):
-        certificate = obj.previous_certificate if obj else None
-        return str(certificate) if certificate is not None else "None"
-
-    @staticmethod
-    def _current(obj, attribute):
-        certificate = obj.current_certificate if obj else None
-        return getattr(certificate, attribute) if certificate is not None else NO_CERTIFICATE
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        obj = self.get_object(request, unquote(object_id))
+        extra_context = dict(extra_context or {})
+        if obj is not None:
+            extra_context["graph_certificate_panel"] = certificate_panel(request, obj)
+        return super().change_view(request, object_id, form_url, extra_context)
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:
@@ -153,3 +109,6 @@ class MicrosoftGraphProviderConfigAdmin(BaseModelAdmin):
         actions = super().get_actions(request)
         actions.pop("delete_selected", None)
         return actions
+
+    def get_urls(self):
+        return self.get_certificate_urls() + super().get_urls()

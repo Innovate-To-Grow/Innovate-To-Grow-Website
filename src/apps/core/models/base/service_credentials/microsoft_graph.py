@@ -174,34 +174,45 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
     @property
     def is_configured(self):
         """Active, saved, well-formed and scoped, so readiness gates agree with what the Graph services accept."""
-        return bool(
-            not self._state.adding
-            and self.is_active
-            and is_entra_tenant(self.tenant_id)
+        return self._configured()
+
+    def _configured(self, scopes=None) -> bool:
+        if self._state.adding or not self.is_active:
+            return False
+        well_formed = (
+            is_entra_tenant(self.tenant_id)
             and is_guid(self.client_id)
-            and self.credential_configured
             and (not self.mailbox or is_exchange_mailbox(self.mailbox))
-            and self.mailbox_scopes.exists()
+        )
+        return bool(
+            well_formed and self.credential_configured and (self.mailbox_scopes.exists() if scopes is None else scopes)
         )
 
     def sender_mailbox(self, from_email: str) -> str:
         """The mailbox Graph sends as (and whose inbox the admin reads): the configured one or the From address."""
         return normalize_mailbox(self.mailbox or from_email)
 
-    def allows(self, mailbox: str, permission: str) -> bool:
-        """Whether *mailbox* is in this config's scope with *permission* (``"send"`` or ``"read"``)."""
-        if self._state.adding or not mailbox:
+    def allows(self, mailbox: str, permission: str, *, scopes=None) -> bool:
+        """Whether *mailbox* is in this config's scope with *permission* (``"send"`` or ``"read"``).
+
+        *scopes* (``{mailbox: permission level}``) stands in for the stored scope, to check a change before it is saved.
+        """
+        if not mailbox:
+            return False
+        if scopes is not None:
+            return MicrosoftGraphMailboxScope.level_grants(scopes.get(normalize_mailbox(mailbox)), permission)
+        if self._state.adding:
             return False
         scope = self.mailbox_scopes.filter(mailbox=normalize_mailbox(mailbox)).first()
         return scope is not None and scope.grants(permission)
 
-    def sending_ready(self, from_email: str) -> bool:
-        """Configured, and both the sending mailbox and the From address may send."""
-        if not self.is_configured:
+    def sending_ready(self, from_email: str, *, scopes=None) -> bool:
+        """Configured, and both the sending mailbox and the From address may send (*scopes*: see ``allows``)."""
+        if not self._configured(scopes):
             return False
         sender = self.sender_mailbox(from_email)
-        return self.allows(sender, "send") and (
-            sender == normalize_mailbox(from_email) or self.allows(from_email, "send")
+        return self.allows(sender, "send", scopes=scopes) and (
+            sender == normalize_mailbox(from_email) or self.allows(from_email, "send", scopes=scopes)
         )
 
 
@@ -255,8 +266,13 @@ class MicrosoftGraphMailboxScope(ProjectControlModel):
         super().save(*args, **kwargs)
 
     def grants(self, permission: str) -> bool:
+        return self.level_grants(self.permission, permission)
+
+    @classmethod
+    def level_grants(cls, level, permission: str) -> bool:
+        """Whether the permission level *level* (a ``Permission`` value, or None) includes *permission*."""
         if permission == "send":
-            return self.permission in (self.Permission.SEND, self.Permission.SEND_AND_READ)
+            return level in (cls.Permission.SEND, cls.Permission.SEND_AND_READ)
         if permission == "read":
-            return self.permission in (self.Permission.READ, self.Permission.SEND_AND_READ)
+            return level in (cls.Permission.READ, cls.Permission.SEND_AND_READ)
         return False

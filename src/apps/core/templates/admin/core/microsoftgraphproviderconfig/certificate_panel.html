@@ -1,0 +1,48 @@
+{# The Microsoft Graph certificate panel (microsoft_graph_panel.certificate_panel): on the config's change page, before #}
+{# its form, and on Mail → Notification Delivery. Every link is present only when the viewer may use it. #}
+{% if graph_certificate_panel %}
+{% with panel=graph_certificate_panel %}
+<section id="graph-certificate-panel" class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Certificate</h3>
+            <p class="mt-1 text-xs text-base-500 dark:text-base-400">
+                The Entra app authenticates with a certificate only. Its private key is kept in the credential store
+                and is never stored or shown here. Compare the SHA-1 thumbprint with the one Entra lists under
+                Certificates &amp; secrets.
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            {% if panel.install_url %}
+                <a href="{{ panel.install_url }}" class="inline-flex items-center gap-1 rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700">
+                    <span class="material-symbols-outlined !text-[18px]">upload</span>Install certificate
+                </a>
+            {% endif %}
+            {% if panel.rollback_url %}
+                <a href="{{ panel.rollback_url }}" class="inline-flex items-center gap-1 rounded-md border border-base-300 px-3 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+                    <span class="material-symbols-outlined !text-[18px]">history</span>Roll back to previous
+                </a>
+            {% endif %}
+            {% if panel.download_url %}
+                <a href="{{ panel.download_url }}" class="inline-flex items-center gap-1 rounded-md border border-base-300 px-3 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+                    <span class="material-symbols-outlined !text-[18px]">download</span>Download .cer
+                </a>
+            {% endif %}
+            {% if panel.remove_url %}
+                <a href="{{ panel.remove_url }}" class="inline-flex items-center gap-1 rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20">
+                    <span class="material-symbols-outlined !text-[18px]">block</span>Remove (emergency)
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% if panel.current %}
+        {% include "admin/core/microsoftgraphproviderconfig/certificate_card.html" with card=panel.current heading="Current certificate" %}
+    {% else %}
+        <p class="text-sm text-base-500 dark:text-base-400">None installed: Microsoft Graph cannot send or read mail until a certificate is installed.</p>
+    {% endif %}
+    {% if panel.previous %}
+        {% include "admin/core/microsoftgraphproviderconfig/certificate_card.html" with card=panel.previous heading="Previous certificate (kept for rollback)" %}
+    {% endif %}
+</section>
+{% endwith %}
+{% endif %}

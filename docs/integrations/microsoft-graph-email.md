@@ -141,14 +141,25 @@ provider.
    | **Active** | Tick it. Only one Graph configuration can be active; activating one deactivates the others. |
    | **Tenant ID** | Directory (tenant) ID as a GUID, or a verified domain such as `contoso.onmicrosoft.com`. `common`, `organizations`, and `consumers` are rejected. |
    | **Client ID** | Application (client) ID of the Entra app registration (a GUID). |
-   | **Certificate** (read-only) | The installed certificate: SHA-1 thumbprint (as Entra lists it under **Certificates & secrets**), SHA-256 fingerprint, subject, validity, key store version and the Entra check result, plus the previous certificate kept for rollback. The form has no certificate, key or secret input. |
+   | **Certificate** (panel above the form) | The installed certificate: SHA-1 thumbprint (as Entra lists it under **Certificates & secrets**), SHA-256 fingerprint, subject, serial, validity with an expiry badge (amber `GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS`, default 60, and red `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS`, default 14, days before expiry), the key store and version, and the Entra check result, plus the previous certificate kept for rollback. The form itself has no certificate, key or secret input. |
    | **Sender Mailbox** | `i2g@ucmerced.edu`. Blank means the **From Email** address. The admin inbox reads this mailbox too. |
    | **Messages per Minute** | 1 to 30, default 24. Exchange Online allows 30 messages per minute per mailbox. See [Campaign pacing](#campaign-pacing). |
    | **Mailbox scope** (inline rows) | One row: mailbox `i2g@ucmerced.edu`, permission **Send and read (Mail.Send + Mail.Read)**. |
 
-   **Tenant ID** and **Client ID** cannot change while a certificate is installed: a certificate is
-   tested for one tenant and app. Remove the certificates first, then install the one registered for the
-   new app.
+   **Tenant ID** and **Client ID** are read-only while a certificate is installed: a certificate is
+   tested for one tenant and app. To move to another app, set up a standby configuration for it, install
+   its certificate there and then activate it, or remove the certificates first.
+
+   A superuser installs the certificate with **Install certificate** on the configuration's page. The
+   page takes the `.p12`/`.pfx` file with its password, or the certificate (PEM, base64, or the DER
+   `.cer` file) and the private key (PEM PKCS#8 or PKCS#1, optionally encrypted, with its passphrase),
+   pasted or uploaded (each at most `GRAPH_CERTIFICATE_MAX_INPUT_BYTES`). An optional **Expected SHA-1
+   thumbprint** (case, colons and spaces ignored) stops the install when the certificate differs. It is a
+   separate page, not the configuration form: nothing entered is kept in the session or cache, the key and
+   password inputs are never shown again, and error reports hide them. The panel also offers **Roll back
+   to previous**, **Remove (emergency)** (type `REMOVE` and give a reason; it can switch email to AWS SES
+   in the same step) and **Download .cer** (the public certificate, for OIT). Staff with the **Core** app
+   see the panel and can download the `.cer`, but only a superuser can change the certificate.
 
    Installing a certificate (`apps.core.services.email.graph.credential.lifecycle`) checks, in memory,
    that the key is RSA of at least `GRAPH_CERTIFICATE_MIN_RSA_KEY_BITS` (2048) bits and belongs to the
@@ -164,7 +175,8 @@ provider.
    select **Edit Notification Delivery**.
 3. Under **Email Sender**, set **Provider** to **Microsoft Graph**, tick **Active**, set **From Name** and
    **From Email** (`i2g@ucmerced.edu`), and select **Save Notification Delivery**. The Graph panel shows the
-   same fields as step 1 and lists the mailbox scope with a link to edit it.
+   configuration from step 1 read-only (with the certificate's SHA-1 thumbprint and expiry, and the mailbox
+   scope); this page cannot change it. Staff with the **Core** app get a link to the configuration page.
 4. Run the [access validation](#validate-the-access-restriction), then send a test email.
 
 - The **From Email** and the sending mailbox must both be in the scope with send permission; otherwise
@@ -173,6 +185,10 @@ provider.
 - Choosing AWS SES or SMTP later hides the Graph panel and keeps the saved Graph settings. The AWS panel on
   the same page is always saved and is still used for SMS.
 - An active configuration cannot be deleted. Deleting an inactive one deletes its scope rows.
+- While Notification Delivery sends through Graph, the configuration page refuses a save that would stop
+  email: deactivating the sending configuration, activating a standby that cannot send, or a mailbox scope
+  or sender mailbox that no longer lets the sender and the **From Email** send. Select another provider
+  first.
 - A successful test reports `Test email sent to <address> via Microsoft Graph (config: <name>).` That
   means Graph accepted the message (HTTP 202), not that it was delivered. A failure reports
   `Failed to send test email: <message>`; the messages are explained in the
@@ -191,8 +207,10 @@ provider.
 - The site checks the sending mailbox and the **From Email** for send, and the inbox mailbox for read,
   before each request. A refusal is a permanent error naming the mailbox (see
   [Refused before any request is made](#refused-before-any-request-is-made)).
-- Mailboxes are compared case-insensitively. Use the same form in the scope as in **Sender Mailbox**: an
-  object ID (GUID) in one place and an address in the other do not match.
+- Mailboxes are compared case-insensitively, and two rows for one mailbox are refused. Use the same form
+  in the scope as in **Sender Mailbox**: an object ID (GUID) in one place and an address in the other do
+  not match.
+- Staff with the **Core** app can edit the scope, like the rest of the configuration.
 - Adding a mailbox here does not grant anything at Microsoft; the Exchange role assignment must also
   exist. Adding a mailbox or permission beyond the approval needs a new InfoSec review.
 - The scope model is on the safe-ORM denylist, so the `i2g-admin` CLI and the AI assistant cannot read
@@ -296,9 +314,12 @@ a failure makes the command exit non-zero. It reads stored settings only and doe
   `src/data/` locally, and process memory in tests. The database keeps only the certificate's public data
   and the pinned store version (`MicrosoftGraphCertificate`). On a token-cache miss the pinned version is
   read, checked against the certificate's public key, used to sign one assertion and dropped; no process
-  caches the key. Only staff granted the **Core** app can open the configuration, and the config, its
-  scope and its certificates are on the safe-ORM denylist, so the `i2g-admin` CLI and the AI assistant
-  cannot read or change them. Error messages and log lines carry no key, token, or response body.
+  caches the key. Only staff granted the **Core** app can open the configuration, and only a superuser can
+  install, roll back or remove a certificate; **Mail → Notification Delivery** shows the configuration
+  read-only. Changelist filters on secret-looking field names (`?private_key__regex=…`) are refused with
+  `400` on every admin page. The config, its scope and its certificates are on the safe-ORM denylist, so the
+  `i2g-admin` CLI and the AI assistant cannot read or change them. Error messages and log lines carry no
+  key, token, or response body.
 
 | Concern | Location |
 |---------|----------|
@@ -311,7 +332,8 @@ a failure makes the command exit non-zero. It reads stored settings only and doe
 | Provider selection | `src/apps/core/services/email/registry.py` |
 | Settings and scope models | `src/apps/core/models/base/service_credentials/microsoft_graph.py` |
 | Installed certificates (public data + key pointer) | `src/apps/core/models/base/service_credentials/microsoft_graph_certificate.py` |
-| Notification Delivery forms | `src/apps/mail/admin/settings/forms.py` |
+| Certificate pages, certificate panel, mailbox scope inline and its guard | `src/apps/core/admin/service_credentials/microsoft_graph*.py` |
+| Notification Delivery (selects the provider; Graph read-only) | `src/apps/mail/admin/settings/` |
 
 ## Admin inbox
 

@@ -1,4 +1,8 @@
-"""The Notification Delivery pages with the Microsoft Graph provider (no network, throwaway certificates only)."""
+"""The Notification Delivery pages with the Microsoft Graph provider (no network, throwaway certificates only).
+
+The Graph config is read-only here: it is managed on its own admin page (Core app), and this page only selects it
+as the provider, which ``EmailServiceConfig.validate_activation`` allows only when it can send.
+"""
 
 import base64
 import json
@@ -23,9 +27,18 @@ OBJECT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 # The senders these tests submit; the mailbox scope itself is edited on the Graph config admin page.
 GRAPH_SCOPE = ("mailer@example.com", "updated@example.com", "old@example.com", "admin@example.com", OBJECT_ID)
 FAKE_TOKEN = "not-a-real-token"
-GRAPH_FIELDS = ("name", "is_active", "tenant_id", "client_id", "mailbox", "messages_per_minute")
-# Credential inputs this page must never render or accept: certificates are installed on the Graph config's page.
-CREDENTIAL_INPUTS = ("graph-client_secret", "graph-private_key", "graph-certificate", "graph-auth_method")
+# Every Graph input the old page had; none is rendered or accepted any more.
+GRAPH_INPUTS = {
+    "graph-name": "Hijacked",
+    "graph-tenant_id": "99999999-8888-7777-6666-555555555555",
+    "graph-client_id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+    "graph-mailbox": "attacker@example.com",
+    "graph-messages_per_minute": "30",
+    "graph-certificate": "ignored-not-a-credential",
+    "graph-private_key": "ignored-not-a-credential",
+    "graph-client_secret": "ignored-not-a-credential",
+}
+GRAPH_CONFIG_URL_NAME = "admin:core_microsoftgraphproviderconfig_change"
 PROVIDER_ERROR = (
     "An active Microsoft Graph configuration whose mailbox scope lets the sender mailbox and the From address "
     "send is required before activation."
@@ -125,8 +138,8 @@ class GraphSettingsTestCase(TestCase):
         self.config.provider = provider
         self.config.save()
 
-    def post_data(self, provider, **graph):
-        """The browser's POST body. ``graph`` overrides ``graph-*`` values; ``None`` leaves the input out."""
+    def post_data(self, provider, **extra):
+        """The browser's POST body (plus *extra* inputs, such as smuggled Graph fields)."""
         data = {
             "email-name": "Updated Mail",
             "email-is_active": "on",
@@ -154,23 +167,7 @@ class GraphSettingsTestCase(TestCase):
                     "smtp-timeout": "30",
                 }
             )
-        if provider == "graph":
-            data.update(
-                {
-                    "graph-name": "Outlook Sender",
-                    "graph-is_active": "on",
-                    "graph-tenant_id": TENANT_ID,
-                    "graph-client_id": CLIENT_ID,
-                    "graph-mailbox": "mailer@example.com",
-                    "graph-messages_per_minute": "20",
-                }
-            )
-            for name, value in graph.items():
-                if value is None:
-                    data.pop(f"graph-{name}", None)
-                else:
-                    data[f"graph-{name}"] = value
-        return data
+        return data | extra
 
     def state(self):
         """Every delivery row as stored, to prove that a rejected request changed nothing."""
@@ -205,37 +202,35 @@ class GraphSettingsTestCase(TestCase):
 
 
 class EditPageRenderingTests(GraphSettingsTestCase):
-    def test_graph_provider_opens_the_graph_panel_and_hides_the_smtp_panel(self):
-        self.make_graph()
+    def test_graph_provider_opens_the_read_only_graph_panel_and_hides_the_smtp_panel(self):
+        graph = self.make_graph()
         self.use_provider("graph")
 
         response = self.client.get(self.edit_url)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["graph_enabled"])
-        self.assertFalse(response.context["smtp_enabled"])
         self.assertNotIn("hidden", self.panel_attrs(response, "graph-provider-settings"))
         self.assertIn("hidden", self.panel_attrs(response, "smtp-provider-settings"))
         self.assertContains(response, "Microsoft Graph Provider")
-        for name in GRAPH_FIELDS:
-            self.assertContains(response, f'name="graph-{name}"')
+        self.assertNotContains(response, 'name="graph-')
+        certificate = graph.current_certificate
+        for value in (TENANT_ID, CLIENT_ID, "mailer@example.com", certificate.sha1_thumbprint, "Expires in "):
+            self.assertContains(response, value)
+        self.assertContains(response, "Thumbprint (SHA-1, as shown in Entra)")
         self.assertContains(response, '<option value="graph" selected>Microsoft Graph</option>', html=True)
-        self.assertFalse(any(field.disabled for field in response.context["graph_form"].fields.values()))
         self.assertTrue(all(field.disabled for field in response.context["smtp_form"].fields.values()))
+        self.assert_no_key_material(response.content)
 
-    def test_ses_provider_hides_both_provider_panels_and_disables_their_inputs(self):
+    def test_ses_provider_hides_both_provider_panels(self):
         self.make_graph()
 
         response = self.client.get(self.edit_url)
 
-        self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["graph_enabled"])
-        self.assertFalse(response.context["smtp_enabled"])
         self.assertIn("hidden", self.panel_attrs(response, "graph-provider-settings"))
         self.assertIn("hidden", self.panel_attrs(response, "smtp-provider-settings"))
-        self.assertIn("disabled", str(response.context["graph_form"]["tenant_id"]))
         self.assertContains(response, '<option value="ses" selected>AWS SES</option>', html=True)
-        self.assertContains(response, '<option value="smtp">SMTP</option>', html=True)
         self.assertContains(response, '<option value="graph">Microsoft Graph</option>', html=True)
 
     def test_smtp_provider_opens_the_smtp_panel_and_hides_the_graph_panel(self):
@@ -245,64 +240,65 @@ class EditPageRenderingTests(GraphSettingsTestCase):
         response = self.client.get(self.edit_url)
 
         self.assertTrue(response.context["smtp_enabled"])
-        self.assertFalse(response.context["graph_enabled"])
         self.assertNotIn("hidden", self.panel_attrs(response, "smtp-provider-settings"))
         self.assertIn("hidden", self.panel_attrs(response, "graph-provider-settings"))
         self.assertNotContains(response, "existing-secret")
 
-    def test_graph_panel_shows_stored_values_and_no_credential_input(self):
-        self.make_graph()
+    def test_superusers_and_core_staff_get_a_link_to_the_graph_config_but_no_certificate_actions(self):
+        graph = self.make_graph()
+        config_url = reverse(GRAPH_CONFIG_URL_NAME, args=[graph.pk])
+        for user in (self.admin_user, make_admin(apps=["mail", "core"], email="core-mail@example.com")):
+            with self.subTest(superuser=user.is_superuser):
+                self.client.force_login(user)
+
+                response = self.client.get(self.edit_url)
+
+                self.assertContains(response, config_url)
+                self.assertNotContains(response, f"{config_url.removesuffix('change/')}certificate/install/")
+
+    def test_mail_only_staff_see_the_graph_config_without_any_link_to_change_it(self):
+        graph = self.make_graph()
+        self.use_provider("graph")
+        self.client.force_login(make_admin(apps=["mail"], email="mail-only@example.com"))
+
+        response = self.client.get(self.edit_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, graph.current_certificate.sha1_thumbprint)
+        self.assertNotContains(response, "/admin/core/microsoftgraphproviderconfig/")
+        self.assertContains(response, "Changing the Microsoft Graph configuration needs the Core app")
+
+    def test_without_a_graph_config_the_panel_says_so_and_links_to_the_add_page(self):
         self.use_provider("graph")
 
         response = self.client.get(self.edit_url)
 
-        for value in (TENANT_ID, CLIENT_ID, "mailer@example.com"):
-            self.assertContains(response, f'value="{value}"')
-        for name in CREDENTIAL_INPUTS:
-            self.assertNotContains(response, f'name="{name}"')
-        self.assertContains(response, "installed on the Graph config's own page")
-        self.assert_no_key_material(response.content)
-
-    def test_graph_inputs_carry_the_markers_the_provider_toggle_script_reads(self):
-        self.use_provider("graph")
-
-        response = self.client.get(self.edit_url)
-
-        fields = response.context["graph_form"].fields
-        self.assertEqual(fields["tenant_id"].widget.attrs["data-graph-required"], "true")
-        self.assertEqual(fields["mailbox"].widget.attrs["data-graph-required"], "false")
-        self.assertEqual(tuple(fields), GRAPH_FIELDS)
-        self.assertContains(response, 'graph: document.getElementById("graph-provider-settings")')
-        self.assertContains(response, 'smtp: document.getElementById("smtp-provider-settings")')
+        self.assertContains(response, "No Microsoft Graph configuration is active.")
+        self.assertContains(response, reverse("admin:core_microsoftgraphproviderconfig_add"))
+        self.assertNotContains(response, 'id="graph-certificate-panel"')
 
 
 class SelectingGraphTests(GraphSettingsTestCase):
-    def test_a_new_graph_config_cannot_be_activated_here_without_a_mailbox_scope(self):
-        # The scope is a list of mailboxes, edited on the Graph config's own admin page; this page links there.
+    def test_graph_cannot_be_selected_without_a_graph_config(self):
         response = self.client.post(self.edit_url, self.post_data("graph"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["email_form"].errors["provider"], [PROVIDER_ERROR])
-        self.assertContains(response, "Edit the mailbox scope and permission levels")
-        self.assertContains(response, reverse("admin:core_microsoftgraphproviderconfig_add"))
         self.assertFalse(MicrosoftGraphProviderConfig.objects.exists())
         self.config.refresh_from_db()
-        self.assertNotEqual(self.config.provider, "graph")
+        self.assertEqual(self.config.provider, "ses")
 
-    def test_selecting_graph_activates_the_provider_with_a_scoped_graph_config(self):
-        self.make_graph()
+    def test_selecting_graph_activates_the_provider_and_leaves_the_graph_config_untouched(self):
+        graph = self.make_graph()
+        before = snapshot(graph)
 
         response = self.client.post(self.edit_url, self.post_data("graph"))
 
         self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-        graph = MicrosoftGraphProviderConfig.objects.get()
-        self.assertTrue(graph.is_active)
-        self.assertEqual((graph.name, graph.tenant_id, graph.client_id), ("Outlook Sender", TENANT_ID, CLIENT_ID))
-        self.assertEqual((graph.mailbox, graph.messages_per_minute), ("mailer@example.com", 20))
         self.config.refresh_from_db()
-        self.assertEqual(self.config.provider, "graph")
-        self.assertEqual(self.config.from_email, "updated@example.com")
+        self.assertEqual((self.config.provider, self.config.from_email), ("graph", "updated@example.com"))
         self.assertTrue(self.config.delivery_configured)
+        self.assertEqual(snapshot(graph), before)
         self.assertEqual(EmailServiceConfig.objects.count(), 1)
 
     def test_saving_reports_success_and_the_summary_names_the_graph_mailbox(self):
@@ -312,72 +308,27 @@ class SelectingGraphTests(GraphSettingsTestCase):
         self.assertContains(response, "Notification delivery settings saved.")
         self.assert_chip(response, "Microsoft Graph (mailer@example.com)", "success")
 
-    def test_selecting_graph_updates_the_existing_graph_config_in_place(self):
-        graph = self.make_graph(name="Old name", mailbox="old@example.com", messages_per_minute=10)
-
-        response = self.client.post(self.edit_url, self.post_data("graph", messages_per_minute="15"))
-
-        self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-        self.assertEqual(MicrosoftGraphProviderConfig.objects.count(), 1)
-        graph.refresh_from_db()
-        self.assertEqual(
-            (graph.name, graph.mailbox, graph.messages_per_minute), ("Outlook Sender", "mailer@example.com", 15)
-        )
-
-    def test_credential_inputs_posted_here_are_ignored(self):
+    def test_graph_inputs_posted_here_change_nothing(self):
         graph = self.make_graph()
+        before = snapshot(graph)
         certificate = graph.current_certificate
-        smuggled = {name.removeprefix("graph-"): "ignored-not-a-credential" for name in CREDENTIAL_INPUTS}
 
-        response = self.client.post(self.edit_url, self.post_data("graph", messages_per_minute="12", **smuggled))
-
-        self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-        graph.refresh_from_db()
-        self.assertEqual(graph.messages_per_minute, 12)
-        self.assertEqual(graph.current_certificate, certificate)
-        self.assertEqual(snapshot(certificate)["store_version_id"], certificate.store_version_id)
-
-    def test_changing_the_application_under_the_installed_certificate_is_rejected_and_changes_nothing(self):
-        self.make_graph()
-        before = self.state()
-
-        response = self.client.post(
-            self.edit_url, self.post_data("graph", client_id="bbbbbbbb-cccc-dddd-eeee-ffffffffffff")
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("client_id", response.context["graph_form"].errors)
-        self.assertContains(response, "Remove the installed certificates before changing the Entra application")
-        self.assertEqual(self.state(), before)
-
-    def test_messages_per_minute_accepts_the_documented_limits(self):
-        self.make_graph()
-        for limit in ("1", "30"):
-            with self.subTest(limit=limit):
-                response = self.client.post(self.edit_url, self.post_data("graph", messages_per_minute=limit))
+        for provider in ("graph", "ses", "smtp"):
+            with self.subTest(provider=provider):
+                response = self.client.post(self.edit_url, self.post_data(provider, **GRAPH_INPUTS))
 
                 self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-                self.assertEqual(MicrosoftGraphProviderConfig.objects.get().messages_per_minute, int(limit))
+                self.assertEqual(snapshot(graph), before)
+                self.assertEqual(graph.current_certificate, certificate)
 
-    def test_verified_domain_tenant_and_object_id_mailbox_are_accepted(self):
-        # The certificate was tested for this tenant; changing the tenant itself is refused (see above).
-        self.make_graph(tenant_id="contoso.onmicrosoft.com")
-        data = self.post_data("graph", tenant_id="contoso.onmicrosoft.com", mailbox=OBJECT_ID)
+    def test_graph_without_a_mailbox_falls_back_to_the_from_email(self):
+        self.make_graph(mailbox="")
+        response = self.client.post(self.edit_url, self.post_data("graph"), follow=True)
 
-        response = self.client.post(self.edit_url, data)
-
-        self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-        graph = MicrosoftGraphProviderConfig.objects.get()
-        self.assertEqual((graph.tenant_id, graph.mailbox), ("contoso.onmicrosoft.com", OBJECT_ID))
-
-    def test_graph_without_a_mailbox_is_accepted_and_the_summary_falls_back_to_the_from_email(self):
-        self.make_graph()
-        response = self.client.post(self.edit_url, self.post_data("graph", mailbox=""), follow=True)
-
-        self.assertEqual(MicrosoftGraphProviderConfig.objects.get().mailbox, "")
         self.assert_chip(response, "Microsoft Graph (updated@example.com)", "success")
 
     def test_selecting_graph_retains_the_aws_credentials_used_for_sms(self):
+        self.make_graph()
         before = snapshot(self.aws_config)
 
         self.client.post(self.edit_url, self.post_data("graph"))
@@ -388,132 +339,58 @@ class SelectingGraphTests(GraphSettingsTestCase):
         self.assertEqual(after, before)
         self.assertTrue(AWSCredentialConfig.load().sns_configured)
 
-
-class SwitchingProvidersTests(GraphSettingsTestCase):
-    def test_switching_from_graph_to_ses_needs_no_graph_fields_and_leaves_the_graph_row_untouched(self):
-        graph = self.make_graph()
-        self.use_provider("graph")
-        before = snapshot(graph)
-
-        response = self.client.post(self.edit_url, self.post_data("ses"))
-
-        self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-        self.config.refresh_from_db()
-        self.assertEqual(self.config.provider, "ses")
-        self.assertEqual(snapshot(graph), before)
-
-    def test_graph_inputs_submitted_for_another_provider_are_ignored(self):
+    def test_round_trip_through_every_provider_keeps_the_graph_config(self):
         graph = self.make_graph()
         before = snapshot(graph)
-        data = self.post_data("ses")
-        data.update(
-            {
-                "graph-tenant_id": "not a tenant!",
-                "graph-client_id": "not-a-guid",
-                "graph-mailbox": "not-an-email",
-                "graph-messages_per_minute": "999",
-            }
-        )
-
-        response = self.client.post(self.edit_url, data)
-
-        self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-        self.assertEqual(snapshot(graph), before)
-
-    def test_round_trip_through_every_provider_keeps_the_graph_credentials(self):
-        graph = self.make_graph()
         for provider in ("graph", "ses", "smtp", "graph"):
             with self.subTest(provider=provider):
                 response = self.client.post(self.edit_url, self.post_data(provider))
 
                 self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
                 self.config.refresh_from_db()
-                graph.refresh_from_db()
                 self.assertEqual(self.config.provider, provider)
-                self.assertEqual((graph.tenant_id, graph.client_id), (TENANT_ID, CLIENT_ID))
-                self.assertTrue(graph.credential_configured)
-                self.assertTrue(graph.is_active)
+                self.assertEqual(snapshot(graph), before)
 
-    def test_selecting_smtp_still_saves_the_smtp_config_and_leaves_the_graph_row_untouched(self):
-        graph = self.make_graph()
-        before = snapshot(graph)
+    def test_selecting_smtp_still_saves_the_smtp_config(self):
+        self.make_graph()
 
         response = self.client.post(self.edit_url, self.post_data("smtp"))
 
         self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
-        self.config.refresh_from_db()
         self.smtp_config.refresh_from_db()
-        self.assertEqual(self.config.provider, "smtp")
         self.assertEqual((self.smtp_config.name, self.smtp_config.host), ("Updated SMTP", "mail.example.com"))
         self.assertEqual(self.smtp_config.password, "existing-secret")
-        self.assertEqual(snapshot(graph), before)
 
 
-class RejectedGraphInputTests(GraphSettingsTestCase):
-    INVALID_INPUT = (
-        ("tenant_id", "common", "Use the tenant GUID or a verified domain"),
-        ("tenant_id", "not a tenant!", "Use the tenant GUID or a verified domain"),
-        ("client_id", "not-a-guid", "The application (client) ID must be a GUID."),
-        ("mailbox", "not-an-email", "Enter the mailbox email address"),
-        ("messages_per_minute", "0", ""),
-        ("messages_per_minute", "31", ""),
-        ("messages_per_minute", "many", ""),
-    )
-
-    def test_invalid_graph_input_shows_field_errors_and_rolls_everything_back(self):
-        before = self.state()
-
-        for field, value, message in self.INVALID_INPUT:
-            with self.subTest(field=field, value=value):
-                response = self.client.post(self.edit_url, self.post_data("graph", **{field: value}))
-
-                self.assertEqual(response.status_code, 200)
-                self.assertIn(field, response.context["graph_form"].errors)
-                if message:
-                    self.assertContains(response, message)
-                self.assertTrue(response.context["graph_enabled"])
-                self.assertNotIn("hidden", self.panel_attrs(response, "graph-provider-settings"))
-                self.assertEqual(self.state(), before)
-        self.assertFalse(MicrosoftGraphProviderConfig.objects.exists())
-
-    def test_rejected_page_carries_no_key_material(self):
-        self.make_graph()
-
-        response = self.client.post(self.edit_url, self.post_data("graph", mailbox="not-an-email"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assert_no_key_material(response.content)
-
-    def test_selecting_graph_without_an_active_graph_config_is_rejected_on_the_provider_field(self):
-        before = self.state()
-
-        response = self.client.post(self.edit_url, self.post_data("graph", is_active=None))
-
+class RejectedGraphSelectionTests(GraphSettingsTestCase):
+    def assert_rejected(self, response, before):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["email_form"].errors["provider"], [PROVIDER_ERROR])
         self.assertContains(response, PROVIDER_ERROR)
+        self.assertTrue(response.context["graph_enabled"])
+        self.assertNotIn("hidden", self.panel_attrs(response, "graph-provider-settings"))
         self.assertEqual(self.state(), before)
-        self.assertFalse(MicrosoftGraphProviderConfig.objects.exists())
+        self.assert_no_key_material(response.content)
 
-    def test_deactivating_the_only_graph_config_while_selecting_graph_changes_nothing(self):
-        self.make_graph()
+    def test_an_inactive_graph_config_cannot_be_selected(self):
+        self.make_graph(is_active=False)
         before = self.state()
 
-        response = self.client.post(self.edit_url, self.post_data("graph", is_active=None, name="Renamed"))
+        self.assert_rejected(self.client.post(self.edit_url, self.post_data("graph")), before)
 
-        self.assertEqual(response.context["email_form"].errors["provider"], [PROVIDER_ERROR])
-        self.assertEqual(self.state(), before)
-        self.assertTrue(MicrosoftGraphProviderConfig.load().is_configured)
-
-    def test_activating_graph_without_an_installed_certificate_is_rejected_on_the_provider_field(self):
+    def test_a_graph_config_without_a_certificate_cannot_be_selected(self):
         self.make_graph(certificate=False)
         before = self.state()
 
-        response = self.client.post(self.edit_url, self.post_data("graph"))
+        self.assert_rejected(self.client.post(self.edit_url, self.post_data("graph")), before)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["email_form"].errors["provider"], [PROVIDER_ERROR])
-        self.assertEqual(self.state(), before)
+    def test_a_from_address_outside_the_scope_cannot_be_selected(self):
+        self.make_graph()
+        before = self.state()
+
+        data = self.post_data("graph") | {"email-from_email": "outside@example.com"}
+
+        self.assert_rejected(self.client.post(self.edit_url, data), before)
 
 
 class AccessControlTests(GraphSettingsTestCase):
@@ -526,6 +403,37 @@ class AccessControlTests(GraphSettingsTestCase):
         self.assertEqual(self.client.post(self.edit_url, self.post_data("graph")).status_code, 403)
         self.assertEqual(self.client.get(self.summary_url).status_code, 403)
         self.assertEqual(self.state(), before)
+
+    def test_mail_only_staff_can_select_a_ready_graph_config_but_not_change_it(self):
+        graph = self.make_graph()
+        before = snapshot(graph)
+        self.client.force_login(make_admin(apps=["mail"], email="mail-only@example.com"))
+
+        response = self.client.post(self.edit_url, self.post_data("graph", **GRAPH_INPUTS))
+
+        self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
+        self.assertEqual(snapshot(graph), before)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.provider, "graph")
+        self.assertEqual(self.client.get(reverse(GRAPH_CONFIG_URL_NAME, args=[graph.pk])).status_code, 403)
+
+
+class SummaryGraphPanelTests(GraphSettingsTestCase):
+    def test_the_summary_shows_the_graph_panel_while_graph_is_selected(self):
+        graph = self.make_graph()
+        self.use_provider("graph")
+
+        response = self.client.get(self.summary_url)
+
+        self.assertContains(response, 'id="graph-provider-summary"')
+        self.assertContains(response, graph.current_certificate.sha1_thumbprint)
+        self.assertContains(response, "mailer@example.com &mdash; Send and read")
+        self.assert_no_key_material(response.content)
+
+    def test_the_summary_leaves_the_graph_panel_out_for_other_providers(self):
+        self.make_graph()
+
+        self.assertNotContains(self.client.get(self.summary_url), 'id="graph-provider-summary"')
 
 
 class SummaryChipTests(GraphSettingsTestCase):

@@ -319,6 +319,31 @@ class GraphConfigSavedIsConfiguredTest(TestCase):
         self.assertFalse(make_graph().is_configured)
 
 
+class GraphConfigProposedScopeTest(TestCase):
+    """``sending_ready(..., scopes=...)`` judges a scope that is not saved yet (the admin's guard), not the stored one."""
+
+    def test_a_proposed_scope_replaces_the_stored_one(self):
+        config = make_graph(is_active=True)
+        cases = (
+            ("the stored scope", None, True),
+            ("an empty scope", {}, False),
+            ("the sender with send rights", {MAILBOX: "send"}, True),
+            ("the sender with read rights only", {MAILBOX: "read"}, False),
+            ("another mailbox only", {"shared@example.com": "send_read"}, False),
+        )
+        for label, scopes, expected in cases:
+            with self.subTest(label):
+                self.assertIs(config.sending_ready(MAILBOX, scopes=scopes), expected)
+
+    def test_a_proposed_scope_does_not_make_an_unsaved_or_inactive_config_ready(self):
+        unsaved = MicrosoftGraphProviderConfig(**graph_fields(is_active=True))
+        inactive = make_graph()
+
+        for config in (unsaved, inactive):
+            with self.subTest(saved=not config._state.adding):
+                self.assertFalse(config.sending_ready(MAILBOX, scopes={MAILBOX: "send"}))
+
+
 class EmailServiceConfigGraphProviderTest(SimpleTestCase):
     def test_graph_choice_has_the_documented_value_and_label(self):
         provider = EmailServiceConfig.Provider.GRAPH

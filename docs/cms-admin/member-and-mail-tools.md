@@ -64,15 +64,16 @@ sender name and email address, and save the active configuration.
 - **SMTP** shows the server, port, security, and optional authentication fields.
   Leave the password blank when editing to retain the saved password. STARTTLS
   and SSL both verify the server certificate; enable only one of them.
-- **Microsoft Graph** shows the tenant ID, client ID, sender mailbox, and
-  messages-per-minute fields, and lists the **mailbox scope**: the mailboxes
-  Graph may use and each one's permission level (send, read, or both). The
-  scope is edited on the Graph configuration's admin page, linked from the
-  panel, and must be in place before Graph can be selected. Graph authenticates
-  with a certificate only; it is installed on the Graph configuration's admin
-  page, and its private key is kept in the credential store, never in the
-  database. The tenant ID and client ID cannot change while a certificate is
-  installed. The sender mailbox
+- **Microsoft Graph** shows the active Graph configuration read-only: tenant
+  ID, client ID, sender mailbox, messages per minute, the installed
+  certificate's SHA-1 thumbprint and expiry, and the **mailbox scope** (the
+  mailboxes Graph may use and each one's permission level: send, read, or
+  both). This page only selects Graph; the configuration, its scope and its
+  certificate are managed on the Graph configuration's admin page (Core app,
+  linked from the panel for staff who have it), and must be in place before
+  Graph can be selected. Graph authenticates with a certificate only; a
+  superuser installs it there, and its private key is kept in the credential
+  store, never in the database. The sender mailbox
   defaults to the From email; both must be in the scope with send permission.
   With read permission, **Mail → Inbox** reads that mailbox through Graph
   instead of the Gmail import account. Graph mail
