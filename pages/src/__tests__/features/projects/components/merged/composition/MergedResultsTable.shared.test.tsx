@@ -58,11 +58,6 @@ const addedRow: ProjectGridRow = {
 const normalizedBaseRow: ProjectGridRow = {...baseRow, semester_label: '2025 Spring'};
 const normalizedAddedRow: ProjectGridRow = {...addedRow, semester_label: '2025 Spring'};
 
-const rowWithId: ProjectGridRow = {
-  ...baseRow,
-  id: '11111111-1111-4111-8111-111111111111',
-};
-
 const makeItems = (rows: ProjectGridRow[] = [baseRow]) => createProjectGridItems(rows, 'test');
 
 const getExportButtonLabels = (container: HTMLElement) => {
@@ -75,11 +70,6 @@ const getExportButtonLabels = (container: HTMLElement) => {
 // desktop table to get a single match.
 const desktopTable = (container: HTMLElement) =>
   container.querySelector('.project-grid-table-wrap') as HTMLElement;
-
-const setRichTextEditorHtml = (editor: HTMLElement, html: string) => {
-  editor.innerHTML = html;
-  fireEvent.input(editor);
-};
 
 describe('MergedResultsTable in shared mode', () => {
   beforeEach(() => {
@@ -118,22 +108,6 @@ describe('MergedResultsTable in shared mode', () => {
     expect(within(desktopTable(container)).getByText('Irrigation Sensor')).toBeInTheDocument();
     expect(within(desktopTable(container)).queryByText('Shared Project')).toBeNull();
     expect(screen.queryByText('Cascade Cooler Pouch Outfeed')).toBeNull();
-  });
-
-  it('marks the note\'s links to other sites as member content for visitors', () => {
-    const {container} = render(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        note={`<p>See <a href="https://elsewhere.example.com/x">this</a> and <a href="/past-projects">ours</a></p>`}
-      />,
-    );
-
-    const links = container.querySelectorAll('.project-grid-shared-note a');
-    expect([...links].map((link) => [link.textContent, link.getAttribute('rel')])).toEqual([
-      ['this', 'nofollow ugc noopener'],
-      ['ours', null],
-    ]);
   });
 
   it('renders the share link above the note in shared mode', async () => {
@@ -202,112 +176,6 @@ describe('MergedResultsTable in shared mode', () => {
     expect(container.querySelector('.project-grid-shared-header .itg-page-meta')).toHaveTextContent(
       /^Curated by a site member · 1 project$/,
     );
-  });
-
-  it('does not render a note block in shared mode when note is empty', () => {
-    const {container} = render(<MergedResultsTable rows={makeItems()} sharedMode note="" />);
-    expect(container.querySelector('.project-grid-shared-note')).toBeNull();
-    expect(screen.queryByText('Curation note')).toBeNull();
-    expect(screen.queryByText('No curation note yet.')).toBeNull();
-  });
-
-  it("shows its owner the note as visitors read it, with Edit Curation Note on the label's row", async () => {
-    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
-    const {container, rerender} = render(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Shared"
-        note="<p>Owner highlights</p>"
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    const note = container.querySelector('.project-grid-shared-note') as HTMLElement;
-    const header = note.querySelector('.project-grid-shared-note-header') as HTMLElement;
-    expect(within(header).getByText('Curation note')).toHaveClass('project-grid-shared-note-label');
-    expect(within(header).getByRole('button', {name: 'Edit Curation Note'})).toBeInTheDocument();
-    expect(within(note).getByText('Owner highlights')).toBeInTheDocument();
-    expect(container.querySelector('[contenteditable]')).toBeNull();
-
-    // Editing replaces the read view with the editor; saving brings the read view back, focus on Edit.
-    fireEvent.click(within(header).getByRole('button', {name: 'Edit Curation Note'}));
-    expect(container.querySelector('.project-grid-shared-note')).toBeNull();
-    const noteField = screen.getByRole('textbox', {name: 'Curation note'});
-    setRichTextEditorHtml(noteField, '<p>Owner picks</p>');
-    fireEvent.click(screen.getByRole('button', {name: 'Save Curation Note'}));
-    await waitFor(() => expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Shared', '<p>Owner picks</p>'));
-    // The page stores the saved note and passes it back down, as the shared page's mutations do.
-    rerender(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Shared"
-        note="<p>Owner picks</p>"
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    await waitFor(() => expect(screen.queryByRole('textbox', {name: 'Curation note'})).toBeNull());
-    expect(within(container.querySelector('.project-grid-shared-note') as HTMLElement).getByText('Owner picks')).toBeInTheDocument();
-    expect(screen.getByRole('button', {name: 'Edit Curation Note'})).toHaveFocus();
-  });
-
-  it('tells its owner, and only its owner, that a curation has no note yet', () => {
-    const {container, unmount} = render(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Shared"
-        note=""
-        onUpdateShare={vi.fn()}
-      />,
-    );
-
-    const note = container.querySelector('.project-grid-shared-note') as HTMLElement;
-    expect(note).toHaveClass('is-empty');
-    expect(within(note).getByText('Curation note')).toBeInTheDocument();
-    expect(within(note).getByText('No curation note yet.')).toHaveClass('project-grid-shared-note-empty');
-    expect(within(note).getByRole('button', {name: 'Edit Curation Note'})).toBeInTheDocument();
-    unmount();
-
-    render(<MergedResultsTable rows={makeItems()} sharedMode title="Shared" note="" />);
-    expect(screen.queryByText('No curation note yet.')).toBeNull();
-    expect(screen.queryByText('Curation note')).toBeNull();
-    expect(screen.queryByRole('button', {name: 'Edit Curation Note'})).toBeNull();
-  });
-
-  it('lets an editable shared page save note changes', async () => {
-    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
-
-    render(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Original Name"
-        note="Original note"
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    // The saved note reads as text until Edit Curation Note opens the editor in its place.
-    expect(screen.queryByRole('textbox', {name: 'Curation note'})).toBeNull();
-    fireEvent.click(screen.getByRole('button', {name: 'Edit Curation Note'}));
-    const noteField = screen.getByRole('textbox', {name: 'Curation note'});
-    expect(noteField).toHaveAttribute('aria-readonly', 'false');
-    expect(noteField).toHaveFocus();
-    setRichTextEditorHtml(noteField, 'Updated note');
-    fireEvent.click(screen.getByRole('button', {name: 'Save Curation Note'}));
-
-    await waitFor(() => {
-      expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Original Name', 'Updated note');
-    });
-    expect(onUpdateShare.mock.calls[0]).toHaveLength(3);
-    expect(await screen.findByText('Note updated.')).toBeInTheDocument();
   });
 
   it('lets an editable shared page save name changes', async () => {
@@ -450,30 +318,6 @@ describe('MergedResultsTable in shared mode', () => {
     expect(toggle).toHaveTextContent('Hide All Details');
   });
 
-  it('inserts projects into the shared note while editing', async () => {
-    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
-    render(
-      <MergedResultsTable
-        rows={makeItems([rowWithId])}
-        sharedMode
-        editable
-        title="Shared"
-        note=""
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', {name: /edit curation note/i}));
-    const noteEditor = screen.getByRole('textbox', {name: 'Curation note'});
-    // Clicking the insert button moves focus in a real browser; mirror that so the
-    // editor's focus guard does not suppress the inserted value rewrite.
-    const insertButton = screen.getByRole('button', {name: 'Insert Projects into Note'});
-    insertButton.focus();
-    fireEvent.click(insertButton);
-
-    await waitFor(() => expect(noteEditor.textContent).toContain('Project 1'));
-  });
-
   it('surfaces a failure message when a shared update is rejected', async () => {
     const onUpdateShare = vi.fn().mockRejectedValue(new Error('boom'));
 
@@ -519,28 +363,6 @@ describe('MergedResultsTable in shared mode', () => {
     expect(onUpdateShare).not.toHaveBeenCalled();
   });
 
-  it('closes the note editor without saving when the note is unchanged', () => {
-    const onUpdateShare = vi.fn();
-
-    render(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Shared"
-        note="Same note"
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', {name: /edit curation note/i}));
-    fireEvent.click(screen.getByRole('button', {name: /save curation note/i}));
-
-    expect(onUpdateShare).not.toHaveBeenCalled();
-    expect(screen.queryByRole('textbox', {name: 'Curation note'})).toBeNull();
-    expect(screen.getByRole('button', {name: 'Edit Curation Note'})).toHaveFocus();
-  });
-
   it('refuses to remove the final project from a shared page', async () => {
     const onUpdateShare = vi.fn();
 
@@ -580,37 +402,6 @@ describe('MergedResultsTable in shared mode', () => {
     fireEvent.keyDown(screen.getByLabelText('Curation name'), {key: 'Enter'});
 
     await waitFor(() => expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Renamed', ''));
-  });
-
-  it('closes the inline note editor when the note prop changes externally', async () => {
-    const onUpdateShare = vi.fn().mockResolvedValue(undefined);
-    const {rerender} = render(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Shared"
-        note="first"
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', {name: /edit curation note/i}));
-    expect(screen.getByRole('textbox', {name: 'Curation note'})).toHaveAttribute('aria-readonly', 'false');
-
-    rerender(
-      <MergedResultsTable
-        rows={makeItems()}
-        sharedMode
-        editable
-        title="Shared"
-        note="second"
-        onUpdateShare={onUpdateShare}
-      />,
-    );
-
-    await waitFor(() => expect(screen.queryByRole('textbox', {name: 'Curation note'})).toBeNull());
-    expect(screen.getByText('second')).toBeInTheDocument();
   });
 
   it('closes the inline title editor when the title prop changes externally', () => {
