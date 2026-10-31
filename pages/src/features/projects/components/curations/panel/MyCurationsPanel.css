@@ -18,10 +18,8 @@
   gap: 0.25rem 1rem;
 }
 
-/* h3 size: a panel above the builder's own h2 sections, not one of them. */
 .past-projects-my-curations-title {
   margin: 0;
-  font-size: var(--itg-font-size-h3);
 }
 
 .past-projects-my-curations-hint,
