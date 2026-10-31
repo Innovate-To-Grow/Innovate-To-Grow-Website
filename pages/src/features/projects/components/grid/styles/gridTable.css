@@ -280,8 +280,12 @@ a.project-grid-title-link:focus {
   gap: 0.375rem 1.25rem;
 }
 
-.project-grid-copy-status {
-  color: var(--itg-color-success);
+/* A row's details that could not load: the message, then Try Again beside it (under it when the cell is narrow). */
+.project-grid-detail-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
 }
 
 /* Tags after a title: "New" (just saved) and "Saved" (already in the list). */

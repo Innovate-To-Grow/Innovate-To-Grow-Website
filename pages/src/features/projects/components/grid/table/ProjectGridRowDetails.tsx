@@ -17,7 +17,7 @@ interface ProjectGridRowDetailsProps {
 
 /** Copies the project's page URL; past-project rows offer it so a single project can be passed on. */
 const CopyProjectLinkButton = ({href, title}: {href: string; title: string}) => {
-  const {status, copy} = useCopyLink({
+  const {status, tone, copy} = useCopyLink({
     copied: 'Project link copied.',
     failed: 'Could not copy the link. Use Open the Project Page and copy its address.',
   });
@@ -29,7 +29,10 @@ const CopyProjectLinkButton = ({href, title}: {href: string; title: string}) => 
         <span className="sr-only">{`for ${title}`}</span>
       </button>
       {status ? (
-        <span className="project-grid-copy-status" role="status">
+        <span
+          className={`project-grid-copy-status ${tone === 'error' ? 'itg-error' : 'itg-success'}`}
+          role="status"
+        >
           {status}
         </span>
       ) : null}
@@ -49,12 +52,16 @@ export function ProjectGridRowDetails({row, scope, loadMissingDetails = false, a
         </p>
       ) : null}
       {error ? (
-        <p className="project-grid-detail-state itg-error" role={announce ? 'alert' : undefined}>
-          Unable to load project details.{' '}
-          <button type="button" className="itg-btn itg-btn-text" onClick={retry}>
-            Retry
+        // Try Again is an outline button: the row's failure does not outrank the page's own actions.
+        <div className="project-grid-detail-error">
+          <p className="itg-error" role={announce ? 'alert' : undefined}>
+            Unable to load project details.
+          </p>
+          <button type="button" className="itg-btn itg-btn-outline" onClick={retry}>
+            Try Again{' '}
+            <span className="sr-only">{`for ${row.project_title}`}</span>
           </button>
-        </p>
+        </div>
       ) : null}
       {details.abstract ? <p className="project-grid-detail-abstract">{details.abstract}</p> : null}
       {details.student_names ? (
