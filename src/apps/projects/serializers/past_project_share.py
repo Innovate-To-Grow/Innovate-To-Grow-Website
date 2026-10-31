@@ -119,8 +119,8 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
     # name is optional: a blank/omitted name is replaced with the first line of the owner's note, else a
-    # generic title (services.share_names.default_share_name), in create()/update(). It is never taken from
-    # the rows. trim_whitespace=True still trims a given name.
+    # generic title for the stored rows (services.share_names.default_share_name), in create()/update(). It is
+    # never a row's project title. trim_whitespace=True still trims a given name.
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -178,7 +178,7 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         created_by = user if (user is not None and user.is_authenticated) else None
         note = validated_data.get("note", "")
-        name = (validated_data.get("name") or "").strip() or default_share_name(note)
+        name = (validated_data.get("name") or "").strip() or default_share_name(note, validated_data["rows"])
         return PastProjectShare.objects.create(
             name=name,
             rows=validated_data["rows"],
@@ -189,10 +189,12 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         expected_version = validated_data.pop("version")
         next_note = validated_data.get("note", instance.note)
+        # The rows this write stores (rebuilt by validate_rows), else the ones the share already stores.
+        next_rows = validated_data.get("rows", instance.rows)
         updates = {field: validated_data[field] for field in ("rows", "note") if field in validated_data}
         if "name" in validated_data:
             name = (validated_data.get("name") or "").strip()
-            updates["name"] = name or default_share_name(next_note)
+            updates["name"] = name or default_share_name(next_note, next_rows)
         updates.update(version=F("version") + 1, updated_at=timezone.now())
         updated = type(instance).objects.filter(pk=instance.pk, version=expected_version).update(**updates)
         if updated != 1:
