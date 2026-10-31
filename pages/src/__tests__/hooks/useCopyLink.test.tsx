@@ -18,6 +18,12 @@ const copyWithHook = async () => {
   return result.current.status;
 };
 
+const copyAndReport = async () => {
+  const hook = renderHook(() => useCopyLink(MESSAGES));
+  await act(() => hook.result.current.copy(URL_TO_COPY));
+  return hook;
+};
+
 describe('useCopyLink', () => {
   afterEach(() => {
     setClipboard(undefined);
@@ -63,5 +69,75 @@ describe('useCopyLink', () => {
 
   it('reports the failure when the browser has no way to copy', async () => {
     expect(await copyWithHook()).toBe('Could not copy the link.');
+  });
+
+  describe('tone', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('starts empty', () => {
+      const {result} = renderHook(() => useCopyLink(MESSAGES));
+
+      expect(result.current.status).toBe('');
+      expect(result.current.tone).toBe('');
+    });
+
+    it('is success after a copy that worked', async () => {
+      setClipboard(vi.fn().mockResolvedValue(undefined));
+
+      const {result} = await copyAndReport();
+
+      expect(result.current).toMatchObject({status: 'Link copied.', tone: 'success'});
+    });
+
+    it('is error when the Clipboard API rejects and copying by selection fails too', async () => {
+      setClipboard(vi.fn().mockRejectedValue(new DOMException('Blocked by permissions policy', 'NotAllowedError')));
+      setExecCommand(vi.fn().mockReturnValue(false));
+
+      const {result} = await copyAndReport();
+
+      expect(result.current).toMatchObject({status: 'Could not copy the link.', tone: 'error'});
+    });
+
+    it('clears together with the message after four seconds', async () => {
+      vi.useFakeTimers();
+      setClipboard(vi.fn().mockResolvedValue(undefined));
+      const {result} = await copyAndReport();
+
+      act(() => {
+        vi.advanceTimersByTime(3999);
+      });
+      expect(result.current).toMatchObject({status: 'Link copied.', tone: 'success'});
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(result.current).toMatchObject({status: '', tone: ''});
+    });
+
+    it('follows the latest copy, and a later copy restarts the four seconds', async () => {
+      vi.useFakeTimers();
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      setClipboard(writeText);
+      const {result} = await copyAndReport();
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      writeText.mockRejectedValue(new Error('denied'));
+      setExecCommand(vi.fn().mockReturnValue(false));
+      await act(() => result.current.copy(URL_TO_COPY));
+      expect(result.current).toMatchObject({status: 'Could not copy the link.', tone: 'error'});
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(result.current.tone).toBe('error');
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(result.current).toMatchObject({status: '', tone: ''});
+    });
   });
 });
