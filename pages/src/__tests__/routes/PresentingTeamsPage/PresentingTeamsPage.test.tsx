@@ -1,5 +1,6 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
+import type {ReactNode} from 'react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {PresentingTeamsPage} from '@/routes/PresentingTeamsPage/PresentingTeamsPage';
@@ -65,11 +66,17 @@ describe('PresentingTeamsPage', () => {
     expect(viewProps.current).toMatchObject({
       title: 'Presenting Teams',
       namespace: 'presenting-teams',
-      emptyMessage: 'No presenting teams are available yet.',
+      emptyTitle: 'No presenting teams yet',
+      emptyMessage:
+        "Teams appear here once this semester's showcase schedule is published. Older projects are in Past Projects.",
       countLabel: 'teams',
       classLabels: {CAP: 'Engineering Capstone'},
     });
     expect(String(viewProps.current?.lede)).toMatch(/^Teams presenting at this semester's Innovate to Grow showcase\./);
+
+    cleanup();
+    render(<MemoryRouter>{viewProps.current?.emptyActions as ReactNode}</MemoryRouter>);
+    expect(screen.getByRole('link', {name: 'Search Past Projects'})).toHaveAttribute('href', '/past-projects');
   });
 
   it('forwards the loading and error state, and the reload for "Try again"', () => {

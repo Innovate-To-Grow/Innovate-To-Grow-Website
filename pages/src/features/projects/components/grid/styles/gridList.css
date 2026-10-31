@@ -204,6 +204,19 @@
   margin-top: 12px;
 }
 
+/* An empty schedule (ProjectGridTable's emptyTitle): a heading, the text and one action, like no-results. It takes
+   the place of the results bar, so it starts where the count line would. */
+.project-grid-empty-state {
+  margin-top: 1.375rem;
+}
+
+/* Print leaves out its action, a control for the screen, as it does the no-results state's (projectsResponsive.css). */
+@media print {
+  .project-grid-empty-state .itg-empty-state-actions {
+    display: none;
+  }
+}
+
 /* Page-level states (unavailable share link, project not found) stand alone: no rule above them. */
 .projects-message-page {
   gap: 12px;

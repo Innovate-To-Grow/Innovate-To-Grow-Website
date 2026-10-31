@@ -1,4 +1,4 @@
-import {useId, useMemo} from 'react';
+import {useId, useMemo, type ReactNode} from 'react';
 import {Link} from 'react-router';
 import {useProjectGridFilters, type ProjectGridFilterOption} from '../../../hooks/useProjectGridFilters';
 import {useListScrollPosition} from '../../../hooks/useListScrollPosition';
@@ -110,7 +110,10 @@ interface CurrentProjectsViewProps {
   classLabels?: Record<string, string>;
   /** Key prefix for the grid rows. */
   namespace: string;
+  /** The empty state's heading, text and action, when the schedule has no rows (ProjectGridTable). */
+  emptyTitle: string;
   emptyMessage: string;
+  emptyActions?: ReactNode;
   /** 'teams' on the presenting-teams page, whose rows are all presenting. */
   countLabel?: 'projects' | 'teams';
 }
@@ -135,8 +138,8 @@ const CurrentProjectsGrid = ({
   error,
   onRetry,
   classLabels,
-  emptyMessage,
   countLabel = 'projects',
+  ...emptyState
 }: CurrentProjectsGridProps) => {
   const initial = useInitialProjectListUrlState();
   const filters = useProjectGridFilters(items, classLabels, initial);
@@ -213,7 +216,7 @@ const CurrentProjectsGrid = ({
       loading={loading}
       error={error}
       onRetry={onRetry}
-      emptyMessage={emptyMessage}
+      {...emptyState}
       countLabel={countLabel}
       linkScope="current"
     />

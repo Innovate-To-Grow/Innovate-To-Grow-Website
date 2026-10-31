@@ -87,7 +87,15 @@ export interface ProjectGridTableProps {
   error?: string | null;
   /** Loads the rows again after `error`; shown as a "Try again" button beside it. */
   onRetry?: () => void;
+  /** What shows when there are no rows at all: the text under `emptyTitle`, or on its own without one. */
   emptyMessage?: string;
+  /**
+   * Turns the empty message into an empty state like the no-results one: this heading (at `noResultsHeadingLevel`),
+   * the message, then `emptyActions`. Without it the message shows alone.
+   */
+  emptyTitle?: string;
+  /** The empty state's action, e.g. a link to Past Projects; shown only with `emptyTitle`. */
+  emptyActions?: ReactNode;
   /** Plural noun for the result count ("projects", "teams"). */
   countLabel?: string;
   /** Actions shown above the results ('top', after the filter well) or under the table ('bottom'). */

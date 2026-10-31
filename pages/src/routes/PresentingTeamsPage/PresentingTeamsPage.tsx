@@ -1,4 +1,5 @@
 import {useMemo} from 'react';
+import {Link} from 'react-router';
 import {CurrentProjectsView} from '@/features/projects/components/views/pages/CurrentProjectsView';
 import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
 
@@ -16,7 +17,13 @@ export const PresentingTeamsPage = () => {
       onRetry={refetch}
       classLabels={classLabels}
       namespace="presenting-teams"
-      emptyMessage="No presenting teams are available yet."
+      emptyTitle="No presenting teams yet"
+      emptyMessage="Teams appear here once this semester's showcase schedule is published. Older projects are in Past Projects."
+      emptyActions={
+        <Link className="itg-btn itg-btn-outline" to="/past-projects">
+          Search Past Projects
+        </Link>
+      }
       countLabel="teams"
     />
   );

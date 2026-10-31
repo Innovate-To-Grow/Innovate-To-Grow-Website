@@ -57,7 +57,8 @@ const renderView = (
         error={null}
         classLabels={{CAP: 'Engineering Capstone'}}
         namespace="current-projects"
-        emptyMessage="No current projects are available yet."
+        emptyTitle="No current projects yet"
+        emptyMessage="This semester's projects appear here once the schedule is published."
         {...props}
       />
     </MemoryRouter>,
@@ -209,7 +210,8 @@ describe('CurrentProjectsView', () => {
           loading={false}
           error="Schedule down"
           namespace="current-projects"
-          emptyMessage="No current projects are available yet."
+          emptyTitle="No current projects yet"
+          emptyMessage="This semester's projects appear here once the schedule is published."
         />
       </MemoryRouter>,
     );
@@ -225,10 +227,25 @@ describe('CurrentProjectsView', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the empty message when there are no projects yet', () => {
-    renderView({rows: []});
+  it('shows an empty state like the no-results one when there are no projects yet', () => {
+    const {container} = renderView({
+      rows: [],
+      emptyActions: (
+        <a className="itg-btn itg-btn-outline" href="/past-projects">
+          Search Past Projects
+        </a>
+      ),
+    });
 
-    expect(screen.getByText('No current projects are available yet.')).toBeInTheDocument();
+    const heading = screen.getByRole('heading', {level: 2, name: 'No current projects yet'});
+    expect(heading).toHaveClass('itg-empty-state-title');
+    const emptyState = heading.closest('.itg-empty-state') as HTMLElement;
+    expect(emptyState).toHaveClass('project-grid-empty-state');
+    expect(within(emptyState).getByText("This semester's projects appear here once the schedule is published.")).toHaveClass(
+      'itg-empty-state-text',
+    );
+    expect(within(emptyState).getByRole('link', {name: 'Search Past Projects'})).toHaveAttribute('href', '/past-projects');
+    expect(container.querySelector('.project-grid-empty')).toBeNull();
     expect(screen.queryByText(/projects ·/)).toBeNull();
   });
 });

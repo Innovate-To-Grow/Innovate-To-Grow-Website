@@ -1,4 +1,4 @@
-import {useId, type ReactNode, type Ref} from 'react';
+import {useId, type ReactNode, type Ref, type RefObject} from 'react';
 import type {ProjectGridColumnKey, ProjectGridSortDirection} from '../contracts/projectGrid';
 import type {ProjectGridSortOption, ProjectGridTableProps} from '../contracts/gridTableProps';
 
@@ -199,6 +199,41 @@ export const ProjectGridNoResults = ({headingLevel, noResultsActions, searching,
         </button>
         {noResultsActions}
       </div>
+    </div>
+  );
+};
+
+type EmptyProps = Pick<ProjectGridTableProps, 'emptyTitle' | 'emptyActions'> & {
+  emptyMessage: string;
+  headingLevel: 2 | 3 | 4;
+  /** The heading (or the message), which takes focus after Try Again when no rows came back (useRetryFocus). */
+  emptyRef: RefObject<HTMLElement | null>;
+};
+
+/**
+ * No rows at all. With a title (an empty schedule), a heading, the text and the caller's action, laid out like the
+ * no-results state; without one, the message alone (an empty table in the builder).
+ */
+export const ProjectGridEmpty = ({emptyTitle, emptyMessage, emptyActions, headingLevel, emptyRef}: EmptyProps) => {
+  // A heading or a paragraph: either one is the element focus goes to.
+  const setEmptyElement = (element: HTMLElement | null) => {
+    emptyRef.current = element;
+  };
+  if (!emptyTitle) {
+    return (
+      <p ref={setEmptyElement} className="project-grid-empty" tabIndex={-1}>
+        {emptyMessage}
+      </p>
+    );
+  }
+  const EmptyHeading = `h${headingLevel}` as const;
+  return (
+    <div className="itg-empty-state project-grid-empty-state">
+      <EmptyHeading ref={setEmptyElement} className="itg-empty-state-title" tabIndex={-1}>
+        {emptyTitle}
+      </EmptyHeading>
+      <p className="itg-empty-state-text">{emptyMessage}</p>
+      {emptyActions ? <div className="itg-empty-state-actions">{emptyActions}</div> : null}
     </div>
   );
 };

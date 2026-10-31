@@ -5,7 +5,12 @@ import {ProjectGridControls, PageSizeField} from '../controls/ProjectGridControl
 import {ProjectGridDesktopTable} from './ProjectGridDesktopTable';
 import {ProjectGridMobileCards} from './ProjectGridMobileCards';
 import {ProjectGridPager} from '../controls/ProjectGridPager';
-import {ProjectGridNoResults, ProjectGridResultsBar, type AbstractsSkipped} from './ProjectGridResults';
+import {
+  ProjectGridEmpty,
+  ProjectGridNoResults,
+  ProjectGridResultsBar,
+  type AbstractsSkipped,
+} from './ProjectGridResults';
 import {useDetailsAnnouncements} from '../state/useDetailsAnnouncements';
 import {showResultsStart, useResultsFocus} from '../state/useResultsFocus';
 import {useRetryFocus} from '../state/useRetryFocus';
@@ -90,8 +95,8 @@ interface ResultsProps {
   searchInputRef: RefObject<HTMLInputElement | null>;
   /** The count line: focus goes there after a page change, and after Try again (see useRetryFocus). */
   countRef: RefObject<HTMLParagraphElement | null>;
-  /** The empty message, which takes focus after Try again when no rows came back. */
-  emptyRef: RefObject<HTMLParagraphElement | null>;
+  /** The empty state's heading (or message), which takes focus after Try Again when no rows came back. */
+  emptyRef: RefObject<HTMLElement | null>;
 }
 
 /** What the table and the phone list both take to show the page's rows. */
@@ -164,9 +169,13 @@ const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}:
       ) : null}
 
       {grid.totalCount === 0 ? (
-        <p ref={emptyRef} className="project-grid-empty" tabIndex={-1}>
-          {grid.emptyMessage}
-        </p>
+        <ProjectGridEmpty
+          emptyTitle={grid.emptyTitle}
+          emptyMessage={grid.emptyMessage}
+          emptyActions={grid.emptyActions}
+          headingLevel={grid.noResultsHeadingLevel}
+          emptyRef={emptyRef}
+        />
       ) : null}
 
       {noResults ? (
@@ -226,7 +235,7 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const details = useDetailsAnnouncements(grid);
   const countRef = useRef<HTMLParagraphElement>(null);
-  const emptyRef = useRef<HTMLParagraphElement>(null);
+  const emptyRef = useRef<HTMLElement>(null);
   const {loadingRef, retryRef, retry} = useRetryFocus(Boolean(grid.loading), grid.error, countRef, emptyRef);
   const resultsFocus = useResultsFocus(countRef, emptyRef, grid.serverSearch?.addedRowsKey ?? null);
   const {onRetry} = grid;
