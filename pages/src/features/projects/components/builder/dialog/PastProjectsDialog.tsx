@@ -7,7 +7,10 @@ interface PastProjectsDialogProps {
   confirmLabel: string;
   /** Confirming opens this page in a new tab: the confirm control is a link to it (and still calls onConfirm). */
   confirmHref?: string;
-  /** Confirming throws work away: the dialog opens on Cancel, the safe choice. */
+  /**
+   * Confirming throws work away: the dialog opens on Cancel, the safe choice, and the confirm takes the boxed
+   * danger style of the red control that opened it.
+   */
   destructive?: boolean;
   title: string;
   onCancel: () => void;
@@ -54,6 +57,7 @@ export const PastProjectsDialog = ({
 }: PastProjectsDialogProps) => {
   const titleId = useId();
   const descriptionId = useId();
+  const confirmClassName = destructive ? 'itg-btn itg-btn-outline itg-btn-danger' : 'itg-btn itg-btn-primary';
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
@@ -130,7 +134,7 @@ export const PastProjectsDialog = ({
         {confirmHref ? (
           <a
             ref={confirmLinkRef}
-            className="itg-btn itg-btn-primary"
+            className={confirmClassName}
             href={confirmHref}
             target="_blank"
             rel="noopener"
@@ -140,7 +144,7 @@ export const PastProjectsDialog = ({
             <span className="sr-only"> (opens in a new tab)</span>
           </a>
         ) : (
-          <button ref={confirmButtonRef} type="button" className="itg-btn itg-btn-primary" onClick={onConfirm}>
+          <button ref={confirmButtonRef} type="button" className={confirmClassName} onClick={onConfirm}>
             {confirmLabel}
           </button>
         )}

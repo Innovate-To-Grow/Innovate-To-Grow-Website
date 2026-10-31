@@ -179,7 +179,12 @@ describe('PastProjectsBuilder — keyboard focus after its actions', () => {
 
     const clearDraft = card.getByRole('button', {name: 'Clear Draft'});
     press(clearDraft);
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: 'Clear Draft'}));
+    // The confirm is boxed red like the button that opened it; Cancel, the safe choice, has focus.
+    const confirm = within(screen.getByRole('dialog')).getByRole('button', {name: 'Clear Draft'});
+    expect(confirm).toHaveClass('itg-btn', 'itg-btn-outline', 'itg-btn-danger');
+    expect(confirm).not.toHaveClass('itg-btn-primary');
+    expect(within(screen.getByRole('dialog')).getByRole('button', {name: 'Cancel'})).toHaveFocus();
+    fireEvent.click(confirm);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(clearDraft).toHaveFocus();
     expect(clearDraft).toHaveAttribute('aria-disabled', 'true');
