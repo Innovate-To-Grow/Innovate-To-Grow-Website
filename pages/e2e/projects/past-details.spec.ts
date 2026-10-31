@@ -23,23 +23,23 @@ test('@core archive View shows abstract and students while preserving the indivi
   await expect(isDesktop ? mobile : desktop).toHaveCount(0);
   expect(detailRequests).toHaveLength(0);
   await row.getByRole('checkbox').check();
-  // Each row's toggle is named after its project: "Details for …" in the table, "Show details for …" on phones.
-  const toggleName = `${isDesktop ? 'Details' : 'Show details'} for ${rows[0].project_title}`;
+  // Each row's toggle is named after its project: "Details for …" in the table, "Show Details for …" on phones.
+  const toggleName = `${isDesktop ? 'Details' : 'Show Details'} for ${rows[0].project_title}`;
   await row.getByRole('button', {name: toggleName, exact: true}).click();
   const details = isDesktop ? row.locator('xpath=following-sibling::tr[1]') : row.locator('.project-grid-mobile-card-details');
   await expect(details.getByText(rows[0].abstract, {exact: false})).toBeVisible();
   await expect(details.getByText(rows[0].student_names, {exact: false})).toBeVisible();
   await expect(row.getByRole('checkbox')).toBeChecked();
   const projectLink = details.getByRole('link', {
-    name: `Open the project page for ${rows[0].project_title} (opens in a new tab)`,
+    name: `Open the Project Page for ${rows[0].project_title} (opens in a new tab)`,
     exact: true,
   });
   await expect(projectLink).toHaveAttribute('href', new URL(`/past-projects/project/${rows[0].id}`, page.url()).href);
   await expect(projectLink).toHaveAttribute('target', '_blank');
-  await expect(details.getByRole('button', {name: `Copy project link for ${rows[0].project_title}`})).toBeVisible();
+  await expect(details.getByRole('button', {name: `Copy Project Link for ${rows[0].project_title}`})).toBeVisible();
   await expect.poll(() => detailRequests.length).toBe(1);
 
-  await row.getByRole('button', {name: isDesktop ? toggleName : `Hide details for ${rows[0].project_title}`, exact: true}).click();
+  await row.getByRole('button', {name: isDesktop ? toggleName : `Hide Details for ${rows[0].project_title}`, exact: true}).click();
   await row.getByRole('button', {name: toggleName, exact: true}).click();
   await expect(details.getByText(rows[0].abstract, {exact: false})).toBeVisible();
   expect(detailRequests).toHaveLength(1);

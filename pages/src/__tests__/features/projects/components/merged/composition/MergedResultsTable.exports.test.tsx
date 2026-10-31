@@ -159,9 +159,9 @@ describe('MergedResultsTable exports and row details', () => {
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
-    expect(desktopLink).toHaveTextContent('Open the project page');
+    expect(desktopLink).toHaveTextContent('Open the Project Page');
     expect(desktopLink).toHaveAttribute('target', '_blank');
-    expect(within(desktopTable(container)).getByRole('button', {name: /^Copy project link for /})).toBeVisible();
+    expect(within(desktopTable(container)).getByRole('button', {name: /^Copy Project Link for /})).toBeVisible();
 
     // On a phone the same row is open in the list.
     act(() => layout.setPhone(true));
@@ -169,8 +169,8 @@ describe('MergedResultsTable exports and row details', () => {
     const mobileLink = mobileCards.querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(mobileLink).not.toBeNull();
     expect(mobileLink.getAttribute('href')).toBe(expectedHref);
-    expect(mobileLink).toHaveTextContent('Open the project page');
-    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: /^Hide details for /});
+    expect(mobileLink).toHaveTextContent('Open the Project Page');
+    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: /^Hide Details for /});
     expect(mobileDetailsButton).toHaveAttribute('aria-expanded', 'true');
     const mobileDetailsId = mobileDetailsButton.getAttribute('aria-controls');
     expect(mobileDetailsId).toBeTruthy();
@@ -205,7 +205,7 @@ describe('MergedResultsTable exports and row details', () => {
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
-    expect(desktopLink).toHaveTextContent('Open the project page');
+    expect(desktopLink).toHaveTextContent('Open the Project Page');
   });
 
   it('does not show an individual link for legacy rows without an id', () => {
