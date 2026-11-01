@@ -384,12 +384,26 @@ The private key is never stored in the database, code, images, task definitions 
 - **Versions.** Each install writes one new version holding the canonical unencrypted PKCS#8 PEM of the key
   and the SHA-256 of its public key (schema `i2g.graph-key/1`): no certificate, no `.p12`, no password. The
   version token is derived from that hash, so storing the same key again writes nothing new. A new version
-  gets the staging label `CREDENTIAL_STORE_STAGED_LABEL` (`I2G-STAGED`), never `AWSCURRENT`, so a write
-  changes nothing on its own.
+  gets the staging label `CREDENTIAL_STORE_STAGED_LABEL` (`I2G-STAGED`), and the site never asks for
+  `AWSCURRENT` on a write, so a write changes nothing on its own. The one exception is Secrets Manager's
+  own: the first version written to the empty secret also gets `AWSCURRENT` (the local and memory stores
+  copy that).
 - **The pin decides.** The `MicrosoftGraphCertificate` row stores the secret's ARN and the version ID; that
   pin, not a Secrets Manager label, decides which key signs. After the pin commits on the active
   configuration, the site moves `AWSCURRENT` to the pinned version, best effort, so the console shows the
-  version in use.
+  version in use; Secrets Manager then puts `AWSPREVIOUS` on the version it left, which is the rollback
+  certificate's.
+- **Pinned versions can lose every label.** All configurations share the one secret, and `I2G-STAGED`
+  moves to each newly written version. A version pinned only by a standby configuration, or a rollback
+  version whose `AWSCURRENT` move failed (a WARNING in the log), keeps no label once another version is
+  written. AWS treats a version without a label as deprecated and may delete it once the secret holds many
+  versions (AWS documents the limit as about 100; verify the current rule before relying on it), and the
+  pinned key would then be unreadable. One install per rotation stays far below that, but after unusual
+  activity check the labels with
+  `aws secretsmanager list-secret-version-ids --secret-id itg/backend/microsoft-graph/certificate-key
+  --include-deprecated` (the version IDs are on the certificate panel). Storing the same key again reuses
+  its version without relabelling it, so a configuration whose pinned version shows no label needs a
+  [rotation](#rotate-the-certificate) to a new key pair.
 - **Reads.** On a token-cache miss (about once an hour per process) the backend reads exactly the pinned
   ARN and version, checks that the key matches the certificate's public key, signs one client assertion and
   drops the key. Nothing caches the key; a mismatch or an unreadable version is an error, never a fallback
@@ -938,7 +952,7 @@ A token request sends no mail, so these failures are always certain: nothing was
 |-----------|-------|------------------|------------------|
 | The sending mailbox or **From Email** is not in the mailbox scope with send permission | Permanent | `Microsoft Graph may not send as <mailbox>: it is not in the configured mailbox scope with that permission.` | Add the mailbox to the scope (and to the Exchange restriction, after InfoSec review) or fix **Sender Mailbox** / **From Email**. |
 | No usable current certificate (none, removed, expired, not valid yet, or tested for another app) | Permanent | `No usable Microsoft Graph certificate is installed.` or `Active Microsoft Graph provider configuration is missing or invalid.` | Install a certificate; check its validity in the admin. |
-| The pinned key cannot be read from the credential store | Transient (throttling, outage, timeout) or Permanent | `The Microsoft Graph private key could not be read: <fixed text> (<AWS error code>)` | Permanent codes such as `AccessDeniedException` or `ResourceNotFoundException` mean the task role, the resource policy or the secret is wrong; reinstall the certificate if its version is gone. |
+| The pinned key cannot be read from the credential store | Transient (throttling, outage, timeout, or the task role's credentials not fetched in time: `NoCredentialsError`, `CredentialRetrievalError`, `MetadataRetrievalError`) or Permanent | `The Microsoft Graph private key could not be read: <fixed text> (<AWS error code>)` | Permanent codes such as `AccessDeniedException` or `ResourceNotFoundException` mean the task role, the resource policy or the secret is wrong; reinstall the certificate if its version is gone. |
 | The stored key does not match the installed certificate | Permanent | `The Microsoft Graph private key could not be read: The stored private key does not match the installed certificate.` | Reinstall the certificate with its own private key. |
 | The certificate private key cannot be used to sign | Permanent | `The Microsoft Graph certificate private key could not be used.` | Reinstall the certificate and private key. |
 | A Bcc recipient is present on a MIME message | Permanent | `Microsoft Graph does not support Bcc recipients.` | Send separate messages instead. |

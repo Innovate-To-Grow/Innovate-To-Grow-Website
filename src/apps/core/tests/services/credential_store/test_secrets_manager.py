@@ -6,7 +6,15 @@ from unittest.mock import Mock, patch
 import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
-from botocore.exceptions import EndpointConnectionError, ParamValidationError, ReadTimeoutError
+from botocore.exceptions import (
+    CredentialRetrievalError,
+    EndpointConnectionError,
+    MetadataRetrievalError,
+    NoCredentialsError,
+    ParamValidationError,
+    PartialCredentialsError,
+    ReadTimeoutError,
+)
 from botocore.stub import Stubber
 from django.test import SimpleTestCase, override_settings
 
@@ -167,10 +175,14 @@ class SecretsManagerStoreTests(SimpleTestCase):
         self.assertFalse(failure.exception.transient)
         self.assert_clean_error(failure.exception)
 
-    def test_timeouts_and_connection_failures_are_transient(self):
+    def test_timeouts_connection_and_task_role_credential_failures_are_transient(self):
+        # The ECS credentials endpoint failing or timing out for a moment must not fail queued email for good.
         for exc in (
             ReadTimeoutError(endpoint_url="https://example.invalid"),
             EndpointConnectionError(endpoint_url="x"),
+            NoCredentialsError(),
+            CredentialRetrievalError(provider="container-role", error_msg="timed out"),
+            MetadataRetrievalError(error_msg="timed out"),
         ):
             with self.subTest(exc=type(exc).__name__):
                 client = Mock()
@@ -179,6 +191,17 @@ class SecretsManagerStoreTests(SimpleTestCase):
                     SecretsManagerStore(client=client).put(NAME, PAYLOAD, version_token=TOKEN)
                 self.assertEqual(failure.exception.code, type(exc).__name__)
                 self.assert_clean_error(failure.exception)
+
+    def test_a_misconfigured_credential_is_permanent(self):
+        client = Mock()
+        client.put_secret_value.side_effect = PartialCredentialsError(provider="env", cred_var="AWS_SECRET_ACCESS_KEY")
+
+        with self.assertRaises(CredentialStoreError) as failure:
+            SecretsManagerStore(client=client).put(NAME, PAYLOAD, version_token=TOKEN)
+
+        self.assertFalse(failure.exception.transient)
+        self.assertEqual(failure.exception.code, "PartialCredentialsError")
+        self.assert_clean_error(failure.exception)
 
     def test_move_current_relabels_from_the_holder_and_skips_when_already_current(self):
         self.expect_describe({OLD_TOKEN: ["AWSCURRENT"], TOKEN: ["I2G-STAGED"]})

@@ -9,9 +9,9 @@ import logging
 import re
 
 import boto3
+from botocore import exceptions as botocore_errors
 from botocore.config import Config
-from botocore.exceptions import BotoCoreError, ClientError, HTTPClientError
-from botocore.exceptions import ConnectionError as BotocoreConnectionError
+from botocore.exceptions import BotoCoreError, ClientError
 from django.conf import settings
 from django.views.decorators.debug import sensitive_variables
 
@@ -51,6 +51,15 @@ _TRANSIENT_CODES = frozenset(
         "TooManyRequestsException",
     }
 )
+# Network failures, and the task role's credentials not being fetched in time from the ECS credentials endpoint
+# (or instance metadata): a later attempt can succeed. A misconfigured credential (PartialCredentialsError) cannot.
+_TRANSIENT_BOTOCORE_ERRORS = (
+    botocore_errors.ConnectionError,
+    botocore_errors.HTTPClientError,
+    botocore_errors.CredentialRetrievalError,
+    botocore_errors.MetadataRetrievalError,
+    botocore_errors.NoCredentialsError,
+)
 # Re-using a token whose version holds different bytes fails; the stored version decides whether it is ours.
 _VERSION_CONFLICT_CODES = frozenset({"ResourceExistsException", "InvalidRequestException"})
 
@@ -64,7 +73,7 @@ def _mapped_error(exc: Exception, message: str) -> CredentialStoreError:
     else:
         # Never str(exc): ParamValidationError and friends echo parameter values, SecretString included.
         code = type(exc).__name__
-        transient = isinstance(exc, (BotocoreConnectionError, HTTPClientError))
+        transient = isinstance(exc, _TRANSIENT_BOTOCORE_ERRORS)
     return (TransientCredentialStoreError if transient else CredentialStoreError)(message, code=code)
 
 
