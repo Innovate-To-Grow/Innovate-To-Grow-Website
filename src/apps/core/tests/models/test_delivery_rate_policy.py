@@ -3,10 +3,12 @@ that can be lowered but never raised above their settings value."""
 
 import copy
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.db.models import QuerySet
 from django.test import TestCase, override_settings
 
 from apps.core.models import DeliveryRatePolicy
@@ -70,6 +72,26 @@ class PolicySeedTests(TestCase):
         healed = DeliveryRatePolicy.for_channel(Channel.SES_SEND)
         self.assertNotEqual(healed.pk, first.pk)
         self.assertEqual(healed.manual_rate, Decimal(10))
+
+    def test_for_channel_returns_the_row_another_process_inserted_after_its_lookup(self):
+        # Another process creates the row between this lookup and this insert, as concurrent OTP sends do.
+        other = DeliveryRatePolicy.objects.create(
+            channel=Channel.SMS_SEND, **DeliveryRatePolicy.seed_values("sms_send")
+        )
+        real_get = QuerySet.get
+        calls = []
+
+        def missing_once(queryset, *args, **kwargs):
+            calls.append(kwargs)
+            if len(calls) == 1:
+                raise DeliveryRatePolicy.DoesNotExist
+            return real_get(queryset, *args, **kwargs)
+
+        with patch.object(QuerySet, "get", missing_once):
+            policy = DeliveryRatePolicy.for_channel(Channel.SMS_SEND)
+
+        self.assertEqual(policy.pk, other.pk)
+        self.assertEqual(DeliveryRatePolicy.objects.filter(channel=Channel.SMS_SEND).count(), 1)
 
     def test_for_channel_refuses_an_unknown_channel(self):
         with self.assertRaisesMessage(ValueError, "Unknown delivery channel: 'fax_send'"):

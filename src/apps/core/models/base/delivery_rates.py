@@ -279,7 +279,9 @@ class DeliveryRatePolicy(ProjectControlModel):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        # The unique channel is left to the database: when two processes heal the same row at once, the second
+        # insert must raise IntegrityError, which get_or_create recovers from, not a ValidationError it doesn't.
+        self.full_clean(validate_unique=False)
         super().save(*args, **kwargs)
 
     def _check_applicable(self, spec, errors):
