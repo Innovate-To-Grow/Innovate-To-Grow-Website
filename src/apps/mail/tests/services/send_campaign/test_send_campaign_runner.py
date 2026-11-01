@@ -51,6 +51,22 @@ class SendCampaignFlowTests(TestCase):
 
     @patch("apps.mail.services.send_campaign.runner._send_via_ses")
     @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    def test_only_messages_that_carry_the_login_link_skip_the_sent_items_copy(self, mock_client, mock_send):
+        mock_client.return_value = MagicMock()
+        mock_send.return_value = SesSendResult(message_id="SES-001")
+        send_campaign(self.campaign, self.sender)
+        self.assertEqual({call.kwargs["keep_sent_copy"] for call in mock_send.call_args_list}, {True})
+
+        mock_send.reset_mock()
+        for subject, body in (("Hi", '<p><a href="{{ login_link }}">Sign in</a></p>'), ("{{login_link}}", "<p>x</p>")):
+            campaign = EmailCampaign.objects.create(
+                subject=subject, body=body, audience_type="subscribers", member_email_scope="primary", status="draft"
+            )
+            send_campaign(campaign, self.sender)
+        self.assertEqual({call.kwargs["keep_sent_copy"] for call in mock_send.call_args_list}, {False})
+
+    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
+    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
     def test_campaign_status_transitions_to_sent(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")

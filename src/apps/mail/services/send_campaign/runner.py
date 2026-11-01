@@ -103,6 +103,7 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
             unsubscribe_url=unsubscribe_url,
             recipient_log_id=log.pk,
             delivery_attempt=log.attempts,
+            keep_sent_copy=not carries_login_link(context, subject, body_html),
         )
         _record_send_result(campaign, log, result)
     except Exception as exc:
@@ -130,6 +131,7 @@ def _send_with_configured_provider(
     unsubscribe_url,
     recipient_log_id=None,
     delivery_attempt=0,
+    keep_sent_copy=True,
 ):
     if ses_client is not None:
         return _send_via_ses(
@@ -142,6 +144,7 @@ def _send_with_configured_provider(
             configuration_set=configuration_set,
             recipient_log_id=recipient_log_id,
             delivery_attempt=delivery_attempt,
+            keep_sent_copy=keep_sent_copy,
         )
     return SesSendResult(provider="", error="Email delivery is not configured.")
 
@@ -179,6 +182,12 @@ def _recipient_context(recipient, campaign):
         "full_name": recipient["full_name"],
         "login_link": _build_login_link(recipient["member_id"], campaign),
     }
+
+
+def carries_login_link(context, *texts) -> bool:
+    """Whether the personalized message holds the recipient's login link, a credential (``keep_sent_copy=False``)."""
+    link = context.get("login_link")
+    return bool(link) and any(link in text for text in texts)
 
 
 def _build_login_link(member_id, campaign):

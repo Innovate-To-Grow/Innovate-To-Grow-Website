@@ -14,8 +14,8 @@ client-credentials flow with a **certificate**, no signed-in user, no client sec
 every provider, base64-encoded, so every header (`List-Unsubscribe`, `In-Reply-To`, `References`), inline
 image, and attachment (such as the ticket calendar file) is sent as built. Graph always files a copy of a
 MIME `sendMail` in the sender mailbox's Sent Items, so mail that carries a credential (sign-in codes and
-links, admin invitations, tickets) is sent in Graph's JSON format with `saveToSentItems: false` instead; see
-[Sent Items](#sent-items-and-credential-mail).
+links, admin invitations, tickets, campaign messages with the recipient's login link) is sent in Graph's
+JSON format with `saveToSentItems: false` instead; see [Sent Items](#sent-items-and-credential-mail).
 
 It is the third choice of the **Provider** setting:
 
@@ -97,7 +97,8 @@ go-live.
    `i2g@ucmerced.edu` (they can be lower than Microsoft's defaults), and to route Microsoft's "User restricted
    from sending email" alert to the I2G operators ([Limits](#limits)).
 10. **Disclosures to InfoSec.** The AI scam review sends some Inbox mail to Amazon Bedrock
-    ([Admin inbox](#admin-inbox)); campaigns with `{{login_link}}` leave live links in Sent Items
+    ([Admin inbox](#admin-inbox)); campaign messages with `{{login_link}}` are sent without a Sent Items
+    copy and therefore without the one-click `List-Unsubscribe` header
     ([Sent Items](#sent-items-and-credential-mail)); addresses SES suppressed are mailed again under Graph.
     Agree with InfoSec which records count as the logging record (admin history, recorded access checks,
     CloudTrail) and their retention ([Retention](#retention)).
@@ -581,7 +582,8 @@ Email** prove the credentials.
   the `Message-ID` header it generated as the provider message ID in the Email Log (`RecipientLog`,
   provider `graph`), as it does for SMTP. Its domain part is the **From Email** domain (`<…@ucmerced.edu>`
   for `i2g@ucmerced.edu`), never the server's internal host name. A JSON send sets no `Message-ID`
-  (Exchange assigns one) and reports none; no current JSON-sent message is recorded in the Email Log.
+  (Exchange assigns one) and reports none, so a campaign message sent with a login link has an empty
+  provider message ID in the Email Log.
 - **202 means queued, not delivered.** A later failure, such as an unknown recipient, a rejection by the
   recipient's server or a sending restriction, comes back as a non-delivery report in the sender mailbox's
   Inbox. The app shows that Inbox to admins (see [Admin inbox](#admin-inbox)) but does not parse it, and
@@ -643,18 +645,25 @@ as JSON. These are marked:
   they carry: the code or link signs in or authorises an account change.
 - **Admin invitations**: the acceptance URL creates a staff account for whoever holds it.
 - **Ticket emails**: the ticket code is the check-in credential, and the member's login link signs in.
+- **Campaign messages that contain the recipient's login link** (`{{login_link}}` in the subject or body,
+  for a recipient who is a member): the link signs in for `login_link_validity_days`, possibly more than
+  once. This is decided per message, so the same campaign's messages to manual addresses (no link) stay
+  MIME.
 
 The JSON form carries the subject, one body (the HTML body when there is one, otherwise the text body), To,
 Cc, Bcc, Reply-To, attachments (inline ones keep their Content-ID, so the ticket barcode still displays) and
 custom headers whose names start with `x-`. Graph accepts no other custom header in this form, so any other
 header is left out and its name logged at WARNING
-(`Microsoft Graph JSON sendMail cannot carry these headers, so they were left out: …`); the marked messages
-set none.
+(`Microsoft Graph JSON sendMail cannot carry these headers, so they were left out: …`). The marked messages
+set none: a campaign message with a login link is built without `List-Unsubscribe` and
+`List-Unsubscribe-Post` under Graph, so mailbox providers show no one-click unsubscribe for it, and the
+recipient unsubscribes through the footer link (present when the campaign includes the unsubscribe
+header). This is a deliberate trade-off: a live sign-in link must not sit in a folder other people can
+read. Through SES or SMTP the same message keeps both headers.
 
-Everything else stays MIME and keeps a Sent Items copy: campaigns (one copy per recipient; they need
-`List-Unsubscribe`), inbox replies, security and subscription notices, the test email and access-check
-probes. **Campaigns that use `{{login_link}}` therefore leave live login links in Sent Items** for as long
-as each link is valid. Only superusers can open Sent mail in **Mail → Inbox** (see
+Everything else stays MIME and keeps a Sent Items copy: campaign messages without a login link (one copy
+per recipient, with `List-Unsubscribe`), inbox replies, security and subscription notices, the test email and
+access-check probes. Only superusers can open Sent mail in **Mail → Inbox** (see
 [Admin inbox](#admin-inbox)); the M365 admins should keep human Full Access to the mailbox to a minimum.
 Set a retention policy for the folder (the period is a records-policy decision) and watch the mailbox size:
 a full mailbox makes Graph answer `507`, and sending stops until space is freed.
@@ -671,8 +680,9 @@ configured.
   (`GET /v1.0/users/{mailbox}/mailFolders/{inbox|sentitems}/messages`) and opens a message as its original
   MIME (`GET /v1.0/users/{mailbox}/messages/{id}/$value`), so the scam detector still sees
   `Authentication-Results`, `Reply-To`, and `Return-Path`, and replies keep `In-Reply-To` / `References`.
-- **Sent mail is for superusers only.** Sent Items holds what the site sends as MIME, including campaign
-  login links, so other staff with the Mail app see no **Sent** tab, a request for the Sent folder shows the
+- **Sent mail is for superusers only.** Sent Items holds what the site sends as MIME (campaigns, replies,
+  notices, and anything sent before credential mail went out as JSON), so other staff with the Mail app see
+  no **Sent** tab, a request for the Sent folder shows the
   Inbox instead, and opening or replying to Sent mail answers `403`. A Graph message ID is unique in the
   whole mailbox rather than per folder, so any message whose sender is the sending mailbox or the
   **From Email** counts as Sent mail too, whichever folder the link names (a reply quotes the original, so
@@ -740,11 +750,11 @@ deploy also catches certificate expiry.
 
 ## Retention
 
-- **Mailbox.** Every MIME message the site sends stays in Sent Items (one copy per campaign recipient,
-  including any `{{login_link}}`, plus inbox replies, notices, test emails and access-check probes).
-  Verification codes, admin invitations and tickets are sent as JSON and leave no copy. Received mail stays
-  in the Inbox. Retention is set by the UC Merced Microsoft 365 records policy for the mailbox, not by the
-  site; a short Sent Items period limits how long campaign login links sit there.
+- **Mailbox.** Every MIME message the site sends stays in Sent Items (one copy per campaign recipient
+  without a login link, plus inbox replies, notices, test emails and access-check probes). Verification
+  codes, admin invitations, tickets and campaign messages with a login link are sent as JSON and leave no
+  copy. Received mail stays in the Inbox. Retention is set by the UC Merced Microsoft 365 records policy for
+  the mailbox, not by the site.
 - **Inbox views on the site.** Production has no Redis, so the site cache is a file cache on each
   container's disk (see [Environments](../deployment/environments.md#production-cache-today)). An opened
   message (headers, addresses, text and HTML body) and each list are written there unencrypted. They are
@@ -1007,8 +1017,10 @@ After a new setup or a credential change:
    **From Name** and **From Email**, and leaves a copy in the sender mailbox's Sent Items.
 2. Request a sign-in code for your own account. Confirm it arrives with the same From and that **no** copy
    is in Sent Items (JSON `sendMail` with `saveToSentItems: false`).
-3. Send a small campaign to yourself. In the received message's headers confirm `List-Unsubscribe` and
-   `List-Unsubscribe-Post`, and that the `Message-ID` matches the provider message ID in the Email Log.
+3. Send a small campaign without `{{login_link}}` to yourself. In the received message's headers confirm
+   `List-Unsubscribe` and `List-Unsubscribe-Post`, and that the `Message-ID` matches the provider message
+   ID in the Email Log. Then send one that uses `{{login_link}}`: confirm the link works, the footer
+   unsubscribe link is there, and **no** copy is in Sent Items.
 4. Send yourself a ticket email. Confirm the inline barcode image displays and the calendar file is
    attached, that a subject or name with accented characters displays correctly, and that no copy is in
    Sent Items. Confirm the received message shows a sent date (the app does not write a `Date` header;

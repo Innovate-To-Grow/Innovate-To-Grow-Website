@@ -53,8 +53,10 @@ selection. There is no per-message routing or automatic failover.
 Microsoft Graph sends each message as base64 MIME with `POST /users/{mailbox}/sendMail`,
 authenticated by an app-only access token (OAuth 2.0 client-credentials flow).
 A message that carries a credential (`EmailMessage(keep_sent_copy=False)`: verification
-codes, admin invitations, tickets) is sent in Graph's JSON format with
-`saveToSentItems: false` instead, so no copy stays in the mailbox's Sent Items.
+codes, admin invitations, tickets, and campaign messages that contain the recipient's
+`{{login_link}}`) is sent in Graph's JSON format with `saveToSentItems: false` instead,
+so no copy stays in the mailbox's Sent Items (such a campaign message then has no
+`List-Unsubscribe` header, only the footer link).
 Tokens are cached in process memory only, never in the database or the shared cache.
 The private key is never in the database: a superuser installs the certificate on the
 Graph configuration's admin page, the key goes to the credential store

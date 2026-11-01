@@ -11,7 +11,8 @@ from apps.core.services.background_jobs import (
     claim_jobs,
     process_claimed_job,
 )
-from apps.mail.models import RecipientLog
+from apps.mail.models import EmailCampaign, RecipientLog
+from apps.mail.services.campaign.dispatch.email_job import _render_recipient_email
 from apps.mail.services.send_campaign import SesSendResult
 from apps.mail.services.send_campaign.transport import (
     SES_OUTCOME_PERMANENT,
@@ -271,3 +272,16 @@ class EmailRecipientJobTests(DurableCampaignQueueTestCase):
         self.assertEqual(job.status, BackgroundJob.Status.FAILED)
         self.assertEqual(log.status, "complained")
         self.assertEqual(campaign.status, "failed")
+
+
+class RenderRecipientEmailTests(DurableCampaignQueueTestCase):
+    def test_a_message_that_carries_the_login_link_keeps_no_sent_items_copy(self):
+        campaign, log = self._queued_email()
+        EmailCampaign.objects.filter(pk=campaign.pk).update(body='<p><a href="{{login_link}}">Sign in</a></p>')
+        log = RecipientLog.objects.select_related("campaign", "member").get(pk=log.pk)
+        context = "apps.mail.services.campaign.dispatch.email_job._recipient_context"
+        for link, keep in (("https://i2g.example/login-link#token=abc", False), ("", True)):
+            with self.subTest(link=link), patch(context, return_value={"login_link": link}):
+                *_rendered, keep_sent_copy = _render_recipient_email(log)
+
+                self.assertIs(keep_sent_copy, keep)

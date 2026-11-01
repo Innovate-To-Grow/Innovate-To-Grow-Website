@@ -90,8 +90,11 @@ sender name and email address, and save the active configuration.
   Graph mail counts against the
   mailbox's Exchange Online limits (about 30 messages per minute) and reports
   no delivery events. Campaigns, replies and notices are copied to its Sent
-  Items folder; verification codes, admin invitations and tickets are not,
-  because they carry sign-in credentials.
+  Items folder; verification codes, admin invitations, tickets and campaign
+  messages that contain the recipient's `{{ login_link }}` are not, because
+  they carry sign-in credentials. A campaign message with a login link then
+  has no `List-Unsubscribe` header (Graph cannot send one without the copy);
+  its footer's unsubscribe link stays.
   Setup in Entra and Exchange Online is in
   [Microsoft Graph email](../integrations/microsoft-graph-email.md).
 - AWS settings remain available for SMS even when email uses SMTP or Microsoft

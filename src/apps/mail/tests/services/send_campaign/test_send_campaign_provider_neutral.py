@@ -129,6 +129,13 @@ class SendViaGraphConfigTests(SimpleTestCase):
             {"List-Unsubscribe": f"<{UNSUBSCRIBE_URL}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"},
         )
 
+    def test_a_message_with_a_login_link_keeps_no_sent_items_copy_and_so_no_list_unsubscribe(self):
+        _, deliver, _ = self.send(unsubscribe_url=UNSUBSCRIBE_URL, keep_sent_copy=False)
+
+        message = deliver.call_args.args[0]
+        self.assertIs(message.keep_sent_copy, False)
+        self.assertEqual(message.headers, {})
+
     def test_graph_messages_without_an_unsubscribe_url_carry_no_extra_headers(self):
         _, deliver, _ = self.send(recipient_log_id=uuid4(), delivery_attempt=1)
 
@@ -183,6 +190,20 @@ class SendViaGraphEndToEndTests(TestCase):
         }
         with patch(POST, self.transport):
             return _send_via_ses(**{**values, **overrides})
+
+    def test_a_message_with_a_login_link_is_sent_as_json_without_a_sent_items_copy(self):
+        with self.assertNoLogs("apps.core.services.email.graph", "WARNING"):
+            result = self.send(
+                html_body='<p><a href="https://i2g.example/login#token=abc">Sign in</a></p>', keep_sent_copy=False
+            )
+
+        self.assertEqual((result.provider, result.outcome, result.error), ("graph", SES_OUTCOME_SUCCESS, ""))
+        (call,) = self.transport.sent
+        self.assertEqual(call.headers["Content-Type"], "application/json")
+        body = json.loads(call.body)
+        self.assertIs(body["saveToSentItems"], False)
+        self.assertNotIn("internetMessageHeaders", body["message"])
+        self.assertIn("login#token=abc", body["message"]["body"]["content"])
 
     def test_sent_message_keeps_list_unsubscribe_headers_and_has_no_ses_tags(self):
         result = self.send()
