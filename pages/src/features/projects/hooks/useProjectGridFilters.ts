@@ -1,13 +1,12 @@
 import {useCallback, useMemo, useState} from 'react';
-import type {ProjectGridItem} from '@/features/projects/components/grid/contracts/projectGrid';
+import {compareText, type ProjectGridItem} from '@/features/projects/components/grid/contracts/projectGrid';
 
 export interface ProjectGridFilterOption {
   value: string;
   label: string;
 }
 
-const byLabel = (left: ProjectGridFilterOption, right: ProjectGridFilterOption) =>
-  left.label.localeCompare(right.label, undefined, {numeric: true, sensitivity: 'base'});
+const byLabel = (left: ProjectGridFilterOption, right: ProjectGridFilterOption) => compareText(left.label, right.label);
 
 const distinctValues = (rows: ProjectGridItem[], pick: (row: ProjectGridItem) => string) => {
   const values = new Set<string>();
@@ -18,13 +17,23 @@ const distinctValues = (rows: ProjectGridItem[], pick: (row: ProjectGridItem) =>
   return [...values];
 };
 
+/** The filters to start with, e.g. restored from the URL. */
+export interface ProjectGridFilterValues {
+  classCode?: string;
+  industry?: string;
+}
+
 /**
  * Class and Industry filters for the current-projects table, with options built from the loaded rows.
  * Class options read "Engineering Capstone (CAP)" when the schedule names the class, else the code.
  */
-export function useProjectGridFilters(rows: ProjectGridItem[], classLabels: Record<string, string> = {}) {
-  const [classCode, setClassCode] = useState('');
-  const [industry, setIndustry] = useState('');
+export function useProjectGridFilters(
+  rows: ProjectGridItem[],
+  classLabels: Record<string, string> = {},
+  initial: ProjectGridFilterValues = {},
+) {
+  const [classCode, setClassCode] = useState(initial.classCode ?? '');
+  const [industry, setIndustry] = useState(initial.industry ?? '');
 
   const classOptions = useMemo(
     () =>
@@ -60,6 +69,16 @@ export function useProjectGridFilters(rows: ProjectGridItem[], classLabels: Reco
     setIndustry('');
   }, []);
 
+  // How the count line and the no-results state name the filters in use: the option labels the selects show.
+  const activeLabels = useMemo(
+    () =>
+      [
+        classOptions.find((option) => option.value === activeClass)?.label ?? '',
+        industryOptions.find((option) => option.value === activeIndustry)?.label ?? '',
+      ].filter(Boolean),
+    [activeClass, activeIndustry, classOptions, industryOptions],
+  );
+
   return {
     classCode: activeClass,
     setClassCode,
@@ -68,6 +87,7 @@ export function useProjectGridFilters(rows: ProjectGridItem[], classLabels: Reco
     classOptions,
     industryOptions,
     filterRow,
+    activeLabels,
     clear,
   };
 }

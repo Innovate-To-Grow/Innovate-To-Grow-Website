@@ -555,9 +555,9 @@ describe('SearchTableCard', () => {
     it('marks rows that are already saved', () => {
         renderCard({isRowSaved: (row) => row.project_title === 'Project 2', savedRowLabel: 'Saved'});
 
-        // The desktop table and the mobile cards each mark it, and the title stays findable by its own text.
-        expect(screen.getAllByText('Saved')).toHaveLength(2);
-        expect(screen.getAllByText('Project 2')).toHaveLength(2);
+        // The table marks it, and the title stays findable by its own text.
+        expect(screen.getAllByText('Saved')).toHaveLength(1);
+        expect(screen.getAllByText('Project 2')).toHaveLength(1);
     });
 
     it('disables the merge button when mergeDisabled is set', () => {

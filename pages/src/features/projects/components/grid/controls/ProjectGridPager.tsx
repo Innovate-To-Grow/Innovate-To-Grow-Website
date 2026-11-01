@@ -44,9 +44,8 @@ export const ProjectGridPager = ({page, totalPages, onPageChange, label = 'Pages
         ),
       )}
     </ul>
-    <span className="project-grid-pager-status">
-      Page {page + 1} of {totalPages}
-    </span>
+    {/* One string: page translation left a text node per number behind, still reading "Page 1". */}
+    <span className="project-grid-pager-status">{`Page ${page + 1} of ${totalPages}`}</span>
     <button
       type="button"
       className="itg-pagination-link project-grid-pager-step"

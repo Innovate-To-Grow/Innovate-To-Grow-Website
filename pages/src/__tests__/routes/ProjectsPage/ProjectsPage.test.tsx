@@ -75,12 +75,13 @@ describe('ProjectsPage', () => {
     expect(String(viewProps.current?.lede)).toMatch(/^Browse this semester's Innovate to Grow projects\./);
   });
 
-  it('forwards the loading and error state', () => {
+  it('forwards the loading and error state, and the reload for "Try again"', () => {
+    const refetch = vi.fn();
     vi.mocked(useCurrentProjectGridData).mockReturnValue({
       rows: [],
       loading: true,
       error: 'Failed to load',
-      refetch: vi.fn(),
+      refetch,
       classLabels: {},
     });
 
@@ -90,6 +91,6 @@ describe('ProjectsPage', () => {
       </MemoryRouter>,
     );
 
-    expect(viewProps.current).toMatchObject({loading: true, error: 'Failed to load'});
+    expect(viewProps.current).toMatchObject({loading: true, error: 'Failed to load', onRetry: refetch});
   });
 });

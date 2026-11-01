@@ -1,6 +1,6 @@
 @layer itg.components {
-/* Responsive rules for every section above. Kept last and together: they override the
-   base rules of all the files before them, so they must follow every one of them.
+/* Responsive, forced-colour and print rules for every section above. Kept last and together: they
+   override the base rules of all the files before them, so they must follow every one of them.
    Imported in order by projects.css; see the note there. */
 
 /* ---- Utilities ----------------------------------------------------------------- */
@@ -21,6 +21,11 @@
     width: 44px;
     height: 44px;
   }
+
+  .itg-btn.project-grid-toggle-details,
+  .project-grid-share-result-row > .itg-btn {
+    min-height: 2.75rem;
+  }
 }
 
 @media (max-width: 900px) {
@@ -30,18 +35,9 @@
 }
 
 @media (max-width: 768px) {
-  /* The table becomes a list of rows. */
-  .project-grid-table-wrap {
-    display: none;
-  }
-
   /* The save goes under the title instead of beside it. */
   .project-grid-save-status {
     align-items: flex-start;
-  }
-
-  .project-grid-mobile-cards {
-    display: block;
   }
 
   .project-grid-results-bar {
@@ -263,6 +259,130 @@
 
   .past-projects-dialog-actions .itg-btn {
     flex: 1 1 auto;
+  }
+}
+
+/* ---- The narrowest phones (320-360px, and 400% zoom) ---------------------------- */
+
+@media (max-width: 360px) {
+  /* Class and Industry one above the other: "All industries" does not fit half a row. */
+  .project-grid-controls-row.has-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* "Sort by" over a full-width select, so the longest choice ("Team number (low to high)") is not cut off. */
+  .project-grid-results-controls .project-grid-sort {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .project-grid-results-controls .project-grid-sort .project-grid-select {
+    width: 100%;
+  }
+
+  /* Per page and View All Details a row each, so the button's label stays on one line. */
+  .project-grid-controls-row > .project-grid-page-size,
+  .project-grid-controls-row > .project-grid-toggle-details {
+    grid-column: 1 / -1;
+  }
+
+  /* Previous / Page x of y / Next stay on one line. */
+  .project-grid-pagination {
+    flex-wrap: nowrap;
+  }
+
+  .project-grid-pager-step {
+    padding-inline: 0.5em;
+  }
+
+  .project-grid-pager-status {
+    text-align: center;
+  }
+
+  /* + Search Table and AI Search Table one above the other, each on one line. */
+  .past-projects-action-bar-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- Forced colours (Windows Contrast themes) ------------------------------------ */
+
+/* The theme repaints backgrounds and drops shadows. The Details button is a navy square with a bevel and its
+   arrow, like the sort arrows, is a mask filled with background-color, so all of them vanished: give the button
+   an edge and fill the arrows with the theme's own text colours. */
+@media (forced-colors: active) {
+  .project-grid-detail-icon-button {
+    border: 1px solid ButtonText;
+  }
+
+  .project-grid-detail-icon {
+    forced-color-adjust: none;
+    background-color: ButtonText;
+  }
+
+  .project-grid-table th.project-grid-sortable .project-grid-sort-button::after {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+}
+
+/* ---- Print ------------------------------------------------------------------------ */
+
+/* A printed list is the rows on the screen as a document: no search, sort, paging or row buttons (the count line
+   says which rows they are), each row kept with the start of its details, and the column headings repeated on
+   every page. */
+@media print {
+  .project-grid-controls,
+  .project-grid-results-controls,
+  .project-grid-pagination,
+  .project-grid-toolbar,
+  .project-grid-load-error .itg-btn,
+  .project-grid-no-results .itg-empty-state-actions,
+  .project-grid-detail-links,
+  .project-grid-detail-state .itg-btn,
+  .project-grid-sort-button::after,
+  .project-grid-mobile-card-select,
+  .project-grid-mobile-card-actions {
+    display: none;
+  }
+
+  /* Chromium repeats the headings on each page only outside a scroll box, and leaves the labels out of the
+     repeats while they are buttons: on paper they are plain heading text. */
+  .project-grid-table-wrap {
+    overflow: visible;
+  }
+
+  .project-grid-sort-button {
+    display: contents;
+  }
+
+  /* The checkbox and Details columns hold only controls. Squeezed to nothing rather than removed, so the open
+     rows' details still start under the Project column. */
+  .project-grid-table th.project-grid-select-col,
+  .project-grid-table td.project-grid-select-col,
+  .project-grid-table th.project-grid-actions-col,
+  .project-grid-table td.project-grid-actions-col,
+  .project-grid-table.has-remove .project-grid-actions-col {
+    width: 0;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .project-grid-table .project-grid-select-col > *,
+  .project-grid-table .project-grid-actions-col > * {
+    display: none;
+  }
+
+  /* A row is never split, and an open row's details start on its page. Long details (past projects' abstracts
+     run to a page) may then go on to the next page, instead of leaving most of this one blank. */
+  .project-grid-table tr.project-grid-row,
+  .project-grid-mobile-card:not(.is-expanded) {
+    break-inside: avoid;
+  }
+
+  .project-grid-table tr.project-grid-row:has(+ .project-grid-detail-row) {
+    break-after: avoid;
   }
 }
 

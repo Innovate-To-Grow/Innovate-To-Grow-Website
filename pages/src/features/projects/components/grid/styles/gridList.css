@@ -4,9 +4,9 @@
 
 /* ---- Phone list ------------------------------------------------------------- */
 
-/* The phone list keeps the table's look: 1px #111 rules above and below, #ddd row separators, striped rows. */
+/* The phone list keeps the table's look: 1px #111 rules above and below, #ddd row separators, striped rows.
+   It replaces the table below 768px: the grid renders one or the other (ProjectGridTable), never both. */
 .project-grid-mobile-cards {
-  display: none;
   margin: 0;
   padding: 0;
   list-style: none;

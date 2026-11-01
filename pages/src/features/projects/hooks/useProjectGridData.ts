@@ -1,13 +1,15 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
+    PROJECT_REQUEST_TIMEOUT_MS,
     compactProjectToGridRow,
-    fetchPastProjectArchive,
+    fetchAllPastProjectArchive,
     fetchPastProjectShare,
     scheduleProjectToGridRow,
     type PastProjectShare,
     type ProjectGridRow,
 } from '@/features/projects/api';
 import {fetchCurrentSchedule, type EventSchedulePayload} from '@/features/events/api';
+import {getPredominantTerm} from '../components/grid/contracts/projectGrid';
 
 interface ProjectGridDataResult {
     rows: ProjectGridRow[];
@@ -44,6 +46,15 @@ interface CurrentProjectGridState extends ProjectGridRowsState {
 const EMPTY_CLASS_LABELS: Record<string, string> = {};
 
 /**
+ * What a project list says when its rows could not be loaded. The request's own message ("Network Error",
+ * "Request failed with status code 503") means nothing to a visitor. It names no cause: the same words follow a
+ * dropped connection, a server error and a timeout.
+ */
+export const PROJECT_LIST_LOAD_ERROR = "We couldn't load the projects. Please try again.";
+
+const responseStatus = (error: unknown) => (error as {response?: {status?: number}} | null)?.response?.status;
+
+/**
  * The schedule lists presenting teams by their schedule slot (whose id is the slot's, not the project's) and
  * the other teams by project. Each row gets the id of its current-semester project (the slot's `project_id`, or
  * the row's own id at track 0), which its title links to. Those are event CurrentProject ids, which the archive
@@ -56,7 +67,7 @@ export const currentScheduleToGridRows = (payload: Pick<EventSchedulePayload, 'p
             (track.slots ?? []).forEach((slot) => slotProjectIds.set(slot.id, slot.project_id ?? null)),
         ),
     );
-    return payload.projects.map((project) => {
+    const rows = payload.projects.map((project) => {
         const row = scheduleProjectToGridRow(project);
         const projectId = slotProjectIds.has(project.id)
             ? slotProjectIds.get(project.id)
@@ -65,6 +76,10 @@ export const currentScheduleToGridRows = (payload: Pick<EventSchedulePayload, 'p
               : null;
         return projectId ? {...row, id: projectId} : row;
     });
+    // Teams that are not presenting carry no term of their own: they belong to the schedule's semester, and a
+    // search for that term ("Fall 2026") should find them too.
+    const term = getPredominantTerm(rows);
+    return term ? rows.map((row) => (row.semester_label ? row : {...row, semester_label: term})) : rows;
 };
 
 export const currentScheduleClassLabels = (payload: Partial<EventSchedulePayload>) => {
@@ -84,7 +99,7 @@ interface PastProjectShareState {
 
 /** A share id the API does not know (404), or one it cannot parse (400): the link itself is wrong. */
 const isMissingShareError = (error: unknown) => {
-    const status = (error as {response?: {status?: number}} | null)?.response?.status;
+    const status = responseStatus(error);
     return status === 404 || status === 400;
 };
 
@@ -106,11 +121,11 @@ export function useCurrentProjectGridData(enabled: boolean = true): CurrentProje
             return;
         }
 
-        let cancelled = false;
+        const controller = new AbortController();
 
-        fetchCurrentSchedule()
+        fetchCurrentSchedule(null, {signal: controller.signal, timeout: PROJECT_REQUEST_TIMEOUT_MS})
             .then((payload) => {
-                if (cancelled) return;
+                if (controller.signal.aborted) return;
                 setState({
                     requestKey,
                     rows: currentScheduleToGridRows(payload),
@@ -119,17 +134,19 @@ export function useCurrentProjectGridData(enabled: boolean = true): CurrentProje
                 });
             })
             .catch((err) => {
-                if (cancelled) return;
+                if (controller.signal.aborted) return;
                 setState({
                     requestKey,
                     rows: [],
-                    error: err instanceof Error ? err.message : 'Failed to load current projects',
+                    // A 404 means no schedule is published (or it has no sections yet): there are no current
+                    // projects, which the list's empty message says.
+                    error: responseStatus(err) === 404 ? null : PROJECT_LIST_LOAD_ERROR,
                     classLabels: EMPTY_CLASS_LABELS,
                 });
             });
 
         return () => {
-            cancelled = true;
+            controller.abort();
         };
     }, [requestKey]);
 
@@ -165,33 +182,22 @@ export function usePastProjectGridData(enabled: boolean = true): ProjectGridData
         }
 
         const controller = new AbortController();
-        const loadArchive = async () => {
-            const rows: ProjectGridRow[] = [];
-            let page = 1;
-            while (true) {
-                const payload = await fetchPastProjectArchive({page, page_size: 100}, controller.signal);
-                rows.push(...payload.results.map(compactProjectToGridRow));
-                if (rows.length >= payload.count) break;
-                page += 1;
-            }
-            return rows;
-        };
 
-        loadArchive()
+        fetchAllPastProjectArchive({}, controller.signal)
             .then((projects) => {
                 if (controller.signal.aborted) return;
                 setState({
                     requestKey,
-                    rows: projects,
+                    rows: projects.map(compactProjectToGridRow),
                     error: null,
                 });
             })
-            .catch((err) => {
+            .catch(() => {
                 if (controller.signal.aborted) return;
                 setState({
                     requestKey,
                     rows: [],
-                    error: err instanceof Error ? err.message : 'Failed to load past projects',
+                    error: PROJECT_LIST_LOAD_ERROR,
                 });
             });
 

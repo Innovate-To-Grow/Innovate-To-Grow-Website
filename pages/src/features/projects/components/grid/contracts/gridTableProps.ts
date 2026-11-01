@@ -12,13 +12,35 @@ export interface ProjectGridSortOption {
   label: string;
 }
 
+/** What the server's search, for text the rows do not carry, has done for the current search (useProjectGridTable). */
+export interface ProjectGridServerSearch {
+  /** It has not answered yet: with no rows found so far, the no-results message says more may come. */
+  pending: boolean;
+  /**
+   * The answer that last added rows to this search, as one key of its ids; null until one has. A new key means rows
+   * were sorted in among those shown and the table went back to its first page, without the visitor doing anything.
+   */
+  addedRowsKey: string | null;
+  /** It declined the search as matching too many projects, so the abstracts were not searched: the count says so. */
+  tooBroad: boolean;
+  /**
+   * It could not be asked (the request failed), so the abstracts were not searched either: the count says so, and a
+   * search with no rows found is not taken for one with no matches.
+   */
+  failed: boolean;
+}
+
 export interface ProjectGridTableProps {
   columns: ProjectGridColumn[];
   rows: ProjectGridItem[];
   pagedRows: ProjectGridItem[];
   filteredCount: number;
   totalCount: number;
+  /** Names the table, and its pager ("… pages"), for screen readers: "Current Projects", "Search Table 2". */
+  tableLabel?: string;
   search: string;
+  /** The server's search of text the rows do not carry (useProjectGridTable's `serverSearch`), when the rows have one. */
+  serverSearch?: ProjectGridServerSearch;
   /** Replaces the search field (e.g. the AI search form). */
   searchControl?: ReactNode;
   controlsStatus?: ReactNode;
@@ -27,12 +49,20 @@ export interface ProjectGridTableProps {
   searchLabel?: string;
   /** More fields for the filter well, after the search field (e.g. Class and Industry selects). */
   filterControls?: ReactNode;
+  /**
+   * The values of the extra filters in use, as their selects show them ("Engineering Capstone (CAP)"), so the
+   * count and the no-results state say the filters, not only the search, narrowed the rows.
+   */
+  activeFilters?: string[];
   /** Shows a "Sort by" select in the results bar; Per page and View All Details move there too. */
   sortOptions?: ProjectGridSortOption[];
   sortField: ProjectGridColumnKey;
   sortDirection: ProjectGridSortDirection;
   onSearchChange: (value: string) => void;
+  /** A column header was clicked: sort by it, or reverse it if it is already the sort. */
   onSortChange: (field: ProjectGridColumnKey) => void;
+  /** Sort from the Sort by select, whose options name the direction ("Project title (Z to A)"). */
+  onSortSelect?: (field: ProjectGridColumnKey, direction: ProjectGridSortDirection) => void;
   /** Clears the extra filters too when the visitor clicks "Clear search" in the no-results state. */
   onClearFilters?: () => void;
   /** Extra hint and actions for the no-results state (e.g. a link to search past projects). */
@@ -55,6 +85,8 @@ export interface ProjectGridTableProps {
   onPageSizeChange: (size: number) => void;
   loading?: boolean;
   error?: string | null;
+  /** Loads the rows again after `error`; shown as a "Try again" button beside it. */
+  onRetry?: () => void;
   emptyMessage?: string;
   /** Plural noun for the result count ("projects", "teams"). */
   countLabel?: string;
