@@ -61,11 +61,8 @@ export const SharedLinksList = ({shares, onDelete}: SharedLinksListProps) => {
           );
         })}
       </ul>
-      {/* The outcome takes its tone's colour (.itg-success / .itg-error) on its own element: the line's class
-          (accountSharedLinks.css) loads after notices.css and sets a colour of its own. The line stays empty, and
-          hidden, until a copy. */}
-      <p className="account-shares-copy-status" role="status">
-        {copyStatus ? <span className={copyTone === 'error' ? 'itg-error' : 'itg-success'}>{copyStatus}</span> : null}
+      <p className={`account-shares-copy-status ${copyTone === 'error' ? 'itg-error' : 'itg-success'}`} role="status">
+        {copyStatus}
       </p>
     </>
   );

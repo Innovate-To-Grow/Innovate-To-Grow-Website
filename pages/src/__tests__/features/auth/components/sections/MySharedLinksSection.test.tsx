@@ -44,13 +44,15 @@ describe('MySharedLinksSection', () => {
         fireEvent.click(await screen.findByRole('button', {name: /^Copy Link to Spring finalists/}));
 
         await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://example.test/past-projects/share-1'));
-        expect(await screen.findByRole('status')).toHaveTextContent(/^Link copied\.$/);
-        const message = screen.getByText('Link copied.');
-        expect(message).toHaveClass('itg-success');
-        expect(message).not.toHaveClass('itg-error');
+        const status = await screen.findByRole('status');
+        expect(status).toHaveTextContent(/^Link copied\.$/);
+        // The status line itself carries the tone class, as every copy-status line does (its own class sets no colour).
+        expect(status).toHaveClass('account-shares-copy-status', 'itg-success');
+        expect(status).not.toHaveClass('itg-error');
         // The message is the only child of its element, for page translation.
-        expect(message.childNodes).toHaveLength(1);
-        expect(message.firstChild?.nodeType).toBe(Node.TEXT_NODE);
+        expect(screen.getByText('Link copied.')).toBe(status);
+        expect(status.childNodes).toHaveLength(1);
+        expect(status.firstChild?.nodeType).toBe(Node.TEXT_NODE);
     });
 
     it('reports a copy the browser refuses in the error colour', async () => {
@@ -63,9 +65,12 @@ describe('MySharedLinksSection', () => {
         fireEvent.click(await screen.findByRole('button', {name: /^Copy Link to Spring finalists/}));
 
         const failed = 'Could not copy the link. Open it and copy the address instead.';
-        expect(await screen.findByRole('status')).toHaveTextContent(failed);
-        expect(screen.getByText(failed)).toHaveClass('itg-error');
-        expect(screen.getByText(failed)).not.toHaveClass('itg-success');
+        const status = await screen.findByRole('status');
+        expect(status).toHaveTextContent(failed);
+        expect(status).toHaveClass('account-shares-copy-status', 'itg-error');
+        expect(status).not.toHaveClass('itg-success');
+        expect(status.childNodes).toHaveLength(1);
+        expect(status.firstChild?.nodeType).toBe(Node.TEXT_NODE);
     });
 
     it('keeps the copy status line empty until a copy', async () => {
