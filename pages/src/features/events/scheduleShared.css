@@ -156,6 +156,13 @@
   line-height: 24px;
 }
 
+/* The archive schedule's loading box holds the shared LoadingIndicator (ScheduleGrid.tsx). As a flex row it stays
+   the one 24px line its text was; on a text line the indicator would add the line's descent under it. */
+.sg-loading {
+  display: flex;
+  align-items: center;
+}
+
 .schedule-page-state-error,
 .sg-error {
   border-left-color: var(--itg-color-error);
