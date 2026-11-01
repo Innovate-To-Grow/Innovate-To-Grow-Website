@@ -6,6 +6,7 @@ from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES
 
 from .contracts import EmailProvider
 from .exceptions import EmailDeliveryError, PermanentEmailDeliveryError
+from .gmail import GmailProvider
 from .graph import GraphProvider
 from .ses import SESProvider
 from .smtp import SMTPProvider
@@ -86,6 +87,29 @@ def _graph_factory(config: object, **provider_options) -> GraphProvider:
     )
 
 
+def _gmail_factory(config: object, **provider_options) -> GmailProvider:
+    del provider_options
+    from apps.core.models import GmailApiProviderConfig
+
+    from .gmail.access import credential_for, require_subject
+
+    gmail = GmailApiProviderConfig.load()
+    if not gmail.is_configured:
+        raise PermanentEmailDeliveryError("Active Gmail API provider configuration is missing or invalid.")
+    # Gmail sends as the JWT subject and only From that same account, so one allow-list check covers both. It runs
+    # on every send, so removing an account takes effect at once, even while a token for it is cached.
+    subject = require_subject(gmail, config.from_email)
+    return GmailProvider(
+        credential=credential_for(gmail),
+        subject=subject,
+        from_email=config.from_email,
+        from_name=config.from_name,
+        max_recipients=gmail.max_recipients_per_message,
+        max_message_bytes=gmail.max_message_bytes,
+        credential_mail=gmail.credential_mail,
+    )
+
+
 def active_rate_target() -> tuple[str, str] | None:
     """The active email delivery channel and identity (``delivery_rates.families``), or None while email is not set
     up. Registered for the email family in ``CoreConfig.ready``."""
@@ -104,3 +128,4 @@ def active_rate_target() -> tuple[str, str] | None:
 register_provider("ses", _ses_factory)
 register_provider("smtp", _smtp_factory)
 register_provider("graph", _graph_factory)
+register_provider("gmail", _gmail_factory)

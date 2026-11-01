@@ -6,8 +6,13 @@ from email.utils import formataddr, make_msgid
 from .contracts import EmailMessage
 from .exceptions import PermanentEmailDeliveryError
 
+# Marks a message that carries a credential (``keep_sent_copy=False``). Gmail files a copy of everything it sends in
+# Sent (the Gmail API and Gmail SMTP alike), so the admin inbox and the Gmail import use this header to keep such
+# copies out of what they list and cache.
+MAIL_CLASS_HEADER = "X-I2G-Mail-Class"
+CREDENTIAL_MAIL_CLASS = "credential"
 # Headers the builders set themselves; a caller-supplied one is refused (JSON sendMail applies the same rule).
-PROTECTED_HEADERS = {"bcc", "cc", "from", "message-id", "reply-to", "subject", "to"}
+PROTECTED_HEADERS = {"bcc", "cc", "from", "message-id", "reply-to", "subject", "to", MAIL_CLASS_HEADER.lower()}
 
 
 def _set_headers(mime: MimeMessage, message: EmailMessage, *, from_email: str, from_name: str) -> None:
@@ -22,6 +27,8 @@ def _set_headers(mime: MimeMessage, message: EmailMessage, *, from_email: str, f
         if name.lower() in PROTECTED_HEADERS:
             raise PermanentEmailDeliveryError(f"Email header {name!r} is managed by the delivery service.")
         mime[name] = value
+    if not message.keep_sent_copy:
+        mime[MAIL_CLASS_HEADER] = CREDENTIAL_MAIL_CLASS
 
 
 def _set_body(mime: MimeMessage, message: EmailMessage):

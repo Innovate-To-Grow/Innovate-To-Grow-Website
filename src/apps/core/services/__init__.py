@@ -22,7 +22,7 @@ Subsystem               What it is                                            Im
                         Apps register job kinds from ``AppConfig.ready()``
                         with ``register_job_kind`` (dotted handler paths;
                         delivery kinds also name their family and lane).
-``credential_store/``   Versioned private-key store, read by pinned version:   ``core`` only (system check, Graph key)
+``credential_store/``   Versioned private-key store, read by pinned version:   ``core`` only (system check, Graph and Gmail keys)
                         Secrets Manager (prod), 0600 files (dev), memory
                         (tests). The database keeps only ARN + version id.
 ``delivery_rates/``     Delivery-rate control for every channel (Graph, SES,   ``authn``, ``event``, ``mail`` (job-kind
@@ -34,10 +34,12 @@ Subsystem               What it is                                            Im
                         turn provider answers into rate signals.
 ``db_tools/``           ``safe_orm``: the read-only ORM sandbox (field /       ``cli_admin``, ``system_intelligence``
                         filter allowlists, ``MAX_ROWS``)
-``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery;       ``authn``, ``event``, ``mail``
+``email/``              Provider-neutral MIME + SES/SMTP/Graph/Gmail API       ``authn``, ``event``, ``mail``
+                        delivery over one bounded HTTPS ``transport``;
                         ``graph/credential/`` installs the Graph certificate
-                        (key in ``credential_store``); ``graph/access_check/``
-                        records the go-live evidence
+                        and ``gmail/key/`` the Gmail service-account key
+                        (both in ``credential_store``); ``graph/`` and
+                        ``gmail/access_check/`` record the go-live evidence
 ``helpers/``            In-process task runner + sheet formula safety         ``authn``, ``event``, ``mail``, ``system_intelligence``
 ``legacy_access/``      Signed access to the read-only legacy site viewer      ``core`` only (legacy_view, admin, views)
 ``status/``             Infrastructure status dashboard client                 ``core`` only (admin infrastructure status)

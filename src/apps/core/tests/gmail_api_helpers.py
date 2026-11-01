@@ -137,3 +137,50 @@ def gmail_error(status: int, *, reason="", message="", status_text="", details_r
             {"@type": "type.googleapis.com/google.rpc.ErrorInfo", "reason": details_reason, "domain": "googleapis.com"}
         ]
     return send_response(status=status, error=error)
+
+
+def stored_config(**fields) -> GmailApiProviderConfig:
+    """``make_config`` whose pointer names a real stored key in the memory credential store."""
+    from apps.core.services.email.gmail.assertion import load_signing_key
+    from apps.core.services.email.gmail.key import stored_key
+
+    payload = key_file()
+    stored = stored_key.store_key(payload, load_signing_key(payload["private_key"]))
+    return make_config(key_secret_ref=stored.arn, key_version_id=stored.version_id, **fields)
+
+
+class FakePost:
+    """Stands in for ``gmail.transport.post``: records each request and answers from a queue (an exception in the
+    queue is raised). When the queue runs out it answers with ``default``."""
+
+    def __init__(self, *answers, default=None):
+        self.answers = list(answers)
+        self.default = default
+        self.calls = []
+
+    def __call__(self, host, path, body, headers, *, timeout):
+        self.calls.append({"host": host, "path": path, "body": body, "headers": headers, "timeout": timeout})
+        answer = self.answers.pop(0) if self.answers else self.default
+        if isinstance(answer, BaseException):
+            raise answer
+        return answer
+
+    def install(self, test):
+        from unittest.mock import patch
+
+        patcher = patch("apps.core.services.email.gmail.transport.post", self)
+        patcher.start()
+        test.addCleanup(patcher.stop)
+        return self
+
+    def paths(self):
+        return [(call["host"], call["path"]) for call in self.calls]
+
+
+def reset_gmail_state():
+    """Empty the memory key store and the process token cache (call from setUp)."""
+    from apps.core.services.credential_store import memory
+    from apps.core.services.email.gmail import clear_access_token_cache
+
+    memory.reset()
+    clear_access_token_cache()
