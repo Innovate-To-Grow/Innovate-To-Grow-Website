@@ -12,6 +12,7 @@ on:
     paths:
       - "aws/ci-runners/**"
       - ".github/workflows/aws-runner-smoke.yml"
+      - "scripts/ci/wait_for_postgres.sh"
 
 permissions:
   contents: read
