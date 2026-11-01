@@ -131,7 +131,10 @@ class SendTextMessageTests(TestCase):
         self.assertEqual((state.cooldown_group, state.last_signal), (f"sms:{REGION}", rates.SignalKind.OK))
         bucket = DeliveryUsageBucket.objects.get(state=state)
         self.assertEqual((bucket.total, bucket.messages, bucket.bulk), (1, 1, 0))
-        self.assertEqual(self.factory.call_args.kwargs["config"].retries["total_max_attempts"], 1)
+        config = self.factory.call_args.kwargs["config"]
+        self.assertEqual(config.retries["total_max_attempts"], 1)
+        # channels.sms_send.request_timeout_seconds, not botocore's 60 s default.
+        self.assertEqual((config.connect_timeout, config.read_timeout), (10, 10))
         self.stubber.assert_no_pending_responses()
 
     def test_a_message_of_several_parts_is_paced_by_its_parts(self):

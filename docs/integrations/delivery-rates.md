@@ -295,8 +295,13 @@ DELIVERY_RATES_OVERRIDES='{"channels": {"sms_send": {"provider_limit": 20}}}'
 
 The result is validated when settings load: an unknown key, a share or count out of range, a manual rate above its
 provider limit, an hourly or external limit above the daily one, a worker wait not below the stale-claim recovery,
-or an inline or read wait not below the inline request budget raises `ImproperlyConfigured` and stops every process
-before it starts. See [Environments](../deployment/environments.md#delivery-rates).
+or an inline or read wait, or an SES or SMS `request_timeout_seconds` (10 s, connect and read, instead of botocore's
+60 s), not below the inline request budget raises `ImproperlyConfigured` and stops every process before it starts.
+Microsoft Graph's `GRAPH_REQUEST_TIMEOUT_SECONDS` (30), the Gmail API's `request_timeout_seconds` (15 per request; a
+sign-in code without a cached token needs two) and the 30 s Gmail IMAP timeout are failure bounds that may exceed the
+budget: they only end a stuck call, which the ALB idle timeout bounds in any case. Graph also caps `Retry-After` at
+`GRAPH_MAX_RETRY_AFTER_SECONDS`; the smaller of that and `controller.retry_after_max_seconds` applies. See
+[Environments](../deployment/environments.md#delivery-rates).
 
 ## Release notes
 

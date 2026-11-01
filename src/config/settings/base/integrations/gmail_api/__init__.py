@@ -29,8 +29,9 @@ _SERVICE_ACCOUNT = "https://developers.google.com/identity/protocols/oauth2/serv
 _KEYS = "https://docs.cloud.google.com/iam/docs/keys-create-delete"
 
 DEFAULTS = {
-    # App default: timeout of each token and send request. A login code needs both, so two of them stay near the
-    # delivery-rate inline request budget (DELIVERY_RATES["waits"]["inline_request_budget_seconds"]).
+    # App default: timeout of each token and send request. It only ends a stuck call: a sign-in code without a
+    # cached token needs both, so the worst case (30 s) exceeds DELIVERY_RATES waits.inline_request_budget_seconds,
+    # which sizes the normal path (see the note there).
     "request_timeout_seconds": 15,
     # App default: most of a token or send answer the site reads (a Message resource or an error is far smaller).
     "max_response_bytes": 64 * 1024,

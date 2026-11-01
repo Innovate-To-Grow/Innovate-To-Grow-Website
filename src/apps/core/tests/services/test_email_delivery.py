@@ -197,7 +197,10 @@ class SESTests(SimpleTestCase):
 
         SESProvider(from_email="from@example.com", retry_config=retry).send(self.message)
 
-        self.assertIs(client_factory.call_args.kwargs["config"], retry)
+        # The caller's retry policy, with the DELIVERY_RATES timeout of each call (botocore's own is 60 s).
+        config = client_factory.call_args.kwargs["config"]
+        self.assertEqual(config.retries, {"max_attempts": 2})
+        self.assertEqual((config.connect_timeout, config.read_timeout), (10, 10))
 
     @patch("apps.core.services.email.ses.resolve_aws_credentials")
     def test_missing_credentials_are_permanent(self, resolve_credentials):

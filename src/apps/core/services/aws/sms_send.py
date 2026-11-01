@@ -33,6 +33,7 @@ from apps.core.services.delivery_rates import (
     uncertain,
 )
 from apps.core.services.delivery_rates.adapters.sms import sms_signal
+from apps.core.services.delivery_rates.rules.defaults import channel_settings
 
 from .credentials import AwsCredentialsError, resolve_aws_credentials
 from .provider_outcomes import (
@@ -41,6 +42,7 @@ from .provider_outcomes import (
     PROVIDER_OUTCOME_TRANSIENT,
     PROVIDER_OUTCOME_UNCERTAIN,
     classify_aws_send_failure,
+    with_timeout,
 )
 from .sms import cached_origination_number
 from .sms_errors import SmsDeliveryError, SmsRateDeferred
@@ -114,7 +116,7 @@ def _client(sender: SmsSender):
         region_name=sender.region,
         aws_access_key_id=credentials.access_key_id,
         aws_secret_access_key=credentials.secret_access_key,
-        config=NO_PROVIDER_RETRIES,
+        config=with_timeout(NO_PROVIDER_RETRIES, channel_settings(DeliveryChannel.SMS_SEND)["request_timeout_seconds"]),
     )
 
 

@@ -1,7 +1,10 @@
 """Provider answers to rate signals: SES, SMTP (Gmail SMTP and the relay included) and Microsoft Graph."""
 
+import copy
+
 from botocore.exceptions import ClientError, ReadTimeoutError
-from django.test import SimpleTestCase
+from django.conf import settings
+from django.test import SimpleTestCase, override_settings
 
 from apps.core.services.delivery_rates import Reason, Scope, SignalKind
 from apps.core.services.delivery_rates.adapters.graph import graph_signal, token_signal
@@ -92,6 +95,21 @@ class GraphSignalTests(SimpleTestCase):
         for status in (401, 403, 404):
             with self.subTest(status=status):
                 self.assertEqual(graph_signal(status, {}, "ErrorAccessDenied", read=True).kind, SignalKind.NONE)
+
+    def test_a_401_stops_sending_only_for_a_token_issued_for_this_send(self):
+        self.assertEqual(graph_signal(401, {}, "InvalidAuthenticationToken").kind, SignalKind.NONE)
+        fresh = graph_signal(401, {}, "InvalidAuthenticationToken", fresh_token=True)
+        self.assertEqual((fresh.kind, fresh.reason), (SignalKind.BLOCKED, Reason.AUTH))
+        # Reads still answer per request (staff need Microsoft's own refusal each time).
+        self.assertEqual(graph_signal(401, {}, "", read=True, fresh_token=True).kind, SignalKind.NONE)
+
+    def test_retry_after_is_capped_by_the_smaller_of_the_graph_and_controller_caps(self):
+        rates = copy.deepcopy(settings.DELIVERY_RATES)
+        rates["controller"]["retry_after_max_seconds"] = 300
+        with override_settings(DELIVERY_RATES=rates):
+            self.assertEqual(graph_signal(429, {"retry-after": "900"}, "").retry_after, 300.0)
+        with override_settings(GRAPH_MAX_RETRY_AFTER_SECONDS=60):
+            self.assertEqual(graph_signal(429, {"retry-after": "900"}, "").retry_after, 60.0)
 
     def test_other_answers(self):
         self.assertEqual(graph_signal(202, {}, "").kind, SignalKind.OK)

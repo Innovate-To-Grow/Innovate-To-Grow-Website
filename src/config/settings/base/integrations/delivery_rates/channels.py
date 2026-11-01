@@ -116,6 +116,10 @@ SES_SEND = {
     "discovery_interval_seconds": 3_600,
     # ...and when it probes again after "Daily message quota exceeded" (SES drops the message, so it is safe).
     "quota_recheck_seconds": 600,
+    # App default: connect and read timeout of each SendRawEmail call (botocore's own default is 60 s). SES answers
+    # in well under a second, and sign-in codes are sent inside a request, so this stays below
+    # waits.inline_request_budget_seconds.
+    "request_timeout_seconds": 10,
 }
 
 SMTP_SEND = {
@@ -228,6 +232,9 @@ SMS_SEND = {
     "discovery_interval_seconds": 21_600,
     # ...and how often it probes after AWS reports the monthly spend limit reached.
     "spend_probe_seconds": 3_600,
+    # App default: connect and read timeout of each SendTextMessage call (botocore's own default is 60 s); below
+    # waits.inline_request_budget_seconds, as sign-in codes are sent inside a request.
+    "request_timeout_seconds": 10,
 }
 
 CHANNELS = {

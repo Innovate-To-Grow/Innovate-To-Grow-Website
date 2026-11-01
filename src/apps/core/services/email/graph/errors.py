@@ -110,9 +110,15 @@ def token_endpoint_error(response: HttpResponse) -> Exception:
     return with_signal(PermanentEmailDeliveryError(f"Microsoft rejected the Graph credentials{detail}."), signal)
 
 
-def send_mail_error(response: HttpResponse) -> Exception:
-    """The error for a sendMail response other than ``202 Accepted``, with the rate signal of the answer."""
-    signal = graph_signal(response.status, response.headers, innermost_error_code(response.body))
+def send_mail_error(response: HttpResponse, *, fresh_token: bool = False) -> Exception:
+    """The error for a sendMail response other than ``202 Accepted``, with the rate signal of the answer.
+
+    ``fresh_token``: the access token was issued for this send, so a 401 means the grant is refused (an auth stop
+    in the signal), not an expired token. The error is PR #643's either way (transient, the token dropped): a queued
+    message waits for the stop to clear.
+    """
+    code = innermost_error_code(response.body)
+    signal = graph_signal(response.status, response.headers, code, fresh_token=fresh_token)
     return with_signal(_send_mail_error(response), signal)
 
 

@@ -17,8 +17,8 @@ GRAPH = {
     # Pushback on a non-429 status: pause, and the message counts as possibly sent.
     "pause_codes": ("ApplicationThrottled", "ErrorExceededMessageLimit"),
     # Microsoft Entra token endpoint: busy, or too many requests for this app.
+    # Any other token failure (invalid_client, an unknown AADSTS code, ...) stops Graph until the config is saved.
     "token_pause_codes": ("temporarily_unavailable", "AADSTS50196", "AADSTS90055"),
-    "auth_blocked_codes": ("invalid_client",),
     # 507 Insufficient Storage: the sender mailbox is full.
     "mailbox_full_statuses": (507,),
 }

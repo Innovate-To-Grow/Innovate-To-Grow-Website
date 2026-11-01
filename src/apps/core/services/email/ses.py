@@ -5,9 +5,10 @@ from botocore.config import Config
 
 from apps.core.models.base.delivery_rates import DeliveryChannel
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
-from apps.core.services.aws.provider_outcomes import classify_aws_send_failure
+from apps.core.services.aws.provider_outcomes import classify_aws_send_failure, with_timeout
 from apps.core.services.delivery_rates import ses_identity
 from apps.core.services.delivery_rates.adapters.ses import ses_signal
+from apps.core.services.delivery_rates.rules.defaults import channel_settings
 
 from .contracts import DeliveryResult, EmailMessage
 from .exceptions import (
@@ -65,8 +66,9 @@ class SESProvider:
                 "aws_access_key_id": credentials.access_key_id,
                 "aws_secret_access_key": credentials.secret_access_key,
             }
-            if self.retry_config is not None:
-                client_options["config"] = self.retry_config
+            # The caller's retry policy, with the DELIVERY_RATES timeout of each SendRawEmail call.
+            timeout = channel_settings(self.rate_channel)["request_timeout_seconds"]
+            client_options["config"] = with_timeout(self.retry_config, timeout)
             client = boto3.client("ses", **client_options)
             kwargs = {
                 "Source": self.from_email,

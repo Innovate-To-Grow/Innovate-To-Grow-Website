@@ -229,6 +229,18 @@ class DeliveryRatesValidationTests(SimpleTestCase):
         self.assert_refused({"jobs": {"stale_claim_seconds": 30}}, "below jobs.stale_claim_seconds")
         self.assert_refused({"waits": {"inline_seconds": 25}}, "inline_seconds must be below waits.inline_request")
         self.assert_refused({"waits": {"read_seconds": 30}}, "read_seconds must be below waits.inline_request")
+        for channel in ("ses_send", "sms_send"):
+            with self.subTest(channel=channel):
+                self.assert_refused(
+                    channel_override(channel, request_timeout_seconds=25),
+                    f"channels.{channel}.request_timeout_seconds must be below waits.inline_request_budget_seconds",
+                )
+        self.assertEqual(
+            load(channel_override("ses_send", request_timeout_seconds=20))["channels"]["ses_send"][
+                "request_timeout_seconds"
+            ],
+            20,
+        )
 
     def test_controller_and_runtime_rules(self):
         self.assert_refused({"controller": {"floor": 0.6}}, "controller.floor must not be above")

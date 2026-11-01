@@ -76,18 +76,24 @@ def get_access_token(credential: GraphCredential, *, timeout: float | None = Non
     *timeout* defaults to ``GRAPH_REQUEST_TIMEOUT_SECONDS``. Every failure here happens before any mail is
     submitted, so it is always safely classified (never Uncertain).
     """
+    return obtain_access_token(credential, timeout=timeout)[0]
+
+
+def obtain_access_token(credential: GraphCredential, *, timeout: float | None = None) -> tuple[str, bool]:
+    """``get_access_token``, also saying whether the token was just issued (True) or served from the cache: Graph
+    refusing a token issued a moment ago means the grant itself is refused, not that the token expired."""
     key = credential.cache_key()
     with _cache_lock:
         cached = _cache.get(key)
     if cached is not None and cached[1] > time.monotonic():
-        return cached[0]
+        return cached[0], False
     access_token, lifetime = _request_access_token(credential, request_timeout(timeout))
     margin = settings.GRAPH_TOKEN_EXPIRY_MARGIN_SECONDS
     ttl = lifetime - margin if lifetime > 2 * margin else lifetime // 2
     if ttl > 0:
         with _cache_lock:
             _cache[key] = (access_token, time.monotonic() + ttl)
-    return access_token
+    return access_token, True
 
 
 def request_timeout(timeout: float | None = None) -> float:

@@ -85,12 +85,14 @@ class GraphProvider:
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         message_id, payload, content_type = self._encode(message)
-        access_token = auth.get_access_token(self.credential, timeout=self.timeout)
+        access_token, fresh = auth.obtain_access_token(self.credential, timeout=self.timeout)
         if before_provider_call is not None:
             before_provider_call()
-        return self._submit(access_token, payload, content_type, message_id)
+        return self._submit(access_token, payload, content_type, message_id, fresh_token=fresh)
 
-    def _submit(self, access_token: str, payload: bytes, content_type: str, message_id: str) -> DeliveryResult:
+    def _submit(
+        self, access_token: str, payload: bytes, content_type: str, message_id: str, *, fresh_token: bool = False
+    ) -> DeliveryResult:
         """POST the message. Everything after the callback is classified; unexpected errors are Uncertain."""
         try:
             response = self._post(access_token, payload, content_type)
@@ -100,7 +102,7 @@ class GraphProvider:
             if response.status in _TOKEN_REJECTED_STATUSES:
                 # A fresh token also picks up consent or role changes made after this one was issued.
                 auth.forget_access_token(self.credential)
-            raise send_mail_error(response)
+            raise send_mail_error(response, fresh_token=fresh_token)
         except EmailDeliveryError:
             raise
         except Exception as exc:

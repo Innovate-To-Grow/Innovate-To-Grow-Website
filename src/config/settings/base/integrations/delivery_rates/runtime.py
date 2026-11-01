@@ -36,7 +36,11 @@ WAITS = {
     "worker_seconds": 30,
     # ...and a dedicated in-process campaign thread.
     "dedicated_seconds": 900,
-    # Time one request may spend sending inline; it sizes inline batches and bounds the inline and read waits.
+    # Time one request may spend sending inline; it sizes inline batches and bounds the inline and read waits and
+    # each channel's request_timeout_seconds (SES, SMS). Other provider timeouts are failure bounds that may exceed
+    # it: Microsoft Graph's GRAPH_REQUEST_TIMEOUT_SECONDS (30, PR #643), the Gmail API's request_timeout_seconds
+    # (15 per request; a sign-in code without a cached token needs two) and the 30 s Gmail IMAP socket timeout.
+    # They only end a stuck call; the hard limit is the ALB idle timeout (AWS default 60 s, set outside this repo).
     "inline_request_budget_seconds": 25,
 }
 

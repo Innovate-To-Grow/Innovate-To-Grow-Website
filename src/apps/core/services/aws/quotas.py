@@ -14,11 +14,10 @@ import re
 from dataclasses import dataclass, field
 
 import boto3
-from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
 from .credentials import AwsCredentials
-from .provider_outcomes import NO_PROVIDER_RETRIES
+from .provider_outcomes import NO_PROVIDER_RETRIES, with_timeout
 
 _CODE = re.compile(r"[A-Za-z][A-Za-z0-9.]{1,63}")
 TEXT_SPEND_LIMIT = "TEXT_MESSAGE_MONTHLY_SPEND_LIMIT"
@@ -53,13 +52,12 @@ class SmsLimits:
 
 
 def _client(service: str, creds: AwsCredentials, timeout: float):
-    config = NO_PROVIDER_RETRIES.merge(Config(connect_timeout=timeout, read_timeout=timeout))
     return boto3.client(
         service,
         region_name=creds.region,
         aws_access_key_id=creds.access_key_id,
         aws_secret_access_key=creds.secret_access_key,
-        config=config,
+        config=with_timeout(NO_PROVIDER_RETRIES, timeout),
     )
 
 

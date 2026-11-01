@@ -269,6 +269,15 @@ def _check_runtime(config):
         _fail(("lanes", "transactional_reserve"), "must be set")
 
 
+def _check_request_timeouts(config):
+    # A send made inside a request (a sign-in code) must be able to time out within the request's budget.
+    budget = config["waits"]["inline_request_budget_seconds"]
+    for name, spec in config["channels"].items():
+        timeout = spec.get("request_timeout_seconds")
+        if timeout is not None and timeout >= budget:
+            _fail(("channels", name, "request_timeout_seconds"), "must be below waits.inline_request_budget_seconds")
+
+
 def validate_delivery_rates(config):
     """Raise ``ImproperlyConfigured`` unless ``config`` is a complete, consistent ``DELIVERY_RATES``."""
     if not isinstance(config, dict) or set(config) != set(SECTIONS):
@@ -285,6 +294,7 @@ def validate_delivery_rates(config):
         _check_section((section,), config[section], required)
     _check_controller(config["controller"])
     _check_runtime(config)
+    _check_request_timeouts(config)
 
 
 def _refuse_constant(name):

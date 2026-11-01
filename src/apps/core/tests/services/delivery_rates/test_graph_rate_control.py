@@ -118,6 +118,29 @@ class GraphSendTests(GraphTrafficMixin, TestCase):
         self.assertEqual(self.state().breaker_reason, rates.Reason.AUTH)
         self.assertEqual(len(self.fake.token_requests), 1)
 
+    def test_a_401_refreshes_a_cached_token_but_a_401_for_a_fresh_token_stops_sending(self):
+        # Plan §6: a second 401 right after a fresh token means the grant is refused, not that the token expired.
+        provider = make_provider()  # one credential, so the token cache applies across the sends
+        patcher = patch(RESOLVE, side_effect=lambda config, **options: provider)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.script(send=[graph_response(202), graph_response(401), graph_response(401)])
+        self.send()  # the token is now cached
+
+        with self.assertRaises(TransientEmailDeliveryError) as cached:
+            self.send()
+        self.assertEqual(cached.exception.rate_signal.kind, rates.SignalKind.NONE)
+        self.assertEqual(self.state().breaker_state, DeliveryRateState.BreakerState.CLOSED)
+
+        with self.assertRaises(TransientEmailDeliveryError) as fresh:
+            self.send()  # the 401 dropped the cached token, so this one was issued for the send
+        self.assertEqual((fresh.exception.rate_signal.kind, fresh.exception.rate_signal.reason), ("blocked", "auth"))
+        self.assertEqual(self.state().breaker_reason, rates.Reason.AUTH)
+        self.assertEqual(len(self.fake.token_requests), 2)
+        with self.assertRaises(EmailRateDeferred):
+            self.send()  # stopped until the configuration is saved (or the timed probe)
+        self.assertEqual(len(self.fake.send_requests), 3)
+
 
 class GraphReadTests(GraphReaderFixtureMixin, TestCase):
     def setUp(self):
