@@ -143,7 +143,8 @@ channel, for the identity `<region>:<origination>`; the SendTextMessage quota is
 throttle pauses every number of the Region. AWS's answer is matched against `DELIVERY_RATES["signals"]["sms"]`:
 `ThrottlingException` slows the channel down, `ServiceQuotaExceededException` with the reason
 `MONTHLY_SPEND_LIMIT_REACHED_FOR_TEXT` stops all SMS until the hourly probe (or a raised spend limit), and a
-disabled account or a missing origination identity stops it until fixed. An OTP takes its slot before it locks the
+disabled account or a missing origination identity stops it until fixed. A number already at its hourly cap is
+refused (a plain read) before it takes the shared slot. An OTP takes its slot before it locks the
 number or reserves anything, so SMS delivery held back answers `PhoneVerificationBusy` (HTTP 503 with
 `Retry-After`, "SMS delivery is busy right now; please try again in about N seconds.") without spending the
 number's hourly cap or the daily SMS budget. `PhoneVerificationThrottled` (429) stays the per-number cap. A queued

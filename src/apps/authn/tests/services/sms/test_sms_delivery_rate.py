@@ -1,6 +1,7 @@
-"""OTP SMS under the delivery-rate limiter: the slot is taken before the number is locked or anything is reserved,
-so SMS delivery held back raises ``PhoneVerificationBusy`` without spending the hourly cap or the daily budget, and
-a refusal after the admission gives the slot back. The views answer it with 503 and Retry-After."""
+"""OTP SMS under the delivery-rate limiter: a number at its hourly cap is refused before it takes the shared slot; the
+slot is taken before the number is locked or anything is reserved, so SMS delivery held back raises
+``PhoneVerificationBusy`` without spending the hourly cap or the daily budget, and a refusal after the admission gives
+the slot back. The views answer it with 503 and Retry-After."""
 
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
@@ -24,6 +25,8 @@ from apps.core.services.delivery_rates.runtime import context
 PHONE = "+12095550101"
 IDENTITY = "us-west-2:+12065550000"
 LOCK = "apps.authn.services.sms.sns_verify._lock_phone"
+ADMIT = "apps.authn.services.sms.sns_verify._admit_otp"
+PRE_CHECK = "apps.authn.services.sms.sns_verify._refuse_capped_number"
 CLIENT = "apps.core.services.aws.sms_send.boto3.client"
 
 
@@ -84,7 +87,7 @@ class OtpAdmissionTests(TestCase):
         self.assertEqual(state.last_signal, "ok")
         self.assertIsNotNone(state.tat)
 
-    def test_the_per_number_cap_gives_the_slot_back(self):
+    def cap_the_number(self):
         PhoneVerificationChallenge.objects.bulk_create(
             PhoneVerificationChallenge(
                 phone_number=PHONE,
@@ -97,7 +100,22 @@ class OtpAdmissionTests(TestCase):
             for _index in range(MAX_SENDS_PER_HOUR)
         )
 
-        with self.assertRaises(PhoneVerificationThrottled):
+    def test_a_capped_number_is_refused_before_it_takes_the_shared_sms_slot(self):
+        # Requests for capped numbers must not advance the pace genuine codes for other numbers wait for.
+        self.cap_the_number()
+
+        with patch(ADMIT) as admit, self.assertRaises(PhoneVerificationThrottled):
+            start_phone_verification(PHONE)
+
+        admit.assert_not_called()
+        self.assertFalse(DeliveryRateState.objects.filter(channel="sms_send").exists())
+        self.provider.send_text_message.assert_not_called()
+
+    def test_the_cap_reached_after_the_admission_gives_the_slot_back(self):
+        self.cap_the_number()
+
+        # As if another request filled the hour between the plain read and the locked re-check.
+        with patch(PRE_CHECK), self.assertRaises(PhoneVerificationThrottled):
             start_phone_verification(PHONE)
 
         state = DeliveryRateState.objects.get(channel="sms_send", identity=IDENTITY)

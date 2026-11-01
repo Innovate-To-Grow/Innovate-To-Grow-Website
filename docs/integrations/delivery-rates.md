@@ -182,8 +182,10 @@ invitations, replies, test mail, a member's own ticket resend) 10 s, an inbox re
 in-process campaign thread 900 s. Longer than that, the message is **not sent** and the caller is told when to try
 again:
 
-- **Sign-in codes.** "…try again in about N seconds" (HTTP 503 with `Retry-After`). An SMS code takes its slot before
-  it locks the number, so a held-back code spends neither the number's hourly cap nor the daily SMS budget.
+- **Sign-in codes.** "…try again in about N seconds" (HTTP 503 with `Retry-After`). A number already at its hourly
+  cap is refused (429) with a plain read before it takes the shared SMS slot, so capped numbers cannot slow other
+  numbers' codes. Otherwise an SMS code takes its slot before it locks the number, so a held-back code spends neither
+  the number's hourly cap nor the daily SMS budget.
 - **Background jobs** (`BACKGROUND_JOBS_ENABLED`) go back to the queue at their slot without using an attempt
   (`DeferredJobError`). The worker claims by priority (transactional mail 10, other jobs 50, campaign recipients
   100) and leaves a delivery lane's jobs unclaimed while that lane is paced, cooling down or stopped, so other jobs
