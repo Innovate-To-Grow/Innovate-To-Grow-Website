@@ -212,7 +212,8 @@ nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeho
 
 A recipient the delivery-rate limiter holds back is not sent and not failed: a
 queued recipient runs again at its slot without using an attempt, and the
-in-process sender (no background worker) marks the remaining recipients
+in-process sender (no background worker) sends a recipient the provider
+throttled again after the cooldown, and marks the remaining recipients
 **Paused by delivery limits** on a long hold, such as a daily limit or a provider
 stop, and ends the campaign **Partially sent**. The **Resume paused recipients
 (held back by delivery limits)** action on the Email Campaigns and SMS Campaigns

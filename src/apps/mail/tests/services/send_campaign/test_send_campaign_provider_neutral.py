@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+from django.conf import settings
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from apps.core.models import (
@@ -78,6 +79,19 @@ class FakeGraphTransport:
     @property
     def sent(self):
         return [call for call in self.calls if call.host == "graph.microsoft.com"]
+
+
+class ScriptedGraphTransport(FakeGraphTransport):
+    """``FakeGraphTransport`` whose sendMail answers are taken in order, the last one repeating."""
+
+    def __init__(self, *answers):
+        super().__init__(answers[0])
+        self.answers = list(answers)
+
+    def __call__(self, host, path, body, headers, *, timeout):
+        if host == "graph.microsoft.com":
+            self.send_response = self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
+        return super().__call__(host, path, body, headers, timeout=timeout)
 
 
 def posted_mime(call):
@@ -390,16 +404,32 @@ class GraphCampaignRunTests(TestCase):
         for leaked in LEAKS:
             self.assertNotIn(leaked, "\n".join(captured.output))
 
-    def test_throttled_recipients_fail_with_a_retryable_message_and_the_run_continues(self):
+    def test_a_throttled_recipient_is_sent_again_after_the_retry_after_and_never_failed(self):
+        transport = ScriptedGraphTransport(
+            HttpResponse(429, {"retry-after": "30"}, DENIED_BODY.encode()), HttpResponse(202, {}, b"")
+        )
+
+        with self.assertLogs(GRAPH_LOGGER, level="WARNING"), patch(POST, transport):
+            summary = send_campaign(self.campaign, self.sender)
+
+        self.assertEqual(summary, {"total": 3, "sent": 3, "failed": 0})
+        self.assertEqual(len(transport.sent), 4)
+        first, second = transport.sent[:2]
+        self.assertEqual(posted_mime(first)["To"], posted_mime(second)["To"])
+
+    def test_recipients_throttled_every_time_are_paused_not_failed(self):
+        # Each 429 cools Graph down for its Retry-After; the runner waits that out and sends again, until the
+        # throttles in a row reach controller.persistent_throttle_count and the rest is left for "Resume paused".
         transport = FakeGraphTransport(HttpResponse(429, {"retry-after": "30"}, DENIED_BODY.encode()))
 
         with self.assertLogs(GRAPH_LOGGER, level="WARNING"), patch(POST, transport):
             summary = send_campaign(self.campaign, self.sender)
 
-        self.assertEqual(summary, {"total": 3, "sent": 0, "failed": 3})
-        self.assertEqual(len(transport.sent), 3)
-        for log in self.logs_by_recipient().values():
-            self.assertEqual(log.error_message, "Microsoft Graph temporarily rejected the request.")
+        self.assertEqual(summary, {"total": 3, "sent": 0, "failed": 0})
+        self.assertEqual(len(transport.sent), settings.DELIVERY_RATES["controller"]["persistent_throttle_count"])
+        self.assertEqual({log.status for log in self.logs_by_recipient().values()}, {"paused"})
+        self.campaign.refresh_from_db()
+        self.assertEqual(self.campaign.status, "partial")
 
     def test_graph_selected_without_active_graph_credentials_fails_before_anything_is_sent(self):
         MicrosoftGraphProviderConfig.objects.update(is_active=False)

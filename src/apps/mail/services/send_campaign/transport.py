@@ -13,7 +13,7 @@ from apps.core.services.aws.provider_outcomes import (
     PROVIDER_OUTCOME_TRANSIENT,
     PROVIDER_OUTCOME_UNCERTAIN,
 )
-from apps.core.services.delivery_rates import Lane, RateDeferred
+from apps.core.services.delivery_rates import Lane, RateDeferred, not_now
 from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
 
 SES_OUTCOME_SUCCESS = PROVIDER_OUTCOME_SUCCESS
@@ -34,6 +34,9 @@ class SesSendResult:
     retry_after: float | None = None
     # Set when the delivery-rate limiter held the message back (certainly not sent): when to try again.
     deferred_until: datetime | None = None
+    # The provider took nothing but may later (a throttle, a pause, a used-up quota: ``delivery_rates.not_now``);
+    # the limiter holds the next sends back meanwhile, so sending it again later is safe.
+    held_back: bool = False
 
     def __post_init__(self):
         if not self.outcome:
@@ -122,6 +125,7 @@ def _send_via_ses(
             outcome=exc.outcome,
             retry_after=getattr(exc, "retry_after", None),
             deferred_until=exc.until if isinstance(exc, RateDeferred) else None,
+            held_back=not isinstance(exc, RateDeferred) and not_now(exc.rate_signal),
         )
 
 

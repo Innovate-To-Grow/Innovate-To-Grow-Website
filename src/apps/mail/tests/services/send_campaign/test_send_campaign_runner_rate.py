@@ -1,5 +1,6 @@
 """The in-process campaign sender (used while background jobs are off) under the delivery-rate limiter: every
-message goes on the bulk lane and may wait for its slot; a long hold pauses the rest of the campaign."""
+message goes on the bulk lane and may wait for its slot; a recipient the provider throttles is sent again after the
+cooldown, never failed for it; a long hold pauses the rest of the campaign."""
 
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
@@ -8,10 +9,15 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
-from apps.core.services.delivery_rates import Lane, RateDeferred, WaitMode
+from apps.core.services.delivery_rates import Lane, RateDeferred, WaitMode, quota, throttle, uncertain
 from apps.core.services.delivery_rates.runtime import context
 from apps.core.services.email import DeliveryResult
-from apps.core.services.email.exceptions import EmailRateDeferred
+from apps.core.services.email.exceptions import (
+    EmailRateDeferred,
+    TransientEmailDeliveryError,
+    UncertainEmailDeliveryError,
+    with_signal,
+)
 from apps.core.tests.services.delivery_rates.helpers import rates_with
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
@@ -23,6 +29,15 @@ DELIVER = "apps.mail.services.send_campaign.transport.deliver_email"
 def held_back(seconds=3600):
     now = timezone.now()
     return EmailRateDeferred(RateDeferred(now + timedelta(seconds=seconds), "budget:daily_limit", now=now))
+
+
+def throttled():
+    """SES answering "Maximum sending rate exceeded": nothing was sent, and it may be sent later."""
+    return with_signal(TransientEmailDeliveryError("Throttling", retry_after=1), throttle("throttled", retry_after=1))
+
+
+def sent(index=1):
+    return DeliveryResult(provider="ses", message_id=f"id-{index}")
 
 
 class RunnerDeliveryRateTests(TestCase):
@@ -83,3 +98,42 @@ class RunnerDeliveryRateTests(TestCase):
 
         # Once to start, then after the second and the fourth recipient.
         self.assertEqual(loads.call_count, 3)
+
+    def statuses(self):
+        return sorted(RecipientLog.objects.filter(campaign=self.campaign).values_list("status", flat=True))
+
+    def test_a_throttled_recipient_is_sent_again_after_the_cooldown_and_never_failed(self):
+        with patch(DELIVER, side_effect=[throttled(), sent(1), sent(2), sent(3), sent(4)]) as deliver:
+            result = send_campaign(self.campaign, self.sender)
+
+        self.assertEqual(deliver.call_count, 5)
+        self.assertEqual((result["sent"], result["failed"]), (4, 0))
+        self.assertEqual(self.statuses(), ["sent"] * 4)
+
+    def test_a_used_up_quota_the_provider_reports_is_also_sent_again(self):
+        used_up = with_signal(TransientEmailDeliveryError("quota", retry_after=1), quota("daily_quota", seconds=1))
+        with patch(DELIVER, side_effect=[used_up, sent(1), sent(2), sent(3), sent(4)]):
+            result = send_campaign(self.campaign, self.sender)
+
+        self.assertEqual((result["sent"], result["failed"]), (4, 0))
+
+    @override_settings(DELIVERY_RATES=rates_with(controller={"persistent_throttle_count": 3}))
+    def test_a_recipient_throttled_every_time_is_paused_with_the_rest_after_the_throttle_count(self):
+        def always_throttled(message, **kwargs):
+            raise throttled()
+
+        with patch(DELIVER, side_effect=always_throttled) as deliver:
+            send_campaign(self.campaign, self.sender)
+
+        self.assertEqual(deliver.call_count, 3)  # nobody after the held-back recipient was tried
+        self.assertEqual(self.statuses(), ["paused"] * 4)
+        self.campaign.refresh_from_db()
+        self.assertEqual((self.campaign.status, self.campaign.failed_count), ("partial", 0))
+
+    def test_an_unconfirmed_outcome_is_never_sent_again(self):
+        unconfirmed = with_signal(UncertainEmailDeliveryError("lost"), uncertain("unconfirmed"))
+        with patch(DELIVER, side_effect=[unconfirmed, sent(1), sent(2), sent(3)]) as deliver:
+            result = send_campaign(self.campaign, self.sender)
+
+        self.assertEqual(deliver.call_count, 4)
+        self.assertEqual((result["sent"], result["failed"]), (3, 1))

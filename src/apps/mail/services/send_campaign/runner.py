@@ -1,8 +1,9 @@
 """The in-process campaign runner, used while background jobs are off: one thread sends every recipient in turn.
 
 It runs in the dedicated wait mode, so each message waits for its bulk-lane slot (up to ``waits.dedicated_seconds``).
-When the delivery limits hold mail back for longer (a daily budget, a provider stop), the rest of the recipients
-are paused and the campaign ends partial; "Resume paused recipients" sends them later.
+A recipient the provider throttles (or otherwise holds back for now) is sent again once the cooldown ends, never
+failed for it. When the delivery limits hold mail back for longer (a daily budget, a provider stop), the rest of
+the recipients are paused and the campaign ends partial; "Resume paused recipients" sends them later.
 """
 
 import logging
@@ -125,19 +126,21 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
         body_html = personalize(campaign.body, context)
         unsubscribe_url = _unsubscribe_url_for(campaign, recipient)
         wrapped_html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
-        result = _send_with_configured_provider(
-            config=config,
-            ses_client=ses_client,
-            configuration_set=configuration_set,
-            recipient=recipient["email"],
-            subject=subject,
-            wrapped_html=wrapped_html,
-            unsubscribe_url=unsubscribe_url,
-            recipient_log_id=log.pk,
-            delivery_attempt=log.attempts,
-            keep_sent_copy=not carries_login_link(context, subject, body_html),
+        result = _send_when_taken(
+            lambda: _send_with_configured_provider(
+                config=config,
+                ses_client=ses_client,
+                configuration_set=configuration_set,
+                recipient=recipient["email"],
+                subject=subject,
+                wrapped_html=wrapped_html,
+                unsubscribe_url=unsubscribe_url,
+                recipient_log_id=log.pk,
+                delivery_attempt=log.attempts,
+                keep_sent_copy=not carries_login_link(context, subject, body_html),
+            )
         )
-        if result.deferred_until is not None:
+        if result is None:
             return False
         _record_send_result(campaign, log, result)
     except Exception as exc:
@@ -153,6 +156,24 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
         )
         campaign.failed_count += 1
     return True
+
+
+def _send_when_taken(send) -> SesSendResult | None:
+    """Send one message (``send()``); None when the delivery limits hold it back longer than this thread may wait.
+
+    A provider answer that took nothing but may later (``SesSendResult.held_back``: a throttle, a pause, a used-up
+    quota) sends it again: the next admission waits out the cooldown that answer set. Throttles in a row open the
+    channel's breaker after ``controller.persistent_throttle_count``, so this stops after as many tries and leaves
+    the recipient for "Resume paused recipients".
+    """
+    for _attempt in range(section("controller")["persistent_throttle_count"]):
+        result = send()
+        if result.deferred_until is not None:
+            return None
+        if not result.held_back:
+            return result
+        logger.info("The email provider held back a campaign message; sending it again after the cooldown.")
+    return None
 
 
 def _send_with_configured_provider(

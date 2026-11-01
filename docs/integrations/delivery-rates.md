@@ -190,8 +190,10 @@ again:
   keep running.
 - **In-process campaigns** (no worker) wait for each slot. On a longer hold the remaining recipients become **Paused
   by delivery limits** and the campaign ends **Partially sent**. **Resume paused recipients** on the Email Campaigns
-  or SMS Campaigns list sends exactly those later (through the queue when jobs are enabled). A throttled SMS
-  recipient is retried after the cooldown, at most `persistent_throttle_count` times.
+  or SMS Campaigns list sends exactly those later (through the queue when jobs are enabled). A recipient the
+  provider throttles, or otherwise holds back for now (a pause, a used-up quota), is sent again after the cooldown,
+  email and SMS alike, at most `persistent_throttle_count` times; after that it and the rest are paused, never failed
+  for it. An unconfirmed outcome is never sent again (it may have been delivered).
 - **Bulk actions in one request** (Send All Tickets, the multi-select ticket resend, the invitation bulk resend) are
   refused above what one request can send in `waits.inline_request_budget_seconds` (25 s) at the current rate.
 - **Inbox reads.** While Gmail IMAP or Graph reads are held back, the inbox list shows the last list read with a
