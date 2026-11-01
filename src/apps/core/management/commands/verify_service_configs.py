@@ -16,6 +16,7 @@ from apps.authn.services.send_verification.exceptions import SendPaused, SendVer
 from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
+    GmailApiProviderConfig,
     GoogleCredentialConfig,
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
@@ -66,7 +67,9 @@ class Command(BaseCommand):
             smtp = SMTPProviderConfig.load()
             smtp_ok = bool(smtp.pk) and smtp.is_configured
             graph_ok = self._check_graph(email, failures, warnings)
-            self._check_email(email, aws_ok=aws_ok, smtp_ok=smtp_ok, graph_ok=graph_ok, failures=failures)
+            gmail_ok = self._check_gmail(email, failures, warnings)
+            providers_ok = {"ses": aws_ok, "smtp": smtp_ok, "graph": graph_ok, "gmail": gmail_ok}
+            self._check_email(email, providers_ok=providers_ok, failures=failures)
             smtp_required = email.provider == "smtp"
             self._report("SMTPProviderConfig", smtp, smtp_ok, required=smtp_required)
             if not smtp_ok:
@@ -132,9 +135,28 @@ class Command(BaseCommand):
                 f"The Microsoft Graph certificate expires on {expires_at} ({status.days_left} days); rotate it."
             )
 
-    def _check_email(self, email, *, aws_ok: bool, smtp_ok: bool, graph_ok: bool, failures: list[str]) -> None:
+    def _check_gmail(self, email, failures: list[str], warnings: list[str]) -> bool:
+        """Report the Gmail API only when it is selected or configured. While it is selected, a key without a
+        passed access check (after a rotation, say) is a failure: sends work, but the evidence is missing."""
+        gmail = GmailApiProviderConfig.load()
+        gmail_ok = gmail.sending_ready(email.from_email)
+        required = email.provider == "gmail"
+        if required or gmail.is_configured:
+            self._report("GmailApiProviderConfig", gmail, gmail_ok, required=required)
+        if not (gmail.pk and gmail.is_active):
+            return gmail_ok
+        problems = failures if required else warnings
+        if not gmail.subjects.exists():
+            problems.append("GmailApiProviderConfig has an empty allow-list; the Gmail API refuses every account.")
+        elif not gmail.allows(email.from_email):
+            problems.append("The From address is not on the Gmail API account allow-list.")
+        if gmail.key_configured and gmail.activation_problem(email.from_email):
+            problems.append(f"Gmail API: {gmail.activation_problem(email.from_email)}")
+        return gmail_ok
+
+    def _check_email(self, email, *, providers_ok: dict, failures: list[str]) -> None:
         sender_ok = self._valid_email(email.from_email)
-        provider_ok = {"ses": aws_ok, "smtp": smtp_ok, "graph": graph_ok}.get(email.provider, False)
+        provider_ok = providers_ok.get(email.provider, False)
         email_ok = bool(email.pk) and email.is_active and sender_ok and provider_ok
         self._report("EmailServiceConfig", email, email_ok, required=True)
         if email_ok:
@@ -147,6 +169,8 @@ class Command(BaseCommand):
             failures.append(
                 "EmailServiceConfig selects Microsoft Graph, but MicrosoftGraphProviderConfig is not configured."
             )
+        elif email.provider == "gmail":
+            failures.append("EmailServiceConfig selects the Gmail API, but GmailApiProviderConfig is not ready.")
         elif email.provider == "ses":
             failures.append(
                 "EmailServiceConfig selects SES, but its active sender or AWS Credentials are not configured."
