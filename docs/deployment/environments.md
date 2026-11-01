@@ -119,7 +119,18 @@ The Gmail API provider's service account, key facts and account allow-list live 
 |----------|---------|-----------------|
 | `DELIVERY_RATES_OVERRIDES` | JSON object deep-merged into the `DELIVERY_RATES` setting, e.g. `{"channels": {"sms_send": {"provider_limit": 20}}}` after an AWS quota increase | No (empty keeps the defaults) |
 
-`DELIVERY_RATES` (`config/settings/base/integrations/delivery_rates/`) holds every delivery channel's seeds: Microsoft Graph send and read, Amazon SES, SMTP, Gmail IMAP, the Gmail API and AWS SMS. Each one has a Smart rate switch (on by default), a manual rate and the provider's documented limits, each with its source. It also holds the Smart rate controller, the send waits, the campaign lane share and transactional reserve, the usage buckets, provider discovery, background-job retries and the provider error patterns. Each channel's `DeliveryRatePolicy` row is seeded from it. A documented limit there is also a ceiling: mail staff can lower it on the policy, never raise it, so a provider that grants more is reflected here. An override can only replace settings that exist. The merged result is validated when settings load, and an unknown key, a fraction outside (0, 1], a count below 1, a worker wait not below the 600 s stale-claim recovery, or an inline wait not below the inline request budget raises `ImproperlyConfigured`, which stops every process before it starts.
+`DELIVERY_RATES` (`config/settings/base/integrations/delivery_rates/`) holds every delivery channel's seeds: Microsoft Graph send and read, Amazon SES, SMTP, Gmail IMAP, the Gmail API and AWS SMS. Each one has a Smart rate switch (on by default), a manual rate and the provider's documented limits, each with its source. Each channel's `DeliveryRatePolicy` row is seeded from it. A documented limit there is also a ceiling: mail staff can lower it on the policy, never raise it, so a provider that grants more (an AWS quota increase, a larger Google project quota) is reflected here. An override can only replace settings that exist (new SMTP host profiles may be added). The merged result is validated when settings load: an unknown key, a share or count out of range, a manual rate above its provider limit, an hourly or external limit above the daily one, a worker wait not below the stale-claim recovery, or an inline or read wait not below the inline request budget raises `ImproperlyConfigured`, which stops every process before it starts.
+
+| Section | Holds (defaults) |
+|---------|------------------|
+| `channels.<channel>` | `smart_enabled`, `manual_rate`, `provider_limit`, `fallback_rate`, `headroom`, `burst`, `recovery_interval_seconds`, `backoff_initial_seconds` / `backoff_max_seconds`; sending channels also `daily_limit`, `budget_headroom`, `transactional_reserve`; plus per-channel keys (Graph hourly limits and `limits_confirmed`, the Gmail API's message and external limits, SMTP `host_profiles`, SMS `parts_limit`, the SES and SMS discovery intervals). Values and sources: [Delivery rates](../integrations/delivery-rates.md#seeds-by-channel) |
+| `controller` | Smart rate: `start_factor` 1.0 (0.5 without a known limit), `decrease_factor` 0.5, `recovery_step` 0.10, `floor` 0.25, `backoff_jitter` 0.20, `retry_after_max_seconds` 3600, `persistent_throttle_count` 8, `breaker_probe_seconds` 900 doubling to `breaker_probe_max_seconds` 21600 |
+| `waits` | Longest wait for a slot: `inline_seconds` 10 (a request), `read_seconds` 5 (an inbox read), `worker_seconds` 30, `dedicated_seconds` 900 (an in-process campaign); `inline_request_budget_seconds` 25 |
+| `lanes` | `bulk_share` 0.8 (campaigns' share of the rate), `transactional_reserve` 0.10 (the share of each daily limit campaigns leave) |
+| `usage` | `bucket_seconds` 300, `retention_seconds` 172800, `idle_state_seconds` 2592000 |
+| `discovery` | `timeout_seconds` 5, `min_refresh_after_throttle_seconds` 60 |
+| `jobs` | `retry_base_seconds` 15, `retry_max_seconds` 3600, `default_max_attempts` 5, `stale_claim_seconds` 600 (also `run_background_worker --stale-minutes`), `defer_jitter_seconds` 1, `gate_cache_seconds` 1, `runner_refresh_recipients` 10 |
+| `signals.<adapter>` | The provider error codes, statuses and texts each adapter matches (graph, ses, smtp, imap, gmail_api, sms) |
 
 ### Cache
 
@@ -301,11 +312,13 @@ These integrations read credentials from Django admin at runtime (Site Settings,
 | Model | Purpose |
 |-------|---------|
 | `AWSCredentialConfig` | Secrets Manager ARN + region + SMS origination number + OTP template |
-| `EmailServiceConfig` | Sender identity, campaign rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph); there is no fallback between providers |
+| `EmailServiceConfig` | Sender identity and the selected email provider (AWS SES, SMTP, Microsoft Graph or the Gmail API); there is no fallback between providers. Its old campaign send rate (`max_send_rate`) is hidden and no longer used |
 | `SMTPProviderConfig` | SMTP host, port, TLS/SSL, optional username and password |
 | `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, optional sender mailbox, mailbox scope, access-check deny mailbox, InfoSec exception reference |
 | `MicrosoftGraphCertificate` | Installed Graph certificates (current, previous for rollback, removed): public data, thumbprints, validity, and the pinned credential-store version of the private key |
 | `MicrosoftGraphAccessCheck` | Recorded Graph access checks (probe results, token roles, verdict): the evidence the production go-live gate reads |
+| `GmailApiProviderConfig`, `GmailApiSubject` | Gmail API key facts and the pinned credential-store version of the service-account key (never the key), the account allow-list and its access-check evidence; superusers only |
+| `DeliveryRatePolicy` | Per delivery channel (Mail → Delivery Rates): the Smart rate switch, the manual rate and the provider limits, seeded from `DELIVERY_RATES`; no credentials |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
 
 Before removing legacy env vars from a deployed environment, run `python manage.py verify_service_configs --strict` against the prod DB to confirm active rows exist. See [CMS & Admin → Operations](../cms-admin/operations.md#service-configuration).

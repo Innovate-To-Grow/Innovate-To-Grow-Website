@@ -128,7 +128,7 @@ does not send a message; use the test action to check delivery explicitly.
 | `audience_type` | Target audience selector |
 | `member_email_scope` | **Send to**: each member's primary contact email only, or every contact email (member-based audiences) |
 | `include_unsubscribe_header` | **Include one-click unsubscribe** (default on): the footer unsubscribe link and the RFC 8058 `List-Unsubscribe` headers |
-| `status` | `draft`, `sending`, `sent`, `failed` |
+| `status` | `draft`, `queued`, `sending`, `partial` (Partially sent: some recipients failed or are paused), `sent`, `failed` |
 | `total_recipients` | Calculated recipient count |
 | `sent_count` | Successfully sent count |
 
@@ -210,6 +210,16 @@ nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeho
    recipient
 5. Aggregate campaign state/counts from the recipient logs
 
+A recipient the delivery-rate limiter holds back is not sent and not failed: a
+queued recipient runs again at its slot without using an attempt, and the
+in-process sender (no background worker) marks the remaining recipients
+**Paused by delivery limits** on a long hold, such as a daily limit or a provider
+stop, and ends the campaign **Partially sent**. The **Resume paused recipients
+(held back by delivery limits)** action on the Email Campaigns and SMS Campaigns
+lists sends exactly those later, through the queue when background jobs are
+enabled; it leaves a campaign that is still sending or queued alone. See
+[Delivery rates](../integrations/delivery-rates.md#waiting-deferral-and-the-background-worker).
+
 Provider calls whose outcome cannot be determined are marked `uncertain` and
 are never resent automatically. A verified SES event for the same send attempt
 resolves the recipient and its background job together, clearing the uncertainty
@@ -254,6 +264,12 @@ Notification Delivery first, the others under **Not in use** but still editable)
 Every save and button writes an admin history line such as `sms_send: Smart rate on→off; manual 1→0.5`.
 Notification Delivery, the Delivery Dashboard and the campaign send confirmation show the same status line.
 
+The manual rate is the total for the channel, sign-in codes and tickets included, and campaigns get at most 80 % of
+it; the old campaign send rate paced only queued mail. The SES card's **Provider rate limit** starts at that old
+campaign send rate: once the card shows the limit AWS reports, clear the field so Smart rate can use AWS's figure.
+How the rate, the daily limits and the stops are worked out, every seed with its source, and what to do when a
+provider stops sending: [Delivery rates](../integrations/delivery-rates.md).
+
 ### Login link tokens
 
 `LoginLinkToken` (`src/apps/mail/models/login_link.py`) is the single mechanism behind emailed one-click login links — both campaign `{{login_link}}` links and the login button in event ticket confirmation emails. Clicking a link authenticates the user via `POST /mail/login-link/` (legacy alias: `/mail/magic-login/`) and redirects to the configured destination (campaign `login_redirect_path`, or the per-token path — `/event-registration?event=<event-slug>` for ticket links).
@@ -278,7 +294,7 @@ The campaign admin includes a Gmail import feature (`src/apps/mail/services/gmai
 |-------|---------|
 | `campaign` | FK to EmailCampaign |
 | `email` | Recipient email address |
-| `status` | Delivery status |
+| `status` | Delivery status: pending, processing, retry scheduled, paused by delivery limits, sent, delivered, bounced, complained, rejected, failed, uncertain delivery |
 | `sent_at` | Timestamp |
 | `error` | Error message if failed |
 
@@ -288,6 +304,8 @@ Viewable as inline records in the campaign admin.
 
 - [Django Admin](django-admin.md) — Admin interface and customization
 - [API: Auth & Mail](../api/auth-and-mail.md) — Auth and mail API endpoints
-- [Architecture: Integrations](../architecture/integrations.md) — AWS SES, SMTP, Microsoft Graph, and AWS SNS configuration
+- [Architecture: Integrations](../architecture/integrations.md) — AWS SES, SMTP, Microsoft Graph, the Gmail API, and AWS SMS configuration
 - [Microsoft Graph email](../integrations/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
+- [Gmail API email](../integrations/gmail-api-email.md) — service account, domain-wide delegation, key install, the access check and Sent copies for the Gmail API provider
+- [Delivery rates](../integrations/delivery-rates.md) — Smart rate, manual rate, budgets, stops and Resume for every delivery channel
 - [Operations](operations.md) — Operational tasks

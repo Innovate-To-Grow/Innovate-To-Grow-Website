@@ -174,6 +174,8 @@ Rollout order:
 
 Image rollback: code from before the Graph provider does not know the `graph`
 provider value. Switch email to AWS SES before deploying such an image.
+Reversing core migration `0034_microsoft_graph_provider` makes that switch
+itself.
 
 ### Gmail API service-account key
 
@@ -190,8 +192,44 @@ with domain-wide delegation it can send as any user in the Workspace domain, so
 it needs InfoSec sign-off before go-live. Deploy the identity stack before the
 first install; until the secret exists an install fails and changes nothing.
 Runbook: [Gmail API email](../integrations/gmail-api-email.md).
-Reversing core migration `0034_microsoft_graph_provider` makes that switch
-itself.
+
+Image rollback: code from before the Gmail API provider does not know the
+`gmail` provider value. Switch email to AWS SES before deploying such an image.
+
+### Delivery rates release
+
+The delivery-rate limiter ([Delivery rates](../integrations/delivery-rates.md))
+paces every email, SMS and inbox session. Before or with the release:
+
+1. **IAM reads for Smart rate.** Grant the shared application IAM user (the
+   secret behind `AWSCredentialConfig.credentials_secret_arn`, not `ecsTaskRole`)
+   `ses:GetAccount`, `sms-voice:DescribeSenderIds` and
+   `sms-voice:DescribeSpendLimits` (it already needs
+   `sms-voice:DescribePhoneNumbers`). That policy is outside this repository.
+   Until `ses:GetAccount` is granted, Smart SES runs on the limit migration
+   `core.0036` copied from the old campaign send rate. That copy is an operator
+   limit: once the SES card shows the limit AWS reports, clear **Provider rate
+   limit** under Advanced, or the smaller old value keeps applying.
+2. **Background worker.** Set `BACKGROUND_JOBS_ENABLED` to `true` (above).
+   Without it there is no deferral, priority or lane gating: campaigns are sent
+   by a web process and pause on a long hold, and old usage buckets are never
+   purged.
+3. **Deploy outside campaign sends.** Until every task runs the new image, old
+   tasks pace with the `DeliveryRateLimit` table and new ones with the new
+   limiter, independently, so their combined rate can double.
+4. **Migrations.** `core.0036_delivery_rate_control` (policy, state and usage
+   tables, seeded from settings and the active email and Graph configs;
+   `BackgroundJob.priority` and its claim index), `core.0037_retire_old_send_rates`
+   (drops `MicrosoftGraphProviderConfig.messages_per_minute`; hides
+   `max_send_rate`), `core.0038_gmail_api_provider` and
+   `mail.0020_paused_delivery_status`. 0037 removes a column the Graph code of
+   PR #643 alone reads, so ship both together; a task still running that code
+   fails on Graph pages and sends until it is replaced.
+5. **Image rollback.** ECS rollback never reverses DDL. An image from before
+   this release reads `messages_per_minute`: reverse 0037 (it re-adds the column
+   with its old default) and switch email off the Gmail API before deploying it.
+   `max_send_rate` and `DeliveryRateLimit` stay for one release so this works;
+   a follow-up release drops them.
 
 ### GitHub feature prerequisites
 

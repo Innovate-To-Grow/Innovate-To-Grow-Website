@@ -131,7 +131,8 @@ app. Apps plug in instead:
 
 - **Background jobs:** each app's `AppConfig.ready()` calls
   `apps.core.services.background_jobs.register_job_kind(...)` with dotted handler paths
-  (`authn`, `cms`, `event`, `mail`).
+  (`authn`, `cms`, `event`, `mail`); a delivery job also names its delivery family and lane
+  (`family=`, `lane=`), so the worker can skip a lane the delivery-rate limiter holds back.
 - **CSP frame hosts:** `core`'s CSP middleware reads the provider callables listed in the
   `CSP_FRAME_HOST_PROVIDERS` setting (`cms` supplies the embed-host allowlist).
 - **Project-level wiring:** `src/config/` (URLs, settings) and the operational management commands in

@@ -844,7 +844,7 @@ Microsoft's defaults for one sender mailbox and app, as published on Microsoft L
   For Graph, a `429` comes from the limits per app and mailbox: at most four requests at a time and 10,000
   per 10 minutes. Every request counts: inline sends from each web process (login codes, invitations,
   replies, ticket resends), the worker, and the admin inbox's list and message reads. The site paces
-  paces every send and mailbox read, but does not coordinate the four-request limit.
+  every send and mailbox read, but does not coordinate the four-request limit.
 
 All app email shares one mailbox, so a campaign draws on the same allowance as login codes, tickets,
 invitations, and test emails. Login-code emails are capped per destination but not in total (see
@@ -860,7 +860,8 @@ Every email the site sends through Graph, and every admin inbox read, goes throu
 (`apps.core.services.delivery_rates`): one schedule per sender mailbox, shared by every web process, worker
 and campaign thread. Its settings are the **Email · Microsoft Graph** and **Inbox · Microsoft Graph**
 delivery-rate policies (Mail → Delivery Rates), seeded from `DELIVERY_RATES` (see
-[Environments](../deployment/environments.md#delivery-rates)).
+[Environments](../deployment/environments.md#delivery-rates)). How Smart rate, the manual rate, the budgets and
+the stops work for every channel: [Delivery rates](delivery-rates.md).
 
 - **Rate.** Smart rate is on by default: 80 % of Exchange's 30 messages per minute, that is 24 per minute,
   slowing down when Graph throttles and speeding up again step by step. With Smart rate off the manual rate
@@ -891,6 +892,11 @@ delivery-rate policies (Mail → Delivery Rates), seeded from `DELIVERY_RATES` (
 - **Bulk ticket actions.** Sending ticket emails from one request (**Send All Tickets**, and the
   multi-select **Resend ticket email** action) and resending invitations in bulk are refused above what one
   request sends at the current rate in 25 seconds (13 at the default Graph rate). Select fewer.
+- **[CONFIRM LIVE]** Not observed against the tenant: the format of `Retry-After` on Outlook `429`s (both forms
+  are parsed); whether going over a sending limit returns an error or a `202` followed by a non-delivery report
+  (only an error slows the limiter); the outbound spam policy that applies to `i2g@ucmerced.edu` (tick **Tenant
+  limits confirmed** on the Graph card, and adjust the hourly limits, only once Cloud Systems has stated it); and
+  whether staff also send from the mailbox in Outlook, which the 0.8 headroom assumes.
 
 ## Error reference
 
