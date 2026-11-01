@@ -13,6 +13,9 @@ class CoreConfig(AppConfig):
 
         from . import checks  # noqa: F401  # registers the system checks
         from .admin.legacy_view import get_legacy_view_admin_urls
+        from .services.delivery_rates import receivers as delivery_rate_receivers
+
+        delivery_rate_receivers.connect()
 
         if getattr(admin.AdminSite, "_core_legacy_view_urls_patched", False):
             return
