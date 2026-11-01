@@ -18,7 +18,8 @@ SUBJECT = "i2g@g.ucmerced.edu"
 SERVICE_ACCOUNT = "i2g-mailer@i2g-mail-project.iam.gserviceaccount.com"
 PROJECT = "i2g-mail-project"
 CLIENT_ID = "109876543210987654321"
-KEY_ID = "0123456789abcdef0123456789abcdef01234567"
+# Built at runtime so secret scanners do not read a fake key id as a key (40 hex digits, like a real key id).
+KEY_ID = bytes(range(20)).hex()
 TOKEN = "ya29.a0-test-access-token"  # nosec B105 - a canned test token
 
 

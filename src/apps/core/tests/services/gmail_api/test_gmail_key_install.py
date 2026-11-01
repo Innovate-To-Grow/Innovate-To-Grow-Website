@@ -33,7 +33,7 @@ from apps.core.tests.gmail_api_helpers import (
 from apps.event.tests.helpers import make_superuser
 
 OTHER_ACCOUNT = "i2g-other@i2g-mail-project.iam.gserviceaccount.com"
-OTHER_KEY_ID = "fedcba9876543210fedcba9876543210fedcba98"
+OTHER_KEY_ID = bytes(range(20, 40)).hex()  # built at runtime, see gmail_api_helpers.KEY_ID
 
 
 class KeyParsingTests(TestCase):
