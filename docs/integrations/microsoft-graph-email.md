@@ -662,8 +662,9 @@ configured.
   Inbox instead, and opening or replying to Sent mail answers `403`. A Graph message ID is unique in the
   whole mailbox rather than per folder, so any message whose sender is the sending mailbox or the
   **From Email** counts as Sent mail too, whichever folder the link names (a reply quotes the original, so
-  it is refused like opening it). If the inbox backend cannot be resolved, Sent mail stays hidden. The
-  Gmail IMAP inbox is unchanged.
+  it is refused like opening it). In the Inbox list such a message keeps its row, sender and date, but shows
+  `(Sent from the site's own address: shown to superusers only)` instead of its subject and opening text. If
+  the inbox backend cannot be resolved, Sent mail stays hidden. The Gmail IMAP inbox is unchanged.
 - **AI scam review (Amazon Bedrock).** Opening or previewing an Inbox message whose rule score falls in the
   medium band sends, for a second opinion, the sender's name and address, Reply-To, subject,
   `Authentication-Results` and the first 4,000 characters of the body (the text part, else the HTML) to
@@ -677,10 +678,11 @@ configured.
 - **No AI review of Sent mail.** Sent mail, by folder or by sender as above, keeps the rule score only and is
   never sent to Bedrock: the site wrote it, and it can hold live codes (a password-reset code scores in the
   medium band because of the word "password").
-- **Replies.** To and Cc must be plain addresses (`name@example.com`); a quoted local part, a display name,
-  a comment or an HTML metacharacter is refused with `Use plain email addresses such as name@example.com in
-  To and Cc.` before anything is sent, because the To address is copied from the original sender's From
-  header. The confirmation is shown as text, never as HTML.
+- **Replies.** To and Cc must be plain addresses (`name@example.com`, `o'brien@example.com`); a quoted local
+  part, a display name (`Name <addr>`), a comment, an address literal, a non-ASCII domain or a line break is
+  refused with `Use plain email addresses such as name@example.com in To and Cc.` before anything is sent,
+  because the To address is copied from the original sender's From header. This applies with every inbox
+  backend and provider. The pages escape addresses, and the confirmation is shown as text, never as HTML.
 - The site only reads: opening a message does not mark it read in Outlook, and nothing is moved or deleted
   (see [Only five kinds of request](#how-it-behaves)). Replies are sent through the email provider (Graph
   `sendMail`, MIME, with a Sent Items copy).

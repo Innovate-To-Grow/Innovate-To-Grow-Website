@@ -51,7 +51,8 @@ def list_messages(reader: GraphMailboxReader, *, folder: str, limit: int) -> lis
         messages = reader.list_messages(folder, limit)
     except GraphReadError as exc:
         raise InboxError(str(exc)) from exc
-    return [_summary(message) for message in messages]
+    own_addresses = _own_addresses(reader)
+    return [_summary(message, own_addresses) for message in messages]
 
 
 def fetch_message(reader: GraphMailboxReader, uid: str) -> dict[str, Any]:
@@ -62,24 +63,30 @@ def fetch_message(reader: GraphMailboxReader, uid: str) -> dict[str, Any]:
     except GraphReadError as exc:
         raise InboxError(str(exc)) from exc
     detail = _detail(uid, email.message_from_bytes(raw, policy=email.policy.default))
-    sender = detail["from_email"].strip().lower()
-    own_addresses = {reader.mailbox.lower(), (EmailServiceConfig.load().from_email or "").strip().lower()}
-    detail["from_own_mailbox"] = bool(sender) and sender in own_addresses
+    detail["from_own_mailbox"] = detail["from_email"].strip().lower() in _own_addresses(reader)
     return detail
 
 
-def _summary(message: dict) -> dict[str, Any]:
+def _own_addresses(reader: GraphMailboxReader) -> frozenset[str]:
+    """The site's own addresses: the mailbox read and the configured From address."""
+    addresses = (reader.mailbox, EmailServiceConfig.load().from_email)
+    return frozenset(str(address or "").strip().lower() for address in addresses) - {""}
+
+
+def _summary(message: dict, own_addresses: frozenset[str] = frozenset()) -> dict[str, Any]:
     sender = (message.get("from") or {}).get("emailAddress") or {}
     snippet = " ".join(str(message.get("bodyPreview") or "").split())
+    from_email = str(sender.get("address") or "")
     return {
         "uid": message["id"],
         "subject": str(message.get("subject") or "").strip() or "(No subject)",
         "from_name": str(sender.get("name") or ""),
-        "from_email": str(sender.get("address") or ""),
+        "from_email": from_email,
         "to": [_recipient(item) for item in message.get("toRecipients") or [] if isinstance(item, dict)],
         "date": _format_iso(message.get("receivedDateTime")),
         "snippet": snippet[:197].rstrip() + "..." if len(snippet) > 200 else snippet,
         "is_seen": bool(message.get("isRead")),
+        "from_own_mailbox": from_email.strip().lower() in own_addresses,
     }
 
 

@@ -2,8 +2,9 @@
 
 These are plain forms on their own admin pages, never part of the config's change form, so the confirm-on-save
 step never stashes a private key in the session or cache. Nothing an admin enters as a key or password is rendered
-back: the key box is write-only, and after an error the certificate box shows only the canonical PEM of a
-certificate that loaded, never the submitted text (which could hold a key pasted into the wrong box).
+back: the key box is write-only, after an error the certificate box shows only the canonical PEM of a
+certificate that loaded, and the thumbprint box only a well-formed thumbprint, never the submitted text (which
+could hold a key pasted into the wrong box).
 """
 
 import re
@@ -54,6 +55,19 @@ class WriteOnlyTextarea(UnfoldAdminTextareaWidget):
 
     def format_value(self, value):
         return None
+
+
+def normalize_thumbprint(value) -> str:
+    """Upper-case hex without the colons and spaces Entra, OpenSSL or Keychain may show."""
+    return "".join(str(value or "").replace(":", "").split()).upper()
+
+
+class ThumbprintInput(UnfoldAdminTextInputWidget):
+    """Renders a submitted value back only as a well-formed SHA-1 thumbprint, so nothing else typed here is echoed."""
+
+    def format_value(self, value):
+        thumbprint = normalize_thumbprint(value)
+        return thumbprint if _THUMBPRINT_RE.fullmatch(thumbprint) else None
 
 
 class CertificateTextarea(UnfoldAdminTextareaWidget):
@@ -117,7 +131,7 @@ class InstallCertificateForm(forms.Form):
         label="Expected SHA-1 thumbprint",
         help_text="Optional: the thumbprint OIT confirmed, or Entra lists under Certificates & secrets. "
         "The install stops if the certificate's thumbprint differs.",
-        widget=UnfoldAdminTextInputWidget(attrs={"autocomplete": "off", "spellcheck": "false"}),
+        widget=ThumbprintInput(attrs={"autocomplete": "off", "spellcheck": "false"}),
     )
 
     def __init__(self, *args, **kwargs):
@@ -125,7 +139,7 @@ class InstallCertificateForm(forms.Form):
         self.parsed = None
 
     def clean_expected_sha1(self):
-        value = "".join(self.cleaned_data["expected_sha1"].replace(":", "").split()).upper()
+        value = normalize_thumbprint(self.cleaned_data["expected_sha1"])
         if value and not _THUMBPRINT_RE.fullmatch(value):
             raise forms.ValidationError(THUMBPRINT_FORMAT)
         return value

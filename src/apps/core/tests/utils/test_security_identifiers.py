@@ -177,12 +177,14 @@ class IsPlainAddressTests(SimpleTestCase):
             "ada@example.com",
             "First.Last+tag@mail.example.co.uk",
             "a_b-c=d@example.org",
+            "o'brien@example.com",
+            "r&d@example.com",
             "x@" + LONGEST_NAME,
         ):
             with self.subTest(value=value):
                 self.assertTrue(is_plain_address(value))
 
-    def test_rejects_quoted_names_comments_literals_and_markup(self):
+    def test_rejects_quoted_names_comments_literals_and_markup_characters(self):
         values = [
             "",
             None,
@@ -197,8 +199,8 @@ class IsPlainAddressTests(SimpleTestCase):
             "ada lovelace@example.com",
             "ada..lovelace@example.com",
             ".ada@example.com",
-            "o'brien@example.com",
-            "a&b@example.com",
+            "ada.@example.com",
+            "<script>@example.com",
             "ada@[192.0.2.1]",
             "ada@localhost",
             "ada@example.com\n",

@@ -66,14 +66,13 @@ class ReplyAddressTests(TestCase):
             error = send_reply(to_email=to_email, subject="Re: Question", reply_body="Thanks", cc_email=cc_email)
         return error, deliver
 
-    def test_quoted_local_parts_display_names_and_markup_are_refused_before_sending(self):
+    def test_quoted_local_parts_display_names_and_literals_are_refused_before_sending(self):
         refused = [
             f'"jane {PAYLOAD}"@evil.example',
             '"jane"@evil.example',
             "Jane <jane@example.com>",
             "jane@example.com (Jane)",
-            "o'brien@example.com",
-            "a&b@example.com",
+            "<jane@example.com>",
             "jane@[192.0.2.1]",
             "jane@localhost",
             "jane@example.com\r\nBcc: evil@example.com",
@@ -91,6 +90,14 @@ class ReplyAddressTests(TestCase):
 
         self.assertEqual(error, REPLY_INVALID_ADDRESS_MESSAGE)
         deliver.assert_not_called()
+
+    def test_apostrophes_and_ampersands_in_the_local_part_are_sent(self):
+        # Valid in a dot-atom (o'brien@...); the reply pages escape addresses and the banner uses textContent.
+        error, deliver = self.reply("o'brien@example.com", cc_email="r&d@example.org")
+
+        self.assertEqual(error, "")
+        message = deliver.call_args.args[0]
+        self.assertEqual((message.to, message.cc), (("o'brien@example.com",), ("r&d@example.org",)))
 
     def test_plain_addresses_are_sent(self):
         error, deliver = self.reply("first.last+tag@mail.example.com", cc_email="ops@example.org, a_b-c@example.co.uk")

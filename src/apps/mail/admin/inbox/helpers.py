@@ -42,6 +42,17 @@ def sent_mail_denied(request, folder: str, msg: dict | None = None) -> bool:
     return is_sent_mail and sent_mail_restricted(request.user)
 
 
+OWN_MAIL_SUBJECT = "(Sent from the site's own address: shown to superusers only)"
+
+
+def hide_own_mail(messages: list[dict]) -> list[dict]:
+    """List rows for a user who may not read Sent mail: a message from the site's own address keeps its row, sender
+    and date, but not its subject or opening text (opening it is refused as well)."""
+    return [
+        {**msg, "subject": OWN_MAIL_SUBJECT, "snippet": ""} if msg.get("from_own_mailbox") else msg for msg in messages
+    ]
+
+
 def message_body_html(msg: dict) -> str:
     """Return sanitized text fallback when a message has no HTML body."""
     if msg["html"]:

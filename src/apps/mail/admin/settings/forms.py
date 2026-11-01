@@ -43,10 +43,18 @@ class AwsDeliveryForm(forms.ModelForm):
         _apply_admin_widget_classes(self)
 
 
+class KeepWhenBlankField(forms.CharField):
+    """A secret input that is never rendered back: left blank, it keeps the stored value, which is not a change."""
+
+    def has_changed(self, initial, data):
+        return bool(data) and super().has_changed(initial, data)
+
+
 class SMTPDeliveryForm(forms.ModelForm):
     class Meta:
         model = SMTPProviderConfig
         fields = ("name", "is_active", "host", "port", "username", "password", "use_tls", "use_ssl", "timeout")
+        field_classes = {"password": KeepWhenBlankField}
         widgets = {"password": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=False)}
 
     def __init__(self, *args, enabled=True, **kwargs):

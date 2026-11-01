@@ -21,7 +21,7 @@ TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 MAILBOX = "i2g@contoso.com"
 MESSAGE_ID = "AAMkAGI2THVSAAA="
-SUMMARY_KEYS = {"uid", "subject", "from_name", "from_email", "to", "date", "snippet", "is_seen"}
+SUMMARY_KEYS = {"uid", "subject", "from_name", "from_email", "to", "date", "snippet", "is_seen", "from_own_mailbox"}
 DETAIL_KEYS = {
     "uid", "subject", "from_name", "from_email", "to", "date", "html", "text",
     "message_id", "references", "reply_to", "return_path", "authentication_results", "from_own_mailbox",
@@ -150,6 +150,7 @@ class SummaryTests(TestCase):
                 "date": format_date(received),
                 "snippet": "Hello there friend",
                 "is_seen": True,
+                "from_own_mailbox": False,
             },
         )
 
@@ -271,8 +272,18 @@ class ErrorMappingTests(TestCase):
                     graph_backend.fetch_message(reader, MESSAGE_ID)
 
     def test_list_maps_each_message(self):
-        reader = SimpleNamespace(list_messages=lambda folder, limit: [GRAPH_MESSAGE, {"id": "B"}])
+        reader = SimpleNamespace(mailbox=MAILBOX, list_messages=lambda folder, limit: [GRAPH_MESSAGE, {"id": "B"}])
 
         results = graph_backend.list_messages(reader, folder="SENT", limit=2)
 
         self.assertEqual([item["uid"] for item in results], [MESSAGE_ID, "B"])
+
+    def test_list_rows_from_the_site_mailbox_or_its_from_address_are_flagged_as_own(self):
+        EmailServiceConfig.objects.create(name="Mail", is_active=True, from_email="Noreply@Contoso.com")
+        senders = [MAILBOX.upper(), "noreply@contoso.com", "ada@example.com", ""]
+        messages = [{"id": str(index), "from": {"emailAddress": {"address": a}}} for index, a in enumerate(senders)]
+        reader = SimpleNamespace(mailbox=MAILBOX, list_messages=lambda folder, limit: messages)
+
+        results = graph_backend.list_messages(reader, folder="INBOX", limit=4)
+
+        self.assertEqual([item["from_own_mailbox"] for item in results], [True, True, False, False])

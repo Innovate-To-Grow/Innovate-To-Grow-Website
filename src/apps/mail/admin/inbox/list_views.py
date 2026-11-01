@@ -10,7 +10,7 @@ from apps.core.utils.access import user_can_access_app
 from apps.mail.services.inbox import graph_backend
 
 from . import services as inbox_api
-from .helpers import parse_folder, parse_limit, sent_mail_restricted
+from .helpers import hide_own_mail, parse_folder, parse_limit, sent_mail_restricted
 
 
 def inbox_list_view(request):
@@ -43,6 +43,8 @@ def inbox_fragment_view(request):
 
     try:
         inbox_messages = inbox_api.list_inbox_messages(limit=limit, force_refresh=force_refresh, folder=folder)
+        if not sent_folder_allowed:
+            inbox_messages = hide_own_mail(inbox_messages)
     except inbox_api.InboxError as exc:
         inbox_api.logger.warning("Inbox fragment could not be loaded: %s", exc)
         error_message = inbox_api.INBOX_CONFIG_ERROR_MESSAGE

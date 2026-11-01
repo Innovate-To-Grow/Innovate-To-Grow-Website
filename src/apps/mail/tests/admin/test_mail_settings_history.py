@@ -41,6 +41,18 @@ class NotificationDeliveryHistoryTests(GraphSettingsTestCase):
             for secret in ("new-aws-secret", "new-smtp-pass", "test-secret", "existing-secret"):
                 self.assertNotIn(secret, entry.change_message)
 
+    def test_a_blank_smtp_password_keeps_the_stored_one_and_is_not_a_change(self):
+        self.client.post(self.edit_url, self.post_data("smtp"))
+        first = self.entries(SMTPProviderConfig).count()
+
+        self.client.post(self.edit_url, self.post_data("smtp"))  # the same values, the password left blank again
+
+        self.assertEqual(self.entries(SMTPProviderConfig).count(), first)
+        for entry in self.entries(SMTPProviderConfig):
+            self.assertNotIn("SMTP Password", entry.get_change_message())
+        self.smtp_config.refresh_from_db()
+        self.assertEqual(self.smtp_config.password, "existing-secret")
+
     def test_unchanged_rows_and_rejected_saves_leave_no_history(self):
         self.client.post(self.edit_url, self.post_data("ses"))
         self.assertEqual(self.entries(AWSCredentialConfig).count(), 0)

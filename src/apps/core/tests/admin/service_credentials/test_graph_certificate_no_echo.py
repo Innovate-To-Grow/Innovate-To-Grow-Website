@@ -19,10 +19,12 @@ from django.core.signals import got_request_exception
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.utils.html import escape
 from django.views.debug import ExceptionReporter
 
 from apps.core.admin.service_credentials import microsoft_graph_certificate_forms as forms_module
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
+from apps.core.services.email.graph.certificate import describe_certificate
 from apps.core.services.email.graph.credential import lifecycle
 from apps.core.tests.graph_helpers import make_certificate
 from apps.core.tests.services.graph_credential.helpers import entra_rejection
@@ -187,6 +189,28 @@ class NoEchoTests(CertificatePagesMixin, TestCase):
                 self.assertTrue(self.raised)
                 # The wrong passwords contain the right ones, so these cover both.
                 self.assert_clean(readable, P12_PASSWORD, PASSPHRASE, *key_slices(*keys))
+
+    def test_a_key_pasted_into_the_thumbprint_box_is_not_echoed(self):
+        key = key_pem(self.key)
+        # A single-line input drops the line breaks of what is pasted into it.
+        for name, pasted in (("PEM", key), ("one line", "".join(key.splitlines()))):
+            with self.subTest(name):
+                readable = self.submit(self.url("install_certificate"), self.pem_data() | {"expected_sha1": pasted})
+
+                self.assertIsNone(self.config.current_certificate)
+                self.assertIn(forms_module.THUMBPRINT_FORMAT, readable[0])
+                self.assert_clean(readable, *key_slices(key))
+                for text in readable:
+                    self.assertNotIn("BEGIN PRIVATE KEY", text)
+
+    def test_a_well_formed_thumbprint_is_shown_again_normalised(self):
+        other = describe_certificate(make_certificate(key_index=1)[0]).sha1_thumbprint
+        typed = ":".join(other[index : index + 2] for index in range(0, len(other), 2)).lower()
+
+        response = self.client.post(self.url("install_certificate"), self.pem_data() | {"expected_sha1": typed})
+
+        self.assertContains(response, escape(forms_module.THUMBPRINT_MISMATCH))
+        self.assertContains(response, f'value="{other}"')
 
     def test_an_install_entra_refuses(self):
         self.script(token=entra_rejection(700027))

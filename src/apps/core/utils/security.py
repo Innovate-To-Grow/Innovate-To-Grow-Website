@@ -48,8 +48,8 @@ def validate_aws_sns_https_url(url: str) -> str:
 _GUID_RE = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
 _DNS_LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
 _DNS_NAME_RE = re.compile(r"(?=.{3,253}$)" + _DNS_LABEL + r"(?:\." + _DNS_LABEL + r")+")
-# A dot-atom local part (RFC 5322 section 3.2.3) without the HTML metacharacters ' and &.
-_ATEXT = r"[A-Za-z0-9!#$%*+/=?^_`{|}~-]"
+# A dot-atom local part (RFC 5322 section 3.2.3). It may hold ' and & (o'brien@...): pages escape it when they show it.
+_ATEXT = r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]"
 _PLAIN_LOCAL_PART_RE = re.compile(_ATEXT + r"+(?:\." + _ATEXT + r"+)*")
 # A Microsoft Graph permission value as it appears in an access token's ``roles`` claim, such as ``Mail.Send``.
 _GRAPH_PERMISSION_RE = re.compile(r"[A-Za-z][A-Za-z0-9.]{0,63}")
@@ -88,10 +88,11 @@ def is_exchange_mailbox(value: str) -> bool:
 
 
 def is_plain_address(value: str) -> bool:
-    """Whether *value* is a bare ``local@domain`` address: a dot-atom local part and a DNS domain name.
+    """Whether *value* is a bare ``local@domain`` address: a dot-atom local part and an ASCII DNS domain name.
 
-    Quoted local parts, display names, comments, address literals and the HTML metacharacters are refused, so the
-    value is safe to show and to hand to a mail provider as one recipient.
+    Quoted local parts, display names, comments, address literals, whitespace and line breaks are refused, so the
+    value can be handed to a mail provider as exactly one recipient. It may still contain ``'`` and ``&``, which
+    are valid in a local part: escape it like any other text before showing it.
     """
     text = str(value or "")
     local, separator, domain = text.rpartition("@")

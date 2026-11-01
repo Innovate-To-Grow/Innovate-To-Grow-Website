@@ -40,7 +40,7 @@ def _message(**overrides):
     return msg
 
 
-def _summary():
+def _summary(**overrides):
     return {
         "uid": "AAMkAGI2THVSAAA=",
         "from_name": "Innovate to Grow",
@@ -50,7 +50,8 @@ def _summary():
         "snippet": "Sign in",
         "date": "2026-01-01",
         "is_seen": True,
-    }
+        "from_own_mailbox": False,
+    } | overrides
 
 
 class SentAccessTestCase(TestCase):
@@ -107,6 +108,23 @@ class SentFolderListTests(SentAccessTestCase):
 
         self.list_messages.assert_called_once_with(limit=30, force_refresh=True, folder="SENT")
         self.assertContains(response, 'data-inbox-folder="SENT"')
+
+    def test_mail_staff_see_no_subject_or_opening_text_of_own_mail_in_the_inbox(self):
+        own = _summary(uid="OWN", subject=f"Your code {CODE}", snippet=f"Sign in: {CODE}", from_own_mailbox=True)
+        inbound = _summary(uid="IN", subject="Question about Demo Day", snippet="Hello there")
+        self.list_messages.return_value = [own, inbound]
+
+        response = self.fragment(self.mail_staff)
+
+        self.assertNotContains(response, CODE)
+        self.assertContains(response, "Sent from the site&#x27;s own address: shown to superusers only")
+        self.assertContains(response, "Question about Demo Day")
+        self.assertContains(response, "Hello there")
+
+    def test_superusers_see_own_mail_in_full(self):
+        self.list_messages.return_value = [_summary(subject=f"Your code {CODE}", from_own_mailbox=True)]
+
+        self.assertContains(self.fragment(self.superuser), f"Your code {CODE}")
 
     def test_an_unresolvable_backend_keeps_sent_mail_hidden(self):
         self.graph_active.side_effect = RuntimeError("boom")

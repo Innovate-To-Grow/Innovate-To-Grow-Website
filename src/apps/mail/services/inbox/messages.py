@@ -111,6 +111,8 @@ def message_summary(message: Any) -> dict[str, Any]:
         "date": format_date(getattr(message, "date", None)),
         "snippet": build_snippet(message),
         "is_seen": "\\Seen" in flags,
+        # IMAP UIDs are per folder, so the requested folder already says whether this is Sent mail.
+        "from_own_mailbox": False,
     }
 
 
