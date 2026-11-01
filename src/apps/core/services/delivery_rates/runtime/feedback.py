@@ -5,6 +5,7 @@ A throttle's cooldown also stops the rest of the identity's cooldown group; that
 transaction commits, so no process ever holds two state locks at once.
 """
 
+import math
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timedelta
@@ -20,7 +21,7 @@ from ..rules.defaults import RateSpec, rate_spec, section
 from ..rules.signals import RateSignal, Reason, Scope, SignalKind, ok, releases_usage, uncertain
 from . import budget, context
 from .admission import Admission
-from .breaker import open_breaker, settle
+from .breaker import applies, open_breaker, settle
 from .limiter import admit
 from .state import ensure_outside_atomic, relock
 
@@ -135,6 +136,22 @@ def controlled(
         record(admission, (classify(exc) if classify else None) or uncertain("exception"))
         raise
     record(admission, admission.signal or ok())
+
+
+def held_for(admission: Admission) -> int | None:
+    """Whole seconds (at least 1) until the admission's identity may send on its lane again, read after its answer
+    was recorded: the cooldown, or the open breaker's next probe. None when nothing holds it back."""
+    state = DeliveryRateState.objects.filter(pk=admission.state_id).first()
+    if state is None:
+        return None
+    holds = [state.cooldown_until]
+    if applies(state, admission.lane):
+        holds.append(state.breaker_retry_at)
+    until = max((hold for hold in holds if hold is not None), default=None)
+    now = context.clock()
+    if until is None or until <= now:
+        return None
+    return max(1, math.ceil((until - now).total_seconds()))
 
 
 def reset_smart(channel: str, identity: str | None = None) -> int:

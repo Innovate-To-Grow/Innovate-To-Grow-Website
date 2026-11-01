@@ -10,7 +10,7 @@ from .channels import aggregate_email_campaign, aggregate_sms_campaign
 from .email_job import send_email_recipient_job
 from .job_state import prepare_delivery_log_retry, resolve_stale_delivery_job, sync_delivery_job_state
 from .launch import dispatch_email_campaign, dispatch_sms_campaign, queue_email_campaign, queue_sms_campaign
-from .resume import resume_paused_email_recipients
+from .resume import resume_paused_email_recipients, resume_paused_sms_recipients
 from .sms_job import send_sms_recipient_job
 
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "queue_email_campaign",
     "queue_sms_campaign",
     "resume_paused_email_recipients",
+    "resume_paused_sms_recipients",
     "resolve_stale_delivery_job",
     "send_email_recipient_job",
     "send_sms_recipient_job",

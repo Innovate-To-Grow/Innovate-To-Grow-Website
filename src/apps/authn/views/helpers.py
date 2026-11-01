@@ -13,6 +13,7 @@ from apps.authn.services import (
     AuthChallengeDeliveryError,
     AuthChallengeInvalid,
     AuthChallengeThrottled,
+    PhoneVerificationBusy,
     PhoneVerificationDeliveryError,
     PhoneVerificationThrottled,
 )
@@ -85,6 +86,13 @@ def build_auth_success_payload(
     return payload
 
 
+def busy_response(exc: Exception) -> Response:
+    """503 for a code delivery the delivery rate held back: say when to try again (``str(exc)`` is a fixed message
+    plus the seconds), in the body and as ``Retry-After``."""
+    payload = {"detail": str(exc), "retry_after": exc.retry_after}
+    return Response(payload, status=status.HTTP_503_SERVICE_UNAVAILABLE, headers={"Retry-After": str(exc.retry_after)})
+
+
 def challenge_error_response(exc: Exception) -> Response:
     if isinstance(exc, AuthChallengeInvalid):
         return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
@@ -92,14 +100,12 @@ def challenge_error_response(exc: Exception) -> Response:
         return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     if isinstance(exc, AuthChallengeDeliveryError):
         if getattr(exc, "retry_after", None) is not None:
-            # Held back by the delivery rate: say when to try again (str(exc) is a fixed message plus the seconds).
-            payload = {"detail": str(exc), "retry_after": exc.retry_after}
-            return Response(
-                payload, status=status.HTTP_503_SERVICE_UNAVAILABLE, headers={"Retry-After": str(exc.retry_after)}
-            )
+            return busy_response(exc)
         return Response({"detail": "Failed to send verification email."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     if isinstance(exc, PhoneVerificationThrottled):
         return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    if isinstance(exc, PhoneVerificationBusy):
+        return busy_response(exc)
     if isinstance(exc, PhoneVerificationDeliveryError):
         return Response({"detail": "Failed to send verification SMS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     raise exc

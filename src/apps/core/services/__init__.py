@@ -14,8 +14,9 @@ Consumers below are the apps that import each path today (verified, excluding
 ======================  ====================================================  ==================================================
 Subsystem               What it is                                            Importing apps
 ======================  ====================================================  ==================================================
-``aws/``                Shared AWS credential resolution + SNS SMS send        ``authn``, ``event``, ``mail``
-                        + the SES / SMS limit reads (``quotas``)
+``aws/``                Shared AWS credential resolution, the one SMS send     ``authn``, ``event``, ``mail``
+                        (``sms_send``, paced by ``delivery_rates``) and the
+                        SES / SMS limit reads (``quotas``)
 ``background_jobs/``    Durable outbox: queue, worker (claims by priority,     ``authn``, ``cms``, ``event``, ``mail``
                         skipping gated delivery lanes), retry.
                         Apps register job kinds from ``AppConfig.ready()``
@@ -26,7 +27,8 @@ Subsystem               What it is                                            Im
                         (tests). The database keeps only ARN + version id.
 ``delivery_rates/``     Delivery-rate control for every channel (Graph, SES,   ``authn``, ``event``, ``mail`` (job-kind
                         SMTP, Gmail IMAP and API, SMS): Smart and manual      and campaign lanes); in ``core``, ``email/``
-                        rate, pacing, budgets, breakers, AWS limit reads.     admits every message (SMS, IMAP: next)
+                        rate, pacing, budgets, breakers, AWS limit reads.     and ``aws/sms_send`` admit every message
+                                                                              (IMAP: next)
                         ``rules/`` is pure; ``runtime/`` uses the state rows;
                         ``families`` gates the worker's claims; ``adapters/``
                         turn provider answers into rate signals.

@@ -113,7 +113,10 @@ SMS = {
     "throttle_codes": ("ThrottlingException",),
     # ServiceQuotaExceededException with this reason: probe every channels.sms_send.spend_probe_seconds.
     "spend_reasons": ("MONTHLY_SPEND_LIMIT_REACHED_FOR_TEXT",),
-    "blocked_reasons": ("ACCOUNT_DISABLED", "INSUFFICIENT_ACCOUNT_REPUTATION", "NO_ORIGINATION_IDENTITIES_FOUND"),
+    # AccessDeniedException: the account cannot send (the breaker's timed probe re-checks)...
+    "blocked_reasons": ("ACCOUNT_DISABLED", "INSUFFICIENT_ACCOUNT_REPUTATION"),
+    # ...and ConflictException: no usable origination identity, which saving the AWS configuration may fix.
+    "config_blocked_reasons": ("NO_ORIGINATION_IDENTITIES_FOUND",),
     # About this one message or number.
     "message_codes": ("ValidationException",),
     "message_reasons": ("DESTINATION_PHONE_NUMBER_OPTED_OUT",),

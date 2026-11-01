@@ -117,6 +117,17 @@ def releases_usage(signal: RateSignal) -> bool:
     return signal.kind not in (SignalKind.OK, SignalKind.UNCERTAIN) and not signal.uncertain
 
 
+def not_now(signal: RateSignal | None) -> bool:
+    """The provider did not take the request but may later: a throttle, a pause, a used-up quota, or a stop that no
+    configuration change fixes (an account pause, the SMS spend limit). Such a failure is retried, never final; the
+    limiter holds the next requests back meanwhile."""
+    if signal is None:
+        return False
+    if signal.kind in (SignalKind.THROTTLE, SignalKind.PAUSE, SignalKind.QUOTA):
+        return True
+    return signal.kind == SignalKind.BLOCKED and signal.reason not in CONFIG_REASONS
+
+
 def parse_retry_after(value, *, now: datetime | None = None, maximum: float | None = None) -> float | None:
     """A Retry-After value (delta-seconds or an HTTP-date) in seconds, or None when absent or unreadable.
 

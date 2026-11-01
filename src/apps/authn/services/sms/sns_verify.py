@@ -2,7 +2,8 @@
 AWS SMS service for phone number verification.
 
 OTP codes are generated locally, stored in PostgreSQL, and delivered through AWS
-End User Messaging (``pinpoint-sms-voice-v2`` SendTextMessage). Dedicated
+End User Messaging (``pinpoint-sms-voice-v2`` SendTextMessage, sent by
+``core.services.aws.sms_send`` under the delivery-rate limiter). Dedicated
 origination numbers (toll-free/10DLC) are managed by End User Messaging, so the
 legacy ``sns:Publish`` path cannot use them — it rejects the number with
 "does not belong to the account". AWS credentials, region, and the origination
@@ -18,8 +19,6 @@ import threading
 from contextlib import contextmanager
 from datetime import timedelta
 
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
 from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
@@ -28,13 +27,15 @@ from django.utils import timezone
 
 from apps.authn.models import PhoneVerificationChallenge
 from apps.authn.services.email.challenges.degradation import FAILURE_WINDOW, max_attempts_for
-from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
-from apps.core.services.aws.provider_outcomes import (
-    NO_PROVIDER_RETRIES,
-    PROVIDER_OUTCOME_PERMANENT,
-    PROVIDER_OUTCOME_UNCERTAIN,
-    classify_aws_send_failure,
+from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_PERMANENT, PROVIDER_OUTCOME_UNCERTAIN
+from apps.core.services.aws.sms_send import (
+    SmsDeliveryError,
+    SmsRateDeferred,
+    admit_text,
+    resolve_sender,
+    send_text_message,
 )
+from apps.core.services.delivery_rates import Lane, release
 
 from .checks import (
     _check_phone_verification,
@@ -50,6 +51,7 @@ from .errors import (
     OTP_TTL_SECONDS,
     VERIFIABLE_STATUSES,
     VERIFIED_GRANT_TTL_SECONDS,
+    PhoneVerificationBusy,
     PhoneVerificationDeliveryError,
     PhoneVerificationError,
     PhoneVerificationInvalid,
@@ -68,6 +70,7 @@ __all__ = [
     "OTP_TTL_SECONDS",
     "VERIFIABLE_STATUSES",
     "VERIFIED_GRANT_TTL_SECONDS",
+    "PhoneVerificationBusy",
     "PhoneVerificationDeliveryError",
     "PhoneVerificationError",
     "PhoneVerificationInvalid",
@@ -100,54 +103,41 @@ def _assert_configured():
     return aws
 
 
-def _get_smsvoice_client():
+def _verification_error(exc: SmsDeliveryError) -> PhoneVerificationError:
+    """The OTP error for a failed SMS send: held back (by the limiter or AWS) is ``PhoneVerificationBusy``."""
+    if isinstance(exc, SmsRateDeferred) or exc.held_back:
+        return PhoneVerificationBusy(exc.retry_after)
+    if exc.code == "ValidationException":
+        return PhoneVerificationInvalid("Invalid phone number.")
+    # ConflictException / ResourceNotFoundException / AccessDeniedException point at the
+    # origination identity or account state, not a bad recipient — surface as delivery errors.
+    return PhoneVerificationDeliveryError(str(exc), outcome=exc.outcome)
+
+
+def _publish_sms(*, phone_number: str, message: str, aws_config, admission=None, lane: str = Lane.TRANSACTIONAL) -> str:
+    """Send one SMS through the delivery-rate limiter (``core.services.aws.sms_send``) on ``lane``, using
+    ``admission`` when the caller already took the slot."""
     try:
-        creds = resolve_aws_credentials("sns")
-    except AwsCredentialsError as exc:
-        raise PhoneVerificationDeliveryError(
-            "AWS credentials are not configured.",
-            outcome=PROVIDER_OUTCOME_PERMANENT,
-        ) from exc
-
-    return boto3.client(
-        "pinpoint-sms-voice-v2",
-        region_name=creds.region,
-        aws_access_key_id=creds.access_key_id,
-        aws_secret_access_key=creds.secret_access_key,
-        config=NO_PROVIDER_RETRIES,
-    )
+        sender = resolve_sender(aws_config)
+        return send_text_message(phone_number, message, lane=lane, sender=sender, admission=admission)
+    except SmsDeliveryError as exc:
+        raise _verification_error(exc) from exc
 
 
-def _publish_sms(*, phone_number: str, message: str, aws_config) -> str:
-    origination_identity = aws_config.resolved_sms_from_number()
-    if not origination_identity:
-        raise PhoneVerificationDeliveryError("SMS is not configured.", outcome=PROVIDER_OUTCOME_PERMANENT)
-
-    client = _get_smsvoice_client()
+def _admit_otp(aws_config, message: str):
+    """Take the OTP's SMS slot, waiting for it up to the inline wait; ``PhoneVerificationBusy`` when held back."""
     try:
-        response = client.send_text_message(
-            DestinationPhoneNumber=phone_number,
-            OriginationIdentity=origination_identity,
-            MessageBody=message,
-            MessageType="TRANSACTIONAL",
-        )
-    except ClientError as exc:
-        error_code = exc.response.get("Error", {}).get("Code", "")
-        logger.warning("send_text_message failed: code=%s", error_code)
-        if error_code in {"ThrottlingException", "TooManyRequestsException", "ServiceQuotaExceededException"}:
-            raise PhoneVerificationThrottled("Too many verification attempts. Please try again later.") from exc
-        if error_code == "ValidationException":
-            raise PhoneVerificationInvalid("Invalid phone number.") from exc
-        # ConflictException / ResourceNotFoundException / AccessDeniedException point at the
-        # origination identity or account state, not a bad recipient — surface as delivery errors.
-        outcome, message = classify_aws_send_failure(exc, provider="SMS")
-        raise PhoneVerificationDeliveryError(message, outcome=outcome) from exc
-    except BotoCoreError as exc:
-        logger.warning("send_text_message failed", exc_info=True)
-        outcome, message = classify_aws_send_failure(exc, provider="SMS")
-        raise PhoneVerificationDeliveryError(message, outcome=outcome) from exc
+        return admit_text(resolve_sender(aws_config), message, lane=Lane.TRANSACTIONAL)
+    except SmsDeliveryError as exc:
+        raise _verification_error(exc) from exc
 
-    return response.get("MessageId", "")
+
+def _release_unsent(admission) -> None:
+    """Give back the slot of an OTP that never reached AWS (a no-op once the send recorded AWS's answer)."""
+    try:
+        release(admission)
+    except Exception:  # noqa: BLE001 - the OTP's own outcome must reach the caller unchanged.
+        logger.exception("Could not release the delivery-rate slot of an unsent OTP")
 
 
 def _phone_lock_id(phone_number: str) -> int:
@@ -272,12 +262,12 @@ def _reserve_challenge(phone_number: str, *, purpose, member, context_identifier
     return challenge
 
 
-def _deliver_otp(challenge, *, phone_number: str, message: str, aws_config) -> str:
+def _deliver_otp(challenge, *, phone_number: str, message: str, aws_config, admission) -> str:
     from apps.authn.services.send_verification.outcomes import record_otp_challenge
 
     try:
         record_otp_challenge(str(challenge.pk))
-        return _publish_sms(phone_number=phone_number, message=message, aws_config=aws_config)
+        return _publish_sms(phone_number=phone_number, message=message, aws_config=aws_config, admission=admission)
     except Exception as exc:
         # An uncertain provider call may have delivered this OTP. Keep it
         # verifiable and retain both durable reservations.
@@ -321,26 +311,37 @@ def start_phone_verification(
     provider call keeps it). Raises ``SendThrottled`` (from ``send_verification``) when the budget is spent; nothing
     is stored or sent in that case.
 
+    The SMS's delivery-rate slot is taken first, before the number is locked or anything is reserved: an SMS
+    delivery held back raises ``PhoneVerificationBusy`` and spends neither the hourly cap nor the daily budget. A
+    refusal after that (the per-number cap, the budget) gives the slot back.
+
     Returns ``{"status": "pending", "challenge_id": "..."}``.
     """
     aws_config = _assert_configured()
     code = _random_code()
     message = _render_otp_message(aws_config, code)
-    now = timezone.now()
-    with _lock_phone(phone_number):
-        challenge = _reserve_challenge(
-            phone_number, purpose=purpose, member=member, context_identifier=context_identifier, code=code, now=now
-        )
-        message_id = _deliver_otp(challenge, phone_number=phone_number, message=message, aws_config=aws_config)
-        _finalize_sent_challenge(challenge)
+    admission = _admit_otp(aws_config, message)
+    try:
+        now = timezone.now()
+        with _lock_phone(phone_number):
+            challenge = _reserve_challenge(
+                phone_number, purpose=purpose, member=member, context_identifier=context_identifier, code=code, now=now
+            )
+            message_id = _deliver_otp(
+                challenge, phone_number=phone_number, message=message, aws_config=aws_config, admission=admission
+            )
+            _finalize_sent_challenge(challenge)
+    finally:
+        _release_unsent(admission)
 
     logger.info("Phone verification started: message_id=%s", message_id)
     return {"status": DEFAULT_STATUS, "challenge_id": str(challenge.pk)}
 
 
-def publish_plain_sms(*, phone_number: str, message: str) -> str:
-    """Send a plain SMS message via AWS End User Messaging (used by admin test-send)."""
+def publish_plain_sms(*, phone_number: str, message: str, lane: str = Lane.TRANSACTIONAL) -> str:
+    """Send a plain SMS message via AWS End User Messaging on ``lane``: the admin test SMS is transactional, the
+    in-process SMS campaign passes ``Lane.BULK``. Held back raises ``PhoneVerificationBusy``."""
     aws_config = _load_aws_config()
     if not aws_config.sns_configured:
         raise PhoneVerificationDeliveryError("SMS is not configured.")
-    return _publish_sms(phone_number=phone_number, message=message, aws_config=aws_config)
+    return _publish_sms(phone_number=phone_number, message=message, aws_config=aws_config, lane=lane)

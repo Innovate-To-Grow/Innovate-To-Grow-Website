@@ -9,12 +9,14 @@ from apps.core.services.aws.provider_outcomes import (
     PROVIDER_OUTCOME_TRANSIENT,
     classify_aws_send_failure,
 )
+from apps.core.services.aws.sms_send import SmsDeliveryError
 from apps.core.services.background_jobs import (
     DeferredJobError,
     PermanentJobError,
     TransientJobError,
     UncertainJobError,
 )
+from apps.core.services.background_jobs.delivery import provider_job_error
 from apps.mail.services.send_campaign.transport import SES_OUTCOME_PERMANENT, SES_OUTCOME_TRANSIENT
 
 DEFERRED_LOG_MESSAGE = "Waiting for the delivery rate; scheduled to send later."
@@ -50,6 +52,11 @@ def _classify_sms_job_error(exc):
     )
 
     chain = tuple(_exception_chain(exc))
+    sms_error = next((item for item in chain if isinstance(item, SmsDeliveryError)), None)
+    if sms_error is not None:
+        # Already classified by the SMS send: an answer that only said "not now" is transient, and its retry waits
+        # for the limiter's cooldown or breaker.
+        return provider_job_error(sms_error)
     if any(isinstance(item, PhoneVerificationThrottled) for item in chain):
         return TransientJobError("SMS provider temporarily throttled the request.")
     if any(isinstance(item, PhoneVerificationInvalid) for item in chain):

@@ -44,6 +44,7 @@ from .rules.signals import (
     blocked,
     code_in,
     none,
+    not_now,
     ok,
     parse_retry_after,
     pause,
@@ -57,7 +58,7 @@ from .runtime.admission import Admission, Costs, RateDeferred, RateRefused
 from .runtime.breaker import resume
 from .runtime.context import WaitMode, wait_cap, wait_mode
 from .runtime.discovery import refresh_discovery
-from .runtime.feedback import controlled, record, release, reset_smart
+from .runtime.feedback import controlled, held_for, record, release, reset_smart
 from .runtime.limiter import admit
 from .runtime.state import AdmissionInTransaction
 from .snapshot import ChannelStatus, IdentityStatus, channel_status, snapshot
@@ -88,11 +89,13 @@ __all__ = [
     "controlled",
     "cooldown_group",
     "external_recipients",
+    "held_for",
     "imap_identity",
     "inline_batch_limit",
     "lane_gated",
     "mailbox_identity",
     "none",
+    "not_now",
     "ok",
     "parse_retry_after",
     "pause",

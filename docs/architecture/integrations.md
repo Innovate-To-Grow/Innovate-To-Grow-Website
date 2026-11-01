@@ -108,6 +108,7 @@ Used for phone number verification during event registration and contact managem
 |---------|---------------|
 | SMS settings | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` + optional `sms_from_number` override + OTP template |
 | Origination resolution | `src/apps/core/services/aws/sms.py` (`describe_phone_numbers`, cached) |
+| Sending | `src/apps/core/services/aws/sms_send.py` (`send_text_message`, the only `SendTextMessage` call, paced by the delivery-rate limiter) |
 | Send verification | `src/apps/authn/services/sms/` (`sns_verify.py` is the public entry point; `checks.py` holds the code checks, `errors.py` the error types) |
 | Event phone verify | `src/apps/event/views/registration/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
 
@@ -119,6 +120,18 @@ one-time consumption. The origination number is auto-detected from the
 account's End User Messaging phone numbers (`DescribePhoneNumbers`), or set
 manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
 `sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`.
+
+Every SMS (codes, the admin test SMS, campaigns) is sent by `send_text_message` on the `sms_send` delivery
+channel, for the identity `<region>:<origination>`; the SendTextMessage quota is per account and Region, so a
+throttle pauses every number of the Region. AWS's answer is matched against `DELIVERY_RATES["signals"]["sms"]`:
+`ThrottlingException` slows the channel down, `ServiceQuotaExceededException` with the reason
+`MONTHLY_SPEND_LIMIT_REACHED_FOR_TEXT` stops all SMS until the hourly probe (or a raised spend limit), and a
+disabled account or a missing origination identity stops it until fixed. An OTP takes its slot before it locks the
+number or reserves anything, so SMS delivery held back answers `PhoneVerificationBusy` (HTTP 503 with
+`Retry-After`, "SMS delivery is busy right now; please try again in about N seconds.") without spending the
+number's hourly cap or the daily SMS budget. `PhoneVerificationThrottled` (429) stays the per-number cap. A queued
+campaign recipient held back runs again at its slot; the in-process sender retries a throttled recipient after the
+cooldown and pauses the rest on a long hold ("Resume paused recipients" on the SMS campaign admin).
 
 ## Amazon Bedrock (System Intelligence)
 

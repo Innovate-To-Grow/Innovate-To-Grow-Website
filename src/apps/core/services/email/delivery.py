@@ -10,13 +10,12 @@ import logging
 
 from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_PERMANENT, PROVIDER_OUTCOME_UNCERTAIN
 from apps.core.services.delivery_rates import (
-    CONFIG_REASONS,
     Lane,
     RateDeferred,
     RateRefused,
-    SignalKind,
     admit,
     none,
+    not_now,
     ok,
     record,
     release,
@@ -34,9 +33,6 @@ from .exceptions import (
 from .registry import resolve_provider
 
 logger = logging.getLogger(__name__)
-
-# Answers that only say "not now": the message was not taken, so it is retried later, never failed for good.
-_NOT_NOW = (SignalKind.THROTTLE, SignalKind.PAUSE, SignalKind.QUOTA)
 
 
 class _Boundary:
@@ -118,10 +114,7 @@ def _settle_failure(admission, exc: EmailDeliveryError, entered: bool) -> EmailD
     if signal is None and entered:
         signal = uncertain("unconfirmed") if exc.outcome == PROVIDER_OUTCOME_UNCERTAIN else none("rejected")
     _settle(admission, signal)
-    if signal is None or exc.outcome != PROVIDER_OUTCOME_PERMANENT:
-        return exc
-    stopped = signal.kind == SignalKind.BLOCKED and signal.reason not in CONFIG_REASONS
-    if signal.kind not in _NOT_NOW and not stopped:
+    if not not_now(signal) or exc.outcome != PROVIDER_OUTCOME_PERMANENT:
         return exc
     wait = signal.retry_after or signal.pause_seconds or signal.breaker_seconds
     return with_signal(TransientEmailDeliveryError(str(exc), retry_after=wait), signal)

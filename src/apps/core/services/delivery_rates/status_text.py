@@ -25,6 +25,9 @@ REASONS = {
     "permission": "refused permission for this sender",
     "account_paused": "reports sending is paused for this account",
     "spend_limit": "reports the monthly SMS spend limit is reached",
+    "account_blocked": "reports the account cannot send",
+    "bandwidth": "suspended the account for exceeding its bandwidth limits",
+    "connections": "refused another simultaneous connection",
     "persistent_throttle": "kept throttling",
     "cooldown": "asked to wait",
 }
