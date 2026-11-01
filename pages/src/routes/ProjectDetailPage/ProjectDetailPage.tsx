@@ -18,7 +18,9 @@ interface ProjectLoadFailedProps {
 
 /**
  * A project that does not exist (or a link that is wrong), or one that could not be loaded right now. Each has one
- * primary action, then text links: "Search Past Projects" when it is not found, "Try Again" when it failed.
+ * primary action, then text links: "Search Past Projects" when it is not found, "Try Again" when it failed. A failed
+ * load's two links are one group, beside Try Again when they fit and on the next line together when not, so a phone
+ * never leaves one of them alone on a line under the other two.
  */
 const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => {
   const notFound = error !== 'failed';
@@ -30,19 +32,30 @@ const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => 
       before={backLink}
       title={notFound ? "We couldn't find this project" : "We couldn't load this project"}
       actions={
-        <>
-          {notFound ? null : (
+        notFound ? (
+          <>
+            <Link className="itg-btn itg-btn-primary" to="/past-projects">
+              Search Past Projects
+            </Link>
+            <Link className="itg-link" to="/current-projects">
+              Current Projects
+            </Link>
+          </>
+        ) : (
+          <>
             <button type="button" className="itg-btn itg-btn-primary" onClick={retry}>
               Try Again
             </button>
-          )}
-          <Link className={notFound ? 'itg-btn itg-btn-primary' : 'itg-link'} to="/past-projects">
-            Search Past Projects
-          </Link>
-          <Link className="itg-link" to="/current-projects">
-            Current Projects
-          </Link>
-        </>
+            <div className="project-detail-error-links">
+              <Link className="itg-link" to="/past-projects">
+                Search Past Projects
+              </Link>
+              <Link className="itg-link" to="/current-projects">
+                Current Projects
+              </Link>
+            </div>
+          </>
+        )
       }
     >
       <p>

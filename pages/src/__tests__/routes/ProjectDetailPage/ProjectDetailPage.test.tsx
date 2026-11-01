@@ -323,6 +323,11 @@ describe('ProjectDetailPage', () => {
     expect(search).toHaveClass('itg-link');
     expect(search).not.toHaveClass('itg-btn');
     expect(screen.getByRole('link', {name: 'Current Projects'})).toHaveClass('itg-link');
+    // The two links wrap as one group, so a phone never leaves one alone under the button and the other.
+    const links = search.parentElement as HTMLElement;
+    expect(links).toHaveClass('project-detail-error-links');
+    expect(links).toContainElement(screen.getByRole('link', {name: 'Current Projects'}));
+    expect(links.previousElementSibling).toBe(screen.getByRole('button', {name: 'Try Again'}));
   });
 
   it('keeps a failed load out of search results until a retry loads the project', async () => {
