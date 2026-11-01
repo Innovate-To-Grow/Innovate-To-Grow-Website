@@ -38,10 +38,11 @@ It is the third choice of the **Provider** setting:
 
 ### Two layers restrict the mailbox
 
-1. **Microsoft (Exchange Online enforces it).** An Exchange restriction limits the app to the I2G mailbox:
-   an Application Access Policy over Entra application permissions, or RBAC for Applications
+1. **Microsoft (Exchange Online would enforce it).** An Exchange restriction must limit the app to the I2G
+   mailbox: an Application Access Policy over Entra application permissions, or RBAC for Applications
    ([step 2](#2-grant-the-approved-permissions-and-restrict-them-to-the-i2g-mailbox)). Only this layer
-   limits someone who obtains the private key or an access token.
+   limits someone who obtains the private key or an access token. Whether it holds for the UC Merced app is
+   not verified yet: no allowed/denied test result exists (see [UC Merced status](#uc-merced-status-ritm0450512)).
 2. **The site (defense in depth).** Each Graph configuration has a **mailbox scope**: a list of mailboxes,
    each with a permission level (*Send only*, *Read only*, or *Send and read*). The site refuses, before
    contacting Microsoft, any send as or read of a mailbox that is not listed with that permission. Nothing
@@ -458,7 +459,7 @@ any recorded exception.
 |-------|---------|----------|
 | `token` | | issued for the current certificate |
 | `roles` | | the token's `roles` claim within `GRAPH_APPROVED_APPLICATION_ROLES` (default `Mail.Send`, `Mail.Read`) |
-| `folder`, `list`, `value` | each scoped mailbox with read permission | `200`: the Inbox, the newest message with its preview (`$top=1&$select=id,bodyPreview`), and the first `GRAPH_ACCESS_CHECK_MIME_MAX_BYTES` (default 4096) bytes of its raw MIME, which are discarded. An empty Inbox makes `value` a WARN |
+| `folder`, `list`, `value` | each scoped mailbox with read permission | `200`: the Inbox, the newest message with its preview (`$top=1&$select=id,bodyPreview`), and the first `GRAPH_ACCESS_CHECK_MIME_MAX_BYTES` (default 4096) bytes of its raw MIME, which are discarded. An empty Inbox makes `value` INCONCLUSIVE, so the run is not a complete validation: run it again once the Inbox holds a message (the `send` probe delivers one) |
 | `send` | each scoped mailbox with send permission, listed by address | `202`: a MIME probe email to itself (a copy stays in its Sent Items) |
 | `read+` | each scoped mailbox with send permission only | for the record: a `200` is a WARN, because an access policy limits mailboxes, not permissions, so only the site's scope stops reading it |
 | `folder`, `list` | the deny mailbox | `403` |

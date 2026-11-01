@@ -295,7 +295,8 @@ class MicrosoftGraphMailboxScope(ProjectControlModel):
     """One mailbox the Graph app may use, with the permission level the site may exercise on it.
 
     The site refuses any Graph request for a mailbox or permission not listed here. This mirrors, and does not
-    replace, the Exchange Online RBAC for Applications scope that Microsoft enforces for the Entra app.
+    replace, the Exchange Online restriction that must limit the Entra app (an Application Access Policy or RBAC
+    for Applications, set by OIT); only the access check shows whether Microsoft enforces it.
     """
 
     class Permission(models.TextChoices):
@@ -314,7 +315,10 @@ class MicrosoftGraphMailboxScope(ProjectControlModel):
         choices=Permission.choices,
         default=Permission.SEND,
         verbose_name="Permission Level",
-        help_text="Must match the Exchange Online role assignments for this mailbox.",
+        help_text=(
+            "Must match the Exchange restriction (Application Access Policy or RBAC for Applications) that OIT "
+            "set for this mailbox."
+        ),
     )
 
     class Meta:

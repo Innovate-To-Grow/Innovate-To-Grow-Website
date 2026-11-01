@@ -18,13 +18,13 @@ from .report import (
     DENIED,
     FAIL,
     FOLDER,
+    INCONCLUSIVE,
     ISSUED,
     PASS,
     SEND_AS,
     SKIP,
     TOKEN,
     VALUE,
-    WARN,
     AccessCheckReport,
     ProbeResult,
     pair_denials,
@@ -42,7 +42,10 @@ NO_READER = "no mailbox in the scope has read permission"
 NO_SENDER = "no mailbox in the scope with send permission is listed by email address"
 SENDS_SKIPPED = "send probes were not run"
 GUID_SENDER = "listed by object ID: sending is probed only for mailboxes listed by email address"
-EMPTY_INBOX = "the Inbox is empty (or its list was unreadable), so opening a message ($value) was not exercised"
+EMPTY_INBOX = (
+    "the Inbox is empty (or its list was unreadable), so opening a message ($value) was not exercised; run the "
+    "check again once a message is there (this run's send probe delivers one)"
+)
 LIST_FAILED = "the message list failed"
 
 
@@ -127,7 +130,8 @@ def _read_probes(prober: Prober, mailbox: str) -> list[ProbeResult]:
     if newest:
         value = prober.value(mailbox, newest)
     elif listing.passed:
-        value = ProbeResult(VALUE, mailbox, ALLOWED, WARN, note=EMPTY_INBOX)
+        # The admin inbox opens every message this way, so a run that never did is not evidence that it works.
+        value = ProbeResult(VALUE, mailbox, ALLOWED, INCONCLUSIVE, note=EMPTY_INBOX)
     else:
         value = ProbeResult(VALUE, mailbox, ALLOWED, SKIP, note=LIST_FAILED)
     return [folder, listing, value]

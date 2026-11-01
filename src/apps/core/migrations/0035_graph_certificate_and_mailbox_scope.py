@@ -42,7 +42,10 @@ class Migration(migrations.Migration):
                             ("send_read", "Send and read (Mail.Send + Mail.Read)"),
                         ],
                         default="send",
-                        help_text="Must match the Exchange Online role assignments for this mailbox.",
+                        help_text=(
+                            "Must match the Exchange restriction (Application Access Policy or RBAC for "
+                            "Applications) that OIT set for this mailbox."
+                        ),
                         max_length=16,
                         verbose_name="Permission Level",
                     ),

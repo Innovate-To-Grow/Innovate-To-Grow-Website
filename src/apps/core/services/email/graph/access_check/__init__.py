@@ -5,9 +5,10 @@ One run, from ``manage.py verify_graph_access`` or the admin's "Run access check
 
 1. A fresh token with the current certificate, and its ``roles`` read without trusting it (``roles``): FAIL for any
    role beyond ``GRAPH_APPROVED_APPLICATION_ROLES`` unless an InfoSec exception reference is recorded; WARN when
-   there are none or they are unreadable (RBAC for Applications grants never appear in the token).
+   the token claims none (RBAC for Applications grants never appear in it); INCONCLUSIVE (not a complete
+   validation) when they cannot be read.
 2. Each read-scoped mailbox: the Inbox folder, the newest message with its preview, and the start of its raw MIME
-   (``$value``), as the admin inbox opens it. Each send-scoped mailbox listed by address: a MIME ``sendMail`` to
+   (``$value``), as the admin inbox opens it; an empty Inbox leaves ``$value`` unexercised, which is INCONCLUSIVE. Each send-scoped mailbox listed by address: a MIME ``sendMail`` to
    itself, as the site sends most mail.
 3. The deny mailbox: its Inbox folder and messages must be refused (403), sending as it must be refused, and a
    scoped mailbox must not send with the deny address as From (Send As / Send on Behalf). These sends are JSON with

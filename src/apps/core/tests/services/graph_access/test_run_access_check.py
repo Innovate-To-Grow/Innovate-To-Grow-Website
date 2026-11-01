@@ -172,15 +172,16 @@ class AccessCheckRunTests(ProbeFixtureMixin, TestCase):
         self.assertEqual(report.verdict, Verdict.NOT_COMPLIANT)
         self.assertFalse(report.restriction_holds)
 
-    def test_an_empty_inbox_warns_that_opening_a_message_was_not_exercised(self):
+    def test_an_empty_inbox_leaves_opening_a_message_unexercised_so_the_run_is_incomplete(self):
         self.probe.answer(SCOPED, "list", EMPTY_LIST)
 
         report = self.run_check()
 
         value = next(result for result in report.results if result.check == "value")
-        self.assertEqual(value.outcome, "WARN")
+        self.assertEqual(value.outcome, "INCONCLUSIVE")
         self.assertIn("($value) was not exercised", value.note)
-        self.assertEqual(report.verdict, Verdict.COMPLIANT)
+        self.assertFalse(report.complete)
+        self.assertEqual(report.verdict, Verdict.INCOMPLETE)
 
     def test_refusals_without_a_matching_allowed_request_are_inconclusive(self):
         # An app that may do nothing gets 403 everywhere: that is not evidence of a working restriction.
