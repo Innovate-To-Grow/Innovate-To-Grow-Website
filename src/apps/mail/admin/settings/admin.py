@@ -201,8 +201,10 @@ def _notification_delivery_context(request, email_config, aws_config, smtp_confi
         "smtp_config": smtp_config,
         "email_status": "Active" if email_config.is_active else "Inactive",
         "aws_status": "Active" if aws_config.is_active else "Inactive",
-        "masked_access_key": _mask_key(aws_config.access_key_id),
-        "secret_key_status": "Configured" if aws_config.secret_access_key else "Not configured",
+        "masked_access_key": "Secrets Manager"
+        if aws_config.credentials_secret_arn
+        else _mask_key(aws_config.access_key_id),
+        "secret_key_status": "Configured" if aws_config.is_configured else "Not configured",
         "resolved_sms_number": aws_config.resolved_sms_from_number(),
         "sms_number_is_override": bool(aws_config.sms_from_number),
         "sms_template_display": aws_config.sms_message_template or "Default OTP message",
